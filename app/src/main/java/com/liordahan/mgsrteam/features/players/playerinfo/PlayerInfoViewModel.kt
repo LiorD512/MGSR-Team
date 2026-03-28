@@ -3,7 +3,6 @@ package com.liordahan.mgsrteam.features.players.playerinfo
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.firestore.FieldValue
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.MarketValueEntry
 import com.liordahan.mgsrteam.features.players.models.NotesModel
@@ -21,16 +20,15 @@ import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.Playe
 import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.IPlayerOffersRepository
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
-import com.liordahan.mgsrteam.features.players.playerinfo.notes.NoteParser
 import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.requests.RequestMatcher
 import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
-import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRepository
 import com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.firebase.SharedCallables
 import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
@@ -175,11 +173,6 @@ class PlayerInfoViewModel(
     private val _playerDocumentIdFlow = MutableStateFlow<String?>(null)
     override val playerDocumentIdFlow: StateFlow<String?> = _playerDocumentIdFlow
 
-    /** Returns the Firestore document reference for the current player using the cached doc ID. */
-    private fun getPlayerDocRef() = _playerDocumentIdFlow.value?.let { docId ->
-        firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable).document(docId)
-    }
-
     /** True when the active platform is Women or Youth. */
     private val isNonMenPlatform: Boolean
         get() = platformManager.current.value != Platform.MEN
@@ -295,7 +288,7 @@ class PlayerInfoViewModel(
                 for (mandate in mandateDocs) {
                     val expiresAt = mandate.expiresAt ?: continue
                     if (expiresAt < now && !mandate.expired) {
-                        mandate.id?.let { documentsRepository.markDocumentExpired(it) }
+                        mandate.id?.let { SharedCallables.playerDocumentsMarkExpired(it) }
                     }
                 }
                 // Auto-sync mandate switch: ON when valid mandate docs exist, OFF when none.
@@ -407,26 +400,25 @@ class PlayerInfoViewModel(
             }
             val createdByAgentId = currentAccount?.id ?: ""
             val createdByAgentName = currentAccount?.getDisplayName(appContext) ?: ""
-            val newTask = AgentTask(
-                agentId = agentId,
-                agentName = agentName,
-                title = title,
-                isCompleted = false,
-                dueDate = dueDate,
-                createdAt = System.currentTimeMillis(),
-                priority = priority,
-                notes = notes,
-                createdByAgentId = createdByAgentId,
-                createdByAgentName = createdByAgentName,
-                playerId = playerId,
-                playerName = playerName,
-                playerTmProfile = playerTmProfile,
-                templateId = templateId,
-                linkedAgentContactId = linkedAgentContactId,
-                linkedAgentContactName = linkedAgentContactName,
-                linkedAgentContactPhone = linkedAgentContactPhone
-            )
-            firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable).add(newTask).await()
+            SharedCallables.tasksCreate(platformManager.value, mapOf(
+                "agentId" to agentId,
+                "agentName" to agentName,
+                "title" to title,
+                "isCompleted" to false,
+                "dueDate" to dueDate,
+                "createdAt" to System.currentTimeMillis(),
+                "priority" to priority,
+                "notes" to notes,
+                "createdByAgentId" to createdByAgentId,
+                "createdByAgentName" to createdByAgentName,
+                "playerId" to playerId,
+                "playerName" to playerName,
+                "playerTmProfile" to playerTmProfile,
+                "templateId" to templateId,
+                "linkedAgentContactId" to linkedAgentContactId,
+                "linkedAgentContactName" to linkedAgentContactName,
+                "linkedAgentContactPhone" to linkedAgentContactPhone
+            ))
         }
     }
 
@@ -434,12 +426,7 @@ class PlayerInfoViewModel(
         if (task.id.isBlank()) return
         viewModelScope.launch {
             val nowCompleted = !task.isCompleted
-            val data = mapOf(
-                "isCompleted" to nowCompleted,
-                "completedAt" to if (nowCompleted) System.currentTimeMillis() else 0L
-            )
-            firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable)
-                .document(task.id).update(data).await()
+            SharedCallables.tasksToggleComplete(platformManager.value, task.id, nowCompleted)
         }
     }
 
@@ -456,9 +443,11 @@ class PlayerInfoViewModel(
                 .document(playerId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) return@addSnapshotListener
-                    val player = snapshot?.toObject(Player::class.java) ?: return@addSnapshotListener
+                    val player = try {
+                        snapshot?.toObject(Player::class.java)
+                    } catch (_: Exception) { null } ?: return@addSnapshotListener
                     _playerInfoFlow.update { player }
-                    _playerDocumentIdFlow.update { snapshot.id }
+                    _playerDocumentIdFlow.update { snapshot!!.id }
                 }
         } else {
             // Men — playerId is the tmProfile URL
@@ -468,7 +457,9 @@ class PlayerInfoViewModel(
                 .addSnapshotListener { value, error ->
                     if (error != null) return@addSnapshotListener
                     val doc = value?.documents?.firstOrNull() ?: return@addSnapshotListener
-                    val player = doc.toObject(Player::class.java) ?: return@addSnapshotListener
+                    val player = try {
+                        doc.toObject(Player::class.java)
+                    } catch (_: Exception) { null } ?: return@addSnapshotListener
                     _playerInfoFlow.update { player }
                     _playerDocumentIdFlow.update { doc.id }
                 }
@@ -479,26 +470,18 @@ class PlayerInfoViewModel(
         viewModelScope.launch {
             _showButtonProgress.update { true }
             try {
-                val docRef = if (isNonMenPlatform) {
-                    getPlayerDocRef()
-                } else {
-                    val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-                        .whereEqualTo("tmProfile", playerTmProfile).get().await()
-                    snapshot.documents.firstOrNull()?.reference
-                }
+                val docId = _playerDocumentIdFlow.value ?: return@launch
                 val player = _playerInfoFlow.value
-                docRef?.delete()?.await()
                 val deletedBy = getCurrentUserName()
-                firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
-                    FeedEvent(
-                        type = FeedEvent.TYPE_PLAYER_DELETED,
-                        playerName = player?.fullName,
-                        playerImage = player?.profileImage,
-                        playerTmProfile = playerTmProfile,
-                        agentName = deletedBy,
-                        timestamp = System.currentTimeMillis()
-                    )
-                ).await()
+                val feedProfileId = player?.tmProfile ?: docId
+                SharedCallables.playersDelete(
+                    platform = platformManager.value,
+                    playerId = docId,
+                    playerRefId = feedProfileId,
+                    playerName = player?.fullName,
+                    playerImage = player?.profileImage,
+                    agentName = deletedBy
+                )
                 onDeleteSuccessfully()
             } finally {
                 _showButtonProgress.update { false }
@@ -514,8 +497,8 @@ class PlayerInfoViewModel(
         }
 
         viewModelScope.launch {
-            val updates = mutableMapOf<String, Any?>("playerPhoneNumber" to number)
-            getPlayerDocRef()?.update(updates)?.await()
+            val docId = _playerDocumentIdFlow.value ?: return@launch
+            SharedCallables.playersUpdate(platformManager.value, docId, mapOf("playerPhoneNumber" to number))
         }
     }
 
@@ -527,8 +510,8 @@ class PlayerInfoViewModel(
         }
 
         viewModelScope.launch {
-            val updates = mutableMapOf<String, Any?>("agentPhoneNumber" to number)
-            getPlayerDocRef()?.update(updates)?.await()
+            val docId = _playerDocumentIdFlow.value ?: return@launch
+            SharedCallables.playersUpdate(platformManager.value, docId, mapOf("agentPhoneNumber" to number))
         }
     }
 
@@ -538,9 +521,8 @@ class PlayerInfoViewModel(
         }
 
         viewModelScope.launch {
-            getPlayerDocRef()?.update(
-                mapOf("agency" to null, "agencyUrl" to null)
-            )?.await()
+            val docId = _playerDocumentIdFlow.value ?: return@launch
+            SharedCallables.playersUpdate(platformManager.value, docId, emptyMap(), deleteFields = listOf("agency", "agencyUrl"))
         }
     }
 
@@ -550,30 +532,23 @@ class PlayerInfoViewModel(
         }
         viewModelScope.launch {
             val player = _playerInfoFlow.value ?: return@launch
-            getPlayerDocRef()?.update("haveMandate", hasMandate)?.await()
+            val docId = _playerDocumentIdFlow.value ?: return@launch
+            val feedProfileId = player.tmProfile ?: docId
 
             if (isManual) {
                 val createdBy = getCurrentUserName()
-                val tmProfile = player.tmProfile
-                // Women/Youth: use Firestore document ID for feed navigation
-                val feedProfileId = tmProfile ?: _playerDocumentIdFlow.value
-                val mandateExpiryAt = if (hasMandate && feedProfileId != null) {
-                    documentsRepository.getDocuments(feedProfileId)
-                        .filter { it.documentType == DocumentType.MANDATE && !it.expired }
-                        .maxOfOrNull { it.expiresAt ?: 0L }
-                        ?.takeIf { it > 0 }
-                } else null
-                val feedRef = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
-                val feedEvent = FeedEvent(
-                    type = if (hasMandate) FeedEvent.TYPE_MANDATE_SWITCHED_ON else FeedEvent.TYPE_MANDATE_SWITCHED_OFF,
+                SharedCallables.playersToggleMandate(
+                    platform = platformManager.value,
+                    playerId = docId,
+                    hasMandate = hasMandate,
+                    playerRefId = feedProfileId,
                     playerName = player.fullName,
                     playerImage = player.profileImage,
-                    playerTmProfile = feedProfileId,
-                    agentName = createdBy,
-                    mandateExpiryAt = mandateExpiryAt,
-                    timestamp = System.currentTimeMillis()
+                    agentName = createdBy
                 )
-                feedRef.add(feedEvent).await()
+            } else {
+                // Auto-sync from document watcher — just update the field, no FeedEvent
+                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("haveMandate" to hasMandate))
             }
         }
     }
@@ -583,7 +558,8 @@ class PlayerInfoViewModel(
             it?.copy(interestedInIsrael = interested)
         }
         viewModelScope.launch {
-            getPlayerDocRef()?.update("interestedInIsrael", interested)?.await()
+            val docId = _playerDocumentIdFlow.value ?: return@launch
+            SharedCallables.playersUpdate(platformManager.value, docId, mapOf("interestedInIsrael" to interested))
         }
     }
 
@@ -592,7 +568,12 @@ class PlayerInfoViewModel(
             it?.copy(salaryRange = salaryRange)
         }
         viewModelScope.launch {
-            getPlayerDocRef()?.update("salaryRange", salaryRange)?.await()
+            val docId = _playerDocumentIdFlow.value ?: return@launch
+            if (salaryRange != null) {
+                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("salaryRange" to salaryRange))
+            } else {
+                SharedCallables.playersUpdate(platformManager.value, docId, emptyMap(), deleteFields = listOf("salaryRange"))
+            }
         }
     }
 
@@ -601,105 +582,73 @@ class PlayerInfoViewModel(
             it?.copy(transferFee = transferFee)
         }
         viewModelScope.launch {
-            getPlayerDocRef()?.update("transferFee", transferFee)?.await()
+            val docId = _playerDocumentIdFlow.value ?: return@launch
+            if (transferFee != null) {
+                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("transferFee" to transferFee))
+            } else {
+                SharedCallables.playersUpdate(platformManager.value, docId, emptyMap(), deleteFields = listOf("transferFee"))
+            }
         }
     }
 
     override fun updateNotes(notes: NotesModel) {
         viewModelScope.launch {
-            var updatedPlayer: Player? = null
-            var createdBy: String? = null
-            _playerInfoFlow.update { player ->
-                val currentNotes = player?.noteList?.toMutableList() ?: mutableListOf()
-                val account = getCurrentUserAccount()
-                createdBy = account?.name
+            val player = _playerInfoFlow.value ?: return@launch
+            val docId = _playerDocumentIdFlow.value ?: return@launch
+            val feedProfileId = player.tmProfile ?: docId
+            val account = getCurrentUserAccount()
+
+            // Optimistic local update
+            _playerInfoFlow.update { p ->
+                val currentNotes = p?.noteList?.toMutableList() ?: mutableListOf()
                 val note = notes.copy(
                     createBy = account?.name,
                     createByHe = account?.hebrewName
                 )
                 currentNotes.add(note)
-                val newNoteList = currentNotes
-                val salaryRange = NoteParser.extractSalaryRange(newNoteList)
-                val isFree = NoteParser.extractFreeTransfer(newNoteList)
-                updatedPlayer = player?.copy(
-                    noteList = newNoteList,
-                    salaryRange = salaryRange ?: player.salaryRange,
-                    transferFee = if (isFree) "Free/Free loan" else player.transferFee
-                )
-                updatedPlayer
+                p?.copy(noteList = currentNotes)
             }
 
-            updatedPlayer?.let { player ->
-                getPlayerDocRef()?.update(
-                    mapOf(
-                        "noteList" to player.noteList,
-                        "salaryRange" to player.salaryRange,
-                        "transferFee" to player.transferFee
-                    )
-                )?.await()
-
-                // Write FeedEvent so dashboard updates immediately
-                val feedRef = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
-                val notePreview = notes.notes?.take(120)?.let { if (it.length == 120) "$it…" else it }
-                // Women/Youth players have no tmProfile — use Firestore document ID instead
-                val feedProfileId = player.tmProfile ?: _playerDocumentIdFlow.value
-                val feedEvent = FeedEvent(
-                    type = FeedEvent.TYPE_NOTE_ADDED,
-                    playerName = player.fullName,
-                    playerImage = player.profileImage,
-                    playerTmProfile = feedProfileId,
-                    agentName = createdBy,
-                    extraInfo = notePreview,
-                    timestamp = System.currentTimeMillis()
-                )
-                feedRef.add(feedEvent).await()
-            }
+            SharedCallables.playersAddNote(
+                platform = platformManager.value,
+                playerId = docId,
+                playerRefId = feedProfileId,
+                noteText = notes.notes ?: "",
+                createdBy = account?.name,
+                createdByHe = account?.hebrewName,
+                playerName = player.fullName,
+                playerImage = player.profileImage,
+                agentName = account?.getDisplayName(appContext)
+            )
         }
     }
 
     override fun onDeleteNoteClicked(note: NotesModel) {
         viewModelScope.launch {
-            var updatedPlayer: Player? = null
-            _playerInfoFlow.update { player ->
-                val currentNotes = player?.noteList?.toMutableList() ?: mutableListOf()
+            val player = _playerInfoFlow.value ?: return@launch
+            val docId = _playerDocumentIdFlow.value ?: return@launch
+            val feedProfileId = player.tmProfile ?: docId
+            val noteIndex = player.noteList?.indexOf(note) ?: -1
+
+            // Optimistic local update
+            _playerInfoFlow.update { p ->
+                val currentNotes = p?.noteList?.toMutableList() ?: mutableListOf()
                 currentNotes.remove(note)
-                val newNoteList = currentNotes
-                val salaryRange = NoteParser.extractSalaryRange(newNoteList)
-                val isFree = NoteParser.extractFreeTransfer(newNoteList)
-                updatedPlayer = player?.copy(
-                    noteList = newNoteList,
-                    salaryRange = salaryRange ?: player.salaryRange,
-                    transferFee = if (isFree) "Free/Free loan" else player.transferFee
-                )
-                updatedPlayer
+                p?.copy(noteList = currentNotes)
             }
 
-            updatedPlayer?.let { player ->
-                getPlayerDocRef()?.update(
-                    mapOf(
-                        "noteList" to player.noteList,
-                        "salaryRange" to player.salaryRange,
-                        "transferFee" to player.transferFee
-                    )
-                )?.await()
-
-                // Write feed event for note deleted
-                val deletedBy = getCurrentUserName()
-                val notePreview = note.notes?.take(120)?.let { if (it.length == 120) "$it…" else it }
-                // Women/Youth players have no tmProfile — use Firestore document ID instead
-                val feedProfileId = player.tmProfile ?: _playerDocumentIdFlow.value
-                firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
-                    FeedEvent(
-                        type = FeedEvent.TYPE_NOTE_DELETED,
-                        playerName = player.fullName,
-                        playerImage = player.profileImage,
-                        playerTmProfile = feedProfileId,
-                        agentName = deletedBy,
-                        extraInfo = notePreview,
-                        timestamp = System.currentTimeMillis()
-                    )
-                ).await()
-            }
+            val deletedBy = getCurrentUserName()
+            SharedCallables.playersDeleteNote(
+                platform = platformManager.value,
+                playerId = docId,
+                playerRefId = feedProfileId,
+                noteIndex = noteIndex,
+                noteText = note.notes,
+                noteCreatedAt = note.createdAt,
+                playerName = player.fullName,
+                playerImage = player.profileImage,
+                agentName = deletedBy
+            )
         }
     }
 
@@ -766,8 +715,9 @@ class PlayerInfoViewModel(
                         notes = ""
                     )
 
-                    getPlayerDocRef()?.update(
-                        mapOf(
+                    val docId = _playerDocumentIdFlow.value
+                    if (docId != null) {
+                        SharedCallables.playersUpdate(platformManager.value, docId, mapOf(
                             "marketValue" to playerToUpdate.marketValue,
                             "profileImage" to playerToUpdate.profileImage,
                             "nationalityFlag" to playerToUpdate.nationalityFlag,
@@ -777,17 +727,33 @@ class PlayerInfoViewModel(
                             "age" to playerToUpdate.age,
                             "contractExpired" to playerToUpdate.contractExpired,
                             "positions" to playerToUpdate.positions,
-                            "currentClub" to playerToUpdate.currentClub,
-                            "marketValueHistory" to playerToUpdate.marketValueHistory,
+                            "currentClub" to playerToUpdate.currentClub?.let {
+                                mapOf(
+                                    "clubName" to it.clubName,
+                                    "clubLogo" to it.clubLogo,
+                                    "clubTmProfile" to it.clubTmProfile,
+                                    "clubCountry" to it.clubCountry
+                                )
+                            },
+                            "marketValueHistory" to playerToUpdate.marketValueHistory?.map {
+                                mapOf("value" to it.value, "date" to it.date)
+                            },
                             "lastRefreshedAt" to playerToUpdate.lastRefreshedAt,
                             "isOnLoan" to playerToUpdate.isOnLoan,
                             "foot" to playerToUpdate.foot,
                             "agency" to playerToUpdate.agency,
                             "agencyUrl" to playerToUpdate.agencyUrl,
-                            "noteList" to playerToUpdate.noteList,
+                            "noteList" to playerToUpdate.noteList?.map {
+                                mapOf(
+                                    "notes" to it.notes,
+                                    "createBy" to it.createBy,
+                                    "createByHe" to it.createByHe,
+                                    "createdAt" to it.createdAt
+                                )
+                            },
                             "notes" to playerToUpdate.notes
-                        )
-                    )?.await()
+                        ))
+                    }
                     _updatePlayerFlow.update { UiResult.Success("Update succeed") }
                 } else if (response is TransfermarktResult.Failed) {
                     _updatePlayerFlow.update { UiResult.Failed(cause = "Update failed\nTry again later") }
@@ -850,28 +816,21 @@ class PlayerInfoViewModel(
                 val bytesToUpload = if (isPdf) {
                     withContext(Dispatchers.IO) { PdfFlattener.flatten(bytes) }
                 } else bytes
-                val result = documentsRepository.uploadDocument(
-                    storageKey,
-                    detection.documentType,
-                    detection.suggestedName,
-                    bytesToUpload,
-                    docExpiresAt,
+                // Upload bytes to Storage (client-side), then create Firestore entry via callable
+                val storageUrl = documentsRepository.uploadBytesToStorage(storageKey, detection.suggestedName, bytesToUpload)
+                SharedCallables.playerDocumentsCreate(
+                    platform = platformManager.value,
+                    playerRefId = storageKey,
+                    type = detection.documentType.name,
+                    name = detection.suggestedName,
+                    storageUrl = storageUrl,
+                    expiresAt = docExpiresAt,
+                    validLeagues = detection.validLeagues.takeIf { it.isNotEmpty() },
                     uploadedBy = uploadedBy,
-                    validLeagues = detection.validLeagues.takeIf { it.isNotEmpty() }
+                    playerName = player.fullName,
+                    playerImage = player.profileImage,
+                    agentName = createdBy
                 )
-                if (result.isSuccess && detection.documentType == DocumentType.MANDATE) {
-                    val feedRef = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
-                    val feedEvent = FeedEvent(
-                        type = FeedEvent.TYPE_MANDATE_UPLOADED,
-                        playerName = player.fullName,
-                        playerImage = player.profileImage,
-                        playerTmProfile = storageKey,
-                        agentName = createdBy,
-                        mandateExpiryAt = docExpiresAt,
-                        timestamp = System.currentTimeMillis()
-                    )
-                    feedRef.add(feedEvent).await()
-                }
             } finally {
                 _isUploadingDocumentFlow.value = false
             }
@@ -880,10 +839,13 @@ class PlayerInfoViewModel(
 
     override fun deleteDocument(documentId: String, isPassport: Boolean) {
         viewModelScope.launch {
-            documentsRepository.deleteDocument(documentId)
-            if (isPassport) {
-                clearPassportDetails()
-            }
+            val docId = _playerDocumentIdFlow.value
+            SharedCallables.playerDocumentsDelete(
+                platform = platformManager.value,
+                documentId = documentId,
+                clearPassport = isPassport,
+                playerId = docId
+            )
         }
     }
 
@@ -978,7 +940,8 @@ class PlayerInfoViewModel(
     private suspend fun clearPassportDetails() {
         withContext(Dispatchers.IO) {
             try {
-                getPlayerDocRef()?.update("passportDetails", FieldValue.delete())?.await()
+                val docId = _playerDocumentIdFlow.value ?: return@withContext
+                SharedCallables.playersUpdate(platformManager.value, docId, emptyMap(), deleteFields = listOf("passportDetails"))
                 _playerInfoFlow.update { it?.copy(passportDetails = null) }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to clear passport details", e)
@@ -989,7 +952,15 @@ class PlayerInfoViewModel(
     private suspend fun savePassportDetailsToPlayer(tmProfile: String, passportDetails: PassportDetails) {
         withContext(Dispatchers.IO) {
             try {
-                getPlayerDocRef()?.update("passportDetails", passportDetails)?.await()
+                val docId = _playerDocumentIdFlow.value ?: return@withContext
+                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("passportDetails" to mapOf(
+                    "firstName" to passportDetails.firstName,
+                    "lastName" to passportDetails.lastName,
+                    "dateOfBirth" to passportDetails.dateOfBirth,
+                    "passportNumber" to passportDetails.passportNumber,
+                    "nationality" to passportDetails.nationality,
+                    "lastUpdatedAt" to passportDetails.lastUpdatedAt
+                )))
                 _playerInfoFlow.update { it?.copy(passportDetails = passportDetails) }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save passport details", e)
@@ -1032,10 +1003,22 @@ class PlayerInfoViewModel(
         viewModelScope.launch {
             _isHighlightsSaving.value = true
             try {
-                highlightsApiClient.savePinnedHighlights(
-                    playerId = docId,
-                    videos = videos,
-                    collection = firebaseHandler.playersTable
+                SharedCallables.playersUpdate(
+                    platformManager.value,
+                    docId,
+                    mapOf("pinnedHighlights" to videos.take(com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightsApiClient.MAX_PINNED).map { v ->
+                        hashMapOf(
+                            "id" to v.id,
+                            "source" to v.source,
+                            "title" to v.title,
+                            "thumbnailUrl" to v.thumbnailUrl,
+                            "embedUrl" to v.embedUrl,
+                            "channelName" to v.channelName,
+                            "publishedAt" to v.publishedAt,
+                            "durationSeconds" to v.durationSeconds,
+                            "viewCount" to v.viewCount
+                        )
+                    })
                 )
                 // Update local state — Firestore listener will update pinnedHighlights on the model
             } catch (e: Exception) {
@@ -1160,13 +1143,10 @@ class PlayerInfoViewModel(
                     }
             )
 
-            val ref = firebaseHandler.firebaseStore
-                .collection(firebaseHandler.sharedPlayersTable)
-                .add(shareData)
-                .await()
+            val token = SharedCallables.sharePlayerCreate(shareData)
 
             val baseUrl = com.liordahan.mgsrteam.BuildConfig.MGSR_WEB_URL.trimEnd('/')
-            Result.success("$baseUrl/p/${ref.id}")
+            Result.success("$baseUrl/p/$token")
         } catch (e: Exception) {
             Log.e(TAG, "createShareUrl failed", e)
             Result.failure(e)
@@ -1296,12 +1276,11 @@ class PlayerInfoViewModel(
             val fromAgentId = player.agentInChargeId ?: ""
             val fromAgentName = player.agentInChargeName
 
-            val platformName = platformManager.current.value.name
             val result = agentTransferRepository.requestTransfer(
                 playerId = docId,
                 playerName = player.fullName,
                 playerImage = player.profileImage,
-                platform = platformName,
+                platform = platformManager.value,
                 fromAgentId = fromAgentId,
                 fromAgentName = fromAgentName,
                 toAgentId = currentUser.id ?: return@launch,
@@ -1321,7 +1300,7 @@ class PlayerInfoViewModel(
             val requestId = request.id ?: return@launch
             _transferLoadingFlow.value = true
             try {
-                agentTransferRepository.approveTransfer(requestId, firebaseHandler.playersTable)
+                agentTransferRepository.approveTransfer(requestId, platformManager.value)
                 _transferSuccessFlow.emit("transfer_approved")
             } catch (e: Exception) {
                 Log.e(TAG, "approveTransfer failed", e)

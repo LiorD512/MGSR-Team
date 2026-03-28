@@ -10,7 +10,6 @@ import android.util.Log
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.liordahan.mgsrteam.MainActivity
@@ -21,7 +20,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 class MgsrFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -301,15 +299,11 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
             try {
                 val user = FirebaseAuth.getInstance().currentUser ?: return@launch
                 val email = user.email ?: return@launch
-                val snapshot = FirebaseFirestore.getInstance()
-                    .collection("Accounts")
-                    .whereEqualTo("email", email)
-                    .get()
-                    .await()
-                snapshot.documents.firstOrNull()?.reference
-                    ?.update("fcmToken", token)
-                    ?.await()
-                Log.i("FCM", "Token refreshed and saved for $email")
+                SharedCallables.accountUpdate(
+                    email = email,
+                    fields = mapOf("fcmToken" to token)
+                )
+                Log.i("FCM", "Token refreshed and saved via callable for $email")
             } catch (e: Exception) {
                 Log.w("FCM", "Token save failed (will retry on next login): ${e.message}")
             }

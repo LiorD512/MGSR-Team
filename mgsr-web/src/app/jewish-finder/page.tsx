@@ -7,7 +7,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import AppLayout from '@/components/AppLayout';
 import { db } from '@/lib/firebase';
-import { collection, query as firestoreQuery, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query as firestoreQuery, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { callShortlistAdd } from '@/lib/callables';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { getPlayerDetails } from '@/lib/api';
 import { SHORTLISTS_COLLECTIONS, FEED_EVENTS_COLLECTIONS } from '@/lib/platformCollections';
@@ -94,52 +95,44 @@ export default function JewishFinderPage() {
     setAddingToShortlistUrl(p.tmUrl);
     try {
       const account = await getCurrentAccountForShortlist(user);
-      const colRef = collection(db, shortlistCol);
-      const q = firestoreQuery(colRef, where('tmProfileUrl', '==', p.tmUrl));
-      const existsSnap = await getDocs(q);
-      if (existsSnap.empty) {
-        let entry: Record<string, unknown>;
-        try {
-          const details = await getPlayerDetails(p.tmUrl);
-          entry = {
-            tmProfileUrl: p.tmUrl, addedAt: Date.now(),
-            playerImage: details.profileImage ?? null,
-            playerName: details.fullName ?? p.name,
-            playerPosition: details.positions?.[0] ?? p.position ?? null,
-            playerAge: details.age ?? p.age ?? null,
-            playerNationality: details.nationality ?? p.nationality ?? null,
-            playerNationalityFlag: details.nationalityFlag ?? null,
-            clubJoinedName: details.currentClub?.clubName ?? p.club ?? null,
-            marketValue: details.marketValue ?? p.marketValue ?? null,
-            addedByAgentId: account.id,
-            addedByAgentName: account.name ?? null,
-            addedByAgentHebrewName: account.hebrewName ?? null,
-            instagramHandle: details.instagramHandle ?? null,
-            instagramUrl: details.instagramUrl ?? null,
-          };
-        } catch {
-          entry = {
-            tmProfileUrl: p.tmUrl, addedAt: Date.now(),
-            playerName: p.name, playerPosition: p.position ?? null,
-            playerAge: p.age ?? null, playerNationality: p.nationality ?? null,
-            clubJoinedName: p.club ?? null, marketValue: p.marketValue ?? null,
-            addedByAgentId: account.id,
-            addedByAgentName: account.name ?? null,
-            addedByAgentHebrewName: account.hebrewName ?? null,
-          };
-        }
-        await addDoc(colRef, entry);
-        await addDoc(collection(db, FEED_EVENTS_COLLECTIONS[platform] || 'FeedEvents'), {
-          type: 'SHORTLIST_ADDED', playerName: entry.playerName ?? null,
-          playerImage: entry.playerImage ?? null, playerTmProfile: p.tmUrl,
-          timestamp: Date.now(), agentName: account.name ?? null,
-        });
+      let entryFields: Record<string, unknown> = {
+        addedByAgentId: account.id,
+        addedByAgentName: account.name ?? null,
+        addedByAgentHebrewName: account.hebrewName ?? null,
+      };
+      try {
+        const details = await getPlayerDetails(p.tmUrl);
+        entryFields = {
+          ...entryFields,
+          playerImage: details.profileImage ?? null,
+          playerName: details.fullName ?? p.name,
+          playerPosition: details.positions?.[0] ?? p.position ?? null,
+          playerAge: details.age ?? p.age ?? null,
+          playerNationality: details.nationality ?? p.nationality ?? null,
+          playerNationalityFlag: details.nationalityFlag ?? null,
+          clubJoinedName: details.currentClub?.clubName ?? p.club ?? null,
+          marketValue: details.marketValue ?? p.marketValue ?? null,
+          instagramHandle: details.instagramHandle ?? null,
+          instagramUrl: details.instagramUrl ?? null,
+        };
+      } catch {
+        entryFields = {
+          ...entryFields,
+          playerName: p.name, playerPosition: p.position ?? null,
+          playerAge: p.age ?? null, playerNationality: p.nationality ?? null,
+          clubJoinedName: p.club ?? null, marketValue: p.marketValue ?? null,
+        };
       }
+      await callShortlistAdd({
+        platform,
+        tmProfileUrl: p.tmUrl,
+        ...entryFields,
+      });
     } catch { /* silent */ } finally {
       setAddingToShortlistUrl(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, platform]);
 
   const runDiscovery = useCallback(async () => {
     if (running) return;

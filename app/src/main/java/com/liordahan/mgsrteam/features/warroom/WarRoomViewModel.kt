@@ -7,13 +7,13 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient
+import com.liordahan.mgsrteam.firebase.SharedCallables
 import com.liordahan.mgsrteam.localization.LocaleManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 // ── UI State ────────────────────────────────────────────────────────────────
 
@@ -303,12 +303,7 @@ class WarRoomViewModel(
 
         viewModelScope.launch {
             try {
-                val docRef = store.collection("ScoutProfileFeedback").document(uid)
-                val snap = docRef.get().await()
-                @Suppress("UNCHECKED_CAST")
-                val current = (snap.get("feedback") as? Map<String, Any>)?.toMutableMap() ?: mutableMapOf()
-                current[profileId] = mapOf("feedback" to feedback, "agentId" to agentId)
-                docRef.set(mapOf("feedback" to current, "updatedAt" to System.currentTimeMillis()), com.google.firebase.firestore.SetOptions.merge()).await()
+                SharedCallables.scoutProfileFeedbackSet(uid, profileId, feedback, agentId)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set profile feedback", e)
             }

@@ -4,10 +4,11 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, collection, query, where, onSnapshot, updateDoc, addDoc, getDocs, setDoc, deleteDoc, deleteField } from 'firebase/firestore';
+import { doc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '@/lib/firebase';
+import { callOffersCreate, callOffersUpdateFeedback, callTasksToggleComplete, callPlayersUpdate, callPlayersToggleMandate, callPlayersAddNote, callPlayersDeleteNote, callPlayersDelete, callPlayerDocumentsCreate, callPlayerDocumentsDelete, callPlayerDocumentsMarkExpired, callPortfolioUpsert } from '@/lib/callables';
 import { getPlayerDetails, PlayerDetails } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
@@ -26,6 +27,7 @@ import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '
 import AgentTransferSection from '@/components/AgentTransferSection';
 import { type AgentTransferRequest, listenForPendingRequest, listenForResolvedTransfer, requestAgentTransfer, approveTransfer, rejectTransfer, cancelTransferRequest } from '@/lib/agentTransfer';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
+import { appConfig } from '@/lib/appConfig';
 import {
   LineChart,
   Line,
@@ -128,8 +130,8 @@ function StatCard({
   );
 }
 
-const SALARY_OPTIONS = ['>5', '6-10', '11-15', '16-20', '20-25', '26-30', '30+'];
-const FEE_OPTIONS = ['Free/Free loan', '<200', '300-600', '700-900', '1m+'];
+const SALARY_OPTIONS = appConfig.salaryRanges;
+const FEE_OPTIONS = appConfig.transferFees;
 
 function SalaryTransferFeeModal({
   currentSalaryRange,
@@ -358,7 +360,7 @@ export default function PlayerInfoPage() {
         const expiresAt = m.expiresAt;
         if (expiresAt != null && expiresAt < now && !m.expired) {
           try {
-            await updateDoc(doc(db, 'PlayerDocuments', m.id), { expired: true });
+            await callPlayerDocumentsMarkExpired({ documentId: m.id });
           } catch {
             // ignore
           }
@@ -373,7 +375,7 @@ export default function PlayerInfoPage() {
       if (prevValidMandateCountRef.current != null && validCount !== prevValidMandateCountRef.current) {
         const hasMandate = validCount > 0;
         try {
-          await updateDoc(doc(db, 'Players', id), { haveMandate: hasMandate });
+          await callPlayersUpdate({ platform: 'men', playerId: id, haveMandate: hasMandate });
           setPlayer((p) => (p ? { ...p, haveMandate: hasMandate } : null));
         } catch {
           // ignore
@@ -387,7 +389,7 @@ export default function PlayerInfoPage() {
       );
       if (hasIsraelLeague && !(player as Player | null)?.interestedInIsrael) {
         try {
-          await updateDoc(doc(db, 'Players', id), { interestedInIsrael: true });
+          await callPlayersUpdate({ platform: 'men', playerId: id, interestedInIsrael: true });
           setPlayer((p) => (p ? { ...p, interestedInIsrael: true } : null));
         } catch {
           // ignore
@@ -518,10 +520,18 @@ export default function PlayerInfoPage() {
   }, [pendingTransfer]);
 
   const handleDeletePlayer = useCallback(async () => {
-    if (!id) return;
+    if (!id || !player) return;
     setDeleting(true);
     try {
-      await deleteDoc(doc(db, 'Players', id));
+      const agentName = getCurrentUserName() ?? undefined;
+      await callPlayersDelete({
+        platform: 'men',
+        playerId: id,
+        playerRefId: player.tmProfile ?? id,
+        playerName: player.fullName,
+        playerImage: player.profileImage,
+        agentName,
+      });
       router.push('/dashboard');
     } catch (e) {
       console.error('Failed to delete player:', e);
@@ -529,7 +539,7 @@ export default function PlayerInfoPage() {
       setDeleting(false);
       setShowDeleteConfirm(false);
     }
-  }, [id, router, isRtl]);
+  }, [id, player, router, isRtl, getCurrentUserName]);
 
   const playerAsRoster: RosterPlayer | null = useMemo(() => {
     if (!player) return null;
@@ -570,15 +580,15 @@ export default function PlayerInfoPage() {
       if (!player?.tmProfile || !user?.email) return;
       const agentName = accounts.find((a) => a.email?.toLowerCase() === user.email?.toLowerCase());
       const markedBy = isRtl ? (agentName?.hebrewName ?? agentName?.name) : (agentName?.name ?? agentName?.hebrewName);
-      await addDoc(collection(db, 'PlayerOffers'), {
+      await callOffersCreate({
+        platform: 'men',
         playerTmProfile: player.tmProfile,
         playerName: player.fullName ?? '',
         playerImage: player.profileImage ?? '',
-        requestId,
+        requestId: requestId ?? '',
         clubName: clubName ?? '',
         clubLogo: clubLogo ?? '',
         position: position ?? '',
-        offeredAt: Date.now(),
         clubFeedback: feedback ?? '',
         markedByAgentName: markedBy ?? '',
       });
@@ -587,7 +597,7 @@ export default function PlayerInfoPage() {
   );
 
   const handleUpdateOfferFeedback = useCallback(async (offerId: string, feedback: string) => {
-    await updateDoc(doc(db, 'PlayerOffers', offerId), { clubFeedback: feedback });
+    await callOffersUpdateFeedback({ offerId, clubFeedback: feedback });
   }, []);
 
   const handleUploadDocument = useCallback(
@@ -692,7 +702,20 @@ export default function PlayerInfoPage() {
         if (validLeagues?.length) data.validLeagues = validLeagues;
         if (docType === 'MANDATE' && uploadedBy) data.uploadedBy = uploadedBy;
 
-        await addDoc(collection(db, 'PlayerDocuments'), data);
+        // Create document entry + FeedEvent via callable
+        await callPlayerDocumentsCreate({
+          platform: 'men',
+          playerRefId: tmProfile,
+          type: docType,
+          name: suggestedName,
+          storageUrl: url,
+          ...(mandateExpiresAt != null && { expiresAt: mandateExpiresAt }),
+          ...(validLeagues?.length && { validLeagues }),
+          ...(docType === 'MANDATE' && uploadedBy && { uploadedBy }),
+          playerName: player.fullName,
+          playerImage: player.profileImage,
+          agentName: createdBy,
+        });
 
         // 4. Save passport details to player (like Android)
         if (docType === 'PASSPORT' && passportInfo) {
@@ -704,21 +727,8 @@ export default function PlayerInfoPage() {
             nationality: passportInfo.nationality || undefined,
             lastUpdatedAt: Date.now(),
           };
-          await updateDoc(doc(db, 'Players', id), { passportDetails });
+          await callPlayersUpdate({ platform: 'men', playerId: id, passportDetails });
           setPlayer((p) => (p ? { ...p, passportDetails } : null));
-        }
-
-        // 5. Feed event for mandate (exactly like Android)
-        if (docType === 'MANDATE') {
-          await addDoc(collection(db, 'FeedEvents'), {
-            type: 'MANDATE_UPLOADED',
-            playerName: player.fullName,
-            playerImage: player.profileImage,
-            playerTmProfile: tmProfile,
-            agentName: createdBy,
-            ...(mandateExpiresAt != null && { mandateExpiryAt: mandateExpiresAt }),
-            timestamp: Date.now(),
-          });
         }
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'upload_failed');
@@ -735,32 +745,16 @@ export default function PlayerInfoPage() {
       if (!player || !id) return;
       setMandateToggling(true);
       try {
-        await updateDoc(doc(db, 'Players', id), { haveMandate: hasMandate });
         setPlayer((p) => (p ? { ...p, haveMandate: hasMandate } : null));
-
         const createdBy = getCurrentUserName();
-        const mandateExpiryAt =
-          hasMandate && player.tmProfile
-            ? (() => {
-                const valid = documents.filter(
-                  (d) =>
-                    (d.type ?? '').toUpperCase() === 'MANDATE' &&
-                    !d.expired &&
-                    (d.expiresAt == null || d.expiresAt >= Date.now())
-                );
-                const maxExp = Math.max(0, ...valid.map((d) => d.expiresAt ?? 0));
-                return maxExp > 0 ? maxExp : undefined;
-              })()
-            : undefined;
-
-        await addDoc(collection(db, 'FeedEvents'), {
-          type: hasMandate ? 'MANDATE_SWITCHED_ON' : 'MANDATE_SWITCHED_OFF',
+        await callPlayersToggleMandate({
+          platform: 'men',
+          playerId: id,
+          hasMandate,
+          playerRefId: player.tmProfile ?? id,
           playerName: player.fullName,
           playerImage: player.profileImage,
-          playerTmProfile: player.tmProfile,
           agentName: createdBy,
-          ...(mandateExpiryAt != null && { mandateExpiryAt }),
-          timestamp: Date.now(),
         });
       } catch {
         // revert on error
@@ -769,7 +763,7 @@ export default function PlayerInfoPage() {
         setMandateToggling(false);
       }
     },
-    [player, id, documents, getCurrentUserName]
+    [player, id, getCurrentUserName]
   );
 
   const handleInterestedInIsraelToggle = useCallback(
@@ -777,7 +771,7 @@ export default function PlayerInfoPage() {
       if (!player || !id) return;
       setInterestedInIsraelToggling(true);
       try {
-        await updateDoc(doc(db, 'Players', id), { interestedInIsrael: interested });
+        await callPlayersUpdate({ platform: 'men', playerId: id, interestedInIsrael: interested });
         setPlayer((p) => (p ? { ...p, interestedInIsrael: interested } : null));
       } catch {
         setPlayer((p) => (p ? { ...p, interestedInIsrael: !interested } : null));
@@ -792,9 +786,13 @@ export default function PlayerInfoPage() {
     async (d: PlayerDocument) => {
       if (!d.id || !id) return;
       const isPassport = (d.type ?? '').toUpperCase() === 'PASSPORT';
-      await deleteDoc(doc(db, 'PlayerDocuments', d.id));
+      await callPlayerDocumentsDelete({
+        platform: 'men',
+        documentId: d.id,
+        clearPassport: isPassport,
+        playerId: id,
+      });
       if (isPassport) {
-        await updateDoc(doc(db, 'Players', id), { passportDetails: deleteField() });
         setPlayer((p) => (p ? { ...p, passportDetails: undefined } : null));
       }
       setDocToDelete(null);
@@ -808,8 +806,8 @@ export default function PlayerInfoPage() {
     try {
       const details = await getPlayerDetails(player.tmProfile);
       setLiveData(details);
-      // Persist refreshed data to Firestore
-      const updates: Record<string, unknown> = {};
+      // Persist refreshed data to Firestore via callable
+      const updates: Record<string, unknown> = { platform: 'men', playerId: id };
       if (details.nationality) updates.nationality = details.nationality;
       if (details.nationalities?.length) updates.nationalities = details.nationalities;
       if (details.nationalityFlag) updates.nationalityFlag = details.nationalityFlag;
@@ -825,8 +823,8 @@ export default function PlayerInfoPage() {
       if (details.isOnLoan !== undefined) updates.isOnLoan = details.isOnLoan;
       if (details.onLoanFromClub) updates.onLoanFromClub = details.onLoanFromClub;
       updates.lastRefreshedAt = Date.now();
-      if (Object.keys(updates).length > 1) {
-        await updateDoc(doc(db, 'Players', id), updates);
+      if (Object.keys(updates).length > 2) {
+        await callPlayersUpdate(updates as Parameters<typeof callPlayersUpdate>[0]);
       }
     } finally {
       setRefreshing(false);
@@ -873,11 +871,9 @@ export default function PlayerInfoPage() {
     try {
       const trimmed = value.trim();
       if (type === 'agent') {
-        const updates: Record<string, unknown> = { agentPhoneNumber: trimmed || null };
-        await updateDoc(doc(db, 'Players', id), updates);
+        await callPlayersUpdate({ platform: 'men', playerId: id, agentPhoneNumber: trimmed || null });
       } else {
-        const updates: Record<string, unknown> = { playerPhoneNumber: trimmed || null };
-        await updateDoc(doc(db, 'Players', id), updates);
+        await callPlayersUpdate({ platform: 'men', playerId: id, playerPhoneNumber: trimmed || null });
       }
       setEditingPhoneType(null);
       setEditingPhoneValue('');
@@ -893,11 +889,9 @@ export default function PlayerInfoPage() {
     setSavingPhone(true);
     try {
       if (type === 'agent') {
-        const updates: Record<string, unknown> = { agentPhoneNumber: deleteField() };
-        await updateDoc(doc(db, 'Players', id), updates);
+        await callPlayersUpdate({ platform: 'men', playerId: id, _deleteFields: ['agentPhoneNumber'] });
       } else {
-        const updates: Record<string, unknown> = { playerPhoneNumber: deleteField() };
-        await updateDoc(doc(db, 'Players', id), updates);
+        await callPlayersUpdate({ platform: 'men', playerId: id, _deleteFields: ['playerPhoneNumber'] });
       }
       setConfirmDeletePhone(null);
     } catch (err) {
@@ -910,10 +904,10 @@ export default function PlayerInfoPage() {
   const saveSalaryFee = useCallback(async (salaryRange: string | null, transferFee: string | null) => {
     if (!id) return;
     try {
-      const updates: Record<string, unknown> = {};
+      const updates: Record<string, unknown> = { platform: 'men', playerId: id };
       if (salaryRange !== undefined) updates.salaryRange = salaryRange;
       if (transferFee !== undefined) updates.transferFee = transferFee;
-      await updateDoc(doc(db, 'Players', id), updates);
+      await callPlayersUpdate(updates as Parameters<typeof callPlayersUpdate>[0]);
       setShowSalaryFeeModal(false);
     } catch (err) {
       console.error('Failed to save salary/fee:', err);
@@ -923,7 +917,7 @@ export default function PlayerInfoPage() {
   const clearSalaryFee = useCallback(async () => {
     if (!id) return;
     try {
-      await updateDoc(doc(db, 'Players', id), { salaryRange: deleteField(), transferFee: deleteField() });
+      await callPlayersUpdate({ platform: 'men', playerId: id, _deleteFields: ['salaryRange', 'transferFee'] });
       setShowSalaryFeeModal(false);
     } catch (err) {
       console.error('Failed to clear salary/fee:', err);
@@ -1196,19 +1190,10 @@ export default function PlayerInfoPage() {
           ...(targetClub?.position ? { targetClubPosition: targetClub.position } : {}),
         });
 
-        const existingQ = query(
-          collection(db, 'Portfolio'),
-          where('agentId', '==', user.uid),
-          where('playerId', '==', id),
-          where('lang', '==', lang)
-        );
-        const existingSnap = await getDocs(existingQ);
-        if (!existingSnap.empty) {
-          const existingId = existingSnap.docs[0].id;
-          await setDoc(doc(db, 'Portfolio', existingId), portfolioDoc);
-        } else {
-          await addDoc(collection(db, 'Portfolio'), portfolioDoc);
-        }
+        await callPortfolioUpsert({
+          platform: 'men',
+          ...portfolioDoc as Record<string, unknown>,
+        });
 
         router.push(`/portfolio?fromPlayer=${id}`);
       } catch (e) {
@@ -1236,11 +1221,10 @@ export default function PlayerInfoPage() {
       const salaryRange = extractSalaryRange(newNoteList) ?? player.salaryRange;
       const isFree = extractFreeTransfer(newNoteList);
       const transferFee = isFree ? 'Free/Free loan' : player.transferFee;
-      const playerRef = doc(db, 'Players', id);
-      const updateData: Record<string, unknown> = { noteList: newNoteList };
+      const updateData: Record<string, unknown> = { platform: 'men', playerId: id, noteList: newNoteList };
       if (salaryRange !== undefined) updateData.salaryRange = salaryRange;
       if (transferFee !== undefined) updateData.transferFee = transferFee;
-      await updateDoc(playerRef, updateData);
+      await callPlayersUpdate(updateData as Parameters<typeof callPlayersUpdate>[0]);
     },
     [player, id]
   );
@@ -1251,27 +1235,19 @@ export default function PlayerInfoPage() {
       setNoteSaving(true);
       try {
         const createdBy = getCurrentUserName() ?? '';
-        const currentNotes = player.noteList ?? [];
         const account = accounts.find(
           (a) => a.email?.toLowerCase() === user?.email?.toLowerCase()
         );
-        const newNote: NoteModel = {
-          notes: text.trim(),
-          createBy: account?.name ?? createdBy,
-          createByHe: account?.hebrewName ?? undefined,
-          createdAt: Date.now(),
-        };
-        const newNoteList = [...currentNotes, newNote];
-        await applyNoteListUpdate(newNoteList);
-        const notePreview = text.trim().slice(0, 120) + (text.length > 120 ? '…' : '');
-        await addDoc(collection(db, 'FeedEvents'), {
-          type: 'NOTE_ADDED',
+        await callPlayersAddNote({
+          platform: 'men',
+          playerId: id!,
+          playerRefId: player.tmProfile ?? id!,
+          noteText: text.trim(),
+          createdBy: account?.name ?? createdBy,
+          createdByHe: account?.hebrewName,
           playerName: player.fullName,
           playerImage: player.profileImage,
-          playerTmProfile: player.tmProfile,
           agentName: createdBy,
-          extraInfo: notePreview,
-          timestamp: Date.now(),
         });
         setNoteModalOpen(null);
         setNoteDraft('');
@@ -1279,7 +1255,7 @@ export default function PlayerInfoPage() {
         setNoteSaving(false);
       }
     },
-    [player, getCurrentUserName, applyNoteListUpdate]
+    [player, id, getCurrentUserName, accounts, user]
   );
 
   const handleEditNote = useCallback(
@@ -1315,27 +1291,26 @@ export default function PlayerInfoPage() {
       try {
         const deletedBy = getCurrentUserName() ?? '';
         const currentNotes = player.noteList ?? [];
-        const newNoteList = currentNotes.filter(
-          (n) =>
-            !(n.notes === note.notes && n.createBy === note.createBy && n.createdAt === note.createdAt)
+        const noteIndex = currentNotes.findIndex(
+          (n) => n.notes === note.notes && n.createBy === note.createBy && n.createdAt === note.createdAt
         );
-        await applyNoteListUpdate(newNoteList);
-        const notePreview = (note.notes ?? '').slice(0, 120) + ((note.notes?.length ?? 0) > 120 ? '…' : '');
-        await addDoc(collection(db, 'FeedEvents'), {
-          type: 'NOTE_DELETED',
+        await callPlayersDeleteNote({
+          platform: 'men',
+          playerId: id!,
+          playerRefId: player.tmProfile ?? id!,
+          noteIndex,
+          noteText: note.notes,
+          noteCreatedAt: note.createdAt,
           playerName: player.fullName,
           playerImage: player.profileImage,
-          playerTmProfile: player.tmProfile,
           agentName: deletedBy,
-          extraInfo: notePreview,
-          timestamp: Date.now(),
         });
         setDeleteConfirmNote(null);
       } finally {
         setNoteSaving(false);
       }
     },
-    [player, getCurrentUserName, applyNoteListUpdate]
+    [player, id, getCurrentUserName]
   );
 
   const displayName = isRtl && player?.fullNameHe ? player.fullNameHe : (merged.fullName || 'Unknown');
@@ -2417,10 +2392,7 @@ export default function PlayerInfoPage() {
                         onClick={async (e) => {
                           e.stopPropagation();
                           try {
-                            await updateDoc(doc(db, 'AgentTasks', task.id), {
-                              isCompleted: !task.isCompleted,
-                              completedAt: task.isCompleted ? 0 : Date.now(),
-                            });
+                            await callTasksToggleComplete({ platform: 'men', taskId: task.id, isCompleted: !task.isCompleted });
                           } catch {
                             // ignore
                           }

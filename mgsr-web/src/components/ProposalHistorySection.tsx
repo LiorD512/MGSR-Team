@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { updateDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { callOffersUpdateHistorySummary } from '@/lib/callables';
+import { getPositionDisplayName } from '@/lib/appConfig';
 
 export interface ProposalOffer {
   id: string;
@@ -25,23 +25,6 @@ interface ProposalHistorySectionProps {
   offers: ProposalOffer[];
   accounts: { id: string; name?: string; hebrewName?: string; email?: string }[];
 }
-
-const POSITION_DISPLAY: Record<string, { en: string; he: string }> = {
-  GK: { en: 'Goalkeeper', he: 'שוער' },
-  CB: { en: 'Center Back', he: 'בלם' },
-  RB: { en: 'Right Back', he: 'מגן ימני' },
-  LB: { en: 'Left Back', he: 'מגן שמאלי' },
-  DM: { en: 'Defensive Midfielder', he: 'קשר אחורי' },
-  CM: { en: 'Central Midfielder', he: 'קשר מרכזי' },
-  AM: { en: 'Attacking Midfielder', he: 'קשר התקפי' },
-  LM: { en: 'Left Midfielder', he: 'קשר שמאלי' },
-  RM: { en: 'Right Midfielder', he: 'קשר ימני' },
-  LW: { en: 'Left Winger', he: 'כנף שמאל' },
-  RW: { en: 'Right Winger', he: 'כנף ימין' },
-  CF: { en: 'Center Forward', he: 'חלוץ מרכזי' },
-  ST: { en: 'Striker', he: 'חלוץ' },
-  SS: { en: 'Second Striker', he: 'חלוץ שני' },
-};
 
 const COLLAPSED_MAX = 3;
 
@@ -98,9 +81,7 @@ export default function ProposalHistorySection({ offers, accounts }: ProposalHis
   };
 
   const getPositionName = (pos: string | undefined): string => {
-    if (!pos?.trim()) return '';
-    const entry = POSITION_DISPLAY[pos.trim().toUpperCase()];
-    return entry ? (isRtl ? entry.he : entry.en) : pos;
+    return getPositionDisplayName(pos, isRtl);
   };
 
   return (
@@ -170,7 +151,7 @@ function HistoryCard({
     if (!offer.id) return;
     setSavingSummary(true);
     try {
-      await updateDoc(doc(db, 'PlayerOffers', offer.id), { historySummary: summaryDraft || '' });
+      await callOffersUpdateHistorySummary({ offerId: offer.id, historySummary: summaryDraft || '' });
       setEditingSummary(false);
     } finally {
       setSavingSummary(false);

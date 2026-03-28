@@ -31,7 +31,9 @@ class PlayersRepository(
                             trySend(emptyList())
                             return@addSnapshotListener
                         }
-                        val list = value?.toObjects(Player::class.java) ?: emptyList()
+                        val list = value?.documents?.mapNotNull { doc ->
+                            try { doc.toObject(Player::class.java) } catch (_: Exception) { null }
+                        } ?: emptyList()
                         trySend(list.sortedByDescending { it.createdAt ?: 0L })
                     }
                 awaitClose { listener.remove() }
@@ -50,7 +52,9 @@ class PlayersRepository(
                             return@addSnapshotListener
                         }
                         val list = value?.documents?.mapNotNull { doc ->
-                            doc.toObject(Player::class.java)?.let { PlayerWithId(doc.id, it) }
+                            try {
+                                doc.toObject(Player::class.java)?.let { PlayerWithId(doc.id, it) }
+                            } catch (_: Exception) { null }
                         } ?: emptyList()
                         trySend(list)
                     }

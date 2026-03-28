@@ -5,7 +5,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { openWhatsAppWithMessage } from '@/lib/whatsapp';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { callBirthdayWishSend } from '@/lib/callables';
 import type { WomanPlayer } from '@/lib/playersWomen';
 import type { YouthPlayer } from '@/lib/playersYouth';
 
@@ -180,9 +181,7 @@ export default function BirthdaysSection({ menPlayers = [], womenPlayers, youthP
     const msg = `Happy Birthday ${firstName(player.fullName)}!\nWishing you a wonderful year ahead, full of success on and off the pitch!\n${userNameEn}`;
     openWhatsAppWithMessage(player.phone, msg);
     const year = new Date().getFullYear().toString();
-    setDoc(doc(db, 'BirthdayWishesSent', year), {
-      [player.id]: { sentBy: userNameEn, sentAt: Date.now() },
-    }, { merge: true }).catch(() => {});
+    callBirthdayWishSend({ year, playerId: player.id, sentBy: userNameEn }).catch(() => {});
   };
 
   const accentColor = isYouth ? 'var(--youth-cyan)' : isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)';

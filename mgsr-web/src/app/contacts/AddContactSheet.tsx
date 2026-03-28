@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { callContactsCreate, callContactsUpdate } from '@/lib/callables';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export interface Contact {
@@ -45,6 +44,7 @@ interface AddContactSheetProps {
   onClose: () => void;
   onSaved: () => void;
   contactsCollection: string;
+  platform: string;
   isWomen?: boolean;
   isYouth?: boolean;
   /** When set, sheet opens in edit mode */
@@ -56,6 +56,7 @@ export default function AddContactSheet({
   onClose,
   onSaved,
   contactsCollection,
+  platform,
   isWomen = false,
   isYouth = false,
   initialContact = null,
@@ -116,7 +117,8 @@ export default function AddContactSheet({
     setSaving(true);
     setError(null);
     try {
-      const data: Record<string, string> = {
+      const payload = {
+        platform,
         name: trimmedName,
         phoneNumber: phoneNumber.trim() || '',
         role: role || 'UNKNOWN',
@@ -131,9 +133,9 @@ export default function AddContactSheet({
         agencyUrl: initialContact?.agencyUrl ?? '',
       };
       if (isEdit && initialContact?.id) {
-        await updateDoc(doc(db, contactsCollection, initialContact.id), data);
+        await callContactsUpdate({ ...payload, contactId: initialContact.id });
       } else {
-        await addDoc(collection(db, contactsCollection), data);
+        await callContactsCreate(payload);
       }
       onSaved();
       handleClose();

@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, getDoc, setDoc, collection, query, orderBy, onSnapshot, addDoc, getDocs, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { callShortlistAdd } from '@/lib/callables';
 import { getTeammates, extractPlayerIdFromUrl, type ReturneePlayer } from '@/lib/api';
 import { parseMarketValue } from '@/lib/releases';
 import AppLayout from '@/components/AppLayout';
@@ -380,17 +381,16 @@ export default function ReturneesPage() {
       if (!user || !player.playerUrl) return;
       setAddingUrl(player.playerUrl);
       try {
-        const account = await getCurrentAccountForShortlist(user);
-        const colRef = collection(db, 'Shortlists');
         const rosterExists = rosterPlayers.some((p) => p.tmProfile === player.playerUrl);
         if (rosterExists) {
           setAddError(t('shortlist_player_in_roster'));
           setAddingUrl(null);
           return;
         }
-        const entry: Record<string, unknown> = {
+        const account = await getCurrentAccountForShortlist(user);
+        const result = await callShortlistAdd({
+          platform: 'men',
           tmProfileUrl: player.playerUrl,
-          addedAt: Date.now(),
           playerImage: player.playerImage ?? null,
           playerName: player.playerName ?? null,
           playerPosition: player.playerPosition ?? null,
@@ -403,20 +403,9 @@ export default function ReturneesPage() {
           addedByAgentId: account.id,
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
-        };
-        const q = query(colRef, where('tmProfileUrl', '==', player.playerUrl));
-        const existsSnap = await getDocs(q);
-        if (existsSnap.empty) {
-          const docRef = await addDoc(colRef, entry);
-          enrichShortlistInstagram(player.playerUrl, docRef);
-          await addDoc(collection(db, 'FeedEvents'), {
-            type: 'SHORTLIST_ADDED',
-            playerName: entry.playerName ?? null,
-            playerImage: entry.playerImage ?? null,
-            playerTmProfile: player.playerUrl,
-            timestamp: Date.now(),
-            agentName: account.name ?? null,
-          });
+        });
+        if (result.status === 'added') {
+          enrichShortlistInstagram(player.playerUrl);
         }
       } finally {
         setAddingUrl(null);
@@ -473,8 +462,16 @@ export default function ReturneesPage() {
         return true;
       });
     }
+    // Exclude players already in roster or shortlist
+    const rosterTmIds = new Set(rosterPlayers.map((p) => extractPlayerIdFromUrl(p.tmProfile)).filter(Boolean));
+    result = result.filter((p) => {
+      const id = extractPlayerIdFromUrl(p.playerUrl);
+      if (id && rosterTmIds.has(id)) return false;
+      if (p.playerUrl && shortlistUrls.has(p.playerUrl)) return false;
+      return true;
+    });
     return result;
-  }, [players, positionFilter, valueFilter]);
+  }, [players, positionFilter, valueFilter, rosterPlayers, shortlistUrls]);
 
   const shortlistedCount = useMemo(
     () => players.filter((p) => p.playerUrl && shortlistUrls.has(p.playerUrl)).length,

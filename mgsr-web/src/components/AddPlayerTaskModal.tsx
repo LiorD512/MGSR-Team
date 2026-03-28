@@ -7,8 +7,9 @@ import {
   getTemplateTitle,
   type PlayerTaskTemplate,
 } from '@/lib/playerTaskTemplates';
-import { addDoc, collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { callTasksCreate } from '@/lib/callables';
 
 interface Account {
   id: string;
@@ -164,34 +165,34 @@ export default function AddPlayerTaskModal({
       const dueTs = dueDate ? new Date(dueDate).getTime() : 0;
       const createdBy = accounts.find((a) => a.email?.toLowerCase() === currentUserEmail?.toLowerCase());
       const createdByName = createdBy ? getDisplayName(createdBy, isRtl) : (currentUserEmail || '');
-      const taskData: Record<string, unknown> = {
+      const platform = isYouth ? 'youth' : isWomen ? 'women' : 'men';
+      const payload: Record<string, unknown> = {
+        platform,
         agentId: agentId || currentUserId,
         agentName: agentName || '',
         title: title.trim(),
         notes: notes.trim() || '',
         dueDate: dueTs,
         priority,
-        isCompleted: false,
-        createdAt: Date.now(),
         createdByAgentId: currentUserId,
         createdByAgentName: createdByName,
       };
       if (selectedAgentContact) {
-        taskData.linkedAgentContactId = selectedAgentContact.id;
-        taskData.linkedAgentContactName = selectedAgentContact.name || '';
-        taskData.linkedAgentContactPhone = selectedAgentContact.phoneNumber || '';
+        payload.linkedAgentContactId = selectedAgentContact.id;
+        payload.linkedAgentContactName = selectedAgentContact.name || '';
+        payload.linkedAgentContactPhone = selectedAgentContact.phoneNumber || '';
       }
       if (playerContext) {
-        taskData.playerId = playerContext.playerId;
-        taskData.playerName = playerContext.playerName;
-        taskData.templateId = selectedTemplate?.id;
+        payload.playerId = playerContext.playerId;
+        payload.playerName = playerContext.playerName;
+        payload.templateId = selectedTemplate?.id;
         if (taskCollection === 'AgentTasks') {
-          taskData.playerTmProfile = playerContext.playerTmProfile ?? '';
+          payload.playerTmProfile = playerContext.playerTmProfile ?? '';
         } else {
-          taskData.playerWomenId = playerContext.playerWomenId ?? playerContext.playerId;
+          payload.playerWomenId = playerContext.playerWomenId ?? playerContext.playerId;
         }
       }
-      await addDoc(collection(db, taskCollection), taskData);
+      await callTasksCreate(payload as unknown as Parameters<typeof callTasksCreate>[0]);
       onClose();
       onSuccess?.();
     } finally {

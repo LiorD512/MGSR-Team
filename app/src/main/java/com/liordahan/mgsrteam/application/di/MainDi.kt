@@ -13,6 +13,6 @@ val mainModule = module {
 
     single { PlatformManager(androidContext()) }
     single { FirebaseHandler(get()) }
-    single { FcmTokenManager(androidContext(), get()) }
+    single { FcmTokenManager(androidContext()) }
     viewModel<IMainViewModel> { MainViewModel(get()) }
 }

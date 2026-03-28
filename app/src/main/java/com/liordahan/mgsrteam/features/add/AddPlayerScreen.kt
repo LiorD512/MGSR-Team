@@ -254,6 +254,38 @@ fun AddPlayerScreen(
                     // Women — Single-page form (matches web AddWomanPlayerForm)
                     val womanForm by viewModel.womanFormState.collectAsStateWithLifecycle()
 
+                    // Contact picker launchers for player phone
+                    val womenPlayerPhoneLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.PickContact()
+                    ) { uri ->
+                        uri?.let {
+                            getPhoneNumberFromContactUri(context, it)?.let { phone ->
+                                viewModel.updateWomanForm { f -> f.copy(playerPhone = phone) }
+                            }
+                        }
+                    }
+                    val womenPlayerPhonePermLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.RequestPermission()
+                    ) { granted ->
+                        if (granted) womenPlayerPhoneLauncher.launch(null)
+                    }
+
+                    // Contact picker launchers for agent phone
+                    val womenAgentPhoneLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.PickContact()
+                    ) { uri ->
+                        uri?.let {
+                            getPhoneNumberFromContactUri(context, it)?.let { phone ->
+                                viewModel.updateWomanForm { f -> f.copy(agentPhone = phone) }
+                            }
+                        }
+                    }
+                    val womenAgentPhonePermLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.RequestPermission()
+                    ) { granted ->
+                        if (granted) womenAgentPhoneLauncher.launch(null)
+                    }
+
                     Box(modifier = Modifier.fillMaxSize()) {
                         // Base layer: always-visible scrollable form
                         LazyColumn(
@@ -537,22 +569,38 @@ fun AddPlayerScreen(
                                 }
                             }
 
-                            // Player Phone + Agent Phone row (roster only)
+                            // Player Phone + Agent Phone (roster only)
                             if (!forShortlist) {
                             item {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text(
-                                            stringResource(R.string.women_player_phone),
-                                            style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
-                                        )
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    // Player Phone with import button
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                stringResource(R.string.women_player_phone),
+                                                style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                            )
+                                            Text(
+                                                text = "📇 " + stringResource(R.string.youth_import_contact),
+                                                style = boldTextStyle(currentPlatform.accent, 11.sp),
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .clickWithNoRipple {
+                                                        launchPlayerContactPicker(
+                                                            context,
+                                                            womenPlayerPhoneLauncher,
+                                                            womenPlayerPhonePermLauncher
+                                                        )
+                                                    }
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
                                         AppTextField(
+                                            modifier = Modifier.fillMaxWidth(),
                                             textInput = TextFieldValue(womanForm.playerPhone),
                                             hint = "Phone number",
                                             keyboardOptions = KeyboardOptions(
@@ -567,15 +615,35 @@ fun AddPlayerScreen(
                                             darkTheme = true
                                         )
                                     }
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text(
-                                            stringResource(R.string.women_agent_phone),
-                                            style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
-                                        )
+
+                                    // Agent Phone with import button
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                stringResource(R.string.women_agent_phone),
+                                                style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                            )
+                                            Text(
+                                                text = "📇 " + stringResource(R.string.youth_import_contact),
+                                                style = boldTextStyle(currentPlatform.accent, 11.sp),
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .clickWithNoRipple {
+                                                        launchPlayerContactPicker(
+                                                            context,
+                                                            womenAgentPhoneLauncher,
+                                                            womenAgentPhonePermLauncher
+                                                        )
+                                                    }
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
                                         AppTextField(
+                                            modifier = Modifier.fillMaxWidth(),
                                             textInput = TextFieldValue(womanForm.agentPhone),
                                             hint = "Phone number",
                                             keyboardOptions = KeyboardOptions(

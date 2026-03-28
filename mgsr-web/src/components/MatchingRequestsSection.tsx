@@ -2,35 +2,9 @@
 
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getPositionDisplayName } from '@/lib/appConfig';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import type { ClubRequest } from '@/lib/requestMatcher';
-
-const POSITION_DISPLAY: Record<string, { en: string; he: string }> = {
-  GK: { en: 'Goalkeeper', he: 'שוער' },
-  CB: { en: 'Center Back', he: 'בלם' },
-  RB: { en: 'Right Back', he: 'מגן ימני' },
-  LB: { en: 'Left Back', he: 'מגן שמאלי' },
-  DM: { en: 'Defensive Midfielder', he: 'קשר אחורי' },
-  CM: { en: 'Central Midfielder', he: 'קשר מרכזי' },
-  AM: { en: 'Attacking Midfielder', he: 'קשר התקפי' },
-  LM: { en: 'Left Midfielder', he: 'קשר שמאלי' },
-  RM: { en: 'Right Midfielder', he: 'קשר ימני' },
-  LW: { en: 'Left Winger', he: 'כנף שמאל' },
-  RW: { en: 'Right Winger', he: 'כנף ימין' },
-  CF: { en: 'Center Forward', he: 'חלוץ מרכזי' },
-  ST: { en: 'Striker', he: 'חלוץ' },
-  SS: { en: 'Second Striker', he: 'חלוץ שני' },
-};
-
-function getPositionDisplayName(position: string | undefined, isHebrew: boolean): string {
-  if (!position?.trim()) return position || '';
-  const key = position.trim().toUpperCase();
-  const entry = POSITION_DISPLAY[key];
-  if (!entry) return position.trim();
-  return isHebrew ? entry.he : entry.en;
-}
 
 export interface PlayerOffer {
   id: string;

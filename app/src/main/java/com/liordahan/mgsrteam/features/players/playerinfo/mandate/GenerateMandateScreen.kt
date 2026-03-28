@@ -116,6 +116,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.firebase.SharedCallables
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -536,11 +537,7 @@ fun GenerateMandateScreen(
                                             "agentSignedAt" to null
                                         )
 
-                                        firebaseHandler.firebaseStore
-                                            .collection("MandateSigningRequests")
-                                            .document(token)
-                                            .set(docData)
-                                            .await()
+                                        SharedCallables.mandateSigningCreate(docData)
 
                                         mandateViewModel.setSigningUrl(signingPageUrl)
                                     } catch (e: Exception) {

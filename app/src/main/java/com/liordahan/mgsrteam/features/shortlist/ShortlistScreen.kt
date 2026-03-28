@@ -1,5 +1,6 @@
 package com.liordahan.mgsrteam.features.shortlist
 
+import com.liordahan.mgsrteam.config.AppConfigManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -937,7 +938,7 @@ private fun ShortlistPositionFilterChips(
     selectedPosition: String?,
     onChipClick: (String) -> Unit
 ) {
-    val positions = listOf("All", "GK", "CB", "RB", "LB", "DM", "CM", "AM", "LW", "RW", "CF", "SS")
+    val positions = listOf("All") + AppConfigManager.positions.filterList
     val scrollState = rememberScrollState()
 
     Row(

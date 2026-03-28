@@ -103,9 +103,8 @@ export async function createShare(
     // Fall through to client create
   }
 
-  // Fallback: client Firestore (requires Firestore rules)
-  const { db } = await import('./firebase');
-  const { addDoc, collection } = await import('firebase/firestore');
+  // Fallback: callable (Cloud Function)
+  const { callSharePlayerCreate } = await import('./callables');
 
   /** Firestore rejects undefined - remove undefined values recursively */
   function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
@@ -168,8 +167,7 @@ export async function createShare(
     createdAt: Date.now(),
   });
 
-  const ref = await addDoc(collection(db, 'SharedPlayers'), shareDoc);
-  const shareToken = ref.id;
+  const { token: shareToken } = await callSharePlayerCreate(shareDoc as { playerId: string; [key: string]: unknown });
   const shareUrl = `${getAppUrl()}/p/${shareToken}`;
   return { token: shareToken, url: shareUrl };
 }

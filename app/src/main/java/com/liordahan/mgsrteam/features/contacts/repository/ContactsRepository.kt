@@ -5,6 +5,7 @@ import com.liordahan.mgsrteam.features.contacts.models.Contact
 import com.liordahan.mgsrteam.features.contacts.models.ContactType
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.firebase.SharedCallables
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -46,54 +47,32 @@ class ContactsRepository(
         }
 
     override suspend fun addContact(contact: Contact): Result<Unit> = runCatching {
-        val data = mapOf(
-            "name" to (contact.name ?: ""),
-            "phoneNumber" to (contact.phoneNumber ?: ""),
-            "role" to (contact.role ?: ""),
-            "clubName" to (contact.clubName ?: ""),
-            "clubCountry" to (contact.clubCountry ?: ""),
-            "clubLogo" to (contact.clubLogo ?: ""),
-            "clubCountryFlag" to (contact.clubCountryFlag ?: ""),
-            "clubTmProfile" to (contact.clubTmProfile ?: ""),
-            "contactType" to (contact.contactType ?: ContactType.CLUB.name),
-            "agencyName" to (contact.agencyName ?: ""),
-            "agencyCountry" to (contact.agencyCountry ?: ""),
-            "agencyUrl" to (contact.agencyUrl ?: "")
-        )
-        firebaseHandler.firebaseStore
-            .collection(firebaseHandler.contactsTable)
-            .add(data)
-            .await()
+        val data = buildContactFields(contact)
+        SharedCallables.contactsCreate(platformManager.value, data)
     }
 
     override suspend fun updateContact(contact: Contact): Result<Unit> = runCatching {
         val id = contact.id ?: throw IllegalArgumentException("Contact id required for update")
-        val data = mapOf(
-            "name" to (contact.name ?: ""),
-            "phoneNumber" to (contact.phoneNumber ?: ""),
-            "role" to (contact.role ?: ""),
-            "clubName" to (contact.clubName ?: ""),
-            "clubCountry" to (contact.clubCountry ?: ""),
-            "clubLogo" to (contact.clubLogo ?: ""),
-            "clubCountryFlag" to (contact.clubCountryFlag ?: ""),
-            "clubTmProfile" to (contact.clubTmProfile ?: ""),
-            "contactType" to (contact.contactType ?: ContactType.CLUB.name),
-            "agencyName" to (contact.agencyName ?: ""),
-            "agencyCountry" to (contact.agencyCountry ?: ""),
-            "agencyUrl" to (contact.agencyUrl ?: "")
-        )
-        firebaseHandler.firebaseStore
-            .collection(firebaseHandler.contactsTable)
-            .document(id)
-            .update(data)
-            .await()
+        val data = buildContactFields(contact)
+        SharedCallables.contactsUpdate(platformManager.value, id, data)
     }
 
     override suspend fun deleteContact(contactId: String): Result<Unit> = runCatching {
-        firebaseHandler.firebaseStore
-            .collection(firebaseHandler.contactsTable)
-            .document(contactId)
-            .delete()
-            .await()
+        SharedCallables.contactsDelete(platformManager.value, contactId)
     }
+
+    private fun buildContactFields(contact: Contact): Map<String, String> = mapOf(
+        "name" to (contact.name ?: ""),
+        "phoneNumber" to (contact.phoneNumber ?: ""),
+        "role" to (contact.role ?: ""),
+        "clubName" to (contact.clubName ?: ""),
+        "clubCountry" to (contact.clubCountry ?: ""),
+        "clubLogo" to (contact.clubLogo ?: ""),
+        "clubCountryFlag" to (contact.clubCountryFlag ?: ""),
+        "clubTmProfile" to (contact.clubTmProfile ?: ""),
+        "contactType" to (contact.contactType ?: ContactType.CLUB.name),
+        "agencyName" to (contact.agencyName ?: ""),
+        "agencyCountry" to (contact.agencyCountry ?: ""),
+        "agencyUrl" to (contact.agencyUrl ?: ""),
+    )
 }

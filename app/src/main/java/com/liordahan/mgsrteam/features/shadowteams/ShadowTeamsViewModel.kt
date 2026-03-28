@@ -6,7 +6,9 @@ import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.players.repository.PlayerWithId
+import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.firebase.SharedCallables
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,7 +43,8 @@ abstract class IShadowTeamsViewModel : ViewModel() {
 
 class ShadowTeamsViewModel(
     private val firebaseHandler: FirebaseHandler,
-    private val playersRepository: IPlayersRepository
+    private val playersRepository: IPlayersRepository,
+    private val platformManager: PlatformManager
 ) : IShadowTeamsViewModel() {
 
     private val _uiState = MutableStateFlow(ShadowTeamsUiState())
@@ -143,25 +146,25 @@ class ShadowTeamsViewModel(
         if (!_uiState.value.isOwnTeam) return
         viewModelScope.launch {
             try {
-                val data = hashMapOf(
-                    "formationId" to formationId,
-                    "slots" to slots.map { s ->
-                        hashMapOf(
-                            "starter" to (s.starter?.let { st ->
-                                hashMapOf(
-                                    "id" to st.id,
-                                    "fullName" to st.fullName,
-                                    "profileImage" to st.profileImage
-                                )
-                            })
-                        )
-                    },
-                    "updatedAt" to System.currentTimeMillis()
+                SharedCallables.shadowTeamsSave(
+                    platformManager.value,
+                    accountId,
+                    mapOf(
+                        "formationId" to formationId,
+                        "slots" to slots.map { s ->
+                            hashMapOf(
+                                "starter" to (s.starter?.let { st ->
+                                    hashMapOf(
+                                        "id" to st.id,
+                                        "fullName" to st.fullName,
+                                        "profileImage" to st.profileImage
+                                    )
+                                })
+                            )
+                        },
+                        "updatedAt" to System.currentTimeMillis()
+                    )
                 )
-                firebaseHandler.firebaseStore.collection(firebaseHandler.shadowTeamsTable)
-                    .document(accountId)
-                    .set(data)
-                    .await()
             } catch (e: Exception) {
                 android.util.Log.e("ShadowTeamsVM", "saveShadowTeam failed", e)
             }

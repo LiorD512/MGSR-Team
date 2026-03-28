@@ -19,6 +19,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.firebase.SharedCallables
 import com.liordahan.mgsrteam.transfermarket.Confederation
 import com.liordahan.mgsrteam.transfermarket.PRIORITY_COUNTRY_CODES
 import com.liordahan.mgsrteam.transfermarket.TransferWindow
@@ -119,8 +120,6 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit)
     /** Finds a Women/Youth player by name and returns its document ID, or null if not found. */
     abstract fun findPlayerDocIdByName(playerName: String, onResult: (String?) -> Unit)
-    /** Updates player's mandate switch (haveMandate) by tmProfile. */
-    abstract fun updatePlayerMandate(tmProfile: String, hasMandate: Boolean)
     abstract fun selectFeedFilter(filter: FeedFilter)
     abstract fun toggleFeedExpanded()
     abstract fun toggleAgentExpanded(agentId: String)
@@ -260,22 +259,6 @@ class HomeScreenViewModel(
         }
     }
 
-    override fun updatePlayerMandate(tmProfile: String, hasMandate: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val snap = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", tmProfile)
-                    .get()
-                    .await()
-                val doc = snap.documents.firstOrNull() ?: return@launch
-                doc.reference.update("haveMandate", hasMandate).await()
-            } catch (e: Exception) {
-                android.util.Log.e("HomeVM", "updatePlayerMandate failed for $tmProfile", e)
-            }
-        }
-    }
-
     // ── Greeting ─────────────────────────────────────────────────────────────
 
     private fun loadGreeting() {
@@ -323,7 +306,14 @@ class HomeScreenViewModel(
         val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) return@addSnapshotListener
-                val players = snapshot.toObjects(Player::class.java)
+                val players = snapshot.documents.mapNotNull { doc ->
+                    try {
+                        doc.toObject(Player::class.java)
+                    } catch (e: Exception) {
+                        android.util.Log.w("HomeVM", "Skipping player ${doc.id}: ${e.message}")
+                        null
+                    }
+                }
                 viewModelScope.launch(Dispatchers.Default) {
                     val total = players.size
                     val freeAgents = players.count { it.isFreeAgent }
@@ -551,15 +541,7 @@ class HomeScreenViewModel(
         recomputeMyOverview()
         viewModelScope.launch {
             try {
-                val data = mapOf(
-                    "isCompleted" to nowCompleted,
-                    "completedAt" to if (nowCompleted) System.currentTimeMillis() else 0L
-                )
-                firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.agentTasksTable)
-                    .document(task.id)
-                    .update(data)
-                    .await()
+                SharedCallables.tasksToggleComplete(platformManager.value, task.id, nowCompleted)
             } catch (e: Exception) {
                 android.util.Log.e("HomeVM", "toggleTaskCompleted failed for id=${task.id}", e)
             }
@@ -594,10 +576,22 @@ class HomeScreenViewModel(
             }
             recomputeMyOverview()
             try {
-                firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.agentTasksTable)
-                    .add(newTask)
-                    .await()
+                SharedCallables.tasksCreate(platformManager.value, mapOf(
+                    "agentId" to agentId,
+                    "agentName" to agentName,
+                    "title" to title,
+                    "isCompleted" to false,
+                    "dueDate" to dueDate,
+                    "createdAt" to System.currentTimeMillis(),
+                    "priority" to priority,
+                    "notes" to notes,
+                    "createdByAgentId" to createdByAgentId,
+                    "createdByAgentName" to createdByAgentName,
+                    "playerId" to playerId,
+                    "playerName" to playerName,
+                    "playerTmProfile" to playerTmProfile,
+                    "templateId" to templateId
+                ))
             } catch (e: Exception) {
                 android.util.Log.e("HomeVM", "addTask failed", e)
             }
@@ -615,7 +609,7 @@ class HomeScreenViewModel(
         recomputeMyOverview()
         viewModelScope.launch {
             try {
-                val data = mapOf(
+                SharedCallables.tasksUpdate(platformManager.value, task.id, mapOf(
                     "title" to task.title,
                     "agentId" to task.agentId,
                     "agentName" to task.agentName,
@@ -624,12 +618,7 @@ class HomeScreenViewModel(
                     "notes" to task.notes,
                     "isCompleted" to task.isCompleted,
                     "completedAt" to task.completedAt
-                )
-                firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.agentTasksTable)
-                    .document(task.id)
-                    .update(data)
-                    .await()
+                ))
             } catch (e: Exception) {
                 android.util.Log.e("HomeVM", "updateTask failed for id=${task.id}", e)
             }
@@ -645,11 +634,7 @@ class HomeScreenViewModel(
         recomputeMyOverview()
         viewModelScope.launch {
             try {
-                firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.agentTasksTable)
-                    .document(task.id)
-                    .delete()
-                    .await()
+                SharedCallables.tasksDelete(platformManager.value, task.id)
             } catch (e: Exception) {
                 android.util.Log.e("HomeVM", "deleteTask failed for id=${task.id}", e)
             }

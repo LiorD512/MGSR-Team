@@ -14,8 +14,8 @@ android {
         applicationId = "com.liordahan.mgsrteam"
         minSdk = 28
         targetSdk = 36
-        versionCode = 36
-        versionName = "1.3.7"
+        versionCode = 37
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -145,6 +145,7 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.storage)
     implementation(libs.firebase.store)
+    implementation(libs.firebase.functions)
     implementation(libs.firebase.analytics)
 
     //Coroutines
@@ -161,7 +162,7 @@ dependencies {
     implementation(project(":transfermarkt"))
 
     // Firebase AI Logic (Gemini)
-    implementation("com.google.firebase:firebase-ai")
+    implementation(libs.firebase.ai)
 
     // ML Kit for document type detection (passport OCR)
     implementation(libs.mlkit.text.recognition)

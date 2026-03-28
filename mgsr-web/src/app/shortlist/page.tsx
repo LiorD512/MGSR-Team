@@ -6,7 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
-import { doc, onSnapshot, getDoc, setDoc, collection, addDoc, getDocs, query, orderBy, where, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, collection, getDocs, query, orderBy, where, writeBatch } from 'firebase/firestore';
+import { callShortlistUpdate, callShortlistRemove, callShortlistAddNote, callShortlistUpdateNote, callShortlistDeleteNote } from '@/lib/callables';
 import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist, getAllAccounts, type AccountForShortlist } from '@/lib/accounts';
 import { getTeammates, extractPlayerIdFromUrl, getPlayerDetails, getPlayerPerformanceStats, getCurrentSeasonLabel } from '@/lib/api';
@@ -185,12 +186,13 @@ export default function ShortlistPage() {
   }, [shortlistsCollection]);
 
   const confirmIgSent = useCallback(async (tmProfileUrl: string) => {
-    const found = await findDocByUrl(tmProfileUrl);
-    if (found) {
-      await updateDoc(found.ref, { instagramSentAt: Date.now() });
+    try {
+      await callShortlistUpdate({ platform, tmProfileUrl, instagramSentAt: Date.now() });
+    } catch (err) {
+      console.error('confirmIgSent error:', err);
     }
     setIgConfirmUrl(null);
-  }, [findDocByUrl]);
+  }, [platform]);
 
   const dismissIgConfirm = useCallback(() => {
     setIgConfirmUrl(null);
@@ -435,49 +437,37 @@ export default function ShortlistPage() {
     setSavingNote(true);
     try {
       const account = await getCurrentAccountForShortlist(user);
-      const found = await findDocByUrl(entry.tmProfileUrl);
-      if (!found) return;
-      const existingNotes = Array.isArray(found.data().notes) ? [...(found.data().notes as Record<string, unknown>[])] : [];
-      existingNotes.push({
-        text: noteText,
+      await callShortlistAddNote({
+        platform,
+        tmProfileUrl: entry.tmProfileUrl,
+        noteText,
         createdBy: account.name ?? 'Unknown',
-        createdByHebrewName: account.hebrewName ?? null,
+        createdByHebrewName: account.hebrewName ?? undefined,
         createdById: account.id,
-        createdAt: Date.now(),
       });
-      await updateDoc(found.ref, { notes: existingNotes });
     } finally {
       setSavingNote(false);
     }
-  }, [user, shortlistsCollection, findDocByUrl]);
+  }, [user, platform]);
 
   const updateNoteInEntry = useCallback(async (entry: ShortlistEntry, noteIndex: number, newText: string) => {
     if (!user) return;
     setSavingNote(true);
     try {
-      const found = await findDocByUrl(entry.tmProfileUrl);
-      if (!found) return;
-      const existingNotes = Array.isArray(found.data().notes) ? [...(found.data().notes as Record<string, unknown>[])] : [];
-      if (noteIndex < 0 || noteIndex >= existingNotes.length) return;
-      existingNotes[noteIndex] = { ...existingNotes[noteIndex], text: newText, updatedAt: Date.now() };
-      await updateDoc(found.ref, { notes: existingNotes });
+      await callShortlistUpdateNote({ platform, tmProfileUrl: entry.tmProfileUrl, noteIndex, newText });
     } finally {
       setSavingNote(false);
     }
-  }, [user, findDocByUrl]);
+  }, [user, platform]);
 
   const deleteNoteFromEntry = useCallback(async (entry: ShortlistEntry, noteIndex: number) => {
     if (!user) return;
     try {
-      const found = await findDocByUrl(entry.tmProfileUrl);
-      if (!found) return;
-      const existingNotes = Array.isArray(found.data().notes) ? [...(found.data().notes as Record<string, unknown>[])] : [];
-      existingNotes.splice(noteIndex, 1);
-      await updateDoc(found.ref, { notes: existingNotes });
+      await callShortlistDeleteNote({ platform, tmProfileUrl: entry.tmProfileUrl, noteIndex });
     } catch (err) {
       console.error('Delete note error:', err);
     }
-  }, [user, findDocByUrl]);
+  }, [user, platform]);
 
   const handleSaveNote = useCallback(async () => {
     if (!noteModalEntry || !noteModalText.trim()) return;
@@ -512,18 +502,14 @@ export default function ShortlistPage() {
     if (!user) return;
     setRemovingUrl(entry.tmProfileUrl);
     try {
-      const found = await findDocByUrl(entry.tmProfileUrl);
-      if (found) await deleteDoc(found.ref);
       const account = await getCurrentAccountForShortlist(user);
-      const feedEvent: Record<string, unknown> = {
-        type: 'SHORTLIST_REMOVED',
-        playerName: entry.playerName ?? null,
-        playerImage: entry.playerImage ?? null,
-        playerTmProfile: entry.tmProfileUrl,
-        timestamp: Date.now(),
-        agentName: account.name ?? null,
-      };
-      await addDoc(collection(db, FEED_EVENTS_COLLECTIONS[platform]), feedEvent);
+      await callShortlistRemove({
+        platform,
+        tmProfileUrl: entry.tmProfileUrl,
+        playerName: entry.playerName,
+        playerImage: entry.playerImage,
+        agentName: account.name ?? undefined,
+      });
     } finally {
       setRemovingUrl(null);
     }
@@ -545,7 +531,9 @@ export default function ShortlistPage() {
           history.unshift({ value: details.marketValue, date: Date.now() });
           if (history.length > 5) history.pop();
         }
-        await updateDoc(found.ref, sanitizeForFirestore({
+        await callShortlistUpdate(sanitizeForFirestore({
+          platform,
+          tmProfileUrl: entry.tmProfileUrl,
           playerImage: details.profileImage ?? prev.playerImage,
           playerName: details.fullName ?? prev.playerName,
           playerPosition: details.positions?.[0] ?? prev.playerPosition,
@@ -562,14 +550,14 @@ export default function ShortlistPage() {
           instagramUrl: details.instagramUrl ?? prev.instagramUrl,
           lastRefreshedAt: Date.now(),
           marketValueHistory: history.length ? history : prev.marketValueHistory,
-        }));
+        }) as Parameters<typeof callShortlistUpdate>[0]);
       } catch (err) {
         console.error('Refresh failed:', err);
       } finally {
         setRefreshingUrl(null);
       }
     },
-    [user, shortlistsCollection, findDocByUrl]
+    [user, platform, findDocByUrl]
   );
 
   // Refresh on load: first 3 entries that are stale (>7 days) and TM URLs (men only) — run once when entries load

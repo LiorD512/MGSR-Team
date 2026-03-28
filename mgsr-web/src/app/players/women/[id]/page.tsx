@@ -10,21 +10,17 @@ import {
   query,
   where,
   onSnapshot,
-  addDoc,
   updateDoc,
   deleteDoc,
   deleteField,
-  getDocs,
-  setDoc,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
+import { callOffersCreate, callOffersUpdateFeedback, callTasksToggleComplete, callPlayersUpdate, callPlayersToggleMandate, callPlayersAddNote, callPlayersDeleteNote, callPlayersDelete, callPlayerDocumentsCreate, callPlayerDocumentsDelete, callPlayerDocumentsMarkExpired, callPortfolioUpsert } from '@/lib/callables';
 import {
   PLAYERS_WOMEN_COLLECTION,
   type WomanPlayer,
   type WomanPlayerNote,
-  updateWomanPlayer,
-  deleteWomanPlayer,
 } from '@/lib/playersWomen';
 import { flattenPdf } from '@/lib/pdfFlatten';
 import type { HighlightVideo } from '@/lib/highlightsApi';
@@ -159,7 +155,7 @@ export default function WomanPlayerPage() {
         const expiresAt = m.expiresAt;
         if (expiresAt != null && expiresAt < now && !m.expired) {
           try {
-            await updateDoc(doc(db, 'PlayerDocuments', m.id), { expired: true });
+            await callPlayerDocumentsMarkExpired({ documentId: m.id });
           } catch {
             /* ignore */
           }
@@ -173,7 +169,7 @@ export default function WomanPlayerPage() {
       if (prevValidMandateCountRef.current != null && validCount !== prevValidMandateCountRef.current) {
         const hasMandate = validCount > 0;
         try {
-          await updateDoc(doc(db, PLAYERS_WOMEN_COLLECTION, id), { haveMandate: hasMandate });
+          await callPlayersUpdate({ platform: 'women', playerId: id, haveMandate: hasMandate });
           setPlayer((p) => (p ? { ...p, haveMandate: hasMandate } : null));
         } catch {
           /* ignore */
@@ -274,15 +270,15 @@ export default function WomanPlayerPage() {
       const womenProfile = `women-${id}`;
       const agentName = accounts.find((a) => a.email?.toLowerCase() === user.email?.toLowerCase());
       const markedBy = isRtl ? (agentName?.hebrewName ?? agentName?.name) : (agentName?.name ?? agentName?.hebrewName);
-      await addDoc(collection(db, 'PlayerOffers'), {
+      await callOffersCreate({
+        platform: 'women',
         playerTmProfile: womenProfile,
         playerName: player.fullName ?? '',
         playerImage: player.profileImage ?? '',
-        requestId,
+        requestId: requestId ?? '',
         clubName: clubName ?? '',
         clubLogo: clubLogo ?? '',
         position: position ?? '',
-        offeredAt: Date.now(),
         clubFeedback: feedback ?? '',
         markedByAgentName: markedBy ?? '',
       });
@@ -291,7 +287,7 @@ export default function WomanPlayerPage() {
   );
 
   const handleUpdateOfferFeedback = useCallback(async (offerId: string, feedback: string) => {
-    await updateDoc(doc(db, 'PlayerOffers', offerId), { clubFeedback: feedback });
+    await callOffersUpdateFeedback({ offerId, clubFeedback: feedback });
   }, []);
 
   const handleUploadDocument = useCallback(
@@ -382,7 +378,19 @@ export default function WomanPlayerPage() {
         if (validLeagues?.length) data.validLeagues = validLeagues;
         if (docType === 'MANDATE' && uploadedBy) data.uploadedBy = uploadedBy;
 
-        await addDoc(collection(db, 'PlayerDocuments'), data);
+        await callPlayerDocumentsCreate({
+          platform: 'women',
+          playerRefId: id,
+          type: docType,
+          name: suggestedName,
+          storageUrl: url,
+          ...(mandateExpiresAt != null && { expiresAt: mandateExpiresAt }),
+          ...(validLeagues?.length && { validLeagues }),
+          ...(docType === 'MANDATE' && uploadedBy && { uploadedBy }),
+          playerName: player.fullName,
+          playerImage: player.profileImage,
+          agentName: createdBy,
+        });
 
         if (docType === 'PASSPORT' && passportInfo) {
           const passportDetails = {
@@ -393,20 +401,8 @@ export default function WomanPlayerPage() {
             nationality: passportInfo.nationality || undefined,
             lastUpdatedAt: Date.now(),
           };
-          await updateDoc(doc(db, PLAYERS_WOMEN_COLLECTION, id), { passportDetails });
+          await callPlayersUpdate({ platform: 'women', playerId: id, passportDetails });
           setPlayer((p) => (p ? { ...p, passportDetails } : null));
-        }
-
-        if (docType === 'MANDATE') {
-        await addDoc(collection(db, 'FeedEventsWomen'), {
-          type: 'MANDATE_UPLOADED',
-          playerName: player.fullName,
-          playerImage: player.profileImage,
-          playerWomenId: id,
-          agentName: createdBy,
-          ...(mandateExpiresAt != null && { mandateExpiryAt: mandateExpiresAt }),
-          timestamp: Date.now(),
-        });
         }
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'upload_failed');
@@ -423,32 +419,16 @@ export default function WomanPlayerPage() {
       if (!player || !id) return;
       setMandateToggling(true);
       try {
-        await updateDoc(doc(db, PLAYERS_WOMEN_COLLECTION, id), { haveMandate: hasMandate });
         setPlayer((p) => (p ? { ...p, haveMandate: hasMandate } : null));
-
         const createdBy = getCurrentUserName();
-        const mandateExpiryAt =
-          hasMandate
-            ? (() => {
-                const valid = documents.filter(
-                  (d) =>
-                    (d.type ?? '').toUpperCase() === 'MANDATE' &&
-                    !d.expired &&
-                    (d.expiresAt == null || d.expiresAt >= Date.now())
-                );
-                const maxExp = Math.max(0, ...valid.map((d) => d.expiresAt ?? 0));
-                return maxExp > 0 ? maxExp : undefined;
-              })()
-            : undefined;
-
-        await addDoc(collection(db, 'FeedEventsWomen'), {
-          type: hasMandate ? 'MANDATE_SWITCHED_ON' : 'MANDATE_SWITCHED_OFF',
+        await callPlayersToggleMandate({
+          platform: 'women',
+          playerId: id,
+          hasMandate,
+          playerRefId: id,
           playerName: player.fullName,
           playerImage: player.profileImage,
-          playerWomenId: id,
           agentName: createdBy,
-          ...(mandateExpiryAt != null && { mandateExpiryAt }),
-          timestamp: Date.now(),
         });
       } catch {
         setPlayer((p) => (p ? { ...p, haveMandate: !hasMandate } : null));
@@ -456,16 +436,20 @@ export default function WomanPlayerPage() {
         setMandateToggling(false);
       }
     },
-    [player, id, documents, getCurrentUserName]
+    [player, id, getCurrentUserName]
   );
 
   const handleDeleteDocument = useCallback(
     async (d: PlayerDocument) => {
       if (!d.id || !id) return;
       const isPassport = (d.type ?? '').toUpperCase() === 'PASSPORT';
-      await deleteDoc(doc(db, 'PlayerDocuments', d.id));
+      await callPlayerDocumentsDelete({
+        platform: 'women',
+        documentId: d.id,
+        clearPassport: isPassport,
+        playerId: id,
+      });
       if (isPassport) {
-        await updateDoc(doc(db, PLAYERS_WOMEN_COLLECTION, id), { passportDetails: deleteField() });
         setPlayer((p) => (p ? { ...p, passportDetails: undefined } : null));
       }
       setDocToDelete(null);
@@ -476,7 +460,7 @@ export default function WomanPlayerPage() {
   const applyNoteListUpdate = useCallback(
     async (newNoteList: WomanPlayerNote[]) => {
       if (!player || !id) return;
-      await updateDoc(doc(db, PLAYERS_WOMEN_COLLECTION, id), { noteList: newNoteList });
+      await callPlayersUpdate({ platform: 'women', playerId: id, noteList: newNoteList });
     },
     [player, id]
   );
@@ -487,23 +471,15 @@ export default function WomanPlayerPage() {
       setNoteSaving(true);
       try {
         const createdBy = getCurrentUserName() ?? '';
-        const currentNotes = player.noteList ?? [];
-        const newNote: WomanPlayerNote = {
-          notes: text.trim(),
-          createBy: createdBy,
-          createdAt: Date.now(),
-        };
-        const newNoteList = [...currentNotes, newNote];
-        await applyNoteListUpdate(newNoteList);
-        const notePreview = text.trim().slice(0, 120) + (text.length > 120 ? '…' : '');
-        await addDoc(collection(db, 'FeedEventsWomen'), {
-          type: 'NOTE_ADDED',
+        await callPlayersAddNote({
+          platform: 'women',
+          playerId: id!,
+          playerRefId: id!,
+          noteText: text.trim(),
+          createdBy,
           playerName: player.fullName,
           playerImage: player.profileImage,
-          playerWomenId: id,
           agentName: createdBy,
-          extraInfo: notePreview,
-          timestamp: Date.now(),
         });
         setNoteModalOpen(null);
         setNoteDraft('');
@@ -511,7 +487,7 @@ export default function WomanPlayerPage() {
         setNoteSaving(false);
       }
     },
-    [player, id, getCurrentUserName, applyNoteListUpdate]
+    [player, id, getCurrentUserName]
   );
 
   const handleEditNote = useCallback(
@@ -547,27 +523,26 @@ export default function WomanPlayerPage() {
       try {
         const deletedBy = getCurrentUserName() ?? '';
         const currentNotes = player.noteList ?? [];
-        const newNoteList = currentNotes.filter(
-          (n) =>
-            !(n.notes === note.notes && n.createBy === note.createBy && n.createdAt === note.createdAt)
+        const noteIndex = currentNotes.findIndex(
+          (n) => n.notes === note.notes && n.createBy === note.createBy && n.createdAt === note.createdAt
         );
-        await applyNoteListUpdate(newNoteList);
-        const notePreview = (note.notes ?? '').slice(0, 120) + ((note.notes?.length ?? 0) > 120 ? '…' : '');
-        await addDoc(collection(db, 'FeedEventsWomen'), {
-          type: 'NOTE_DELETED',
+        await callPlayersDeleteNote({
+          platform: 'women',
+          playerId: id!,
+          playerRefId: id!,
+          noteIndex,
+          noteText: note.notes,
+          noteCreatedAt: note.createdAt,
           playerName: player.fullName,
           playerImage: player.profileImage,
-          playerWomenId: id,
           agentName: deletedBy,
-          extraInfo: notePreview,
-          timestamp: Date.now(),
         });
         setDeleteConfirmNote(null);
       } finally {
         setNoteSaving(false);
       }
     },
-    [player, id, getCurrentUserName, applyNoteListUpdate]
+    [player, id, getCurrentUserName]
   );
 
   const handleAddToPortfolio = useCallback(
@@ -678,19 +653,10 @@ export default function WomanPlayerPage() {
           createdAt: Date.now(),
         });
 
-        const existingQ = query(
-          collection(db, 'PortfolioWomen'),
-          where('agentId', '==', user.uid),
-          where('playerWomenId', '==', id),
-          where('lang', '==', lang)
-        );
-        const existingSnap = await getDocs(existingQ);
-        if (!existingSnap.empty) {
-          const existingId = existingSnap.docs[0].id;
-          await setDoc(doc(db, 'PortfolioWomen', existingId), portfolioDoc);
-        } else {
-          await addDoc(collection(db, 'PortfolioWomen'), portfolioDoc);
-        }
+        await callPortfolioUpsert({
+          platform: 'women',
+          ...portfolioDoc as Record<string, unknown>,
+        });
 
         router.push(`/portfolio?fromPlayer=${id}&platform=women`);
       } catch (e) {
@@ -734,6 +700,8 @@ export default function WomanPlayerPage() {
       const aPhone = agentPhone.trim();
 
       const updateData: Record<string, unknown> = {
+        platform: 'women',
+        playerId: id,
         fullName: fullName.trim(),
         positions: positions.length > 0 ? positions : undefined,
         currentClub: currentClub.trim() ? { clubName: currentClub.trim() } : undefined,
@@ -744,13 +712,18 @@ export default function WomanPlayerPage() {
         soccerDonnaUrl: soccerDonnaUrl.trim() || undefined,
         fmInsideUrl: fmInsideUrl.trim() || undefined,
         notes: notes.trim() || undefined,
-        playerPhoneNumber: pPhone || deleteField(),
-        agentPhoneNumber: aPhone || deleteField(),
+        playerPhoneNumber: pPhone || null,
+        agentPhoneNumber: aPhone || null,
       };
+      const deleteFields: string[] = [];
+      if (!pPhone) deleteFields.push('playerPhoneNumber');
+      if (!aPhone) deleteFields.push('agentPhoneNumber');
+      if (deleteFields.length > 0) updateData._deleteFields = deleteFields;
+
       const sanitized = Object.fromEntries(
         Object.entries(updateData).filter(([, v]) => v !== undefined)
       );
-      await updateDoc(doc(db, PLAYERS_WOMEN_COLLECTION, id), sanitized);
+      await callPlayersUpdate(sanitized as Parameters<typeof callPlayersUpdate>[0]);
       setPlayer((prev) =>
         prev
           ? {
@@ -783,7 +756,7 @@ export default function WomanPlayerPage() {
     setDeleting(true);
     setError('');
     try {
-      await deleteWomanPlayer(id);
+      await callPlayersDelete({ platform: 'women', playerId: id });
       router.push('/players');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');
@@ -1133,7 +1106,7 @@ export default function WomanPlayerPage() {
                 onFmUrlFound={
                   id
                     ? (url) => {
-                        updateDoc(doc(db, PLAYERS_WOMEN_COLLECTION, id), { fmInsideUrl: url });
+                        callPlayersUpdate({ platform: 'women', playerId: id, fmInsideUrl: url });
                         setPlayer((p) => (p ? { ...p, fmInsideUrl: url } : null));
                       }
                     : undefined
@@ -1193,10 +1166,7 @@ export default function WomanPlayerPage() {
                         onClick={async (e) => {
                           e.stopPropagation();
                           try {
-                            await updateDoc(doc(db, 'AgentTasksWomen', task.id), {
-                              isCompleted: !task.isCompleted,
-                              completedAt: task.isCompleted ? 0 : Date.now(),
-                            });
+                            await callTasksToggleComplete({ platform: 'women', taskId: task.id, isCompleted: !task.isCompleted });
                           } catch {
                             /* ignore */
                           }

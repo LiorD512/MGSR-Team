@@ -1,6 +1,6 @@
 import { getToken, onMessage, Unsubscribe } from 'firebase/messaging';
-import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { db, getMessaging } from './firebase';
+import { getMessaging } from './firebase';
+import { callAccountUpdate } from './callables';
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
 
@@ -40,25 +40,22 @@ export async function requestNotificationPermission(): Promise<string | null> {
   return token || null;
 }
 
-/** Save a web FCM token to the Account's fcmTokens array in Firestore. */
+/** Save a web FCM token to the Account's fcmTokens array via callable. */
 export async function saveWebFcmToken(accountId: string, token: string): Promise<void> {
-  await updateDoc(doc(db, 'Accounts', accountId), {
-    fcmTokens: arrayUnion({ token, platform: 'web', updatedAt: Date.now() }),
-  });
+  await callAccountUpdate({ accountId, addFcmWebToken: token });
 }
 
-/** Remove a web FCM token from the Account's fcmTokens array. */
+/** Remove a web FCM token from the Account's fcmTokens array via callable. */
 export async function removeWebFcmToken(accountId: string, token: string): Promise<void> {
-  // arrayRemove requires exact match, so we read and filter
-  const { getDoc } = await import('firebase/firestore');
+  // We need the exact entry to remove; read it first then pass to callable
+  const { doc, getDoc } = await import('firebase/firestore');
+  const { db } = await import('./firebase');
   const snap = await getDoc(doc(db, 'Accounts', accountId));
   if (!snap.exists()) return;
   const tokens: Array<{ token: string; platform: string; updatedAt: number }> = snap.data().fcmTokens || [];
   const entry = tokens.find((t) => t.token === token);
   if (entry) {
-    await updateDoc(doc(db, 'Accounts', accountId), {
-      fcmTokens: arrayRemove(entry),
-    });
+    await callAccountUpdate({ accountId, removeFcmWebToken: entry });
   }
 }
 

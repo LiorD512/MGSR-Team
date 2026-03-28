@@ -105,6 +105,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.liordahan.mgsrteam.config.AppConfigManager
 import com.liordahan.mgsrteam.IMainViewModel
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
@@ -811,7 +812,7 @@ private fun PositionFilterChips(
     onChipClick: (String) -> Unit,
     platform: Platform = Platform.MEN
 ) {
-    val positions = listOf("All", "GK", "CB", "RB", "LB", "DM", "CM", "AM", "LW", "RW", "CF", "SS")
+    val positions = listOf("All") + AppConfigManager.positions.filterList
     val isAllSelected = selectedPositions.isEmpty()
     val scrollState = rememberScrollState()
 

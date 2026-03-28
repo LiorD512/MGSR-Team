@@ -1,23 +1,16 @@
 package com.liordahan.mgsrteam.utils
 
+import com.liordahan.mgsrteam.config.AppConfigManager
+
 /**
  * EU member states — used for the "EU Nat" badge on player cards/detail.
- * Matches the hardcoded fallback list from the web platform.
+ * Data is fetched from Firestore remote config (with hardcoded fallbacks).
  */
 object EuCountries {
 
-    private val euCountryNames = setOf(
-        "Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus",
-        "Czech Republic", "Czechia", "Denmark", "Estonia", "Finland",
-        "France", "Germany", "Greece", "Hungary", "Ireland",
-        "Italy", "Latvia", "Lithuania", "Luxembourg", "Malta",
-        "Netherlands", "Poland", "Portugal", "Romania", "Slovakia",
-        "Slovenia", "Spain", "Sweden"
-    )
-
     fun isEuNational(nationality: String?): Boolean {
         if (nationality.isNullOrBlank()) return false
-        return euCountryNames.any { it.equals(nationality.trim(), ignoreCase = true) }
+        return AppConfigManager.euCountries.contains(nationality.trim().lowercase())
     }
 
     fun isEuNational(nationalities: List<String>?, fallbackNationality: String? = null): Boolean {

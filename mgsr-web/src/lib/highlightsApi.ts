@@ -3,9 +3,6 @@
  * Calls /api/highlights/search (Next.js API route) which proxies to YouTube + Scorebat.
  */
 
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from './firebase';
-
 export interface HighlightVideo {
   id: string;
   source: 'youtube' | 'scorebat';
@@ -93,12 +90,14 @@ export function formatViews(views: number): string {
 
 const MAX_PINNED = 2;
 
-/** Save pinned highlights to Firestore. Persists across devices. */
+/** Save pinned highlights via Cloud Function callable. */
 export async function savePinnedHighlights(
   playerId: string,
   videos: HighlightVideo[],
   playerCollection: 'Players' | 'PlayersWomen' | 'PlayersYouth' = 'Players'
 ): Promise<void> {
+  const { callPlayersUpdate } = await import('@/lib/callables');
+  const platform = playerCollection === 'PlayersWomen' ? 'women' : playerCollection === 'PlayersYouth' ? 'youth' : 'men';
   const toSave = videos.slice(0, MAX_PINNED).map((v) => ({
     id: v.id,
     source: v.source,
@@ -110,7 +109,7 @@ export async function savePinnedHighlights(
     durationSeconds: v.durationSeconds ?? 0,
     ...(v.viewCount != null ? { viewCount: v.viewCount } : {}),
   }));
-  await updateDoc(doc(db, playerCollection, playerId), { pinnedHighlights: toSave });
+  await callPlayersUpdate({ platform, playerId, pinnedHighlights: toSave });
 }
 
 /** @deprecated Use player.pinnedHighlights from Firestore instead. Kept for fallback. */

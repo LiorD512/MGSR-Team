@@ -1,10 +1,10 @@
 package com.liordahan.mgsrteam.features.home.tasks
 
-import java.util.Locale
+import com.liordahan.mgsrteam.config.AppConfigManager
 
 /**
  * Predefined task templates for player-related tasks.
- * Used when adding a task from a player page for consistency and efficiency.
+ * Data is fetched from Firestore remote config (with hardcoded fallbacks).
  */
 data class PlayerTaskTemplate(
     val id: String,
@@ -13,17 +13,16 @@ data class PlayerTaskTemplate(
     val hasMonthPlaceholder: Boolean = false
 )
 
-val PLAYER_TASK_TEMPLATES = listOf(
-    PlayerTaskTemplate("talk_month_status", "Talk in {month} to check status", "לדבר בחודש {month} לבדוק סטטוס", hasMonthPlaceholder = true),
-    PlayerTaskTemplate("call_agent", "Call player's agent", "להתקשר לסוכן השחקן"),
-    PlayerTaskTemplate("check_contract", "Check contract / expiry date", "לבדוק חוזה / תאריך סיום"),
-    PlayerTaskTemplate("send_documents", "Send documents (mandate, etc.)", "לשלוח מסמכים (מנדט וכו')"),
-    PlayerTaskTemplate("meeting_player", "Meeting / call with player", "פגישה / שיחה עם השחקן"),
-    PlayerTaskTemplate("follow_match", "Follow match / performance", "מעקב אחרי משחק / ביצועים")
-)
+val PLAYER_TASK_TEMPLATES: List<PlayerTaskTemplate>
+    get() = AppConfigManager.taskTemplates.templates.map { t ->
+        PlayerTaskTemplate(t.id, t.titleEn, t.titleHe, t.hasMonthPlaceholder)
+    }
 
-private val MONTHS_EN = arrayOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
-private val MONTHS_HE = arrayOf("ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר")
+private val MONTHS_EN: List<String>
+    get() = AppConfigManager.taskTemplates.monthsEN
+
+private val MONTHS_HE: List<String>
+    get() = AppConfigManager.taskTemplates.monthsHE
 
 fun getTemplateTitle(template: PlayerTaskTemplate, isHebrew: Boolean, month: Int? = null): String {
     val title = if (isHebrew) template.titleHe else template.titleEn

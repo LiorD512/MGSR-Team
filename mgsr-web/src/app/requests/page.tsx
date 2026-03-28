@@ -6,10 +6,12 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
-import { collection, onSnapshot, doc, deleteDoc, updateDoc, getDoc, setDoc, query, orderBy, addDoc, getDocs, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { callRequestsDelete, callShortlistAdd } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
+import { getPositionDisplayName } from '@/lib/appConfig';
 import { matchRequestToPlayers, type RosterPlayer } from '@/lib/requestMatcher';
 import { findPlayersForRequest, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { getPlayerDetails } from '@/lib/api';
@@ -50,42 +52,11 @@ interface Request {
 }
 
 
-const POSITION_DISPLAY: Record<string, { en: string; he: string }> = {
-  GK: { en: 'Goalkeeper', he: 'שוער' },
-  CB: { en: 'Center Back', he: 'בלם' },
-  RB: { en: 'Right Back', he: 'מגן ימני' },
-  LB: { en: 'Left Back', he: 'מגן שמאלי' },
-  DM: { en: 'Defensive Midfielder', he: 'קשר אחורי' },
-  CM: { en: 'Central Midfielder', he: 'קשר מרכזי' },
-  AM: { en: 'Attacking Midfielder', he: 'קשר התקפי' },
-  LM: { en: 'Left Midfielder', he: 'קשר שמאלי' },
-  RM: { en: 'Right Midfielder', he: 'קשר ימני' },
-  LW: { en: 'Left Winger', he: 'כנף שמאל' },
-  RW: { en: 'Right Winger', he: 'כנף ימין' },
-  CF: { en: 'Center Forward', he: 'חלוץ מרכזי' },
-  ST: { en: 'Center Forward', he: 'חלוץ מרכזי' },
-  SS: { en: 'Second Striker', he: 'חלוץ שני' },
-  CDM: { en: 'Defensive Midfielder', he: 'קשר 50/50' },
-  LWB: { en: 'Left Wing Back', he: 'כנף אחורי שמאלי' },
-  RWB: { en: 'Right Wing Back', he: 'כנף אחורי ימני' },
-  DEF: { en: 'Defender', he: 'מגן' },
-  MID: { en: 'Midfielder', he: 'קשר' },
-  FWD: { en: 'Forward', he: 'חלוץ' },
-};
-
 /** Normalize ST → CF so both map to the same position group */
 function normalizePosition(pos: string | undefined): string {
   const p = pos?.trim().toUpperCase();
   if (p === 'ST') return 'CF';
   return pos?.trim() || '';
-}
-
-function getPositionDisplayName(position: string | undefined, isHebrew: boolean): string {
-  if (!position?.trim()) return position || '';
-  const key = normalizePosition(position).toUpperCase();
-  const entry = POSITION_DISPLAY[key];
-  if (!entry) return position.trim();
-  return isHebrew ? entry.he : entry.en;
 }
 
 /** Split scout analysis text into readable bullet points (by sentence) */
@@ -550,63 +521,48 @@ export default function RequestsPage() {
       setShortlistError(null);
       setAddingToShortlistUrl(url);
       try {
-        const account = await getCurrentAccountForShortlist(user);
-        const colRef = collection(db, shortlistsCollection);
         const rosterExists = players.some((p) => p.tmProfile === url);
         if (rosterExists) {
           setShortlistError(t('shortlist_player_in_roster'));
           return;
         }
-        const q = query(colRef, where('tmProfileUrl', '==', url));
-        const existsSnap = await getDocs(q);
-        if (existsSnap.empty) {
-          const agentFields = {
-            addedByAgentId: account.id,
-            addedByAgentName: account.name ?? null,
-            addedByAgentHebrewName: account.hebrewName ?? null,
+        const account = await getCurrentAccountForShortlist(user);
+        let entryFields: Record<string, unknown> = {
+          addedByAgentId: account.id,
+          addedByAgentName: account.name ?? null,
+          addedByAgentHebrewName: account.hebrewName ?? null,
+        };
+        try {
+          const details = await getPlayerDetails(url);
+          entryFields = {
+            ...entryFields,
+            playerImage: details.profileImage ?? null,
+            playerName: details.fullName ?? null,
+            playerPosition: details.positions?.[0] ?? null,
+            playerAge: details.age ?? null,
+            playerNationality: details.nationality ?? null,
+            playerNationalityFlag: details.nationalityFlag ?? null,
+            clubJoinedName: details.currentClub?.clubName ?? null,
+            marketValue: details.marketValue ?? null,
+            instagramHandle: details.instagramHandle ?? null,
+            instagramUrl: details.instagramUrl ?? null,
           };
-          let entry: Record<string, unknown>;
-          try {
-            const details = await getPlayerDetails(url);
-            entry = {
-              tmProfileUrl: url,
-              addedAt: Date.now(),
-              playerImage: details.profileImage ?? null,
-              playerName: details.fullName ?? null,
-              playerPosition: details.positions?.[0] ?? null,
-              playerAge: details.age ?? null,
-              playerNationality: details.nationality ?? null,
-              playerNationalityFlag: details.nationalityFlag ?? null,
-              clubJoinedName: details.currentClub?.clubName ?? null,
-              marketValue: details.marketValue ?? null,
-              ...agentFields,
-              instagramHandle: details.instagramHandle ?? null,
-              instagramUrl: details.instagramUrl ?? null,
-            };
-          } catch {
-            entry = {
-              tmProfileUrl: url,
-              addedAt: Date.now(),
-              playerName: s.name ?? null,
-              playerPosition: s.position ?? null,
-              playerAge: s.age ?? null,
-              playerNationality: s.nationality ?? null,
-              clubJoinedName: s.club ?? null,
-              marketValue: s.marketValue ?? null,
-              ...agentFields,
-            };
-          }
-          await addDoc(colRef, entry);
-          const feedEvent: Record<string, unknown> = {
-            type: 'SHORTLIST_ADDED',
-            playerName: entry.playerName ?? null,
-            playerImage: entry.playerImage ?? null,
-            playerTmProfile: url,
-            timestamp: Date.now(),
-            agentName: account.name ?? null,
+        } catch {
+          entryFields = {
+            ...entryFields,
+            playerName: s.name ?? null,
+            playerPosition: s.position ?? null,
+            playerAge: s.age ?? null,
+            playerNationality: s.nationality ?? null,
+            clubJoinedName: s.club ?? null,
+            marketValue: s.marketValue ?? null,
           };
-          await addDoc(collection(db, feedEventsCollection), feedEvent);
         }
+        await callShortlistAdd({
+          platform,
+          tmProfileUrl: url,
+          ...entryFields,
+        });
       } catch (err) {
         console.error('Add to shortlist error:', err);
         setShortlistError(err instanceof Error ? err.message : 'Failed to add');
@@ -614,7 +570,7 @@ export default function RequestsPage() {
         setAddingToShortlistUrl(null);
       }
     },
-    [user, players, t, shortlistsCollection]
+    [user, players, t, platform]
   );
 
   const handleDelete = async (r: Request) => {
@@ -622,17 +578,7 @@ export default function RequestsPage() {
     setDeleting(true);
     try {
       const agentName = user ? (await getCurrentAccountForShortlist(user)).name ?? null : null;
-      const feedEvent: Record<string, unknown> = {
-        type: 'REQUEST_DELETED',
-        playerName: r.clubName ?? null,
-        playerImage: r.clubLogo ?? null,
-        playerTmProfile: r.clubTmProfile ?? null,
-        newValue: r.position ?? null,
-        timestamp: Date.now(),
-        agentName,
-      };
-      await addDoc(collection(db, feedEventsCollection), feedEvent);
-      await deleteDoc(doc(db, clubRequestsCollection, r.id));
+      await callRequestsDelete({ platform, requestId: r.id, agentName: agentName ?? undefined });
       setDeleteConfirm(null);
     } catch (err) {
       console.error('Delete request failed:', err);
@@ -894,6 +840,11 @@ export default function RequestsPage() {
                                     </span>
                                   )}
                                 </p>
+                                {r.createdByAgent && (
+                                  <p className="text-[10px] text-mgsr-muted/50 truncate">
+                                    {isHebrew ? 'נפתח ע"י' : 'Opened by'} {isHebrew ? (r.createdByAgentHebrew || agentHebrewMap[r.createdByAgent] || r.createdByAgent) : r.createdByAgent}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -1252,8 +1203,6 @@ export default function RequestsPage() {
           open={showAddSheet}
           onClose={() => { setShowAddSheet(false); setEditingRequest(null); }}
           onSaved={() => { setEditingRequest(null); }}
-          clubRequestsCollection={clubRequestsCollection}
-          feedEventsCollection={feedEventsCollection}
           isWomen={isWomen}
           isYouth={isYouth}
           editRequest={editingRequest}

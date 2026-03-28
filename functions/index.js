@@ -18,6 +18,20 @@ const { runScoutSkillLearning } = require("./workers/scoutSkillLearner");
 const { runDailyDigest } = require("./workers/dailyDigest");
 const { fetchDocument } = require("./lib/transfermarkt");
 
+// Phase-1 callables — shared business logic for Android & Web
+const { contactsCreate, contactsUpdate, contactsDelete } = require("./callables/contacts");
+const { tasksCreate, tasksUpdate, tasksToggleComplete, tasksDelete } = require("./callables/tasks");
+const { agentTransferRequest, agentTransferApprove, agentTransferReject, agentTransferCancel } = require("./callables/agentTransfers");
+const { offersCreate, offersUpdateFeedback, offersDelete } = require("./callables/playerOffers");
+const { requestsCreate, requestsUpdate, requestsDelete } = require("./callables/requests");
+const { matchRequestToPlayers, matchingRequestsForPlayer, matchRequestToPlayersLocal } = require("./callables/requestMatcher");
+const { playersUpdate, playersToggleMandate, playersAddNote, playersDeleteNote, playersDelete, playerDocumentsCreate, playerDocumentsDelete, playerDocumentsMarkExpired } = require("./callables/players");
+const { shortlistAdd, shortlistRemove, shortlistUpdate, shortlistAddNote, shortlistUpdateNote, shortlistDeleteNote } = require("./callables/shortlists");
+const { playersCreate } = require("./callables/playersCreate");
+const { portfolioUpsert, portfolioDelete } = require("./callables/portfolio");
+const { sharePlayerCreate, shadowTeamsSave, scoutProfileFeedbackSet, birthdayWishSend, offersUpdateHistorySummary, mandateSigningCreate } = require("./callables/phase6Misc");
+const { accountUpdate } = require("./callables/phase7Account");
+
 initializeApp();
 const db = getFirestore();
 
@@ -995,3 +1009,77 @@ exports.backfillPlayerDob = onCall(
     return results;
   }
 );
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase-1 Shared Callables — single source of truth for Android & Web
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Contacts CRUD
+exports.contactsCreate = onCall(async (req) => contactsCreate(req.data));
+exports.contactsUpdate = onCall(async (req) => contactsUpdate(req.data));
+exports.contactsDelete = onCall(async (req) => contactsDelete(req.data));
+
+// Tasks CRUD
+exports.tasksCreate = onCall(async (req) => tasksCreate(req.data));
+exports.tasksUpdate = onCall(async (req) => tasksUpdate(req.data));
+exports.tasksToggleComplete = onCall(async (req) => tasksToggleComplete(req.data));
+exports.tasksDelete = onCall(async (req) => tasksDelete(req.data));
+
+// Agent Transfers
+exports.agentTransferRequest = onCall(async (req) => agentTransferRequest(req.data));
+exports.agentTransferApprove = onCall(async (req) => agentTransferApprove(req.data));
+exports.agentTransferReject = onCall(async (req) => agentTransferReject(req.data));
+exports.agentTransferCancel = onCall(async (req) => agentTransferCancel(req.data));
+
+// Player Offers
+exports.offersCreate = onCall(async (req) => offersCreate(req.data));
+exports.offersUpdateFeedback = onCall(async (req) => offersUpdateFeedback(req.data));
+exports.offersDelete = onCall(async (req) => offersDelete(req.data));
+
+// Club Requests CRUD
+exports.requestsCreate = onCall(async (req) => requestsCreate(req.data));
+exports.requestsUpdate = onCall(async (req) => requestsUpdate(req.data));
+exports.requestsDelete = onCall(async (req) => requestsDelete(req.data));
+
+// Request ↔ Player Matching
+exports.matchRequestToPlayers = onCall(async (req) => matchRequestToPlayers(req.data));
+exports.matchingRequestsForPlayer = onCall(async (req) => matchingRequestsForPlayer(req.data));
+exports.matchRequestToPlayersLocal = onCall(async (req) => matchRequestToPlayersLocal(req.data));
+
+// Players
+exports.playersUpdate = onCall(async (req) => playersUpdate(req.data));
+exports.playersToggleMandate = onCall(async (req) => playersToggleMandate(req.data));
+exports.playersAddNote = onCall(async (req) => playersAddNote(req.data));
+exports.playersDeleteNote = onCall(async (req) => playersDeleteNote(req.data));
+exports.playersDelete = onCall(async (req) => playersDelete(req.data));
+
+// Player Documents
+exports.playerDocumentsCreate = onCall(async (req) => playerDocumentsCreate(req.data));
+exports.playerDocumentsDelete = onCall(async (req) => playerDocumentsDelete(req.data));
+exports.playerDocumentsMarkExpired = onCall(async (req) => playerDocumentsMarkExpired(req.data));
+
+// Shortlists
+exports.shortlistAdd = onCall(async (req) => shortlistAdd(req.data));
+exports.shortlistRemove = onCall(async (req) => shortlistRemove(req.data));
+exports.shortlistUpdate = onCall(async (req) => shortlistUpdate(req.data));
+exports.shortlistAddNote = onCall(async (req) => shortlistAddNote(req.data));
+exports.shortlistUpdateNote = onCall(async (req) => shortlistUpdateNote(req.data));
+exports.shortlistDeleteNote = onCall(async (req) => shortlistDeleteNote(req.data));
+
+// Players Create (Phase 5)
+exports.playersCreate = onCall(async (req) => playersCreate(req.data));
+
+// Portfolio
+exports.portfolioUpsert = onCall(async (req) => portfolioUpsert(req.data));
+exports.portfolioDelete = onCall(async (req) => portfolioDelete(req.data));
+
+// Phase 6 — misc
+exports.sharePlayerCreate = onCall(async (req) => sharePlayerCreate(req.data));
+exports.shadowTeamsSave = onCall(async (req) => shadowTeamsSave(req.data));
+exports.scoutProfileFeedbackSet = onCall(async (req) => scoutProfileFeedbackSet(req.data));
+exports.birthdayWishSend = onCall(async (req) => birthdayWishSend(req.data));
+exports.offersUpdateHistorySummary = onCall(async (req) => offersUpdateHistorySummary(req.data));
+exports.mandateSigningCreate = onCall(async (req) => mandateSigningCreate(req.data));
+
+// ── Phase 7 — Account ──────────────────────────────────────────────────
+exports.accountUpdate = onCall(async (req) => accountUpdate(req.data));

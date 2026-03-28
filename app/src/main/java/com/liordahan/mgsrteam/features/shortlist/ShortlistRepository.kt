@@ -1,16 +1,13 @@
 package com.liordahan.mgsrteam.features.shortlist
 
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.firebase.SharedCallables
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
-import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -210,49 +207,28 @@ class ShortlistRepository(
         val url = release.playerUrl ?: return AddToShortlistResult.AlreadyInShortlist
         _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
         return try {
-            val (rosterSnapshot, existing) = coroutineScope {
-                val rosterDeferred = async {
-                    firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-                        .whereEqualTo("tmProfile", url)
-                        .get()
-                        .await()
-                }
-                val shortlistDeferred = async {
-                    shortlistCollection()
-                        .whereEqualTo("tmProfileUrl", url).get().await()
-                }
-                rosterDeferred.await() to shortlistDeferred.await()
-            }
-            if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
-            if (!existing.isEmpty) return AddToShortlistResult.AlreadyInShortlist
-
-            val entryMap = mutableMapOf<String, Any>(
-                "tmProfileUrl" to url,
-                "addedAt" to System.currentTimeMillis()
-            )
-            release.playerImage?.takeIf { it.isNotBlank() }?.let { entryMap["playerImage"] = it }
-            release.playerName?.takeIf { it.isNotBlank() }?.let { entryMap["playerName"] = it }
-            release.playerPosition?.takeIf { it.isNotBlank() }?.let { entryMap["playerPosition"] = it }
-            release.playerAge?.takeIf { it.isNotBlank() }?.let { entryMap["playerAge"] = it }
-            release.playerNationality?.takeIf { it.isNotBlank() }?.let { entryMap["playerNationality"] = it }
-            release.playerNationalityFlag?.takeIf { it.isNotBlank() }?.let { entryMap["playerNationalityFlag"] = it }
-            release.clubJoinedLogo?.takeIf { it.isNotBlank() }?.let { entryMap["clubJoinedLogo"] = it }
-            release.clubJoinedName?.takeIf { it.isNotBlank() }?.let { entryMap["clubJoinedName"] = it }
-            release.transferDate?.takeIf { it.isNotBlank() }?.let { entryMap["transferDate"] = it }
-            release.marketValue?.takeIf { it.isNotBlank() }?.let { entryMap["marketValue"] = it }
+            val fields = mutableMapOf<String, Any?>()
+            release.playerImage?.takeIf { it.isNotBlank() }?.let { fields["playerImage"] = it }
+            release.playerName?.takeIf { it.isNotBlank() }?.let { fields["playerName"] = it }
+            release.playerPosition?.takeIf { it.isNotBlank() }?.let { fields["playerPosition"] = it }
+            release.playerAge?.takeIf { it.isNotBlank() }?.let { fields["playerAge"] = it }
+            release.playerNationality?.takeIf { it.isNotBlank() }?.let { fields["playerNationality"] = it }
+            release.playerNationalityFlag?.takeIf { it.isNotBlank() }?.let { fields["playerNationalityFlag"] = it }
+            release.clubJoinedLogo?.takeIf { it.isNotBlank() }?.let { fields["clubJoinedLogo"] = it }
+            release.clubJoinedName?.takeIf { it.isNotBlank() }?.let { fields["clubJoinedName"] = it }
+            release.transferDate?.takeIf { it.isNotBlank() }?.let { fields["transferDate"] = it }
+            release.marketValue?.takeIf { it.isNotBlank() }?.let { fields["marketValue"] = it }
             getCurrentUserAccount()?.let { acc ->
-                acc.id?.let { entryMap["addedByAgentId"] = it }
-                acc.name?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentName"] = it }
-                acc.hebrewName?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentHebrewName"] = it }
+                acc.id?.let { fields["addedByAgentId"] = it }
+                acc.name?.takeIf { it.isNotBlank() }?.let { fields["addedByAgentName"] = it }
+                acc.hebrewName?.takeIf { it.isNotBlank() }?.let { fields["addedByAgentHebrewName"] = it }
             }
-            shortlistCollection().add(entryMap).await()
-            writeFeedEventShortlist(
-                playerName = release.playerName,
-                playerImage = release.playerImage,
-                playerTmProfile = url,
-                agentName = getCurrentUserAccountName()
-            )
-            AddToShortlistResult.Added
+            val status = SharedCallables.shortlistAdd(platformManager.value, url, fields)
+            when (status) {
+                "already_in_roster" -> AddToShortlistResult.AlreadyInRoster
+                "already_exists" -> AddToShortlistResult.AlreadyInShortlist
+                else -> AddToShortlistResult.Added
+            }
         } finally {
             _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
         }
@@ -267,34 +243,18 @@ class ShortlistRepository(
         if (!url.contains("transfermarkt", ignoreCase = true)) return AddToShortlistResult.AlreadyInShortlist
         _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
         return try {
-            val (rosterSnapshot, existing) = coroutineScope {
-                val rosterDeferred = async {
-                    firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-                        .whereEqualTo("tmProfile", url)
-                        .get()
-                        .await()
-                }
-                val shortlistDeferred = async {
-                    shortlistCollection()
-                        .whereEqualTo("tmProfileUrl", url).get().await()
-                }
-                rosterDeferred.await() to shortlistDeferred.await()
-            }
-            if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
-            if (!existing.isEmpty) return AddToShortlistResult.AlreadyInShortlist
-
-            val urlEntryMap = mutableMapOf<String, Any>(
-                "tmProfileUrl" to url,
-                "addedAt" to System.currentTimeMillis()
-            )
+            val fields = mutableMapOf<String, Any?>()
             getCurrentUserAccount()?.let { acc ->
-                acc.id?.let { urlEntryMap["addedByAgentId"] = it }
-                acc.name?.takeIf { it.isNotBlank() }?.let { urlEntryMap["addedByAgentName"] = it }
-                acc.hebrewName?.takeIf { it.isNotBlank() }?.let { urlEntryMap["addedByAgentHebrewName"] = it }
+                acc.id?.let { fields["addedByAgentId"] = it }
+                acc.name?.takeIf { it.isNotBlank() }?.let { fields["addedByAgentName"] = it }
+                acc.hebrewName?.takeIf { it.isNotBlank() }?.let { fields["addedByAgentHebrewName"] = it }
             }
-            shortlistCollection().add(urlEntryMap).await()
-            writeFeedEventShortlist(playerName = null, playerImage = null, playerTmProfile = url, agentName = getCurrentUserAccountName())
-            AddToShortlistResult.Added
+            val status = SharedCallables.shortlistAdd(platformManager.value, url, fields)
+            when (status) {
+                "already_in_roster" -> AddToShortlistResult.AlreadyInRoster
+                "already_exists" -> AddToShortlistResult.AlreadyInShortlist
+                else -> AddToShortlistResult.Added
+            }
         } finally {
             _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
         }
@@ -324,56 +284,25 @@ class ShortlistRepository(
         val url = tmProfileUrl.trim().takeIf { it.isNotBlank() } ?: return AddToShortlistResult.AlreadyInShortlist
         _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
         return try {
-            // Check roster by soccerDonnaUrl (women) or ifaUrl (youth) or tmProfile (men)
-            if (url.contains("soccerdonna", ignoreCase = true)) {
-                val rosterSnapshot = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("soccerDonnaUrl", url)
-                    .get().await()
-                if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
-            } else if (url.contains("football.org.il", ignoreCase = true)) {
-                val rosterSnapshot = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("ifaUrl", url)
-                    .get().await()
-                if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
-            } else if (url.contains("transfermarkt", ignoreCase = true)) {
-                val rosterSnapshot = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", url)
-                    .get().await()
-                if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
-            }
-
-            // Check shortlist duplicates
-            val existing = shortlistCollection()
-                .whereEqualTo("tmProfileUrl", url).get().await()
-            if (!existing.isEmpty) return AddToShortlistResult.AlreadyInShortlist
-
-            val entryMap = mutableMapOf<String, Any>(
-                "tmProfileUrl" to url,
-                "addedAt" to System.currentTimeMillis()
-            )
-            playerImage?.let { entryMap["playerImage"] = it }
-            playerName?.let { entryMap["playerName"] = it }
-            playerPosition?.let { entryMap["playerPosition"] = it }
-            playerAge?.let { entryMap["playerAge"] = it }
-            playerNationality?.let { entryMap["playerNationality"] = it }
-            clubJoinedName?.let { entryMap["clubJoinedName"] = it }
-            marketValue?.let { entryMap["marketValue"] = it }
+            val fields = mutableMapOf<String, Any?>()
+            playerImage?.let { fields["playerImage"] = it }
+            playerName?.let { fields["playerName"] = it }
+            playerPosition?.let { fields["playerPosition"] = it }
+            playerAge?.let { fields["playerAge"] = it }
+            playerNationality?.let { fields["playerNationality"] = it }
+            clubJoinedName?.let { fields["clubJoinedName"] = it }
+            marketValue?.let { fields["marketValue"] = it }
             getCurrentUserAccount()?.let { acc ->
-                acc.id?.let { entryMap["addedByAgentId"] = it }
-                acc.name?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentName"] = it }
-                acc.hebrewName?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentHebrewName"] = it }
+                acc.id?.let { fields["addedByAgentId"] = it }
+                acc.name?.takeIf { it.isNotBlank() }?.let { fields["addedByAgentName"] = it }
+                acc.hebrewName?.takeIf { it.isNotBlank() }?.let { fields["addedByAgentHebrewName"] = it }
             }
-            shortlistCollection().add(entryMap).await()
-            writeFeedEventShortlist(
-                playerName = playerName,
-                playerImage = playerImage,
-                playerTmProfile = url,
-                agentName = getCurrentUserAccountName()
-            )
-            AddToShortlistResult.Added
+            val status = SharedCallables.shortlistAdd(platformManager.value, url, fields)
+            when (status) {
+                "already_in_roster" -> AddToShortlistResult.AlreadyInRoster
+                "already_exists" -> AddToShortlistResult.AlreadyInShortlist
+                else -> AddToShortlistResult.Added
+            }
         } finally {
             _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
         }
@@ -392,65 +321,12 @@ class ShortlistRepository(
         return snapshot.toObjects(Account::class.java).firstOrNull()
     }
 
-    private fun writeFeedEventShortlist(
-        playerName: String?,
-        playerImage: String?,
-        playerTmProfile: String,
-        agentName: String?
-    ) {
-        try {
-            val resolvedAgent = agentName ?: FirebaseAuth.getInstance().currentUser?.displayName
-            firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
-                FeedEvent(
-                    type = FeedEvent.TYPE_SHORTLIST_ADDED,
-                    playerName = playerName,
-                    playerImage = playerImage,
-                    playerTmProfile = playerTmProfile,
-                    timestamp = System.currentTimeMillis(),
-                    agentName = resolvedAgent
-                )
-            )
-        } catch (_: Exception) { /* fire-and-forget */ }
-    }
-
-    private fun writeFeedEventShortlistRemoved(
-        playerName: String?,
-        playerImage: String?,
-        playerTmProfile: String,
-        agentName: String?
-    ) {
-        try {
-            val resolvedAgent = agentName ?: FirebaseAuth.getInstance().currentUser?.displayName
-            firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
-                FeedEvent(
-                    type = FeedEvent.TYPE_SHORTLIST_REMOVED,
-                    playerName = playerName,
-                    playerImage = playerImage,
-                    playerTmProfile = playerTmProfile,
-                    timestamp = System.currentTimeMillis(),
-                    agentName = resolvedAgent
-                )
-            )
-        } catch (_: Exception) { /* fire-and-forget */ }
-    }
-
     suspend fun removeFromShortlist(tmProfileUrl: String) {
         val url = tmProfileUrl.trim().takeIf { it.isNotBlank() } ?: return
         _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
         try {
-            val querySnapshot = shortlistCollection()
-                .whereEqualTo("tmProfileUrl", url).get().await()
-            if (querySnapshot.isEmpty) return
-            val doc = querySnapshot.documents.first()
-            val playerName = doc.getString("playerName")
-            val playerImage = doc.getString("playerImage")
-            doc.reference.delete().await()
-            writeFeedEventShortlistRemoved(
-                playerName = playerName?.takeIf { it.isNotBlank() },
-                playerImage = playerImage?.takeIf { it.isNotBlank() },
-                playerTmProfile = url,
-                agentName = getCurrentUserAccountName()
-            )
+            val agentName = getCurrentUserAccountName()
+            SharedCallables.shortlistRemove(platformManager.value, url, agentName)
         } finally {
             _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
         }
@@ -464,63 +340,40 @@ class ShortlistRepository(
 
     // ── Notes CRUD ──────────────────────────────────────────────────────────
 
-    private suspend fun findDocByUrl(tmProfileUrl: String) =
-        shortlistCollection().whereEqualTo("tmProfileUrl", tmProfileUrl)
-            .get().await().documents.firstOrNull()
-
-    @Suppress("UNCHECKED_CAST")
     suspend fun addNoteToEntry(tmProfileUrl: String, noteText: String) {
-        val docSnapshot = findDocByUrl(tmProfileUrl) ?: return
-        val docRef = docSnapshot.reference
         val account = getCurrentUserAccount()
-        store.runTransaction { transaction ->
-            val snapshot = transaction.get(docRef)
-            val notes = ((snapshot.get("notes") as? List<Map<String, Any>>) ?: emptyList())
-                .map { it.toMutableMap() }.toMutableList()
-            val noteMap = mutableMapOf<String, Any>(
-                "text" to noteText,
-                "createdAt" to System.currentTimeMillis()
-            )
-            account?.let { acc ->
-                acc.id?.let { noteMap["createdById"] = it }
-                acc.name?.takeIf { it.isNotBlank() }?.let { noteMap["createdBy"] = it }
-                acc.hebrewName?.takeIf { it.isNotBlank() }?.let { noteMap["createdByHebrewName"] = it }
-            }
-            notes.add(noteMap)
-            transaction.update(docRef, "notes", notes)
-        }.await()
+        SharedCallables.shortlistAddNote(
+            platform = platformManager.value,
+            tmProfileUrl = tmProfileUrl,
+            noteText = noteText,
+            createdBy = account?.name,
+            createdByHebrewName = account?.hebrewName,
+            createdById = account?.id
+        )
     }
 
-    @Suppress("UNCHECKED_CAST")
     suspend fun updateNoteInEntry(tmProfileUrl: String, noteIndex: Int, newText: String) {
-        val docSnapshot = findDocByUrl(tmProfileUrl) ?: return
-        val docRef = docSnapshot.reference
-        store.runTransaction { transaction ->
-            val snapshot = transaction.get(docRef)
-            val notes = ((snapshot.get("notes") as? List<Map<String, Any>>) ?: emptyList())
-                .map { it.toMutableMap() }.toMutableList()
-            if (noteIndex !in notes.indices) return@runTransaction
-            notes[noteIndex] = notes[noteIndex].toMutableMap().apply { put("text", newText) }
-            transaction.update(docRef, "notes", notes)
-        }.await()
+        SharedCallables.shortlistUpdateNote(
+            platform = platformManager.value,
+            tmProfileUrl = tmProfileUrl,
+            noteIndex = noteIndex,
+            newText = newText
+        )
     }
 
     suspend fun markInstagramSent(tmProfileUrl: String) {
-        val docSnapshot = findDocByUrl(tmProfileUrl) ?: return
-        docSnapshot.reference.update("instagramSentAt", System.currentTimeMillis()).await()
+        SharedCallables.shortlistUpdate(
+            platform = platformManager.value,
+            tmProfileUrl = tmProfileUrl,
+            fields = mapOf("instagramSentAt" to System.currentTimeMillis())
+        )
     }
 
-    @Suppress("UNCHECKED_CAST")
     suspend fun deleteNoteFromEntry(tmProfileUrl: String, noteIndex: Int) {
-        val docSnapshot = findDocByUrl(tmProfileUrl) ?: return
-        val docRef = docSnapshot.reference
-        store.runTransaction { transaction ->
-            val snapshot = transaction.get(docRef)
-            val notes = ((snapshot.get("notes") as? List<Map<String, Any>>) ?: emptyList())
-                .map { it.toMutableMap() }.toMutableList()
-            if (noteIndex !in notes.indices) return@runTransaction
-            notes.removeAt(noteIndex)
-            transaction.update(docRef, "notes", notes)
-        }.await()
+        SharedCallables.shortlistDeleteNote(
+            platform = platformManager.value,
+            tmProfileUrl = tmProfileUrl,
+            noteIndex = noteIndex
+        )
     }
 }

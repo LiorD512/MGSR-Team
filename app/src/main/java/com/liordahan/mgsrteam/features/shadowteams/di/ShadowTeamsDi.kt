@@ -6,5 +6,5 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val shadowTeamsModule = module {
-    viewModel<IShadowTeamsViewModel> { ShadowTeamsViewModel(get(), get()) }
+    viewModel<IShadowTeamsViewModel> { ShadowTeamsViewModel(get(), get(), get()) }
 }

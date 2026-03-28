@@ -1,17 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { searchClubs, type ClubSearchResult } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { callRequestsCreate, callRequestsUpdate } from '@/lib/callables';
+import { appConfig } from '@/lib/appConfig';
 
-const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'LM', 'RM', 'LW', 'RW', 'CF', 'ST', 'SS'];
-const SALARY_OPTIONS = ['>5', '6-10', '11-15', '16-20', '20-25', '26-30', '30+'];
-const FEE_OPTIONS = ['Free/Free loan', '<200', '300-600', '700-900', '1m+'];
+const POSITIONS = appConfig.positions.filterList;
+const SALARY_OPTIONS = appConfig.salaryRanges;
+const FEE_OPTIONS = appConfig.transferFees;
 const FOOT_OPTIONS = [
   { value: 'left', labelKey: 'requests_foot_left' },
   { value: 'right', labelKey: 'requests_foot_right' },
@@ -42,14 +42,12 @@ interface AddRequestSheetProps {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
-  clubRequestsCollection?: string;
-  feedEventsCollection?: string;
   isWomen?: boolean;
   isYouth?: boolean;
   editRequest?: EditRequest | null;
 }
 
-export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCollection = 'ClubRequests', feedEventsCollection = 'FeedEvents', isWomen = false, isYouth = false, editRequest = null }: AddRequestSheetProps) {
+export default function AddRequestSheet({ open, onClose, onSaved, isWomen = false, isYouth = false, editRequest = null }: AddRequestSheetProps) {
   const { t, isRtl, lang } = useLanguage();
   const { user } = useAuth();
   const isHebrew = lang === 'he';
@@ -137,10 +135,13 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
     if (!clubName || !selectedPosition || (!isYouth && (!selectedSalary || !selectedFee))) return;
     setSaving(true);
     setError(null);
+    const platform = isWomen ? 'women' : isYouth ? 'youth' : 'men';
     try {
       if (isEditing && editRequest) {
-        // Update existing request
-        const updateData: Record<string, unknown> = {
+        // Update existing request via callable
+        await callRequestsUpdate({
+          platform,
+          requestId: editRequest.id,
           clubTmProfile: (isWomen || isYouth) ? '' : (selectedClub?.clubTmProfile || ''),
           clubName,
           clubLogo: (isWomen || isYouth) ? '' : (selectedClub?.clubLogo || ''),
@@ -151,54 +152,38 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
           minAge: isYouth ? 0 : (minAge ? parseInt(minAge, 10) : 0),
           maxAge: isYouth ? 0 : (maxAge ? parseInt(maxAge, 10) : 0),
           ageDoesntMatter: isYouth ? true : ageDoesntMatter,
-          salaryRange: isYouth ? 'N/A' : selectedSalary,
-          transferFee: isYouth ? 'N/A' : selectedFee,
+          salaryRange: isYouth ? 'N/A' : (selectedSalary ?? undefined),
+          transferFee: isYouth ? 'N/A' : (selectedFee ?? undefined),
           dominateFoot: selectedFoot === 'any' ? '' : selectedFoot,
           euOnly: euOnly || false,
-        };
-        await updateDoc(doc(db, clubRequestsCollection, editRequest.id), updateData);
+        });
         onSaved();
         onClose();
         return;
       }
-      const createdAt = Date.now();
       const account = user ? await getCurrentAccountForShortlist(user) : null;
-      const agentName = account?.name ?? null;
-      const agentHebrewName = account?.hebrewName ?? null;
-      await addDoc(collection(db, clubRequestsCollection), {
+      const agentName = account?.name ?? '';
+      const agentHebrewName = account?.hebrewName ?? '';
+      // Create via callable — FeedEvent is written server-side
+      await callRequestsCreate({
+        platform,
         clubTmProfile: (isWomen || isYouth) ? '' : (selectedClub?.clubTmProfile || ''),
         clubName,
         clubLogo: (isWomen || isYouth) ? '' : (selectedClub?.clubLogo || ''),
         clubCountry,
         clubCountryFlag: (isWomen || isYouth) ? '' : (selectedClub?.clubCountryFlag || ''),
-        contactId: '',
-        contactName: '',
-        contactPhoneNumber: '',
         position: selectedPosition,
-        quantity: 1,
         notes: notes.trim() || '',
         minAge: isYouth ? 0 : (minAge ? parseInt(minAge, 10) : 0),
         maxAge: isYouth ? 0 : (maxAge ? parseInt(maxAge, 10) : 0),
         ageDoesntMatter: isYouth ? true : ageDoesntMatter,
-        salaryRange: isYouth ? 'N/A' : selectedSalary,
-        transferFee: isYouth ? 'N/A' : selectedFee,
+        salaryRange: isYouth ? 'N/A' : (selectedSalary ?? undefined),
+        transferFee: isYouth ? 'N/A' : (selectedFee ?? undefined),
         dominateFoot: selectedFoot === 'any' ? '' : selectedFoot,
-        createdAt,
-        status: 'pending',
         euOnly: euOnly || false,
-        createdByAgent: agentName || '',
-        createdByAgentHebrew: agentHebrewName || '',
+        createdByAgent: agentName,
+        createdByAgentHebrew: agentHebrewName,
       });
-      const feedEvent: Record<string, unknown> = {
-        type: 'REQUEST_ADDED',
-        playerName: clubName ?? null,
-        playerImage: (isWomen || isYouth) ? null : (selectedClub?.clubLogo ?? null),
-        playerTmProfile: (isWomen || isYouth) ? null : (selectedClub?.clubTmProfile ?? null),
-        newValue: selectedPosition,
-        timestamp: createdAt,
-        agentName,
-      };
-      await addDoc(collection(db, feedEventsCollection), feedEvent);
       onSaved();
       onClose();
     } catch (err) {

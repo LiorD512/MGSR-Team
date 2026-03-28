@@ -10,21 +10,17 @@ import {
   query,
   where,
   onSnapshot,
-  addDoc,
   updateDoc,
   deleteDoc,
   deleteField,
-  getDocs,
-  setDoc,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
+import { callOffersCreate, callOffersUpdateFeedback, callTasksToggleComplete, callPlayersUpdate, callPlayersToggleMandate, callPlayersAddNote, callPlayersDeleteNote, callPlayersDelete, callPlayerDocumentsCreate, callPlayerDocumentsDelete, callPlayerDocumentsMarkExpired, callPortfolioUpsert } from '@/lib/callables';
 import {
   PLAYERS_YOUTH_COLLECTION,
   type YouthPlayer,
   type YouthPlayerNote,
-  updateYouthPlayer,
-  deleteYouthPlayer,
   computeAgeGroup,
 } from '@/lib/playersYouth';
 import { flattenPdf } from '@/lib/pdfFlatten';
@@ -173,7 +169,7 @@ export default function YouthPlayerPage() {
       const mandateDocs = docs.filter((d) => (d.type ?? '').toUpperCase() === 'MANDATE');
       for (const m of mandateDocs) {
         if (m.expiresAt != null && m.expiresAt < now && !m.expired) {
-          try { await updateDoc(doc(db, 'PlayerDocuments', m.id), { expired: true }); } catch { /* */ }
+          try { await callPlayerDocumentsMarkExpired({ documentId: m.id }); } catch { /* */ }
         }
       }
       const validMandates = mandateDocs.filter((d) => !d.expired && (d.expiresAt == null || d.expiresAt >= now));
@@ -181,7 +177,7 @@ export default function YouthPlayerPage() {
       if (prevValidMandateCountRef.current != null && validCount !== prevValidMandateCountRef.current) {
         const hasMandate = validCount > 0;
         try {
-          await updateDoc(doc(db, PLAYERS_YOUTH_COLLECTION, id), { haveMandate: hasMandate });
+          await callPlayersUpdate({ platform: 'youth', playerId: id, haveMandate: hasMandate });
           setPlayer((p) => (p ? { ...p, haveMandate: hasMandate } : null));
         } catch { /* */ }
       }
@@ -257,17 +253,18 @@ export default function YouthPlayerPage() {
       const youthProfile = `youth-${id}`;
       const agentName = accounts.find((a) => a.email?.toLowerCase() === user.email?.toLowerCase());
       const markedBy = isRtl ? (agentName?.hebrewName ?? agentName?.name) : (agentName?.name ?? agentName?.hebrewName);
-      await addDoc(collection(db, 'PlayerOffers'), {
+      await callOffersCreate({
+        platform: 'youth',
         playerTmProfile: youthProfile, playerName: player.fullName ?? '', playerImage: player.profileImage ?? '',
-        requestId, clubName: clubName ?? '', clubLogo: clubLogo ?? '', position: position ?? '',
-        offeredAt: Date.now(), clubFeedback: feedback ?? '', markedByAgentName: markedBy ?? '',
+        requestId: requestId ?? '', clubName: clubName ?? '', clubLogo: clubLogo ?? '', position: position ?? '',
+        clubFeedback: feedback ?? '', markedByAgentName: markedBy ?? '',
       });
     },
     [player, id, user?.email, accounts, isRtl]
   );
 
   const handleUpdateOfferFeedback = useCallback(async (offerId: string, feedback: string) => {
-    await updateDoc(doc(db, 'PlayerOffers', offerId), { clubFeedback: feedback });
+    await callOffersUpdateFeedback({ offerId, clubFeedback: feedback });
   }, []);
 
   // ── Documents ──
@@ -319,16 +316,24 @@ export default function YouthPlayerPage() {
         const data: Record<string, unknown> = { playerYouthId: id, type: docType, name: suggestedName, storageUrl: url, uploadedAt: Date.now() };
         if (mandateExpiresAt != null) data.expiresAt = mandateExpiresAt;
         if (docType === 'MANDATE' && createdBy) data.uploadedBy = createdBy;
-        await addDoc(collection(db, 'PlayerDocuments'), data);
+
+        await callPlayerDocumentsCreate({
+          platform: 'youth',
+          playerRefId: id,
+          type: docType,
+          name: suggestedName,
+          storageUrl: url,
+          ...(mandateExpiresAt != null && { expiresAt: mandateExpiresAt }),
+          ...(docType === 'MANDATE' && createdBy && { uploadedBy: createdBy }),
+          playerName: player.fullName,
+          playerImage: player.profileImage,
+          agentName: createdBy,
+        });
 
         if (docType === 'PASSPORT' && passportInfo) {
           const passportDetails = { firstName: passportInfo.firstName, lastName: passportInfo.lastName, dateOfBirth: passportInfo.dateOfBirth, passportNumber: passportInfo.passportNumber, nationality: passportInfo.nationality, lastUpdatedAt: Date.now() };
-          await updateDoc(doc(db, PLAYERS_YOUTH_COLLECTION, id), { passportDetails });
+          await callPlayersUpdate({ platform: 'youth', playerId: id, passportDetails });
           setPlayer((p) => (p ? { ...p, passportDetails } : null));
-        }
-
-        if (docType === 'MANDATE') {
-          await addDoc(collection(db, 'FeedEventsYouth'), { type: 'MANDATE_UPLOADED', playerName: player.fullName, playerImage: player.profileImage, playerYouthId: id, agentName: createdBy, ...(mandateExpiresAt != null && { mandateExpiryAt: mandateExpiresAt }), timestamp: Date.now() });
         }
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'Upload failed');
@@ -345,26 +350,37 @@ export default function YouthPlayerPage() {
       if (!player || !id) return;
       setMandateToggling(true);
       try {
-        await updateDoc(doc(db, PLAYERS_YOUTH_COLLECTION, id), { haveMandate: hasMandate });
         setPlayer((p) => (p ? { ...p, haveMandate: hasMandate } : null));
         const createdBy = getCurrentUserName();
-        await addDoc(collection(db, 'FeedEventsYouth'), { type: hasMandate ? 'MANDATE_SWITCHED_ON' : 'MANDATE_SWITCHED_OFF', playerName: player.fullName, playerImage: player.profileImage, playerYouthId: id, agentName: createdBy, timestamp: Date.now() });
+        await callPlayersToggleMandate({
+          platform: 'youth',
+          playerId: id,
+          hasMandate,
+          playerRefId: id,
+          playerName: player.fullName,
+          playerImage: player.profileImage,
+          agentName: createdBy,
+        });
       } catch {
         setPlayer((p) => (p ? { ...p, haveMandate: !hasMandate } : null));
       } finally {
         setMandateToggling(false);
       }
     },
-    [player, id, documents, getCurrentUserName]
+    [player, id, getCurrentUserName]
   );
 
   const handleDeleteDocument = useCallback(
     async (d: PlayerDocument) => {
       if (!d.id || !id) return;
       const isPassport = (d.type ?? '').toUpperCase() === 'PASSPORT';
-      await deleteDoc(doc(db, 'PlayerDocuments', d.id));
+      await callPlayerDocumentsDelete({
+        platform: 'youth',
+        documentId: d.id,
+        clearPassport: isPassport,
+        playerId: id,
+      });
       if (isPassport) {
-        await updateDoc(doc(db, PLAYERS_YOUTH_COLLECTION, id), { passportDetails: deleteField() });
         setPlayer((p) => (p ? { ...p, passportDetails: undefined } : null));
       }
       setDocToDelete(null);
@@ -376,7 +392,7 @@ export default function YouthPlayerPage() {
   const applyNoteListUpdate = useCallback(
     async (newNoteList: YouthPlayerNote[]) => {
       if (!player || !id) return;
-      await updateDoc(doc(db, PLAYERS_YOUTH_COLLECTION, id), { noteList: newNoteList });
+      await callPlayersUpdate({ platform: 'youth', playerId: id, noteList: newNoteList });
     },
     [player, id]
   );
@@ -387,17 +403,23 @@ export default function YouthPlayerPage() {
       setNoteSaving(true);
       try {
         const createdBy = getCurrentUserName() ?? '';
-        const currentNotes = player.noteList ?? [];
-        const newNote: YouthPlayerNote = { notes: text.trim(), createBy: createdBy, createdAt: Date.now() };
-        await applyNoteListUpdate([...currentNotes, newNote]);
-        await addDoc(collection(db, 'FeedEventsYouth'), { type: 'NOTE_ADDED', playerName: player.fullName, playerImage: player.profileImage, playerYouthId: id, agentName: createdBy, extraInfo: text.trim().slice(0, 120), timestamp: Date.now() });
+        await callPlayersAddNote({
+          platform: 'youth',
+          playerId: id!,
+          playerRefId: id!,
+          noteText: text.trim(),
+          createdBy,
+          playerName: player.fullName,
+          playerImage: player.profileImage,
+          agentName: createdBy,
+        });
         setNoteModalOpen(null);
         setNoteDraft('');
       } finally {
         setNoteSaving(false);
       }
     },
-    [player, id, getCurrentUserName, applyNoteListUpdate]
+    [player, id, getCurrentUserName]
   );
 
   const handleEditNote = useCallback(
@@ -428,15 +450,24 @@ export default function YouthPlayerPage() {
       try {
         const deletedBy = getCurrentUserName() ?? '';
         const currentNotes = player.noteList ?? [];
-        const newNoteList = currentNotes.filter((n) => !(n.notes === note.notes && n.createBy === note.createBy && n.createdAt === note.createdAt));
-        await applyNoteListUpdate(newNoteList);
-        await addDoc(collection(db, 'FeedEventsYouth'), { type: 'NOTE_DELETED', playerName: player.fullName, playerImage: player.profileImage, playerYouthId: id, agentName: deletedBy, timestamp: Date.now() });
+        const noteIndex = currentNotes.findIndex((n) => n.notes === note.notes && n.createBy === note.createBy && n.createdAt === note.createdAt);
+        await callPlayersDeleteNote({
+          platform: 'youth',
+          playerId: id!,
+          playerRefId: id!,
+          noteIndex,
+          noteText: note.notes,
+          noteCreatedAt: note.createdAt,
+          playerName: player.fullName,
+          playerImage: player.profileImage,
+          agentName: deletedBy,
+        });
         setDeleteConfirmNote(null);
       } finally {
         setNoteSaving(false);
       }
     },
-    [player, id, getCurrentUserName, applyNoteListUpdate]
+    [player, id, getCurrentUserName]
   );
 
   // ── Portfolio ──
@@ -517,19 +548,10 @@ export default function YouthPlayerPage() {
           createdAt: Date.now(),
         });
 
-        const existingQ = query(
-          collection(db, 'PortfolioYouth'),
-          where('agentId', '==', user.uid),
-          where('playerYouthId', '==', id),
-          where('lang', '==', lang)
-        );
-        const existingSnap = await getDocs(existingQ);
-        if (!existingSnap.empty) {
-          const existingId = existingSnap.docs[0].id;
-          await setDoc(doc(db, 'PortfolioYouth', existingId), portfolioDoc);
-        } else {
-          await addDoc(collection(db, 'PortfolioYouth'), portfolioDoc);
-        }
+        await callPortfolioUpsert({
+          platform: 'youth',
+          ...portfolioDoc as Record<string, unknown>,
+        });
 
         router.push(`/portfolio?fromPlayer=${id}&platform=youth`);
       } catch (e) {
@@ -573,30 +595,36 @@ export default function YouthPlayerPage() {
     setSaving(true);
     try {
       const computedAgeGroup = ageGroup || (dateOfBirth ? computeAgeGroup(dateOfBirth) : '');
+      const deleteFields: string[] = [];
       const updateData: Record<string, unknown> = {
+        platform: 'youth',
+        playerId: id,
         fullName: fullName.trim(),
-        fullNameHe: fullNameHe.trim() || deleteField(),
-        positions: positions.length > 0 ? positions : deleteField(),
-        currentClub: currentClub.trim() ? { clubName: currentClub.trim() } : deleteField(),
-        academy: academy.trim() || deleteField(),
-        dateOfBirth: dateOfBirth.trim() || deleteField(),
-        ageGroup: computedAgeGroup || deleteField(),
-        nationality: nationality.trim() || deleteField(),
-        profileImage: profileImage.trim() || deleteField(),
-        ifaUrl: ifaUrl.trim() || deleteField(),
-        notes: notes.trim() || deleteField(),
-        playerPhoneNumber: playerPhone.trim() || deleteField(),
-        playerEmail: playerEmail.trim() || deleteField(),
-        parentContact: (parentName.trim() || parentPhone.trim())
-          ? {
-              parentName: parentName.trim() || null,
-              parentRelationship: parentRelationship.trim() || null,
-              parentPhoneNumber: parentPhone.trim() || null,
-              parentEmail: parentEmail.trim() || null,
-            }
-          : deleteField(),
       };
-      await updateDoc(doc(db, PLAYERS_YOUTH_COLLECTION, id), updateData);
+      if (fullNameHe.trim()) updateData.fullNameHe = fullNameHe.trim(); else deleteFields.push('fullNameHe');
+      if (positions.length > 0) updateData.positions = positions; else deleteFields.push('positions');
+      if (currentClub.trim()) updateData.currentClub = { clubName: currentClub.trim() }; else deleteFields.push('currentClub');
+      if (academy.trim()) updateData.academy = academy.trim(); else deleteFields.push('academy');
+      if (dateOfBirth.trim()) updateData.dateOfBirth = dateOfBirth.trim(); else deleteFields.push('dateOfBirth');
+      if (computedAgeGroup) updateData.ageGroup = computedAgeGroup; else deleteFields.push('ageGroup');
+      if (nationality.trim()) updateData.nationality = nationality.trim(); else deleteFields.push('nationality');
+      if (profileImage.trim()) updateData.profileImage = profileImage.trim(); else deleteFields.push('profileImage');
+      if (ifaUrl.trim()) updateData.ifaUrl = ifaUrl.trim(); else deleteFields.push('ifaUrl');
+      if (notes.trim()) updateData.notes = notes.trim(); else deleteFields.push('notes');
+      if (playerPhone.trim()) updateData.playerPhoneNumber = playerPhone.trim(); else deleteFields.push('playerPhoneNumber');
+      if (playerEmail.trim()) updateData.playerEmail = playerEmail.trim(); else deleteFields.push('playerEmail');
+      if (parentName.trim() || parentPhone.trim()) {
+        updateData.parentContact = {
+          parentName: parentName.trim() || null,
+          parentRelationship: parentRelationship.trim() || null,
+          parentPhoneNumber: parentPhone.trim() || null,
+          parentEmail: parentEmail.trim() || null,
+        };
+      } else {
+        deleteFields.push('parentContact');
+      }
+      if (deleteFields.length > 0) updateData._deleteFields = deleteFields;
+      await callPlayersUpdate(updateData as Parameters<typeof callPlayersUpdate>[0]);
       setEditOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
@@ -606,11 +634,19 @@ export default function YouthPlayerPage() {
   };
 
   const handleDelete = async () => {
-    if (!id) return;
+    if (!id || !player) return;
     setDeleting(true);
     setError('');
     try {
-      await deleteYouthPlayer(id);
+      const agentName = getCurrentUserName() ?? undefined;
+      await callPlayersDelete({
+        platform: 'youth',
+        playerId: id,
+        playerRefId: id,
+        playerName: player.fullName,
+        playerImage: player.profileImage,
+        agentName,
+      });
       router.push('/players');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');
@@ -920,7 +956,7 @@ export default function YouthPlayerPage() {
                         type="checkbox"
                         checked={task.isCompleted ?? false}
                         onChange={async () => {
-                          await updateDoc(doc(db, 'AgentTasksYouth', task.id), { isCompleted: !task.isCompleted });
+                          await callTasksToggleComplete({ platform: 'youth', taskId: task.id, isCompleted: !task.isCompleted });
                         }}
                         className="mt-1 rounded accent-[var(--youth-violet)]"
                       />

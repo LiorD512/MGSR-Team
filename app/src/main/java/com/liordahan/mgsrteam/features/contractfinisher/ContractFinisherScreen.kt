@@ -161,6 +161,18 @@ fun ContractFinisherScreen(
         state.releasesList.count { it.playerUrl in shortlistUrls || it.playerUrl in justAddedUrls }
     }
 
+    // Filter out players already in roster or shortlist
+    val rosterIds = remember(rosterPlayers) {
+        rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile) }.toSet()
+    }
+    val filteredVisibleList = remember(state.visibleList, rosterIds, shortlistUrls) {
+        state.visibleList.filter { release ->
+            val url = release.playerUrl ?: return@filter true
+            val id = extractPlayerIdFromUrl(url)
+            (id == null || id !in rosterIds) && url !in shortlistUrls
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -185,7 +197,7 @@ fun ContractFinisherScreen(
                 windowLabel = state.windowLabel,
                 total = state.releasesList.size,
                 shortlisted = shortlistedCount,
-                visible = state.visibleList.size,
+                visible = filteredVisibleList.size,
                 activeFiltersCount = listOfNotNull(
                     selectedPosition,
                     if (selectedAgeRange != ContractFinisherAgeRange.ALL) selectedAgeRange else null,
@@ -242,7 +254,7 @@ fun ContractFinisherScreen(
                     }
                 }
                 items(
-                    items = state.visibleList,
+                    items = filteredVisibleList,
                     key = { it.playerUrl ?: it.playerName ?: it.hashCode().toString() }
                 ) { release ->
                     val playerUrl = release.playerUrl

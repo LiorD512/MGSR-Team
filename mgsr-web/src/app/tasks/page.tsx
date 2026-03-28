@@ -9,12 +9,9 @@ import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import {
   collection,
   onSnapshot,
-  updateDoc,
-  addDoc,
-  doc,
-  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { callTasksCreate, callTasksUpdate, callTasksToggleComplete, callTasksDelete } from '@/lib/callables';
 import { usePlatform } from '@/contexts/PlatformContext';
 import AppLayout from '@/components/AppLayout';
 import { requestCalendarAccess, syncTasksToCalendar, type SyncResult } from '@/lib/googleCalendar';
@@ -291,15 +288,12 @@ export default function TasksPage() {
   }, [myTasks, activeCompletedTab]);
 
   const toggleComplete = async (task: AgentTask) => {
-    await updateDoc(doc(db, taskCollection, task.id), {
-      isCompleted: !task.isCompleted,
-      completedAt: task.isCompleted ? 0 : Date.now(),
-    });
+    await callTasksToggleComplete({ platform, taskId: task.id, isCompleted: !task.isCompleted });
   };
 
   const deleteTask = async (task: AgentTask) => {
     if (!confirm(t('tasks_delete_confirm'))) return;
-    await deleteDoc(doc(db, taskCollection, task.id));
+    await callTasksDelete({ platform, taskId: task.id });
   };
 
   const openEditTask = (task: AgentTask) => {
@@ -318,7 +312,9 @@ export default function TasksPage() {
       const selected = accounts.find((a) => a.id === editAgentId);
       const agentName = selected ? getDisplayName(selected, isRtl) : '';
       const dueTs = editDueDate ? new Date(editDueDate).getTime() : 0;
-      await updateDoc(doc(db, taskCollection, editTaskId), {
+      await callTasksUpdate({
+        platform,
+        taskId: editTaskId,
         title: editTitle.trim(),
         notes: editNotes.trim() || '',
         dueDate: dueTs,
@@ -341,15 +337,14 @@ export default function TasksPage() {
       const dueTs = addDueDate ? new Date(addDueDate).getTime() : 0;
       const creatorAccount = accounts.find((a) => a.email?.toLowerCase() === user.email?.toLowerCase());
       const creatorName = creatorAccount ? getDisplayName(creatorAccount, isRtl) : (user.displayName || user.email || '');
-      await addDoc(collection(db, taskCollection), {
+      await callTasksCreate({
+        platform,
         agentId: addAgentId || user.uid,
-        agentName: agentName || user.displayName || user.email,
+        agentName: agentName || user.displayName || user.email || '',
         title: addTitle.trim(),
         notes: addNotes.trim() || '',
         dueDate: dueTs,
         priority: addPriority,
-        isCompleted: false,
-        createdAt: Date.now(),
         createdByAgentId: user.uid,
         createdByAgentName: creatorName,
       });

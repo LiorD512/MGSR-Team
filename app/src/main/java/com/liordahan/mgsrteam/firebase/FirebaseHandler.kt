@@ -35,7 +35,6 @@ class FirebaseHandler(
     val youthPlayersTable = "YouthPlayers"
     val youthStatusTable = "YouthStatus"
     val playerOffersTable = "PlayerOffers"
-    val sharedPlayersTable = "SharedPlayers"
 
     // ── Platform-dependent collections (read from PlatformManager) ───
     private val p: Platform get() = platformManager.value

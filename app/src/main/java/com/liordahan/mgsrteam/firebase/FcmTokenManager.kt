@@ -3,7 +3,6 @@ package com.liordahan.mgsrteam.firebase
 import android.content.Context
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
 import com.liordahan.mgsrteam.localization.LocaleManager
 import kotlinx.coroutines.CoroutineScope
@@ -13,8 +12,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class FcmTokenManager(
-    private val context: Context,
-    private val firebaseHandler: FirebaseHandler
+    private val context: Context
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -80,15 +78,11 @@ class FcmTokenManager(
         if (email.isNullOrBlank()) return
         try {
             val language = LocaleManager.getSavedLanguage(context)
-            val snapshot = FirebaseFirestore.getInstance()
-                .collection(firebaseHandler.accountsTable)
-                .whereEqualTo("email", email)
-                .get()
-                .await()
-            snapshot.documents.firstOrNull()?.reference
-                ?.update(mapOf("fcmToken" to token, "language" to language))
-                ?.await()
-            Log.i(TAG, "FCM token + language ($language) saved to Firestore for $email")
+            SharedCallables.accountUpdate(
+                email = email,
+                fields = mapOf("fcmToken" to token, "language" to language)
+            )
+            Log.i(TAG, "FCM token + language ($language) saved via callable for $email")
         } catch (e: Exception) {
             Log.w(TAG, "Failed to save token to Firestore: ${e.message}")
         }

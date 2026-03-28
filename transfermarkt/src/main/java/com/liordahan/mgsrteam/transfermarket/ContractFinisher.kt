@@ -28,7 +28,7 @@ class ContractFinisher {
         private const val MIN_VALUE = 150_000
         private const val MAX_VALUE = 3_000_000
         private const val MAX_AGE = 31
-        private const val MAX_PAGES = 80
+        private const val MAX_PAGES = 400
         private const val BATCH_SIZE = 3
         private const val DELAY_BETWEEN_BATCHES_MS = 150L
     }
@@ -60,7 +60,7 @@ class ContractFinisher {
      */
     fun fetchContractFinishersAsFlow(
         config: WindowConfig,
-        maxRetries: Int = 2
+        maxRetries: Int = 3
     ): Flow<ContractFinisherProgress> = flow {
         Log.d(TAG, "ContractFinisher flow starting yearsToQuery=${config.yearsToQuery}")
         val all = mutableListOf<LatestTransferModel>()
@@ -71,6 +71,7 @@ class ContractFinisher {
         try {
             for (jahr in config.yearsToQuery) {
                 var page = 1
+                var consecutiveEmptyPages = 0
 
                 while (page <= MAX_PAGES) {
                     val batchEnd = minOf(page + BATCH_SIZE - 1, MAX_PAGES)
@@ -84,7 +85,15 @@ class ContractFinisher {
 
                     var batchShouldBreak = false
                     for (doc in docs) {
-                        if (doc == null) continue
+                        if (doc == null) {
+                            consecutiveEmptyPages++
+                            if (consecutiveEmptyPages >= 2) {
+                                Log.d(TAG, "$consecutiveEmptyPages consecutive null pages – stopping")
+                                batchShouldBreak = true
+                                break
+                            }
+                            continue
+                        }
                         try {
                             val raw = parseEndendevertraegeResults(doc)
                             val contractExpiryDate = formatContractExpiryDate(config, jahr)
@@ -99,8 +108,14 @@ class ContractFinisher {
                             all.addAll(newOnes)
 
                             if (raw.isEmpty()) {
-                                batchShouldBreak = true
-                                break
+                                consecutiveEmptyPages++
+                                if (consecutiveEmptyPages >= 2) {
+                                    Log.d(TAG, "$consecutiveEmptyPages consecutive empty pages – stopping")
+                                    batchShouldBreak = true
+                                    break
+                                }
+                            } else {
+                                consecutiveEmptyPages = 0
                             }
                             val maxValueOnPage = raw.maxOfOrNull { it.getRealMarketValue() } ?: 0
                             if (maxValueOnPage < MIN_VALUE) {
@@ -131,7 +146,8 @@ class ContractFinisher {
             }
 
             val sorted = all.sortedByDescending { it.getRealMarketValue() }
-            Log.d(TAG, "ContractFinisher flow done: ${sorted.size} players")
+            Log.d(TAG, "ContractFinisher flow done: ${sorted.size} players, $totalPagesFetched pages fetched")
+            emit(ContractFinisherProgress(players = sorted, pagesLoaded = totalPagesFetched, isLoading = false))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

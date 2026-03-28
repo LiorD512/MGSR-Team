@@ -139,6 +139,18 @@ fun ReturneeScreen(
         originalReturneeList.count { it.playerUrl in shortlistUrls || it.playerUrl in justAddedUrls }
     }
 
+    // Filter out players already in roster or shortlist
+    val rosterIds = remember(rosterPlayers) {
+        rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile) }.toSet()
+    }
+    val filteredReturneeList = remember(visibleReturneeList, rosterIds, shortlistUrls) {
+        visibleReturneeList.filter { release ->
+            val url = release.playerUrl ?: return@filter true
+            val id = extractPlayerIdFromUrl(url)
+            (id == null || id !in rosterIds) && url !in shortlistUrls
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.fetchAllReturneesFromAllLeagues()
     }
@@ -266,7 +278,7 @@ fun ReturneeScreen(
                     }
                 }
 
-                items(visibleReturneeList, key = { it.playerUrl ?: it.hashCode() }) { release ->
+                items(filteredReturneeList, key = { it.playerUrl ?: it.hashCode() }) { release ->
                     val playerUrl = release.playerUrl
                     val isExpanded = playerUrl != null && expandedPlayerUrl == playerUrl
                     val rosterTeammates = playerUrl?.let { teammatesCache[it] }

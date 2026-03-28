@@ -1,6 +1,5 @@
 import { getPlayerDetails } from '@/lib/api';
-import { updateDoc } from 'firebase/firestore';
-import type { DocumentReference } from 'firebase/firestore';
+import { callShortlistUpdate } from '@/lib/callables';
 
 const DEFAULT_TEMPLATE =
   "Hey {firstName}, {agentName} here from MGSR Football Agency. Been tracking your recent performances — really like what I see. I think there could be some interesting options for you. Drop me your WhatsApp and let's talk.";
@@ -32,15 +31,17 @@ export function getInstagramProfileUrl(handle: string): string {
 }
 
 /**
- * Background-enrich a shortlist Firestore doc with Instagram data
+ * Background-enrich a shortlist entry with Instagram data
  * from the player's Transfermarkt profile. Fire-and-forget.
  */
-export function enrichShortlistInstagram(tmProfileUrl: string, docRef: DocumentReference): void {
+export function enrichShortlistInstagram(tmProfileUrl: string, platform: string = 'men'): void {
   if (!tmProfileUrl.includes('transfermarkt')) return;
   getPlayerDetails(tmProfileUrl)
     .then((details) => {
       if (details.instagramHandle) {
-        void updateDoc(docRef, {
+        void callShortlistUpdate({
+          platform,
+          tmProfileUrl,
           instagramHandle: details.instagramHandle,
           instagramUrl: details.instagramUrl ?? null,
         });

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { doc, getDoc, setDoc, addDoc, collection, onSnapshot, getDocs, query as firestoreQuery, where } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { callShortlistAdd } from '@/lib/callables';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import AppLayout from '@/components/AppLayout';
@@ -105,55 +106,42 @@ export default function AiScoutPage() {
       setAddingToShortlistUrl(url);
       try {
         const account = await getCurrentAccountForShortlist(user);
-        const colRef = collection(db, 'Shortlists');
-        const q = firestoreQuery(colRef, where('tmProfileUrl', '==', url));
-        const existsSnap = await getDocs(q);
-        if (existsSnap.empty) {
-          let entry: Record<string, unknown>;
-          try {
-            const details = await getPlayerDetails(url);
-            entry = {
-              tmProfileUrl: url,
-              addedAt: Date.now(),
-              playerImage: details.profileImage ?? null,
-              playerName: details.fullName ?? null,
-              playerPosition: details.positions?.[0] ?? null,
-              playerAge: details.age ?? null,
-              playerNationality: details.nationality ?? null,
-              playerNationalityFlag: details.nationalityFlag ?? null,
-              clubJoinedName: details.currentClub?.clubName ?? null,
-              marketValue: details.marketValue ?? null,
-              addedByAgentId: account.id,
-              addedByAgentName: account.name ?? null,
-              addedByAgentHebrewName: account.hebrewName ?? null,
-              instagramHandle: details.instagramHandle ?? null,
-              instagramUrl: details.instagramUrl ?? null,
-            };
-          } catch {
-            entry = {
-              tmProfileUrl: url,
-              addedAt: Date.now(),
-              playerName: s.name ?? null,
-              playerPosition: s.position ?? null,
-              playerAge: s.age ?? null,
-              playerNationality: s.nationality ?? null,
-              clubJoinedName: s.club ?? null,
-              marketValue: s.marketValue ?? null,
-              addedByAgentId: account.id,
-              addedByAgentName: account.name ?? null,
-              addedByAgentHebrewName: account.hebrewName ?? null,
-            };
-          }
-          await addDoc(colRef, entry);
-          await addDoc(collection(db, 'FeedEvents'), {
-            type: 'SHORTLIST_ADDED',
-            playerName: entry.playerName ?? null,
-            playerImage: entry.playerImage ?? null,
-            playerTmProfile: url,
-            timestamp: Date.now(),
-            agentName: account.name ?? null,
-          });
+        let entryFields: Record<string, unknown> = {
+          addedByAgentId: account.id,
+          addedByAgentName: account.name ?? null,
+          addedByAgentHebrewName: account.hebrewName ?? null,
+        };
+        try {
+          const details = await getPlayerDetails(url);
+          entryFields = {
+            ...entryFields,
+            playerImage: details.profileImage ?? null,
+            playerName: details.fullName ?? null,
+            playerPosition: details.positions?.[0] ?? null,
+            playerAge: details.age ?? null,
+            playerNationality: details.nationality ?? null,
+            playerNationalityFlag: details.nationalityFlag ?? null,
+            clubJoinedName: details.currentClub?.clubName ?? null,
+            marketValue: details.marketValue ?? null,
+            instagramHandle: details.instagramHandle ?? null,
+            instagramUrl: details.instagramUrl ?? null,
+          };
+        } catch {
+          entryFields = {
+            ...entryFields,
+            playerName: s.name ?? null,
+            playerPosition: s.position ?? null,
+            playerAge: s.age ?? null,
+            playerNationality: s.nationality ?? null,
+            clubJoinedName: s.club ?? null,
+            marketValue: s.marketValue ?? null,
+          };
         }
+        await callShortlistAdd({
+          platform: 'men',
+          tmProfileUrl: url,
+          ...entryFields,
+        });
       } catch (err) {
         setShortlistError(err instanceof Error ? err.message : 'Failed to add');
       } finally {

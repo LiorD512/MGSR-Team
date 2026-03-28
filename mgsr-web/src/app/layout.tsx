@@ -14,6 +14,7 @@ import { LanguageProvider } from '@/contexts/LanguageContext';
 import { PlatformProvider } from '@/contexts/PlatformContext';
 import DirSync from '@/components/DirSync';
 import PlatformSync from '@/components/PlatformSync';
+import AppConfigInit from '@/components/AppConfigInit';
 
 const syne = Syne({
   subsets: ['latin'],
@@ -62,6 +63,7 @@ export default function RootLayout({
             <PlatformProvider>
               <DirSync />
               <PlatformSync />
+              <AppConfigInit />
               {children}
             </PlatformProvider>
           </LanguageProvider>

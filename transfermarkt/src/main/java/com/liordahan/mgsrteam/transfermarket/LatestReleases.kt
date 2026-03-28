@@ -54,17 +54,14 @@ data class LatestTransferModel(
     val marketValue: String? = null
 ) : Parcelable {
     fun getRealMarketValue(): Int {
-        if (marketValue?.contains("-") == false && marketValue.isNotEmpty()) {
-            if (marketValue.contains("k", true)) {
-                return (marketValue.substringAfter("€").substringBefore("k")
-                    .trim().toIntOrNull() ?: 0) * 1000
-            } else if (marketValue.contains("m", true)) {
-                return ((marketValue.substringAfter("€")
-                    .substringBefore("m")
-                    .trim().toDoubleOrNull() ?: 0.0) * 1000000).toInt()
-            }
+        val mv = marketValue ?: return 0
+        if (mv.contains("-") || mv.isEmpty()) return 0
+        val lower = mv.lowercase()
+        return when {
+            lower.contains("k") -> (lower.substringAfter("€").substringBefore("k").trim().toIntOrNull() ?: 0) * 1000
+            lower.contains("m") -> ((lower.substringAfter("€").substringBefore("m").trim().toDoubleOrNull() ?: 0.0) * 1000000).toInt()
+            else -> 0
         }
-        return 0
     }
 }
 

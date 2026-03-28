@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, setDoc, addDoc, collection, onSnapshot, getDocs, query, where } from 'firebase/firestore';
+import { onSnapshot, collection } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { db } from '@/lib/firebase';
 import { getPlayerDetails, extractPlayerIdFromUrl } from '@/lib/api';
+import { callShortlistAdd } from '@/lib/callables';
 
 function samePlayer(url1: string, url2: string): boolean {
   const id1 = extractPlayerIdFromUrl(url1);
@@ -162,53 +163,38 @@ export default function FindNextTab() {
       setAddingToShortlistUrl(url);
       try {
         const account = await getCurrentAccountForShortlist(user);
-        const colRef = collection(db, 'Shortlists');
-        const q = query(colRef, where('tmProfileUrl', '==', url));
-        const existsSnap = await getDocs(q);
-        if (existsSnap.empty) {
-          let entry: Record<string, unknown>;
-          try {
-            const details = await getPlayerDetails(url);
-            entry = {
-              tmProfileUrl: url,
-              addedAt: Date.now(),
-              playerImage: details.profileImage ?? null,
-              playerName: details.fullName ?? null,
-              playerPosition: details.positions?.[0] ?? null,
-              playerAge: details.age ?? null,
-              playerNationality: details.nationality ?? null,
-              playerNationalityFlag: details.nationalityFlag ?? null,
-              clubJoinedName: details.currentClub?.clubName ?? null,
-              marketValue: details.marketValue ?? null,
-              addedByAgentId: account.id,
-              addedByAgentName: account.name ?? null,
-              addedByAgentHebrewName: account.hebrewName ?? null,
-            };
-          } catch {
-            entry = {
-              tmProfileUrl: url,
-              addedAt: Date.now(),
-              playerName: player.name ?? null,
-              playerPosition: player.position ?? null,
-              playerAge: player.age ?? null,
-              playerNationality: player.citizenship ?? null,
-              clubJoinedName: player.club ?? player.fbref_team ?? null,
-              marketValue: player.market_value ?? null,
-              addedByAgentId: account.id,
-              addedByAgentName: account.name ?? null,
-              addedByAgentHebrewName: account.hebrewName ?? null,
-            };
-          }
-          await addDoc(colRef, entry);
-          await addDoc(collection(db, 'FeedEvents'), {
-            type: 'SHORTLIST_ADDED',
-            playerName: entry.playerName ?? null,
-            playerImage: entry.playerImage ?? null,
-            playerTmProfile: url,
-            timestamp: Date.now(),
-            agentName: account.name ?? null,
-          });
+        let entry: Record<string, unknown> = {
+          platform: 'men',
+          tmProfileUrl: url,
+          addedByAgentId: account.id,
+          addedByAgentName: account.name ?? null,
+          addedByAgentHebrewName: account.hebrewName ?? null,
+        };
+        try {
+          const details = await getPlayerDetails(url);
+          entry = {
+            ...entry,
+            playerImage: details.profileImage ?? null,
+            playerName: details.fullName ?? null,
+            playerPosition: details.positions?.[0] ?? null,
+            playerAge: details.age ?? null,
+            playerNationality: details.nationality ?? null,
+            playerNationalityFlag: details.nationalityFlag ?? null,
+            clubJoinedName: details.currentClub?.clubName ?? null,
+            marketValue: details.marketValue ?? null,
+          };
+        } catch {
+          entry = {
+            ...entry,
+            playerName: player.name ?? null,
+            playerPosition: player.position ?? null,
+            playerAge: player.age ?? null,
+            playerNationality: player.citizenship ?? null,
+            clubJoinedName: player.club ?? player.fbref_team ?? null,
+            marketValue: player.market_value ?? null,
+          };
         }
+        await callShortlistAdd(entry as Parameters<typeof callShortlistAdd>[0]);
       } catch (err) {
         setShortlistError(err instanceof Error ? err.message : 'Failed to add');
       } finally {

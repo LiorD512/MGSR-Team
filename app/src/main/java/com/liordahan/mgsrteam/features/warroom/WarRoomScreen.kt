@@ -1458,7 +1458,10 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         groupedProfiles.keys.associate { (agentId, agentName) ->
             val key = agentId to agentName
             val hebrewName = if (isHebrew) {
+                // 1) Try agentNameHe from server response
                 groupedProfiles[key]?.firstOrNull()?.agentNameHe?.takeIf { it.isNotBlank() }
+                    // 2) Try remote config country translations (no build needed to add new agents)
+                    ?: CountryNameTranslator.getHebrewName(agentName)
             } else null
             val displayName = hebrewName ?: run {
                 val resKey = "war_room_agent_${agentName.lowercase().replace(" ", "_")}"
@@ -1483,20 +1486,7 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         groupedProfiles.filter { (key, _) -> key.first == state.selectedAgentFilter }
     }
 
-    val maxProfilesPerAgent = 5
-    val rotationPage = state.agentRotationPage
-    // Slice each agent's profiles based on rotation page (wrapping)
-    val paginatedProfiles = remember(visibleGroupedProfiles, rotationPage) {
-        visibleGroupedProfiles.mapValues { (_, profiles) ->
-            if (profiles.size <= maxProfilesPerAgent) profiles
-            else {
-                val totalPages = (profiles.size + maxProfilesPerAgent - 1) / maxProfilesPerAgent
-                val page = rotationPage % totalPages
-                val start = page * maxProfilesPerAgent
-                profiles.subList(start, minOf(start + maxProfilesPerAgent, profiles.size))
-            }
-        }
-    }
+    // Show all profiles per agent (no limit)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1669,17 +1659,7 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
             )
         }
 
-        // Rotation hint disclaimer
-        item {
-            Text(
-                text = stringResource(R.string.war_room_agent_rotation_hint),
-                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 11.sp),
-                lineHeight = 15.sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 4.dp)
-            )
-        }
+
 
         // Loading
         if (state.agentsLoading) {
@@ -1692,21 +1672,15 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         }
 
         // Agent sections (alphabetical)
-        paginatedProfiles.entries.sortedWith(compareBy(java.text.Collator.getInstance(sortLocale)) {
+        visibleGroupedProfiles.entries.sortedWith(compareBy(java.text.Collator.getInstance(sortLocale)) {
             agentDisplayNames[it.key] ?: it.key.second
         }).forEach { (key, profiles) ->
             val (agentId, agentName) = key
-            val totalForAgent = visibleGroupedProfiles[key]?.size ?: profiles.size
-            val totalPages = (totalForAgent + maxProfilesPerAgent - 1) / maxProfilesPerAgent
-            val currentPage = if (totalForAgent <= maxProfilesPerAgent) 0 else rotationPage % totalPages
 
             item(key = "header_$agentId") {
                 AgentSectionHeader(
                     name = agentDisplayNames[agentId to agentName] ?: agentName,
-                    count = profiles.size,
-                    totalCount = totalForAgent,
-                    page = currentPage + 1,
-                    totalPages = totalPages
+                    count = profiles.size
                 )
             }
 
@@ -1859,7 +1833,7 @@ private fun AgentAvatar(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun AgentSectionHeader(name: String, count: Int, totalCount: Int = count, page: Int = 1, totalPages: Int = 1) {
+private fun AgentSectionHeader(name: String, count: Int) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1893,15 +1867,8 @@ private fun AgentSectionHeader(name: String, count: Int, totalCount: Int = count
                 letterSpacing = (-0.2).sp,
                 modifier = Modifier.weight(1f)
             )
-            if (totalPages > 1) {
-                Text(
-                    text = "$page/$totalPages",
-                    style = regularTextStyle(HomeTextSecondary, 10.sp),
-                    modifier = Modifier.padding(end = 6.dp)
-                )
-            }
             Text(
-                text = "$count/$totalCount",
+                text = "$count",
                 style = boldTextStyle(WrAgent, 12.sp),
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))

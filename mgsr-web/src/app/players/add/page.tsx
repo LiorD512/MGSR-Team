@@ -9,18 +9,14 @@ import AddWomanPlayerForm from './AddWomanPlayerForm';
 import AddYouthPlayerForm from './AddYouthPlayerForm';
 import {
   collection,
-  addDoc,
   query,
   where,
   getDocs,
-  doc,
-  getDoc,
-  setDoc,
-  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { searchPlayers, getPlayerDetails, SearchPlayer, PlayerDetails } from '@/lib/api';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { callShortlistAdd, callShortlistRemove, callPlayersCreate } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 
@@ -146,25 +142,9 @@ export default function AddPlayerPage() {
     try {
       if (forShortlist) {
         const account = await getCurrentAccountForShortlist(user);
-        const colRef = collection(db, 'Shortlists');
-        const rosterExists = await getDocs(
-          query(collection(db, 'Players'), where('tmProfile', '==', selectedPlayer.tmProfile))
-        );
-        if (!rosterExists.empty) {
-          setError(t('shortlist_player_in_roster'));
-          setSaving(false);
-          return;
-        }
-        const q = query(colRef, where('tmProfileUrl', '==', selectedPlayer.tmProfile));
-        const existsSnap = await getDocs(q);
-        if (!existsSnap.empty) {
-          setError('Already in shortlist');
-          setSaving(false);
-          return;
-        }
-        const entry: Record<string, unknown> = {
+        const result = await callShortlistAdd({
+          platform: 'men',
           tmProfileUrl: selectedPlayer.tmProfile,
-          addedAt: Date.now(),
           playerImage: selectedPlayer.profileImage ?? null,
           playerName: selectedPlayer.fullName ?? null,
           playerPosition: selectedPlayer.positions?.[0] ?? null,
@@ -178,17 +158,17 @@ export default function AddPlayerPage() {
           addedByAgentHebrewName: account.hebrewName ?? null,
           instagramHandle: selectedPlayer.instagramHandle ?? null,
           instagramUrl: selectedPlayer.instagramUrl ?? null,
-        };
-        await addDoc(colRef, entry);
-        const shortlistFeedEvent: Record<string, unknown> = {
-          type: 'SHORTLIST_ADDED',
-          playerName: selectedPlayer.fullName ?? null,
-          playerImage: selectedPlayer.profileImage ?? null,
-          playerTmProfile: selectedPlayer.tmProfile,
-          timestamp: Date.now(),
-          agentName: account.name ?? null,
-        };
-        await addDoc(collection(db, 'FeedEvents'), shortlistFeedEvent);
+        });
+        if (result.status === 'already_in_roster') {
+          setError(t('shortlist_player_in_roster'));
+          setSaving(false);
+          return;
+        }
+        if (result.status === 'already_exists') {
+          setError('Already in shortlist');
+          setSaving(false);
+          return;
+        }
         router.push(fromReleases ? '/releases' : '/shortlist');
       } else {
         const playersRef = collection(db, 'Players');
@@ -212,6 +192,7 @@ export default function AddPlayerPage() {
         });
 
         const playerToSave: Record<string, unknown> = {
+          platform: 'men',
           tmProfile: selectedPlayer.tmProfile,
           fullName: selectedPlayer.fullName,
           height: selectedPlayer.height,
@@ -235,37 +216,16 @@ export default function AddPlayerPage() {
         if (pPhone) playerToSave.playerPhoneNumber = pPhone;
         if (aPhone) playerToSave.agentPhoneNumber = aPhone;
 
-        // Firestore rejects undefined; remove any undefined values
+        // Remove undefined values before sending
         const sanitized = Object.fromEntries(
           Object.entries(playerToSave).filter(([, v]) => v !== undefined)
         );
 
-        await addDoc(collection(db, 'Players'), sanitized);
-        const feedEvent: Record<string, unknown> = {
-          type: 'PLAYER_ADDED',
-          playerName: playerToSave.fullName ?? null,
-          playerImage: playerToSave.profileImage ?? null,
-          playerTmProfile: playerToSave.tmProfile,
-          timestamp: Date.now(),
-          agentName,
-        };
-        await addDoc(collection(db, 'FeedEvents'), feedEvent);
-
-        if (fromShortlist) {
-          const q = query(collection(db, 'Shortlists'), where('tmProfileUrl', '==', selectedPlayer.tmProfile));
-          const shortlistSnap = await getDocs(q);
-          for (const d of shortlistSnap.docs) {
-            await deleteDoc(d.ref);
-          }
-          const removedFeedEvent: Record<string, unknown> = {
-            type: 'SHORTLIST_REMOVED',
-            playerName: selectedPlayer.fullName ?? null,
-            playerImage: selectedPlayer.profileImage ?? null,
-            playerTmProfile: selectedPlayer.tmProfile,
-            timestamp: Date.now(),
-            agentName,
-          };
-          await addDoc(collection(db, 'FeedEvents'), removedFeedEvent);
+        const result = await callPlayersCreate(sanitized as Parameters<typeof callPlayersCreate>[0]);
+        if (result.status === 'already_exists') {
+          setError('Player already in roster');
+          setSaving(false);
+          return;
         }
 
         router.push(fromReleases ? '/releases' : fromShortlist ? '/shortlist' : '/players');

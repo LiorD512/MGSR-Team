@@ -3,10 +3,11 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import SoccerLineUp, { type Team, type Player } from 'react-soccer-lineup';
-import { collection, doc, getDoc, setDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { callShadowTeamsSave } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
 import { FORMATIONS } from '@/lib/shadowTeamFormations';
 import { convertPosition } from '@/lib/transfermarkt';
@@ -341,8 +342,9 @@ export default function ShadowTeamsPage() {
   const saveShadowTeam = useCallback(
     (newSlots: PositionSlot[], newFormationId: string) => {
       if (!selectedAccountId || !isOwnTeam) return;
-      const docRef = doc(db, SHADOW_TEAMS_COLLECTION, selectedAccountId);
-      setDoc(docRef, {
+      callShadowTeamsSave({
+        platform: 'men',
+        accountId: selectedAccountId,
         formationId: newFormationId,
         slots: newSlots.map((s) => ({ starter: s.starter, substitute: s.substitute ?? null })),
         updatedAt: Date.now(),

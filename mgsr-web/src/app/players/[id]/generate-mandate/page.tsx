@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, collection, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, collection, onSnapshot } from 'firebase/firestore';
+import { callMandateSigningCreate } from '@/lib/callables';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
@@ -195,7 +196,7 @@ export default function GenerateMandatePage() {
       const { token, signingUrl: url } = await res.json();
 
       // Write mandate data to Firestore client-side
-      await setDoc(doc(db, 'MandateSigningRequests', token), {
+      await callMandateSigningCreate({
         token,
         passportDetails: player.passportDetails,
         expiryDate: new Date(expiryDate).getTime(),

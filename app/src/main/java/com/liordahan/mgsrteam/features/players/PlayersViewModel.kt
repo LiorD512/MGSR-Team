@@ -643,7 +643,9 @@ class PlayersViewModel(
                         )
                     }
                 } else {
-                    val playersList = value?.toObjects(Player::class.java) ?: emptyList()
+                    val playersList = value?.documents?.mapNotNull { doc ->
+                        try { doc.toObject(Player::class.java) } catch (_: Exception) { null }
+                    } ?: emptyList()
                     viewModelScope.launch(Dispatchers.Default) {
                         val sorted = playersList.sortedByDescending { it.createdAt }
                         _inputState.update {

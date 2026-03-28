@@ -835,7 +835,7 @@ export async function searchFreeAgentsFallback(opts: {
 const CF_MIN_VALUE = 150000;
 const CF_MAX_VALUE = 3000000;
 const CF_MAX_AGE = 31;
-const CF_MAX_PAGES = 80;
+const CF_MAX_PAGES = 400;
 const CF_BATCH_SIZE = 3;
 
 function getContractFinisherWindow(): { window: string; yearsToQuery: number[] } {

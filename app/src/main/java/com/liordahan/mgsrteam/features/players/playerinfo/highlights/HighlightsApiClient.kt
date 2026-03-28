@@ -1,11 +1,9 @@
 package com.liordahan.mgsrteam.features.players.playerinfo.highlights
 
 import android.util.Log
-import com.google.firebase.firestore.FirebaseFirestore
 import com.liordahan.mgsrteam.features.players.models.PinnedHighlight
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
@@ -97,31 +95,6 @@ class HighlightsApiClient(
         }
 
         parseResponse(playerName, body)
-    }
-
-    suspend fun savePinnedHighlights(
-        playerId: String,
-        videos: List<HighlightVideo>,
-        collection: String = "Players"
-    ) = withContext(Dispatchers.IO) {
-        val toSave = videos.take(MAX_PINNED).map { v ->
-            hashMapOf(
-                "id" to v.id,
-                "source" to v.source,
-                "title" to v.title,
-                "thumbnailUrl" to v.thumbnailUrl,
-                "embedUrl" to v.embedUrl,
-                "channelName" to v.channelName,
-                "publishedAt" to v.publishedAt,
-                "durationSeconds" to v.durationSeconds,
-                "viewCount" to v.viewCount
-            )
-        }
-        FirebaseFirestore.getInstance()
-            .collection(collection)
-            .document(playerId)
-            .update("pinnedHighlights", toSave)
-            .await()
     }
 
     private fun parseResponse(playerName: String, body: String): HighlightsResponse {

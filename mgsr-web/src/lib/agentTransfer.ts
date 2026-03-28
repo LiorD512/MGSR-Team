@@ -3,16 +3,16 @@ import {
   query,
   where,
   limit,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
   onSnapshot,
-  runTransaction,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import {
+  callAgentTransferRequest,
+  callAgentTransferApprove,
+  callAgentTransferReject,
+  callAgentTransferCancel,
+} from './callables';
 
 export interface AgentTransferRequest {
   id?: string;
@@ -45,80 +45,27 @@ export async function requestAgentTransfer(params: {
   toAgentId: string;
   toAgentName?: string;
 }): Promise<string | null> {
-  // Check for existing pending request on this specific player only
-  const existingSnap = await getDocs(
-    query(
-      collection(db, COLLECTION),
-      where('playerId', '==', params.playerId),
-      where('status', '==', STATUS_PENDING),
-      limit(1)
-    )
-  ).catch(() => null);
-  if (existingSnap && !existingSnap.empty) return null;
-
-  const request: AgentTransferRequest = {
-    ...params,
-    status: STATUS_PENDING,
-    requestedAt: Date.now(),
-  };
-
-  const ref = await addDoc(collection(db, COLLECTION), request);
-  return ref.id;
+  const result = await callAgentTransferRequest(params);
+  if ('alreadyPending' in result) return null;
+  return result.id;
 }
 
 export async function approveTransfer(
   requestId: string,
   playersCollection: string
 ): Promise<void> {
-  const requestRef = doc(db, COLLECTION, requestId);
-
-  await runTransaction(db, async (transaction) => {
-    // All reads MUST come before any writes in Firestore transactions
-    const snap = await transaction.get(requestRef);
-    if (!snap.exists()) return;
-    const data = snap.data() as AgentTransferRequest;
-
-    let playerSnap = null;
-    let playerRef = null;
-    if (data.playerId) {
-      playerRef = doc(db, playersCollection, data.playerId);
-      playerSnap = await transaction.get(playerRef);
-    }
-
-    // Now do all writes
-    transaction.update(requestRef, {
-      status: STATUS_APPROVED,
-      resolvedAt: Date.now(),
-    });
-
-    if (playerRef && playerSnap) {
-      const playerData = playerSnap.data() || {};
-
-      const updates: Record<string, unknown> = {
-        agentInChargeId: data.toAgentId,
-        agentInChargeName: data.toAgentName,
-        agentTransferredAt: Date.now(),
-      };
-
-      if (!playerData.originalAgentId) {
-        updates.originalAgentId = playerData.agentInChargeId ?? null;
-        updates.originalAgentName = playerData.agentInChargeName ?? null;
-      }
-
-      transaction.update(playerRef, updates);
-    }
-  });
+  // Derive platform from playersCollection name for backward compatibility
+  const platform = playersCollection === 'PlayersWomen' ? 'women'
+    : playersCollection === 'PlayersYouth' ? 'youth' : 'men';
+  await callAgentTransferApprove({ platform, requestId });
 }
 
 export async function rejectTransfer(requestId: string): Promise<void> {
-  await updateDoc(doc(db, COLLECTION, requestId), {
-    status: STATUS_REJECTED,
-    resolvedAt: Date.now(),
-  });
+  await callAgentTransferReject({ requestId });
 }
 
 export async function cancelTransferRequest(requestId: string): Promise<void> {
-  await deleteDoc(doc(db, COLLECTION, requestId));
+  await callAgentTransferCancel({ requestId });
 }
 
 export function listenForPendingRequest(

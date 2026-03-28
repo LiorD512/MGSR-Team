@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, getDoc, setDoc, collection, getDocs, query, orderBy, onSnapshot, addDoc, where } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { callShortlistAdd } from '@/lib/callables';
 import { getTeammates, extractPlayerIdFromUrl, type ContractFinisherPlayer } from '@/lib/api';
 import { subscribe, loadContractFinishers, getContractFinisherState } from '@/lib/contractFinisherStore';
 import { parseMarketValue } from '@/lib/releases';
@@ -413,16 +414,15 @@ export default function ContractFinisherPage() {
       if (!user || !player.playerUrl) return;
       setAddingUrl(player.playerUrl);
       try {
-        const account = await getCurrentAccountForShortlist(user);
-        const colRef = collection(db, 'Shortlists');
         const rosterExists = rosterPlayers.some((p) => p.tmProfile === player.playerUrl);
         if (rosterExists) {
           setError(t('shortlist_player_in_roster'));
           return;
         }
-        const entry: Record<string, unknown> = {
+        const account = await getCurrentAccountForShortlist(user);
+        const result = await callShortlistAdd({
+          platform: 'men',
           tmProfileUrl: player.playerUrl,
-          addedAt: Date.now(),
           playerImage: player.playerImage ?? null,
           playerName: player.playerName ?? null,
           playerPosition: player.playerPosition ?? null,
@@ -435,21 +435,9 @@ export default function ContractFinisherPage() {
           addedByAgentId: account.id,
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
-        };
-        const q = query(colRef, where('tmProfileUrl', '==', player.playerUrl));
-        const existsSnap = await getDocs(q);
-        if (existsSnap.empty) {
-          const docRef = await addDoc(colRef, entry);
-          enrichShortlistInstagram(player.playerUrl, docRef);
-          const feedEvent: Record<string, unknown> = {
-            type: 'SHORTLIST_ADDED',
-            playerName: entry.playerName ?? null,
-            playerImage: entry.playerImage ?? null,
-            playerTmProfile: player.playerUrl,
-            timestamp: Date.now(),
-            agentName: account.name ?? null,
-          };
-          await addDoc(collection(db, 'FeedEvents'), feedEvent);
+        });
+        if (result.status === 'added') {
+          enrichShortlistInstagram(player.playerUrl);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to add');
@@ -535,8 +523,16 @@ export default function ContractFinisherPage() {
         return true;
       });
     }
+    // Exclude players already in roster or shortlist
+    const rosterTmIds = new Set(rosterPlayers.map((p) => extractPlayerIdFromUrl(p.tmProfile)).filter(Boolean));
+    result = result.filter((p) => {
+      const id = extractPlayerIdFromUrl(p.playerUrl);
+      if (id && rosterTmIds.has(id)) return false;
+      if (p.playerUrl && shortlistUrls.has(p.playerUrl)) return false;
+      return true;
+    });
     return result;
-  }, [players, positionFilter, ageFilter, regionFilter, valueFilter]);
+  }, [players, positionFilter, ageFilter, regionFilter, valueFilter, rosterPlayers, shortlistUrls]);
 
   const shortlistedCount = useMemo(
     () => filteredPlayers.filter((p) => p.playerUrl && shortlistUrls.has(p.playerUrl)).length,

@@ -2,7 +2,6 @@ package com.liordahan.mgsrteam.features.add
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Club
 import com.liordahan.mgsrteam.features.players.models.Player
@@ -786,58 +785,42 @@ class AddPlayerViewModel(
                 }?.name
 
                 val parentContact = if (form.parentName.isNotBlank() || form.parentPhone.isNotBlank()) {
-                    com.liordahan.mgsrteam.features.players.models.ParentContact(
-                        parentName = form.parentName.takeIf { it.isNotBlank() },
-                        parentRelationship = form.parentRelationship.takeIf { it.isNotBlank() },
-                        parentPhoneNumber = form.parentPhone.takeIf { it.isNotBlank() },
-                        parentEmail = form.parentEmail.takeIf { it.isNotBlank() }
+                    mapOf(
+                        "parentName" to form.parentName.takeIf { it.isNotBlank() },
+                        "parentRelationship" to form.parentRelationship.takeIf { it.isNotBlank() },
+                        "parentPhoneNumber" to form.parentPhone.takeIf { it.isNotBlank() },
+                        "parentEmail" to form.parentEmail.takeIf { it.isNotBlank() }
                     )
                 } else null
 
-                val player = Player(
-                    fullName = effectiveName.trim(),
-                    fullNameHe = form.fullNameHe.takeIf { it.isNotBlank() },
-                    positions = form.positions.ifEmpty { null },
-                    currentClub = form.currentClub.takeIf { it.isNotBlank() }?.let { Club(clubName = it) },
-                    academy = form.academy.takeIf { it.isNotBlank() },
-                    dateOfBirth = form.dateOfBirth.takeIf { it.isNotBlank() },
-                    ageGroup = form.ageGroup.takeIf { it.isNotBlank() },
-                    nationality = form.nationality.takeIf { it.isNotBlank() },
-                    profileImage = form.profileImage.takeIf { it.isNotBlank() },
-                    ifaUrl = form.ifaUrl.takeIf { it.isNotBlank() },
-                    playerPhoneNumber = form.playerPhone.takeIf { it.isNotBlank() },
-                    playerEmail = form.playerEmail.takeIf { it.isNotBlank() },
-                    parentContact = parentContact,
-                    notes = form.notes.takeIf { it.isNotBlank() },
-                    createdAt = System.currentTimeMillis(),
-                    agentInChargeName = agentInChargeName
+                val fields = mutableMapOf<String, Any?>(
+                    "fullName" to effectiveName.trim(),
+                    "fullNameHe" to form.fullNameHe.takeIf { it.isNotBlank() },
+                    "positions" to form.positions.ifEmpty { null },
+                    "currentClub" to form.currentClub.takeIf { it.isNotBlank() }?.let { mapOf("clubName" to it) },
+                    "academy" to form.academy.takeIf { it.isNotBlank() },
+                    "dateOfBirth" to form.dateOfBirth.takeIf { it.isNotBlank() },
+                    "ageGroup" to form.ageGroup.takeIf { it.isNotBlank() },
+                    "nationality" to form.nationality.takeIf { it.isNotBlank() },
+                    "profileImage" to form.profileImage.takeIf { it.isNotBlank() },
+                    "ifaUrl" to form.ifaUrl.takeIf { it.isNotBlank() },
+                    "playerPhoneNumber" to form.playerPhone.takeIf { it.isNotBlank() },
+                    "playerEmail" to form.playerEmail.takeIf { it.isNotBlank() },
+                    "parentContact" to parentContact,
+                    "notes" to form.notes.takeIf { it.isNotBlank() },
+                    "createdAt" to System.currentTimeMillis(),
+                    "agentInChargeName" to agentInChargeName,
                 )
 
-                firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .add(player)
-                    .await()
-
-                com.liordahan.mgsrteam.analytics.AnalyticsHelper.logAddPlayer()
-
-                // Write feed event
-                firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.feedEventsTable)
-                    .add(
-                        FeedEvent(
-                            type = FeedEvent.TYPE_PLAYER_ADDED,
-                            playerName = player.fullName,
-                            playerImage = player.profileImage,
-                            playerTmProfile = null,
-                            timestamp = System.currentTimeMillis(),
-                            agentName = agentInChargeName
-                        )
-                    )
-
-                // Auto-remove from shortlist (same behaviour as women/men platform)
-                if (form.ifaUrl.isNotBlank()) {
-                    try { shortlistRepository.removeFromShortlist(form.ifaUrl) } catch (_: Exception) {}
+                val status = com.liordahan.mgsrteam.firebase.SharedCallables.playersCreate(
+                    platformManager.current.value, fields
+                )
+                if (status == "already_exists") {
+                    _errorMessageFlow.emit("Player already in roster")
+                    _youthFormState.update { it.copy(isSaving = false) }
+                    return@launch
                 }
+                com.liordahan.mgsrteam.analytics.AnalyticsHelper.logAddPlayer()
 
                 _isPlayerAddedFlow.update { true }
             } catch (e: Exception) {
@@ -920,48 +903,31 @@ class AddPlayerViewModel(
                     ) == true
                 }?.name
 
-                val player = Player(
-                    fullName = form.fullName.trim(),
-                    positions = form.positions.ifEmpty { null },
-                    currentClub = form.currentClub.takeIf { it.isNotBlank() }?.let { Club(clubName = it) },
-                    age = form.age.takeIf { it.isNotBlank() },
-                    nationality = form.nationality.takeIf { it.isNotBlank() },
-                    marketValue = form.marketValue.takeIf { it.isNotBlank() },
-                    profileImage = form.profileImage.takeIf { it.isNotBlank() },
-                    soccerDonnaUrl = form.soccerDonnaUrl.takeIf { it.isNotBlank() },
-                    playerPhoneNumber = form.playerPhone.takeIf { it.isNotBlank() },
-                    agentPhoneNumber = form.agentPhone.takeIf { it.isNotBlank() },
-                    notes = form.notes.takeIf { it.isNotBlank() },
-                    createdAt = System.currentTimeMillis(),
-                    agentInChargeName = agentInChargeName
+                val fields = mutableMapOf<String, Any?>(
+                    "fullName" to form.fullName.trim(),
+                    "positions" to form.positions.ifEmpty { null },
+                    "currentClub" to form.currentClub.takeIf { it.isNotBlank() }?.let { mapOf("clubName" to it) },
+                    "age" to form.age.takeIf { it.isNotBlank() },
+                    "nationality" to form.nationality.takeIf { it.isNotBlank() },
+                    "marketValue" to form.marketValue.takeIf { it.isNotBlank() },
+                    "profileImage" to form.profileImage.takeIf { it.isNotBlank() },
+                    "soccerDonnaUrl" to form.soccerDonnaUrl.takeIf { it.isNotBlank() },
+                    "playerPhoneNumber" to form.playerPhone.takeIf { it.isNotBlank() },
+                    "agentPhoneNumber" to form.agentPhone.takeIf { it.isNotBlank() },
+                    "notes" to form.notes.takeIf { it.isNotBlank() },
+                    "createdAt" to System.currentTimeMillis(),
+                    "agentInChargeName" to agentInChargeName,
                 )
 
-                val docRef = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .add(player)
-                    .await()
-
-                com.liordahan.mgsrteam.analytics.AnalyticsHelper.logAddPlayer()
-
-                // Write feed event — for Women/Youth use document ID (no tmProfile)
-                val feedProfileId = player.tmProfile ?: docRef.id
-                firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.feedEventsTable)
-                    .add(
-                        FeedEvent(
-                            type = FeedEvent.TYPE_PLAYER_ADDED,
-                            playerName = player.fullName,
-                            playerImage = player.profileImage,
-                            playerTmProfile = feedProfileId,
-                            timestamp = System.currentTimeMillis(),
-                            agentName = agentInChargeName
-                        )
-                    )
-
-                // Auto-remove from shortlist (same behaviour as men platform)
-                if (form.soccerDonnaUrl.isNotBlank()) {
-                    try { shortlistRepository.removeFromShortlist(form.soccerDonnaUrl) } catch (_: Exception) {}
+                val status = com.liordahan.mgsrteam.firebase.SharedCallables.playersCreate(
+                    platformManager.current.value, fields
+                )
+                if (status == "already_exists") {
+                    _errorMessageFlow.emit("Player already in roster")
+                    _womanFormState.update { it.copy(isSaving = false) }
+                    return@launch
                 }
+                com.liordahan.mgsrteam.analytics.AnalyticsHelper.logAddPlayer()
 
                 _isPlayerAddedFlow.update { true }
             } catch (e: Exception) {
@@ -1107,13 +1073,11 @@ class AddPlayerViewModel(
     }
 
     override fun onSavePlayerClicked() {
-        _selectedPlayerFlow.update {
-            it?.copy(agentInChargeName = firebaseHandler.firebaseAuth.currentUser?.displayName)
-        }
-
-        firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get()
-            .addOnSuccessListener {
-                val accounts = it.toObjects(Account::class.java)
+        viewModelScope.launch {
+            try {
+                val accounts = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.accountsTable).get().await()
+                    .toObjects(Account::class.java)
                 val agentInChargeName = accounts.firstOrNull {
                     it.email?.equals(
                         firebaseHandler.firebaseAuth.currentUser?.email,
@@ -1121,30 +1085,52 @@ class AddPlayerViewModel(
                     ) == true
                 }?.name
 
-                _selectedPlayerFlow.update {
-                    it?.copy(agentInChargeName = agentInChargeName)
-                }
+                _selectedPlayerFlow.update { it?.copy(agentInChargeName = agentInChargeName) }
 
-                _selectedPlayerFlow.value?.let { playerToSave ->
-                    firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable).add(playerToSave)
-                        .addOnSuccessListener {
-                            com.liordahan.mgsrteam.analytics.AnalyticsHelper.logAddPlayer()
-                            _isPlayerAddedFlow.update { true }
-                            // Write feed event (no push)
-                            firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
-                                FeedEvent(
-                                    type = FeedEvent.TYPE_PLAYER_ADDED,
-                                    playerName = playerToSave.fullName,
-                                    playerImage = playerToSave.profileImage,
-                                    playerTmProfile = playerToSave.tmProfile,
-                                    timestamp = System.currentTimeMillis(),
-                                    agentName = agentInChargeName
-                                )
-                            )
-                        }
+                val playerToSave = _selectedPlayerFlow.value ?: return@launch
+                val platform = platformManager.current.value
+
+                val fields = mutableMapOf<String, Any?>(
+                    "tmProfile" to playerToSave.tmProfile,
+                    "fullName" to playerToSave.fullName,
+                    "height" to playerToSave.height,
+                    "age" to playerToSave.age,
+                    "positions" to playerToSave.positions,
+                    "profileImage" to playerToSave.profileImage,
+                    "nationality" to playerToSave.nationality,
+                    "nationalityFlag" to playerToSave.nationalityFlag,
+                    "contractExpired" to playerToSave.contractExpired,
+                    "currentClub" to playerToSave.currentClub?.let {
+                        mapOf(
+                            "clubName" to it.clubName,
+                            "clubLogo" to it.clubLogo,
+                            "clubTmProfile" to it.clubTmProfile,
+                            "clubCountry" to it.clubCountry
+                        )
+                    },
+                    "marketValue" to playerToSave.marketValue,
+                    "isOnLoan" to playerToSave.isOnLoan,
+                    "onLoanFromClub" to playerToSave.onLoanFromClub,
+                    "foot" to playerToSave.foot,
+                    "agency" to playerToSave.agency,
+                    "agencyUrl" to playerToSave.agencyUrl,
+                    "createdAt" to System.currentTimeMillis(),
+                    "agentInChargeName" to agentInChargeName,
+                )
+                playerToSave.playerPhoneNumber?.takeIf { it.isNotBlank() }?.let { fields["playerPhoneNumber"] = it }
+                playerToSave.agentPhoneNumber?.takeIf { it.isNotBlank() }?.let { fields["agentPhoneNumber"] = it }
+
+                val status = com.liordahan.mgsrteam.firebase.SharedCallables.playersCreate(platform, fields)
+                if (status == "already_exists") {
+                    _errorMessageFlow.emit("Player already in roster")
+                    return@launch
                 }
+                com.liordahan.mgsrteam.analytics.AnalyticsHelper.logAddPlayer()
+                _isPlayerAddedFlow.update { true }
+            } catch (e: Exception) {
+                _errorMessageFlow.emit(e.message ?: "Failed to save player")
             }
-
+        }
     }
 
     override fun createManualPlayer(fullName: String) {

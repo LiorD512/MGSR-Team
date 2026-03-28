@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, onSnapshot, getDoc, setDoc, collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { doc, onSnapshot, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
+import { callShortlistAdd, callScoutProfileFeedbackSet } from '@/lib/callables';
 import { extractPlayerIdFromUrl, getPlayerDetails } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { AGENTS_CONFIG, type AgentId } from '@/lib/scoutAgentConfig';
@@ -249,11 +250,7 @@ export default function WarRoomPage() {
   const setProfileFeedback = useCallback(
     async (profileId: string, feedback: 'up' | 'down', agentId: string) => {
       if (!user) return;
-      const feedbackRef = doc(db, 'ScoutProfileFeedback', user.uid);
-      const snap = await getDoc(feedbackRef);
-      const current = (snap.data()?.feedback as Record<string, 'up' | 'down' | { feedback: 'up' | 'down'; agentId: string }>) || {};
-      const next = { ...current, [profileId]: { feedback, agentId } };
-      await setDoc(feedbackRef, { feedback: next, updatedAt: Date.now() }, { merge: true });
+      await callScoutProfileFeedbackSet({ uid: user.uid, profileId, feedback, agentId });
       setScoutFeedback((prev) => ({ ...prev, [profileId]: feedback }));
     },
     [user]
@@ -278,13 +275,9 @@ export default function WarRoomPage() {
       setAddError(null);
       try {
         const account = await getCurrentAccountForShortlist(user);
-        const colRef = collection(db, 'Shortlists');
-        const q = query(colRef, where('tmProfileUrl', '==', url));
-        const existsSnap = await getDocs(q);
-        if (!existsSnap.empty) return;
-        const entry: Record<string, unknown> = {
+        const result = await callShortlistAdd({
+          platform: 'men',
           tmProfileUrl: url,
-          addedAt: Date.now(),
           playerImage: c.profileImage ?? null,
           playerName: c.name ?? null,
           playerPosition: c.position ?? null,
@@ -297,17 +290,10 @@ export default function WarRoomPage() {
           addedByAgentHebrewName: account.hebrewName ?? null,
           ...(c.sourceAgentId && { sourceAgentId: c.sourceAgentId }),
           ...(c.sourceProfileId && { sourceProfileId: c.sourceProfileId }),
-        };
-        const docRef = await addDoc(colRef, entry);
-        enrichShortlistInstagram(url, docRef);
-        await addDoc(collection(db, 'FeedEvents'), {
-          type: 'SHORTLIST_ADDED',
-          playerName: entry.playerName ?? null,
-          playerImage: entry.playerImage ?? null,
-          playerTmProfile: url,
-          timestamp: Date.now(),
-          agentName: account.name ?? null,
         });
+        if (result.status === 'added') {
+          enrichShortlistInstagram(url);
+        }
       } catch (err) {
         setAddError(err instanceof Error ? err.message : 'Failed');
       } finally {
@@ -494,16 +480,15 @@ export default function WarRoomPage() {
       setAddError(null);
       try {
         const account = await getCurrentAccountForShortlist(user);
-        const colRef = collection(db, 'Shortlists');
-        const q = query(colRef, where('tmProfileUrl', '==', url));
-        const existsSnap = await getDocs(q);
-        if (!existsSnap.empty) return;
-        let entry: Record<string, unknown>;
+        let entryFields: Record<string, unknown> = {
+          addedByAgentId: account.id,
+          addedByAgentName: account.name ?? null,
+          addedByAgentHebrewName: account.hebrewName ?? null,
+        };
         try {
           const details = await getPlayerDetails(url);
-          entry = {
-            tmProfileUrl: url,
-            addedAt: Date.now(),
+          entryFields = {
+            ...entryFields,
             playerImage: details.profileImage ?? null,
             playerName: details.fullName ?? null,
             playerPosition: details.positions?.[0] ?? null,
@@ -512,35 +497,24 @@ export default function WarRoomPage() {
             playerNationalityFlag: details.nationalityFlag ?? null,
             clubJoinedName: details.currentClub?.clubName ?? null,
             marketValue: details.marketValue ?? null,
-            addedByAgentId: account.id,
-            addedByAgentName: account.name ?? null,
-            addedByAgentHebrewName: account.hebrewName ?? null,
             instagramHandle: details.instagramHandle ?? null,
             instagramUrl: details.instagramUrl ?? null,
           };
         } catch {
-          entry = {
-            tmProfileUrl: url,
-            addedAt: Date.now(),
+          entryFields = {
+            ...entryFields,
             playerName: s.name ?? null,
             playerPosition: s.position ?? null,
             playerAge: s.age ?? null,
             playerNationality: s.nationality ?? null,
             clubJoinedName: s.club ?? null,
             marketValue: s.marketValue ?? null,
-            addedByAgentId: account.id,
-            addedByAgentName: account.name ?? null,
-            addedByAgentHebrewName: account.hebrewName ?? null,
           };
         }
-        await addDoc(colRef, entry);
-        await addDoc(collection(db, 'FeedEvents'), {
-          type: 'SHORTLIST_ADDED',
-          playerName: entry.playerName ?? null,
-          playerImage: entry.playerImage ?? null,
-          playerTmProfile: url,
-          timestamp: Date.now(),
-          agentName: account.name ?? null,
+        await callShortlistAdd({
+          platform: 'men',
+          tmProfileUrl: url,
+          ...entryFields,
         });
       } catch (err) {
         setAddError(err instanceof Error ? err.message : 'Failed');

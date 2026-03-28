@@ -6,11 +6,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
-import { addWomanPlayer, checkWomanPlayerExists } from '@/lib/playersWomen';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { checkWomanPlayerExists } from '@/lib/playersWomen';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
-import { SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
+import { callShortlistAdd, callShortlistRemove, callPlayersCreate } from '@/lib/callables';
 
 const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 const DEBOUNCE_MS = 350;
@@ -305,7 +305,7 @@ export default function AddWomanPlayerForm() {
     setError('');
     setSaving(true);
     try {
-      const { collection, getDocs, addDoc, query, where, deleteDoc } = await import('firebase/firestore');
+      const { collection, getDocs } = await import('firebase/firestore');
       const accountsSnap = await getDocs(collection(db, 'Accounts'));
       let agentName = user.displayName || user.email || '';
       accountsSnap.forEach((d) => {
@@ -322,26 +322,10 @@ export default function AddWomanPlayerForm() {
           setSaving(false);
           return;
         }
-        if (profileUrl.includes('soccerdonna')) {
-          const inRoster = await checkWomanPlayerExists(profileUrl);
-          if (inRoster) {
-            setError(t('shortlist_player_in_roster_women'));
-            setSaving(false);
-            return;
-          }
-        }
         const account = await getCurrentAccountForShortlist(user);
-        const colRef = collection(db, SHORTLISTS_COLLECTIONS.women);
-        const q = query(colRef, where('tmProfileUrl', '==', profileUrl));
-        const existsSnap = await getDocs(q);
-        if (!existsSnap.empty) {
-          setError(t('shortlist_already_added'));
-          setSaving(false);
-          return;
-        }
-        const entry = {
+        const result = await callShortlistAdd({
+          platform: 'women',
           tmProfileUrl: profileUrl,
-          addedAt: Date.now(),
           playerImage: profileImage.trim() || null,
           playerName: fullName.trim(),
           playerPosition: positions[0] ?? null,
@@ -352,16 +336,17 @@ export default function AddWomanPlayerForm() {
           addedByAgentId: account.id,
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
-        };
-        await addDoc(colRef, entry);
-        await addDoc(collection(db, 'FeedEventsWomen'), {
-          type: 'SHORTLIST_ADDED',
-          playerName: fullName.trim(),
-          playerImage: profileImage.trim() || null,
-          playerTmProfile: profileUrl,
-          timestamp: Date.now(),
-          agentName: account.name ?? null,
         });
+        if (result.status === 'already_in_roster') {
+          setError(t('shortlist_player_in_roster_women'));
+          setSaving(false);
+          return;
+        }
+        if (result.status === 'already_exists') {
+          setError(t('shortlist_already_added'));
+          setSaving(false);
+          return;
+        }
         router.push('/shortlist');
         return;
       }
@@ -378,7 +363,8 @@ export default function AddWomanPlayerForm() {
       const pPhone = playerPhone.trim();
       const aPhone = agentPhone.trim();
 
-      const playerId = await addWomanPlayer({
+      const result = await callPlayersCreate({
+        platform: 'women',
         fullName: fullName.trim(),
         positions: positions.length > 0 ? positions : undefined,
         currentClub: currentClub.trim() ? { clubName: currentClub.trim() } : undefined,
@@ -393,32 +379,13 @@ export default function AddWomanPlayerForm() {
         ...(aPhone ? { agentPhoneNumber: aPhone } : {}),
         agentInChargeId: user.uid,
         agentInChargeName: agentName,
-      });
+      } as Parameters<typeof callPlayersCreate>[0]);
 
-      if (fromShortlist && preloadUrl) {
-        const q = query(collection(db, SHORTLISTS_COLLECTIONS.women), where('tmProfileUrl', '==', preloadUrl));
-        const shortlistSnap = await getDocs(q);
-        for (const d of shortlistSnap.docs) {
-          await deleteDoc(d.ref);
-        }
-        await addDoc(collection(db, 'FeedEventsWomen'), {
-          type: 'SHORTLIST_REMOVED',
-          playerName: fullName.trim(),
-          playerImage: profileImage.trim() || null,
-          playerTmProfile: preloadUrl,
-          timestamp: Date.now(),
-          agentName,
-        });
+      if (result.status === 'already_exists') {
+        setError(t('add_woman_player_duplicate_error'));
+        setSaving(false);
+        return;
       }
-
-      await addDoc(collection(db, 'FeedEventsWomen'), {
-        type: 'PLAYER_ADDED',
-        playerName: fullName.trim(),
-        playerImage: profileImage.trim() || null,
-        playerWomenId: playerId,
-        timestamp: Date.now(),
-        agentName,
-      });
 
       router.push(fromShortlist ? '/shortlist' : '/players');
     } catch (err) {

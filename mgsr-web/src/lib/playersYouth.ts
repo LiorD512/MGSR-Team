@@ -6,10 +6,7 @@
 
 import {
   collection,
-  addDoc,
   doc,
-  updateDoc,
-  deleteDoc,
   query,
   orderBy,
   onSnapshot,
@@ -140,33 +137,6 @@ function removeUndefined(obj: Record<string, unknown>): Record<string, unknown> 
           : v,
       ])
   );
-}
-
-export async function addYouthPlayer(
-  data: Omit<YouthPlayer, 'id' | 'createdAt'>
-): Promise<string> {
-  const payload = {
-    ...data,
-    createdAt: Date.now(),
-  };
-  const sanitized = removeUndefined(payload as Record<string, unknown>);
-  const docRef = await addDoc(collection(db, PLAYERS_YOUTH_COLLECTION), sanitized);
-  return docRef.id;
-}
-
-export async function updateYouthPlayer(
-  id: string,
-  data: Partial<Omit<YouthPlayer, 'id' | 'createdAt'>>
-): Promise<void> {
-  const payload = { ...data };
-  const sanitized = Object.fromEntries(
-    Object.entries(payload).filter(([, v]) => v !== undefined)
-  );
-  await updateDoc(doc(db, PLAYERS_YOUTH_COLLECTION, id), sanitized);
-}
-
-export async function deleteYouthPlayer(id: string): Promise<void> {
-  await deleteDoc(doc(db, PLAYERS_YOUTH_COLLECTION, id));
 }
 
 /** Dedup check: does a player with this IFA URL already exist? */

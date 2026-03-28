@@ -6,10 +6,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
-import { collection, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import AddContactSheet, { type Contact as AddContactSheetContact } from './AddContactSheet';
 import { db } from '@/lib/firebase';
 import { CONTACTS_COLLECTIONS } from '@/lib/platformCollections';
+import { callContactsDelete } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
@@ -171,7 +172,7 @@ export default function ContactsPage() {
     if (!c?.id) return;
     setDeleting(true);
     try {
-      await deleteDoc(doc(db, contactsCollection, c.id));
+      await callContactsDelete({ platform, contactId: c.id });
       setDeleteConfirm(null);
     } catch (err) {
       console.error('Delete contact failed:', err);
@@ -383,6 +384,7 @@ export default function ContactsPage() {
           setEditContact(null);
         }}
         contactsCollection={contactsCollection}
+        platform={platform}
         isWomen={isWomen}
         isYouth={isYouth}
         initialContact={editContact as AddContactSheetContact | null}

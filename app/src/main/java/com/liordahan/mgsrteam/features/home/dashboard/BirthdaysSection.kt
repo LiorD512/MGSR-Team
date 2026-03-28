@@ -33,6 +33,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,11 +50,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.features.platform.Platform
+import com.liordahan.mgsrteam.firebase.SharedCallables
+import kotlinx.coroutines.launch
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
@@ -192,6 +194,7 @@ fun BirthdaysSection(
     if (todayBirthdays.isEmpty() && upcomingBirthdays.isEmpty()) return
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var showUpcoming by remember { mutableStateOf(false) }
     val year = remember { java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString() }
     val sentWishes = remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -266,13 +269,9 @@ fun BirthdaysSection(
                     isSent = player.id in sentWishes.value,
                     onSendWishes = {
                         sendBirthdayWishes(context, player, senderName)
-                        FirebaseFirestore.getInstance()
-                            .collection("BirthdayWishesSent")
-                            .document(year)
-                            .set(
-                                mapOf(player.id to mapOf("sentBy" to senderName, "sentAt" to System.currentTimeMillis())),
-                                SetOptions.merge()
-                            )
+                        scope.launch {
+                            SharedCallables.birthdayWishSend(year, player.id, senderName)
+                        }
                     }
                 )
                 Spacer(Modifier.height(6.dp))

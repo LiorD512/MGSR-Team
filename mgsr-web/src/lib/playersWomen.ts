@@ -5,10 +5,7 @@
 
 import {
   collection,
-  addDoc,
   doc,
-  updateDoc,
-  deleteDoc,
   query,
   orderBy,
   onSnapshot,
@@ -83,36 +80,6 @@ export function subscribePlayersWomen(
     callback(list);
   });
   return unsub;
-}
-
-export async function addWomanPlayer(
-  data: Omit<WomanPlayer, 'id' | 'createdAt'>
-): Promise<string> {
-  const payload = {
-    ...data,
-    createdAt: Date.now(),
-  };
-  // Firestore rejects undefined; remove any undefined values
-  const sanitized = Object.fromEntries(
-    Object.entries(payload).filter(([, v]) => v !== undefined)
-  );
-  const docRef = await addDoc(collection(db, PLAYERS_WOMEN_COLLECTION), sanitized);
-  return docRef.id;
-}
-
-export async function updateWomanPlayer(
-  id: string,
-  data: Partial<Omit<WomanPlayer, 'id' | 'createdAt'>>
-): Promise<void> {
-  const payload = { ...data };
-  const sanitized = Object.fromEntries(
-    Object.entries(payload).filter(([, v]) => v !== undefined)
-  );
-  await updateDoc(doc(db, PLAYERS_WOMEN_COLLECTION, id), sanitized);
-}
-
-export async function deleteWomanPlayer(id: string): Promise<void> {
-  await deleteDoc(doc(db, PLAYERS_WOMEN_COLLECTION, id));
 }
 
 export async function checkWomanPlayerExists(

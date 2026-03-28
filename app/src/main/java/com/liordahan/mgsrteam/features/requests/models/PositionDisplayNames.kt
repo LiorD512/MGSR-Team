@@ -1,59 +1,20 @@
 package com.liordahan.mgsrteam.features.requests.models
 
 import android.content.Context
+import com.liordahan.mgsrteam.config.AppConfigManager
 import com.liordahan.mgsrteam.localization.LocaleManager
 
 /**
  * Maps short position codes to long display names for the request position header.
- * Supports Hebrew when app locale is Hebrew (like CountryNameTranslator in contacts).
+ * Data is fetched from Firestore remote config (with hardcoded fallbacks).
  */
 object PositionDisplayNames {
 
-    private val shortToLong = mapOf(
-        "GK" to "GOALKEEPER",
-        "CB" to "CENTER BACK",
-        "RB" to "RIGHT BACK",
-        "LB" to "LEFT BACK",
-        "DM" to "DEFENSIVE MIDFIELDER",
-        "CM" to "CENTRAL MIDFIELDER",
-        "AM" to "ATTACKING MIDFIELDER",
-        "LM" to "LEFT MIDFIELDER",
-        "RM" to "RIGHT MIDFIELDER",
-        "LW" to "LEFT WINGER",
-        "RW" to "RIGHT WINGER",
-        "CF" to "CENTER FORWARD",
-        "ST" to "STRIKER",
-        "SS" to "SECOND STRIKER",
-        "CDM" to "DEFENSIVE MIDFIELDER",
-        "LWB" to "LEFT WING BACK",
-        "RWB" to "RIGHT WING BACK",
-        "DEF" to "DEFENDER",
-        "MID" to "MIDFIELDER",
-        "FWD" to "FORWARD"
-    )
+    private val shortToLong: Map<String, String>
+        get() = AppConfigManager.positions.displayEN
 
-    private val shortToHebrew = mapOf(
-        "GK" to "שוער",
-        "CB" to "בלם",
-        "RB" to "מגן ימני",
-        "LB" to "מגן שמאלי",
-        "DM" to "קשר אחורי",
-        "CM" to "קשר מרכזי",
-        "AM" to "קשר התקפי",
-        "LM" to "קשר שמאלי",
-        "RM" to "קשר ימני",
-        "LW" to "כנף שמאל",
-        "RW" to "כנף ימין",
-        "CF" to "חלוץ מרכזי",
-        "ST" to "חלוץ",
-        "SS" to "חלוץ שני",
-        "CDM" to "קשר 50/50",
-        "LWB" to "כנף אחורי שמאלי",
-        "RWB" to "כנף אחורי ימני",
-        "DEF" to "מגן",
-        "MID" to "קשר",
-        "FWD" to "חלוץ"
-    )
+    private val shortToHebrew: Map<String, String>
+        get() = AppConfigManager.positions.displayHE
 
     /**
      * Returns the long display name for a position code, or the original if not found.

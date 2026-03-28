@@ -93,7 +93,7 @@ val playersModule = module {
     }
     single { GeminiPassportOcrProvider() }
     single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>(), get<GeminiPassportOcrProvider>()) }
-    single { PlayerOffersRepository(get()) } bind IPlayerOffersRepository::class
+    single { PlayerOffersRepository(get(), get()) } bind IPlayerOffersRepository::class
     single { HighlightsApiClient() }
     single { AgentTransferRepository(com.google.firebase.firestore.FirebaseFirestore.getInstance()) }
     viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get<ScoutApiClient>(), get()) }

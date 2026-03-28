@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.features.requests.models
 
 import androidx.annotation.Keep
 import com.google.firebase.firestore.DocumentId
+import com.liordahan.mgsrteam.config.AppConfigManager
 
 @Keep
 data class Request(
@@ -38,9 +39,11 @@ object DominateFootOptions {
 }
 
 object SalaryRangeOptions {
-    val all = listOf(">5", "6-10", "11-15", "16-20", "20-25", "26-30", "30+")
+    val all: List<String>
+        get() = AppConfigManager.salaryRanges
 }
 
 object TransferFeeOptions {
-    val all = listOf("Free/Free loan", "<200", "300-600", "700-900", "1m+")
+    val all: List<String>
+        get() = AppConfigManager.transferFees
 }

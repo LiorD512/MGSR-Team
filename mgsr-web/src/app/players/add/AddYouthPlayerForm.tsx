@@ -6,11 +6,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
-import { addYouthPlayer, checkYouthPlayerExists, computeAgeGroup } from '@/lib/playersYouth';
-import { doc, getDoc, setDoc, collection, getDocs, addDoc, query, where, deleteDoc } from 'firebase/firestore';
+import { checkYouthPlayerExists, computeAgeGroup } from '@/lib/playersYouth';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
-import { SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
+import { callShortlistAdd, callShortlistRemove, callPlayersCreate } from '@/lib/callables';
 
 const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 const DEBOUNCE_MS = 400;
@@ -345,24 +345,10 @@ export default function AddYouthPlayerForm() {
           setSaving(false);
           return;
         }
-        const inRoster = await checkYouthPlayerExists(profileUrl);
-        if (inRoster) {
-          setError('This player is already in the youth roster.');
-          setSaving(false);
-          return;
-        }
         const account = await getCurrentAccountForShortlist(user);
-        const colRef = collection(db, SHORTLISTS_COLLECTIONS.youth);
-        const q = query(colRef, where('tmProfileUrl', '==', profileUrl));
-        const existsSnap = await getDocs(q);
-        if (!existsSnap.empty) {
-          setError(t('shortlist_already_added'));
-          setSaving(false);
-          return;
-        }
-        const entry = {
+        const result = await callShortlistAdd({
+          platform: 'youth',
           tmProfileUrl: profileUrl,
-          addedAt: Date.now(),
           playerImage: profileImage.trim() || null,
           playerName: fullName.trim(),
           playerPosition: positions[0] ?? null,
@@ -372,16 +358,17 @@ export default function AddYouthPlayerForm() {
           addedByAgentId: account.id,
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
-        };
-        await addDoc(colRef, entry);
-        await addDoc(collection(db, 'FeedEventsYouth'), {
-          type: 'SHORTLIST_ADDED',
-          playerName: fullName.trim(),
-          playerImage: profileImage.trim() || null,
-          playerTmProfile: profileUrl,
-          timestamp: Date.now(),
-          agentName: account.name ?? null,
         });
+        if (result.status === 'already_in_roster') {
+          setError('This player is already in the youth roster.');
+          setSaving(false);
+          return;
+        }
+        if (result.status === 'already_exists') {
+          setError(t('shortlist_already_added'));
+          setSaving(false);
+          return;
+        }
         router.push('/shortlist');
         return;
       }
@@ -398,7 +385,8 @@ export default function AddYouthPlayerForm() {
 
       const computedAgeGroup = ageGroup || (dateOfBirth ? computeAgeGroup(dateOfBirth) : '');
 
-      const playerId = await addYouthPlayer({
+      const result = await callPlayersCreate({
+        platform: 'youth',
         fullName: fullName.trim(),
         positions: positions.length > 0 ? positions : undefined,
         currentClub: currentClub.trim() ? { clubName: currentClub.trim() } : undefined,
@@ -422,33 +410,13 @@ export default function AddYouthPlayerForm() {
           : undefined,
         agentInChargeId: user.uid,
         agentInChargeName: agentName,
-      });
+      } as Parameters<typeof callPlayersCreate>[0]);
 
-      // Remove from shortlist if came from there
-      if (fromShortlist && preloadUrl) {
-        const q = query(collection(db, SHORTLISTS_COLLECTIONS.youth), where('tmProfileUrl', '==', preloadUrl));
-        const shortlistSnap = await getDocs(q);
-        for (const d of shortlistSnap.docs) {
-          await deleteDoc(d.ref);
-        }
-        await addDoc(collection(db, 'FeedEventsYouth'), {
-          type: 'SHORTLIST_REMOVED',
-          playerName: fullName.trim(),
-          playerImage: profileImage.trim() || null,
-          playerTmProfile: preloadUrl,
-          timestamp: Date.now(),
-          agentName,
-        });
+      if (result.status === 'already_exists') {
+        setError('This player already exists in the youth roster.');
+        setSaving(false);
+        return;
       }
-
-      await addDoc(collection(db, 'FeedEventsYouth'), {
-        type: 'PLAYER_ADDED',
-        playerName: fullName.trim(),
-        playerImage: profileImage.trim() || null,
-        playerYouthId: playerId,
-        timestamp: Date.now(),
-        agentName,
-      });
 
       router.push(fromShortlist ? '/shortlist' : '/players');
     } catch (err) {

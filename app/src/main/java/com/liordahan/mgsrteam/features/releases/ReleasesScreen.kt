@@ -252,6 +252,18 @@ fun ReleasesScreen(
         originalReleaseList.count { it.playerUrl in shortlistUrls || it.playerUrl in justAddedUrls }
     }
 
+    // Filter out players already in roster or shortlist
+    val rosterIds = remember(rosterPlayers) {
+        rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile) }.toSet()
+    }
+    val filteredReleaseList = remember(releaseList, rosterIds, shortlistUrls) {
+        releaseList.filter { release ->
+            val url = release.playerUrl ?: return@filter true
+            val id = extractPlayerIdFromUrl(url)
+            (id == null || id !in rosterIds) && url !in shortlistUrls
+        }
+    }
+
     // Fetch teammates when user expands a card
     LaunchedEffect(expandedPlayerUrl) {
         val url = expandedPlayerUrl ?: return@LaunchedEffect
@@ -313,7 +325,7 @@ fun ReleasesScreen(
             ReleasesStatsStrip(
                 total = originalReleaseList.size,
                 shortlisted = shortlistedCount,
-                visible = releaseList.size
+                visible = filteredReleaseList.size
             )
 
             // Position Filter Chips (with animated accent line)
@@ -342,7 +354,7 @@ fun ReleasesScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(releaseList, key = { it.playerUrl ?: it.hashCode() }) { release ->
+                items(filteredReleaseList, key = { it.playerUrl ?: it.hashCode() }) { release ->
                     val playerUrl = release.playerUrl
                     val isExpanded = playerUrl != null && expandedPlayerUrl == playerUrl
                     val rosterTeammates = playerUrl?.let { teammatesCache[it] }

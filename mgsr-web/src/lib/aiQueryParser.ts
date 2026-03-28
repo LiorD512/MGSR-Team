@@ -2,6 +2,7 @@
  * AI-powered parsing of free-text scout queries (Hebrew and English).
  * Uses Gemini to analyze the request and extract structured recruitment params.
  */
+import { appConfig } from '@/lib/appConfig';
 
 export interface ParsedScoutParams {
   position?: string;
@@ -52,7 +53,7 @@ const POSITION_MAP: Record<string, string> = {
 };
 
 /** Transfer fee values supported by the scout server */
-const TRANSFER_FEE_OPTIONS = ['Free/Free loan', '<200', '300-600', '700-900', '1m+'];
+const TRANSFER_FEE_OPTIONS = appConfig.transferFees;
 
 export async function parseScoutQueryWithGemini(
   query: string,

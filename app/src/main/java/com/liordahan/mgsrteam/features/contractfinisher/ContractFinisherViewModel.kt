@@ -173,6 +173,8 @@ class ContractFinisherViewModel(
                     _isLoadingFlow.value = progress.isLoading
                     progress.error?.let { _fetchErrorFlow.value = it }
                 }
+                // Safety net: flow completed normally – ensure loading is off
+                _isLoadingFlow.value = false
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

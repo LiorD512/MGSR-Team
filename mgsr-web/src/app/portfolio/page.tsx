@@ -12,12 +12,11 @@ import {
   query,
   orderBy,
   onSnapshot,
-  deleteDoc,
-  doc,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { createShare } from '@/lib/shareApi';
 import { openWhatsAppShare } from '@/lib/whatsapp';
+import { callPortfolioDelete } from '@/lib/callables';
 import type { PortfolioItem } from '@/lib/portfolioApi';
 import { PORTFOLIO_COLLECTIONS } from '@/lib/platformCollections';
 
@@ -209,8 +208,8 @@ export default function PortfolioPage() {
       ? (isYouth ? 'להסיר שחקן זה מהפורטפוליו?' : isWomen ? 'להסיר שחקנית זו מהפורטפוליו?' : 'להסיר שחקן זה מהפורטפוליו?')
       : 'Remove this player from portfolio?';
     if (!confirm(msg)) return;
-    await deleteDoc(doc(db, portfolioColl, id));
-  }, [isRtl, isWomen, isYouth, portfolioColl]);
+    await callPortfolioDelete({ platform, documentId: id });
+  }, [isRtl, isWomen, isYouth, platform]);
 
 
 

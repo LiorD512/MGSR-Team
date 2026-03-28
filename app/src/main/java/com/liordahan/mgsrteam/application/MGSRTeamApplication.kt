@@ -9,6 +9,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.google.firebase.messaging.FirebaseMessaging
 import com.liordahan.mgsrteam.application.di.applicationModules
+import com.liordahan.mgsrteam.config.AppConfigManager
 import com.liordahan.mgsrteam.firebase.FcmTokenManager
 import com.liordahan.mgsrteam.localization.LocaleManager
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
@@ -18,6 +19,10 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.koin.core.context.startKoin
 import org.koin.core.logger.Level
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class MGSRTeamApplication : Application(), KoinComponent, ImageLoaderFactory {
 
@@ -45,6 +50,11 @@ class MGSRTeamApplication : Application(), KoinComponent, ImageLoaderFactory {
         // Register FCM token when app starts (if user already logged in)
         val fcmTokenManager: FcmTokenManager by inject()
         fcmTokenManager.registerTokenIfNeeded()
+
+        // Load remote config from Firestore (positions, countries, etc.)
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            AppConfigManager.initialize()
+        }
 
         // Subscribe every device to the shared FCM topic so push notifications
         // from the Cloud Function reach all users.

@@ -4,10 +4,10 @@ import { useState, useCallback } from 'react';
 import { findSimilarPlayers, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { doc, getDoc, setDoc, collection, addDoc, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { getPlayerDetails } from '@/lib/api';
+import { callShortlistAdd } from '@/lib/callables';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -550,24 +550,17 @@ export default function SimilarPlayersPanel({
     setAddingToShortlistUrl(url);
     try {
       const account = await getCurrentAccountForShortlist(user);
-      const colRef = collection(db, 'Shortlists');
-      const q = query(colRef, where('tmProfileUrl', '==', url));
-      const existsSnap = await getDocs(q);
-      if (!existsSnap.empty) {
-        setShortlistSuccessUrls((prev) => new Set(prev).add(url));
-        return;
-      }
-      const agentFields = {
+      let entry: Record<string, unknown> = {
+        platform: 'men',
+        tmProfileUrl: url,
         addedByAgentId: account.id,
         addedByAgentName: account.name ?? null,
         addedByAgentHebrewName: account.hebrewName ?? null,
       };
-      let entry: Record<string, unknown>;
       try {
         const details = await getPlayerDetails(url);
         entry = {
-          tmProfileUrl: url,
-          addedAt: Date.now(),
+          ...entry,
           playerImage: details.profileImage ?? null,
           playerName: details.fullName ?? null,
           playerPosition: details.positions?.[0] ?? null,
@@ -576,32 +569,21 @@ export default function SimilarPlayersPanel({
           playerNationalityFlag: details.nationalityFlag ?? null,
           clubJoinedName: details.currentClub?.clubName ?? null,
           marketValue: details.marketValue ?? null,
-          ...agentFields,
           instagramHandle: details.instagramHandle ?? null,
           instagramUrl: details.instagramUrl ?? null,
         };
       } catch {
         entry = {
-          tmProfileUrl: url,
-          addedAt: Date.now(),
+          ...entry,
           playerName: player.name ?? null,
           playerPosition: player.position ?? null,
           playerAge: player.age ?? null,
           playerNationality: player.nationality ?? null,
           clubJoinedName: player.club ?? null,
           marketValue: player.marketValue ?? null,
-          ...agentFields,
         };
       }
-      await addDoc(colRef, entry);
-      await addDoc(collection(db, 'FeedEvents'), {
-        type: 'SHORTLIST_ADDED',
-        playerName: entry.playerName ?? null,
-        playerImage: entry.playerImage ?? null,
-        playerTmProfile: url,
-        timestamp: Date.now(),
-        agentName: account.name ?? null,
-      });
+      await callShortlistAdd(entry as Parameters<typeof callShortlistAdd>[0]);
       setShortlistSuccessUrls((prev) => new Set(prev).add(url));
     } catch (err) {
       console.error('Add to shortlist error:', err);
