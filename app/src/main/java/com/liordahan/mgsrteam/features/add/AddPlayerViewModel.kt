@@ -141,6 +141,7 @@ abstract class IAddPlayerViewModel : ViewModel() {
     abstract val playerSearchStateFlow: StateFlow<AddPlayerUiState>
     abstract val selectedPlayerFlow: StateFlow<Player?>
     abstract val isPlayerAddedFlow: StateFlow<Boolean>
+    abstract val isSavingPlayerFlow: StateFlow<Boolean>
     abstract val errorMessageFlow: SharedFlow<String?>
     abstract val searchQuery: StateFlow<String>
     abstract fun onPlayerSelected(player: PlayerSearchModel)
@@ -199,6 +200,9 @@ class AddPlayerViewModel(
 
     private val _isPlayerAddedFlow = MutableStateFlow(false)
     override val isPlayerAddedFlow: StateFlow<Boolean> = _isPlayerAddedFlow
+
+    private val _isSavingPlayerFlow = MutableStateFlow(false)
+    override val isSavingPlayerFlow: StateFlow<Boolean> = _isSavingPlayerFlow
 
     private val _errorMessageFlow = MutableSharedFlow<String?>()
     override val errorMessageFlow: SharedFlow<String?> = _errorMessageFlow
@@ -1074,6 +1078,7 @@ class AddPlayerViewModel(
 
     override fun onSavePlayerClicked() {
         viewModelScope.launch {
+            _isSavingPlayerFlow.value = true
             try {
                 val accounts = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.accountsTable).get().await()
@@ -1129,6 +1134,8 @@ class AddPlayerViewModel(
                 _isPlayerAddedFlow.update { true }
             } catch (e: Exception) {
                 _errorMessageFlow.emit(e.message ?: "Failed to save player")
+            } finally {
+                _isSavingPlayerFlow.value = false
             }
         }
     }

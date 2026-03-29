@@ -590,14 +590,24 @@ fun RequestsScreen(
                         )
                     },
                     confirmButton = {
+                        val isDeletingRequest by viewModel.isDeletingRequest.collectAsStateWithLifecycle()
                         Button(
                             onClick = {
                                 viewModel.deleteRequest(req)
                                 requestToDelete = null
                             },
+                            enabled = !isDeletingRequest,
                             colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.red)
                         ) {
-                            Text(stringResource(R.string.player_info_delete), style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp))
+                            if (isDeletingRequest) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = PlatformColors.palette.textPrimary
+                                )
+                            } else {
+                                Text(stringResource(R.string.player_info_delete), style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp))
+                            }
                         }
                     },
                     dismissButton = {

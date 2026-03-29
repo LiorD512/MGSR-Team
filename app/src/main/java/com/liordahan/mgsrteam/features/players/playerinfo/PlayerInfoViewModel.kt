@@ -130,6 +130,16 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun approveTransfer()
     abstract fun rejectTransfer()
     abstract fun cancelTransferRequest()
+
+    // ── Fine-grained saving indicators ─────────────────────────────
+    /** Set of field keys currently being saved (e.g. "playerPhone", "salary"). */
+    abstract val savingFieldsFlow: StateFlow<Set<String>>
+    abstract val isDeletingDocumentFlow: StateFlow<Boolean>
+    abstract val isMarkingOfferedFlow: StateFlow<Boolean>
+    abstract val isSavingTaskFlow: StateFlow<Boolean>
+    abstract val isSavingFeedbackFlow: StateFlow<Boolean>
+    abstract val isSavingSummaryFlow: StateFlow<Boolean>
+    abstract val isRequestingTransferFlow: StateFlow<Boolean>
 }
 
 
@@ -349,6 +359,28 @@ class PlayerInfoViewModel(
     private val _transferLoadingFlow = MutableStateFlow(false)
     override val transferLoadingFlow: StateFlow<Boolean> = _transferLoadingFlow
 
+    // ── Fine-grained saving indicators ──────────────────────────────
+    private val _savingFieldsFlow = MutableStateFlow<Set<String>>(emptySet())
+    override val savingFieldsFlow: StateFlow<Set<String>> = _savingFieldsFlow
+
+    private val _isDeletingDocumentFlow = MutableStateFlow(false)
+    override val isDeletingDocumentFlow: StateFlow<Boolean> = _isDeletingDocumentFlow
+
+    private val _isMarkingOfferedFlow = MutableStateFlow(false)
+    override val isMarkingOfferedFlow: StateFlow<Boolean> = _isMarkingOfferedFlow
+
+    private val _isSavingTaskFlow = MutableStateFlow(false)
+    override val isSavingTaskFlow: StateFlow<Boolean> = _isSavingTaskFlow
+
+    private val _isSavingFeedbackFlow = MutableStateFlow(false)
+    override val isSavingFeedbackFlow: StateFlow<Boolean> = _isSavingFeedbackFlow
+
+    private val _isSavingSummaryFlow = MutableStateFlow(false)
+    override val isSavingSummaryFlow: StateFlow<Boolean> = _isSavingSummaryFlow
+
+    private val _isRequestingTransferFlow = MutableStateFlow(false)
+    override val isRequestingTransferFlow: StateFlow<Boolean> = _isRequestingTransferFlow
+
     private var transferListenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
     private var resolvedTransferListenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
 
@@ -395,38 +427,48 @@ class PlayerInfoViewModel(
 
     override fun addPlayerTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String, linkedAgentContactId: String, linkedAgentContactName: String, linkedAgentContactPhone: String) {
         viewModelScope.launch {
-            val currentAccount = allAccountsFlow.value.firstOrNull {
-                it.email.equals(firebaseHandler.firebaseAuth.currentUser?.email, true)
+            _isSavingTaskFlow.value = true
+            try {
+                val currentAccount = allAccountsFlow.value.firstOrNull {
+                    it.email.equals(firebaseHandler.firebaseAuth.currentUser?.email, true)
+                }
+                val createdByAgentId = currentAccount?.id ?: ""
+                val createdByAgentName = currentAccount?.getDisplayName(appContext) ?: ""
+                SharedCallables.tasksCreate(platformManager.value, mapOf(
+                    "agentId" to agentId,
+                    "agentName" to agentName,
+                    "title" to title,
+                    "isCompleted" to false,
+                    "dueDate" to dueDate,
+                    "createdAt" to System.currentTimeMillis(),
+                    "priority" to priority,
+                    "notes" to notes,
+                    "createdByAgentId" to createdByAgentId,
+                    "createdByAgentName" to createdByAgentName,
+                    "playerId" to playerId,
+                    "playerName" to playerName,
+                    "playerTmProfile" to playerTmProfile,
+                    "templateId" to templateId,
+                    "linkedAgentContactId" to linkedAgentContactId,
+                    "linkedAgentContactName" to linkedAgentContactName,
+                    "linkedAgentContactPhone" to linkedAgentContactPhone
+                ))
+            } finally {
+                _isSavingTaskFlow.value = false
             }
-            val createdByAgentId = currentAccount?.id ?: ""
-            val createdByAgentName = currentAccount?.getDisplayName(appContext) ?: ""
-            SharedCallables.tasksCreate(platformManager.value, mapOf(
-                "agentId" to agentId,
-                "agentName" to agentName,
-                "title" to title,
-                "isCompleted" to false,
-                "dueDate" to dueDate,
-                "createdAt" to System.currentTimeMillis(),
-                "priority" to priority,
-                "notes" to notes,
-                "createdByAgentId" to createdByAgentId,
-                "createdByAgentName" to createdByAgentName,
-                "playerId" to playerId,
-                "playerName" to playerName,
-                "playerTmProfile" to playerTmProfile,
-                "templateId" to templateId,
-                "linkedAgentContactId" to linkedAgentContactId,
-                "linkedAgentContactName" to linkedAgentContactName,
-                "linkedAgentContactPhone" to linkedAgentContactPhone
-            ))
         }
     }
 
     override fun togglePlayerTaskCompleted(task: AgentTask) {
         if (task.id.isBlank()) return
         viewModelScope.launch {
-            val nowCompleted = !task.isCompleted
-            SharedCallables.tasksToggleComplete(platformManager.value, task.id, nowCompleted)
+            _savingFieldsFlow.update { it + "task_${task.id}" }
+            try {
+                val nowCompleted = !task.isCompleted
+                SharedCallables.tasksToggleComplete(platformManager.value, task.id, nowCompleted)
+            } finally {
+                _savingFieldsFlow.update { it - "task_${task.id}" }
+            }
         }
     }
 
@@ -497,8 +539,13 @@ class PlayerInfoViewModel(
         }
 
         viewModelScope.launch {
-            val docId = _playerDocumentIdFlow.value ?: return@launch
-            SharedCallables.playersUpdate(platformManager.value, docId, mapOf("playerPhoneNumber" to number))
+            _savingFieldsFlow.update { it + "playerPhone" }
+            try {
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("playerPhoneNumber" to number))
+            } finally {
+                _savingFieldsFlow.update { it - "playerPhone" }
+            }
         }
     }
 
@@ -510,8 +557,13 @@ class PlayerInfoViewModel(
         }
 
         viewModelScope.launch {
-            val docId = _playerDocumentIdFlow.value ?: return@launch
-            SharedCallables.playersUpdate(platformManager.value, docId, mapOf("agentPhoneNumber" to number))
+            _savingFieldsFlow.update { it + "agentPhone" }
+            try {
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("agentPhoneNumber" to number))
+            } finally {
+                _savingFieldsFlow.update { it - "agentPhone" }
+            }
         }
     }
 
@@ -521,8 +573,13 @@ class PlayerInfoViewModel(
         }
 
         viewModelScope.launch {
-            val docId = _playerDocumentIdFlow.value ?: return@launch
-            SharedCallables.playersUpdate(platformManager.value, docId, emptyMap(), deleteFields = listOf("agency", "agencyUrl"))
+            _savingFieldsFlow.update { it + "agency" }
+            try {
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                SharedCallables.playersUpdate(platformManager.value, docId, emptyMap(), deleteFields = listOf("agency", "agencyUrl"))
+            } finally {
+                _savingFieldsFlow.update { it - "agency" }
+            }
         }
     }
 
@@ -531,24 +588,29 @@ class PlayerInfoViewModel(
             it?.copy(haveMandate = hasMandate)
         }
         viewModelScope.launch {
-            val player = _playerInfoFlow.value ?: return@launch
-            val docId = _playerDocumentIdFlow.value ?: return@launch
-            val feedProfileId = player.tmProfile ?: docId
+            if (isManual) _savingFieldsFlow.update { it + "mandate" }
+            try {
+                val player = _playerInfoFlow.value ?: return@launch
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                val feedProfileId = player.tmProfile ?: docId
 
-            if (isManual) {
-                val createdBy = getCurrentUserName()
-                SharedCallables.playersToggleMandate(
-                    platform = platformManager.value,
-                    playerId = docId,
-                    hasMandate = hasMandate,
-                    playerRefId = feedProfileId,
-                    playerName = player.fullName,
-                    playerImage = player.profileImage,
-                    agentName = createdBy
-                )
-            } else {
-                // Auto-sync from document watcher — just update the field, no FeedEvent
-                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("haveMandate" to hasMandate))
+                if (isManual) {
+                    val createdBy = getCurrentUserName()
+                    SharedCallables.playersToggleMandate(
+                        platform = platformManager.value,
+                        playerId = docId,
+                        hasMandate = hasMandate,
+                        playerRefId = feedProfileId,
+                        playerName = player.fullName,
+                        playerImage = player.profileImage,
+                        agentName = createdBy
+                    )
+                } else {
+                    // Auto-sync from document watcher — just update the field, no FeedEvent
+                    SharedCallables.playersUpdate(platformManager.value, docId, mapOf("haveMandate" to hasMandate))
+                }
+            } finally {
+                if (isManual) _savingFieldsFlow.update { it - "mandate" }
             }
         }
     }
@@ -558,8 +620,13 @@ class PlayerInfoViewModel(
             it?.copy(interestedInIsrael = interested)
         }
         viewModelScope.launch {
-            val docId = _playerDocumentIdFlow.value ?: return@launch
-            SharedCallables.playersUpdate(platformManager.value, docId, mapOf("interestedInIsrael" to interested))
+            _savingFieldsFlow.update { it + "interestedInIsrael" }
+            try {
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("interestedInIsrael" to interested))
+            } finally {
+                _savingFieldsFlow.update { it - "interestedInIsrael" }
+            }
         }
     }
 
@@ -568,11 +635,16 @@ class PlayerInfoViewModel(
             it?.copy(salaryRange = salaryRange)
         }
         viewModelScope.launch {
-            val docId = _playerDocumentIdFlow.value ?: return@launch
-            if (salaryRange != null) {
-                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("salaryRange" to salaryRange))
-            } else {
-                SharedCallables.playersUpdate(platformManager.value, docId, emptyMap(), deleteFields = listOf("salaryRange"))
+            _savingFieldsFlow.update { it + "salary" }
+            try {
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                if (salaryRange != null) {
+                    SharedCallables.playersUpdate(platformManager.value, docId, mapOf("salaryRange" to salaryRange))
+                } else {
+                    SharedCallables.playersUpdate(platformManager.value, docId, emptyMap(), deleteFields = listOf("salaryRange"))
+                }
+            } finally {
+                _savingFieldsFlow.update { it - "salary" }
             }
         }
     }
@@ -582,73 +654,88 @@ class PlayerInfoViewModel(
             it?.copy(transferFee = transferFee)
         }
         viewModelScope.launch {
-            val docId = _playerDocumentIdFlow.value ?: return@launch
-            if (transferFee != null) {
-                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("transferFee" to transferFee))
-            } else {
-                SharedCallables.playersUpdate(platformManager.value, docId, emptyMap(), deleteFields = listOf("transferFee"))
+            _savingFieldsFlow.update { it + "transferFee" }
+            try {
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                if (transferFee != null) {
+                    SharedCallables.playersUpdate(platformManager.value, docId, mapOf("transferFee" to transferFee))
+                } else {
+                    SharedCallables.playersUpdate(platformManager.value, docId, emptyMap(), deleteFields = listOf("transferFee"))
+                }
+            } finally {
+                _savingFieldsFlow.update { it - "transferFee" }
             }
         }
     }
 
     override fun updateNotes(notes: NotesModel) {
         viewModelScope.launch {
-            val player = _playerInfoFlow.value ?: return@launch
-            val docId = _playerDocumentIdFlow.value ?: return@launch
-            val feedProfileId = player.tmProfile ?: docId
-            val account = getCurrentUserAccount()
+            _savingFieldsFlow.update { it + "notes" }
+            try {
+                val player = _playerInfoFlow.value ?: return@launch
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                val feedProfileId = player.tmProfile ?: docId
+                val account = getCurrentUserAccount()
 
-            // Optimistic local update
-            _playerInfoFlow.update { p ->
-                val currentNotes = p?.noteList?.toMutableList() ?: mutableListOf()
-                val note = notes.copy(
-                    createBy = account?.name,
-                    createByHe = account?.hebrewName
+                // Optimistic local update
+                _playerInfoFlow.update { p ->
+                    val currentNotes = p?.noteList?.toMutableList() ?: mutableListOf()
+                    val note = notes.copy(
+                        createBy = account?.name,
+                        createByHe = account?.hebrewName
+                    )
+                    currentNotes.add(note)
+                    p?.copy(noteList = currentNotes)
+                }
+
+                SharedCallables.playersAddNote(
+                    platform = platformManager.value,
+                    playerId = docId,
+                    playerRefId = feedProfileId,
+                    noteText = notes.notes ?: "",
+                    createdBy = account?.name,
+                    createdByHe = account?.hebrewName,
+                    playerName = player.fullName,
+                    playerImage = player.profileImage,
+                    agentName = account?.getDisplayName(appContext)
                 )
-                currentNotes.add(note)
-                p?.copy(noteList = currentNotes)
+            } finally {
+                _savingFieldsFlow.update { it - "notes" }
             }
-
-            SharedCallables.playersAddNote(
-                platform = platformManager.value,
-                playerId = docId,
-                playerRefId = feedProfileId,
-                noteText = notes.notes ?: "",
-                createdBy = account?.name,
-                createdByHe = account?.hebrewName,
-                playerName = player.fullName,
-                playerImage = player.profileImage,
-                agentName = account?.getDisplayName(appContext)
-            )
         }
     }
 
     override fun onDeleteNoteClicked(note: NotesModel) {
         viewModelScope.launch {
-            val player = _playerInfoFlow.value ?: return@launch
-            val docId = _playerDocumentIdFlow.value ?: return@launch
-            val feedProfileId = player.tmProfile ?: docId
-            val noteIndex = player.noteList?.indexOf(note) ?: -1
+            _savingFieldsFlow.update { it + "notes" }
+            try {
+                val player = _playerInfoFlow.value ?: return@launch
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                val feedProfileId = player.tmProfile ?: docId
+                val noteIndex = player.noteList?.indexOf(note) ?: -1
 
-            // Optimistic local update
-            _playerInfoFlow.update { p ->
-                val currentNotes = p?.noteList?.toMutableList() ?: mutableListOf()
-                currentNotes.remove(note)
-                p?.copy(noteList = currentNotes)
+                // Optimistic local update
+                _playerInfoFlow.update { p ->
+                    val currentNotes = p?.noteList?.toMutableList() ?: mutableListOf()
+                    currentNotes.remove(note)
+                    p?.copy(noteList = currentNotes)
+                }
+
+                val deletedBy = getCurrentUserName()
+                SharedCallables.playersDeleteNote(
+                    platform = platformManager.value,
+                    playerId = docId,
+                    playerRefId = feedProfileId,
+                    noteIndex = noteIndex,
+                    noteText = note.notes,
+                    noteCreatedAt = note.createdAt,
+                    playerName = player.fullName,
+                    playerImage = player.profileImage,
+                    agentName = deletedBy
+                )
+            } finally {
+                _savingFieldsFlow.update { it - "notes" }
             }
-
-            val deletedBy = getCurrentUserName()
-            SharedCallables.playersDeleteNote(
-                platform = platformManager.value,
-                playerId = docId,
-                playerRefId = feedProfileId,
-                noteIndex = noteIndex,
-                noteText = note.notes,
-                noteCreatedAt = note.createdAt,
-                playerName = player.fullName,
-                playerImage = player.profileImage,
-                agentName = deletedBy
-            )
         }
     }
 
@@ -839,13 +926,18 @@ class PlayerInfoViewModel(
 
     override fun deleteDocument(documentId: String, isPassport: Boolean) {
         viewModelScope.launch {
-            val docId = _playerDocumentIdFlow.value
-            SharedCallables.playerDocumentsDelete(
-                platform = platformManager.value,
-                documentId = documentId,
-                clearPassport = isPassport,
-                playerId = docId
-            )
+            _isDeletingDocumentFlow.value = true
+            try {
+                val docId = _playerDocumentIdFlow.value
+                SharedCallables.playerDocumentsDelete(
+                    platform = platformManager.value,
+                    documentId = documentId,
+                    clearPassport = isPassport,
+                    playerId = docId
+                )
+            } finally {
+                _isDeletingDocumentFlow.value = false
+            }
         }
     }
 
@@ -860,7 +952,9 @@ class PlayerInfoViewModel(
 
     override fun markPlayerAsOffered(player: Player, request: com.liordahan.mgsrteam.features.requests.models.Request, clubFeedback: String?) {
         viewModelScope.launch {
-            val offer = PlayerOffer(
+            _isMarkingOfferedFlow.value = true
+            try {
+                val offer = PlayerOffer(
                 playerTmProfile = player.tmProfile,
                 playerName = player.fullName,
                 playerImage = player.profileImage,
@@ -873,18 +967,31 @@ class PlayerInfoViewModel(
                 clubFeedback = clubFeedback?.takeIf { it.isNotBlank() }
             )
             offersRepository.addOffer(offer)
+            } finally {
+                _isMarkingOfferedFlow.value = false
+            }
         }
     }
 
     override fun updateClubFeedback(offerId: String, clubFeedback: String?) {
         viewModelScope.launch {
-            offersRepository.updateClubFeedback(offerId, clubFeedback)
+            _isSavingFeedbackFlow.value = true
+            try {
+                offersRepository.updateClubFeedback(offerId, clubFeedback)
+            } finally {
+                _isSavingFeedbackFlow.value = false
+            }
         }
     }
 
     override fun updateHistorySummary(offerId: String, summary: String?) {
         viewModelScope.launch {
-            offersRepository.updateHistorySummary(offerId, summary)
+            _isSavingSummaryFlow.value = true
+            try {
+                offersRepository.updateHistorySummary(offerId, summary)
+            } finally {
+                _isSavingSummaryFlow.value = false
+            }
         }
     }
 
@@ -1269,27 +1376,32 @@ class PlayerInfoViewModel(
 
     override fun requestAgentTransfer() {
         viewModelScope.launch {
-            val player = _playerInfoFlow.value ?: return@launch
-            val docId = _playerDocumentIdFlow.value ?: return@launch
-            val currentUser = _currentUserAccountFlow.value ?: getCurrentUserAccount() ?: return@launch
-            // Allow empty fromAgentId — cloud function uses name fallback
-            val fromAgentId = player.agentInChargeId ?: ""
-            val fromAgentName = player.agentInChargeName
+            _isRequestingTransferFlow.value = true
+            try {
+                val player = _playerInfoFlow.value ?: return@launch
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                val currentUser = _currentUserAccountFlow.value ?: getCurrentUserAccount() ?: return@launch
+                // Allow empty fromAgentId — cloud function uses name fallback
+                val fromAgentId = player.agentInChargeId ?: ""
+                val fromAgentName = player.agentInChargeName
 
-            val result = agentTransferRepository.requestTransfer(
-                playerId = docId,
-                playerName = player.fullName,
-                playerImage = player.profileImage,
-                platform = platformManager.value,
-                fromAgentId = fromAgentId,
-                fromAgentName = fromAgentName,
-                toAgentId = currentUser.id ?: return@launch,
-                toAgentName = currentUser.getDisplayName(appContext)
-            )
-            if (result != null) {
-                _transferSuccessFlow.emit("request_sent")
-            } else {
-                _transferSuccessFlow.emit("request_already_pending")
+                val result = agentTransferRepository.requestTransfer(
+                    playerId = docId,
+                    playerName = player.fullName,
+                    playerImage = player.profileImage,
+                    platform = platformManager.value,
+                    fromAgentId = fromAgentId,
+                    fromAgentName = fromAgentName,
+                    toAgentId = currentUser.id ?: return@launch,
+                    toAgentName = currentUser.getDisplayName(appContext)
+                )
+                if (result != null) {
+                    _transferSuccessFlow.emit("request_sent")
+                } else {
+                    _transferSuccessFlow.emit("request_already_pending")
+                }
+            } finally {
+                _isRequestingTransferFlow.value = false
             }
         }
     }

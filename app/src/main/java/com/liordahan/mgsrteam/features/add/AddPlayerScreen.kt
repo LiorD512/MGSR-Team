@@ -1721,10 +1721,12 @@ fun AddPlayerContactFormContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        val isSaving by viewModel.isSavingPlayerFlow.collectAsStateWithLifecycle()
+
         PrimaryButtonNewDesign(
             buttonText = stringResource(R.string.add_player_save),
-            isEnabled = true,
-            showProgress = false,
+            isEnabled = !isSaving,
+            showProgress = isSaving,
             onButtonClicked = { viewModel.onSavePlayerClicked() },
             containerColor = PlatformColors.palette.accent
         )
@@ -1744,6 +1746,7 @@ fun AddToShortlistBottomSheetContent(
     val selectedPlayer by viewModel.selectedPlayerFlow.collectAsStateWithLifecycle(initialValue = null)
     val scope = rememberCoroutineScope()
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isAddingToShortlist by remember { mutableStateOf(false) }
     val alreadyInShortlistMsg = stringResource(R.string.add_player_already_in_shortlist)
     val alreadyInRosterMsg = stringResource(R.string.add_player_already_in_roster)
 
@@ -1802,11 +1805,13 @@ fun AddToShortlistBottomSheetContent(
             )
             PrimaryButtonNewDesign(
                 buttonText = stringResource(R.string.add_player_to_shortlist),
-                isEnabled = selectedPlayer != null,
-                showProgress = false,
+                isEnabled = selectedPlayer != null && !isAddingToShortlist,
+                showProgress = isAddingToShortlist,
                 onButtonClicked = {
+                    if (isAddingToShortlist) return@PrimaryButtonNewDesign
                     selectedPlayer?.let { player ->
                         errorMessage = null
+                        isAddingToShortlist = true
                         val release = LatestTransferModel(
                             playerImage = player.profileImage,
                             playerName = player.fullName,
@@ -1820,15 +1825,19 @@ fun AddToShortlistBottomSheetContent(
                             marketValue = player.marketValue
                         )
                         scope.launch {
-                            when (shortlistRepository.addToShortlist(release)) {
-                                is ShortlistRepository.AddToShortlistResult.Added -> {
-                                    viewModel.resetAfterAdd()
-                                    onAdded()
+                            try {
+                                when (shortlistRepository.addToShortlist(release)) {
+                                    is ShortlistRepository.AddToShortlistResult.Added -> {
+                                        viewModel.resetAfterAdd()
+                                        onAdded()
+                                    }
+                                    is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
+                                        errorMessage = alreadyInShortlistMsg
+                                    is ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                        errorMessage = alreadyInRosterMsg
                                 }
-                                is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
-                                    errorMessage = alreadyInShortlistMsg
-                                is ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
-                                    errorMessage = alreadyInRosterMsg
+                            } finally {
+                                isAddingToShortlist = false
                             }
                         }
                     }

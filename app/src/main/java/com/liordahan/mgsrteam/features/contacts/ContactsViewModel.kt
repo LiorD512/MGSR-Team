@@ -18,7 +18,9 @@ data class ContactsUiState(
     val contacts: List<Contact> = emptyList(),
     val players: List<Player> = emptyList(),
     val isLoading: Boolean = true,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isSaving: Boolean = false,
+    val isDeleting: Boolean = false
 )
 
 abstract class IContactsViewModel: ViewModel() {
@@ -68,19 +70,34 @@ class ContactsViewModel(
 
     override fun addContact(contact: Contact) {
         viewModelScope.launch {
-            repository.addContact(contact)
+            _contactsState.value = _contactsState.value.copy(isSaving = true)
+            try {
+                repository.addContact(contact)
+            } finally {
+                _contactsState.value = _contactsState.value.copy(isSaving = false)
+            }
         }
     }
 
     override fun updateContact(contact: Contact) {
         viewModelScope.launch {
-            repository.updateContact(contact)
+            _contactsState.value = _contactsState.value.copy(isSaving = true)
+            try {
+                repository.updateContact(contact)
+            } finally {
+                _contactsState.value = _contactsState.value.copy(isSaving = false)
+            }
         }
     }
 
     override fun deleteContact(contactId: String) {
         viewModelScope.launch {
-            repository.deleteContact(contactId)
+            _contactsState.value = _contactsState.value.copy(isDeleting = true)
+            try {
+                repository.deleteContact(contactId)
+            } finally {
+                _contactsState.value = _contactsState.value.copy(isDeleting = false)
+            }
         }
     }
 }

@@ -272,13 +272,18 @@ fun ShortlistScreen(
         } catch (_: Exception) { }
     }
 
-    val filteredEntries = remember(state.entries, myPlayersOnly, selectedAgentFilter, currentUserName, selectedPosition, withNotesOnly, sortOption, searchQuery) {
+    val filteredEntries = remember(state.entries, state.removingUrls, myPlayersOnly, selectedAgentFilter, currentUserName, selectedPosition, withNotesOnly, sortOption, searchQuery) {
         var result = when {
             myPlayersOnly && !currentUserName.isNullOrBlank() ->
                 state.entries.filter { it.addedByAgentName.equals(currentUserName, ignoreCase = true) }
             selectedAgentFilter != null ->
                 state.entries.filter { it.addedByAgentName.equals(selectedAgentFilter, ignoreCase = true) }
             else -> state.entries
+        }
+
+        // Hide entries being removed (optimistic removal)
+        if (state.removingUrls.isNotEmpty()) {
+            result = result.filter { it.tmProfileUrl !in state.removingUrls }
         }
 
         // Name search (men only)

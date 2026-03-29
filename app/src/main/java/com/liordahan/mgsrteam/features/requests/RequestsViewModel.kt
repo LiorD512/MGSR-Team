@@ -82,6 +82,7 @@ abstract class IRequestsViewModel : ViewModel() {
     )
     abstract fun deleteRequest(request: Request)
     abstract fun clearAddRequestMessage()
+    abstract val isDeletingRequest: StateFlow<Boolean>
 }
 
 class RequestsViewModel(
@@ -104,6 +105,8 @@ class RequestsViewModel(
 
     private val _addRequestMessage = MutableStateFlow<String?>(null)
     private val _addRequestError = MutableStateFlow<String?>(null)
+    private val _isDeletingRequest = MutableStateFlow(false)
+    override val isDeletingRequest: StateFlow<Boolean> = _isDeletingRequest.asStateFlow()
 
     /** playerTmProfile → aggregated validLeagues from all active (non-expired) mandate documents */
     private val _mandateLeaguesByPlayer = MutableStateFlow<Map<String, List<String>>>(emptyMap())
@@ -356,7 +359,12 @@ class RequestsViewModel(
 
     override fun deleteRequest(request: Request) {
         viewModelScope.launch {
-            requestsRepository.deleteRequest(request)
+            _isDeletingRequest.value = true
+            try {
+                requestsRepository.deleteRequest(request)
+            } finally {
+                _isDeletingRequest.value = false
+            }
         }
     }
 

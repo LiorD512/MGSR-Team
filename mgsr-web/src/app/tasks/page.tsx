@@ -144,6 +144,8 @@ export default function TasksPage() {
   const [editPriority, setEditPriority] = useState(0);
   const [editAgentId, setEditAgentId] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncToast, setSyncToast] = useState<{ message: string; isError?: boolean } | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
@@ -288,12 +290,24 @@ export default function TasksPage() {
   }, [myTasks, activeCompletedTab]);
 
   const toggleComplete = async (task: AgentTask) => {
-    await callTasksToggleComplete({ platform, taskId: task.id, isCompleted: !task.isCompleted });
+    if (togglingTaskId) return;
+    setTogglingTaskId(task.id);
+    try {
+      await callTasksToggleComplete({ platform, taskId: task.id, isCompleted: !task.isCompleted });
+    } finally {
+      setTogglingTaskId(null);
+    }
   };
 
   const deleteTask = async (task: AgentTask) => {
+    if (deletingTaskId) return;
     if (!confirm(t('tasks_delete_confirm'))) return;
-    await callTasksDelete({ platform, taskId: task.id });
+    setDeletingTaskId(task.id);
+    try {
+      await callTasksDelete({ platform, taskId: task.id });
+    } finally {
+      setDeletingTaskId(null);
+    }
   };
 
   const openEditTask = (task: AgentTask) => {
@@ -726,15 +740,18 @@ export default function TasksPage() {
                             />
                             <button
                               onClick={() => toggleComplete(task)}
-                              className={`shrink-0 w-8 h-8 sm:w-7 sm:h-7 rounded-lg border-2 flex items-center justify-center transition ${
+                              disabled={togglingTaskId === task.id}
+                              className={`shrink-0 w-8 h-8 sm:w-7 sm:h-7 rounded-lg border-2 flex items-center justify-center transition disabled:opacity-50 ${
                                 task.isCompleted
                                   ? `${borderAccent} ${accentBg}`
                                   : `border-mgsr-muted ${hoverBorderAccent}`
                               }`}
                             >
-                              {task.isCompleted && (
+                              {togglingTaskId === task.id ? (
+                                <span className="inline-block w-4 h-4 border-2 border-mgsr-muted/30 border-t-mgsr-teal rounded-full animate-spin" />
+                              ) : task.isCompleted ? (
                                 <span className="text-mgsr-dark text-sm font-bold">✓</span>
-                              )}
+                              ) : null}
                             </button>
                             <div className="flex-1 min-w-0">
                               <p
@@ -810,12 +827,17 @@ export default function TasksPage() {
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); deleteTask(task); }}
-                                className="p-2 rounded-lg text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10 transition"
+                                disabled={deletingTaskId === task.id}
+                                className="p-2 rounded-lg text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10 transition disabled:opacity-50"
                                 title={t('tasks_delete')}
                               >
+                                {deletingTaskId === task.id ? (
+                                  <span className="inline-block w-4 h-4 border-2 border-mgsr-red/20 border-t-mgsr-red rounded-full animate-spin" />
+                                ) : (
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
+                                )}
                               </button>
                             </div>
                           </div>
@@ -933,15 +955,18 @@ export default function TasksPage() {
                             />
                             <button
                               onClick={() => toggleComplete(task)}
-                              className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition ${
+                              disabled={togglingTaskId === task.id}
+                              className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition disabled:opacity-50 ${
                                 task.isCompleted
                                   ? `${borderAccent} ${accentBg}`
                                   : `border-mgsr-muted ${hoverBorderAccent}`
                               }`}
                             >
-                              {task.isCompleted && (
+                              {togglingTaskId === task.id ? (
+                                <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-muted/30 border-t-mgsr-teal rounded-full animate-spin" />
+                              ) : task.isCompleted ? (
                                 <span className="text-mgsr-dark text-xs font-bold">✓</span>
-                              )}
+                              ) : null}
                             </button>
                             <div className="flex-1 min-w-0">
                               <p
@@ -1016,12 +1041,17 @@ export default function TasksPage() {
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); deleteTask(task); }}
-                                className="p-1.5 rounded-lg text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10 transition"
+                                disabled={deletingTaskId === task.id}
+                                className="p-1.5 rounded-lg text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10 transition disabled:opacity-50"
                                 title={t('tasks_delete')}
                               >
+                                {deletingTaskId === task.id ? (
+                                  <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-red/20 border-t-mgsr-red rounded-full animate-spin" />
+                                ) : (
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
+                                )}
                               </button>
                             </div>
                           </div>

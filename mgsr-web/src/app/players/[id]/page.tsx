@@ -286,6 +286,7 @@ export default function PlayerInfoPage() {
   const [interestedInIsraelToggling, setInterestedInIsraelToggling] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [playerTasks, setPlayerTasks] = useState<{ id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentId?: string; agentName?: string; createdAt?: number; createdByAgentId?: string; createdByAgentName?: string; templateId?: string; linkedAgentContactId?: string; linkedAgentContactName?: string; linkedAgentContactPhone?: string }[]>([]);
+  const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [showShareSetupModal, setShowShareSetupModal] = useState(false);
@@ -2389,19 +2390,28 @@ export default function PlayerInfoPage() {
                     >
                       <button
                         type="button"
+                        disabled={togglingTaskId === task.id}
                         onClick={async (e) => {
                           e.stopPropagation();
+                          if (togglingTaskId) return;
+                          setTogglingTaskId(task.id);
                           try {
                             await callTasksToggleComplete({ platform: 'men', taskId: task.id, isCompleted: !task.isCompleted });
                           } catch {
                             // ignore
+                          } finally {
+                            setTogglingTaskId(null);
                           }
                         }}
-                        className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition ${
+                        className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition disabled:opacity-50 ${
                           task.isCompleted ? 'border-mgsr-teal bg-mgsr-teal' : 'border-mgsr-muted group-hover:border-mgsr-teal cursor-pointer'
                         }`}
                       >
-                        {task.isCompleted && <span className="text-mgsr-dark text-xs font-bold">✓</span>}
+                        {togglingTaskId === task.id ? (
+                          <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-muted/30 border-t-mgsr-teal rounded-full animate-spin" />
+                        ) : task.isCompleted ? (
+                          <span className="text-mgsr-dark text-xs font-bold">✓</span>
+                        ) : null}
                       </button>
                       <div className="flex-1 min-w-0">
                         <p className={`font-medium ${task.isCompleted ? 'line-through text-mgsr-muted' : 'text-mgsr-text'}`}>

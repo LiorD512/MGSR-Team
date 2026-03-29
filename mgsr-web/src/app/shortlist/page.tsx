@@ -151,6 +151,7 @@ export default function ShortlistPage() {
   const [noteModalText, setNoteModalText] = useState('');
   const [noteModalEditIndex, setNoteModalEditIndex] = useState(-1);
   const [savingNote, setSavingNote] = useState(false);
+  const [deletingNoteKey, setDeletingNoteKey] = useState<string | null>(null);
   const [expandedNotesUrl, setExpandedNotesUrl] = useState<string | null>(null);
   const [igLoadingUrl, setIgLoadingUrl] = useState<string | null>(null);
   const [igCopiedUrl, setIgCopiedUrl] = useState<string | null>(null);
@@ -462,10 +463,14 @@ export default function ShortlistPage() {
 
   const deleteNoteFromEntry = useCallback(async (entry: ShortlistEntry, noteIndex: number) => {
     if (!user) return;
+    const key = `${entry.tmProfileUrl}_${noteIndex}`;
+    setDeletingNoteKey(key);
     try {
       await callShortlistDeleteNote({ platform, tmProfileUrl: entry.tmProfileUrl, noteIndex });
     } catch (err) {
       console.error('Delete note error:', err);
+    } finally {
+      setDeletingNoteKey(null);
     }
   }, [user, platform]);
 
@@ -1361,7 +1366,7 @@ export default function ShortlistPage() {
                                 <span className="text-[11px] text-mgsr-muted/50">{getNoteAuthor(note)} · {formatNoteDate(note.createdAt)}</span>
                                 <div className="flex gap-2">
                                   <button type="button" onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setNoteModalEntry(entry); setNoteModalMode('edit'); setNoteModalText(note.text); setNoteModalEditIndex(ni); }} className="text-[11px] text-mgsr-muted/60 hover:text-mgsr-text">{t('shortlist_notes_edit')}</button>
-                                  <button type="button" onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); deleteNoteFromEntry(entry, ni); }} className="text-[11px] text-mgsr-red/50 hover:text-mgsr-red">{t('shortlist_notes_delete')}</button>
+                                  <button type="button" onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); deleteNoteFromEntry(entry, ni); }} disabled={deletingNoteKey === `${entry.tmProfileUrl}_${ni}`} className="text-[11px] text-mgsr-red/50 hover:text-mgsr-red disabled:opacity-40">{deletingNoteKey === `${entry.tmProfileUrl}_${ni}` ? '...' : t('shortlist_notes_delete')}</button>
                                 </div>
                               </div>
                             </div>

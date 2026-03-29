@@ -414,13 +414,17 @@ fun PlayerInfoScreen(
         }
 
         if (showDeleteDialog) {
+            val isDeleting by viewModel.showButtonProgress.collectAsStateWithLifecycle()
             DeletePlayerDialog(
-                onDismissRequest = { showDeleteDialog = false },
+                onDismissRequest = { if (!isDeleting) showDeleteDialog = false },
+                isDeleting = isDeleting,
                 onDeletePlayerClicked = {
-                    showDeleteDialog = false
                     viewModel.deletePlayer(
                         playerToPresent?.tmProfile ?: playerToPresent?.id ?: "",
-                        onDeleteSuccessfully = { navController.popBackStack() })
+                        onDeleteSuccessfully = {
+                            showDeleteDialog = false
+                            navController.popBackStack()
+                        })
                 }
             )
         }
@@ -3551,9 +3555,9 @@ private fun PlayerInfoBottomBar(
 }
 
 @Composable
-fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -> Unit) {
+fun DeletePlayerDialog(onDismissRequest: () -> Unit, isDeleting: Boolean = false, onDeletePlayerClicked: () -> Unit) {
     Dialog(
-        onDismissRequest = { onDismissRequest() }
+        onDismissRequest = { if (!isDeleting) onDismissRequest() }
     ) {
         Card(
             shape = RoundedCornerShape(16.dp),
@@ -3587,31 +3591,40 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
                             )
                             .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(100.dp))
                             .size(width = 80.dp, height = 30.dp)
-                            .clickWithNoRipple { },
+                            .clickWithNoRipple { if (!isDeleting) onDismissRequest() },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = stringResource(R.string.cancel),
-                            style = boldTextStyle(PlatformColors.palette.textPrimary, 12.sp),
-                            modifier = Modifier.clickWithNoRipple { onDismissRequest() }
+                            style = boldTextStyle(
+                                if (isDeleting) PlatformColors.palette.textSecondary else PlatformColors.palette.textPrimary,
+                                12.sp
+                            )
                         )
                     }
                     Spacer(Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
                             .background(
-                                PlatformColors.palette.red,
+                                if (isDeleting) PlatformColors.palette.red.copy(alpha = 0.6f) else PlatformColors.palette.red,
                                 shape = RoundedCornerShape(100.dp)
                             )
                             .size(width = 80.dp, height = 30.dp)
-                            .clickWithNoRipple { },
+                            .clickWithNoRipple { if (!isDeleting) onDeletePlayerClicked() },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = stringResource(R.string.player_info_delete),
-                            style = boldTextStyle(Color.White, 12.sp),
-                            modifier = Modifier.clickWithNoRipple { onDeletePlayerClicked() }
-                        )
+                        if (isDeleting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.player_info_delete),
+                                style = boldTextStyle(Color.White, 12.sp)
+                            )
+                        }
                     }
                 }
             }

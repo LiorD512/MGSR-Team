@@ -49,7 +49,9 @@ data class WarRoomUiState(
     val loadingReportUrls: Set<String> = emptySet(),
 
     // Scout profile feedback (thumbs up/down)
-    val scoutFeedback: Map<String, String> = emptyMap()  // profileId -> "up" | "down"
+    val scoutFeedback: Map<String, String> = emptyMap(),  // profileId -> "up" | "down"
+    /** Profile IDs where feedback is currently being saved to server. */
+    val savingFeedbackIds: Set<String> = emptySet()
 )
 
 enum class WarRoomTab { DISCOVERY, AGENTS, AI_SCOUT }
@@ -299,13 +301,18 @@ class WarRoomViewModel(
     override fun setProfileFeedback(profileId: String, feedback: String, agentId: String) {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         // Optimistic UI update
-        _uiState.update { it.copy(scoutFeedback = it.scoutFeedback + (profileId to feedback)) }
+        _uiState.update { it.copy(
+            scoutFeedback = it.scoutFeedback + (profileId to feedback),
+            savingFeedbackIds = it.savingFeedbackIds + profileId
+        ) }
 
         viewModelScope.launch {
             try {
                 SharedCallables.scoutProfileFeedbackSet(uid, profileId, feedback, agentId)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set profile feedback", e)
+            } finally {
+                _uiState.update { it.copy(savingFeedbackIds = it.savingFeedbackIds - profileId) }
             }
         }
     }

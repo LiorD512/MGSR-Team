@@ -20,7 +20,7 @@ interface AgentTransferSectionProps {
   onRequestTransfer: () => void;
   onApproveTransfer: () => Promise<void> | void;
   onRejectTransfer: () => Promise<void> | void;
-  onCancelTransfer: () => void;
+  onCancelTransfer: () => Promise<void> | void;
   resolveAgentName: (name: string | undefined, agentId?: string) => string;
   t: (key: string) => string;
 }
@@ -39,7 +39,7 @@ export default function AgentTransferSection({
   t,
 }: AgentTransferSectionProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [actionLoading, setActionLoading] = useState<'approve' | 'reject' | null>(null);
+  const [actionLoading, setActionLoading] = useState<'approve' | 'reject' | 'cancel' | null>(null);
 
   const hasAgent = !!player.agentInChargeId || !!player.agentInChargeName;
   const idMatch = !!player.agentInChargeId &&
@@ -107,11 +107,14 @@ export default function AgentTransferSection({
             {t('agent_transfer_pending_desc').replace('%s', currentAgentName)}
           </p>
           <button
-            onClick={onCancelTransfer}
-            className="py-1.5 px-3 rounded-lg text-xs font-bold text-red-400 border border-red-500/20 hover:bg-red-500/10 transition-colors"
+            onClick={async () => { setActionLoading('cancel'); try { await onCancelTransfer(); } finally { setActionLoading(null); } }}
+            disabled={actionLoading === 'cancel'}
+            className="py-1.5 px-3 rounded-lg text-xs font-bold text-red-400 border border-red-500/20 hover:bg-red-500/10 transition-colors disabled:opacity-50"
             style={{ background: 'rgba(244,63,94,0.05)' }}
           >
-            {t('agent_transfer_cancel')}
+            {actionLoading === 'cancel' ? (
+              <span className="inline-block w-4 h-4 border-2 border-red-400/25 border-t-red-400 rounded-full animate-spin" />
+            ) : t('agent_transfer_cancel')}
           </button>
         </div>
       </div>

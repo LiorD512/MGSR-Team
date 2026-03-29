@@ -260,6 +260,7 @@ export default function ShadowTeamsPage() {
   const [menuOpenRole, setMenuOpenRole] = useState<'starter' | 'substitute'>('starter');
   const [formationMenuOpen, setFormationMenuOpen] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const selectedAccountIdRef = useRef(selectedAccountId);
   const formationMenuRef = useRef<HTMLDivElement>(null);
   selectedAccountIdRef.current = selectedAccountId;
@@ -340,15 +341,20 @@ export default function ShadowTeamsPage() {
   }, [formationMenuOpen]);
 
   const saveShadowTeam = useCallback(
-    (newSlots: PositionSlot[], newFormationId: string) => {
+    async (newSlots: PositionSlot[], newFormationId: string) => {
       if (!selectedAccountId || !isOwnTeam) return;
-      callShadowTeamsSave({
-        platform: 'men',
-        accountId: selectedAccountId,
-        formationId: newFormationId,
-        slots: newSlots.map((s) => ({ starter: s.starter, substitute: s.substitute ?? null })),
-        updatedAt: Date.now(),
-      });
+      setSaving(true);
+      try {
+        await callShadowTeamsSave({
+          platform: 'men',
+          accountId: selectedAccountId,
+          formationId: newFormationId,
+          slots: newSlots.map((s) => ({ starter: s.starter, substitute: s.substitute ?? null })),
+          updatedAt: Date.now(),
+        });
+      } finally {
+        setSaving(false);
+      }
     },
     [selectedAccountId, isOwnTeam]
   );
@@ -461,6 +467,7 @@ export default function ShadowTeamsPage() {
         <header className="mb-6 sm:mb-12">
           <h1 className="font-serif text-[1.5rem] sm:text-[2rem] md:text-[2.25rem] font-normal text-mgsr-text tracking-tight">
             {t('shadow_teams_title')}
+            {saving && <span className="inline-block ml-3 w-4 h-4 border-2 border-mgsr-teal/20 border-t-mgsr-teal rounded-full animate-spin align-middle" />}
           </h1>
           <p className="font-premium text-[0.8rem] sm:text-[0.9rem] text-[#6b7d8a] mt-1">
             {t('shadow_teams_subtitle')}

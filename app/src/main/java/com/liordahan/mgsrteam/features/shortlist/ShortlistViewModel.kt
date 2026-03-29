@@ -16,7 +16,13 @@ data class ShortlistUiState(
     val selectedPosition: String? = null,
     val withNotesOnly: Boolean = false,
     val myPlayersOnly: Boolean = false,
-    val selectedAgentFilter: String? = null
+    val selectedAgentFilter: String? = null,
+    /** URLs currently being removed (optimistic hide + loading indicator). */
+    val removingUrls: Set<String> = emptySet(),
+    /** URL currently being added. */
+    val isAdding: Boolean = false,
+    /** True while a note save/delete is in progress. */
+    val isSavingNote: Boolean = false
 )
 
 interface IShortlistViewModel {
@@ -46,44 +52,81 @@ class ShortlistViewModel(
         viewModelScope.launch { repository.migrateFromLegacyIfNeeded() }
         viewModelScope.launch {
             repository.getShortlistFlow().collect { entries ->
-                _shortlistFlow.update { it.copy(entries = entries, isLoading = false) }
+                _shortlistFlow.update {
+                    // Clear removingUrls for entries that are now actually gone
+                    val stillPresent = entries.map { e -> e.tmProfileUrl }.toSet()
+                    val updatedRemoving = it.removingUrls.filter { url -> stillPresent.contains(url) }.toSet()
+                    it.copy(entries = entries, isLoading = false, removingUrls = updatedRemoving)
+                }
             }
         }
     }
 
     override fun remove(entry: ShortlistEntry) {
+        // Optimistic: immediately mark as removing so UI can hide/animate
+        _shortlistFlow.update { it.copy(removingUrls = it.removingUrls + entry.tmProfileUrl) }
         viewModelScope.launch {
-            repository.removeFromShortlist(entry.tmProfileUrl)
+            try {
+                repository.removeFromShortlist(entry.tmProfileUrl)
+            } catch (_: Exception) {
+                // Revert optimistic hide on failure
+                _shortlistFlow.update { it.copy(removingUrls = it.removingUrls - entry.tmProfileUrl) }
+            }
         }
     }
 
     override fun removeByUrl(tmProfileUrl: String) {
+        _shortlistFlow.update { it.copy(removingUrls = it.removingUrls + tmProfileUrl) }
         viewModelScope.launch {
-            repository.removeFromShortlist(tmProfileUrl)
+            try {
+                repository.removeFromShortlist(tmProfileUrl)
+            } catch (_: Exception) {
+                _shortlistFlow.update { it.copy(removingUrls = it.removingUrls - tmProfileUrl) }
+            }
         }
     }
 
     override fun addByUrl(tmProfileUrl: String) {
         viewModelScope.launch {
-            repository.addToShortlist(tmProfileUrl)
+            _shortlistFlow.update { it.copy(isAdding = true) }
+            try {
+                repository.addToShortlist(tmProfileUrl)
+            } finally {
+                _shortlistFlow.update { it.copy(isAdding = false) }
+            }
         }
     }
 
     override fun addNote(tmProfileUrl: String, text: String) {
         viewModelScope.launch {
-            repository.addNoteToEntry(tmProfileUrl, text)
+            _shortlistFlow.update { it.copy(isSavingNote = true) }
+            try {
+                repository.addNoteToEntry(tmProfileUrl, text)
+            } finally {
+                _shortlistFlow.update { it.copy(isSavingNote = false) }
+            }
         }
     }
 
     override fun updateNote(tmProfileUrl: String, noteIndex: Int, newText: String) {
         viewModelScope.launch {
-            repository.updateNoteInEntry(tmProfileUrl, noteIndex, newText)
+            _shortlistFlow.update { it.copy(isSavingNote = true) }
+            try {
+                repository.updateNoteInEntry(tmProfileUrl, noteIndex, newText)
+            } finally {
+                _shortlistFlow.update { it.copy(isSavingNote = false) }
+            }
         }
     }
 
     override fun deleteNote(tmProfileUrl: String, noteIndex: Int) {
         viewModelScope.launch {
-            repository.deleteNoteFromEntry(tmProfileUrl, noteIndex)
+            _shortlistFlow.update { it.copy(isSavingNote = true) }
+            try {
+                repository.deleteNoteFromEntry(tmProfileUrl, noteIndex)
+            } finally {
+                _shortlistFlow.update { it.copy(isSavingNote = false) }
+            }
         }
     }
 

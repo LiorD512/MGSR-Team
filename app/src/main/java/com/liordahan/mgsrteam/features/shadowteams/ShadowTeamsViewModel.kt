@@ -28,7 +28,8 @@ data class ShadowTeamsUiState(
     val slots: List<PositionSlot> = emptyList(),
     val isLoading: Boolean = true,
     val slotsLoading: Boolean = true,
-    val isOwnTeam: Boolean = false
+    val isOwnTeam: Boolean = false,
+    val isSaving: Boolean = false
 )
 
 abstract class IShadowTeamsViewModel : ViewModel() {
@@ -144,6 +145,7 @@ class ShadowTeamsViewModel(
     private fun saveShadowTeam(slots: List<PositionSlot>, formationId: String) {
         val accountId = _uiState.value.selectedAccountId ?: return
         if (!_uiState.value.isOwnTeam) return
+        _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             try {
                 SharedCallables.shadowTeamsSave(
@@ -167,6 +169,8 @@ class ShadowTeamsViewModel(
                 )
             } catch (e: Exception) {
                 android.util.Log.e("ShadowTeamsVM", "saveShadowTeam failed", e)
+            } finally {
+                _uiState.update { it.copy(isSaving = false) }
             }
         }
     }

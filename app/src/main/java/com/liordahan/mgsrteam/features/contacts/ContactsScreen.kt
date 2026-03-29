@@ -693,8 +693,9 @@ fun ContactsScreen(
             }
 
             contactToDelete?.let { contact ->
+                val isDeleting = state.isDeleting
                 AlertDialog(
-                    onDismissRequest = { contactToDelete = null },
+                    onDismissRequest = { if (!isDeleting) contactToDelete = null },
                     title = {
                         Text(
                             stringResource(R.string.contacts_delete_title),
@@ -713,9 +714,18 @@ fun ContactsScreen(
                                 viewModel.deleteContact(contact.id!!)
                                 contactToDelete = null
                             },
+                            enabled = !isDeleting,
                             colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.red)
                         ) {
-                            Text(stringResource(R.string.contacts_delete), style = boldTextStyle(Color.White, 14.sp))
+                            if (isDeleting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White
+                                )
+                            } else {
+                                Text(stringResource(R.string.contacts_delete), style = boldTextStyle(Color.White, 14.sp))
+                            }
                         }
                     },
                     dismissButton = {
