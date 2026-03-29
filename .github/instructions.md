@@ -138,9 +138,19 @@ firebase deploy --only functions      # Deploy after adding/changing callables
 firebase functions:list               # Verify functions are deployed
 ```
 
+### Firestore Security Rules — Must Match Features
+**After every fix or new feature, verify that `firestore.rules` includes read/write rules for all Firestore collections used by the app.** Missing rules cause silent failures — the client SDK swallows permission errors and falls back to defaults.
+
+- Every new Firestore collection needs a corresponding `match` rule in `firestore.rules`
+- Deploy updated rules immediately: `firebase deploy --only firestore:rules`
+- Client-read collections (e.g. `Config`) need at least `allow read: if request.auth != null`
+- Write-only-by-backend collections should use `allow write: if false` (writes go through Cloud Functions with admin SDK, which bypasses rules)
+- After deploying, verify the rules are live in the Firebase Console
+
 ### What to Check
 - Both platforms compile with zero errors (warnings are acceptable)
 - New callables are exported in `functions/index.js`
+- Firestore rules in `firestore.rules` cover all collections used by the app
 - String resources exist in both `values/strings.xml` and `values-iw/strings.xml`
 - Filters, sorting, and empty states work correctly
 - Data flows: scraping → parsing → filtering → display → action (add to shortlist, etc.)
