@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
+import { getPositionDisplayName } from '@/lib/appConfig';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
@@ -173,12 +174,13 @@ export default function SharedPlayerContent({
         : (data.player.fullName || data.player.fullNameHe || '—');
       const isWom = data.platform === 'women';
       const brand = isWom ? 'MGSR Women' : 'MGSR';
-      const pos = (data.player.positions ?? [])[0] || '';
+      const rawPos = (data.player.positions ?? [])[0] || '';
+      const pos = useHeb ? getPositionDisplayName(rawPos, true) : rawPos;
       const height = data.player.height || '';
       const quickFacts = [height, pos].filter(Boolean).join(' ');
       const shareText = useHeb
-        ? `שחקן חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר מיידי.` : 'מוכן למעבר מיידי.'}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n🔗 ${url}`
-        : `New player that could fit your needs.\n${quickFacts ? `${quickFacts} — ready for immediate move.` : 'Ready for immediate move.'}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n🔗 ${url}`;
+        ? `שחקן חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר מיידי.` : 'מוכן למעבר מיידי.'}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n\n🔗 ${url}`
+        : `New player that could fit your needs.\n${quickFacts ? `${quickFacts} — ready for immediate move.` : 'Ready for immediate move.'}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n\n🔗 ${url}`;
       if (url.includes('localhost') && typeof window !== 'undefined') {
         await navigator.clipboard.writeText(url);
         alert(useHeb ? 'לינק הועתק!' : 'Link copied!');

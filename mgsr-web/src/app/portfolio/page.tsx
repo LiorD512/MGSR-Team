@@ -17,6 +17,7 @@ import { auth, db } from '@/lib/firebase';
 import { createShare } from '@/lib/shareApi';
 import { openWhatsAppShare } from '@/lib/whatsapp';
 import { callPortfolioDelete } from '@/lib/callables';
+import { getPositionDisplayName } from '@/lib/appConfig';
 import type { PortfolioItem } from '@/lib/portfolioApi';
 import { PORTFOLIO_COLLECTIONS } from '@/lib/platformCollections';
 
@@ -138,13 +139,14 @@ export default function PortfolioPage() {
             ? (item.player.fullNameHe || item.player.fullName || '—')
             : (item.player.fullName || item.player.fullNameHe || '—');
         const brand = isYouth ? 'MGSR Youth' : isWomen ? 'MGSR Women' : 'MGSR';
-        const pos = (item.player.positions ?? [])[0] || '';
+        const rawPos = (item.player.positions ?? [])[0] || '';
+        const pos = lang === 'he' ? getPositionDisplayName(rawPos, true) : rawPos;
         const height = item.player.height || '';
         const quickFacts = [height, pos].filter(Boolean).join(' ');
         const shareText =
           lang === 'he'
-            ? `שחקן חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר מיידי.` : 'מוכן למעבר מיידי.'}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n🔗 ${url}`
-            : `New player that could fit your needs.\n${quickFacts ? `${quickFacts} — ready for immediate move.` : 'Ready for immediate move.'}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n🔗 ${url}`;
+            ? `שחקן חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר מיידי.` : 'מוכן למעבר מיידי.'}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n\n🔗 ${url}`
+            : `New player that could fit your needs.\n${quickFacts ? `${quickFacts} — ready for immediate move.` : 'Ready for immediate move.'}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n\n🔗 ${url}`;
 
         if (url.includes('localhost') && typeof window !== 'undefined') {
           setPendingShareUrl(shareText);
