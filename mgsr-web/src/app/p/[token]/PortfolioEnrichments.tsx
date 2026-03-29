@@ -1451,13 +1451,13 @@ export function BottomCTASection({
     }`}>
       <h3 className="text-xl font-display font-bold text-mgsr-text mb-3">
         {useHebrew
-          ? `מעוניינים בחתימת ${playerName}?`
-          : `Interested in Signing ${playerName}?`}
+          ? `מעוניינים ב-${playerName}?`
+          : `Interested in ${playerName}?`}
       </h3>
       <p className="text-sm text-mgsr-muted mb-5 max-w-md mx-auto">
         {useHebrew
-          ? 'לחצו למטה ונשלח לכם: סטטוס רפואי, ציפיות שכר, מבנה עסקה ודוח סקאוטינג מלא.'
-          : 'Click below and we will send you: medical status, salary expectations, deal structure, and full scouting report.'}
+          ? 'לחצו על הכפתור ונשלח לכם את כל הפרטים.'
+          : 'Click the button and we\'ll send you all the details.'}
       </p>
       <button
         type="button"
