@@ -28,7 +28,7 @@ import { usePlayerMatchResults } from '@/hooks/useMatchResults';
 import AgentTransferSection from '@/components/AgentTransferSection';
 import { type AgentTransferRequest, listenForPendingRequest, listenForResolvedTransfer, requestAgentTransfer, approveTransfer, rejectTransfer, cancelTransferRequest } from '@/lib/agentTransfer';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
-import { appConfig } from '@/lib/appConfig';
+import { appConfig, getPositionDisplayName } from '@/lib/appConfig';
 import {
   LineChart,
   Line,
@@ -1043,14 +1043,14 @@ export default function PlayerInfoPage() {
             user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
         );
 
-        const displayName =
-          lang === 'he'
-            ? (merged.fullNameHe || merged.fullName || player.fullNameHe || player.fullName || '—')
-            : (merged.fullName || merged.fullNameHe || player.fullName || player.fullNameHe || '—');
+        const rawPos = (merged.positions ?? player.positions ?? [])[0] || '';
+        const pos = lang === 'he' ? getPositionDisplayName(rawPos, true) : rawPos;
+        const height = merged.height || player.height || '';
+        const quickFacts = [height, pos].filter(Boolean).join(' ');
         const shareText =
           lang === 'he'
-            ? `פרופיל חדש נשלח אלייך מ - MGSR.\n${displayName}\n${url}`
-            : `A new profile sent to you by MGSR.\n${displayName}\n${url}`;
+            ? `שחקן חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר מיידי.` : 'מוכן למעבר מיידי.'}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n\n🔗 ${url}`
+            : `New player that could fit your needs.\n${quickFacts ? `${quickFacts} — ready for immediate move.` : 'Ready for immediate move.'}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n\n🔗 ${url}`;
 
         if (url.includes('localhost') && typeof window !== 'undefined') {
           setPendingShareUrl(shareText);
