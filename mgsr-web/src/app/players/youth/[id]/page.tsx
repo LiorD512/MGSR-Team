@@ -27,7 +27,8 @@ import { flattenPdf } from '@/lib/pdfFlatten';
 import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
 import AppLayout from '@/components/AppLayout';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
-import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
+import { type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
+import { usePlayerMatchResults } from '@/hooks/useMatchResults';
 import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import Link from 'next/link';
@@ -62,6 +63,7 @@ export default function YouthPlayerPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const id = params?.id as string | undefined;
+  const precomputedMatchRequestIds = usePlayerMatchResults(id);
   const fromPath = searchParams.get('from') || '/players';
   const scrollTo = searchParams.get('scrollTo');
   const isFromDashboard = fromPath === '/dashboard';
@@ -238,14 +240,14 @@ export default function YouthPlayerPage() {
 
   const matchingRequests = useMemo(() => {
     if (!playerAsRoster || !id) return [];
-    const pending = clubRequests.filter((r) => (r.status ?? 'pending') === 'pending');
-    const matching = matchingRequestsForPlayer(playerAsRoster, pending);
+    const requestById = Object.fromEntries(clubRequests.map((r) => [r.id, r]));
+    const matching = precomputedMatchRequestIds.map((rid) => requestById[rid]).filter((r): r is ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string } => !!r);
     const offerByRequestId = Object.fromEntries(playerOffers.map((o) => [o.requestId ?? '', o]));
     return matching.map((req) => ({
       request: req,
       offer: offerByRequestId[req.id] as { id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string } | undefined,
     }));
-  }, [playerAsRoster, id, clubRequests, playerOffers]);
+  }, [playerAsRoster, id, clubRequests, playerOffers, precomputedMatchRequestIds]);
 
   const handleMarkAsOffered = useCallback(
     async (requestId: string, clubName?: string, clubLogo?: string, position?: string, feedback?: string) => {

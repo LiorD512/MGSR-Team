@@ -23,7 +23,8 @@ import SimilarPlayersPanel from '@/components/SimilarPlayersPanel';
 import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import ProposalHistorySection, { type ProposalOffer } from '@/components/ProposalHistorySection';
-import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
+import { type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
+import { usePlayerMatchResults } from '@/hooks/useMatchResults';
 import AgentTransferSection from '@/components/AgentTransferSection';
 import { type AgentTransferRequest, listenForPendingRequest, listenForResolvedTransfer, requestAgentTransfer, approveTransfer, rejectTransfer, cancelTransferRequest } from '@/lib/agentTransfer';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
@@ -248,6 +249,7 @@ export default function PlayerInfoPage() {
   const searchParams = useSearchParams();
   const id = params.id as string;
   const euCountries = useEuCountries();
+  const precomputedMatchRequestIds = usePlayerMatchResults(id);
   const fromPath = searchParams.get('from') || '/players';
   const scrollTo = searchParams.get('scrollTo');
   const isFromDashboard = fromPath === '/dashboard';
@@ -558,8 +560,9 @@ export default function PlayerInfoPage() {
 
   const matchingRequests = useMemo(() => {
     if (!playerAsRoster || !player?.tmProfile) return [];
-    const pending = clubRequests.filter((r) => (r.status ?? 'pending') === 'pending');
-    const matching = matchingRequestsForPlayer(playerAsRoster, pending);
+    // Use pre-computed matching request IDs from Cloud Functions
+    const requestById = Object.fromEntries(clubRequests.map((r) => [r.id, r]));
+    const matching = precomputedMatchRequestIds.map((id) => requestById[id]).filter((r): r is ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string } => !!r);
     const offerByRequestId = Object.fromEntries(
       playerOffers.map((o) => [o.requestId ?? '', o])
     );
@@ -567,7 +570,7 @@ export default function PlayerInfoPage() {
       request: req,
       offer: offerByRequestId[req.id] as { id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; clubName?: string; clubLogo?: string; position?: string } | undefined,
     }));
-  }, [playerAsRoster, player?.tmProfile, clubRequests, playerOffers]);
+  }, [playerAsRoster, player?.tmProfile, clubRequests, playerOffers, precomputedMatchRequestIds]);
 
   const proposalHistory: ProposalOffer[] = useMemo(() => {
     const activeRequestIds = new Set(matchingRequests.map((m) => m.request.id));

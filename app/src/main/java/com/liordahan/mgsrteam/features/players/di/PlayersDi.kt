@@ -96,7 +96,7 @@ val playersModule = module {
     single { PlayerOffersRepository(get(), get()) } bind IPlayerOffersRepository::class
     single { HighlightsApiClient() }
     single { AgentTransferRepository(com.google.firebase.firestore.FirebaseFirestore.getInstance()) }
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get<ScoutApiClient>(), get()) }
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get<ScoutApiClient>(), get(), get()) }
     viewModel { GenerateMandateViewModel() }
 
     factory<IAddPositionFilterUseCase> {

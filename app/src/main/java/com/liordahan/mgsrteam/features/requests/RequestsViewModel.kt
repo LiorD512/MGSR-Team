@@ -9,6 +9,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocume
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
+import com.liordahan.mgsrteam.features.requests.repository.MatchResultsRepository
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.ClubSearch
 import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
@@ -88,6 +89,7 @@ abstract class IRequestsViewModel : ViewModel() {
 class RequestsViewModel(
     private val requestsRepository: IRequestsRepository,
     private val playersRepository: IPlayersRepository,
+    private val matchResultsRepository: MatchResultsRepository,
     private val firebaseHandler: FirebaseHandler,
     private val clubSearch: ClubSearch,
     private val aiHelperService: AiHelperService
@@ -119,10 +121,10 @@ class RequestsViewModel(
     override val requestsState: StateFlow<RequestsUiState> = combine(
         requestsRepository.requestsFlow(),
         playersRepository.playersFlow(),
+        matchResultsRepository.allRequestMatchResults(),
         _addRequestFeedback,
-        _positions,
-        _mandateLeaguesByPlayer
-    ) { requests, players, feedback, posList, mandateData ->
+        combine(_positions, _mandateLeaguesByPlayer) { pos, mandate -> pos to mandate }
+    ) { requests, players, matchResults, feedback, (posList, mandateData) ->
         val (msg, err) = feedback
         val pendingCount = requests.count { (it.status ?: "pending") == "pending" }
         val order = posList.map { it.name ?: "" }.filter { it.isNotBlank() }
@@ -136,8 +138,12 @@ class RequestsViewModel(
             reqList.groupBy { it.clubCountry?.takeIf { c -> c.isNotBlank() } ?: "Other" }
                 .toSortedMap(compareBy { if (it == "Other") "\uFFFF" else it.lowercase() })
         }
+
+        // Resolve pre-computed match IDs to Player objects
+        val playerById = players.associateBy { it.id }
         val matchingPlayersByRequestId = requests.associate { req ->
-            (req.id ?: "") to RequestMatcher.match(req, players)
+            val matchedIds = matchResults[req.id ?: ""] ?: emptyList()
+            (req.id ?: "") to matchedIds.mapNotNull { playerById[it] }
         }.filterKeys { it.isNotBlank() }
 
         val mandatePlayersByRequestId = computeMandatePlayers(requests, players, mandateData)

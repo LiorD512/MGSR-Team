@@ -52,3 +52,15 @@ export const PLAYER_DOCUMENTS_COLLECTIONS: Record<Platform, string> = {
   women: 'PlayerDocumentsWomen',
   youth: 'PlayerDocumentsYouth',
 };
+
+export const REQUEST_MATCH_RESULTS_COLLECTIONS: Record<Platform, string> = {
+  men: 'RequestMatchResults',
+  women: 'RequestMatchResultsWomen',
+  youth: 'RequestMatchResultsYouth',
+};
+
+export const PLAYER_MATCH_RESULTS_COLLECTIONS: Record<Platform, string> = {
+  men: 'PlayerMatchResults',
+  women: 'PlayerMatchResultsWomen',
+  youth: 'PlayerMatchResultsYouth',
+};

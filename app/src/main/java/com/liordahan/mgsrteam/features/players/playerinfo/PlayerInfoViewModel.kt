@@ -158,6 +158,7 @@ class PlayerInfoViewModel(
     private val highlightsApiClient: com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightsApiClient = com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightsApiClient(),
     private val scoutApiClient: com.liordahan.mgsrteam.features.scouting.ScoutApiClient,
     private val agentTransferRepository: AgentTransferRepository = AgentTransferRepository(com.google.firebase.firestore.FirebaseFirestore.getInstance()),
+    private val matchResultsRepository: com.liordahan.mgsrteam.features.requests.repository.MatchResultsRepository,
 ) : IPlayerInfoViewModel() {
 
     private val _playerInfoFlow = MutableStateFlow<Player?>(null)
@@ -248,12 +249,16 @@ class PlayerInfoViewModel(
         }.flatMapLatest { key ->
             key?.let { offersRepository.offersForPlayerFlow(it) } ?: flowOf(emptyList())
         },
-        _playerInfoFlow
-    ) { requests, offers, player ->
+        _playerInfoFlow,
+        // Read pre-computed matching request IDs from Cloud Function results
+        _playerDocumentIdFlow.flatMapLatest { docId ->
+            docId?.let { matchResultsRepository.matchingRequestIdsForPlayer(it) } ?: flowOf(emptyList())
+        }
+    ) { requests, offers, player, matchingRequestIds ->
         if (player == null) emptyList()
         else {
-            val pendingRequests = requests.filter { (it.status ?: "pending") == "pending" }
-            val matching = RequestMatcher.matchingRequestsForPlayer(player, pendingRequests)
+            val requestById = requests.associateBy { it.id }
+            val matching = matchingRequestIds.mapNotNull { requestById[it] }
             val offerByRequestId = offers.associateBy { it.requestId }
             matching.map { req ->
                 MatchingRequestUiState(request = req, offer = offerByRequestId[req.id])

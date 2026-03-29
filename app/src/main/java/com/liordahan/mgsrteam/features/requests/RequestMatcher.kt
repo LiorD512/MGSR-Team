@@ -13,7 +13,7 @@ import com.liordahan.mgsrteam.utils.EuCountries
  * - Age: if request has an age range, player age must fall within it
  * - Dominate foot: if request specifies left/right, player must match; players without foot info are shown anyway
  * - Salary: if request has salaryRange, player's salaryRange must match the request range OR an adjacent range
- * - Transfer fee: if request has transferFee, player's transferFee must match exactly.
+ * - Transfer fee: if request has transferFee, player's fee must be at or below the request budget (within budget).
  */
 object RequestMatcher {
 
@@ -128,10 +128,25 @@ object RequestMatcher {
         return acceptedRanges.any { it.equals(playerSalary, ignoreCase = true) }
     }
 
+    /**
+     * Ordered fee tiers from lowest to highest.
+     * A player whose fee tier is at or below the request budget is a match
+     * (a club willing to pay 1m+ would consider a 700-900 player).
+     */
+    private val FEE_TIERS = listOf("Free/Free loan", "<200", "300-600", "700-900", "1m+")
+
     private fun matchesTransferFee(player: Player, request: Request): Boolean {
         val reqFee = request.transferFee?.takeIf { it.isNotBlank() } ?: return true
         val playerFee = player.transferFee?.takeIf { it.isNotBlank() }
         if (playerFee == null) return true // Include players with no transfer fee data as suggestions
-        return playerFee.equals(reqFee, ignoreCase = true)
+
+        val reqIndex = FEE_TIERS.indexOfFirst { it.equals(reqFee, ignoreCase = true) }
+        val playerIndex = FEE_TIERS.indexOfFirst { it.equals(playerFee, ignoreCase = true) }
+
+        // If either tier is unknown, fall back to exact string match
+        if (reqIndex < 0 || playerIndex < 0) return playerFee.equals(reqFee, ignoreCase = true)
+
+        // Player is within budget if their fee tier is at or below the request tier
+        return playerIndex <= reqIndex
     }
 }

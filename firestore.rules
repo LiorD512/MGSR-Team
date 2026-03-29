@@ -136,5 +136,13 @@ service cloud.firestore {
     match /BirthdayWishesSent/{docId} {
       allow read, write: if request.auth != null;
     }
+
+    // ── Pre-computed match results (written by Cloud Functions, read-only for clients) ──
+    match /RequestMatchResults/{docId} { allow read: if request.auth != null; allow write: if false; }
+    match /RequestMatchResultsWomen/{docId} { allow read: if request.auth != null; allow write: if false; }
+    match /RequestMatchResultsYouth/{docId} { allow read: if request.auth != null; allow write: if false; }
+    match /PlayerMatchResults/{docId} { allow read: if request.auth != null; allow write: if false; }
+    match /PlayerMatchResultsWomen/{docId} { allow read: if request.auth != null; allow write: if false; }
+    match /PlayerMatchResultsYouth/{docId} { allow read: if request.auth != null; allow write: if false; }
   }
 }

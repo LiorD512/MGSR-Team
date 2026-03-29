@@ -3,7 +3,7 @@ if (typeof globalThis.File === "undefined") {
   globalThis.File = class File {};
 }
 
-const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onMessagePublished } = require("firebase-functions/v2/pubsub");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall } = require("firebase-functions/v2/https");
@@ -24,7 +24,7 @@ const { tasksCreate, tasksUpdate, tasksToggleComplete, tasksDelete } = require("
 const { agentTransferRequest, agentTransferApprove, agentTransferReject, agentTransferCancel } = require("./callables/agentTransfers");
 const { offersCreate, offersUpdateFeedback, offersDelete } = require("./callables/playerOffers");
 const { requestsCreate, requestsUpdate, requestsDelete } = require("./callables/requests");
-const { matchRequestToPlayers, matchingRequestsForPlayer, matchRequestToPlayersLocal } = require("./callables/requestMatcher");
+const { matchRequestToPlayers, matchingRequestsForPlayer, matchRequestToPlayersLocal, recalculateAllMatches } = require("./callables/requestMatcher");
 const { playersUpdate, playersToggleMandate, playersAddNote, playersDeleteNote, playersDelete, playerDocumentsCreate, playerDocumentsDelete, playerDocumentsMarkExpired } = require("./callables/players");
 const { shortlistAdd, shortlistRemove, shortlistUpdate, shortlistAddNote, shortlistUpdateNote, shortlistDeleteNote } = require("./callables/shortlists");
 const { playersCreate } = require("./callables/playersCreate");
@@ -1045,6 +1045,88 @@ exports.requestsDelete = onCall(async (req) => requestsDelete(req.data));
 exports.matchRequestToPlayers = onCall(async (req) => matchRequestToPlayers(req.data));
 exports.matchingRequestsForPlayer = onCall(async (req) => matchingRequestsForPlayer(req.data));
 exports.matchRequestToPlayersLocal = onCall(async (req) => matchRequestToPlayersLocal(req.data));
+exports.recalculateAllMatchesCallable = onCall(async (req) => recalculateAllMatches(req.data.platform));
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Pre-computed Match Results — Firestore triggers
+// Single source of truth: when players or requests change, recalculate
+// matches in the cloud. Both Android and Web read the results.
+//
+// Cost optimizations:
+//  1. Only recalculate when matching-relevant fields change
+//  2. Debounce: skip if last recalc was <10s ago (batch updates)
+//  3. recalculateAllMatches() skips writing unchanged results
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fields on Player that affect matching. If only non-matching fields changed
+ * (e.g. notes, phone, profileImage), we skip the expensive recalculation.
+ */
+const PLAYER_MATCHING_FIELDS = new Set([
+  "positions", "age", "foot", "salaryRange", "transferFee",
+  "nationality", "nationalities",
+]);
+
+/** Fields on ClubRequest that affect matching. */
+const REQUEST_MATCHING_FIELDS = new Set([
+  "position", "minAge", "maxAge", "ageDoesntMatter",
+  "dominateFoot", "salaryRange", "transferFee", "euOnly", "status",
+]);
+
+/** Per-platform cooldown tracker — prevents rapid-fire recalculations. */
+const _lastRecalcTime = { men: 0, women: 0, youth: 0 };
+const RECALC_COOLDOWN_MS = 10_000; // 10 seconds
+
+/**
+ * Check if any matching-relevant field changed between before/after snapshots.
+ * Returns true if recalculation is needed.
+ */
+function matchingFieldsChanged(beforeData, afterData, relevantFields) {
+  // Document created or deleted — always recalculate
+  if (!beforeData || !afterData) return true;
+  for (const field of relevantFields) {
+    const a = JSON.stringify(beforeData[field] ?? null);
+    const b = JSON.stringify(afterData[field] ?? null);
+    if (a !== b) return true;
+  }
+  return false;
+}
+
+async function triggerRecalcIfNeeded(platform, beforeData, afterData, relevantFields) {
+  // Skip if no matching-relevant fields changed
+  if (!matchingFieldsChanged(beforeData, afterData, relevantFields)) return;
+
+  // Debounce: skip if recalculated very recently
+  const now = Date.now();
+  if (now - _lastRecalcTime[platform] < RECALC_COOLDOWN_MS) return;
+  _lastRecalcTime[platform] = now;
+
+  await recalculateAllMatches(platform);
+}
+
+// --- Men ---
+exports.onPlayerWriteMatchRecalc = onDocumentWritten("Players/{playerId}", async (event) => {
+  await triggerRecalcIfNeeded("men", event.data?.before?.data(), event.data?.after?.data(), PLAYER_MATCHING_FIELDS);
+});
+exports.onRequestWriteMatchRecalc = onDocumentWritten("ClubRequests/{requestId}", async (event) => {
+  await triggerRecalcIfNeeded("men", event.data?.before?.data(), event.data?.after?.data(), REQUEST_MATCHING_FIELDS);
+});
+
+// --- Women ---
+exports.onPlayerWomenWriteMatchRecalc = onDocumentWritten("PlayersWomen/{playerId}", async (event) => {
+  await triggerRecalcIfNeeded("women", event.data?.before?.data(), event.data?.after?.data(), PLAYER_MATCHING_FIELDS);
+});
+exports.onRequestWomenWriteMatchRecalc = onDocumentWritten("ClubRequestsWomen/{requestId}", async (event) => {
+  await triggerRecalcIfNeeded("women", event.data?.before?.data(), event.data?.after?.data(), REQUEST_MATCHING_FIELDS);
+});
+
+// --- Youth ---
+exports.onPlayerYouthWriteMatchRecalc = onDocumentWritten("PlayersYouth/{playerId}", async (event) => {
+  await triggerRecalcIfNeeded("youth", event.data?.before?.data(), event.data?.after?.data(), PLAYER_MATCHING_FIELDS);
+});
+exports.onRequestYouthWriteMatchRecalc = onDocumentWritten("ClubRequestsYouth/{requestId}", async (event) => {
+  await triggerRecalcIfNeeded("youth", event.data?.before?.data(), event.data?.after?.data(), REQUEST_MATCHING_FIELDS);
+});
 
 // Players
 exports.playersUpdate = onCall(async (req) => playersUpdate(req.data));

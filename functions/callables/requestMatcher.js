@@ -93,12 +93,27 @@ function matchesSalaryRange(player, request) {
   return accepted.some((r) => r.toLowerCase() === playerSalary.toLowerCase());
 }
 
+/**
+ * Ordered fee tiers from lowest to highest.
+ * A player whose fee tier is at or below the request budget is a match
+ * (a club willing to pay 1m+ would consider a 700-900 player).
+ */
+const FEE_TIERS = ["Free/Free loan", "<200", "300-600", "700-900", "1m+"];
+
 function matchesTransferFee(player, request) {
   const reqFee = (request.transferFee || "").trim();
   if (!reqFee) return true;
   const playerFee = (player.transferFee || "").trim();
   if (!playerFee) return true;
-  return playerFee.toLowerCase() === reqFee.toLowerCase();
+
+  const reqIndex = FEE_TIERS.findIndex((r) => r.toLowerCase() === reqFee.toLowerCase());
+  const playerIndex = FEE_TIERS.findIndex((r) => r.toLowerCase() === playerFee.toLowerCase());
+
+  // If either tier is unknown, fall back to exact string match
+  if (reqIndex < 0 || playerIndex < 0) return playerFee.toLowerCase() === reqFee.toLowerCase();
+
+  // Player is within budget if their fee tier is at or below the request tier
+  return playerIndex <= reqIndex;
 }
 
 /** Transfer fee string to value range in euros. Matches Android AiHelperService. */
@@ -153,7 +168,7 @@ function matchPlayer(player, request, euCountries) {
   if (!matchesAge(player, request)) return false;
   if (!matchesDominateFoot(player, request)) return false;
   if (!matchesSalaryRange(player, request)) return false;
-  if (!matchesMarketValueVsTransferFee(player, request)) return false;
+  if (!matchesTransferFee(player, request)) return false;
   if (!matchesEu(player, request, euCountries)) return false;
   return true;
 }
@@ -221,10 +236,134 @@ async function matchingRequestsForPlayer(data) {
   return { matchedRequestIds: matched.map((r) => r.id) };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Pre-computed match results — called by Firestore triggers
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Pre-compute collections map.
+ * Results are written per-platform so each doc ID is just requestId or playerId.
+ */
+const REQUEST_MATCH_RESULTS = { men: "RequestMatchResults", women: "RequestMatchResultsWomen", youth: "RequestMatchResultsYouth" };
+const PLAYER_MATCH_RESULTS  = { men: "PlayerMatchResults",  women: "PlayerMatchResultsWomen",  youth: "PlayerMatchResultsYouth" };
+
+/**
+ * Recalculate ALL matches for a given platform and write results to Firestore.
+ * Writes two sets of documents:
+ *   - RequestMatchResults/{requestId}  → { matchingPlayerIds: string[], updatedAt }
+ *   - PlayerMatchResults/{playerId}    → { matchingRequestIds: string[], updatedAt }
+ *
+ * Cost optimizations:
+ *   - Reads existing results first and only writes documents that actually changed
+ *   - At current scale (~877 players, ~41 requests) this is fast and cheap
+ */
+async function recalculateAllMatches(platform) {
+  validatePlatform(platform);
+  const db = getFirestore();
+
+  const [playersSnap, requestsSnap] = await Promise.all([
+    db.collection(PLAYERS_COLLECTIONS[platform]).get(),
+    db.collection(CLUB_REQUESTS_COLLECTIONS[platform]).get(),
+  ]);
+
+  const players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const requests = requestsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const pendingRequests = requests.filter((r) => (r.status || "pending") === "pending");
+
+  // Build match maps
+  const byRequestId = {};   // requestId → playerIds[]
+  const byPlayerId = {};    // playerId → requestIds[]
+
+  for (const req of pendingRequests) {
+    byRequestId[req.id] = [];
+  }
+  for (const player of players) {
+    byPlayerId[player.id] = [];
+  }
+
+  for (const req of pendingRequests) {
+    for (const player of players) {
+      if (matchPlayer(player, req, EU_COUNTRIES)) {
+        byRequestId[req.id].push(player.id);
+        byPlayerId[player.id].push(req.id);
+      }
+    }
+  }
+
+  // Also mark non-pending requests as empty
+  const nonPendingIds = requests.filter((r) => r.status && r.status !== "pending").map((r) => r.id);
+  for (const id of nonPendingIds) {
+    byRequestId[id] = [];
+  }
+
+  const now = Date.now();
+  const reqResultsCol = REQUEST_MATCH_RESULTS[platform];
+  const playerResultsCol = PLAYER_MATCH_RESULTS[platform];
+
+  // Read existing results to diff (saves writes when nothing changed)
+  const [existingReqSnap, existingPlayerSnap] = await Promise.all([
+    db.collection(reqResultsCol).get(),
+    db.collection(playerResultsCol).get(),
+  ]);
+  const existingReqResults = {};
+  for (const d of existingReqSnap.docs) {
+    existingReqResults[d.id] = JSON.stringify((d.data().matchingPlayerIds || []).sort());
+  }
+  const existingPlayerResults = {};
+  for (const d of existingPlayerSnap.docs) {
+    existingPlayerResults[d.id] = JSON.stringify((d.data().matchingRequestIds || []).sort());
+  }
+
+  // Only write documents that actually changed
+  const batches = [];
+  let batch = db.batch();
+  let opCount = 0;
+  let writesSkipped = 0;
+
+  for (const [requestId, playerIds] of Object.entries(byRequestId)) {
+    const newSorted = JSON.stringify([...playerIds].sort());
+    if (existingReqResults[requestId] === newSorted) { writesSkipped++; continue; }
+    batch.set(db.collection(reqResultsCol).doc(requestId), {
+      requestId,
+      matchingPlayerIds: playerIds,
+      matchCount: playerIds.length,
+      updatedAt: now,
+    });
+    opCount++;
+    if (opCount >= 490) { batches.push(batch); batch = db.batch(); opCount = 0; }
+  }
+
+  for (const [playerId, requestIds] of Object.entries(byPlayerId)) {
+    const newSorted = JSON.stringify([...requestIds].sort());
+    if (existingPlayerResults[playerId] === newSorted) { writesSkipped++; continue; }
+    batch.set(db.collection(playerResultsCol).doc(playerId), {
+      playerId,
+      matchingRequestIds: requestIds,
+      matchCount: requestIds.length,
+      updatedAt: now,
+    });
+    opCount++;
+    if (opCount >= 490) { batches.push(batch); batch = db.batch(); opCount = 0; }
+  }
+
+  if (opCount > 0) batches.push(batch);
+
+  await Promise.all(batches.map((b) => b.commit()));
+
+  return {
+    platform,
+    requestsProcessed: pendingRequests.length,
+    playersProcessed: players.length,
+    docsWritten: Object.keys(byRequestId).length + Object.keys(byPlayerId).length - writesSkipped,
+    writesSkipped,
+  };
+}
+
 module.exports = {
   matchRequestToPlayers,
   matchRequestToPlayersLocal,
   matchingRequestsForPlayer,
+  recalculateAllMatches,
   // Export for unit testing
   normalizePosition,
   matchPlayer,

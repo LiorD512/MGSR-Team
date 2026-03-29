@@ -15,7 +15,8 @@ import AppLayout from '@/components/AppLayout';
 import FilterBottomSheet from '@/components/mobile/FilterBottomSheet';
 import { useIsMobileOrTablet } from '@/hooks/useMediaQuery';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
-import { matchingRequestsForPlayer, type ClubRequest, type RosterPlayer } from '@/lib/requestMatcher';
+import { type ClubRequest, type RosterPlayer } from '@/lib/requestMatcher';
+import { useAllRequestMatchResults } from '@/hooks/useMatchResults';
 import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import Link from 'next/link';
 
@@ -148,6 +149,7 @@ export default function PlayersPage() {
   const router = useRouter();
   const isMobileOrTablet = useIsMobileOrTablet();
   const euCountries = useEuCountries();
+  const precomputedRequestMatchResults = useAllRequestMatchResults();
   const cached = getScreenCache<PlayersCache>('players');
   const [players, setPlayers] = useState<Player[]>(cached?.players ?? []);
   const [womenPlayers, setWomenPlayers] = useState<WomanPlayer[]>([]);
@@ -537,28 +539,22 @@ export default function PlayersPage() {
       .sort((a, b) => (a.expiryAt ?? Infinity) - (b.expiryAt ?? Infinity));
   }, [players, mandateDataByProfile, platform]);
 
-  // Compute matching requests per player (men only)
+  // Compute matching requests per player using pre-computed results
   const matchingRequestsByPlayerId = useMemo(() => {
     if (platform !== 'men' || clubRequests.length === 0) return new Map<string, typeof clubRequests>();
     const map = new Map<string, typeof clubRequests>();
-    for (const p of players) {
-      const rosterPlayer: RosterPlayer = {
-        id: p.id,
-        fullName: p.fullName,
-        age: p.age,
-        positions: p.positions ?? [],
-        foot: p.foot,
-        salaryRange: p.salaryRange,
-        transferFee: p.transferFee,
-        marketValue: p.marketValue,
-        nationality: p.nationality,
-        nationalities: p.nationalities,
-      };
-      const matching = matchingRequestsForPlayer(rosterPlayer, clubRequests, euCountries);
-      if (matching.length > 0) map.set(p.id, matching);
+    // Invert pre-computed results: requestId→playerIds[] → playerId→requests[]
+    const requestById = Object.fromEntries(clubRequests.map((r) => [r.id, r]));
+    for (const [requestId, playerIds] of Object.entries(precomputedRequestMatchResults)) {
+      const req = requestById[requestId];
+      if (!req) continue;
+      for (const pid of playerIds) {
+        if (!map.has(pid)) map.set(pid, []);
+        map.get(pid)!.push(req);
+      }
     }
     return map;
-  }, [platform, players, clubRequests, euCountries]);
+  }, [platform, clubRequests, precomputedRequestMatchResults]);
 
   const displayList = filtered;
   const isLoading = platform === 'youth' ? youthLoading : platform === 'women' ? womenLoading : playersLoading;

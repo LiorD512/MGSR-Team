@@ -47,6 +47,8 @@ class FirebaseHandler(
     val agentTasksTable: String get() = p.agentTasksCollection
     val playerDocumentsTable: String get() = p.playerDocumentsCollection
     val shadowTeamsTable: String get() = p.shadowTeamsCollection
+    val requestMatchResultsTable: String get() = p.requestMatchResultsCollection
+    val playerMatchResultsTable: String get() = p.playerMatchResultsCollection
 
     // ── Storage directories (unchanged) ──────────────────────────────
     val mandateDir = "mandates"

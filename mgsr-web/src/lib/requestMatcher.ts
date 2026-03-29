@@ -88,12 +88,27 @@ function matchesSalaryRange(player: RosterPlayer, request: ClubRequest): boolean
   return acceptedRanges.some((r) => r.toLowerCase() === playerLower);
 }
 
+/**
+ * Ordered fee tiers from lowest to highest.
+ * A player whose fee tier is at or below the request budget is a match
+ * (a club willing to pay 1m+ would consider a 700-900 player).
+ */
+const FEE_TIERS = ['Free/Free loan', '<200', '300-600', '700-900', '1m+'];
+
 function matchesTransferFee(player: RosterPlayer, request: ClubRequest): boolean {
   const reqFee = request.transferFee?.trim();
   if (!reqFee) return true;
   const playerFee = player.transferFee?.trim();
   if (!playerFee) return true;
-  return playerFee.toLowerCase() === reqFee.toLowerCase();
+
+  const reqIndex = FEE_TIERS.findIndex((r) => r.toLowerCase() === reqFee.toLowerCase());
+  const playerIndex = FEE_TIERS.findIndex((r) => r.toLowerCase() === playerFee.toLowerCase());
+
+  // If either tier is unknown, fall back to exact string match
+  if (reqIndex < 0 || playerIndex < 0) return playerFee.toLowerCase() === reqFee.toLowerCase();
+
+  // Player is within budget if their fee tier is at or below the request tier
+  return playerIndex <= reqIndex;
 }
 
 /** Transfer fee string to (min, max) value range in euros. Matches Android AiHelperService. */

@@ -27,6 +27,8 @@ enum class Platform(
     val agentTasksCollection: String,
     val playerDocumentsCollection: String,
     val shadowTeamsCollection: String,
+    val requestMatchResultsCollection: String,
+    val playerMatchResultsCollection: String,
 ) {
     MEN(
         labelRes = R.string.platform_men,
@@ -41,6 +43,8 @@ enum class Platform(
         agentTasksCollection = "AgentTasks",
         playerDocumentsCollection = "PlayerDocuments",
         shadowTeamsCollection = "ShadowTeams",
+        requestMatchResultsCollection = "RequestMatchResults",
+        playerMatchResultsCollection = "PlayerMatchResults",
     ),
     WOMEN(
         labelRes = R.string.platform_women,
@@ -55,6 +59,8 @@ enum class Platform(
         agentTasksCollection = "AgentTasksWomen",
         playerDocumentsCollection = "PlayerDocumentsWomen",
         shadowTeamsCollection = "ShadowTeamsWomen",
+        requestMatchResultsCollection = "RequestMatchResultsWomen",
+        playerMatchResultsCollection = "PlayerMatchResultsWomen",
     ),
     YOUTH(
         labelRes = R.string.platform_youth,
@@ -69,6 +75,8 @@ enum class Platform(
         agentTasksCollection = "AgentTasksYouth",
         playerDocumentsCollection = "PlayerDocumentsYouth",
         shadowTeamsCollection = "ShadowTeamsYouth",
+        requestMatchResultsCollection = "RequestMatchResultsYouth",
+        playerMatchResultsCollection = "PlayerMatchResultsYouth",
     );
 
     /** Horizontal gradient from [accent] → [accentSecondary].

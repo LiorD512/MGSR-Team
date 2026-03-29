@@ -12,13 +12,13 @@ import { callRequestsDelete, callShortlistAdd } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { getPositionDisplayName } from '@/lib/appConfig';
-import { matchRequestToPlayers, type RosterPlayer } from '@/lib/requestMatcher';
+import { type RosterPlayer } from '@/lib/requestMatcher';
 import { findPlayersForRequest, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { getPlayerDetails } from '@/lib/api';
 import { getCurrentAccountForShortlist, getAllAccounts } from '@/lib/accounts';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
-import { CLUB_REQUESTS_COLLECTIONS, PLAYERS_COLLECTIONS, SHORTLISTS_COLLECTIONS, FEED_EVENTS_COLLECTIONS, PLAYER_DOCUMENTS_COLLECTIONS } from '@/lib/platformCollections';
+import { CLUB_REQUESTS_COLLECTIONS, PLAYERS_COLLECTIONS, SHORTLISTS_COLLECTIONS, FEED_EVENTS_COLLECTIONS, PLAYER_DOCUMENTS_COLLECTIONS, REQUEST_MATCH_RESULTS_COLLECTIONS } from '@/lib/platformCollections';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
 import { useEuCountries } from '@/hooks/useEuCountries';
 import ClubIntelPanel from '@/components/ClubIntelPanel';
@@ -178,6 +178,8 @@ export default function RequestsPage() {
 
   /** playerTmProfile → aggregated validLeagues from all active mandate docs */
   const [mandateLeaguesByPlayer, setMandateLeaguesByPlayer] = useState<Record<string, string[]>>({});
+  /** Pre-computed match results from Cloud Functions: requestId → playerIds */
+  const [precomputedMatchResults, setPrecomputedMatchResults] = useState<Record<string, string[]>>({});
 
   const isHebrew = lang === 'he';
   const isWomen = platform === 'women';
@@ -278,6 +280,27 @@ export default function RequestsPage() {
     return () => unsub();
   }, [user, playerDocumentsCollection]);
 
+  // Subscribe to pre-computed match results from Cloud Functions
+  const requestMatchResultsCollection = REQUEST_MATCH_RESULTS_COLLECTIONS[platform];
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(
+      collection(db, requestMatchResultsCollection),
+      (snap) => {
+        const results: Record<string, string[]> = {};
+        for (const d of snap.docs) {
+          const data = d.data();
+          results[d.id] = (data.matchingPlayerIds as string[]) ?? [];
+        }
+        setPrecomputedMatchResults(results);
+      },
+      (err) => {
+        console.error('[MatchResults] Error:', err);
+      }
+    );
+    return () => unsub();
+  }, [user, requestMatchResultsCollection]);
+
   useEffect(() => {
     if (requestsCacheKey) {
       setScreenCache<RequestsCache>(requestsCacheKey, {
@@ -321,14 +344,20 @@ export default function RequestsPage() {
   const totalCount = requests.length;
   const positionsCount = Object.keys(byPositionCountry).length;
 
+  // Resolve pre-computed match IDs to full player objects
   const matchingPlayersByRequestId = useMemo(() => {
+    const playerById: Record<string, RosterPlayer> = {};
+    for (const p of players) {
+      if (p.id) playerById[p.id] = p;
+    }
     const byId: Record<string, RosterPlayer[]> = {};
     for (const r of requests) {
       if (!r.id) continue;
-      byId[r.id] = matchRequestToPlayers(r, players, euCountries);
+      const matchedIds = precomputedMatchResults[r.id] ?? [];
+      byId[r.id] = matchedIds.map((id) => playerById[id]).filter((p): p is RosterPlayer => !!p);
     }
     return byId;
-  }, [requests, players, euCountries]);
+  }, [requests, players, precomputedMatchResults]);
 
   /** Normalize text for fuzzy club name matching: strip diacritics, punctuation, collapse whitespace */
   const normalizeClub = (s: string) =>
