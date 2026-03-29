@@ -20,6 +20,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.Playe
 import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.IPlayerOffersRepository
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
+import com.liordahan.mgsrteam.features.players.playerinfo.notes.NoteParser
 import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.requests.RequestMatcher
 import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
@@ -682,7 +683,9 @@ class PlayerInfoViewModel(
                 val feedProfileId = player.tmProfile ?: docId
                 val account = getCurrentUserAccount()
 
-                // Optimistic local update
+                // Optimistic local update + extract financial terms from notes
+                var extractedSalary: String? = null
+                var extractedFree = false
                 _playerInfoFlow.update { p ->
                     val currentNotes = p?.noteList?.toMutableList() ?: mutableListOf()
                     val note = notes.copy(
@@ -690,7 +693,13 @@ class PlayerInfoViewModel(
                         createByHe = account?.hebrewName
                     )
                     currentNotes.add(note)
-                    p?.copy(noteList = currentNotes)
+                    extractedSalary = NoteParser.extractSalaryRange(currentNotes)
+                    extractedFree = NoteParser.extractFreeTransfer(currentNotes)
+                    p?.copy(
+                        noteList = currentNotes,
+                        salaryRange = extractedSalary ?: p.salaryRange,
+                        transferFee = if (extractedFree) "Free/Free loan" else p.transferFee
+                    )
                 }
 
                 SharedCallables.playersAddNote(
@@ -704,6 +713,18 @@ class PlayerInfoViewModel(
                     playerImage = player.profileImage,
                     agentName = account?.getDisplayName(appContext)
                 )
+
+                // Persist extracted financial terms from notes
+                val financialUpdates = mutableMapOf<String, Any>()
+                if (extractedSalary != null && extractedSalary != player.salaryRange) {
+                    financialUpdates["salaryRange"] = extractedSalary!!
+                }
+                if (extractedFree && player.transferFee != "Free/Free loan") {
+                    financialUpdates["transferFee"] = "Free/Free loan"
+                }
+                if (financialUpdates.isNotEmpty()) {
+                    SharedCallables.playersUpdate(platformManager.value, docId, financialUpdates)
+                }
             } finally {
                 _savingFieldsFlow.update { it - "notes" }
             }
@@ -719,11 +740,17 @@ class PlayerInfoViewModel(
                 val feedProfileId = player.tmProfile ?: docId
                 val noteIndex = player.noteList?.indexOf(note) ?: -1
 
-                // Optimistic local update
+                // Optimistic local update + recalculate financial terms
                 _playerInfoFlow.update { p ->
                     val currentNotes = p?.noteList?.toMutableList() ?: mutableListOf()
                     currentNotes.remove(note)
-                    p?.copy(noteList = currentNotes)
+                    val salaryRange = NoteParser.extractSalaryRange(currentNotes)
+                    val isFree = NoteParser.extractFreeTransfer(currentNotes)
+                    p?.copy(
+                        noteList = currentNotes,
+                        salaryRange = salaryRange ?: p.salaryRange,
+                        transferFee = if (isFree) "Free/Free loan" else p.transferFee
+                    )
                 }
 
                 val deletedBy = getCurrentUserName()
