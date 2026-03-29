@@ -136,6 +136,17 @@ function womanToRosterPlayer(w: WomanPlayer): RosterPlayer {
   };
 }
 
+/** Parse market value strings like "€1.50m", "€500k" to euros. */
+function parseMarketValueToEuros(value?: string): number {
+  if (!value?.trim()) return 0;
+  const cleaned = value.replace(/[€,\s]/g, '').toLowerCase();
+  const num = parseFloat(cleaned.replace(/[^\d.]/g, ''));
+  if (isNaN(num)) return 0;
+  if (cleaned.includes('m')) return num * 1_000_000;
+  if (cleaned.includes('k')) return num * 1_000;
+  return num;
+}
+
 export default function RequestsPage() {
   const { user, loading } = useAuth();
   const { t, isRtl, lang } = useLanguage();
@@ -344,7 +355,7 @@ export default function RequestsPage() {
   const totalCount = requests.length;
   const positionsCount = Object.keys(byPositionCountry).length;
 
-  // Resolve pre-computed match IDs to full player objects
+  // Resolve pre-computed match IDs to full player objects, sorted by market value (highest first)
   const matchingPlayersByRequestId = useMemo(() => {
     const playerById: Record<string, RosterPlayer> = {};
     for (const p of players) {
@@ -354,7 +365,10 @@ export default function RequestsPage() {
     for (const r of requests) {
       if (!r.id) continue;
       const matchedIds = precomputedMatchResults[r.id] ?? [];
-      byId[r.id] = matchedIds.map((id) => playerById[id]).filter((p): p is RosterPlayer => !!p);
+      byId[r.id] = matchedIds
+        .map((id) => playerById[id])
+        .filter((p): p is RosterPlayer => !!p)
+        .sort((a, b) => parseMarketValueToEuros(b.marketValue) - parseMarketValueToEuros(a.marketValue));
     }
     return byId;
   }, [requests, players, precomputedMatchResults]);

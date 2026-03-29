@@ -139,11 +139,12 @@ class RequestsViewModel(
                 .toSortedMap(compareBy { if (it == "Other") "\uFFFF" else it.lowercase() })
         }
 
-        // Resolve pre-computed match IDs to Player objects
+        // Resolve pre-computed match IDs to Player objects, sorted by market value (highest first)
         val playerById = players.associateBy { it.id }
         val matchingPlayersByRequestId = requests.associate { req ->
             val matchedIds = matchResults[req.id ?: ""] ?: emptyList()
             (req.id ?: "") to matchedIds.mapNotNull { playerById[it] }
+                .sortedByDescending { parseMarketValueToEuros(it.marketValue) }
         }.filterKeys { it.isNotBlank() }
 
         val mandatePlayersByRequestId = computeMandatePlayers(requests, players, mandateData)
@@ -411,5 +412,17 @@ class RequestsViewModel(
     override fun clearOnlinePlayersResult() {
         _onlinePlayersResult.value = emptyList()
         _excludedOnlineUrls.clear()
+    }
+}
+
+/** Parse market value strings like "€1.50m", "€500k" to euros. */
+private fun parseMarketValueToEuros(value: String?): Double {
+    if (value.isNullOrBlank()) return 0.0
+    val cleaned = value.replace("€", "").replace(",", "").trim().lowercase()
+    val num = cleaned.replace(Regex("[^\\d.]"), "").toDoubleOrNull() ?: return 0.0
+    return when {
+        cleaned.contains("m") -> num * 1_000_000
+        cleaned.contains("k") -> num * 1_000
+        else -> num
     }
 }
