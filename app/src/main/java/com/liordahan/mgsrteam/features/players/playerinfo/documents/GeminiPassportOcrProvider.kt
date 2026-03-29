@@ -33,7 +33,7 @@ class GeminiPassportOcrProvider {
          * Mandate extraction prompt — matches the web's working Gemini prompt.
          * Asks for expiry date from "ends on DD/MM/YYYY" and valid leagues list.
          */
-        private const val MANDATE_EXTRACTION_PROMPT = """Look at this Football Agent Mandate document.
+        private const val MANDATE_EXTRACTION_PROMPT = """Look at this Football Agent Mandate or Authorization document.
 
 Extract TWO things:
 
@@ -46,8 +46,7 @@ Extract TWO things:
    - "Term" section with two dates — the second/later date is the expiry
    Return it as "mandateExpiresAt" in DD/MM/YYYY format.
 
-2. VALID LEAGUES: Find the section titled "Valid Leagues for this mandate:" followed by a list of country/league names (bullet points or line items).
-   If no "Valid Leagues" section exists but the document is an AUTHORIZATION for specific club(s), return those club names.
+2. VALID LEAGUES: Array of league/country names from "Valid Leagues" section. If the document is club-specific (authorization for a single club), return the club name(s) instead (e.g. ["RAAL La Louvière"]).
    Return the list as "validLeagues" array of strings.
 
 Return ONLY a JSON object like:
