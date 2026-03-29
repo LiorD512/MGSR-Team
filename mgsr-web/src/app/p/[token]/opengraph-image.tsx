@@ -44,113 +44,154 @@ export default async function OpenGraphImage({
           width: '100%',
           height: '100%',
           display: 'flex',
-          position: 'relative',
+          flexDirection: 'row',
           backgroundColor: DARK,
           fontFamily: 'system-ui, sans-serif',
           overflow: 'hidden',
         }}
       >
-        {/* Full-bleed player image */}
-        {imgSrc ? (
-          <img
-            src={imgSrc}
-            alt=""
-            width={1200}
-            height={630}
-            style={{ objectFit: 'cover', objectPosition: 'top center' }}
-          />
-        ) : (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              background: `linear-gradient(135deg, ${CARD} 0%, ${DARK} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
+        {/* Left: Player image with gradient overlay */}
+        <div
+          style={{
+            width: 680,
+            height: '100%',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {imgSrc ? (
+            <>
+              <img
+                src={imgSrc}
+                alt=""
+                width={680}
+                height={630}
+                style={{ objectFit: 'cover' }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background:
+                    'linear-gradient(90deg, rgba(15,25,35,0.85) 0%, rgba(15,25,35,0.4) 50%, transparent 100%)',
+                }}
+              />
+            </>
+          ) : (
             <div
               style={{
-                width: 240,
-                height: 240,
-                borderRadius: 120,
-                border: `4px solid ${TEAL}`,
+                width: '100%',
+                height: '100%',
+                background: `linear-gradient(135deg, ${CARD} 0%, ${DARK} 100%)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: MUTED,
-                fontSize: 96,
-                fontWeight: 700,
               }}
             >
-              {name.charAt(0).toUpperCase()}
+              <div
+                style={{
+                  width: 200,
+                  height: 200,
+                  borderRadius: 100,
+                  border: `4px solid ${TEAL}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: MUTED,
+                  fontSize: 72,
+                  fontWeight: 700,
+                }}
+              >
+                {name.charAt(0).toUpperCase()}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Bottom gradient overlay with name + position + value */}
+        {/* Right: Info panel */}
         <div
           style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 200,
-            background: 'linear-gradient(transparent, rgba(15,25,35,0.95))',
+            flex: 1,
             display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'flex-end',
+            flexDirection: 'column',
             justifyContent: 'space-between',
-            padding: '0 48px 36px 48px',
+            padding: 48,
+            background: DARK,
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div
               style={{
-                fontSize: 48,
+                fontSize: 42,
                 fontWeight: 700,
                 color: TEXT,
-                lineHeight: 1.1,
+                lineHeight: 1.15,
                 letterSpacing: '-0.02em',
               }}
             >
               {name}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {positions ? (
-                <span style={{ fontSize: 22, color: TEAL, fontWeight: 600 }}>{positions}</span>
-              ) : null}
-              {club ? (
-                <>
-                  <span style={{ fontSize: 22, color: MUTED }}>·</span>
-                  <span style={{ fontSize: 22, color: MUTED }}>{club}</span>
-                </>
-              ) : null}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {positions ? (
+              <div style={{ fontSize: 24, color: TEAL, fontWeight: 600 }}>
+                {positions}
+              </div>
+            ) : null}
+            {club ? (
+              <div style={{ fontSize: 20, color: MUTED, marginTop: 4 }}>
+                {club}
+              </div>
+            ) : null}
             {marketValue ? (
-              <div style={{ fontSize: 32, color: TEAL, fontWeight: 700 }}>
+              <div
+                style={{
+                  fontSize: 28,
+                  color: TEAL,
+                  fontWeight: 700,
+                  marginTop: 12,
+                }}
+              >
                 {marketValue}
               </div>
             ) : null}
+          </div>
+
+          {/* Branding */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              paddingTop: 24,
+              borderTop: `2px solid ${CARD}`,
+            }}
+          >
             <div
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
+                width: 40,
+                height: 40,
+                borderRadius: 10,
                 background: TEAL,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: DARK,
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: 800,
               }}
             >
               M
+            </div>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: TEXT,
+                letterSpacing: '0.05em',
+              }}
+            >
+              MGSR TEAM
             </div>
           </div>
         </div>
