@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -33,6 +34,7 @@ data class RequestsUiState(
     val requests: List<Request> = emptyList(),
     val requestsByPositionCountry: Map<String, Map<String, List<Request>>> = emptyMap(),
     val matchingPlayersByRequestId: Map<String, List<Player>> = emptyMap(),
+    val matchCountsByRequestId: Map<String, Int> = emptyMap(),
     val mandatePlayersByRequestId: Map<String, List<Player>> = emptyMap(),
     val totalCount: Int = 0,
     val positionsCount: Int = 0,
@@ -113,7 +115,7 @@ class RequestsViewModel(
     /** playerTmProfile → aggregated validLeagues from all active (non-expired) mandate documents */
     private val _mandateLeaguesByPlayer = MutableStateFlow<Map<String, List<String>>>(emptyMap())
 
-    private val defaultPositionOrder = listOf("GK", "CB", "LB", "RB", "DM", "CM", "LM", "RM", "LW", "RW", "CF", "ST")
+    private val defaultPositionOrder = listOf("GK", "CB", "RB", "LB", "DM", "CM", "AM", "RW", "LW", "CF", "ST")
 
     /** Merge message+error into a single flow so we keep the typed 5-param combine. */
     private val _addRequestFeedback = combine(_addRequestMessage, _addRequestError) { msg, err -> msg to err }
@@ -140,11 +142,18 @@ class RequestsViewModel(
         }
 
         // Resolve pre-computed match IDs to Player objects, sorted by market value (highest first)
+        // Cap at 20 per request to keep the UI state lightweight
         val playerById = players.associateBy { it.id }
         val matchingPlayersByRequestId = requests.associate { req ->
             val matchedIds = matchResults[req.id ?: ""] ?: emptyList()
             (req.id ?: "") to matchedIds.mapNotNull { playerById[it] }
                 .sortedByDescending { parseMarketValueToEuros(it.marketValue) }
+                .take(20)
+        }.filterKeys { it.isNotBlank() }
+
+        // Store match counts separately (cheap for UI stats without full Player objects)
+        val matchCountsByRequestId = requests.associate { req ->
+            (req.id ?: "") to (matchResults[req.id ?: ""]?.size ?: 0)
         }.filterKeys { it.isNotBlank() }
 
         val mandatePlayersByRequestId = computeMandatePlayers(requests, players, mandateData)
@@ -153,6 +162,7 @@ class RequestsViewModel(
             requests = requests,
             requestsByPositionCountry = byPositionCountry,
             matchingPlayersByRequestId = matchingPlayersByRequestId,
+            matchCountsByRequestId = matchCountsByRequestId,
             mandatePlayersByRequestId = mandatePlayersByRequestId,
             totalCount = requests.size,
             positionsCount = byPosition.size,
@@ -161,7 +171,9 @@ class RequestsViewModel(
             addRequestMessage = msg,
             addRequestError = err
         )
-    }.stateIn(
+    }
+    .flowOn(Dispatchers.Default)
+    .stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
         RequestsUiState()
@@ -173,7 +185,8 @@ class RequestsViewModel(
     }
 
     private fun loadPositions() {
-        firebaseHandler.firebaseStore.collection(firebaseHandler.positionTable).get()
+        firebaseHandler.firebaseStore.collection(firebaseHandler.positionTable)
+            .get(com.google.firebase.firestore.Source.SERVER)
             .addOnSuccessListener {
                 val posList = it.toObjects(Position::class.java)
                 _positions.value = posList.sortedByDescending { it.sort }

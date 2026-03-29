@@ -307,8 +307,13 @@ fun RequestsScreen(
                                 countries.flatMap { (_, requests) -> requests }
                             }
                         }
-                        val activePositions = remember(allRequests) {
-                            allRequests.mapNotNull { it.position?.let { p -> if (p.trim().uppercase() == "ST") "CF" else p } }.distinct().sorted()
+                        val activePositions = remember(allRequests, positions) {
+                            val posOrder = positions.mapNotNull { it.name }.ifEmpty {
+                                listOf("GK", "CB", "RB", "LB", "DM", "CM", "AM", "RW", "LW", "CF")
+                            }
+                            allRequests.mapNotNull { it.position?.let { p -> if (p.trim().uppercase() == "ST") "CF" else p } }
+                                .distinct()
+                                .sortedBy { pos -> posOrder.indexOfFirst { it.equals(pos, ignoreCase = true) }.takeIf { it >= 0 } ?: 999 }
                         }
                         val filteredRequests = remember(allRequests, selectedPosition, searchQuery) {
                             var list = allRequests
@@ -331,10 +336,9 @@ fun RequestsScreen(
                             }
                             list
                         }
-                        val matchedCount = remember(allRequests, state.matchingPlayersByRequestId) {
+                        val matchedCount = remember(allRequests, state.matchCountsByRequestId) {
                             allRequests.count { req ->
-                                val m = state.matchingPlayersByRequestId[req.id ?: ""]
-                                m != null && m.isNotEmpty()
+                                (state.matchCountsByRequestId[req.id ?: ""] ?: 0) > 0
                             }
                         }
 
@@ -429,6 +433,7 @@ fun RequestsScreen(
                                 key = { it.id ?: it.hashCode().toString() }
                             ) { request ->
                                 val matchingPlayers = state.matchingPlayersByRequestId[request.id ?: ""] ?: emptyList()
+                                val totalMatchCount = state.matchCountsByRequestId[request.id ?: ""] ?: matchingPlayers.size
                                 val mandatePlayers = state.mandatePlayersByRequestId[request.id ?: ""] ?: emptyList()
                                 val isRequestExpanded = (request.id ?: "") in expandedRequestIds
                                 val isMandateExpanded = (request.id ?: "") in mandateExpandedRequestIds
@@ -438,6 +443,7 @@ fun RequestsScreen(
                                 RequestCard(
                                     request = request,
                                     matchingPlayers = matchingPlayers,
+                                    totalMatchCount = totalMatchCount,
                                     mandatePlayers = mandatePlayers,
                                     isExpanded = isRequestExpanded,
                                     isMandateExpanded = isMandateExpanded,
@@ -876,6 +882,7 @@ private fun CountryExpandableRow(
 private fun RequestCard(
     request: Request,
     matchingPlayers: List<Player>,
+    totalMatchCount: Int,
     mandatePlayers: List<Player>,
     isExpanded: Boolean,
     isMandateExpanded: Boolean,
@@ -1199,7 +1206,7 @@ private fun RequestCard(
                             }
                         }
                     }
-                    val extraCount = matchingPlayers.size - previewPlayers.size
+                    val extraCount = totalMatchCount - previewPlayers.size
                     if (extraCount > 0) {
                         Box(
                             modifier = Modifier
@@ -1215,8 +1222,8 @@ private fun RequestCard(
                     }
                     Spacer(Modifier.weight(1f))
                     Text(
-                        text = if (matchingPlayers.size == 1) stringResource(R.string.requests_matches_count_one, matchingPlayers.size)
-                               else stringResource(R.string.requests_matches_count, matchingPlayers.size),
+                        text = if (totalMatchCount == 1) stringResource(R.string.requests_matches_count_one, totalMatchCount)
+                               else stringResource(R.string.requests_matches_count, totalMatchCount),
                         style = boldTextStyle(PlatformColors.palette.green, 11.sp)
                     )
                 }
@@ -1242,10 +1249,10 @@ private fun RequestCard(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = if (matchingPlayers.size == 1) {
-                        stringResource(if (isWomen) R.string.women_requests_matching_players_one else R.string.requests_matching_players_one, matchingPlayers.size)
+                    text = if (totalMatchCount == 1) {
+                        stringResource(if (isWomen) R.string.women_requests_matching_players_one else R.string.requests_matching_players_one, totalMatchCount)
                     } else {
-                        stringResource(if (isWomen) R.string.women_requests_matching_players else R.string.requests_matching_players, matchingPlayers.size)
+                        stringResource(if (isWomen) R.string.women_requests_matching_players else R.string.requests_matching_players, totalMatchCount)
                     },
                     style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
                 )
