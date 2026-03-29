@@ -23,10 +23,8 @@ export async function generateMetadata({
   const name = data?.player?.fullName ?? data?.player?.fullNameHe ?? 'Player Profile';
   const positionsStr = (data?.player?.positions ?? []).filter(Boolean).join(', ');
   const clubStr = data?.player?.currentClub?.clubName ?? '';
-  const fallbackDesc = [positionsStr, clubStr].filter(Boolean).join(' • ').trim();
-  const desc =
-    (data?.scoutReport?.slice(0, 200) ?? fallbackDesc) ||
-    'Player profile shared via MGSR Team';
+  const valueStr = data?.player?.marketValue ?? '';
+  const desc = [positionsStr, clubStr, valueStr].filter(Boolean).join(' · ') || 'Player profile shared via MGSR Team';
 
   let baseUrl = getBaseUrl();
   try {
