@@ -152,6 +152,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentsSec
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.MatchingRequestsSection
 import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.ProposalHistorySection
+import com.liordahan.mgsrteam.features.requests.models.PositionDisplayNames
 import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
 import com.liordahan.mgsrteam.features.requests.models.TransferFeeOptions
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
@@ -507,15 +508,14 @@ fun PlayerInfoScreen(
                 viewModel.createShareUrl(player, docId, documentsList, scoutReport, lang, includePlayerContact, includeAgencyContact)
                     .onSuccess { url ->
                         isPreparingShare = false
-                        val displayName = if (lang == "he") {
-                            player.fullNameHe ?: player.fullName ?: ""
-                        } else {
-                            player.fullName ?: player.fullNameHe ?: ""
-                        }
+                        val rawPos = player.positions?.firstOrNull()?.takeIf { it.isNotBlank() } ?: ""
+                        val pos = if (lang == "he") PositionDisplayNames.getDisplayName(context, rawPos) else rawPos
+                        val height = player.height?.takeIf { it.isNotBlank() } ?: ""
+                        val quickFacts = listOf(height, pos).filter { it.isNotBlank() }.joinToString(" ")
                         val shareText = if (lang == "he") {
-                            "פרופיל חדש נשלח אלייך מ - MGSR.\n$displayName\n$url"
+                            "שחקן חדש שעשוי להתאים לכם.\n${if (quickFacts.isNotBlank()) "$quickFacts, מוכן למעבר מיידי." else "מוכן למעבר מיידי."}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n\n🔗 $url"
                         } else {
-                            "A new profile sent to you by MGSR.\n$displayName\n$url"
+                            "New player that could fit your needs.\n${if (quickFacts.isNotBlank()) "$quickFacts — ready for immediate move." else "Ready for immediate move."}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n\n🔗 $url"
                         }
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
