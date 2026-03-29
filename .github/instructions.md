@@ -109,6 +109,9 @@ Add new remote config values to the Config collection, not as hardcoded constant
 ### Git — Never Push Without Approval
 **Never push to git, deploy functions, or perform any destructive/shared-system action without explicit user approval.** Always show what will be committed/pushed and wait for confirmation.
 
+### Cost Awareness
+**Before implementing anything that incurs recurring or usage-based costs (Gemini API, OpenAI, Firebase Extensions, paid SDKs, Cloud Run scaling, etc.), inform the user with an estimate of the billing impact.** Do not silently add services that increase the monthly bill.
+
 ### Android
 ```bash
 ./gradlew :app:compileDebugKotlin    # Full app compilation
@@ -132,6 +135,15 @@ firebase functions:list               # Verify functions are deployed
 - String resources exist in both `values/strings.xml` and `values-iw/strings.xml`
 - Filters, sorting, and empty states work correctly
 - Data flows: scraping → parsing → filtering → display → action (add to shortlist, etc.)
+
+### Cleanup After Every Change
+**After completing a feature or fix, clean up:**
+- Remove unused imports, functions, classes, and variables
+- Delete dead code paths that were replaced
+- Remove temporary debug logs (keep meaningful ones)
+- Verify no orphaned files were left behind
+
+**Be careful not to delete files or code that are still needed.** When unsure, check for usages before removing.
 
 ---
 
