@@ -89,9 +89,18 @@ Add new remote config values to the Config collection, not as hardcoded constant
 ### Web (Next.js + Tailwind)
 - Dark theme matching Android (`bg-mgsr-dark`, `text-mgsr-teal` accent)
 - Glass-morphism cards, hover effects, smooth transitions
-- Responsive design (mobile-first)
 - Loading skeletons, progressive data display
 - `group-hover` effects, `backdrop-blur`, gradient overlays
+
+### Web Mobile Responsiveness — Mandatory
+**Every web feature and fix MUST include a fully responsive mobile version. Do not skip this.**
+- Mobile-first approach: design for small screens first, then scale up
+- Use Tailwind responsive prefixes (`sm:`, `md:`, `lg:`) for all layouts
+- Cards, tables, and grids must stack or adapt on mobile (no horizontal overflow)
+- Filter bars and action buttons must be accessible on touch devices
+- Modals and sheets should be full-screen or bottom-sheet on mobile
+- Text and spacing must be readable on small screens (min touch target 44px)
+- Test every page at 375px width (iPhone SE) and 768px (tablet)
 
 ### Shared Patterns
 - Progressive loading with streaming data (SSE on web, Flow on Android)
