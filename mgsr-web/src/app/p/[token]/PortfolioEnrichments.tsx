@@ -10,7 +10,9 @@ import type {
   RadarAttribute,
   SellingPoint,
   ComparisonPlayer,
+  TacticalFit,
 } from './types';
+import { getPositionDisplayName, getCountryDisplayName } from '@/lib/appConfig';
 
 /* ─── Shared props ─── */
 interface ThemeProps {
@@ -82,15 +84,9 @@ export function TransferTicker({
     const name = (useHebrew ? p.fullNameHe || p.fullName : p.fullName || p.fullNameHe) || '—';
     
     if (p.marketValue) ticks.push(`💰 ${name} · ${p.marketValue}`);
-    if (p.nationality) ticks.push(`🌍 ${p.nationality}`);
-    if (p.positions?.length) ticks.push(`⚽ ${p.positions.join(' / ')}`);
-    if (p.contractExpired) ticks.push(`📋 ${useHebrew ? 'חוזה' : 'Contract'}: ${p.contractExpired}`);
-    
-    const ss = enrichment?.seasonStats;
-    if (ss?.appearances) ticks.push(`📊 ${ss.appearances} ${useHebrew ? 'הופעות' : 'Apps'} (${ss.season})`);
-    if (ss?.goals != null && ss.goals > 0) ticks.push(`🎯 ${ss.goals} ${useHebrew ? 'שערים' : 'Goals'}`);
-    if (ss?.assists != null && ss.assists > 0) ticks.push(`🅰️ ${ss.assists} ${useHebrew ? 'בישולים' : 'Assists'}`);
-    if (ss?.keyStatValue != null && ss.keyStatLabel) ticks.push(`📈 ${ss.keyStatLabel}: ${ss.keyStatValue}`);
+    if (p.nationality) ticks.push(`🌍 ${getCountryDisplayName(p.nationality, useHebrew)}`);
+    if (p.positions?.length) ticks.push(`⚽ ${p.positions.map(pos => getPositionDisplayName(pos, useHebrew)).join(' / ')}`);
+    if (p.contractExpired?.trim() && p.contractExpired !== '-') ticks.push(`📋 ${useHebrew ? 'חוזה' : 'Contract'}: ${p.contractExpired}`);
     
     if (data.mandateInfo?.hasMandate) ticks.push(`✅ ${useHebrew ? 'מנדט פעיל' : 'Active Mandate'}`);
     
@@ -215,7 +211,7 @@ export function DealValueMeter({
 function deriveUrgencyBadges(data: ShareData): { type: string; label: string; labelHe: string; variant: string }[] {
   const badges: { type: string; label: string; labelHe: string; variant: string }[] = [];
 
-  if (data.player.contractExpired) {
+  if (data.player.contractExpired?.trim() && data.player.contractExpired !== '-') {
     badges.push({
       type: 'contract',
       label: `Contract Ends ${data.player.contractExpired}`,
@@ -225,7 +221,7 @@ function deriveUrgencyBadges(data: ShareData): { type: string; label: string; la
   }
 
   if (data.mandateInfo?.hasMandate) {
-    badges.push({ type: 'mandate', label: 'Mandate ✓', labelHe: 'מנדט ✓', variant: 'teal' });
+    badges.push({ type: 'mandate', label: 'Mandate', labelHe: 'מנדט', variant: 'teal' });
   }
 
   const age = parseInt(data.player.age || '');
@@ -1108,10 +1104,10 @@ export function InterestHeaderCTA({
             : 'bg-mgsr-teal text-mgsr-dark shadow-[0_4px_24px_rgba(77,182,172,0.3)] hover:shadow-[0_6px_32px_rgba(77,182,172,0.4)]'
         }`}
       >
-        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
-        {useHebrew ? 'מעוניין' : "I'm Interested"}
+        {useHebrew ? 'בקשת תנאי עסקה' : 'Request Deal Terms'}
       </button>
       {onSave && (
         <button
@@ -1192,7 +1188,7 @@ export function StickyBottomBar({
                 : 'bg-mgsr-teal text-mgsr-dark shadow-[0_4px_24px_rgba(77,182,172,0.3)]'
             }`}
           >
-            ✋ {useHebrew ? 'מעוניין' : "I'm Interested"}
+            ⚡ {useHebrew ? 'קבלו חבילת שחקן מלאה' : 'Get Full Player Package'}
           </button>
         </div>
       </div>
@@ -1207,18 +1203,6 @@ export function StickyBottomBar({
 export function EnrichmentSkeleton({ isWomen }: { isWomen: boolean }) {
   return (
     <div className="space-y-6 mb-6 animate-pulse">
-      {/* Season stats skeleton */}
-      <div className={sectionCard(isWomen)}>
-        <div className="h-3 w-36 bg-mgsr-border rounded mb-5" />
-        <div className="grid grid-cols-4 gap-5">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="text-center">
-              <div className="h-7 w-10 bg-mgsr-border rounded mx-auto mb-2" />
-              <div className="h-2 w-14 bg-mgsr-border/60 rounded mx-auto" />
-            </div>
-          ))}
-        </div>
-      </div>
       {/* Score skeleton */}
       <div className={sectionCard(isWomen)}>
         <div className="h-3 w-32 bg-mgsr-border rounded mx-auto mb-5" />
@@ -1229,6 +1213,266 @@ export function EnrichmentSkeleton({ isWomen }: { isWomen: boolean }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   11. HOOK LINE — 3-second pitch at top
+   ═══════════════════════════════════════════════════════ */
+
+export function HookLine({
+  hookLine,
+  hookLineHe,
+  isWomen,
+  useHebrew,
+}: {
+  hookLine?: string;
+  hookLineHe?: string;
+} & ThemeProps) {
+  const text = useHebrew ? (hookLineHe || hookLine) : (hookLine || hookLineHe);
+  if (!text) return null;
+  return (
+    <p className={`text-lg sm:text-xl font-semibold leading-snug mt-4 ${isWomen ? 'text-[var(--women-rose)]/90' : 'text-mgsr-teal/90'}`}>
+      {text}
+    </p>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   12. CLUB SUMMARY — "Why Clubs Like Him"
+   ═══════════════════════════════════════════════════════ */
+
+export function ClubSummarySection({
+  items,
+  itemsHe,
+  isWomen,
+  useHebrew,
+}: {
+  items?: string[];
+  itemsHe?: string[];
+} & ThemeProps) {
+  const bullets = useHebrew ? (itemsHe || items) : (items || itemsHe);
+  if (!bullets?.length) return null;
+  return (
+    <div className={sectionCard(isWomen)}>
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-lg">⭐</span>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-mgsr-muted">
+          {useHebrew ? 'למה מועדונים אוהבים אותו' : 'Why Clubs Like Him'}
+        </h3>
+      </div>
+      <ul className="space-y-2.5">
+        {bullets.map((b, i) => (
+          <li key={i} className="flex items-start gap-3">
+            <span className={`mt-1 shrink-0 w-1.5 h-1.5 rounded-full ${accentBg(isWomen)}`} />
+            <span className="text-mgsr-text text-sm leading-relaxed">{b}</span>
+          </li>
+        ))}
+      </ul>
+      {/* Ideal-for line */}
+      <div className={`mt-4 pt-3 border-t border-dashed ${isWomen ? 'border-[var(--women-rose)]/15' : 'border-mgsr-border/50'}`}>
+        <p className="text-xs text-mgsr-muted italic">
+          {useHebrew
+            ? '📌 אידיאלי למועדונים שמחפשים שחקן שיכול להשפיע מיידית.'
+            : '📌 Ideal for clubs looking for a player who can make an immediate impact.'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   13. KEY TRAITS — scannable checkmark grid
+   ═══════════════════════════════════════════════════════ */
+
+export function KeyTraitsGrid({
+  traits,
+  traitsHe,
+  isWomen,
+  useHebrew,
+}: {
+  traits?: string[];
+  traitsHe?: string[];
+} & ThemeProps) {
+  const items = useHebrew ? (traitsHe || traits) : (traits || traitsHe);
+  if (!items?.length) return null;
+  return (
+    <div className={sectionCard(isWomen)}>
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-lg">📊</span>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-mgsr-muted">
+          {useHebrew ? 'מאפיינים מרכזיים' : 'Key Performance Traits'}
+        </h3>
+      </div>
+      <div className="grid grid-cols-2 gap-2.5">
+        {items.map((trait, i) => (
+          <div
+            key={i}
+            className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border ${
+              isWomen
+                ? 'border-[var(--women-rose)]/15 bg-[var(--women-rose)]/[0.04]'
+                : 'border-mgsr-teal/15 bg-mgsr-teal/[0.04]'
+            }`}
+          >
+            <svg className={`w-4 h-4 shrink-0 ${accentClass(isWomen)}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-sm font-medium text-mgsr-text">{trait}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   14. TACTICAL FIT — systems, role, description
+   ═══════════════════════════════════════════════════════ */
+
+export function TacticalFitSection({
+  fit,
+  isWomen,
+  useHebrew,
+}: {
+  fit?: TacticalFit;
+} & ThemeProps) {
+  if (!fit) return null;
+  const role = useHebrew ? (fit.roleHe || fit.role) : (fit.role || fit.roleHe);
+  const desc = useHebrew ? (fit.descriptionHe || fit.description) : (fit.description || fit.descriptionHe);
+  return (
+    <div className={sectionCard(isWomen)}>
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-lg">🎯</span>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-mgsr-muted">
+          {useHebrew ? 'התאמה טקטית' : 'Tactical Fit'}
+        </h3>
+      </div>
+      {/* Formation badges */}
+      {fit.systems?.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          <span className="text-xs text-mgsr-muted font-medium">{useHebrew ? 'מערכים:' : 'Systems:'}</span>
+          {fit.systems.map((sys, i) => (
+            <span
+              key={i}
+              className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wide ${
+                isWomen
+                  ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]'
+                  : 'bg-mgsr-teal/15 text-mgsr-teal'
+              }`}
+            >
+              {sys}
+            </span>
+          ))}
+        </div>
+      )}
+      {/* Role */}
+      {role && (
+        <div className="mb-3">
+          <span className="text-xs text-mgsr-muted font-medium">{useHebrew ? 'תפקיד:' : 'Role:'} </span>
+          <span className={`text-sm font-semibold ${accentClass(isWomen)}`}>{role}</span>
+        </div>
+      )}
+      {/* Description */}
+      {desc && (
+        <p className="text-sm text-mgsr-text/80 leading-relaxed">{desc}</p>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   15. AVAILABILITY / TRANSFER — deal terms block
+   ═══════════════════════════════════════════════════════ */
+
+export function AvailabilitySection({
+  data,
+  isWomen,
+  useHebrew,
+}: {
+  data: ShareData;
+} & ThemeProps) {
+  const hasMandate = data.mandateInfo?.hasMandate;
+  return (
+    <div className={`p-5 sm:p-6 rounded-xl border mb-6 portfolio-section ${
+      isWomen
+        ? 'border-[var(--women-rose)]/30 bg-gradient-to-br from-[var(--women-rose)]/[0.06] to-mgsr-card shadow-[0_0_30px_rgba(232,160,191,0.08)]'
+        : 'border-mgsr-teal/30 bg-gradient-to-br from-mgsr-teal/[0.06] to-mgsr-card shadow-[0_0_30px_rgba(77,182,172,0.08)]'
+    }`}>
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-lg">💰</span>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-mgsr-muted">
+          {useHebrew ? 'זמינות להעברה' : 'Transfer Availability'}
+        </h3>
+      </div>
+      <div className="space-y-2">
+        {hasMandate && (
+          <div className="flex items-center gap-2.5">
+            <span className={`text-sm ${accentClass(isWomen)}`}>📌</span>
+            <span className="text-sm text-mgsr-text font-medium">
+              {useHebrew ? 'העברה אפשרית' : 'Transfer possible'}
+            </span>
+          </div>
+        )}
+        <div className="flex items-center gap-2.5">
+          <span className={`text-sm ${accentClass(isWomen)}`}>📌</span>
+          <span className="text-sm text-mgsr-text font-medium">
+            {useHebrew ? 'מוכן למעבר מיידי' : 'Ready for immediate move'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <span className={`text-sm ${accentClass(isWomen)}`}>📌</span>
+          <span className="text-sm text-mgsr-text font-medium">
+            {useHebrew ? 'מבנה עסקה גמיש' : 'Flexible deal structure'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   16. BOTTOM CTA — strong close section
+   ═══════════════════════════════════════════════════════ */
+
+export function BottomCTASection({
+  playerName,
+  isWomen,
+  useHebrew,
+  onInterested,
+}: {
+  playerName: string;
+} & ThemeProps & { onInterested: () => void }) {
+  return (
+    <div className={`p-6 sm:p-8 rounded-2xl border-2 mb-8 text-center portfolio-section ${
+      isWomen
+        ? 'border-[var(--women-rose)]/40 bg-gradient-to-br from-[var(--women-rose)]/[0.08] to-mgsr-card shadow-[0_0_40px_rgba(232,160,191,0.12)]'
+        : 'border-mgsr-teal/40 bg-gradient-to-br from-mgsr-teal/[0.08] to-mgsr-card shadow-[0_0_40px_rgba(77,182,172,0.12)]'
+    }`}>
+      <h3 className="text-xl font-display font-bold text-mgsr-text mb-3">
+        {useHebrew
+          ? `מעוניינים בחתימת ${playerName}?`
+          : `Interested in Signing ${playerName}?`}
+      </h3>
+      <p className="text-sm text-mgsr-muted mb-5 max-w-md mx-auto">
+        {useHebrew
+          ? 'לחצו למטה ונשלח לכם: סטטוס רפואי, ציפיות שכר, מבנה עסקה ודוח סקאוטינג מלא.'
+          : 'Click below and we will send you: medical status, salary expectations, deal structure, and full scouting report.'}
+      </p>
+      <button
+        type="button"
+        onClick={onInterested}
+        className={`inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl text-base font-bold transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] ${
+          isWomen
+            ? 'bg-[var(--women-rose)] text-white hover:bg-[var(--women-rose)]/90 shadow-[var(--women-rose)]/25'
+            : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90 shadow-mgsr-teal/25'
+        }`}
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        {useHebrew ? 'כן — שלחו לי פרטי עסקה מלאים' : 'Yes — Send Me Full Deal Details'}
+      </button>
     </div>
   );
 }

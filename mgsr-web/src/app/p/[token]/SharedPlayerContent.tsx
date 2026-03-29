@@ -10,7 +10,6 @@ import ReactMarkdown from 'react-markdown';
 import type { ShareData, PortfolioEnrichment } from './types';
 import {
   UrgencyBadgesStrip,
-  SeasonPerformance,
   AIScoutScoreSection,
   PlayerRadarChart,
   WhyThisPlayerPitch,
@@ -19,11 +18,16 @@ import {
   StickyBottomBar,
   EnrichmentSkeleton,
   TransferTicker,
-  AvailabilityBadge,
   DealValueMeter,
   MiniPitchPosition,
   ContractCountdown,
   ScoutVerdictStamp,
+  HookLine,
+  ClubSummarySection,
+  KeyTraitsGrid,
+  TacticalFitSection,
+  AvailabilitySection,
+  BottomCTASection,
 } from './PortfolioEnrichments';
 
 /** Scout report markdown styling — teal/rose section headers */
@@ -64,16 +68,6 @@ function stripBold(text: string): string {
 /** Remove "Comparable Players" / "שחקנים דומים" section from stored scout reports */
 function stripComparablePlayers(text: string): string {
   return text.replace(/## (?:Comparable Players|שחקנים דומים)\s*\n[\s\S]*?(?=\n## |$)/gi, '').replace(/\n{3,}/g, '\n\n').trim();
-}
-
-function StatCard({ label, value, isWomen }: { label: string; value?: string; isWomen?: boolean }) {
-  if (!value) return null;
-  return (
-    <div className={`px-4 py-3 rounded-xl border bg-mgsr-card/50 ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_20px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
-      <p className="text-xs text-mgsr-muted uppercase tracking-wider">{label}</p>
-      <p className={`font-semibold mt-0.5 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-text'}`}>{value}</p>
-    </div>
-  );
 }
 
 export default function SharedPlayerContent({
@@ -226,9 +220,13 @@ export default function SharedPlayerContent({
     })
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
-        if (json?.enrichment) setEnrichment(json.enrichment);
+        // Always set enrichment (even empty {}) to prevent infinite retry loop
+        setEnrichment(json?.enrichment ?? {});
       })
-      .catch(() => { /* enrichment is optional */ })
+      .catch(() => {
+        // Set empty enrichment on error to prevent infinite retry loop
+        setEnrichment({});
+      })
       .finally(() => setEnrichmentLoading(false));
   }, [data, enrichment, enrichmentLoading]);
 
@@ -458,120 +456,116 @@ export default function SharedPlayerContent({
       <div className="portfolio-vignette" />
 
       <main className="relative z-10 max-w-2xl mx-auto p-6">
-        <div className={`relative overflow-hidden rounded-2xl mb-8 hero-holo ${isWomen ? 'shadow-[0_0_40px_rgba(232,160,191,0.12)]' : ''}`}>
+        {/* ═══ HERO — Player identity + hook + availability ═══ */}
+        <div className={`relative overflow-hidden rounded-2xl mb-6 hero-holo ${isWomen ? 'shadow-[0_0_40px_rgba(232,160,191,0.12)]' : ''}`}>
           <div className={`absolute inset-0 ${isWomen ? 'bg-gradient-to-br from-[var(--women-rose)]/15 via-mgsr-card to-mgsr-dark' : 'bg-gradient-to-br from-mgsr-card via-mgsr-card to-mgsr-dark'}`} />
           <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_30%_20%,rgba(232,160,191,0.25)_0%,transparent_50%)]' : 'bg-[radial-gradient(ellipse_at_30%_20%,rgba(77,182,172,0.15)_0%,transparent_50%)]'}`} />
-          {/* MGSR watermark */}
           <img
             src="/mgsr-white.png"
             alt=""
             className="absolute -right-8 -bottom-6 w-[280px] sm:w-[340px] opacity-[0.03] pointer-events-none select-none"
             draggable={false}
           />
-          <div className="relative flex flex-col sm:flex-row items-center sm:items-end gap-8 p-8 sm:p-10">
-            <div className="relative shrink-0">
-              <img
-                src={player.profileImage || 'https://via.placeholder.com/160'}
-                alt=""
-                className={`w-32 h-32 sm:w-40 sm:h-40 rounded-2xl object-cover bg-mgsr-dark ring-4 shadow-2xl hero-image-float ${isWomen ? 'ring-[var(--women-rose)]/30' : 'ring-mgsr-border'}`}
-              />
-            </div>
-            <div className="flex-1 text-center sm:text-left min-w-0">
-              <h1 className="text-3xl sm:text-4xl font-display font-bold text-mgsr-text tracking-tight">
-                {displayName}
-              </h1>
-              <p className="text-mgsr-muted mt-2 text-lg">
-                {player.positions?.filter(Boolean).join(' • ') || '—'}
-              </p>
-              <div className="flex flex-col items-center sm:items-start gap-0.5 mt-4">
-                {player.currentClub?.clubName && (
-                  <span className="text-mgsr-text font-medium">
-                    {player.currentClub.clubName}
-                  </span>
-                )}
-                {player.currentClub?.clubCountry && (
-                  <span className="text-mgsr-muted text-sm">
-                    {player.currentClub.clubCountry}
-                  </span>
-                )}
+          <div className="relative p-8 sm:p-10">
+            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-8">
+              <div className="relative shrink-0">
+                <img
+                  src={player.profileImage || 'https://via.placeholder.com/160'}
+                  alt=""
+                  className={`w-32 h-32 sm:w-40 sm:h-40 rounded-2xl object-cover bg-mgsr-dark ring-4 shadow-2xl hero-image-float ${isWomen ? 'ring-[var(--women-rose)]/30' : 'ring-mgsr-border'}`}
+                />
+              </div>
+              <div className="flex-1 text-center sm:text-left min-w-0">
+                <h1 className="text-3xl sm:text-4xl font-display font-bold text-mgsr-text tracking-tight">
+                  {displayName}
+                </h1>
+                <p className="text-mgsr-muted mt-1.5 text-lg">
+                  {player.positions?.filter(Boolean).join(' • ') || '—'}
+                </p>
+                {/* Quick stats row */}
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 mt-3 text-sm text-mgsr-muted">
+                  {player.age && <span>{useHebrew ? 'גיל' : 'Age'}: {player.age}</span>}
+                  {player.height && <><span className="opacity-30">|</span><span>{player.height}</span></>}
+                  {player.nationality && <><span className="opacity-30">|</span><span>{player.nationality}</span></>}
+                  {player.contractExpired?.trim() && player.contractExpired !== '-' && <><span className="opacity-30">|</span><span>{useHebrew ? 'חוזה' : 'Contract'}: {player.contractExpired}</span></>}
+                </div>
+                {/* Club + Market Value */}
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-3">
+                  {player.currentClub?.clubName && (
+                    <span className="text-mgsr-text font-medium text-sm">
+                      {player.currentClub.clubName}{player.currentClub.clubCountry ? ` · ${player.currentClub.clubCountry}` : ''}
+                    </span>
+                  )}
+                  {player.marketValue && (
+                    <span className={`text-xl font-display font-bold ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                      {player.marketValue}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="shrink-0">
-              <p className={`text-2xl sm:text-3xl font-display font-bold ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
-                {player.marketValue || '—'}
-              </p>
-              <p className="text-xs text-mgsr-muted mt-0.5">{labels.marketValue}</p>
-            </div>
+            {/* Hook line — 3-second pitch */}
+            <HookLine hookLine={enrichment?.hookLine} hookLineHe={enrichment?.hookLineHe} isWomen={isWomen} useHebrew={useHebrew} />
+            {/* Availability indicator */}
+            {data.mandateInfo?.hasMandate && (
+              <div className={`mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide ${
+                isWomen
+                  ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)] border border-[var(--women-rose)]/25'
+                  : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+              }`}>
+                <span className="relative flex h-2 w-2">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isWomen ? 'bg-[var(--women-rose)]' : 'bg-emerald-400'}`} />
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isWomen ? 'bg-[var(--women-rose)]' : 'bg-emerald-400'}`} />
+                </span>
+                {useHebrew ? '📌 זמין להעברה — מעבר מיידי אפשרי' : '📌 Available for transfer — immediate move possible'}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Transfer ticker — sports broadcast style */}
+        {/* Transfer ticker */}
         <TransferTicker data={data} enrichment={enrichment} isWomen={isWomen} useHebrew={useHebrew} />
 
         {/* Urgency badges */}
         <UrgencyBadgesStrip data={data} useHebrew={useHebrew} />
 
-        {/* Availability badge */}
-        {data.mandateInfo?.hasMandate && (
-          <div className="mb-4">
-            <AvailabilityBadge isWomen={isWomen} useHebrew={useHebrew} />
-          </div>
-        )}
+        {/* Loading skeleton for enrichment */}
+        {enrichmentLoading && <EnrichmentSkeleton isWomen={isWomen} />}
 
-        {data.mandateInfo?.hasMandate && (
-          <div className={`p-5 rounded-xl bg-mgsr-card border mb-6 ${isWomen ? 'border-[var(--women-rose)]/30 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-teal/30'}`}>
-            <div className="flex items-center justify-between gap-4">
-              <h3 className={`text-sm font-semibold uppercase tracking-wider ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
-                {labels.mandate}
-              </h3>
-              <div className="shrink-0">
-                <div className={`w-11 h-6 rounded-full flex items-center justify-end px-1 ${isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal'}`}>
-                  <div className="w-4 h-4 rounded-full bg-white" />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* ═══ CLUB SUMMARY — "Why Clubs Like Him" ═══ */}
+        <ClubSummarySection items={enrichment?.clubSummary} itemsHe={enrichment?.clubSummaryHe} isWomen={isWomen} useHebrew={useHebrew} />
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <StatCard label={labels.age} value={player.age} isWomen={isWomen} />
-          <StatCard label={labels.height} value={player.height} isWomen={isWomen} />
-          <StatCard label={labels.nationality} value={player.nationality} isWomen={isWomen} />
-          <StatCard label={labels.contract} value={player.contractExpired} isWomen={isWomen} />
-        </div>
+        {/* ═══ KEY TRAITS — scannable grid ═══ */}
+        <KeyTraitsGrid traits={enrichment?.keyTraits} traitsHe={enrichment?.keyTraitsHe} isWomen={isWomen} useHebrew={useHebrew} />
 
-        {/* Contract countdown — live ticking urgency */}
-        {player.contractExpired && (
-          <ContractCountdown contractExpiry={player.contractExpired} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
+        {/* ═══ TACTICAL FIT ═══ */}
+        <TacticalFitSection fit={enrichment?.tacticalFit} isWomen={isWomen} useHebrew={useHebrew} />
 
         {/* Mini pitch position map */}
         {player.positions && player.positions.length > 0 && (
           <MiniPitchPosition positions={player.positions} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
-        {/* Enrichment sections: season stats, AI score, radar chart */}
-        {enrichmentLoading && <EnrichmentSkeleton isWomen={isWomen} />}
-        {enrichment?.seasonStats && (
-          <SeasonPerformance stats={enrichment.seasonStats} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
+        {/* ═══ AI SCORE + RADAR ═══ */}
         {enrichment?.aiScore && (
           <AIScoutScoreSection score={enrichment.aiScore} isWomen={isWomen} useHebrew={useHebrew} />
         )}
         {enrichment?.radarAttributes && (
           <PlayerRadarChart attributes={enrichment.radarAttributes} isWomen={isWomen} useHebrew={useHebrew} />
         )}
-
-        {/* Deal value meter */}
         {enrichment?.aiScore && (
           <DealValueMeter player={player} enrichment={enrichment} isWomen={isWomen} useHebrew={useHebrew} />
         )}
-
-        {/* Scout verdict stamp */}
         {enrichment?.aiScore && (
           <ScoutVerdictStamp score={enrichment.aiScore} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
+        {/* Contract countdown */}
+        {player.contractExpired?.trim() && player.contractExpired !== '-' && (
+          <ContractCountdown contractExpiry={player.contractExpired} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+
+        {/* ═══ SCOUT REPORT ═══ */}
         {data.scoutReport && (
           <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
             {/* Header with edit controls when from portfolio */}
@@ -684,6 +678,9 @@ export default function SharedPlayerContent({
           <HighlightsGrid highlights={data.highlights} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
+        {/* ═══ AVAILABILITY / TRANSFER DETAILS ═══ */}
+        <AvailabilitySection data={data} isWomen={isWomen} useHebrew={useHebrew} />
+
         {!isWomen && player.tmProfile && (
           <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
             <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
@@ -733,6 +730,16 @@ export default function SharedPlayerContent({
               </a>
             )}
           </div>
+        )}
+
+        {/* ═══ BOTTOM CTA — strong close (external scout view only) ═══ */}
+        {!fromPortfolio && (
+          <BottomCTASection
+            playerName={displayName || '—'}
+            isWomen={isWomen}
+            useHebrew={useHebrew}
+            onInterested={handleInterested}
+          />
         )}
 
         {/* Premium MGSR branded footer */}

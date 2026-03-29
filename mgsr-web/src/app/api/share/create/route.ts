@@ -6,8 +6,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin, adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateEnrichment } from '@/lib/generateEnrichment';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 45;
 
 function getAppUrl(): string {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
@@ -118,6 +120,14 @@ export async function POST(request: NextRequest) {
       scoutReport = await generateShortScoutReport(player, lang);
     }
 
+    // Pre-generate enrichment so shared page loads instantly
+    let enrichment = {};
+    try {
+      enrichment = await generateEnrichment(player as Record<string, unknown>, scoutReport, platform, lang);
+    } catch (e) {
+      console.error('[share] Enrichment pre-generation failed (non-blocking):', e);
+    }
+
     /** Firestore rejects undefined values – strip them recursively */
     const stripUndefined = (obj: Record<string, unknown>): Record<string, unknown> => {
       const result: Record<string, unknown> = {};
@@ -174,6 +184,7 @@ export async function POST(request: NextRequest) {
       highlights: highlights?.length ? highlights : null,
       lang: lang ?? null,
       platform: platform ?? null,
+      enrichment: Object.keys(enrichment).length ? enrichment : null,
       createdAt: Date.now(),
       createdBy: uid,
     });

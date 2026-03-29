@@ -46,6 +46,17 @@ export interface PortfolioEnrichment {
   sellingPoints?: SellingPoint[];
   comparisons?: ComparisonPlayer[];
   seasonStats?: SeasonStatsData;
+  /** One-line elevator pitch for the hero section */
+  hookLine?: string;
+  hookLineHe?: string;
+  /** 4-6 bullet points: "Why Clubs Like Him" */
+  clubSummary?: string[];
+  clubSummaryHe?: string[];
+  /** 5-6 scannable key traits (short phrases) */
+  keyTraits?: string[];
+  keyTraitsHe?: string[];
+  /** Tactical fit: best formations, role, and description */
+  tacticalFit?: TacticalFit;
 }
 
 export interface AIScoutScore {
@@ -87,4 +98,12 @@ export interface SeasonStatsData {
   keyStatLabel?: string;
   keyStatLabelHe?: string;
   keyStatValue?: number;
+}
+
+export interface TacticalFit {
+  systems: string[];
+  role: string;
+  roleHe: string;
+  description: string;
+  descriptionHe: string;
 }
