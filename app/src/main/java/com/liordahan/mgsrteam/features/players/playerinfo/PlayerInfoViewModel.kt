@@ -1043,6 +1043,44 @@ class PlayerInfoViewModel(
                         Log.w(TAG, "Document not detected as passport (type: ${detection.documentType})")
                     }
                 }
+                // ── GPS_DATA from Gemini vision fallback ──────────────────
+                if (detection.documentType == DocumentType.GPS_DATA) {
+                    Log.i(TAG, "GPS report detected via Gemini vision — uploading as GPS_DATA and parsing")
+                    val gpsName = detection.suggestedName
+                    val bytesToUpload = withContext(Dispatchers.IO) { PdfFlattener.flatten(bytes) }
+                    val storageUrl = documentsRepository.uploadBytesToStorage(storageKey, gpsName, bytesToUpload)
+
+                    // Delete existing GPS doc with same name (same date) before creating new one
+                    val existingGpsDocs = documentsFlow.first().filter { it.type == "GPS_DATA" && it.name == gpsName }
+                    for (dup in existingGpsDocs) {
+                        try {
+                            dup.id?.let { dupId ->
+                                SharedCallables.playerDocumentsDelete(
+                                    platform = platformManager.value,
+                                    documentId = dupId
+                                )
+                                Log.i(TAG, "Deleted duplicate GPS doc: $gpsName ($dupId)")
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to delete duplicate GPS doc", e)
+                        }
+                    }
+
+                    val docResult = SharedCallables.playerDocumentsCreate(
+                        platform = platformManager.value,
+                        playerRefId = storageKey,
+                        type = DocumentType.GPS_DATA.name,
+                        name = gpsName,
+                        storageUrl = storageUrl,
+                        playerName = player.fullName,
+                        playerImage = player.profileImage,
+                        agentName = getCurrentUserName()
+                    )
+                    // Parse GPS data in background (don't block upload completion)
+                    processGpsDocument(bytes, mimeType, storageUrl, docResult)
+                    return@launch
+                }
+
                 val docExpiresAt = detection.mandateExpiresAt ?: expiresAt
                 val createdBy = getCurrentUserName()
                 val uploadedBy = if (detection.documentType == DocumentType.MANDATE) createdBy else null

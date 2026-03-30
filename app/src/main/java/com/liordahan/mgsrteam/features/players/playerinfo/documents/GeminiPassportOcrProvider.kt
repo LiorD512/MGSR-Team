@@ -475,4 +475,75 @@ Return ONLY valid JSON: {"isMandate": boolean, "mandateExpiresAt": "DD/MM/YYYY" 
             null
         }
     }
+
+    // ── GPS / Physical Performance Detection ──────────────────────
+
+    data class GpsClassificationResult(
+        val isGpsData: Boolean = false,
+        val matchDate: String? = null
+    )
+
+    /**
+     * Gemini vision fallback for GPS detection — handles image-based PDFs
+     * where keyword/text extraction fails (e.g. Leixões-style reports).
+     * Matches the web detect route's Gemini GPS fallback exactly.
+     */
+    suspend fun classifyAsGpsFromBytes(bytes: ByteArray, mimeType: String?): GpsClassificationResult =
+        withContext(Dispatchers.IO) {
+            try {
+                val effectiveMime = mimeType?.lowercase()?.takeIf { it.isNotBlank() } ?: "application/octet-stream"
+
+                val prompt = """Is this document a football/soccer GPS tracking report or physical performance data sheet?
+
+Look for:
+- Tables with columns like: Total Distance, Sprint Distance, High Intensity Distance, Max Speed, Accelerations, Decelerations, Time/Duration
+- Or Catapult-specific columns: Tot Dist, Tot Dur, Max Vel, High MP Effs, Meterage Per Minute, Acc #, Decel #
+- Player names with match data rows containing distance/speed metrics
+- Club or team names with match dates
+- Any per-player physical performance stats from GPS tracking systems
+
+If YES, extract:
+- isGpsData: true
+- gpsMatchDate: the match date in DD/MM/YYYY format (use the most recent date if multiple)
+
+If NOT GPS data:
+- isGpsData: false
+
+Return ONLY valid JSON: {"isGpsData": boolean, "gpsMatchDate": "DD/MM/YYYY" or null}"""
+
+                val content = Content.Builder()
+                    .inlineData(bytes, effectiveMime)
+                    .text(prompt)
+                    .build()
+
+                val jsonSchema = Schema.obj(
+                    mapOf(
+                        "isGpsData" to Schema.boolean(),
+                        "gpsMatchDate" to Schema.string()
+                    ),
+                    optionalProperties = listOf("gpsMatchDate")
+                )
+
+                val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
+                    modelName = MODEL_NAME,
+                    generationConfig = generationConfig {
+                        responseMimeType = "application/json"
+                        responseSchema = jsonSchema
+                    }
+                )
+
+                val response = model.generateContent(listOf(content))
+                val text = response.text ?: return@withContext GpsClassificationResult()
+                val json = extractJsonFromResponse(text) ?: return@withContext GpsClassificationResult()
+                val obj = JSONObject(json)
+
+                val isGps = obj.optBoolean("isGpsData", false)
+                val matchDate = obj.optString("gpsMatchDate", "").trim().takeIf { it.isNotBlank() }
+                Log.i(TAG, "Gemini GPS classify: isGpsData=$isGps, matchDate=$matchDate")
+                GpsClassificationResult(isGpsData = isGps, matchDate = matchDate)
+            } catch (e: Exception) {
+                Log.w(TAG, "Gemini GPS classification failed", e)
+                GpsClassificationResult()
+            }
+        }
 }

@@ -267,6 +267,29 @@ class DocumentDetectionService(
                 else -> parserResult
             }
 
+            // ──────────────────────────────────────────────────────
+            // PHASE 6: GPS data detection via Gemini vision
+            // Only when neither passport nor mandate was detected.
+            // Catches image-based GPS PDFs where keyword scan fails.
+            // Matches web detect route's Gemini GPS fallback.
+            // ──────────────────────────────────────────────────────
+            if (finalResult.documentType == DocumentType.OTHER && geminiPassportOcr != null) {
+                try {
+                    val gpsResult = geminiPassportOcr.classifyAsGpsFromBytes(bytes, mimeType)
+                    if (gpsResult.isGpsData) {
+                        val safeDate = gpsResult.matchDate?.replace("/", "-") ?: ""
+                        val safeName = sanitizeFileName(playerName ?: "")
+                        val nameParts = listOf("GPS", safeName, safeDate).filter { it.isNotEmpty() }
+                        return@withContext DetectionResult(
+                            documentType = DocumentType.GPS_DATA,
+                            suggestedName = "${nameParts.joinToString("_")}.pdf"
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Gemini GPS classification fallback failed", e)
+                }
+            }
+
             finalResult
         } catch (e: Exception) {
             Log.e(TAG, "Document detection failed", e)
