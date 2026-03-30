@@ -8,8 +8,8 @@ import { adminDb } from '@/lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
-// Use 2.5-flash-lite for GPS parsing — fastest model, no thinking overhead
-const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+// Use 2.5-flash with capped thinking budget for GPS parsing
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
 const GPS_PROMPT = `You are analyzing a football/soccer GPS or physical performance match report.
 
@@ -477,7 +477,11 @@ export async function POST(req: NextRequest) {
     const model = genAI.getGenerativeModel({
       model: GEMINI_MODEL,
       safetySettings: SAFETY_SETTINGS,
-      generationConfig: { responseMimeType: 'application/json' },
+      generationConfig: {
+        responseMimeType: 'application/json',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        thinkingConfig: { thinkingBudget: 1024 },
+      } as any,
     });
 
     const result = await model.generateContent([
@@ -488,8 +492,13 @@ export async function POST(req: NextRequest) {
     const response = result.response;
     const extracted = extractNonThoughtText(response);
     let rawText = '';
-    try { rawText = response.text?.() ?? ''; } catch { /* blocked */ }
-    let text = extracted || rawText.trim();
+    try { rawText = (typeof response.text === 'function' ? response.text() : '') ?? ''; } catch { /* blocked */ }
+    let text = (extracted || rawText || '').trim();
+
+    if (!text) {
+      console.error('[gps-parse] Gemini returned empty response');
+      return NextResponse.json({ error: 'Gemini returned empty response — the document may not be readable' }, { status: 422 });
+    }
 
     // Clean JSON from potential markdown wrappers
     const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
