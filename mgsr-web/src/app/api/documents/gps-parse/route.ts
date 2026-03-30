@@ -178,27 +178,36 @@ function extractNonThoughtText(response: unknown): string {
   }
 }
 
+/** Strip diacritical marks (accents) from a string — e.g. "Poulolö" → "poulolo" */
+function stripAccents(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function findPlayerRow(players: GpsPlayerRow[], playerName: string): GpsPlayerRow | undefined {
-  const normalized = playerName.trim().toLowerCase();
+  const normalized = stripAccents(playerName.trim().toLowerCase());
   const nameParts = normalized.split(/\s+/);
   const lastName = nameParts[nameParts.length - 1];
   const firstName = nameParts[0];
+
+  // Helper to normalize a chart player name (strip accents + lowercase)
+  const norm = (s: string) => stripAccents(s.trim().toLowerCase());
+
   // 1. Last name match first — charts often show only last name
   if (lastName) {
     const lastNameMatch = players.find(p => {
-      const pName = p.playerName.trim().toLowerCase();
+      const pName = norm(p.playerName);
       const pParts = pName.split(/\s+/);
       return pName === lastName || pParts[pParts.length - 1] === lastName || pParts[0] === lastName;
     });
     if (lastNameMatch) return lastNameMatch;
   }
   // 2. Exact full name match
-  const exact = players.find(p => p.playerName.trim().toLowerCase() === normalized);
+  const exact = players.find(p => norm(p.playerName) === normalized);
   if (exact) return exact;
   // 3. First name match (chart may show first name only, e.g. "Paulo" for "Paulo Henrique")
   if (firstName && firstName !== lastName) {
     const firstNameMatch = players.find(p => {
-      const pName = p.playerName.trim().toLowerCase();
+      const pName = norm(p.playerName);
       return pName === firstName || pName.split(/\s+/)[0] === firstName;
     });
     if (firstNameMatch) return firstNameMatch;
@@ -206,10 +215,29 @@ function findPlayerRow(players: GpsPlayerRow[], playerName: string): GpsPlayerRo
   // 4. Any name part contains match (handles "Popescu37" matching "Popescu")
   for (const part of nameParts) {
     if (part.length < 3) continue;
-    const partialMatch = players.find(p => 
-      p.playerName.trim().toLowerCase().includes(part) || part.includes(p.playerName.trim().toLowerCase())
-    );
+    const partialMatch = players.find(p => {
+      const pName = norm(p.playerName);
+      return pName.includes(part) || part.includes(pName);
+    });
     if (partialMatch) return partialMatch;
+  }
+  // 5. Fuzzy initial match — "F. Poulolo" or "F Poulolo" matching "Florent Poulolo"
+  if (firstName.length > 0 && lastName.length > 0) {
+    const initial = firstName[0];
+    const fuzzyMatch = players.find(p => {
+      const pName = norm(p.playerName);
+      const pParts = pName.split(/[\s.]+/).filter(Boolean);
+      // Check pattern: initial + last name (e.g. "f poulolo", "f. poulolo")
+      if (pParts.length >= 2) {
+        const pFirst = pParts[0];
+        const pLast = pParts[pParts.length - 1];
+        if (pFirst.length === 1 && pFirst === initial && pLast === lastName) return true;
+        // Also check reversed: "poulolo f"
+        if (pLast.length === 1 && pLast === initial && pFirst === lastName) return true;
+      }
+      return false;
+    });
+    if (fuzzyMatch) return fuzzyMatch;
   }
   return undefined;
 }

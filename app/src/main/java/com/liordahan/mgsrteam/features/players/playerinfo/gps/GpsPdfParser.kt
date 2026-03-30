@@ -268,31 +268,38 @@ Return ONLY valid JSON. No markdown, no explanation."""
         }
     }
 
+    /** Strip diacritical marks (accents) — e.g. "Poulolö" → "poulolo" */
+    private fun stripAccents(s: String): String =
+        java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+            .replace(Regex("[\\u0300-\\u036f]"), "")
+
     /**
      * Find matching player row by name (fuzzy match).
      * Handles variations like "Momo Djetei" vs "Mohamed Djetei" by matching last name.
      */
     fun findPlayerRow(report: GpsReportResult, playerName: String): GpsPlayerRow? {
-        val normalized = playerName.trim().lowercase()
+        val normalized = stripAccents(playerName.trim().lowercase())
         val nameParts = normalized.split(Regex("\\s+"))
         val lastName = nameParts.lastOrNull() ?: ""
         val firstName = nameParts.firstOrNull() ?: ""
 
+        fun norm(s: String) = stripAccents(s.trim().lowercase())
+
         // 1. Last name match first — charts often show only last name
         if (lastName.isNotEmpty()) {
             report.players.firstOrNull {
-                val pName = it.playerName.trim().lowercase()
+                val pName = norm(it.playerName)
                 val pParts = pName.split(Regex("\\s+"))
                 pName == lastName || pParts.lastOrNull() == lastName || pParts.firstOrNull() == lastName
             }?.let { return it }
         }
         // 2. Exact full name match
-        report.players.firstOrNull { it.playerName.trim().lowercase() == normalized }
+        report.players.firstOrNull { norm(it.playerName) == normalized }
             ?.let { return it }
         // 3. First name match (chart shows first name only, e.g. "Paulo" for "Paulo Henrique")
         if (firstName.isNotEmpty() && firstName != lastName) {
             report.players.firstOrNull {
-                val pName = it.playerName.trim().lowercase()
+                val pName = norm(it.playerName)
                 pName == firstName || pName.split(Regex("\\s+")).firstOrNull() == firstName
             }?.let { return it }
         }
@@ -300,8 +307,22 @@ Return ONLY valid JSON. No markdown, no explanation."""
         for (part in nameParts) {
             if (part.length < 3) continue
             report.players.firstOrNull {
-                val pName = it.playerName.trim().lowercase()
+                val pName = norm(it.playerName)
                 pName.contains(part) || part.contains(pName)
+            }?.let { return it }
+        }
+        // 5. Fuzzy initial match — "F. Poulolo" or "F Poulolo" matching "Florent Poulolo"
+        if (firstName.isNotEmpty() && lastName.isNotEmpty()) {
+            val initial = firstName[0]
+            report.players.firstOrNull {
+                val pName = norm(it.playerName)
+                val pParts = pName.split(Regex("[\\s.]+")).filter { p -> p.isNotEmpty() }
+                if (pParts.size >= 2) {
+                    val pFirst = pParts.first()
+                    val pLast = pParts.last()
+                    (pFirst.length == 1 && pFirst[0] == initial && pLast == lastName) ||
+                        (pLast.length == 1 && pLast[0] == initial && pFirst == lastName)
+                } else false
             }?.let { return it }
         }
         return null

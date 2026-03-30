@@ -756,6 +756,7 @@ export default function PlayerInfoPage() {
         }
 
         // 5. Parse GPS report (show analyzing feedback)
+        console.log('[GPS upload] Detected docType:', docType, '| playerName:', player.fullName);
         if (docType === 'GPS_DATA') {
           setParsingGps(true);
           try {
@@ -777,14 +778,30 @@ export default function PlayerInfoPage() {
             if (!parseRes.ok) {
               const errBody = await parseRes.text();
               console.error('[GPS parse] Server error:', parseRes.status, errBody);
+              try {
+                const errJson = JSON.parse(errBody);
+                if (errJson.availablePlayers) {
+                  setUploadError(`GPS: Player "${player.fullName}" not found. Found: ${errJson.availablePlayers.join(', ')}`);
+                } else {
+                  setUploadError(`GPS parse error: ${errJson.error || errBody}`);
+                }
+              } catch {
+                setUploadError(`GPS parse error: ${errBody}`);
+              }
+              setTimeout(() => setUploadError(null), 12000);
             } else {
-              console.log('[GPS parse] Success:', await parseRes.json());
+              const parseData = await parseRes.json();
+              console.log('[GPS parse] Success:', parseData);
             }
           } catch (err) {
             console.error('[GPS parse] Failed:', err);
+            setUploadError(`GPS parse failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+            setTimeout(() => setUploadError(null), 8000);
           } finally {
             setParsingGps(false);
           }
+        } else {
+          console.log('[GPS upload] Document was NOT detected as GPS_DATA, detected as:', docType);
         }
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'upload_failed');
