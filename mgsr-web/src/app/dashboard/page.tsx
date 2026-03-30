@@ -63,6 +63,7 @@ interface FeedEvent {
   extraInfo?: string;
   timestamp?: number;
   agentName?: string;
+  changedBy?: string;
 }
 
 /** Deduplicates feed events by (type, playerTmProfile) — keeps most recent. Fixes legacy duplicates. */

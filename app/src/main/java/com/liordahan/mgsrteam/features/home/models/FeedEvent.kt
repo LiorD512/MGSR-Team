@@ -19,6 +19,7 @@ data class FeedEvent(
     val extraInfo: String? = null,      // e.g. agent name who wrote a note, count of expiring players
     val timestamp: Long? = null,
     val agentName: String? = null,     // who marked/uploaded (e.g. mandate uploader)
+    val changedBy: String? = null,     // "system" when auto-expired by worker, null for manual actions
     val mandateExpiryAt: Long? = null  // mandate expiry timestamp; shown on mandate feed events
 ) {
     companion object {

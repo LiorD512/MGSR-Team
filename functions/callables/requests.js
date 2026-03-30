@@ -30,7 +30,9 @@ async function requestsCreate(data) {
   try {
     const feedCol = FEED_EVENTS_COLLECTIONS[data.platform];
     const now = Date.now();
-    const docId = feedEventDocId("REQUEST_ADDED", payload.clubTmProfile || ref.id, now);
+    // Include position so same-club requests with different positions each get their own feed event
+    const profileKey = (payload.clubTmProfile || ref.id) + "_" + (payload.position || "");
+    const docId = feedEventDocId("REQUEST_ADDED", profileKey, now);
     await db.collection(feedCol).doc(docId).set({
       type: "REQUEST_ADDED",
       playerName: payload.clubName,
@@ -98,7 +100,9 @@ async function requestsDelete(data) {
     const feedCol = FEED_EVENTS_COLLECTIONS[data.platform];
     const now = Date.now();
     const agentName = str(data.agentName);
-    const docId = feedEventDocId("REQUEST_DELETED", reqData.clubTmProfile || requestId, now);
+    // Include position so same-club deletions with different positions each get their own feed event
+    const profileKey = (reqData.clubTmProfile || requestId) + "_" + (reqData.position || "");
+    const docId = feedEventDocId("REQUEST_DELETED", profileKey, now);
     await db.collection(feedCol).doc(docId).set({
       type: "REQUEST_DELETED",
       playerName: reqData.clubName || "",

@@ -180,13 +180,38 @@ function extractNonThoughtText(response: unknown): string {
 
 function findPlayerRow(players: GpsPlayerRow[], playerName: string): GpsPlayerRow | undefined {
   const normalized = playerName.trim().toLowerCase();
-  // Exact match
+  const nameParts = normalized.split(/\s+/);
+  const lastName = nameParts[nameParts.length - 1];
+  const firstName = nameParts[0];
+  // 1. Last name match first — charts often show only last name
+  if (lastName) {
+    const lastNameMatch = players.find(p => {
+      const pName = p.playerName.trim().toLowerCase();
+      const pParts = pName.split(/\s+/);
+      return pName === lastName || pParts[pParts.length - 1] === lastName || pParts[0] === lastName;
+    });
+    if (lastNameMatch) return lastNameMatch;
+  }
+  // 2. Exact full name match
   const exact = players.find(p => p.playerName.trim().toLowerCase() === normalized);
   if (exact) return exact;
-  // Last name match (handles "Momo Djetei" vs "Mohamed Djetei")
-  const lastName = normalized.split(' ').pop();
-  if (!lastName) return undefined;
-  return players.find(p => p.playerName.trim().toLowerCase().split(' ').pop() === lastName);
+  // 3. First name match (chart may show first name only, e.g. "Paulo" for "Paulo Henrique")
+  if (firstName && firstName !== lastName) {
+    const firstNameMatch = players.find(p => {
+      const pName = p.playerName.trim().toLowerCase();
+      return pName === firstName || pName.split(/\s+/)[0] === firstName;
+    });
+    if (firstNameMatch) return firstNameMatch;
+  }
+  // 4. Any name part contains match (handles "Popescu37" matching "Popescu")
+  for (const part of nameParts) {
+    if (part.length < 3) continue;
+    const partialMatch = players.find(p => 
+      p.playerName.trim().toLowerCase().includes(part) || part.includes(p.playerName.trim().toLowerCase())
+    );
+    if (partialMatch) return partialMatch;
+  }
+  return undefined;
 }
 
 function parseMatchDate(dateStr: string): number | null {

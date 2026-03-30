@@ -301,11 +301,9 @@ fun RequestsScreen(
                             .collectAsStateWithLifecycle(initialValue = emptySet())
                         val onlineLoading by viewModel.onlinePlayersLoading.collectAsStateWithLifecycle()
                         val onlinePlayers by viewModel.onlinePlayersResult.collectAsStateWithLifecycle()
-                        // Flatten all requests into a single list
-                        val allRequests = remember(state.requestsByPositionCountry) {
-                            state.requestsByPositionCountry.flatMap { (_, countries) ->
-                                countries.flatMap { (_, requests) -> requests }
-                            }
+                        // Use the flat list from repository (already sorted newest-first by backend)
+                        val allRequests = remember(state.requests) {
+                            state.requests.filter { (it.status ?: "pending") == "pending" }
                         }
                         val activePositions = remember(allRequests, positions) {
                             val posOrder = positions.mapNotNull { it.name }.ifEmpty {
@@ -535,10 +533,21 @@ fun RequestsScreen(
             }
 
             if (showAddSheet || requestToEdit != null) {
+                val isSavingRequest by viewModel.isSavingRequest.collectAsStateWithLifecycle()
+
+                // Auto-dismiss sheet once save operation completes
+                LaunchedEffect(isSavingRequest, state.addRequestMessage, state.addRequestError) {
+                    if (!isSavingRequest && (state.addRequestMessage != null || state.addRequestError != null)) {
+                        showAddSheet = false
+                        requestToEdit = null
+                    }
+                }
+
                 AddRequestBottomSheet(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     positions = positions,
                     initialRequest = requestToEdit,
+                    isSaving = isSavingRequest,
                     onDismiss = {
                         showAddSheet = false
                         requestToEdit = null
@@ -579,8 +588,6 @@ fun RequestsScreen(
                                 euOnly = euOnly
                             )
                         }
-                        showAddSheet = false
-                        requestToEdit = null
                     }
                 )
             }
@@ -2463,6 +2470,7 @@ private fun AddRequestBottomSheet(
     modifier: Modifier,
     positions: List<com.liordahan.mgsrteam.features.players.models.Position>,
     initialRequest: Request? = null,
+    isSaving: Boolean = false,
     onDismiss: () -> Unit,
     onSave: (
         club: ClubSearchModel,
@@ -2844,6 +2852,7 @@ private fun AddRequestBottomSheet(
                             3 -> AddRequestStep4NotesContent(
                                 notes = notes,
                                 onNotesChange = { notes = it },
+                                isSaving = isSaving,
                                 onDismiss = onDismiss,
                                 onSave = {
                                     val club = selectedClub
@@ -3330,6 +3339,7 @@ private fun AddRequestStep3RequirementsContent(
 private fun AddRequestStep4NotesContent(
     notes: String,
     onNotesChange: (String) -> Unit,
+    isSaving: Boolean = false,
     onDismiss: () -> Unit,
     onSave: () -> Unit
 ) {
@@ -3366,11 +3376,23 @@ private fun AddRequestStep4NotesContent(
             }
             Button(
                 onClick = onSave,
+                enabled = !isSaving,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.accent)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PlatformColors.palette.accent,
+                    disabledContainerColor = PlatformColors.palette.accent.copy(alpha = 0.6f)
+                )
             ) {
-                Text(stringResource(R.string.requests_save_request), style = boldTextStyle(Color.White, 14.sp))
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(stringResource(R.string.requests_save_request), style = boldTextStyle(Color.White, 14.sp))
+                }
             }
         }
     }

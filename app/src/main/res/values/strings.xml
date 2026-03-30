@@ -388,6 +388,7 @@
     <string name="feed_mandate_uploaded">Mandate Uploaded</string>
     <string name="feed_mandate_uploaded_by">%1$s uploaded mandate for %2$s</string>
     <string name="feed_mandate_marked_by">Marked by %1$s</string>
+    <string name="feed_mandate_auto_expired">Auto-expired by system</string>
     <string name="feed_mandate_expires">Expires %1$s</string>
     <string name="feed_mandate_switched_on">Mandate switched on</string>
     <string name="feed_mandate_switched_off">Mandate switched off</string>

@@ -107,6 +107,7 @@ async function runMandateExpiry() {
           playerImage: playerImage || null,
           playerTmProfile,
           agentName: uploadedBy || null,
+          changedBy: "system",
           mandateExpiryAt: expiresAt,
           oldValue: null,
           newValue: "Mandate expired",

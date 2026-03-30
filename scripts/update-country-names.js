@@ -1,0 +1,225 @@
+#!/usr/bin/env node
+/**
+ * One-off script to update Firestore Config/countryNames with the full
+ * English→Hebrew country translation map (merges into existing doc).
+ *
+ * Run from project root:  node scripts/update-country-names.js
+ * Requires: cd functions && npm install (firebase-admin already there)
+ */
+
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
+
+const app = initializeApp({ projectId: "mgsr-64e4b" });
+const db = getFirestore(app);
+
+const FULL_EN_TO_HE = {
+  "Afghanistan": "אפגניסטן",
+  "Albania": "אלבניה",
+  "Algeria": "אלג'יריה",
+  "Andorra": "אנדורה",
+  "Angola": "אנגולה",
+  "Argentina": "ארגנטינה",
+  "Armenia": "ארמניה",
+  "Australia": "אוסטרליה",
+  "Austria": "אוסטריה",
+  "Azerbaijan": "אזרבייג'ן",
+  "Bahrain": "בחריין",
+  "Bangladesh": "בנגלדש",
+  "Belarus": "בלארוס",
+  "Belgium": "בלגיה",
+  "Belize": "בליז",
+  "Benin": "בנין",
+  "Bolivia": "בוליביה",
+  "Bosnia": "בוסניה",
+  "Bosnia and Herzegovina": "בוסניה והרצגובינה",
+  "Bosnia-Herzegovina": "בוסניה והרצגובינה",
+  "Botswana": "בוטסואנה",
+  "Brazil": "ברזיל",
+  "Bulgaria": "בולגריה",
+  "Burkina Faso": "בורקינה פאסו",
+  "Burundi": "בורונדי",
+  "Cameroon": "קמרון",
+  "Canada": "קנדה",
+  "Cape Verde": "כף ורדה",
+  "Central African Republic": "הרפובליקה המרכז-אפריקאית",
+  "Chad": "צ'אד",
+  "Chile": "צ'ילה",
+  "China": "סין",
+  "Colombia": "קולומביה",
+  "Comoros": "קומורו",
+  "Congo": "קונגו",
+  "Congo DR": "קונגו הדמוקרטית",
+  "DR Congo": "קונגו הדמוקרטית",
+  "Democratic Republic of the Congo": "קונגו הדמוקרטית",
+  "Republic of the Congo": "קונגו",
+  "Costa Rica": "קוסטה ריקה",
+  "Croatia": "קרואטיה",
+  "Cuba": "קובה",
+  "Curaçao": "קוראסאו",
+  "Curacao": "קוראסאו",
+  "Cyprus": "קפריסין",
+  "Czech Republic": "צ'כיה",
+  "Czechia": "צ'כיה",
+  "Denmark": "דנמרק",
+  "Dominican Republic": "הרפובליקה הדומיניקנית",
+  "Ecuador": "אקוואדור",
+  "Egypt": "מצרים",
+  "El Salvador": "אל סלבדור",
+  "England": "אנגליה",
+  "Equatorial Guinea": "גינאה המשוונית",
+  "Eritrea": "אריתריאה",
+  "Estonia": "אסטוניה",
+  "Ethiopia": "אתיופיה",
+  "Finland": "פינלנד",
+  "France": "צרפת",
+  "French Guiana": "גיאנה הצרפתית",
+  "Gabon": "גבון",
+  "Gambia": "גמביה",
+  "Georgia": "גאורגיה",
+  "Germany": "גרמניה",
+  "Ghana": "גאנה",
+  "Greece": "יוון",
+  "Guadeloupe": "גוואדלופ",
+  "Guatemala": "גואטמלה",
+  "Guinea": "גינאה",
+  "Guinea-Bissau": "גינאה-ביסאו",
+  "Haiti": "האיטי",
+  "Honduras": "הונדורס",
+  "Hungary": "הונגריה",
+  "Iceland": "איסלנד",
+  "India": "הודו",
+  "Indonesia": "אינדונזיה",
+  "Iran": "איראן",
+  "Iraq": "עיראק",
+  "Ireland": "אירלנד",
+  "Israel": "ישראל",
+  "Italy": "איטליה",
+  "Ivory Coast": "חוף השנהב",
+  "Côte d'Ivoire": "חוף השנהב",
+  "Jamaica": "ג'מייקה",
+  "Japan": "יפן",
+  "Jordan": "ירדן",
+  "Kazakhstan": "קזחסטן",
+  "Kenya": "קניה",
+  "Kosovo": "קוסובו",
+  "Kuwait": "כווית",
+  "Kyrgyzstan": "קירגיזסטן",
+  "Latvia": "לטביה",
+  "Lebanon": "לבנון",
+  "Libya": "לוב",
+  "Liechtenstein": "ליכטנשטיין",
+  "Lithuania": "ליטא",
+  "Luxembourg": "לוקסמבורג",
+  "Madagascar": "מדגסקר",
+  "Malawi": "מלאווי",
+  "Malaysia": "מלזיה",
+  "Mali": "מאלי",
+  "Malta": "מלטה",
+  "Martinique": "מרטיניק",
+  "Mauritania": "מאוריטניה",
+  "Mexico": "מקסיקו",
+  "Moldova": "מולדובה",
+  "Monaco": "מונאקו",
+  "Mongolia": "מונגוליה",
+  "Montenegro": "מונטנגרו",
+  "Morocco": "מרוקו",
+  "Mozambique": "מוזמביק",
+  "Myanmar": "מיאנמר",
+  "Namibia": "נמיביה",
+  "Netherlands": "הולנד",
+  "New Zealand": "ניו זילנד",
+  "Nicaragua": "ניקרגואה",
+  "Niger": "ניז'ר",
+  "Nigeria": "ניגריה",
+  "North Korea": "קוריאה הצפונית",
+  "North Macedonia": "מקדוניה הצפונית",
+  "Northern Ireland": "צפון אירלנד",
+  "Norway": "נורווגיה",
+  "Oman": "עומאן",
+  "Other": "אחר",
+  "Pakistan": "פקיסטן",
+  "Palestine": "פלסטין",
+  "Panama": "פנמה",
+  "Paraguay": "פרגוואי",
+  "Peru": "פרו",
+  "Philippines": "הפיליפינים",
+  "Poland": "פולין",
+  "Portugal": "פורטוגל",
+  "Qatar": "קטאר",
+  "Romania": "רומניה",
+  "Russia": "רוסיה",
+  "Rwanda": "רואנדה",
+  "Réunion": "ראוניון",
+  "Reunion": "ראוניון",
+  "Saudi Arabia": "ערב הסעודית",
+  "Scotland": "סקוטלנד",
+  "Senegal": "סנגל",
+  "Serbia": "סרביה",
+  "Sierra Leone": "סיירה לאון",
+  "Singapore": "סינגפור",
+  "Slovakia": "סלובקיה",
+  "Slovenia": "סלובניה",
+  "Somalia": "סומליה",
+  "South Africa": "דרום אפריקה",
+  "South Korea": "דרום קוריאה",
+  "Korea Republic": "דרום קוריאה",
+  "Spain": "ספרד",
+  "Sri Lanka": "סרי לנקה",
+  "Sudan": "סודאן",
+  "Suriname": "סורינאם",
+  "Sweden": "שוודיה",
+  "Switzerland": "שווייץ",
+  "Syria": "סוריה",
+  "Tanzania": "טנזניה",
+  "Thailand": "תאילנד",
+  "Togo": "טוגו",
+  "Trinidad and Tobago": "טרינידד וטובגו",
+  "Tunisia": "תוניסיה",
+  "Turkey": "טורקיה",
+  "Türkiye": "טורקיה",
+  "Turkmenistan": "טורקמניסטן",
+  "Uganda": "אוגנדה",
+  "Ukraine": "אוקראינה",
+  "United Arab Emirates": "איחוד האמירויות",
+  "UAE": "איחוד האמירויות",
+  "United Kingdom": "הממלכה המאוחדת",
+  "UK": "הממלכה המאוחדת",
+  "United States": "ארצות הברית",
+  "United States of America": "ארצות הברית",
+  "USA": "ארצות הברית",
+  "Uruguay": "אורוגוואי",
+  "Uzbekistan": "אוזבקיסטן",
+  "Venezuela": "ונצואלה",
+  "Vietnam": "וייטנאם",
+  "Wales": "ויילס",
+  "Yemen": "תימן",
+  "Zambia": "זמביה",
+  "Zimbabwe": "זימבבואה"
+};
+
+(async () => {
+  try {
+    const ref = db.collection("Config").doc("countryNames");
+    const snap = await ref.get();
+    const existing = snap.exists ? (snap.data().enToHe || {}) : {};
+    console.log("Existing entries:", Object.keys(existing).length);
+
+    // Merge: existing + new (new values override if conflict)
+    const merged = { ...existing, ...FULL_EN_TO_HE };
+    console.log("Merged entries:", Object.keys(merged).length);
+
+    const added = Object.keys(FULL_EN_TO_HE).filter(k => !(k in existing));
+    if (added.length > 0) {
+      console.log("New countries being added:", added.join(", "));
+    } else {
+      console.log("No new countries to add (all already present).");
+    }
+
+    await ref.set({ enToHe: merged }, { merge: true });
+    console.log("✅ Firestore Config/countryNames updated successfully");
+  } catch (e) {
+    console.error("❌ Error:", e.message);
+  }
+  process.exit(0);
+})();

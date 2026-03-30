@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.features.requests
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.liordahan.mgsrteam.config.AppConfigManager
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
@@ -86,6 +87,7 @@ abstract class IRequestsViewModel : ViewModel() {
     abstract fun deleteRequest(request: Request)
     abstract fun clearAddRequestMessage()
     abstract val isDeletingRequest: StateFlow<Boolean>
+    abstract val isSavingRequest: StateFlow<Boolean>
 }
 
 class RequestsViewModel(
@@ -111,6 +113,8 @@ class RequestsViewModel(
     private val _addRequestError = MutableStateFlow<String?>(null)
     private val _isDeletingRequest = MutableStateFlow(false)
     override val isDeletingRequest: StateFlow<Boolean> = _isDeletingRequest.asStateFlow()
+    private val _isSavingRequest = MutableStateFlow(false)
+    override val isSavingRequest: StateFlow<Boolean> = _isSavingRequest.asStateFlow()
 
     /** playerTmProfile → aggregated validLeagues from all active (non-expired) mandate documents */
     private val _mandateLeaguesByPlayer = MutableStateFlow<Map<String, List<String>>>(emptyMap())
@@ -185,12 +189,11 @@ class RequestsViewModel(
     }
 
     private fun loadPositions() {
-        firebaseHandler.firebaseStore.collection(firebaseHandler.positionTable)
-            .get(com.google.firebase.firestore.Source.SERVER)
-            .addOnSuccessListener {
-                val posList = it.toObjects(Position::class.java)
-                _positions.value = posList.sortedByDescending { it.sort }
-            }
+        val configList = AppConfigManager.positions.filterList
+        val heMap = AppConfigManager.positions.displayHE
+        _positions.value = configList.mapIndexed { index, code ->
+            Position(name = code, sort = configList.size - index, hebrewName = heMap[code])
+        }
     }
 
     private fun loadMandateDocuments() {
@@ -304,6 +307,7 @@ class RequestsViewModel(
         euOnly: Boolean
     ) {
         viewModelScope.launch {
+            _isSavingRequest.value = true
             _addRequestError.value = null
             val request = Request(
                 clubTmProfile = club.clubTmProfile,
@@ -330,6 +334,7 @@ class RequestsViewModel(
                 onSuccess = { _addRequestMessage.value = "Request added" },
                 onFailure = { _addRequestError.value = it.message ?: "Failed to add request" }
             )
+            _isSavingRequest.value = false
         }
     }
 
@@ -350,6 +355,7 @@ class RequestsViewModel(
         euOnly: Boolean
     ) {
         viewModelScope.launch {
+            _isSavingRequest.value = true
             _addRequestError.value = null
             val updatedRequest = existingRequest.copy(
                 clubTmProfile = club.clubTmProfile,
@@ -374,6 +380,7 @@ class RequestsViewModel(
                 onSuccess = { _addRequestMessage.value = "Request updated" },
                 onFailure = { _addRequestError.value = it.message ?: "Failed to update request" }
             )
+            _isSavingRequest.value = false
         }
     }
 

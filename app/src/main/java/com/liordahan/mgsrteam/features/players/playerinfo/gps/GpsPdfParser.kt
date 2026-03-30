@@ -274,14 +274,37 @@ Return ONLY valid JSON. No markdown, no explanation."""
      */
     fun findPlayerRow(report: GpsReportResult, playerName: String): GpsPlayerRow? {
         val normalized = playerName.trim().lowercase()
-        // Exact match first
+        val nameParts = normalized.split(Regex("\\s+"))
+        val lastName = nameParts.lastOrNull() ?: ""
+        val firstName = nameParts.firstOrNull() ?: ""
+
+        // 1. Last name match first — charts often show only last name
+        if (lastName.isNotEmpty()) {
+            report.players.firstOrNull {
+                val pName = it.playerName.trim().lowercase()
+                val pParts = pName.split(Regex("\\s+"))
+                pName == lastName || pParts.lastOrNull() == lastName || pParts.firstOrNull() == lastName
+            }?.let { return it }
+        }
+        // 2. Exact full name match
         report.players.firstOrNull { it.playerName.trim().lowercase() == normalized }
             ?.let { return it }
-        // Last name match
-        val lastName = normalized.split(" ").lastOrNull() ?: return null
-        return report.players.firstOrNull {
-            it.playerName.trim().lowercase().split(" ").lastOrNull() == lastName
+        // 3. First name match (chart shows first name only, e.g. "Paulo" for "Paulo Henrique")
+        if (firstName.isNotEmpty() && firstName != lastName) {
+            report.players.firstOrNull {
+                val pName = it.playerName.trim().lowercase()
+                pName == firstName || pName.split(Regex("\\s+")).firstOrNull() == firstName
+            }?.let { return it }
         }
+        // 4. Partial contains match (handles "Popescu37" matching "Popescu")
+        for (part in nameParts) {
+            if (part.length < 3) continue
+            report.players.firstOrNull {
+                val pName = it.playerName.trim().lowercase()
+                pName.contains(part) || part.contains(pName)
+            }?.let { return it }
+        }
+        return null
     }
 }
 

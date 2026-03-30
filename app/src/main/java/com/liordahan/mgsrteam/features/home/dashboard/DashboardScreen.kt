@@ -1534,13 +1534,20 @@ private fun FeedEventCard(
                             text = stringResource(R.string.feed_mandate_expired),
                             style = regularTextStyle(HomeTextSecondary, 12.sp)
                         )
-                        event.agentName?.let { agent ->
-                            val agentDisplayName = allAccounts.find { it.name.equals(agent, ignoreCase = true) || it.hebrewName?.equals(agent, ignoreCase = true) == true }
-                                ?.getDisplayName(context) ?: agent
+                        if (event.changedBy == "system") {
                             Text(
-                                text = stringResource(R.string.feed_mandate_marked_by, agentDisplayName),
+                                text = stringResource(R.string.feed_mandate_auto_expired),
                                 style = regularTextStyle(HomeTextSecondary, 11.sp)
                             )
+                        } else {
+                            event.agentName?.let { agent ->
+                                val agentDisplayName = allAccounts.find { it.name.equals(agent, ignoreCase = true) || it.hebrewName?.equals(agent, ignoreCase = true) == true }
+                                    ?.getDisplayName(context) ?: agent
+                                Text(
+                                    text = stringResource(R.string.feed_mandate_marked_by, agentDisplayName),
+                                    style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                )
+                            }
                         }
                         event.mandateExpiryAt?.let { expiryAt ->
                             val expiryStr = SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date(expiryAt))

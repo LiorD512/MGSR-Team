@@ -305,6 +305,7 @@
     <string name="feed_mandate_uploaded">מנדט הועלה</string>
     <string name="feed_mandate_uploaded_by">%1$s העלה מנדט עבור %2$s</string>
     <string name="feed_mandate_marked_by">סומן על ידי %1$s</string>
+    <string name="feed_mandate_auto_expired">פג תוקף אוטומטית</string>
     <string name="feed_mandate_expires">תוקף עד %1$s</string>
     <string name="feed_mandate_switched_on">מנדט הופעל</string>
     <string name="feed_mandate_switched_off">מנדט כובה</string>
