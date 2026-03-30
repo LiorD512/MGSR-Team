@@ -10,8 +10,12 @@ import Link from 'next/link';
 import {
   collection,
   query,
+  where,
   orderBy,
   onSnapshot,
+  getDocs,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { createShare } from '@/lib/shareApi';
@@ -30,6 +34,49 @@ interface Account {
 }
 
 const PORTFOLIO_COLLECTION = 'Portfolio';
+
+/** Fetch GPS data for a player to include in share payload */
+async function fetchGpsDataForShare(tmProfile: string | undefined, lang: string) {
+  if (!tmProfile) return undefined;
+  try {
+    const gpsSnap = await getDocs(query(
+      collection(db, 'GpsMatchData'),
+      where('playerTmProfile', '==', tmProfile)
+    ));
+    if (gpsSnap.empty) return undefined;
+    const matches = gpsSnap.docs.map(d => d.data());
+    const n = matches.length;
+    const totalMin = matches.reduce((s, m) => s + ((m.totalDuration as number) || 0), 0);
+    const avgDist = Math.round(matches.reduce((s, m) => s + ((m.totalDistance as number) || 0), 0) / n);
+    const avgMeterage = Math.round(matches.reduce((s, m) => s + ((m.meteragePerMinute as number) || 0), 0) / n);
+    const avgHI = Math.round(matches.reduce((s, m) => s + ((m.highIntensityRuns as number) || 0), 0) / n);
+    const avgSprints = Math.round(matches.reduce((s, m) => s + ((m.sprints as number) || 0), 0) / n);
+    const peakVel = Math.max(...matches.map(m => (m.maxVelocity as number) || 0));
+    const avgMaxVel = Math.round((matches.reduce((s, m) => s + ((m.maxVelocity as number) || 0), 0) / n) * 10) / 10;
+    const totalStars = matches.reduce((sum, m) => sum + [m.isStarTotalDist, m.isStarHighMpEffsDist, m.isStarHighMpEffs, m.isStarMeteragePerMin, m.isStarAccelerations, m.isStarHighIntensityRuns, m.isStarSprints, m.isStarMaxVelocity].filter(Boolean).length, 0);
+    // Fetch insights
+    const safeId = tmProfile.replace(/[\/\\]/g, '_');
+    const insightsSnap = await getDoc(doc(db, 'GpsPlayerInsights', safeId));
+    let strengths: { title: string; description: string; value: string; benchmark?: string }[] = [];
+    if (insightsSnap.exists()) {
+      const insData = insightsSnap.data();
+      const isHe = lang === 'he';
+      strengths = ((insData.insights || []) as Array<Record<string, string>>)
+        .filter(i => i.type === 'strength')
+        .map(i => ({
+          title: isHe ? i.titleHe : i.titleEn,
+          description: isHe ? i.descriptionHe : i.descriptionEn,
+          value: i.value,
+          benchmark: i.benchmark,
+        }));
+    }
+    return {
+      matchCount: n, totalMinutesPlayed: totalMin, avgTotalDistance: avgDist,
+      avgMeteragePerMinute: avgMeterage, avgHighIntensityRuns: avgHI, avgSprints,
+      peakMaxVelocity: peakVel, avgMaxVelocity: avgMaxVel, totalStars, strengths,
+    };
+  } catch { return undefined; }
+}
 
 export default function PortfolioPage() {
   const { user, loading } = useAuth();
@@ -115,6 +162,7 @@ export default function PortfolioPage() {
             ? (sharerAccount?.hebrewName ?? sharerAccount?.name)
             : (sharerAccount?.name ?? sharerAccount?.hebrewName);
 
+        const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang);
         const { url } = await createShare(
           {
             playerId: item.playerWomenId ?? item.playerId,
@@ -129,6 +177,7 @@ export default function PortfolioPage() {
             includePlayerContact: attachPlayer,
             includeAgencyContact: attachAgency,
             platform: platform,
+            gpsData,
           },
           () =>
             user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
@@ -181,6 +230,7 @@ export default function PortfolioPage() {
             ? (sharerAccount?.hebrewName ?? sharerAccount?.name)
             : (sharerAccount?.name ?? sharerAccount?.hebrewName);
 
+        const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang);
         const { token } = await createShare(
           {
             playerId: item.playerWomenId ?? item.playerId,
@@ -193,6 +243,7 @@ export default function PortfolioPage() {
             highlights: item.highlights,
             lang,
             platform: platform,
+            gpsData,
           },
           () =>
             user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
