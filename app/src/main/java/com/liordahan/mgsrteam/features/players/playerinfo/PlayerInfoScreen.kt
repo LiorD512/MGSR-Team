@@ -91,6 +91,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -661,6 +662,8 @@ fun PlayerInfoScreen(
                     resolvedTransfer = heroResolvedTransfer,
                     onMandateChanged = { viewModel.updateHaveMandate(it) },
                     onInterestedInIsraelChanged = { viewModel.updateInterestedInIsrael(it) },
+                    onMarriedChanged = { viewModel.updateIsMarried(it) },
+                    onKidsCountChanged = { viewModel.updateKidsCount(it) },
                     onSalaryTransferFeeClicked = { showSalaryTransferFeeSheet = true },
                     onClearSalaryAndTransferFee = {
                         viewModel.updateSalaryRange(null)
@@ -1372,6 +1375,8 @@ private fun PlayerInfoHeroCard(
     resolvedTransfer: com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest? = null,
     onMandateChanged: (Boolean) -> Unit,
     onInterestedInIsraelChanged: (Boolean) -> Unit,
+    onMarriedChanged: (Boolean) -> Unit,
+    onKidsCountChanged: (Int) -> Unit,
     onSalaryTransferFeeClicked: () -> Unit = {},
     onClearSalaryAndTransferFee: () -> Unit = {},
 ) {
@@ -1735,6 +1740,120 @@ private fun PlayerInfoHeroCard(
                         uncheckedTrackColor = PlatformColors.palette.cardBorder
                     )
                 )
+            }
+            }
+
+            // ── Family Status ──
+            if (currentPlatform == Platform.MEN) {
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(PlatformColors.palette.background)
+                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                var isMarried by remember(player.isMarried) { mutableStateOf(player.isMarried) }
+                LaunchedEffect(player.isMarried) { isMarried = player.isMarried }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "\uD83D\uDC8D",
+                        fontSize = 18.sp,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.player_info_married),
+                        style = boldTextStyle(
+                            if (isMarried) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                            16.sp
+                        )
+                    )
+                }
+                Switch(
+                    checked = isMarried,
+                    onCheckedChange = {
+                        isMarried = it
+                        onMarriedChanged(it)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = PlatformColors.palette.blue,
+                        uncheckedThumbColor = PlatformColors.palette.textSecondary,
+                        uncheckedTrackColor = PlatformColors.palette.cardBorder
+                    )
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(PlatformColors.palette.background)
+                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                var kidsCount by remember(player.kidsCount) { mutableIntStateOf(player.kidsCount) }
+                LaunchedEffect(player.kidsCount) { kidsCount = player.kidsCount }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "\uD83D\uDC76",
+                        fontSize = 18.sp,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.player_info_kids),
+                        style = boldTextStyle(
+                            if (kidsCount > 0) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                            16.sp
+                        )
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = {
+                            if (kidsCount > 0) {
+                                kidsCount--
+                                onKidsCountChanged(kidsCount)
+                            }
+                        },
+                        modifier = Modifier.size(32.dp),
+                        enabled = kidsCount > 0
+                    ) {
+                        Icon(
+                            Icons.Default.Remove,
+                            contentDescription = "Minus",
+                            tint = if (kidsCount > 0) PlatformColors.palette.blue else PlatformColors.palette.textSecondary.copy(alpha = 0.3f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Text(
+                        text = "$kidsCount",
+                        style = boldTextStyle(PlatformColors.palette.text, 18.sp),
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    IconButton(
+                        onClick = {
+                            kidsCount++
+                            onKidsCountChanged(kidsCount)
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Plus",
+                            tint = PlatformColors.palette.blue,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
             }
 

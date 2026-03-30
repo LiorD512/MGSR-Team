@@ -68,6 +68,8 @@ interface Player {
   agentTransferredAt?: number;
   haveMandate?: boolean;
   interestedInIsrael?: boolean;
+  isMarried?: boolean;
+  kidsCount?: number;
   playerPhoneNumber?: string;
   agentPhoneNumber?: string;
   marketValueHistory?: { value?: string; date?: number }[];
@@ -289,6 +291,8 @@ export default function PlayerInfoPage() {
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [mandateToggling, setMandateToggling] = useState(false);
   const [interestedInIsraelToggling, setInterestedInIsraelToggling] = useState(false);
+  const [marriedToggling, setMarriedToggling] = useState(false);
+  const [kidsCountSaving, setKidsCountSaving] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [playerTasks, setPlayerTasks] = useState<{ id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentId?: string; agentName?: string; createdAt?: number; createdByAgentId?: string; createdByAgentName?: string; templateId?: string; linkedAgentContactId?: string; linkedAgentContactName?: string; linkedAgentContactPhone?: string }[]>([]);
   const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
@@ -829,6 +833,39 @@ export default function PlayerInfoPage() {
         setPlayer((p) => (p ? { ...p, interestedInIsrael: !interested } : null));
       } finally {
         setInterestedInIsraelToggling(false);
+      }
+    },
+    [player, id]
+  );
+
+  const handleMarriedToggle = useCallback(
+    async (married: boolean) => {
+      if (!player || !id) return;
+      setMarriedToggling(true);
+      try {
+        await callPlayersUpdate({ platform: 'men', playerId: id, isMarried: married });
+        setPlayer((p) => (p ? { ...p, isMarried: married } : null));
+      } catch {
+        setPlayer((p) => (p ? { ...p, isMarried: !married } : null));
+      } finally {
+        setMarriedToggling(false);
+      }
+    },
+    [player, id]
+  );
+
+  const handleKidsCountUpdate = useCallback(
+    async (count: number) => {
+      if (!player || !id) return;
+      const prev = player.kidsCount ?? 0;
+      setPlayer((p) => (p ? { ...p, kidsCount: count } : null));
+      setKidsCountSaving(true);
+      try {
+        await callPlayersUpdate({ platform: 'men', playerId: id, kidsCount: count });
+      } catch {
+        setPlayer((p) => (p ? { ...p, kidsCount: prev } : null));
+      } finally {
+        setKidsCountSaving(false);
       }
     },
     [player, id]
@@ -2170,6 +2207,61 @@ export default function PlayerInfoPage() {
                 </label>
               </div>
             </div>
+
+            {/* Family Status */}
+            <>
+              {/* Married toggle */}
+              <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-1">
+                      💍 {t('player_info_married')}
+                    </h3>
+                  </div>
+                  <label className="mgsr-switch">
+                    <input
+                      type="checkbox"
+                      checked={player.isMarried ?? false}
+                      disabled={marriedToggling}
+                      onChange={() => handleMarriedToggle(!(player.isMarried ?? false))}
+                    />
+                    <span className="mgsr-slider" />
+                  </label>
+                </div>
+              </div>
+
+              {/* Kids counter */}
+              <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-1">
+                      👶 {t('player_info_kids')}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={kidsCountSaving || (player.kidsCount ?? 0) <= 0}
+                      onClick={() => handleKidsCountUpdate(Math.max(0, (player.kidsCount ?? 0) - 1))}
+                      className="w-8 h-8 rounded-lg bg-mgsr-bg border border-mgsr-border flex items-center justify-center text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal transition disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      −
+                    </button>
+                    <span className={`text-lg font-bold min-w-[2ch] text-center ${(player.kidsCount ?? 0) > 0 ? 'text-mgsr-teal' : 'text-mgsr-muted'}`}>
+                      {player.kidsCount ?? 0}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={kidsCountSaving}
+                      onClick={() => handleKidsCountUpdate((player.kidsCount ?? 0) + 1)}
+                      className="w-8 h-8 rounded-lg bg-mgsr-bg border border-mgsr-border flex items-center justify-center text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal transition disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
 
             {/* Agency */}
             {(player.agency || player.agencyUrl) && (

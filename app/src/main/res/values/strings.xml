@@ -1488,6 +1488,10 @@
     <string name="players_filter_interested_in_israel">Interested in Israel</string>
     <string name="player_info_interested_in_israel">Interested in Israel</string>
 
+    <!-- Family Status -->
+    <string name="player_info_married">Married</string>
+    <string name="player_info_kids">Kids</string>
+
     <!-- Instagram outreach -->
     <string name="shortlist_ig_dm">DM @%1$s on Instagram</string>
     <string name="shortlist_ig_copied">Message copied — paste in DM</string>

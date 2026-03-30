@@ -44,6 +44,8 @@ data class Player(
     @PropertyName("onLoan") val isOnLoan: Boolean = false,
     @PropertyName("onLoanFromClub") val onLoanFromClub: String? = null,
     val interestedInIsrael: Boolean = false,
+    val isMarried: Boolean = false,
+    val kidsCount: Int = 0,
     val passportDetails: PassportDetails? = null,
     val foot: String? = null,
     val agency: String? = null,

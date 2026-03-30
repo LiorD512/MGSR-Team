@@ -1473,6 +1473,10 @@
     <string name="players_filter_interested_in_israel">מעוניין בישראל</string>
     <string name="player_info_interested_in_israel">מעוניין בישראל</string>
 
+    <!-- Family Status -->
+    <string name="player_info_married">נשוי</string>
+    <string name="player_info_kids">ילדים</string>
+
     <!-- Agent filter for shortlist -->
     <string name="shortlist_filter_agent">סוכן</string>
 

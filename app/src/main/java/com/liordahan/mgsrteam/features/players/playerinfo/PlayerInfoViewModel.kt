@@ -83,6 +83,8 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun clearAgency()
     abstract fun updateHaveMandate(hasMandate: Boolean, isManual: Boolean = true)
     abstract fun updateInterestedInIsrael(interested: Boolean)
+    abstract fun updateIsMarried(married: Boolean)
+    abstract fun updateKidsCount(count: Int)
     abstract fun updateSalaryRange(salaryRange: String?)
     abstract fun updateTransferFee(transferFee: String?)
     abstract fun updateNotes(notes: NotesModel)
@@ -663,6 +665,36 @@ class PlayerInfoViewModel(
                 SharedCallables.playersUpdate(platformManager.value, docId, mapOf("interestedInIsrael" to interested))
             } finally {
                 _savingFieldsFlow.update { it - "interestedInIsrael" }
+            }
+        }
+    }
+
+    override fun updateIsMarried(married: Boolean) {
+        _playerInfoFlow.update {
+            it?.copy(isMarried = married)
+        }
+        viewModelScope.launch {
+            _savingFieldsFlow.update { it + "isMarried" }
+            try {
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("isMarried" to married))
+            } finally {
+                _savingFieldsFlow.update { it - "isMarried" }
+            }
+        }
+    }
+
+    override fun updateKidsCount(count: Int) {
+        _playerInfoFlow.update {
+            it?.copy(kidsCount = count)
+        }
+        viewModelScope.launch {
+            _savingFieldsFlow.update { it + "kidsCount" }
+            try {
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                SharedCallables.playersUpdate(platformManager.value, docId, mapOf("kidsCount" to count))
+            } finally {
+                _savingFieldsFlow.update { it - "kidsCount" }
             }
         }
     }
