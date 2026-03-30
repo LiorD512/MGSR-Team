@@ -1837,7 +1837,7 @@ private fun PlayerInfoHeroCard(
                     }
                     Text(
                         text = "$kidsCount",
-                        style = boldTextStyle(PlatformColors.palette.text, 18.sp),
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp),
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
                     IconButton(
