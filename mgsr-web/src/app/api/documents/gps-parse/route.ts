@@ -243,7 +243,8 @@ function findPlayerRow(players: GpsPlayerRow[], playerName: string): GpsPlayerRo
   return undefined;
 }
 
-function parseMatchDate(dateStr: string): number | null {
+function parseMatchDate(dateStr: string | null | undefined): number | null {
+  if (!dateStr) return null;
   const m = dateStr.match(/(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})/);
   if (!m) return null;
   return new Date(parseInt(m[3]), parseInt(m[2]) - 1, parseInt(m[1]), 12, 0, 0).getTime();
