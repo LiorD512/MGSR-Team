@@ -1474,6 +1474,7 @@
     <string name="player_info_interested_in_israel">מעוניין בישראל</string>
 
     <!-- Family Status -->
+    <string name="player_info_family_status">מצב משפחתי</string>
     <string name="player_info_married">נשוי</string>
     <string name="player_info_kids">ילדים</string>
 

@@ -23,7 +23,7 @@ import { openWhatsAppShare } from '@/lib/whatsapp';
 import { callPortfolioDelete } from '@/lib/callables';
 import { getPositionDisplayName } from '@/lib/appConfig';
 import type { PortfolioItem } from '@/lib/portfolioApi';
-import { PORTFOLIO_COLLECTIONS } from '@/lib/platformCollections';
+import { PORTFOLIO_COLLECTIONS, PLAYERS_COLLECTIONS } from '@/lib/platformCollections';
 
 interface Account {
   id: string;
@@ -75,6 +75,18 @@ async function fetchGpsDataForShare(tmProfile: string | undefined, lang: string)
       avgMeteragePerMinute: avgMeterage, avgHighIntensityRuns: avgHI, avgSprints,
       peakMaxVelocity: peakVel, avgMaxVelocity: avgMaxVel, totalStars, strengths,
     };
+  } catch { return undefined; }
+}
+
+async function fetchFamilyStatus(playerId: string, playersColl: string) {
+  try {
+    const snap = await getDoc(doc(db, playersColl, playerId));
+    if (!snap.exists()) return undefined;
+    const d = snap.data();
+    const isMarried = d?.isMarried as boolean | undefined;
+    const kidsCount = d?.kidsCount as number | undefined;
+    if (!isMarried && !(kidsCount && kidsCount > 0)) return undefined;
+    return { isMarried, kidsCount };
   } catch { return undefined; }
 }
 
@@ -163,6 +175,10 @@ export default function PortfolioPage() {
             : (sharerAccount?.name ?? sharerAccount?.hebrewName);
 
         const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang);
+        const familyStatus = await fetchFamilyStatus(
+          item.playerWomenId ?? item.playerId,
+          PLAYERS_COLLECTIONS[platform]
+        );
         const { url } = await createShare(
           {
             playerId: item.playerWomenId ?? item.playerId,
@@ -177,6 +193,7 @@ export default function PortfolioPage() {
             includePlayerContact: attachPlayer,
             includeAgencyContact: attachAgency,
             platform: platform,
+            familyStatus,
             gpsData,
           },
           () =>
@@ -231,6 +248,10 @@ export default function PortfolioPage() {
             : (sharerAccount?.name ?? sharerAccount?.hebrewName);
 
         const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang);
+        const familyStatusView = await fetchFamilyStatus(
+          item.playerWomenId ?? item.playerId,
+          PLAYERS_COLLECTIONS[platform]
+        );
         const { token } = await createShare(
           {
             playerId: item.playerWomenId ?? item.playerId,
@@ -243,6 +264,7 @@ export default function PortfolioPage() {
             highlights: item.highlights,
             lang,
             platform: platform,
+            familyStatus: familyStatusView,
             gpsData,
           },
           () =>

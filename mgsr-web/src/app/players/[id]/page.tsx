@@ -842,9 +842,9 @@ export default function PlayerInfoPage() {
     async (married: boolean) => {
       if (!player || !id) return;
       setMarriedToggling(true);
+      setPlayer((p) => (p ? { ...p, isMarried: married } : null));
       try {
         await callPlayersUpdate({ platform: 'men', playerId: id, isMarried: married });
-        setPlayer((p) => (p ? { ...p, isMarried: married } : null));
       } catch {
         setPlayer((p) => (p ? { ...p, isMarried: !married } : null));
       } finally {
@@ -1155,6 +1155,9 @@ export default function PlayerInfoPage() {
             lang,
             includePlayerContact,
             includeAgencyContact,
+            familyStatus: (player.isMarried || (player.kidsCount ?? 0) > 0)
+              ? { isMarried: player.isMarried, kidsCount: player.kidsCount }
+              : undefined,
             gpsData: await (async () => {
               try {
                 const tmProfile = merged.tmProfile || player?.tmProfile;
@@ -2209,59 +2212,69 @@ export default function PlayerInfoPage() {
             </div>
 
             {/* Family Status */}
-            <>
+            <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border space-y-3">
+              <h3 className="text-xs font-semibold text-mgsr-muted uppercase tracking-wider">
+                {t('player_info_family_status')}
+              </h3>
+
               {/* Married toggle */}
-              <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-1">
-                      💍 {t('player_info_married')}
-                    </h3>
-                  </div>
-                  <label className="mgsr-switch">
-                    <input
-                      type="checkbox"
-                      checked={player.isMarried ?? false}
-                      disabled={marriedToggling}
-                      onChange={() => handleMarriedToggle(!(player.isMarried ?? false))}
-                    />
-                    <span className="mgsr-slider" />
-                  </label>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span>💍</span>
+                  <span className={`text-sm font-medium ${(player.isMarried ?? false) ? 'text-mgsr-teal' : 'text-mgsr-muted'}`}>
+                    {t('player_info_married')}
+                  </span>
+                  {marriedToggling && (
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+                  )}
                 </div>
+                <label className="mgsr-switch">
+                  <input
+                    type="checkbox"
+                    checked={player.isMarried ?? false}
+                    disabled={marriedToggling}
+                    onChange={() => handleMarriedToggle(!(player.isMarried ?? false))}
+                  />
+                  <span className="mgsr-slider" />
+                </label>
               </div>
 
+              <div className="border-t border-mgsr-border" />
+
               {/* Kids counter */}
-              <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-1">
-                      👶 {t('player_info_kids')}
-                    </h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={kidsCountSaving || (player.kidsCount ?? 0) <= 0}
-                      onClick={() => handleKidsCountUpdate(Math.max(0, (player.kidsCount ?? 0) - 1))}
-                      className="w-8 h-8 rounded-lg bg-mgsr-bg border border-mgsr-border flex items-center justify-center text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal transition disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      −
-                    </button>
-                    <span className={`text-lg font-bold min-w-[2ch] text-center ${(player.kidsCount ?? 0) > 0 ? 'text-mgsr-teal' : 'text-mgsr-muted'}`}>
-                      {player.kidsCount ?? 0}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={kidsCountSaving}
-                      onClick={() => handleKidsCountUpdate((player.kidsCount ?? 0) + 1)}
-                      className="w-8 h-8 rounded-lg bg-mgsr-bg border border-mgsr-border flex items-center justify-center text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal transition disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      +
-                    </button>
-                  </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span>👶</span>
+                  <span className={`text-sm font-medium ${(player.kidsCount ?? 0) > 0 ? 'text-mgsr-teal' : 'text-mgsr-muted'}`}>
+                    {t('player_info_kids')}
+                  </span>
+                  {kidsCountSaving && (
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={kidsCountSaving || (player.kidsCount ?? 0) <= 0}
+                    onClick={() => handleKidsCountUpdate(Math.max(0, (player.kidsCount ?? 0) - 1))}
+                    className="w-8 h-8 rounded-lg bg-mgsr-bg border border-mgsr-border flex items-center justify-center text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal transition disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    −
+                  </button>
+                  <span className={`text-lg font-bold min-w-[2ch] text-center ${(player.kidsCount ?? 0) > 0 ? 'text-mgsr-teal' : 'text-mgsr-muted'}`}>
+                    {player.kidsCount ?? 0}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={kidsCountSaving}
+                    onClick={() => handleKidsCountUpdate((player.kidsCount ?? 0) + 1)}
+                    className="w-8 h-8 rounded-lg bg-mgsr-bg border border-mgsr-border flex items-center justify-center text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal transition disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
-            </>
+            </div>
 
             {/* Agency */}
             {(player.agency || player.agencyUrl) && (

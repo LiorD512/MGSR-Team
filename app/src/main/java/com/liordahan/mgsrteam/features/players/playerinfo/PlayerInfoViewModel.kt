@@ -1601,6 +1601,14 @@ class PlayerInfoViewModel(
                 )
             }
 
+            // ── Family status for shared view ──────────────────────────
+            if (player.isMarried || player.kidsCount > 0) {
+                shareData["familyStatus"] = hashMapOf(
+                    "isMarried" to player.isMarried,
+                    "kidsCount" to player.kidsCount
+                )
+            }
+
             val token = SharedCallables.sharePlayerCreate(shareData)
 
             val baseUrl = com.liordahan.mgsrteam.BuildConfig.MGSR_WEB_URL.trimEnd('/')

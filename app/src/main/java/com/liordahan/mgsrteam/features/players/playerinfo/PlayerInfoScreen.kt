@@ -654,6 +654,7 @@ fun PlayerInfoScreen(
                     .flatMap { it.validLeagues.orEmpty() }
                     .distinct()
                 val heroResolvedTransfer by viewModel.resolvedTransferFlow.collectAsStateWithLifecycle()
+                val heroSavingFields by viewModel.savingFieldsFlow.collectAsStateWithLifecycle()
                 PlayerInfoHeroCard(
                     player = player,
                     mandateExpiryAt = mandateExpiry,
@@ -661,6 +662,7 @@ fun PlayerInfoScreen(
                     currentPlatform = currentPlatform,
                     allAccounts = allAccounts,
                     resolvedTransfer = heroResolvedTransfer,
+                    savingFields = heroSavingFields,
                     onMandateChanged = { viewModel.updateHaveMandate(it) },
                     onInterestedInIsraelChanged = { viewModel.updateInterestedInIsrael(it) },
                     onMarriedChanged = { viewModel.updateIsMarried(it) },
@@ -1374,6 +1376,7 @@ private fun PlayerInfoHeroCard(
     currentPlatform: Platform = Platform.MEN,
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account> = emptyList(),
     resolvedTransfer: com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest? = null,
+    savingFields: Set<String> = emptySet(),
     onMandateChanged: (Boolean) -> Unit,
     onInterestedInIsraelChanged: (Boolean) -> Unit,
     onMarriedChanged: (Boolean) -> Unit,
@@ -1747,112 +1750,141 @@ private fun PlayerInfoHeroCard(
             // ── Family Status ──
             if (currentPlatform == Platform.MEN) {
             Spacer(Modifier.height(8.dp))
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(PlatformColors.palette.background)
                     .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
+                // Section title
+                Text(
+                    text = stringResource(R.string.player_info_family_status),
+                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                // Married row
                 var isMarried by remember(player.isMarried) { mutableStateOf(player.isMarried) }
                 LaunchedEffect(player.isMarried) { isMarried = player.isMarried }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "\uD83D\uDC8D",
-                        fontSize = 18.sp,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.player_info_married),
-                        style = boldTextStyle(
-                            if (isMarried) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
-                            16.sp
+                val isSavingMarried = "isMarried" in savingFields
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "\uD83D\uDC8D",
+                            fontSize = 18.sp,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.player_info_married),
+                            style = boldTextStyle(
+                                if (isMarried) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                                16.sp
+                            )
+                        )
+                        if (isSavingMarried) {
+                            Spacer(Modifier.width(6.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp,
+                                color = PlatformColors.palette.blue
+                            )
+                        }
+                    }
+                    Switch(
+                        checked = isMarried,
+                        onCheckedChange = {
+                            isMarried = it
+                            onMarriedChanged(it)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = PlatformColors.palette.blue,
+                            uncheckedThumbColor = PlatformColors.palette.textSecondary,
+                            uncheckedTrackColor = PlatformColors.palette.cardBorder
                         )
                     )
                 }
-                Switch(
-                    checked = isMarried,
-                    onCheckedChange = {
-                        isMarried = it
-                        onMarriedChanged(it)
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = PlatformColors.palette.blue,
-                        uncheckedThumbColor = PlatformColors.palette.textSecondary,
-                        uncheckedTrackColor = PlatformColors.palette.cardBorder
-                    )
-                )
-            }
 
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(PlatformColors.palette.background)
-                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+                Spacer(Modifier.height(4.dp))
+                HorizontalDivider(color = PlatformColors.palette.cardBorder)
+                Spacer(Modifier.height(4.dp))
+
+                // Kids row
                 var kidsCount by remember(player.kidsCount) { mutableIntStateOf(player.kidsCount) }
                 LaunchedEffect(player.kidsCount) { kidsCount = player.kidsCount }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "\uD83D\uDC76",
-                        fontSize = 18.sp,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.player_info_kids),
-                        style = boldTextStyle(
-                            if (kidsCount > 0) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
-                            16.sp
+                val isSavingKids = "kidsCount" in savingFields
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "\uD83D\uDC76",
+                            fontSize = 18.sp,
+                            modifier = Modifier.size(20.dp)
                         )
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = {
-                            if (kidsCount > 0) {
-                                kidsCount--
-                                onKidsCountChanged(kidsCount)
-                            }
-                        },
-                        modifier = Modifier.size(32.dp),
-                        enabled = kidsCount > 0
-                    ) {
-                        Icon(
-                            Icons.Default.Remove,
-                            contentDescription = "Minus",
-                            tint = if (kidsCount > 0) PlatformColors.palette.blue else PlatformColors.palette.textSecondary.copy(alpha = 0.3f),
-                            modifier = Modifier.size(18.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.player_info_kids),
+                            style = boldTextStyle(
+                                if (kidsCount > 0) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                                16.sp
+                            )
                         )
+                        if (isSavingKids) {
+                            Spacer(Modifier.width(6.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp,
+                                color = PlatformColors.palette.blue
+                            )
+                        }
                     }
-                    Text(
-                        text = "$kidsCount",
-                        style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp),
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    IconButton(
-                        onClick = {
-                            kidsCount++
-                            onKidsCountChanged(kidsCount)
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Plus",
-                            tint = PlatformColors.palette.blue,
-                            modifier = Modifier.size(18.dp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                if (kidsCount > 0) {
+                                    kidsCount--
+                                    onKidsCountChanged(kidsCount)
+                                }
+                            },
+                            modifier = Modifier.size(32.dp),
+                            enabled = kidsCount > 0
+                        ) {
+                            Icon(
+                                Icons.Default.Remove,
+                                contentDescription = "Minus",
+                                tint = if (kidsCount > 0) PlatformColors.palette.blue else PlatformColors.palette.textSecondary.copy(alpha = 0.3f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Text(
+                            text = "$kidsCount",
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp),
+                            modifier = Modifier.padding(horizontal = 8.dp)
                         )
+                        IconButton(
+                            onClick = {
+                                kidsCount++
+                                onKidsCountChanged(kidsCount)
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Plus",
+                                tint = PlatformColors.palette.blue,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }

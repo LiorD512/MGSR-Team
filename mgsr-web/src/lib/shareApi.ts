@@ -51,6 +51,10 @@ export interface SharePayload {
   includePlayerContact?: boolean;
   includeAgencyContact?: boolean;
   platform?: 'men' | 'women' | 'youth';
+  familyStatus?: {
+    isMarried?: boolean;
+    kidsCount?: number;
+  };
   gpsData?: {
     matchCount: number;
     totalMinutesPlayed: number;

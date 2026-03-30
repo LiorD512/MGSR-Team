@@ -185,6 +185,7 @@ export async function POST(request: NextRequest) {
       lang: lang ?? null,
       platform: platform ?? null,
       enrichment: Object.keys(enrichment).length ? enrichment : null,
+      familyStatus: (body as { familyStatus?: { isMarried?: boolean; kidsCount?: number } }).familyStatus ?? null,
       gpsData: gpsData ?? null,
       createdAt: Date.now(),
       createdBy: uid,

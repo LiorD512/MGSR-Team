@@ -678,6 +678,33 @@ export default function SharedPlayerContent({
           <HighlightsGrid highlights={data.highlights} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
+        {/* ═══ FAMILY STATUS ═══ */}
+        {data.familyStatus && (data.familyStatus.isMarried || (data.familyStatus.kidsCount ?? 0) > 0) && (
+          <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
+            <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-muted'}`}>
+              {useHebrew ? 'מצב משפחתי' : 'Family Status'}
+            </h3>
+            <div className="flex items-center gap-6 flex-wrap">
+              {data.familyStatus.isMarried && (
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">💍</span>
+                  <span className={`text-sm font-medium ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                    {useHebrew ? 'נשוי' : 'Married'}
+                  </span>
+                </div>
+              )}
+              {(data.familyStatus.kidsCount ?? 0) > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">👶</span>
+                  <span className={`text-sm font-medium ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                    {data.familyStatus.kidsCount} {useHebrew ? 'ילדים' : (data.familyStatus.kidsCount === 1 ? 'Kid' : 'Kids')}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ═══ GPS PERFORMANCE ═══ */}
         {data.gpsData && data.gpsData.matchCount > 0 && (
           <div className="mb-8">

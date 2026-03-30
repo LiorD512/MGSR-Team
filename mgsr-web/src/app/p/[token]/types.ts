@@ -36,6 +36,7 @@ export interface ShareData {
   lang?: 'he' | 'en';
   platform?: 'men' | 'women';
   enrichment?: PortfolioEnrichment;
+  familyStatus?: { isMarried?: boolean; kidsCount?: number };
   gpsData?: SharedGpsData;
 }
 

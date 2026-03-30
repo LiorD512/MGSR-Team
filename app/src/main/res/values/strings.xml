@@ -1489,6 +1489,7 @@
     <string name="player_info_interested_in_israel">Interested in Israel</string>
 
     <!-- Family Status -->
+    <string name="player_info_family_status">Family Status</string>
     <string name="player_info_married">Married</string>
     <string name="player_info_kids">Kids</string>
 
