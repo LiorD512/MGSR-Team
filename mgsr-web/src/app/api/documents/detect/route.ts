@@ -7,7 +7,7 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/ge
 import { extractNameFromMandateFilename } from '@/lib/documentDetection';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
 
@@ -219,7 +219,10 @@ async function detectWithGemini(
     safetySettings: SAFETY_SETTINGS,
     generationConfig: {
       responseMimeType: 'application/json',
-    },
+      // Cap thinking budget to avoid timeouts on classification
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      thinkingConfig: { thinkingBudget: 1024 },
+    } as any,
   });
 
   const prompt = `${PASSPORT_PROMPT}

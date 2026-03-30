@@ -7,8 +7,9 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/ge
 import { adminDb } from '@/lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 120;
-const GEMINI_MODEL = 'gemini-2.5-flash';
+export const maxDuration = 60;
+// Use 2.0-flash for GPS parsing — much faster than 2.5-flash, no thinking overhead
+const GEMINI_MODEL = 'gemini-2.0-flash';
 
 const GPS_PROMPT = `You are analyzing a football/soccer GPS or physical performance match report.
 
@@ -476,12 +477,7 @@ export async function POST(req: NextRequest) {
     const model = genAI.getGenerativeModel({
       model: GEMINI_MODEL,
       safetySettings: SAFETY_SETTINGS,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        // Cap thinking budget to avoid long-running inference on large reports
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        thinkingConfig: { thinkingBudget: 2048 },
-      } as any,
+      generationConfig: { responseMimeType: 'application/json' },
     });
 
     const result = await model.generateContent([

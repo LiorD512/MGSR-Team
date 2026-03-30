@@ -650,6 +650,10 @@ export default function PlayerInfoPage() {
           passportInfo = detection.passportInfo;
           mandateExpiresAt = detection.mandateExpiresAt;
           validLeagues = detection.validLeagues;
+          console.log('[upload] Detection result:', docType, suggestedName);
+        } else {
+          const errText = await detectRes.text().catch(() => 'unknown');
+          console.error('[upload] Detection API failed:', detectRes.status, errText);
         }
 
         // Ensure mandate has a proper filename (player signs on PDF, may upload with generic/empty name)
@@ -756,8 +760,18 @@ export default function PlayerInfoPage() {
         }
 
         // 5. Parse GPS report (show analyzing feedback)
-        console.log('[GPS upload] Detected docType:', docType, '| playerName:', player.fullName);
-        if (docType === 'GPS_DATA') {
+        // Detect API may have timed out or misclassified — also check file name/type as fallback
+        const looksLikeGps = docType === 'GPS_DATA' || (
+          docType === 'OTHER' && (
+            file.name.toLowerCase().includes('gps') ||
+            file.name.toLowerCase().includes('physical') ||
+            file.name.toLowerCase().includes('catapult') ||
+            file.name.toLowerCase().includes('match report') ||
+            file.name.toLowerCase().includes('performance')
+          )
+        );
+        console.log('[GPS upload] Detected docType:', docType, '| looksLikeGps:', looksLikeGps, '| playerName:', player.fullName, '| fileName:', file.name);
+        if (looksLikeGps) {
           setParsingGps(true);
           try {
             const rawBytes = new Uint8Array(originalBytes);
@@ -800,8 +814,9 @@ export default function PlayerInfoPage() {
           } finally {
             setParsingGps(false);
           }
-        } else {
-          console.log('[GPS upload] Document was NOT detected as GPS_DATA, detected as:', docType);
+        } else if (docType === 'OTHER') {
+          // Show what was detected so user knows if GPS classification failed
+          console.warn('[GPS upload] Document classified as OTHER — GPS parse skipped. fileName:', file.name);
         }
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'upload_failed');
