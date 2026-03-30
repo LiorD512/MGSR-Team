@@ -48,11 +48,21 @@ If the document contains "FOOTBALL AGENT MANDATE" or similar agent mandate text,
 - mandateExpiresAt: Look for expiry/end date in patterns like "ends on DD/MM/YYYY", "until DD.MM.YYYY", "valid as from ... until DD.MM.YYYY". Return as DD/MM/YYYY string.
 - validLeagues: array of league/country names from "Valid Leagues" section. If the document is club-specific (authorization for a single club), return the club name(s) instead (e.g. ["RAAL La Louvière"]).
 
+GPS / PHYSICAL PERFORMANCE DATA DETECTION:
+If the document is a football/soccer GPS tracking report or physical performance data sheet, set isGpsData: true. Look for:
+- Tables with columns like: Total Distance, Sprint Distance, High Intensity Distance, Max Speed, Accelerations, Decelerations, Time/Duration
+- Or Catapult-specific columns: Tot Dist, Tot Dur, Max Vel, High MP Effs, Meterage Per Minute, Acc #, Decel #
+- Player names with match data rows containing distance/speed metrics
+- Club or team names with match dates
+- Any per-player physical performance stats from GPS tracking systems
+If isGpsData is true, also extract:
+- gpsMatchDate: the match date in DD/MM/YYYY format (use the most recent date if multiple)
+
 RULES:
 - Never swap firstName and lastName
 - Never return field labels as values
 - Use null for fields you cannot read
-- If the document is neither passport nor mandate, set both isPassport and isMandate to false`;
+- If the document is none of passport, mandate, or GPS data, set all three to false`;
 
 /** Safety settings that allow processing identity documents without triggering content filters. */
 const SAFETY_SETTINGS = [
@@ -213,14 +223,18 @@ Return a JSON object with these fields:
 {
   "isPassport": boolean,
   "isMandate": boolean,
+  "isGpsData": boolean,
   "firstName": string or null,
   "lastName": string or null,
   "dateOfBirth": string or null (YYYY-MM-DD),
   "passportNumber": string or null,
   "nationality": string or null,
   "mandateExpiresAt": string or null (DD/MM/YYYY),
-  "validLeagues": string[] or []
-}`;
+  "validLeagues": string[] or [],
+  "gpsMatchDate": string or null (DD/MM/YYYY)
+}
+
+PRIORITY: A document can only be ONE type. Check in order: passport first, then mandate, then GPS data. Only one of isPassport/isMandate/isGpsData should be true.`;
 
   const part: { inlineData: { mimeType: string; data: string } } | { text: string } = {
     inlineData: {
@@ -327,6 +341,18 @@ Return a JSON object with these fields:
         passportNumber: (obj.passportNumber as string) || undefined,
         nationality: (obj.nationality as string) || undefined,
       },
+    };
+  }
+
+  // GPS data detected by Gemini vision (image-based PDFs that keyword scan missed)
+  if (obj.isGpsData === true) {
+    const gpsDate = typeof obj.gpsMatchDate === 'string' ? obj.gpsMatchDate : '';
+    const safeName = playerName ? sanitizeFileName(playerName) : '';
+    const safeDate = gpsDate ? gpsDate.replace(/\//g, '-') : '';
+    const nameParts = ['GPS', safeName, safeDate].filter(Boolean);
+    return {
+      documentType: 'GPS_DATA',
+      suggestedName: `${nameParts.join('_')}.pdf`,
     };
   }
 
