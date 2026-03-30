@@ -44,6 +44,8 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   "playerPhoneNumber", "agentPhoneNumber",
   // Flags
   "haveMandate", "interestedInIsrael",
+  // Family status
+  "isMarried", "kidsCount",
   // Salary / fee
   "salaryRange", "transferFee",
   // Passport
