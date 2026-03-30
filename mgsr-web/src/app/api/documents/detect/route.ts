@@ -93,7 +93,7 @@ async function detectGpsReport(buffer: Buffer): Promise<string | null> {
         const page = await doc.getPage(i);
         const content = await page.getTextContent();
         extractedText += content.items
-          .map((item: { str?: string }) => item.str ?? '')
+          .map((item) => ('str' in item ? (item as { str: string }).str : ''))
           .join(' ') + ' ';
       }
       await doc.destroy();
