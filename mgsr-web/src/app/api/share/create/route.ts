@@ -107,8 +107,8 @@ export async function POST(request: NextRequest) {
     const decoded = await adminAuth().verifyIdToken(token);
     const uid = decoded.uid;
 
-    const body = (await request.json()) as SharePayload & { includePlayerContact?: boolean; includeAgencyContact?: boolean; platform?: 'men' | 'women' };
-    const { playerId, player, mandateInfo, mandateUrl, sharerPhone, sharerName, scoutReport: providedScoutReport, highlights, lang: bodyLang, includePlayerContact, includeAgencyContact, platform } = body;
+    const body = (await request.json()) as SharePayload & { includePlayerContact?: boolean; includeAgencyContact?: boolean; platform?: 'men' | 'women'; gpsData?: Record<string, unknown> };
+    const { playerId, player, mandateInfo, mandateUrl, sharerPhone, sharerName, scoutReport: providedScoutReport, highlights, lang: bodyLang, includePlayerContact, includeAgencyContact, platform, gpsData } = body;
 
     if (!playerId || !player) {
       return NextResponse.json({ error: 'Missing playerId or player' }, { status: 400 });
@@ -185,6 +185,7 @@ export async function POST(request: NextRequest) {
       lang: lang ?? null,
       platform: platform ?? null,
       enrichment: Object.keys(enrichment).length ? enrichment : null,
+      gpsData: gpsData ?? null,
       createdAt: Date.now(),
       createdBy: uid,
     });

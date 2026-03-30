@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
@@ -120,6 +121,13 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val fmIntelligenceError: StateFlow<String?>
     abstract fun fetchFmIntelligence(player: Player)
 
+    // ── GPS Performance ────────────────────────────────────────────
+    abstract val gpsMatchDataFlow: StateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsMatchData>>
+    abstract val gpsSummaryFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsSummary?>
+    abstract val gpsInsightsFlow: StateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsInsight>>
+    abstract val isGpsLoading: StateFlow<Boolean>
+    abstract fun processGpsDocument(bytes: ByteArray, mimeType: String?, storageUrl: String, documentId: String?)
+
     // ── Agent Transfer ─────────────────────────────────────────────
     abstract val pendingTransferFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest?>
     abstract val resolvedTransferFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest?>
@@ -135,7 +143,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     // ── Fine-grained saving indicators ─────────────────────────────
     /** Set of field keys currently being saved (e.g. "playerPhone", "salary"). */
     abstract val savingFieldsFlow: StateFlow<Set<String>>
-    abstract val isDeletingDocumentFlow: StateFlow<Boolean>
+    abstract val deletingDocIdFlow: StateFlow<String?>
     abstract val isMarkingOfferedFlow: StateFlow<Boolean>
     abstract val isSavingTaskFlow: StateFlow<Boolean>
     abstract val isSavingFeedbackFlow: StateFlow<Boolean>
@@ -240,6 +248,19 @@ class PlayerInfoViewModel(
 
     private val _fmIntelligenceError = MutableStateFlow<String?>(null)
     override val fmIntelligenceError: StateFlow<String?> = _fmIntelligenceError
+
+    // ── GPS Performance ──────────────────────────────────────────────
+    private val _gpsMatchDataFlow = MutableStateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsMatchData>>(emptyList())
+    override val gpsMatchDataFlow: StateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsMatchData>> = _gpsMatchDataFlow
+
+    private val _gpsSummaryFlow = MutableStateFlow<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsSummary?>(null)
+    override val gpsSummaryFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsSummary?> = _gpsSummaryFlow
+
+    private val _gpsInsightsFlow = MutableStateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsInsight>>(emptyList())
+    override val gpsInsightsFlow: StateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsInsight>> = _gpsInsightsFlow
+
+    private val _isGpsLoading = MutableStateFlow(false)
+    override val isGpsLoading: StateFlow<Boolean> = _isGpsLoading
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val matchingRequestsFlow: StateFlow<List<MatchingRequestUiState>> = combine(
@@ -369,8 +390,8 @@ class PlayerInfoViewModel(
     private val _savingFieldsFlow = MutableStateFlow<Set<String>>(emptySet())
     override val savingFieldsFlow: StateFlow<Set<String>> = _savingFieldsFlow
 
-    private val _isDeletingDocumentFlow = MutableStateFlow(false)
-    override val isDeletingDocumentFlow: StateFlow<Boolean> = _isDeletingDocumentFlow
+    private val _deletingDocIdFlow = MutableStateFlow<String?>(null)
+    override val deletingDocIdFlow: StateFlow<String?> = _deletingDocIdFlow
 
     private val _isMarkingOfferedFlow = MutableStateFlow(false)
     override val isMarkingOfferedFlow: StateFlow<Boolean> = _isMarkingOfferedFlow
@@ -404,10 +425,20 @@ class PlayerInfoViewModel(
                 }
             }
         }
+        // Start GPS listener when player info loaded (keyed on tmProfile for men, docId for women/youth)
+        viewModelScope.launch {
+            combine(_playerInfoFlow, _playerDocumentIdFlow) { player, docId ->
+                if (platformManager.current.value != Platform.MEN) docId else player?.tmProfile
+            }.collect { key ->
+                if (key != null) startGpsListener(key)
+            }
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
+        gpsListenerRegistration?.remove()
+        gpsInsightsListenerRegistration?.remove()
         playerListenerRegistration?.remove()
         transferListenerRegistration?.remove()
         resolvedTransferListenerRegistration?.remove()
@@ -894,6 +925,59 @@ class PlayerInfoViewModel(
             }
             _isUploadingDocumentFlow.value = true
             try {
+                // ── GPS Report pre-check ───────────────────────────────────
+                val isPdf = mimeType?.lowercase() == "application/pdf" || name.lowercase().endsWith(".pdf")
+                if (isPdf) {
+                    val pdfText = withContext(Dispatchers.IO) {
+                        try {
+                            val doc = com.tom_roush.pdfbox.pdmodel.PDDocument.load(java.io.ByteArrayInputStream(bytes))
+                            val text = com.tom_roush.pdfbox.text.PDFTextStripper().getText(doc)
+                            doc.close()
+                            text
+                        } catch (_: Exception) { "" }
+                    }
+                    if (com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.isGpsReport(pdfText)) {
+                        Log.i(TAG, "GPS report detected — uploading as GPS_DATA and parsing")
+                        // Build name: GPS_PlayerName_DD-MM-YYYY.pdf
+                        val dateRegex = Regex("""\d{2}/\d{2}/\d{4}""")
+                        val dateStr = dateRegex.find(pdfText)?.value?.replace("/", "-") ?: ""
+                        val safeName = player.fullName?.replace(Regex("[^a-zA-Z0-9 ]"), "")?.replace(" ", "_") ?: ""
+                        val gpsName = listOf("GPS", safeName, dateStr).filter { it.isNotEmpty() }.joinToString("_") + ".pdf"
+                        val bytesToUpload = withContext(Dispatchers.IO) { PdfFlattener.flatten(bytes) }
+                        val storageUrl = documentsRepository.uploadBytesToStorage(storageKey, gpsName, bytesToUpload)
+
+                        // Delete existing GPS doc with same name (same date) before creating new one
+                        val existingGpsDocs = documentsFlow.first().filter { it.type == "GPS_DATA" && it.name == gpsName }
+                        for (dup in existingGpsDocs) {
+                            try {
+                                dup.id?.let { dupId ->
+                                    SharedCallables.playerDocumentsDelete(
+                                        platform = platformManager.value,
+                                        documentId = dupId
+                                    )
+                                    Log.i(TAG, "Deleted duplicate GPS doc: $gpsName ($dupId)")
+                                }
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to delete duplicate GPS doc", e)
+                            }
+                        }
+
+                        val docResult = SharedCallables.playerDocumentsCreate(
+                            platform = platformManager.value,
+                            playerRefId = storageKey,
+                            type = DocumentType.GPS_DATA.name,
+                            name = gpsName,
+                            storageUrl = storageUrl,
+                            playerName = player.fullName,
+                            playerImage = player.profileImage,
+                            agentName = getCurrentUserName()
+                        )
+                        // Parse GPS data in background (don't block upload completion)
+                        processGpsDocument(bytes, mimeType, storageUrl, docResult)
+                        return@launch
+                    }
+                }
+                // ── Standard document detection ────────────────────────────
                 val detection = documentDetectionService.detectDocumentType(
                     uri = uri,
                     bytes = bytes,
@@ -931,7 +1015,6 @@ class PlayerInfoViewModel(
                 val createdBy = getCurrentUserName()
                 val uploadedBy = if (detection.documentType == DocumentType.MANDATE) createdBy else null
                 // Flatten PDFs so annotations (signatures, stamps) are visible in all viewers
-                val isPdf = mimeType?.lowercase() == "application/pdf" || name.lowercase().endsWith(".pdf")
                 val bytesToUpload = if (isPdf) {
                     withContext(Dispatchers.IO) { PdfFlattener.flatten(bytes) }
                 } else bytes
@@ -958,7 +1041,7 @@ class PlayerInfoViewModel(
 
     override fun deleteDocument(documentId: String, isPassport: Boolean) {
         viewModelScope.launch {
-            _isDeletingDocumentFlow.value = true
+            _deletingDocIdFlow.value = documentId
             try {
                 val docId = _playerDocumentIdFlow.value
                 SharedCallables.playerDocumentsDelete(
@@ -968,7 +1051,7 @@ class PlayerInfoViewModel(
                     playerId = docId
                 )
             } finally {
-                _isDeletingDocumentFlow.value = false
+                _deletingDocIdFlow.value = null
             }
         }
     }
@@ -1198,6 +1281,178 @@ class PlayerInfoViewModel(
         }
     }
 
+    // ── GPS Performance ─────────────────────────────────────────────────
+
+    private var gpsListenerRegistration: ListenerRegistration? = null
+    private var gpsInsightsListenerRegistration: ListenerRegistration? = null
+
+    /**
+     * Starts a Firestore listener for GPS match data linked to this player.
+     * Called once the player's TM profile / doc ID is known.
+     */
+    private fun startGpsListener(playerTmProfile: String) {
+        gpsListenerRegistration?.remove()
+        val store = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        gpsListenerRegistration = store.collection("GpsMatchData")
+            .whereEqualTo("playerTmProfile", playerTmProfile)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e(TAG, "GPS listener error", error)
+                    return@addSnapshotListener
+                }
+                val matches = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsMatchData::class.java)
+                        ?.copy(id = doc.id)
+                }?.sortedByDescending { it.matchDate ?: 0L } ?: emptyList()
+
+                _gpsMatchDataFlow.value = matches
+                val summary = com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsAnalyzer.buildSummary(matches)
+                _gpsSummaryFlow.value = summary
+            }
+
+        // Listen to server-computed insights (bilingual, position-aware)
+        val safeId = playerTmProfile.replace(Regex("[/\\\\]"), "_")
+        gpsInsightsListenerRegistration?.remove()
+        gpsInsightsListenerRegistration = store.collection("GpsPlayerInsights").document(safeId)
+            .addSnapshotListener { snap, err ->
+                if (err != null) {
+                    Log.e(TAG, "GPS insights listener error", err)
+                    return@addSnapshotListener
+                }
+                if (snap != null && snap.exists()) {
+                    val isHebrew = java.util.Locale.getDefault().language == "he" || java.util.Locale.getDefault().language == "iw"
+                    val rawInsights = snap.get("insights") as? List<*> ?: emptyList<Any>()
+                    val parsed = rawInsights.mapNotNull { raw ->
+                        val map = raw as? Map<*, *> ?: return@mapNotNull null
+                        val type = when ((map["type"] as? String)?.lowercase()) {
+                            "strength" -> com.liordahan.mgsrteam.features.players.playerinfo.gps.InsightType.STRENGTH
+                            "weakness" -> com.liordahan.mgsrteam.features.players.playerinfo.gps.InsightType.WEAKNESS
+                            else -> return@mapNotNull null
+                        }
+                        com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsInsight(
+                            type = type,
+                            title = if (isHebrew) (map["titleHe"] as? String ?: "") else (map["titleEn"] as? String ?: ""),
+                            description = if (isHebrew) (map["descriptionHe"] as? String ?: "") else (map["descriptionEn"] as? String ?: ""),
+                            value = map["value"] as? String ?: "",
+                            benchmark = map["benchmark"] as? String
+                        )
+                    }
+                    _gpsInsightsFlow.value = parsed
+                } else {
+                    // Fallback to local analysis if no server insights yet
+                    _gpsInsightsFlow.value = com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsAnalyzer.analyze(_gpsMatchDataFlow.value)
+                }
+            }
+    }
+
+    /**
+     * Process an uploaded GPS PDF: parse with Gemini, find this player's row,
+     * and write GpsMatchData to Firestore.
+     */
+    override fun processGpsDocument(bytes: ByteArray, mimeType: String?, storageUrl: String, documentId: String?) {
+        val player = _playerInfoFlow.value ?: return
+        val playerName = player.fullName ?: return
+        val storageKey = player.tmProfile ?: _playerDocumentIdFlow.value ?: return
+
+        viewModelScope.launch {
+            _isGpsLoading.value = true
+            try {
+                val report = withContext(Dispatchers.IO) {
+                    com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.parseFromBytes(bytes, mimeType)
+                } ?: run {
+                    Log.w(TAG, "GPS parsing returned null — could not parse PDF")
+                    return@launch
+                }
+
+                // Find this player's row in the report
+                val playerRow = com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.findPlayerRow(report, playerName)
+                if (playerRow == null) {
+                    Log.w(TAG, "Player '$playerName' not found in GPS report with ${report.players.size} players")
+                    return@launch
+                }
+
+                val matchData = playerRow.toGpsMatchData(
+                    playerTmProfile = storageKey,
+                    matchTitle = report.matchTitle,
+                    matchDate = report.matchDate,
+                    matchDateStr = report.matchDateStr,
+                    documentId = documentId,
+                    storageUrl = storageUrl,
+                    teamAvgDist = report.teamAverageTotalDist,
+                    teamAvgMeterage = report.teamAverageMeteragePerMin,
+                    teamAvgHI = report.teamAverageHighIntensityRuns,
+                    teamAvgSprints = report.teamAverageSprints,
+                    teamAvgMaxVel = report.teamAverageMaxVelocity
+                )
+
+                // Check for duplicate (same player + same match date) — replace if exists
+                val store = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                val existing = withContext(Dispatchers.IO) {
+                    store.collection("GpsMatchData")
+                        .whereEqualTo("playerTmProfile", storageKey)
+                        .whereEqualTo("matchDateStr", report.matchDateStr)
+                        .get().await()
+                }
+
+                // Write to Firestore
+                val dataMap = hashMapOf<String, Any?>(
+                    "playerTmProfile" to matchData.playerTmProfile,
+                    "playerName" to matchData.playerName,
+                    "matchTitle" to matchData.matchTitle,
+                    "matchDate" to matchData.matchDate,
+                    "matchDateStr" to matchData.matchDateStr,
+                    "documentId" to matchData.documentId,
+                    "storageUrl" to matchData.storageUrl,
+                    "totalDuration" to matchData.totalDuration,
+                    "totalDistance" to matchData.totalDistance,
+                    "highMpEffsDist" to matchData.highMpEffsDist,
+                    "highMpEffs" to matchData.highMpEffs,
+                    "meteragePerMinute" to matchData.meteragePerMinute,
+                    "accelerations" to matchData.accelerations,
+                    "decelerations" to matchData.decelerations,
+                    "highIntensityRuns" to matchData.highIntensityRuns,
+                    "sprints" to matchData.sprints,
+                    "maxVelocity" to matchData.maxVelocity,
+                    "adEffs" to matchData.adEffs,
+                    "hiDistTotal" to matchData.hiDistTotal,
+                    "hiDistPercent" to matchData.hiDistPercent,
+                    "sprintDistTotal" to matchData.sprintDistTotal,
+                    "sprintDistPercent" to matchData.sprintDistPercent,
+                    "isStarTotalDist" to matchData.isStarTotalDist,
+                    "isStarHighMpEffsDist" to matchData.isStarHighMpEffsDist,
+                    "isStarHighMpEffs" to matchData.isStarHighMpEffs,
+                    "isStarMeteragePerMin" to matchData.isStarMeteragePerMin,
+                    "isStarAccelerations" to matchData.isStarAccelerations,
+                    "isStarHighIntensityRuns" to matchData.isStarHighIntensityRuns,
+                    "isStarSprints" to matchData.isStarSprints,
+                    "isStarMaxVelocity" to matchData.isStarMaxVelocity,
+                    "teamAverageTotalDist" to matchData.teamAverageTotalDist,
+                    "teamAverageMeteragePerMin" to matchData.teamAverageMeteragePerMin,
+                    "teamAverageHighIntensityRuns" to matchData.teamAverageHighIntensityRuns,
+                    "teamAverageSprints" to matchData.teamAverageSprints,
+                    "teamAverageMaxVelocity" to matchData.teamAverageMaxVelocity,
+                    "createdAt" to System.currentTimeMillis()
+                )
+                withContext(Dispatchers.IO) {
+                    if (!existing.isEmpty) {
+                        // Replace existing GPS data for this date
+                        val existingId = existing.documents.first().id
+                        dataMap["updatedAt"] = System.currentTimeMillis()
+                        store.collection("GpsMatchData").document(existingId).update(dataMap as Map<String, Any>).await()
+                        Log.i(TAG, "GPS data replaced for $playerName — ${report.matchTitle} (${report.matchDateStr}) -> $existingId")
+                    } else {
+                        store.collection("GpsMatchData").add(dataMap).await()
+                        Log.i(TAG, "GPS data saved for $playerName — ${report.matchTitle} (${report.matchDateStr})")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "processGpsDocument failed", e)
+            } finally {
+                _isGpsLoading.value = false
+            }
+        }
+    }
+
     override suspend fun createShareUrl(
         player: Player,
         playerDocId: String,
@@ -1281,6 +1536,38 @@ class PlayerInfoViewModel(
                         )
                     }
             )
+
+            // ── GPS data for shared view (strengths only) ─────────────
+            val gpsMatches = _gpsMatchDataFlow.value
+            if (gpsMatches.isNotEmpty()) {
+                val summary = com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsAnalyzer.buildSummary(gpsMatches)
+                // Use server-computed insights (already in English for share)
+                val currentInsights = _gpsInsightsFlow.value
+                val strengths = currentInsights.filter { it.type == com.liordahan.mgsrteam.features.players.playerinfo.gps.InsightType.STRENGTH }
+                val gpsDocUrls = documents.filter { it.documentType == DocumentType.GPS_DATA }
+                    .mapNotNull { it.storageUrl }
+
+                shareData["gpsData"] = hashMapOf(
+                    "matchCount" to (summary?.matchCount ?: 0),
+                    "totalMinutesPlayed" to (summary?.totalMinutesPlayed ?: 0),
+                    "avgTotalDistance" to (summary?.avgTotalDistance ?: 0),
+                    "avgMeteragePerMinute" to (summary?.avgMeteragePerMinute ?: 0),
+                    "avgHighIntensityRuns" to (summary?.avgHighIntensityRuns ?: 0),
+                    "avgSprints" to (summary?.avgSprints ?: 0),
+                    "peakMaxVelocity" to (summary?.peakMaxVelocity ?: 0.0),
+                    "avgMaxVelocity" to (summary?.avgMaxVelocity ?: 0.0),
+                    "totalStars" to (summary?.totalStars ?: 0),
+                    "strengths" to strengths.map { s ->
+                        hashMapOf(
+                            "title" to s.title,
+                            "description" to s.description,
+                            "value" to s.value,
+                            "benchmark" to s.benchmark
+                        )
+                    },
+                    "documentUrls" to gpsDocUrls
+                )
+            }
 
             val token = SharedCallables.sharePlayerCreate(shareData)
 

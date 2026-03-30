@@ -1025,6 +1025,25 @@
     <string name="player_info_uploading">Uploading document…</string>
     <string name="player_info_no_documents">No documents yet</string>
     <string name="player_info_documents_empty_subtitle">Add passport, mandate, medical or other docs</string>
+
+    <!-- GPS Data -->
+    <string name="gps_section_title">GPS Performance</string>
+    <string name="gps_analyzing">Analyzing GPS report…</string>
+    <string name="gps_matches_analyzed">%d matches analyzed</string>
+    <string name="gps_total_minutes">%d min played</string>
+    <string name="gps_strengths">Strengths</string>
+    <string name="gps_weaknesses">Areas to Watch</string>
+    <string name="gps_match_details">Match Details</string>
+    <string name="gps_no_data">No GPS data yet</string>
+    <string name="gps_no_data_subtitle">Upload Catapult GPS reports to see performance analytics</string>
+    <string name="gps_vs_benchmark">vs benchmark</string>
+    <string name="gps_peak_speed">Peak Speed</string>
+    <string name="gps_avg_distance">Avg Distance</string>
+    <string name="gps_avg_sprints">Avg Sprints</string>
+    <string name="gps_avg_intensity">Avg HI Runs</string>
+    <string name="gps_work_rate">Work Rate</string>
+    <string name="gps_data_label">GPS Data</string>
+    <string name="gps_view_report">View Report</string>
     <string name="player_info_add_document">Add document</string>
     <string name="player_info_notes">Notes</string>
     <string name="player_info_add_note">Add note</string>

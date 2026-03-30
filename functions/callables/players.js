@@ -400,6 +400,33 @@ async function playerDocumentsDelete(data) {
   const documentId = requireId(data.documentId, "documentId");
 
   const db = getDb();
+
+  // Read the document before deleting to check if it's GPS_DATA
+  let wasGps = false;
+  let playerTmProfile = null;
+  try {
+    const docSnap = await db.collection(PLAYER_DOCUMENTS_COLLECTION).doc(documentId).get();
+    if (docSnap.exists) {
+      const docData = docSnap.data();
+      if (docData.type === "GPS_DATA" && docData.storageUrl) {
+        wasGps = true;
+        playerTmProfile = docData.playerTmProfile || null;
+        // Delete matching GpsMatchData entry by storageUrl
+        const gpsSnap = await db.collection("GpsMatchData")
+          .where("storageUrl", "==", docData.storageUrl)
+          .get();
+        const batch = db.batch();
+        gpsSnap.docs.forEach((d) => batch.delete(d.ref));
+        if (!gpsSnap.empty) {
+          await batch.commit();
+          console.log(`[playerDocumentsDelete] Deleted ${gpsSnap.size} GpsMatchData doc(s) for storageUrl`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[playerDocumentsDelete] GPS cleanup failed:", err.message);
+  }
+
   await db.collection(PLAYER_DOCUMENTS_COLLECTION).doc(documentId).delete();
 
   // Optionally clear passportDetails on the player
@@ -414,7 +441,7 @@ async function playerDocumentsDelete(data) {
     }
   }
 
-  return { success: true };
+  return { success: true, wasGps, playerTmProfile };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

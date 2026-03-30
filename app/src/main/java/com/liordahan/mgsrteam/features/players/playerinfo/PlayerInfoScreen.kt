@@ -311,8 +311,10 @@ fun PlayerInfoScreen(
     val fmIntelligenceData by viewModel.fmIntelligenceFlow.collectAsStateWithLifecycle()
     val isFmIntelligenceLoading by viewModel.isFmIntelligenceLoading.collectAsStateWithLifecycle()
     val fmIntelligenceError by viewModel.fmIntelligenceError.collectAsStateWithLifecycle()
+    val deletingDocId by viewModel.deletingDocIdFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
+    var deleteInFlight by remember { mutableStateOf(false) }
     var isUploadingDocument by remember { mutableStateOf(false) }
     var hasAutoRefreshed by remember { mutableStateOf(false) }
 
@@ -487,16 +489,28 @@ fun PlayerInfoScreen(
             )
         }
         if (docToDelete != null) {
+            val isDocDeleting = deletingDocId != null
             DeleteDocumentDialog(
                 documentName = docToDelete?.name ?: docToDelete?.documentType?.displayName ?: "document",
-                onDismissRequest = { docToDelete = null },
+                isDeleting = isDocDeleting,
+                onDismissRequest = { if (!isDocDeleting) docToDelete = null },
                 onDeleteClicked = {
                     docToDelete?.let { doc ->
-                        doc.id?.let { viewModel.deleteDocument(it, doc.documentType == DocumentType.PASSPORT) }
+                        doc.id?.let {
+                            deleteInFlight = true
+                            viewModel.deleteDocument(it, doc.documentType == DocumentType.PASSPORT)
+                        }
                     }
-                    docToDelete = null
                 }
             )
+        }
+        // Auto-close dialog when delete finishes
+        LaunchedEffect(deletingDocId) {
+            if (deletingDocId == null && deleteInFlight) {
+                kotlinx.coroutines.delay(200)
+                docToDelete = null
+                deleteInFlight = false
+            }
         }
         fun performShare(lang: String) {
             val player = playerToPresent
@@ -1018,13 +1032,42 @@ fun PlayerInfoScreen(
                     PlayerInfoYouthSection(player = player)
                 }
             }
+            // ── GPS Performance Section ───────────────────────────────
+            val gpsSummary by viewModel.gpsSummaryFlow.collectAsStateWithLifecycle()
+            val gpsInsights by viewModel.gpsInsightsFlow.collectAsStateWithLifecycle()
+            val isGpsLoading by viewModel.isGpsLoading.collectAsStateWithLifecycle()
+
+            if (gpsSummary != null || isGpsLoading) {
+                PlayerInfoSectionHeader(stringResource(R.string.gps_section_title))
+                com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPerformanceSection(
+                    summary = gpsSummary,
+                    insights = gpsInsights,
+                    isLoading = isGpsLoading
+                )
+            }
+
+            // ── Documents (GPS files in expandable group) ────────────────
+            val nonGpsDocs = remember(documentsList) {
+                documentsList.filter { it.documentType != DocumentType.GPS_DATA }
+            }
+            val gpsDocs = remember(documentsList) {
+                documentsList.filter { it.documentType == DocumentType.GPS_DATA }
+            }
             PlayerInfoSectionHeader(stringResource(R.string.player_info_documents))
             DocumentsSection(
-                documents = documentsList,
+                documents = nonGpsDocs,
                 isUploading = isUploadingDocument,
+                deletingDocId = deletingDocId,
                 onAddDocument = { documentPickerLauncher.launch("*/*") },
                 onDeleteDocument = { docToDelete = it }
             )
+            if (gpsDocs.isNotEmpty()) {
+                com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsDocumentsExpandable(
+                    gpsDocuments = gpsDocs,
+                    deletingDocId = deletingDocId,
+                    onDeleteDocument = { docToDelete = it }
+                )
+            }
 
             PlayerInfoSectionHeader(stringResource(R.string.player_tasks_section))
             PlayerTasksSection(
@@ -3635,10 +3678,11 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, isDeleting: Boolean = false
 @Composable
 private fun DeleteDocumentDialog(
     documentName: String,
+    isDeleting: Boolean,
     onDismissRequest: () -> Unit,
     onDeleteClicked: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismissRequest) {
+    Dialog(onDismissRequest = { if (!isDeleting) onDismissRequest() }) {
         Card(
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(8.dp),
@@ -3676,26 +3720,39 @@ private fun DeleteDocumentDialog(
                     ) {
                         Text(
                             text = stringResource(R.string.cancel),
-                            style = boldTextStyle(PlatformColors.palette.textPrimary, 12.sp),
-                            modifier = Modifier.clickWithNoRipple { onDismissRequest() }
+                            style = boldTextStyle(
+                                if (isDeleting) PlatformColors.palette.textSecondary
+                                else PlatformColors.palette.textPrimary,
+                                12.sp
+                            ),
+                            modifier = Modifier.clickWithNoRipple { if (!isDeleting) onDismissRequest() }
                         )
                     }
                     Spacer(Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
                             .background(
-                                PlatformColors.palette.red,
+                                if (isDeleting) PlatformColors.palette.red.copy(alpha = 0.6f)
+                                else PlatformColors.palette.red,
                                 shape = RoundedCornerShape(100.dp)
                             )
                             .size(width = 80.dp, height = 30.dp)
                             .clickWithNoRipple { },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = stringResource(R.string.player_info_delete),
-                            style = boldTextStyle(Color.White, 12.sp),
-                            modifier = Modifier.clickWithNoRipple { onDeleteClicked() }
-                        )
+                        if (isDeleting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.player_info_delete),
+                                style = boldTextStyle(Color.White, 12.sp),
+                                modifier = Modifier.clickWithNoRipple { onDeleteClicked() }
+                            )
+                        }
                     }
                 }
             }

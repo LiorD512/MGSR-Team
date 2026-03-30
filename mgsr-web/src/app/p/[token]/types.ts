@@ -36,6 +36,30 @@ export interface ShareData {
   lang?: 'he' | 'en';
   platform?: 'men' | 'women';
   enrichment?: PortfolioEnrichment;
+  gpsData?: SharedGpsData;
+}
+
+/* ── GPS Performance types ── */
+
+export interface SharedGpsData {
+  matchCount: number;
+  totalMinutesPlayed: number;
+  avgTotalDistance: number;
+  avgMeteragePerMinute: number;
+  avgHighIntensityRuns: number;
+  avgSprints: number;
+  peakMaxVelocity: number;
+  avgMaxVelocity: number;
+  totalStars: number;
+  strengths: GpsStrength[];
+  documentUrls?: string[];
+}
+
+export interface GpsStrength {
+  title: string;
+  description: string;
+  value: string;
+  benchmark?: string;
 }
 
 /* ── Portfolio Enrichment types ── */

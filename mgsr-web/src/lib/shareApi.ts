@@ -51,6 +51,19 @@ export interface SharePayload {
   includePlayerContact?: boolean;
   includeAgencyContact?: boolean;
   platform?: 'men' | 'women' | 'youth';
+  gpsData?: {
+    matchCount: number;
+    totalMinutesPlayed: number;
+    avgTotalDistance: number;
+    avgMeteragePerMinute: number;
+    avgHighIntensityRuns: number;
+    avgSprints: number;
+    peakMaxVelocity: number;
+    avgMaxVelocity: number;
+    totalStars: number;
+    strengths: { title: string; description: string; value: string; benchmark?: string }[];
+    documentUrls?: string[];
+  };
 }
 
 export interface ShareResult {
@@ -164,6 +177,7 @@ export async function createShare(
     highlights: payload.highlights?.length ? payload.highlights : null,
     lang: payload.lang ?? null,
     platform: payload.platform ?? null,
+    gpsData: payload.gpsData ?? null,
     createdAt: Date.now(),
   });
 

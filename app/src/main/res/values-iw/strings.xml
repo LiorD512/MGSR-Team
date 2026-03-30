@@ -951,6 +951,25 @@
     <string name="player_info_uploading">מעלה מסמך…</string>
     <string name="player_info_no_documents">אין מסמכים עדיין</string>
     <string name="player_info_documents_empty_subtitle">הוסף דרכון, ייפוי כוח, רפואי או מסמכים אחרים</string>
+
+    <!-- GPS Data -->
+    <string name="gps_section_title">ביצועי GPS</string>
+    <string name="gps_analyzing">מנתח דו״ח GPS…</string>
+    <string name="gps_matches_analyzed">%d משחקים נותחו</string>
+    <string name="gps_total_minutes">%d דקות משחק</string>
+    <string name="gps_strengths">חוזקות</string>
+    <string name="gps_weaknesses">נקודות למעקב</string>
+    <string name="gps_match_details">פירוט לפי משחק</string>
+    <string name="gps_no_data">אין נתוני GPS עדיין</string>
+    <string name="gps_no_data_subtitle">העלה דוחות GPS מ-Catapult כדי לראות אנליטיקת ביצועים</string>
+    <string name="gps_vs_benchmark">מול ממוצע</string>
+    <string name="gps_peak_speed">מהירות שיא</string>
+    <string name="gps_avg_distance">מרחק ממוצע</string>
+    <string name="gps_avg_sprints">ספרינטים ממוצע</string>
+    <string name="gps_avg_intensity">ריצות HI ממוצע</string>
+    <string name="gps_work_rate">קצב עבודה</string>
+    <string name="gps_data_label">נתוני GPS</string>
+    <string name="gps_view_report">צפה בדו״ח</string>
     <string name="player_info_add_document">הוסף מסמך</string>
     <string name="player_info_notes">הערות</string>
     <string name="player_info_add_note">הוסף הערה</string>

@@ -28,6 +28,7 @@ enum class DocumentType(val displayName: String) {
     MEDICAL("Medical"),
     RELEASE_DOC("Release doc"),
     REP_DOC("Representation doc"),
+    GPS_DATA("GPS Data"),
     OTHER("Other");
 
     companion object {

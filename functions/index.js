@@ -6,10 +6,20 @@ if (typeof globalThis.File === "undefined") {
 const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onMessagePublished } = require("firebase-functions/v2/pubsub");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onCall } = require("firebase-functions/v2/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+
+/**
+ * Auth guard for onCall handlers. Throws UNAUTHENTICATED if no auth token.
+ * Usage: requireAuth(req) at the top of every onCall handler.
+ */
+function requireAuth(req) {
+  if (!req.auth) {
+    throw new HttpsError("unauthenticated", "Authentication required.");
+  }
+}
 const { runMandateExpiry } = require("./workers/mandateExpiry");
 const { runBackfillMandateLeagues } = require("./workers/backfillMandateLeagues");
 const { runReleasesRefresh } = require("./workers/releasesRefresh");
@@ -617,6 +627,7 @@ exports.onTaskRemindersScheduled = onSchedule(
 // Subscribes that token to the "mgsr_all" broadcast topic.
 // ─────────────────────────────────────────────────────────────────────
 exports.subscribeToTopicCallable = onCall(async (request) => {
+  requireAuth(request);
   const { token, topic } = request.data || {};
   if (!token || !topic) {
     throw new Error("Missing token or topic");
@@ -680,7 +691,8 @@ exports.backfillMandateLeagues = onCall(
     timeoutSeconds: 540,
     memory: "512MiB",
   },
-  async () => {
+  async (req) => {
+    requireAuth(req);
     console.log("[backfillMandateLeagues] Started");
     const result = await runBackfillMandateLeagues();
     console.log("[backfillMandateLeagues] Completed", JSON.stringify(result));
@@ -936,6 +948,7 @@ exports.onAgentTransferResolved = onDocumentUpdated(
 exports.backfillPlayerDob = onCall(
   { timeoutSeconds: 540, memory: "512MiB" },
   async (request) => {
+    requireAuth(request);
     const collections = ["Players", "PlayersWomen", "PlayersYouth"];
     const BATCH_SIZE = 5;
     const BATCH_DELAY = 2000;
@@ -1015,37 +1028,37 @@ exports.backfillPlayerDob = onCall(
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Contacts CRUD
-exports.contactsCreate = onCall(async (req) => contactsCreate(req.data));
-exports.contactsUpdate = onCall(async (req) => contactsUpdate(req.data));
-exports.contactsDelete = onCall(async (req) => contactsDelete(req.data));
+exports.contactsCreate = onCall(async (req) => { requireAuth(req); return contactsCreate(req.data); });
+exports.contactsUpdate = onCall(async (req) => { requireAuth(req); return contactsUpdate(req.data); });
+exports.contactsDelete = onCall(async (req) => { requireAuth(req); return contactsDelete(req.data); });
 
 // Tasks CRUD
-exports.tasksCreate = onCall(async (req) => tasksCreate(req.data));
-exports.tasksUpdate = onCall(async (req) => tasksUpdate(req.data));
-exports.tasksToggleComplete = onCall(async (req) => tasksToggleComplete(req.data));
-exports.tasksDelete = onCall(async (req) => tasksDelete(req.data));
+exports.tasksCreate = onCall(async (req) => { requireAuth(req); return tasksCreate(req.data); });
+exports.tasksUpdate = onCall(async (req) => { requireAuth(req); return tasksUpdate(req.data); });
+exports.tasksToggleComplete = onCall(async (req) => { requireAuth(req); return tasksToggleComplete(req.data); });
+exports.tasksDelete = onCall(async (req) => { requireAuth(req); return tasksDelete(req.data); });
 
 // Agent Transfers
-exports.agentTransferRequest = onCall(async (req) => agentTransferRequest(req.data));
-exports.agentTransferApprove = onCall(async (req) => agentTransferApprove(req.data));
-exports.agentTransferReject = onCall(async (req) => agentTransferReject(req.data));
-exports.agentTransferCancel = onCall(async (req) => agentTransferCancel(req.data));
+exports.agentTransferRequest = onCall(async (req) => { requireAuth(req); return agentTransferRequest(req.data); });
+exports.agentTransferApprove = onCall(async (req) => { requireAuth(req); return agentTransferApprove(req.data); });
+exports.agentTransferReject = onCall(async (req) => { requireAuth(req); return agentTransferReject(req.data); });
+exports.agentTransferCancel = onCall(async (req) => { requireAuth(req); return agentTransferCancel(req.data); });
 
 // Player Offers
-exports.offersCreate = onCall(async (req) => offersCreate(req.data));
-exports.offersUpdateFeedback = onCall(async (req) => offersUpdateFeedback(req.data));
-exports.offersDelete = onCall(async (req) => offersDelete(req.data));
+exports.offersCreate = onCall(async (req) => { requireAuth(req); return offersCreate(req.data); });
+exports.offersUpdateFeedback = onCall(async (req) => { requireAuth(req); return offersUpdateFeedback(req.data); });
+exports.offersDelete = onCall(async (req) => { requireAuth(req); return offersDelete(req.data); });
 
 // Club Requests CRUD
-exports.requestsCreate = onCall(async (req) => requestsCreate(req.data));
-exports.requestsUpdate = onCall(async (req) => requestsUpdate(req.data));
-exports.requestsDelete = onCall(async (req) => requestsDelete(req.data));
+exports.requestsCreate = onCall(async (req) => { requireAuth(req); return requestsCreate(req.data); });
+exports.requestsUpdate = onCall(async (req) => { requireAuth(req); return requestsUpdate(req.data); });
+exports.requestsDelete = onCall(async (req) => { requireAuth(req); return requestsDelete(req.data); });
 
 // Request ↔ Player Matching
-exports.matchRequestToPlayers = onCall(async (req) => matchRequestToPlayers(req.data));
-exports.matchingRequestsForPlayer = onCall(async (req) => matchingRequestsForPlayer(req.data));
-exports.matchRequestToPlayersLocal = onCall(async (req) => matchRequestToPlayersLocal(req.data));
-exports.recalculateAllMatchesCallable = onCall(async (req) => recalculateAllMatches(req.data.platform));
+exports.matchRequestToPlayers = onCall(async (req) => { requireAuth(req); return matchRequestToPlayers(req.data); });
+exports.matchingRequestsForPlayer = onCall(async (req) => { requireAuth(req); return matchingRequestsForPlayer(req.data); });
+exports.matchRequestToPlayersLocal = onCall(async (req) => { requireAuth(req); return matchRequestToPlayersLocal(req.data); });
+exports.recalculateAllMatchesCallable = onCall(async (req) => { requireAuth(req); return recalculateAllMatches(req.data.platform); });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Pre-computed Match Results — Firestore triggers
@@ -1129,39 +1142,66 @@ exports.onRequestYouthWriteMatchRecalc = onDocumentWritten("ClubRequestsYouth/{r
 });
 
 // Players
-exports.playersUpdate = onCall(async (req) => playersUpdate(req.data));
-exports.playersToggleMandate = onCall(async (req) => playersToggleMandate(req.data));
-exports.playersAddNote = onCall(async (req) => playersAddNote(req.data));
-exports.playersDeleteNote = onCall(async (req) => playersDeleteNote(req.data));
-exports.playersDelete = onCall(async (req) => playersDelete(req.data));
+exports.playersUpdate = onCall(async (req) => { requireAuth(req); return playersUpdate(req.data); });
+
+// ── GPS Insights: auto-recompute when GpsMatchData changes ──────────────
+const { recomputeGpsInsights } = require("./lib/gpsInsights");
+
+// Debounce map to avoid multiple rapid recomputes for the same player
+const _gpsRecomputeTimers = {};
+
+exports.onGpsMatchDataWritten = onDocumentWritten("GpsMatchData/{docId}", async (event) => {
+  // Get playerTmProfile from before or after data (handles create/update/delete)
+  const playerTmProfile =
+    event.data?.after?.data()?.playerTmProfile ||
+    event.data?.before?.data()?.playerTmProfile;
+  if (!playerTmProfile) return;
+
+  // Simple debounce: skip if we already scheduled a recompute for this player in last 3s
+  const now = Date.now();
+  if (_gpsRecomputeTimers[playerTmProfile] && now - _gpsRecomputeTimers[playerTmProfile] < 3000) {
+    return;
+  }
+  _gpsRecomputeTimers[playerTmProfile] = now;
+
+  try {
+    await recomputeGpsInsights(playerTmProfile);
+  } catch (err) {
+    console.error("[onGpsMatchDataWritten] Failed to recompute insights:", err);
+  }
+});
+exports.playersToggleMandate = onCall(async (req) => { requireAuth(req); return playersToggleMandate(req.data); });
+exports.playersAddNote = onCall(async (req) => { requireAuth(req); return playersAddNote(req.data); });
+exports.playersDeleteNote = onCall(async (req) => { requireAuth(req); return playersDeleteNote(req.data); });
+exports.playersDelete = onCall(async (req) => { requireAuth(req); return playersDelete(req.data); });
 
 // Player Documents
-exports.playerDocumentsCreate = onCall(async (req) => playerDocumentsCreate(req.data));
-exports.playerDocumentsDelete = onCall(async (req) => playerDocumentsDelete(req.data));
-exports.playerDocumentsMarkExpired = onCall(async (req) => playerDocumentsMarkExpired(req.data));
+exports.playerDocumentsCreate = onCall(async (req) => { requireAuth(req); return playerDocumentsCreate(req.data); });
+exports.playerDocumentsDelete = onCall(async (req) => { requireAuth(req); return playerDocumentsDelete(req.data); });
+exports.playerDocumentsMarkExpired = onCall(async (req) => { requireAuth(req); return playerDocumentsMarkExpired(req.data); });
 
 // Shortlists
-exports.shortlistAdd = onCall(async (req) => shortlistAdd(req.data));
-exports.shortlistRemove = onCall(async (req) => shortlistRemove(req.data));
-exports.shortlistUpdate = onCall(async (req) => shortlistUpdate(req.data));
-exports.shortlistAddNote = onCall(async (req) => shortlistAddNote(req.data));
-exports.shortlistUpdateNote = onCall(async (req) => shortlistUpdateNote(req.data));
-exports.shortlistDeleteNote = onCall(async (req) => shortlistDeleteNote(req.data));
+exports.shortlistAdd = onCall(async (req) => { requireAuth(req); return shortlistAdd(req.data); });
+exports.shortlistRemove = onCall(async (req) => { requireAuth(req); return shortlistRemove(req.data); });
+exports.shortlistUpdate = onCall(async (req) => { requireAuth(req); return shortlistUpdate(req.data); });
+exports.shortlistAddNote = onCall(async (req) => { requireAuth(req); return shortlistAddNote(req.data); });
+exports.shortlistUpdateNote = onCall(async (req) => { requireAuth(req); return shortlistUpdateNote(req.data); });
+exports.shortlistDeleteNote = onCall(async (req) => { requireAuth(req); return shortlistDeleteNote(req.data); });
 
 // Players Create (Phase 5)
-exports.playersCreate = onCall(async (req) => playersCreate(req.data));
+exports.playersCreate = onCall(async (req) => { requireAuth(req); return playersCreate(req.data); });
 
 // Portfolio
-exports.portfolioUpsert = onCall(async (req) => portfolioUpsert(req.data));
-exports.portfolioDelete = onCall(async (req) => portfolioDelete(req.data));
+exports.portfolioUpsert = onCall(async (req) => { requireAuth(req); return portfolioUpsert(req.data); });
+exports.portfolioDelete = onCall(async (req) => { requireAuth(req); return portfolioDelete(req.data); });
 
 // Phase 6 — misc
-exports.sharePlayerCreate = onCall(async (req) => sharePlayerCreate(req.data));
-exports.shadowTeamsSave = onCall(async (req) => shadowTeamsSave(req.data));
-exports.scoutProfileFeedbackSet = onCall(async (req) => scoutProfileFeedbackSet(req.data));
-exports.birthdayWishSend = onCall(async (req) => birthdayWishSend(req.data));
-exports.offersUpdateHistorySummary = onCall(async (req) => offersUpdateHistorySummary(req.data));
-exports.mandateSigningCreate = onCall(async (req) => mandateSigningCreate(req.data));
+exports.sharePlayerCreate = onCall(async (req) => { requireAuth(req); return sharePlayerCreate(req.data); });
+exports.shadowTeamsSave = onCall(async (req) => { requireAuth(req); return shadowTeamsSave(req.data); });
+exports.scoutProfileFeedbackSet = onCall(async (req) => { requireAuth(req); return scoutProfileFeedbackSet(req.data); });
+exports.birthdayWishSend = onCall(async (req) => { requireAuth(req); return birthdayWishSend(req.data); });
+exports.offersUpdateHistorySummary = onCall(async (req) => { requireAuth(req); return offersUpdateHistorySummary(req.data); });
+exports.mandateSigningCreate = onCall(async (req) => { requireAuth(req); return mandateSigningCreate(req.data); });
 
 // ── Phase 7 — Account ──────────────────────────────────────────────────
-exports.accountUpdate = onCall(async (req) => accountUpdate(req.data));
+exports.accountUpdate = onCall(async (req) => { requireAuth(req); return accountUpdate(req.data); });

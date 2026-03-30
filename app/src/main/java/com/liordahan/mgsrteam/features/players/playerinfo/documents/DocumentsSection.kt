@@ -57,6 +57,7 @@ private val DATE_FORMAT = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
 fun DocumentsSection(
     documents: List<PlayerDocument>,
     isUploading: Boolean,
+    deletingDocId: String?,
     onAddDocument: () -> Unit,
     onDeleteDocument: (PlayerDocument) -> Unit
 ) {
@@ -103,6 +104,7 @@ fun DocumentsSection(
                     }
                     DocumentCard(
                         document = doc,
+                        isDeleting = deletingDocId == doc.id,
                         onOpen = {
                             doc.storageUrl?.let { url ->
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -179,17 +181,20 @@ private fun AddDocumentButton(onClick: () -> Unit) {
 @Composable
 private fun DocumentCard(
     document: PlayerDocument,
+    isDeleting: Boolean,
     onOpen: () -> Unit,
     onDelete: () -> Unit
 ) {
     val typeIcon = documentTypeIcon(document.documentType)
     val status = documentStatus(document)
     val dateText = formatDocumentDate(document)
+    val alpha = if (isDeleting) 0.4f else 1f
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .padding(vertical = 12.dp)
+            .then(if (isDeleting) Modifier else Modifier),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -201,7 +206,7 @@ private fun DocumentCard(
                 imageVector = typeIcon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = PlatformColors.palette.accent
+                tint = PlatformColors.palette.accent.copy(alpha = alpha)
             )
         }
         Spacer(Modifier.width(12.dp))
@@ -211,7 +216,7 @@ private fun DocumentCard(
         ) {
             Text(
                 text = document.name ?: document.documentType.displayName,
-                style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp),
+                style = regularTextStyle(PlatformColors.palette.textPrimary.copy(alpha = alpha), 14.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -221,24 +226,24 @@ private fun DocumentCard(
             ) {
                 Text(
                     text = document.documentType.displayName,
-                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                    style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = alpha), 12.sp)
                 )
                 Text(
                     text = "·",
-                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                    style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = alpha), 12.sp)
                 )
                 Text(
                     text = status.text,
-                    style = regularTextStyle(status.color, 12.sp)
+                    style = regularTextStyle(status.color.copy(alpha = alpha), 12.sp)
                 )
                 if (dateText.isNotEmpty()) {
                     Text(
                         text = "·",
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = alpha), 12.sp)
                     )
                     Text(
                         text = dateText,
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = alpha), 12.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -249,23 +254,36 @@ private fun DocumentCard(
         IconButton(
             onClick = onOpen,
             modifier = Modifier.size(48.dp),
-            enabled = document.storageUrl != null
+            enabled = document.storageUrl != null && !isDeleting
         ) {
             Icon(
                 imageVector = Icons.Default.Link,
                 contentDescription = stringResource(R.string.player_info_cd_open_link),
-                tint = PlatformColors.palette.accent
+                tint = PlatformColors.palette.accent.copy(alpha = alpha)
             )
         }
-        IconButton(
-            onClick = onDelete,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = stringResource(R.string.player_info_cd_delete_document),
-                tint = PlatformColors.palette.textSecondary
-            )
+        if (isDeleting) {
+            Box(
+                modifier = Modifier.size(48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = PlatformColors.palette.textSecondary,
+                    strokeWidth = 2.dp
+                )
+            }
+        } else {
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.player_info_cd_delete_document),
+                    tint = PlatformColors.palette.textSecondary
+                )
+            }
         }
     }
 }
@@ -276,6 +294,7 @@ private fun documentTypeIcon(type: DocumentType): ImageVector = when (type) {
     DocumentType.MEDICAL -> Icons.Default.MedicalServices
     DocumentType.RELEASE_DOC -> Icons.AutoMirrored.Filled.ExitToApp
     DocumentType.REP_DOC -> Icons.Default.Person
+    DocumentType.GPS_DATA -> Icons.Default.PictureAsPdf
     DocumentType.OTHER -> Icons.Default.DocumentScanner
 }
 

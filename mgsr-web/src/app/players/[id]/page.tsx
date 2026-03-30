@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { doc, collection, query, where, onSnapshot, getDocs, deleteDoc } from 'firebase/firestore';
 import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '@/lib/firebase';
@@ -19,6 +19,7 @@ import { parseMarketValue, formatMarketValue } from '@/lib/releases';
 import { extractSalaryRange, extractFreeTransfer, type NoteModel } from '@/lib/noteParser';
 import { flattenPdf } from '@/lib/pdfFlatten';
 import FmIntelligencePanel from '@/components/FmIntelligencePanel';
+import GpsPerformancePanel from './GpsPerformancePanel';
 import SimilarPlayersPanel from '@/components/SimilarPlayersPanel';
 import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
@@ -282,8 +283,10 @@ export default function PlayerInfoPage() {
   const [noteSaving, setNoteSaving] = useState(false);
   const [deleteConfirmNote, setDeleteConfirmNote] = useState<NoteModel | null>(null);
   const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [parsingGps, setParsingGps] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [docToDelete, setDocToDelete] = useState<PlayerDocument | null>(null);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [mandateToggling, setMandateToggling] = useState(false);
   const [interestedInIsraelToggling, setInterestedInIsraelToggling] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
@@ -673,7 +676,8 @@ export default function PlayerInfoPage() {
         }
 
         // 2. Flatten PDF before upload (like Android)
-        let bytes = await file.arrayBuffer();
+        const originalBytes = await file.arrayBuffer();
+        let bytes = originalBytes;
         const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
         if (isPdf) {
           bytes = await flattenPdf(bytes);
@@ -706,6 +710,18 @@ export default function PlayerInfoPage() {
         if (validLeagues?.length) data.validLeagues = validLeagues;
         if (docType === 'MANDATE' && uploadedBy) data.uploadedBy = uploadedBy;
 
+        // For GPS uploads, remove existing document with same name (same date) before creating new one
+        if (docType === 'GPS_DATA') {
+          const existingGps = documents.filter(d => d.type === 'GPS_DATA' && d.name === suggestedName);
+          for (const dup of existingGps) {
+            try {
+              await callPlayerDocumentsDelete({ platform: 'men', documentId: dup.id });
+            } catch (e) {
+              console.warn('[GPS dedup] Failed to delete old doc:', e);
+            }
+          }
+        }
+
         // Create document entry + FeedEvent via callable
         await callPlayerDocumentsCreate({
           platform: 'men',
@@ -734,6 +750,38 @@ export default function PlayerInfoPage() {
           await callPlayersUpdate({ platform: 'men', playerId: id, passportDetails });
           setPlayer((p) => (p ? { ...p, passportDetails } : null));
         }
+
+        // 5. Parse GPS report (show analyzing feedback)
+        if (docType === 'GPS_DATA') {
+          setParsingGps(true);
+          try {
+            const rawBytes = new Uint8Array(originalBytes);
+            let binary = '';
+            for (let i = 0; i < rawBytes.length; i++) binary += String.fromCharCode(rawBytes[i]);
+            const base64 = btoa(binary);
+            const parseRes = await fetch('/api/documents/gps-parse', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                base64,
+                mimeType: file.type || 'application/pdf',
+                playerName: player.fullName,
+                playerTmProfile: tmProfile,
+                storageUrl: url,
+              }),
+            });
+            if (!parseRes.ok) {
+              const errBody = await parseRes.text();
+              console.error('[GPS parse] Server error:', parseRes.status, errBody);
+            } else {
+              console.log('[GPS parse] Success:', await parseRes.json());
+            }
+          } catch (err) {
+            console.error('[GPS parse] Failed:', err);
+          } finally {
+            setParsingGps(false);
+          }
+        }
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'upload_failed');
         setTimeout(() => setUploadError(null), 4000);
@@ -741,7 +789,7 @@ export default function PlayerInfoPage() {
         setUploadingDocument(false);
       }
     },
-    [player, id, getCurrentUserName]
+    [player, id, documents, getCurrentUserName]
   );
 
   const handleMandateToggle = useCallback(
@@ -789,19 +837,51 @@ export default function PlayerInfoPage() {
   const handleDeleteDocument = useCallback(
     async (d: PlayerDocument) => {
       if (!d.id || !id) return;
-      const isPassport = (d.type ?? '').toUpperCase() === 'PASSPORT';
-      await callPlayerDocumentsDelete({
-        platform: 'men',
-        documentId: d.id,
-        clearPassport: isPassport,
-        playerId: id,
-      });
-      if (isPassport) {
-        setPlayer((p) => (p ? { ...p, passportDetails: undefined } : null));
+      setDeletingDocId(d.id);
+      try {
+        const isPassport = (d.type ?? '').toUpperCase() === 'PASSPORT';
+        const isGps = (d.type ?? '').toUpperCase() === 'GPS_DATA';
+        await callPlayerDocumentsDelete({
+          platform: 'men',
+          documentId: d.id,
+          clearPassport: isPassport,
+          playerId: id,
+        });
+        if (isPassport) {
+          setPlayer((p) => (p ? { ...p, passportDetails: undefined } : null));
+        }
+        // Clean up matching GpsMatchData + recompute insights after GPS delete
+        if (isGps && player?.tmProfile) {
+          // Delete GpsMatchData entries matching this doc's storageUrl
+          if (d.storageUrl) {
+            try {
+              const gpsQ = query(
+                collection(db, 'GpsMatchData'),
+                where('storageUrl', '==', d.storageUrl)
+              );
+              const gpsSnap = await getDocs(gpsQ);
+              await Promise.all(gpsSnap.docs.map(g => deleteDoc(g.ref)));
+            } catch (e) {
+              console.warn('[GPS delete] GpsMatchData cleanup failed:', e);
+            }
+          }
+          // Recompute insights from remaining data
+          try {
+            await fetch('/api/documents/gps-recompute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ playerTmProfile: player.tmProfile }),
+            });
+          } catch (e) {
+            console.warn('[GPS delete] Recompute failed:', e);
+          }
+        }
+      } finally {
+        setDeletingDocId(null);
+        setDocToDelete(null);
       }
-      setDocToDelete(null);
     },
-    [id]
+    [id, player?.tmProfile]
   );
 
   const refreshFromTransfermarkt = async () => {
@@ -1038,6 +1118,59 @@ export default function PlayerInfoPage() {
             lang,
             includePlayerContact,
             includeAgencyContact,
+            gpsData: await (async () => {
+              try {
+                const tmProfile = merged.tmProfile || player?.tmProfile;
+                if (!tmProfile) return undefined;
+                // Fetch GPS match data
+                const gpsSnap = await getDocs(query(
+                  collection(db, 'GpsMatchData'),
+                  where('playerTmProfile', '==', tmProfile)
+                ));
+                if (gpsSnap.empty) return undefined;
+                const matches = gpsSnap.docs.map(d => d.data());
+                const totalMin = matches.reduce((s, m) => s + ((m.totalDuration as number) || 0), 0);
+                const avgDist = Math.round(matches.reduce((s, m) => s + ((m.totalDistance as number) || 0), 0) / matches.length);
+                const avgMeterage = Math.round(matches.reduce((s, m) => s + ((m.meteragePerMinute as number) || 0), 0) / matches.length);
+                const avgHI = Math.round(matches.reduce((s, m) => s + ((m.highIntensityRuns as number) || 0), 0) / matches.length);
+                const avgSprints = Math.round(matches.reduce((s, m) => s + ((m.sprints as number) || 0), 0) / matches.length);
+                const peakVel = Math.max(...matches.map(m => (m.maxVelocity as number) || 0));
+                const avgMaxVel = Math.round(matches.reduce((s, m) => s + ((m.maxVelocity as number) || 0), 0) / matches.length * 10) / 10;
+                const totalStars = matches.reduce((sum, m) => sum + [m.isStarTotalDist, m.isStarHighMpEffsDist, m.isStarHighMpEffs, m.isStarMeteragePerMin, m.isStarAccelerations, m.isStarHighIntensityRuns, m.isStarSprints, m.isStarMaxVelocity].filter(Boolean).length, 0);
+                // Fetch server-computed insights (strengths only for share)
+                const safeId = tmProfile.replace(/[/\\]/g, '_');
+                const insightsSnap = await getDocs(query(collection(db, 'GpsPlayerInsights'), where('__name__', '==', safeId)));
+                let strengths: { title: string; description: string; value: string; benchmark?: string }[] = [];
+                if (!insightsSnap.empty) {
+                  const insData = insightsSnap.docs[0].data();
+                  const isHe = lang === 'he';
+                  strengths = ((insData.insights || []) as Array<Record<string, string>>)
+                    .filter(i => i.type === 'strength')
+                    .map(i => ({
+                      title: isHe ? i.titleHe : i.titleEn,
+                      description: isHe ? i.descriptionHe : i.descriptionEn,
+                      value: i.value,
+                      benchmark: i.benchmark,
+                    }));
+                }
+                // Collect GPS document URLs
+                const gpsDocs = documents.filter(d => d.type === 'GPS_DATA' && d.storageUrl);
+                const documentUrls = gpsDocs.map(d => d.storageUrl!);
+                return {
+                  matchCount: matches.length,
+                  totalMinutesPlayed: totalMin,
+                  avgTotalDistance: avgDist,
+                  avgMeteragePerMinute: avgMeterage,
+                  avgHighIntensityRuns: avgHI,
+                  avgSprints,
+                  peakMaxVelocity: peakVel,
+                  avgMaxVelocity: avgMaxVel,
+                  totalStars,
+                  strengths,
+                  documentUrls: documentUrls.length > 0 ? documentUrls : undefined,
+                };
+              } catch { return undefined; }
+            })(),
           },
           () =>
             user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
@@ -2075,7 +2208,11 @@ export default function PlayerInfoPage() {
                   {t('player_info_uploading')}
                 </div>
               )}
-              {documents.length === 0 && !uploadingDocument ? (
+              {(() => {
+                const nonGpsDocs = documents.filter(d => d.type !== 'GPS_DATA');
+                const gpsDocs = documents.filter(d => d.type === 'GPS_DATA');
+                return (<>
+              {nonGpsDocs.length === 0 && !uploadingDocument ? (
                 <div className="py-6 text-center">
                   <svg className="w-12 h-12 mx-auto text-mgsr-muted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -2101,10 +2238,10 @@ export default function PlayerInfoPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {documents.map((d) => (
+                  {nonGpsDocs.map((d) => (
                     <div
                       key={d.id}
-                      className="flex items-center justify-between py-2 border-b border-mgsr-border last:border-0 text-sm text-mgsr-text"
+                      className={`flex items-center justify-between py-2 border-b border-mgsr-border last:border-0 text-sm text-mgsr-text ${deletingDocId === d.id ? 'opacity-40 pointer-events-none' : ''}`}
                     >
                       <a
                         href={d.storageUrl}
@@ -2129,6 +2266,9 @@ export default function PlayerInfoPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                           </svg>
                         </a>
+                        {deletingDocId === d.id ? (
+                          <span className="p-2"><svg className="w-4 h-4 animate-spin text-mgsr-muted" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg></span>
+                        ) : (
                         <button
                           onClick={() => setDocToDelete(d)}
                           className="p-2 text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10 rounded-lg transition"
@@ -2138,6 +2278,7 @@ export default function PlayerInfoPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -2160,11 +2301,50 @@ export default function PlayerInfoPage() {
                   </button>
                 </div>
               )}
+
+              {/* GPS Documents Expandable */}
+              {gpsDocs.length > 0 && (
+                <details className="mt-3 rounded-xl border border-mgsr-border overflow-hidden">
+                  <summary className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-mgsr-bg/50 transition">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-teal-500 to-blue-500 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <span className="text-sm font-medium text-mgsr-text">{t('gps_data')}</span>
+                      <span className="text-xs text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-md font-medium">{gpsDocs.length}</span>
+                    </div>
+                    <svg className="w-4 h-4 text-mgsr-muted transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </summary>
+                  <div className="px-4 pb-3 space-y-1">
+                    {gpsDocs.map((d) => (
+                      <div key={d.id} className={`flex items-center justify-between py-1.5 text-sm ${deletingDocId === d.id ? 'opacity-40 pointer-events-none' : ''}`}>
+                        <a href={d.storageUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 truncate text-teal-400 hover:underline text-xs">
+                          {d.name || t('gps_report')}
+                        </a>
+                        {deletingDocId === d.id ? (
+                          <svg className="animate-spin w-3.5 h-3.5 text-mgsr-muted" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                        ) : (
+                        <button onClick={() => setDocToDelete(d)} className="p-1 text-mgsr-muted hover:text-mgsr-red rounded transition">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+              </>); })()}
             </div>
 
             {/* Delete document confirmation */}
             {docToDelete && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setDocToDelete(null)}>
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => !deletingDocId && setDocToDelete(null)}>
                 <div
                   className="bg-mgsr-card border border-mgsr-border rounded-xl p-6 max-w-sm w-full shadow-xl"
                   onClick={(e) => e.stopPropagation()}
@@ -2175,14 +2355,17 @@ export default function PlayerInfoPage() {
                   <div className="flex gap-3 justify-end">
                     <button
                       onClick={() => setDocToDelete(null)}
-                      className="px-4 py-2 rounded-lg text-mgsr-muted hover:bg-mgsr-muted/20 transition"
+                      disabled={!!deletingDocId}
+                      className="px-4 py-2 rounded-lg text-mgsr-muted hover:bg-mgsr-muted/20 transition disabled:opacity-50"
                     >
                       {t('player_info_note_cancel')}
                     </button>
                     <button
                       onClick={() => handleDeleteDocument(docToDelete)}
-                      className="px-4 py-2 rounded-lg bg-mgsr-red/20 text-mgsr-red hover:bg-mgsr-red/30 transition font-medium"
+                      disabled={!!deletingDocId}
+                      className="px-4 py-2 rounded-lg bg-mgsr-red/20 text-mgsr-red hover:bg-mgsr-red/30 transition font-medium disabled:opacity-50 flex items-center gap-2"
                     >
+                      {deletingDocId && <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
                       {t('tasks_delete')}
                     </button>
                   </div>
@@ -2200,6 +2383,16 @@ export default function PlayerInfoPage() {
                 club={merged.currentClub?.clubName || player?.currentClub?.clubName || ''}
                 age={String(merged.age || player?.age || '')}
                 isRtl={isRtl}
+              />
+            )}
+
+            {/* GPS Performance Panel */}
+            {(merged.tmProfile || player?.tmProfile || id) && (
+              <GpsPerformancePanel
+                playerRefId={merged.tmProfile || player?.tmProfile || id}
+                playerPosition={(merged.positions ?? player?.positions ?? [])[0] || ''}
+                isRtl={isRtl}
+                parsingGps={parsingGps}
               />
             )}
 

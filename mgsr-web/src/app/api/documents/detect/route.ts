@@ -12,7 +12,7 @@ export const maxDuration = 30;
 const GEMINI_MODEL = 'gemini-2.5-flash';
 
 export interface DocumentDetectionResult {
-  documentType: 'PASSPORT' | 'MANDATE' | 'OTHER';
+  documentType: 'PASSPORT' | 'MANDATE' | 'GPS_DATA' | 'OTHER';
   suggestedName: string;
   passportInfo?: {
     firstName: string;
@@ -61,6 +61,88 @@ const SAFETY_SETTINGS = [
   { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
+
+/**
+ * Check if a PDF buffer is a Catapult GPS report.
+ * Returns the match date string (e.g. "03/01/2026") if detected, or null if not a GPS report.
+ */
+async function detectGpsReport(buffer: Buffer): Promise<string | null> {
+  const lower = buffer.toString('latin1').toLowerCase();
+
+  // Check PDF metadata — Catapult reports have CatapultSports in creator/keywords
+  const metadataMarkers = ['catapultsports', 'athlete analytics', 'openfield'];
+  const metadataCount = metadataMarkers.filter(m => lower.includes(m)).length;
+
+  const contentMarkers = [
+    'catapult', 'tot dur', 'tot dist', 'meterage per minute',
+    'high intensity runs', 'sprints (over', 'sprints over',
+    'max vel', 'high mp effs', 'acc #', 'decel #',
+  ];
+  const contentCount = contentMarkers.filter(m => lower.includes(m)).length;
+
+  const isGps = metadataCount >= 2 || contentCount >= 4;
+
+  if (!isGps) {
+    // Fallback: try pdfjs-dist text extraction for compressed streams
+    try {
+      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+      let extractedText = '';
+      const pageCount = Math.min(doc.numPages, 2);
+      for (let i = 1; i <= pageCount; i++) {
+        const page = await doc.getPage(i);
+        const content = await page.getTextContent();
+        extractedText += content.items
+          .map((item: { str?: string }) => item.str ?? '')
+          .join(' ') + ' ';
+      }
+      await doc.destroy();
+      const textLower = extractedText.toLowerCase();
+      const pdfCount = contentMarkers.filter(m => textLower.includes(m)).length;
+      if (pdfCount < 4) return null;
+      // Extract date from text (DD/MM/YYYY)
+      const dateMatch = extractedText.match(/(\d{2}\/\d{2}\/\d{4})/);
+      return dateMatch?.[1] ?? '';
+    } catch (e) {
+      console.warn('[detect] pdfjs text extraction failed:', e);
+      return null;
+    }
+  }
+
+  // GPS detected — extract date from PDF metadata or content
+  // Try raw metadata first: PDF date format D:YYYYMMDD or XMP CreateDate YYYY-MM-DD
+  const rawStr = buffer.toString('latin1');
+  // XMP date: <xmp:CreateDate>YYYY-MM-DDT...
+  const xmpMatch = rawStr.match(/<xmp:CreateDate>(\d{4})-(\d{2})-(\d{2})/);
+  if (xmpMatch) {
+    return `${xmpMatch[3]}/${xmpMatch[2]}/${xmpMatch[1]}`;
+  }
+  // PDF date: D:YYYYMMDD
+  const pdfDateMatch = rawStr.match(/\/CreationDate\s*\(D:(\d{4})(\d{2})(\d{2})/);
+  if (pdfDateMatch) {
+    return `${pdfDateMatch[3]}/${pdfDateMatch[2]}/${pdfDateMatch[1]}`;
+  }
+
+  // Fallback: try pdfjs-dist text extraction for the date
+  try {
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+    let extractedText = '';
+    const pageCount = Math.min(doc.numPages, 2);
+    for (let i = 1; i <= pageCount; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      extractedText += content.items
+        .map((item: { str?: string }) => item.str ?? '')
+        .join(' ') + ' ';
+    }
+    await doc.destroy();
+    const dateMatch = extractedText.match(/(\d{2}\/\d{2}\/\d{4})/);
+    return dateMatch?.[1] ?? '';
+  } catch {
+    return ''; // GPS detected but couldn't extract date
+  }
+}
 
 function sanitizeFileName(s: string): string {
   return s.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_').slice(0, 80);
@@ -263,7 +345,6 @@ export async function POST(req: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString('base64');
     const mimeType = file.type || 'application/octet-stream';
     let fileName = file.name || 'document';
     // Preserve extension from file type when name lacks one
@@ -272,6 +353,24 @@ export async function POST(req: NextRequest) {
       else if (mimeType === 'image/png') fileName = 'document.png';
       else if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') fileName = 'document.jpg';
     }
+
+    // GPS report pre-check: fast keyword scan avoids unnecessary Gemini call
+    const isPdf = mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+      const gpsDate = await detectGpsReport(buffer);
+      if (gpsDate !== null) {
+        // Build name: GPS_PlayerName_DD-MM-YYYY.pdf
+        const safeName = playerName ? sanitizeFileName(playerName) : '';
+        const safeDate = gpsDate ? gpsDate.replace(/\//g, '-') : '';
+        const parts = ['GPS', safeName, safeDate].filter(Boolean);
+        return NextResponse.json({
+          documentType: 'GPS_DATA',
+          suggestedName: `${parts.join('_')}.pdf`,
+        } satisfies DocumentDetectionResult);
+      }
+    }
+
+    const base64 = buffer.toString('base64');
 
     // Use Gemini for passport and mandate detection (supports PDF and images)
     const result = await detectWithGemini(

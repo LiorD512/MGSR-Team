@@ -29,6 +29,7 @@ import {
   AvailabilitySection,
   BottomCTASection,
 } from './PortfolioEnrichments';
+import { GpsPerformanceShowcase } from './GpsPerformanceShowcase';
 
 /** Scout report markdown styling — teal/rose section headers */
 function getScoutReportComponents(isWomen: boolean) {
@@ -675,6 +676,13 @@ export default function SharedPlayerContent({
         {/* Highlights — thumbnail grid with lazy iframe */}
         {data.highlights && data.highlights.length > 0 && (
           <HighlightsGrid highlights={data.highlights} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+
+        {/* ═══ GPS PERFORMANCE ═══ */}
+        {data.gpsData && data.gpsData.matchCount > 0 && (
+          <div className="mb-8">
+            <GpsPerformanceShowcase gpsData={data.gpsData} isWomen={isWomen} useHebrew={useHebrew} />
+          </div>
         )}
 
         {/* ═══ AVAILABILITY / TRANSFER DETAILS ═══ */}
