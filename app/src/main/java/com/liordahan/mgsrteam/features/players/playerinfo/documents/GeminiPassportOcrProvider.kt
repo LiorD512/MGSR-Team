@@ -496,12 +496,16 @@ Return ONLY valid JSON: {"isMandate": boolean, "mandateExpiresAt": "DD/MM/YYYY" 
 
                 val prompt = """Is this document a football/soccer GPS tracking report or physical performance data sheet?
 
-Look for:
+Look for ANY of these:
 - Tables with columns like: Total Distance, Sprint Distance, High Intensity Distance, Max Speed, Accelerations, Decelerations, Time/Duration
-- Or Catapult-specific columns: Tot Dist, Tot Dur, Max Vel, High MP Effs, Meterage Per Minute, Acc #, Decel #
+- Catapult-specific columns: Tot Dist, Tot Dur, Max Vel, High MP Effs, Meterage Per Minute, Acc #, Decel #
 - Player names with match data rows containing distance/speed metrics
 - Club or team names with match dates
-- Any per-player physical performance stats from GPS tracking systems
+- Bar charts or graphs showing per-player distance, speed zones, or physical metrics
+- Speed zone breakdowns (Walk, Jog, Run, High Speed Run, Sprint) in chart or table form
+- Team comparison charts showing player distance or speed data (e.g. "total distance a player travels")
+- Any visual or tabular per-player physical performance data from GPS/tracking systems
+- Match analysis charts with metres, km/h, or speed categories per player
 
 If YES, extract:
 - isGpsData: true

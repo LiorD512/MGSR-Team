@@ -49,12 +49,16 @@ If the document contains "FOOTBALL AGENT MANDATE" or similar agent mandate text,
 - validLeagues: array of league/country names from "Valid Leagues" section. If the document is club-specific (authorization for a single club), return the club name(s) instead (e.g. ["RAAL La Louvière"]).
 
 GPS / PHYSICAL PERFORMANCE DATA DETECTION:
-If the document is a football/soccer GPS tracking report or physical performance data sheet, set isGpsData: true. Look for:
+If the document is a football/soccer GPS tracking report or physical performance data sheet, set isGpsData: true. Look for ANY of these:
 - Tables with columns like: Total Distance, Sprint Distance, High Intensity Distance, Max Speed, Accelerations, Decelerations, Time/Duration
-- Or Catapult-specific columns: Tot Dist, Tot Dur, Max Vel, High MP Effs, Meterage Per Minute, Acc #, Decel #
+- Catapult-specific columns: Tot Dist, Tot Dur, Max Vel, High MP Effs, Meterage Per Minute, Acc #, Decel #
 - Player names with match data rows containing distance/speed metrics
 - Club or team names with match dates
-- Any per-player physical performance stats from GPS tracking systems
+- Bar charts or graphs showing per-player distance, speed zones, or physical metrics
+- Speed zone breakdowns (Walk, Jog, Run, High Speed Run, Sprint) in chart or table form
+- Team comparison charts showing player distance or speed data (e.g. "total distance a player travels")
+- Any visual or tabular per-player physical performance data from GPS/tracking systems
+- Match analysis charts with metres, km/h, or speed categories per player
 If isGpsData is true, also extract:
 - gpsFirstMatchDate: the EARLIEST match date in DD/MM/YYYY format
 - gpsLastMatchDate: the LATEST/most recent match date in DD/MM/YYYY format
@@ -357,9 +361,13 @@ PRIORITY: A document can only be ONE type. Check in order: passport first, then 
       ? `${safeFirst}_to_${safeLast}`
       : safeFirst;
     const nameParts = ['GPS', safeName, dateRange].filter(Boolean);
+    // Use correct extension based on file type (not always PDF — could be image)
+    const extMatch = originalFileName.match(/\.([a-zA-Z0-9]+)$/);
+    const ext = extMatch ? extMatch[1].toLowerCase() : 'pdf';
+    const safeExt = ['pdf', 'png', 'jpg', 'jpeg', 'webp'].includes(ext) ? (ext === 'jpeg' ? 'jpg' : ext) : 'pdf';
     return {
       documentType: 'GPS_DATA',
-      suggestedName: `${nameParts.join('_')}.pdf`,
+      suggestedName: `${nameParts.join('_')}.${safeExt}`,
     };
   }
 

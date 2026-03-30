@@ -284,9 +284,15 @@ class DocumentDetectionService(
                         } else safeFirst
                         val safeName = sanitizeFileName(playerName ?: "")
                         val nameParts = listOf("GPS", safeName, dateRange).filter { it.isNotEmpty() }
+                        val ext = when (mimeType?.lowercase()) {
+                            "image/png" -> "png"
+                            "image/jpeg", "image/jpg" -> "jpg"
+                            "image/webp" -> "webp"
+                            else -> "pdf"
+                        }
                         return@withContext DetectionResult(
                             documentType = DocumentType.GPS_DATA,
-                            suggestedName = "${nameParts.joinToString("_")}.pdf"
+                            suggestedName = "${nameParts.joinToString("_")}.$ext"
                         )
                     }
                 } catch (e: Exception) {

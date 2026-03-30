@@ -1052,7 +1052,9 @@ class PlayerInfoViewModel(
                 if (detection.documentType == DocumentType.GPS_DATA) {
                     Log.i(TAG, "GPS report detected via Gemini vision — uploading as GPS_DATA and parsing")
                     val gpsName = detection.suggestedName
-                    val bytesToUpload = withContext(Dispatchers.IO) { PdfFlattener.flatten(bytes) }
+                    val bytesToUpload = if (isPdf) {
+                        withContext(Dispatchers.IO) { PdfFlattener.flatten(bytes) }
+                    } else bytes
                     val storageUrl = documentsRepository.uploadBytesToStorage(storageKey, gpsName, bytesToUpload)
 
                     // Delete existing GPS doc with same name (same date) before creating new one
