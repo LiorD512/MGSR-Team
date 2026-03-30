@@ -8,8 +8,8 @@ import { adminDb } from '@/lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
-// Use 2.0-flash for GPS parsing — much faster than 2.5-flash, no thinking overhead
-const GEMINI_MODEL = 'gemini-2.0-flash';
+// Use 2.5-flash-lite for GPS parsing — fastest model, no thinking overhead
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 
 const GPS_PROMPT = `You are analyzing a football/soccer GPS or physical performance match report.
 
