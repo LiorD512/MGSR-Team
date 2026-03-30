@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PersonAddAlt
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Share
