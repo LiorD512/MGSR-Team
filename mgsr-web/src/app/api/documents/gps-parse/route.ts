@@ -10,25 +10,39 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 const GEMINI_MODEL = 'gemini-2.5-flash';
 
-const GPS_PROMPT = `You are analyzing a Catapult Sports GPS match report PDF for a football/soccer team.
+const GPS_PROMPT = `You are analyzing a football/soccer GPS or physical performance match report PDF.
 
-Extract ALL player data from the tables. The report has:
-- Page 1: Main metrics table (Tot Dur, Tot Dist, High MP Effs Dist, High MP Effs, Meterage Per Minute, Acc #, Decel #, High Intensity Runs, Sprints Over 25 kph, Max Vel km/h)
-- Page 3: Detailed table (A + D Effs, High Intensity Runs, High Intensity 19.8-25 Tot Dist, High Intensity 19.8-25 Dist %, Sprints Over 25 kph, zone 6 Sprint Tot Dist, zone 6 Sprint Dist %, High MP Effs, High MP Effs Dist)
+This may be a Catapult Sports report, or any other GPS/tracking provider (e.g. club-specific reports with columns like Total Dist, High Intensity Dist, Sprint Dist, Max Speed, Accelerations, Decelerations, Time).
+
+Extract ALL player data from the tables. Different report formats may have different column names — map them to the standardized output fields below.
+
+Common column mappings:
+- "Tot Dur" / "Time (min)" / "Minutes" → totalDuration
+- "Tot Dist" / "Total Dist" / "Total Distance" → totalDistance (in meters)
+- "High MP Effs Dist" / "High Intensity Dist" → highMpEffsDist
+- "High MP Effs" / "High Intensity" → highMpEffs
+- "Meterage Per Minute" → meteragePerMinute (compute as totalDistance/totalDuration if not present)
+- "Acc #" / "Accelerations" → accelerations
+- "Decel #" / "Decelerations" → decelerations
+- "High Intensity Runs" → highIntensityRuns
+- "Sprints Over 25 kph" / "Sprint Dist" → sprints (count) / sprintDistTotal (distance in meters)
+- "Max Vel" / "Max Speed" / "Top Speed" → maxVelocity (in km/h)
 
 Stars (★) next to values mean the player was BEST on the team for that metric.
 
 Also extract:
 - matchTitle: The match title from header (e.g. "MNFC VS ASHDOD")
-- matchDate: The date from header in DD/MM/YYYY format
-- teamName: The team name (e.g. "MACCABI NETANYA FC")
-- teamAverageTotalDist: From "Average" row total distance
-- teamAverageMeteragePerMin: From "Average" row meterage per minute
-- teamAverageHighIntensityRuns: From "Average" row high intensity runs
-- teamAverageSprints: From "Average" row sprints
-- teamAverageMaxVelocity: From "Average" row max velocity
+- matchDate: The date from header in DD/MM/YYYY format. If multiple dates, use the most recent.
+- teamName: The team or club name
+- teamAverageTotalDist: From "Average" row total distance (0 if not available)
+- teamAverageMeteragePerMin: From "Average" row meterage per minute (0 if not available)
+- teamAverageHighIntensityRuns: From "Average" row high intensity runs (0 if not available)
+- teamAverageSprints: From "Average" row sprints (0 if not available)
+- teamAverageMaxVelocity: From "Average" row max velocity (0 if not available)
 
-For EACH player return:
+If the report has multiple matches per player (one row per match date), treat EACH ROW as a separate player entry with the same playerName but different dates. Use the row date as matchDate for each.
+
+For EACH player/row return:
 {
   "playerName": "Full Name",
   "totalDuration": 101,
@@ -46,15 +60,19 @@ For EACH player return:
   "hiDistPercent": 3,
   "sprintDistTotal": 92,
   "sprintDistPercent": 1,
-  "isStarTotalDist": true,
+  "isStarTotalDist": false,
   "isStarHighMpEffsDist": false,
   "isStarHighMpEffs": false,
   "isStarMeteragePerMin": false,
   "isStarAccelerations": false,
   "isStarHighIntensityRuns": false,
   "isStarSprints": false,
-  "isStarMaxVelocity": false
+  "isStarMaxVelocity": false,
+  "matchDate": "17/08/2025"
 }
+
+If the report has only one match date for all players, omit the per-player matchDate field.
+Set any field to 0 or false if the data is not available in the report.
 
 Return ONLY a JSON object:
 {
@@ -69,7 +87,7 @@ Return ONLY a JSON object:
   "players": [...]
 }
 
-IMPORTANT: Include ALL players from the report. Match page 1 and page 3 data by player name. Use integer values for distances and counts. Use decimal for velocities and percentages.
+IMPORTANT: Include ALL players/rows from the report. Use integer values for distances and counts. Use decimal for velocities and percentages.
 Return ONLY valid JSON. No markdown, no explanation.`;
 
 const SAFETY_SETTINGS = [
@@ -104,6 +122,8 @@ interface GpsPlayerRow {
   isStarHighIntensityRuns: boolean;
   isStarSprints: boolean;
   isStarMaxVelocity: boolean;
+  /** Per-row match date for multi-match reports (DD/MM/YYYY) */
+  matchDate?: string;
 }
 
 interface GpsReportResult {

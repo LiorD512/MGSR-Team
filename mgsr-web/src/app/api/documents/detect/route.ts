@@ -63,7 +63,8 @@ const SAFETY_SETTINGS = [
 ];
 
 /**
- * Check if a PDF buffer is a Catapult GPS report.
+ * Check if a PDF buffer is a GPS/physical performance report.
+ * Supports Catapult reports and generic GPS formats.
  * Returns the match date string (e.g. "03/01/2026") if detected, or null if not a GPS report.
  */
 async function detectGpsReport(buffer: Buffer): Promise<string | null> {
@@ -73,14 +74,23 @@ async function detectGpsReport(buffer: Buffer): Promise<string | null> {
   const metadataMarkers = ['catapultsports', 'athlete analytics', 'openfield'];
   const metadataCount = metadataMarkers.filter(m => lower.includes(m)).length;
 
-  const contentMarkers = [
+  const catapultMarkers = [
     'catapult', 'tot dur', 'tot dist', 'meterage per minute',
     'high intensity runs', 'sprints (over', 'sprints over',
     'max vel', 'high mp effs', 'acc #', 'decel #',
   ];
-  const contentCount = contentMarkers.filter(m => lower.includes(m)).length;
+  const catapultCount = catapultMarkers.filter(m => lower.includes(m)).length;
 
-  const isGps = metadataCount >= 2 || contentCount >= 4;
+  // Generic GPS/physical performance markers (broader formats)
+  const genericMarkers = [
+    'total dist', 'sprint dist', 'high intensity dist',
+    'max speed', 'accelerations', 'decelerations',
+    'time (min)', 'total distance', 'sprint distance',
+    'high speed run', 'high intensity', 'top speed',
+  ];
+  const genericCount = genericMarkers.filter(m => lower.includes(m)).length;
+
+  const isGps = metadataCount >= 2 || catapultCount >= 4 || genericCount >= 3;
 
   if (!isGps) {
     // Fallback: try pdfjs-dist text extraction for compressed streams
@@ -98,8 +108,9 @@ async function detectGpsReport(buffer: Buffer): Promise<string | null> {
       }
       await doc.destroy();
       const textLower = extractedText.toLowerCase();
-      const pdfCount = contentMarkers.filter(m => textLower.includes(m)).length;
-      if (pdfCount < 4) return null;
+      const pdfCatapultCount = catapultMarkers.filter(m => textLower.includes(m)).length;
+      const pdfGenericCount = genericMarkers.filter(m => textLower.includes(m)).length;
+      if (pdfCatapultCount < 4 && pdfGenericCount < 3) return null;
       // Extract date from text (DD/MM/YYYY)
       const dateMatch = extractedText.match(/(\d{2}\/\d{2}\/\d{4})/);
       return dateMatch?.[1] ?? '';
