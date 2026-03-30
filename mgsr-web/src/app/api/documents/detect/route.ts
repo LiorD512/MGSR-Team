@@ -56,7 +56,8 @@ If the document is a football/soccer GPS tracking report or physical performance
 - Club or team names with match dates
 - Any per-player physical performance stats from GPS tracking systems
 If isGpsData is true, also extract:
-- gpsMatchDate: the match date in DD/MM/YYYY format (use the most recent date if multiple)
+- gpsFirstMatchDate: the EARLIEST match date in DD/MM/YYYY format
+- gpsLastMatchDate: the LATEST/most recent match date in DD/MM/YYYY format
 
 RULES:
 - Never swap firstName and lastName
@@ -231,7 +232,8 @@ Return a JSON object with these fields:
   "nationality": string or null,
   "mandateExpiresAt": string or null (DD/MM/YYYY),
   "validLeagues": string[] or [],
-  "gpsMatchDate": string or null (DD/MM/YYYY)
+  "gpsFirstMatchDate": string or null (DD/MM/YYYY),
+  "gpsLastMatchDate": string or null (DD/MM/YYYY)
 }
 
 PRIORITY: A document can only be ONE type. Check in order: passport first, then mandate, then GPS data. Only one of isPassport/isMandate/isGpsData should be true.`;
@@ -346,10 +348,15 @@ PRIORITY: A document can only be ONE type. Check in order: passport first, then 
 
   // GPS data detected by Gemini vision (image-based PDFs that keyword scan missed)
   if (obj.isGpsData === true) {
-    const gpsDate = typeof obj.gpsMatchDate === 'string' ? obj.gpsMatchDate : '';
+    const firstDate = typeof obj.gpsFirstMatchDate === 'string' ? obj.gpsFirstMatchDate : '';
+    const lastDate = typeof obj.gpsLastMatchDate === 'string' ? obj.gpsLastMatchDate : '';
     const safeName = playerName ? sanitizeFileName(playerName) : '';
-    const safeDate = gpsDate ? gpsDate.replace(/\//g, '-') : '';
-    const nameParts = ['GPS', safeName, safeDate].filter(Boolean);
+    const safeFirst = firstDate ? firstDate.replace(/\//g, '-') : '';
+    const safeLast = lastDate ? lastDate.replace(/\//g, '-') : '';
+    const dateRange = safeFirst && safeLast && safeFirst !== safeLast
+      ? `${safeFirst}_to_${safeLast}`
+      : safeFirst;
+    const nameParts = ['GPS', safeName, dateRange].filter(Boolean);
     return {
       documentType: 'GPS_DATA',
       suggestedName: `${nameParts.join('_')}.pdf`,

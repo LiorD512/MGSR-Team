@@ -480,7 +480,8 @@ Return ONLY valid JSON: {"isMandate": boolean, "mandateExpiresAt": "DD/MM/YYYY" 
 
     data class GpsClassificationResult(
         val isGpsData: Boolean = false,
-        val matchDate: String? = null
+        val firstMatchDate: String? = null,
+        val lastMatchDate: String? = null
     )
 
     /**
@@ -504,12 +505,13 @@ Look for:
 
 If YES, extract:
 - isGpsData: true
-- gpsMatchDate: the match date in DD/MM/YYYY format (use the most recent date if multiple)
+- gpsFirstMatchDate: the EARLIEST match date in DD/MM/YYYY format
+- gpsLastMatchDate: the LATEST/most recent match date in DD/MM/YYYY format
 
 If NOT GPS data:
 - isGpsData: false
 
-Return ONLY valid JSON: {"isGpsData": boolean, "gpsMatchDate": "DD/MM/YYYY" or null}"""
+Return ONLY valid JSON: {"isGpsData": boolean, "gpsFirstMatchDate": "DD/MM/YYYY" or null, "gpsLastMatchDate": "DD/MM/YYYY" or null}"""
 
                 val content = Content.Builder()
                     .inlineData(bytes, effectiveMime)
@@ -519,9 +521,10 @@ Return ONLY valid JSON: {"isGpsData": boolean, "gpsMatchDate": "DD/MM/YYYY" or n
                 val jsonSchema = Schema.obj(
                     mapOf(
                         "isGpsData" to Schema.boolean(),
-                        "gpsMatchDate" to Schema.string()
+                        "gpsFirstMatchDate" to Schema.string(),
+                        "gpsLastMatchDate" to Schema.string()
                     ),
-                    optionalProperties = listOf("gpsMatchDate")
+                    optionalProperties = listOf("gpsFirstMatchDate", "gpsLastMatchDate")
                 )
 
                 val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
@@ -538,9 +541,10 @@ Return ONLY valid JSON: {"isGpsData": boolean, "gpsMatchDate": "DD/MM/YYYY" or n
                 val obj = JSONObject(json)
 
                 val isGps = obj.optBoolean("isGpsData", false)
-                val matchDate = obj.optString("gpsMatchDate", "").trim().takeIf { it.isNotBlank() }
-                Log.i(TAG, "Gemini GPS classify: isGpsData=$isGps, matchDate=$matchDate")
-                GpsClassificationResult(isGpsData = isGps, matchDate = matchDate)
+                val firstDate = obj.optString("gpsFirstMatchDate", "").trim().takeIf { it.isNotBlank() }
+                val lastDate = obj.optString("gpsLastMatchDate", "").trim().takeIf { it.isNotBlank() }
+                Log.i(TAG, "Gemini GPS classify: isGpsData=$isGps, first=$firstDate, last=$lastDate")
+                GpsClassificationResult(isGpsData = isGps, firstMatchDate = firstDate, lastMatchDate = lastDate)
             } catch (e: Exception) {
                 Log.w(TAG, "Gemini GPS classification failed", e)
                 GpsClassificationResult()

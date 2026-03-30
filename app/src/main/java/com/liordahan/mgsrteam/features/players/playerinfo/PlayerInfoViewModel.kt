@@ -970,9 +970,14 @@ class PlayerInfoViewModel(
                     }
                     if (com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.isGpsReport(pdfText)) {
                         Log.i(TAG, "GPS report detected — uploading as GPS_DATA and parsing")
-                        // Build name: GPS_PlayerName_DD-MM-YYYY.pdf
+                        // Build name: GPS_PlayerName_FirstDate_to_LastDate.pdf
                         val dateRegex = Regex("""\d{2}/\d{2}/\d{4}""")
-                        val dateStr = dateRegex.find(pdfText)?.value?.replace("/", "-") ?: ""
+                        val allDates = dateRegex.findAll(pdfText).map { it.value }.toList()
+                        val firstDate = allDates.firstOrNull()?.replace("/", "-") ?: ""
+                        val lastDate = allDates.lastOrNull()?.replace("/", "-") ?: ""
+                        val dateStr = if (firstDate.isNotEmpty() && lastDate.isNotEmpty() && firstDate != lastDate) {
+                            "${firstDate}_to_${lastDate}"
+                        } else firstDate
                         val safeName = player.fullName?.replace(Regex("[^a-zA-Z0-9 ]"), "")?.replace(" ", "_") ?: ""
                         val gpsName = listOf("GPS", safeName, dateStr).filter { it.isNotEmpty() }.joinToString("_") + ".pdf"
                         val bytesToUpload = withContext(Dispatchers.IO) { PdfFlattener.flatten(bytes) }

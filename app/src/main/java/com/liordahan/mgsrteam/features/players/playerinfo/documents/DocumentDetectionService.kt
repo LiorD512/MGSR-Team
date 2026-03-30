@@ -277,9 +277,13 @@ class DocumentDetectionService(
                 try {
                     val gpsResult = geminiPassportOcr.classifyAsGpsFromBytes(bytes, mimeType)
                     if (gpsResult.isGpsData) {
-                        val safeDate = gpsResult.matchDate?.replace("/", "-") ?: ""
+                        val safeFirst = gpsResult.firstMatchDate?.replace("/", "-") ?: ""
+                        val safeLast = gpsResult.lastMatchDate?.replace("/", "-") ?: ""
+                        val dateRange = if (safeFirst.isNotEmpty() && safeLast.isNotEmpty() && safeFirst != safeLast) {
+                            "${safeFirst}_to_${safeLast}"
+                        } else safeFirst
                         val safeName = sanitizeFileName(playerName ?: "")
-                        val nameParts = listOf("GPS", safeName, safeDate).filter { it.isNotEmpty() }
+                        val nameParts = listOf("GPS", safeName, dateRange).filter { it.isNotEmpty() }
                         return@withContext DetectionResult(
                             documentType = DocumentType.GPS_DATA,
                             suggestedName = "${nameParts.joinToString("_")}.pdf"
