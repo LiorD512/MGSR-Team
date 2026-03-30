@@ -27,11 +27,27 @@ object GpsPdfParser {
     private const val TAG = "GpsPdfParser"
     private const val MODEL_NAME = "gemini-2.5-flash"
 
-    private val GPS_PROMPT = """You are analyzing a football/soccer GPS or physical performance match report PDF.
+    private val GPS_PROMPT = """You are analyzing a football/soccer GPS or physical performance match report.
 
-This may be a Catapult Sports report, or any other GPS/tracking provider (e.g. club-specific reports with columns like Total Dist, High Intensity Dist, Sprint Dist, Max Speed, Accelerations, Decelerations, Time).
+This may be a Catapult Sports report, a club-specific report, or a VISUAL CHART/GRAPH showing player performance data.
 
-Extract ALL player data from the tables. Different report formats may have different column names — map them to the standardized output fields below.
+DATA SOURCES — extract from ANY of these:
+1. TABLES with columns (Total Dist, Sprint Dist, Max Speed, etc.)
+2. BAR CHARTS showing per-player distance with speed zone breakdowns (Walk, Jog, Run, High Speed Run, Sprint)
+3. ANNOTATED CHARTS where exact values are written above/beside bars
+4. Team comparison charts showing multiple players' metrics side by side
+5. Any other visual format showing player physical performance data
+
+For CHARTS: read the annotated numbers (e.g. "11374" above a bar). If no exact numbers, estimate from the Y-axis scale. The speed zone colors in charts map to: Walk = lowest speed, Jog, Run, High Speed Run, Sprint = highest speed.
+
+For bar charts with speed zone breakdowns, map the data as follows:
+- Total bar height / annotated total → totalDistance
+- Sprint zone (highest speed, often red) → sprintDistTotal
+- High Speed Run zone → hiDistTotal / highMpEffsDist
+- If an "AVG" value is shown → use it for teamAverageTotalDist
+- matchTitle: derive from team names (e.g. "FCSB vs UTA Arad")
+
+Extract ALL player data. Different report formats may have different column names — map them to the standardized output fields below.
 
 Common column mappings:
 - "Tot Dur" / "Time (min)" / "Minutes" → totalDuration
