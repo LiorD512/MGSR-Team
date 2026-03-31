@@ -15,9 +15,8 @@ object CountryNameTranslator {
     private val ENGLISH_TO_HEBREW: Map<String, String>
         get() = AppConfigManager.countryEnToHe
 
-    private val HEBREW_TO_ENGLISH: Map<String, String> by lazy {
-        ENGLISH_TO_HEBREW.entries.associate { (en, he) -> he to en }
-    }
+    private val HEBREW_TO_ENGLISH: Map<String, String>
+        get() = ENGLISH_TO_HEBREW.entries.associate { (en, he) -> he to en }
 
     /** Common Hebrew club/city names to English for Transfermarkt search. Longest phrases first. */
     private val HEBREW_CLUB_TO_ENGLISH = listOf(

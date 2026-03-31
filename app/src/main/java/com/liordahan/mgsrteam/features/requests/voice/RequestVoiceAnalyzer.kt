@@ -39,6 +39,7 @@ class RequestVoiceAnalyzer(
         val minAge: Int?,
         val maxAge: Int?,
         val ageDoesntMatter: Boolean,
+        val euOnly: Boolean,
         val notes: String?
     )
 
@@ -59,11 +60,12 @@ class RequestVoiceAnalyzer(
                                 "dominateFoot" to Schema.string(),
                                 "minAge" to Schema.integer(),
                                 "maxAge" to Schema.integer(),
+                                "euOnly" to Schema.boolean(),
                                 "notes" to Schema.string()
                             ),
                             optionalProperties = listOf(
                                 "clubName", "position", "salaryRange", "transferFee",
-                                "dominateFoot", "minAge", "maxAge", "notes"
+                                "dominateFoot", "minAge", "maxAge", "euOnly", "notes"
                             )
                         )
                     }
@@ -102,6 +104,7 @@ class RequestVoiceAnalyzer(
             - Transfer fee / market value budget — Hebrew terms: העברה (transfer), סכום העברה (transfer fee), טרנספר פי (transfer fee)
             - Preferred foot (left, right, or any)
             - Age range (min and max) if specified
+            - EU citizenship requirement — Hebrew terms: אירופאי (European), דרכון אירופאי (European passport), אזרחות אירופאית (EU citizenship), EU בלבד (EU only)
 
             OUTPUT RULES:
             - clubName: MUST be in ENGLISH. If the speaker says the club in Hebrew or any other language, translate to English. Examples: מכבי חיפה → Maccabi Haifa, הפועל תל אביב → Hapoel Tel Aviv, מכבי תל אביב → Maccabi Tel Aviv, בית"ר ירושלים → Beitar Jerusalem, הפועל באר שבע → Hapoel Be'er Sheva, מכבי פתח תקווה → Maccabi Petah Tikva. Transfermarkt search requires English names.
@@ -116,6 +119,7 @@ class RequestVoiceAnalyzer(
               When the speaker says העברה, סכום העברה, or טרנספר פי followed by a number/range, extract the corresponding option.
             - dominateFoot: "left", "right", or "any"
             - minAge, maxAge: integers 16-40, or null if not mentioned
+            - euOnly: true if the speaker mentions that only EU passport holders, European citizens, or players with EU nationality are wanted. Hebrew cues: אירופאי, דרכון אירופאי, אזרחות, EU. Default: false
             - notes: Keep in the ORIGINAL LANGUAGE. If the speaker speaks Hebrew, write notes in Hebrew. If English, write in English. Do not translate notes.
 
             If something is not mentioned, use null or empty string. Never invent data.
@@ -134,6 +138,7 @@ class RequestVoiceAnalyzer(
             minAge = null,
             maxAge = null,
             ageDoesntMatter = true,
+            euOnly = false,
             notes = null
         )
 
@@ -145,6 +150,7 @@ class RequestVoiceAnalyzer(
         val footRaw = obj.optString("dominateFoot", "").trim().takeIf { it.isNotBlank() }
         val minAge = obj.optInt("minAge", -1).takeIf { it in 16..40 }
         val maxAge = obj.optInt("maxAge", -1).takeIf { it in 16..40 }
+        val euOnly = obj.optBoolean("euOnly", false)
         val notes = obj.optString("notes", "").trim().takeIf { it.isNotBlank() }
 
         val salaryRange = salaryRaw?.let { matchSalaryRange(it) }
@@ -163,6 +169,7 @@ class RequestVoiceAnalyzer(
             minAge = minAge,
             maxAge = maxAge,
             ageDoesntMatter = minAge == null && maxAge == null,
+            euOnly = euOnly,
             notes = notes
         )
     }

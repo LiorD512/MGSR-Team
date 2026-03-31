@@ -354,8 +354,7 @@ fun RequestsScreen(
                             onValueChange = { searchQuery = it },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .height(44.dp),
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
                             placeholder = {
                                 Text(
                                     stringResource(R.string.requests_search_placeholder),
@@ -399,7 +398,7 @@ fun RequestsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             FilterChipItem(
@@ -2528,6 +2527,7 @@ private fun AddRequestBottomSheet(
     var reviewSalaryRange by remember { mutableStateOf<String?>(null) }
     var reviewTransferFee by remember { mutableStateOf<String?>(null) }
     var reviewNotes by remember { mutableStateOf<String?>(null) }
+    var reviewEuOnly by remember { mutableStateOf(false) }
 
     LaunchedEffect(isRecording) {
         if (!isRecording) return@LaunchedEffect
@@ -2614,7 +2614,10 @@ private fun AddRequestBottomSheet(
         }
         delay(250)
         isSearchingClubs = true
-        clubSearchResults = when (val result = clubSearch.getClubSearchResults(clubSearchQuery)) {
+        // Translate Hebrew to English for Transfermarkt API
+        val searchQuery = CountryNameTranslator.translateForTransfermarktSearch(clubSearchQuery)
+            .ifBlank { clubSearchQuery }
+        clubSearchResults = when (val result = clubSearch.getClubSearchResults(searchQuery)) {
             is TransfermarktResult.Success -> result.data
             is TransfermarktResult.Failed -> emptyList()
         }
@@ -2770,6 +2773,7 @@ private fun AddRequestBottomSheet(
                                                         reviewSalaryRange = data.salaryRange
                                                         reviewTransferFee = data.transferFee
                                                         reviewNotes = data.notes
+                                                        reviewEuOnly = data.euOnly
                                                         showVoiceReview = true
                                                     }
                                                 },
@@ -2822,6 +2826,7 @@ private fun AddRequestBottomSheet(
                             salaryRange = reviewSalaryRange,
                             transferFee = reviewTransferFee,
                             notes = reviewNotes,
+                            euOnly = reviewEuOnly,
                             isSaving = isSaving,
                             onConfirm = {
                                 val club = reviewClub ?: return@VoiceReviewContent
@@ -2839,7 +2844,7 @@ private fun AddRequestBottomSheet(
                                     reviewSalaryRange,
                                     reviewTransferFee,
                                     reviewNotes,
-                                    false
+                                    reviewEuOnly
                                 )
                             },
                             onEdit = {
@@ -2853,6 +2858,7 @@ private fun AddRequestBottomSheet(
                                 selectedDominateFoot = reviewDominateFoot ?: DominateFootOptions.ANY
                                 selectedSalaryRange = reviewSalaryRange
                                 selectedTransferFee = reviewTransferFee
+                                euOnly = reviewEuOnly
                                 notes = reviewNotes ?: ""
                                 showVoiceReview = false
                                 showChoiceScreen = false
@@ -3196,7 +3202,7 @@ private fun AddRequestStep2PositionContent(
             style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
             modifier = Modifier.padding(bottom = 12.dp)
         )
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             positions.chunked(2).forEach { rowItems ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -3209,13 +3215,15 @@ private fun AddRequestStep2PositionContent(
                         Text(
                             text = displayName,
                             style = regularTextStyle(if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.textSecondary, 12.sp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(if (isSelected) PlatformColors.palette.accent.copy(alpha = 0.2f) else Color.Transparent)
                                 .border(1.dp, if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
                                 .clickWithNoRipple { onSelectPosition(posName) }
-                                .padding(horizontal = 12.dp, vertical = 12.dp)
+                                .padding(horizontal = 10.dp, vertical = 14.dp)
                         )
                     }
                     if (rowItems.size == 1) {
@@ -3511,6 +3519,7 @@ private fun VoiceReviewContent(
     salaryRange: String?,
     transferFee: String?,
     notes: String?,
+    euOnly: Boolean,
     isSaving: Boolean,
     onConfirm: () -> Unit,
     onEdit: () -> Unit
@@ -3570,10 +3579,21 @@ private fun VoiceReviewContent(
                             style = boldTextStyle(PlatformColors.palette.textPrimary, 15.sp)
                         )
                         if (club?.clubCountry != null) {
-                            Text(
-                                text = "${club.clubCountryFlag ?: ""} ${club.clubCountry}".trim(),
-                                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (club.clubCountryFlag != null) {
+                                    AsyncImage(
+                                        model = club.clubCountryFlag,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                }
+                                Text(
+                                    text = club.clubCountry ?: "",
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                )
+                            }
                         }
                     }
                 }
@@ -3589,10 +3609,14 @@ private fun VoiceReviewContent(
                     value = position?.let { PositionDisplayNames.getDisplayName(context, it) + " ($it)" }
                 )
 
-                // Age
+                // Age — normalize so smaller number is always first
                 val ageText = when {
                     ageDoesntMatter -> stringResource(R.string.requests_foot_any)
-                    minAge != null && maxAge != null -> "$minAge – $maxAge"
+                    minAge != null && maxAge != null -> {
+                        val lo = minOf(minAge, maxAge)
+                        val hi = maxOf(minAge, maxAge)
+                        "$lo – $hi"
+                    }
                     minAge != null -> "$minAge+"
                     maxAge != null -> "≤$maxAge"
                     else -> null
@@ -3625,6 +3649,19 @@ private fun VoiceReviewContent(
                     label = stringResource(R.string.requests_fee_label_short),
                     value = transferFee?.let { "${it}K" }
                 )
+
+                // EU Only
+                if (euOnly) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.requests_eu_only_badge),
+                        style = boldTextStyle(Color.White, 10.sp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF1565C0))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
 
                 // Contact
                 if (contact != null) {

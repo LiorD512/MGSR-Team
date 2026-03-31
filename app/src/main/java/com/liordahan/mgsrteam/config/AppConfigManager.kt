@@ -155,8 +155,7 @@ object AppConfigManager {
         "United States of America" to "ארצות הברית", "USA" to "ארצות הברית",
         "Uruguay" to "אורוגוואי", "Uzbekistan" to "אוזבקיסטן",
         "Venezuela" to "ונצואלה", "Vietnam" to "וייטנאם", "Wales" to "ויילס",
-        "Yemen" to "תימן", "Zambia" to "זמביה", "Zimbabwe" to "זימבבואה",
-        "ישראל" to "ישראל"
+        "Yemen" to "תימן", "Zambia" to "זמביה", "Zimbabwe" to "זימבבואה"
     )
 
     private val FALLBACK_TASK_TEMPLATES = TaskTemplatesConfig(

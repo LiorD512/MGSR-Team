@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Structure: Position -> Country -> List of Requests (clubs)
@@ -339,7 +340,14 @@ class RequestsViewModel(
                 euOnly = euOnly
             )
             requestsRepository.addRequest(request).fold(
-                onSuccess = { _addRequestMessage.value = "Request added" },
+                onSuccess = {
+                    _addRequestMessage.value = "Request added"
+                    // Wait for the UI state to reflect the new request
+                    val currentCount = requestsState.value.requests.size
+                    withTimeoutOrNull(5000L) {
+                        requestsState.first { it.requests.size > currentCount }
+                    }
+                },
                 onFailure = { _addRequestError.value = it.message ?: "Failed to add request" }
             )
             _isSavingRequest.value = false
@@ -385,7 +393,15 @@ class RequestsViewModel(
                 euOnly = euOnly
             )
             requestsRepository.updateRequest(updatedRequest).fold(
-                onSuccess = { _addRequestMessage.value = "Request updated" },
+                onSuccess = {
+                    _addRequestMessage.value = "Request updated"
+                    // Wait for the UI state to reflect the update
+                    withTimeoutOrNull(5000L) {
+                        requestsState.first { state ->
+                            state.requests.any { it.id == existingRequest.id && it.position == updatedRequest.position && it.clubName == updatedRequest.clubName }
+                        }
+                    }
+                },
                 onFailure = { _addRequestError.value = it.message ?: "Failed to update request" }
             )
             _isSavingRequest.value = false
@@ -396,7 +412,16 @@ class RequestsViewModel(
         viewModelScope.launch {
             _isDeletingRequest.value = true
             try {
+                val deleteId = request.id
                 requestsRepository.deleteRequest(request)
+                // Wait for the UI state to reflect the removal
+                if (deleteId != null) {
+                    withTimeoutOrNull(5000L) {
+                        requestsState.first { state ->
+                            state.requests.none { it.id == deleteId }
+                        }
+                    }
+                }
             } finally {
                 _isDeletingRequest.value = false
             }
