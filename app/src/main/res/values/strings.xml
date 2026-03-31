@@ -779,10 +779,16 @@
     <string name="requests_tap_to_stop">Tap to stop</string>
     <string name="requests_analyzing">Analyzing your request</string>
     <string name="requests_analyzing_subtitle">Extracting club, position, requirements</string>
+    <string name="requests_saving">Saving…</string>
     <string name="requests_voice_error">Could not analyze recording. Try again.</string>
     <string name="requests_voice_missing_club_position">Could not detect club or position. Please try again or fill manually.</string>
     <string name="requests_fill_manually">Fill manually</string>
     <string name="requests_or">or</string>
+    <string name="requests_voice_review_title">Here\'s what I understood</string>
+    <string name="requests_voice_review_subtitle">Review the details below before saving</string>
+    <string name="requests_voice_review_confirm">Confirm</string>
+    <string name="requests_voice_review_edit">Edit</string>
+    <string name="requests_voice_review_contact">Contact</string>
 
     <!-- Add Request stepped flow -->
     <string name="requests_step_of">Step %1$d of 4</string>

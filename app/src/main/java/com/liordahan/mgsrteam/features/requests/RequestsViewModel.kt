@@ -291,6 +291,14 @@ class RequestsViewModel(
         return false
     }
 
+    /** Ensure the lower age value is min and the higher is max. */
+    private fun normalizeAgeRange(minAge: Int?, maxAge: Int?): Pair<Int?, Int?> {
+        val a = minAge?.takeIf { it > 0 }
+        val b = maxAge?.takeIf { it > 0 }
+        if (a != null && b != null && a > b) return b to a
+        return a to b
+    }
+
     override fun addRequest(
         club: ClubSearchModel,
         position: String,
@@ -320,8 +328,8 @@ class RequestsViewModel(
                 contactPhoneNumber = contactPhoneNumber,
                 position = position,
                 notes = notes?.takeIf { it.isNotBlank() },
-                minAge = minAge?.takeIf { it > 0 },
-                maxAge = maxAge?.takeIf { it > 0 },
+                minAge = normalizeAgeRange(minAge, maxAge).first,
+                maxAge = normalizeAgeRange(minAge, maxAge).second,
                 ageDoesntMatter = ageDoesntMatter,
                 dominateFoot = dominateFoot?.takeIf { it.isNotBlank() },
                 salaryRange = salaryRange?.takeIf { it.isNotBlank() },
@@ -368,8 +376,8 @@ class RequestsViewModel(
                 contactPhoneNumber = contactPhoneNumber,
                 position = position,
                 notes = notes?.takeIf { it.isNotBlank() },
-                minAge = minAge?.takeIf { it > 0 },
-                maxAge = maxAge?.takeIf { it > 0 },
+                minAge = normalizeAgeRange(minAge, maxAge).first,
+                maxAge = normalizeAgeRange(minAge, maxAge).second,
                 ageDoesntMatter = ageDoesntMatter,
                 dominateFoot = dominateFoot?.takeIf { it.isNotBlank() },
                 salaryRange = salaryRange?.takeIf { it.isNotBlank() },

@@ -524,10 +524,16 @@
     <string name="requests_tap_to_stop">הקש לעצירה</string>
     <string name="requests_analyzing">מנתח את הבקשה שלך</string>
     <string name="requests_analyzing_subtitle">מחלץ מועדון, עמדה, דרישות</string>
+    <string name="requests_saving">שומר…</string>
     <string name="requests_voice_error">לא ניתן לנתח את ההקלטה. נסה שוב.</string>
     <string name="requests_voice_missing_club_position">לא זוהה מועדון או עמדה. נסה שוב או מלא ידנית.</string>
     <string name="requests_fill_manually">מלא ידנית</string>
     <string name="requests_or">או</string>
+    <string name="requests_voice_review_title">הנה מה שהבנתי</string>
+    <string name="requests_voice_review_subtitle">בדוק את הפרטים לפני השמירה</string>
+    <string name="requests_voice_review_confirm">אישור</string>
+    <string name="requests_voice_review_edit">עריכה</string>
+    <string name="requests_voice_review_contact">איש קשר</string>
 
     <!-- Add Request stepped flow -->
     <string name="requests_step_of">שלב %1$d מתוך 4</string>

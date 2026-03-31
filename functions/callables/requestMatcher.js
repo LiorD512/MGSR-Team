@@ -61,8 +61,12 @@ function matchesPosition(player, requestPosition) {
 
 function matchesAge(player, request) {
   if (request.ageDoesntMatter === true) return true;
-  const minAge = request.minAge || 0;
-  const maxAge = request.maxAge || 999;
+  let minAge = request.minAge || 0;
+  let maxAge = request.maxAge || 999;
+  // Normalize: ensure min ≤ max in case values were swapped
+  if (minAge > 0 && maxAge < 999 && minAge > maxAge) {
+    [minAge, maxAge] = [maxAge, minAge];
+  }
   if (minAge <= 0 && maxAge >= 999) return true;
   const playerAge = player.age ? parseInt(player.age, 10) : undefined;
   if (playerAge == null || isNaN(playerAge)) return true;

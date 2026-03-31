@@ -117,6 +117,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
@@ -535,12 +536,14 @@ fun RequestsScreen(
             if (showAddSheet || requestToEdit != null) {
                 val isSavingRequest by viewModel.isSavingRequest.collectAsStateWithLifecycle()
 
-                // Auto-dismiss sheet once save operation completes
-                LaunchedEffect(isSavingRequest, state.addRequestMessage, state.addRequestError) {
-                    if (!isSavingRequest && (state.addRequestMessage != null || state.addRequestError != null)) {
+                // Auto-dismiss sheet once save operation completes (true → false transition)
+                var wasSaving by remember { mutableStateOf(false) }
+                LaunchedEffect(isSavingRequest) {
+                    if (wasSaving && !isSavingRequest) {
                         showAddSheet = false
                         requestToEdit = null
                     }
+                    wasSaving = isSavingRequest
                 }
 
                 AddRequestBottomSheet(
@@ -593,8 +596,19 @@ fun RequestsScreen(
             }
 
             requestToDelete?.let { req ->
+                val isDeletingRequest by viewModel.isDeletingRequest.collectAsStateWithLifecycle()
+
+                // Auto-close dialog once delete completes (true → false transition)
+                var wasDeleting by remember { mutableStateOf(false) }
+                LaunchedEffect(isDeletingRequest) {
+                    if (wasDeleting && !isDeletingRequest) {
+                        requestToDelete = null
+                    }
+                    wasDeleting = isDeletingRequest
+                }
+
                 AlertDialog(
-                    onDismissRequest = { requestToDelete = null },
+                    onDismissRequest = { if (!isDeletingRequest) requestToDelete = null },
                     title = { Text(stringResource(R.string.requests_delete_title), style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)) },
                     text = {
                         Text(
@@ -603,12 +617,8 @@ fun RequestsScreen(
                         )
                     },
                     confirmButton = {
-                        val isDeletingRequest by viewModel.isDeletingRequest.collectAsStateWithLifecycle()
                         Button(
-                            onClick = {
-                                viewModel.deleteRequest(req)
-                                requestToDelete = null
-                            },
+                            onClick = { viewModel.deleteRequest(req) },
                             enabled = !isDeletingRequest,
                             colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.red)
                         ) {
@@ -616,7 +626,7 @@ fun RequestsScreen(
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp,
-                                    color = PlatformColors.palette.textPrimary
+                                    color = Color.White
                                 )
                             } else {
                                 Text(stringResource(R.string.player_info_delete), style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp))
@@ -624,7 +634,10 @@ fun RequestsScreen(
                         }
                     },
                     dismissButton = {
-                        TextButton(onClick = { requestToDelete = null }) {
+                        TextButton(
+                            onClick = { requestToDelete = null },
+                            enabled = !isDeletingRequest
+                        ) {
                             Text(stringResource(R.string.cancel), style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp))
                         }
                     },
@@ -2503,6 +2516,19 @@ private fun AddRequestBottomSheet(
     var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var recordingFile by remember { mutableStateOf<java.io.File?>(null) }
 
+    // Voice review state — holds extracted data for user confirmation before saving
+    var showVoiceReview by remember { mutableStateOf(false) }
+    var reviewClub by remember { mutableStateOf<ClubSearchModel?>(null) }
+    var reviewPosition by remember { mutableStateOf<String?>(null) }
+    var reviewContact by remember { mutableStateOf<Contact?>(null) }
+    var reviewMinAge by remember { mutableStateOf<Int?>(null) }
+    var reviewMaxAge by remember { mutableStateOf<Int?>(null) }
+    var reviewAgeDoesntMatter by remember { mutableStateOf(true) }
+    var reviewDominateFoot by remember { mutableStateOf<String?>(null) }
+    var reviewSalaryRange by remember { mutableStateOf<String?>(null) }
+    var reviewTransferFee by remember { mutableStateOf<String?>(null) }
+    var reviewNotes by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(isRecording) {
         if (!isRecording) return@LaunchedEffect
         recordingDuration = 0
@@ -2639,6 +2665,7 @@ private fun AddRequestBottomSheet(
         )
     ) {
         DarkSystemBarsForBottomSheet()
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2648,6 +2675,7 @@ private fun AddRequestBottomSheet(
                 .navigationBarsPadding()
                 .nestedScroll(rememberNestedScrollInteropConnection())
                 .padding(bottom = 48.dp)
+                .then(if (isSaving) Modifier.blur(16.dp) else Modifier)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2681,7 +2709,7 @@ private fun AddRequestBottomSheet(
             }
 
             when {
-                showChoiceScreen && !isRecording && !isAnalyzing -> {
+                showChoiceScreen && !isRecording && !isAnalyzing && !showVoiceReview -> {
                     Column(modifier = Modifier.weight(1f, fill = true)) {
                         AddRequestChoiceContent(
                         onRecordClick = {
@@ -2731,21 +2759,18 @@ private fun AddRequestBottomSheet(
                                                         val matchingContact = contacts.firstOrNull { c ->
                                                             c.clubName?.equals(club.clubName, ignoreCase = true) == true
                                                         }
-                                                        onSave(
-                                                            club,
-                                                            position,
-                                                            matchingContact?.id,
-                                                            matchingContact?.name,
-                                                            matchingContact?.phoneNumber,
-                                                            data.minAge,
-                                                            data.maxAge,
-                                                            data.ageDoesntMatter,
-                                                            data.dominateFoot?.takeIf { it != DominateFootOptions.ANY },
-                                                            data.salaryRange,
-                                                            data.transferFee,
-                                                            data.notes,
-                                                            false
-                                                        )
+                                                        // Populate review state instead of saving directly
+                                                        reviewClub = club
+                                                        reviewPosition = position
+                                                        reviewContact = matchingContact
+                                                        reviewMinAge = data.minAge
+                                                        reviewMaxAge = data.maxAge
+                                                        reviewAgeDoesntMatter = data.ageDoesntMatter
+                                                        reviewDominateFoot = data.dominateFoot
+                                                        reviewSalaryRange = data.salaryRange
+                                                        reviewTransferFee = data.transferFee
+                                                        reviewNotes = data.notes
+                                                        showVoiceReview = true
                                                     }
                                                 },
                                                 onFailure = {
@@ -2781,6 +2806,58 @@ private fun AddRequestBottomSheet(
                         Text(
                             text = stringResource(R.string.requests_analyzing_subtitle),
                             style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
+                        )
+                    }
+                }
+                showVoiceReview -> {
+                    Column(modifier = Modifier.weight(1f, fill = true)) {
+                        VoiceReviewContent(
+                            club = reviewClub,
+                            position = reviewPosition,
+                            contact = reviewContact,
+                            minAge = reviewMinAge,
+                            maxAge = reviewMaxAge,
+                            ageDoesntMatter = reviewAgeDoesntMatter,
+                            dominateFoot = reviewDominateFoot,
+                            salaryRange = reviewSalaryRange,
+                            transferFee = reviewTransferFee,
+                            notes = reviewNotes,
+                            isSaving = isSaving,
+                            onConfirm = {
+                                val club = reviewClub ?: return@VoiceReviewContent
+                                val pos = reviewPosition ?: return@VoiceReviewContent
+                                onSave(
+                                    club,
+                                    pos,
+                                    reviewContact?.id,
+                                    reviewContact?.name,
+                                    reviewContact?.phoneNumber,
+                                    reviewMinAge,
+                                    reviewMaxAge,
+                                    reviewAgeDoesntMatter,
+                                    reviewDominateFoot?.takeIf { it != DominateFootOptions.ANY },
+                                    reviewSalaryRange,
+                                    reviewTransferFee,
+                                    reviewNotes,
+                                    false
+                                )
+                            },
+                            onEdit = {
+                                // Transition to manual form pre-filled with voice data
+                                selectedClub = reviewClub
+                                selectedPosition = reviewPosition
+                                selectedContact = reviewContact
+                                minAge = reviewMinAge?.toString() ?: ""
+                                maxAge = reviewMaxAge?.toString() ?: ""
+                                ageDoesntMatter = reviewAgeDoesntMatter
+                                selectedDominateFoot = reviewDominateFoot ?: DominateFootOptions.ANY
+                                selectedSalaryRange = reviewSalaryRange
+                                selectedTransferFee = reviewTransferFee
+                                notes = reviewNotes ?: ""
+                                showVoiceReview = false
+                                showChoiceScreen = false
+                                currentStep = 0
+                            }
                         )
                     }
                 }
@@ -2881,7 +2958,7 @@ private fun AddRequestBottomSheet(
                 }
             }
 
-            if (!showChoiceScreen && !isRecording && !isAnalyzing && currentStep < 3) {
+            if (!showChoiceScreen && !isRecording && !isAnalyzing && !showVoiceReview && currentStep < 3) {
                 Spacer(Modifier.height(24.dp))
                 Button(
                     onClick = {
@@ -2908,6 +2985,30 @@ private fun AddRequestBottomSheet(
                 }
             }
         }
+
+        // Saving overlay — blur + spinner
+        if (isSaving) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(PlatformColors.palette.card.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        color = PlatformColors.palette.accent,
+                        modifier = Modifier.size(36.dp),
+                        strokeWidth = 3.dp
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.requests_saving),
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
+                    )
+                }
+            }
+        }
+        } // Box end
     }
 }
 
@@ -3395,6 +3496,230 @@ private fun AddRequestStep4NotesContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun VoiceReviewContent(
+    club: ClubSearchModel?,
+    position: String?,
+    contact: Contact?,
+    minAge: Int?,
+    maxAge: Int?,
+    ageDoesntMatter: Boolean,
+    dominateFoot: String?,
+    salaryRange: String?,
+    transferFee: String?,
+    notes: String?,
+    isSaving: Boolean,
+    onConfirm: () -> Unit,
+    onEdit: () -> Unit
+) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        // Header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 16.dp)
+        ) {
+            Icon(
+                Icons.Default.Check,
+                contentDescription = null,
+                tint = PlatformColors.palette.accent,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.requests_voice_review_title),
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
+            )
+        }
+        Text(
+            text = stringResource(R.string.requests_voice_review_subtitle),
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Club row
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.background)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                // Club
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (club?.clubLogo != null) {
+                        AsyncImage(
+                            model = club.clubLogo,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    Column {
+                        Text(
+                            text = club?.clubName ?: "--",
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 15.sp)
+                        )
+                        if (club?.clubCountry != null) {
+                            Text(
+                                text = "${club.clubCountryFlag ?: ""} ${club.clubCountry}".trim(),
+                                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 10.dp),
+                    color = PlatformColors.palette.cardBorder
+                )
+
+                // Position
+                ReviewRow(
+                    label = stringResource(R.string.requests_step_position),
+                    value = position?.let { PositionDisplayNames.getDisplayName(context, it) + " ($it)" }
+                )
+
+                // Age
+                val ageText = when {
+                    ageDoesntMatter -> stringResource(R.string.requests_foot_any)
+                    minAge != null && maxAge != null -> "$minAge – $maxAge"
+                    minAge != null -> "$minAge+"
+                    maxAge != null -> "≤$maxAge"
+                    else -> null
+                }
+                ReviewRow(
+                    label = stringResource(R.string.requests_age_label_short),
+                    value = ageText
+                )
+
+                // Foot
+                val footText = when (dominateFoot) {
+                    DominateFootOptions.LEFT -> stringResource(R.string.requests_foot_left)
+                    DominateFootOptions.RIGHT -> stringResource(R.string.requests_foot_right)
+                    DominateFootOptions.ANY -> stringResource(R.string.requests_foot_any)
+                    else -> null
+                }
+                ReviewRow(
+                    label = stringResource(R.string.requests_foot_label_short),
+                    value = footText
+                )
+
+                // Salary
+                ReviewRow(
+                    label = stringResource(R.string.requests_salary_label_short),
+                    value = salaryRange?.let { "${it}K" }
+                )
+
+                // Transfer fee
+                ReviewRow(
+                    label = stringResource(R.string.requests_fee_label_short),
+                    value = transferFee?.let { "${it}K" }
+                )
+
+                // Contact
+                if (contact != null) {
+                    ReviewRow(
+                        label = stringResource(R.string.requests_voice_review_contact),
+                        value = contact.name
+                    )
+                }
+
+                // Notes
+                if (!notes.isNullOrBlank()) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        color = PlatformColors.palette.cardBorder
+                    )
+                    Text(
+                        text = stringResource(R.string.requests_step_notes),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    Text(
+                        text = notes,
+                        style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Action buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Button(
+                onClick = onEdit,
+                enabled = !isSaving,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PlatformColors.palette.background,
+                    contentColor = PlatformColors.palette.textPrimary
+                ),
+                border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+            ) {
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.requests_voice_review_edit), style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp))
+            }
+            Button(
+                onClick = onConfirm,
+                enabled = !isSaving,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PlatformColors.palette.accent,
+                    disabledContainerColor = PlatformColors.palette.accent.copy(alpha = 0.6f)
+                )
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.requests_voice_review_confirm), style = boldTextStyle(Color.White, 14.sp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewRow(label: String, value: String?) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value ?: "--",
+            style = boldTextStyle(PlatformColors.palette.textPrimary, 13.sp),
+            textAlign = TextAlign.End
+        )
     }
 }
 
