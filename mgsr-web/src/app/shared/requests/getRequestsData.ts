@@ -17,6 +17,7 @@ export interface SharedRequest {
   notes?: string;
   euOnly?: boolean;
   createdAt?: number;
+  status?: string;
 }
 
 export interface RequestsPageData {
@@ -46,30 +47,32 @@ export async function getRequestsData(
     const collection = CLUB_REQUESTS_COLLECTIONS[platform] || 'ClubRequests';
     const snapshot = await db
       .collection(collection)
-      .where('status', '==', 'pending')
-      .orderBy('createdAt', 'desc')
       .get();
 
-    const requests: SharedRequest[] = snapshot.docs.map((doc) => {
-      const d = doc.data();
-      return {
-        id: doc.id,
-        clubName: d.clubName,
-        clubLogo: d.clubLogo,
-        clubCountry: d.clubCountry,
-        clubCountryFlag: d.clubCountryFlag,
-        position: d.position,
-        minAge: d.minAge,
-        maxAge: d.maxAge,
-        ageDoesntMatter: d.ageDoesntMatter,
-        salaryRange: d.salaryRange,
+    const requests: SharedRequest[] = snapshot.docs
+      .map((doc) => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          clubName: d.clubName,
+          clubLogo: d.clubLogo,
+          clubCountry: d.clubCountry,
+          clubCountryFlag: d.clubCountryFlag,
+          position: d.position,
+          minAge: d.minAge,
+          maxAge: d.maxAge,
+          ageDoesntMatter: d.ageDoesntMatter,
+          salaryRange: d.salaryRange,
         transferFee: d.transferFee,
         dominateFoot: d.dominateFoot,
         notes: d.notes,
         euOnly: d.euOnly,
         createdAt: d.createdAt,
+        status: d.status,
       };
-    });
+    })
+    .filter((r) => !r.status || r.status === 'pending')
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
     const grouped: Record<string, Record<string, SharedRequest[]>> = {};
     const positionCounts: Record<string, number> = {};
