@@ -74,6 +74,9 @@ export async function getRequestsData(
     .filter((r) => !r.status || r.status === 'pending')
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
+    // Translate Hebrew notes to English via Gemini
+    await translateNotes(requests);
+
     const grouped: Record<string, Record<string, SharedRequest[]>> = {};
     const positionCounts: Record<string, number> = {};
     const countryCounts: Record<string, number> = {};
@@ -120,5 +123,53 @@ export async function getRequestsData(
   } catch (e) {
     console.error('[getRequestsData]', e);
     return null;
+  }
+}
+
+/** Check if text contains Hebrew characters */
+function hasHebrew(text: string): boolean {
+  return /[\u0590-\u05FF]/.test(text);
+}
+
+/**
+ * Translate Hebrew notes to English using Gemini.
+ * Mutates requests in-place for simplicity.
+ */
+async function translateNotes(requests: SharedRequest[]): Promise<void> {
+  const toTranslate = requests.filter((r) => r.notes && hasHebrew(r.notes));
+  if (toTranslate.length === 0) return;
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return;
+
+  try {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
+    });
+
+    const numbered = toTranslate.map((r, i) => ({ idx: i + 1, req: r }));
+    const prompt = [
+      'Translate the following football/soccer recruitment notes from Hebrew to English.',
+      'Keep it concise and professional. Football terminology should be accurate.',
+      'Return a JSON object where keys are the numbers and values are the English translations.',
+      '',
+      ...numbered.map(({ idx, req }) => `${idx}: ${req.notes}`),
+    ].join('\n');
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text()?.trim();
+    if (!text) return;
+
+    const parsed = JSON.parse(text) as Record<string, string>;
+    for (const { idx, req } of numbered) {
+      const translated = parsed[String(idx)];
+      if (translated) req.notes = translated;
+    }
+  } catch (e) {
+    console.error('[translateNotes]', e);
+    // Keep original notes on failure
   }
 }

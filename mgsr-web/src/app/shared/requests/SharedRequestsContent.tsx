@@ -230,6 +230,7 @@ export default function SharedRequestsContent({
   if (!data || data.totalCount === 0) {
     return (
       <div
+        dir="ltr"
         className="min-h-screen flex items-center justify-center"
         style={{ background: 'linear-gradient(180deg, #060810 0%, #0C0F17 100%)' }}
       >
@@ -339,6 +340,7 @@ export default function SharedRequestsContent({
       `}</style>
 
       <div
+        dir="ltr"
         className="page-bg min-h-screen relative overflow-hidden"
         style={{
           background: 'linear-gradient(170deg, #060810 0%, #0A0D15 30%, #0E1219 60%, #080B12 100%)',
