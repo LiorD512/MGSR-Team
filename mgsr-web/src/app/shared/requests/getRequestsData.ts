@@ -140,33 +140,43 @@ async function translateNotes(requests: SharedRequest[]): Promise<void> {
   if (toTranslate.length === 0) return;
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return;
+  if (!apiKey) {
+    console.warn('[translateNotes] GEMINI_API_KEY not set, skipping translation');
+    return;
+  }
 
   try {
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.0-flash',
-      generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
+      generationConfig: { temperature: 0.1 },
     });
 
-    const numbered = toTranslate.map((r, i) => ({ idx: i + 1, req: r }));
-    const prompt = [
-      'Translate the following football/soccer recruitment notes from Hebrew to English.',
-      'Keep it concise and professional. Football terminology should be accurate.',
-      'Return a JSON object where keys are the numbers and values are the English translations.',
-      '',
-      ...numbered.map(({ idx, req }) => `${idx}: ${req.notes}`),
-    ].join('\n');
+    // Batch in groups of 20 to avoid hitting token limits
+    const batchSize = 20;
+    for (let i = 0; i < toTranslate.length; i += batchSize) {
+      const batch = toTranslate.slice(i, i + batchSize);
+      const numbered = batch.map((r, j) => ({ idx: j + 1, req: r }));
+      const prompt = [
+        'Translate the following football/soccer recruitment notes from Hebrew to English.',
+        'Keep it concise and professional. Football terminology should be accurate.',
+        'Return ONLY a valid JSON object where keys are the numbers (as strings) and values are the English translations. No markdown, no code fences.',
+        '',
+        ...numbered.map(({ idx, req }) => `${idx}: ${req.notes}`),
+      ].join('\n');
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text()?.trim();
-    if (!text) return;
+      const result = await model.generateContent(prompt);
+      let text = result.response.text()?.trim() || '';
+      // Strip markdown code fences if present
+      text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+      if (!text) continue;
 
-    const parsed = JSON.parse(text) as Record<string, string>;
-    for (const { idx, req } of numbered) {
-      const translated = parsed[String(idx)];
-      if (translated) req.notes = translated;
+      const parsed = JSON.parse(text) as Record<string, string>;
+      for (const { idx, req } of numbered) {
+        const translated = parsed[String(idx)];
+        if (translated) req.notes = translated;
+      }
     }
   } catch (e) {
     console.error('[translateNotes]', e);
