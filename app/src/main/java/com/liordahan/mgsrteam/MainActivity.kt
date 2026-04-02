@@ -165,6 +165,9 @@ class MainActivity : AppCompatActivity() {
                     viewModel.setPendingDeepLinkPlayerId(playerId)
                 }
                 intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
+                intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_PLAYER_ID)
+                intent.removeExtra("playerId")
+                intent.removeExtra("type")
                 return
             }
         }
