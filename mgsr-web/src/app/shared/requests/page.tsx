@@ -1,9 +1,8 @@
-import { headers } from 'next/headers';
 import { getRequestsData } from './getRequestsData';
 import SharedRequestsContent from './SharedRequestsContent';
 import type { Platform } from '@/contexts/PlatformContext';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60; // Cache page, refresh every 60s in background
 
 function getBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
@@ -38,15 +37,7 @@ export async function generateMetadata({
   const title = `${count} Active Recruitment Requests — MGSR Team`;
   const desc = `${count} open positions across ${positions} roles in ${countries} countries. ${plLabel} recruitment by MGSR Team.`;
 
-  let baseUrl = getBaseUrl();
-  try {
-    const h = await headers();
-    const host = h.get('x-forwarded-host') || h.get('host');
-    const proto = h.get('x-forwarded-proto') || 'https';
-    if (host && !host.includes('localhost')) {
-      baseUrl = `${proto === 'https' ? 'https' : 'http'}://${host}`;
-    }
-  } catch {}
+  const baseUrl = getBaseUrl();
 
   const url = `${baseUrl}/shared/requests?platform=${platform}`;
   const imageUrl = `${baseUrl}/shared/requests/opengraph-image`;
