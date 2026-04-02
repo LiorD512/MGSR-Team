@@ -39,13 +39,16 @@ export default async function OpenGraphImage() {
           background: `linear-gradient(135deg, ${BG} 0%, #0A0D16 40%, #0E1119 100%)`,
         }}
       >
-        {/* Diagonal line texture */}
+        {/* Subtle accent line */}
         <div
           style={{
             position: 'absolute',
-            inset: 0,
-            opacity: 0.03,
-            backgroundImage: `repeating-linear-gradient(-45deg, transparent, transparent 55px, ${GOLD} 55px, ${GOLD} 56px)`,
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: 3,
+            background: `linear-gradient(90deg, transparent, ${GOLD}, transparent)`,
+            opacity: 0.4,
           }}
         />
 
