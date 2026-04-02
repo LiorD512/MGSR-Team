@@ -78,7 +78,7 @@
     <string name="players_filter_by_contract">לפי חוזה</string>
     <string name="players_filter_without_club">ללא מועדון</string>
     <string name="players_filter_contract_finishing">חוזה מסתיים בקרוב</string>
-    <string name="players_filter_with_notes">עם הערות</string>
+    <string name="players_filter_with_notes">עם הערות</string>\n    <string name="players_filter_tagged_in_notes">תויגתי בהערות</string>
     <string name="players_filter_foot_left">רגל שמאל</string>
     <string name="players_filter_foot_right">רגל ימין</string>
     <string name="players_filter_foot_both">שתי רגליים</string>

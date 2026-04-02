@@ -64,6 +64,7 @@ interface PlayersCache {
   euNationalOnly: boolean;
   offeredNoFeedback: boolean;
   interestedInIsrael: boolean;
+  taggedInNotes: boolean;
 }
 
 const POSITION_GROUPS = ['GK', 'DEF', 'MID', 'FWD'] as const;
@@ -172,6 +173,7 @@ export default function PlayersPage() {
   const [euNationalOnly, setEuNationalOnly] = useState(cached?.euNationalOnly ?? false);
   const [offeredNoFeedback, setOfferedNoFeedback] = useState(cached?.offeredNoFeedback ?? false);
   const [interestedInIsrael, setInterestedInIsrael] = useState(cached?.interestedInIsrael ?? false);
+  const [taggedInNotes, setTaggedInNotes] = useState(cached?.taggedInNotes ?? false);
   const scrollRestoredRef = useRef(false);
 
   // Save scroll position right before navigating away
@@ -184,6 +186,7 @@ export default function PlayersPage() {
   const [mandateDataByProfile, setMandateDataByProfile] = useState<Map<string, { expiryAt: number; validLeagues: string[] }>>(new Map());
   const [mandateExpanded, setMandateExpanded] = useState(false);
   const [currentAccountName, setCurrentAccountName] = useState<string | null>(null);
+  const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [allAccounts, setAllAccounts] = useState<AccountForShortlist[]>([]);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { clubName?: string; clubLogo?: string; clubCountry?: string; clubCountryFlag?: string; notes?: string; contactName?: string; minAge?: number; maxAge?: number; ageDoesntMatter?: boolean; dominateFoot?: string; euOnly?: boolean; salaryRange?: string; transferFee?: string })[]>([]);
@@ -197,6 +200,7 @@ export default function PlayersPage() {
     if (!user) return;
     getCurrentAccountForShortlist(user).then((acc) => {
       setCurrentAccountName(acc.name ?? null);
+      setCurrentAccountId(acc.id ?? null);
     });
     getAllAccounts().then(setAllAccounts);
   }, [user]);
@@ -323,6 +327,7 @@ export default function PlayersPage() {
       euNationalOnly,
       offeredNoFeedback,
       interestedInIsrael,
+      taggedInNotes,
     });
   }, [players, search, positionFilter, specificPositionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, agentFilter, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback, interestedInIsrael]);
 
@@ -469,6 +474,15 @@ export default function PlayersPage() {
       result = result.filter((p) => p.tmProfile && offeredNoFeedbackProfiles.has(p.tmProfile));
     }
 
+    // Tagged in notes
+    if (taggedInNotes && currentAccountId) {
+      result = result.filter((p) =>
+        p.noteList?.some((note: any) =>
+          Array.isArray(note.taggedAgentIds) && note.taggedAgentIds.includes(currentAccountId)
+        )
+      );
+    }
+
     return result;
   }, [
     players,
@@ -493,6 +507,8 @@ export default function PlayersPage() {
     euCountries,
     currentAccountName,
     interestedInIsrael,
+    taggedInNotes,
+    currentAccountId,
   ]);
 
   const hasActiveFilters =
@@ -510,6 +526,7 @@ export default function PlayersPage() {
         euNationalOnly ||
         offeredNoFeedback ||
         interestedInIsrael ||
+        taggedInNotes ||
         !!footFilter));
 
   const clearFilters = useCallback(() => {
@@ -527,6 +544,7 @@ export default function PlayersPage() {
     setEuNationalOnly(false);
     setOfferedNoFeedback(false);
     setInterestedInIsrael(false);
+    setTaggedInNotes(false);
   }, []);
 
   const playersWithMandate = useMemo(() => {
@@ -897,6 +915,17 @@ export default function PlayersPage() {
             >
               🇮🇱 {t('players_filter_interested_in_israel')}
             </button>
+            <button
+              onClick={() => setTaggedInNotes((v) => !v)}
+              disabled={!currentAccountId}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                taggedInNotes
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              {t('players_filter_tagged_in_notes')}
+            </button>
             <div className="relative shrink-0">
               <select
                 value={agentFilter ?? ''}
@@ -936,6 +965,7 @@ export default function PlayersPage() {
               { key: 'euNational', active: euNationalOnly, toggle: () => setEuNationalOnly(v => !v), label: `🇪🇺 ${t('players_filter_eu_national')}` },
               { key: 'offeredNoFeedback', active: offeredNoFeedback, toggle: () => setOfferedNoFeedback(v => !v), label: t('players_filter_offered_no_feedback') },
               { key: 'interestedInIsrael', active: interestedInIsrael, toggle: () => setInterestedInIsrael(v => !v), label: `🇮🇱 ${t('players_filter_interested_in_israel')}` },
+              { key: 'taggedInNotes', active: taggedInNotes, toggle: () => setTaggedInNotes(v => !v), label: t('players_filter_tagged_in_notes'), disabled: !currentAccountId },
             ].map(f => (
               <button
                 key={f.key}

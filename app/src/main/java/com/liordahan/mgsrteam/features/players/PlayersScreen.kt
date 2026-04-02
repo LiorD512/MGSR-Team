@@ -285,6 +285,7 @@ fun PlayersScreen(
                 euNationalSelected = playersState.quickFilterEuNational,
                 offeredNoFeedbackSelected = playersState.quickFilterOfferedNoFeedback,
                 interestedInIsraelSelected = playersState.quickFilterInterestedInIsrael,
+                taggedInNotesSelected = playersState.quickFilterTaggedInNotes,
                 footFilterOption = playersState.footFilterOption,
                 onFreeAgentsClick = { viewModel.toggleQuickFilterFreeAgents() },
                 onContractExpiringClick = { viewModel.toggleQuickFilterContractExpiring() },
@@ -297,6 +298,7 @@ fun PlayersScreen(
                 onEuNationalClick = { viewModel.toggleQuickFilterEuNational() },
                 onOfferedNoFeedbackClick = { viewModel.toggleQuickFilterOfferedNoFeedback() },
                 onInterestedInIsraelClick = { viewModel.toggleQuickFilterInterestedInIsrael() },
+                onTaggedInNotesClick = { viewModel.toggleQuickFilterTaggedInNotes() },
                 onFootFilterClick = { viewModel.setFootFilterOption(it) }
             )
             }
@@ -885,6 +887,7 @@ private fun QuickFilterChips(
     euNationalSelected: Boolean,
     offeredNoFeedbackSelected: Boolean,
     interestedInIsraelSelected: Boolean,
+    taggedInNotesSelected: Boolean,
     footFilterOption: FootFilterOption,
     onFreeAgentsClick: () -> Unit,
     onContractExpiringClick: () -> Unit,
@@ -897,6 +900,7 @@ private fun QuickFilterChips(
     onEuNationalClick: () -> Unit,
     onOfferedNoFeedbackClick: () -> Unit,
     onInterestedInIsraelClick: () -> Unit,
+    onTaggedInNotesClick: () -> Unit,
     onFootFilterClick: (FootFilterOption) -> Unit
 ) {
     LazyRow(
@@ -972,6 +976,13 @@ private fun QuickFilterChips(
                 label = stringResource(R.string.players_filter_with_notes),
                 isSelected = withNotesOnlySelected,
                 onClick = onWithNotesOnlyClick
+            )
+        }
+        item(key = "tagged_in_notes") {
+            QuickFilterChip(
+                label = stringResource(R.string.players_filter_tagged_in_notes),
+                isSelected = taggedInNotesSelected,
+                onClick = onTaggedInNotesClick
             )
         }
         item(key = "foot_left") {

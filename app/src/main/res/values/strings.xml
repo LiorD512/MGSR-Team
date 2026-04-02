@@ -88,6 +88,7 @@
     <string name="players_filter_without_club">Without club</string>
     <string name="players_filter_contract_finishing">Contract finishing soon</string>
     <string name="players_filter_with_notes">With notes</string>
+    <string name="players_filter_tagged_in_notes">Tagged in notes</string>
     <string name="players_filter_foot_left">Left foot</string>
     <string name="players_filter_foot_right">Right foot</string>
     <string name="players_filter_foot_both">Both feet</string>

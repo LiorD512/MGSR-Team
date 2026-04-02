@@ -266,10 +266,10 @@ async function playersAddNote(data) {
               type: "NOTE_TAGGED",
               playerName,
               playerImage: str(data.playerImage) || "",
-              playerId,
+              playerId: playerRefId,
               agentName: agentName || "",
               screen: "player",
-              player_id: playerId,
+              player_id: playerRefId,
             },
             android: {
               priority: "high",
@@ -284,7 +284,7 @@ async function playersAddNote(data) {
                 icon: "/logo.svg",
                 tag: `note-tag-${playerId}-${Date.now()}`,
               },
-              fcmOptions: { link: `/players/${playerId}` },
+              fcmOptions: { link: `/players/${playerRefId}` },
             },
           }));
 

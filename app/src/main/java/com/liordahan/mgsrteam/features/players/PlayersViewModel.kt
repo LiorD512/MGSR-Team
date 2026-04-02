@@ -81,6 +81,8 @@ data class PlayersUiState(
     val offeredNoFeedbackTmProfiles: Set<String> = emptySet(),
     val footFilterOption: FootFilterOption = FootFilterOption.NONE,
     val quickFilterInterestedInIsrael: Boolean = false,
+    val quickFilterTaggedInNotes: Boolean = false,
+    val currentUserAccountId: String? = null,
     val currentUserName: String? = null
 )
 
@@ -100,6 +102,7 @@ abstract class IPlayersViewModel : ViewModel() {
     abstract fun toggleQuickFilterEuNational()
     abstract fun toggleQuickFilterOfferedNoFeedback()
     abstract fun toggleQuickFilterInterestedInIsrael()
+    abstract fun toggleQuickFilterTaggedInNotes()
     /** Apply "My Players Only" filter only when first landing from dashboard. Never re-apply on back. */
     abstract fun applyInitialMyPlayersOnlyIfNeeded(initialMyPlayersOnly: Boolean)
     abstract fun toggleQuickFilterWithNotesOnly()
@@ -134,6 +137,7 @@ class PlayersViewModel(
     private val _quickFilterOfferedNoFeedback = MutableStateFlow(false)
     private val _offeredNoFeedbackTmProfiles = MutableStateFlow<Set<String>>(emptySet())
     private val _quickFilterInterestedInIsrael = MutableStateFlow(false)
+    private val _quickFilterTaggedInNotes = MutableStateFlow(false)
 
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     override val playersFlow: StateFlow<PlayersUiState> = combine(
@@ -141,14 +145,20 @@ class PlayersViewModel(
         _searchQuery.debounce(300L),
         _mandateInfoByPlayer,
         _quickFilterEuNational,
-        combine(_quickFilterOfferedNoFeedback, _offeredNoFeedbackTmProfiles, _quickFilterInterestedInIsrael) { a, b, c -> Triple(a, b, c) }
-    ) { state, debouncedQuery, mandateInfoMap, euNational, (offeredNoFb, offeredNoFbProfiles, interestedInIsrael) ->
+        combine(_quickFilterOfferedNoFeedback, _offeredNoFeedbackTmProfiles, _quickFilterInterestedInIsrael, _quickFilterTaggedInNotes) { a, b, c, d -> listOf(a, b, c, d) }
+    ) { state, debouncedQuery, mandateInfoMap, euNational, extras ->
+        val offeredNoFb = extras[0] as Boolean
+        @Suppress("UNCHECKED_CAST")
+        val offeredNoFbProfiles = extras[1] as Set<String>
+        val interestedInIsrael = extras[2] as Boolean
+        val taggedInNotes = extras[3] as Boolean
         computeUiState(
             state.copy(
                 quickFilterEuNational = euNational,
                 quickFilterOfferedNoFeedback = offeredNoFb,
                 offeredNoFeedbackTmProfiles = offeredNoFbProfiles,
-                quickFilterInterestedInIsrael = interestedInIsrael
+                quickFilterInterestedInIsrael = interestedInIsrael,
+                quickFilterTaggedInNotes = taggedInNotes
             ),
             debouncedQuery,
             mandateInfoMap
@@ -167,8 +177,8 @@ class PlayersViewModel(
         loadOfferedNoFeedbackProfiles()
 
         viewModelScope.launch(Dispatchers.IO) {
-            val name = getCurrentUserName()
-            _inputState.update { it.copy(currentUserName = name) }
+            val (name, accountId) = getCurrentUserNameAndId()
+            _inputState.update { it.copy(currentUserName = name, currentUserAccountId = accountId) }
         }
 
         // Re-subscribe to Firestore when the active platform changes
@@ -224,6 +234,7 @@ class PlayersViewModel(
             ?.filterPlayersByEuNational(state.quickFilterEuNational)
             ?.filterPlayersByOfferedNoFeedback(state.quickFilterOfferedNoFeedback, state.offeredNoFeedbackTmProfiles)
             ?.filterPlayersByInterestedInIsrael(state.quickFilterInterestedInIsrael)
+            ?.filterPlayersByTaggedInNotes(state.quickFilterTaggedInNotes, state.currentUserAccountId)
             ?.filterPlayersByFoot(state.footFilterOption)
             ?.filterByNotes(state.isWithNotesChecked)
             ?.filterPlayersByNameOrByNote(query)
@@ -272,25 +283,28 @@ class PlayersViewModel(
         removeAllFiltersUseCase()
     }
 
-    override suspend fun getCurrentUserName(): String? {
+    override suspend fun getCurrentUserName(): String? = getCurrentUserNameAndId().first
+
+    private suspend fun getCurrentUserNameAndId(): Pair<String?, String?> {
         return try {
             val snapshot =
                 firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get()
                     .await()
-            val accounts = snapshot.toObjects(Account::class.java)
-            val account = accounts.firstOrNull {
-                it.email?.equals(
+            val accounts = snapshot.documents
+            val doc = accounts.firstOrNull {
+                (it.getString("email"))?.equals(
                     firebaseHandler.firebaseAuth.currentUser?.email,
                     ignoreCase = true
                 ) == true
             }
-            if (account?.email.equals("dahanliordahan@gmail.com", ignoreCase = true)) {
+            if (doc?.getString("email").equals("dahanliordahan@gmail.com", ignoreCase = true)) {
                 _inputState.update { it.copy(showRefreshButton = true) }
             }
-
-            account?.name
+            val name = doc?.getString("name")
+            val id = doc?.id
+            Pair(name, id)
         } catch (e: Exception) {
-            null
+            Pair(null, null)
         }
     }
 
@@ -342,6 +356,7 @@ class PlayersViewModel(
     override fun toggleQuickFilterEuNational() { _quickFilterEuNational.value = !_quickFilterEuNational.value }
     override fun toggleQuickFilterOfferedNoFeedback() { _quickFilterOfferedNoFeedback.value = !_quickFilterOfferedNoFeedback.value }
     override fun toggleQuickFilterInterestedInIsrael() { _quickFilterInterestedInIsrael.value = !_quickFilterInterestedInIsrael.value }
+    override fun toggleQuickFilterTaggedInNotes() { _quickFilterTaggedInNotes.value = !_quickFilterTaggedInNotes.value }
     override fun toggleQuickFilterWithNotesOnly() = quickFilterUseCase.toggleWithNotesOnly()
     override fun setFootFilterOption(option: FootFilterOption) = setFootFilterOptionUseCase(option)
 
@@ -488,6 +503,15 @@ class PlayersViewModel(
 
     private fun List<Player>?.filterPlayersByInterestedInIsrael(enabled: Boolean): List<Player>? {
         return if (!enabled) this else this?.filter { it.interestedInIsrael }
+    }
+
+    private fun List<Player>?.filterPlayersByTaggedInNotes(enabled: Boolean, currentUserAccountId: String?): List<Player>? {
+        if (!enabled || currentUserAccountId.isNullOrBlank()) return this
+        return this?.filter { player ->
+            player.noteList?.any { note ->
+                note.taggedAgentIds?.contains(currentUserAccountId) == true
+            } == true
+        }
     }
 
     private fun List<Player>?.filterPlayersByOfferedNoFeedback(enabled: Boolean, profiles: Set<String>): List<Player>? {
