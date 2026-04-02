@@ -271,21 +271,22 @@ export default function PlayersPage() {
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'PlayerOffers'), (snap) => {
-      const byPlayer = new Map<string, boolean>();
+      // Group offers by player; keep those where ANY offer has no feedback
+      const byPlayer = new Map<string, { total: number; withoutFeedback: number }>();
       snap.docs.forEach((doc) => {
         const d = doc.data();
         const profile = d.playerTmProfile as string | undefined;
         if (!profile) return;
-        const hasFeedback = !!(d.clubFeedback as string | undefined)?.trim();
-        if (hasFeedback) {
-          byPlayer.set(profile, true);
-        } else if (!byPlayer.has(profile)) {
-          byPlayer.set(profile, false);
+        const entry = byPlayer.get(profile) ?? { total: 0, withoutFeedback: 0 };
+        entry.total++;
+        if (!(d.clubFeedback as string | undefined)?.trim()) {
+          entry.withoutFeedback++;
         }
+        byPlayer.set(profile, entry);
       });
       const profiles = new Set<string>();
-      byPlayer.forEach((hasAnyFeedback, profile) => {
-        if (!hasAnyFeedback) profiles.add(profile);
+      byPlayer.forEach(({ withoutFeedback }, profile) => {
+        if (withoutFeedback > 0) profiles.add(profile);
       });
       setOfferedNoFeedbackProfiles(profiles);
     });

@@ -607,11 +607,11 @@ class PlayersViewModel(
                 if (snapshot == null) return@addSnapshotListener
                 val offers = snapshot.toObjects(PlayerOffer::class.java)
                 viewModelScope.launch(Dispatchers.Default) {
-                    // Group by player; keep only those where ALL offers have no feedback
+                    // Group by player; keep those where ANY offer has no feedback
                     val byPlayer = offers.groupBy { it.playerTmProfile ?: "" }
                     val noFeedbackProfiles = byPlayer
                         .filter { (profile, playerOffers) ->
-                            profile.isNotBlank() && playerOffers.all { it.clubFeedback.isNullOrBlank() }
+                            profile.isNotBlank() && playerOffers.any { it.clubFeedback.isNullOrBlank() }
                         }
                         .keys
                     _offeredNoFeedbackTmProfiles.value = noFeedbackProfiles
