@@ -169,6 +169,7 @@ export default function RequestsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<Request | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showAddSheet, setShowAddSheet] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Request | null>(null);
   const [players, setPlayers] = useState<RosterPlayer[]>(cached?.players ?? []);
   const [expandedMatchingPlayers, setExpandedMatchingPlayers] = useState<Set<string>>(new Set());
@@ -671,19 +672,7 @@ export default function RequestsPage() {
             {pendingRequests.length > 0 && (
               <button
                 type="button"
-                onClick={() => {
-                  const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
-                  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-                  const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}`;
-                  const text = `🔗 View full recruitment brief:\n\n${shareUrl}`;
-                  if (navigator.share) {
-                    navigator.share({ title: 'MGSR Team - Active Recruitment Requests', text, url: shareUrl }).catch(() => {});
-                  } else {
-                    navigator.clipboard.writeText(text).then(() => {
-                      alert(isHebrew ? 'הקישור הועתק' : 'Link copied to clipboard');
-                    }).catch(() => {});
-                  }
-                }}
+                onClick={() => setShowShareDialog(true)}
                 className={`px-4 py-2.5 rounded-xl font-semibold transition border ${
                   isYouth
                     ? 'border-[var(--youth-cyan)]/30 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/10'
@@ -1311,6 +1300,63 @@ export default function RequestsPage() {
                   className="px-4 py-2 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30"
                 >
                   {deleting ? '…' : t('requests_delete')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Share Requests Dialog */}
+        {showShareDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowShareDialog(false)}>
+            <div className="bg-mgsr-card border border-mgsr-border rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-display font-bold text-mgsr-text mb-4">
+                {isHebrew ? 'שתף בקשות' : 'Share Requests'}
+              </h3>
+              <p className="text-sm text-mgsr-muted mb-5">
+                {isHebrew ? 'בחר אם להסתיר שמות מועדונים בקישור המשותף.' : 'Choose whether to hide club names in the shared link.'}
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
+                    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+                    const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}`;
+                    const text = encodeURIComponent(`🔗 View full recruitment brief:\n\n${shareUrl}`);
+                    setShowShareDialog(false);
+                    window.open(`https://wa.me/?text=${text}`, '_blank');
+                  }}
+                  className={`w-full px-4 py-3 rounded-xl font-semibold transition text-sm ${
+                    isYouth
+                      ? 'bg-[var(--youth-cyan)]/10 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/20 border border-[var(--youth-cyan)]/20'
+                      : isWomen
+                      ? 'bg-[var(--women-rose)]/10 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/20 border border-[var(--women-rose)]/20'
+                      : 'bg-mgsr-teal/10 text-mgsr-teal hover:bg-mgsr-teal/20 border border-mgsr-teal/20'
+                  }`}
+                >
+                  {isHebrew ? '📤 שתף עם שמות מועדונים' : '📤 Share with club names'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
+                    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+                    const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}&hideClubs=1`;
+                    const text = encodeURIComponent(`🔗 View full recruitment brief:\n\n${shareUrl}`);
+                    setShowShareDialog(false);
+                    window.open(`https://wa.me/?text=${text}`, '_blank');
+                  }}
+                  className="w-full px-4 py-3 rounded-xl font-semibold transition text-sm bg-white/5 text-mgsr-muted hover:bg-white/10 border border-mgsr-border"
+                >
+                  {isHebrew ? '🔒 שתף עם הסתרת מועדונים' : '🔒 Share with hidden clubs'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowShareDialog(false)}
+                  className="w-full px-4 py-2.5 rounded-xl text-sm text-mgsr-muted hover:text-mgsr-text transition"
+                >
+                  {isHebrew ? 'ביטול' : 'Cancel'}
                 </button>
               </div>
             </div>
