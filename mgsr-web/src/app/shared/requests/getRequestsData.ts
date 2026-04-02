@@ -141,50 +141,48 @@ async function translateNotes(requests: SharedRequest[]): Promise<void> {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn('[translateNotes] GEMINI_API_KEY not set, skipping translation');
+    console.warn('[translateNotes] GEMINI_API_KEY not set');
     return;
   }
 
   try {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: { temperature: 0.1 },
+    });
+
     const numbered = toTranslate.map((r, i) => ({ idx: i + 1, req: r }));
     const prompt = [
       'Translate the following football/soccer recruitment notes from Hebrew to English.',
       'Keep it concise and professional. Football terminology should be accurate.',
-      'Return ONLY a valid JSON object where keys are the numbers (as strings) and values are the English translations. No markdown, no code fences, no explanation.',
+      'Return ONLY a valid JSON object where keys are the numbers (as strings) and values are the English translations.',
+      'Example: {"1": "Looking for a fast winger", "2": "Must have EU passport"}',
       '',
       ...numbered.map(({ idx, req }) => `${idx}: ${req.notes}`),
     ].join('\n');
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1 },
-        }),
-      }
-    );
+    console.log('[translateNotes] Translating', toTranslate.length, 'notes');
+    const result = await model.generateContent(prompt);
+    let text = result.response.text()?.trim() || '';
+    console.log('[translateNotes] Raw response:', text.substring(0, 200));
 
-    if (!res.ok) {
-      console.error('[translateNotes] Gemini API error:', res.status, await res.text());
+    // Strip markdown code fences if present
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    if (!text) {
+      console.warn('[translateNotes] Empty response from Gemini');
       return;
     }
 
-    const json = await res.json();
-    let text = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-    // Strip markdown code fences if present
-    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    if (!text) return;
-
     const parsed = JSON.parse(text) as Record<string, string>;
+    let translated = 0;
     for (const { idx, req } of numbered) {
-      const translated = parsed[String(idx)];
-      if (translated) req.notes = translated;
+      const t = parsed[String(idx)];
+      if (t) { req.notes = t; translated++; }
     }
+    console.log('[translateNotes] Translated', translated, '/', toTranslate.length, 'notes');
   } catch (e) {
-    console.error('[translateNotes]', e);
-    // Keep original notes on failure
+    console.error('[translateNotes] Failed:', e);
   }
 }
