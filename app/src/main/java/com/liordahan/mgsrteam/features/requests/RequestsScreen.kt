@@ -262,19 +262,23 @@ fun RequestsScreen(
                         onDismiss = { showShareDialog = false },
                         isSharing = isSharing,
                         onShare = { hideClubNames ->
-                            isSharing = true
-                            shareScope.launch {
-                                val translatedNotes = translateNotesToEnglish(state.requestsByPositionCountry)
-                                val text = formatRequestsForShare(state.requestsByPositionCountry, hideClubNames, translatedNotes)
-                                isSharing = false
-                                showShareDialog = false
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, text)
-                                    putExtra(Intent.EXTRA_SUBJECT, "MGSR Team - Player Requests")
-                                }
-                                context.startActivity(Intent.createChooser(intent, "Share requests"))
+                            // Build shared requests page link
+                            val baseUrl = com.liordahan.mgsrteam.BuildConfig.MGSR_WEB_URL.trimEnd('/')
+                            val platformParam = when (currentPlatform) {
+                                Platform.WOMEN -> "women"
+                                Platform.YOUTH -> "youth"
+                                else -> "men"
                             }
+                            val hideParam = if (hideClubNames) "&hideClubs=1" else ""
+                            val shareLink = "$baseUrl/shared/requests?platform=$platformParam$hideParam"
+                            val fullText = "🔗 View full recruitment brief:\n\n$shareLink"
+                            showShareDialog = false
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, fullText)
+                                putExtra(Intent.EXTRA_SUBJECT, "MGSR Team - Active Recruitment Requests")
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Share requests"))
                         }
                     )
                 }
