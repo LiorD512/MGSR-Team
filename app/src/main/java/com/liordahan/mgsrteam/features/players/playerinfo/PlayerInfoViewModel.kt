@@ -1441,85 +1441,96 @@ class PlayerInfoViewModel(
                     return@launch
                 }
 
-                // Find this player's row in the report
-                val playerRow = com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.findPlayerRow(report, playerName)
-                if (playerRow == null) {
+                // Find this player's rows in the report (may be multiple for multi-match reports)
+                val allRows = com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.findAllPlayerRows(report, playerName)
+                if (allRows.isEmpty()) {
                     Log.w(TAG, "Player '$playerName' not found in GPS report with ${report.players.size} players")
                     return@launch
                 }
 
-                val matchData = playerRow.toGpsMatchData(
-                    playerTmProfile = storageKey,
-                    matchTitle = report.matchTitle,
-                    matchDate = report.matchDate,
-                    matchDateStr = report.matchDateStr,
-                    documentId = documentId,
-                    storageUrl = storageUrl,
-                    teamAvgDist = report.teamAverageTotalDist,
-                    teamAvgMeterage = report.teamAverageMeteragePerMin,
-                    teamAvgHI = report.teamAverageHighIntensityRuns,
-                    teamAvgSprints = report.teamAverageSprints,
-                    teamAvgMaxVel = report.teamAverageMaxVelocity
-                )
+                Log.i(TAG, "Found ${allRows.size} GPS match rows for '$playerName'")
 
-                // Check for duplicate (same player + same match date) — replace if exists
                 val store = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                val existing = withContext(Dispatchers.IO) {
-                    store.collection("GpsMatchData")
-                        .whereEqualTo("playerTmProfile", storageKey)
-                        .whereEqualTo("matchDateStr", report.matchDateStr)
-                        .get().await()
-                }
+                val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US)
 
-                // Write to Firestore
-                val dataMap = hashMapOf<String, Any?>(
-                    "playerTmProfile" to matchData.playerTmProfile,
-                    "playerName" to matchData.playerName,
-                    "matchTitle" to matchData.matchTitle,
-                    "matchDate" to matchData.matchDate,
-                    "matchDateStr" to matchData.matchDateStr,
-                    "documentId" to matchData.documentId,
-                    "storageUrl" to matchData.storageUrl,
-                    "totalDuration" to matchData.totalDuration,
-                    "totalDistance" to matchData.totalDistance,
-                    "highMpEffsDist" to matchData.highMpEffsDist,
-                    "highMpEffs" to matchData.highMpEffs,
-                    "meteragePerMinute" to matchData.meteragePerMinute,
-                    "accelerations" to matchData.accelerations,
-                    "decelerations" to matchData.decelerations,
-                    "highIntensityRuns" to matchData.highIntensityRuns,
-                    "sprints" to matchData.sprints,
-                    "maxVelocity" to matchData.maxVelocity,
-                    "adEffs" to matchData.adEffs,
-                    "hiDistTotal" to matchData.hiDistTotal,
-                    "hiDistPercent" to matchData.hiDistPercent,
-                    "sprintDistTotal" to matchData.sprintDistTotal,
-                    "sprintDistPercent" to matchData.sprintDistPercent,
-                    "isStarTotalDist" to matchData.isStarTotalDist,
-                    "isStarHighMpEffsDist" to matchData.isStarHighMpEffsDist,
-                    "isStarHighMpEffs" to matchData.isStarHighMpEffs,
-                    "isStarMeteragePerMin" to matchData.isStarMeteragePerMin,
-                    "isStarAccelerations" to matchData.isStarAccelerations,
-                    "isStarHighIntensityRuns" to matchData.isStarHighIntensityRuns,
-                    "isStarSprints" to matchData.isStarSprints,
-                    "isStarMaxVelocity" to matchData.isStarMaxVelocity,
-                    "teamAverageTotalDist" to matchData.teamAverageTotalDist,
-                    "teamAverageMeteragePerMin" to matchData.teamAverageMeteragePerMin,
-                    "teamAverageHighIntensityRuns" to matchData.teamAverageHighIntensityRuns,
-                    "teamAverageSprints" to matchData.teamAverageSprints,
-                    "teamAverageMaxVelocity" to matchData.teamAverageMaxVelocity,
-                    "createdAt" to System.currentTimeMillis()
-                )
-                withContext(Dispatchers.IO) {
-                    if (!existing.isEmpty) {
-                        // Replace existing GPS data for this date
-                        val existingId = existing.documents.first().id
-                        dataMap["updatedAt"] = System.currentTimeMillis()
-                        store.collection("GpsMatchData").document(existingId).update(dataMap as Map<String, Any>).await()
-                        Log.i(TAG, "GPS data replaced for $playerName — ${report.matchTitle} (${report.matchDateStr}) -> $existingId")
-                    } else {
-                        store.collection("GpsMatchData").add(dataMap).await()
-                        Log.i(TAG, "GPS data saved for $playerName — ${report.matchTitle} (${report.matchDateStr})")
+                for (playerRow in allRows) {
+                    // Use per-row matchDate if available, else fall back to report-level
+                    val rowDateStr = playerRow.perRowMatchDate ?: report.matchDateStr
+                    val rowDateMs = if (!playerRow.perRowMatchDate.isNullOrEmpty()) {
+                        try { sdf.parse(playerRow.perRowMatchDate)?.time } catch (_: Exception) { null }
+                    } else report.matchDate
+
+                    val matchData = playerRow.toGpsMatchData(
+                        playerTmProfile = storageKey,
+                        matchTitle = report.matchTitle,
+                        matchDate = rowDateMs,
+                        matchDateStr = rowDateStr,
+                        documentId = documentId,
+                        storageUrl = storageUrl,
+                        teamAvgDist = report.teamAverageTotalDist,
+                        teamAvgMeterage = report.teamAverageMeteragePerMin,
+                        teamAvgHI = report.teamAverageHighIntensityRuns,
+                        teamAvgSprints = report.teamAverageSprints,
+                        teamAvgMaxVel = report.teamAverageMaxVelocity
+                    )
+
+                    // Check for duplicate (same player + same match date) — replace if exists
+                    val existing = withContext(Dispatchers.IO) {
+                        store.collection("GpsMatchData")
+                            .whereEqualTo("playerTmProfile", storageKey)
+                            .whereEqualTo("matchDateStr", rowDateStr)
+                            .get().await()
+                    }
+
+                    // Write to Firestore
+                    val dataMap = hashMapOf<String, Any?>(
+                        "playerTmProfile" to matchData.playerTmProfile,
+                        "playerName" to matchData.playerName,
+                        "matchTitle" to matchData.matchTitle,
+                        "matchDate" to matchData.matchDate,
+                        "matchDateStr" to matchData.matchDateStr,
+                        "documentId" to matchData.documentId,
+                        "storageUrl" to matchData.storageUrl,
+                        "totalDuration" to matchData.totalDuration,
+                        "totalDistance" to matchData.totalDistance,
+                        "highMpEffsDist" to matchData.highMpEffsDist,
+                        "highMpEffs" to matchData.highMpEffs,
+                        "meteragePerMinute" to matchData.meteragePerMinute,
+                        "accelerations" to matchData.accelerations,
+                        "decelerations" to matchData.decelerations,
+                        "highIntensityRuns" to matchData.highIntensityRuns,
+                        "sprints" to matchData.sprints,
+                        "maxVelocity" to matchData.maxVelocity,
+                        "adEffs" to matchData.adEffs,
+                        "hiDistTotal" to matchData.hiDistTotal,
+                        "hiDistPercent" to matchData.hiDistPercent,
+                        "sprintDistTotal" to matchData.sprintDistTotal,
+                        "sprintDistPercent" to matchData.sprintDistPercent,
+                        "isStarTotalDist" to matchData.isStarTotalDist,
+                        "isStarHighMpEffsDist" to matchData.isStarHighMpEffsDist,
+                        "isStarHighMpEffs" to matchData.isStarHighMpEffs,
+                        "isStarMeteragePerMin" to matchData.isStarMeteragePerMin,
+                        "isStarAccelerations" to matchData.isStarAccelerations,
+                        "isStarHighIntensityRuns" to matchData.isStarHighIntensityRuns,
+                        "isStarSprints" to matchData.isStarSprints,
+                        "isStarMaxVelocity" to matchData.isStarMaxVelocity,
+                        "teamAverageTotalDist" to matchData.teamAverageTotalDist,
+                        "teamAverageMeteragePerMin" to matchData.teamAverageMeteragePerMin,
+                        "teamAverageHighIntensityRuns" to matchData.teamAverageHighIntensityRuns,
+                        "teamAverageSprints" to matchData.teamAverageSprints,
+                        "teamAverageMaxVelocity" to matchData.teamAverageMaxVelocity,
+                        "createdAt" to System.currentTimeMillis()
+                    )
+                    withContext(Dispatchers.IO) {
+                        if (!existing.isEmpty) {
+                            val existingId = existing.documents.first().id
+                            dataMap["updatedAt"] = System.currentTimeMillis()
+                            store.collection("GpsMatchData").document(existingId).update(dataMap as Map<String, Any>).await()
+                            Log.i(TAG, "GPS data replaced for $playerName — $rowDateStr -> $existingId")
+                        } else {
+                            store.collection("GpsMatchData").add(dataMap).await()
+                            Log.i(TAG, "GPS data saved for $playerName — $rowDateStr")
+                        }
                     }
                 }
             } catch (e: Exception) {

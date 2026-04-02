@@ -246,7 +246,8 @@ Return ONLY valid JSON. No markdown, no explanation."""
                     isStarAccelerations = p.optBoolean("isStarAccelerations", false),
                     isStarHighIntensityRuns = p.optBoolean("isStarHighIntensityRuns", false),
                     isStarSprints = p.optBoolean("isStarSprints", false),
-                    isStarMaxVelocity = p.optBoolean("isStarMaxVelocity", false)
+                    isStarMaxVelocity = p.optBoolean("isStarMaxVelocity", false),
+                    perRowMatchDate = p.optString("matchDate", null)
                 )
             }
 
@@ -327,6 +328,17 @@ Return ONLY valid JSON. No markdown, no explanation."""
         }
         return null
     }
+
+    /**
+     * Find ALL matching player rows — handles multi-match reports where the same
+     * player appears once per match date (e.g. Leixões SC individual reports).
+     */
+    fun findAllPlayerRows(report: GpsReportResult, playerName: String): List<GpsPlayerRow> {
+        val first = findPlayerRow(report, playerName) ?: return emptyList()
+        val matchedName = stripAccents(first.playerName.trim().lowercase())
+        val all = report.players.filter { stripAccents(it.playerName.trim().lowercase()) == matchedName }
+        return if (all.isNotEmpty()) all else listOf(first)
+    }
 }
 
 data class GpsReportResult(
@@ -366,7 +378,9 @@ data class GpsPlayerRow(
     val isStarAccelerations: Boolean = false,
     val isStarHighIntensityRuns: Boolean = false,
     val isStarSprints: Boolean = false,
-    val isStarMaxVelocity: Boolean = false
+    val isStarMaxVelocity: Boolean = false,
+    /** Per-row match date for multi-match reports (DD/MM/YYYY string) */
+    val perRowMatchDate: String? = null
 ) {
     fun toGpsMatchData(
         playerTmProfile: String?,

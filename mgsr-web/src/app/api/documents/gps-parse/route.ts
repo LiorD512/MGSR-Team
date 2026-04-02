@@ -243,6 +243,20 @@ function findPlayerRow(players: GpsPlayerRow[], playerName: string): GpsPlayerRo
   return undefined;
 }
 
+/**
+ * Find ALL matching player rows — handles multi-match reports where the same
+ * player appears once per match date (e.g. Leixões SC individual reports).
+ */
+function findAllPlayerRows(players: GpsPlayerRow[], playerName: string): GpsPlayerRow[] {
+  const first = findPlayerRow(players, playerName);
+  if (!first) return [];
+  // Get the matched name, then return ALL rows with that exact name
+  const matchedName = stripAccents(first.playerName.trim().toLowerCase());
+  const all = players.filter(p => stripAccents(p.playerName.trim().toLowerCase()) === matchedName);
+  // If only one row matched by name, it's a single-match report — return just that
+  return all.length > 0 ? all : [first];
+}
+
 function parseMatchDate(dateStr: string | null | undefined): number | null {
   if (!dateStr) return null;
   const m = dateStr.match(/(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})/);
@@ -521,9 +535,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No players found in GPS report' }, { status: 422 });
     }
 
-    // Find the player row
-    const playerRow = findPlayerRow(report.players, playerName);
-    if (!playerRow) {
+    // Find matching player rows — multi-match reports have many rows for same player
+    const allPlayerRows = findAllPlayerRows(report.players, playerName);
+    if (allPlayerRows.length === 0) {
       console.log(`[gps-parse] Player "${playerName}" not found. Available: ${report.players.map(p => p.playerName).join(', ')}`);
       return NextResponse.json({ 
         error: 'Player not found in GPS report',
@@ -531,78 +545,84 @@ export async function POST(req: NextRequest) {
       }, { status: 404 });
     }
 
-    const matchDate = parseMatchDate(report.matchDate);
-    const dedupKey = `${report.matchDate}_${playerTmProfile}`;
+    console.log(`[gps-parse] Found ${allPlayerRows.length} rows for "${playerName}"`);
 
-    // Check for duplicate — if same date exists, replace it
-    const existing = await adminDb().collection('GpsMatchData')
-      .where('playerTmProfile', '==', playerTmProfile)
-      .where('matchDateStr', '==', report.matchDate)
-      .limit(1)
-      .get();
+    const savedDocs: string[] = [];
+    for (const playerRow of allPlayerRows) {
+      // Use per-row matchDate if available, else fall back to report-level matchDate
+      const rowDateStr = playerRow.matchDate || report.matchDate;
+      const matchDate = parseMatchDate(rowDateStr);
 
-    // Write to Firestore
-    const gpsDoc: Record<string, unknown> = {
-      playerTmProfile,
-      playerName: playerRow.playerName,
-      matchTitle: report.matchTitle,
-      matchDate: matchDate ?? Date.now(),
-      matchDateStr: report.matchDate,
-      teamName: report.teamName,
-      totalDuration: playerRow.totalDuration,
-      totalDistance: playerRow.totalDistance,
-      highMpEffsDist: playerRow.highMpEffsDist,
-      highMpEffs: playerRow.highMpEffs,
-      meteragePerMinute: playerRow.meteragePerMinute,
-      accelerations: playerRow.accelerations,
-      decelerations: playerRow.decelerations,
-      highIntensityRuns: playerRow.highIntensityRuns,
-      sprints: playerRow.sprints,
-      maxVelocity: playerRow.maxVelocity,
-      adEffs: playerRow.adEffs,
-      hiDistTotal: playerRow.hiDistTotal,
-      hiDistPercent: playerRow.hiDistPercent,
-      sprintDistTotal: playerRow.sprintDistTotal,
-      sprintDistPercent: playerRow.sprintDistPercent,
-      isStarTotalDist: playerRow.isStarTotalDist,
-      isStarHighMpEffsDist: playerRow.isStarHighMpEffsDist,
-      isStarHighMpEffs: playerRow.isStarHighMpEffs,
-      isStarMeteragePerMin: playerRow.isStarMeteragePerMin,
-      isStarAccelerations: playerRow.isStarAccelerations,
-      isStarHighIntensityRuns: playerRow.isStarHighIntensityRuns,
-      isStarSprints: playerRow.isStarSprints,
-      isStarMaxVelocity: playerRow.isStarMaxVelocity,
-      teamAverageTotalDist: report.teamAverageTotalDist,
-      teamAverageMeteragePerMin: report.teamAverageMeteragePerMin,
-      teamAverageHighIntensityRuns: report.teamAverageHighIntensityRuns,
-      teamAverageSprints: report.teamAverageSprints,
-      teamAverageMaxVelocity: report.teamAverageMaxVelocity,
-      storageUrl: storageUrl || '',
-      createdAt: Date.now(),
-    };
+      // Check for duplicate — if same date exists, replace it
+      const existing = rowDateStr ? await adminDb().collection('GpsMatchData')
+        .where('playerTmProfile', '==', playerTmProfile)
+        .where('matchDateStr', '==', rowDateStr)
+        .limit(1)
+        .get() : null;
 
-    let docRefId: string;
-    if (!existing.empty) {
-      // Replace existing GPS data for this date
-      const existingDoc = existing.docs[0];
-      await adminDb().collection('GpsMatchData').doc(existingDoc.id).update({ ...gpsDoc, updatedAt: Date.now() });
-      docRefId = existingDoc.id;
-      console.log(`[gps-parse] Replaced GPS data for ${playerRow.playerName} — match ${report.matchTitle} (${report.matchDate}) -> ${docRefId}`);
-    } else {
-      const docRef = await adminDb().collection('GpsMatchData').add(gpsDoc);
-      docRefId = docRef.id;
-      console.log(`[gps-parse] Saved GPS data for ${playerRow.playerName} — match ${report.matchTitle} (${report.matchDate}) -> ${docRefId}`);
+      // Write to Firestore
+      const gpsDoc: Record<string, unknown> = {
+        playerTmProfile,
+        playerName: playerRow.playerName,
+        matchTitle: report.matchTitle,
+        matchDate: matchDate ?? Date.now(),
+        matchDateStr: rowDateStr || '',
+        teamName: report.teamName,
+        totalDuration: playerRow.totalDuration,
+        totalDistance: playerRow.totalDistance,
+        highMpEffsDist: playerRow.highMpEffsDist,
+        highMpEffs: playerRow.highMpEffs,
+        meteragePerMinute: playerRow.meteragePerMinute,
+        accelerations: playerRow.accelerations,
+        decelerations: playerRow.decelerations,
+        highIntensityRuns: playerRow.highIntensityRuns,
+        sprints: playerRow.sprints,
+        maxVelocity: playerRow.maxVelocity,
+        adEffs: playerRow.adEffs,
+        hiDistTotal: playerRow.hiDistTotal,
+        hiDistPercent: playerRow.hiDistPercent,
+        sprintDistTotal: playerRow.sprintDistTotal,
+        sprintDistPercent: playerRow.sprintDistPercent,
+        isStarTotalDist: playerRow.isStarTotalDist,
+        isStarHighMpEffsDist: playerRow.isStarHighMpEffsDist,
+        isStarHighMpEffs: playerRow.isStarHighMpEffs,
+        isStarMeteragePerMin: playerRow.isStarMeteragePerMin,
+        isStarAccelerations: playerRow.isStarAccelerations,
+        isStarHighIntensityRuns: playerRow.isStarHighIntensityRuns,
+        isStarSprints: playerRow.isStarSprints,
+        isStarMaxVelocity: playerRow.isStarMaxVelocity,
+        teamAverageTotalDist: report.teamAverageTotalDist,
+        teamAverageMeteragePerMin: report.teamAverageMeteragePerMin,
+        teamAverageHighIntensityRuns: report.teamAverageHighIntensityRuns,
+        teamAverageSprints: report.teamAverageSprints,
+        teamAverageMaxVelocity: report.teamAverageMaxVelocity,
+        storageUrl: storageUrl || '',
+        createdAt: Date.now(),
+      };
+
+      let docRefId: string;
+      if (existing && !existing.empty) {
+        const existingDoc = existing.docs[0];
+        await adminDb().collection('GpsMatchData').doc(existingDoc.id).update({ ...gpsDoc, updatedAt: Date.now() });
+        docRefId = existingDoc.id;
+        console.log(`[gps-parse] Replaced GPS data for ${playerRow.playerName} — ${rowDateStr} -> ${docRefId}`);
+      } else {
+        const docRef = await adminDb().collection('GpsMatchData').add(gpsDoc);
+        docRefId = docRef.id;
+        console.log(`[gps-parse] Saved GPS data for ${playerRow.playerName} — ${rowDateStr} -> ${docRefId}`);
+      }
+      savedDocs.push(docRefId);
     }
 
     // Re-compute aggregate insights for this player (bilingual, stored in Firestore)
     await recomputeAndStoreInsights(playerTmProfile);
 
     return NextResponse.json({ 
-      status: existing.empty ? 'ok' : 'replaced', 
-      documentId: docRefId,
+      status: 'ok',
+      matchCount: savedDocs.length,
+      documentIds: savedDocs,
       matchTitle: report.matchTitle,
-      matchDate: report.matchDate,
-      playerName: playerRow.playerName,
+      playerName: allPlayerRows[0].playerName,
     });
   } catch (err) {
     console.error('[gps-parse] Error:', err);
