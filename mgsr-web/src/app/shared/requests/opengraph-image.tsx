@@ -5,13 +5,22 @@ export const alt = 'MGSR Active Recruitment';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-const BG = '#060810';
-const CARD = '#111621';
-const GOLD = '#C9A84C';
-const GOLD_DIM = '#9A7B3A';
+const BG = '#0A1018';
+const CARD = '#1A2736';
+const TEAL = '#4DB6AC';
+const GREEN = '#39D164';
 const TEXT = '#E8EAED';
-const MUTED = '#5E6878';
-const BORDER = '#1A1F2E';
+const MUTED = '#6B7B8D';
+const BORDER = '#253545';
+
+const POS_COLORS: Record<string, string> = {
+  GK: '#F59E0B',
+  CB: '#3B82F6', RB: '#60A5FA', LB: '#60A5FA',
+  DM: '#10B981', CM: '#22C55E', AM: '#34D399',
+  LM: '#8B5CF6', RM: '#8B5CF6',
+  LW: '#EC4899', RW: '#EC4899',
+  CF: '#EF4444', SS: '#F87171',
+};
 
 export default async function OpenGraphImage() {
   const data = await getRequestsData('men');
@@ -36,10 +45,21 @@ export default async function OpenGraphImage() {
           fontFamily: 'system-ui, -apple-system, sans-serif',
           position: 'relative',
           overflow: 'hidden',
-          background: `linear-gradient(135deg, ${BG} 0%, #0A0D16 40%, #0E1119 100%)`,
+          background: BG,
         }}
       >
-        {/* Subtle accent line */}
+        {/* Grid pattern overlay */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage:
+              'linear-gradient(rgba(77,182,172,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(77,182,172,0.04) 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
+          }}
+        />
+
+        {/* Teal accent line top */}
         <div
           style={{
             position: 'absolute',
@@ -47,21 +67,34 @@ export default async function OpenGraphImage() {
             left: 0,
             width: '100%',
             height: 3,
-            background: `linear-gradient(90deg, transparent, ${GOLD}, transparent)`,
-            opacity: 0.4,
+            background: `linear-gradient(90deg, transparent, ${TEAL}, ${GREEN}, transparent)`,
+            opacity: 0.5,
           }}
         />
 
-        {/* Warm glow orb */}
+        {/* Teal glow orb */}
         <div
           style={{
             position: 'absolute',
-            top: -80,
-            right: -60,
-            width: 400,
-            height: 400,
+            top: -100,
+            right: -80,
+            width: 450,
+            height: 450,
             borderRadius: '50%',
-            background: `radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%)`,
+            background: 'radial-gradient(circle, rgba(77,182,172,0.1) 0%, transparent 70%)',
+          }}
+        />
+
+        {/* Green glow orb */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: -60,
+            left: -40,
+            width: 300,
+            height: 300,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(57,209,100,0.06) 0%, transparent 70%)',
           }}
         />
 
@@ -82,7 +115,7 @@ export default async function OpenGraphImage() {
                 width: 42,
                 height: 42,
                 borderRadius: 10,
-                background: GOLD,
+                background: `linear-gradient(135deg, ${TEAL}, ${GREEN})`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -96,9 +129,9 @@ export default async function OpenGraphImage() {
             <span
               style={{
                 fontSize: 14,
-                fontWeight: 600,
-                letterSpacing: '0.3em',
-                color: MUTED,
+                fontWeight: 700,
+                letterSpacing: '0.2em',
+                color: TEAL,
                 textTransform: 'uppercase',
               }}
             >
@@ -107,40 +140,38 @@ export default async function OpenGraphImage() {
           </div>
 
           {/* Main heading */}
-          <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span
               style={{
-                fontSize: 68,
-                fontWeight: 300,
-                fontStyle: 'italic',
-                color: GOLD,
-                lineHeight: 0.95,
-                letterSpacing: '-0.025em',
+                fontSize: 64,
+                fontWeight: 800,
+                color: TEXT,
+                lineHeight: 1.05,
+                letterSpacing: '-0.03em',
               }}
             >
               Active
             </span>
             <span
               style={{
-                fontSize: 68,
-                fontWeight: 300,
-                fontStyle: 'italic',
-                color: GOLD,
-                lineHeight: 0.95,
-                letterSpacing: '-0.025em',
+                fontSize: 64,
+                fontWeight: 800,
+                color: TEAL,
+                lineHeight: 1.05,
+                letterSpacing: '-0.03em',
               }}
             >
-              Recruitment
+              Recruitment Requests
             </span>
           </div>
 
-          {/* Gold line */}
+          {/* Teal line */}
           <div
             style={{
               marginTop: 24,
               height: 2,
               width: 320,
-              background: `linear-gradient(90deg, ${GOLD}, ${GOLD_DIM}, transparent)`,
+              background: `linear-gradient(90deg, ${TEAL}, rgba(77,182,172,0.3), transparent)`,
             }}
           />
 
@@ -155,7 +186,7 @@ export default async function OpenGraphImage() {
             }}
           >
             {/* Stats */}
-            <div style={{ display: 'flex', gap: 20 }}>
+            <div style={{ display: 'flex', gap: 16 }}>
               {[
                 { value: count, label: 'REQUESTS' },
                 { value: positions, label: 'POSITIONS' },
@@ -171,9 +202,21 @@ export default async function OpenGraphImage() {
                     border: `1px solid ${BORDER}`,
                     borderRadius: 14,
                     padding: '18px 32px',
+                    position: 'relative',
+                    overflow: 'hidden',
                   }}
                 >
-                  <span style={{ fontSize: 38, fontWeight: 700, color: GOLD }}>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 2,
+                      background: `linear-gradient(90deg, transparent, ${TEAL}, transparent)`,
+                    }}
+                  />
+                  <span style={{ fontSize: 38, fontWeight: 800, color: TEXT }}>
                     {s.value}
                   </span>
                   <span
@@ -191,7 +234,7 @@ export default async function OpenGraphImage() {
               ))}
             </div>
 
-            {/* Position badges */}
+            {/* Position badges — colored by position */}
             {topPositions.length > 0 && (
               <div
                 style={{
@@ -202,26 +245,37 @@ export default async function OpenGraphImage() {
                   maxWidth: 360,
                 }}
               >
-                {topPositions.map(({ pos, cnt }) => (
-                  <span
-                    key={pos}
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: TEXT,
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: 8,
-                      padding: '5px 12px',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    {pos}
-                    <span style={{ color: MUTED, fontWeight: 500, marginLeft: 4, fontSize: 11 }}>
-                      ×{cnt}
-                    </span>
-                  </span>
-                ))}
+                {topPositions.map(({ pos, cnt }) => {
+                  const color = POS_COLORS[pos] || '#6B7280';
+                  return (
+                    <div
+                      key={pos}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        background: CARD,
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 10,
+                        padding: '6px 14px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 800,
+                          color: color,
+                          letterSpacing: '0.03em',
+                        }}
+                      >
+                        {pos}
+                      </span>
+                      <span style={{ color: MUTED, fontWeight: 500, fontSize: 12 }}>
+                        ×{cnt}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
