@@ -9,7 +9,7 @@ export default function DirSync() {
   const { lang, isRtl } = useLanguage();
 
   useEffect(() => {
-    if (pathname?.startsWith('/p/') || pathname?.startsWith('/sign-mandate/')) {
+    if (pathname?.startsWith('/p/') || pathname?.startsWith('/sign-mandate/') || pathname?.startsWith('/shared/')) {
       document.documentElement.dir = 'ltr';
       document.documentElement.lang = 'en';
       return;

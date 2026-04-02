@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { RequestsPageData, SharedRequest } from './getRequestsData';
 
 /* ─── Position Metadata ─── */
@@ -223,14 +223,6 @@ export default function SharedRequestsContent({
   platform: string;
 }) {
   const [expandedPositions, setExpandedPositions] = useState<Set<string>>(new Set());
-
-  // Force LTR on the html element — overrides DirSync which may set RTL
-  useEffect(() => {
-    const prev = document.documentElement.dir;
-    document.documentElement.dir = 'ltr';
-    document.documentElement.lang = 'en';
-    return () => { document.documentElement.dir = prev; };
-  }, []);
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
