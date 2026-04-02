@@ -667,19 +667,52 @@ export default function RequestsPage() {
             </h1>
             <p className="text-mgsr-muted mt-1 text-sm">{isYouth ? t('requests_subtitle_youth') : isWomen ? t('requests_subtitle_women') : t('requests_subtitle')}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowAddSheet(true)}
-            className={`shrink-0 px-5 py-2.5 rounded-xl font-semibold transition ${
-              isYouth
-                ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.3)] hover:opacity-90'
-                : isWomen
-                ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
-                : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
-            }`}
-          >
-            {t('requests_add')}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {pendingRequests.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
+                  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+                  const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}`;
+                  const text = `🔗 View full recruitment brief:\n\n${shareUrl}`;
+                  if (navigator.share) {
+                    navigator.share({ title: 'MGSR Team - Active Recruitment Requests', text, url: shareUrl }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(text).then(() => {
+                      alert(isHebrew ? 'הקישור הועתק' : 'Link copied to clipboard');
+                    }).catch(() => {});
+                  }
+                }}
+                className={`px-4 py-2.5 rounded-xl font-semibold transition border ${
+                  isYouth
+                    ? 'border-[var(--youth-cyan)]/30 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/10'
+                    : isWomen
+                    ? 'border-[var(--women-rose)]/30 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/10'
+                    : 'border-mgsr-teal/30 text-mgsr-teal hover:bg-mgsr-teal/10'
+                }`}
+                title={isHebrew ? 'שתף בקשות' : 'Share requests'}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                </svg>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowAddSheet(true)}
+              className={`px-5 py-2.5 rounded-xl font-semibold transition ${
+                isYouth
+                  ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.3)] hover:opacity-90'
+                  : isWomen
+                  ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
+                  : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
+              }`}
+            >
+              {t('requests_add')}
+            </button>
+          </div>
         </div>
 
         {/* Summary strip with match stats */}
