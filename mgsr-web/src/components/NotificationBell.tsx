@@ -48,7 +48,18 @@ export default function NotificationBell() {
         const { getMessaging: getMessagingInstance } = await import('@/lib/firebase');
         const messaging = await getMessagingInstance();
         if (!messaging) return;
-        const token = await getToken(messaging).catch(() => null);
+        const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        if (!swReg.active) {
+          await new Promise<void>((resolve) => {
+            const sw = swReg.installing || swReg.waiting;
+            if (!sw) { resolve(); return; }
+            sw.addEventListener('statechange', () => { if (sw.state === 'activated') resolve(); });
+          });
+        }
+        const token = await getToken(messaging, {
+          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '',
+          serviceWorkerRegistration: swReg,
+        }).catch(() => null);
         if (!token) return;
         await saveWebFcmToken(accountId, token);
         sessionStorage.setItem(key, '1');
