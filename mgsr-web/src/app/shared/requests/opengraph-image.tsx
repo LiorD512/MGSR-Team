@@ -48,17 +48,6 @@ export default async function OpenGraphImage() {
           background: BG,
         }}
       >
-        {/* Grid pattern overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage:
-              'linear-gradient(rgba(77,182,172,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(77,182,172,0.04) 1px, transparent 1px)',
-            backgroundSize: '60px 60px',
-          }}
-        />
-
         {/* Teal accent line top */}
         <div
           style={{
