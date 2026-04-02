@@ -1322,7 +1322,7 @@ export default function RequestsPage() {
                   onClick={() => {
                     const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
                     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-                    const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}`;
+                    const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}&showClubs=mgsr2026`;
                     const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
                     setShowShareDialog(false);
                     window.open(`https://wa.me/?text=${text}`, '_blank');
@@ -1342,7 +1342,7 @@ export default function RequestsPage() {
                   onClick={() => {
                     const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
                     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-                    const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}&hideClubs=1`;
+                    const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}`;
                     const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
                     setShowShareDialog(false);
                     window.open(`https://wa.me/?text=${text}`, '_blank');

@@ -269,8 +269,8 @@ fun RequestsScreen(
                                 Platform.YOUTH -> "youth"
                                 else -> "men"
                             }
-                            val hideParam = if (hideClubNames) "&hideClubs=1" else ""
-                            val shareLink = "$baseUrl/shared/requests?platform=$platformParam$hideParam"
+                            val clubsParam = if (hideClubNames) "" else "&showClubs=mgsr2026"
+                            val shareLink = "$baseUrl/shared/requests?platform=$platformParam$clubsParam"
                             val fullText = "View full recruitment brief:\n\n$shareLink"
                             showShareDialog = false
                             val intent = Intent(Intent.ACTION_SEND).apply {

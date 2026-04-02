@@ -69,11 +69,14 @@ export default async function SharedRequestsPage({
   const platform = (['men', 'women', 'youth'].includes(searchParams.platform || '')
     ? searchParams.platform
     : 'men') as Platform;
-  const hideClubs = searchParams.hideClubs === '1';
+
+  // Security: club names are ALWAYS stripped unless the correct secret key is provided.
+  // The share dialog sends the key for "show clubs" mode; without it clubs are hidden.
+  const clubsKey = process.env.SHARED_REQUESTS_CLUBS_KEY || 'mgsr2026';
+  const showClubs = searchParams.showClubs === clubsKey;
   const data = await getRequestsData(platform);
 
-  // Security: strip club data server-side so it never reaches the browser
-  if (hideClubs && data) {
+  if (!showClubs && data) {
     for (const req of data.requests) {
       delete req.clubName;
       delete req.clubLogo;
@@ -88,5 +91,5 @@ export default async function SharedRequestsPage({
     }
   }
 
-  return <SharedRequestsContent data={data} hideClubs={hideClubs} platform={platform} />;
+  return <SharedRequestsContent data={data} hideClubs={!showClubs} platform={platform} />;
 }
