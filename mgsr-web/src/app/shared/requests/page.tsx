@@ -23,7 +23,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: { platform?: string; hideClubs?: string };
+  searchParams: { platform?: string; showClubs?: string };
 }) {
   const platform = (['men', 'women', 'youth'].includes(searchParams.platform || '')
     ? searchParams.platform
@@ -64,7 +64,7 @@ export async function generateMetadata({
 export default async function SharedRequestsPage({
   searchParams,
 }: {
-  searchParams: { platform?: string; hideClubs?: string };
+  searchParams: { platform?: string; showClubs?: string };
 }) {
   const platform = (['men', 'women', 'youth'].includes(searchParams.platform || '')
     ? searchParams.platform
