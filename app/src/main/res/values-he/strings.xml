@@ -1047,4 +1047,9 @@
     <string name="birthdays_players">שחקנים</string>
     <string name="birthdays_in_days">בעוד %d ימים</string>
     <string name="birthdays_agent">סוכן</string>
+
+    <!-- Note @mention tagging -->
+    <string name="notification_note_tagged_title">תויגת בהערה</string>
+    <string name="notification_note_tagged_body">%1$s תייג אותך בהערות של %2$s</string>
+    <string name="notification_note_tagged_body_fallback">תויגת בהערות של %1$s</string>
 </resources>

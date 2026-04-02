@@ -37,6 +37,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
@@ -45,6 +47,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.NoteAdd
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -75,6 +78,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -98,6 +102,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.models.NotesModel
+import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.components.RecordingWaveform
 import com.liordahan.mgsrteam.ui.components.ToastManager
@@ -490,20 +495,60 @@ private fun NoteRecordingContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddNoteBottomSheet(
+    accounts: List<Account> = emptyList(),
     onDismiss: () -> Unit,
-    onSaveNote: (String) -> Unit
+    onSaveNote: (String, List<String>) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
     val view = LocalView.current
-    var noteText by remember { mutableStateOf("") }
+    var noteTextFieldValue by remember { mutableStateOf(TextFieldValue("")) }
     var isRecording by remember { mutableStateOf(false) }
     var recordingDuration by remember { mutableStateOf(0) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
-    val isValid = noteText.isNotBlank()
+    val isValid = noteTextFieldValue.text.isNotBlank()
     var hasEnteredText by remember { mutableStateOf(false) }
     val speechRecognizer = remember { VoiceNoteRecorder.createSpeechRecognizer(context) }
+    val taggedAgentIds = remember { mutableStateListOf<String>() }
+    val isHebrew = remember { com.liordahan.mgsrteam.localization.LocaleManager.isHebrew(context) }
+
+    // @ mention state
+    var showMentionDropdown by remember { mutableStateOf(false) }
+    var mentionQuery by remember { mutableStateOf("") }
+    var mentionStartIndex by remember { mutableStateOf(-1) }
+
+    // Detect @ in the text using actual cursor position
+    fun detectMention(tfv: TextFieldValue) {
+        val text = tfv.text
+        val cursorPos = tfv.selection.start
+        // Search backwards from cursor for @
+        val textBeforeCursor = text.substring(0, cursorPos.coerceAtMost(text.length))
+        val lastAt = textBeforeCursor.lastIndexOf('@')
+        if (lastAt >= 0) {
+            val afterAt = textBeforeCursor.substring(lastAt + 1)
+            if (!afterAt.contains('\n') && !afterAt.contains(' ') && afterAt.length < 30) {
+                mentionStartIndex = lastAt
+                mentionQuery = afterAt
+                showMentionDropdown = true
+                return
+            }
+        }
+        showMentionDropdown = false
+        mentionQuery = ""
+        mentionStartIndex = -1
+    }
+
+    val filteredAccounts = remember(mentionQuery, accounts, isHebrew) {
+        if (mentionQuery.isBlank()) {
+            accounts
+        } else {
+            accounts.filter { account ->
+                val displayName = if (isHebrew) account.hebrewName ?: account.name else account.name
+                displayName?.contains(mentionQuery, ignoreCase = true) == true
+            }
+        }
+    }
 
     LaunchedEffect(isRecording) {
         if (!isRecording) return@LaunchedEffect
@@ -522,7 +567,10 @@ fun AddNoteBottomSheet(
             startVoiceRecording(
                 context = context,
                 speechRecognizer = speechRecognizer,
-                onTranscription = { transcribed -> noteText = appendToNote(noteText, transcribed) },
+                onTranscription = { transcribed ->
+                    val newText = appendToNote(noteTextFieldValue.text, transcribed)
+                    noteTextFieldValue = TextFieldValue(newText, TextRange(newText.length))
+                },
                 onRecordingEnd = { isRecording = false }
             )
             isRecording = true
@@ -537,8 +585,8 @@ fun AddNoteBottomSheet(
         }
     }
 
-    LaunchedEffect(noteText) {
-        if (noteText.isNotBlank()) hasEnteredText = true
+    LaunchedEffect(noteTextFieldValue.text) {
+        if (noteTextFieldValue.text.isNotBlank()) hasEnteredText = true
     }
 
     fun onRecordClick() {
@@ -558,7 +606,10 @@ fun AddNoteBottomSheet(
             startVoiceRecording(
                 context = context,
                 speechRecognizer = speechRecognizer,
-                onTranscription = { transcribed -> noteText = appendToNote(noteText, transcribed) },
+                onTranscription = { transcribed ->
+                    val newText = appendToNote(noteTextFieldValue.text, transcribed)
+                    noteTextFieldValue = TextFieldValue(newText, TextRange(newText.length))
+                },
                 onRecordingEnd = { isRecording = false }
             )
             isRecording = true
@@ -596,8 +647,13 @@ fun AddNoteBottomSheet(
             Spacer(Modifier.height(16.dp))
 
             OutlinedTextField(
-                value = noteText,
-                onValueChange = { if (it.length <= MAX_NOTE_LENGTH) noteText = it },
+                value = noteTextFieldValue,
+                onValueChange = { newValue ->
+                    if (newValue.text.length <= MAX_NOTE_LENGTH) {
+                        noteTextFieldValue = newValue
+                        detectMention(newValue)
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 100.dp, max = 200.dp),
@@ -643,6 +699,70 @@ fun AddNoteBottomSheet(
                 )
             )
 
+            // @ Mention agent suggestions dropdown
+            if (showMentionDropdown && filteredAccounts.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 200.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = PlatformColors.palette.background
+                    ),
+                    border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+                ) {
+                    LazyColumn {
+                        items(filteredAccounts) { account ->
+                            val displayName = if (isHebrew) {
+                                account.hebrewName ?: account.name
+                            } else {
+                                account.name
+                            } ?: ""
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickWithNoRipple {
+                                        // Replace @query with @displayName and place cursor after it
+                                        if (mentionStartIndex >= 0) {
+                                            val text = noteTextFieldValue.text
+                                            val before = text.substring(0, mentionStartIndex)
+                                            val cursorPos = noteTextFieldValue.selection.start.coerceAtMost(text.length)
+                                            val after = text.substring(cursorPos)
+                                            val insertion = "@$displayName "
+                                            val newText = "$before$insertion$after"
+                                            val newCursorPos = before.length + insertion.length
+                                            noteTextFieldValue = TextFieldValue(newText, TextRange(newCursorPos))
+                                            if (account.id != null && !taggedAgentIds.contains(account.id)) {
+                                                taggedAgentIds.add(account.id!!)
+                                            }
+                                        }
+                                        showMentionDropdown = false
+                                        mentionQuery = ""
+                                        mentionStartIndex = -1
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = PlatformColors.palette.accent
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    text = displayName,
+                                    style = regularTextStyle(
+                                        PlatformColors.palette.textPrimary,
+                                        14.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             if (isRecording) {
                 Spacer(Modifier.height(20.dp))
                 NoteRecordingContent(
@@ -654,9 +774,9 @@ fun AddNoteBottomSheet(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "${noteText.length}/$MAX_NOTE_LENGTH",
+                text = "${noteTextFieldValue.text.length}/$MAX_NOTE_LENGTH",
                 style = regularTextStyle(
-                    if (noteText.length >= MAX_NOTE_LENGTH) PlatformColors.palette.red
+                    if (noteTextFieldValue.text.length >= MAX_NOTE_LENGTH) PlatformColors.palette.red
                     else PlatformColors.palette.textSecondary,
                     12.sp
                 ),
@@ -669,7 +789,7 @@ fun AddNoteBottomSheet(
                 onClick = {
                     keyboardController?.hide()
                     focusManager.clearFocus()
-                    onSaveNote(noteText.trim())
+                    onSaveNote(noteTextFieldValue.text.trim(), taggedAgentIds.toList())
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -701,8 +821,9 @@ fun AddNoteBottomSheet(
 @Composable
 fun AllNotesScreen(
     noteList: List<NotesModel>,
+    accounts: List<Account> = emptyList(),
     onBackClick: () -> Unit,
-    onAddNote: (String) -> Unit,
+    onAddNote: (String, List<String>) -> Unit,
     onDeleteNote: (NotesModel) -> Unit
 ) {
     val sortedNotes = noteList.sortedByDescending { it.createdAt }
@@ -713,9 +834,10 @@ fun AllNotesScreen(
 
     if (showAddSheet) {
         AddNoteBottomSheet(
+            accounts = accounts,
             onDismiss = { showAddSheet = false },
-            onSaveNote = { text ->
-                onAddNote(text)
+            onSaveNote = { text, taggedIds ->
+                onAddNote(text, taggedIds)
                 showAddSheet = false
             }
         )
@@ -811,7 +933,7 @@ fun AllNotesScreen(
                                     duration = SnackbarDuration.Short
                                 )
                                 if (result == SnackbarResult.ActionPerformed) {
-                                    onAddNote(deletedNote.notes ?: "")
+                                    onAddNote(deletedNote.notes ?: "", deletedNote.taggedAgentIds.orEmpty())
                                 }
                                 pendingDeleteNote = null
                             }

@@ -133,6 +133,7 @@ data class NotesModel(
     val createBy: String? = null,
     val createByHe: String? = null,
     val createdAt: Long? = 0,
+    val taggedAgentIds: List<String>? = null,
 ) : Parcelable
 
 @Keep

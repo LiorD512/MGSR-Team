@@ -190,7 +190,7 @@ export const callPlayersToggleMandate = callable<
 >('playersToggleMandate');
 
 export const callPlayersAddNote = callable<
-  { platform: string; playerId: string; playerRefId?: string; noteText: string; createdBy?: string; createdByHe?: string; playerName?: string; playerImage?: string; agentName?: string },
+  { platform: string; playerId: string; playerRefId?: string; noteText: string; createdBy?: string; createdByHe?: string; playerName?: string; playerImage?: string; agentName?: string; taggedAgentIds?: string[] },
   { success: boolean; noteList: unknown[] }
 >('playersAddNote');
 

@@ -157,6 +157,16 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
                 val body = ctx.getString(R.string.notification_transfer_rejected_body, playerName)
                 title to body
             }
+            TYPE_NOTE_TAGGED -> {
+                val taggerName = data[KEY_AGENT_NAME].orEmpty()
+                val title = ctx.getString(R.string.notification_note_tagged_title)
+                val body = if (taggerName.isNotBlank()) {
+                    ctx.getString(R.string.notification_note_tagged_body, taggerName, playerName)
+                } else {
+                    ctx.getString(R.string.notification_note_tagged_body_fallback, playerName)
+                }
+                title to body
+            }
             else -> {
                 val title = data["title"] ?: ctx.getString(R.string.app_name)
                 val body = data["body"] ?: data["message"] ?: ""
@@ -215,6 +225,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
             TYPE_AGENT_TRANSFER_REQUEST, TYPE_AGENT_TRANSFER_APPROVED, TYPE_AGENT_TRANSFER_REJECTED ->
                 0xFF2196F3.toInt() to R.drawable.notification_accent_blue
             TYPE_REQUEST_ADDED -> 0xFF9C27B0.toInt() to R.drawable.notification_accent_green
+            TYPE_NOTE_TAGGED -> 0xFF2196F3.toInt() to R.drawable.notification_accent_blue
             else -> 0xFF39D164.toInt() to R.drawable.notification_accent_green
         }
 
@@ -341,6 +352,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         const val TYPE_AGENT_TRANSFER_REQUEST = "AGENT_TRANSFER_REQUEST"
         const val TYPE_AGENT_TRANSFER_APPROVED = "AGENT_TRANSFER_APPROVED"
         const val TYPE_AGENT_TRANSFER_REJECTED = "AGENT_TRANSFER_REJECTED"
+        const val TYPE_NOTE_TAGGED = "NOTE_TAGGED"
         private const val KEY_REQUESTER_NAME = "requesterName"
         private const val KEY_AGENT_NAME = "agentName"
         const val EXTRA_PLAYER_TM_PROFILE = "playerTmProfile"

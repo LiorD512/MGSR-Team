@@ -1565,4 +1565,9 @@
     <string name="birthdays_players">players</string>
     <string name="birthdays_in_days">In %d days</string>
     <string name="birthdays_agent">Agent</string>
+
+    <!-- Note @mention tagging -->
+    <string name="notification_note_tagged_title">Tagged in Note</string>
+    <string name="notification_note_tagged_body">%1$s tagged you in %2$s\'s notes</string>
+    <string name="notification_note_tagged_body_fallback">You were tagged in %1$s\'s notes</string>
 </resources>

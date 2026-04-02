@@ -435,13 +435,15 @@ fun PlayerInfoScreen(
         }
         if (showAddNoteSheet) {
             AddNoteBottomSheet(
+                accounts = allAccounts,
                 onDismiss = { showAddNoteSheet = false },
-                onSaveNote = { text ->
+                onSaveNote = { text, taggedIds ->
                     viewModel.updateNotes(
                         NotesModel(
                             notes = text,
                             createBy = "",
-                            createdAt = Date().time
+                            createdAt = Date().time,
+                            taggedAgentIds = taggedIds.ifEmpty { null }
                         )
                     )
                     showAddNoteSheet = false
@@ -451,13 +453,15 @@ fun PlayerInfoScreen(
         if (showAllNotes) {
             AllNotesScreen(
                 noteList = playerToPresent?.noteList.orEmpty(),
+                accounts = allAccounts,
                 onBackClick = { showAllNotes = false },
-                onAddNote = { text ->
+                onAddNote = { text, taggedIds ->
                     viewModel.updateNotes(
                         NotesModel(
                             notes = text,
                             createBy = "",
-                            createdAt = Date().time
+                            createdAt = Date().time,
+                            taggedAgentIds = taggedIds.ifEmpty { null }
                         )
                     )
                 },

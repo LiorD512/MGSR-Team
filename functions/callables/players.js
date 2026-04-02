@@ -171,6 +171,7 @@ async function playersToggleMandate(data) {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // playersAddNote — append note + salary/fee extraction (men) + FeedEvent
+//                  + push notification to tagged agents
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function playersAddNote(data) {
@@ -178,6 +179,7 @@ async function playersAddNote(data) {
   const playerId = requireId(data.playerId, "playerId");
   const playerRefId = str(data.playerRefId) || playerId;
   const agentName = str(data.agentName);
+  const taggedAgentIds = Array.isArray(data.taggedAgentIds) ? data.taggedAgentIds.filter(id => typeof id === "string" && id.length > 0) : [];
 
   const note = {
     notes: str(data.noteText),
@@ -185,6 +187,9 @@ async function playersAddNote(data) {
     createByHe: str(data.createdByHe),
     createdAt: Date.now(),
   };
+  if (taggedAgentIds.length > 0) {
+    note.taggedAgentIds = taggedAgentIds;
+  }
 
   const db = getDb();
   const col = PLAYERS_COLLECTIONS[data.platform];
@@ -223,6 +228,97 @@ async function playersAddNote(data) {
     });
   } catch (err) {
     console.warn("[playersAddNote] FeedEvent write failed:", err.message);
+  }
+
+  // Send push notification to tagged agents
+  if (taggedAgentIds.length > 0) {
+    try {
+      const { getMessaging } = require("firebase-admin/messaging");
+      const ACCOUNTS_COLLECTION = "Accounts";
+      const playerName = str(data.playerName) || "Unknown";
+
+      for (const taggedId of taggedAgentIds) {
+        try {
+          const accountSnap = await db.collection(ACCOUNTS_COLLECTION).doc(taggedId).get();
+          if (!accountSnap.exists) continue;
+          const accountData = accountSnap.data();
+
+          // Collect all FCM tokens
+          const tokens = new Set();
+          if (accountData.fcmToken) tokens.add(accountData.fcmToken);
+          if (Array.isArray(accountData.fcmTokens)) {
+            for (const entry of accountData.fcmTokens) {
+              const t = typeof entry === "string" ? entry : entry?.token;
+              if (t) tokens.add(t);
+            }
+          }
+          if (tokens.size === 0) continue;
+
+          const notifTitle = "Tagged in Note";
+          const notifBody = agentName
+            ? `${agentName} tagged you in ${playerName}'s notes`
+            : `You were tagged in ${playerName}'s notes`;
+
+          const messages = [...tokens].map((token) => ({
+            token,
+            notification: { title: notifTitle, body: notifBody },
+            data: {
+              type: "NOTE_TAGGED",
+              playerName,
+              playerImage: str(data.playerImage) || "",
+              playerId,
+              agentName: agentName || "",
+              screen: "player",
+              player_id: playerId,
+            },
+            android: {
+              priority: "high",
+              notification: {
+                channelId: "mgsr_team_notifications",
+              },
+            },
+            webpush: {
+              notification: {
+                title: notifTitle,
+                body: notifBody,
+                icon: "/logo.svg",
+                tag: `note-tag-${playerId}-${Date.now()}`,
+              },
+              fcmOptions: { link: `/players/${playerId}` },
+            },
+          }));
+
+          const results = await getMessaging().sendEach(messages);
+
+          // Clean up invalid tokens
+          const invalidTokens = [];
+          results.responses.forEach((resp, idx) => {
+            if (resp.error && (
+              resp.error.code === "messaging/registration-token-not-registered" ||
+              resp.error.code === "messaging/invalid-registration-token"
+            )) {
+              invalidTokens.push([...tokens][idx]);
+            }
+          });
+          if (invalidTokens.length > 0) {
+            const accountRef = db.collection(ACCOUNTS_COLLECTION).doc(taggedId);
+            const updates = {};
+            if (invalidTokens.includes(accountData.fcmToken)) updates.fcmToken = "";
+            if (Array.isArray(accountData.fcmTokens)) {
+              updates.fcmTokens = accountData.fcmTokens.filter((entry) => {
+                const t = typeof entry === "string" ? entry : entry?.token;
+                return !invalidTokens.includes(t);
+              });
+            }
+            if (Object.keys(updates).length > 0) await accountRef.update(updates);
+          }
+        } catch (tagErr) {
+          console.warn(`[playersAddNote] Failed to notify tagged agent ${taggedId}:`, tagErr.message);
+        }
+      }
+    } catch (err) {
+      console.warn("[playersAddNote] Tagged agent notification failed:", err.message);
+    }
   }
 
   return { success: true, noteList };

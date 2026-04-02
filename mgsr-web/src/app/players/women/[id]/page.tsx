@@ -33,6 +33,7 @@ import { type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import { usePlayerMatchResults } from '@/hooks/useMatchResults';
 import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
+import NoteTextarea from '@/components/NoteTextarea';
 import Link from 'next/link';
 
 const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
@@ -86,6 +87,7 @@ export default function WomanPlayerPage() {
   const [editingNote, setEditingNote] = useState<WomanPlayerNote | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
+  const [noteTaggedAgentIds, setNoteTaggedAgentIds] = useState<string[]>([]);
   const [deleteConfirmNote, setDeleteConfirmNote] = useState<WomanPlayerNote | null>(null);
   const [uploadingDocument, setUploadingDocument] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -482,14 +484,16 @@ export default function WomanPlayerPage() {
           playerName: player.fullName,
           playerImage: player.profileImage,
           agentName: createdBy,
+          taggedAgentIds: noteTaggedAgentIds.length > 0 ? noteTaggedAgentIds : undefined,
         });
         setNoteModalOpen(null);
         setNoteDraft('');
+        setNoteTaggedAgentIds([]);
       } finally {
         setNoteSaving(false);
       }
     },
-    [player, id, getCurrentUserName]
+    [player, id, getCurrentUserName, noteTaggedAgentIds]
   );
 
   const handleEditNote = useCallback(
@@ -1708,13 +1712,16 @@ export default function WomanPlayerPage() {
               <h3 className="text-lg font-display font-semibold text-mgsr-text mb-4">
                 {noteModalOpen === 'add' ? t('player_info_add_note') : t('player_info_edit_note')}
               </h3>
-              <textarea
+              <NoteTextarea
                 value={noteDraft}
-                onChange={(e) => setNoteDraft(e.target.value)}
+                onChange={setNoteDraft}
+                accounts={accounts}
+                isRtl={isRtl}
                 placeholder={t('player_info_note_placeholder')}
                 rows={5}
                 className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--women-rose)]/60 resize-none"
                 autoFocus
+                onTaggedAgentsChange={setNoteTaggedAgentIds}
               />
               <div className="flex gap-3 mt-4">
                 <button
@@ -1722,6 +1729,7 @@ export default function WomanPlayerPage() {
                     setNoteModalOpen(null);
                     setEditingNote(null);
                     setNoteDraft('');
+                    setNoteTaggedAgentIds([]);
                   }}
                   disabled={noteSaving}
                   className="flex-1 px-4 py-2.5 rounded-xl border border-mgsr-border text-mgsr-muted hover:bg-[var(--women-rose)]/10 hover:text-[var(--women-rose)] hover:border-[var(--women-rose)]/30 transition disabled:opacity-50"

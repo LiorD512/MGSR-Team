@@ -774,7 +774,8 @@ class PlayerInfoViewModel(
                     createdByHe = account?.hebrewName,
                     playerName = player.fullName,
                     playerImage = player.profileImage,
-                    agentName = account?.getDisplayName(appContext)
+                    agentName = account?.getDisplayName(appContext),
+                    taggedAgentIds = notes.taggedAgentIds
                 )
 
                 // Persist extracted financial terms from notes

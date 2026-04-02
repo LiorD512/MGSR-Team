@@ -30,6 +30,7 @@ import AgentTransferSection from '@/components/AgentTransferSection';
 import { type AgentTransferRequest, listenForPendingRequest, listenForResolvedTransfer, requestAgentTransfer, approveTransfer, rejectTransfer, cancelTransferRequest } from '@/lib/agentTransfer';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import { appConfig, getPositionDisplayName } from '@/lib/appConfig';
+import NoteTextarea from '@/components/NoteTextarea';
 import {
   LineChart,
   Line,
@@ -283,6 +284,7 @@ export default function PlayerInfoPage() {
   const [editingNote, setEditingNote] = useState<NoteModel | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
+  const [noteTaggedAgentIds, setNoteTaggedAgentIds] = useState<string[]>([]);
   const [deleteConfirmNote, setDeleteConfirmNote] = useState<NoteModel | null>(null);
   const [uploadingDocument, setUploadingDocument] = useState(false);
   const [parsingGps, setParsingGps] = useState(false);
@@ -1457,14 +1459,16 @@ export default function PlayerInfoPage() {
           playerName: player.fullName,
           playerImage: player.profileImage,
           agentName: createdBy,
+          taggedAgentIds: noteTaggedAgentIds.length > 0 ? noteTaggedAgentIds : undefined,
         });
         setNoteModalOpen(null);
         setNoteDraft('');
+        setNoteTaggedAgentIds([]);
       } finally {
         setNoteSaving(false);
       }
     },
-    [player, id, getCurrentUserName, accounts, user]
+    [player, id, getCurrentUserName, accounts, user, noteTaggedAgentIds]
   );
 
   const handleEditNote = useCallback(
@@ -3296,13 +3300,16 @@ export default function PlayerInfoPage() {
             <h3 className="text-lg font-display font-semibold text-mgsr-text mb-4">
               {noteModalOpen === 'add' ? t('player_info_add_note') : t('player_info_edit_note')}
             </h3>
-            <textarea
+            <NoteTextarea
               value={noteDraft}
-              onChange={(e) => setNoteDraft(e.target.value)}
+              onChange={setNoteDraft}
+              accounts={accounts}
+              isRtl={isRtl}
               placeholder={t('player_info_note_placeholder')}
               rows={5}
               className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal/60 resize-none"
               autoFocus
+              onTaggedAgentsChange={setNoteTaggedAgentIds}
             />
             <div className="flex gap-3 mt-4">
               <button
@@ -3310,6 +3317,7 @@ export default function PlayerInfoPage() {
                   setNoteModalOpen(null);
                   setEditingNote(null);
                   setNoteDraft('');
+                  setNoteTaggedAgentIds([]);
                 }}
                 disabled={noteSaving}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-mgsr-border text-mgsr-muted hover:bg-mgsr-card/80 transition disabled:opacity-50"

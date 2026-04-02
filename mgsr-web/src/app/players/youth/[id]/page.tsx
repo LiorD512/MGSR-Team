@@ -31,6 +31,7 @@ import { type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import { usePlayerMatchResults } from '@/hooks/useMatchResults';
 import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
+import NoteTextarea from '@/components/NoteTextarea';
 import Link from 'next/link';
 
 const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
@@ -87,6 +88,7 @@ export default function YouthPlayerPage() {
   const [editingNote, setEditingNote] = useState<YouthPlayerNote | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
+  const [noteTaggedAgentIds, setNoteTaggedAgentIds] = useState<string[]>([]);
   const [deleteConfirmNote, setDeleteConfirmNote] = useState<YouthPlayerNote | null>(null);
 
   // Document state
@@ -414,14 +416,16 @@ export default function YouthPlayerPage() {
           playerName: player.fullName,
           playerImage: player.profileImage,
           agentName: createdBy,
+          taggedAgentIds: noteTaggedAgentIds.length > 0 ? noteTaggedAgentIds : undefined,
         });
         setNoteModalOpen(null);
         setNoteDraft('');
+        setNoteTaggedAgentIds([]);
       } finally {
         setNoteSaving(false);
       }
     },
-    [player, id, getCurrentUserName]
+    [player, id, getCurrentUserName, noteTaggedAgentIds]
   );
 
   const handleEditNote = useCallback(
@@ -1132,16 +1136,19 @@ export default function YouthPlayerPage() {
               <h2 className="text-lg font-display font-bold youth-gradient-text mb-4">
                 {noteModalOpen === 'add' ? t('youth_detail_add_note_title') : t('youth_detail_edit_note_title')}
               </h2>
-              <textarea
+              <NoteTextarea
                 value={noteDraft}
-                onChange={(e) => setNoteDraft(e.target.value)}
+                onChange={setNoteDraft}
+                accounts={accounts}
+                isRtl={isRtl}
                 placeholder={t('youth_detail_note_placeholder')}
                 rows={4}
                 className={`${glassInputSm} resize-none mb-4`}
                 autoFocus
+                onTaggedAgentsChange={setNoteTaggedAgentIds}
               />
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => { setNoteModalOpen(null); setEditingNote(null); setNoteDraft(''); }} className="px-4 py-2 text-sm text-mgsr-muted hover:text-mgsr-text transition">
+                <button type="button" onClick={() => { setNoteModalOpen(null); setEditingNote(null); setNoteDraft(''); setNoteTaggedAgentIds([]); }} className="px-4 py-2 text-sm text-mgsr-muted hover:text-mgsr-text transition">
                   {t('youth_detail_cancel')}
                 </button>
                 <button

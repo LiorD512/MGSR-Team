@@ -194,7 +194,8 @@ object SharedCallables {
     suspend fun playersAddNote(
         platform: Platform, playerId: String, playerRefId: String,
         noteText: String, createdBy: String?, createdByHe: String?,
-        playerName: String?, playerImage: String?, agentName: String?
+        playerName: String?, playerImage: String?, agentName: String?,
+        taggedAgentIds: List<String>? = null
     ) {
         call("playersAddNote", mapOf(
             "platform" to platform.callableName(),
@@ -206,6 +207,7 @@ object SharedCallables {
             "playerName" to (playerName ?: ""),
             "playerImage" to (playerImage ?: ""),
             "agentName" to (agentName ?: ""),
+            "taggedAgentIds" to (taggedAgentIds ?: emptyList<String>()),
         ))
     }
 
