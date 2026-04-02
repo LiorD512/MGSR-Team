@@ -202,7 +202,7 @@ function RequestCard({
         <div
           className="mt-4 pl-3.5 border-l-2 text-[13px] font-sans text-mgsr-muted/80 leading-relaxed relative z-10"
           style={{ borderColor: `${posColor}50` }}
-          dir="auto"
+          dir="ltr"
         >
           {req.notes}
         </div>
@@ -556,9 +556,11 @@ export default function SharedRequestsContent({
                           <div key={country} className="mb-5 last:mb-2">
                             {/* Country sub-header */}
                             <div className="flex items-center gap-2.5 mb-3 pl-1">
-                              {flag && (
+                              {flag && flag.startsWith('http') ? (
+                                <img src={flag} alt="" className="w-5 h-4 object-contain shrink-0" />
+                              ) : flag ? (
                                 <span className="text-base leading-none">{flag}</span>
-                              )}
+                              ) : null}
                               <span className="text-[13px] font-premium text-mgsr-muted tracking-wide">
                                 {country !== 'Other' ? country : 'Various'}
                               </span>

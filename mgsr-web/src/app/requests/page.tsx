@@ -1323,7 +1323,7 @@ export default function RequestsPage() {
                     const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
                     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
                     const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}`;
-                    const text = encodeURIComponent(`🔗 View full recruitment brief:\n\n${shareUrl}`);
+                    const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
                     setShowShareDialog(false);
                     window.open(`https://wa.me/?text=${text}`, '_blank');
                   }}
@@ -1335,7 +1335,7 @@ export default function RequestsPage() {
                       : 'bg-mgsr-teal/10 text-mgsr-teal hover:bg-mgsr-teal/20 border border-mgsr-teal/20'
                   }`}
                 >
-                  {isHebrew ? '📤 שתף עם שמות מועדונים' : '📤 Share with club names'}
+                  {isHebrew ? 'שתף עם שמות מועדונים' : 'Share with club names'}
                 </button>
                 <button
                   type="button"
@@ -1343,13 +1343,13 @@ export default function RequestsPage() {
                     const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
                     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
                     const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}&hideClubs=1`;
-                    const text = encodeURIComponent(`🔗 View full recruitment brief:\n\n${shareUrl}`);
+                    const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
                     setShowShareDialog(false);
                     window.open(`https://wa.me/?text=${text}`, '_blank');
                   }}
                   className="w-full px-4 py-3 rounded-xl font-semibold transition text-sm bg-white/5 text-mgsr-muted hover:bg-white/10 border border-mgsr-border"
                 >
-                  {isHebrew ? '🔒 שתף עם הסתרת מועדונים' : '🔒 Share with hidden clubs'}
+                  {isHebrew ? 'שתף עם הסתרת מועדונים' : 'Share with hidden clubs'}
                 </button>
                 <button
                   type="button"
