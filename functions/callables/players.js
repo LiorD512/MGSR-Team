@@ -180,7 +180,6 @@ async function playersAddNote(data) {
   const playerRefId = str(data.playerRefId) || playerId;
   const agentName = str(data.agentName);
   const taggedAgentIds = Array.isArray(data.taggedAgentIds) ? data.taggedAgentIds.filter(id => typeof id === "string" && id.length > 0) : [];
-  console.log("[playersAddNote] taggedAgentIds received:", JSON.stringify(taggedAgentIds), "raw:", JSON.stringify(data.taggedAgentIds));
 
   const note = {
     notes: str(data.noteText),
@@ -231,12 +230,17 @@ async function playersAddNote(data) {
     console.warn("[playersAddNote] FeedEvent write failed:", err.message);
   }
 
-  // Send push notification to tagged agents
+  // Send push notification to tagged agents (same pattern as onNewAgentTask)
   if (taggedAgentIds.length > 0) {
     try {
       const { getMessaging } = require("firebase-admin/messaging");
       const ACCOUNTS_COLLECTION = "Accounts";
       const playerName = str(data.playerName) || "Unknown";
+
+      const notifTitle = "Tagged in Note";
+      const notifBody = agentName
+        ? `${agentName} tagged you in ${playerName}'s notes`
+        : `You were tagged in ${playerName}'s notes`;
 
       for (const taggedId of taggedAgentIds) {
         try {
@@ -244,7 +248,7 @@ async function playersAddNote(data) {
           if (!accountSnap.exists) continue;
           const accountData = accountSnap.data();
 
-          // Collect all FCM tokens
+          // Collect all FCM tokens (same as getAllTokens in index.js)
           const tokens = new Set();
           if (accountData.fcmToken) tokens.add(accountData.fcmToken);
           if (Array.isArray(accountData.fcmTokens)) {
@@ -253,30 +257,28 @@ async function playersAddNote(data) {
               if (t) tokens.add(t);
             }
           }
-          if (tokens.size === 0) continue;
+          if (tokens.size === 0) {
+            console.log(`No FCM tokens for tagged agent ${taggedId}, skipping`);
+            continue;
+          }
 
-          const notifTitle = "Tagged in Note";
-          const notifBody = agentName
-            ? `${agentName} tagged you in ${playerName}'s notes`
-            : `You were tagged in ${playerName}'s notes`;
+          const fcmData = {
+            type: "NOTE_TAGGED",
+            playerName,
+            playerImage: str(data.playerImage) || "",
+            playerId: playerRefId,
+            agentName: agentName || "",
+            screen: "player",
+            player_id: playerRefId,
+          };
 
           const messages = [...tokens].map((token) => ({
             token,
             notification: { title: notifTitle, body: notifBody },
-            data: {
-              type: "NOTE_TAGGED",
-              playerName,
-              playerImage: str(data.playerImage) || "",
-              playerId: playerRefId,
-              agentName: agentName || "",
-              screen: "player",
-              player_id: playerRefId,
-            },
+            data: fcmData,
             android: {
               priority: "high",
-              notification: {
-                channelId: "mgsr_team_notifications",
-              },
+              notification: { channelId: "mgsr_team_notifications" },
             },
             webpush: {
               notification: {

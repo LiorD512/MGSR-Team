@@ -8,7 +8,7 @@ import {
   onAuthStateChanged,
 } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { removeWebFcmToken } from '@/lib/notifications';
 
 interface AuthContextType {
@@ -40,10 +40,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Remove web FCM token before signing out
     try {
       if (user?.email) {
-        const q = query(collection(db, 'Accounts'), where('email', '==', user.email.toLowerCase()));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const accountId = snap.docs[0].id;
+        const snap = await getDocs(collection(db, 'Accounts'));
+        const emailLower = user.email.toLowerCase();
+        const accountDoc = snap.docs.find(d => (d.data().email as string)?.toLowerCase() === emailLower);
+        if (accountDoc) {
+          const accountId = accountDoc.id;
           const { getToken } = await import('firebase/messaging');
           const { getMessaging: getMessagingInstance } = await import('@/lib/firebase');
           const messaging = await getMessagingInstance();

@@ -20,7 +20,4 @@ const messaging = firebase.messaging();
 
 // Background notifications are displayed automatically by FCM via the
 // `webpush.notification` payload sent from the Cloud Function.
-// A manual showNotification() call here would cause duplicate notifications.
-messaging.onBackgroundMessage((_payload) => {
-  // Intentionally empty – avoids duplicate OS notifications.
-});
+messaging.onBackgroundMessage((_payload) => {});

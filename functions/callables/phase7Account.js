@@ -24,12 +24,24 @@ async function accountUpdate(data) {
 
   // Look up by email if accountId is not provided
   if (!accountId && email) {
-    const snap = await db.collection("Accounts")
+    const emailLower = email.toLowerCase();
+    // Try exact match first (fast indexed query)
+    let snap = await db.collection("Accounts")
       .where("email", "==", email)
       .limit(1)
       .get();
-    if (snap.empty) throw new Error("No account found for email.");
-    accountId = snap.docs[0].id;
+    // Fallback: case-insensitive scan
+    if (snap.empty) {
+      const allSnap = await db.collection("Accounts").get();
+      const match = allSnap.docs.find(d => (d.data().email || "").toLowerCase() === emailLower);
+      if (match) {
+        accountId = match.id;
+      } else {
+        throw new Error("No account found for email.");
+      }
+    } else {
+      accountId = snap.docs[0].id;
+    }
   }
   if (!accountId) throw new Error("accountId or email is required.");
 
@@ -62,7 +74,7 @@ async function accountUpdate(data) {
   }
 
   if (Object.keys(updates).length === 0) {
-    return { success: true }; // Nothing to update
+    return { success: true };
   }
 
   await db.collection("Accounts").doc(accountId).update(updates);

@@ -632,12 +632,10 @@ exports.subscribeToTopicCallable = onCall(async (request) => {
   if (!token || !topic) {
     throw new Error("Missing token or topic");
   }
-  // Only allow subscribing to the known broadcast topic
   if (topic !== "mgsr_all") {
     throw new Error("Invalid topic");
   }
   await getMessaging().subscribeToTopic([token], topic);
-  console.log(`Subscribed token to topic "${topic}"`);
   return { success: true };
 });
 

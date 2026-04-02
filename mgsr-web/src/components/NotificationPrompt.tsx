@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -14,9 +14,10 @@ import {
 const DISMISSED_KEY = 'mgsr_notif_prompt_dismissed';
 
 async function findAccountId(email: string): Promise<string | null> {
-  const q = query(collection(db, 'Accounts'), where('email', '==', email));
-  const snap = await getDocs(q);
-  return snap.docs[0]?.id ?? null;
+  const snap = await getDocs(collection(db, 'Accounts'));
+  const emailLower = email.toLowerCase();
+  const doc = snap.docs.find(d => (d.data().email as string)?.toLowerCase() === emailLower);
+  return doc?.id ?? null;
 }
 
 export default function NotificationPrompt() {

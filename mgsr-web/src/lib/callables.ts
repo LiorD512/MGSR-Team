@@ -307,6 +307,6 @@ export const callMandateSigningCreate = callable<
 // ── Phase 7 — Account ──────────────────────────────────────────────────
 
 export const callAccountUpdate = callable<
-  { accountId: string; fcmToken?: string; language?: string; addFcmWebToken?: string; removeFcmWebToken?: { token: string; platform: string; updatedAt: number } },
+  { accountId: string; email?: string; fcmToken?: string; language?: string; addFcmWebToken?: string; removeFcmWebToken?: { token: string; platform: string; updatedAt: number } },
   { success: boolean }
 >('accountUpdate');

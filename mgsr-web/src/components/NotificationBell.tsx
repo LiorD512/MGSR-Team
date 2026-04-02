@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -15,9 +15,10 @@ import {
 
 /** Resolve the Account doc ID for the current user (lookup by email). */
 async function findAccountId(email: string): Promise<string | null> {
-  const q = query(collection(db, 'Accounts'), where('email', '==', email));
-  const snap = await getDocs(q);
-  return snap.docs[0]?.id ?? null;
+  const snap = await getDocs(collection(db, 'Accounts'));
+  const emailLower = email.toLowerCase();
+  const doc = snap.docs.find(d => (d.data().email as string)?.toLowerCase() === emailLower);
+  return doc?.id ?? null;
 }
 
 export default function NotificationBell() {
@@ -32,6 +33,30 @@ export default function NotificationBell() {
   useEffect(() => {
     setStatus(getNotificationStatus());
   }, []);
+
+  // Ensure FCM token is saved to account whenever notifications are granted.
+  // Runs once per page load — this is the ONLY place token persistence happens.
+  useEffect(() => {
+    if (status !== 'granted' || !user?.email) return;
+    const key = 'mgsr_token_saved';
+    if (sessionStorage.getItem(key)) return;
+    (async () => {
+      try {
+        const accountId = await findAccountId(user.email!);
+        if (!accountId) return;
+        const { getToken } = await import('firebase/messaging');
+        const { getMessaging: getMessagingInstance } = await import('@/lib/firebase');
+        const messaging = await getMessagingInstance();
+        if (!messaging) return;
+        const token = await getToken(messaging).catch(() => null);
+        if (!token) return;
+        await saveWebFcmToken(accountId, token);
+        sessionStorage.setItem(key, '1');
+      } catch (e) {
+        // Silently ignore — will retry next page load
+      }
+    })();
+  }, [status, user]);
 
   // Foreground message listener — show toast
   useEffect(() => {
@@ -55,7 +80,6 @@ export default function NotificationBell() {
         const accountId = await findAccountId(user.email);
         if (accountId) {
           await saveWebFcmToken(accountId, token);
-          // Subscribe to topic via callable Cloud Function
           try {
             const { httpsCallable } = await import('firebase/functions');
             const { getFunctions } = await import('firebase/functions');
