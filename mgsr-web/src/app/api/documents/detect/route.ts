@@ -85,8 +85,8 @@ const SAFETY_SETTINGS = [
 async function detectGpsReport(buffer: Buffer): Promise<string | null> {
   const lower = buffer.toString('latin1').toLowerCase();
 
-  // Check PDF metadata — Catapult reports have CatapultSports in creator/keywords
-  const metadataMarkers = ['catapultsports', 'athlete analytics', 'openfield'];
+  // Check PDF metadata — Catapult/STATSports reports have identifiable creator/keywords
+  const metadataMarkers = ['catapultsports', 'athlete analytics', 'openfield', 'statsports'];
   const metadataCount = metadataMarkers.filter(m => lower.includes(m)).length;
 
   const catapultMarkers = [
@@ -96,12 +96,14 @@ async function detectGpsReport(buffer: Buffer): Promise<string | null> {
   ];
   const catapultCount = catapultMarkers.filter(m => lower.includes(m)).length;
 
-  // Generic GPS/physical performance markers (broader formats)
+  // Generic GPS/physical performance markers (broader formats including STATSports)
   const genericMarkers = [
     'total dist', 'sprint dist', 'high intensity dist',
     'max speed', 'accelerations', 'decelerations',
     'time (min)', 'total distance', 'sprint distance',
     'high speed run', 'high intensity', 'top speed',
+    'distance per min', 'distance zone', 'dynamic stress load',
+    'match day',
   ];
   const genericCount = genericMarkers.filter(m => lower.includes(m)).length;
 

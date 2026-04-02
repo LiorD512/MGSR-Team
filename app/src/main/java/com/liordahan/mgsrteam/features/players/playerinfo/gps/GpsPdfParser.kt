@@ -29,7 +29,7 @@ object GpsPdfParser {
 
     private val GPS_PROMPT = """You are analyzing a football/soccer GPS or physical performance match report.
 
-This may be a Catapult Sports report, a club-specific report, or a VISUAL CHART/GRAPH showing player performance data.
+This may be a Catapult Sports report, a STATSports report, a club-specific report, or a VISUAL CHART/GRAPH showing player performance data.
 
 DATA SOURCES — extract from ANY of these:
 1. TABLES with columns (Total Dist, Sprint Dist, Max Speed, etc.)
@@ -58,8 +58,12 @@ Common column mappings:
 - "Acc #" / "Accelerations" → accelerations
 - "Decel #" / "Decelerations" → decelerations
 - "High Intensity Runs" → highIntensityRuns
-- "Sprints Over 25 kph" / "Sprint Dist" → sprints (count) / sprintDistTotal (distance in meters)
+- "Sprints Over 25 kph" / "Sprint Dist" / "Sprints" → sprints (count) / sprintDistTotal = "Sprint Distance" (distance in meters)
 - "Max Vel" / "Max Speed" / "Top Speed" → maxVelocity (in km/h)
+- "Distance Per Min" / "Distance Per Minute" → meteragePerMinute
+- "High Speed Running" / "High Speed Running (Absolute)" → highMpEffsDist
+- "Distance Zone 4" + "Distance Zone 5" + "Distance Zone 6" → combine as hiDistTotal (or use "Distance Zone 4 - Zone 6")
+- "Dynamic Stress Load" → ignore (not mapped)
 
 Stars (★) next to values mean the player was BEST on the team for that metric.
 

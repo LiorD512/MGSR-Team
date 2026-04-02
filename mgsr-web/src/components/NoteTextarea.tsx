@@ -58,7 +58,8 @@ export default function NoteTextarea({
       const lastAt = textBeforeCursor.lastIndexOf('@');
       if (lastAt >= 0) {
         const afterAt = textBeforeCursor.substring(lastAt + 1);
-        if (!afterAt.includes('\n') && !afterAt.includes(' ') && afterAt.length < 30) {
+        // Allow spaces so multi-word names (e.g. Hebrew "רועי אלגרבלי") keep the dropdown open
+        if (!afterAt.includes('\n') && afterAt.length < 30) {
           setMentionStartIndex(lastAt);
           setMentionQuery(afterAt);
           setShowDropdown(true);

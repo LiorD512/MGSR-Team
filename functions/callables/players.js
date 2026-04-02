@@ -180,6 +180,7 @@ async function playersAddNote(data) {
   const playerRefId = str(data.playerRefId) || playerId;
   const agentName = str(data.agentName);
   const taggedAgentIds = Array.isArray(data.taggedAgentIds) ? data.taggedAgentIds.filter(id => typeof id === "string" && id.length > 0) : [];
+  console.log("[playersAddNote] taggedAgentIds received:", JSON.stringify(taggedAgentIds), "raw:", JSON.stringify(data.taggedAgentIds));
 
   const note = {
     notes: str(data.noteText),

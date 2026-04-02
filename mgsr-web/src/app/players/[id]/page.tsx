@@ -804,15 +804,18 @@ export default function PlayerInfoPage() {
               } catch {
                 setUploadError(`GPS parse error: ${errBody}`);
               }
-              setTimeout(() => setUploadError(null), 12000);
+              // Keep error visible — don't auto-hide
             } else {
               const parseData = await parseRes.json();
               console.log('[GPS parse] Success:', parseData);
+              const count = parseData.matchCount || 1;
+              setUploadError(`✅ GPS: ${count} match${count > 1 ? 'es' : ''} saved for ${parseData.playerName || 'player'}`);
+              setTimeout(() => setUploadError(null), 6000);
             }
           } catch (err) {
             console.error('[GPS parse] Failed:', err);
             setUploadError(`GPS parse failed: ${err instanceof Error ? err.message : 'unknown error'}`);
-            setTimeout(() => setUploadError(null), 8000);
+            // Keep error visible — don't auto-hide
           } finally {
             setParsingGps(false);
           }
