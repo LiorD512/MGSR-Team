@@ -72,5 +72,21 @@ export default async function SharedRequestsPage({
   const hideClubs = searchParams.hideClubs === '1';
   const data = await getRequestsData(platform);
 
+  // Security: strip club data server-side so it never reaches the browser
+  if (hideClubs && data) {
+    for (const req of data.requests) {
+      delete req.clubName;
+      delete req.clubLogo;
+    }
+    for (const pos of Object.values(data.groupedByPosition)) {
+      for (const reqs of Object.values(pos)) {
+        for (const req of reqs) {
+          delete req.clubName;
+          delete req.clubLogo;
+        }
+      }
+    }
+  }
+
   return <SharedRequestsContent data={data} hideClubs={hideClubs} platform={platform} />;
 }
