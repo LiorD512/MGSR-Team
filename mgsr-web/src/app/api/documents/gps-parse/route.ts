@@ -11,88 +11,56 @@ export const maxDuration = 60;
 // Use 2.5-flash with capped thinking budget for GPS parsing
 const GEMINI_MODEL = 'gemini-2.5-flash';
 
-const GPS_PROMPT = `You are analyzing a football/soccer GPS or physical performance match report.
+const GPS_PROMPT = `You are a football/soccer GPS data extraction expert. Extract player physical performance data from ANY format — tables, charts, graphs, or any visual layout.
 
-This may be a Catapult Sports report, a STATSports report, a club-specific report, or a VISUAL CHART/GRAPH showing player performance data.
+SUPPORTED FORMATS: Catapult, STATSports, K-Sport, InStat, Kinexon, PlayerMaker, club-specific reports, or any GPS/tracking system output.
 
-DATA SOURCES — extract from ANY of these:
-1. TABLES with columns (Total Dist, Sprint Dist, Max Speed, etc.)
-2. BAR CHARTS showing per-player distance with speed zone breakdowns (Walk, Jog, Run, High Speed Run, Sprint)
-3. ANNOTATED CHARTS where exact values are written above/beside bars
-4. Team comparison charts showing multiple players' metrics side by side
-5. Any other visual format showing player physical performance data
+WHAT TO LOOK FOR (map ANY column to the closest semantic match):
+- totalDuration: Minutes played (e.g. "Tot Dur", "Time", "Minutes", "Min")
+- totalDistance: Total distance in meters (e.g. "Tot Dist", "D", "Total Distance", "Dist")
+- highMpEffsDist: High-speed running distance in meters, typically >20 km/h (e.g. "High MP Effs Dist", "D > 20 KM/H", "HSR", "High Speed Running", "High Intensity Dist")
+- highMpEffs: Count of high-metabolic-power efforts (0 if not available)
+- meteragePerMinute: Distance per minute — if not shown, compute as totalDistance / totalDuration (e.g. "Meterage Per Minute", "DREL", "Dist/Min", "m/min")
+- accelerations: Number of accelerations (e.g. "Acc #", "Accelerations")
+- decelerations: Number of decelerations (e.g. "Decel #", "Decelerations")
+- highIntensityRuns: Count of high-intensity running efforts (0 if not shown)
+- sprints: Number of sprints, typically at >25 km/h (e.g. "Sprints", "N° > 25 KM/H", "Sprint Count")
+- maxVelocity: Peak/maximum speed in km/h (e.g. "Max Vel", "SMAX", "Max Speed", "Top Speed")
+- sprintDistTotal: Distance covered at sprint speed (>25 km/h) in meters (e.g. "Sprint Dist", "D > 25 KM/H")
+- hiDistTotal: Distance in high-speed zone just below sprint (e.g. "D 20-25 KM/H", speed zone 4-6 combined)
+- hiDistPercent / sprintDistPercent: Percentage of total distance at high/sprint speed (0 if not shown)
 
-For CHARTS: read the annotated numbers (e.g. "11374" above a bar). If no exact numbers, estimate from the Y-axis scale. The speed zone colors in charts map to: Walk = lowest speed, Jog, Run, High Speed Run, Sprint = highest speed.
+For CHARTS: read annotated numbers above/beside bars. If no exact numbers, estimate from Y-axis. Speed zone colors: Walk (lowest) → Jog → Run → High Speed Run → Sprint (highest/often red).
 
-For bar charts with speed zone breakdowns, map the data as follows:
-- Total bar height / annotated total → totalDistance
-- Sprint zone (highest speed, often red) → sprintDistTotal
-- High Speed Run zone → hiDistTotal / highMpEffsDist
-- If an "AVG" value is shown → use it for teamAverageTotalDist
-- matchTitle: derive from team names (e.g. "FCSB vs UTA Arad")
+TEAM AVERAGES: Look for a row labeled "Average", "Team Average", "TEAM AVERAGE", "AVG" or similar. Extract into teamAverage fields. If a "%" column shows values around 100, those are percentage-of-team-average — ignore those columns.
 
-Extract ALL player data. Different report formats may have different column names — map them to the standardized output fields below.
+STAR MARKERS: Stars (★), highlights, or colored cells indicating team-best values → set corresponding isStar* field to true.
 
-Common column mappings:
-- "Tot Dur" / "Time (min)" / "Minutes" → totalDuration
-- "Tot Dist" / "Total Dist" / "Total Distance" → totalDistance (in meters)
-- "High MP Effs Dist" / "High Intensity Dist" → highMpEffsDist
-- "High MP Effs" / "High Intensity" → highMpEffs
-- "Meterage Per Minute" → meteragePerMinute (compute as totalDistance/totalDuration if not present)
-- "Acc #" / "Accelerations" → accelerations
-- "Decel #" / "Decelerations" → decelerations
-- "High Intensity Runs" → highIntensityRuns
-- "Sprints Over 25 kph" / "Sprint Dist" / "Sprints" → sprints (count) / sprintDistTotal = "Sprint Distance" (distance in meters)
-- "Max Vel" / "Max Speed" / "Top Speed" → maxVelocity (in km/h)
-- "Distance Per Min" / "Distance Per Minute" → meteragePerMinute
-- "High Speed Running" / "High Speed Running (Absolute)" → highMpEffsDist
-- "Distance Zone 4" + "Distance Zone 5" + "Distance Zone 6" → combine as hiDistTotal (or use "Distance Zone 4 - Zone 6")
-- "Dynamic Stress Load" → ignore (not mapped)
-
-K-SPORT specific columns:
-- "D" → totalDistance (in meters)
-- "MINUTES" → totalDuration
-- "DREL" → meteragePerMinute (meters per minute)
-- "SMAX (KMH)" / "SMAX" → maxVelocity
-- "D > 25 KM/H" → sprintDistTotal (sprint distance in meters)
-- "N° > 25 KM/H" → sprints (number of sprints)
-- "D > 20 KM/H" → highMpEffsDist (high-speed running distance)
-- "D 20-25 KM/H" → hiDistTotal (distance in speed zone 20-25 km/h)
-- "AMP" / "%AI" → ignore (metabolic power, not mapped)
-- "TEAM AVERAGE" row → use for teamAverage fields
-
-Stars (★) next to values mean the player was BEST on the team for that metric.
-
-Also extract:
-- matchTitle: The match title from header (e.g. "MNFC VS ASHDOD")
-- matchDate: The date from header in DD/MM/YYYY format. If multiple dates, use the most recent.
+MATCH INFO:
+- matchTitle: Match/game name from header (e.g. "LEON VS FOLGORE", "Vora Vs Tirana")
+- matchDate: Date in DD/MM/YYYY format. Look in headers, titles (e.g. "2026_02_21" → "21/02/2026"), or date columns
 - teamName: The team or club name
-- teamAverageTotalDist: From "Average" row total distance (0 if not available)
-- teamAverageMeteragePerMin: From "Average" row meterage per minute (0 if not available)
-- teamAverageHighIntensityRuns: From "Average" row high intensity runs (0 if not available)
-- teamAverageSprints: From "Average" row sprints (0 if not available)
-- teamAverageMaxVelocity: From "Average" row max velocity (0 if not available)
 
-If the report has multiple matches per player (one row per match date), treat EACH ROW as a separate player entry with the same playerName but different dates. Use the row date as matchDate for each.
+MULTI-MATCH REPORTS: If one player has multiple rows with different dates (one row per match), output EACH ROW as a separate player entry with the same playerName but a different per-row "matchDate" field.
 
 For EACH player/row return:
 {
   "playerName": "Full Name",
-  "totalDuration": 101,
-  "totalDistance": 12160,
-  "highMpEffsDist": 856,
-  "highMpEffs": 205,
-  "meteragePerMinute": 121,
-  "accelerations": 82,
-  "decelerations": 93,
-  "highIntensityRuns": 30,
-  "sprints": 4,
-  "maxVelocity": 29.1,
-  "adEffs": 175,
-  "hiDistTotal": 412,
-  "hiDistPercent": 3,
-  "sprintDistTotal": 92,
-  "sprintDistPercent": 1,
+  "totalDuration": 96,
+  "totalDistance": 10430,
+  "highMpEffsDist": 668,
+  "highMpEffs": 0,
+  "meteragePerMinute": 108,
+  "accelerations": 0,
+  "decelerations": 0,
+  "highIntensityRuns": 0,
+  "sprints": 8,
+  "maxVelocity": 31.5,
+  "adEffs": 0,
+  "hiDistTotal": 500,
+  "hiDistPercent": 0,
+  "sprintDistTotal": 168,
+  "sprintDistPercent": 0,
   "isStarTotalDist": false,
   "isStarHighMpEffsDist": false,
   "isStarHighMpEffs": false,
@@ -101,7 +69,7 @@ For EACH player/row return:
   "isStarHighIntensityRuns": false,
   "isStarSprints": false,
   "isStarMaxVelocity": false,
-  "matchDate": "17/08/2025"
+  "matchDate": "21/02/2026"
 }
 
 If the report has only one match date for all players, omit the per-player matchDate field.
@@ -109,10 +77,10 @@ Set any field to 0 or false if the data is not available in the report.
 
 Return ONLY a JSON object:
 {
-  "matchTitle": "MNFC VS ASHDOD",
-  "matchDate": "03/12/2025",
-  "teamName": "MACCABI NETANYA FC",
-  "teamAverageTotalDist": 7285,
+  "matchTitle": "LEON VS FOLGORE",
+  "matchDate": "21/02/2026",
+  "teamName": "FOLGORE",
+  "teamAverageTotalDist": 9250,
   "teamAverageMeteragePerMin": 107,
   "teamAverageHighIntensityRuns": 32,
   "teamAverageSprints": 8,
