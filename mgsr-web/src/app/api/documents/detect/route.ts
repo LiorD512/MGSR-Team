@@ -96,14 +96,15 @@ async function detectGpsReport(buffer: Buffer): Promise<string | null> {
   ];
   const catapultCount = catapultMarkers.filter(m => lower.includes(m)).length;
 
-  // Generic GPS/physical performance markers (broader formats including STATSports)
+  // Generic GPS/physical performance markers (broader formats including STATSports, K-Sport)
   const genericMarkers = [
     'total dist', 'sprint dist', 'high intensity dist',
     'max speed', 'accelerations', 'decelerations',
     'time (min)', 'total distance', 'sprint distance',
     'high speed run', 'high intensity', 'top speed',
     'distance per min', 'distance zone', 'dynamic stress load',
-    'match day',
+    'match day', 'smax', 'drel', 'd > 25', 'd > 20', 'km/h',
+    'k-sport', 'full match',
   ];
   const genericCount = genericMarkers.filter(m => lower.includes(m)).length;
 

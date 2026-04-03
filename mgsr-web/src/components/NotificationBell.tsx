@@ -37,18 +37,28 @@ export default function NotificationBell() {
   // Ensure FCM token is saved to account whenever notifications are granted.
   // Runs once per page load — this is the ONLY place token persistence happens.
   useEffect(() => {
-    if (status !== 'granted' || !user?.email) return;
+    console.log('[NotifBell] useEffect: status=', status, 'email=', user?.email);
+    if (status !== 'granted' || !user?.email) {
+      console.log('[NotifBell] Skipping — status not granted or no email');
+      return;
+    }
     const key = 'mgsr_token_saved';
-    if (sessionStorage.getItem(key)) return;
+    if (sessionStorage.getItem(key)) {
+      console.log('[NotifBell] Skipping — already saved this session');
+      return;
+    }
     (async () => {
       try {
         const accountId = await findAccountId(user.email!);
+        console.log('[NotifBell] accountId=', accountId);
         if (!accountId) return;
         const { getToken } = await import('firebase/messaging');
         const { getMessaging: getMessagingInstance } = await import('@/lib/firebase');
         const messaging = await getMessagingInstance();
+        console.log('[NotifBell] messaging=', !!messaging);
         if (!messaging) return;
         const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('[NotifBell] swReg.active=', !!swReg.active);
         if (!swReg.active) {
           await new Promise<void>((resolve) => {
             const sw = swReg.installing || swReg.waiting;
@@ -56,15 +66,19 @@ export default function NotificationBell() {
             sw.addEventListener('statechange', () => { if (sw.state === 'activated') resolve(); });
           });
         }
+        const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
+        console.log('[NotifBell] vapidKey present=', !!vapidKey, 'len=', vapidKey.length);
         const token = await getToken(messaging, {
-          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '',
+          vapidKey,
           serviceWorkerRegistration: swReg,
-        }).catch(() => null);
+        }).catch((err) => { console.error('[NotifBell] getToken error:', err); return null; });
+        console.log('[NotifBell] FCM token=', token ? token.substring(0, 20) + '...' : 'null');
         if (!token) return;
         await saveWebFcmToken(accountId, token);
+        console.log('[NotifBell] Token saved successfully for', accountId);
         sessionStorage.setItem(key, '1');
       } catch (e) {
-        // Silently ignore — will retry next page load
+        console.error('[NotifBell] Error in token save:', e);
       }
     })();
   }, [status, user]);

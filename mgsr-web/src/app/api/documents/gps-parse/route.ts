@@ -49,6 +49,18 @@ Common column mappings:
 - "Distance Zone 4" + "Distance Zone 5" + "Distance Zone 6" → combine as hiDistTotal (or use "Distance Zone 4 - Zone 6")
 - "Dynamic Stress Load" → ignore (not mapped)
 
+K-SPORT specific columns:
+- "D" → totalDistance (in meters)
+- "MINUTES" → totalDuration
+- "DREL" → meteragePerMinute (meters per minute)
+- "SMAX (KMH)" / "SMAX" → maxVelocity
+- "D > 25 KM/H" → sprintDistTotal (sprint distance in meters)
+- "N° > 25 KM/H" → sprints (number of sprints)
+- "D > 20 KM/H" → highMpEffsDist (high-speed running distance)
+- "D 20-25 KM/H" → hiDistTotal (distance in speed zone 20-25 km/h)
+- "AMP" / "%AI" → ignore (metabolic power, not mapped)
+- "TEAM AVERAGE" row → use for teamAverage fields
+
 Stars (★) next to values mean the player was BEST on the team for that metric.
 
 Also extract:
