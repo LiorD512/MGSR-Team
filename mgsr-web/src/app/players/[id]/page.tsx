@@ -2786,7 +2786,7 @@ export default function PlayerInfoPage() {
                             </span>
                           )}
                           {task.createdAt && task.dueDate && task.dueDate > 0 ? <span className="text-xs text-mgsr-muted">·</span> : null}
-                          {task.dueDate && task.dueDate > 0 && (
+                          {!!(task.dueDate && task.dueDate > 0) && (
                             <span className={`text-xs ${task.dueDate < Date.now() && !task.isCompleted ? 'text-red-400 font-medium' : 'text-mgsr-muted'}`}>
                               {t('tasks_due_label')} {new Date(task.dueDate).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </span>
