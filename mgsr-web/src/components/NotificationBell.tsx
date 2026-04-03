@@ -137,9 +137,13 @@ export default function NotificationBell() {
       {/* Bell button */}
       <button
         onClick={() => {
-          if (status === 'granted') return; // already enabled
           if (status === 'denied') {
             alert(t('notif_blocked'));
+            return;
+          }
+          if (status === 'granted') {
+            // Re-register token (useful if token was lost)
+            handleEnable();
             return;
           }
           setShowModal(true);
