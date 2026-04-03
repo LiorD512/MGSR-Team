@@ -1,4 +1,4 @@
-import { getToken, onMessage, Unsubscribe } from 'firebase/messaging';
+import { getToken, deleteToken, onMessage, Unsubscribe } from 'firebase/messaging';
 import { getMessaging } from './firebase';
 import { callAccountUpdate } from './callables';
 
@@ -14,15 +14,24 @@ export function getNotificationStatus(): NotificationStatus {
 
 /** Request permission and obtain an FCM token. Returns null on failure/denial. */
 export async function requestNotificationPermission(): Promise<string | null> {
-  if (typeof window === 'undefined' || !('Notification' in window)) return null;
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    console.warn('[MGSR-Notif] Browser does not support notifications');
+    return null;
+  }
 
   const permission = await Notification.requestPermission();
+  console.log('[MGSR-Notif] Permission result:', permission);
   if (permission !== 'granted') return null;
 
   const messaging = await getMessaging();
-  if (!messaging) return null;
+  if (!messaging) {
+    console.error('[MGSR-Notif] Failed to get messaging instance');
+    return null;
+  }
 
+  console.log('[MGSR-Notif] VAPID key present:', !!VAPID_KEY, 'length:', VAPID_KEY.length);
   const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+  console.log('[MGSR-Notif] Service worker registered, state:', swReg.active ? 'active' : 'waiting');
   // Wait for the service worker to become active before requesting a push token
   if (!swReg.active) {
     await new Promise<void>((resolve) => {
@@ -33,16 +42,32 @@ export async function requestNotificationPermission(): Promise<string | null> {
       });
     });
   }
-  const token = await getToken(messaging, {
-    vapidKey: VAPID_KEY,
-    serviceWorkerRegistration: swReg,
-  });
-  return token || null;
+  try {
+    // Delete stale token first to force a fresh push subscription.
+    // Prevents "registration-token-not-registered" on first send.
+    await deleteToken(messaging).catch(() => {});
+    const token = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swReg,
+    });
+    console.log('[MGSR-Notif] getToken result:', token ? `OK (${token.substring(0, 20)}...)` : 'NULL');
+    return token || null;
+  } catch (err) {
+    console.error('[MGSR-Notif] getToken FAILED:', err);
+    return null;
+  }
 }
 
 /** Save a web FCM token to the Account's fcmTokens array via callable. */
 export async function saveWebFcmToken(accountId: string, token: string): Promise<void> {
-  await callAccountUpdate({ accountId, addFcmWebToken: token });
+  console.log('[MGSR-Notif] Saving web token for account:', accountId, 'token:', token.substring(0, 20) + '...');
+  try {
+    await callAccountUpdate({ accountId, addFcmWebToken: token });
+    console.log('[MGSR-Notif] Token saved successfully!');
+  } catch (err) {
+    console.error('[MGSR-Notif] SAVE TOKEN FAILED:', err);
+    throw err;
+  }
 }
 
 /** Remove a web FCM token from the Account's fcmTokens array via callable. */

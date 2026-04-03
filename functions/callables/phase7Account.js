@@ -22,6 +22,10 @@ async function accountUpdate(data) {
   let accountId = str(data.accountId);
   const email = str(data.email);
 
+  console.log("[accountUpdate] CALLED — accountId:", accountId || "(none)", "email:", email || "(none)",
+    "addFcmWebToken:", data.addFcmWebToken ? "YES" : "no",
+    "keys:", Object.keys(data).join(","));
+
   // Look up by email if accountId is not provided
   if (!accountId && email) {
     const emailLower = email.toLowerCase();
@@ -37,13 +41,19 @@ async function accountUpdate(data) {
       if (match) {
         accountId = match.id;
       } else {
+        console.error("[accountUpdate] NO ACCOUNT found for email:", emailLower);
         throw new Error("No account found for email.");
       }
     } else {
       accountId = snap.docs[0].id;
     }
   }
-  if (!accountId) throw new Error("accountId or email is required.");
+  if (!accountId) {
+    console.error("[accountUpdate] MISSING accountId AND email — cannot proceed");
+    throw new Error("accountId or email is required.");
+  }
+
+  console.log("[accountUpdate] Resolved accountId:", accountId);
 
   const updates = {};
 
@@ -57,16 +67,21 @@ async function accountUpdate(data) {
   // Web FCM token array operations
   if (data.addFcmWebToken) {
     const token = str(data.addFcmWebToken);
+    console.log("[accountUpdate] addFcmWebToken present, token length:", token.length, "first20:", token.substring(0, 20));
     if (token) {
       // Read current tokens, replace any with same token string to avoid duplicates
       const accountSnap = await db.collection("Accounts").doc(accountId).get();
       const existing = accountSnap.exists ? (accountSnap.data().fcmTokens || []) : [];
+      console.log("[accountUpdate] Existing fcmTokens count:", existing.length);
       const filtered = existing.filter((e) => {
         const t = typeof e === "string" ? e : e?.token;
         return t !== token;
       });
       filtered.push({ token, platform: "web", updatedAt: Date.now() });
       updates.fcmTokens = filtered;
+      console.log("[accountUpdate] Will write fcmTokens count:", filtered.length);
+    } else {
+      console.warn("[accountUpdate] addFcmWebToken was truthy but str() returned empty");
     }
   }
   if (data.removeFcmWebToken) {
@@ -78,10 +93,13 @@ async function accountUpdate(data) {
   }
 
   if (Object.keys(updates).length === 0) {
+    console.log("[accountUpdate] No updates to apply — returning early");
     return { success: true };
   }
 
+  console.log("[accountUpdate] WRITING to Accounts/" + accountId, "fields:", Object.keys(updates).join(","));
   await db.collection("Accounts").doc(accountId).update(updates);
+  console.log("[accountUpdate] WRITE SUCCESS for", accountId);
   return { success: true };
 }
 

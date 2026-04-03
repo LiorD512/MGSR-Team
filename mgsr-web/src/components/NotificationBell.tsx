@@ -31,7 +31,7 @@ async function accountHasWebToken(accountId: string): Promise<boolean> {
 
 /** Get an FCM token, register service worker, subscribe to topic, and save to Firestore. */
 async function ensureTokenSaved(accountId: string): Promise<string | null> {
-  const { getToken } = await import('firebase/messaging');
+  const { getToken, deleteToken } = await import('firebase/messaging');
   const { getMessaging: getMessagingInstance } = await import('@/lib/firebase');
   const messaging = await getMessagingInstance();
   if (!messaging) return null;
@@ -43,6 +43,8 @@ async function ensureTokenSaved(accountId: string): Promise<string | null> {
       sw.addEventListener('statechange', () => { if (sw.state === 'activated') resolve(); });
     });
   }
+  // Delete stale token to force fresh push subscription (prevents born-dead tokens)
+  await deleteToken(messaging).catch(() => {});
   const token = await getToken(messaging, {
     vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '',
     serviceWorkerRegistration: swReg,
@@ -77,26 +79,24 @@ export default function NotificationBell() {
   // Ensure FCM token is saved to account whenever notifications are granted.
   // On every page load: checks Firestore to see if the account actually has a web
   // token. If not, generates one and saves it. This guarantees token persistence.
+  // Always checks Firestore (no sessionStorage short-circuit) because the server
+  // may have cleaned up an invalid token since the last check.
   useEffect(() => {
     if (status !== 'granted' || !user?.email) return;
-    const SESSION_KEY = 'mgsr_token_saved_v2';
-    if (sessionStorage.getItem(SESSION_KEY)) return;
+    let cancelled = false;
     (async () => {
       try {
         const accountId = await findAccountId(user.email!);
-        if (!accountId) return;
+        if (!accountId || cancelled) return;
         const hasToken = await accountHasWebToken(accountId);
-        if (hasToken) {
-          sessionStorage.setItem(SESSION_KEY, '1');
-          return;
-        }
+        if (hasToken || cancelled) return;
         // Account has NO web token — register and save one now
-        const token = await ensureTokenSaved(accountId);
-        if (token) sessionStorage.setItem(SESSION_KEY, '1');
+        await ensureTokenSaved(accountId);
       } catch {
         // Will retry next page load
       }
     })();
+    return () => { cancelled = true; };
   }, [status, user]);
 
   // Foreground message listener — show toast
