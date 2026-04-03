@@ -45,8 +45,6 @@ async function accountUpdate(data) {
   }
   if (!accountId) throw new Error("accountId or email is required.");
 
-  console.log(`[accountUpdate] RESOLVED accountId=${accountId}, addFcmWebToken=${!!data.addFcmWebToken}, removeFcmWebToken=${!!data.removeFcmWebToken}, keys=${Object.keys(data).join(",")}`);
-
   const updates = {};
 
   // Simple string fields
@@ -76,11 +74,9 @@ async function accountUpdate(data) {
   }
 
   if (Object.keys(updates).length === 0) {
-    console.log(`[accountUpdate] Nothing to update for ${accountId}`);
     return { success: true };
   }
 
-  console.log(`[accountUpdate] Writing to ${accountId}: ${Object.keys(updates).join(",")}`);
   await db.collection("Accounts").doc(accountId).update(updates);
   return { success: true };
 }
