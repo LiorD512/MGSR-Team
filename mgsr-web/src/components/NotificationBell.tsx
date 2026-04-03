@@ -97,6 +97,7 @@ export default function NotificationBell() {
         if (accountId) {
           await saveWebFcmToken(accountId, token);
           console.log('[MGSR-FCM] bell click: token saved OK');
+          alert(`[DEBUG] Token saved! accountId=${accountId}`);
           try {
             const { httpsCallable } = await import('firebase/functions');
             const { getFunctions } = await import('firebase/functions');
@@ -106,11 +107,16 @@ export default function NotificationBell() {
           } catch (e) {
             console.warn('Topic subscription failed (will retry on next load):', e);
           }
+        } else {
+          alert(`[DEBUG] No account found for email: ${user.email}`);
         }
         setStatus('granted');
       } else {
+        alert(`[DEBUG] No token received. Permission: ${Notification.permission}`);
         setStatus(getNotificationStatus());
       }
+    } catch (err) {
+      alert(`[DEBUG] Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
       setShowModal(false);
