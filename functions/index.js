@@ -292,6 +292,7 @@ exports.onNewAgentTask = onDocumentCreated(
         priority: "high",
         notification: {
           channelId: "mgsr_team_notifications",
+          tag: `task-${event.params.taskId}`,
         },
       },
       webpush: {
@@ -373,6 +374,7 @@ exports.onMandateSigningUpdated = onDocumentUpdated(
         priority: "high",
         notification: {
           channelId: "mgsr_team_notifications",
+          tag: `mandate-sign-${event.params.token}`,
         },
       },
       webpush: {
@@ -602,6 +604,7 @@ exports.onTaskRemindersScheduled = onSchedule(
           priority: "high",
           notification: {
             channelId: "mgsr_team_notifications",
+            tag: `reminder-${taskId}`,
           },
         },
         webpush: {
@@ -829,14 +832,14 @@ exports.onAgentTransferRequest = onDocumentCreated(
       },
       android: {
         priority: "high",
-        notification: { channelId: "mgsr_team_notifications" },
+        notification: { channelId: "mgsr_team_notifications", tag: `transfer-req-${event.params.requestId}` },
       },
       webpush: {
         notification: {
           title: notifTitle,
           body: notifBody,
           icon: "/logo.svg",
-          tag: `transfer-${event.params.requestId}`,
+          tag: `transfer-req-${event.params.requestId}`,
         },
         fcmOptions: { link: data.playerId ? `/players/${data.playerId}` : "/" },
       },
@@ -912,14 +915,14 @@ exports.onAgentTransferResolved = onDocumentUpdated(
       },
       android: {
         priority: "high",
-        notification: { channelId: "mgsr_team_notifications" },
+        notification: { channelId: "mgsr_team_notifications", tag: `transfer-res-${event.params.requestId}` },
       },
       webpush: {
         notification: {
           title: notifTitle,
           body: notifBody,
           icon: "/logo.svg",
-          tag: `transfer-${event.params.requestId}`,
+          tag: `transfer-res-${event.params.requestId}`,
         },
         fcmOptions: { link: after.playerId ? `/players/${after.playerId}` : "/" },
       },

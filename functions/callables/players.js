@@ -278,7 +278,7 @@ async function playersAddNote(data) {
             data: fcmData,
             android: {
               priority: "high",
-              notification: { channelId: "mgsr_team_notifications" },
+              notification: { channelId: "mgsr_team_notifications", tag: `note-${playerRefId}-${Date.now()}` },
             },
             webpush: {
               notification: {
