@@ -6,7 +6,7 @@
     <string name="nav_item_home">בית</string>
     <string name="nav_item_dashboard">פיד</string>
     <string name="nav_item_releases">שחרורים</string>
-    <string name="nav_item_returnee">חזרו מהשאלה</string>
+    <string name="nav_item_returnee">בהשאלה</string>
     <string name="nav_item_contacts">אנשי קשר</string>
     <string name="nav_item_shortlist">רשימת מעקב</string>
     <string name="nav_item_requests">בקשות</string>

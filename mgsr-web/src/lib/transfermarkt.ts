@@ -1601,7 +1601,7 @@ export function handleTransferWindows() {
   return { windows: buildTransferWindows() };
 }
 
-// ─── Returnees (players returning from loan) ─────────────────────────────────
+// ─── On Loan (players currently on loan at clubs) ────────────────────────────
 const SAISON_ID_REGEX = /\/saison_id\/\d+/;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1620,19 +1620,18 @@ function extractTeamTransferUrls($: any): string[] {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseReturneeRow(
+function parseOnLoanRow(
   $: any,
   row: cheerio.Element,
-  departureUrls: Set<string>,
-  teamClub: { clubJoinedName: string | null; clubJoinedLogo: string | null }
+  parentClub: { name: string | null; logo: string | null }
 ): Record<string, unknown> | null {
-  const rowText = $(row).text();
-  const isLoanReturn =
-    rowText.includes('End of loan') ||
-    rowText.includes('Loan return') ||
-    rowText.includes('end of loan');
+  // Last TD contains the transfer type: "loan transfer", "Loan fee:€2.00m", "End of loan30/06/2025", etc.
+  const allTds = $(row).find('td');
+  const lastTd = (allTds.last().text() || '').trim().toLowerCase();
+  const isLoanOut = (lastTd.includes('loan transfer') || lastTd.includes('loan fee'))
+    && !lastTd.includes('end of loan');
 
-  if (!isLoanReturn) return null;
+  if (!isLoanOut) return null;
 
   const img = $(row).find('img').first();
   const imageUrl = (img.attr('data-src') || img.attr('src') || '').replace('tiny', 'big');
@@ -1642,62 +1641,32 @@ function parseReturneeRow(
   const playerHref = nameEl.attr('href') || '';
   const playerUrl = playerHref ? (playerHref.startsWith('http') ? playerHref : TRANSFERMARKT_BASE + playerHref) : null;
 
-  if (playerUrl && departureUrls.has(playerUrl)) return null;
-
   const tds = $(row).find('td');
   const age = tds.eq(5).text().trim() || null;
   const posText = (tds.eq(4).text() || '').replace(/-/g, ' ').trim();
   const playerPosition = convertPosition(posText) || posText || null;
 
+  // Market value from td.rechts (exclude loan fee cells)
   let marketValue: string | null = null;
   $(row)
-    .find('td')
+    .find('td.rechts')
     .each((_: number, td: cheerio.Element) => {
       const t = $(td).text().trim();
-      if (t.includes('€') && !t.toLowerCase().includes('loan') && !t.includes('End of loan') && !t.includes('Loan return')) {
+      if (t.includes('€') && !t.toLowerCase().includes('loan')) {
         marketValue = t;
         return false;
       }
     });
-  if (!marketValue) {
-    $(row)
-      .find('td.rechts')
-      .each((_: number, td: cheerio.Element) => {
-        const t = $(td).text().trim();
-        if (t.includes('€')) {
-          marketValue = t;
-          return false;
-        }
-      });
-  }
 
-  let transferDate: string | null = null;
-  const rowHtml = $(row).html() || '';
-  const dateInTitle = rowHtml.match(/date:\s*(\d{1,2}[./]\d{1,2}[./]\d{2,4})/i);
-  if (dateInTitle) {
-    transferDate = dateInTitle[1];
-  }
-  if (!transferDate) {
-    const zentriert = $(row).find('td.zentriert');
-    for (let i = 0; i < Math.min(zentriert.length, 5); i++) {
-      const t = $(zentriert[i]).text().trim();
-      if (/^\d{1,2}[./]\d{1,2}[./]\d{2,4}$/.test(t) || /^\d{4}-\d{2}-\d{2}$/.test(t)) {
-        transferDate = t;
-        break;
-      }
+  // Destination club (where loaned TO) from row links
+  let destClubName: string | null = null;
+  $(row).find('a[href]').each((_: number, a: cheerio.Element) => {
+    const href = $(a).attr('href') || '';
+    if ((href.includes('/startseite/verein/') || href.includes('/wettbewerb/')) && !destClubName) {
+      const t = $(a).text().trim();
+      if (t && t !== playerName) destClubName = t;
     }
-  }
-  if (!transferDate) {
-    $(row)
-      .find('td')
-      .each((_: number, td: cheerio.Element) => {
-        const t = $(td).text().trim();
-        if (/^\d{1,2}[./]\d{1,2}[./]\d{2,4}$/.test(t) || /^\d{4}-\d{2}-\d{2}$/.test(t)) {
-          transferDate = t;
-          return false;
-        }
-      });
-  }
+  });
 
   const natImg =
     $(row).find('td.zentriert img[title]').first()[0] ||
@@ -1723,55 +1692,38 @@ function parseReturneeRow(
     playerNationality,
     playerNationalityFlag,
     marketValue: marketValue || null,
-    transferDate,
-    clubJoinedName: teamClub.clubJoinedName,
-    clubJoinedLogo: teamClub.clubJoinedLogo,
+    clubJoinedName: destClubName,  // where loaned TO (current team)
+    clubJoinedLogo: null,
+    onLoanFromClub: parentClub.name, // parent club (loaned FROM)
   };
 }
 
 const TEAM_FETCH_CONCURRENCY = 10;
 
-async function scrapeTeamReturnees(
+async function scrapeTeamOnLoan(
   teamUrl: string
 ): Promise<Record<string, unknown>[]> {
   const teamHtml = await fetchHtmlWithRetry(teamUrl);
   const $team = cheerio.load(teamHtml);
   const tables = $team('table.items');
 
-  let clubJoinedName: string | null = null;
-  let clubJoinedLogo: string | null = null;
-  const clubSection = $team('span.data-header__club, div.data-header__club').first();
-  if (clubSection.length) {
-    const clubLink = clubSection.find('a[href*="/startseite/verein/"]').first();
-    clubJoinedName = (clubLink.attr('title') || clubLink.text() || '').trim() || null;
-    const clubImg = clubSection.find('img').first();
-    const clubLogoRaw = clubImg.attr('data-src') || clubImg.attr('src') || '';
-    clubJoinedLogo = clubLogoRaw ? makeAbsoluteUrl(clubLogoRaw) : null;
+  // Extract parent club name/logo from page header (this is the club players are loaned FROM)
+  let parentClubName: string | null = $team('.data-header h1, h1.data-header__headline').first().text().trim() || null;
+  if (!parentClubName) {
+    parentClubName = $team('h1').first().text().trim() || null;
   }
-  if (!clubJoinedName) {
-    clubJoinedName = $team('h1.data-header__headline, div.data-header__headline-wrapper h1').first().text().trim() || null;
-  }
-  if (!clubJoinedName) {
-    const mainHeadline = $team('.main .content-box-headline, .box-headline, h1').first().text().trim();
-    if (mainHeadline && !mainHeadline.toLowerCase().includes('transfer')) {
-      clubJoinedName = mainHeadline;
-    }
-  }
+  const headerImg = $team('.data-header img.data-header__profile-image, .data-header img').first();
+  const headerImgSrc = headerImg.attr('data-src') || headerImg.attr('src') || '';
+  const parentClubLogo = (headerImgSrc && !headerImgSrc.includes('flagge')) ? makeAbsoluteUrl(headerImgSrc) : null;
 
-  const teamClub = { clubJoinedName, clubJoinedLogo };
+  const parentClub = { name: parentClubName, logo: parentClubLogo };
 
-  const arrivalsTbody = tables.eq(0).find('tbody');
+  // Departures table is the SECOND table.items
   const departureTbody = tables.eq(1).find('tbody');
 
-  const departureUrls = new Set<string>();
-  departureTbody.find('tr').each((_: number, r: cheerio.Element) => {
-    const href = $team(r).find('td.hauptlink a').attr('href') || '';
-    if (href) departureUrls.add(TRANSFERMARKT_BASE + href);
-  });
-
   const teamPlayers: Record<string, unknown>[] = [];
-  arrivalsTbody.find('tr').each((_: number, row: cheerio.Element) => {
-    const p = parseReturneeRow($team, row, departureUrls, teamClub);
+  departureTbody.find('tr').each((_: number, row: cheerio.Element) => {
+    const p = parseOnLoanRow($team, row, parentClub);
     if (p && p.playerUrl) teamPlayers.push(p);
   });
   return teamPlayers;
@@ -1789,7 +1741,7 @@ export async function handleReturnees(leagueUrl: string): Promise<{ players: Rec
     const chunk = teamUrls.slice(i, i + TEAM_FETCH_CONCURRENCY);
     const results = await Promise.all(
       chunk.map((url) =>
-        scrapeTeamReturnees(url).catch(() => [] as Record<string, unknown>[])
+        scrapeTeamOnLoan(url).catch(() => [] as Record<string, unknown>[])
       )
     );
     for (const teamPlayers of results) {
@@ -1811,9 +1763,12 @@ export async function handleReturnees(leagueUrl: string): Promise<{ players: Rec
         const url = p.playerUrl as string;
         if (!url) return;
         try {
-          const enriched = await enrichReturneeFromProfile(p);
+          const enriched = await enrichOnLoanFromProfile(p);
           if (enriched) {
             Object.assign(p, enriched);
+          } else {
+            // enrichment returned null = player not confirmed on loan, remove
+            p._remove = true;
           }
         } catch {
           // keep original
@@ -1825,16 +1780,23 @@ export async function handleReturnees(leagueUrl: string): Promise<{ players: Rec
     }
   }
 
-  all.sort(
+  // Filter out players whose enrichment returned null (not confirmed on loan)
+  const MAX_ON_LOAN_VALUE = 6_000_000;
+  const confirmed = all.filter((p) => !p._remove && parseMarketValueCF((p.marketValue as string) || '') <= MAX_ON_LOAN_VALUE);
+  for (const p of confirmed) delete p._remove;
+
+  confirmed.sort(
     (a, b) =>
       parseMarketValueCF((b.marketValue as string) || '') - parseMarketValueCF((a.marketValue as string) || '')
   );
-  return { players: all };
+  return { players: confirmed };
 }
 
-const RETURN_DATE_REGEX = /date:\s*(\d{1,2}[./]\d{1,2}[./]\d{2,4})/i;
+const LOAN_END_DATE_REGEX = /(?:until|bis)\s+(\d{1,2}[./]\d{1,2}[./]\d{2,4})/i;
+const ON_LOAN_FROM_REGEX = /(?:on loan from|leihe von|ausgeliehen von)\s*:?\s*(.+?)\s+(?:until|bis|contract)/i;
+const ON_LOAN_FROM_EOL = /(?:on loan from|leihe von|ausgeliehen von)\s*:?\s*(.+?)$/i;
 
-async function enrichReturneeFromProfile(
+async function enrichOnLoanFromProfile(
   p: Record<string, unknown>
 ): Promise<Partial<Record<string, unknown>> | null> {
   const url = p.playerUrl as string;
@@ -1842,14 +1804,39 @@ async function enrichReturneeFromProfile(
   const html = await fetchHtmlWithRetry(url);
   const $ = cheerio.load(html);
 
+  // Detect on-loan status from ribbon and header
+  const ribbon = $('div.data-header_ribbon, div.data-header__ribbon').first();
+  const ribbonLinkTitle = ribbon.find('a').attr('title') || '';
+  const ribbonText = ribbon.text().trim() || '';
+  const clubSectionText = $('span.data-header__club, div.data-header__club-info').text();
+  const infoBoxText = $('div.data-header__info-box').text();
+  const headerText = $('div.data-header').text();
+  const combined = `${ribbonLinkTitle} ${ribbonText} ${clubSectionText} ${infoBoxText} ${headerText}`.toLowerCase();
+
+  const hasLoanIndicator =
+    combined.includes('on loan from') || combined.includes('on loan') ||
+    combined.includes('leihe') || combined.includes('ausgeliehen') ||
+    combined.includes('prêt') || combined.includes('en préstamo') || combined.includes('in prestito') ||
+    (combined.includes('loan') && !combined.includes('end of loan') && !combined.includes('loan return'));
+  const isReturnee = combined.includes('returnee') || combined.includes('returned after loan');
+
+  if (!hasLoanIndicator || isReturnee) {
+    return null; // not confirmed on loan, signal removal
+  }
+
   const result: Partial<Record<string, unknown>> = {};
 
-  // Transfer date: from ribbon title (e.g. "Returnee date: 01/07/2025")
-  const ribbon = $('div.data-header_ribbon, div.data-header__ribbon').first();
-  const ribbonTitle = ribbon.find('a').attr('title') || ribbon.text() || '';
-  const dateMatch = ribbonTitle.match(RETURN_DATE_REGEX);
-  if (dateMatch) {
-    result.transferDate = dateMatch[1];
+  // Extract on-loan-from club name
+  const searchText = ribbonLinkTitle || headerText || infoBoxText;
+  const fromMatch = searchText.match(ON_LOAN_FROM_REGEX) || searchText.match(ON_LOAN_FROM_EOL);
+  if (fromMatch && fromMatch[1]) {
+    result.onLoanFromClub = fromMatch[1].trim();
+  }
+
+  // Extract loan end date
+  const loanEndMatch = ribbonLinkTitle.match(LOAN_END_DATE_REGEX) || ribbonText.match(LOAN_END_DATE_REGEX);
+  if (loanEndMatch) {
+    result.loanEndDate = loanEndMatch[1];
   }
 
   // Market value: always in profile header, regardless of ribbon

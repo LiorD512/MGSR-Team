@@ -44,6 +44,8 @@ const MARKET_VALUE_FILTERS = [
   { min: 500000, max: 1000000, key: '500k_1m' },
   { min: 1000000, max: 2000000, key: '1m_2m' },
   { min: 2000000, max: 3000000, key: '2m_3m' },
+  { min: 3000000, max: 4000000, key: '3m_4m' },
+  { min: 4000000, max: 6000000, key: '4m_6m' },
 ] as const;
 const POSITION_CODES: Record<string, Set<string>> = {
   GK: new Set(['GK']),
@@ -131,7 +133,7 @@ function ReturneeCard({
       <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500" />
       <div className="relative p-5">
         <span className="absolute top-4 left-4 rtl:left-auto rtl:right-4 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md bg-purple-500/20 text-purple-400 border border-purple-500/30">
-          {player.transferDate ? t('returnee_badge_returned_on').replace('{date}', player.transferDate) : t('returnee_badge_loan_return')}
+          {player.loanEndDate ? t('returnee_badge_returned_on').replace('{date}', player.loanEndDate) : t('returnee_badge_loan_return')}
         </span>
         {/* Critical info strip - always visible */}
         <div className="mt-6 flex flex-wrap items-center gap-3 py-3 px-4 rounded-xl bg-mgsr-dark/60 border border-mgsr-border/80">
@@ -144,8 +146,8 @@ function ReturneeCard({
           <span className="text-mgsr-border/50">|</span>
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase tracking-wider text-mgsr-muted">{t('returnee_returned')}</span>
-            <span className={`font-medium tabular-nums ${player.transferDate ? 'text-purple-400' : 'text-mgsr-muted'}`}>
-              {player.transferDate || '—'}
+            <span className={`font-medium tabular-nums ${player.loanEndDate ? 'text-purple-400' : 'text-mgsr-muted'}`}>
+              {player.loanEndDate || '—'}
             </span>
           </div>
         </div>
@@ -175,6 +177,13 @@ function ReturneeCard({
                   <img src={player.clubJoinedLogo} alt="" className="w-4 h-4 rounded object-cover" />
                 )}
                 <span className="text-xs text-mgsr-muted truncate">{player.clubJoinedName}</span>
+              </div>
+            )}
+            {player.onLoanFromClub && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-400 border border-purple-500/20 truncate">
+                  {t('returnee_on_loan_from').replace('{club}', player.onLoanFromClub)}
+                </span>
               </div>
             )}
             <div className="flex items-center gap-2 mt-2">

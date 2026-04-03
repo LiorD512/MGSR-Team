@@ -51,7 +51,9 @@ data class LatestTransferModel(
     val clubJoinedLogo: String? = null,
     val clubJoinedName: String? = null,
     val transferDate: String? = null,
-    val marketValue: String? = null
+    val marketValue: String? = null,
+    val onLoanFromClub: String? = null,
+    val loanEndDate: String? = null
 ) : Parcelable {
     fun getRealMarketValue(): Int {
         val mv = marketValue ?: return 0

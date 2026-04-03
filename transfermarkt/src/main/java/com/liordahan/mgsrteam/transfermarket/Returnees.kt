@@ -10,10 +10,11 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.jsoup.nodes.Element
 
-private const val TAG = "Returnees"
+private const val TAG = "OnLoan"
+private const val MAX_VALUE = 6_000_000
 
 private val SAISON_ID_REGEX = Regex("/saison_id/\\d+")
-private val RETURN_DATE_REGEX = Regex("""date:\s*(\d{1,2}/\d{1,2}/\d{2,4})""", RegexOption.IGNORE_CASE)
+private val LOAN_END_DATE_REGEX = Regex("""(?:until|bis)\s+(\d{1,2}[./]\d{1,2}[./]\d{2,4})""", RegexOption.IGNORE_CASE)
 
 class Returnees {
 
@@ -24,13 +25,13 @@ class Returnees {
                 val teamTransferUrls = extractTeamTransferUrls(leagueDocument)
                 Log.d(TAG, "League $leagueUrl -> found ${teamTransferUrls.size} team URLs")
 
-                // ── Phase 1: Fetch all team pages and parse raw returnees (fast, no enrichment) ──
+                // ── Phase 1: Fetch all team pages and parse on-loan players (fast, no enrichment) ──
                 val fetchSemaphore = Semaphore(10)
-                val rawReturnees = coroutineScope {
+                val rawPlayers = coroutineScope {
                     teamTransferUrls.map { teamUrl ->
                         async {
                             fetchSemaphore.withPermit {
-                                runCatching { scrapeTeamReturneesRaw(teamUrl) }
+                                runCatching { scrapeTeamOnLoanRaw(teamUrl) }
                                     .onFailure { Log.w(TAG, "Team scrape failed for $teamUrl: ${it.message}") }
                                     .getOrElse { emptyList() }
                             }
@@ -38,12 +39,12 @@ class Returnees {
                     }.awaitAll().flatten()
                 }
 
-                Log.d(TAG, "League $leagueUrl -> ${rawReturnees.size} raw returnees, starting enrichment")
+                Log.d(TAG, "League $leagueUrl -> ${rawPlayers.size} raw on-loan players, starting enrichment")
 
-                // ── Phase 2: Enrich ALL returnees in a single flat pool (no nested semaphores) ──
+                // ── Phase 2: Enrich ALL players in a single flat pool (no nested semaphores) ──
                 val enrichSemaphore = Semaphore(10)
                 val enriched = coroutineScope {
-                    rawReturnees.map { model ->
+                    rawPlayers.map { model ->
                         async {
                             enrichSemaphore.withPermit {
                                 if (model.playerUrl != null) enrichFromProfile(model) else model
@@ -52,8 +53,9 @@ class Returnees {
                     }.awaitAll().filterNotNull()
                 }
 
-                Log.d(TAG, "League $leagueUrl -> ${enriched.size} returnees after enrichment")
-                TransfermarktResult.Success(enriched)
+                val capped = enriched.filter { parseMarketValueToInt(it.marketValue ?: "") <= MAX_VALUE }
+                Log.d(TAG, "League $leagueUrl -> ${enriched.size} on-loan players after enrichment, ${capped.size} after ≤3M filter")
+                TransfermarktResult.Success(capped)
             } catch (e: Exception) {
                 Log.e(TAG, "League fetch failed: $leagueUrl -> ${e.message}")
                 TransfermarktResult.Failed(e.localizedMessage)
@@ -78,56 +80,62 @@ class Returnees {
     }
 
     /**
-     * Fetches a team's transfer page and parses returnee rows.
+     * Fetches a team's transfer page and parses the DEPARTURES table for players
+     * currently loaned out. "loan transfer" or "Loan fee:" = active loan out.
+     * "End of loan" = finished loan, skip.
      * Does NOT enrich from profiles -- that happens in Phase 2.
      */
-    private suspend fun scrapeTeamReturneesRaw(transferUrl: String): List<LatestTransferModel> {
+    private suspend fun scrapeTeamOnLoanRaw(transferUrl: String): List<LatestTransferModel> {
         val transferDoc = TransfermarktHttp.fetchDocument(transferUrl)
 
         val allTables = transferDoc.select("table.items")
 
-        val playerRows = allTables
-            .getOrNull(0)
-            ?.selectFirst("tbody")
-            ?.children()
-            ?: return emptyList()
-
+        // Departures table is the SECOND table.items
         val departureRows = allTables
             .getOrNull(1)
             ?.selectFirst("tbody")
             ?.children()
+            ?: return emptyList()
 
-        val departurePlayerUrls: Set<String> = departureRows
-            ?.mapNotNull { row ->
-                row.selectFirst("td.hauptlink a")
-                    ?.attr("href")
-                    ?.let { "$TRANSFERMARKT_BASE_URL$it" }
-            }
-            ?.toSet()
-            ?: emptySet()
+        // Extract team name/logo from the page header — this is the PARENT club the player is loaned FROM
+        val teamName = transferDoc.select(".data-header h1, h1.data-header__headline").firstOrNull()
+            ?.text()?.trim()?.takeIf { it.isNotBlank() }
+            ?: transferDoc.select("h1").firstOrNull()?.text()?.trim()
+        val headerImg = transferDoc.select(".data-header img.data-header__profile-image, .data-header img").firstOrNull()
+        val teamLogo = (headerImg?.attr("data-src")?.ifBlank { null } ?: headerImg?.attr("src"))
+            ?.takeIf { it.isNotBlank() && !it.contains("flagge") }
+            ?.let { makeAbsoluteUrl(it) }
 
-        return playerRows.mapNotNull { playerRow ->
-            parseReturneeRow(playerRow, departurePlayerUrls)
+        return departureRows.mapNotNull { playerRow ->
+            parseOnLoanRow(playerRow, teamName, teamLogo)
         }
     }
 
     private suspend fun enrichFromProfile(model: LatestTransferModel): LatestTransferModel? {
         return try {
-            val doc = TransfermarktHttp.fetchDocument(model.playerUrl!!)
-            val ribbon = doc.select("div.data-header_ribbon, div.data-header__ribbon").firstOrNull()
-            val ribbonText = ribbon?.text()?.trim()?.lowercase() ?: ""
-            val ribbonTitle = ribbon?.select("a")?.attr("title") ?: ""
-            val ribbonTitleLower = ribbonTitle.lowercase()
-            val hasReturneeBadge = ribbonText.contains("returnee") ||
-                ribbonTitleLower.contains("returned after loan") ||
-                ribbonTitleLower.contains("loan spell")
-            if (ribbon != null && !hasReturneeBadge) {
-                Log.d(TAG, "Filtered ${model.playerName}: ribbon found but not Returnee")
+            val (doc, rawHtml) = TransfermarktHttp.fetchDocumentWithHtml(model.playerUrl!!)
+
+            // Use shared loan detection to confirm on-loan status
+            val currentClubName = model.clubJoinedName ?: ""
+            val loanInfo = detectLoanStatus(doc, currentClubName)
+            if (!loanInfo.isOnLoan) {
+                Log.d(TAG, "Filtered ${model.playerName}: profile doesn't confirm on-loan status")
                 return null
             }
-            val returnDate = RETURN_DATE_REGEX
-                .find(ribbonTitle)
+
+            // Extract on-loan-from club with full multi-strategy extraction
+            val ribbon = doc.select("div.data-header_ribbon, div.data-header__ribbon").firstOrNull()
+            val ribbonLinkTitle = ribbon?.select("a")?.firstOrNull()?.attr("title") ?: ""
+            val ribbonText = ribbon?.text()?.trim() ?: ""
+            val onLoanFromClub = loanInfo.onLoanFromClub
+                ?: extractOnLoanFromClub(doc, rawHtml, ribbonLinkTitle, ribbonText, currentClubName)
+
+            // Extract loan end date from ribbon (e.g. "on loan from X until 30/06/2025")
+            val loanEndDate = LOAN_END_DATE_REGEX
+                .find(ribbonLinkTitle)
                 ?.groupValues?.getOrNull(1)
+                ?: LOAN_END_DATE_REGEX.find(ribbonText)?.groupValues?.getOrNull(1)
+
             val clubSection = doc.select("span.data-header__club").firstOrNull()
                 ?: doc.select("div.data-header").firstOrNull()
             val clubLink = clubSection?.select("a[href*='/startseite/verein/']")?.firstOrNull()
@@ -159,11 +167,12 @@ class Returnees {
             model.copy(
                 clubJoinedName = clubName ?: model.clubJoinedName,
                 clubJoinedLogo = clubLogo ?: model.clubJoinedLogo,
-                transferDate = returnDate ?: model.transferDate,
                 marketValue = marketValue ?: model.marketValue,
                 playerNationality = nationality ?: model.playerNationality,
                 playerNationalityFlag = flagSrc ?: model.playerNationalityFlag,
-                playerNationalities = allNationalities.ifEmpty { model.playerNationalities }
+                playerNationalities = allNationalities.ifEmpty { model.playerNationalities },
+                onLoanFromClub = onLoanFromClub,
+                loanEndDate = loanEndDate
             )
         } catch (e: Exception) {
             Log.w(TAG, "Failed to enrich ${model.playerName}: ${e.message}")
@@ -171,16 +180,25 @@ class Returnees {
         }
     }
 
-    private fun parseReturneeRow(
+    /**
+     * Parses a row from the DEPARTURES table.
+     * A player is "currently on loan" if the last TD contains "loan transfer" or "Loan fee:"
+     * but NOT "End of loan". The team from the page header is the parent club (onLoanFromClub).
+     * clubJoinedName/Logo will be the destination club (where they are loaned TO).
+     */
+    private fun parseOnLoanRow(
         playerRow: Element,
-        departurePlayerUrls: Set<String>
+        parentTeamName: String?,
+        parentTeamLogo: String?
     ): LatestTransferModel? {
         val rowText = playerRow.text()
-        val isLoanReturn = rowText.contains("End of loan", ignoreCase = true)
-                || rowText.contains("Loan return", ignoreCase = true)
-                || rowText.contains("end of loan", ignoreCase = true)
+        val lower = rowText.lowercase()
+        // Last td contains the transfer type: "loan transfer", "Loan fee:€2.00m", "End of loan30/06/2025", "€9.50m", etc.
+        val lastTd = playerRow.select("td").lastOrNull()?.text()?.trim()?.lowercase() ?: ""
+        val isLoanOut = (lastTd.contains("loan transfer") || lastTd.contains("loan fee"))
+                && !lastTd.contains("end of loan")
 
-        if (!isLoanReturn) return null
+        if (!isLoanOut) return null
 
         val imageUrl = playerRow.selectFirst("img")
             ?.attr("data-src")
@@ -192,8 +210,6 @@ class Returnees {
             ?.attr("href")
             ?.let { "$TRANSFERMARKT_BASE_URL$it" }
 
-        val alsoInDeparture = playerUrl != null && departurePlayerUrls.contains(playerUrl)
-
         val tds = playerRow.select("td")
         val age = tds.getOrNull(5)?.text()
         val position = tds
@@ -202,9 +218,21 @@ class Returnees {
             ?.replace("-", " ")
             .convertLongPositionNameToShort()
 
+        // Market value from td.rechts (exclude loan fee cells)
         val marketValue = playerRow.select("td.rechts")
-            .mapNotNull { it.text().trim().takeIf { t -> t.contains("€") && !t.contains("loan", ignoreCase = true) && !t.contains("End of loan", ignoreCase = true) } }
+            .mapNotNull { it.text().trim().takeIf { t -> t.contains("€") && !t.contains("loan", ignoreCase = true) } }
             .firstOrNull()
+
+        // Extract destination club (where loaned TO) from the row links
+        val destClubLink = playerRow.select("a[href*='/startseite/verein/'], a[href*='/wettbewerb/']")
+            .firstOrNull { it.text().trim() != playerName && it.text().trim().isNotBlank() }
+        val destClubName = destClubLink?.text()?.trim()
+        // Try to get the club logo from the row
+        val destClubImg = playerRow.select("td img[class*='tiny'], td img[class*='verein']").firstOrNull()
+            ?: playerRow.select("td img").filter { it.attr("src").contains("verein") || it.attr("data-src").contains("verein") }.firstOrNull()
+        val destClubLogo = (destClubImg?.attr("data-src")?.ifBlank { null } ?: destClubImg?.attr("src"))
+            ?.takeIf { it.isNotBlank() }
+            ?.let { makeAbsoluteUrl(it) }
 
         val nationalityImg = playerRow.select("td.zentriert img[title]").firstOrNull()
             ?: playerRow.select("td img[alt]").firstOrNull { it.attr("alt").length in 2..50 }
@@ -216,19 +244,28 @@ class Returnees {
             ?.replace("verysmall", "head")
             ?.replace("tiny", "head")
 
-        return if (!alsoInDeparture) {
-            LatestTransferModel(
-                playerImage = imageUrl,
-                playerName = playerName,
-                playerUrl = playerUrl,
-                playerAge = age,
-                playerPosition = position,
-                playerNationality = playerNationality,
-                playerNationalityFlag = playerNationalityFlag,
-                marketValue = marketValue
-            )
-        } else {
-            null
+        return LatestTransferModel(
+            playerImage = imageUrl,
+            playerName = playerName,
+            playerUrl = playerUrl,
+            playerAge = age,
+            playerPosition = position,
+            playerNationality = playerNationality,
+            playerNationalityFlag = playerNationalityFlag,
+            marketValue = marketValue,
+            clubJoinedName = destClubName,  // where loaned TO (current team)
+            clubJoinedLogo = destClubLogo,
+            onLoanFromClub = parentTeamName  // parent club (loaned FROM)
+        )
+    }
+
+    private fun parseMarketValueToInt(s: String): Int {
+        if (s.isBlank() || s.contains("-") && !s.contains("€")) return 0
+        val cleaned = s.replace("€", "").replace(",", "").trim()
+        return when {
+            cleaned.contains("m", true) -> ((cleaned.substringBefore("m").trim().toDoubleOrNull() ?: 0.0) * 1_000_000).toInt()
+            cleaned.contains("k", true) -> (cleaned.substringBefore("k").trim().toDoubleOrNull() ?: 0.0).toInt() * 1_000
+            else -> cleaned.toIntOrNull() ?: 0
         }
     }
 }

@@ -286,10 +286,12 @@ export type ContractFinisherStreamEvent = {
  * Stream contract finishers via SSE – results appear as they load (like the app).
  * Calls onBatch with accumulated players after each batch; onDone when finished.
  */
-// ─── Returnees (players returning from loan) ──────────────────────────────────
+// ─── On Loan (players currently on loan) ──────────────────────────────────
 export interface ReturneePlayer extends ReleasePlayer {
   clubJoinedLogo?: string;
   clubJoinedName?: string;
+  onLoanFromClub?: string;
+  loanEndDate?: string;
 }
 
 const RETURNEE_LEAGUES: { leagueName: string; leagueUrl: string; flagUrl: string }[] = [
@@ -336,9 +338,8 @@ export function streamReturnees(
   onBatch: (event: ReturneeStreamEvent) => void,
   onError?: (err: Error) => void
 ): () => void {
-  const url = BACKEND_URL
-    ? `${BACKEND_URL}/api/transfermarkt/returnees/stream`
-    : '/api/transfermarkt/returnees/stream';
+  // Always use relative path — the stream route lives in the Next.js app, not the external backend
+  const url = '/api/transfermarkt/returnees/stream';
   const es = new EventSource(url);
 
   es.onmessage = (e) => {

@@ -836,8 +836,9 @@ fun ReleaseListItem(
                                 }
                             }
                         }
-                        // Club returned to (returnees only)
-                        if (isFromReturnee && (!release.clubJoinedName.isNullOrBlank() || !release.clubJoinedLogo.isNullOrBlank())) {
+                        // On loan from club (on-loan players only)
+                        val loanFromClub = release.onLoanFromClub
+                        if (isFromReturnee && !loanFromClub.isNullOrBlank()) {
                             Row(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
@@ -846,23 +847,11 @@ fun ReleaseListItem(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (!release.clubJoinedLogo.isNullOrBlank()) {
-                                    AsyncImage(
-                                        model = release.clubJoinedLogo,
-                                        contentDescription = release.clubJoinedName,
-                                        modifier = Modifier
-                                            .size(14.dp)
-                                            .clip(RoundedCornerShape(4.dp)),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                                release.clubJoinedName?.let { club ->
-                                    Text(
-                                        text = club,
-                                        style = regularTextStyle(HomePurpleAccent, 10.sp),
-                                        maxLines = 1
-                                    )
-                                }
+                                Text(
+                                    text = stringResource(R.string.releases_on_loan_from, loanFromClub),
+                                    style = regularTextStyle(HomePurpleAccent, 10.sp),
+                                    maxLines = 1
+                                )
                             }
                         }
                     }
@@ -892,10 +881,11 @@ fun ReleaseListItem(
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     val transferDate = release.transferDate
+                    val loanEndDate = release.loanEndDate
                     Text(
                         text = when {
                             isContractFinisher && !transferDate.isNullOrBlank() -> stringResource(R.string.contract_finisher_badge, transferDate)
-                            isFromReturnee && !transferDate.isNullOrBlank() -> stringResource(R.string.releases_badge_returned_on, transferDate)
+                            isFromReturnee && !loanEndDate.isNullOrBlank() -> stringResource(R.string.releases_badge_returned_on, loanEndDate)
                             isFromReturnee -> stringResource(R.string.releases_badge_loan_return)
                             !transferDate.isNullOrBlank() -> stringResource(R.string.releases_badge_released_on, transferDate)
                             else -> stringResource(R.string.releases_badge_released)

@@ -7,7 +7,7 @@
     <string name="nav_item_home">Home</string>
     <string name="nav_item_dashboard">Dashboard</string>
     <string name="nav_item_releases">Releases</string>
-    <string name="nav_item_returnee">Returnee</string>
+    <string name="nav_item_returnee">On Loan</string>
     <string name="nav_item_contacts">Contacts</string>
     <string name="nav_item_shortlist">Shortlist</string>
     <string name="nav_item_requests">Requests</string>
@@ -128,9 +128,9 @@
     <string name="shortlist_remove">Remove</string>
     <string name="shortlist_remove_confirm">Remove this player from your shortlist?</string>
     <string name="shortlist_no_players">No players in shortlist</string>
-    <string name="shortlist_empty_hint">Add players from Releases or Returnees to save them for later. When ready, add them to your agency.</string>
+    <string name="shortlist_empty_hint">Add players from Releases or On Loan to save them for later. When ready, add them to your agency.</string>
     <string name="shortlist_browse_releases">Browse Releases</string>
-    <string name="shortlist_browse_returnees">Browse Returnees</string>
+    <string name="shortlist_browse_returnees">Browse On Loan</string>
     <string name="shortlist_added">Added to shortlist</string>
     <string name="shortlist_added_today">Added today</string>
     <string name="shortlist_added_yesterday">Added yesterday</string>
@@ -319,7 +319,7 @@
     <string name="quick_action_players">Our Roster</string>
     <string name="quick_action_shortlist">Shortlist</string>
     <string name="quick_action_releases">Releases</string>
-    <string name="quick_action_returnees">Returnees</string>
+    <string name="quick_action_returnees">On Loan</string>
     <string name="quick_action_contacts">Contacts</string>
     <string name="quick_action_requests">Requests</string>
     <string name="quick_action_contract_finisher_summer">Contract Finisher - Summer</string>
@@ -665,9 +665,9 @@
     <string name="releases_add_to_agency">Add to agency</string>
     <string name="releases_badge_released">Released</string>
     <string name="releases_badge_released_on">Released on %1$s</string>
-    <string name="releases_badge_loan_return">Loan Return</string>
-    <string name="releases_badge_returned_on">Returned on %1$s</string>
-    <string name="releases_returned_to">Returned to %1$s</string>
+    <string name="releases_badge_loan_return">On Loan</string>
+    <string name="releases_badge_returned_on">Loan until %1$s</string>
+    <string name="releases_on_loan_from">On loan from %1$s</string>
     <string name="releases_roster_teammates_one">%d roster teammate</string>
     <string name="releases_roster_teammates">%d roster teammates</string>
     <string name="releases_no_roster_teammates">No roster players played with this player</string>
@@ -681,10 +681,10 @@
     <string name="shortlist_pill_adding">Adding…</string>
     <string name="shortlist_pill_done">Shortlisted</string>
 
-    <!-- Returnee Screen -->
-    <string name="returnee_title">Returnees</string>
-    <string name="returnee_subtitle">Players returning from loan across European leagues</string>
-    <string name="returnee_no_found">No returnees found</string>
+    <!-- On Loan Screen -->
+    <string name="returnee_title">Currently on Loan</string>
+    <string name="returnee_subtitle">Players currently on loan across European leagues</string>
+    <string name="returnee_no_found">No players on loan found</string>
     <string name="returnee_loading">Loading (%1$d/%2$d leagues)…</string>+
     <string name="returnee_stat_leagues">Leagues</string>
     <string name="returnee_all_count">All %d</string>

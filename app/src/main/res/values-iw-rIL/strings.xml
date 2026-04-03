@@ -6,7 +6,7 @@
     <string name="nav_item_home">בית</string>
     <string name="nav_item_dashboard">פיד</string>
     <string name="nav_item_releases">שחרורים</string>
-    <string name="nav_item_returnee">חזרו מהשאלה</string>
+    <string name="nav_item_returnee">בהשאלה</string>
     <string name="nav_item_contacts">אנשי קשר</string>
     <string name="nav_item_shortlist">רשימת מעקב</string>
     <string name="nav_item_requests">בקשות</string>
@@ -58,7 +58,7 @@
     <string name="quick_action_players">המאגר שלנו</string>
     <string name="quick_action_shortlist">רשימת מעקב</string>
     <string name="quick_action_releases">שחרורים</string>
-    <string name="quick_action_returnees">חזרו מהשאלה</string>
+    <string name="quick_action_returnees">בהשאלה</string>
     <string name="quick_action_contacts">אנשי קשר</string>
     <string name="quick_action_requests">בקשות</string>
     <string name="quick_action_contract_finisher_summer">מסיימי חוזה - קיץ</string>

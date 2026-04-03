@@ -6,7 +6,7 @@
     <string name="nav_item_home">בית</string>
     <string name="nav_item_dashboard">פיד</string>
     <string name="nav_item_releases">שחרורים</string>
-    <string name="nav_item_returnee">חזרו מהשאלה</string>
+    <string name="nav_item_returnee">בהשאלה</string>
     <string name="nav_item_contacts">אנשי קשר</string>
     <string name="nav_item_shortlist">רשימת מעקב</string>
     <string name="nav_item_requests">בקשות</string>
@@ -103,9 +103,9 @@
     <string name="shortlist_remove">הסר</string>
     <string name="shortlist_remove_confirm">להסיר את השחקן מרשימת המעקב?</string>
     <string name="shortlist_no_players">אין שחקנים ברשימת מעקב</string>
-    <string name="shortlist_empty_hint">הוסף שחקנים משחרורים או חזרו מהשאלה כדי לשמור אותם להמשך. כשמוכן, הוסף אותם לסוכנות שלך.</string>
+    <string name="shortlist_empty_hint">הוסף שחקנים משחרורים או בהשאלה כדי לשמור אותם להמשך. כשמוכן, הוסף אותם לסוכנות שלך.</string>
     <string name="shortlist_browse_releases">עיין בשחרורים</string>
-    <string name="shortlist_browse_returnees">עיין בחזרו מהשאלה</string>
+    <string name="shortlist_browse_returnees">עיין בהשאלות</string>
     <string name="shortlist_added">נוסף לרשימת מעקב</string>
     <string name="shortlist_added_today">נוסף היום</string>
     <string name="shortlist_added_yesterday">נוסף אתמול</string>
@@ -178,7 +178,7 @@
     <string name="quick_action_players">המאגר שלנו</string>
     <string name="quick_action_shortlist">רשימת מעקב</string>
     <string name="quick_action_releases">שחרורים</string>
-    <string name="quick_action_returnees">חזרו מהשאלה</string>
+    <string name="quick_action_returnees">בהשאלה</string>
     <string name="quick_action_contacts">אנשי קשר</string>
     <string name="quick_action_requests">בקשות</string>
     <string name="quick_action_contract_finisher_summer">מסיימי חוזה - קיץ</string>
@@ -423,9 +423,9 @@
     <string name="releases_add_to_agency">הוסף לסוכנות</string>
     <string name="releases_badge_released">שוחרר</string>
     <string name="releases_badge_released_on">שוחרר ב-%1$s</string>
-    <string name="releases_badge_loan_return">חזר מהשאלה</string>
-    <string name="releases_badge_returned_on">חזר ב-%1$s</string>
-    <string name="releases_returned_to">חזר ל-%1$s</string>
+    <string name="releases_badge_loan_return">בהשאלה</string>
+    <string name="releases_badge_returned_on">השאלה עד %1$s</string>
+    <string name="releases_on_loan_from">בהשאלה מ-%1$s</string>
     <string name="releases_roster_teammates_one">%d שחקן מהמאגר שיחק איתו</string>
     <string name="releases_roster_teammates">%d שחקנים מהמאגר שיחקו איתו</string>
     <string name="releases_no_roster_teammates">אין שחקנים מהמאגר ששיחקו עם שחקן זה</string>
@@ -439,10 +439,10 @@
     <string name="shortlist_pill_adding">מוסיף…</string>
     <string name="shortlist_pill_done">ברשימה</string>
 
-    <!-- Returnee Screen -->
-    <string name="returnee_title">חזרו מהשאלה</string>
-    <string name="returnee_subtitle">שחקנים שחוזרים מהשאלה בליגות אירופאיות</string>
-    <string name="returnee_no_found">לא נמצאו שחקנים שחזרו</string>
+    <!-- On Loan Screen -->
+    <string name="returnee_title">בהשאלה כרגע</string>
+    <string name="returnee_subtitle">שחקנים בהשאלה בליגות אירופאיות</string>
+    <string name="returnee_no_found">לא נמצאו שחקנים בהשאלה</string>
     <string name="returnee_loading">טוען (%1$d/%2$d ליגות)…</string>
     <string name="returnee_stat_leagues">ליגות</string>
     <string name="returnee_all_count">הכל %d</string>
