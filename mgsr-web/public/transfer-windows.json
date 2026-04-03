@@ -5,22 +5,22 @@
       "countryCode": "kz",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/81.png",
       "confederation": "UEFA",
-      "daysLeft": 2
+      "daysLeft": 0
     },
     {
       "countryName": "Japan",
       "countryCode": "jp",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/77.png",
       "confederation": "AFC",
-      "daysLeft": 7
+      "daysLeft": 6
     },
     {
       "countryName": "Canada",
       "countryCode": "ca",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/80.png",
       "confederation": "CONCACAF",
-      "daysLeft": 15
+      "daysLeft": 14
     }
   ],
-  "updatedAt": "2026-04-02T08:45:04.408Z"
+  "updatedAt": "2026-04-03T08:42:26.605Z"
 }
