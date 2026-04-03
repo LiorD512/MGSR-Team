@@ -58,11 +58,15 @@ async function accountUpdate(data) {
   if (data.addFcmWebToken) {
     const token = str(data.addFcmWebToken);
     if (token) {
-      updates.fcmTokens = FieldValue.arrayUnion({
-        token,
-        platform: "web",
-        updatedAt: Date.now(),
+      // Read current tokens, replace any with same token string to avoid duplicates
+      const accountSnap = await db.collection("Accounts").doc(accountId).get();
+      const existing = accountSnap.exists ? (accountSnap.data().fcmTokens || []) : [];
+      const filtered = existing.filter((e) => {
+        const t = typeof e === "string" ? e : e?.token;
+        return t !== token;
       });
+      filtered.push({ token, platform: "web", updatedAt: Date.now() });
+      updates.fcmTokens = filtered;
     }
   }
   if (data.removeFcmWebToken) {
