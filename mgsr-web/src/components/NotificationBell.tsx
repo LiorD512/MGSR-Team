@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, doc as firestoreDoc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -21,6 +21,46 @@ async function findAccountId(email: string): Promise<string | null> {
   return doc?.id ?? null;
 }
 
+/** Check if the account already has at least one web FCM token. */
+async function accountHasWebToken(accountId: string): Promise<boolean> {
+  const snap = await getDoc(firestoreDoc(db, 'Accounts', accountId));
+  if (!snap.exists()) return false;
+  const tokens = snap.data().fcmTokens;
+  return Array.isArray(tokens) && tokens.length > 0;
+}
+
+/** Get an FCM token, register service worker, subscribe to topic, and save to Firestore. */
+async function ensureTokenSaved(accountId: string): Promise<string | null> {
+  const { getToken } = await import('firebase/messaging');
+  const { getMessaging: getMessagingInstance } = await import('@/lib/firebase');
+  const messaging = await getMessagingInstance();
+  if (!messaging) return null;
+  const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+  if (!swReg.active) {
+    await new Promise<void>((resolve) => {
+      const sw = swReg.installing || swReg.waiting;
+      if (!sw) { resolve(); return; }
+      sw.addEventListener('statechange', () => { if (sw.state === 'activated') resolve(); });
+    });
+  }
+  const token = await getToken(messaging, {
+    vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '',
+    serviceWorkerRegistration: swReg,
+  }).catch(() => null);
+  if (!token) return null;
+  await saveWebFcmToken(accountId, token);
+  // Subscribe to broadcast topic
+  try {
+    const { httpsCallable, getFunctions } = await import('firebase/functions');
+    const functions = getFunctions(undefined, 'us-central1');
+    const subscribe = httpsCallable(functions, 'subscribeToTopicCallable');
+    await subscribe({ token, topic: 'mgsr_all' });
+  } catch {
+    // Will retry next page load
+  }
+  return token;
+}
+
 export default function NotificationBell() {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -35,39 +75,26 @@ export default function NotificationBell() {
   }, []);
 
   // Ensure FCM token is saved to account whenever notifications are granted.
-  // Runs once per page load — this is the ONLY place token persistence happens.
+  // On every page load: checks Firestore to see if the account actually has a web
+  // token. If not, generates one and saves it. This guarantees token persistence.
   useEffect(() => {
     if (status !== 'granted' || !user?.email) return;
-    const key = 'mgsr_token_saved';
-    if (sessionStorage.getItem(key)) return;
+    const SESSION_KEY = 'mgsr_token_saved_v2';
+    if (sessionStorage.getItem(SESSION_KEY)) return;
     (async () => {
       try {
         const accountId = await findAccountId(user.email!);
-        console.log('[MGSR-FCM] auto-save: accountId=', accountId, 'email=', user.email);
         if (!accountId) return;
-        const { getToken } = await import('firebase/messaging');
-        const { getMessaging: getMessagingInstance } = await import('@/lib/firebase');
-        const messaging = await getMessagingInstance();
-        if (!messaging) { console.log('[MGSR-FCM] auto-save: messaging is null'); return; }
-        const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        if (!swReg.active) {
-          await new Promise<void>((resolve) => {
-            const sw = swReg.installing || swReg.waiting;
-            if (!sw) { resolve(); return; }
-            sw.addEventListener('statechange', () => { if (sw.state === 'activated') resolve(); });
-          });
+        const hasToken = await accountHasWebToken(accountId);
+        if (hasToken) {
+          sessionStorage.setItem(SESSION_KEY, '1');
+          return;
         }
-        const token = await getToken(messaging, {
-          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '',
-          serviceWorkerRegistration: swReg,
-        }).catch((err: unknown) => { console.error('[MGSR-FCM] auto-save: getToken error', err); return null; });
-        console.log('[MGSR-FCM] auto-save: token=', token ? token.substring(0, 20) + '...' : null);
-        if (!token) return;
-        await saveWebFcmToken(accountId, token);
-        console.log('[MGSR-FCM] auto-save: token saved OK');
-        sessionStorage.setItem(key, '1');
-      } catch (e) {
-        console.error('[MGSR-FCM] auto-save error:', e);
+        // Account has NO web token — register and save one now
+        const token = await ensureTokenSaved(accountId);
+        if (token) sessionStorage.setItem(SESSION_KEY, '1');
+      } catch {
+        // Will retry next page load
       }
     })();
   }, [status, user]);
@@ -90,33 +117,23 @@ export default function NotificationBell() {
     setLoading(true);
     try {
       const token = await requestNotificationPermission();
-      console.log('[MGSR-FCM] bell click: token=', token ? token.substring(0, 20) + '...' : null);
       if (token) {
         const accountId = await findAccountId(user.email);
-        console.log('[MGSR-FCM] bell click: accountId=', accountId, 'email=', user.email);
         if (accountId) {
           await saveWebFcmToken(accountId, token);
-          console.log('[MGSR-FCM] bell click: token saved OK');
-          alert(`[DEBUG] Token saved! accountId=${accountId}`);
           try {
-            const { httpsCallable } = await import('firebase/functions');
-            const { getFunctions } = await import('firebase/functions');
+            const { httpsCallable, getFunctions } = await import('firebase/functions');
             const functions = getFunctions(undefined, 'us-central1');
             const subscribe = httpsCallable(functions, 'subscribeToTopicCallable');
             await subscribe({ token, topic: 'mgsr_all' });
-          } catch (e) {
-            console.warn('Topic subscription failed (will retry on next load):', e);
+          } catch {
+            // Will retry next page load
           }
-        } else {
-          alert(`[DEBUG] No account found for email: ${user.email}`);
         }
         setStatus('granted');
       } else {
-        alert(`[DEBUG] No token received. Permission: ${Notification.permission}`);
         setStatus(getNotificationStatus());
       }
-    } catch (err) {
-      alert(`[DEBUG] Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
       setShowModal(false);

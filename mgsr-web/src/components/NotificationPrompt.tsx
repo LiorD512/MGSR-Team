@@ -11,7 +11,7 @@ import {
   saveWebFcmToken,
 } from '@/lib/notifications';
 
-const DISMISSED_KEY = 'mgsr_notif_prompt_dismissed';
+const DISMISSED_KEY = 'mgsr_notif_prompt_dismissed_v2';
 
 async function findAccountId(email: string): Promise<string | null> {
   const snap = await getDocs(collection(db, 'Accounts'));
