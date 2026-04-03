@@ -43,11 +43,12 @@ export default function NotificationBell() {
     (async () => {
       try {
         const accountId = await findAccountId(user.email!);
+        console.log('[MGSR-FCM] auto-save: accountId=', accountId, 'email=', user.email);
         if (!accountId) return;
         const { getToken } = await import('firebase/messaging');
         const { getMessaging: getMessagingInstance } = await import('@/lib/firebase');
         const messaging = await getMessagingInstance();
-        if (!messaging) return;
+        if (!messaging) { console.log('[MGSR-FCM] auto-save: messaging is null'); return; }
         const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
         if (!swReg.active) {
           await new Promise<void>((resolve) => {
@@ -59,12 +60,14 @@ export default function NotificationBell() {
         const token = await getToken(messaging, {
           vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '',
           serviceWorkerRegistration: swReg,
-        }).catch(() => null);
+        }).catch((err: unknown) => { console.error('[MGSR-FCM] auto-save: getToken error', err); return null; });
+        console.log('[MGSR-FCM] auto-save: token=', token ? token.substring(0, 20) + '...' : null);
         if (!token) return;
         await saveWebFcmToken(accountId, token);
+        console.log('[MGSR-FCM] auto-save: token saved OK');
         sessionStorage.setItem(key, '1');
       } catch (e) {
-        // Silently ignore — will retry next page load
+        console.error('[MGSR-FCM] auto-save error:', e);
       }
     })();
   }, [status, user]);
@@ -87,10 +90,13 @@ export default function NotificationBell() {
     setLoading(true);
     try {
       const token = await requestNotificationPermission();
+      console.log('[MGSR-FCM] bell click: token=', token ? token.substring(0, 20) + '...' : null);
       if (token) {
         const accountId = await findAccountId(user.email);
+        console.log('[MGSR-FCM] bell click: accountId=', accountId, 'email=', user.email);
         if (accountId) {
           await saveWebFcmToken(accountId, token);
+          console.log('[MGSR-FCM] bell click: token saved OK');
           try {
             const { httpsCallable } = await import('firebase/functions');
             const { getFunctions } = await import('firebase/functions');
