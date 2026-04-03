@@ -212,6 +212,7 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
       priority: "high",
       notification: {
         channelId: "mgsr_team_notifications",
+        tag: `feed-${event.params.eventId}`,
       },
     },
     webpush: {

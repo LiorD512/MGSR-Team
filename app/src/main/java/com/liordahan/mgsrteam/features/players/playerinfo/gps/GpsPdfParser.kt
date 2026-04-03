@@ -258,6 +258,22 @@ Return ONLY valid JSON. No markdown, no explanation."""
         java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
             .replace(Regex("[\\u0300-\\u036f]"), "")
 
+    /** Levenshtein edit distance between two strings */
+    private fun levenshtein(a: String, b: String): Int {
+        val m = a.length; val n = b.length
+        val dp = IntArray(n + 1) { it }
+        for (i in 1..m) {
+            var prev = i - 1
+            dp[0] = i
+            for (j in 1..n) {
+                val tmp = dp[j]
+                dp[j] = if (a[i - 1] == b[j - 1]) prev else 1 + minOf(prev, dp[j], dp[j - 1])
+                prev = tmp
+            }
+        }
+        return dp[n]
+    }
+
     /**
      * Find matching player row by name (fuzzy match).
      * Handles variations like "Momo Djetei" vs "Mohamed Djetei" by matching last name.
@@ -308,6 +324,19 @@ Return ONLY valid JSON. No markdown, no explanation."""
                     (pFirst.length == 1 && pFirst[0] == initial && pLast == lastName) ||
                         (pLast.length == 1 && pLast[0] == initial && pFirst == lastName)
                 } else false
+            }?.let { return it }
+        }
+        // 6. Levenshtein fuzzy spelling — e.g. "Matias" ≈ "Mathias" (edit distance ≤ 2)
+        for (part in nameParts) {
+            if (part.length < 3) continue
+            report.players.firstOrNull {
+                val pName = norm(it.playerName)
+                val pParts = pName.split(Regex("\\s+"))
+                pParts.any { pp ->
+                    pp.length >= 3 && levenshtein(part, pp).let { dist ->
+                        dist <= 2 && dist.toDouble() / maxOf(part.length, pp.length) <= 0.3
+                    }
+                }
             }?.let { return it }
         }
         return null

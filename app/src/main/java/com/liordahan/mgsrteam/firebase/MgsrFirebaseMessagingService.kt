@@ -182,8 +182,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
     ) {
         createNotificationChannel()
 
-        val notificationId = NOTIFICATION_ID +
-            (data[KEY_PLAYER_NAME]?.hashCode()?.and(0x7FFF) ?: 0)
+        val notificationId = System.currentTimeMillis().toInt()
 
         val type = data[KEY_TYPE].orEmpty()
         val playerTmProfile = data[KEY_PLAYER_TM_PROFILE].orEmpty()

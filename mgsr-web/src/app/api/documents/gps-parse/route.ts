@@ -168,6 +168,22 @@ function stripAccents(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+/** Levenshtein edit distance between two strings */
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[] = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let prev = i - 1;
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+
 function findPlayerRow(players: GpsPlayerRow[], playerName: string): GpsPlayerRow | undefined {
   const normalized = stripAccents(playerName.trim().toLowerCase());
   const nameParts = normalized.split(/\s+/);
@@ -223,6 +239,22 @@ function findPlayerRow(players: GpsPlayerRow[], playerName: string): GpsPlayerRo
       return false;
     });
     if (fuzzyMatch) return fuzzyMatch;
+  }
+  // 6. Levenshtein fuzzy spelling — e.g. "Matias" ≈ "Mathias" (edit distance ≤ 2)
+  for (const part of nameParts) {
+    if (part.length < 3) continue;
+    const levMatch = players.find(p => {
+      const pName = norm(p.playerName);
+      const pParts = pName.split(/\s+/);
+      // Compare each name part against each GPS name part
+      return pParts.some(pp => {
+        if (pp.length < 3) return false;
+        const dist = levenshtein(part, pp);
+        const maxLen = Math.max(part.length, pp.length);
+        return dist <= 2 && dist / maxLen <= 0.3;
+      });
+    });
+    if (levMatch) return levMatch;
   }
   return undefined;
 }
