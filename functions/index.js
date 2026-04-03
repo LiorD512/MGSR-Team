@@ -119,13 +119,15 @@ async function sendToAllTokens(accountId, accountData, payload) {
       if (invalidTokens.includes(accountData.fcmToken)) {
         updates.fcmToken = "";
       }
-      // Remove from fcmTokens array
-      if (Array.isArray(accountData.fcmTokens)) {
+      // Remove from fcmTokens array (only if there are invalid web tokens to remove)
+      if (Array.isArray(accountData.fcmTokens) && accountData.fcmTokens.length > 0) {
         const cleaned = accountData.fcmTokens.filter((entry) => {
           const t = typeof entry === "string" ? entry : entry?.token;
           return !invalidTokens.includes(t);
         });
-        updates.fcmTokens = cleaned;
+        if (cleaned.length !== accountData.fcmTokens.length) {
+          updates.fcmTokens = cleaned;
+        }
       }
       if (Object.keys(updates).length > 0) {
         await accountRef.update(updates);

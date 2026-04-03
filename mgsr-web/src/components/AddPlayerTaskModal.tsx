@@ -162,7 +162,7 @@ export default function AddPlayerTaskModal({
     try {
       const selected = accounts.find((a) => a.id === agentId);
       const agentName = selected ? getDisplayName(selected, isRtl) : '';
-      const dueTs = dueDate ? new Date(dueDate).getTime() : 0;
+      const dueTs = dueDate ? new Date(dueDate).getTime() : undefined;
       const createdBy = accounts.find((a) => a.email?.toLowerCase() === currentUserEmail?.toLowerCase());
       const createdByName = createdBy ? getDisplayName(createdBy, isRtl) : (currentUserEmail || '');
       const platform = isYouth ? 'youth' : isWomen ? 'women' : 'men';
@@ -172,7 +172,7 @@ export default function AddPlayerTaskModal({
         agentName: agentName || '',
         title: title.trim(),
         notes: notes.trim() || '',
-        dueDate: dueTs,
+        ...(dueTs ? { dueDate: dueTs } : {}),
         priority,
         createdByAgentId: currentUserId,
         createdByAgentName: createdByName,

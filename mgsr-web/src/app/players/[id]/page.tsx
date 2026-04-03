@@ -2785,8 +2785,8 @@ export default function PlayerInfoPage() {
                               {t('tasks_created_on')} {new Date(task.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}
                             </span>
                           )}
-                          {task.createdAt && task.dueDate ? <span className="text-xs text-mgsr-muted">·</span> : null}
-                          {task.dueDate && (
+                          {task.createdAt && task.dueDate && task.dueDate > 0 ? <span className="text-xs text-mgsr-muted">·</span> : null}
+                          {task.dueDate && task.dueDate > 0 && (
                             <span className={`text-xs ${task.dueDate < Date.now() && !task.isCompleted ? 'text-red-400 font-medium' : 'text-mgsr-muted'}`}>
                               {t('tasks_due_label')} {new Date(task.dueDate).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </span>
@@ -2867,7 +2867,7 @@ export default function PlayerInfoPage() {
                             <span>{t('note_written_by')}: {isRtl ? (n.createByHe ?? resolveAgentName(n.createBy)) : n.createBy}</span>
                           )}
                           {n.createdAt && (
-                            <span>{new Date(n.createdAt).toLocaleDateString()}</span>
+                            <span>{new Date(n.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                           )}
                         </div>
                       </div>
