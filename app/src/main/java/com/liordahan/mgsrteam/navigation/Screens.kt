@@ -23,6 +23,7 @@ sealed class Screens(val route: String) {
     data object ShadowTeamsScreen : Screens(ScreenName.SHADOW_TEAMS)
     data object AiScoutScreen : Screens(ScreenName.AI_SCOUT)
     data object WarRoomScreen : Screens(ScreenName.WAR_ROOM)
+    data object ChatRoomScreen : Screens(ScreenName.CHAT_ROOM)
     data object WarRoomReportScreen : Screens("${ScreenName.WAR_ROOM_REPORT}/{tmUrl}/{playerName}")
 
     companion object {
@@ -61,4 +62,5 @@ object ScreenName {
     const val AI_SCOUT = "ai_scout"
     const val WAR_ROOM = "war_room"
     const val WAR_ROOM_REPORT = "war_room_report"
+    const val CHAT_ROOM = "chat_room"
 }

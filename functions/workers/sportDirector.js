@@ -314,9 +314,10 @@ function checkCompleteness(data) {
     issues.push("missing_contract_critical");
   }
 
-  // FM data is critical for FM-dependent profiles — but not for TM-sourced profiles (TM can't provide FM data)
+  // FM data is critical for UNDERVALUED_BY_FM (requires fmPa >= 140 — can't exist without FM).
+  // HIDDEN_GEM explicitly allows fmPa == null in matchesProfile() — young + cheap = always interesting.
   const isTmSource = data.source === "tm_enriched" || data.source === "tm_fallback";
-  if ((data.profileType === "HIDDEN_GEM" || data.profileType === "UNDERVALUED_BY_FM") && data.fmPa == null && !isTmSource) {
+  if (data.profileType === "UNDERVALUED_BY_FM" && data.fmPa == null && !isTmSource) {
     issues.push("missing_fm_critical");
   }
 
@@ -498,7 +499,10 @@ function checkDataConsistency(data) {
 
   // Contract already expired but not tagged CONTRACT_EXPIRING
   if (data.contractExpires) {
-    const expYear = parseInt(data.contractExpires, 10);
+    // Parse year correctly: contractExpires can be "30/06/2028", "2028", "Jun 30, 2028"
+    // parseInt("30/06/2028") wrongly returns 30 — use regex to extract the 4-digit year.
+    const yearMatch = data.contractExpires.match(/(\d{4})/);
+    const expYear = yearMatch ? parseInt(yearMatch[1], 10) : 0;
     const currentYear = new Date().getFullYear();
     if (expYear > 0 && expYear < currentYear && data.profileType !== "CONTRACT_EXPIRING") {
       issues.push(`contract_already_expired:${data.contractExpires}`);
@@ -678,6 +682,7 @@ async function fetchTmPerformanceStats(tmProfileUrl) {
 /**
  * Compare FBref data (from scout server) against TM scraped data.
  * When significant mismatches are found, override profile data with TM values.
+ * When FBref data is completely missing, populate from TM (initial enrichment).
  * Returns { overridden: boolean, overrides: string[], tmStats: object }.
  */
 function verifyAndCorrectStats(d, tmStats) {
@@ -685,8 +690,23 @@ function verifyAndCorrectStats(d, tmStats) {
   const tmMinutes90s = tmStats.minutes > 0 ? tmStats.minutes / 90 : 0;
   const fbrefMin90s = d.fbrefMinutes90s || 0;
 
+  // ── INITIAL ENRICHMENT: FBref data completely missing → populate from TM ──
+  if (fbrefMin90s <= 0 && tmStats.minutes > 0) {
+    overrides.push(`minutes: EMPTY → TM ${tmMinutes90s.toFixed(1)} 90s (${tmStats.appearances} apps, ${tmStats.minutes} min)`);
+    d.fbrefMinutes90s = Math.round(tmMinutes90s * 10) / 10;
+  }
+  if ((d.fbrefGoals || 0) === 0 && tmStats.goals > 0) {
+    overrides.push(`goals: EMPTY → TM ${tmStats.goals}`);
+    d.fbrefGoals = tmStats.goals;
+  }
+  if ((d.fbrefAssists || 0) === 0 && tmStats.assists > 0) {
+    overrides.push(`assists: EMPTY → TM ${tmStats.assists}`);
+    d.fbrefAssists = tmStats.assists;
+  }
+
+  // ── MISMATCH CORRECTION: FBref has data but TM disagrees significantly ──
   // Minutes mismatch: FBref says barely played but TM shows 15+ appearances
-  if (fbrefMin90s < 10 && tmStats.appearances >= 15 && tmMinutes90s >= 10) {
+  if (fbrefMin90s > 0 && fbrefMin90s < 10 && tmStats.appearances >= 15 && tmMinutes90s >= 10) {
     overrides.push(`minutes: FBref ${fbrefMin90s.toFixed(1)} 90s → TM ${tmMinutes90s.toFixed(1)} 90s (${tmStats.appearances} apps, ${tmStats.minutes} min)`);
     d.fbrefMinutes90s = Math.round(tmMinutes90s * 10) / 10;
   }
@@ -715,6 +735,8 @@ function verifyAndCorrectStats(d, tmStats) {
     const min90 = d.fbrefMinutes90s || 0;
     d.goalsPer90 = min90 > 0 ? Math.round((d.fbrefGoals / min90) * 100) / 100 : 0;
     d.contribPer90 = min90 > 0 ? Math.round(((d.fbrefGoals + d.fbrefAssists) / min90) * 100) / 100 : 0;
+    // Mark as TM-enriched so downstream checks (no_minutes_data etc.) treat it properly
+    d.source = d.source || "tm_enriched";
     d.statsSource = "transfermarkt_verified";
     d.tmVerification = {
       appearances: tmStats.appearances,
@@ -801,28 +823,137 @@ const STATS_DEPENDENT_PROFILES = new Set([
 ]);
 
 /**
- * Verify stats-dependent profiles against Transfermarkt.
- * Batched: 5 concurrent, 1.5s between batches.
- * Mutates profile data in-place when corrections are needed.
+ * Fetch TM stats via Vercel proxy (if configured) or direct fetch.
+ * Vercel proxy bypasses TM's Google Cloud IP blocks.
  */
-async function verifyProfilesViaTm(profiles) {
-  const toVerify = profiles.filter((p) => STATS_DEPENDENT_PROFILES.has(p.data.profileType));
-  if (toVerify.length === 0) return { verified: 0, overridden: 0, typeChanged: 0, noTypeMatch: 0, failed: 0 };
+async function fetchTmStatsWithProxy(tmProfileUrl) {
+  const proxyUrl = process.env.SCOUT_TM_PROXY_URL;
+  const secret = process.env.SCOUT_ENRICH_SECRET;
 
-  console.log(`[SportDirector:TM-Verify] Verifying ${toVerify.length} stats-dependent profiles against Transfermarkt...`);
+  const id = extractTmPlayerId(tmProfileUrl);
+  if (!id) return null;
 
-  let verified = 0, overridden = 0, typeChanged = 0, noTypeMatch = 0, failed = 0;
+  const season = getCurrentSeasonYear();
+  const perfUrl = tmProfileUrl
+    .replace(/\/profil\//, "/leistungsdaten/")
+    .replace(/\/player\//, "/leistungsdaten/")
+    .replace(/\/$/, "");
+  const urlWithSeason = perfUrl.includes("saison") ? perfUrl : `${perfUrl}/saison/${season}`;
+
+  let html;
+  if (proxyUrl && secret) {
+    try {
+      const res = await fetch(proxyUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret, url: urlWithSeason }),
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`);
+      html = await res.text();
+    } catch (proxyErr) {
+      // Fall back to direct fetch if proxy fails
+      try {
+        const directRes = await intelFetch(urlWithSeason);
+        if (!directRes.ok) return null;
+        html = await directRes.text();
+      } catch { return null; }
+    }
+  } else {
+    try {
+      const res = await intelFetch(urlWithSeason);
+      if (!res.ok) return null;
+      html = await res.text();
+    } catch { return null; }
+  }
+
+  if (!html) return null;
+
+  try {
+    const $ = cheerio.load(html);
+    let appearances = 0, goals = 0, assists = 0, minutes = 0;
+
+    const rows = $("table.items tbody tr, table.items tr");
+    rows.each((_, row) => {
+      const $row = $(row);
+      const firstCell = $row.find("td").first().text().trim().toLowerCase();
+      if (!firstCell.includes("total") && !firstCell.includes("gesamt")) return;
+
+      const tds = $row.find("td");
+      if (tds.length < 4) return;
+
+      const nums = [];
+      tds.slice(1).each((__, td) => {
+        const raw = $(td).text().trim();
+        const t = raw.replace(/['\s]/g, "").replace(/\./g, "").replace(/,/g, "");
+        const n = parseInt(t, 10);
+        if (!isNaN(n)) nums.push(n);
+      });
+
+      if (nums.length >= 3) {
+        appearances = nums[0] ?? 0;
+        goals = nums[1] ?? 0;
+        if (nums.length === 3) {
+          assists = 0;
+          minutes = nums[2] ?? 0;
+        } else {
+          assists = nums[2] ?? 0;
+          const last = nums[nums.length - 1];
+          if (last != null && last > 100) minutes = last;
+          else if (nums.length >= 6) minutes = nums[5] ?? 0;
+          else if (nums.length >= 4) minutes = nums[3] ?? 0;
+        }
+      }
+      return false;
+    });
+
+    if (appearances === 0 && goals === 0 && assists === 0) return null;
+    return { appearances, goals, assists, minutes };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Enrich ALL profiles that lack FBref data with TM season stats.
+ * Also re-verifies stats-dependent profiles where data exists but may be stale.
+ * Batched: 5 concurrent, 1.5s between batches. Max 200 profiles.
+ * Mutates profile data in-place when corrections/additions are needed.
+ */
+async function enrichAndVerifyViaTm(profiles) {
+  // Enrich ALL profiles missing FBref data, plus verify stats-dependent profiles
+  const toEnrich = profiles.filter((p) => {
+    const d = p.data;
+    // Already has verified TM data — skip
+    if (d.statsSource === "transfermarkt_verified" || d.statsSource === "fbref_tm_confirmed") return false;
+    // No FBref data → needs enrichment
+    if ((d.fbrefMinutes90s || 0) <= 0) return true;
+    // Has FBref data but is stats-dependent → verify
+    if (STATS_DEPENDENT_PROFILES.has(d.profileType)) return true;
+    return false;
+  });
+
+  // Cap at 200 to stay within Cloud Function timeout
+  const MAX_ENRICH = 200;
+  const cappedList = toEnrich.slice(0, MAX_ENRICH);
+
+  if (cappedList.length === 0) return { verified: 0, enriched: 0, overridden: 0, typeChanged: 0, noTypeMatch: 0, failed: 0 };
+
+  console.log(`[SportDirector:TM-Enrich] Enriching ${cappedList.length} profiles (${toEnrich.length > MAX_ENRICH ? `capped from ${toEnrich.length}` : "all"})...`);
+
+  let verified = 0, enriched = 0, overridden = 0, typeChanged = 0, noTypeMatch = 0, failed = 0;
   const BATCH_SIZE = 5;
   const BATCH_DELAY = 1500;
 
-  for (let i = 0; i < toVerify.length; i += BATCH_SIZE) {
+  for (let i = 0; i < cappedList.length; i += BATCH_SIZE) {
     if (i > 0) await new Promise((r) => setTimeout(r, BATCH_DELAY));
-    const batch = toVerify.slice(i, i + BATCH_SIZE);
+    const batch = cappedList.slice(i, i + BATCH_SIZE);
 
-    const results = await Promise.allSettled(
+    await Promise.allSettled(
       batch.map(async (profile) => {
         const d = profile.data;
-        const tmStats = await fetchTmPerformanceStats(d.tmProfileUrl);
+        const hadNoData = (d.fbrefMinutes90s || 0) <= 0;
+        const tmStats = await fetchTmStatsWithProxy(d.tmProfileUrl);
         if (!tmStats) {
           failed++;
           return;
@@ -831,36 +962,40 @@ async function verifyProfilesViaTm(profiles) {
 
         const { overridden: wasOverridden, overrides } = verifyAndCorrectStats(d, tmStats);
         if (wasOverridden) {
-          overridden++;
-          console.log(`[SportDirector:TM-Verify] ${d.playerName}: ${overrides.join("; ")}`);
+          if (hadNoData) enriched++;
+          else overridden++;
+          console.log(`[SportDirector:TM-Enrich] ${d.playerName}: ${overrides.join("; ")}`);
 
+          // Re-evaluate profile type — enriched data may unlock better types
           const { changed, oldType, newType } = reEvaluateProfileType(d);
           if (changed && newType) {
             typeChanged++;
-            console.log(`[SportDirector:TM-Verify] ${d.playerName}: profileType changed ${oldType} → ${newType}`);
+            console.log(`[SportDirector:TM-Enrich] ${d.playerName}: profileType ${oldType} → ${newType}`);
           } else if (changed && !newType) {
             noTypeMatch++;
-            console.log(`[SportDirector:TM-Verify] ${d.playerName}: NO profile type matches after correction (was ${oldType}). Will be rejected.`);
+            console.log(`[SportDirector:TM-Enrich] ${d.playerName}: NO profile type matches after enrichment (was ${oldType}). Will be rejected.`);
             d._tmVerifyReject = true;
             d._tmVerifyRejectReason = `stats_override_no_profile_match:was_${oldType}`;
           }
         } else {
-          // TM data confirms FBref — note it as verified
-          d.statsSource = "fbref_tm_confirmed";
-          d.tmVerification = {
-            appearances: tmStats.appearances,
-            goals: tmStats.goals,
-            assists: tmStats.assists,
-            minutes: tmStats.minutes,
-            overrides: [],
-          };
+          // TM data confirms existing data (or had no new data to add)
+          if (!hadNoData) {
+            d.statsSource = "fbref_tm_confirmed";
+            d.tmVerification = {
+              appearances: tmStats.appearances,
+              goals: tmStats.goals,
+              assists: tmStats.assists,
+              minutes: tmStats.minutes,
+              overrides: [],
+            };
+          }
         }
       })
     );
   }
 
-  console.log(`[SportDirector:TM-Verify] Done. Verified: ${verified}, Overridden: ${overridden}, TypeChanged: ${typeChanged}, NoMatch: ${noTypeMatch}, Failed: ${failed}`);
-  return { verified, overridden, typeChanged, noTypeMatch, failed };
+  console.log(`[SportDirector:TM-Enrich] Done. Enriched: ${enriched}, Verified: ${verified}, Overridden: ${overridden}, TypeChanged: ${typeChanged}, NoMatch: ${noTypeMatch}, Failed: ${failed}`);
+  return { verified, enriched, overridden, typeChanged, noTypeMatch, failed };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1101,11 +1236,12 @@ async function reviewProfiles(profilesToWrite) {
   // Load previous run URLs for freshness detection
   const previousUrls = await loadPreviousRunUrls();
 
-  // ═══ TM VERIFICATION ═══
-  // Cross-check stats-dependent profiles (HIGH_VALUE_BENCHED, BREAKOUT_SEASON,
-  // YOUNG_STRIKER_HOT) against Transfermarkt real season data. Corrects FBref
-  // mismatches and re-evaluates profile types before quality gate runs.
-  const tmVerifyStats = await verifyProfilesViaTm(profilesToWrite);
+  // ═══ TM ENRICHMENT & VERIFICATION ═══
+  // Enrich ALL profiles lacking FBref data with real TM season stats.
+  // Also re-verify stats-dependent profiles (HIGH_VALUE_BENCHED, BREAKOUT_SEASON,
+  // YOUNG_STRIKER_HOT) against Transfermarkt. Corrects mismatches, populates
+  // empty fields, and re-evaluates profile types before quality gate runs.
+  const tmVerifyStats = await enrichAndVerifyViaTm(profilesToWrite);
 
   for (const profile of profilesToWrite) {
     const d = profile.data;
@@ -1295,9 +1431,9 @@ async function reviewProfiles(profilesToWrite) {
   // Log summary
   console.log(`[SportDirector] ═══ REVIEW COMPLETE ═══`);
   console.log(`[SportDirector] Total: ${profilesToWrite.length} | Approved: ${approved.length} | Rejected: ${rejected.length}`);
-  if (tmVerifyStats.verified > 0 || tmVerifyStats.failed > 0) {
+  if (tmVerifyStats.verified > 0 || tmVerifyStats.failed > 0 || tmVerifyStats.enriched > 0) {
     console.log(
-      `[SportDirector] TM Verification: ${tmVerifyStats.verified} verified, ${tmVerifyStats.overridden} overridden, ` +
+      `[SportDirector] TM Enrichment: ${tmVerifyStats.enriched} newly enriched, ${tmVerifyStats.verified} verified, ${tmVerifyStats.overridden} overridden, ` +
       `${tmVerifyStats.typeChanged} type changes, ${tmVerifyStats.noTypeMatch} rejected, ${tmVerifyStats.failed} scrape failures`
     );
   }
@@ -1313,4 +1449,4 @@ async function reviewProfiles(profilesToWrite) {
   return { approved, rejected, agentReports };
 }
 
-module.exports = { reviewProfiles, fetchTmPerformanceStats };
+module.exports = { reviewProfiles, fetchTmPerformanceStats, fetchTmStatsWithProxy };

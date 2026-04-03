@@ -167,6 +167,19 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
                 }
                 title to body
             }
+            TYPE_CHAT_ROOM_TAG -> {
+                val senderName = data["senderName"].orEmpty()
+                val senderNameHe = data["senderNameHe"].orEmpty()
+                val displaySender = if (LocaleManager.isHebrew(ctx)) {
+                    senderNameHe.ifBlank { senderName }
+                } else {
+                    senderName.ifBlank { senderNameHe }
+                }
+                val preview = data["messagePreview"].orEmpty()
+                val title = ctx.getString(R.string.notification_chat_room_tag_title, displaySender)
+                val body = preview
+                title to body
+            }
             else -> {
                 val title = data["title"] ?: ctx.getString(R.string.app_name)
                 val body = data["body"] ?: data["message"] ?: ""
@@ -200,6 +213,10 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
                 data[KEY_PLAYER_ID]?.let { putExtra(EXTRA_PLAYER_ID, it) }
                 if (screen.isNotBlank()) putExtra(EXTRA_SCREEN, screen)
                 if (type == TYPE_REQUEST_ADDED) putExtra(EXTRA_SCREEN, "requests")
+                if (type == TYPE_CHAT_ROOM_TAG) {
+                    putExtra(EXTRA_SCREEN, "chat_room")
+                    data[KEY_MESSAGE_ID]?.let { putExtra(EXTRA_MESSAGE_ID, it) }
+                }
                 if (playerTmProfile.isNotBlank()) {
                     putExtra(EXTRA_PLAYER_TM_PROFILE, playerTmProfile)
                     if (type == TYPE_NEW_RELEASE_FROM_CLUB) {
@@ -225,6 +242,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
                 0xFF2196F3.toInt() to R.drawable.notification_accent_blue
             TYPE_REQUEST_ADDED -> 0xFF9C27B0.toInt() to R.drawable.notification_accent_green
             TYPE_NOTE_TAGGED -> 0xFF2196F3.toInt() to R.drawable.notification_accent_blue
+            TYPE_CHAT_ROOM_TAG -> 0xFF4DB6AC.toInt() to R.drawable.notification_accent_green
             else -> 0xFF39D164.toInt() to R.drawable.notification_accent_green
         }
 
@@ -352,8 +370,11 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         const val TYPE_AGENT_TRANSFER_APPROVED = "AGENT_TRANSFER_APPROVED"
         const val TYPE_AGENT_TRANSFER_REJECTED = "AGENT_TRANSFER_REJECTED"
         const val TYPE_NOTE_TAGGED = "NOTE_TAGGED"
+        const val TYPE_CHAT_ROOM_TAG = "CHAT_ROOM_TAG"
         private const val KEY_REQUESTER_NAME = "requesterName"
         private const val KEY_AGENT_NAME = "agentName"
+        private const val KEY_MESSAGE_ID = "messageId"
+        const val EXTRA_MESSAGE_ID = "messageId"
         const val EXTRA_PLAYER_TM_PROFILE = "playerTmProfile"
         const val EXTRA_NOTIFICATION_ACTION = "notification_action"
         const val ACTION_ADD_TO_SHORTLIST = "add_to_shortlist"

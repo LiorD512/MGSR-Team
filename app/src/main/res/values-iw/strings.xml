@@ -1318,7 +1318,6 @@
     <string name="war_room_agent_network_title">רשת סוכני סקאוטינג</string>
     <string name="war_room_agent_network_desc">סוכני AI מנטרים ליגות ושחקנים ברציפות על פי הקריטריונים שלך.</string>
     <string name="war_room_profiles">פרופילים</string>
-    <string name="war_room_agent_rotation_hint">💡 כל סוכן מציג 5 פרופילים בכל פעם. לחץ על רענון כדי לראות אחרים.</string>
     <string name="war_room_players_count">%1$d שחקנים</string>
     <string name="war_room_updated">עודכן %1$s</string>
     <string name="war_room_source_request_match">תואם %1$s</string>
@@ -1562,4 +1561,23 @@
     <string name="notification_note_tagged_title">תויגת בהערה</string>
     <string name="notification_note_tagged_body">%1$s תייג אותך בהערות של %2$s</string>
     <string name="notification_note_tagged_body_fallback">תויגת בהערות של %1$s</string>
+
+    <!-- Chat Room -->
+    <string name="quick_action_chat_room">חדר צ\'אט</string>
+    <string name="chat_room_title">חדר צ\'אט</string>
+    <string name="chat_room_type_message">כתוב הודעה…</string>
+    <string name="chat_room_send">שלח</string>
+    <string name="chat_room_mention_hint">חפש שחקנים…</string>
+    <string name="chat_room_notify_label">התראה:</string>
+    <string name="chat_room_no_messages">אין הודעות עדיין. התחל את השיחה!</string>
+    <string name="chat_room_empty">אין הודעות עדיין. היה הראשון לכתוב!</string>
+    <string name="chat_room_members">חברים</string>
+    <string name="chat_room_input_hint">כתוב הודעה…</string>
+    <string name="chat_room_select_notify">בחר את מי לשלוח התראה</string>
+    <string name="chat_room_notify_description">בחר חבר צוות לשליחת התראת פוש, או שלח לכולם.</string>
+    <string name="chat_room_you">אתה</string>
+    <string name="chat_room_will_be_notified">יקבל התראה</string>
+    <string name="chat_room_notify_all">שלח התראה לכולם</string>
+    <string name="chat_room_all_will_be_notified">כל החברים יקבלו התראה</string>
+    <string name="notification_chat_room_tag_title">%1$s בחדר צ\'אט</string>
 </resources>

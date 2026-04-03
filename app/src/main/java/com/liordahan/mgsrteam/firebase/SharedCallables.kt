@@ -419,4 +419,26 @@ object SharedCallables {
         if (email != null) data["email"] = email
         call("accountUpdate", data)
     }
+
+    // ─── Chat Room ──────────────────────────────────────────────────────
+
+    /** Send a chat room message. Returns the message doc ID. */
+    suspend fun chatRoomSend(
+        senderAccountId: String,
+        senderName: String,
+        senderNameHe: String,
+        text: String,
+        notifyAccountId: String,
+        mentions: List<Map<String, String>>
+    ): String? {
+        val result = call("chatRoomSend", mapOf(
+            "senderAccountId" to senderAccountId,
+            "senderName" to senderName,
+            "senderNameHe" to senderNameHe,
+            "text" to text,
+            "notifyAccountId" to notifyAccountId,
+            "mentions" to mentions,
+        ))
+        return result["id"] as? String
+    }
 }

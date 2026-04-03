@@ -1409,7 +1409,6 @@
     <string name="war_room_agent_network_title">Scout Agent Network</string>
     <string name="war_room_agent_network_desc">AI agents continuously monitoring leagues and players based on your criteria.</string>
     <string name="war_room_profiles">profiles</string>
-    <string name="war_room_agent_rotation_hint">💡 Each agent shows 5 profiles at a time. Tap refresh to see different ones.</string>
     <string name="war_room_players_count">%1$d players</string>
     <string name="war_room_updated">Updated %1$s</string>
     <string name="war_room_source_request_match">Matches %1$s</string>
@@ -1571,4 +1570,23 @@
     <string name="notification_note_tagged_title">Tagged in Note</string>
     <string name="notification_note_tagged_body">%1$s tagged you in %2$s\'s notes</string>
     <string name="notification_note_tagged_body_fallback">You were tagged in %1$s\'s notes</string>
+
+    <!-- Chat Room -->
+    <string name="quick_action_chat_room">Chat Room</string>
+    <string name="chat_room_title">Chat Room</string>
+    <string name="chat_room_type_message">Type a message…</string>
+    <string name="chat_room_send">Send</string>
+    <string name="chat_room_mention_hint">Search players…</string>
+    <string name="chat_room_notify_label">Notify:</string>
+    <string name="chat_room_no_messages">No messages yet. Start the conversation!</string>
+    <string name="chat_room_empty">No messages yet. Be the first to write!</string>
+    <string name="chat_room_members">members</string>
+    <string name="chat_room_input_hint">Type a message…</string>
+    <string name="chat_room_select_notify">Select who to notify</string>
+    <string name="chat_room_notify_description">Choose a team member to send a push notification, or notify everyone.</string>
+    <string name="chat_room_you">You</string>
+    <string name="chat_room_will_be_notified">Will be notified</string>
+    <string name="chat_room_notify_all">Notify Everyone</string>
+    <string name="chat_room_all_will_be_notified">All members will be notified</string>
+    <string name="notification_chat_room_tag_title">%1$s in Chat Room</string>
 </resources>

@@ -16,7 +16,7 @@
 const { getFirestore } = require("firebase-admin/firestore");
 const crypto = require("crypto");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { reviewProfiles, fetchTmPerformanceStats } = require("./sportDirector");
+const { reviewProfiles, fetchTmPerformanceStats, fetchTmStatsWithProxy } = require("./sportDirector");
 
 function getScoutBaseUrl() {
   const url = process.env.SCOUT_SERVER_URL || "https://football-scout-server-l38w.onrender.com";
@@ -504,6 +504,10 @@ function computeMatchScore(p, profileType, valEuro, ageNum) {
 
   // Universal bonuses
   if (fmPa != null && fmCa != null && fmPa - fmCa >= 20) score += 5; // High growth room
+  // Performance-based bonuses (especially valuable after TM enrichment fills empty FBref data)
+  if (minutes90s >= 15) score += 5; // Regular starter = proven durability
+  if (minutes90s >= 8 && (goals + assists) >= 8) score += 5; // Productive output
+  if (ageNum != null && ageNum <= 22 && valEuro <= 500_000) score += 5; // Young + cheap = high value arc
   return Math.min(100, Math.max(0, score));
 }
 
@@ -550,6 +554,9 @@ async function runScoutAgent() {
   const seen = new Map();
   const profilesToWrite = [];
   let leaguesScanned = 0;
+
+  // Track unmatched promising candidates for post-sweep TM enrichment
+  const unmatchedCandidates = new Map(); // normalizedUrl -> { p, agentId, valEuro, ageNum, league, leagueTier, agentParams }
 
   // Load skill params for each agent (used to override profile matching)
   const paramsByAgent = {};
@@ -643,6 +650,7 @@ async function runScoutAgent() {
 
         const agentParams = paramsByAgent[agentId] || {};
 
+        let matchedAnyProfile = false;
         for (const profileType of [
           "HIGH_VALUE_BENCHED",
           "LOW_VALUE_STARTER",
@@ -655,6 +663,7 @@ async function runScoutAgent() {
         ]) {
           const profileOverrides = agentParams[profileType] || {};
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
+          matchedAnyProfile = true;
 
           const urlHash = hashPlayerUrl(url);
           if (rejectedUrlHashes.has(urlHash)) continue;
@@ -704,6 +713,14 @@ async function runScoutAgent() {
               lastRefreshedAt: now,
             },
           });
+        }
+
+        // Track unmatched promising candidates for post-sweep TM enrichment
+        if (!matchedAnyProfile && getMinutes90s(p) <= 0 && ageNum != null && ageNum <= 28 && valEuro > 0) {
+          const normUrl = normalizePlayerUrl(url);
+          if (!unmatchedCandidates.has(normUrl) && !rejectedUrlHashes.has(hashPlayerUrl(url))) {
+            unmatchedCandidates.set(normUrl, { p, agentId, valEuro, ageNum, league, leagueTier, agentParams });
+          }
         }
       }
     } catch (err) {
@@ -1193,6 +1210,22 @@ async function runScoutAgent() {
   ];
 
   async function fetchTmHtml(url) {
+    // Try Vercel proxy first (bypasses TM's Google Cloud IP block)
+    const proxyUrl = process.env.SCOUT_TM_PROXY_URL;
+    const proxySecret = process.env.SCOUT_ENRICH_SECRET;
+    if (proxyUrl && proxySecret) {
+      try {
+        const proxyRes = await fetch(proxyUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ secret: proxySecret, url }),
+          signal: AbortSignal.timeout(25000),
+        });
+        if (proxyRes.ok) return proxyRes.text();
+        // Proxy returned error — fall through to direct fetch
+      } catch { /* proxy failed — fall through */ }
+    }
+    // Direct fetch fallback (works locally, may fail on Cloud Functions)
     const ua = TM_USER_AGENTS[Math.floor(Math.random() * TM_USER_AGENTS.length)];
     const res = await fetch(url, {
       headers: {
@@ -1394,6 +1427,7 @@ async function runScoutAgent() {
     console.log(`[ScoutAgent] Live TM fallback for ${deadAgents.length} agents below target: ${deadAgents.join(", ")}`);
 
     // Enrich TM-scraped players with real season stats from their leistungsdaten page.
+    // Uses Vercel proxy when available (bypasses TM IP blocks on Cloud Functions).
     // Batched: 5 concurrent fetches, 1.5s between batches (same as Sport Director).
     async function enrichWithTmStats(players) {
       const ENRICH_BATCH = 5;
@@ -1405,7 +1439,7 @@ async function runScoutAgent() {
         const results = await Promise.allSettled(
           batch.map(async (p) => {
             try {
-              const stats = await fetchTmPerformanceStats(p.url);
+              const stats = await fetchTmStatsWithProxy(p.url);
               if (stats && stats.minutes > 0) {
                 p.fbref_minutes_90s = stats.minutes / 90;
                 p.fbref_goals = stats.goals;
@@ -1552,6 +1586,106 @@ async function runScoutAgent() {
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // TWO-PHASE ENRICHMENT — unlock stats-dependent profiles
+  // Players from the recruitment API that didn't match any profile type
+  // because they lacked FBref data. Enrich with TM stats via Vercel
+  // proxy, then re-try all 8 profile types.
+  // ═══════════════════════════════════════════════════════════════
+  const MAX_UNMATCHED_ENRICH = 150;
+  const unmatchedList = [...unmatchedCandidates.values()].slice(0, MAX_UNMATCHED_ENRICH);
+  let twoPhaseFound = 0;
+  if (unmatchedList.length > 0) {
+    console.log(`[ScoutAgent] Two-phase enrichment: ${unmatchedList.length} unmatched candidates (of ${unmatchedCandidates.size} total)`);
+
+    const ENRICH_BATCH = 5;
+    const ENRICH_DELAY = 1500;
+    for (let i = 0; i < unmatchedList.length; i += ENRICH_BATCH) {
+      if (i > 0) await sleep(ENRICH_DELAY);
+      const batch = unmatchedList.slice(i, i + ENRICH_BATCH);
+      await Promise.allSettled(
+        batch.map(async (candidate) => {
+          const { p, agentId, valEuro, ageNum, league, leagueTier, agentParams } = candidate;
+          const url = (p.url || "").trim();
+          try {
+            const stats = await fetchTmStatsWithProxy(url);
+            if (!stats || stats.minutes <= 0) return;
+
+            // Inject TM stats into the player object
+            p.fbref_minutes_90s = stats.minutes / 90;
+            p.fbref_goals = stats.goals;
+            p.fbref_assists = stats.assists;
+
+            // Re-try all profile types with real stats
+            for (const profileType of [
+              "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT", "BREAKOUT_SEASON",
+              "HIGH_VALUE_BENCHED", "HIDDEN_GEM", "LOWER_LEAGUE_RISER",
+              "CONTRACT_EXPIRING", "UNDERVALUED_BY_FM",
+            ]) {
+              const profileOverrides = (agentParams || {})[profileType] || {};
+              if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
+
+              const urlHash = hashPlayerUrl(url);
+              if (rejectedUrlHashes.has(urlHash)) continue;
+              const docId = `${agentId}_${urlHash}_${profileType}`;
+              if (seen.has(docId)) continue;
+              if (rejectedProfileIds.has(docId)) continue;
+              seen.set(docId, true);
+
+              const matchReason = buildMatchReason(p, profileType, valEuro, ageNum);
+              const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
+              const now = Date.now();
+
+              const fbrefMinutes90s = getMinutes90s(p);
+              const fbrefGoals = getFbrefGoals(p);
+              const fbrefAssists = getFbrefAssists(p);
+              const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
+              const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+
+              twoPhaseFound++;
+              profilesToWrite.push({
+                docId,
+                data: {
+                  tmProfileUrl: url,
+                  agentId,
+                  profileType,
+                  playerName: (p.name || "").trim() || "Unknown",
+                  profileImage: (p.profile_image || "").trim() || null,
+                  age: ageNum ?? 0,
+                  position: (p.position || "").trim() || "",
+                  marketValue: (p.market_value || "").trim() || "",
+                  marketValueEuro: valEuro,
+                  club: (p.club || "").trim() || "",
+                  league: league || "",
+                  leagueTier,
+                  nationality: (p.citizenship || "").trim() || null,
+                  matchReason,
+                  matchScore,
+                  fmPa: getFmPa(p) ?? null,
+                  fmCa: p.fm_ca ?? p.fmi_ca ?? null,
+                  contractExpires: (p.contract || "").trim() || null,
+                  fbrefMinutes90s,
+                  fbrefGoals,
+                  fbrefAssists,
+                  goalsPer90: Math.round(goalsPer90 * 100) / 100,
+                  contribPer90: Math.round(contribPer90 * 100) / 100,
+                  source: "tm_enriched",
+                  discoveredAt: now,
+                  lastRefreshedAt: now,
+                },
+              });
+            }
+          } catch { /* skip — TM unavailable */ }
+        })
+      );
+    }
+    if (twoPhaseFound > 0) {
+      console.log(`[ScoutAgent] Two-phase enrichment found ${twoPhaseFound} additional profiles`);
+    } else {
+      console.log(`[ScoutAgent] Two-phase enrichment: 0 new profiles (TM stats unavailable or no matches)`);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // Club Diversity — max 2 players per club per agent, shuffle first
   // ═══════════════════════════════════════════════════════════════
   // Shuffle to randomize which players survive the cap
@@ -1559,7 +1693,7 @@ async function runScoutAgent() {
     const j = Math.floor(Math.random() * (i + 1));
     [profilesToWrite[i], profilesToWrite[j]] = [profilesToWrite[j], profilesToWrite[i]];
   }
-  const MAX_PER_CLUB_PER_AGENT = 2;
+  const MAX_PER_CLUB_PER_AGENT = 3;
   const clubCountByAgent = new Map();
   const diverseProfiles = [];
   for (const profile of profilesToWrite) {

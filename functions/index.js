@@ -41,6 +41,7 @@ const { playersCreate } = require("./callables/playersCreate");
 const { portfolioUpsert, portfolioDelete } = require("./callables/portfolio");
 const { sharePlayerCreate, shadowTeamsSave, scoutProfileFeedbackSet, birthdayWishSend, offersUpdateHistorySummary, mandateSigningCreate } = require("./callables/phase6Misc");
 const { accountUpdate } = require("./callables/phase7Account");
+const { chatRoomSend } = require("./callables/chatRoom");
 
 initializeApp();
 const db = getFirestore();
@@ -1209,3 +1210,6 @@ exports.mandateSigningCreate = onCall(async (req) => { requireAuth(req); return 
 
 // ── Phase 7 — Account ──────────────────────────────────────────────────
 exports.accountUpdate = onCall(async (req) => { requireAuth(req); return accountUpdate(req.data); });
+
+// ── Chat Room ──────────────────────────────────────────────────────────
+exports.chatRoomSend = onCall(async (req) => { requireAuth(req); return chatRoomSend(req.data); });

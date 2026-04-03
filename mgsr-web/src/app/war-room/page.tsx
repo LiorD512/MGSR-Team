@@ -1143,11 +1143,6 @@ export default function WarRoomPage() {
                     {loadingScoutProfiles ? (isHe ? 'מרענן...' : 'Refreshing...') : isHe ? 'רענן' : 'Refresh'}
                   </button>
                 </div>
-                <p className="text-xs text-mgsr-muted/70 mt-2">
-                  {isHe
-                    ? '💡 כל סוכן מציג 5 פרופילים בכל פעם. לחץ על ״רענן״ כדי לראות 5 פרופילים שונים.'
-                    : '💡 Each agent shows 5 profiles at a time. Click "Refresh" to see 5 different ones.'}
-                </p>
                 </div>
               </div>
 

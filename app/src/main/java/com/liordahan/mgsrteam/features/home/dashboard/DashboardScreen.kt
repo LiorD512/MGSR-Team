@@ -48,6 +48,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
@@ -1037,6 +1038,7 @@ private enum class QuickActionKey {
     CONTRACT_FINISHER,
     RETURNEES,
     WAR_ROOM,
+    CHAT_ROOM,
     CONTACTS,
     REQUESTS,
     SHADOW_TEAMS,
@@ -1052,6 +1054,7 @@ private fun quickActionsFor(platform: Platform): Set<QuickActionKey> = when (pla
         QuickActionKey.CONTRACT_FINISHER,
         QuickActionKey.RETURNEES,
         QuickActionKey.WAR_ROOM,
+        QuickActionKey.CHAT_ROOM,
         QuickActionKey.CONTACTS,
         QuickActionKey.REQUESTS,
         QuickActionKey.SHADOW_TEAMS,
@@ -1172,6 +1175,20 @@ private fun QuickActionsRow(navController: NavController, platform: Platform = P
                             WarRoomAccent.copy(alpha = 0.12f)
                         )
                     )
+                )
+            }
+        }
+        if (QuickActionKey.CHAT_ROOM in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.AutoMirrored.Filled.Chat,
+                    label = stringResource(R.string.quick_action_chat_room),
+                    color = HomeTealAccent,
+                    onClick = {
+                        navController.navigate(Screens.ChatRoomScreen.route) {
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
         }

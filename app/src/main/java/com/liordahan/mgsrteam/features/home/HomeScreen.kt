@@ -43,6 +43,7 @@ import com.liordahan.mgsrteam.features.requests.RequestsScreen
 import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.warroom.WarRoomTab
+import com.liordahan.mgsrteam.features.chatroom.ChatRoomScreen
 import com.liordahan.mgsrteam.features.shadowteams.ShadowTeamsScreen
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
 import com.liordahan.mgsrteam.features.warroom.WarRoomScreen
@@ -153,6 +154,17 @@ fun HomeScreen(
             if (shouldOpen) {
                 navController.navigate(Screens.RequestsScreen.route)
                 mainViewModel.setPendingOpenRequestsScreen(false)
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        mainViewModel.pendingOpenChatRoomScreen.collectLatest { shouldOpen ->
+            if (shouldOpen) {
+                val messageId = mainViewModel.pendingChatRoomMessageId.value.orEmpty()
+                navController.navigate("${Screens.ChatRoomScreen.route}?highlight=$messageId")
+                mainViewModel.setPendingOpenChatRoomScreen(false)
+                mainViewModel.setPendingChatRoomMessageId(null)
             }
         }
     }
@@ -365,6 +377,19 @@ fun HomeScreen(
                     playerName = playerName,
                     navController = navController
                 )
+            }
+
+            composable(
+                route = "${Screens.ChatRoomScreen.route}?highlight={highlight}",
+                arguments = listOf(
+                    navArgument("highlight") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    }
+                )
+            ) { backStackEntry ->
+                val highlight = backStackEntry.arguments?.getString("highlight")?.takeIf { it.isNotBlank() }
+                ChatRoomScreen(navController = navController, highlightMessageId = highlight)
             }
         }
         } // PlatformThemeProvider

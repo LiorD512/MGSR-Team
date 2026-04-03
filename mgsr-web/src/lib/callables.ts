@@ -310,3 +310,15 @@ export const callAccountUpdate = callable<
   { accountId: string; email?: string; fcmToken?: string; language?: string; addFcmWebToken?: string; removeFcmWebToken?: { token: string; platform: string; updatedAt: number } },
   { success: boolean }
 >('accountUpdate');
+
+// ── Chat Room ───────────────────────────────────────────────────────────
+export interface ChatRoomSendPayload {
+  text: string;
+  senderAccountId: string;
+  senderName: string;
+  senderNameHe: string;
+  mentions: { playerId: string; playerName: string; playerNameHe: string; tmProfile: string }[];
+  targetAccountId?: string;
+}
+
+export const callChatRoomSend = callable<ChatRoomSendPayload, { id: string }>('chatRoomSend');

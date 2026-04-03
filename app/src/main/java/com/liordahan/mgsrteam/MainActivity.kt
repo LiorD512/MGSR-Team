@@ -149,6 +149,14 @@ class MainActivity : AppCompatActivity() {
                 intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
                 return
             }
+            "chat_room" -> {
+                val messageId = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_MESSAGE_ID)
+                viewModel.setPendingChatRoomMessageId(messageId)
+                viewModel.setPendingOpenChatRoomScreen(true)
+                intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
+                intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_MESSAGE_ID)
+                return
+            }
             "mandate_signing" -> {
                 val token = intent.getStringExtra("token").orEmpty()
                 if (token.isNotBlank()) {

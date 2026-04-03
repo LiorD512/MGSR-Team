@@ -32,6 +32,11 @@ abstract class IMainViewModel : ViewModel() {
     /** When set, navigate to Requests screen. */
     abstract val pendingOpenRequestsScreen: StateFlow<Boolean>
     abstract fun setPendingOpenRequestsScreen(value: Boolean)
+    /** When set, navigate to Chat Room screen; messageId will scroll+highlight. */
+    abstract val pendingOpenChatRoomScreen: StateFlow<Boolean>
+    abstract fun setPendingOpenChatRoomScreen(value: Boolean)
+    abstract val pendingChatRoomMessageId: StateFlow<String?>
+    abstract fun setPendingChatRoomMessageId(id: String?)
     abstract fun signOut()
 }
 
@@ -104,6 +109,20 @@ class MainViewModel(
 
     override fun setPendingOpenRequestsScreen(value: Boolean) {
         _pendingOpenRequestsScreen.value = value
+    }
+
+    private val _pendingOpenChatRoomScreen = MutableStateFlow(false)
+    override val pendingOpenChatRoomScreen: StateFlow<Boolean> = _pendingOpenChatRoomScreen
+
+    override fun setPendingOpenChatRoomScreen(value: Boolean) {
+        _pendingOpenChatRoomScreen.value = value
+    }
+
+    private val _pendingChatRoomMessageId = MutableStateFlow<String?>(null)
+    override val pendingChatRoomMessageId: StateFlow<String?> = _pendingChatRoomMessageId
+
+    override fun setPendingChatRoomMessageId(id: String?) {
+        _pendingChatRoomMessageId.value = id
     }
 
     init {

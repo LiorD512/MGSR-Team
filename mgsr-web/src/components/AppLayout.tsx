@@ -28,6 +28,7 @@ const navItems = [
   { href: '/portfolio', labelKey: 'nav_portfolio' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
+  { href: '/chat-room', labelKey: 'nav_chat_room' },
 ];
 
 const womenNavItems = [
