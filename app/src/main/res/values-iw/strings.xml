@@ -1575,9 +1575,9 @@
     <string name="notification_note_tagged_body">%1$s תייג אותך בהערות של %2$s</string>
     <string name="notification_note_tagged_body_fallback">תויגת בהערות של %1$s</string>
 
-    <!-- Chat Room -->
-    <string name="quick_action_chat_room">חדר צ\'אט</string>
-    <string name="chat_room_title">חדר צ\'אט</string>
+    <!-- The Tunnel (Chat Room) -->
+    <string name="quick_action_chat_room">המנהרה</string>
+    <string name="chat_room_title">המנהרה</string>
     <string name="chat_room_type_message">כתוב הודעה…</string>
     <string name="chat_room_send">שלח</string>
     <string name="chat_room_mention_hint">חפש שחקנים…</string>
@@ -1592,7 +1592,7 @@
     <string name="chat_room_will_be_notified">יקבל התראה</string>
     <string name="chat_room_notify_all">שלח התראה לכולם</string>
     <string name="chat_room_all_will_be_notified">כל החברים יקבלו התראה</string>
-    <string name="notification_chat_room_tag_title">%1$s בחדר צ\'אט</string>
+    <string name="notification_chat_room_tag_title">%1$s במנהרה</string>
     <string name="chat_room_edit_message">ערוך הודעה</string>
     <string name="chat_room_delete_message">מחק הודעה</string>
     <string name="chat_room_edited">נערך</string>

@@ -103,7 +103,7 @@ async function chatRoomSend(data) {
    * Build FCM payload shared by single-target and notify-all paths.
    */
   function buildPayload() {
-    const notifTitle = `${displayName} in Chat Room`;
+    const notifTitle = `${displayName} in The Tunnel`;
     const notifBody = previewText;
     return {
       notification: { title: notifTitle, body: notifBody },

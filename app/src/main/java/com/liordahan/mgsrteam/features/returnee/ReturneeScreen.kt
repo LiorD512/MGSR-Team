@@ -111,6 +111,7 @@ fun ReturneeScreen(
     val isLoading = returneeState.isLoading
     val loadedCount = returneeState.loadedLeaguesCount
     val totalCount = returneeState.totalLeaguesCount
+    val selectedMarketValueRange = returneeState.selectedMarketValueRange
 
     var selectedPosition by rememberSaveable {
         mutableStateOf<Position?>(null)
@@ -226,14 +227,28 @@ fun ReturneeScreen(
                 }
             )
 
+            // Market Value Filter Chips
+            ReturneesMarketValueChips(
+                selectedRange = selectedMarketValueRange,
+                originalReturneeList = originalReturneeList,
+                onRangeClicked = { range ->
+                    val newRange = if (selectedMarketValueRange == range) null else range
+                    viewModel.updateSelectedMarketValueRange(newRange)
+                },
+                onAllClicked = {
+                    viewModel.updateSelectedMarketValueRange(null)
+                }
+            )
+
             // Empty state when no returnees
             if (visibleReturneeList.isEmpty() && !isLoading) {
                 EmptyState(
                     text = stringResource(R.string.returnee_no_found),
-                    showResetFiltersButton = selectedPosition != null,
+                    showResetFiltersButton = selectedPosition != null || selectedMarketValueRange != null,
                     onResetFiltersClicked = {
                         selectedPosition = null
                         viewModel.updateSelectedPosition(null)
+                        viewModel.updateSelectedMarketValueRange(null)
                     }
                 )
                 return@Column
@@ -602,6 +617,55 @@ private fun ReturneesChipWithLine(
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(HomeTealAccent)
+            )
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  MARKET VALUE FILTER CHIPS
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ReturneesMarketValueChips(
+    selectedRange: MarketValueRange?,
+    originalReturneeList: List<LatestTransferModel>,
+    onRangeClicked: (MarketValueRange) -> Unit,
+    onAllClicked: () -> Unit
+) {
+    val scrollState = rememberScrollState()
+    val isAllSelected = selectedRange == null
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .horizontalScroll(scrollState),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        // "All" chip - show count of players with any market value
+        val allWithValue = originalReturneeList.count { it.getRealMarketValue() > 0 }
+        ReturneesChipWithLine(
+            text = "€ All $allWithValue",
+            isSelected = isAllSelected,
+            isDisabled = false,
+            onClick = onAllClicked
+        )
+
+        MARKET_VALUE_RANGES.forEach { range ->
+            val count = originalReturneeList.count {
+                val mv = it.getRealMarketValue()
+                mv in range.min..range.max
+            }
+            val isSelected = selectedRange == range
+            val isDisabled = count == 0
+
+            ReturneesChipWithLine(
+                text = if (count > 0) "€${range.label} ($count)" else "€${range.label}",
+                isSelected = isSelected,
+                isDisabled = isDisabled,
+                onClick = { if (!isDisabled) onRangeClicked(range) }
             )
         }
     }

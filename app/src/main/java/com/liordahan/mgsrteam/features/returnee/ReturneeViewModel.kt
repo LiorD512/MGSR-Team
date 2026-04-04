@@ -16,11 +16,27 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "ReturneeVM"
 
+data class MarketValueRange(
+    val label: String,
+    val min: Int,
+    val max: Int
+)
+
+val MARKET_VALUE_RANGES = listOf(
+    MarketValueRange("150k–500k", 150_000, 500_000),
+    MarketValueRange("500k–1m", 500_000, 1_000_000),
+    MarketValueRange("1m–2m", 1_000_000, 2_000_000),
+    MarketValueRange("2m–3m", 2_000_000, 3_000_000),
+    MarketValueRange("3m–4m", 3_000_000, 4_000_000),
+    MarketValueRange("4m–6m", 4_000_000, 6_000_000),
+)
+
 data class ReturneeUiState(
     val returneeList: List<LatestTransferModel> = emptyList(),
     val visibleList: List<LatestTransferModel> = emptyList(),
     val positionList: List<Position> = emptyList(),
     val selectedPosition: Position? = null,
+    val selectedMarketValueRange: MarketValueRange? = null,
     val leaguesList: List<Leagues> = emptyList(),
     val isLoading: Boolean = false,
     val loadedLeaguesCount: Int = 0,
@@ -33,6 +49,7 @@ abstract class IReturneeViewModel : ViewModel() {
     abstract fun fetchAllReturnees(leagueUrl: String)
     abstract fun fetchAllReturneesFromAllLeagues()
     abstract fun updateSelectedPosition(position: Position?)
+    abstract fun updateSelectedMarketValueRange(range: MarketValueRange?)
 }
 
 class ReturneeViewModel(
@@ -61,7 +78,9 @@ class ReturneeViewModel(
     ) {
         _returneeFlow.update { current ->
             val distinctPlayers = allPlayers.distinctBy { it.playerUrl }.sortedByPosition()
-            val filtered = distinctPlayers.filterPlayersByPosition(current.selectedPosition)
+            val filtered = distinctPlayers
+                .filterPlayersByPosition(current.selectedPosition)
+                ?.filterPlayersByMarketValue(current.selectedMarketValueRange)
                 ?: emptyList()
             current.copy(
                 returneeList = distinctPlayers,
@@ -140,9 +159,25 @@ class ReturneeViewModel(
 
     override fun updateSelectedPosition(position: Position?) {
         _returneeFlow.update { current ->
-            val filtered = current.returneeList.filterPlayersByPosition(position) ?: emptyList()
+            val filtered = current.returneeList
+                .filterPlayersByPosition(position)
+                ?.filterPlayersByMarketValue(current.selectedMarketValueRange)
+                ?: emptyList()
             current.copy(
                 selectedPosition = position,
+                visibleList = filtered
+            )
+        }
+    }
+
+    override fun updateSelectedMarketValueRange(range: MarketValueRange?) {
+        _returneeFlow.update { current ->
+            val filtered = current.returneeList
+                .filterPlayersByPosition(current.selectedPosition)
+                ?.filterPlayersByMarketValue(range)
+                ?: emptyList()
+            current.copy(
+                selectedMarketValueRange = range,
                 visibleList = filtered
             )
         }
@@ -315,5 +350,13 @@ private fun List<LatestTransferModel>?.filterPlayersByPosition(position: Positio
         this?.filter {
             it.playerPosition?.equals(position.name, ignoreCase = true) == true
         }
+    }
+}
+
+private fun List<LatestTransferModel>.filterPlayersByMarketValue(range: MarketValueRange?): List<LatestTransferModel> {
+    if (range == null) return this
+    return this.filter {
+        val mv = it.getRealMarketValue()
+        mv in range.min..range.max
     }
 }

@@ -1583,9 +1583,9 @@
     <string name="notification_note_tagged_body">%1$s tagged you in %2$s\'s notes</string>
     <string name="notification_note_tagged_body_fallback">You were tagged in %1$s\'s notes</string>
 
-    <!-- Chat Room -->
-    <string name="quick_action_chat_room">Chat Room</string>
-    <string name="chat_room_title">Chat Room</string>
+    <!-- The Tunnel (Chat Room) -->
+    <string name="quick_action_chat_room">The Tunnel</string>
+    <string name="chat_room_title">The Tunnel</string>
     <string name="chat_room_type_message">Type a message…</string>
     <string name="chat_room_send">Send</string>
     <string name="chat_room_mention_hint">Search players…</string>
@@ -1600,7 +1600,7 @@
     <string name="chat_room_will_be_notified">Will be notified</string>
     <string name="chat_room_notify_all">Notify Everyone</string>
     <string name="chat_room_all_will_be_notified">All members will be notified</string>
-    <string name="notification_chat_room_tag_title">%1$s in Chat Room</string>
+    <string name="notification_chat_room_tag_title">%1$s in The Tunnel</string>
     <string name="chat_room_edit_message">Edit Message</string>
     <string name="chat_room_delete_message">Delete Message</string>
     <string name="chat_room_edited">edited</string>
