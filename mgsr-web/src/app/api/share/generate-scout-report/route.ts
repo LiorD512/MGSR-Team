@@ -14,6 +14,15 @@ export const maxDuration = 60;
 
 import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 
+function getSelfBaseUrl(): string {
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    const u = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    return u.startsWith('http') ? u : `https://${u}`;
+  }
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'http://localhost:3000';
+}
+
 interface PlayerPayload {
   fullName?: string;
   fullNameHe?: string;
@@ -75,7 +84,22 @@ async function fetchScoutData(
   const similarResults = (similarRes?.results ?? []) as Record<string, unknown>[];
   const playerMatch = similarResults.find((r) => samePlayer((r.url as string) || '', tmProfile));
   const profile = similarRes?.player_profile ?? playerMatch ?? similarResults[0];
-  const fm = fmRes && !fmRes.error ? fmRes : null;
+  let fm = fmRes && !fmRes.error ? fmRes : null;
+
+  // Fallback: direct FMInside scrape when scout server has no FM data
+  if (!fm || !fm.ca) {
+    try {
+      const fmiParams = new URLSearchParams({ player_name: playerName });
+      if (club) fmiParams.set('club', club);
+      if (age) fmiParams.set('age', age);
+      const fmiRes = await fetch(`${getSelfBaseUrl()}/api/fminside/player?${fmiParams.toString()}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(20000),
+      }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (fmiRes && !fmiRes.error && fmiRes.ca > 0) fm = fmiRes;
+    } catch { /* non-critical */ }
+  }
+
   return { profile, fm, similarResults };
 }
 

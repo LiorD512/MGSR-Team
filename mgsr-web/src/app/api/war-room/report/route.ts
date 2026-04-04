@@ -9,6 +9,16 @@ import { handlePlayer } from '@/lib/transfermarkt';
 import { extractPlayerIdFromUrl } from '@/lib/api';
 
 import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
+
+function getSelfBaseUrl(): string {
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    const u = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    return u.startsWith('http') ? u : `https://${u}`;
+  }
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'http://localhost:3000';
+}
+
 import {
   SCOUT_PERSONA,
   WAR_ROOM_PERSONA_EXT,
@@ -116,7 +126,7 @@ export async function POST(request: NextRequest) {
       ((tmData as Record<string, unknown>).nationalities as string[])?.[0] || '';
 
     // 2. Fetch similar players + FM intelligence in parallel
-    const [similarData, fmData] = await Promise.all([
+    const [similarData, fmDataRaw] = await Promise.all([
       fetchJson<{ results?: Record<string, unknown>[] }>(
         `${getScoutBaseUrl()}/similar_players?player_url=${encodeURIComponent(playerUrl)}&lang=${lang}&limit=5`
       ),
@@ -124,6 +134,20 @@ export async function POST(request: NextRequest) {
         `${getScoutBaseUrl()}/fm_intelligence?player_name=${encodeURIComponent(name)}`
       ),
     ]);
+
+    // Fallback: direct FMInside scrape when scout server has no FM data
+    let fmData = fmDataRaw && !(fmDataRaw as Record<string, unknown>).error ? fmDataRaw : null;
+    if (!fmData || !(fmData as Record<string, unknown>).ca) {
+      try {
+        const fmiParams = new URLSearchParams({ player_name: name });
+        if (club) fmiParams.set('club', club);
+        if (age) fmiParams.set('age', age);
+        const fmiRes = await fetchJson<Record<string, unknown>>(
+          `${getSelfBaseUrl()}/api/fminside/player?${fmiParams.toString()}`
+        );
+        if (fmiRes && !fmiRes.error && (fmiRes.ca as number) > 0) fmData = fmiRes;
+      } catch { /* non-critical */ }
+    }
 
     const similarResults = (similarData?.results ?? []) as Record<string, unknown>[];
     const playerMatch = similarResults.find((r) => samePlayer((r.url as string) || '', playerUrl));
