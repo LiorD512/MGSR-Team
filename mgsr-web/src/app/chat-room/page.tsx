@@ -745,7 +745,7 @@ export default function ChatRoomPage() {
                   <div
                     id={`msg-${msg.id}`}
                     className={`chat-noir-msg-anim group flex gap-3 mb-1 ${isOwn ? 'flex-row-reverse' : ''}`}
-                    style={{ maxWidth: '75%', marginLeft: isOwn ? 'auto' : undefined }}
+                    style={{ maxWidth: '75%', marginInlineStart: isOwn ? 'auto' : undefined }}
                   >
                     {/* Avatar */}
                     <div
