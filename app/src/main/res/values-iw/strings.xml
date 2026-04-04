@@ -1594,4 +1594,8 @@
     <string name="chat_room_uploading">מעלה…</string>
     <string name="chat_room_notified_everyone">🔔 כולם</string>
     <string name="chat_room_notified_user">🔔 %1$s</string>
+    <string name="chat_room_online">מחוברים</string>
+    <string name="chat_room_search_placeholder">חפש בהודעות…</string>
+    <string name="chat_room_search_no_results">לא נמצאו הודעות תואמות</string>
+    <string name="chat_room_notify_all_short">כולם</string>
 </resources>

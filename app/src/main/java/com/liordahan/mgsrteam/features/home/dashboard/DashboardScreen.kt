@@ -444,7 +444,7 @@ fun DashboardScreen(
                     }
                     else -> {
                         StatsRow(state, platform)
-                        QuickActionsRow(navController = navController, platform = platform)
+                        QuickActionsRow(navController = navController, platform = platform, chatUnreadCount = state.chatUnreadCount)
                     }
                 }
 
@@ -1076,7 +1076,7 @@ private fun quickActionsFor(platform: Platform): Set<QuickActionKey> = when (pla
 }
 
 @Composable
-private fun QuickActionsRow(navController: NavController, platform: Platform = Platform.MEN) {
+private fun QuickActionsRow(navController: NavController, platform: Platform = Platform.MEN, chatUnreadCount: Int = 0) {
     val actions = quickActionsFor(platform)
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -1188,7 +1188,8 @@ private fun QuickActionsRow(navController: NavController, platform: Platform = P
                         navController.navigate(Screens.ChatRoomScreen.route) {
                             launchSingleTop = true
                         }
-                    }
+                    },
+                    badgeCount = chatUnreadCount
                 )
             }
         }
@@ -1257,34 +1258,53 @@ private fun QuickActionChip(
     label: String,
     color: Color,
     onClick: () -> Unit,
-    gradientBg: Brush? = null
+    gradientBg: Brush? = null,
+    badgeCount: Int = 0
 ) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .then(
-                if (gradientBg != null) Modifier.background(gradientBg)
-                else Modifier.background(color.copy(alpha = 0.15f))
+    Box {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .then(
+                    if (gradientBg != null) Modifier.background(gradientBg)
+                    else Modifier.background(color.copy(alpha = 0.15f))
+                )
+                .then(
+                    if (gradientBg != null) Modifier.border(
+                        1.dp,
+                        color.copy(alpha = 0.4f),
+                        RoundedCornerShape(20.dp)
+                    ) else Modifier
+                )
+                .clickWithNoRipple { onClick() }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(16.dp)
             )
-            .then(
-                if (gradientBg != null) Modifier.border(
-                    1.dp,
-                    color.copy(alpha = 0.4f),
-                    RoundedCornerShape(20.dp)
-                ) else Modifier
-            )
-            .clickWithNoRipple { onClick() }
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(16.dp)
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(text = label, style = boldTextStyle(color, 12.sp))
+            Spacer(Modifier.width(6.dp))
+            Text(text = label, style = boldTextStyle(color, 12.sp))
+        }
+        if (badgeCount > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(18.dp)
+                    .background(Color(0xFFEF4444), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (badgeCount > 9) "9+" else badgeCount.toString(),
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    style = boldTextStyle(Color.White, 10.sp)
+                )
+            }
+        }
     }
 }
 

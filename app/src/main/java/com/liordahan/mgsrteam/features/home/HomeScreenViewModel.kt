@@ -94,6 +94,9 @@ data class HomeDashboardState(
     val todayBirthdays: List<BirthdayPlayer> = emptyList(),
     val upcomingBirthdays: List<BirthdayPlayer> = emptyList(),
 
+    // chat unread
+    val chatUnreadCount: Int = 0,
+
     // loading
     val isLoading: Boolean = true
 )
@@ -161,6 +164,7 @@ class HomeScreenViewModel(
         listenToAgentTasks()
         listenToPendingTransfers()
         loadTransferWindowsDeferred()
+        listenToChatUnread()
         ensureLoadingClearedWithinTimeout()
     }
 
@@ -193,6 +197,7 @@ class HomeScreenViewModel(
         loadFeedEvents()
         listenToAgentTasks()
         listenToPendingTransfers()
+        listenToChatUnread()
         ensureLoadingClearedWithinTimeout()
     }
 
@@ -208,6 +213,49 @@ class HomeScreenViewModel(
         super.onCleared()
         listenerRegistrations.forEach { it.remove() }
         listenerRegistrations.clear()
+    }
+
+    // ── Chat Unread ──────────────────────────────────────────────────────────
+
+    private fun listenToChatUnread() {
+        viewModelScope.launch(Dispatchers.IO) {
+            // Wait for account to be resolved
+            var accountId: String? = null
+            for (i in 0..20) {
+                accountId = _state.value.currentUserAccount?.id
+                if (accountId != null) break
+                delay(500)
+            }
+            if (accountId == null) return@launch
+
+            var lastReadAt = 0L
+            var allCreatedAts = listOf<Long>()
+
+            val recalc = {
+                val count = allCreatedAts.count { it > lastReadAt }
+                _state.update { it.copy(chatUnreadCount = count) }
+            }
+
+            // Listen to user's last-read timestamp
+            val readReg = firebaseHandler.firebaseStore
+                .collection("ChatRoomLastRead")
+                .document(accountId)
+                .addSnapshotListener { snap, _ ->
+                    lastReadAt = snap?.getLong("lastReadAt") ?: 0L
+                    recalc()
+                }
+            listenerRegistrations.add(readReg)
+
+            // Listen to all messages (only need createdAt)
+            val msgReg = firebaseHandler.firebaseStore
+                .collection("ChatRoom")
+                .orderBy("createdAt")
+                .addSnapshotListener { snap, _ ->
+                    allCreatedAts = snap?.documents?.mapNotNull { it.getLong("createdAt") } ?: emptyList()
+                    recalc()
+                }
+            listenerRegistrations.add(msgReg)
+        }
     }
 
     override fun resolvePlayerNavId(docId: String, onResult: (String?) -> Unit) {

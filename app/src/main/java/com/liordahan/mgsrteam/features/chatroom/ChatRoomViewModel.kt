@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.net.Uri
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.FirebaseStorage
 import com.liordahan.mgsrteam.features.chatroom.models.ChatAttachment
 import com.liordahan.mgsrteam.features.chatroom.models.ChatMessage
@@ -24,6 +26,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.util.Timer
+import java.util.TimerTask
 
 data class ChatRoomUiState(
     val messages: List<ChatMessage> = emptyList(),
@@ -37,7 +41,9 @@ data class ChatRoomUiState(
     val highlightMessageId: String? = null,
     val replyToMessage: ChatMessage? = null,
     val pendingAttachments: List<ChatAttachment> = emptyList(),
-    val isUploading: Boolean = false
+    val isUploading: Boolean = false,
+    val onlineAccountIds: Set<String> = emptySet(),
+    val onlineCount: Int = 0
 )
 
 abstract class IChatRoomViewModel : ViewModel() {
@@ -51,6 +57,7 @@ abstract class IChatRoomViewModel : ViewModel() {
     abstract fun addAttachment(uri: Uri, fileName: String, mimeType: String, fileSize: Long)
     abstract fun removeAttachment(index: Int)
     abstract fun clearAttachments()
+    abstract fun markAsRead(lastMessageTimestamp: Long)
 }
 
 class ChatRoomViewModel(
@@ -63,9 +70,16 @@ class ChatRoomViewModel(
     private val _state = MutableStateFlow(ChatRoomUiState())
     override val state: StateFlow<ChatRoomUiState> = _state.asStateFlow()
 
+    private var presenceRegistration: ListenerRegistration? = null
+    private var heartbeatTimer: Timer? = null
+    private val presenceCollection = "ChatRoomPresence"
+    private val lastReadCollection = "ChatRoomLastRead"
+    private val PRESENCE_TIMEOUT_MS = 2 * 60 * 1000L // 2 minutes
+
     init {
         loadCurrentAccount()
         loadAccounts()
+        startPresenceListener()
 
         viewModelScope.launch {
             combine(
@@ -96,6 +110,7 @@ class ChatRoomViewModel(
                 val doc = snap.documents.firstOrNull() ?: return@launch
                 val account = doc.toObject(Account::class.java)?.copy(id = doc.id)
                 _state.value = _state.value.copy(currentAccount = account)
+                account?.id?.let { startPresenceHeartbeat(it) }
             } catch (_: Exception) { }
         }
     }
@@ -245,5 +260,74 @@ class ChatRoomViewModel(
 
     override fun clearAttachments() {
         _state.value = _state.value.copy(pendingAttachments = emptyList())
+    }
+
+    private fun startPresenceHeartbeat(accountId: String) {
+        heartbeatTimer?.cancel()
+        heartbeatTimer = Timer().apply {
+            schedule(object : TimerTask() {
+                override fun run() {
+                    writePresence(accountId)
+                }
+            }, 0L, 30_000L)
+        }
+    }
+
+    private fun writePresence(accountId: String) {
+        try {
+            firebaseHandler.firebaseStore
+                .collection(presenceCollection)
+                .document(accountId)
+                .set(mapOf("lastSeen" to FieldValue.serverTimestamp(), "accountId" to accountId))
+        } catch (_: Exception) { }
+    }
+
+    private fun startPresenceListener() {
+        presenceRegistration = firebaseHandler.firebaseStore
+            .collection(presenceCollection)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val now = System.currentTimeMillis()
+                val onlineIds = snapshot.documents.mapNotNull { doc ->
+                    val lastSeen = doc.getTimestamp("lastSeen")?.toDate()?.time ?: return@mapNotNull null
+                    val id = doc.getString("accountId") ?: doc.id
+                    if (now - lastSeen < PRESENCE_TIMEOUT_MS) id else null
+                }.toSet()
+                _state.value = _state.value.copy(
+                    onlineAccountIds = onlineIds,
+                    onlineCount = onlineIds.size
+                )
+            }
+    }
+
+    override fun markAsRead(lastMessageTimestamp: Long) {
+        val accountId = _state.value.currentAccount?.id ?: return
+        try {
+            firebaseHandler.firebaseStore
+                .collection(lastReadCollection)
+                .document(accountId)
+                .set(mapOf(
+                    "lastReadAt" to lastMessageTimestamp,
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ))
+        } catch (_: Exception) { }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        heartbeatTimer?.cancel()
+        heartbeatTimer = null
+        presenceRegistration?.remove()
+        presenceRegistration = null
+        // Remove presence doc
+        val accountId = _state.value.currentAccount?.id
+        if (accountId != null) {
+            try {
+                firebaseHandler.firebaseStore
+                    .collection(presenceCollection)
+                    .document(accountId)
+                    .delete()
+            } catch (_: Exception) { }
+        }
     }
 }

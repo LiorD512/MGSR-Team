@@ -1603,4 +1603,8 @@
     <string name="chat_room_uploading">Uploading…</string>
     <string name="chat_room_notified_everyone">🔔 Everyone</string>
     <string name="chat_room_notified_user">🔔 %1$s</string>
+    <string name="chat_room_online">online</string>
+    <string name="chat_room_search_placeholder">Search messages…</string>
+    <string name="chat_room_search_no_results">No matching messages found</string>
+    <string name="chat_room_notify_all_short">Everyone</string>
 </resources>
