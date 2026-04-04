@@ -22,24 +22,40 @@ const messaging = firebase.messaging();
 // onBackgroundMessage is intentionally empty — just needed so SDK processes the push.
 messaging.onBackgroundMessage((_payload) => {});
 
-// Click handler: Firebase SDK opens fcmOptions.link (absolute URL) automatically,
-// but in case that fails or the tab is already open, we handle it ourselves.
+// Click handler: close notification, extract target URL, focus + navigate.
 self.addEventListener('notificationclick', (event) => {
-  // Don't close — let Firebase SDK handle it if it wants to.
-  // We focus the existing tab if one exists on our origin.
+  event.notification.close();
+  // Prevent Firebase SDK default handling
+  event.stopImmediatePropagation();
+
   const origin = self.location.origin;
+
+  // Extract the target URL from FCM data
+  let targetUrl = origin + '/';
+  try {
+    const data = event.notification.data;
+    // Firebase SDK stores the original FCM message inside data.FCM_MSG
+    const fcmMsg = data?.FCM_MSG || {};
+    const link = fcmMsg?.fcmOptions?.link
+      || fcmMsg?.notification?.click_action
+      || data?.link;
+    if (link) {
+      targetUrl = link.startsWith('/') ? origin + link : link;
+    }
+  } catch (_) { /* use fallback */ }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Find an existing tab on our origin — focus + navigate it
       for (const client of windowClients) {
         try {
-          if (new URL(client.url).origin === origin && 'focus' in client) {
-            return client.focus();
+          if (new URL(client.url).origin === origin && 'navigate' in client) {
+            return client.focus().then(() => client.navigate(targetUrl));
           }
-        } catch (_) { /* ignore bad URL */ }
+        } catch (_) { /* skip */ }
       }
-      // No existing tab — open the app
-      return clients.openWindow(origin + '/');
+      // No existing tab — open new one
+      return clients.openWindow(targetUrl);
     })
   );
 });
