@@ -18,8 +18,33 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Firebase SDK handles everything:
-// - Displays notification from webpush.notification payload
-// - On click, opens webpush.fcmOptions.link (absolute URL)
-// No custom notificationclick handler — let the SDK do its thing.
+// Required so Firebase SDK processes background pushes.
 messaging.onBackgroundMessage((_payload) => {});
+
+// Notification click: always open the PRODUCTION URL, never localhost.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.stopImmediatePropagation(); // prevent Firebase SDK default
+
+  const PROD = 'https://management.mgsrfa.com';
+  let path = '/';
+
+  try {
+    const data = event.notification.data || {};
+    const fcmMsg = data.FCM_MSG || {};
+    // Extract path from fcmOptions.link
+    const link = fcmMsg.fcmOptions?.link || '';
+    if (link) {
+      try { path = new URL(link).pathname + new URL(link).search; } catch (_) {}
+    }
+    // Fallback: build from data fields
+    if (path === '/' && fcmMsg.data?.screen === 'chat_room') {
+      const mid = fcmMsg.data.messageId;
+      path = mid ? '/chat-room?highlight=' + mid : '/chat-room';
+    }
+  } catch (_) {}
+
+  const targetUrl = PROD + path;
+
+  event.waitUntil(clients.openWindow(targetUrl));
+});
