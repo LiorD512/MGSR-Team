@@ -44,6 +44,10 @@ export async function requestNotificationPermission(): Promise<string | null> {
     });
   }
   try {
+    // Always delete old token first to force a fresh push subscription.
+    // After permission resets the old token in IndexedDB is orphaned — getToken()
+    // would return it (looks valid) but the push subscription is destroyed.
+    await deleteToken(messaging).catch(() => {});
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: swReg,

@@ -3,6 +3,7 @@
  * Updates fields on the caller's Account document (FCM token, language, web push tokens).
  */
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getMessaging } = require("firebase-admin/messaging");
 const { str } = require("../lib/validation");
 
 function getDb() {
@@ -69,24 +70,34 @@ async function accountUpdate(data) {
     const token = str(data.addFcmWebToken);
     console.log("[accountUpdate] addFcmWebToken present, token length:", token.length, "first20:", token.substring(0, 20));
     if (token) {
-      // Immediately validate the token with a dry-run send
+      // Validate the token with a dry-run send — reject dead tokens
+      let tokenAlive = true;
       try {
         await getMessaging().send({ token, data: { test: "1" } }, /* dryRun */ true);
         console.log("[accountUpdate] TOKEN VALIDATION: ALIVE ✓ token:", token.substring(0, 30));
       } catch (valErr) {
-        console.error("[accountUpdate] TOKEN VALIDATION: DEAD ✗ token:", token.substring(0, 30), "error:", valErr.code, valErr.message);
+        const code = valErr.code || "";
+        if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
+          console.error("[accountUpdate] TOKEN VALIDATION: DEAD ✗ REJECTING token:", token.substring(0, 30), "error:", code);
+          tokenAlive = false;
+        } else {
+          // Other errors (network, quota) — save anyway, don't block
+          console.warn("[accountUpdate] TOKEN VALIDATION: inconclusive, saving anyway. error:", code, valErr.message);
+        }
       }
-      // Read current tokens, replace any with same token string to avoid duplicates
-      const accountSnap = await db.collection("Accounts").doc(accountId).get();
-      const existing = accountSnap.exists ? (accountSnap.data().fcmTokens || []) : [];
-      console.log("[accountUpdate] Existing fcmTokens count:", existing.length);
-      const filtered = existing.filter((e) => {
-        const t = typeof e === "string" ? e : e?.token;
-        return t !== token;
-      });
-      filtered.push({ token, platform: "web", updatedAt: Date.now() });
-      updates.fcmTokens = filtered;
-      console.log("[accountUpdate] Will write fcmTokens count:", filtered.length);
+      if (tokenAlive) {
+        // Read current tokens, replace any with same token string to avoid duplicates
+        const accountSnap = await db.collection("Accounts").doc(accountId).get();
+        const existing = accountSnap.exists ? (accountSnap.data().fcmTokens || []) : [];
+        console.log("[accountUpdate] Existing fcmTokens count:", existing.length);
+        const filtered = existing.filter((e) => {
+          const t = typeof e === "string" ? e : e?.token;
+          return t !== token;
+        });
+        filtered.push({ token, platform: "web", updatedAt: Date.now() });
+        updates.fcmTokens = filtered;
+        console.log("[accountUpdate] Will write fcmTokens count:", filtered.length);
+      }
     } else {
       console.warn("[accountUpdate] addFcmWebToken was truthy but str() returned empty");
     }

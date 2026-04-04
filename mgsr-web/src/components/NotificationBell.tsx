@@ -51,9 +51,13 @@ async function ensureTokenSaved(accountId: string): Promise<string | null> {
   // Check push subscription state BEFORE getToken
   const existingSub = await swReg.pushManager.getSubscription();
   console.log('[FCM-DIAG] existing pushSubscription:', existingSub ? existingSub.endpoint.substring(0, 80) + '...' : 'NONE');
-  // First try getToken without deleting — reuses existing valid subscription
+  // Always delete old token to force a fresh push subscription.
+  // After permission resets the old token in IndexedDB is orphaned —
+  // getToken() would return it (looks valid) but pushes silently fail.
   const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
   console.log('[FCM-DIAG] VAPID key length:', vapidKey.length, 'first10:', vapidKey.substring(0, 10));
+  await deleteToken(messaging).catch(() => {});
+  console.log('[FCM-DIAG] deleteToken done, requesting fresh token...');
   let token = await getToken(messaging, {
     vapidKey,
     serviceWorkerRegistration: swReg,
@@ -62,16 +66,6 @@ async function ensureTokenSaved(accountId: string): Promise<string | null> {
   // Check push subscription AFTER getToken
   const newSub = await swReg.pushManager.getSubscription();
   console.log('[FCM-DIAG] pushSubscription after getToken:', newSub ? newSub.endpoint.substring(0, 80) + '...' : 'NONE');
-  // If that failed, delete and retry with a fresh push subscription
-  if (!token) {
-    console.log('[FCM-DIAG] token null, trying deleteToken + retry...');
-    await deleteToken(messaging).catch(() => {});
-    token = await getToken(messaging, {
-      vapidKey,
-      serviceWorkerRegistration: swReg,
-    }).catch((err) => { console.error('[FCM-DIAG] retry getToken failed:', err); return null; });
-    console.log('[FCM-DIAG] retry token:', token ? token.substring(0, 30) + '...' : 'NULL');
-  }
   if (!token) return null;
   console.log('[FCM-DIAG] FULL TOKEN:', token);
   await saveWebFcmToken(accountId, token);
