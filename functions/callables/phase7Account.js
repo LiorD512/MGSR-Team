@@ -69,6 +69,13 @@ async function accountUpdate(data) {
     const token = str(data.addFcmWebToken);
     console.log("[accountUpdate] addFcmWebToken present, token length:", token.length, "first20:", token.substring(0, 20));
     if (token) {
+      // Immediately validate the token with a dry-run send
+      try {
+        await getMessaging().send({ token, data: { test: "1" } }, /* dryRun */ true);
+        console.log("[accountUpdate] TOKEN VALIDATION: ALIVE ✓ token:", token.substring(0, 30));
+      } catch (valErr) {
+        console.error("[accountUpdate] TOKEN VALIDATION: DEAD ✗ token:", token.substring(0, 30), "error:", valErr.code, valErr.message);
+      }
       // Read current tokens, replace any with same token string to avoid duplicates
       const accountSnap = await db.collection("Accounts").doc(accountId).get();
       const existing = accountSnap.exists ? (accountSnap.data().fcmTokens || []) : [];

@@ -33,6 +33,7 @@ export async function requestNotificationPermission(): Promise<string | null> {
   const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
   console.log('[MGSR-Notif] Service worker registered, state:', swReg.active ? 'active' : 'waiting');
   // Wait for the service worker to become active before requesting a push token
+  await navigator.serviceWorker.ready;
   if (!swReg.active) {
     await new Promise<void>((resolve) => {
       const sw = swReg.installing || swReg.waiting;
@@ -43,9 +44,6 @@ export async function requestNotificationPermission(): Promise<string | null> {
     });
   }
   try {
-    // Delete stale token first to force a fresh push subscription.
-    // Prevents "registration-token-not-registered" on first send.
-    await deleteToken(messaging).catch(() => {});
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: swReg,
