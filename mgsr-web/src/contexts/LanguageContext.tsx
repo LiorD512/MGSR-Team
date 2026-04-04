@@ -1268,6 +1268,11 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     chat_room_no_players_found: 'No players found',
     chat_room_attachment_fallback: '📎 Attachment',
     chat_room_notified_everyone: '🔔 Everyone',
+    chat_room_search: 'Search',
+    chat_room_search_placeholder: 'Search messages…',
+    chat_room_search_results: 'results',
+    chat_room_search_no_results: 'No messages match your search',
+    chat_room_online: 'online',
   },
   he: {
     greeting_morning: 'בוקר טוב',
@@ -2523,6 +2528,11 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     chat_room_no_players_found: 'לא נמצאו שחקנים',
     chat_room_attachment_fallback: '📎 קובץ מצורף',
     chat_room_notified_everyone: '🔔 כולם',
+    chat_room_search: 'חיפוש',
+    chat_room_search_placeholder: 'חפש בהודעות…',
+    chat_room_search_results: 'תוצאות',
+    chat_room_search_no_results: 'לא נמצאו הודעות תואמות',
+    chat_room_online: 'מחוברים',
   },
 };
 

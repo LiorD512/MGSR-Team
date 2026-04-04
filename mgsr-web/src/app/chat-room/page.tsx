@@ -11,6 +11,10 @@ import {
   query,
   orderBy,
   onSnapshot,
+  doc,
+  setDoc,
+  deleteDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
@@ -138,6 +142,14 @@ export default function ChatRoomPage() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /* search state */
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  /* online presence state */
+  const [onlineAccountIds, setOnlineAccountIds] = useState<Set<string>>(new Set());
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -218,6 +230,44 @@ export default function ChatRoomPage() {
     getAllAccounts().then(setAccounts);
   }, [user]);
 
+  /* Online presence: write heartbeat + listen to others */
+  useEffect(() => {
+    if (!currentAccount) return;
+    const presenceRef = doc(db, 'ChatRoomPresence', currentAccount.id);
+
+    // Write initial presence
+    const writePresence = () => {
+      setDoc(presenceRef, {
+        name: currentAccount.name || '',
+        hebrewName: currentAccount.hebrewName || '',
+        lastActive: serverTimestamp(),
+      }, { merge: true }).catch(() => {});
+    };
+    writePresence();
+    const heartbeat = setInterval(writePresence, 60_000);
+
+    // Listen to all presence docs
+    const unsub = onSnapshot(collection(db, 'ChatRoomPresence'), (snap) => {
+      const now = Date.now();
+      const online = new Set<string>();
+      for (const d of snap.docs) {
+        const data = d.data();
+        const ts = data.lastActive?.toMillis?.() || 0;
+        if (now - ts < 3 * 60_000) { // active within 3 minutes
+          online.add(d.id);
+        }
+      }
+      setOnlineAccountIds(online);
+    });
+
+    // Cleanup: remove presence on unmount
+    return () => {
+      clearInterval(heartbeat);
+      unsub();
+      deleteDoc(presenceRef).catch(() => {});
+    };
+  }, [currentAccount]);
+
   /* @mention filtering */
   const filteredPlayers = useMemo(() => {
     if (!mentionQuery) return players.slice(0, 20);
@@ -230,6 +280,22 @@ export default function ChatRoomPage() {
       )
       .slice(0, 20);
   }, [players, mentionQuery]);
+
+  /* Search filtering */
+  const filteredMessages = useMemo(() => {
+    if (!searchQuery.trim()) return messages;
+    const q = searchQuery.toLowerCase();
+    return messages.filter((msg) => {
+      if (msg.text?.toLowerCase().includes(q)) return true;
+      if (msg.senderName?.toLowerCase().includes(q)) return true;
+      if (msg.senderNameHe?.includes(q)) return true;
+      if (msg.mentions?.some(m => m.playerName?.toLowerCase().includes(q) || m.playerNameHe?.includes(q))) return true;
+      return false;
+    });
+  }, [messages, searchQuery]);
+
+  /* Online count */
+  const onlineCount = onlineAccountIds.size;
 
   /* ── Handlers ──────────────────────────────────────────────────────── */
 
@@ -476,211 +542,443 @@ export default function ChatRoomPage() {
 
   /* ── Component ─────────────────────────────────────────────────────── */
 
+  const displayMessages = searchQuery.trim() ? filteredMessages : messages;
+
   return (
     <AppLayout>
+      {/* Google Fonts for Noir Editorial */}
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <link
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
+        rel="stylesheet"
+      />
+      <style>{`
+        .chat-noir-shell {
+          --noir-bg: #06070a;
+          --noir-surface: #0c0d12;
+          --noir-card: #111318;
+          --noir-elevated: #16181f;
+          --noir-border: rgba(255,255,255,0.05);
+          --noir-border-hover: rgba(255,255,255,0.1);
+          --noir-text: #eaeaea;
+          --noir-muted: rgba(255,255,255,0.25);
+          --noir-gold: #C9A84C;
+        }
+        .chat-noir-shell * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.06) transparent; }
+        .chat-noir-header-line::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 28px;
+          right: 28px;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(77,182,172,0.15), transparent);
+        }
+        @keyframes chat-noir-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes chat-noir-msg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .chat-noir-msg-anim { animation: chat-noir-msg-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .chat-noir-search-enter { animation: chat-noir-search-slide 0.2s ease both; }
+        @keyframes chat-noir-search-slide { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 60px; } }
+      `}</style>
+
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
-        className="flex h-[calc(100vh-64px)] flex-col"
+        className="chat-noir-shell flex h-[calc(100vh-64px)] flex-col"
+        style={{ background: 'var(--noir-bg)' }}
       >
-        {/* Header */}
-        <div className="flex items-center gap-3 border-b border-white/10 bg-[var(--mgsr-dark)] px-6 py-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--mgsr-teal)]/20">
-            <svg
-              className="h-5 w-5 text-[var(--mgsr-teal)]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
+        {/* ═══ HEADER ═══ */}
+        <div
+          className="chat-noir-header-line relative flex items-center gap-4 px-7 py-5"
+          style={{
+            borderBottom: '1px solid var(--noir-border)',
+            background: 'linear-gradient(180deg, rgba(17,19,24,0.95) 0%, var(--noir-surface) 100%)',
+          }}
+        >
+          {/* Monogram */}
+          <div
+            className="flex h-11 w-11 items-center justify-center shrink-0"
+            style={{
+              borderRadius: 12,
+              background: 'linear-gradient(135deg, rgba(77,182,172,0.15), rgba(77,182,172,0.05))',
+              border: '1px solid rgba(77,182,172,0.2)',
+            }}
+          >
+            <span
+              style={{ fontFamily: "'Instrument Serif', serif", fontSize: 20, fontStyle: 'italic', color: 'var(--mgsr-teal)' }}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              />
-            </svg>
+              M
+            </span>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-white">
+
+          {/* Title + online count */}
+          <div className="min-w-0">
+            <h1
+              style={{ fontFamily: "'Instrument Serif', serif", fontSize: 20, fontWeight: 400, fontStyle: 'italic', color: 'var(--noir-text)', letterSpacing: -0.3 }}
+            >
               {t('chat_room_title')}
             </h1>
-            <p className="text-xs text-gray-400">
-              {accounts.length} {t('chat_room_members_count')}
+            <p
+              className="flex items-center gap-1.5"
+              style={{ fontSize: 11, color: 'var(--noir-muted)', letterSpacing: 0.8, textTransform: 'uppercase' as const, marginTop: 1 }}
+            >
+              <span
+                className="inline-block shrink-0"
+                style={{
+                  width: 6,
+                  height: 6,
+                  background: onlineCount > 0 ? '#4DB6AC' : '#555',
+                  borderRadius: '50%',
+                  boxShadow: onlineCount > 0 ? '0 0 8px rgba(77,182,172,0.5)' : 'none',
+                  animation: onlineCount > 0 ? 'chat-noir-pulse 2s ease infinite' : 'none',
+                }}
+              />
+              {onlineCount > 0
+                ? `${onlineCount} ${t('chat_room_online')}`
+                : `${accounts.length} ${t('chat_room_members_count')}`}
             </p>
+          </div>
+
+          {/* Header actions */}
+          <div className={`flex gap-1 ${isRtl ? 'mr-auto' : 'ml-auto'}`}>
+            {/* Members button */}
+            <button
+              className="flex h-9 w-9 items-center justify-center transition-all"
+              style={{ borderRadius: 10, border: '1px solid var(--noir-border)', background: 'transparent', color: 'var(--noir-muted)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--noir-border-hover)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--noir-border)'; e.currentTarget.style.color = 'var(--noir-muted)'; }}
+              title={t('chat_room_members_count')}
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+              </svg>
+            </button>
+            {/* Search toggle */}
+            <button
+              onClick={() => {
+                setShowSearch(!showSearch);
+                if (!showSearch) setTimeout(() => searchInputRef.current?.focus(), 100);
+                if (showSearch) setSearchQuery('');
+              }}
+              className="flex h-9 w-9 items-center justify-center transition-all"
+              style={{
+                borderRadius: 10,
+                border: `1px solid ${showSearch ? 'rgba(77,182,172,0.3)' : 'var(--noir-border)'}`,
+                background: showSearch ? 'rgba(77,182,172,0.08)' : 'transparent',
+                color: showSearch ? 'var(--mgsr-teal)' : 'var(--noir-muted)',
+              }}
+              onMouseEnter={e => { if (!showSearch) { e.currentTarget.style.borderColor = 'var(--noir-border-hover)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; } }}
+              onMouseLeave={e => { if (!showSearch) { e.currentTarget.style.borderColor = 'var(--noir-border)'; e.currentTarget.style.color = 'var(--noir-muted)'; } }}
+              title={t('chat_room_search')}
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+              </svg>
+            </button>
           </div>
         </div>
 
-        {/* Messages */}
-        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+        {/* ═══ SEARCH BAR ═══ */}
+        {showSearch && (
+          <div
+            className="chat-noir-search-enter flex items-center gap-3 px-7 py-3"
+            style={{ borderBottom: '1px solid var(--noir-border)', background: 'rgba(77,182,172,0.02)' }}
+          >
+            <svg className="h-4 w-4 shrink-0" style={{ color: 'var(--noir-muted)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={t('chat_room_search_placeholder')}
+              className="flex-1 bg-transparent text-sm outline-none"
+              style={{ color: 'var(--noir-text)', fontFamily: "'DM Sans', sans-serif" }}
+            />
+            {searchQuery && (
+              <span className="text-xs shrink-0" style={{ color: 'var(--noir-muted)' }}>
+                {filteredMessages.length} {t('chat_room_search_results')}
+              </span>
+            )}
+            <button
+              onClick={() => { setSearchQuery(''); setShowSearch(false); }}
+              className="flex h-7 w-7 items-center justify-center shrink-0 transition-colors"
+              style={{ borderRadius: 8, color: 'var(--noir-muted)' }}
+            >
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {/* ═══ MESSAGES ═══ */}
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto px-7 py-6"
+          style={{ background: 'var(--noir-bg)' }}
+        >
           {loading ? (
             <div className="flex h-full items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--mgsr-teal)] border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--mgsr-teal)', borderTopColor: 'transparent' }} />
             </div>
-          ) : messages.length === 0 ? (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-gray-500">{t('chat_room_no_messages')}</p>
+          ) : displayMessages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-2">
+              {searchQuery ? (
+                <p className="text-sm" style={{ color: 'var(--noir-muted)' }}>{t('chat_room_search_no_results')}</p>
+              ) : (
+                <p style={{ color: 'var(--noir-muted)', fontSize: 13 }}>{t('chat_room_no_messages')}</p>
+              )}
             </div>
           ) : (
-            messages.map((msg, idx) => {
+            displayMessages.map((msg, idx) => {
               const isOwn = msg.senderAccountId === currentAccount?.id;
-              const showDateSep =
-                idx === 0 ||
-                !isSameDay(msg.createdAt, messages[idx - 1].createdAt);
+              const prevMsg = idx > 0 ? displayMessages[idx - 1] : null;
+              const showDateSep = idx === 0 || !isSameDay(msg.createdAt, prevMsg?.createdAt || 0);
               const isHighlighted = highlightId === msg.id;
               const sc = senderColorMap.get(msg.senderAccountId) || SENDER_COLORS[0];
+              const initials = senderDisplayName(msg).split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 
               return (
                 <div key={msg.id}>
+                  {/* Date separator */}
                   {showDateSep && (
-                    <div className="my-3 text-center">
-                      <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-gray-400">
+                    <div className="my-5 flex items-center gap-4">
+                      <div className="flex-1 h-px" style={{ background: 'var(--noir-border)' }} />
+                      <span style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' as const, color: 'var(--noir-muted)', whiteSpace: 'nowrap' }}>
                         {formatDateSeparator(msg.createdAt, t('chat_room_today'), t('chat_room_yesterday'))}
                       </span>
+                      <div className="flex-1 h-px" style={{ background: 'var(--noir-border)' }} />
                     </div>
                   )}
+
+                  {/* Message bubble row */}
                   <div
                     id={`msg-${msg.id}`}
-                    className={`group flex ${isOwn ? (isRtl ? 'justify-start' : 'justify-end') : (isRtl ? 'justify-end' : 'justify-start')}`}
+                    className={`chat-noir-msg-anim group flex gap-3 mb-1 ${isOwn ? 'flex-row-reverse' : ''}`}
+                    style={{ maxWidth: '75%', marginLeft: isOwn ? 'auto' : undefined }}
                   >
-                    {/* action buttons (left of bubble for own, right for others) */}
-                    <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ${isOwn ? 'mr-2 order-first' : 'ml-2 order-last'}`}>
-                      <button
-                        onClick={() => setReplyToMessage(msg)}
-                        className="rounded p-1 text-xs text-gray-400 hover:bg-white/10 hover:text-[var(--mgsr-teal)]"
-                        title={t('chat_room_reply_action')}
-                      >↩️</button>
-                      {isOwn && editingMessageId !== msg.id && (
-                        <>
-                          <button
-                            onClick={() => { setEditingMessageId(msg.id); setEditText(msg.text); }}
-                            disabled={!!deletingMsgId || isEditSaving}
-                            className="rounded p-1 text-xs text-gray-400 hover:bg-white/10 hover:text-white disabled:opacity-30"
-                            title={t('chat_room_edit_action')}
-                          >✏️</button>
-                          <button
-                            onClick={() => handleDelete(msg.id)}
-                            disabled={!!deletingMsgId || isEditSaving}
-                            className="rounded p-1 text-xs text-gray-400 hover:bg-red-500/20 hover:text-red-400 disabled:opacity-30"
-                            title={t('chat_room_delete_action')}
-                          >🗑️</button>
-                        </>
-                      )}
-                    </div>
+                    {/* Avatar */}
                     <div
-                      className={`relative max-w-[70%] rounded-2xl px-4 py-2 transition-all duration-500 ${
-                        isHighlighted
-                          ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/20'
-                          : ''
-                      } text-white ${deletingMsgId === msg.id ? 'opacity-40' : ''}`}
+                      className="flex h-8 w-8 items-center justify-center shrink-0 mt-1"
                       style={{
-                        background: isOwn ? sc.bgOwn : sc.bg,
-                        borderWidth: 1,
-                        borderStyle: 'solid',
-                        borderColor: sc.border,
+                        borderRadius: 10,
+                        background: sc.bg,
+                        border: `1px solid ${sc.border}`,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: sc.accent,
                       }}
                     >
-                      {deletingMsgId === msg.id && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center">
-                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--mgsr-teal)] border-t-transparent" />
+                      {initials}
+                    </div>
+
+                    {/* Content column */}
+                    <div className="flex flex-col gap-1 min-w-0">
+                      {/* Sender name */}
+                      <div
+                        className={`flex items-center gap-2 px-0.5 ${isOwn ? (isRtl ? 'justify-start' : 'justify-end') : ''}`}
+                      >
+                        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.3, color: sc.accent }}>
+                          {senderDisplayName(msg)}
+                        </span>
+                      </div>
+
+                      {/* Notification badge */}
+                      {msg.notifyAccountId && (
+                        <div className={`${isOwn ? (isRtl ? '' : 'self-end') : ''}`}>
+                          <span
+                            className="inline-flex items-center gap-1"
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 500,
+                              letterSpacing: 0.5,
+                              padding: '3px 10px',
+                              borderRadius: 20,
+                              ...(msg.notifyAccountId === 'ALL'
+                                ? { background: 'rgba(201,168,76,0.1)', color: 'var(--noir-gold)', border: '1px solid rgba(201,168,76,0.15)' }
+                                : { background: 'rgba(77,182,172,0.08)', color: 'var(--mgsr-teal)', border: '1px solid rgba(77,182,172,0.12)' }),
+                            }}
+                          >
+                            {msg.notifyAccountId === 'ALL'
+                              ? t('chat_room_notified_everyone')
+                              : (() => {
+                                  const acc = accounts.find(a => a.id === msg.notifyAccountId);
+                                  const name = acc ? (isHe ? acc.hebrewName || acc.name : acc.name) || '?' : '?';
+                                  return `🔔 ${name}`;
+                                })()}
+                          </span>
                         </div>
                       )}
-                      {!isOwn && (
-                        <p className="mb-0.5 text-xs font-semibold" style={{ color: sc.accent }}>
-                          {senderDisplayName(msg)}
-                        </p>
-                      )}
-                      {isOwn && (
-                        <p className="mb-0.5 text-xs font-semibold text-white/70">
-                          {senderDisplayName(msg)}
-                        </p>
-                      )}
-                      {/* Notification indicator */}
-                      {msg.notifyAccountId && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-400 mb-1">
-                          {msg.notifyAccountId === 'ALL'
-                            ? t('chat_room_notified_everyone')
-                            : (() => {
-                                const acc = accounts.find(a => a.id === msg.notifyAccountId);
-                                const name = acc ? (isHe ? acc.hebrewName || acc.name : acc.name) || '?' : '?';
-                                return `🔔 ${name}`;
-                              })()}
-                        </span>
-                      )}
-                      {/* Reply-to preview */}
+
+                      {/* Reply preview */}
                       {msg.replyTo && (
                         <div
-                          className="mb-1.5 rounded-md px-2 py-1.5 cursor-pointer"
-                          style={{ background: 'rgba(255,255,255,0.06)', borderLeft: `3px solid ${sc.accent}` }}
+                          className="flex gap-2 cursor-pointer transition-colors"
                           onClick={() => scrollToMessage(msg.replyTo!.messageId)}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 10,
+                            background: 'rgba(255,255,255,0.02)',
+                            borderLeft: isRtl ? 'none' : `2px solid ${sc.accent}`,
+                            borderRight: isRtl ? `2px solid ${sc.accent}` : 'none',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
                         >
-                          <p className="text-[10px] font-semibold" style={{ color: sc.accent }}>
-                            {isHe ? (msg.replyTo.senderNameHe || msg.replyTo.senderName) : (msg.replyTo.senderName || msg.replyTo.senderNameHe)}
-                          </p>
-                          <p className="text-[11px] text-gray-400 truncate">{msg.replyTo.text.substring(0, 80)}</p>
-                        </div>
-                      )}
-                      {/* Attachments */}
-                      {msg.attachments && msg.attachments.length > 0 && (
-                        <div className="mb-1 space-y-1">
-                          {msg.attachments.map((att, ai) => {
-                            const isImage = att.type.startsWith('image/');
-                            return isImage ? (
-                              <a key={ai} href={att.url} target="_blank" rel="noopener noreferrer">
-                                <img
-                                  src={att.url}
-                                  alt={att.name}
-                                  className="max-h-48 rounded-lg object-cover cursor-pointer hover:opacity-90 transition"
-                                />
-                              </a>
-                            ) : (
-                              <a
-                                key={ai}
-                                href={att.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 rounded-md bg-white/5 px-2 py-1.5 text-xs text-[var(--mgsr-teal)] hover:bg-white/10 transition"
-                              >
-                                <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                </svg>
-                                <span className="truncate">{att.name}</span>
-                              </a>
-                            );
-                          })}
-                        </div>
-                      )}
-                      {editingMessageId === msg.id ? (
-                        <div className="flex flex-col gap-1">
-                          <input
-                            autoFocus
-                            value={editText}
-                            onChange={(e) => setEditText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') { e.preventDefault(); handleEditSave(); }
-                              if (e.key === 'Escape') { setEditingMessageId(null); setEditText(''); }
-                            }}
-                            className="rounded bg-black/30 px-2 py-1 text-sm text-white outline-none ring-1 ring-[var(--mgsr-teal)]"
-                          />
-                          <div className="flex gap-2 text-xs">
-                            <button onClick={handleEditSave} disabled={isEditSaving} className="text-[var(--mgsr-teal)] hover:underline disabled:opacity-50 flex items-center gap-1">
-                              {isEditSaving && <span className="inline-block h-3 w-3 animate-spin rounded-full border border-[var(--mgsr-teal)] border-t-transparent" />}
-                              {t('chat_room_save')}
-                            </button>
-                            <button onClick={() => { if (!isEditSaving) { setEditingMessageId(null); setEditText(''); } }} className="text-gray-400 hover:underline disabled:opacity-50" disabled={isEditSaving}>{t('chat_room_cancel')}</button>
+                          <div className="min-w-0">
+                            <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.3, color: sc.accent }}>
+                              {isHe ? (msg.replyTo.senderNameHe || msg.replyTo.senderName) : (msg.replyTo.senderName || msg.replyTo.senderNameHe)}
+                            </p>
+                            <p className="truncate" style={{ fontSize: 11, color: 'var(--noir-muted)', maxWidth: 250 }}>
+                              {msg.replyTo.text.substring(0, 80)}
+                            </p>
                           </div>
                         </div>
-                      ) : msg.text ? (
-                        <p className="text-sm leading-relaxed break-words">
-                          {renderMessageText(msg)}
-                        </p>
-                      ) : null}
-                      <p
-                        className={`mt-1 text-[10px] ${
-                          isOwn ? 'text-white/60' : 'text-gray-500'
-                        } ${isOwn ? (isRtl ? 'text-right' : 'text-left') : (isRtl ? 'text-left' : 'text-right')}`}
+                      )}
+
+                      {/* Bubble */}
+                      <div
+                        className={`relative transition-all duration-500 ${isHighlighted ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/20' : ''} ${deletingMsgId === msg.id ? 'opacity-40' : ''}`}
+                        style={{
+                          padding: '11px 16px',
+                          borderRadius: isOwn
+                            ? (isRtl ? '4px 14px 14px 14px' : '14px 4px 14px 14px')
+                            : (isRtl ? '14px 4px 14px 14px' : '4px 14px 14px 14px'),
+                          fontSize: 13.5,
+                          lineHeight: 1.55,
+                          color: 'var(--noir-text)',
+                          background: isOwn ? 'rgba(77,182,172,0.10)' : sc.bg,
+                          border: `1px solid ${isOwn ? 'rgba(77,182,172,0.18)' : sc.border}`,
+                        }}
                       >
-                        {msg.editedAt ? <span className="mr-1 italic">{t('chat_room_edited')}</span> : null}
-                        {formatTime(msg.createdAt)}
-                      </p>
+                        {deletingMsgId === msg.id && (
+                          <div className="absolute inset-0 z-10 flex items-center justify-center">
+                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--mgsr-teal)', borderTopColor: 'transparent' }} />
+                          </div>
+                        )}
+
+                        {/* Hover action buttons */}
+                        <div
+                          className={`absolute -top-3.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 ${isOwn ? (isRtl ? 'right-0' : 'left-0') : (isRtl ? 'left-0' : 'right-0')}`}
+                        >
+                          <button
+                            onClick={() => setReplyToMessage(msg)}
+                            className="flex h-7 w-7 items-center justify-center transition-all"
+                            style={{ borderRadius: 8, border: '1px solid var(--noir-border)', background: 'var(--noir-elevated)', color: 'var(--noir-muted)', cursor: 'pointer', fontSize: 13 }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--noir-border-hover)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--noir-border)'; e.currentTarget.style.color = 'var(--noir-muted)'; }}
+                            title={t('chat_room_reply_action')}
+                          >↩</button>
+                          {isOwn && editingMessageId !== msg.id && (
+                            <>
+                              <button
+                                onClick={() => { setEditingMessageId(msg.id); setEditText(msg.text); }}
+                                disabled={!!deletingMsgId || isEditSaving}
+                                className="flex h-7 w-7 items-center justify-center transition-all disabled:opacity-30"
+                                style={{ borderRadius: 8, border: '1px solid var(--noir-border)', background: 'var(--noir-elevated)', color: 'var(--noir-muted)', cursor: 'pointer', fontSize: 13 }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--noir-border-hover)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--noir-border)'; e.currentTarget.style.color = 'var(--noir-muted)'; }}
+                                title={t('chat_room_edit_action')}
+                              >✎</button>
+                              <button
+                                onClick={() => handleDelete(msg.id)}
+                                disabled={!!deletingMsgId || isEditSaving}
+                                className="flex h-7 w-7 items-center justify-center transition-all disabled:opacity-30"
+                                style={{ borderRadius: 8, border: '1px solid var(--noir-border)', background: 'var(--noir-elevated)', color: 'var(--noir-muted)', cursor: 'pointer', fontSize: 13 }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)'; e.currentTarget.style.color = '#EF4444'; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--noir-border)'; e.currentTarget.style.color = 'var(--noir-muted)'; }}
+                                title={t('chat_room_delete_action')}
+                              >✕</button>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Attachments */}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mb-2 space-y-1.5">
+                            {msg.attachments.map((att, ai) => {
+                              const isImage = att.type.startsWith('image/');
+                              return isImage ? (
+                                <a key={ai} href={att.url} target="_blank" rel="noopener noreferrer">
+                                  <img
+                                    src={att.url}
+                                    alt={att.name}
+                                    className="max-h-48 cursor-pointer hover:opacity-90 transition"
+                                    style={{ borderRadius: 10, objectFit: 'cover' }}
+                                  />
+                                </a>
+                              ) : (
+                                <a
+                                  key={ai}
+                                  href={att.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2.5 transition-all"
+                                  style={{
+                                    padding: '10px 14px',
+                                    borderRadius: 10,
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid var(--noir-border)',
+                                  }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'var(--noir-border-hover)'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'var(--noir-border)'; }}
+                                >
+                                  <div
+                                    className="flex h-8 w-8 items-center justify-center shrink-0"
+                                    style={{ borderRadius: 8, background: 'rgba(77,182,172,0.08)' }}
+                                  >
+                                    <svg className="h-3.5 w-3.5" style={{ color: 'var(--mgsr-teal)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                                    </svg>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="truncate" style={{ fontSize: 12, fontWeight: 500, color: 'var(--noir-text)' }}>{att.name}</p>
+                                    <p style={{ fontSize: 10, color: 'var(--noir-muted)' }}>{(att.size / 1024).toFixed(0)} KB</p>
+                                  </div>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Message text / edit mode */}
+                        {editingMessageId === msg.id ? (
+                          <div className="flex flex-col gap-1">
+                            <input
+                              autoFocus
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') { e.preventDefault(); handleEditSave(); }
+                                if (e.key === 'Escape') { setEditingMessageId(null); setEditText(''); }
+                              }}
+                              className="rounded-lg bg-black/30 px-3 py-1.5 text-sm outline-none"
+                              style={{ color: 'var(--noir-text)', border: '1px solid rgba(77,182,172,0.3)' }}
+                            />
+                            <div className="flex gap-3 text-xs">
+                              <button onClick={handleEditSave} disabled={isEditSaving} className="flex items-center gap-1 disabled:opacity-50" style={{ color: 'var(--mgsr-teal)' }}>
+                                {isEditSaving && <span className="inline-block h-3 w-3 animate-spin rounded-full border border-t-transparent" style={{ borderColor: 'var(--mgsr-teal)', borderTopColor: 'transparent' }} />}
+                                {t('chat_room_save')}
+                              </button>
+                              <button onClick={() => { if (!isEditSaving) { setEditingMessageId(null); setEditText(''); } }} className="disabled:opacity-50" style={{ color: 'var(--noir-muted)' }} disabled={isEditSaving}>{t('chat_room_cancel')}</button>
+                            </div>
+                          </div>
+                        ) : msg.text ? (
+                          <p className="text-sm leading-relaxed break-words">
+                            {renderMessageText(msg)}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      {/* Timestamp row */}
+                      <div className={`flex items-center gap-1.5 px-0.5 ${isOwn ? (isRtl ? 'justify-start' : 'justify-end') : ''}`}>
+                        {msg.editedAt && (
+                          <span style={{ fontSize: 10, fontStyle: 'italic', color: 'rgba(255,255,255,0.18)' }}>{t('chat_room_edited')}</span>
+                        )}
+                        <span style={{ fontSize: 10, color: 'var(--noir-muted)' }}>{formatTime(msg.createdAt)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -690,21 +988,62 @@ export default function ChatRoomPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Target user selector */}
+        {/* ═══ REPLY BAR ═══ */}
+        {replyToMessage && (
+          <div
+            className="flex items-center gap-3 px-7 py-2.5"
+            style={{
+              borderTop: '1px solid var(--noir-border)',
+              background: 'rgba(77,182,172,0.03)',
+            }}
+          >
+            <div className="shrink-0" style={{ width: 3, height: 28, borderRadius: 2, background: 'var(--mgsr-teal)' }} />
+            <div className="flex-1 min-w-0">
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--mgsr-teal)' }}>
+                {isHe ? (replyToMessage.senderNameHe || replyToMessage.senderName) : (replyToMessage.senderName || replyToMessage.senderNameHe)}
+              </p>
+              <p className="truncate" style={{ fontSize: 11, color: 'var(--noir-muted)' }}>
+                {replyToMessage.text.substring(0, 80) || t('chat_room_attachment_fallback')}
+              </p>
+            </div>
+            <button
+              onClick={() => setReplyToMessage(null)}
+              className="flex h-7 w-7 items-center justify-center shrink-0 transition-colors"
+              style={{ borderRadius: 8, color: 'var(--noir-muted)' }}
+            >
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {/* ═══ NOTIFY BAR ═══ */}
         {accounts.length > 0 && (
-          <div className="flex items-center gap-2 border-t border-white/5 bg-[var(--mgsr-dark)] px-4 py-2 overflow-x-auto">
-            <span className="text-xs text-gray-400 whitespace-nowrap">
+          <div
+            className="flex items-center gap-2 px-7 py-2.5 overflow-x-auto"
+            style={{ borderTop: '1px solid var(--noir-border)', background: 'var(--noir-surface)', scrollbarWidth: 'none' }}
+          >
+            <span
+              className="shrink-0"
+              style={{ fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: 'var(--noir-muted)', marginRight: 4 }}
+            >
               {t('chat_room_notify_label')}
             </span>
             <button
-              onClick={() =>
-                setTargetAccountId(targetAccountId === 'ALL' ? null : 'ALL')
-              }
-              className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition ${
-                targetAccountId === 'ALL'
-                  ? 'bg-amber-500 text-white'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
-              }`}
+              onClick={() => setTargetAccountId(targetAccountId === 'ALL' ? null : 'ALL')}
+              className="shrink-0 transition-all"
+              style={{
+                padding: '5px 14px',
+                borderRadius: 20,
+                fontSize: 11,
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+                border: `1px solid ${targetAccountId === 'ALL' ? 'rgba(201,168,76,0.4)' : 'rgba(201,168,76,0.25)'}`,
+                color: 'var(--noir-gold)',
+                background: targetAccountId === 'ALL' ? 'rgba(201,168,76,0.12)' : 'rgba(201,168,76,0.05)',
+                cursor: 'pointer',
+              }}
             >
               {t('chat_room_notify_all')}
             </button>
@@ -713,16 +1052,19 @@ export default function ChatRoomPage() {
               .map((acc) => (
                 <button
                   key={acc.id}
-                  onClick={() =>
-                    setTargetAccountId(
-                      targetAccountId === acc.id ? null : acc.id
-                    )
-                  }
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition ${
-                    targetAccountId === acc.id
-                      ? 'bg-[var(--mgsr-teal)] text-white'
-                      : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                  }`}
+                  onClick={() => setTargetAccountId(targetAccountId === acc.id ? null : acc.id)}
+                  className="shrink-0 transition-all"
+                  style={{
+                    padding: '5px 14px',
+                    borderRadius: 20,
+                    fontSize: 11,
+                    fontWeight: 500,
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                    border: `1px solid ${targetAccountId === acc.id ? 'rgba(77,182,172,0.4)' : 'var(--noir-border)'}`,
+                    color: targetAccountId === acc.id ? 'var(--mgsr-teal)' : 'rgba(255,255,255,0.5)',
+                    background: targetAccountId === acc.id ? 'rgba(77,182,172,0.08)' : 'transparent',
+                  }}
                 >
                   {accountDisplayName(acc)}
                 </button>
@@ -730,12 +1072,15 @@ export default function ChatRoomPage() {
           </div>
         )}
 
-        {/* @mention dropdown */}
+        {/* ═══ @MENTION DROPDOWN ═══ */}
         {showMentionDropdown && (
           <div className="relative">
-            <div className="absolute bottom-0 left-0 right-0 z-50 max-h-48 overflow-y-auto border-t border-white/10 bg-[#1a2233] shadow-xl">
+            <div
+              className="absolute bottom-0 left-0 right-0 z-50 max-h-48 overflow-y-auto shadow-xl"
+              style={{ borderTop: '1px solid var(--noir-border)', background: 'var(--noir-card)' }}
+            >
               {filteredPlayers.length === 0 ? (
-                <div className="p-3 text-center text-sm text-gray-500">
+                <div className="p-3 text-center text-sm" style={{ color: 'var(--noir-muted)' }}>
                   {t('chat_room_no_players_found')}
                 </div>
               ) : (
@@ -743,29 +1088,24 @@ export default function ChatRoomPage() {
                   <button
                     key={p.id}
                     onClick={() => handleSelectMention(p)}
-                    className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-white/5 transition"
+                    className="flex w-full items-center gap-3 px-7 py-2 transition"
+                    style={{ textAlign: isRtl ? 'right' : 'left' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
                     {p.profileImage ? (
-                      <img
-                        src={p.profileImage}
-                        alt=""
-                        className="h-8 w-8 rounded-full object-cover"
-                      />
+                      <img src={p.profileImage} alt="" className="h-8 w-8 rounded-full object-cover" />
                     ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mgsr-teal)]/20 text-xs text-[var(--mgsr-teal)]">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs" style={{ background: 'rgba(77,182,172,0.12)', color: 'var(--mgsr-teal)' }}>
                         {(p.fullName || '?')[0]}
                       </div>
                     )}
                     <div>
-                      <p className="text-sm text-white">
-                        {isHe
-                          ? p.fullNameHe || p.fullName
-                          : p.fullName || p.fullNameHe}
+                      <p className="text-sm" style={{ color: 'var(--noir-text)' }}>
+                        {isHe ? p.fullNameHe || p.fullName : p.fullName || p.fullNameHe}
                       </p>
                       {p.positions?.[0] && (
-                        <p className="text-xs text-gray-500">
-                          {p.positions[0]}
-                        </p>
+                        <p style={{ fontSize: 11, color: 'var(--noir-muted)' }}>{p.positions[0]}</p>
                       )}
                     </div>
                   </button>
@@ -775,45 +1115,30 @@ export default function ChatRoomPage() {
           </div>
         )}
 
-        {/* Reply preview + Pending attachments + Input bar */}
-        <div className="border-t border-white/10 bg-[var(--mgsr-dark)]">
-          {/* Reply preview bar */}
-          {replyToMessage && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-[var(--mgsr-teal)]/5 border-b border-white/5">
-              <div className="w-1 h-8 rounded-full bg-[var(--mgsr-teal)]" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-[var(--mgsr-teal)]">
-                  {isHe ? (replyToMessage.senderNameHe || replyToMessage.senderName) : (replyToMessage.senderName || replyToMessage.senderNameHe)}
-                </p>
-                <p className="text-xs text-gray-400 truncate">
-                  {replyToMessage.text.substring(0, 80) || t('chat_room_attachment_fallback')}
-                </p>
-              </div>
-              <button onClick={() => setReplyToMessage(null)} className="text-gray-400 hover:text-white p-1">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          )}
-
-          {/* Pending attachments preview */}
+        {/* ═══ COMPOSER ═══ */}
+        <div style={{ borderTop: '1px solid var(--noir-border)', background: 'var(--noir-surface)' }}>
+          {/* Pending attachments */}
           {pendingAttachments.length > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 overflow-x-auto">
+            <div className="flex items-center gap-2 px-7 py-2 overflow-x-auto" style={{ borderBottom: '1px solid var(--noir-border)' }}>
               {pendingAttachments.map((pa, i) => (
-                <div key={i} className="relative shrink-0 h-14 w-14 rounded-lg bg-white/5 border border-white/10 overflow-hidden">
+                <div
+                  key={i}
+                  className="relative shrink-0 h-14 w-14 overflow-hidden"
+                  style={{ borderRadius: 10, border: '1px solid var(--noir-border)', background: 'rgba(255,255,255,0.03)' }}
+                >
                   {pa.previewUrl ? (
                     <img src={pa.previewUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <svg className="h-5 w-5 text-[var(--mgsr-teal)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      <svg className="h-5 w-5" style={{ color: 'var(--mgsr-teal)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
                       </svg>
                     </div>
                   )}
                   <button
                     onClick={() => removePendingAttachment(i)}
-                    className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/70 text-white text-[10px] hover:bg-red-500"
+                    className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-white text-[10px] hover:bg-red-500"
+                    style={{ background: 'rgba(0,0,0,0.7)' }}
                   >×</button>
                 </div>
               ))}
@@ -822,23 +1147,31 @@ export default function ChatRoomPage() {
 
           {/* Uploading indicator */}
           {isUploading && (
-            <div className="flex items-center gap-2 px-4 py-1 text-xs text-gray-400">
-              <div className="h-3 w-3 animate-spin rounded-full border border-[var(--mgsr-teal)] border-t-transparent" />
+            <div className="flex items-center gap-2 px-7 py-1" style={{ fontSize: 12, color: 'var(--noir-muted)' }}>
+              <div className="h-3 w-3 animate-spin rounded-full border border-t-transparent" style={{ borderColor: 'var(--mgsr-teal)', borderTopColor: 'transparent' }} />
               {t('chat_room_uploading')}
             </div>
           )}
 
           {/* Input row */}
-          <div className="flex items-center gap-2 px-4 py-3">
-            {/* Attach button */}
+          <div className="flex items-center gap-2.5 px-7 py-4">
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isSending || isUploading}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-[var(--mgsr-teal)] hover:bg-white/10 transition disabled:opacity-40"
+              className="flex h-10 w-10 items-center justify-center shrink-0 transition-all disabled:opacity-40"
+              style={{
+                borderRadius: 12,
+                border: '1px solid var(--noir-border)',
+                background: 'transparent',
+                color: 'var(--noir-muted)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--noir-border-hover)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--noir-border)'; e.currentTarget.style.color = 'var(--noir-muted)'; }}
               title={t('chat_room_attach_file')}
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
               </svg>
             </button>
             <input
@@ -856,28 +1189,46 @@ export default function ChatRoomPage() {
               onChange={(e) => handleTextChange(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={t('chat_room_type_message')}
-              className="flex-1 rounded-full bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-[var(--mgsr-teal)]"
+              className="flex-1 outline-none transition-all"
+              style={{
+                padding: '11px 18px',
+                borderRadius: 14,
+                border: '1px solid var(--noir-border)',
+                background: 'rgba(255,255,255,0.02)',
+                color: 'var(--noir-text)',
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 13.5,
+              }}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = 'rgba(77,182,172,0.25)';
+                e.currentTarget.style.background = 'rgba(77,182,172,0.03)';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(77,182,172,0.06)';
+              }}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = 'var(--noir-border)';
+                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             />
             <button
               onClick={handleSend}
               disabled={(!text.trim() && pendingAttachments.length === 0) || isSending || isUploading || (showMentionDropdown && filteredPlayers.length > 0)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--mgsr-teal)] text-white transition hover:bg-teal-500 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex h-10 w-10 items-center justify-center shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                borderRadius: 12,
+                border: 'none',
+                background: 'var(--mgsr-teal)',
+                color: '#0a0b0f',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#5CC4BA'; e.currentTarget.style.boxShadow = '0 0 20px rgba(77,182,172,0.25)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--mgsr-teal)'; e.currentTarget.style.boxShadow = 'none'; }}
             >
               {isSending ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: '#0a0b0f', borderTopColor: 'transparent' }} />
               ) : (
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                  />
+                <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                  <path d="M12 19V5M5 12l7-7 7 7"/>
                 </svg>
               )}
             </button>
