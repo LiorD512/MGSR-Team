@@ -27,6 +27,7 @@ import { flattenPdf } from '@/lib/pdfFlatten';
 import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
 import AppLayout from '@/components/AppLayout';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
+import YouthHighlightsPanel from '@/components/YouthHighlightsPanel';
 import { type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import { usePlayerMatchResults } from '@/hooks/useMatchResults';
 import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
@@ -944,6 +945,15 @@ export default function YouthPlayerPage() {
 
           {/* Right column — Tasks + Notes */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Highlights */}
+            {player && id && (
+              <YouthHighlightsPanel
+                playerId={id}
+                pinnedHighlights={player.pinnedHighlights as any}
+                isRtl={isRtl}
+              />
+            )}
+
             {/* Tasks */}
             <div className={`${glassCard} p-4 sm:p-5`}>
               <div className="flex items-center justify-between mb-4">

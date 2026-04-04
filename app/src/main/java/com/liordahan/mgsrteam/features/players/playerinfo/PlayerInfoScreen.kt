@@ -179,6 +179,7 @@ import org.koin.compose.koinInject
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.features.players.playerinfo.highlights.PlayerHighlightsSection
+import com.liordahan.mgsrteam.features.players.playerinfo.highlights.YouthHighlightsSection
 import com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence.FmIntelligenceSection
 import com.liordahan.mgsrteam.utils.EuCountries
 import com.liordahan.mgsrteam.ui.components.WomenGlowPhotoRing
@@ -766,6 +767,17 @@ fun PlayerInfoScreen(
                         hasFetched = highlightsHasFetched,
                         onSearch = { refresh -> viewModel.searchHighlights(player, refresh) },
                         onSavePinned = { videos -> viewModel.savePinnedHighlights(videos) },
+                        isSaving = isHighlightsSaving
+                    )
+                }
+            }
+
+            // Section: Highlights (youth — manual URLs only)
+            if (currentPlatform == Platform.YOUTH) {
+                playerToPresent?.let { player ->
+                    YouthHighlightsSection(
+                        pinnedHighlights = player.pinnedHighlights ?: emptyList(),
+                        onSave = { highlights -> viewModel.saveYouthHighlights(highlights) },
                         isSaving = isHighlightsSaving
                     )
                 }

@@ -1222,6 +1222,18 @@
     <string name="highlights_cancel">Cancel</string>
     <string name="highlights_error">Failed to load highlights</string>
 
+    <!-- Youth Highlights -->
+    <string name="youth_highlights_add_video">Add video link</string>
+    <string name="youth_highlights_url_placeholder">Paste URL (YouTube, Instagram, TikTok…)</string>
+    <string name="youth_highlights_add">Add</string>
+    <string name="youth_highlights_invalid_url">Please paste a valid URL</string>
+    <string name="youth_highlights_already_added">This video is already added</string>
+    <string name="youth_highlights_supported_platforms">YouTube · Instagram · TikTok · and more</string>
+    <string name="youth_highlights_empty">No highlight videos yet</string>
+    <string name="youth_highlights_empty_subtitle">Paste a video link above to get started</string>
+    <string name="youth_highlights_saving">Saving…</string>
+    <string name="youth_highlights_remove">Remove video</string>
+
     <!-- FM Intelligence -->
     <string name="fm_section_title">FM Intelligence</string>
     <string name="fm_tab_intelligence">FM Intelligence</string>

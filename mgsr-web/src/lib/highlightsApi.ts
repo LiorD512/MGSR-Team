@@ -5,7 +5,7 @@
 
 export interface HighlightVideo {
   id: string;
-  source: 'youtube' | 'scorebat';
+  source: 'youtube' | 'scorebat' | 'instagram' | 'tiktok' | 'other';
   title: string;
   thumbnailUrl: string;
   embedUrl: string;
@@ -98,7 +98,9 @@ export async function savePinnedHighlights(
 ): Promise<void> {
   const { callPlayersUpdate } = await import('@/lib/callables');
   const platform = playerCollection === 'PlayersWomen' ? 'women' : playerCollection === 'PlayersYouth' ? 'youth' : 'men';
-  const toSave = videos.slice(0, MAX_PINNED).map((v) => ({
+  // Youth has no video limit; men/women are capped at MAX_PINNED
+  const limited = playerCollection === 'PlayersYouth' ? videos : videos.slice(0, MAX_PINNED);
+  const toSave = limited.map((v) => ({
     id: v.id,
     source: v.source,
     title: v.title,

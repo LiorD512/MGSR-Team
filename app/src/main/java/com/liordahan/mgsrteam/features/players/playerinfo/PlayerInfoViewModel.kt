@@ -116,6 +116,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val isHighlightsSaving: StateFlow<Boolean>
     abstract fun searchHighlights(player: Player, refresh: Boolean = false)
     abstract fun savePinnedHighlights(videos: List<com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightVideo>)
+    abstract fun saveYouthHighlights(highlights: List<com.liordahan.mgsrteam.features.players.models.PinnedHighlight>)
 
     // ── FM Intelligence ────────────────────────────────────────────
     abstract val fmIntelligenceFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence.FmIntelligenceData?>
@@ -1323,6 +1324,34 @@ class PlayerInfoViewModel(
                 // Update local state — Firestore listener will update pinnedHighlights on the model
             } catch (e: Exception) {
                 Log.e(TAG, "savePinnedHighlights failed", e)
+            } finally {
+                _isHighlightsSaving.value = false
+            }
+        }
+    }
+
+    override fun saveYouthHighlights(highlights: List<com.liordahan.mgsrteam.features.players.models.PinnedHighlight>) {
+        val docId = _playerDocumentIdFlow.value ?: return
+        viewModelScope.launch {
+            _isHighlightsSaving.value = true
+            try {
+                SharedCallables.playersUpdate(
+                    platformManager.value,
+                    docId,
+                    mapOf("pinnedHighlights" to highlights.map { v ->
+                        hashMapOf(
+                            "id" to v.id,
+                            "source" to v.source,
+                            "title" to v.title,
+                            "thumbnailUrl" to v.thumbnailUrl,
+                            "embedUrl" to v.embedUrl,
+                            "channelName" to (v.channelName ?: ""),
+                            "viewCount" to (v.viewCount ?: 0L)
+                        )
+                    })
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "saveYouthHighlights failed", e)
             } finally {
                 _isHighlightsSaving.value = false
             }

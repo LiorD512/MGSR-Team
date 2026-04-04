@@ -1151,6 +1151,18 @@
     <string name="highlights_cancel">ביטול</string>
     <string name="highlights_error">שגיאה בטעינת היילייטס</string>
 
+    <!-- Youth Highlights -->
+    <string name="youth_highlights_add_video">הוסף קישור לסרטון</string>
+    <string name="youth_highlights_url_placeholder">הדבק קישור (YouTube, Instagram, TikTok…)</string>
+    <string name="youth_highlights_add">הוסף</string>
+    <string name="youth_highlights_invalid_url">נא להדביק קישור תקין</string>
+    <string name="youth_highlights_already_added">הסרטון הזה כבר נוסף</string>
+    <string name="youth_highlights_supported_platforms">YouTube · Instagram · TikTok · ועוד</string>
+    <string name="youth_highlights_empty">אין סרטוני היילייטס עדיין</string>
+    <string name="youth_highlights_empty_subtitle">הדבק קישור לסרטון למעלה כדי להתחיל</string>
+    <string name="youth_highlights_saving">שומר…</string>
+    <string name="youth_highlights_remove">הסר סרטון</string>
+
     <!-- FM Intelligence -->
     <string name="fm_section_title">תובנות FM</string>
     <string name="fm_tab_intelligence">FM Intelligence</string>
