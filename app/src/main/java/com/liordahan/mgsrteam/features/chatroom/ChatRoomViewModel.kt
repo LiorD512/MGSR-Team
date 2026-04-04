@@ -3,8 +3,12 @@ package com.liordahan.mgsrteam.features.chatroom
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.net.Uri
+import com.google.firebase.storage.FirebaseStorage
+import com.liordahan.mgsrteam.features.chatroom.models.ChatAttachment
 import com.liordahan.mgsrteam.features.chatroom.models.ChatMessage
 import com.liordahan.mgsrteam.features.chatroom.models.PlayerMention
+import com.liordahan.mgsrteam.features.chatroom.models.ReplyTo
 import com.liordahan.mgsrteam.features.chatroom.repository.IChatRoomRepository
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
@@ -30,7 +34,10 @@ data class ChatRoomUiState(
     val isSending: Boolean = false,
     val isEditing: Boolean = false,
     val deletingMessageId: String? = null,
-    val highlightMessageId: String? = null
+    val highlightMessageId: String? = null,
+    val replyToMessage: ChatMessage? = null,
+    val pendingAttachments: List<ChatAttachment> = emptyList(),
+    val isUploading: Boolean = false
 )
 
 abstract class IChatRoomViewModel : ViewModel() {
@@ -40,6 +47,10 @@ abstract class IChatRoomViewModel : ViewModel() {
     abstract fun deleteMessage(messageId: String)
     abstract fun setHighlightMessage(messageId: String?)
     abstract fun searchPlayers(query: String): List<Player>
+    abstract fun setReplyTo(message: ChatMessage?)
+    abstract fun addAttachment(uri: Uri, fileName: String, mimeType: String, fileSize: Long)
+    abstract fun removeAttachment(index: Int)
+    abstract fun clearAttachments()
 }
 
 class ChatRoomViewModel(
@@ -102,12 +113,30 @@ class ChatRoomViewModel(
 
     override fun sendMessage(text: String, notifyAccountId: String?, mentions: List<PlayerMention>) {
         val account = _state.value.currentAccount ?: return
-        if (text.isBlank()) return
+        val pendingAttachments = _state.value.pendingAttachments
+        if (text.isBlank() && pendingAttachments.isEmpty()) return
 
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isSending = true)
             try {
                 val mentionMaps = mentions.map { mapOf("playerId" to it.playerId, "playerName" to it.playerName, "playerNameHe" to it.playerNameHe) }
+
+                // Build replyTo map if replying
+                val replyToMap = _state.value.replyToMessage?.let { reply ->
+                    mapOf(
+                        "messageId" to reply.id,
+                        "text" to reply.text,
+                        "senderName" to reply.senderName,
+                        "senderNameHe" to reply.senderNameHe
+                    )
+                }
+
+                // Build attachments list
+                val attachmentMaps = if (pendingAttachments.isNotEmpty()) {
+                    pendingAttachments.map {
+                        mapOf<String, Any>("url" to it.url, "name" to it.name, "type" to it.type, "size" to it.size)
+                    }
+                } else null
 
                 SharedCallables.chatRoomSend(
                     senderAccountId = account.id ?: "",
@@ -115,12 +144,18 @@ class ChatRoomViewModel(
                     senderNameHe = account.hebrewName ?: "",
                     text = text,
                     notifyAccountId = notifyAccountId ?: "",
-                    mentions = mentionMaps
+                    mentions = mentionMaps,
+                    replyTo = replyToMap,
+                    attachments = attachmentMaps
                 )
             } catch (e: Exception) {
                 android.util.Log.e("ChatRoom", "Send failed", e)
             } finally {
-                _state.value = _state.value.copy(isSending = false)
+                _state.value = _state.value.copy(
+                    isSending = false,
+                    replyToMessage = null,
+                    pendingAttachments = emptyList()
+                )
             }
         }
     }
@@ -171,5 +206,44 @@ class ChatRoomViewModel(
         return _state.value.players
             .filter { it.fullName?.lowercase()?.contains(q) == true }
             .take(5)
+    }
+
+    override fun setReplyTo(message: ChatMessage?) {
+        _state.value = _state.value.copy(replyToMessage = message)
+    }
+
+    override fun addAttachment(uri: Uri, fileName: String, mimeType: String, fileSize: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.value = _state.value.copy(isUploading = true)
+            try {
+                val storagePath = "ChatRoom/${System.currentTimeMillis()}_$fileName"
+                val ref = FirebaseStorage.getInstance().reference.child(storagePath)
+                ref.putFile(uri).await()
+                val downloadUrl = ref.downloadUrl.await().toString()
+                val attachment = ChatAttachment(
+                    url = downloadUrl,
+                    name = fileName,
+                    type = mimeType,
+                    size = fileSize
+                )
+                _state.value = _state.value.copy(
+                    pendingAttachments = _state.value.pendingAttachments + attachment
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("ChatRoom", "Upload failed", e)
+            } finally {
+                _state.value = _state.value.copy(isUploading = false)
+            }
+        }
+    }
+
+    override fun removeAttachment(index: Int) {
+        val current = _state.value.pendingAttachments.toMutableList()
+        if (index in current.indices) current.removeAt(index)
+        _state.value = _state.value.copy(pendingAttachments = current)
+    }
+
+    override fun clearAttachments() {
+        _state.value = _state.value.copy(pendingAttachments = emptyList())
     }
 }

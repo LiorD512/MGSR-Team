@@ -319,6 +319,8 @@ export interface ChatRoomSendPayload {
   senderNameHe: string;
   mentions: { playerId: string; playerName: string }[];
   notifyAccountId?: string;
+  replyTo?: { messageId: string; text: string; senderName: string; senderNameHe: string };
+  attachments?: { url: string; name: string; type: string; size: number }[];
 }
 
 export const callChatRoomSend = callable<ChatRoomSendPayload, { id: string }>('chatRoomSend');

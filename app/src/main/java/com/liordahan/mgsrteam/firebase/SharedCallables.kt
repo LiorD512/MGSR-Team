@@ -429,16 +429,21 @@ object SharedCallables {
         senderNameHe: String,
         text: String,
         notifyAccountId: String,
-        mentions: List<Map<String, String>>
+        mentions: List<Map<String, String>>,
+        replyTo: Map<String, String>? = null,
+        attachments: List<Map<String, Any>>? = null
     ): String? {
-        val result = call("chatRoomSend", mapOf(
+        val data = mutableMapOf<String, Any>(
             "senderAccountId" to senderAccountId,
             "senderName" to senderName,
             "senderNameHe" to senderNameHe,
             "text" to text,
             "notifyAccountId" to notifyAccountId,
             "mentions" to mentions,
-        ))
+        )
+        if (replyTo != null) data["replyTo"] = replyTo
+        if (!attachments.isNullOrEmpty()) data["attachments"] = attachments
+        val result = call("chatRoomSend", data)
         return result["id"] as? String
     }
 

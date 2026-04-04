@@ -1586,4 +1586,10 @@
     <string name="chat_room_save">שמור</string>
     <string name="chat_room_cancel">ביטול</string>
     <string name="chat_room_players_matching">🔍 שחקנים תואמים "%1$s"</string>
+    <string name="chat_room_reply">השב</string>
+    <string name="chat_room_replying_to">משיב ל-%1$s</string>
+    <string name="chat_room_photo">📷 תמונה</string>
+    <string name="chat_room_file">📎 קובץ</string>
+    <string name="chat_room_attachment">📎 קובץ מצורף</string>
+    <string name="chat_room_uploading">מעלה…</string>
 </resources>

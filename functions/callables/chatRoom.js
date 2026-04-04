@@ -10,6 +10,8 @@
  *   - createdAt: number (epoch ms)
  *   - notifyAccountId: string | "" (target user for push)
  *   - mentions: Array<{ playerId: string, playerName: string }> (embedded player refs)
+ *   - replyTo: { messageId: string, text: string, senderName: string } | null
+ *   - attachments: Array<{ url: string, name: string, type: string, size: number }> | []
  */
 
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
@@ -49,15 +51,17 @@ async function chatRoomSend(data) {
     senderNameHe,
     notifyAccountId,
     mentions,
+    replyTo,
+    attachments,
   } = data;
 
-  if (!text || !senderAccountId) {
-    throw new Error("text and senderAccountId are required");
+  if ((!text && (!attachments || attachments.length === 0)) || !senderAccountId) {
+    throw new Error("text or attachments, and senderAccountId are required");
   }
 
   const now = Date.now();
   const docData = {
-    text: text,
+    text: text || "",
     senderAccountId: senderAccountId,
     senderName: senderName || "",
     senderNameHe: senderNameHe || "",
@@ -66,12 +70,34 @@ async function chatRoomSend(data) {
     mentions: mentions || [],
   };
 
+  // Reply-to reference
+  if (replyTo && replyTo.messageId) {
+    docData.replyTo = {
+      messageId: replyTo.messageId,
+      text: (replyTo.text || "").substring(0, 200),
+      senderName: replyTo.senderName || "",
+      senderNameHe: replyTo.senderNameHe || "",
+    };
+  }
+
+  // File/photo attachments (URLs already uploaded by client to Storage)
+  if (Array.isArray(attachments) && attachments.length > 0) {
+    docData.attachments = attachments.map((a) => ({
+      url: a.url || "",
+      name: a.name || "",
+      type: a.type || "",
+      size: a.size || 0,
+    }));
+  }
+
   const db = getDb();
   const docRef = await db.collection(CHAT_ROOM_COLLECTION).add(docData);
   const messageId = docRef.id;
 
   const displayName = senderName || senderNameHe || "Someone";
-  const previewText = text.length > 120 ? text.substring(0, 120) + "…" : text;
+  const hasAttachments = Array.isArray(docData.attachments) && docData.attachments.length > 0;
+  const rawPreview = text || (hasAttachments ? "📎 Attachment" : "");
+  const previewText = rawPreview.length > 120 ? rawPreview.substring(0, 120) + "…" : rawPreview;
 
   /**
    * Build FCM payload shared by single-target and notify-all paths.

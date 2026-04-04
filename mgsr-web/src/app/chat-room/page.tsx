@@ -5,13 +5,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import AppLayout from '@/components/AppLayout';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import {
   collection,
   query,
   orderBy,
   onSnapshot,
 } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   getCurrentAccountForShortlist,
   getAllAccounts,
@@ -39,6 +40,23 @@ interface ChatMessage {
   targetAccountId?: string;
   createdAt: number;
   editedAt?: number;
+  replyTo?: {
+    messageId: string;
+    text: string;
+    senderName: string;
+    senderNameHe: string;
+  };
+  attachments?: {
+    url: string;
+    name: string;
+    type: string;
+    size: number;
+  }[];
+}
+
+interface PendingAttachment {
+  file: File;
+  previewUrl?: string;
 }
 
 interface Player {
@@ -111,6 +129,14 @@ export default function ChatRoomPage() {
   const [collectedMentions, setCollectedMentions] = useState<PlayerMention[]>(
     []
   );
+
+  /* reply state */
+  const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null);
+
+  /* attachment state */
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -246,9 +272,37 @@ export default function ChatRoomPage() {
   };
 
   const handleSend = async () => {
-    if (!text.trim() || !currentAccount || isSending) return;
+    if ((!text.trim() && pendingAttachments.length === 0) || !currentAccount || isSending) return;
     setIsSending(true);
     try {
+      // Upload pending attachments to Firebase Storage
+      let uploadedAttachments: { url: string; name: string; type: string; size: number }[] | undefined;
+      if (pendingAttachments.length > 0) {
+        setIsUploading(true);
+        uploadedAttachments = [];
+        for (const pa of pendingAttachments) {
+          const storagePath = `ChatRoom/${Date.now()}_${pa.file.name}`;
+          const storageRef = ref(storage, storagePath);
+          await uploadBytes(storageRef, pa.file);
+          const downloadUrl = await getDownloadURL(storageRef);
+          uploadedAttachments.push({
+            url: downloadUrl,
+            name: pa.file.name,
+            type: pa.file.type || 'application/octet-stream',
+            size: pa.file.size,
+          });
+        }
+        setIsUploading(false);
+      }
+
+      // Build replyTo payload
+      const replyTo = replyToMessage ? {
+        messageId: replyToMessage.id,
+        text: replyToMessage.text.substring(0, 200),
+        senderName: replyToMessage.senderName,
+        senderNameHe: replyToMessage.senderNameHe,
+      } : undefined;
+
       await callChatRoomSend({
         text: text.trim(),
         senderAccountId: currentAccount.id,
@@ -259,12 +313,17 @@ export default function ChatRoomPage() {
           playerName: m.playerName,
         })),
         notifyAccountId: targetAccountId || undefined,
+        replyTo,
+        attachments: uploadedAttachments,
       });
       setText('');
       setCollectedMentions([]);
       setTargetAccountId(null);
+      setReplyToMessage(null);
+      setPendingAttachments([]);
     } catch (err) {
       console.error('Failed to send message:', err);
+      setIsUploading(false);
     } finally {
       setIsSending(false);
     }
@@ -280,6 +339,33 @@ export default function ChatRoomPage() {
       }
       handleSend();
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newAttachments: PendingAttachment[] = Array.from(files).map((file) => ({
+      file,
+      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+    }));
+    setPendingAttachments((prev) => [...prev, ...newAttachments]);
+    // Reset input so same file can be picked again
+    e.target.value = '';
+  };
+
+  const removePendingAttachment = (index: number) => {
+    setPendingAttachments((prev) => {
+      const copy = [...prev];
+      if (copy[index]?.previewUrl) URL.revokeObjectURL(copy[index].previewUrl!);
+      copy.splice(index, 1);
+      return copy;
+    });
+  };
+
+  const scrollToMessage = (messageId: string) => {
+    setHighlightId(messageId);
+    document.getElementById(`msg-${messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => setHighlightId(null), 2000);
   };
 
   const handleEditSave = async () => {
@@ -455,23 +541,30 @@ export default function ChatRoomPage() {
                     id={`msg-${msg.id}`}
                     className={`group flex ${isOwn ? (isRtl ? 'justify-start' : 'justify-end') : (isRtl ? 'justify-end' : 'justify-start')}`}
                   >
-                    {/* own-message action buttons (left of bubble) */}
-                    {isOwn && editingMessageId !== msg.id && (
-                      <div className="mr-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => { setEditingMessageId(msg.id); setEditText(msg.text); }}
-                          disabled={!!deletingMsgId || isEditSaving}
-                          className="rounded p-1 text-xs text-gray-400 hover:bg-white/10 hover:text-white disabled:opacity-30"
-                          title="Edit"
-                        >✏️</button>
-                        <button
-                          onClick={() => handleDelete(msg.id)}
-                          disabled={!!deletingMsgId || isEditSaving}
-                          className="rounded p-1 text-xs text-gray-400 hover:bg-red-500/20 hover:text-red-400 disabled:opacity-30"
-                          title="Delete"
-                        >🗑️</button>
-                      </div>
-                    )}
+                    {/* action buttons (left of bubble for own, right for others) */}
+                    <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ${isOwn ? 'mr-2 order-first' : 'ml-2 order-last'}`}>
+                      <button
+                        onClick={() => setReplyToMessage(msg)}
+                        className="rounded p-1 text-xs text-gray-400 hover:bg-white/10 hover:text-[var(--mgsr-teal)]"
+                        title="Reply"
+                      >↩️</button>
+                      {isOwn && editingMessageId !== msg.id && (
+                        <>
+                          <button
+                            onClick={() => { setEditingMessageId(msg.id); setEditText(msg.text); }}
+                            disabled={!!deletingMsgId || isEditSaving}
+                            className="rounded p-1 text-xs text-gray-400 hover:bg-white/10 hover:text-white disabled:opacity-30"
+                            title="Edit"
+                          >✏️</button>
+                          <button
+                            onClick={() => handleDelete(msg.id)}
+                            disabled={!!deletingMsgId || isEditSaving}
+                            className="rounded p-1 text-xs text-gray-400 hover:bg-red-500/20 hover:text-red-400 disabled:opacity-30"
+                            title="Delete"
+                          >🗑️</button>
+                        </>
+                      )}
+                    </div>
                     <div
                       className={`relative max-w-[70%] rounded-2xl px-4 py-2 transition-all duration-500 ${
                         isHighlighted
@@ -500,6 +593,49 @@ export default function ChatRoomPage() {
                           {senderDisplayName(msg)}
                         </p>
                       )}
+                      {/* Reply-to preview */}
+                      {msg.replyTo && (
+                        <div
+                          className="mb-1.5 rounded-md px-2 py-1.5 cursor-pointer"
+                          style={{ background: 'rgba(255,255,255,0.06)', borderLeft: `3px solid ${sc.accent}` }}
+                          onClick={() => scrollToMessage(msg.replyTo!.messageId)}
+                        >
+                          <p className="text-[10px] font-semibold" style={{ color: sc.accent }}>
+                            {isHe ? (msg.replyTo.senderNameHe || msg.replyTo.senderName) : (msg.replyTo.senderName || msg.replyTo.senderNameHe)}
+                          </p>
+                          <p className="text-[11px] text-gray-400 truncate">{msg.replyTo.text.substring(0, 80)}</p>
+                        </div>
+                      )}
+                      {/* Attachments */}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="mb-1 space-y-1">
+                          {msg.attachments.map((att, ai) => {
+                            const isImage = att.type.startsWith('image/');
+                            return isImage ? (
+                              <a key={ai} href={att.url} target="_blank" rel="noopener noreferrer">
+                                <img
+                                  src={att.url}
+                                  alt={att.name}
+                                  className="max-h-48 rounded-lg object-cover cursor-pointer hover:opacity-90 transition"
+                                />
+                              </a>
+                            ) : (
+                              <a
+                                key={ai}
+                                href={att.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 rounded-md bg-white/5 px-2 py-1.5 text-xs text-[var(--mgsr-teal)] hover:bg-white/10 transition"
+                              >
+                                <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                <span className="truncate">{att.name}</span>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
                       {editingMessageId === msg.id ? (
                         <div className="flex flex-col gap-1">
                           <input
@@ -520,11 +656,11 @@ export default function ChatRoomPage() {
                             <button onClick={() => { if (!isEditSaving) { setEditingMessageId(null); setEditText(''); } }} className="text-gray-400 hover:underline disabled:opacity-50" disabled={isEditSaving}>{t('chat_room_cancel')}</button>
                           </div>
                         </div>
-                      ) : (
+                      ) : msg.text ? (
                         <p className="text-sm leading-relaxed break-words">
                           {renderMessageText(msg)}
                         </p>
-                      )}
+                      ) : null}
                       <p
                         className={`mt-1 text-[10px] ${
                           isOwn ? 'text-white/60' : 'text-gray-500'
@@ -627,40 +763,113 @@ export default function ChatRoomPage() {
           </div>
         )}
 
-        {/* Input bar */}
-        <div className="flex items-center gap-2 border-t border-white/10 bg-[var(--mgsr-dark)] px-4 py-3">
-          <input
-            ref={inputRef}
-            type="text"
-            value={text}
-            onChange={(e) => handleTextChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t('chat_room_type_message')}
-            className="flex-1 rounded-full bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-[var(--mgsr-teal)]"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!text.trim() || isSending || (showMentionDropdown && filteredPlayers.length > 0)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--mgsr-teal)] text-white transition hover:bg-teal-500 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {isSending ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            ) : (
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                />
+        {/* Reply preview + Pending attachments + Input bar */}
+        <div className="border-t border-white/10 bg-[var(--mgsr-dark)]">
+          {/* Reply preview bar */}
+          {replyToMessage && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-[var(--mgsr-teal)]/5 border-b border-white/5">
+              <div className="w-1 h-8 rounded-full bg-[var(--mgsr-teal)]" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-[var(--mgsr-teal)]">
+                  {isHe ? (replyToMessage.senderNameHe || replyToMessage.senderName) : (replyToMessage.senderName || replyToMessage.senderNameHe)}
+                </p>
+                <p className="text-xs text-gray-400 truncate">
+                  {replyToMessage.text.substring(0, 80) || '📎 Attachment'}
+                </p>
+              </div>
+              <button onClick={() => setReplyToMessage(null)} className="text-gray-400 hover:text-white p-1">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Pending attachments preview */}
+          {pendingAttachments.length > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 overflow-x-auto">
+              {pendingAttachments.map((pa, i) => (
+                <div key={i} className="relative shrink-0 h-14 w-14 rounded-lg bg-white/5 border border-white/10 overflow-hidden">
+                  {pa.previewUrl ? (
+                    <img src={pa.previewUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <svg className="h-5 w-5 text-[var(--mgsr-teal)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => removePendingAttachment(i)}
+                    className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/70 text-white text-[10px] hover:bg-red-500"
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Uploading indicator */}
+          {isUploading && (
+            <div className="flex items-center gap-2 px-4 py-1 text-xs text-gray-400">
+              <div className="h-3 w-3 animate-spin rounded-full border border-[var(--mgsr-teal)] border-t-transparent" />
+              Uploading…
+            </div>
+          )}
+
+          {/* Input row */}
+          <div className="flex items-center gap-2 px-4 py-3">
+            {/* Attach button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isSending || isUploading}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-[var(--mgsr-teal)] hover:bg-white/10 transition disabled:opacity-40"
+              title="Attach file"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
               </svg>
-            )}
-          </button>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,application/pdf,video/*,.doc,.docx,.xls,.xlsx"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <input
+              ref={inputRef}
+              type="text"
+              value={text}
+              onChange={(e) => handleTextChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t('chat_room_type_message')}
+              className="flex-1 rounded-full bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-[var(--mgsr-teal)]"
+            />
+            <button
+              onClick={handleSend}
+              disabled={(!text.trim() && pendingAttachments.length === 0) || isSending || isUploading || (showMentionDropdown && filteredPlayers.length > 0)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--mgsr-teal)] text-white transition hover:bg-teal-500 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isSending ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </AppLayout>

@@ -1,6 +1,8 @@
 package com.liordahan.mgsrteam.features.chatroom
 
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
@@ -24,9 +26,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Reply
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -53,7 +59,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.features.chatroom.models.ChatAttachment
 import com.liordahan.mgsrteam.features.chatroom.models.ChatMessage
 import com.liordahan.mgsrteam.features.chatroom.models.PlayerMention
 import com.liordahan.mgsrteam.features.login.models.Account
@@ -136,6 +144,27 @@ fun ChatRoomScreen(
     var showActionsForMessage by remember { mutableStateOf<ChatMessage?>(null) }
     var editingMessage by remember { mutableStateOf<ChatMessage?>(null) }
     var editText by remember { mutableStateOf("") }
+
+    // File picker launcher
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        val contentResolver = context.contentResolver
+        val mimeType = contentResolver.getType(uri) ?: "application/octet-stream"
+        val cursor = contentResolver.query(uri, null, null, null, null)
+        var fileName = "file"
+        var fileSize = 0L
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val nameIdx = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                val sizeIdx = it.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                if (nameIdx >= 0) fileName = it.getString(nameIdx) ?: "file"
+                if (sizeIdx >= 0) fileSize = it.getLong(sizeIdx)
+            }
+        }
+        viewModel.addAttachment(uri, fileName, mimeType, fileSize)
+    }
 
     // Set highlight from deep link
     LaunchedEffect(highlightMessageId) {
@@ -259,9 +288,18 @@ fun ChatRoomScreen(
                                 val navId = player?.tmProfile ?: playerId
                                 navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(navId)}")
                             },
-                            onLongClick = if (isMine) {
-                                { showActionsForMessage = message }
-                            } else null
+                            onLongClick = { showActionsForMessage = message },
+                            onScrollToReply = { messageId ->
+                                val idx = uiState.messages.indexOfFirst { it.id == messageId }
+                                if (idx >= 0) {
+                                    scope.launch {
+                                        viewModel.setHighlightMessage(messageId)
+                                        listState.animateScrollToItem(idx)
+                                        delay(2000)
+                                        viewModel.setHighlightMessage(null)
+                                    }
+                                }
+                            }
                         )
                     }
                 }
@@ -306,7 +344,7 @@ fun ChatRoomScreen(
             )
         }
 
-        // ═══ Composer ═══
+        // ═══ Reply preview + pending attachments + Composer ═══
         ChatComposer(
             textFieldValue = messageTextFieldValue,
             onTextFieldValueChange = { messageTextFieldValue = it },
@@ -314,9 +352,18 @@ fun ChatRoomScreen(
             notifyAll = notifyAll,
             onClearNotifyTarget = { notifyTarget = null; notifyAll = false },
             isSending = uiState.isSending,
+            isUploading = uiState.isUploading,
             sendEnabled = !showMentionDropdown || mentionResults.isEmpty(),
+            replyToMessage = uiState.replyToMessage,
+            onCancelReply = { viewModel.setReplyTo(null) },
+            pendingAttachments = uiState.pendingAttachments,
+            onRemoveAttachment = { viewModel.removeAttachment(it) },
+            onAttachClick = {
+                filePickerLauncher.launch(arrayOf("image/*", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "video/*", "*/*"))
+            },
+            isHebrew = isHebrew,
             onSend = {
-                if (messageText.isNotBlank()) {
+                if (messageText.isNotBlank() || uiState.pendingAttachments.isNotEmpty()) {
                     val resolvedNotifyId = when {
                         notifyAll -> "ALL"
                         notifyTarget != null -> notifyTarget?.id
@@ -364,11 +411,17 @@ fun ChatRoomScreen(
         )
     }
 
-    // ═══ Message Actions Bottom Sheet (edit/delete) ═══
+    // ═══ Message Actions Bottom Sheet (reply / edit / delete) ═══
     showActionsForMessage?.let { msg ->
+        val isMineMsg = msg.senderAccountId == uiState.currentAccount?.id
         MessageActionsSheet(
             message = msg,
+            isMine = isMineMsg,
             isHebrew = isHebrew,
+            onReply = {
+                viewModel.setReplyTo(msg)
+                showActionsForMessage = null
+            },
             onEdit = {
                 editingMessage = msg
                 editText = msg.text
@@ -486,7 +539,8 @@ private fun ChatBubble(
     isHebrew: Boolean,
     senderColor: Color,
     onPlayerClick: (String) -> Unit,
-    onLongClick: (() -> Unit)? = null
+    onLongClick: (() -> Unit)? = null,
+    onScrollToReply: (String) -> Unit = {}
 ) {
     val highlightBg by animateColorAsState(
         targetValue = if (isHighlighted) HighlightColor.copy(alpha = 0.12f) else Color.Transparent,
@@ -548,13 +602,103 @@ private fun ChatBubble(
                 )
                 Spacer(Modifier.height(2.dp))
 
+                // ── Reply-to preview ──
+                message.replyTo?.let { reply ->
+                    val replySenderName = if (isHebrew) {
+                        reply.senderNameHe.ifBlank { reply.senderName }
+                    } else {
+                        reply.senderName.ifBlank { reply.senderNameHe }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(senderColor.copy(alpha = 0.08f))
+                            .border(0.dp, Color.Transparent, RoundedCornerShape(6.dp))
+                            .clickable { onScrollToReply(reply.messageId) }
+                            .padding(start = 8.dp, end = 6.dp, top = 4.dp, bottom = 4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(2.dp)
+                                .height(28.dp)
+                                .clip(RoundedCornerShape(1.dp))
+                                .background(senderColor.copy(alpha = 0.6f))
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = replySenderName,
+                                color = senderColor,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 10.5.sp,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = reply.text.take(80),
+                                color = MutedText,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
+
+                // ── Attachments ──
+                if (message.attachments.isNotEmpty()) {
+                    message.attachments.forEach { attachment ->
+                        val isImage = attachment.type.startsWith("image/")
+                        if (isImage) {
+                            AsyncImage(
+                                model = attachment.url,
+                                contentDescription = attachment.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                            )
+                        } else {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color.White.copy(alpha = 0.06f))
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.InsertDriveFile,
+                                    contentDescription = null,
+                                    tint = TealAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = attachment.name,
+                                    color = TealAccent,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                    }
+                }
+
                 // Message text with clickable player mentions
-                MessageTextWithMentions(
-                    text = message.text,
-                    mentions = message.mentions,
-                    isHebrew = isHebrew,
-                    onPlayerClick = onPlayerClick
-                )
+                if (message.text.isNotBlank()) {
+                    MessageTextWithMentions(
+                        text = message.text,
+                        mentions = message.mentions,
+                        isHebrew = isHebrew,
+                        onPlayerClick = onPlayerClick
+                    )
+                }
 
                 // Time + edited indicator
                 Row(
@@ -750,19 +894,148 @@ private fun ChatComposer(
     notifyAll: Boolean,
     onClearNotifyTarget: () -> Unit,
     isSending: Boolean,
+    isUploading: Boolean = false,
     sendEnabled: Boolean = true,
+    replyToMessage: ChatMessage? = null,
+    onCancelReply: () -> Unit = {},
+    pendingAttachments: List<ChatAttachment> = emptyList(),
+    onRemoveAttachment: (Int) -> Unit = {},
+    onAttachClick: () -> Unit = {},
+    isHebrew: Boolean = false,
     onSend: () -> Unit
 ) {
     val text = textFieldValue.text
+    val hasContent = text.isNotBlank() || pendingAttachments.isNotEmpty()
     HorizontalDivider(color = BorderColor, thickness = 1.dp)
-    Row(
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xFF0F1923))
-            .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.Bottom
     ) {
+        // ── Reply preview bar ──
+        replyToMessage?.let { reply ->
+            val replySenderName = if (isHebrew) {
+                reply.senderNameHe.ifBlank { reply.senderName }
+            } else {
+                reply.senderName.ifBlank { reply.senderNameHe }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(TealAccent.copy(alpha = 0.08f))
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(1.5.dp))
+                        .background(TealAccent)
+                )
+                Spacer(Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.chat_room_replying_to, replySenderName),
+                        color = TealAccent,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 11.sp
+                    )
+                    Text(
+                        text = reply.text.take(60),
+                        color = MutedText,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                IconButton(onClick = onCancelReply, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = null, tint = MutedText, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
+
+        // ── Pending attachments preview ──
+        if (pendingAttachments.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                pendingAttachments.forEachIndexed { index, att ->
+                    val isImage = att.type.startsWith("image/")
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(CardBg)
+                            .border(1.dp, BorderColor, RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isImage) {
+                            AsyncImage(
+                                model = att.url,
+                                contentDescription = att.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp))
+                            )
+                        } else {
+                            Icon(Icons.Default.InsertDriveFile, contentDescription = null, tint = TealAccent, modifier = Modifier.size(24.dp))
+                        }
+                        // Remove button
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.6f))
+                                .clickable { onRemoveAttachment(index) }
+                                .padding(2.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // ── Uploading indicator ──
+        if (isUploading) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), color = TealAccent, strokeWidth = 2.dp)
+                Text(text = stringResource(R.string.chat_room_uploading), color = MutedText, fontSize = 12.sp)
+            }
+        }
+
+        // ── Input row ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            // Attach button
+            IconButton(
+                onClick = onAttachClick,
+                enabled = !isUploading && !isSending,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(TealAccent.copy(alpha = 0.1f))
+            ) {
+                Icon(Icons.Default.AttachFile, contentDescription = null, tint = TealAccent, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(6.dp))
         Row(
             modifier = Modifier
                 .weight(1f)
@@ -873,12 +1146,12 @@ private fun ChatComposer(
         Spacer(Modifier.width(10.dp))
         IconButton(
             onClick = onSend,
-            enabled = text.isNotBlank() && !isSending && sendEnabled,
+            enabled = hasContent && !isSending && !isUploading && sendEnabled,
             modifier = Modifier
                 .size(42.dp)
                 .clip(CircleShape)
                 .background(
-                    if (text.isNotBlank()) Brush.linearGradient(
+                    if (hasContent) Brush.linearGradient(
                         listOf(TealAccent, Color(0xFF2D8A80))
                     ) else SolidColor(BorderColor)
                 )
@@ -898,7 +1171,8 @@ private fun ChatComposer(
                 )
             }
         }
-    }
+    } // Row
+    } // Column
 }
 
 // ═══ Members Bottom Sheet ═══
@@ -1064,12 +1338,14 @@ private fun MembersBottomSheet(
     }
 }
 
-// ═══ Message Actions Bottom Sheet (Edit / Delete) ═══
+// ═══ Message Actions Bottom Sheet (Reply / Edit / Delete) ═══
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MessageActionsSheet(
     message: ChatMessage,
+    isMine: Boolean,
     isHebrew: Boolean,
+    onReply: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit
@@ -1088,7 +1364,7 @@ private fun MessageActionsSheet(
         ) {
             // Preview of the message
             Text(
-                text = message.text,
+                text = message.text.ifBlank { stringResource(R.string.chat_room_attachment) },
                 color = MutedText,
                 fontSize = 13.sp,
                 maxLines = 2,
@@ -1096,44 +1372,67 @@ private fun MessageActionsSheet(
                 modifier = Modifier.padding(bottom = 14.dp)
             )
 
-            // Edit button
+            // Reply button (always available)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .clickable { onEdit() }
+                    .clickable { onReply() }
                     .padding(horizontal = 12.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("✏️", fontSize = 18.sp)
+                Icon(Icons.Default.Reply, contentDescription = null, tint = TealAccent, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    text = stringResource(R.string.chat_room_edit_message),
+                    text = stringResource(R.string.chat_room_reply),
                     color = Color.White,
                     fontWeight = FontWeight.Medium,
                     fontSize = 15.sp
                 )
             }
 
-            HorizontalDivider(color = BorderColor, modifier = Modifier.padding(vertical = 2.dp))
+            if (isMine) {
+                HorizontalDivider(color = BorderColor, modifier = Modifier.padding(vertical = 2.dp))
 
-            // Delete button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable { onDelete() }
-                    .padding(horizontal = 12.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("🗑️", fontSize = 18.sp)
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = stringResource(R.string.chat_room_delete_message),
-                    color = RoseAccent,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 15.sp
-                )
+                // Edit button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { onEdit() }
+                        .padding(horizontal = 12.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("✏️", fontSize = 18.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.chat_room_edit_message),
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 15.sp
+                    )
+                }
+
+                HorizontalDivider(color = BorderColor, modifier = Modifier.padding(vertical = 2.dp))
+
+                // Delete button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { onDelete() }
+                        .padding(horizontal = 12.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🗑️", fontSize = 18.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.chat_room_delete_message),
+                        color = RoseAccent,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 15.sp
+                    )
+                }
             }
         }
     }

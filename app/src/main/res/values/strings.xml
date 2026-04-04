@@ -1595,4 +1595,10 @@
     <string name="chat_room_save">Save</string>
     <string name="chat_room_cancel">Cancel</string>
     <string name="chat_room_players_matching">🔍 Players matching "%1$s"</string>
+    <string name="chat_room_reply">Reply</string>
+    <string name="chat_room_replying_to">Replying to %1$s</string>
+    <string name="chat_room_photo">📷 Photo</string>
+    <string name="chat_room_file">📎 File</string>
+    <string name="chat_room_attachment">📎 Attachment</string>
+    <string name="chat_room_uploading">Uploading…</string>
 </resources>

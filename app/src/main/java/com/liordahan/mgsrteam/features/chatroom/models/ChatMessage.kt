@@ -11,6 +11,22 @@ data class PlayerMention(
 )
 
 @Keep
+data class ReplyTo(
+    val messageId: String = "",
+    val text: String = "",
+    val senderName: String = "",
+    val senderNameHe: String = ""
+)
+
+@Keep
+data class ChatAttachment(
+    val url: String = "",
+    val name: String = "",
+    val type: String = "",
+    val size: Long = 0L
+)
+
+@Keep
 data class ChatMessage(
     @DocumentId
     val id: String = "",
@@ -21,5 +37,7 @@ data class ChatMessage(
     val createdAt: Long = 0L,
     val notifyAccountId: String = "",
     val mentions: List<PlayerMention> = emptyList(),
-    val editedAt: Long? = null
+    val editedAt: Long? = null,
+    val replyTo: ReplyTo? = null,
+    val attachments: List<ChatAttachment> = emptyList()
 )
