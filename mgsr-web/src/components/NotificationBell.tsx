@@ -36,6 +36,8 @@ async function ensureTokenSaved(accountId: string): Promise<string | null> {
   const messaging = await getMessagingInstance();
   if (!messaging) return null;
   const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+  // Wait for the service worker to be fully active before requesting a token
+  await navigator.serviceWorker.ready;
   if (!swReg.active) {
     await new Promise<void>((resolve) => {
       const sw = swReg.installing || swReg.waiting;
@@ -43,12 +45,19 @@ async function ensureTokenSaved(accountId: string): Promise<string | null> {
       sw.addEventListener('statechange', () => { if (sw.state === 'activated') resolve(); });
     });
   }
-  // Delete stale token to force fresh push subscription (prevents born-dead tokens)
-  await deleteToken(messaging).catch(() => {});
-  const token = await getToken(messaging, {
+  // First try getToken without deleting — reuses existing valid subscription
+  let token = await getToken(messaging, {
     vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '',
     serviceWorkerRegistration: swReg,
   }).catch(() => null);
+  // If that failed, delete and retry with a fresh push subscription
+  if (!token) {
+    await deleteToken(messaging).catch(() => {});
+    token = await getToken(messaging, {
+      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '',
+      serviceWorkerRegistration: swReg,
+    }).catch(() => null);
+  }
   if (!token) return null;
   await saveWebFcmToken(accountId, token);
   // Subscribe to broadcast topic
