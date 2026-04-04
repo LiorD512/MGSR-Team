@@ -252,8 +252,9 @@ export default function ChatRoomPage() {
       const online = new Set<string>();
       for (const d of snap.docs) {
         const data = d.data();
-        const ts = data.lastActive?.toMillis?.() || 0;
-        if (now - ts < 3 * 60_000) { // active within 3 minutes
+        const ts = data.lastActive?.toMillis?.();
+        // Pending serverTimestamp (local write) shows as null — treat as online
+        if (ts === undefined || ts === null || (now - ts < 3 * 60_000)) {
           online.add(d.id);
         }
       }
@@ -640,19 +641,6 @@ export default function ChatRoomPage() {
 
           {/* Header actions */}
           <div className={`flex gap-1 ${isRtl ? 'mr-auto' : 'ml-auto'}`}>
-            {/* Members button */}
-            <button
-              className="flex h-9 w-9 items-center justify-center transition-all"
-              style={{ borderRadius: 10, border: '1px solid var(--noir-border)', background: 'transparent', color: 'var(--noir-muted)' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--noir-border-hover)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--noir-border)'; e.currentTarget.style.color = 'var(--noir-muted)'; }}
-              title={t('chat_room_members_count')}
-            >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
-              </svg>
-            </button>
             {/* Search toggle */}
             <button
               onClick={() => {
@@ -1039,9 +1027,9 @@ export default function ChatRoomPage() {
                 fontSize: 11,
                 fontWeight: 500,
                 whiteSpace: 'nowrap',
-                border: `1px solid ${targetAccountId === 'ALL' ? 'rgba(201,168,76,0.4)' : 'rgba(201,168,76,0.25)'}`,
-                color: 'var(--noir-gold)',
-                background: targetAccountId === 'ALL' ? 'rgba(201,168,76,0.12)' : 'rgba(201,168,76,0.05)',
+                border: `1px solid ${targetAccountId === 'ALL' ? 'rgba(201,168,76,0.4)' : 'var(--noir-border)'}`,
+                color: targetAccountId === 'ALL' ? 'var(--noir-gold)' : 'rgba(255,255,255,0.5)',
+                background: targetAccountId === 'ALL' ? 'rgba(201,168,76,0.12)' : 'transparent',
                 cursor: 'pointer',
               }}
             >
