@@ -218,6 +218,68 @@ async function searchFmInsideMen(
 
 /* ─── Search fallbacks ───────────────────────────────────────────── */
 
+/**
+ * Fast AJAX search — most reliable method.
+ * Calls search.php directly (no session/cookies needed).
+ */
+async function searchViaAjax(
+  name: string,
+  age: string,
+): Promise<SearchHit | null> {
+  const searchName = name.trim().split(/\s+/).slice(0, 3).join(' ');
+  if (!searchName || searchName.length < 2) return null;
+  try {
+    const body = new URLSearchParams({ search_phrase: searchName, database_id: '7' });
+    const res = await fetch(`${FMINSIDE_BASE}/resources/inc/ajax/search.php`, {
+      method: 'POST',
+      headers: {
+        ...BASE_HEADERS,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: body.toString(),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    // Parse: <a title="Name" href="/players/7-fm-26/ID-slug">
+    const linkRe = /<a\s+title="([^"]+)"\s+href="(\/players\/7-fm-26\/\d+-[^"]+)"/gi;
+    const hits: SearchHit[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = linkRe.exec(html)) !== null) {
+      const displayName = m[1].trim();
+      const path = m[2];
+      const nScore = nameMatchScore(name, displayName);
+      if (nScore < 50) continue;
+      // Extract age from <li class="age">24</li> near this match
+      const block = html.slice(Math.max(0, m.index - 200), m.index + 500);
+      const ageM = block.match(/<li class="age">(\d+)<\/li>/i);
+      const rowAge = ageM ? ageM[1] : '';
+      let ageBonus = 0;
+      if (age && rowAge) {
+        const diff = Math.abs(parseInt(age, 10) - parseInt(rowAge, 10));
+        if (diff === 0) ageBonus = 20;
+        else if (diff <= 1) ageBonus = 10;
+        else if (diff > 3) ageBonus = -20;
+      }
+      hits.push({
+        url: `${FMINSIDE_BASE}${path}`,
+        name: displayName,
+        positions: [],
+        club: '',
+        age: rowAge,
+        score: nScore + ageBonus,
+      });
+    }
+    hits.sort((a, b) => b.score - a.score);
+    return hits[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function searchViaDuckDuckGo(name: string): Promise<SearchHit | null> {
   const query = encodeURIComponent(`site:fminside.net/players/7-fm-26 ${name}`);
   try {
@@ -542,14 +604,16 @@ export async function GET(request: NextRequest) {
     }
 
     // ─── Fallback: live scrape (may fail from cloud IPs) ───
-    // Search FMInside (primary: AJAX, fallbacks: DuckDuckGo, Serper)
-    let hit = await searchFmInsideMen(name, positions, nationality, age, club);
+    // Search FMInside (primary: AJAX search, then filter table, then web search)
+    let hit = await searchViaAjax(name, age);
+    if (!hit) hit = await searchFmInsideMen(name, positions, nationality, age, club);
     if (!hit) hit = await searchViaDuckDuckGo(name);
     if (!hit && process.env.SERPER_API_KEY) hit = await searchViaSerper(name);
     // Last resort: last name only
     if (!hit) {
       const lastName = name.trim().split(/\s+/).pop();
-      if (lastName && lastName.length >= 3) hit = await searchViaDuckDuckGo(lastName);
+      if (lastName && lastName.length >= 3) hit = await searchViaAjax(lastName, age);
+      if (!hit && lastName && lastName.length >= 3) hit = await searchViaDuckDuckGo(lastName);
     }
 
     if (!hit) {
