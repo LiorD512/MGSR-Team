@@ -4,27 +4,13 @@
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
-importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
-
-firebase.initializeApp({
-  apiKey: 'AIzaSyCBnTWD6LatII5YFxNz4mywveupYN1mTvE',
-  authDomain: 'mgsr-64e4b.firebaseapp.com',
-  projectId: 'mgsr-64e4b',
-  storageBucket: 'mgsr-64e4b.appspot.com',
-  messagingSenderId: '1026069643478',
-  appId: '1:1026069643478:web:0cb32330640b19aa49c977',
-});
-
-const messaging = firebase.messaging();
-
-// Required so Firebase SDK processes background pushes.
-messaging.onBackgroundMessage((_payload) => {});
-
-// Notification click: always open the PRODUCTION URL, never localhost.
+// ─── REGISTER CLICK HANDLER *BEFORE* FIREBASE SDK ───────────────────
+// Firebase SDK registers its own notificationclick handler during init.
+// By registering ours first, stopImmediatePropagation() prevents the
+// SDK default (which may navigate to the wrong origin like localhost).
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.stopImmediatePropagation(); // prevent Firebase SDK default
+  event.stopImmediatePropagation(); // prevent Firebase SDK default handler
 
   const PROD = 'https://management.mgsrfa.com';
   let path = '/';
@@ -48,3 +34,21 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(clients.openWindow(targetUrl));
 });
+
+// ─── NOW IMPORT FIREBASE SDK (its click handler will be blocked) ─────
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey: 'AIzaSyCBnTWD6LatII5YFxNz4mywveupYN1mTvE',
+  authDomain: 'mgsr-64e4b.firebaseapp.com',
+  projectId: 'mgsr-64e4b',
+  storageBucket: 'mgsr-64e4b.appspot.com',
+  messagingSenderId: '1026069643478',
+  appId: '1:1026069643478:web:0cb32330640b19aa49c977',
+});
+
+const messaging = firebase.messaging();
+
+// Required so Firebase SDK processes background pushes.
+messaging.onBackgroundMessage((_payload) => {});
