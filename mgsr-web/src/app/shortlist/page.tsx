@@ -754,7 +754,7 @@ export default function ShortlistPage() {
 
   const showingCount = sorted.length;
   const totalCount = entries.length;
-  const isFiltered = platform === 'men' && (filterBy !== 'all' || positionFilter !== null || specificPositionFilter !== null || withNotesOnly || agentFilter !== null || searchQuery.trim() !== '') && showingCount < totalCount;
+  const isFiltered = (platform === 'men' || platform === 'youth') && (filterBy !== 'all' || positionFilter !== null || specificPositionFilter !== null || withNotesOnly || agentFilter !== null || searchQuery.trim() !== '') && showingCount < totalCount;
 
   return (
     <AppLayout>
@@ -813,6 +813,51 @@ export default function ShortlistPage() {
           </div>
         ) : (
           <>
+            {/* Sort & Filter bar — youth, search + with-notes filter */}
+            {platform === 'youth' && entries.length > 0 && (
+              <div className="flex flex-col gap-3 mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl youth-glass-card">
+                {/* Search bar */}
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mgsr-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={isRtl ? 'חפש שחקן לפי שם…' : 'Search player by name…'}
+                    className="w-full pl-10 pr-9 py-2.5 rounded-2xl text-sm youth-glass-input text-mgsr-text placeholder:text-mgsr-muted/50 focus:outline-none focus:ring-2 focus:ring-[var(--youth-cyan)]/40 focus:border-[var(--youth-cyan)]/50 transition"
+                  />
+                  {searchQuery && (
+                    <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-mgsr-muted hover:text-mgsr-text transition">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  )}
+                </div>
+                {/* Filter chips */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setWithNotesOnly((prev) => !prev)}
+                    className={`shrink-0 px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-medium transition-all ${
+                      withNotesOnly
+                        ? 'bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)] border border-[var(--youth-cyan)]/40 shadow-[0_0_12px_rgba(0,212,255,0.15)]'
+                        : 'bg-white/5 border border-white/10 text-mgsr-muted hover:text-mgsr-text hover:border-[var(--youth-cyan)]/30'
+                    }`}
+                  >
+                    {t('shortlist_filter_with_notes')}
+                  </button>
+                  {(withNotesOnly || searchQuery.trim()) && (
+                    <button
+                      type="button"
+                      onClick={() => { setWithNotesOnly(false); setSearchQuery(''); }}
+                      className="shrink-0 px-3 py-2 rounded-2xl text-xs sm:text-sm font-medium text-mgsr-muted hover:text-mgsr-red border border-white/10 hover:border-mgsr-red/50 transition-all"
+                    >
+                      {t('players_filter_clear')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Sort & Filter bar — men only, always visible when we have entries */}
             {platform === 'men' && entries.length > 0 && (
               <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl bg-mgsr-card/80 border border-mgsr-border">
@@ -965,14 +1010,19 @@ export default function ShortlistPage() {
             )}
 
             {sorted.length === 0 ? (
-              entries.length > 0 && platform === 'men' && (filterBy !== 'all' || agentFilter || positionFilter || specificPositionFilter || withNotesOnly || searchQuery.trim()) ? (
-            <div className="py-20 px-6 rounded-2xl bg-mgsr-card/50 border border-mgsr-border text-center">
+              entries.length > 0 && (platform === 'men' || platform === 'youth') && (filterBy !== 'all' || agentFilter || positionFilter || specificPositionFilter || withNotesOnly || searchQuery.trim()) ? (
+            <div className={`py-20 px-6 rounded-2xl bg-mgsr-card/50 border border-mgsr-border text-center ${isYouth ? 'youth-glass-card' : ''}`}>
               <p className="text-mgsr-text text-lg font-medium mb-2">{t('shortlist_filter_empty')}</p>
               <p className="text-mgsr-muted text-sm mb-6 max-w-sm mx-auto">{t('shortlist_filter_empty_hint').replace('{n}', String(entries.length))}</p>
               <button
                 type="button"
                 onClick={() => { setFilterBy('all'); setAgentFilter(null); setPositionFilter(null); setSpecificPositionFilter(null); setWithNotesOnly(false); setSearchQuery(''); }}
-                className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition shadow-lg shadow-mgsr-teal/20"
+                className={`px-6 py-3 rounded-xl font-semibold transition shadow-lg ${
+                  isYouth
+                    ? 'text-white hover:opacity-90 shadow-[0_0_20px_rgba(0,212,255,0.2)]'
+                    : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90 shadow-mgsr-teal/20'
+                }`}
+                style={isYouth ? { background: 'linear-gradient(135deg, var(--youth-cyan), var(--youth-violet))' } : undefined}
               >
                 {t('shortlist_filter_clear')}
               </button>
@@ -1106,8 +1156,46 @@ export default function ShortlistPage() {
                         </div>
                       </div>
                     </Link>
+                    {/* Notes accordion */}
+                    <div className="border-t border-[var(--youth-cyan)]/10 pt-2">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpandedNotesUrl(isNotesExpanded ? null : entry.tmProfileUrl); }}
+                        className="w-full flex items-center justify-between text-left rtl:text-right py-0.5"
+                      >
+                        <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--youth-cyan)]/60">
+                          {notes.length === 0 ? t('shortlist_notes_title') : t('shortlist_notes_count').replace('{n}', String(notes.length))}
+                        </span>
+                        <svg className={`w-4 h-4 text-mgsr-muted/50 transition-transform ${isNotesExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {isNotesExpanded && (
+                        <div className="mt-2 space-y-2">
+                          {notes.map((note, ni) => (
+                            <div key={ni} className="p-2.5 rounded-lg bg-mgsr-dark/30 border border-[var(--youth-cyan)]/10">
+                              <p className="text-[13px] text-mgsr-text whitespace-pre-wrap">{note.text}</p>
+                              <div className="flex items-center justify-between mt-1.5">
+                                <span className="text-[11px] text-mgsr-muted/50">{getNoteAuthor(note)} · {formatNoteDate(note.createdAt)}</span>
+                                <div className="flex gap-2">
+                                  <button type="button" onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setNoteModalEntry(entry); setNoteModalMode('edit'); setNoteModalText(note.text); setNoteModalEditIndex(ni); }} className="text-[11px] text-mgsr-muted/60 hover:text-mgsr-text">{t('shortlist_notes_edit')}</button>
+                                  <button type="button" onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); deleteNoteFromEntry(entry, ni); }} disabled={deletingNoteKey === `${entry.tmProfileUrl}_${ni}`} className="text-[11px] text-mgsr-red/50 hover:text-mgsr-red disabled:opacity-40">{deletingNoteKey === `${entry.tmProfileUrl}_${ni}` ? '...' : t('shortlist_notes_delete')}</button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <div className="flex items-center justify-between gap-3 pt-2 border-t border-[var(--youth-cyan)]/10">
-                      <span />
+                      <button
+                        type="button"
+                        onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setNoteModalEntry(entry); setNoteModalMode('add'); setNoteModalText(''); setNoteModalEditIndex(-1); }}
+                        className="flex items-center gap-1.5 px-3.5 py-[7px] rounded-full text-[13px] font-semibold bg-[var(--youth-cyan)]/[0.12] text-[var(--youth-cyan)] border border-[var(--youth-cyan)]/20 hover:bg-[var(--youth-cyan)]/20 hover:border-[var(--youth-cyan)]/35 active:scale-[0.97] transition-all duration-150"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                        {t('shortlist_notes_add')}
+                      </button>
                       <button
                         onClick={() => removeFromShortlist(entry)}
                         disabled={removingUrl === entry.tmProfileUrl}

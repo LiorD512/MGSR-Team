@@ -352,6 +352,9 @@ export default function PlayersPage() {
           p.positions?.some((pos) => pos && codes.has(pos.toUpperCase()))
         );
       }
+      if (withNotes) {
+        result = result.filter((p) => p.noteList && p.noteList.length > 0);
+      }
       return result;
     }
     if (platform === 'women') {
@@ -514,6 +517,7 @@ export default function PlayersPage() {
   const hasActiveFilters =
     !!positionFilter ||
     !!specificPositionFilter ||
+    (platform === 'youth' && withNotes) ||
     (platform === 'men' &&
       (freeAgents ||
         contractExpiring ||
@@ -789,6 +793,24 @@ export default function PlayersPage() {
             )}
           </div>
         </div>
+
+        {/* Advanced filters — youth */}
+        {platform === 'youth' && (
+          <div className="mb-6">
+            <div className="flex flex-wrap gap-2 pb-1">
+              <button
+                onClick={() => setWithNotes((v) => !v)}
+                className={`shrink-0 px-3 py-1.5 rounded-2xl text-sm font-medium transition-all duration-200 ${
+                  withNotes
+                    ? 'bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)] border border-[var(--youth-cyan)]/40 shadow-[0_0_12px_rgba(0,212,255,0.15)]'
+                    : 'bg-white/5 border border-white/10 text-mgsr-muted hover:text-mgsr-text hover:border-[var(--youth-cyan)]/30'
+                }`}
+              >
+                {t('players_filter_with_notes')}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Advanced filters — desktop only (inline) */}
         {platform === 'men' && !isMobileOrTablet && (
@@ -1348,6 +1370,67 @@ export default function PlayersPage() {
                         <span className="truncate">{agentName}</span>
                       </span>
                     )}
+                  </div>
+                );
+              })()}
+
+              {/* ── Notes Badge — youth only ── */}
+              {platform === 'youth' && (() => {
+                const yp = p as YouthPlayer;
+                const noteCount = yp.noteList?.length ?? 0;
+                if (noteCount === 0) return null;
+                return (
+                  <div className="px-3 sm:px-4 pb-2.5 pt-0.5 flex flex-wrap gap-1.5 items-center">
+                    {(() => {
+                      const noteTexts = yp.noteList?.filter(n => n.notes).map(n => {
+                        const rawBy = n.createBy;
+                        const byDisplay = rawBy && lang === 'he'
+                          ? (allAccounts.find(a => a.name?.toLowerCase() === rawBy.toLowerCase())?.hebrewName || rawBy)
+                          : rawBy;
+                        return { text: n.notes!, by: byDisplay, at: n.createdAt };
+                      }) ?? [];
+                      return (
+                        <span className="relative group/note inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-violet-500/12 text-violet-400 cursor-default">
+                          📝 {noteCount}
+                          {noteTexts.length > 0 && (
+                            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/note:block z-50 animate-fade-in">
+                              <span className="block rounded-xl bg-gradient-to-b from-mgsr-card to-mgsr-dark border border-violet-500/20 shadow-[0_8px_30px_rgba(0,0,0,0.5)] px-4 py-3 min-w-[200px] max-w-[300px]" dir={isRtl ? 'rtl' : 'ltr'}>
+                                <span className="block text-[12px] font-semibold text-violet-400 mb-2 pb-1.5 border-b border-mgsr-border/30">
+                                  {isRtl ? 'הערות' : 'Notes'} ({noteCount})
+                                </span>
+                                <span className="flex flex-col gap-2.5 max-h-[180px] overflow-y-auto">
+                                  {noteTexts.map((n, ni) => (
+                                    <span key={ni} className="block" style={{ fontFamily: isRtl ? "'Heebo', 'Segoe UI', sans-serif" : "inherit" }}>
+                                      <span className="block text-[13px] leading-[1.6] text-mgsr-text/90 font-normal">{n.text.length > 120 ? n.text.slice(0, 117) + '…' : n.text}</span>
+                                      {(n.by || n.at) && (
+                                        <span className="block text-[10px] text-mgsr-muted/50 mt-0.5">
+                                          {n.by && <span>{n.by}</span>}
+                                          {n.by && n.at && <span> · </span>}
+                                          {n.at && <span>{new Date(n.at).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}</span>}
+                                        </span>
+                                      )}
+                                    </span>
+                                  ))}
+                                </span>
+                              </span>
+                              <span className="block w-2.5 h-2.5 mx-auto bg-mgsr-dark border-b border-r border-violet-500/20 rotate-45 -mt-[6px]" />
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })()}
+                    {yp.agentInChargeName && yp.agentInChargeName.toLowerCase() !== 'unknown' && (() => {
+                      const matchedAccount = allAccounts.find(a => a.name?.toLowerCase() === yp.agentInChargeName?.toLowerCase());
+                      const agentName = matchedAccount
+                        ? (lang === 'he' && matchedAccount.hebrewName ? matchedAccount.hebrewName : matchedAccount.name) ?? yp.agentInChargeName
+                        : yp.agentInChargeName;
+                      return (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium bg-[var(--youth-cyan)]/10 text-[var(--youth-cyan)]/80 max-w-[130px]">
+                          <span className="w-3.5 h-3.5 rounded-full bg-[var(--youth-cyan)]/20 flex items-center justify-center text-[7px] font-bold text-[var(--youth-cyan)] leading-none shrink-0">{agentName!.charAt(0).toUpperCase()}</span>
+                          <span className="truncate">{agentName}</span>
+                        </span>
+                      );
+                    })()}
                   </div>
                 );
               })()}

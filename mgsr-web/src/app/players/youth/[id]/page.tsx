@@ -15,7 +15,7 @@ import {
   deleteField,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { callOffersCreate, callOffersUpdateFeedback, callTasksToggleComplete, callPlayersUpdate, callPlayersToggleMandate, callPlayersAddNote, callPlayersDeleteNote, callPlayersDelete, callPlayerDocumentsCreate, callPlayerDocumentsDelete, callPlayerDocumentsMarkExpired, callPortfolioUpsert } from '@/lib/callables';
 import {
   PLAYERS_YOUTH_COLLECTION,
@@ -31,7 +31,10 @@ import YouthHighlightsPanel from '@/components/YouthHighlightsPanel';
 import { type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import { usePlayerMatchResults } from '@/hooks/useMatchResults';
 import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
-import { toWhatsAppUrl } from '@/lib/whatsapp';
+import { toWhatsAppUrl, openWhatsAppShare } from '@/lib/whatsapp';
+import { createShare } from '@/lib/shareApi';
+import type { HighlightVideo } from '@/lib/highlightsApi';
+import { getPositionDisplayName } from '@/lib/appConfig';
 import NoteTextarea from '@/components/NoteTextarea';
 import Link from 'next/link';
 
@@ -56,6 +59,7 @@ interface Account {
   name?: string;
   hebrewName?: string;
   email?: string;
+  phone?: string;
 }
 
 export default function YouthPlayerPage() {
@@ -104,6 +108,15 @@ export default function YouthPlayerPage() {
   // Tasks
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [playerTasks, setPlayerTasks] = useState<{ id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentId?: string; agentName?: string; createdAt?: number; createdByAgentId?: string; createdByAgentName?: string; templateId?: string; linkedAgentContactId?: string; linkedAgentContactName?: string; linkedAgentContactPhone?: string }[]>([]);
+
+  // Share
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [showShareLanguageModal, setShowShareLanguageModal] = useState(false);
+  const [showShareSetupModal, setShowShareSetupModal] = useState(false);
+  const [pendingShareUrl, setPendingShareUrl] = useState<string | null>(null);
+  const [includePlayerContact, setIncludePlayerContact] = useState(false);
+  const [includeAgencyContact, setIncludeAgencyContact] = useState(false);
 
   // Portfolio
   const [addingToPortfolio, setAddingToPortfolio] = useState(false);
@@ -475,6 +488,135 @@ export default function YouthPlayerPage() {
       }
     },
     [player, id, getCurrentUserName]
+  );
+
+  // ── Share ──
+  const handleShare = useCallback(
+    async (lang: 'he' | 'en') => {
+      if (!player || !id || sharing) return;
+      setSharing(true);
+      setShareError(null);
+      try {
+        // Determine mandate info
+        const hasValidMandate = documents.some(
+          (d) => (d.type ?? '').toUpperCase() === 'MANDATE' && !d.expired && (d.expiresAt == null || d.expiresAt >= Date.now())
+        );
+        const mandateExpiry = documents
+          .filter((d) => (d.type ?? '').toUpperCase() === 'MANDATE' && d.expiresAt)
+          .map((d) => d.expiresAt!)
+          .filter((e) => e >= Date.now())
+          .sort((a, b) => a - b)[0];
+        const validMandate = documents.find(
+          (d) => (d.type ?? '').toUpperCase() === 'MANDATE' && !d.expired && (d.expiresAt == null || d.expiresAt >= Date.now())
+        );
+        const mandateUrl = validMandate?.storageUrl ?? undefined;
+
+        // Get sharer info
+        const sharerAccount = user
+          ? accounts.find(
+              (a) => a.id === user.uid || a.email?.toLowerCase() === user.email?.toLowerCase()
+            )
+          : null;
+        const sharerPhone = sharerAccount?.phone;
+        const sharerName =
+          lang === 'he'
+            ? (sharerAccount?.hebrewName ?? sharerAccount?.name)
+            : (sharerAccount?.name ?? sharerAccount?.hebrewName);
+
+        // Build player payload
+        const playerPayload = {
+          fullName: player.fullName,
+          fullNameHe: player.fullNameHe,
+          profileImage: player.profileImage,
+          positions: player.positions,
+          currentClub: player.currentClub,
+          ageGroup: player.ageGroup,
+          dateOfBirth: player.dateOfBirth,
+          nationality: player.nationality,
+          agency: player.agentInChargeName,
+          ifaUrl: player.ifaUrl,
+          ifaStats: player.ifaStats,
+          ...(player.playerPhoneNumber ? { playerPhoneNumber: player.playerPhoneNumber } : {}),
+        };
+
+        // Try to generate AI scout report
+        let scoutReport = '';
+        try {
+          const res = await fetch('/api/share/generate-scout-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ player: playerPayload, lang, platform: 'youth' }),
+          });
+          const json = (await res.json()) as { scoutReport?: string };
+          scoutReport = json.scoutReport?.trim() || '';
+        } catch {
+          // Fall back to buildScoutSummary in createShare
+        }
+
+        // Build highlights payload
+        const pinnedHighlights = (player?.pinnedHighlights ?? []) as HighlightVideo[];
+        const highlightsPayload = pinnedHighlights.length > 0
+          ? pinnedHighlights.map((v) => ({
+              id: v.id,
+              source: v.source,
+              title: v.title,
+              thumbnailUrl: v.thumbnailUrl,
+              embedUrl: v.embedUrl,
+              channelName: v.channelName,
+              viewCount: v.viewCount,
+            }))
+          : undefined;
+
+        // Create share document
+        const { url } = await createShare(
+          {
+            playerId: id,
+            player: playerPayload,
+            mandateInfo: { hasMandate: hasValidMandate, expiresAt: mandateExpiry },
+            mandateUrl,
+            sharerPhone,
+            sharerName,
+            scoutReport: scoutReport || undefined,
+            highlights: highlightsPayload,
+            lang,
+            includePlayerContact,
+            includeAgencyContact,
+            platform: 'youth',
+          },
+          () => user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
+        );
+
+        // Build WhatsApp share text
+        const rawPos = (player.positions ?? [])[0] || '';
+        const pos = lang === 'he' ? getPositionDisplayName(rawPos, true) : rawPos;
+        const ageGroup = player.ageGroup || '';
+        const quickFacts = [ageGroup, pos].filter(Boolean).join(' ');
+        const shareText =
+          lang === 'he'
+            ? `שחקן צעיר חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר.` : 'מוכן למעבר.'}\nאם רלוונטי \u2013 לחצו ״מעוניין״ ונשלח פרטים מלאים.\n\n🔗 ${url}`
+            : `New youth player that could fit your needs.\n${quickFacts ? `${quickFacts} — available for transfer.` : 'Available for transfer.'}\nIf relevant, click "Interested" and we'll send full details.\n\n🔗 ${url}`;
+
+        if (url.includes('localhost') && typeof window !== 'undefined') {
+          setPendingShareUrl(shareText);
+          setShowShareSetupModal(true);
+          setShareError(null);
+        } else {
+          openWhatsAppShare(shareText);
+        }
+      } catch (e) {
+        console.error('Share failed:', e);
+        let msg = e instanceof Error ? e.message : 'Share failed';
+        if (msg.includes('permission') || msg.includes('PERMISSION_DENIED')) {
+          msg = isRtl
+            ? 'חסרות הרשאות Firestore. הוסף את כללי SharedPlayers'
+            : 'Firestore permission denied. Add SharedPlayers rules';
+        }
+        setShareError(msg);
+      } finally {
+        setSharing(false);
+      }
+    },
+    [player, id, documents, user, accounts, sharing, isRtl, includePlayerContact, includeAgencyContact]
   );
 
   // ── Portfolio ──
@@ -1075,22 +1217,40 @@ export default function YouthPlayerPage() {
           </div>
         </div>
 
-        {/* Bottom bar - Prepare for portfolio */}
+        {/* Bottom bar - Share & Prepare for portfolio */}
         <div className="sticky bottom-0 left-0 right-0 mt-8 rounded-t-2xl border border-t border-mgsr-border bg-mgsr-card/90 backdrop-blur-sm p-4 shadow-[0_0_30px_rgba(0,212,255,0.06)]">
           <div className="flex flex-col items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); setShowPortfolioLanguageModal(true); }}
-              disabled={addingToPortfolio}
-              className="flex items-center gap-2 text-[var(--youth-cyan)] hover:underline disabled:opacity-50"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              <span className="font-medium text-sm">{t('player_info_prepare_portfolio')}</span>
-            </button>
-            {portfolioError && (
-              <p className="text-sm text-red-400 text-center">{portfolioError}</p>
+            <div className="flex items-center gap-6">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIncludePlayerContact(false);
+                  setIncludeAgencyContact(false);
+                  setShowShareLanguageModal(true);
+                }}
+                disabled={sharing}
+                className="flex items-center gap-2 text-[var(--youth-cyan)] hover:underline disabled:opacity-50"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                <span className="font-medium text-sm">{t('player_info_share')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); setShowPortfolioLanguageModal(true); }}
+                disabled={addingToPortfolio}
+                className="flex items-center gap-2 text-[var(--youth-cyan)] hover:underline disabled:opacity-50"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                <span className="font-medium text-sm">{t('player_info_prepare_portfolio')}</span>
+              </button>
+            </div>
+            {(shareError || portfolioError) && (
+              <p className="text-sm text-red-400 text-center">{shareError || portfolioError}</p>
             )}
           </div>
         </div>
@@ -1131,6 +1291,155 @@ export default function YouthPlayerPage() {
                   className="flex-1 px-4 py-3 rounded-xl bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)] font-medium hover:bg-[var(--youth-cyan)]/30 disabled:opacity-50"
                 >
                   English
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Share preparation loader */}
+        {sharing && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70">
+            <div dir={isRtl ? 'rtl' : 'ltr'} className="flex flex-col items-center gap-4 px-8 py-6 rounded-2xl bg-mgsr-card border border-mgsr-border shadow-[0_0_30px_rgba(0,212,255,0.08)]">
+              <div className="w-10 h-10 border-2 border-[var(--youth-cyan)] border-t-transparent rounded-full animate-spin" />
+              <p className="text-mgsr-text font-medium">
+                {isRtl ? 'המסמך לשיתוף בהכנה...' : 'Preparing document for share...'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Share language choice modal */}
+        {showShareLanguageModal && !sharing && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+            onClick={() => setShowShareLanguageModal(false)}
+          >
+            <div className="absolute inset-0 bg-black/60" aria-hidden />
+            <div
+              dir={isRtl ? 'rtl' : 'ltr'}
+              className={`${glassCard} relative p-6 w-full max-w-md`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-display font-semibold text-mgsr-text mb-2">
+                {isRtl ? 'שתף ב' : 'Share in'}
+              </h3>
+              <p className="text-sm text-mgsr-muted mb-4">
+                {isRtl ? 'בחר את שפת הדף המשותף' : 'Choose the language for the shared page'}
+              </p>
+
+              {/* Contact inclusion checkboxes */}
+              {(() => {
+                const hasPlayerPhone = !!player?.playerPhoneNumber;
+                const hasParentPhone = !!player?.parentContact?.parentPhoneNumber;
+                if (!hasPlayerPhone && !hasParentPhone) return null;
+                return (
+                  <div className="space-y-3 mb-4">
+                    {hasPlayerPhone && (
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={includePlayerContact}
+                          onChange={(e) => setIncludePlayerContact(e.target.checked)}
+                          className="mt-1 w-4 h-4 rounded border-mgsr-border text-[var(--youth-cyan)] focus:ring-[var(--youth-cyan)]"
+                        />
+                        <span className="text-sm text-mgsr-text">
+                          {isRtl ? 'צרף טלפון שחקן' : 'Attach player contact'}
+                        </span>
+                      </label>
+                    )}
+                    {hasParentPhone && (
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={includeAgencyContact}
+                          onChange={(e) => setIncludeAgencyContact(e.target.checked)}
+                          className="mt-1 w-4 h-4 rounded border-mgsr-border text-[var(--youth-cyan)] focus:ring-[var(--youth-cyan)]"
+                        />
+                        <span className="text-sm text-mgsr-text">
+                          {isRtl ? 'צרף טלפון הורה/אפוטרופוס' : 'Attach parent/guardian contact'}
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowShareLanguageModal(false); handleShare('he'); }}
+                  disabled={sharing}
+                  className="flex-1 px-4 py-3 rounded-xl bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)] font-medium hover:bg-[var(--youth-cyan)]/30 disabled:opacity-50"
+                >
+                  עברית
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowShareLanguageModal(false); handleShare('en'); }}
+                  disabled={sharing}
+                  className="flex-1 px-4 py-3 rounded-xl bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)] font-medium hover:bg-[var(--youth-cyan)]/30 disabled:opacity-50"
+                >
+                  English
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Share setup modal - when on localhost */}
+        {showShareSetupModal && pendingShareUrl && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+            onClick={() => setShowShareSetupModal(false)}
+          >
+            <div className="absolute inset-0 bg-black/60" aria-hidden />
+            <div
+              dir={isRtl ? 'rtl' : 'ltr'}
+              className={`${glassCard} relative p-6 w-full max-w-md`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-display font-semibold text-mgsr-text mb-3">
+                {isRtl ? 'לינק localhost לא יעבוד בטלפון' : 'localhost links won\'t work on phone'}
+              </h3>
+              <p className="text-sm text-mgsr-muted mb-4">
+                {isRtl
+                  ? 'הלינק לא יפתח בטלפון ולא יציג תמונה ב-WhatsApp. כדי שזה יעבוד:'
+                  : 'The link won\'t open on phone and won\'t show image in WhatsApp. To fix:'}
+              </p>
+              <ol className="text-sm text-mgsr-text list-decimal list-inside space-y-2 mb-4">
+                <li>
+                  {isRtl ? 'העלה ל-Vercel (חינם): ' : 'Deploy to Vercel (free): '}
+                  <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="text-[var(--youth-cyan)] hover:underline">vercel.com/new</a>
+                </li>
+                <li>
+                  {isRtl
+                    ? 'או הרץ "npx ngrok http 3006" והוסף NEXT_PUBLIC_APP_URL ל-.env.local'
+                    : 'Or run "npx ngrok http 3006" and add NEXT_PUBLIC_APP_URL to .env.local'}
+                </li>
+              </ol>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={() => { openWhatsAppShare(pendingShareUrl); setShowShareSetupModal(false); }}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-mgsr-dark font-medium hover:opacity-90"
+                  style={{ background: 'linear-gradient(135deg, var(--youth-cyan), var(--youth-violet))' }}
+                >
+                  {isRtl ? 'פתח WhatsApp בכל זאת' : 'Open WhatsApp anyway'}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => { await navigator.clipboard.writeText(pendingShareUrl.split('\n')[1] || pendingShareUrl); setShowShareSetupModal(false); }}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-mgsr-border text-mgsr-text hover:bg-mgsr-card/80"
+                >
+                  {isRtl ? 'העתק לינק' : 'Copy link'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowShareSetupModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-mgsr-muted hover:text-mgsr-text"
+                >
+                  {isRtl ? 'סגור' : 'Close'}
                 </button>
               </div>
             </div>
