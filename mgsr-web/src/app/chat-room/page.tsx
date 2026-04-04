@@ -741,11 +741,11 @@ export default function ChatRoomPage() {
                     </div>
                   )}
 
-                  {/* Message bubble row — always LTR layout so own=right, others=left */}
+                  {/* Message bubble row — unified alignment, colour per sender */}
                   <div
                     id={`msg-${msg.id}`}
-                    className={`chat-noir-msg-anim group flex gap-3 mb-1 ${isOwn ? 'flex-row-reverse' : ''}`}
-                    style={{ maxWidth: '75%', marginLeft: isOwn ? 'auto' : undefined, direction: 'ltr' }}
+                    className="chat-noir-msg-anim group flex gap-3 mb-1"
+                    style={{ maxWidth: '80%' }}
                   >
                     {/* Avatar */}
                     <div
@@ -762,16 +762,22 @@ export default function ChatRoomPage() {
                       {initials}
                     </div>
 
-                    {/* Content column — text direction follows language, alignment follows chat side */}
-                    <div className="flex flex-col gap-1 min-w-0" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
-                      {/* Sender name */}
-                      <p className="px-0.5" style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.3, color: sc.accent, textAlign: isOwn ? 'end' : 'start' }}>
-                        {senderDisplayName(msg)}
-                      </p>
+                    {/* Content column */}
+                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                      {/* Sender name + timestamp inline */}
+                      <div className="flex items-baseline gap-2 px-0.5">
+                        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.3, color: sc.accent }}>
+                          {senderDisplayName(msg)}
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--noir-muted)' }}>{formatTime(msg.createdAt)}</span>
+                        {msg.editedAt && (
+                          <span style={{ fontSize: 10, fontStyle: 'italic', color: 'rgba(255,255,255,0.18)' }}>{t('chat_room_edited')}</span>
+                        )}
+                      </div>
 
                       {/* Notification badge */}
                       {msg.notifyAccountId && (
-                        <div style={{ textAlign: isOwn ? 'end' : 'start' }}>
+                        <div>
                           <span
                             className="inline-flex items-center gap-1"
                             style={{
@@ -826,14 +832,13 @@ export default function ChatRoomPage() {
                         className={`relative transition-all duration-500 ${isHighlighted ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/20' : ''} ${deletingMsgId === msg.id ? 'opacity-40' : ''}`}
                         style={{
                           padding: '11px 16px',
-                          borderRadius: isOwn
-                            ? '14px 4px 14px 14px'
-                            : '4px 14px 14px 14px',
+                          borderRadius: '4px 14px 14px 14px',
                           fontSize: 13.5,
                           lineHeight: 1.55,
                           color: 'var(--noir-text)',
-                          background: isOwn ? 'rgba(77,182,172,0.10)' : sc.bg,
-                          border: `1px solid ${isOwn ? 'rgba(77,182,172,0.18)' : sc.border}`,
+                          background: sc.bg,
+                          border: `1px solid ${sc.border}`,
+                          borderInlineStart: `3px solid ${sc.accent}`,
                         }}
                       >
                         {deletingMsgId === msg.id && (
@@ -842,10 +847,10 @@ export default function ChatRoomPage() {
                           </div>
                         )}
 
-                        {/* Hover action buttons — positioned on opposite side of avatar (outside the bubble) */}
+                        {/* Hover action buttons */}
                         <div
-                          className={`absolute -top-3.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10`}
-                          style={isOwn ? { left: 0 } : { right: 0 }}
+                          className="absolute -top-3.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                          style={{ insetInlineEnd: 0 }}
                         >
                           <button
                             onClick={() => setReplyToMessage(msg)}
@@ -956,13 +961,6 @@ export default function ChatRoomPage() {
                         ) : null}
                       </div>
 
-                      {/* Timestamp row */}
-                      <div className="flex items-center gap-1.5 px-0.5" style={{ justifyContent: isOwn ? 'end' : 'start' }}>
-                        {msg.editedAt && (
-                          <span style={{ fontSize: 10, fontStyle: 'italic', color: 'rgba(255,255,255,0.18)' }}>{t('chat_room_edited')}</span>
-                        )}
-                        <span style={{ fontSize: 10, color: 'var(--noir-muted)' }}>{formatTime(msg.createdAt)}</span>
-                      </div>
                     </div>
                   </div>
                 </div>
