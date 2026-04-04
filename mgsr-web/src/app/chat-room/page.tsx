@@ -244,7 +244,22 @@ export default function ChatRoomPage() {
       }, { merge: true }).catch(() => {});
     };
     writePresence();
-    const heartbeat = setInterval(writePresence, 60_000);
+    const heartbeat = setInterval(writePresence, 30_000); // 30s heartbeat
+
+    // Re-write presence when tab becomes visible again
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') writePresence();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Try to delete presence on page close
+    const handleBeforeUnload = () => {
+      // Use sendBeacon for reliable cleanup on tab close
+      navigator.sendBeacon?.(`/api/presence-cleanup?id=${encodeURIComponent(currentAccount.id)}`);
+      // Also try deleteDoc (may not complete)
+      deleteDoc(presenceRef).catch(() => {});
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     // Listen to all presence docs
     const unsub = onSnapshot(collection(db, 'ChatRoomPresence'), (snap) => {
@@ -254,7 +269,8 @@ export default function ChatRoomPage() {
         const data = d.data();
         const ts = data.lastActive?.toMillis?.();
         // Pending serverTimestamp (local write) shows as null — treat as online
-        if (ts === undefined || ts === null || (now - ts < 3 * 60_000)) {
+        // 2-minute window matches 30s heartbeat
+        if (ts === undefined || ts === null || (now - ts < 2 * 60_000)) {
           online.add(d.id);
         }
       }
@@ -264,10 +280,36 @@ export default function ChatRoomPage() {
     // Cleanup: remove presence on unmount
     return () => {
       clearInterval(heartbeat);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       unsub();
       deleteDoc(presenceRef).catch(() => {});
     };
   }, [currentAccount]);
+
+  /* Mark chat as read — update lastReadAt when user is viewing messages */
+  useEffect(() => {
+    if (!currentAccount || messages.length === 0) return;
+    if (document.visibilityState !== 'visible') return;
+    const lastMsg = messages[messages.length - 1];
+    if (!lastMsg?.createdAt) return;
+    const readRef = doc(db, 'ChatRoomLastRead', currentAccount.id);
+    setDoc(readRef, { lastReadAt: lastMsg.createdAt, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+  }, [currentAccount, messages.length]);
+
+  // Also mark as read when tab becomes visible
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible' && currentAccount && messages.length > 0) {
+        const lastMsg = messages[messages.length - 1];
+        if (!lastMsg?.createdAt) return;
+        const readRef = doc(db, 'ChatRoomLastRead', currentAccount.id);
+        setDoc(readRef, { lastReadAt: lastMsg.createdAt, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, [currentAccount, messages]);
 
   /* @mention filtering */
   const filteredPlayers = useMemo(() => {
@@ -744,7 +786,7 @@ export default function ChatRoomPage() {
                   {/* Message bubble row — unified alignment, colour per sender */}
                   <div
                     id={`msg-${msg.id}`}
-                    className="chat-noir-msg-anim group flex gap-3 mb-1"
+                    className="chat-noir-msg-anim group flex gap-3 mb-4"
                     style={{ maxWidth: '80%' }}
                   >
                     {/* Avatar */}

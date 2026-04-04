@@ -865,6 +865,13 @@ body {
   transform-origin: center;
 }
 
+/* Chat unread badge pop-in */
+@keyframes chat-unread-pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* Print styles — hide interactive elements */
 @media print {
   .portfolio-section { animation: none !important; }

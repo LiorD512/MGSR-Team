@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { PlatformSwitcher } from '@/components/PlatformSwitcher';
 import { useIsMobileOrTablet } from '@/hooks/useMediaQuery';
+import { useChatUnread } from '@/hooks/useChatUnread';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import MobileBottomTabBar from '@/components/mobile/MobileBottomTabBar';
 import NotificationBell from '@/components/NotificationBell';
@@ -64,6 +65,7 @@ function NavContent({
   platform,
   items,
   platformSwitcher,
+  chatUnreadCount,
 }: {
   pathname: string;
   t: (k: string) => string;
@@ -75,6 +77,7 @@ function NavContent({
   platform: 'men' | 'women' | 'youth';
   items: { href: string; labelKey: string }[];
   platformSwitcher: React.ReactNode;
+  chatUnreadCount: number;
 }) {
   const brandName = platform === 'youth' ? 'MGSR Youth' : platform === 'women' ? 'MGSR Women' : 'MGSR Team';
   const logo = platform === 'youth' ? '/logo.svg' : platform === 'women' ? '/logo-women.svg' : '/logo.svg';
@@ -96,13 +99,30 @@ function NavContent({
             key={item.href}
             href={item.href}
             onClick={onNavClick}
-            className={`block px-4 py-3 rounded-lg transition min-h-[44px] flex items-center ${
+            className={`block px-4 py-3 rounded-lg transition min-h-[44px] flex items-center justify-between ${
               pathname === item.href
                 ? activeClass
                 : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-card/80'
             }`}
           >
-            {t(item.labelKey)}
+            <span>{t(item.labelKey)}</span>
+            {item.href === '/chat-room' && chatUnreadCount > 0 && (
+              <span
+                className="flex items-center justify-center text-[10px] font-bold leading-none"
+                style={{
+                  minWidth: 18,
+                  height: 18,
+                  padding: '0 5px',
+                  borderRadius: 9,
+                  background: 'linear-gradient(135deg, #4DB6AC, #26A69A)',
+                  color: '#fff',
+                  boxShadow: '0 0 8px rgba(77,182,172,0.4), 0 1px 3px rgba(0,0,0,0.3)',
+                  animation: 'chat-unread-pop 0.3s ease-out',
+                }}
+              >
+                {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+              </span>
+            )}
           </Link>
         ))}
       </nav>
@@ -176,6 +196,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const toggleLang = () => setLang(isRtl ? 'en' : 'he');
   const currentItems = platform === 'youth' ? youthNavItems : platform === 'women' ? womenNavItems : navItems;
+  const chatUnreadCount = useChatUnread();
 
   /* ═══════════════════════════════════════════════════════════
    *  MOBILE / TABLET layout (< 1024px)
@@ -221,6 +242,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           platform={platform}
           items={currentItems}
           platformSwitcher={<PlatformSwitcher variant="compact" />}
+          chatUnreadCount={chatUnreadCount}
         />
       </aside>
 
