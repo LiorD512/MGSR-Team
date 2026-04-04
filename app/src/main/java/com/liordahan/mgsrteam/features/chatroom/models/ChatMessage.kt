@@ -6,7 +6,8 @@ import com.google.firebase.firestore.DocumentId
 @Keep
 data class PlayerMention(
     val playerId: String = "",
-    val playerName: String = ""
+    val playerName: String = "",
+    val playerNameHe: String = ""
 )
 
 @Keep
@@ -19,5 +20,6 @@ data class ChatMessage(
     val senderNameHe: String = "",
     val createdAt: Long = 0L,
     val notifyAccountId: String = "",
-    val mentions: List<PlayerMention> = emptyList()
+    val mentions: List<PlayerMention> = emptyList(),
+    val editedAt: Long? = null
 )

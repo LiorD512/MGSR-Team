@@ -28,12 +28,16 @@ data class ChatRoomUiState(
     val players: List<Player> = emptyList(),
     val isLoading: Boolean = true,
     val isSending: Boolean = false,
+    val isEditing: Boolean = false,
+    val deletingMessageId: String? = null,
     val highlightMessageId: String? = null
 )
 
 abstract class IChatRoomViewModel : ViewModel() {
     abstract val state: StateFlow<ChatRoomUiState>
     abstract fun sendMessage(text: String, notifyAccountId: String?, mentions: List<PlayerMention>)
+    abstract fun editMessage(messageId: String, newText: String)
+    abstract fun deleteMessage(messageId: String)
     abstract fun setHighlightMessage(messageId: String?)
     abstract fun searchPlayers(query: String): List<Player>
 }
@@ -103,7 +107,7 @@ class ChatRoomViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isSending = true)
             try {
-                val mentionMaps = mentions.map { mapOf("playerId" to it.playerId, "playerName" to it.playerName) }
+                val mentionMaps = mentions.map { mapOf("playerId" to it.playerId, "playerName" to it.playerName, "playerNameHe" to it.playerNameHe) }
 
                 SharedCallables.chatRoomSend(
                     senderAccountId = account.id ?: "",
@@ -123,6 +127,42 @@ class ChatRoomViewModel(
 
     override fun setHighlightMessage(messageId: String?) {
         _state.value = _state.value.copy(highlightMessageId = messageId)
+    }
+
+    override fun editMessage(messageId: String, newText: String) {
+        val account = _state.value.currentAccount ?: return
+        if (newText.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.value = _state.value.copy(isEditing = true)
+            try {
+                SharedCallables.chatRoomEdit(
+                    messageId = messageId,
+                    senderAccountId = account.id ?: "",
+                    newText = newText
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("ChatRoom", "Edit failed", e)
+            } finally {
+                _state.value = _state.value.copy(isEditing = false)
+            }
+        }
+    }
+
+    override fun deleteMessage(messageId: String) {
+        val account = _state.value.currentAccount ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.value = _state.value.copy(deletingMessageId = messageId)
+            try {
+                SharedCallables.chatRoomDelete(
+                    messageId = messageId,
+                    senderAccountId = account.id ?: ""
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("ChatRoom", "Delete failed", e)
+            } finally {
+                _state.value = _state.value.copy(deletingMessageId = null)
+            }
+        }
     }
 
     override fun searchPlayers(query: String): List<Player> {

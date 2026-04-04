@@ -11,14 +11,13 @@ import {
   query,
   orderBy,
   onSnapshot,
-  Timestamp,
 } from 'firebase/firestore';
 import {
   getCurrentAccountForShortlist,
   getAllAccounts,
   type AccountForShortlist,
 } from '@/lib/accounts';
-import { callChatRoomSend } from '@/lib/callables';
+import { callChatRoomSend, callChatRoomEdit, callChatRoomDelete } from '@/lib/callables';
 import Link from 'next/link';
 
 /* ── Types ───────────────────────────────────────────────────────────── */
@@ -38,7 +37,8 @@ interface ChatMessage {
   senderNameHe: string;
   mentions: PlayerMention[];
   targetAccountId?: string;
-  createdAt: Timestamp | null;
+  createdAt: number;
+  editedAt?: number;
 }
 
 interface Player {
@@ -52,15 +52,15 @@ interface Player {
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
-function formatTime(ts: Timestamp | null): string {
+function formatTime(ts: number): string {
   if (!ts) return '';
-  const d = ts.toDate();
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-function formatDateSeparator(ts: Timestamp | null): string {
+function formatDateSeparator(ts: number): string {
   if (!ts) return '';
-  const d = ts.toDate();
+  const d = new Date(ts);
   const today = new Date();
   if (d.toDateString() === today.toDateString()) return 'Today';
   const yesterday = new Date(today);
@@ -73,9 +73,9 @@ function formatDateSeparator(ts: Timestamp | null): string {
   });
 }
 
-function isSameDay(a: Timestamp | null, b: Timestamp | null): boolean {
+function isSameDay(a: number, b: number): boolean {
   if (!a || !b) return false;
-  return a.toDate().toDateString() === b.toDate().toDateString();
+  return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
 /* ── Page ──────────────────────────────────────────────────────────────── */
@@ -98,6 +98,13 @@ export default function ChatRoomPage() {
   const [isSending, setIsSending] = useState(false);
   const [targetAccountId, setTargetAccountId] = useState<string | null>(null);
 
+  /* edit/delete state */
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [actionMenuMsgId, setActionMenuMsgId] = useState<string | null>(null);
+  const [isEditSaving, setIsEditSaving] = useState(false);
+  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
+
   /* @mention state */
   const [showMentionDropdown, setShowMentionDropdown] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
@@ -106,15 +113,25 @@ export default function ChatRoomPage() {
   );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  /* scroll to bottom */
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  /* scroll to bottom — only if user is already near the bottom */
+  const scrollToBottom = useCallback((force = false) => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+    if (force || isNearBottom) {
+      el.scrollTop = el.scrollHeight;
+    }
   }, []);
 
+  const prevMsgCount = useRef(0);
   useEffect(() => {
-    scrollToBottom();
+    // Force-scroll on first load (0→N), gentle-scroll on new messages
+    const isFirstLoad = prevMsgCount.current === 0 && messages.length > 0;
+    scrollToBottom(isFirstLoad);
+    prevMsgCount.current = messages.length;
   }, [messages.length, scrollToBottom]);
 
   /* highlight from URL */
@@ -237,8 +254,11 @@ export default function ChatRoomPage() {
         senderAccountId: currentAccount.id,
         senderName: currentAccount.name || '',
         senderNameHe: currentAccount.hebrewName || currentAccount.name || '',
-        mentions: collectedMentions,
-        targetAccountId: targetAccountId || undefined,
+        mentions: collectedMentions.map((m) => ({
+          playerId: m.playerId,
+          playerName: m.playerName,
+        })),
+        notifyAccountId: targetAccountId || undefined,
       });
       setText('');
       setCollectedMentions([]);
@@ -253,8 +273,47 @@ export default function ChatRoomPage() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      if (showMentionDropdown && filteredPlayers.length > 0) {
+        // Select first player from dropdown instead of sending
+        handleSelectMention(filteredPlayers[0]);
+        return;
+      }
       handleSend();
     }
+  };
+
+  const handleEditSave = async () => {
+    if (!editingMessageId || !editText.trim() || !currentAccount || isEditSaving) return;
+    setIsEditSaving(true);
+    try {
+      await callChatRoomEdit({
+        messageId: editingMessageId,
+        senderAccountId: currentAccount.id,
+        newText: editText.trim(),
+      });
+    } catch (err) {
+      console.error('Edit failed:', err);
+    } finally {
+      setIsEditSaving(false);
+    }
+    setEditingMessageId(null);
+    setEditText('');
+  };
+
+  const handleDelete = async (messageId: string) => {
+    if (!currentAccount || deletingMsgId) return;
+    setDeletingMsgId(messageId);
+    try {
+      await callChatRoomDelete({
+        messageId,
+        senderAccountId: currentAccount.id,
+      });
+    } catch (err) {
+      console.error('Delete failed:', err);
+    } finally {
+      setDeletingMsgId(null);
+    }
+    setActionMenuMsgId(null);
   };
 
   /* ── Render helpers ──────────────────────────────────────────────── */
@@ -299,6 +358,36 @@ export default function ChatRoomPage() {
   const accountDisplayName = (acc: AccountForShortlist) =>
     isHe ? acc.hebrewName || acc.name || '?' : acc.name || '?';
 
+  /* Per-agent colour palette */
+  const SENDER_COLORS = [
+    { accent: '#4DB6AC', bg: 'rgba(77,182,172,0.12)', bgOwn: 'rgba(77,182,172,0.18)', border: 'rgba(77,182,172,0.25)' },
+    { accent: '#F59E0B', bg: 'rgba(245,158,11,0.10)', bgOwn: 'rgba(245,158,11,0.16)', border: 'rgba(245,158,11,0.22)' },
+    { accent: '#A855F7', bg: 'rgba(168,85,247,0.10)', bgOwn: 'rgba(168,85,247,0.16)', border: 'rgba(168,85,247,0.22)' },
+    { accent: '#3B82F6', bg: 'rgba(59,130,246,0.10)', bgOwn: 'rgba(59,130,246,0.16)', border: 'rgba(59,130,246,0.22)' },
+    { accent: '#06B6D4', bg: 'rgba(6,182,212,0.10)', bgOwn: 'rgba(6,182,212,0.16)', border: 'rgba(6,182,212,0.22)' },
+    { accent: '#EC4899', bg: 'rgba(236,72,153,0.10)', bgOwn: 'rgba(236,72,153,0.16)', border: 'rgba(236,72,153,0.22)' },
+    { accent: '#22C55E', bg: 'rgba(34,197,94,0.10)', bgOwn: 'rgba(34,197,94,0.16)', border: 'rgba(34,197,94,0.22)' },
+    { accent: '#F97316', bg: 'rgba(249,115,22,0.10)', bgOwn: 'rgba(249,115,22,0.16)', border: 'rgba(249,115,22,0.22)' },
+    { accent: '#E879F9', bg: 'rgba(232,121,249,0.10)', bgOwn: 'rgba(232,121,249,0.16)', border: 'rgba(232,121,249,0.22)' },
+    { accent: '#818CF8', bg: 'rgba(129,140,248,0.10)', bgOwn: 'rgba(129,140,248,0.16)', border: 'rgba(129,140,248,0.22)' },
+    { accent: '#34D399', bg: 'rgba(52,211,153,0.10)', bgOwn: 'rgba(52,211,153,0.16)', border: 'rgba(52,211,153,0.22)' },
+    { accent: '#FBBF24', bg: 'rgba(251,191,36,0.10)', bgOwn: 'rgba(251,191,36,0.16)', border: 'rgba(251,191,36,0.22)' },
+    { accent: '#38BDF8', bg: 'rgba(56,189,248,0.10)', bgOwn: 'rgba(56,189,248,0.16)', border: 'rgba(56,189,248,0.22)' },
+    { accent: '#FB7185', bg: 'rgba(251,113,133,0.10)', bgOwn: 'rgba(251,113,133,0.16)', border: 'rgba(251,113,133,0.22)' },
+  ];
+
+  const senderColorMap = useMemo(() => {
+    const map = new Map<string, typeof SENDER_COLORS[number]>();
+    let idx = 0;
+    for (const m of messages) {
+      if (!map.has(m.senderAccountId)) {
+        map.set(m.senderAccountId, SENDER_COLORS[idx % SENDER_COLORS.length]);
+        idx++;
+      }
+    }
+    return map;
+  }, [messages]);
+
   /* ── Component ─────────────────────────────────────────────────────── */
 
   return (
@@ -335,7 +424,7 @@ export default function ChatRoomPage() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
           {loading ? (
             <div className="flex h-full items-center justify-center">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--mgsr-teal)] border-t-transparent" />
@@ -351,6 +440,7 @@ export default function ChatRoomPage() {
                 idx === 0 ||
                 !isSameDay(msg.createdAt, messages[idx - 1].createdAt);
               const isHighlighted = highlightId === msg.id;
+              const sc = senderColorMap.get(msg.senderAccountId) || SENDER_COLORS[0];
 
               return (
                 <div key={msg.id}>
@@ -363,32 +453,84 @@ export default function ChatRoomPage() {
                   )}
                   <div
                     id={`msg-${msg.id}`}
-                    className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                    className={`group flex ${isOwn ? (isRtl ? 'justify-start' : 'justify-end') : (isRtl ? 'justify-end' : 'justify-start')}`}
                   >
+                    {/* own-message action buttons (left of bubble) */}
+                    {isOwn && editingMessageId !== msg.id && (
+                      <div className="mr-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => { setEditingMessageId(msg.id); setEditText(msg.text); }}
+                          disabled={!!deletingMsgId || isEditSaving}
+                          className="rounded p-1 text-xs text-gray-400 hover:bg-white/10 hover:text-white disabled:opacity-30"
+                          title="Edit"
+                        >✏️</button>
+                        <button
+                          onClick={() => handleDelete(msg.id)}
+                          disabled={!!deletingMsgId || isEditSaving}
+                          className="rounded p-1 text-xs text-gray-400 hover:bg-red-500/20 hover:text-red-400 disabled:opacity-30"
+                          title="Delete"
+                        >🗑️</button>
+                      </div>
+                    )}
                     <div
-                      className={`max-w-[70%] rounded-2xl px-4 py-2 transition-all duration-500 ${
+                      className={`relative max-w-[70%] rounded-2xl px-4 py-2 transition-all duration-500 ${
                         isHighlighted
                           ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/20'
                           : ''
-                      } ${
-                        isOwn
-                          ? 'bg-gradient-to-br from-[var(--mgsr-teal)] to-teal-700 text-white'
-                          : 'bg-white/5 text-gray-100'
-                      }`}
+                      } text-white ${deletingMsgId === msg.id ? 'opacity-40' : ''}`}
+                      style={{
+                        background: isOwn ? sc.bgOwn : sc.bg,
+                        borderWidth: 1,
+                        borderStyle: 'solid',
+                        borderColor: sc.border,
+                      }}
                     >
+                      {deletingMsgId === msg.id && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--mgsr-teal)] border-t-transparent" />
+                        </div>
+                      )}
                       {!isOwn && (
-                        <p className="mb-0.5 text-xs font-semibold text-[var(--mgsr-teal)]">
+                        <p className="mb-0.5 text-xs font-semibold" style={{ color: sc.accent }}>
                           {senderDisplayName(msg)}
                         </p>
                       )}
-                      <p className="text-sm leading-relaxed break-words">
-                        {renderMessageText(msg)}
-                      </p>
+                      {isOwn && (
+                        <p className="mb-0.5 text-xs font-semibold text-white/70">
+                          {senderDisplayName(msg)}
+                        </p>
+                      )}
+                      {editingMessageId === msg.id ? (
+                        <div className="flex flex-col gap-1">
+                          <input
+                            autoFocus
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') { e.preventDefault(); handleEditSave(); }
+                              if (e.key === 'Escape') { setEditingMessageId(null); setEditText(''); }
+                            }}
+                            className="rounded bg-black/30 px-2 py-1 text-sm text-white outline-none ring-1 ring-[var(--mgsr-teal)]"
+                          />
+                          <div className="flex gap-2 text-xs">
+                            <button onClick={handleEditSave} disabled={isEditSaving} className="text-[var(--mgsr-teal)] hover:underline disabled:opacity-50 flex items-center gap-1">
+                              {isEditSaving && <span className="inline-block h-3 w-3 animate-spin rounded-full border border-[var(--mgsr-teal)] border-t-transparent" />}
+                              {t('chat_room_save')}
+                            </button>
+                            <button onClick={() => { if (!isEditSaving) { setEditingMessageId(null); setEditText(''); } }} className="text-gray-400 hover:underline disabled:opacity-50" disabled={isEditSaving}>{t('chat_room_cancel')}</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm leading-relaxed break-words">
+                          {renderMessageText(msg)}
+                        </p>
+                      )}
                       <p
                         className={`mt-1 text-[10px] ${
                           isOwn ? 'text-white/60' : 'text-gray-500'
-                        } ${isRtl ? 'text-left' : 'text-right'}`}
+                        } ${isOwn ? (isRtl ? 'text-right' : 'text-left') : (isRtl ? 'text-left' : 'text-right')}`}
                       >
+                        {msg.editedAt ? <span className="mr-1 italic">edited</span> : null}
                         {formatTime(msg.createdAt)}
                       </p>
                     </div>
@@ -406,6 +548,18 @@ export default function ChatRoomPage() {
             <span className="text-xs text-gray-400 whitespace-nowrap">
               {t('chat_room_notify_label')}
             </span>
+            <button
+              onClick={() =>
+                setTargetAccountId(targetAccountId === 'ALL' ? null : 'ALL')
+              }
+              className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                targetAccountId === 'ALL'
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              {t('chat_room_notify_all')}
+            </button>
             {accounts
               .filter((a) => a.id !== currentAccount?.id)
               .map((acc) => (
@@ -486,7 +640,7 @@ export default function ChatRoomPage() {
           />
           <button
             onClick={handleSend}
-            disabled={!text.trim() || isSending}
+            disabled={!text.trim() || isSending || (showMentionDropdown && filteredPlayers.length > 0)}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--mgsr-teal)] text-white transition hover:bg-teal-500 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSending ? (

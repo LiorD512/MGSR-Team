@@ -317,8 +317,21 @@ export interface ChatRoomSendPayload {
   senderAccountId: string;
   senderName: string;
   senderNameHe: string;
-  mentions: { playerId: string; playerName: string; playerNameHe: string; tmProfile: string }[];
-  targetAccountId?: string;
+  mentions: { playerId: string; playerName: string }[];
+  notifyAccountId?: string;
 }
 
 export const callChatRoomSend = callable<ChatRoomSendPayload, { id: string }>('chatRoomSend');
+
+export interface ChatRoomEditPayload {
+  messageId: string;
+  senderAccountId: string;
+  newText: string;
+}
+export const callChatRoomEdit = callable<ChatRoomEditPayload, { success: boolean }>('chatRoomEdit');
+
+export interface ChatRoomDeletePayload {
+  messageId: string;
+  senderAccountId: string;
+}
+export const callChatRoomDelete = callable<ChatRoomDeletePayload, { success: boolean }>('chatRoomDelete');

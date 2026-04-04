@@ -41,7 +41,7 @@ const { playersCreate } = require("./callables/playersCreate");
 const { portfolioUpsert, portfolioDelete } = require("./callables/portfolio");
 const { sharePlayerCreate, shadowTeamsSave, scoutProfileFeedbackSet, birthdayWishSend, offersUpdateHistorySummary, mandateSigningCreate } = require("./callables/phase6Misc");
 const { accountUpdate } = require("./callables/phase7Account");
-const { chatRoomSend } = require("./callables/chatRoom");
+const { chatRoomSend, chatRoomEdit, chatRoomDelete } = require("./callables/chatRoom");
 
 initializeApp();
 const db = getFirestore();
@@ -461,6 +461,7 @@ exports.releasesRefreshWorker = onMessagePublished(
   {
     topic: RELEASES_REFRESH_TOPIC,
     timeoutSeconds: 540,
+    memory: "512MiB",
     retry: true,
   },
   async () => {
@@ -1213,3 +1214,5 @@ exports.accountUpdate = onCall(async (req) => { requireAuth(req); return account
 
 // ── Chat Room ──────────────────────────────────────────────────────────
 exports.chatRoomSend = onCall(async (req) => { requireAuth(req); return chatRoomSend(req.data); });
+exports.chatRoomEdit = onCall(async (req) => { requireAuth(req); return chatRoomEdit(req.data); });
+exports.chatRoomDelete = onCall(async (req) => { requireAuth(req); return chatRoomDelete(req.data); });

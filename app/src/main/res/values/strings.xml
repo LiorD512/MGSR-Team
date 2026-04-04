@@ -1589,4 +1589,10 @@
     <string name="chat_room_notify_all">Notify Everyone</string>
     <string name="chat_room_all_will_be_notified">All members will be notified</string>
     <string name="notification_chat_room_tag_title">%1$s in Chat Room</string>
+    <string name="chat_room_edit_message">Edit Message</string>
+    <string name="chat_room_delete_message">Delete Message</string>
+    <string name="chat_room_edited">edited</string>
+    <string name="chat_room_save">Save</string>
+    <string name="chat_room_cancel">Cancel</string>
+    <string name="chat_room_players_matching">🔍 Players matching "%1$s"</string>
 </resources>

@@ -35,7 +35,11 @@ function getAllTokens(accountData) {
 }
 
 /**
- * Send a chat message and optionally push-notify a specific user.
+ * Send a chat message and optionally push-notify a specific user or ALL users.
+ * notifyAccountId can be:
+ *   - "" or missing → no push
+ *   - "ALL"        → push to every account except sender
+ *   - "<accountId>"→ push to that specific account
  */
 async function chatRoomSend(data) {
   const {
@@ -66,97 +70,121 @@ async function chatRoomSend(data) {
   const docRef = await db.collection(CHAT_ROOM_COLLECTION).add(docData);
   const messageId = docRef.id;
 
-  // If there's a target user for push notification, send it
-  if (notifyAccountId && notifyAccountId !== senderAccountId) {
+  const displayName = senderName || senderNameHe || "Someone";
+  const previewText = text.length > 120 ? text.substring(0, 120) + "…" : text;
+
+  /**
+   * Build FCM payload shared by single-target and notify-all paths.
+   */
+  function buildPayload() {
+    const notifTitle = `${displayName} in Chat Room`;
+    const notifBody = previewText;
+    return {
+      notification: { title: notifTitle, body: notifBody },
+      data: {
+        type: "CHAT_ROOM_TAG",
+        senderName: senderName || "",
+        senderNameHe: senderNameHe || "",
+        messageId: messageId,
+        screen: "chat_room",
+        messagePreview: previewText,
+      },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "mgsr_team_notifications",
+          tag: `chat-${messageId}`,
+        },
+      },
+      webpush: {
+        notification: {
+          title: notifTitle,
+          body: notifBody,
+          icon: "/logo.svg",
+          tag: `chat-${messageId}`,
+        },
+        fcmOptions: {
+          link: `https://management.mgsrfa.com/chat-room?highlight=${messageId}`,
+        },
+      },
+    };
+  }
+
+  /**
+   * Send push to a single account's tokens and clean up stale ones.
+   */
+  async function sendPushToAccount(accountId, accountData) {
+    const tokens = getAllTokens(accountData);
+    if (tokens.length === 0) return;
+
+    const payload = buildPayload();
+    const messages = tokens.map((token) => ({
+      token,
+      notification: payload.notification,
+      data: payload.data,
+      android: payload.android,
+      webpush: payload.webpush,
+    }));
+
+    const results = await getMessaging().sendEach(messages);
+
+    // Clean up invalid tokens
+    const invalidTokens = [];
+    results.responses.forEach((resp, idx) => {
+      if (resp.error && (
+        resp.error.code === "messaging/registration-token-not-registered" ||
+        resp.error.code === "messaging/invalid-registration-token"
+      )) {
+        invalidTokens.push(tokens[idx]);
+      }
+    });
+    if (invalidTokens.length > 0) {
+      try {
+        const accountRef = db.collection(ACCOUNTS_COLLECTION).doc(accountId);
+        const updates = {};
+        if (invalidTokens.includes(accountData.fcmToken)) {
+          updates.fcmToken = "";
+        }
+        if (Array.isArray(accountData.fcmTokens) && accountData.fcmTokens.length > 0) {
+          const cleaned = accountData.fcmTokens.filter((entry) => {
+            const t = typeof entry === "string" ? entry : entry?.token;
+            return !invalidTokens.includes(t);
+          });
+          if (cleaned.length !== accountData.fcmTokens.length) {
+            updates.fcmTokens = cleaned;
+          }
+        }
+        if (Object.keys(updates).length > 0) {
+          await accountRef.update(updates);
+        }
+      } catch (e) {
+        console.error(`Chat room token cleanup failed for ${accountId}:`, e);
+      }
+    }
+  }
+
+  // ── Push notification logic ──
+  if (notifyAccountId === "ALL") {
+    // Notify everyone except the sender
+    try {
+      const allSnap = await db.collection(ACCOUNTS_COLLECTION).get();
+      const targets = allSnap.docs.filter((d) => d.id !== senderAccountId);
+      console.log(`Chat room notify ALL — sending to ${targets.length} account(s)`);
+      await Promise.all(
+        targets.map((d) => sendPushToAccount(d.id, d.data()).catch((e) => {
+          console.error(`Chat room push to ${d.id} failed:`, e);
+        }))
+      );
+    } catch (err) {
+      console.error("Chat room notify-all error:", err);
+    }
+  } else if (notifyAccountId && notifyAccountId !== senderAccountId) {
+    // Notify a single user
     try {
       const accountSnap = await db.collection(ACCOUNTS_COLLECTION).doc(notifyAccountId).get();
       if (accountSnap.exists) {
-        const accountData = accountSnap.data();
-        const tokens = getAllTokens(accountData);
-
-        if (tokens.length > 0) {
-          const displayName = senderName || senderNameHe || "Someone";
-          const previewText = text.length > 120 ? text.substring(0, 120) + "…" : text;
-
-          const notifTitle = `${displayName} tagged you in Chat Room`;
-          const notifBody = previewText;
-
-          const payload = {
-            notification: { title: notifTitle, body: notifBody },
-            data: {
-              type: "CHAT_ROOM_TAG",
-              senderName: senderName || "",
-              senderNameHe: senderNameHe || "",
-              messageId: messageId,
-              screen: "chat_room",
-              messagePreview: previewText,
-            },
-            android: {
-              priority: "high",
-              notification: {
-                channelId: "mgsr_team_notifications",
-                tag: `chat-${messageId}`,
-              },
-            },
-            webpush: {
-              notification: {
-                title: notifTitle,
-                body: notifBody,
-                icon: "/logo.svg",
-                tag: `chat-${messageId}`,
-              },
-              fcmOptions: {
-                link: `/chat-room?highlight=${messageId}`,
-              },
-            },
-          };
-
-          const messages = tokens.map((token) => ({
-            token,
-            notification: payload.notification,
-            data: payload.data,
-            android: payload.android,
-            webpush: payload.webpush,
-          }));
-
-          const results = await getMessaging().sendEach(messages);
-
-          // Clean up invalid tokens
-          const invalidTokens = [];
-          results.responses.forEach((resp, idx) => {
-            if (resp.error && (
-              resp.error.code === "messaging/registration-token-not-registered" ||
-              resp.error.code === "messaging/invalid-registration-token"
-            )) {
-              invalidTokens.push(tokens[idx]);
-            }
-          });
-          if (invalidTokens.length > 0) {
-            try {
-              const accountRef = db.collection(ACCOUNTS_COLLECTION).doc(notifyAccountId);
-              const updates = {};
-              if (invalidTokens.includes(accountData.fcmToken)) {
-                updates.fcmToken = "";
-              }
-              if (Array.isArray(accountData.fcmTokens) && accountData.fcmTokens.length > 0) {
-                const cleaned = accountData.fcmTokens.filter((entry) => {
-                  const t = typeof entry === "string" ? entry : entry?.token;
-                  return !invalidTokens.includes(t);
-                });
-                if (cleaned.length !== accountData.fcmTokens.length) {
-                  updates.fcmTokens = cleaned;
-                }
-              }
-              if (Object.keys(updates).length > 0) {
-                await accountRef.update(updates);
-              }
-            } catch (e) {
-              console.error(`Chat room token cleanup failed for ${notifyAccountId}:`, e);
-            }
-          }
-
-          console.log(`Chat room push sent to ${notifyAccountId} (${tokens.length} token(s))`);
-        }
+        await sendPushToAccount(notifyAccountId, accountSnap.data());
+        console.log(`Chat room push sent to ${notifyAccountId}`);
       }
     } catch (err) {
       console.error("Chat room push notification error:", err);
@@ -166,4 +194,50 @@ async function chatRoomSend(data) {
   return { id: messageId, createdAt: now };
 }
 
-module.exports = { chatRoomSend };
+/**
+ * Edit an existing chat message. Only the original sender may edit.
+ */
+async function chatRoomEdit(data) {
+  const { messageId, senderAccountId, newText } = data;
+  if (!messageId || !senderAccountId || !newText) {
+    throw new Error("messageId, senderAccountId and newText are required");
+  }
+
+  const db = getDb();
+  const docRef = db.collection(CHAT_ROOM_COLLECTION).doc(messageId);
+  const snap = await docRef.get();
+  if (!snap.exists) throw new Error("Message not found");
+
+  const msg = snap.data();
+  if (msg.senderAccountId !== senderAccountId) {
+    throw new Error("Only the sender can edit this message");
+  }
+
+  await docRef.update({ text: newText, editedAt: Date.now() });
+  return { success: true };
+}
+
+/**
+ * Delete a chat message. Only the original sender may delete.
+ */
+async function chatRoomDelete(data) {
+  const { messageId, senderAccountId } = data;
+  if (!messageId || !senderAccountId) {
+    throw new Error("messageId and senderAccountId are required");
+  }
+
+  const db = getDb();
+  const docRef = db.collection(CHAT_ROOM_COLLECTION).doc(messageId);
+  const snap = await docRef.get();
+  if (!snap.exists) throw new Error("Message not found");
+
+  const msg = snap.data();
+  if (msg.senderAccountId !== senderAccountId) {
+    throw new Error("Only the sender can delete this message");
+  }
+
+  await docRef.delete();
+  return { success: true };
+}
+
+module.exports = { chatRoomSend, chatRoomEdit, chatRoomDelete };

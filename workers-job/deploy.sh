@@ -25,7 +25,9 @@ if gcloud run jobs describe $JOB_NAME --region $REGION --project $PROJECT_ID 2>/
     --task-timeout 4h \
     --memory 512Mi \
     --cpu 1 \
-    --max-retries 0
+    --max-retries 0 \
+    --set-env-vars "SCOUT_TM_PROXY_URL=https://management.mgsrfa.com/api/war-room/tm-fetch" \
+    --set-secrets "SCOUT_ENRICH_SECRET=SCOUT_ENRICH_SECRET:latest"
 else
   gcloud run jobs create $JOB_NAME \
     --image gcr.io/$PROJECT_ID/$JOB_NAME \
@@ -34,7 +36,9 @@ else
     --task-timeout 4h \
     --memory 512Mi \
     --cpu 1 \
-    --max-retries 0
+    --max-retries 0 \
+    --set-env-vars "SCOUT_TM_PROXY_URL=https://management.mgsrfa.com/api/war-room/tm-fetch" \
+    --set-secrets "SCOUT_ENRICH_SECRET=SCOUT_ENRICH_SECRET:latest"
 fi
 
 echo ""

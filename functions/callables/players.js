@@ -97,7 +97,7 @@ async function playersUpdate(data) {
   }
 
   if (Object.keys(updates).length === 0) {
-    throw new Error("No valid fields to update.");
+    return { success: true, noOp: true };
   }
 
   await db.collection(col).doc(playerId).update(updates);
@@ -198,7 +198,11 @@ async function playersAddNote(data) {
   if (!playerSnap.exists) throw new Error("Player not found.");
 
   const playerData = playerSnap.data();
-  const noteList = Array.isArray(playerData.noteList) ? [...playerData.noteList, note] : [note];
+  // Strip undefined fields from existing notes (old clients may have written taggedAgentIds: undefined)
+  const existingNotes = Array.isArray(playerData.noteList)
+    ? playerData.noteList.map(n => Object.fromEntries(Object.entries(n).filter(([, v]) => v !== undefined)))
+    : [];
+  const noteList = [...existingNotes, note];
   const updateData = { noteList };
 
   // Men-only: extract salary/fee from notes

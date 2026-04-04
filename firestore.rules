@@ -156,5 +156,10 @@ service cloud.firestore {
     match /PlayerMatchResults/{docId} { allow read: if request.auth != null; allow write: if false; }
     match /PlayerMatchResultsWomen/{docId} { allow read: if request.auth != null; allow write: if false; }
     match /PlayerMatchResultsYouth/{docId} { allow read: if request.auth != null; allow write: if false; }
+    // ChatRoom: messages readable by authenticated users, writes go through Cloud Functions
+    match /ChatRoom/{messageId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
   }
 }

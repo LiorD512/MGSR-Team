@@ -1580,4 +1580,10 @@
     <string name="chat_room_notify_all">שלח התראה לכולם</string>
     <string name="chat_room_all_will_be_notified">כל החברים יקבלו התראה</string>
     <string name="notification_chat_room_tag_title">%1$s בחדר צ\'אט</string>
+    <string name="chat_room_edit_message">ערוך הודעה</string>
+    <string name="chat_room_delete_message">מחק הודעה</string>
+    <string name="chat_room_edited">נערך</string>
+    <string name="chat_room_save">שמור</string>
+    <string name="chat_room_cancel">ביטול</string>
+    <string name="chat_room_players_matching">🔍 שחקנים תואמים "%1$s"</string>
 </resources>

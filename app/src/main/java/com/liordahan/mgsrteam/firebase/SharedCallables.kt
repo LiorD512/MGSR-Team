@@ -441,4 +441,26 @@ object SharedCallables {
         ))
         return result["id"] as? String
     }
+
+    suspend fun chatRoomEdit(
+        messageId: String,
+        senderAccountId: String,
+        newText: String
+    ) {
+        call("chatRoomEdit", mapOf(
+            "messageId" to messageId,
+            "senderAccountId" to senderAccountId,
+            "newText" to newText,
+        ))
+    }
+
+    suspend fun chatRoomDelete(
+        messageId: String,
+        senderAccountId: String
+    ) {
+        call("chatRoomDelete", mapOf(
+            "messageId" to messageId,
+            "senderAccountId" to senderAccountId,
+        ))
+    }
 }

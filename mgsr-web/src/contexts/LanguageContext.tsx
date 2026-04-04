@@ -1250,7 +1250,13 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     chat_room_send: 'Send',
     chat_room_mention_hint: 'Search players…',
     chat_room_notify_label: 'Notify:',
+    chat_room_notify_all: 'Everyone',
     chat_room_no_messages: 'No messages yet. Start the conversation!',
+    chat_room_edit_message: 'Edit Message',
+    chat_room_delete_message: 'Delete Message',
+    chat_room_edited: 'edited',
+    chat_room_save: 'Save',
+    chat_room_cancel: 'Cancel',
   },
   he: {
     greeting_morning: 'בוקר טוב',
@@ -2488,7 +2494,13 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     chat_room_send: 'שלח',
     chat_room_mention_hint: 'חפש שחקנים…',
     chat_room_notify_label: 'התראה:',
+    chat_room_notify_all: 'כולם',
     chat_room_no_messages: 'אין הודעות עדיין. התחל את השיחה!',
+    chat_room_edit_message: 'ערוך הודעה',
+    chat_room_delete_message: 'מחק הודעה',
+    chat_room_edited: 'נערך',
+    chat_room_save: 'שמור',
+    chat_room_cancel: 'ביטול',
   },
 };
 
