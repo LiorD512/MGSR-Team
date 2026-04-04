@@ -675,6 +675,7 @@
     <string name="releases_games_together">%d games together</string>
     <string name="releases_games_together_label">games together</string>
     <string name="releases_roster_teammates_tap">Roster teammates</string>
+    <string name="releases_returned_to">Returned to %1$s</string>
     <string name="shortlist_in_shortlist">In shortlist</string>
     <string name="shortlist_add_to_shortlist">Add to shortlist</string>
     <string name="shortlist_pill_idle">Shortlist</string>
