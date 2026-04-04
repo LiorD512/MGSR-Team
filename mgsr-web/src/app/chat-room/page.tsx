@@ -762,20 +762,16 @@ export default function ChatRoomPage() {
                       {initials}
                     </div>
 
-                    {/* Content column */}
+                    {/* Content column — text direction follows language, alignment follows chat side */}
                     <div className="flex flex-col gap-1 min-w-0" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
                       {/* Sender name */}
-                      <div
-                        className={`flex items-center gap-2 px-0.5 ${isOwn ? 'justify-end' : ''}`}
-                      >
-                        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.3, color: sc.accent }}>
-                          {senderDisplayName(msg)}
-                        </span>
-                      </div>
+                      <p className="px-0.5" style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.3, color: sc.accent, textAlign: isOwn ? 'end' : 'start' }}>
+                        {senderDisplayName(msg)}
+                      </p>
 
                       {/* Notification badge */}
                       {msg.notifyAccountId && (
-                        <div className={`${isOwn ? 'self-end' : ''}`}>
+                        <div style={{ textAlign: isOwn ? 'end' : 'start' }}>
                           <span
                             className="inline-flex items-center gap-1"
                             style={{
@@ -809,7 +805,7 @@ export default function ChatRoomPage() {
                             padding: '8px 12px',
                             borderRadius: 10,
                             background: 'rgba(255,255,255,0.02)',
-                            borderLeft: `2px solid ${sc.accent}`,
+                            borderInlineStart: `2px solid ${sc.accent}`,
                           }}
                           onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
                           onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
@@ -846,9 +842,10 @@ export default function ChatRoomPage() {
                           </div>
                         )}
 
-                        {/* Hover action buttons */}
+                        {/* Hover action buttons — positioned on opposite side of avatar (outside the bubble) */}
                         <div
-                          className={`absolute -top-3.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 ${isOwn ? 'left-0' : 'right-0'}`}
+                          className={`absolute -top-3.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10`}
+                          style={isOwn ? { left: 0 } : { right: 0 }}
                         >
                           <button
                             onClick={() => setReplyToMessage(msg)}
@@ -960,7 +957,7 @@ export default function ChatRoomPage() {
                       </div>
 
                       {/* Timestamp row */}
-                      <div className={`flex items-center gap-1.5 px-0.5 ${isOwn ? 'justify-end' : ''}`}>
+                      <div className="flex items-center gap-1.5 px-0.5" style={{ justifyContent: isOwn ? 'end' : 'start' }}>
                         {msg.editedAt && (
                           <span style={{ fontSize: 10, fontStyle: 'italic', color: 'rgba(255,255,255,0.18)' }}>{t('chat_room_edited')}</span>
                         )}
