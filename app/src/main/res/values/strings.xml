@@ -1601,4 +1601,6 @@
     <string name="chat_room_file">📎 File</string>
     <string name="chat_room_attachment">📎 Attachment</string>
     <string name="chat_room_uploading">Uploading…</string>
+    <string name="chat_room_notified_everyone">🔔 Everyone</string>
+    <string name="chat_room_notified_user">🔔 %1$s</string>
 </resources>

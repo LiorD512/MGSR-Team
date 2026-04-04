@@ -1592,4 +1592,6 @@
     <string name="chat_room_file">📎 קובץ</string>
     <string name="chat_room_attachment">📎 קובץ מצורף</string>
     <string name="chat_room_uploading">מעלה…</string>
+    <string name="chat_room_notified_everyone">🔔 כולם</string>
+    <string name="chat_room_notified_user">🔔 %1$s</string>
 </resources>

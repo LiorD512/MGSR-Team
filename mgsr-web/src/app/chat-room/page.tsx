@@ -37,7 +37,7 @@ interface ChatMessage {
   senderName: string;
   senderNameHe: string;
   mentions: PlayerMention[];
-  targetAccountId?: string;
+  notifyAccountId?: string;
   createdAt: number;
   editedAt?: number;
   replyTo?: {
@@ -76,14 +76,14 @@ function formatTime(ts: number): string {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-function formatDateSeparator(ts: number): string {
+function formatDateSeparator(ts: number, todayLabel = 'Today', yesterdayLabel = 'Yesterday'): string {
   if (!ts) return '';
   const d = new Date(ts);
   const today = new Date();
-  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === today.toDateString()) return todayLabel;
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  if (d.toDateString() === yesterday.toDateString()) return yesterdayLabel;
   return d.toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'short',
@@ -504,7 +504,7 @@ export default function ChatRoomPage() {
               {t('chat_room_title')}
             </h1>
             <p className="text-xs text-gray-400">
-              {accounts.length} members
+              {accounts.length} {t('chat_room_members_count')}
             </p>
           </div>
         </div>
@@ -533,7 +533,7 @@ export default function ChatRoomPage() {
                   {showDateSep && (
                     <div className="my-3 text-center">
                       <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-gray-400">
-                        {formatDateSeparator(msg.createdAt)}
+                        {formatDateSeparator(msg.createdAt, t('chat_room_today'), t('chat_room_yesterday'))}
                       </span>
                     </div>
                   )}
@@ -546,7 +546,7 @@ export default function ChatRoomPage() {
                       <button
                         onClick={() => setReplyToMessage(msg)}
                         className="rounded p-1 text-xs text-gray-400 hover:bg-white/10 hover:text-[var(--mgsr-teal)]"
-                        title="Reply"
+                        title={t('chat_room_reply_action')}
                       >↩️</button>
                       {isOwn && editingMessageId !== msg.id && (
                         <>
@@ -554,13 +554,13 @@ export default function ChatRoomPage() {
                             onClick={() => { setEditingMessageId(msg.id); setEditText(msg.text); }}
                             disabled={!!deletingMsgId || isEditSaving}
                             className="rounded p-1 text-xs text-gray-400 hover:bg-white/10 hover:text-white disabled:opacity-30"
-                            title="Edit"
+                            title={t('chat_room_edit_action')}
                           >✏️</button>
                           <button
                             onClick={() => handleDelete(msg.id)}
                             disabled={!!deletingMsgId || isEditSaving}
                             className="rounded p-1 text-xs text-gray-400 hover:bg-red-500/20 hover:text-red-400 disabled:opacity-30"
-                            title="Delete"
+                            title={t('chat_room_delete_action')}
                           >🗑️</button>
                         </>
                       )}
@@ -592,6 +592,18 @@ export default function ChatRoomPage() {
                         <p className="mb-0.5 text-xs font-semibold text-white/70">
                           {senderDisplayName(msg)}
                         </p>
+                      )}
+                      {/* Notification indicator */}
+                      {msg.notifyAccountId && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-400 mb-1">
+                          {msg.notifyAccountId === 'ALL'
+                            ? t('chat_room_notified_everyone')
+                            : (() => {
+                                const acc = accounts.find(a => a.id === msg.notifyAccountId);
+                                const name = acc ? (isHe ? acc.hebrewName || acc.name : acc.name) || '?' : '?';
+                                return `🔔 ${name}`;
+                              })()}
+                        </span>
                       )}
                       {/* Reply-to preview */}
                       {msg.replyTo && (
@@ -666,7 +678,7 @@ export default function ChatRoomPage() {
                           isOwn ? 'text-white/60' : 'text-gray-500'
                         } ${isOwn ? (isRtl ? 'text-right' : 'text-left') : (isRtl ? 'text-left' : 'text-right')}`}
                       >
-                        {msg.editedAt ? <span className="mr-1 italic">edited</span> : null}
+                        {msg.editedAt ? <span className="mr-1 italic">{t('chat_room_edited')}</span> : null}
                         {formatTime(msg.createdAt)}
                       </p>
                     </div>
@@ -724,7 +736,7 @@ export default function ChatRoomPage() {
             <div className="absolute bottom-0 left-0 right-0 z-50 max-h-48 overflow-y-auto border-t border-white/10 bg-[#1a2233] shadow-xl">
               {filteredPlayers.length === 0 ? (
                 <div className="p-3 text-center text-sm text-gray-500">
-                  No players found
+                  {t('chat_room_no_players_found')}
                 </div>
               ) : (
                 filteredPlayers.map((p) => (
@@ -774,7 +786,7 @@ export default function ChatRoomPage() {
                   {isHe ? (replyToMessage.senderNameHe || replyToMessage.senderName) : (replyToMessage.senderName || replyToMessage.senderNameHe)}
                 </p>
                 <p className="text-xs text-gray-400 truncate">
-                  {replyToMessage.text.substring(0, 80) || '📎 Attachment'}
+                  {replyToMessage.text.substring(0, 80) || t('chat_room_attachment_fallback')}
                 </p>
               </div>
               <button onClick={() => setReplyToMessage(null)} className="text-gray-400 hover:text-white p-1">
@@ -812,7 +824,7 @@ export default function ChatRoomPage() {
           {isUploading && (
             <div className="flex items-center gap-2 px-4 py-1 text-xs text-gray-400">
               <div className="h-3 w-3 animate-spin rounded-full border border-[var(--mgsr-teal)] border-t-transparent" />
-              Uploading…
+              {t('chat_room_uploading')}
             </div>
           )}
 
@@ -823,7 +835,7 @@ export default function ChatRoomPage() {
               onClick={() => fileInputRef.current?.click()}
               disabled={isSending || isUploading}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-[var(--mgsr-teal)] hover:bg-white/10 transition disabled:opacity-40"
-              title="Attach file"
+              title={t('chat_room_attach_file')}
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />

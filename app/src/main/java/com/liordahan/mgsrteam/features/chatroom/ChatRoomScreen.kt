@@ -282,6 +282,7 @@ fun ChatRoomScreen(
                             isDeleting = isDeleting,
                             isHebrew = isHebrew,
                             senderColor = senderColor,
+                            allAccounts = uiState.allAccounts,
                             onPlayerClick = { playerId ->
                                 // playerId is the Firestore doc ID; men platform needs tmProfile for nav
                                 val player = uiState.players.find { it.id == playerId }
@@ -538,6 +539,7 @@ private fun ChatBubble(
     isDeleting: Boolean,
     isHebrew: Boolean,
     senderColor: Color,
+    allAccounts: List<Account> = emptyList(),
     onPlayerClick: (String) -> Unit,
     onLongClick: (() -> Unit)? = null,
     onScrollToReply: (String) -> Unit = {}
@@ -600,6 +602,35 @@ private fun ChatBubble(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
+                // ── Notification indicator ──
+                if (message.notifyAccountId.isNotBlank()) {
+                    val notifyLabel = if (message.notifyAccountId == "ALL") {
+                        stringResource(R.string.chat_room_notified_everyone)
+                    } else {
+                        val acc = allAccounts.find { it.id == message.notifyAccountId }
+                        val accName = if (isHebrew) {
+                            acc?.hebrewName?.ifBlank { acc.name } ?: ""
+                        } else {
+                            acc?.name?.ifBlank { acc.hebrewName } ?: ""
+                        }
+                        stringResource(R.string.chat_room_notified_user, accName)
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = notifyLabel,
+                        color = Color(0xFFF59E0B),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .background(
+                                Color(0xFFF59E0B).copy(alpha = 0.12f),
+                                RoundedCornerShape(50)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+
                 Spacer(Modifier.height(2.dp))
 
                 // ── Reply-to preview ──
