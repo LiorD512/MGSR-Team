@@ -763,7 +763,7 @@ export default function ChatRoomPage() {
                     </div>
 
                     {/* Content column */}
-                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                    <div className="flex flex-col gap-1 min-w-0">
                       {/* Sender name + timestamp inline */}
                       <div className="flex items-baseline gap-2 px-0.5">
                         <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.3, color: sc.accent }}>
