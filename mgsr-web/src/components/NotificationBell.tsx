@@ -34,10 +34,13 @@ async function ensureTokenSaved(accountId: string): Promise<string | null> {
   const { getToken, deleteToken } = await import('firebase/messaging');
   const { getMessaging: getMessagingInstance } = await import('@/lib/firebase');
   const messaging = await getMessagingInstance();
-  if (!messaging) return null;
+  if (!messaging) { console.warn('[FCM-DIAG] no messaging instance'); return null; }
+  console.log('[FCM-DIAG] origin:', window.location.origin);
   const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+  console.log('[FCM-DIAG] SW registered, scope:', swReg.scope, 'active:', !!swReg.active);
   // Wait for the service worker to be fully active before requesting a token
   await navigator.serviceWorker.ready;
+  console.log('[FCM-DIAG] SW ready');
   if (!swReg.active) {
     await new Promise<void>((resolve) => {
       const sw = swReg.installing || swReg.waiting;
@@ -45,29 +48,43 @@ async function ensureTokenSaved(accountId: string): Promise<string | null> {
       sw.addEventListener('statechange', () => { if (sw.state === 'activated') resolve(); });
     });
   }
+  // Check push subscription state BEFORE getToken
+  const existingSub = await swReg.pushManager.getSubscription();
+  console.log('[FCM-DIAG] existing pushSubscription:', existingSub ? existingSub.endpoint.substring(0, 80) + '...' : 'NONE');
   // First try getToken without deleting — reuses existing valid subscription
+  const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
+  console.log('[FCM-DIAG] VAPID key length:', vapidKey.length, 'first10:', vapidKey.substring(0, 10));
   let token = await getToken(messaging, {
-    vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '',
+    vapidKey,
     serviceWorkerRegistration: swReg,
-  }).catch(() => null);
+  }).catch((err) => { console.error('[FCM-DIAG] getToken failed:', err); return null; });
+  console.log('[FCM-DIAG] getToken result:', token ? token.substring(0, 30) + '...' : 'NULL');
+  // Check push subscription AFTER getToken
+  const newSub = await swReg.pushManager.getSubscription();
+  console.log('[FCM-DIAG] pushSubscription after getToken:', newSub ? newSub.endpoint.substring(0, 80) + '...' : 'NONE');
   // If that failed, delete and retry with a fresh push subscription
   if (!token) {
+    console.log('[FCM-DIAG] token null, trying deleteToken + retry...');
     await deleteToken(messaging).catch(() => {});
     token = await getToken(messaging, {
-      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '',
+      vapidKey,
       serviceWorkerRegistration: swReg,
-    }).catch(() => null);
+    }).catch((err) => { console.error('[FCM-DIAG] retry getToken failed:', err); return null; });
+    console.log('[FCM-DIAG] retry token:', token ? token.substring(0, 30) + '...' : 'NULL');
   }
   if (!token) return null;
+  console.log('[FCM-DIAG] FULL TOKEN:', token);
   await saveWebFcmToken(accountId, token);
+  console.log('[FCM-DIAG] token saved to Firestore');
   // Subscribe to broadcast topic
   try {
     const { httpsCallable, getFunctions } = await import('firebase/functions');
     const functions = getFunctions(undefined, 'us-central1');
     const subscribe = httpsCallable(functions, 'subscribeToTopicCallable');
     await subscribe({ token, topic: 'mgsr_all' });
-  } catch {
-    // Will retry next page load
+    console.log('[FCM-DIAG] topic subscription OK');
+  } catch (err) {
+    console.error('[FCM-DIAG] topic subscription failed:', err);
   }
   return token;
 }
