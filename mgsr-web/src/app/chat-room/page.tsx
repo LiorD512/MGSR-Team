@@ -741,11 +741,11 @@ export default function ChatRoomPage() {
                     </div>
                   )}
 
-                  {/* Message bubble row */}
+                  {/* Message bubble row — always LTR layout so own=right, others=left */}
                   <div
                     id={`msg-${msg.id}`}
                     className={`chat-noir-msg-anim group flex gap-3 mb-1 ${isOwn ? 'flex-row-reverse' : ''}`}
-                    style={{ maxWidth: '75%', marginInlineStart: isOwn ? 'auto' : undefined }}
+                    style={{ maxWidth: '75%', marginLeft: isOwn ? 'auto' : undefined, direction: 'ltr' }}
                   >
                     {/* Avatar */}
                     <div
@@ -763,10 +763,10 @@ export default function ChatRoomPage() {
                     </div>
 
                     {/* Content column */}
-                    <div className="flex flex-col gap-1 min-w-0">
+                    <div className="flex flex-col gap-1 min-w-0" style={{ direction: isRtl ? 'rtl' : 'ltr' }}>
                       {/* Sender name */}
                       <div
-                        className={`flex items-center gap-2 px-0.5 ${isOwn ? (isRtl ? 'justify-start' : 'justify-end') : ''}`}
+                        className={`flex items-center gap-2 px-0.5 ${isOwn ? 'justify-end' : ''}`}
                       >
                         <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.3, color: sc.accent }}>
                           {senderDisplayName(msg)}
@@ -775,7 +775,7 @@ export default function ChatRoomPage() {
 
                       {/* Notification badge */}
                       {msg.notifyAccountId && (
-                        <div className={`${isOwn ? (isRtl ? '' : 'self-end') : ''}`}>
+                        <div className={`${isOwn ? 'self-end' : ''}`}>
                           <span
                             className="inline-flex items-center gap-1"
                             style={{
@@ -809,8 +809,7 @@ export default function ChatRoomPage() {
                             padding: '8px 12px',
                             borderRadius: 10,
                             background: 'rgba(255,255,255,0.02)',
-                            borderLeft: isRtl ? 'none' : `2px solid ${sc.accent}`,
-                            borderRight: isRtl ? `2px solid ${sc.accent}` : 'none',
+                            borderLeft: `2px solid ${sc.accent}`,
                           }}
                           onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
                           onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
@@ -832,8 +831,8 @@ export default function ChatRoomPage() {
                         style={{
                           padding: '11px 16px',
                           borderRadius: isOwn
-                            ? (isRtl ? '4px 14px 14px 14px' : '14px 4px 14px 14px')
-                            : (isRtl ? '14px 4px 14px 14px' : '4px 14px 14px 14px'),
+                            ? '14px 4px 14px 14px'
+                            : '4px 14px 14px 14px',
                           fontSize: 13.5,
                           lineHeight: 1.55,
                           color: 'var(--noir-text)',
@@ -849,7 +848,7 @@ export default function ChatRoomPage() {
 
                         {/* Hover action buttons */}
                         <div
-                          className={`absolute -top-3.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 ${isOwn ? (isRtl ? 'right-0' : 'left-0') : (isRtl ? 'left-0' : 'right-0')}`}
+                          className={`absolute -top-3.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 ${isOwn ? 'left-0' : 'right-0'}`}
                         >
                           <button
                             onClick={() => setReplyToMessage(msg)}
@@ -961,7 +960,7 @@ export default function ChatRoomPage() {
                       </div>
 
                       {/* Timestamp row */}
-                      <div className={`flex items-center gap-1.5 px-0.5 ${isOwn ? (isRtl ? 'justify-start' : 'justify-end') : ''}`}>
+                      <div className={`flex items-center gap-1.5 px-0.5 ${isOwn ? 'justify-end' : ''}`}>
                         {msg.editedAt && (
                           <span style={{ fontSize: 10, fontStyle: 'italic', color: 'rgba(255,255,255,0.18)' }}>{t('chat_room_edited')}</span>
                         )}
