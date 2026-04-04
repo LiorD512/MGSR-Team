@@ -4,61 +4,42 @@
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
-// We do NOT use the Firebase messaging compat library here.
-// Instead, we handle push + notificationclick ourselves so we have
-// full control over the notification data and click navigation.
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
 
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-
-  let payload;
-  try { payload = event.data.json(); } catch (_) { return; }
-
-  // FCM wraps the payload — extract what we need
-  const notif = payload.notification || {};
-  const data = payload.data || {};
-  const fcmOptions = payload.fcmOptions || {};
-
-  const title = notif.title || '💬 MGSR';
-  const body = notif.body || '';
-  const icon = notif.icon || '/logo.svg';
-  const tag = notif.tag || 'mgsr-default';
-
-  // Build the target URL from fcmOptions.link or data fields
-  let targetUrl = fcmOptions.link || '';
-  if (!targetUrl && data.screen === 'chat_room') {
-    targetUrl = data.messageId
-      ? `/chat-room?highlight=${data.messageId}`
-      : '/chat-room';
-  }
-  if (!targetUrl) targetUrl = '/';
-  if (targetUrl.startsWith('/')) targetUrl = self.location.origin + targetUrl;
-
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon,
-      tag,
-      data: { targetUrl },
-    })
-  );
+firebase.initializeApp({
+  apiKey: 'AIzaSyCBnTWD6LatII5YFxNz4mywveupYN1mTvE',
+  authDomain: 'mgsr-64e4b.firebaseapp.com',
+  projectId: 'mgsr-64e4b',
+  storageBucket: 'mgsr-64e4b.appspot.com',
+  messagingSenderId: '1026069643478',
+  appId: '1:1026069643478:web:0cb32330640b19aa49c977',
 });
 
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
+const messaging = firebase.messaging();
 
-  const targetUrl = event.notification.data?.targetUrl || self.location.origin + '/';
+// Firebase SDK auto-displays the notification from webpush.notification.
+// onBackgroundMessage is intentionally empty — just needed so SDK processes the push.
+messaging.onBackgroundMessage((_payload) => {});
+
+// Click handler: Firebase SDK opens fcmOptions.link (absolute URL) automatically,
+// but in case that fails or the tab is already open, we handle it ourselves.
+self.addEventListener('notificationclick', (event) => {
+  // Don't close — let Firebase SDK handle it if it wants to.
+  // We focus the existing tab if one exists on our origin.
+  const origin = self.location.origin;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Focus an existing tab on our origin
       for (const client of windowClients) {
-        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
-          return client.focus();
-        }
+        try {
+          if (new URL(client.url).origin === origin && 'focus' in client) {
+            return client.focus();
+          }
+        } catch (_) { /* ignore bad URL */ }
       }
-      // No tab open — open a new one
-      return clients.openWindow(targetUrl);
+      // No existing tab — open the app
+      return clients.openWindow(origin + '/');
     })
   );
 });
