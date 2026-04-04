@@ -126,7 +126,7 @@ function StatCard({
 }) {
   if (!value) return null;
   return (
-    <div className={`shrink-0 min-w-[110px] lg:min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border ${highlight ? 'bg-mgsr-teal/10 border-mgsr-teal/30' : 'bg-mgsr-card/50 border-mgsr-border'}`}>
+    <div className={`shrink-0 min-w-[90px] sm:min-w-[110px] lg:min-w-0 px-2.5 sm:px-4 py-2.5 sm:py-3 rounded-xl border ${highlight ? 'bg-mgsr-teal/10 border-mgsr-teal/30' : 'bg-mgsr-card/50 border-mgsr-border'}`}>
       <p className="text-[11px] text-mgsr-muted uppercase tracking-wider whitespace-nowrap">{label}</p>
       <p className={`font-semibold mt-0.5 whitespace-nowrap ${highlight ? 'text-mgsr-teal text-base sm:text-lg' : 'text-mgsr-text text-sm sm:text-base'}`}>
         {value}

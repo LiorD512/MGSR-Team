@@ -626,12 +626,12 @@ export default function ChatRoomPage() {
 
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
-        className="chat-noir-shell flex h-[calc(100vh-64px)] flex-col"
+        className="chat-noir-shell flex h-[calc(100dvh-108px)] lg:h-[calc(100vh-64px)] flex-col -mx-4 lg:mx-0"
         style={{ background: 'var(--noir-bg)' }}
       >
         {/* ═══ HEADER ═══ */}
         <div
-          className="chat-noir-header-line relative flex items-center gap-4 px-7 py-5"
+          className="chat-noir-header-line relative flex items-center gap-3 sm:gap-4 px-4 sm:px-7 py-4 sm:py-5"
           style={{
             borderBottom: '1px solid var(--noir-border)',
             background: 'linear-gradient(180deg, rgba(17,19,24,0.95) 0%, var(--noir-surface) 100%)',
@@ -711,7 +711,7 @@ export default function ChatRoomPage() {
         {/* ═══ SEARCH BAR ═══ */}
         {showSearch && (
           <div
-            className="chat-noir-search-enter flex items-center gap-3 px-7 py-3"
+            className="chat-noir-search-enter flex items-center gap-3 px-4 sm:px-7 py-3"
             style={{ borderBottom: '1px solid var(--noir-border)', background: 'rgba(77,182,172,0.02)' }}
           >
             <svg className="h-4 w-4 shrink-0" style={{ color: 'var(--noir-muted)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -746,7 +746,7 @@ export default function ChatRoomPage() {
         {/* ═══ MESSAGES ═══ */}
         <div
           ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto px-7 py-6"
+          className="flex-1 overflow-y-auto px-4 sm:px-7 py-4 sm:py-6"
           style={{ background: 'var(--noir-bg)' }}
         >
           {loading ? (
@@ -1015,7 +1015,7 @@ export default function ChatRoomPage() {
         {/* ═══ REPLY BAR ═══ */}
         {replyToMessage && (
           <div
-            className="flex items-center gap-3 px-7 py-2.5"
+            className="flex items-center gap-3 px-4 sm:px-7 py-2.5"
             style={{
               borderTop: '1px solid var(--noir-border)',
               background: 'rgba(77,182,172,0.03)',
@@ -1045,7 +1045,7 @@ export default function ChatRoomPage() {
         {/* ═══ NOTIFY BAR ═══ */}
         {accounts.length > 0 && (
           <div
-            className="flex items-center gap-2 px-7 py-2.5 overflow-x-auto"
+            className="flex items-center gap-2 px-4 sm:px-7 py-2.5 overflow-x-auto"
             style={{ borderTop: '1px solid var(--noir-border)', background: 'var(--noir-surface)', scrollbarWidth: 'none' }}
           >
             <span
@@ -1112,7 +1112,7 @@ export default function ChatRoomPage() {
                   <button
                     key={p.id}
                     onClick={() => handleSelectMention(p)}
-                    className="flex w-full items-center gap-3 px-7 py-2 transition"
+                    className="flex w-full items-center gap-3 px-4 sm:px-7 py-2 transition"
                     style={{ textAlign: isRtl ? 'right' : 'left' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -1143,7 +1143,7 @@ export default function ChatRoomPage() {
         <div style={{ borderTop: '1px solid var(--noir-border)', background: 'var(--noir-surface)' }}>
           {/* Pending attachments */}
           {pendingAttachments.length > 0 && (
-            <div className="flex items-center gap-2 px-7 py-2 overflow-x-auto" style={{ borderBottom: '1px solid var(--noir-border)' }}>
+            <div className="flex items-center gap-2 px-4 sm:px-7 py-2 overflow-x-auto" style={{ borderBottom: '1px solid var(--noir-border)' }}>
               {pendingAttachments.map((pa, i) => (
                 <div
                   key={i}
@@ -1171,14 +1171,14 @@ export default function ChatRoomPage() {
 
           {/* Uploading indicator */}
           {isUploading && (
-            <div className="flex items-center gap-2 px-7 py-1" style={{ fontSize: 12, color: 'var(--noir-muted)' }}>
+            <div className="flex items-center gap-2 px-4 sm:px-7 py-1" style={{ fontSize: 12, color: 'var(--noir-muted)' }}>
               <div className="h-3 w-3 animate-spin rounded-full border border-t-transparent" style={{ borderColor: 'var(--mgsr-teal)', borderTopColor: 'transparent' }} />
               {t('chat_room_uploading')}
             </div>
           )}
 
           {/* Input row */}
-          <div className="flex items-center gap-2.5 px-7 py-4">
+          <div className="flex items-center gap-2.5 px-4 sm:px-7 py-3 sm:py-4">
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isSending || isUploading}

@@ -398,11 +398,11 @@ export default function SignMandatePage() {
         )}
 
         {/* Mandate Summary Card */}
-        <div className="bg-mgsr-card rounded-2xl border border-mgsr-border p-6 mb-4">
+        <div className="bg-mgsr-card rounded-2xl border border-mgsr-border p-4 sm:p-6 mb-4">
           <h2 className="text-xs font-semibold text-mgsr-muted uppercase tracking-widest mb-4">
             Mandate Details
           </h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-[11px] text-mgsr-muted mb-0.5">Player</p>
               <p className="text-mgsr-text font-medium text-sm">{playerName}</p>
@@ -416,7 +416,7 @@ export default function SignMandatePage() {
             </div>
             {data.originAgentName && data.originAgentId && (
               <>
-            <div className="col-span-2 border-t border-mgsr-border pt-3">
+            <div className="sm:col-span-2 border-t border-mgsr-border pt-3">
               <p className="text-[11px] text-mgsr-muted mb-0.5">Player&apos;s Origin Agent</p>
               <p className="text-mgsr-text font-medium text-sm">{data.originAgentName}</p>
               <p className="text-[11px] text-mgsr-muted mt-0.5">
@@ -438,7 +438,7 @@ export default function SignMandatePage() {
               </p>
             </div>
             {data.validLeagues.length > 0 && (
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <p className="text-[11px] text-mgsr-muted mb-0.5">Valid Leagues</p>
                 <p className="text-mgsr-text text-sm">{data.validLeagues.join(', ')}</p>
               </div>

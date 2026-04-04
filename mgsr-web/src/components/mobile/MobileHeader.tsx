@@ -22,6 +22,9 @@ const pageTitleKeys: Record<string, string> = {
   '/portfolio': 'nav_portfolio',
   '/contacts': 'nav_contacts',
   '/requests': 'nav_requests',
+  '/jewish-finder': 'nav_jewish_finder',
+  '/chat-room': 'nav_chat_room',
+  '/news': 'nav_news',
 };
 
 function getPageTitleKey(pathname: string): string {
