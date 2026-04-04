@@ -77,10 +77,9 @@ export default function NotificationBell() {
   }, []);
 
   // Ensure FCM token is saved to account whenever notifications are granted.
-  // On every page load: checks Firestore to see if the account actually has a web
-  // token. If not, generates one and saves it. This guarantees token persistence.
-  // Always checks Firestore (no sessionStorage short-circuit) because the server
-  // may have cleaned up an invalid token since the last check.
+  // On every page load: delete + re-register the FCM token to guarantee the
+  // push subscription is paired with the currently-active service worker.
+  // This is cheap (one getToken call) and prevents dead tokens after SW updates.
   useEffect(() => {
     if (status !== 'granted' || !user?.email) return;
     let cancelled = false;
@@ -88,9 +87,6 @@ export default function NotificationBell() {
       try {
         const accountId = await findAccountId(user.email!);
         if (!accountId || cancelled) return;
-        const hasToken = await accountHasWebToken(accountId);
-        if (hasToken || cancelled) return;
-        // Account has NO web token — register and save one now
         await ensureTokenSaved(accountId);
       } catch {
         // Will retry next page load
