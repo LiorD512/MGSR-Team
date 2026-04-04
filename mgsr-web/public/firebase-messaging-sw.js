@@ -18,44 +18,8 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Firebase SDK auto-displays the notification from webpush.notification.
-// onBackgroundMessage is intentionally empty — just needed so SDK processes the push.
+// Firebase SDK handles everything:
+// - Displays notification from webpush.notification payload
+// - On click, opens webpush.fcmOptions.link (absolute URL)
+// No custom notificationclick handler — let the SDK do its thing.
 messaging.onBackgroundMessage((_payload) => {});
-
-// Click handler: close notification, extract target URL, focus + navigate.
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  // Prevent Firebase SDK default handling
-  event.stopImmediatePropagation();
-
-  const origin = self.location.origin;
-
-  // Extract the target URL from FCM data
-  let targetUrl = origin + '/';
-  try {
-    const data = event.notification.data;
-    // Firebase SDK stores the original FCM message inside data.FCM_MSG
-    const fcmMsg = data?.FCM_MSG || {};
-    const link = fcmMsg?.fcmOptions?.link
-      || fcmMsg?.notification?.click_action
-      || data?.link;
-    if (link) {
-      targetUrl = link.startsWith('/') ? origin + link : link;
-    }
-  } catch (_) { /* use fallback */ }
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Find an existing tab on our origin — focus + navigate it
-      for (const client of windowClients) {
-        try {
-          if (new URL(client.url).origin === origin && 'navigate' in client) {
-            return client.focus().then(() => client.navigate(targetUrl));
-          }
-        } catch (_) { /* skip */ }
-      }
-      // No existing tab — open new one
-      return clients.openWindow(targetUrl);
-    })
-  );
-});
