@@ -28,6 +28,14 @@ function timestamp(v) {
   return n > 0 ? n : 0;
 }
 
+// ── URL normalisation ───────────────────────────────────────────────────────
+
+/** Normalise any transfermarkt domain variant (e.g. .co.uk, .de) to .com */
+function normalizeTmUrl(url) {
+  if (typeof url !== "string") return url;
+  return url.replace(/transfermarkt\.[a-z.]+/i, "transfermarkt.com");
+}
+
 // ── Require helpers ─────────────────────────────────────────────────────────
 
 /** Throws if the trimmed value is empty. Returns the trimmed value. */
@@ -224,6 +232,7 @@ function validateRequestUpdate(data) {
 }
 
 module.exports = {
+  normalizeTmUrl,
   str,
   int,
   bool,

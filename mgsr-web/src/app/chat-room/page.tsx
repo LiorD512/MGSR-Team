@@ -516,8 +516,35 @@ export default function ChatRoomPage() {
   const senderDisplayName = (msg: ChatMessage) =>
     isHe ? msg.senderNameHe || msg.senderName : msg.senderName;
 
+  const linkifyText = (text: string, startKey: number): { nodes: React.ReactNode[]; nextKey: number } => {
+    const urlRegex = /https?:\/\/[^\s]+/g;
+    const nodes: React.ReactNode[] = [];
+    let k = startKey;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = urlRegex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        nodes.push(<span key={k++}>{text.substring(lastIndex, match.index)}</span>);
+      }
+      nodes.push(
+        <a key={k++} href={match[0]} target="_blank" rel="noopener noreferrer"
+          className="text-[var(--mgsr-teal)] underline hover:brightness-125 break-all">
+          {match[0]}
+        </a>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) {
+      nodes.push(<span key={k++}>{text.substring(lastIndex)}</span>);
+    }
+    return { nodes, nextKey: k };
+  };
+
   const renderMessageText = (msg: ChatMessage) => {
-    if (!msg.mentions?.length) return <span>{msg.text}</span>;
+    if (!msg.mentions?.length) {
+      const { nodes } = linkifyText(msg.text, 0);
+      return <>{nodes}</>;
+    }
 
     let remaining = msg.text;
     const parts: React.ReactNode[] = [];
@@ -531,7 +558,9 @@ export default function ChatRoomPage() {
       const idx = remaining.indexOf(tag);
       if (idx === -1) continue;
       if (idx > 0) {
-        parts.push(<span key={key++}>{remaining.substring(0, idx)}</span>);
+        const { nodes, nextKey } = linkifyText(remaining.substring(0, idx), key);
+        parts.push(...nodes);
+        key = nextKey;
       }
       parts.push(
         <Link
@@ -545,7 +574,8 @@ export default function ChatRoomPage() {
       remaining = remaining.substring(idx + tag.length);
     }
     if (remaining) {
-      parts.push(<span key={key++}>{remaining}</span>);
+      const { nodes } = linkifyText(remaining, key);
+      parts.push(...nodes);
     }
     return <>{parts}</>;
   };

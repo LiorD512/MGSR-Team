@@ -46,6 +46,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -533,31 +535,74 @@ private fun NoirChatBubble(message: ChatMessage, isMine: Boolean, isHighlighted:
 @Suppress("DEPRECATION")
 @Composable
 private fun MessageTextWithMentions(text: String, mentions: List<PlayerMention>, isHebrew: Boolean, onPlayerClick: (String) -> Unit) {
+    val uriHandler = LocalUriHandler.current
     val bidiRegex = Regex("[\u2066\u2067\u2068\u2069\u200E\u200F]")
+    val urlRegex = remember { Regex("https?://[^\\s]+") }
     val cleanText = text.replace(bidiRegex, "")
-    val annotatedText = buildAnnotatedString {
-        var remaining = cleanText
+
+    // Phase 1: replace mentions with placeholders to protect them
+    data class MentionHit(val range: IntRange, val playerId: String, val displayName: String)
+    val mentionHits = mutableListOf<MentionHit>()
+    run {
+        var working = cleanText
+        var offset = 0
         for (mention in mentions) {
             val tagEn = "@${mention.playerName}".takeIf { mention.playerName.isNotBlank() }
             val tagHe = "@${mention.playerNameHe}".takeIf { mention.playerNameHe.isNotBlank() }
             val displayName = if (isHebrew) mention.playerNameHe.ifBlank { mention.playerName } else mention.playerName.ifBlank { mention.playerNameHe }
-            val matchTag = listOfNotNull(tagEn, tagHe).firstOrNull { remaining.contains(it) }
+            val matchTag = listOfNotNull(tagEn, tagHe).firstOrNull { working.contains(it) }
             if (matchTag != null) {
-                val idx = remaining.indexOf(matchTag)
-                if (idx > 0) append(remaining.substring(0, idx))
-                append("\u2066")
-                pushStringAnnotation(tag = "player", annotation = mention.playerId)
-                withStyle(SpanStyle(color = MgsrTeal, fontWeight = FontWeight.SemiBold)) { append("@$displayName") }
-                pop(); append("\u2069")
-                remaining = remaining.substring(idx + matchTag.length)
+                val idx = working.indexOf(matchTag)
+                val absStart = offset + idx
+                mentionHits.add(MentionHit(absStart until absStart + matchTag.length, mention.playerId, displayName))
+                offset += idx + matchTag.length
+                working = working.substring(idx + matchTag.length)
             }
         }
-        if (remaining.isNotEmpty()) append(remaining)
     }
-    val hasLinks = annotatedText.getStringAnnotations("player", 0, annotatedText.length).isNotEmpty()
-    if (hasLinks) {
-        ClickableText(text = annotatedText, onClick = { offset -> annotatedText.getStringAnnotations("player", offset, offset).firstOrNull()?.let { onPlayerClick(it.item) } },
-            style = TextStyle(fontSize = 13.5.sp, color = NoirText, lineHeight = 20.sp))
+
+    val annotatedText = buildAnnotatedString {
+        var cursor = 0
+        // Collect all special ranges (mentions + URLs in non-mention text)
+        data class Segment(val range: IntRange, val type: String, val value: String, val display: String)
+        val segments = mutableListOf<Segment>()
+        for (m in mentionHits) segments.add(Segment(m.range, "player", m.playerId, "@${m.displayName}"))
+        // Find URLs in the clean text
+        for (match in urlRegex.findAll(cleanText)) {
+            val urlRange = match.range
+            // Skip if URL overlaps with a mention
+            if (mentionHits.any { it.range.first <= urlRange.last && urlRange.first <= it.range.last }) continue
+            segments.add(Segment(urlRange, "url", match.value, match.value))
+        }
+        segments.sortBy { it.range.first }
+
+        for (seg in segments) {
+            if (seg.range.first > cursor) append(cleanText.substring(cursor, seg.range.first))
+            when (seg.type) {
+                "player" -> {
+                    append("\u2066")
+                    pushStringAnnotation(tag = "player", annotation = seg.value)
+                    withStyle(SpanStyle(color = MgsrTeal, fontWeight = FontWeight.SemiBold)) { append(seg.display) }
+                    pop(); append("\u2069")
+                }
+                "url" -> {
+                    pushStringAnnotation(tag = "url", annotation = seg.value)
+                    withStyle(SpanStyle(color = MgsrTeal, textDecoration = TextDecoration.Underline)) { append(seg.display) }
+                    pop()
+                }
+            }
+            cursor = seg.range.last + 1
+        }
+        if (cursor < cleanText.length) append(cleanText.substring(cursor))
+    }
+
+    val hasAnnotations = annotatedText.getStringAnnotations("player", 0, annotatedText.length).isNotEmpty() ||
+            annotatedText.getStringAnnotations("url", 0, annotatedText.length).isNotEmpty()
+    if (hasAnnotations) {
+        ClickableText(text = annotatedText, onClick = { offset ->
+            annotatedText.getStringAnnotations("player", offset, offset).firstOrNull()?.let { onPlayerClick(it.item); return@ClickableText }
+            annotatedText.getStringAnnotations("url", offset, offset).firstOrNull()?.let { uriHandler.openUri(it.item) }
+        }, style = TextStyle(fontSize = 13.5.sp, color = NoirText, lineHeight = 20.sp))
     } else {
         Text(cleanText, fontSize = 13.5.sp, color = NoirText, lineHeight = 20.sp)
     }

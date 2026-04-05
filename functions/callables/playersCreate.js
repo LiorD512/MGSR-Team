@@ -10,7 +10,7 @@ const {
   SHORTLISTS_COLLECTIONS,
   validatePlatform,
 } = require("../lib/platformCollections");
-const { str } = require("../lib/validation");
+const { str, normalizeTmUrl } = require("../lib/validation");
 const { feedEventDocId } = require("../lib/utils");
 
 function getDb() {
@@ -78,7 +78,8 @@ async function playersCreate(data) {
   // Server-side duplicate check (men=tmProfile, women=soccerDonnaUrl)
   const dedupField = getDedupField(platform);
   if (dedupField) {
-    const dedupValue = str(data[dedupField]);
+    let dedupValue = str(data[dedupField]);
+    if (dedupField === "tmProfile") dedupValue = normalizeTmUrl(dedupValue);
     if (dedupValue) {
       const existing = await db.collection(col)
         .where(dedupField, "==", dedupValue).limit(1).get();
@@ -94,6 +95,11 @@ async function playersCreate(data) {
     if (key in data && data[key] !== undefined) {
       entry[key] = data[key];
     }
+  }
+
+  // Normalise tmProfile to .com
+  if (entry.tmProfile) {
+    entry.tmProfile = normalizeTmUrl(entry.tmProfile);
   }
 
   // Ensure createdAt
