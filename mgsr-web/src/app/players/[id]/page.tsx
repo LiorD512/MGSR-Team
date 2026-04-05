@@ -22,6 +22,7 @@ import FmIntelligencePanel from '@/components/FmIntelligencePanel';
 import GpsPerformancePanel from './GpsPerformancePanel';
 import SimilarPlayersPanel from '@/components/SimilarPlayersPanel';
 import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
+import PlayerStatsPanel from '@/components/PlayerStatsPanel';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import ProposalHistorySection, { type ProposalOffer } from '@/components/ProposalHistorySection';
 import { type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
@@ -2511,6 +2512,16 @@ export default function PlayerInfoPage() {
 
           {/* Right column - Value history + Notes */}
           <div className="lg:col-span-2 space-y-8">
+            {/* Performance Stats Panel */}
+            {(merged.tmProfile || player?.tmProfile) && (
+              <PlayerStatsPanel
+                playerUrl={merged.tmProfile || player?.tmProfile}
+                playerName={merged.fullName || player?.fullName}
+                playerClub={merged.currentClub?.clubName || player?.currentClub?.clubName}
+                playerPosition={(merged.positions ?? player?.positions ?? [])[0]}
+              />
+            )}
+
             {/* FM Intelligence Panel */}
             {(merged.fullName || player?.fullName) && (
               <FmIntelligencePanel
