@@ -124,7 +124,8 @@ async function recomputeGpsInsights(playerTmProfile) {
     .get();
   if (!playerSnap.empty) {
     const pData = playerSnap.docs[0].data();
-    position = pData.position || pData.mainPosition || "";
+    const positions = pData.positions;
+    position = (Array.isArray(positions) && positions[0]) || pData.position || pData.mainPosition || "";
   }
 
   const insights = computeInsights(allMatches, position);

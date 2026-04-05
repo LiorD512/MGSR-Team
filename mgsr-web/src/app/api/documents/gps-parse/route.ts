@@ -460,10 +460,9 @@ async function recomputeAndStoreInsights(playerTmProfile: string): Promise<void>
       .get();
     if (!playerSnap.empty) {
       const pData = playerSnap.docs[0].data();
-      position = (pData.position as string) || (pData.mainPosition as string) || '';
+      const positions = pData.positions as string[] | undefined;
+      position = positions?.[0] || (pData.position as string) || (pData.mainPosition as string) || '';
     }
-
-    // 3. Compute insights
     const insights = computeInsights(allMatches, position);
 
     // 4. Store in GpsPlayerInsights (use playerTmProfile as doc ID for easy lookup)
