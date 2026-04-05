@@ -278,10 +278,14 @@ export async function POST(request: NextRequest) {
 
       // Global default cap — an agent working mid-tier markets has no use for €17M players
       const GLOBAL_DEFAULT_CAP = 4_000_000;
-      const marketCap = leagueMarketCap ?? (parsed.valueMax == null ? GLOBAL_DEFAULT_CAP : undefined);
+      // User's explicit value takes priority over league/global caps
+      const userSetValue = parsed.valueMax != null || parsed.valueMin != null;
+      const marketCap = userSetValue
+        ? (parsed.valueMax ?? undefined)   // Use user's explicit max (if set)
+        : (leagueMarketCap ?? GLOBAL_DEFAULT_CAP);
 
       // Force value_max if market detected and user didn't set their own
-      if (marketCap && parsed.valueMax == null) {
+      if (!userSetValue && marketCap) {
         parsed.valueMax = marketCap;
         console.log(`[AI Scout] Market cap applied: ${targetLeague ?? 'global'} → value_max €${marketCap.toLocaleString()}`);
       }

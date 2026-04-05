@@ -157,9 +157,15 @@ function extractLimit(query: string): number | undefined {
 
 /** Check for Israeli market → transfer_fee + notes + value cap */
 function extractIsraeliMarket(query: string): { transferFee?: string; notes?: string; valueMax?: number } {
-  const hasIsraeli =
-    /(שוק\s*ה?ישראלי|israeli (?:market|league)|israel (?:market|league)|ל?ליגה\s*ה?ישראלית|ליגת\s*העל|ligat\s*ha.?al)/i.test(query);
-  if (!hasIsraeli) return {};
+  // Formal league/market phrases
+  const formalIsraeli =
+    /(שוק\s*ה?ישראלי|israeli\s*(?:market|league)|israel\s*(?:market|league)|ל?ליגה\s*ה?ישראלית|ליגת\s*העל|ligat\s*ha.?al)/i.test(query);
+  // "בישראל" / "לישראל" / "ישראלי" (broader context)
+  const contextIsraeli = /בישראל|לישראל|ישראלי/i.test(query);
+  // Known Israeli clubs: מכבי (חיפה/ת"א/נתניה/פ"ת), הפועל, בית"ר, בני, עירוני
+  const israeliClub =
+    /מכבי\s*(?:חיפה|תל\s*אביב|ת"א|נתניה|פ"ת|פתח\s*תקווה)|הפועל\s*(?:באר\s*שבע|חיפה|תל\s*אביב|ת"א|ירושלים|חדרה|רעננה|קריית\s*שמונה|נוף\s*הגליל)|בית"ר\s*ירושלים|בני\s*(?:סכנין|יהודה)|עירוני\s*(?:קריית\s*שמונה|טבריה|אשדוד)|\b(?:maccabi|hapoel|beitar|bnei|ironi)\b/i.test(query);
+  if (!formalIsraeli && !contextIsraeli && !israeliClub) return {};
   return {
     transferFee: '300-600',
     valueMax: 2_500_000, // Ligat Ha'Al realistic ceiling — same as War Room
@@ -197,6 +203,82 @@ function detectValueIntent(query: string): ValueIntent {
  * Returns { transferFee, valueMin, valueMax } based on detected intent.
  */
 function extractMarketValue(query: string): { transferFee?: string; valueMin?: number; valueMax?: number } {
+  // ── Value RANGE: "בשווי 1.5-3 מיליון", "worth 1-2M", "budget 500k-1.5m" ──
+  // Hebrew range: "X-Y מיליון"
+  const heRangeMillionMatch = query.match(
+    /(?:שווי|שוק|תקציב|ערך|בשווי)\s*(?:שוק\s*)?(?:של\s*)?(?:בין\s*)?(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)\s*(?:מיליון|מליון)/i
+  );
+  if (heRangeMillionMatch) {
+    const lo = parseFloat(heRangeMillionMatch[1].replace(',', '.')) * 1_000_000;
+    const hi = parseFloat(heRangeMillionMatch[2].replace(',', '.')) * 1_000_000;
+    const valueMin = Math.min(lo, hi);
+    const valueMax = Math.max(lo, hi);
+    let transferFee: string;
+    if (valueMax <= 200_000) transferFee = '<200';
+    else if (valueMax <= 600_000) transferFee = '300-600';
+    else if (valueMax <= 900_000) transferFee = '700-900';
+    else transferFee = '1m+';
+    return { transferFee, valueMin, valueMax };
+  }
+  // Hebrew range: "X-Y אלף"
+  const heRangeThousandMatch = query.match(
+    /(?:שווי|שוק|תקציב|ערך|בשווי)\s*(?:שוק\s*)?(?:של\s*)?(?:בין\s*)?(\d+)\s*[-–]\s*(\d+)\s*(?:אלף|אלפים)/i
+  );
+  if (heRangeThousandMatch) {
+    const lo = parseInt(heRangeThousandMatch[1], 10) * 1_000;
+    const hi = parseInt(heRangeThousandMatch[2], 10) * 1_000;
+    const valueMin = Math.min(lo, hi);
+    const valueMax = Math.max(lo, hi);
+    let transferFee: string;
+    if (valueMax <= 200_000) transferFee = '<200';
+    else if (valueMax <= 600_000) transferFee = '300-600';
+    else if (valueMax <= 900_000) transferFee = '700-900';
+    else transferFee = '1m+';
+    return { transferFee, valueMin, valueMax };
+  }
+  // English range: "X-YM", "X-Y million", "X-Yk"
+  const enRangeMillionMatch = query.match(
+    /(?:market\s*value|worth|budget|transfer\s*fee|value)\s*(?:of\s*)?(?:€|EUR?)?\s*(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)\s*(?:million|mil|m)\b/i
+  );
+  if (enRangeMillionMatch) {
+    const lo = parseFloat(enRangeMillionMatch[1].replace(',', '.')) * 1_000_000;
+    const hi = parseFloat(enRangeMillionMatch[2].replace(',', '.')) * 1_000_000;
+    const valueMin = Math.min(lo, hi);
+    const valueMax = Math.max(lo, hi);
+    return { transferFee: valueMax > 900_000 ? '1m+' : '700-900', valueMin, valueMax };
+  }
+  const enRangeThousandMatch = query.match(
+    /(?:market\s*value|worth|budget|transfer\s*fee|value)\s*(?:of\s*)?(?:€|EUR?)?\s*(\d+)\s*[-–]\s*(\d+)\s*(?:k|thousand)\b/i
+  );
+  if (enRangeThousandMatch) {
+    const lo = parseInt(enRangeThousandMatch[1], 10) * 1_000;
+    const hi = parseInt(enRangeThousandMatch[2], 10) * 1_000;
+    const valueMin = Math.min(lo, hi);
+    const valueMax = Math.max(lo, hi);
+    let transferFee: string;
+    if (valueMax <= 200_000) transferFee = '<200';
+    else if (valueMax <= 600_000) transferFee = '300-600';
+    else if (valueMax <= 900_000) transferFee = '700-900';
+    else transferFee = '1m+';
+    return { transferFee, valueMin, valueMax };
+  }
+  // Simple inline range: "1.5-3m", "500-800k"
+  const simpleRangeMatch = query.match(/(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*([mk])\b/i);
+  if (simpleRangeMatch) {
+    const mul = simpleRangeMatch[3].toLowerCase() === 'm' ? 1_000_000 : 1_000;
+    const lo = parseFloat(simpleRangeMatch[1]) * mul;
+    const hi = parseFloat(simpleRangeMatch[2]) * mul;
+    const valueMin = Math.min(lo, hi);
+    const valueMax = Math.max(lo, hi);
+    let transferFee: string;
+    if (valueMax <= 200_000) transferFee = '<200';
+    else if (valueMax <= 600_000) transferFee = '300-600';
+    else if (valueMax <= 900_000) transferFee = '700-900';
+    else transferFee = '1m+';
+    return { transferFee, valueMin, valueMax };
+  }
+
+  // ── Single value extraction (non-range) ──
   let valueEuro: number | undefined;
 
   // Hebrew: X מיליון / מליון (with or without preceding number)
@@ -513,6 +595,9 @@ function extractNotes(query: string, minGoals?: number, israeliNotes?: string, f
     { pattern: /מכריע|השפעה|\b(?:decisive|impact|clutch|game[\s-]*changer)\b/i, note: 'decisive, impact' },
     // ── Cheap / Bargain ──
     { pattern: /זול|במחיר\s*נמוך|משתלם|\b(?:cheap|bargain|affordable|low[\s-]*cost|budget|undervalued|hidden[\s-]*gem)\b/i, note: 'affordable' },
+    // ── Impressive / High stats ──
+    { pattern: /מספרים\s*(?:התקפיים\s*)?מרשימים|מרשימים\s*מספרים|סטטיסטיקות?\s*מרשימות?|נתונים\s*מרשימים|\b(?:impressive|outstanding|excellent|strong)\s*(?:attacking\s*)?(?:numbers?|stats?|statistics?|output|record)\b/i, note: 'impressive attacking output, goals, assists' },
+    { pattern: /ביצועים\s*(?:גבוהים|מרשימים)|\b(?:high\s*(?:performance|output)|top\s*performer)\b/i, note: 'high performance, proven output' },
   ];
 
   for (const { pattern, note } of stylePatterns) {
