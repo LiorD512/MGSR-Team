@@ -30,6 +30,7 @@ data class DiscoveryCandidate(
     val fmGap: Int?,
     val goalsPerNinety: Double?,
     val assistsPerNinety: Double?,
+    val apiRating: Double?,
     val scoutNarrative: String?,
     val matchScore: Int?,
     val profileType: String?,

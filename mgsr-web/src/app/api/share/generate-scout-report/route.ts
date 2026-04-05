@@ -131,15 +131,20 @@ function buildPlayerContext(player: PlayerPayload, scoutData?: ScoutData): strin
   if (player.agency) parts.push(`Agency: ${player.agency}`);
   if (player.tmProfile) parts.push(`Transfermarkt: ${player.tmProfile}`);
 
-  if (scoutData?.profile && scoutData.profile.fbref_matched) {
+  if (scoutData?.profile && scoutData.profile.api_matched) {
     const p = scoutData.profile;
-    const mins = p.fbref_minutes_90s != null ? `${Number(p.fbref_minutes_90s) * 90} minutes` : null;
+    const mins = p.api_minutes_90s != null ? `${Number(p.api_minutes_90s) * 90} minutes` : null;
     if (mins) parts.push(`Minutes (365d): ${mins}`);
-    if (p.fbref_tackles_per90 != null) parts.push(`Tackles/90: ${p.fbref_tackles_per90}`);
-    if (p.fbref_interceptions_per90 != null) parts.push(`Interceptions/90: ${p.fbref_interceptions_per90}`);
-    if (p.fbref_goals_per90 != null) parts.push(`Goals/90: ${p.fbref_goals_per90}`);
-    if (p.fbref_assists_per90 != null) parts.push(`Assists/90: ${p.fbref_assists_per90}`);
-    // NOTE: progressive_carries and key_passes removed — not available on free FBref tier
+    if (p.api_rating != null) parts.push(`API-Football Rating: ${p.api_rating}`);
+    if (p.api_goals_per90 != null) parts.push(`Goals/90: ${p.api_goals_per90}`);
+    if (p.api_assists_per90 != null) parts.push(`Assists/90: ${p.api_assists_per90}`);
+    if (p.api_tackles_per90 != null) parts.push(`Tackles/90: ${p.api_tackles_per90}`);
+    if (p.api_interceptions_per90 != null) parts.push(`Interceptions/90: ${p.api_interceptions_per90}`);
+    if (p.api_key_passes_per90 != null) parts.push(`Key passes/90: ${p.api_key_passes_per90}`);
+    if (p.api_dribbles_success_per90 != null) parts.push(`Dribbles/90: ${p.api_dribbles_success_per90}`);
+    if (p.api_shots_per90 != null) parts.push(`Shots/90: ${p.api_shots_per90}`);
+    if (p.api_duels_won_pct != null) parts.push(`Duels won: ${p.api_duels_won_pct}%`);
+    if (p.api_passes_accuracy != null) parts.push(`Pass accuracy: ${p.api_passes_accuracy}%`);
     if (p.player_style) parts.push(`Playing style: ${p.player_style}`);
   }
   if (scoutData?.fm && !scoutData.fm.error) {
@@ -259,14 +264,17 @@ function buildTemplateScoutReport(
   const fm = scoutData?.fm && !scoutData.fm.error ? scoutData.fm : null;
 
   const strengths: string[] = [];
-  if (profile && profile.fbref_matched) {
+  if (profile && profile.api_matched) {
     const p = profile;
-    const mins = p.fbref_minutes_90s != null ? Math.round(Number(p.fbref_minutes_90s) * 90) : null;
+    const mins = p.api_minutes_90s != null ? Math.round(Number(p.api_minutes_90s) * 90) : null;
     if (mins) strengths.push(`**${mins}** ${L.minutes} (365d)`);
-    if (p.fbref_goals_per90 != null) strengths.push(`**${p.fbref_goals_per90}** ${L.goals}/90`);
-    if (p.fbref_assists_per90 != null) strengths.push(`**${p.fbref_assists_per90}** ${L.assists}/90`);
-    if (p.fbref_tackles_per90 != null) strengths.push(`**${p.fbref_tackles_per90}** ${L.tackles}/90`);
-    if (p.fbref_interceptions_per90 != null) strengths.push(`**${p.fbref_interceptions_per90}** ${L.interceptions}/90`);
+    if (p.api_rating != null) strengths.push(`${isHe ? 'דירוג' : 'Rating'}: **${p.api_rating}**`);
+    if (p.api_goals_per90 != null) strengths.push(`**${p.api_goals_per90}** ${L.goals}/90`);
+    if (p.api_assists_per90 != null) strengths.push(`**${p.api_assists_per90}** ${L.assists}/90`);
+    if (p.api_tackles_per90 != null) strengths.push(`**${p.api_tackles_per90}** ${L.tackles}/90`);
+    if (p.api_interceptions_per90 != null) strengths.push(`**${p.api_interceptions_per90}** ${L.interceptions}/90`);
+    if (p.api_key_passes_per90 != null) strengths.push(`**${p.api_key_passes_per90}** ${isHe ? 'מסירות מפתח/90' : 'Key passes/90'}`);
+    if (p.api_dribbles_success_per90 != null) strengths.push(`**${p.api_dribbles_success_per90}** ${isHe ? 'כדרורים/90' : 'Dribbles/90'}`);
   }
   if (fm) {
     const f = fm as { ca?: number; pa?: number; tier?: string; best_position?: { position?: string; fit?: number }; top_attributes?: { name: string; value: number }[] };

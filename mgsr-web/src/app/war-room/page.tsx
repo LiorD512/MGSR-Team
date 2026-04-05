@@ -35,11 +35,12 @@ interface DiscoveryCandidate {
   fmPa?: number;
   fmCa?: number;
   fmPotentialGap?: number;
-  fbrefGoals?: string | number;
-  fbrefAssists?: string | number;
-  fbrefGoalsPer90?: number;
-  fbrefAssistsPer90?: number;
-  fbrefMinutes90s?: string | number;
+  apiGoals?: string | number;
+  apiAssists?: string | number;
+  apiGoalsPer90?: number;
+  apiAssistsPer90?: number;
+  apiMinutes90s?: string | number;
+  apiRating?: number;
   sourceAgentId?: string;
   sourceProfileId?: string;
 }
@@ -919,16 +920,20 @@ export default function WarRoomPage() {
                             </span>
                           )}
                         </div>
-                        {((c.fbrefGoalsPer90 != null && !isNaN(c.fbrefGoalsPer90)) ||
-                          (c.fbrefAssistsPer90 != null && !isNaN(c.fbrefAssistsPer90)) ||
+                        {((c.apiGoalsPer90 != null && !isNaN(c.apiGoalsPer90)) ||
+                          (c.apiAssistsPer90 != null && !isNaN(c.apiAssistsPer90)) ||
+                          c.apiRating != null ||
                           (c.fmPa != null || c.fmCa != null)) && (
                           <p className="text-xs text-mgsr-muted mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
-                            {(c.fbrefGoalsPer90 != null && !isNaN(c.fbrefGoalsPer90)) ||
-                            (c.fbrefAssistsPer90 != null && !isNaN(c.fbrefAssistsPer90)) ? (
+                            {c.apiRating != null && (
+                              <span className="text-yellow-400 font-semibold">Rating: {c.apiRating.toFixed(2)}</span>
+                            )}
+                            {(c.apiGoalsPer90 != null && !isNaN(c.apiGoalsPer90)) ||
+                            (c.apiAssistsPer90 != null && !isNaN(c.apiAssistsPer90)) ? (
                               <span>
-                                FBref: G/90 {((c.fbrefGoalsPer90 ?? 0) as number).toFixed(2)}
-                                {(c.fbrefAssistsPer90 != null && !isNaN(c.fbrefAssistsPer90)) && (
-                                  <> · A/90 {(c.fbrefAssistsPer90 as number).toFixed(2)}</>
+                                G/90 {((c.apiGoalsPer90 ?? 0) as number).toFixed(2)}
+                                {(c.apiAssistsPer90 != null && !isNaN(c.apiAssistsPer90)) && (
+                                  <> · A/90 {(c.apiAssistsPer90 as number).toFixed(2)}</>
                                 )}
                               </span>
                             ) : null}
@@ -1658,7 +1663,7 @@ export default function WarRoomPage() {
                                   )}
                                 </p>
 
-                                {/* FM + FBref badges */}
+                                {/* FM + Stats badges */}
                                 {(s.fmCa != null && s.fmCa > 0) && (
                                   <div className="flex items-center gap-2 mt-2 flex-wrap" dir="ltr">
                                     <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-indigo-500/15 border border-indigo-500/25">

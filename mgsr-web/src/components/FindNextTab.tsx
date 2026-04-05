@@ -64,7 +64,7 @@ interface FindNextResult {
   url: string;
   league: string;
   club?: string;
-  fbref_team?: string;
+  api_team?: string;
   citizenship: string;
   foot: string;
   height: string;
@@ -190,7 +190,7 @@ export default function FindNextTab() {
             playerPosition: player.position ?? null,
             playerAge: player.age ?? null,
             playerNationality: player.citizenship ?? null,
-            clubJoinedName: player.club ?? player.fbref_team ?? null,
+            clubJoinedName: player.club ?? player.api_team ?? null,
             marketValue: player.market_value ?? null,
           };
         }
@@ -611,8 +611,8 @@ export default function FindNextTab() {
                       <span className="mx-1.5">·</span>
                       {player.market_value || '—'}
                       <span className="mx-1.5">·</span>
-                      {player.club || player.fbref_team || player.league || '—'}
-                      {(player.club || player.fbref_team) && player.league && (
+                      {player.club || player.api_team || player.league || '—'}
+                      {(player.club || player.api_team) && player.league && (
                         <span className="text-mgsr-muted/60">
                           {' '}({player.league})
                         </span>

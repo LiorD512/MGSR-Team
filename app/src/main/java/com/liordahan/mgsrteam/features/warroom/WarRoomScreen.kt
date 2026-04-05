@@ -1072,6 +1072,9 @@ private fun DiscoveryPlayerCard(
             ) {
                 SourceTag(source = candidate.source, label = candidate.sourceLabel)
 
+                if (candidate.apiRating != null) {
+                    StatChip("Rating", String.format("%.2f", candidate.apiRating))
+                }
                 if (candidate.goalsPerNinety != null) {
                     StatChip("G/90", String.format("%.2f", candidate.goalsPerNinety))
                 }

@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     const statsSource = playerMatch ?? similarResults[0];
     const statsContext = statsSource
       ? buildStatsContext(statsSource)
-      : 'No FBref stats available';
+      : 'No stats available';
     const fmContext = buildFmContext(fmData as Record<string, unknown> | null);
     const similarSummary = (similarData?.results || [])
       .filter((p: Record<string, unknown>) => !samePlayer((p.url as string) || '', playerUrl))

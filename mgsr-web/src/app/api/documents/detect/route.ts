@@ -62,6 +62,7 @@ If the document is a football/soccer GPS tracking report or physical performance
 If isGpsData is true, also extract:
 - gpsFirstMatchDate: the EARLIEST match date in DD/MM/YYYY format
 - gpsLastMatchDate: the LATEST/most recent match date in DD/MM/YYYY format
+- gpsMatchTitle: short match identifier from the report header (e.g. "J15 Rio Ave", "LEON VS FOLGORE", "Vora Vs Tirana"). Use whatever game/match label appears in the title.
 
 RULES:
 - Never swap firstName and lastName
@@ -80,9 +81,9 @@ const SAFETY_SETTINGS = [
 /**
  * Check if a PDF buffer is a GPS/physical performance report.
  * Supports Catapult reports and generic GPS formats.
- * Returns the match date string (e.g. "03/01/2026") if detected, or null if not a GPS report.
+ * Returns { date, title } if detected, or null if not a GPS report.
  */
-async function detectGpsReport(buffer: Buffer): Promise<string | null> {
+async function detectGpsReport(buffer: Buffer): Promise<{ date: string; title: string } | null> {
   const lower = buffer.toString('latin1').toLowerCase();
 
   // Check PDF metadata — Catapult/STATSports reports have identifiable creator/keywords
@@ -105,6 +106,9 @@ async function detectGpsReport(buffer: Buffer): Promise<string | null> {
     'distance per min', 'distance zone', 'dynamic stress load',
     'match day', 'smax', 'drel', 'd > 25', 'd > 20', 'km/h',
     'k-sport', 'full match',
+    // Portuguese headers (Santa Clara, etc.)
+    'dist\u00e2ncia total', 'dist\u00e2ncia sprint', 'top speed (km/h)',
+    'carga externa', 'metabolic load', 'dist\u00e2ncia/min',
   ];
   const genericCount = genericMarkers.filter(m => lower.includes(m)).length;
 
@@ -129,9 +133,10 @@ async function detectGpsReport(buffer: Buffer): Promise<string | null> {
       const pdfCatapultCount = catapultMarkers.filter(m => textLower.includes(m)).length;
       const pdfGenericCount = genericMarkers.filter(m => textLower.includes(m)).length;
       if (pdfCatapultCount < 4 && pdfGenericCount < 3) return null;
-      // Extract date from text (DD/MM/YYYY)
+      // Extract date and match title from text
       const dateMatch = extractedText.match(/(\d{2}\/\d{2}\/\d{4})/);
-      return dateMatch?.[1] ?? '';
+      const titleMatch = extractedText.match(/(?:JOGO|MATCH|GAME|VS\.?)\s+(.{3,40}?)(?:\s{2,}|\n|EQUIPA|TEAM|$)/i);
+      return { date: dateMatch?.[1] ?? '', title: titleMatch?.[1]?.trim() ?? '' };
     } catch (e) {
       console.warn('[detect] pdfjs text extraction failed:', e);
       return null;
@@ -144,12 +149,12 @@ async function detectGpsReport(buffer: Buffer): Promise<string | null> {
   // XMP date: <xmp:CreateDate>YYYY-MM-DDT...
   const xmpMatch = rawStr.match(/<xmp:CreateDate>(\d{4})-(\d{2})-(\d{2})/);
   if (xmpMatch) {
-    return `${xmpMatch[3]}/${xmpMatch[2]}/${xmpMatch[1]}`;
+    return { date: `${xmpMatch[3]}/${xmpMatch[2]}/${xmpMatch[1]}`, title: '' };
   }
   // PDF date: D:YYYYMMDD
   const pdfDateMatch = rawStr.match(/\/CreationDate\s*\(D:(\d{4})(\d{2})(\d{2})/);
   if (pdfDateMatch) {
-    return `${pdfDateMatch[3]}/${pdfDateMatch[2]}/${pdfDateMatch[1]}`;
+    return { date: `${pdfDateMatch[3]}/${pdfDateMatch[2]}/${pdfDateMatch[1]}`, title: '' };
   }
 
   // Fallback: try pdfjs-dist text extraction for the date
@@ -167,9 +172,10 @@ async function detectGpsReport(buffer: Buffer): Promise<string | null> {
     }
     await doc.destroy();
     const dateMatch = extractedText.match(/(\d{2}\/\d{2}\/\d{4})/);
-    return dateMatch?.[1] ?? '';
+    const titleMatch = extractedText.match(/(?:JOGO|MATCH|GAME|VS\.?)\s+(.{3,40}?)(?:\s{2,}|\n|EQUIPA|TEAM|$)/i);
+    return { date: dateMatch?.[1] ?? '', title: titleMatch?.[1]?.trim() ?? '' };
   } catch {
-    return ''; // GPS detected but couldn't extract date
+    return { date: '', title: '' }; // GPS detected but couldn't extract details
   }
 }
 
@@ -243,7 +249,8 @@ Return a JSON object with these fields:
   "mandateExpiresAt": string or null (DD/MM/YYYY),
   "validLeagues": string[] or [],
   "gpsFirstMatchDate": string or null (DD/MM/YYYY),
-  "gpsLastMatchDate": string or null (DD/MM/YYYY)
+  "gpsLastMatchDate": string or null (DD/MM/YYYY),
+  "gpsMatchTitle": string or null
 }
 
 PRIORITY: A document can only be ONE type. Check in order: passport first, then mandate, then GPS data. Only one of isPassport/isMandate/isGpsData should be true.`;
@@ -360,13 +367,15 @@ PRIORITY: A document can only be ONE type. Check in order: passport first, then 
   if (obj.isGpsData === true) {
     const firstDate = typeof obj.gpsFirstMatchDate === 'string' ? obj.gpsFirstMatchDate : '';
     const lastDate = typeof obj.gpsLastMatchDate === 'string' ? obj.gpsLastMatchDate : '';
+    const matchTitle = typeof obj.gpsMatchTitle === 'string' ? obj.gpsMatchTitle : '';
     const safeName = playerName ? sanitizeFileName(playerName) : '';
     const safeFirst = firstDate ? firstDate.replace(/\//g, '-') : '';
     const safeLast = lastDate ? lastDate.replace(/\//g, '-') : '';
     const dateRange = safeFirst && safeLast && safeFirst !== safeLast
       ? `${safeFirst}_to_${safeLast}`
       : safeFirst;
-    const nameParts = ['GPS', safeName, dateRange].filter(Boolean);
+    const safeTitle = matchTitle ? sanitizeFileName(matchTitle) : '';
+    const nameParts = ['GPS', safeName, safeTitle, dateRange].filter(Boolean);
     // Use correct extension based on file type (not always PDF — could be image)
     const extMatch = originalFileName.match(/\.([a-zA-Z0-9]+)$/);
     const ext = extMatch ? extMatch[1].toLowerCase() : 'pdf';
@@ -415,12 +424,13 @@ export async function POST(req: NextRequest) {
     // GPS report pre-check: fast keyword scan avoids unnecessary Gemini call
     const isPdf = mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
     if (isPdf) {
-      const gpsDate = await detectGpsReport(buffer);
-      if (gpsDate !== null) {
-        // Build name: GPS_PlayerName_DD-MM-YYYY.pdf
+      const gpsResult = await detectGpsReport(buffer);
+      if (gpsResult !== null) {
+        // Build name: GPS_PlayerName_MatchTitle_DD-MM-YYYY.pdf
         const safeName = playerName ? sanitizeFileName(playerName) : '';
-        const safeDate = gpsDate ? gpsDate.replace(/\//g, '-') : '';
-        const parts = ['GPS', safeName, safeDate].filter(Boolean);
+        const safeDate = gpsResult.date ? gpsResult.date.replace(/\//g, '-') : '';
+        const safeTitle = gpsResult.title ? sanitizeFileName(gpsResult.title) : '';
+        const parts = ['GPS', safeName, safeTitle, safeDate].filter(Boolean);
         return NextResponse.json({
           documentType: 'GPS_DATA',
           suggestedName: `${parts.join('_')}.pdf`,

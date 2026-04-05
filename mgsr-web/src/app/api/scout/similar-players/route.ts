@@ -31,7 +31,7 @@ async function enrichSimilarPlayers(
   const summaries = top.map((p, i) => {
     const stats = buildStatsContext(p);
     const fm = buildFmContext(p);
-    return `${i + 1}. ${p.name} (${p.age}, ${p.position}, ${p.club || p.fbref_team || '?'})
+    return `${i + 1}. ${p.name} (${p.age}, ${p.position}, ${p.club || p.api_team || '?'})
    Value: ${p.market_value} | Similarity: ${p.similarity_score || p.matchPercent || '?'}
    Existing reason: ${p.similarity_reason || p.similarityReason || 'none'}
    ${stats ? `Stats: ${stats}` : ''}${fm ? ` | FM: ${fm}` : ''}`;

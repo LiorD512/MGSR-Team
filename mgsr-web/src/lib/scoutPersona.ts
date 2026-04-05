@@ -31,7 +31,7 @@ EXPERTISE:
 - You know the Israeli market intimately: Ligat Ha'Al clubs, their budgets (€100K–€2.5M transfers), their playing styles, their fan expectations, their tactical tendencies.
 - You know which European leagues are the best hunting grounds for Israeli clubs: Belgium, Portugal, Netherlands, Scandinavia, Eastern Europe, Turkey, Greece, Poland, Austria, Cyprus.
 - You understand FM (Football Manager) data deeply: CA/PA ratings, attribute profiles, position fits. You use FM data as a "second opinion" — it often catches what stats miss.
-- You respect FBref stats but know their limits: goals/90, assists/90, tackles/90, interceptions/90, and minutes are reliable. Progressive carries and key passes data may be limited.
+- You respect API-Football stats and use them confidently: rating (0-10 scale), goals/90, assists/90, key passes/90, dribbles/90, shots/90, tackles/90, interceptions/90, duels won %, pass accuracy. All stats are per-90 normalized from real API-Football data.
 
 COMMUNICATION RULES:
 - Be decisive. "SIGN", "MONITOR", or "PASS" — never wishy-washy.
@@ -79,35 +79,40 @@ ADDITIONAL "FIND THE NEXT" CONTEXT:
 - Consider FM PA as a ceiling indicator — does this player's potential suggest they could reach the reference player's level?
 - Flag asymmetric opportunities: "This player is 90% of the reference at 20% of the price."`;
 
-// ─── Available FBref Stats (Free Tier) ───────────────────────────────────────
+// ─── Available API-Football Stats ───────────────────────────────────────
 
 /**
- * FBref fields with REAL data (free tier only).
- * NEVER reference progressive_carries, key_passes, dribbles, or xG in prompts —
- * these are NOT available and would produce placeholder/hallucinated values.
+ * API-Football v3 Pro fields with REAL data.
+ * All per-90 stats are computed server-side from API-Football responses.
  */
-export const AVAILABLE_FBREF_STATS = [
-  'fbref_goals',
-  'fbref_assists',
-  'fbref_goals_per90',
-  'fbref_assists_per90',
-  'fbref_minutes_90s',
-  'fbref_tackles_per90',
-  'fbref_interceptions_per90',
-  'fbref_matched',
-  'fbref_team',
+export const AVAILABLE_API_STATS = [
+  'api_goals',
+  'api_assists',
+  'api_goals_per90',
+  'api_assists_per90',
+  'api_minutes_90s',
+  'api_tackles_per90',
+  'api_interceptions_per90',
+  'api_key_passes_per90',
+  'api_dribbles_success_per90',
+  'api_shots_per90',
+  'api_shots_on_target_per90',
+  'api_duels_won_pct',
+  'api_passes_accuracy',
+  'api_rating',
+  'api_saves_per90',
+  'api_blocks_per90',
+  'api_fouls_per90',
+  'api_fouled_per90',
+  'api_matched',
+  'api_team',
 ] as const;
 
 /**
- * Ghost FBref fields — referenced in code but NEVER have real data.
- * These should be cleaned from prompts and displays.
+ * Legacy ghost fields — no longer applicable with API-Football Pro.
+ * Kept for reference only.
  */
-export const GHOST_FBREF_STATS = [
-  'fbref_progressive_carries',
-  'fbref_progressive_carries_per90',
-  'fbref_key_passes',
-  'fbref_key_passes_per90',
-] as const;
+export const GHOST_API_STATS = [] as const;
 
 // ─── Stat Context Builder ────────────────────────────────────────────────────
 
@@ -118,23 +123,35 @@ export const GHOST_FBREF_STATS = [
 export function buildStatsContext(player: Record<string, unknown>): string {
   const parts: string[] = [];
 
-  const goalsP90 = player.fbref_goals_per90 ?? player.fbref_goals;
-  const assistsP90 = player.fbref_assists_per90 ?? player.fbref_assists;
-  const tacklesP90 = player.fbref_tackles_per90;
-  const interceptionsP90 = player.fbref_interceptions_per90;
-  const minutes90s = player.fbref_minutes_90s;
+  const rating = player.api_rating;
+  const goalsP90 = player.api_goals_per90 ?? player.api_goals;
+  const assistsP90 = player.api_assists_per90 ?? player.api_assists;
+  const tacklesP90 = player.api_tackles_per90;
+  const interceptionsP90 = player.api_interceptions_per90;
+  const keyPassesP90 = player.api_key_passes_per90;
+  const dribblesP90 = player.api_dribbles_success_per90;
+  const shotsP90 = player.api_shots_per90;
+  const duelsWonPct = player.api_duels_won_pct;
+  const passAccuracy = player.api_passes_accuracy;
+  const minutes90s = player.api_minutes_90s;
 
+  if (rating != null) parts.push(`Rating: ${rating}`);
   if (goalsP90 != null) parts.push(`Goals/90: ${goalsP90}`);
   if (assistsP90 != null) parts.push(`Assists/90: ${assistsP90}`);
+  if (keyPassesP90 != null) parts.push(`Key passes/90: ${keyPassesP90}`);
+  if (dribblesP90 != null) parts.push(`Dribbles/90: ${dribblesP90}`);
+  if (shotsP90 != null) parts.push(`Shots/90: ${shotsP90}`);
   if (tacklesP90 != null) parts.push(`Tackles/90: ${tacklesP90}`);
   if (interceptionsP90 != null) parts.push(`Interceptions/90: ${interceptionsP90}`);
+  if (duelsWonPct != null) parts.push(`Duels won: ${duelsWonPct}%`);
+  if (passAccuracy != null) parts.push(`Pass accuracy: ${passAccuracy}%`);
   if (minutes90s != null) {
     const totalMinutes = Math.round(Number(minutes90s) * 90);
     parts.push(`Minutes played (365d): ~${totalMinutes}`);
     parts.push(`Full 90s equivalent: ${minutes90s}`);
   }
 
-  return parts.length > 0 ? parts.join(', ') : 'No FBref stats available';
+  return parts.length > 0 ? parts.join(', ') : 'No stats available';
 }
 
 /**

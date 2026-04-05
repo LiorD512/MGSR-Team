@@ -720,17 +720,8 @@ export default function PlayerInfoPage() {
         if (validLeagues?.length) data.validLeagues = validLeagues;
         if (docType === 'MANDATE' && uploadedBy) data.uploadedBy = uploadedBy;
 
-        // For GPS uploads, remove existing document with same name (same date) before creating new one
-        if (docType === 'GPS_DATA') {
-          const existingGps = documents.filter(d => d.type === 'GPS_DATA' && d.name === suggestedName);
-          for (const dup of existingGps) {
-            try {
-              await callPlayerDocumentsDelete({ platform: 'men', documentId: dup.id });
-            } catch (e) {
-              console.warn('[GPS dedup] Failed to delete old doc:', e);
-            }
-          }
-        }
+        // GPS uploads: don't delete existing docs — each file is a separate match report.
+        // GpsMatchData dedup (in gps-parse) handles preventing data duplicates.
 
         // Create document entry + FeedEvent via callable
         await callPlayerDocumentsCreate({

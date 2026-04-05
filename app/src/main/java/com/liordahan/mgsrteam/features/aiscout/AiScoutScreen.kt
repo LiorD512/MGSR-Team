@@ -2233,7 +2233,7 @@ private fun LeagueInfoBanner(info: LeagueInfo) {
  * Structured parse result for scout analysis text.
  * Separates the jumbled blob into three clean categories:
  *  - scoutNotes: scouting insight lines (profile, league context, recommendations)
- *  - realStats:  fbref / real-world per-90 stats and percentile data
+ *  - realStats:  api-football / real-world per-90 stats and percentile data
  *  - fmStats:    Football Manager attribute scores (positioning: 80, tackling: 75, CA/PA)
  */
 private data class ParsedAnalysis(
@@ -2251,7 +2251,7 @@ private data class FmStatItem(
 
 /**
  * Parses scout analysis text into structured sections.
- * The scout server sends one big blob mixing scouting insight, fbref stats,
+ * The scout server sends one big blob mixing scouting insight, api-football stats,
  * and FM attributes. This function classifies each line into the right bucket.
  */
 private fun parseScoutAnalysisStructured(text: String): ParsedAnalysis {
@@ -2294,7 +2294,7 @@ private fun parseScoutAnalysisStructured(text: String): ParsedAnalysis {
         "overall", "potential",
     )
 
-    // ── fbref / real-stat patterns ────────────────────────────────────
+    // ── api-football / real-stat patterns ────────────────────────────────────
     // per-90 stats, percentile mentions, or stats with /90 suffix
     val realStatPatterns = listOf(
         Regex("""/90""", RegexOption.IGNORE_CASE),                      // tackles/90, interceptions/90
@@ -2304,7 +2304,7 @@ private fun parseScoutAnalysisStructured(text: String): ParsedAnalysis {
         Regex("""יירוטים"""),                                           // interceptions (real stats term)
         Regex("""(?:xG|xA|npxG|SCA|GCA)\b"""),                         // advanced metrics
         Regex("""קילומטרים|km\b""", RegexOption.IGNORE_CASE),          // distance covered
-        Regex("""חוזקות\s*:"""),                                        // "חוזקות:" is a fbref section header
+        Regex("""חוזקות\s*:"""),                                        // "חוזקות:" is a api-football section header
     )
 
     // ── CA/PA pattern (FM ability scores) ─────────────────────────────
@@ -2333,7 +2333,7 @@ private fun parseScoutAnalysisStructured(text: String): ParsedAnalysis {
             // 1) Check for CA/PA (always FM)
             val hasCaPa = caPaPattern.containsMatchIn(cleaned)
 
-            // 2) Check real-stat patterns (fbref)
+            // 2) Check real-stat patterns (api-football)
             val isRealStat = !hasCaPa && realStatPatterns.any { it.containsMatchIn(cleaned) }
 
             // 3) Check FM keyword match
@@ -2579,7 +2579,7 @@ private fun PlayerResultCard(
                     )
                 }
 
-                // ── Real Stats (fbref per-90, percentiles) ────────────
+                // ── Real Stats (api-football per-90, percentiles) ────────────
                 if (parsed.realStats.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     Text(

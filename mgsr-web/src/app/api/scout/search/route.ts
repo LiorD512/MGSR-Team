@@ -88,7 +88,7 @@ async function fetchFreesearch(
     const fsMinGoals = parsed.minGoals;
     if (fsMinGoals != null && fsMinGoals > 0) {
       results = results.filter((p) => {
-        const goals = p.fbref_goals;
+        const goals = p.api_goals;
         if (goals == null) return false;
         const n = typeof goals === 'string' ? parseInt(goals, 10) : Number(goals);
         return !isNaN(n) && n >= fsMinGoals;
@@ -201,10 +201,10 @@ export async function POST(request: NextRequest) {
       if (demo) {
         const parsed = parseFreeQuery(query, lang);
         const mockResults = [
-          { name: 'Demo Player 1', age: '25', position: 'Attack - Centre-Forward', market_value: '€500k', url: null, fbref_goals: '7' },
-          { name: 'Demo Player 2', age: '24', position: 'Attack - Centre-Forward', market_value: '€400k', url: null, fbref_goals: '6' },
-          { name: 'Demo Player 3', age: '26', position: 'Attack - Centre-Forward', market_value: '€600k', url: null, fbref_goals: '8' },
-        ].filter((p) => !parsed.minGoals || parseInt(p.fbref_goals, 10) >= parsed.minGoals);
+          { name: 'Demo Player 1', age: '25', position: 'Attack - Centre-Forward', market_value: '€500k', url: null, api_goals: '7' },
+          { name: 'Demo Player 2', age: '24', position: 'Attack - Centre-Forward', market_value: '€400k', url: null, api_goals: '6' },
+          { name: 'Demo Player 3', age: '26', position: 'Attack - Centre-Forward', market_value: '€600k', url: null, api_goals: '8' },
+        ].filter((p) => !parsed.minGoals || parseInt(p.api_goals, 10) >= parsed.minGoals);
         return NextResponse.json({
           results: mockResults,
           interpretation: (lang === 'he' ? 'מצב דמו – נתונים לדוגמה. ' : 'Demo mode – sample data. ') + (parsed.interpretation ?? ''),
@@ -439,7 +439,7 @@ export async function POST(request: NextRequest) {
       // Filter by min_goals (scout server doesn't support it)
       if (minGoals != null && minGoals > 0) {
         results = results.filter((p) => {
-          const goals = p.fbref_goals;
+          const goals = p.api_goals;
           if (goals == null) return false;
           const n = typeof goals === 'string' ? parseInt(goals, 10) : Number(goals);
           return !isNaN(n) && n >= minGoals;

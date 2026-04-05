@@ -13,7 +13,7 @@
  * 6. Israeli market realism — is the player truly attainable for Ligat Ha'al?
  * 7. Data consistency — cross-reference stats for impossible/stale data
  * 8. TM stats verification — scrapes Transfermarkt season page to cross-check
- *    FBref data for stats-dependent profiles (HIGH_VALUE_BENCHED, BREAKOUT_SEASON,
+ *    stats data for stats-dependent profiles (HIGH_VALUE_BENCHED, BREAKOUT_SEASON,
  *    YOUNG_STRIKER_HOT). Overrides incorrect data and re-evaluates profile type.
  *
  * After code checks, Gemini generates Sport Director verdicts for top approved profiles
@@ -41,7 +41,7 @@ function getAgentFns() {
 // ═══════════════════════════════════════════════════════════════
 // Player Intelligence — multi-source enrichment for verdicts
 // Sources: TheSportsDB (bio, wage, honours), FotMob (ID), ClubElo (strength)
-// Note: FBref & Sofascore blocked by Cloudflare/403 from server-side
+// Note: API-Football blocked by Cloudflare/403 from server-side
 // ═══════════════════════════════════════════════════════════════
 const INTEL_TIMEOUT = 10000;
 const INTEL_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
@@ -314,11 +314,21 @@ function checkCompleteness(data) {
     issues.push("missing_contract_critical");
   }
 
-  // FM data is critical for UNDERVALUED_BY_FM (requires fmPa >= 140 — can't exist without FM).
-  // HIDDEN_GEM explicitly allows fmPa == null in matchesProfile() — young + cheap = always interesting.
+  // FM data is critical for FM-dependent profiles
   const isTmSource = data.source === "tm_enriched" || data.source === "tm_fallback";
   if (data.profileType === "UNDERVALUED_BY_FM" && data.fmPa == null && !isTmSource) {
     issues.push("missing_fm_critical");
+  }
+  if (data.profileType === "HIDDEN_GEM" && data.fmPa == null && !isTmSource) {
+    issues.push("missing_fm_critical");
+  }
+
+  // Insufficient data: no minutes AND no FM = blind profile, can't validate anything
+  // Only allow through: CONTRACT_EXPIRING (contract alone is signal) and TM-enriched
+  const hasMinutes = (data.apiMinutes90s || 0) > 0;
+  const hasFm = data.fmPa != null;
+  if (!hasMinutes && !hasFm && !isTmSource && data.profileType !== "CONTRACT_EXPIRING") {
+    issues.push("insufficient_data_critical");
   }
 
   return issues;
@@ -330,7 +340,7 @@ function checkCompleteness(data) {
 function checkPer90Quality(data) {
   const issues = [];
   const posGroup = getPositionGroup(data.position);
-  const minutes90s = data.fbrefMinutes90s || 0;
+  const minutes90s = data.apiMinutes90s || 0;
 
   if (minutes90s <= 0) {
     // No minutes = can't validate performance (except CONTRACT_EXPIRING, HIGH_VALUE_BENCHED, or TM-enriched)
@@ -406,8 +416,10 @@ function checkAgeValueRationality(data) {
 // ═══════════════════════════════════════════════════════════════
 function checkScoreThreshold(data) {
   const isTmSource = data.source === "tm_enriched" || data.source === "tm_fallback";
-  // TM-sourced profiles get a lower threshold (missing FM data depresses scores)
-  const tierThresholds = isTmSource ? { 1: 55, 2: 48, 3: 44 } : MIN_SCORE_BY_TIER;
+  // CONTRACT_EXPIRING has signal from contract alone — use lower threshold like TM-sourced
+  const isContractProfile = data.profileType === "CONTRACT_EXPIRING";
+  // TM-sourced and contract-based profiles get a lower threshold (missing FM data depresses scores)
+  const tierThresholds = (isTmSource || isContractProfile) ? { 1: 55, 2: 48, 3: 44 } : MIN_SCORE_BY_TIER;
   const minScore = tierThresholds[data.leagueTier] || 65;
   if (data.matchScore < minScore) {
     return [`below_tier_threshold:${data.matchScore}<${minScore}`];
@@ -441,7 +453,7 @@ function checkIsraeliMarketRealism(data) {
   const leagueLower = (data.league || "").toLowerCase();
   const isTier1 = TIER_1_KEYWORDS.some((kw) => leagueLower.includes(kw));
   if (isTier1 && data.profileType !== "CONTRACT_EXPIRING" && data.profileType !== "HIGH_VALUE_BENCHED") {
-    const minutes90s = data.fbrefMinutes90s || 0;
+    const minutes90s = data.apiMinutes90s || 0;
     if (minutes90s >= 10) {
       // Regular starter in a top-5 league — zero chance of moving to Israel
       issues.push("tier1_starter_unrealistic");
@@ -450,8 +462,8 @@ function checkIsraeliMarketRealism(data) {
 
   // Tier 3 goal inflation — scoring in very weak leagues != Ligat Ha'al quality
   if (data.leagueTier >= 3 && isAttacker(data.position)) {
-    const goals = data.fbrefGoals || 0;
-    const minutes90s = data.fbrefMinutes90s || 0;
+    const goals = data.apiGoals || 0;
+    const minutes90s = data.apiMinutes90s || 0;
     if (goals >= 10 && minutes90s > 0) {
       const goalsPer90 = goals / minutes90s;
       // Extreme rate in a weak league — likely inflated
@@ -469,9 +481,9 @@ function checkIsraeliMarketRealism(data) {
 // ═══════════════════════════════════════════════════════════════
 function checkDataConsistency(data) {
   const issues = [];
-  const minutes90s = data.fbrefMinutes90s || 0;
-  const goals = data.fbrefGoals || 0;
-  const assists = data.fbrefAssists || 0;
+  const minutes90s = data.apiMinutes90s || 0;
+  const goals = data.apiGoals || 0;
+  const assists = data.apiAssists || 0;
 
   // Impossible goal rate: more goals than minutes played in 90s
   // (e.g., 10 goals in 3 x 90min = 3.33 g/90 — impossible)
@@ -585,7 +597,7 @@ function normalizeUrl(url) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Transfermarkt Stats Verification — cross-check agent FBref data
+// Transfermarkt Stats Verification — cross-check agent stats data
 // Scrapes TM /leistungsdaten/ to get real season appearances/goals/assists/minutes
 // ═══════════════════════════════════════════════════════════════
 
@@ -680,61 +692,61 @@ async function fetchTmPerformanceStats(tmProfileUrl) {
 }
 
 /**
- * Compare FBref data (from scout server) against TM scraped data.
+ * Compare stats data (from scout server) against TM scraped data.
  * When significant mismatches are found, override profile data with TM values.
- * When FBref data is completely missing, populate from TM (initial enrichment).
+ * When stats data is completely missing, populate from TM (initial enrichment).
  * Returns { overridden: boolean, overrides: string[], tmStats: object }.
  */
 function verifyAndCorrectStats(d, tmStats) {
   const overrides = [];
   const tmMinutes90s = tmStats.minutes > 0 ? tmStats.minutes / 90 : 0;
-  const fbrefMin90s = d.fbrefMinutes90s || 0;
+  const apiMin90s = d.apiMinutes90s || 0;
 
-  // ── INITIAL ENRICHMENT: FBref data completely missing → populate from TM ──
-  if (fbrefMin90s <= 0 && tmStats.minutes > 0) {
+  // ── INITIAL ENRICHMENT: stats data completely missing → populate from TM ──
+  if (apiMin90s <= 0 && tmStats.minutes > 0) {
     overrides.push(`minutes: EMPTY → TM ${tmMinutes90s.toFixed(1)} 90s (${tmStats.appearances} apps, ${tmStats.minutes} min)`);
-    d.fbrefMinutes90s = Math.round(tmMinutes90s * 10) / 10;
+    d.apiMinutes90s = Math.round(tmMinutes90s * 10) / 10;
   }
-  if ((d.fbrefGoals || 0) === 0 && tmStats.goals > 0) {
+  if ((d.apiGoals || 0) === 0 && tmStats.goals > 0) {
     overrides.push(`goals: EMPTY → TM ${tmStats.goals}`);
-    d.fbrefGoals = tmStats.goals;
+    d.apiGoals = tmStats.goals;
   }
-  if ((d.fbrefAssists || 0) === 0 && tmStats.assists > 0) {
+  if ((d.apiAssists || 0) === 0 && tmStats.assists > 0) {
     overrides.push(`assists: EMPTY → TM ${tmStats.assists}`);
-    d.fbrefAssists = tmStats.assists;
+    d.apiAssists = tmStats.assists;
   }
 
-  // ── MISMATCH CORRECTION: FBref has data but TM disagrees significantly ──
-  // Minutes mismatch: FBref says barely played but TM shows 15+ appearances
-  if (fbrefMin90s > 0 && fbrefMin90s < 10 && tmStats.appearances >= 15 && tmMinutes90s >= 10) {
-    overrides.push(`minutes: FBref ${fbrefMin90s.toFixed(1)} 90s → TM ${tmMinutes90s.toFixed(1)} 90s (${tmStats.appearances} apps, ${tmStats.minutes} min)`);
-    d.fbrefMinutes90s = Math.round(tmMinutes90s * 10) / 10;
+  // ── MISMATCH CORRECTION: stats has data but TM disagrees significantly ──
+  // Minutes mismatch: stats says barely played but TM shows 15+ appearances
+  if (apiMin90s > 0 && apiMin90s < 10 && tmStats.appearances >= 15 && tmMinutes90s >= 10) {
+    overrides.push(`minutes: stats ${apiMin90s.toFixed(1)} 90s → TM ${tmMinutes90s.toFixed(1)} 90s (${tmStats.appearances} apps, ${tmStats.minutes} min)`);
+    d.apiMinutes90s = Math.round(tmMinutes90s * 10) / 10;
   }
-  // Also catch: FBref has minutes but they're drastically low vs TM
-  if (fbrefMin90s > 0 && tmMinutes90s > 0 && tmMinutes90s > fbrefMin90s * 2 && tmMinutes90s - fbrefMin90s >= 5) {
-    overrides.push(`minutes: FBref ${fbrefMin90s.toFixed(1)} 90s → TM ${tmMinutes90s.toFixed(1)} 90s (significant under-count)`);
-    d.fbrefMinutes90s = Math.round(tmMinutes90s * 10) / 10;
+  // Also catch: stats has minutes but they're drastically low vs TM
+  if (apiMin90s > 0 && tmMinutes90s > 0 && tmMinutes90s > apiMin90s * 2 && tmMinutes90s - apiMin90s >= 5) {
+    overrides.push(`minutes: stats ${apiMin90s.toFixed(1)} 90s → TM ${tmMinutes90s.toFixed(1)} 90s (significant under-count)`);
+    d.apiMinutes90s = Math.round(tmMinutes90s * 10) / 10;
   }
 
   // Goals mismatch: differ by >50% with minimum 3 gap
-  const fbGoals = d.fbrefGoals || 0;
-  if (tmStats.goals !== undefined && Math.abs(tmStats.goals - fbGoals) >= 3 && (fbGoals === 0 || Math.abs(tmStats.goals - fbGoals) / Math.max(fbGoals, 1) > 0.5)) {
-    overrides.push(`goals: FBref ${fbGoals} → TM ${tmStats.goals}`);
-    d.fbrefGoals = tmStats.goals;
+  const apiGoals_tm = d.apiGoals || 0;
+  if (tmStats.goals !== undefined && Math.abs(tmStats.goals - apiGoals_tm) >= 3 && (apiGoals_tm === 0 || Math.abs(tmStats.goals - apiGoals_tm) / Math.max(apiGoals_tm, 1) > 0.5)) {
+    overrides.push(`goals: stats ${apiGoals_tm} → TM ${tmStats.goals}`);
+    d.apiGoals = tmStats.goals;
   }
 
   // Assists mismatch: same threshold
-  const fbAssists = d.fbrefAssists || 0;
-  if (tmStats.assists !== undefined && Math.abs(tmStats.assists - fbAssists) >= 3 && (fbAssists === 0 || Math.abs(tmStats.assists - fbAssists) / Math.max(fbAssists, 1) > 0.5)) {
-    overrides.push(`assists: FBref ${fbAssists} → TM ${tmStats.assists}`);
-    d.fbrefAssists = tmStats.assists;
+  const apiAssists_tm = d.apiAssists || 0;
+  if (tmStats.assists !== undefined && Math.abs(tmStats.assists - apiAssists_tm) >= 3 && (apiAssists_tm === 0 || Math.abs(tmStats.assists - apiAssists_tm) / Math.max(apiAssists_tm, 1) > 0.5)) {
+    overrides.push(`assists: stats ${apiAssists_tm} → TM ${tmStats.assists}`);
+    d.apiAssists = tmStats.assists;
   }
 
   // Recalculate per-90 rates if anything was overridden
   if (overrides.length > 0) {
-    const min90 = d.fbrefMinutes90s || 0;
-    d.goalsPer90 = min90 > 0 ? Math.round((d.fbrefGoals / min90) * 100) / 100 : 0;
-    d.contribPer90 = min90 > 0 ? Math.round(((d.fbrefGoals + d.fbrefAssists) / min90) * 100) / 100 : 0;
+    const min90 = d.apiMinutes90s || 0;
+    d.goalsPer90 = min90 > 0 ? Math.round((d.apiGoals / min90) * 100) / 100 : 0;
+    d.contribPer90 = min90 > 0 ? Math.round(((d.apiGoals + d.apiAssists) / min90) * 100) / 100 : 0;
     // Mark as TM-enriched so downstream checks (no_minutes_data etc.) treat it properly
     d.source = d.source || "tm_enriched";
     d.statsSource = "transfermarkt_verified";
@@ -763,9 +775,9 @@ function reEvaluateProfileType(d) {
   const fakePlayer = {
     position: d.position,
     contract: d.contractExpires || "",
-    fbref_minutes_90s: d.fbrefMinutes90s,
-    fbref_goals: d.fbrefGoals,
-    fbref_assists: d.fbrefAssists,
+    api_minutes_90s: d.apiMinutes90s,
+    api_goals: d.apiGoals,
+    api_assists: d.apiAssists,
     fm_pa: d.fmPa,
     fm_ca: d.fmCa,
     market_value: d.marketValue,
@@ -815,7 +827,7 @@ function reEvaluateProfileType(d) {
   return { changed: true, oldType, newType: null };
 }
 
-// Profile types that rely on FBref stats and are vulnerable to bad data
+// Profile types that rely on API stats and are vulnerable to bad data
 const STATS_DEPENDENT_PROFILES = new Set([
   "HIGH_VALUE_BENCHED",
   "BREAKOUT_SEASON",
@@ -915,20 +927,20 @@ async function fetchTmStatsWithProxy(tmProfileUrl) {
 }
 
 /**
- * Enrich ALL profiles that lack FBref data with TM season stats.
+ * Enrich ALL profiles that lack stats data with TM season stats.
  * Also re-verifies stats-dependent profiles where data exists but may be stale.
  * Batched: 5 concurrent, 1.5s between batches. Max 200 profiles.
  * Mutates profile data in-place when corrections/additions are needed.
  */
 async function enrichAndVerifyViaTm(profiles) {
-  // Enrich ALL profiles missing FBref data, plus verify stats-dependent profiles
+  // Enrich ALL profiles missing stats data, plus verify stats-dependent profiles
   const toEnrich = profiles.filter((p) => {
     const d = p.data;
     // Already has verified TM data — skip
-    if (d.statsSource === "transfermarkt_verified" || d.statsSource === "fbref_tm_confirmed") return false;
-    // No FBref data → needs enrichment
-    if ((d.fbrefMinutes90s || 0) <= 0) return true;
-    // Has FBref data but is stats-dependent → verify
+    if (d.statsSource === "transfermarkt_verified" || d.statsSource === "api_tm_confirmed") return false;
+    // No stats data → needs enrichment
+    if ((d.apiMinutes90s || 0) <= 0) return true;
+    // Has stats data but is stats-dependent → verify
     if (STATS_DEPENDENT_PROFILES.has(d.profileType)) return true;
     return false;
   });
@@ -952,7 +964,7 @@ async function enrichAndVerifyViaTm(profiles) {
     await Promise.allSettled(
       batch.map(async (profile) => {
         const d = profile.data;
-        const hadNoData = (d.fbrefMinutes90s || 0) <= 0;
+        const hadNoData = (d.apiMinutes90s || 0) <= 0;
         const tmStats = await fetchTmStatsWithProxy(d.tmProfileUrl);
         if (!tmStats) {
           failed++;
@@ -980,7 +992,7 @@ async function enrichAndVerifyViaTm(profiles) {
         } else {
           // TM data confirms existing data (or had no new data to add)
           if (!hadNoData) {
-            d.statsSource = "fbref_tm_confirmed";
+            d.statsSource = "api_tm_confirmed";
             d.tmVerification = {
               appearances: tmStats.appearances,
               goals: tmStats.goals,
@@ -1151,7 +1163,7 @@ For each player output:
 
     const playerLines = newProfiles.map((pw, i) => {
       const d = pw.data;
-      const per90 = d.fbrefMinutes90s > 0
+      const per90 = d.apiMinutes90s > 0
         ? `G/90: ${d.goalsPer90.toFixed(2)}, (G+A)/90: ${d.contribPer90.toFixed(2)}`
         : "no per-90 data";
       const nationality = d.nationality || "unknown";
@@ -1161,7 +1173,7 @@ For each player output:
    Agent: ${d.agentId} | Profile: ${d.profileType} | Score: ${d.matchScore}/100
    Value: ${d.marketValue} (€${d.marketValueEuro}) | Contract: ${d.contractExpires || "?"}
    FM PA: ${d.fmPa || "?"}, CA: ${d.fmCa || "?"} | ${per90}
-   Stats: ${d.fbrefGoals || 0}G ${d.fbrefAssists || 0}A in ${d.fbrefMinutes90s?.toFixed(1) || 0} 90s
+   Stats: ${d.apiGoals || 0}G ${d.apiAssists || 0}A in ${d.apiMinutes90s?.toFixed(1) || 0} 90s | Rating: ${d.apiRating || "?"}
    Reason: ${d.matchReason}
    Director code issues: ${(pw.directorReasons || []).join(", ") || "none"}${intelLine ? `\n   INTEL: ${intelLine}` : ""}`;
     }).join("\n");
@@ -1237,7 +1249,7 @@ async function reviewProfiles(profilesToWrite) {
   const previousUrls = await loadPreviousRunUrls();
 
   // ═══ TM ENRICHMENT & VERIFICATION ═══
-  // Enrich ALL profiles lacking FBref data with real TM season stats.
+  // Enrich ALL profiles lacking stats data with real TM season stats.
   // Also re-verify stats-dependent profiles (HIGH_VALUE_BENCHED, BREAKOUT_SEASON,
   // YOUNG_STRIKER_HOT) against Transfermarkt. Corrects mismatches, populates
   // empty fields, and re-evaluates profile types before quality gate runs.
@@ -1307,7 +1319,8 @@ async function reviewProfiles(profilesToWrite) {
       i === "benched_at_low_tier" ||
       i.startsWith("value_exceeds_israeli_ceiling") ||
       i === "tier1_starter_unrealistic" ||
-      i.startsWith("impossible_goal_rate")
+      i.startsWith("impossible_goal_rate") ||
+      i === "insufficient_data_critical"
     );
 
     if (criticalIssues.length > 0) {

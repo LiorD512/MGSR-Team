@@ -494,7 +494,7 @@ exports.scoutAgentWorker = onMessagePublished(
   {
     topic: SCOUT_AGENT_TOPIC,
     timeoutSeconds: 1800,
-    memory: "512MiB",
+    memory: "1GiB",
     retry: false,
     secrets: ["SCOUT_ENRICH_SECRET"],
   },

@@ -32,23 +32,23 @@ object GpsPdfParser {
 SUPPORTED FORMATS: Catapult, STATSports, K-Sport, InStat, Kinexon, PlayerMaker, club-specific reports, or any GPS/tracking system output.
 
 WHAT TO LOOK FOR (map ANY column to the closest semantic match):
-- totalDuration: Minutes played (e.g. "Tot Dur", "Time", "Minutes", "Min")
-- totalDistance: Total distance in meters (e.g. "Tot Dist", "D", "Total Distance", "Dist")
-- highMpEffsDist: High-speed running distance in meters, typically >20 km/h (e.g. "High MP Effs Dist", "D > 20 KM/H", "HSR", "High Speed Running", "High Intensity Dist")
+- totalDuration: Minutes played (e.g. "Tot Dur", "Time", "Minutes", "Min", "TEMPO")
+- totalDistance: Total distance in meters (e.g. "Tot Dist", "D", "Total Distance", "Dist", "DISTÂNCIA TOTAL")
+- highMpEffsDist: High-speed running distance in meters, typically >20 km/h (e.g. "High MP Effs Dist", "D > 20 KM/H", "HSR", "High Speed Running", "High Intensity Dist", "DAV", "HIGH METABOLIC LOAD DISTANCE")
 - highMpEffs: Count of high-metabolic-power efforts (0 if not available)
-- meteragePerMinute: Distance per minute — if not shown, compute as totalDistance / totalDuration (e.g. "Meterage Per Minute", "DREL", "Dist/Min", "m/min")
-- accelerations: Number of accelerations (e.g. "Acc #", "Accelerations")
-- decelerations: Number of decelerations (e.g. "Decel #", "Decelerations")
+- meteragePerMinute: Distance per minute in meters/min — if not shown, compute as totalDistance / totalDuration (e.g. "Meterage Per Minute", "DREL", "Dist/Min", "m/min", "DISTÂNCIA/MIN"). IMPORTANT: this must be a number in m/min (typically 80-130), NOT a percentage.
+- accelerations: Number of accelerations (e.g. "Acc #", "Accelerations", "ACEL")
+- decelerations: Number of decelerations (e.g. "Decel #", "Decelerations", "DECEL")
 - highIntensityRuns: Count of high-intensity running efforts (0 if not shown)
 - sprints: Number of sprints, typically at >25 km/h (e.g. "Sprints", "N° > 25 KM/H", "Sprint Count")
-- maxVelocity: Peak/maximum speed in km/h (e.g. "Max Vel", "SMAX", "Max Speed", "Top Speed")
-- sprintDistTotal: Distance covered at sprint speed (>25 km/h) in meters (e.g. "Sprint Dist", "D > 25 KM/H")
-- hiDistTotal: Distance in high-speed zone just below sprint (e.g. "D 20-25 KM/H", speed zone 4-6 combined)
-- hiDistPercent / sprintDistPercent: Percentage of total distance at high/sprint speed (0 if not shown)
+- maxVelocity: Peak/maximum speed in km/h (e.g. "Max Vel", "SMAX", "Max Speed", "Top Speed", "TOP SPEED")
+- sprintDistTotal: Distance covered at sprint speed (>25 km/h) in meters (e.g. "Sprint Dist", "D > 25 KM/H", "DISTÂNCIA SPRINT")
+- hiDistTotal: Distance in high-speed zone just below sprint (e.g. "D 20-25 KM/H", "DAV 19.8-25 km/h", speed zone 4-6 combined)
+- hiDistPercent / sprintDistPercent: Percentage of total distance at high/sprint speed (e.g. "DISTÂNCIA ALTA INTENSIDADE %"). 0 if not shown
 
 For CHARTS: read annotated numbers above/beside bars. If no exact numbers, estimate from Y-axis. Speed zone colors: Walk (lowest) → Jog → Run → High Speed Run → Sprint (highest/often red).
 
-TEAM AVERAGES: Look for a row labeled "Average", "Team Average", "TEAM AVERAGE", "AVG" or similar. Extract into teamAverage fields. If a "%" column shows values around 100, those are percentage-of-team-average — ignore those columns.
+TEAM AVERAGES: Look for a row labeled "Average", "Team Average", "TEAM AVERAGE", "AVG", "MÉDIA EQUIPA" or similar. Extract into teamAverage fields. If a "%" column shows values around 100, those are percentage-of-team-average — ignore those columns.
 
 STAR MARKERS: Stars (★), highlights, or colored cells indicating team-best values → set corresponding isStar* field to true.
 
@@ -123,7 +123,9 @@ Return ONLY valid JSON. No markdown, no explanation."""
             "total dist", "sprint dist", "high intensity dist",
             "max speed", "accelerations", "decelerations",
             "time (min)", "total distance", "sprint distance",
-            "high speed run", "high intensity", "top speed"
+            "high speed run", "high intensity", "top speed",
+            "dist\u00e2ncia total", "dist\u00e2ncia sprint", "top speed (km/h)",
+            "carga externa", "metabolic load", "dist\u00e2ncia/min"
         )
         return genericMarkers.count { lower.contains(it) } >= 3
     }

@@ -17,12 +17,12 @@ function getSelfBaseUrl(): string {
 /* ── Real data interfaces ── */
 
 interface ScoutProfile {
-  fbref_matched?: boolean;
-  fbref_goals_per90?: number;
-  fbref_assists_per90?: number;
-  fbref_tackles_per90?: number;
-  fbref_interceptions_per90?: number;
-  fbref_minutes_90s?: number;
+  api_matched?: boolean;
+  api_goals_per90?: number;
+  api_assists_per90?: number;
+  api_tackles_per90?: number;
+  api_interceptions_per90?: number;
+  api_minutes_90s?: number;
   player_style?: string;
   [key: string]: unknown;
 }
@@ -103,7 +103,7 @@ function buildRadarFromFM(fm: FmData | null) {
   ];
 }
 
-/* ── Build AI score from FM + FBref ── */
+/* ── Build AI score from FM + API stats ── */
 
 function buildAIScore(fm: FmData | null, player: Record<string, unknown>) {
   const age = parseInt((player.age || '25') as string) || 25;
@@ -151,10 +151,10 @@ async function generateDossierContent(
 
   const facts: string[] = [`Name: ${name}`, `Age: ${age}`, `Position: ${positions}`, `Club: ${club}`, `Value: ${value}`, `Nationality: ${nationality}`, `Contract: ${contract}`];
 
-  if (profile?.fbref_matched) {
-    if (profile.fbref_goals_per90 != null) facts.push(`FBref Goals/90: ${profile.fbref_goals_per90}`);
-    if (profile.fbref_assists_per90 != null) facts.push(`FBref Assists/90: ${profile.fbref_assists_per90}`);
-    if (profile.fbref_tackles_per90 != null) facts.push(`FBref Tackles/90: ${profile.fbref_tackles_per90}`);
+  if (profile?.api_matched) {
+    if (profile.api_goals_per90 != null) facts.push(`Goals/90: ${profile.api_goals_per90}`);
+    if (profile.api_assists_per90 != null) facts.push(`Assists/90: ${profile.api_assists_per90}`);
+    if (profile.api_tackles_per90 != null) facts.push(`Tackles/90: ${profile.api_tackles_per90}`);
     if (profile.player_style) facts.push(`Playing style: ${profile.player_style}`);
   }
   if (fm?.ca) {
@@ -231,7 +231,7 @@ export async function generateEnrichment(
   const tmProfile = (player.tmProfile || '') as string;
   const langStr = lang || 'en';
 
-  // Fetch scout server data (FM intelligence + FBref via similar_players)
+  // Fetch scout server data (FM intelligence + API via similar_players)
   const { profile, fm } = tmProfile
     ? await fetchScoutData(tmProfile, name, langStr, club, age)
     : { profile: null, fm: null };

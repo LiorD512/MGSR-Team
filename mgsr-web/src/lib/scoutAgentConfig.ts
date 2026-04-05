@@ -557,7 +557,7 @@ export const SCOUT_PROFILES: Record<
       marketValueMin: 800_000,
       marketValueMax: 3_000_000,
       ageMax: 30,
-      // Minutes/starts would need FBref — simplified: value + age
+      // Minutes/starts would need stats — simplified: value + age
     },
   },
   LOW_VALUE_STARTER: {

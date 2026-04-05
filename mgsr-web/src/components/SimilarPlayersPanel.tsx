@@ -17,7 +17,7 @@ import { callShortlistAdd } from '@/lib/callables';
 interface ParsedExplanation {
   /** Transfermarkt-sourced insights: position, age, build, foot, value */
   profile: string[];
-  /** FBref per-90 stat comparisons */
+  /** API-Football per-90 stat comparisons */
   stats: { label: string; candidateVal: string; targetVal?: string }[];
   /** Football Manager attribute insights */
   fm: string[];
@@ -67,7 +67,7 @@ function fmTierBadge(tier: string | undefined): { label: string; color: string }
  * Parse the server's period-separated explanation string into structured
  * categories based on data source. Each sentence is classified as:
  * - profile: Transfermarkt-sourced (position, age, build, foot, value)
- * - stats: FBref per-90 stats (contains ":" with numeric values and optionally "vs")
+ * - stats: API-Football per-90 stats (contains ":" with numeric values and optionally "vs")
  * - fm: Football Manager attributes (contains "FM")
  * - style: Playing style classification
  */
@@ -115,10 +115,10 @@ function parseExplanation(raw: string | undefined, playingStyle: string | undefi
 /*  Source Badge                                                       */
 /* ------------------------------------------------------------------ */
 
-function SourceBadge({ source }: { source: 'transfermarkt' | 'fbref' | 'fm' }) {
+function SourceBadge({ source }: { source: 'transfermarkt' | 'stats' | 'fm' }) {
   const config = {
     transfermarkt: { label: 'Transfermarkt', color: '#1DA1F2', icon: '⚽' },
-    fbref: { label: 'FBref Stats', color: '#66BB6A', icon: '📊' },
+    stats: { label: 'Stats', color: '#66BB6A', icon: '📊' },
     fm: { label: 'FM Data', color: '#B388FF', icon: '🎮' },
   }[source];
 
@@ -318,11 +318,11 @@ function SimilarPlayerCard({
             </div>
           )}
 
-          {/* ── SECTION 2: Performance Stats (FBref) ── */}
+          {/* ── SECTION 2: Performance Stats (Stats) ── */}
           {hasStats && (
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
-                <SourceBadge source="fbref" />
+                <SourceBadge source="stats" />
                 <span className="text-xs text-mgsr-muted">{t('similar_players_per90')}</span>
               </div>
               <div className="bg-mgsr-card/40 rounded-lg px-3 py-2 space-y-2">
@@ -646,7 +646,7 @@ export default function SimilarPlayersPanel({
             {/* Data source legend */}
             <div className="flex flex-wrap justify-center gap-2">
               <SourceBadge source="transfermarkt" />
-              <SourceBadge source="fbref" />
+              <SourceBadge source="stats" />
               <SourceBadge source="fm" />
             </div>
             <p className="text-center text-xs text-mgsr-muted/60">

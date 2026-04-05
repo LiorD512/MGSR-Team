@@ -985,21 +985,8 @@ class PlayerInfoViewModel(
                         val bytesToUpload = withContext(Dispatchers.IO) { PdfFlattener.flatten(bytes) }
                         val storageUrl = documentsRepository.uploadBytesToStorage(storageKey, gpsName, bytesToUpload)
 
-                        // Delete existing GPS doc with same name (same date) before creating new one
-                        val existingGpsDocs = documentsFlow.first().filter { it.type == "GPS_DATA" && it.name == gpsName }
-                        for (dup in existingGpsDocs) {
-                            try {
-                                dup.id?.let { dupId ->
-                                    SharedCallables.playerDocumentsDelete(
-                                        platform = platformManager.value,
-                                        documentId = dupId
-                                    )
-                                    Log.i(TAG, "Deleted duplicate GPS doc: $gpsName ($dupId)")
-                                }
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Failed to delete duplicate GPS doc", e)
-                            }
-                        }
+                        // GPS uploads: don't delete existing docs — each file is a separate match report.
+                        // GpsMatchData dedup (in processGpsDocument) handles preventing data duplicates.
 
                         val docResult = SharedCallables.playerDocumentsCreate(
                             platform = platformManager.value,
@@ -1059,21 +1046,8 @@ class PlayerInfoViewModel(
                     } else bytes
                     val storageUrl = documentsRepository.uploadBytesToStorage(storageKey, gpsName, bytesToUpload)
 
-                    // Delete existing GPS doc with same name (same date) before creating new one
-                    val existingGpsDocs = documentsFlow.first().filter { it.type == "GPS_DATA" && it.name == gpsName }
-                    for (dup in existingGpsDocs) {
-                        try {
-                            dup.id?.let { dupId ->
-                                SharedCallables.playerDocumentsDelete(
-                                    platform = platformManager.value,
-                                    documentId = dupId
-                                )
-                                Log.i(TAG, "Deleted duplicate GPS doc: $gpsName ($dupId)")
-                            }
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Failed to delete duplicate GPS doc", e)
-                        }
-                    }
+                    // GPS uploads: don't delete existing docs — each file is a separate match report.
+                    // GpsMatchData dedup (in processGpsDocument) handles preventing data duplicates.
 
                     val docResult = SharedCallables.playerDocumentsCreate(
                         platform = platformManager.value,
@@ -1504,12 +1478,15 @@ class PlayerInfoViewModel(
                         teamAvgMaxVel = report.teamAverageMaxVelocity
                     )
 
-                    // Check for duplicate (same player + same match date) — replace if exists
+                    // Check for duplicate (same player + same match date + same match title) — replace if exists
+                    val matchTitleVal = report.matchTitle ?: ""
+                    val existingQuery = store.collection("GpsMatchData")
+                        .whereEqualTo("playerTmProfile", storageKey)
                     val existing = withContext(Dispatchers.IO) {
-                        store.collection("GpsMatchData")
-                            .whereEqualTo("playerTmProfile", storageKey)
-                            .whereEqualTo("matchDateStr", rowDateStr)
-                            .get().await()
+                        var q = existingQuery
+                        if (!rowDateStr.isNullOrEmpty()) q = q.whereEqualTo("matchDateStr", rowDateStr)
+                        if (matchTitleVal.isNotEmpty()) q = q.whereEqualTo("matchTitle", matchTitleVal)
+                        q.get().await()
                     }
 
                     // Write to Firestore

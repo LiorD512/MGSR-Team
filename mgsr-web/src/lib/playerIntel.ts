@@ -2,7 +2,7 @@
  * Player Intelligence — Multi-source free football data aggregator.
  *
  * Sources (all free, publicly accessible):
- *  1. FBref (fbref.com)        — StatsBomb xG/xA, advanced per-90, scouting percentiles
+ *  1. API-Football (api-football.com)        — StatsBomb xG/xA, advanced per-90, scouting percentiles
  *  2. FotMob (fotmob.com)      — Match ratings, season stats, career data
  *  3. Sofascore (sofascore.com) — Player ratings, recent form
  *  4. Capology (capology.com)   — Salary/wage data
@@ -35,7 +35,7 @@ const UA =
 // Types
 // ═══════════════════════════════════════════════════════════════
 
-export interface FBrefIntel {
+export interface ApiStatsIntel {
   url?: string;
   season?: string;
   xG?: number;
@@ -166,7 +166,7 @@ export interface PlayerIntelDossier {
   playerName: string;
   queriedAt: string;
   sources: string[];
-  fbref?: FBrefIntel;
+  stats?: ApiStatsIntel;
   fotmob?: FotMobIntel;
   sofascore?: SofascoreIntel;
   capology?: CapologyIntel;
@@ -178,7 +178,7 @@ export interface PlayerIntelDossier {
 }
 
 export type IntelSource =
-  | 'fbref'
+  | 'stats'
   | 'fotmob'
   | 'sofascore'
   | 'capology'
@@ -229,199 +229,27 @@ async function intelFetch(
 }
 
 // ═══════════════════════════════════════════════════════════════
-// SOURCE 1: FBref (StatsBomb analytics)
-// xG, xA, progressive stats, defensive stats, scouting percentiles
+// SOURCE 1: API-Football Stats
+// Stats are populated via the scout server enrichment pipeline (API-Football v3 Pro).
+// Direct web scraping is no longer used — all stats flow through the scout server.
 // ═══════════════════════════════════════════════════════════════
 
-export async function fetchFBrefIntel(
-  playerName: string,
-  club?: string
-): Promise<FBrefIntel | null> {
-  try {
-    const searchUrl = `https://fbref.com/en/search/search.fcgi?search=${encodeURIComponent(playerName)}`;
-    const res = await intelFetch(searchUrl);
-    if (!res.ok) return null;
-
-    const html = await res.text();
-    const finalUrl = res.url;
-
-    // FBref may redirect directly to the player page on exact match
-    if (
-      finalUrl.includes('/en/players/') &&
-      !finalUrl.includes('search')
-    ) {
-      return parseFBrefPlayerPage(html, finalUrl);
-    }
-
-    // Parse search results
-    const $s = cheerio.load(html);
-    const results: { name: string; href: string; info: string }[] = [];
-
-    $s('.search-item, div[class*="search"]').each((_, el) => {
-      const a = $s(el).find('a[href*="/players/"]').first();
-      const name = a.text().trim();
-      const href = a.attr('href') || '';
-      const info = $s(el).text();
-      if (name && href) results.push({ name, href, info });
-    });
-
-    if (results.length === 0) return null;
-
-    // Best match: prioritize name + club match
-    let best = results[0];
-    for (const r of results) {
-      if (namesMatch(r.name, playerName)) {
-        if (
-          club &&
-          r.info.toLowerCase().includes(club.toLowerCase())
-        ) {
-          best = r;
-          break;
-        }
-        if (best === results[0]) best = r;
-      }
-    }
-
-    const playerUrl = best.href.startsWith('http')
-      ? best.href
-      : `https://fbref.com${best.href}`;
-
-    // Delay slightly to be respectful to FBref
-    await new Promise((r) => setTimeout(r, 800));
-
-    const pageRes = await intelFetch(playerUrl);
-    if (!pageRes.ok) return null;
-    return parseFBrefPlayerPage(await pageRes.text(), playerUrl);
-  } catch (err) {
-    console.warn(
-      '[Intel:FBref]',
-      err instanceof Error ? err.message : String(err)
-    );
-    return null;
-  }
+export async function fetchApiStatsIntel(
+  _playerName: string,
+  _club?: string
+): Promise<ApiStatsIntel | null> {
+  // Stats are now populated by the scout server via API-Football v3 Pro.
+  // This function is kept as a no-op for interface compatibility.
+  return null;
 }
 
-function parseFBrefPlayerPage(
-  rawHtml: string,
+// parseApiStatsResponse is no longer needed — stats come from scout server.
+// Kept as a no-op stub for type compatibility.
+function parseApiStatsResponse(
+  _rawHtml: string,
   url: string
-): FBrefIntel {
-  // FBref wraps secondary tables in HTML comments for lazy loading.
-  // Uncomment them so cheerio can parse everything.
-  const html = rawHtml.replace(
-    /<!--\n?([\s\S]*?)\n?-->/g,
-    (match, content: string) =>
-      content.includes('data-stat') ? content : match
-  );
-
-  const $ = cheerio.load(html);
-  const intel: FBrefIntel = { url };
-
-  // Helper: get the last data row from a stats table (most recent season)
-  function lastRow(sel: string) {
-    const table = $(sel).first();
-    if (!table.length) return null;
-    const rows = table.find(
-      'tbody tr:not(.thead):not(.spacer):not(.partial_table)'
-    );
-    for (let i = rows.length - 1; i >= 0; i--) {
-      const row = rows.eq(i);
-      if (row.find('[data-stat]').length > 2) return row;
-    }
-    return null;
-  }
-
-  function num(
-    row: ReturnType<typeof lastRow>,
-    stat: string
-  ): number | undefined {
-    if (!row) return undefined;
-    const v = parseFloat(row.find(`[data-stat="${stat}"]`).text().trim());
-    return isNaN(v) ? undefined : v;
-  }
-
-  // ── Standard Stats ──
-  const stdRow = lastRow('table[id*="stats_standard"]');
-  if (stdRow) {
-    intel.season =
-      stdRow
-        .find('[data-stat="season"] a, [data-stat="season"]')
-        .first()
-        .text()
-        .trim() || undefined;
-    intel.minutes90s = num(stdRow, 'minutes_90s');
-    intel.xG = num(stdRow, 'xg');
-    intel.xA = num(stdRow, 'xg_assist');
-    intel.npxG = num(stdRow, 'npxg');
-  }
-
-  // ── Shooting ──
-  const shootRow = lastRow('table[id*="stats_shooting"]');
-  if (shootRow) {
-    intel.npxGPerShot = num(shootRow, 'npxg_per_sh');
-  }
-
-  // ── Passing ──
-  const passRow = lastRow('table[id*="stats_passing"]');
-  if (passRow) {
-    intel.passCompletion = num(passRow, 'passes_pct');
-    intel.progressivePasses = num(passRow, 'progressive_passes');
-  }
-
-  // ── Possession ──
-  const possRow = lastRow('table[id*="stats_possession"]');
-  if (possRow) {
-    intel.progressiveCarries = num(possRow, 'progressive_carries');
-    intel.progressiveReceives = num(possRow, 'progressive_passes_received');
-  }
-
-  // ── Goal & Shot Creation ──
-  const gcaRow = lastRow('table[id*="stats_gca"]');
-  if (gcaRow) {
-    intel.sca = num(gcaRow, 'sca');
-    intel.gca = num(gcaRow, 'gca');
-  }
-
-  // ── Defense ──
-  const defRow = lastRow('table[id*="stats_defense"]');
-  if (defRow) {
-    intel.tacklesWon = num(defRow, 'tackles_won');
-    intel.interceptions = num(defRow, 'interceptions');
-    intel.blocks = num(defRow, 'blocks');
-    intel.clearances = num(defRow, 'clearances');
-  }
-
-  // ── Miscellaneous (aerials) ──
-  const miscRow = lastRow('table[id*="stats_misc"]');
-  if (miscRow) {
-    intel.aerialWon = num(miscRow, 'aerials_won');
-    intel.aerialWonPct = num(miscRow, 'aerials_won_pct');
-  }
-
-  // ── Scouting Report (percentile rankings vs peers) ──
-  const scoutReport: Record<string, number> = {};
-  $(
-    'table[id*="scout"] tbody tr, div[id*="scout"] table tbody tr'
-  ).each((_, row) => {
-    const label = $(row)
-      .find('[data-stat="statistic"], th')
-      .first()
-      .text()
-      .trim();
-    const pctText = $(row)
-      .find('[data-stat="percentile"]')
-      .text()
-      .trim();
-    const pct = parseInt(pctText);
-    if (label && !isNaN(pct) && pct >= 0 && pct <= 100) {
-      scoutReport[label] = pct;
-    }
-  });
-
-  if (Object.keys(scoutReport).length > 0) {
-    intel.scoutReport = scoutReport;
-  }
-
-  return intel;
+): ApiStatsIntel {
+  return { url };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1143,37 +971,37 @@ export async function fetchTheSportsDBIntel(
 function buildConsensus(dossier: PlayerIntelDossier): IntelConsensus {
   const c: IntelConsensus = {};
 
-  // xG/xA: FBref is authoritative (StatsBomb data)
-  c.xG = dossier.fbref?.xG;
-  c.xA = dossier.fbref?.xA;
+  // xG/xA: API-Football is authoritative (StatsBomb data)
+  c.xG = dossier.stats?.xG;
+  c.xA = dossier.stats?.xA;
 
   // Rating: prefer Sofascore (more precise), fallback FotMob
   c.rating = dossier.sofascore?.rating || dossier.fotmob?.rating;
 
-  // Progressive actions: FBref
+  // Progressive actions: API-Football
   if (
-    dossier.fbref?.progressivePasses != null ||
-    dossier.fbref?.progressiveCarries != null
+    dossier.stats?.progressivePasses != null ||
+    dossier.stats?.progressiveCarries != null
   ) {
     c.progressiveActions =
-      (dossier.fbref.progressivePasses || 0) +
-      (dossier.fbref.progressiveCarries || 0);
+      (dossier.stats.progressivePasses || 0) +
+      (dossier.stats.progressiveCarries || 0);
   }
 
-  // Defensive actions: FBref
+  // Defensive actions: API-Football
   if (
-    dossier.fbref?.tacklesWon != null ||
-    dossier.fbref?.interceptions != null ||
-    dossier.fbref?.blocks != null
+    dossier.stats?.tacklesWon != null ||
+    dossier.stats?.interceptions != null ||
+    dossier.stats?.blocks != null
   ) {
     c.defensiveActions =
-      (dossier.fbref.tacklesWon || 0) +
-      (dossier.fbref.interceptions || 0) +
-      (dossier.fbref.blocks || 0);
+      (dossier.stats.tacklesWon || 0) +
+      (dossier.stats.interceptions || 0) +
+      (dossier.stats.blocks || 0);
   }
 
-  // Pass accuracy: FBref
-  c.passAccuracy = dossier.fbref?.passCompletion;
+  // Pass accuracy: API-Football
+  c.passAccuracy = dossier.stats?.passCompletion;
 
   // Wage: TheSportsDB first (reliable), fallback Capology
   c.estimatedWage = dossier.thesportsdb?.wage || (dossier.capology?.weeklyWageEur ? `€${dossier.capology.weeklyWageEur.toLocaleString()}/wk` : undefined);
@@ -1213,10 +1041,10 @@ function buildConsensus(dossier: PlayerIntelDossier): IntelConsensus {
     c.clubStrength = `${dossier.clubElo.level} (Elo ${dossier.clubElo.elo})`;
   }
 
-  // Top percentiles from FBref scouting report
-  if (dossier.fbref?.scoutReport) {
+  // Top percentiles from API-Football scouting report
+  if (dossier.stats?.scoutReport) {
     c.topPercentiles = Object.fromEntries(
-      Object.entries(dossier.fbref.scoutReport)
+      Object.entries(dossier.stats.scoutReport)
         .filter(([, v]) => v >= 60)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
@@ -1269,7 +1097,7 @@ export async function gatherPlayerIntel(
       'clubelo',
       'fotmob',
       'injuries',
-      'fbref',
+      'stats',
       'sofascore',
       'capology',
     ] as IntelSource[])
@@ -1284,12 +1112,12 @@ export async function gatherPlayerIntel(
 
   const tasks: Promise<void>[] = [];
 
-  if (active.has('fbref')) {
+  if (active.has('stats')) {
     tasks.push(
-      fetchFBrefIntel(playerName, club).then((r) => {
+      fetchApiStatsIntel(playerName, club).then((r) => {
         if (r) {
-          dossier.fbref = r;
-          dossier.sources.push('fbref');
+          dossier.stats = r;
+          dossier.sources.push('stats');
         }
       })
     );
@@ -1442,9 +1270,9 @@ export function formatIntelForPrompt(
 ): string {
   const lines: string[] = [];
 
-  // FBref analytics
-  if (dossier.fbref) {
-    const f = dossier.fbref;
+  // API-Football analytics
+  if (dossier.stats) {
+    const f = dossier.stats;
     const parts: string[] = [];
     if (f.xG != null) parts.push(`xG ${f.xG.toFixed(2)}`);
     if (f.xA != null) parts.push(`xA ${f.xA.toFixed(2)}`);
@@ -1465,7 +1293,7 @@ export function formatIntelForPrompt(
     if (f.aerialWonPct != null)
       parts.push(`Aerial% ${f.aerialWonPct}%`);
     if (parts.length > 0) {
-      lines.push(`FBref: ${parts.join(' | ')}`);
+      lines.push(`API-Football: ${parts.join(' | ')}`);
     }
 
     // Scouting percentiles

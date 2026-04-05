@@ -23,7 +23,7 @@ function getScoutBaseUrl() {
   return url.trim().replace(/\/$/, "");
 }
 const LIGAT_HAAL_VALUE_MAX = 2_500_000;
-const DELAY_BETWEEN_REQUESTS_MS = 5000;
+const DELAY_BETWEEN_REQUESTS_MS = 2500; // Reduced from 5s — scout server is our own
 
 /** League name (from scout) -> agentId. Use lowercase for matching. */
 const LEAGUE_TO_AGENT = {
@@ -298,9 +298,9 @@ function getFmPa(p) {
   return null;
 }
 
-/** Parse fbref_minutes_90s (e.g. "1.8" = 162 min). Returns 0 if missing/invalid. */
+/** Parse api_minutes_90s (e.g. "1.8" = 162 min). Returns 0 if missing/invalid. */
 function getMinutes90s(p) {
-  const v = p.fbref_minutes_90s;
+  const v = p.api_minutes_90s;
   if (v == null) return 0;
   const n = parseFloat(String(v));
   return isNaN(n) || n < 0 ? 0 : n;
@@ -313,17 +313,17 @@ function parseContractYear(contract) {
   return match ? parseInt(match[1], 10) : null;
 }
 
-/** Get FBref goals (total, not per90). Returns 0 if missing. */
-function getFbrefGoals(p) {
-  const v = p.fbref_goals;
+/** Get API goals (total, not per90). Returns 0 if missing. */
+function getApiGoals(p) {
+  const v = p.api_goals;
   if (v == null) return 0;
   const n = typeof v === "string" ? parseInt(v, 10) : Number(v);
   return isNaN(n) ? 0 : n;
 }
 
-/** Get FBref assists (total). Returns 0 if missing. */
-function getFbrefAssists(p) {
-  const v = p.fbref_assists;
+/** Get API assists (total). Returns 0 if missing. */
+function getApiAssists(p) {
+  const v = p.api_assists;
   if (v == null) return 0;
   const n = typeof v === "string" ? parseInt(v, 10) : Number(v);
   return isNaN(n) ? 0 : n;
@@ -371,16 +371,23 @@ function matchesProfile(p, profileType, valEuro, ageNum, leagueTier, paramsOverr
     }
     case "HIDDEN_GEM": {
       const fmPa = getFmPa(p);
-      return valEuro <= 1_500_000 && ageNum != null && ageNum <= 24 && (fmPa == null || fmPa >= 130);
+      // Require real FM data — null FM is NOT a gem, it's unknown
+      if (fmPa == null) return false;
+      return valEuro <= 1_500_000 && ageNum != null && ageNum <= 24 && fmPa >= 130;
     }
-    case "LOWER_LEAGUE_RISER":
-      return valEuro <= 1_000_000 && ageNum != null && ageNum <= 23 && leagueTier >= 2;
+    case "LOWER_LEAGUE_RISER": {
+      if (valEuro > 1_000_000 || ageNum == null || ageNum > 23 || leagueTier < 2) return false;
+      // Require minimum performance evidence — don't tag randoms as risers
+      const min90s = getMinutes90s(p);
+      const ga = getApiGoals(p) + getApiAssists(p);
+      return min90s >= 3 || ga >= 2;
+    }
     case "BREAKOUT_SEASON": {
       // High goal/assist output relative to age and value = breakout performance
       if (ageNum == null || ageNum > 25) return false;
       if (valEuro > 2_000_000) return false;
-      const goals = getFbrefGoals(p);
-      const assists = getFbrefAssists(p);
+      const goals = getApiGoals(p);
+      const assists = getApiAssists(p);
       const contributions = goals + assists;
       const min = minMinutes90s ?? 8;
       if (minutes90s < min) return false;
@@ -422,8 +429,8 @@ function buildMatchReason(p, profileType, valEuro, ageNum) {
   if (fmCa != null && fmCa > 0) parts.push(`CA ${fmCa}`);
   const league = p.league || "";
   if (league) parts.push(league);
-  const goals = getFbrefGoals(p);
-  const assists = getFbrefAssists(p);
+  const goals = getApiGoals(p);
+  const assists = getApiAssists(p);
   if (goals > 0 || assists > 0) parts.push(`${goals}G ${assists}A`);
   const minutes90s = getMinutes90s(p);
   if (minutes90s > 0) parts.push(`${minutes90s.toFixed(1)} 90s`);
@@ -443,8 +450,8 @@ function computeMatchScore(p, profileType, valEuro, ageNum) {
   const fmPa = getFmPa(p);
   const fmCa = getFmCa(p);
   const minutes90s = getMinutes90s(p);
-  const goals = getFbrefGoals(p);
-  const assists = getFbrefAssists(p);
+  const goals = getApiGoals(p);
+  const assists = getApiAssists(p);
 
   switch (profileType) {
     case "HIGH_VALUE_BENCHED":
@@ -471,6 +478,7 @@ function computeMatchScore(p, profileType, valEuro, ageNum) {
       const yr = parseContractYear(p.contract);
       const currentYear = new Date().getFullYear();
       if (yr === currentYear) score += 20; // Expires THIS year = free agent soon
+      else if (yr === currentYear + 1) score += 10; // Next year = negotiation window open
       if (fmPa != null && fmPa >= 130) score += 10;
       if (minutes90s >= 10) score += 5; // Proven starter
       break;
@@ -504,15 +512,27 @@ function computeMatchScore(p, profileType, valEuro, ageNum) {
 
   // Universal bonuses
   if (fmPa != null && fmCa != null && fmPa - fmCa >= 20) score += 5; // High growth room
-  // Performance-based bonuses (especially valuable after TM enrichment fills empty FBref data)
+  // Performance-based bonuses (especially valuable after TM enrichment fills empty stats data)
   if (minutes90s >= 15) score += 5; // Regular starter = proven durability
   if (minutes90s >= 8 && (goals + assists) >= 8) score += 5; // Productive output
   if (ageNum != null && ageNum <= 22 && valEuro <= 500_000) score += 5; // Young + cheap = high value arc
+
+  // Data quality penalties — profiles without real data should score lower
+  // CONTRACT_EXPIRING has signal from contract alone — lighter penalty
+  if (fmPa == null && minutes90s <= 0) {
+    score -= (profileType === "CONTRACT_EXPIRING") ? 5 : 15;
+  } else if (fmPa == null) score -= 8; // No FM data = can't assess ceiling
+  else if (minutes90s <= 0) score -= 8; // No performance data = unverified
+
   return Math.min(100, Math.max(0, score));
 }
 
 const SORT_OPTIONS = ["score", "market_value", "age"];
 
+/**
+ * Fetch from recruitment API. Returns { results, mode, enrichedWithStats }.
+ * mode="legacy" means stats data is broken — only TM profile data available.
+ */
 async function fetchRecruitment(params) {
   const search = new URLSearchParams(params);
   if (!search.has("value_max")) search.set("value_max", String(LIGAT_HAAL_VALUE_MAX));
@@ -525,9 +545,13 @@ async function fetchRecruitment(params) {
     headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(90000),
   });
-  if (!res.ok) return [];
+  if (!res.ok) return { results: [], mode: "error", enrichedWithStats: 0 };
   const data = await res.json().catch(() => ({}));
-  return data.results || [];
+  return {
+    results: data.results || [],
+    mode: data.mode || "unknown",
+    enrichedWithStats: data.enriched_with_stats ?? -1,
+  };
 }
 
 function normalizePlayerUrl(url) {
@@ -616,16 +640,43 @@ async function runScoutAgent() {
   const sortBy = SORT_OPTIONS[Math.floor(Math.random() * SORT_OPTIONS.length)];
   console.log(`[ScoutAgent] Using sort_by=${sortBy}`);
 
+  // ═══════════════════════════════════════════════════════════════
+  // Warm up scout server (Render free tier sleeps after 15 min idle)
+  // ═══════════════════════════════════════════════════════════════
+  let isLegacyMode = false;
+  try {
+    console.log("[ScoutAgent] Warming up scout server...");
+    const warmRes = await fetch(`${getScoutBaseUrl()}/recruitment?position=CF&age_max=25&limit=1&lang=en`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(120000), // 2 min for cold start
+    });
+    if (warmRes.ok) {
+      const warmData = await warmRes.json().catch(() => ({}));
+      isLegacyMode = warmData.mode === "legacy" || warmData.enriched_with_stats === 0;
+      console.log(`[ScoutAgent] Scout server warm: mode=${warmData.mode}, stats_enriched=${warmData.enriched_with_stats}, legacy=${isLegacyMode}`);
+      if (isLegacyMode) {
+        console.warn("[ScoutAgent] ⚠ LEGACY MODE — Scout server has NO stats data. Two-phase TM enrichment will be primary data source.");
+      }
+    } else {
+      console.warn(`[ScoutAgent] Scout server warmup HTTP ${warmRes.status} — proceeding anyway`);
+    }
+  } catch (warmErr) {
+    console.warn(`[ScoutAgent] Scout server warmup failed: ${warmErr.message} — proceeding anyway`);
+  }
+
   console.log("[ScoutAgent] Starting AI Scout Agent Network run");
 
   for (const pos of POSITIONS) {
     await sleep(DELAY_BETWEEN_REQUESTS_MS);
     try {
-      const results = await fetchRecruitment({
+      const recruitResult = await fetchRecruitment({
         position: pos,
         age_max: String(MAX_AGE),
         sort_by: sortBy,
       });
+      const results = recruitResult.results;
+      // Update legacy mode from actual data responses
+      if (recruitResult.mode === "legacy" || recruitResult.enrichedWithStats === 0) isLegacyMode = true;
       leaguesScanned += 1;
 
       for (const p of results) {
@@ -677,11 +728,11 @@ async function runScoutAgent() {
           const now = Date.now();
 
           // Per-90 stats for Sport Director evaluation
-          const fbrefMinutes90s = getMinutes90s(p);
-          const fbrefGoals = getFbrefGoals(p);
-          const fbrefAssists = getFbrefAssists(p);
-          const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
-          const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+          const apiMinutes90s = getMinutes90s(p);
+          const apiGoals = getApiGoals(p);
+          const apiAssists = getApiAssists(p);
+          const goalsPer90 = apiMinutes90s > 0 ? apiGoals / apiMinutes90s : 0;
+          const contribPer90 = apiMinutes90s > 0 ? (apiGoals + apiAssists) / apiMinutes90s : 0;
 
           profilesToWrite.push({
             docId,
@@ -704,9 +755,10 @@ async function runScoutAgent() {
               fmPa: getFmPa(p) ?? null,
               fmCa: p.fm_ca ?? p.fmi_ca ?? null,
               contractExpires: (p.contract || "").trim() || null,
-              fbrefMinutes90s,
-              fbrefGoals,
-              fbrefAssists,
+              apiMinutes90s,
+              apiRating: typeof p.api_rating === "number" ? Math.round(p.api_rating * 100) / 100 : null,
+              apiGoals,
+              apiAssists,
               goalsPer90: Math.round(goalsPer90 * 100) / 100,
               contribPer90: Math.round(contribPer90 * 100) / 100,
               discoveredAt: now,
@@ -715,8 +767,12 @@ async function runScoutAgent() {
           });
         }
 
-        // Track unmatched promising candidates for post-sweep TM enrichment
-        if (!matchedAnyProfile && getMinutes90s(p) <= 0 && ageNum != null && ageNum <= 28 && valEuro > 0) {
+        // Track unmatched promising candidates for post-sweep TM enrichment.
+        // In legacy mode (no stats from scout server), track ALL unmatched players
+        // regardless of whether they have minutes — they ALL need TM enrichment.
+        const shouldTrackUnmatched = !matchedAnyProfile && ageNum != null && valEuro > 0 &&
+          (isLegacyMode ? ageNum <= MAX_AGE : (getMinutes90s(p) <= 0 && ageNum <= 28));
+        if (shouldTrackUnmatched) {
           const normUrl = normalizePlayerUrl(url);
           if (!unmatchedCandidates.has(normUrl) && !rejectedUrlHashes.has(hashPlayerUrl(url))) {
             unmatchedCandidates.set(normUrl, { p, agentId, valEuro, ageNum, league, leagueTier, agentParams });
@@ -738,11 +794,12 @@ async function runScoutAgent() {
   for (const pos of DIVERSITY_POSITIONS) {
     await sleep(DELAY_BETWEEN_REQUESTS_MS);
     try {
-      const results = await fetchRecruitment({
+      const recruitResult = await fetchRecruitment({
         position: pos,
         age_max: String(MAX_AGE),
         sort_by: altSort,
       });
+      const results = recruitResult.results;
       for (const p of results) {
         const url = (p.url || "").trim();
         if (!url) continue;
@@ -784,11 +841,11 @@ async function runScoutAgent() {
           const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
           const now = Date.now();
 
-          const fbrefMinutes90s = getMinutes90s(p);
-          const fbrefGoals = getFbrefGoals(p);
-          const fbrefAssists = getFbrefAssists(p);
-          const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
-          const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+          const apiMinutes90s = getMinutes90s(p);
+          const apiGoals = getApiGoals(p);
+          const apiAssists = getApiAssists(p);
+          const goalsPer90 = apiMinutes90s > 0 ? apiGoals / apiMinutes90s : 0;
+          const contribPer90 = apiMinutes90s > 0 ? (apiGoals + apiAssists) / apiMinutes90s : 0;
 
           diversityFound++;
           profilesToWrite.push({
@@ -812,15 +869,30 @@ async function runScoutAgent() {
               fmPa: getFmPa(p) ?? null,
               fmCa: p.fm_ca ?? p.fmi_ca ?? null,
               contractExpires: (p.contract || "").trim() || null,
-              fbrefMinutes90s,
-              fbrefGoals,
-              fbrefAssists,
+              apiMinutes90s,
+              apiRating: typeof p.api_rating === "number" ? Math.round(p.api_rating * 100) / 100 : null,
+              apiGoals,
+              apiAssists,
               goalsPer90: Math.round(goalsPer90 * 100) / 100,
               contribPer90: Math.round(contribPer90 * 100) / 100,
               discoveredAt: now,
               lastRefreshedAt: now,
             },
           });
+        }
+
+        // Track unmatched for two-phase enrichment (diversity sweep)
+        if (diversityFound === 0 || true) {
+          let matchedAny = false;
+          for (const pt of ["HIGH_VALUE_BENCHED","LOW_VALUE_STARTER","YOUNG_STRIKER_HOT","CONTRACT_EXPIRING","HIDDEN_GEM","LOWER_LEAGUE_RISER","BREAKOUT_SEASON","UNDERVALUED_BY_FM"]) {
+            if (matchesProfile(p, pt, valEuro, ageNum, leagueTier, (agentParams[pt] || {}))) { matchedAny = true; break; }
+          }
+          if (!matchedAny && ageNum != null && valEuro > 0 && (isLegacyMode ? ageNum <= MAX_AGE : (getMinutes90s(p) <= 0 && ageNum <= 28))) {
+            const normUrl = normalizePlayerUrl(url);
+            if (!unmatchedCandidates.has(normUrl) && !rejectedUrlHashes.has(hashPlayerUrl(url))) {
+              unmatchedCandidates.set(normUrl, { p, agentId, valEuro, ageNum, league, leagueTier, agentParams });
+            }
+          }
         }
       }
     } catch (err) {
@@ -840,12 +912,13 @@ async function runScoutAgent() {
   for (const pos of BALKAN_POSITIONS) {
     await sleep(DELAY_BETWEEN_REQUESTS_MS);
     try {
-      const results = await fetchRecruitment({
+      const recruitResult = await fetchRecruitment({
         position: pos,
         age_max: "26",
         sort_by: "score",
         value_max: String(BALKAN_VALUE_MAX),
       });
+      const results = recruitResult.results;
       for (const p of results) {
         const url = (p.url || "").trim();
         if (!url) continue;
@@ -888,11 +961,11 @@ async function runScoutAgent() {
           const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
           const now = Date.now();
 
-          const fbrefMinutes90s = getMinutes90s(p);
-          const fbrefGoals = getFbrefGoals(p);
-          const fbrefAssists = getFbrefAssists(p);
-          const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
-          const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+          const apiMinutes90s = getMinutes90s(p);
+          const apiGoals = getApiGoals(p);
+          const apiAssists = getApiAssists(p);
+          const goalsPer90 = apiMinutes90s > 0 ? apiGoals / apiMinutes90s : 0;
+          const contribPer90 = apiMinutes90s > 0 ? (apiGoals + apiAssists) / apiMinutes90s : 0;
 
           profilesToWrite.push({
             docId,
@@ -915,9 +988,10 @@ async function runScoutAgent() {
               fmPa: getFmPa(p) ?? null,
               fmCa: p.fm_ca ?? p.fmi_ca ?? null,
               contractExpires: (p.contract || "").trim() || null,
-              fbrefMinutes90s,
-              fbrefGoals,
-              fbrefAssists,
+              apiMinutes90s,
+              apiRating: typeof p.api_rating === "number" ? Math.round(p.api_rating * 100) / 100 : null,
+              apiGoals,
+              apiAssists,
               goalsPer90: Math.round(goalsPer90 * 100) / 100,
               contribPer90: Math.round(contribPer90 * 100) / 100,
               discoveredAt: now,
@@ -946,12 +1020,13 @@ async function runScoutAgent() {
   for (const pos of SA_POSITIONS) {
     await sleep(DELAY_BETWEEN_REQUESTS_MS);
     try {
-      const results = await fetchRecruitment({
+      const recruitResult = await fetchRecruitment({
         position: pos,
         age_max: "26",
         sort_by: "score",
         value_max: String(SA_VALUE_MAX),
       });
+      const results = recruitResult.results;
       for (const p of results) {
         const url = (p.url || "").trim();
         if (!url) continue;
@@ -992,11 +1067,11 @@ async function runScoutAgent() {
           const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
           const now = Date.now();
 
-          const fbrefMinutes90s = getMinutes90s(p);
-          const fbrefGoals = getFbrefGoals(p);
-          const fbrefAssists = getFbrefAssists(p);
-          const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
-          const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+          const apiMinutes90s = getMinutes90s(p);
+          const apiGoals = getApiGoals(p);
+          const apiAssists = getApiAssists(p);
+          const goalsPer90 = apiMinutes90s > 0 ? apiGoals / apiMinutes90s : 0;
+          const contribPer90 = apiMinutes90s > 0 ? (apiGoals + apiAssists) / apiMinutes90s : 0;
 
           profilesToWrite.push({
             docId,
@@ -1019,9 +1094,10 @@ async function runScoutAgent() {
               fmPa: getFmPa(p) ?? null,
               fmCa: p.fm_ca ?? p.fmi_ca ?? null,
               contractExpires: (p.contract || "").trim() || null,
-              fbrefMinutes90s,
-              fbrefGoals,
-              fbrefAssists,
+              apiMinutes90s,
+              apiRating: typeof p.api_rating === "number" ? Math.round(p.api_rating * 100) / 100 : null,
+              apiGoals,
+              apiAssists,
               goalsPer90: Math.round(goalsPer90 * 100) / 100,
               contribPer90: Math.round(contribPer90 * 100) / 100,
               discoveredAt: now,
@@ -1049,12 +1125,13 @@ async function runScoutAgent() {
   for (const pos of SMALL_EU_POSITIONS) {
     await sleep(DELAY_BETWEEN_REQUESTS_MS);
     try {
-      const results = await fetchRecruitment({
+      const recruitResult = await fetchRecruitment({
         position: pos,
         age_max: "26",
         sort_by: "score",
         value_max: String(SMALL_EU_VALUE_MAX),
       });
+      const results = recruitResult.results;
       for (const p of results) {
         const url = (p.url || "").trim();
         if (!url) continue;
@@ -1095,11 +1172,11 @@ async function runScoutAgent() {
           const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
           const now = Date.now();
 
-          const fbrefMinutes90s = getMinutes90s(p);
-          const fbrefGoals = getFbrefGoals(p);
-          const fbrefAssists = getFbrefAssists(p);
-          const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
-          const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+          const apiMinutes90s = getMinutes90s(p);
+          const apiGoals = getApiGoals(p);
+          const apiAssists = getApiAssists(p);
+          const goalsPer90 = apiMinutes90s > 0 ? apiGoals / apiMinutes90s : 0;
+          const contribPer90 = apiMinutes90s > 0 ? (apiGoals + apiAssists) / apiMinutes90s : 0;
 
           profilesToWrite.push({
             docId,
@@ -1122,9 +1199,10 @@ async function runScoutAgent() {
               fmPa: getFmPa(p) ?? null,
               fmCa: p.fm_ca ?? p.fmi_ca ?? null,
               contractExpires: (p.contract || "").trim() || null,
-              fbrefMinutes90s,
-              fbrefGoals,
-              fbrefAssists,
+              apiMinutes90s,
+              apiRating: typeof p.api_rating === "number" ? Math.round(p.api_rating * 100) / 100 : null,
+              apiGoals,
+              apiAssists,
               goalsPer90: Math.round(goalsPer90 * 100) / 100,
               contribPer90: Math.round(contribPer90 * 100) / 100,
               discoveredAt: now,
@@ -1385,9 +1463,9 @@ async function runScoutAgent() {
               fm_ca: null,
               fmi_pa: null,
               fmi_ca: null,
-              fbref_minutes_90s: null,
-              fbref_goals: null,
-              fbref_assists: null,
+              api_minutes_90s: null,
+              api_goals: null,
+              api_assists: null,
             });
           } catch {
             // skip row
@@ -1441,9 +1519,9 @@ async function runScoutAgent() {
             try {
               const stats = await fetchTmStatsWithProxy(p.url);
               if (stats && stats.minutes > 0) {
-                p.fbref_minutes_90s = stats.minutes / 90;
-                p.fbref_goals = stats.goals;
-                p.fbref_assists = stats.assists;
+                p.api_minutes_90s = stats.minutes / 90;
+                p.api_goals = stats.goals;
+                p.api_assists = stats.assists;
                 p._tmEnriched = true;
                 enriched++;
               }
@@ -1514,11 +1592,11 @@ async function runScoutAgent() {
               const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
               const now = Date.now();
 
-              const fbrefMinutes90s = getMinutes90s(p);
-              const fbrefGoals = getFbrefGoals(p);
-              const fbrefAssists = getFbrefAssists(p);
-              const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
-              const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+              const apiMinutes90s = getMinutes90s(p);
+              const apiGoals = getApiGoals(p);
+              const apiAssists = getApiAssists(p);
+              const goalsPer90 = apiMinutes90s > 0 ? apiGoals / apiMinutes90s : 0;
+              const contribPer90 = apiMinutes90s > 0 ? (apiGoals + apiAssists) / apiMinutes90s : 0;
 
               tmFallbackFound++;
               agentFound++;
@@ -1543,9 +1621,10 @@ async function runScoutAgent() {
                   fmPa: getFmPa(p) ?? null,
                   fmCa: p.fm_ca ?? p.fmi_ca ?? null,
                   contractExpires: (p.contract || "").trim() || null,
-                  fbrefMinutes90s,
-                  fbrefGoals,
-                  fbrefAssists,
+                  apiMinutes90s,
+              apiRating: typeof p.api_rating === "number" ? Math.round(p.api_rating * 100) / 100 : null,
+                  apiGoals,
+                  apiAssists,
                   goalsPer90: Math.round(goalsPer90 * 100) / 100,
                   contribPer90: Math.round(contribPer90 * 100) / 100,
                   source: p._tmEnriched ? "tm_enriched" : "tm_fallback",
@@ -1588,11 +1667,14 @@ async function runScoutAgent() {
   // ═══════════════════════════════════════════════════════════════
   // TWO-PHASE ENRICHMENT — unlock stats-dependent profiles
   // Players from the recruitment API that didn't match any profile type
-  // because they lacked FBref data. Enrich with TM stats via Vercel
+  // because they lacked stats data. Enrich with TM stats via Vercel
   // proxy, then re-try all 8 profile types.
   // ═══════════════════════════════════════════════════════════════
-  const MAX_UNMATCHED_ENRICH = 150;
-  const unmatchedList = [...unmatchedCandidates.values()].slice(0, MAX_UNMATCHED_ENRICH);
+  // In legacy mode, this is the PRIMARY data pipeline — increase cap significantly
+  const MAX_UNMATCHED_ENRICH = isLegacyMode ? 500 : 200;
+  // Sort by value descending — prioritize higher-value players for enrichment
+  const unmatchedSorted = [...unmatchedCandidates.values()].sort((a, b) => b.valEuro - a.valEuro);
+  const unmatchedList = unmatchedSorted.slice(0, MAX_UNMATCHED_ENRICH);
   let twoPhaseFound = 0;
   if (unmatchedList.length > 0) {
     console.log(`[ScoutAgent] Two-phase enrichment: ${unmatchedList.length} unmatched candidates (of ${unmatchedCandidates.size} total)`);
@@ -1611,9 +1693,9 @@ async function runScoutAgent() {
             if (!stats || stats.minutes <= 0) return;
 
             // Inject TM stats into the player object
-            p.fbref_minutes_90s = stats.minutes / 90;
-            p.fbref_goals = stats.goals;
-            p.fbref_assists = stats.assists;
+            p.api_minutes_90s = stats.minutes / 90;
+            p.api_goals = stats.goals;
+            p.api_assists = stats.assists;
 
             // Re-try all profile types with real stats
             for (const profileType of [
@@ -1635,11 +1717,11 @@ async function runScoutAgent() {
               const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
               const now = Date.now();
 
-              const fbrefMinutes90s = getMinutes90s(p);
-              const fbrefGoals = getFbrefGoals(p);
-              const fbrefAssists = getFbrefAssists(p);
-              const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
-              const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+              const apiMinutes90s = getMinutes90s(p);
+              const apiGoals = getApiGoals(p);
+              const apiAssists = getApiAssists(p);
+              const goalsPer90 = apiMinutes90s > 0 ? apiGoals / apiMinutes90s : 0;
+              const contribPer90 = apiMinutes90s > 0 ? (apiGoals + apiAssists) / apiMinutes90s : 0;
 
               twoPhaseFound++;
               profilesToWrite.push({
@@ -1663,9 +1745,10 @@ async function runScoutAgent() {
                   fmPa: getFmPa(p) ?? null,
                   fmCa: p.fm_ca ?? p.fmi_ca ?? null,
                   contractExpires: (p.contract || "").trim() || null,
-                  fbrefMinutes90s,
-                  fbrefGoals,
-                  fbrefAssists,
+                  apiMinutes90s,
+              apiRating: typeof p.api_rating === "number" ? Math.round(p.api_rating * 100) / 100 : null,
+                  apiGoals,
+                  apiAssists,
                   goalsPer90: Math.round(goalsPer90 * 100) / 100,
                   contribPer90: Math.round(contribPer90 * 100) / 100,
                   source: "tm_enriched",
@@ -1862,13 +1945,13 @@ async function runScoutAgent() {
 
         const playerLines = topProfiles.map((pw, i) => {
           const d = pw.data;
-          const per90 = d.fbrefMinutes90s > 0
+          const per90 = d.apiMinutes90s > 0
             ? `G/90: ${d.goalsPer90}, (G+A)/90: ${d.contribPer90}`
             : "no per-90";
           return `${i + 1}. ${d.playerName} (${d.age}, ${d.position}, ${d.club}, ${d.league}, Tier ${d.leagueTier})
    Agent: ${d.agentId} | Profile: ${d.profileType} | Score: ${d.matchScore}
    Value: ${d.marketValue} | FM PA: ${d.fmPa || "?"}, CA: ${d.fmCa || "?"} | Contract: ${d.contractExpires || "?"}
-   Stats: ${d.fbrefGoals || 0}G ${d.fbrefAssists || 0}A in ${d.fbrefMinutes90s?.toFixed(1) || 0} 90s | ${per90}
+   Stats: ${d.apiGoals || 0}G ${d.apiAssists || 0}A in ${d.apiMinutes90s?.toFixed(1) || 0} 90s | Rating: ${d.apiRating || "?"} | ${per90}
    ${d.directorVerdict ? `Director: ${d.directorVerdict}` : ""}
    Reason: ${d.matchReason}`;
         }).join("\n");
@@ -1952,6 +2035,9 @@ ONLY valid JSON.`;
     leaguesScanned: leaguesScanned * POSITIONS.length,
     durationMs,
     error: null,
+    isLegacyMode,
+    twoPhaseEnriched: twoPhaseFound,
+    unmatchedCandidatesTotal: unmatchedCandidates.size,
     crossLeagueDetections: crossLeague.length,
     topScoreProfiles: approvedProfiles.filter((pw) => pw.data.matchScore >= 70).length,
     sportDirector: {

@@ -34,10 +34,10 @@ def fetch_recruitment(params: dict, lang: str) -> dict:
 
 
 def filter_by_min_goals(results: list, min_goals: int) -> list:
-    """Filter results by fbref_goals >= min_goals."""
+    """Filter results by api_goals >= min_goals."""
     out = []
     for p in results:
-        g = p.get("fbref_goals")
+        g = p.get("api_goals")
         if g is None:
             continue
         n = int(g) if isinstance(g, str) else g
