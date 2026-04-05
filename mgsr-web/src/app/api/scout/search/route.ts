@@ -96,6 +96,19 @@ async function fetchFreesearch(
       console.log(`[AI Scout] Freesearch goals filter (≥${fsMinGoals}): → ${results.length} results`);
     }
 
+    // Apply min goal contributions filter — freesearch server doesn't support it
+    const fsMinGC = parsed.minGoalContributions;
+    if (fsMinGC != null && fsMinGC > 0) {
+      const before = results.length;
+      results = results.filter((p) => {
+        const goals = Number(p.api_goals ?? 0);
+        const assists = Number(p.api_assists ?? 0);
+        if (p.api_goals == null && p.api_assists == null) return before <= fsMinGC;
+        return (goals + assists) >= fsMinGC;
+      });
+      console.log(`[AI Scout] Freesearch G+A filter (≥${fsMinGC}): ${before} → ${results.length} results`);
+    }
+
     // Apply free agent filter + TM fallback — freesearch server doesn't filter by club status
     const fsFreeAgent = parsed.freeAgent === true;
     let fsFallbackNote = '';
@@ -253,6 +266,7 @@ export async function POST(request: NextRequest) {
         freeAgent: parsedHebrew?.freeAgent ?? parsedMain.freeAgent,
         limit: parsedHebrew?.limit ?? parsedMain.limit,
         minGoals: parsedHebrew?.minGoals ?? parsedMain.minGoals,
+        minGoalContributions: parsedHebrew?.minGoalContributions ?? parsedMain.minGoalContributions,
         transferFee: parsedHebrew?.transferFee || parsedMain.transferFee,
         valueMin: parsedHebrew?.valueMin ?? parsedMain.valueMin,
         valueMax: parsedHebrew?.valueMax ?? parsedMain.valueMax,
@@ -302,9 +316,10 @@ export async function POST(request: NextRequest) {
       const fetchLimit = initial ? Math.min(5, requestedTotal) : requestedTotal;
       const hasMore = initial && requestedTotal > 5;
       const minGoals = parsed.minGoals;
-      // If we have market cap, minGoals, or freeAgent filter → fetch extra to have enough after filtering
+      const minGC = parsed.minGoalContributions;
+      // If we have market cap, minGoals, minGC, or freeAgent filter → fetch extra to have enough after filtering
       const wantsFreeAgentEarly = parsed.freeAgent === true || /free\s*agent/i.test(parsed.notes ?? '');
-      const needsOverfetch = minGoals != null || marketCap != null || wantsFreeAgentEarly;
+      const needsOverfetch = minGoals != null || minGC != null || marketCap != null || wantsFreeAgentEarly;
       // Free agents are rare — fetch aggressively (up to 80) to maximize chance of finding some
       const scoutLimit = wantsFreeAgentEarly
         ? Math.min(80, Math.max(fetchLimit * 10, 40))
@@ -449,6 +464,19 @@ export async function POST(request: NextRequest) {
           return !isNaN(n) && n >= minGoals;
         });
         console.log('[AI Scout] Filtered by min_goals:', minGoals, '→', results.length, 'results');
+      }
+
+      // Filter by min goal contributions (goals + assists) — triggered by "impressive attacking stats"
+      if (minGC != null && minGC > 0) {
+        const before = results.length;
+        results = results.filter((p) => {
+          const goals = Number(p.api_goals ?? 0);
+          const assists = Number(p.api_assists ?? 0);
+          // Players without API data get a pass if we have very few results
+          if (p.api_goals == null && p.api_assists == null) return before <= minGC;
+          return (goals + assists) >= minGC;
+        });
+        console.log(`[AI Scout] Goal contributions filter (≥${minGC} G+A): ${before} → ${results.length} results`);
       }
 
       // Filter by free agent: only players without club or "Without Club" / "Vereinslos" / "free agent"

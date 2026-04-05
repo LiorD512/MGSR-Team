@@ -9,6 +9,7 @@ export interface ParsedScoutParams {
   ageMin?: number;
   ageMax?: number;
   minGoals?: number;
+  minGoalContributions?: number;
   foot?: string;
   nationality?: string;
   freeAgent?: boolean;
@@ -763,6 +764,12 @@ function buildInterpretation(
   if (parsed.notes) {
     lines.push(lang === 'he' ? `🎯 סגנון: ${parsed.notes}` : `🎯 Style: ${parsed.notes}`);
   }
+  // Goal contributions filter
+  if (parsed.minGoalContributions) {
+    lines.push(lang === 'he'
+      ? `⚡ סינון: מינימום ${parsed.minGoalContributions} תרומות התקפיות (שערים+בישולים)`
+      : `⚡ Filter: min ${parsed.minGoalContributions} goal contributions (G+A)`);
+  }
   // Limit
   if (parsed.limit != null) {
     lines.push(lang === 'he' ? `📊 כמות: ${parsed.limit} שחקנים` : `📊 Limit: ${parsed.limit} players`);
@@ -772,6 +779,44 @@ function buildInterpretation(
     return lang === 'he' ? '🔍 חיפוש כללי במאגר' : '🔍 General search in database';
   }
   return lines.join('\n');
+}
+
+/**
+ * Detect if user wants impressive attacking stats → auto-set a min goal contributions threshold.
+ * Triggered by patterns like "מספרים מרשימים", "impressive stats", "proven scorer".
+ * Does NOT trigger if user already specified explicit min goals (e.g. "5+ goals").
+ */
+const ATTACKING_POSITIONS = new Set(['CF', 'AM', 'LW', 'RW', 'SS', 'CM']);
+
+function extractMinGoalContributions(
+  query: string,
+  position?: string,
+  explicitMinGoals?: number
+): number | undefined {
+  // Skip if user already gave an explicit goal threshold
+  if (explicitMinGoals != null && explicitMinGoals > 0) return undefined;
+
+  // Only for attacking/midfield positions (or when position not specified)
+  if (position && !ATTACKING_POSITIONS.has(position)) return undefined;
+
+  // Hebrew patterns: מספרים מרשימים, סטטיסטיקה התקפית מצוינת, ביצועים התקפיים גבוהים
+  const wantsAttackingOutput =
+    /מספרים\s*(?:התקפיים\s*)?(?:מרשימים|גבוהים|מצוינים|טובים)|מרשימים\s*מספרים|סטטיסטיק(?:ה|ות)\s*(?:התקפי(?:ת|ות)\s*)?(?:מרשימ(?:ה|ות)|מצוינ(?:ת|ות)|גבוה(?:ה|ות))|נתונים\s*(?:התקפיים\s*)?(?:מרשימים|גבוהים)|ביצועים\s*(?:התקפיים\s*)?(?:מרשימים|גבוהים)|תרומה\s*התקפית/i.test(query) ||
+    /\b(?:impressive|outstanding|excellent|strong|great|proven|good)\s*(?:attacking\s*)?(?:numbers?|stats?|statistics?|output|record|contributions?)\b/i.test(query) ||
+    /\b(?:goal\s*(?:scoring|threat)|proven\s*(?:scorer|goalscorer)|prolific)\b/i.test(query);
+
+  if (!wantsAttackingOutput) return undefined;
+
+  // Position-specific thresholds for goal contributions (goals + assists) per season
+  // These are reasonable minimums for "impressive" in lower European leagues
+  switch (position) {
+    case 'CF': return 8;   // Strikers: 8+ G+A
+    case 'LW':
+    case 'RW': return 6;   // Wingers: 6+ G+A
+    case 'AM': return 6;   // Attacking mids: 6+ G+A
+    case 'CM': return 4;   // Central mids: 4+ G+A
+    default:   return 5;   // Unknown position: 5+ G+A
+  }
 }
 
 /**
@@ -795,8 +840,12 @@ export function parseFreeQuery(query: string, lang: 'en' | 'he' = 'en'): ParsedS
   const freeAgent = extractFreeAgent(q);
   const notes = extractNotes(q, minGoals, israeliNotes, freeAgent);
 
+  // Auto-set minimum goal contributions when user asks for impressive attacking output
+  // but didn't specify explicit goal numbers. Only for attacking positions.
+  const minGoalContributions = extractMinGoalContributions(q, position, minGoals);
+
   const interpretation = buildInterpretation(
-    { position, ageMin, ageMax, foot, nationality, freeAgent, notes, transferFee, valueMin, valueMax, limit },
+    { position, ageMin, ageMax, foot, nationality, freeAgent, notes, transferFee, valueMin, valueMax, minGoalContributions, limit },
     lang
   );
 
@@ -805,6 +854,7 @@ export function parseFreeQuery(query: string, lang: 'en' | 'he' = 'en'): ParsedS
     ageMin,
     ageMax,
     minGoals,
+    minGoalContributions: minGoalContributions || undefined,
     foot,
     nationality: nationality || undefined,
     freeAgent: freeAgent || undefined,
