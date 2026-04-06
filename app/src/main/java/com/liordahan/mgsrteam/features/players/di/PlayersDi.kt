@@ -95,8 +95,9 @@ val playersModule = module {
     single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>(), get<GeminiPassportOcrProvider>()) }
     single { PlayerOffersRepository(get(), get()) } bind IPlayerOffersRepository::class
     single { HighlightsApiClient() }
+    single { com.liordahan.mgsrteam.features.players.playerinfo.playerstats.PlayerStatsApiClient() }
     single { AgentTransferRepository(com.google.firebase.firestore.FirebaseFirestore.getInstance()) }
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get<ScoutApiClient>(), get(), get()) }
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get<ScoutApiClient>(), get(), get(), get()) }
     viewModel { GenerateMandateViewModel() }
 
     factory<IAddPositionFilterUseCase> {

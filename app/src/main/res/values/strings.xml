@@ -1237,6 +1237,11 @@
 
     <!-- FM Intelligence -->
     <string name="fm_section_title">FM Intelligence</string>
+
+    <!-- Player Stats (API-Football) -->
+    <string name="player_stats_section_title">Performance Stats</string>
+    <string name="app_locale">en</string>
+
     <string name="fm_tab_intelligence">FM Intelligence</string>
     <string name="fm_tab_position_fit">Position Fit</string>
     <string name="fm_loading">Analyzing FM database…</string>

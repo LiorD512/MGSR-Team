@@ -314,6 +314,9 @@ fun PlayerInfoScreen(
     val fmIntelligenceData by viewModel.fmIntelligenceFlow.collectAsStateWithLifecycle()
     val isFmIntelligenceLoading by viewModel.isFmIntelligenceLoading.collectAsStateWithLifecycle()
     val fmIntelligenceError by viewModel.fmIntelligenceError.collectAsStateWithLifecycle()
+    val playerStatsData by viewModel.playerStatsFlow.collectAsStateWithLifecycle()
+    val isPlayerStatsLoading by viewModel.isPlayerStatsLoading.collectAsStateWithLifecycle()
+    val playerStatsError by viewModel.playerStatsError.collectAsStateWithLifecycle()
     val deletingDocId by viewModel.deletingDocIdFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
@@ -795,6 +798,23 @@ fun PlayerInfoScreen(
                         isLoading = isFmIntelligenceLoading,
                         error = fmIntelligenceError
                     )
+                }
+            }
+
+            // Section: API Performance Stats (men only)
+            if (currentPlatform == Platform.MEN) {
+                playerToPresent?.let { player ->
+                    player.tmProfile?.let { tmProfile ->
+                        LaunchedEffect(tmProfile) {
+                            viewModel.fetchPlayerStats(tmProfile)
+                        }
+                        PlayerInfoSectionHeader(stringResource(R.string.player_stats_section_title))
+                        com.liordahan.mgsrteam.features.players.playerinfo.playerstats.PlayerStatsSection(
+                            data = playerStatsData,
+                            isLoading = isPlayerStatsLoading,
+                            error = playerStatsError
+                        )
+                    }
                 }
             }
 

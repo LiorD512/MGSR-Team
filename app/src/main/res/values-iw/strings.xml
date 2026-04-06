@@ -1165,6 +1165,11 @@
 
     <!-- FM Intelligence -->
     <string name="fm_section_title">תובנות FM</string>
+
+    <!-- Player Stats (API-Football) -->
+    <string name="player_stats_section_title">סטטיסטיקות ביצועים</string>
+    <string name="app_locale">he</string>
+
     <string name="fm_tab_intelligence">FM Intelligence</string>
     <string name="fm_tab_position_fit">התאמת עמדה</string>
     <string name="fm_loading">מנתח מסד נתוני FM…</string>

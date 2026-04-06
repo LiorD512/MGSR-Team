@@ -118,6 +118,12 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun savePinnedHighlights(videos: List<com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightVideo>)
     abstract fun saveYouthHighlights(highlights: List<com.liordahan.mgsrteam.features.players.models.PinnedHighlight>)
 
+    // ── Player Stats (API-Football) ─────────────────────────────────
+    abstract val playerStatsFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.playerstats.PlayerStatsData?>
+    abstract val isPlayerStatsLoading: StateFlow<Boolean>
+    abstract val playerStatsError: StateFlow<String?>
+    abstract fun fetchPlayerStats(playerTmProfile: String)
+
     // ── FM Intelligence ────────────────────────────────────────────
     abstract val fmIntelligenceFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence.FmIntelligenceData?>
     abstract val isFmIntelligenceLoading: StateFlow<Boolean>
@@ -171,6 +177,7 @@ class PlayerInfoViewModel(
     private val scoutApiClient: com.liordahan.mgsrteam.features.scouting.ScoutApiClient,
     private val agentTransferRepository: AgentTransferRepository = AgentTransferRepository(com.google.firebase.firestore.FirebaseFirestore.getInstance()),
     private val matchResultsRepository: com.liordahan.mgsrteam.features.requests.repository.MatchResultsRepository,
+    private val playerStatsApiClient: com.liordahan.mgsrteam.features.players.playerinfo.playerstats.PlayerStatsApiClient = com.liordahan.mgsrteam.features.players.playerinfo.playerstats.PlayerStatsApiClient(),
 ) : IPlayerInfoViewModel() {
 
     private val _playerInfoFlow = MutableStateFlow<Player?>(null)
@@ -241,6 +248,16 @@ class PlayerInfoViewModel(
 
     private val _isHighlightsSaving = MutableStateFlow(false)
     override val isHighlightsSaving: StateFlow<Boolean> = _isHighlightsSaving
+
+    // ── Player Stats (API-Football) ──────────────────────────────────
+    private val _playerStatsFlow = MutableStateFlow<com.liordahan.mgsrteam.features.players.playerinfo.playerstats.PlayerStatsData?>(null)
+    override val playerStatsFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.playerstats.PlayerStatsData?> = _playerStatsFlow
+
+    private val _isPlayerStatsLoading = MutableStateFlow(false)
+    override val isPlayerStatsLoading: StateFlow<Boolean> = _isPlayerStatsLoading
+
+    private val _playerStatsError = MutableStateFlow<String?>(null)
+    override val playerStatsError: StateFlow<String?> = _playerStatsError
 
     // ── FM Intelligence ──────────────────────────────────────────────
     private val _fmIntelligenceFlow = MutableStateFlow<com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence.FmIntelligenceData?>(null)
@@ -1358,6 +1375,28 @@ class PlayerInfoViewModel(
                 _fmIntelligenceError.value = e.message
             } finally {
                 _isFmIntelligenceLoading.value = false
+            }
+        }
+    }
+
+    // ── Player Stats (API-Football) ─────────────────────────────────────
+
+    override fun fetchPlayerStats(playerTmProfile: String) {
+        if (_playerStatsFlow.value != null) return // already fetched
+        viewModelScope.launch {
+            _isPlayerStatsLoading.value = true
+            _playerStatsError.value = null
+            try {
+                val result = playerStatsApiClient.getPlayerStats(playerTmProfile)
+                _playerStatsFlow.value = result
+                if (result == null) {
+                    _playerStatsError.value = "Stats not available"
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "fetchPlayerStats failed", e)
+                _playerStatsError.value = e.message
+            } finally {
+                _isPlayerStatsLoading.value = false
             }
         }
     }

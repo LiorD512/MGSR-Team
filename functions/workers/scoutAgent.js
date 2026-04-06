@@ -335,6 +335,40 @@ function getFmCa(p) {
   return null;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Rich API-Football stat helpers (pre-computed per-90 from scout server)
+// ═══════════════════════════════════════════════════════════════
+function getApiStat(p, key) {
+  const v = p[key];
+  if (v == null) return 0;
+  const n = typeof v === "string" ? parseFloat(v) : Number(v);
+  return isNaN(n) ? 0 : n;
+}
+
+/** Is this player enriched with API-Football stats? */
+function hasApiStats(p) { return !!p.api_matched; }
+
+/** Pre-computed goals per 90 from API-Football */
+function getApiGoalsPer90(p) { return getApiStat(p, "api_goals_per90"); }
+function getApiAssistsPer90(p) { return getApiStat(p, "api_assists_per90"); }
+function getApiContribPer90(p) { return getApiStat(p, "api_goal_contributions_per90"); }
+function getApiRating(p) { return getApiStat(p, "api_rating"); }
+function getApiAppearances(p) { return getApiStat(p, "api_appearances"); }
+function getApiLineups(p) { return getApiStat(p, "api_lineups"); }
+function getApiTacklesPer90(p) { return getApiStat(p, "api_tackles_per90"); }
+function getApiInterceptionsPer90(p) { return getApiStat(p, "api_interceptions_per90"); }
+function getApiTacklesIntPer90(p) { return getApiStat(p, "api_tackles_interceptions_per90"); }
+function getApiKeyPassesPer90(p) { return getApiStat(p, "api_key_passes_per90"); }
+function getApiDribblesPer90(p) { return getApiStat(p, "api_dribbles_per90"); }
+function getApiDribblesSuccessPer90(p) { return getApiStat(p, "api_dribbles_success_per90"); }
+function getApiDuelsWonPct(p) { return getApiStat(p, "api_duels_won_pct"); }
+function getApiShotsPer90(p) { return getApiStat(p, "api_shots_per90"); }
+function getApiShotsOnTargetPer90(p) { return getApiStat(p, "api_shots_on_target_per90"); }
+function getApiGoalsPerShot(p) { return getApiStat(p, "api_goals_per_shot"); }
+function getApiFouledPer90(p) { return getApiStat(p, "api_fouled_per90"); }
+function getApiPassAccuracy(p) { return getApiStat(p, "api_passes_accuracy"); }
+function getApiScoutingScore(p) { return getApiStat(p, "scouting_score"); }
+
 /**
  * @param {Object} p - Player object
  * @param {string} profileType
@@ -408,6 +442,50 @@ function matchesProfile(p, profileType, valEuro, ageNum, leagueTier, paramsOverr
       // Even without CA, high PA + low value is interesting
       return true;
     }
+
+    // ═══ NEW STATS-BASED PROFILES (use API-Football data, no FM needed) ═══
+
+    case "DEFENSIVE_WALL": {
+      // High defensive output — tackles, interceptions, duels
+      if (!hasApiStats(p)) return false;
+      if (ageNum == null || ageNum > 29) return false;
+      if (valEuro > 2_000_000) return false;
+      if (minutes90s < 5) return false;
+      const pos = (p.position || "").toLowerCase();
+      const isDefensive = pos.includes("back") || pos.includes("defender") || pos === "cb" || pos === "lb" || pos === "rb" || pos === "dm" || pos.includes("midfield");
+      if (!isDefensive) return false;
+      const tacklesInt = getApiTacklesIntPer90(p);
+      const duelsWon = getApiDuelsWonPct(p);
+      // Require strong defensive output: 3+ tackles+int per 90 AND 50%+ duels won
+      return tacklesInt >= 3.0 && duelsWon >= 50;
+    }
+    case "CREATIVE_ENGINE": {
+      // High creativity — key passes, dribbles, goal contributions
+      if (!hasApiStats(p)) return false;
+      if (ageNum == null || ageNum > 27) return false;
+      if (valEuro > 2_000_000) return false;
+      if (minutes90s < 5) return false;
+      const keyPasses = getApiKeyPassesPer90(p);
+      const dribbles = getApiDribblesSuccessPer90(p);
+      const contrib = getApiContribPer90(p);
+      // Require creative output: 1.5+ key passes per 90 AND (1+ dribbles OR 0.3+ contrib)
+      return keyPasses >= 1.5 && (dribbles >= 1.0 || contrib >= 0.3);
+    }
+    case "SHOT_MACHINE": {
+      // Prolific shooting — high shots, goals/shot efficiency
+      if (!hasApiStats(p)) return false;
+      if (ageNum == null || ageNum > 28) return false;
+      if (valEuro > 2_000_000) return false;
+      if (minutes90s < 5) return false;
+      const pos = (p.position || "").toLowerCase();
+      const isAttacker = pos.includes("forward") || pos.includes("wing") || pos.includes("striker") || pos === "cf" || pos === "ss" || pos === "lw" || pos === "rw" || pos === "am";
+      if (!isAttacker) return false;
+      const shotsPer90 = getApiShotsPer90(p);
+      const goalsPerShot = getApiGoalsPerShot(p);
+      // Require: 2+ shots per 90 AND 15%+ conversion rate
+      return shotsPer90 >= 2.0 && goalsPerShot >= 0.15;
+    }
+
     default:
       return false;
   }
@@ -508,6 +586,47 @@ function computeMatchScore(p, profileType, valEuro, ageNum) {
       if (fmCa != null && fmCa >= 130) score += 10; // Already performing
       if (valEuro <= 300_000) score += 10; // Extremely cheap
       break;
+
+    // ═══ NEW STATS-BASED PROFILE SCORING ═══
+    case "DEFENSIVE_WALL": {
+      const ti = getApiTacklesIntPer90(p);
+      const dw = getApiDuelsWonPct(p);
+      if (ti >= 5.0) score += 20;
+      else if (ti >= 4.0) score += 15;
+      else if (ti >= 3.0) score += 10;
+      if (dw >= 60) score += 15;
+      else if (dw >= 55) score += 10;
+      if (getApiPassAccuracy(p) >= 80) score += 5; // Defender who can pass
+      if (ageNum != null && ageNum <= 25) score += 5;
+      if (valEuro <= 500_000) score += 5;
+      break;
+    }
+    case "CREATIVE_ENGINE": {
+      const kp = getApiKeyPassesPer90(p);
+      const dr = getApiDribblesSuccessPer90(p);
+      const gc = getApiContribPer90(p);
+      if (kp >= 2.5) score += 20;
+      else if (kp >= 2.0) score += 15;
+      else if (kp >= 1.5) score += 10;
+      if (dr >= 2.0) score += 10;
+      else if (dr >= 1.5) score += 5;
+      if (gc >= 0.5) score += 10;
+      if (ageNum != null && ageNum <= 23) score += 5;
+      if (valEuro <= 500_000) score += 5;
+      break;
+    }
+    case "SHOT_MACHINE": {
+      const sp = getApiShotsPer90(p);
+      const gps = getApiGoalsPerShot(p);
+      if (sp >= 3.0) score += 15;
+      else if (sp >= 2.5) score += 10;
+      if (gps >= 0.25) score += 20;
+      else if (gps >= 0.20) score += 15;
+      else if (gps >= 0.15) score += 10;
+      if (goals >= 8) score += 10;
+      if (ageNum != null && ageNum <= 24) score += 5;
+      break;
+    }
   }
 
   // Universal bonuses
@@ -517,12 +636,30 @@ function computeMatchScore(p, profileType, valEuro, ageNum) {
   if (minutes90s >= 8 && (goals + assists) >= 8) score += 5; // Productive output
   if (ageNum != null && ageNum <= 22 && valEuro <= 500_000) score += 5; // Young + cheap = high value arc
 
+  // API-Football rating bonus (7.0+ is solid, 6.8+ is decent)
+  const apiRating = getApiRating(p);
+  if (apiRating >= 7.2) score += 8;
+  else if (apiRating >= 7.0) score += 5;
+  else if (apiRating >= 6.8) score += 3;
+
+  // Server scouting_score bonus (position-aware quality from scout server)
+  const scoutScore = getApiScoutingScore(p);
+  if (scoutScore >= 90) score += 8;
+  else if (scoutScore >= 80) score += 5;
+  else if (scoutScore >= 70) score += 3;
+
   // Data quality penalties — profiles without real data should score lower
-  // CONTRACT_EXPIRING has signal from contract alone — lighter penalty
-  if (fmPa == null && minutes90s <= 0) {
+  // When API-Football stats exist, FM is nice-to-have but NOT required
+  const hasApi = hasApiStats(p);
+  if (fmPa == null && minutes90s <= 0 && !hasApi) {
     score -= (profileType === "CONTRACT_EXPIRING") ? 5 : 15;
-  } else if (fmPa == null) score -= 8; // No FM data = can't assess ceiling
-  else if (minutes90s <= 0) score -= 8; // No performance data = unverified
+  } else if (fmPa == null && !hasApi) {
+    score -= 8; // No FM AND no API stats = can't assess quality
+  } else if (fmPa == null && hasApi) {
+    score -= 3; // Has API stats but no FM — mild penalty (API data compensates)
+  } else if (minutes90s <= 0 && !hasApi) {
+    score -= 8; // No performance data at all
+  }
 
   return Math.min(100, Math.max(0, score));
 }
@@ -536,7 +673,7 @@ const SORT_OPTIONS = ["score", "market_value", "age"];
 async function fetchRecruitment(params) {
   const search = new URLSearchParams(params);
   if (!search.has("value_max")) search.set("value_max", String(LIGAT_HAAL_VALUE_MAX));
-  search.set("limit", "100");
+  search.set("limit", "200");
   search.set("sort_by", params.sort_by || "score");
   search.set("lang", "en");
 
@@ -652,10 +789,12 @@ async function runScoutAgent() {
     });
     if (warmRes.ok) {
       const warmData = await warmRes.json().catch(() => ({}));
-      isLegacyMode = warmData.mode === "legacy" || warmData.enriched_with_stats === 0;
-      console.log(`[ScoutAgent] Scout server warm: mode=${warmData.mode}, stats_enriched=${warmData.enriched_with_stats}, legacy=${isLegacyMode}`);
+      // FIX: mode="legacy" is just the code path name — it does NOT mean stats are missing.
+      // Only check enriched_with_stats to determine if API-Football data is available.
+      isLegacyMode = warmData.enriched_with_stats === 0;
+      console.log(`[ScoutAgent] Scout server warm: mode=${warmData.mode}, stats_enriched=${warmData.enriched_with_stats}, noStats=${isLegacyMode}`);
       if (isLegacyMode) {
-        console.warn("[ScoutAgent] ⚠ LEGACY MODE — Scout server has NO stats data. Two-phase TM enrichment will be primary data source.");
+        console.warn("[ScoutAgent] ⚠ NO STATS — Scout server has NO API-Football data. Two-phase TM enrichment will be primary data source.");
       }
     } else {
       console.warn(`[ScoutAgent] Scout server warmup HTTP ${warmRes.status} — proceeding anyway`);
@@ -675,8 +814,8 @@ async function runScoutAgent() {
         sort_by: sortBy,
       });
       const results = recruitResult.results;
-      // Update legacy mode from actual data responses
-      if (recruitResult.mode === "legacy" || recruitResult.enrichedWithStats === 0) isLegacyMode = true;
+      // Update noStats mode from actual data responses (only if zero enriched)
+      if (recruitResult.enrichedWithStats === 0) isLegacyMode = true;
       leaguesScanned += 1;
 
       for (const p of results) {
@@ -711,6 +850,9 @@ async function runScoutAgent() {
           "LOWER_LEAGUE_RISER",
           "BREAKOUT_SEASON",
           "UNDERVALUED_BY_FM",
+          "DEFENSIVE_WALL",
+          "CREATIVE_ENGINE",
+          "SHOT_MACHINE",
         ]) {
           const profileOverrides = agentParams[profileType] || {};
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
@@ -826,6 +968,7 @@ async function runScoutAgent() {
           "HIGH_VALUE_BENCHED", "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT",
           "CONTRACT_EXPIRING", "HIDDEN_GEM", "LOWER_LEAGUE_RISER",
           "BREAKOUT_SEASON", "UNDERVALUED_BY_FM",
+          "DEFENSIVE_WALL", "CREATIVE_ENGINE", "SHOT_MACHINE",
         ]) {
           const profileOverrides = agentParams[profileType] || {};
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
@@ -946,6 +1089,7 @@ async function runScoutAgent() {
         for (const profileType of [
           "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT", "CONTRACT_EXPIRING",
           "HIDDEN_GEM", "LOWER_LEAGUE_RISER", "BREAKOUT_SEASON", "UNDERVALUED_BY_FM",
+          "DEFENSIVE_WALL", "CREATIVE_ENGINE", "SHOT_MACHINE",
         ]) {
           const profileOverrides = agentParams[profileType] || {};
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
@@ -1052,6 +1196,7 @@ async function runScoutAgent() {
         for (const profileType of [
           "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT", "CONTRACT_EXPIRING",
           "HIDDEN_GEM", "LOWER_LEAGUE_RISER", "BREAKOUT_SEASON", "UNDERVALUED_BY_FM",
+          "DEFENSIVE_WALL", "CREATIVE_ENGINE", "SHOT_MACHINE",
         ]) {
           const profileOverrides = agentParams[profileType] || {};
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
@@ -1157,6 +1302,7 @@ async function runScoutAgent() {
         for (const profileType of [
           "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT", "CONTRACT_EXPIRING",
           "HIDDEN_GEM", "LOWER_LEAGUE_RISER", "BREAKOUT_SEASON", "UNDERVALUED_BY_FM",
+          "DEFENSIVE_WALL", "CREATIVE_ENGINE", "SHOT_MACHINE",
         ]) {
           const profileOverrides = agentParams[profileType] || {};
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
@@ -1702,6 +1848,7 @@ async function runScoutAgent() {
               "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT", "BREAKOUT_SEASON",
               "HIGH_VALUE_BENCHED", "HIDDEN_GEM", "LOWER_LEAGUE_RISER",
               "CONTRACT_EXPIRING", "UNDERVALUED_BY_FM",
+              "DEFENSIVE_WALL", "CREATIVE_ENGINE", "SHOT_MACHINE",
             ]) {
               const profileOverrides = (agentParams || {})[profileType] || {};
               if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
