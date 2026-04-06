@@ -90,7 +90,7 @@ class PlayerStatsApiClient(
 
     suspend fun getPlayerStats(playerUrl: String): PlayerStatsData? = withContext(Dispatchers.IO) {
         val encoded = java.net.URLEncoder.encode(playerUrl, "UTF-8")
-        val url = "$baseUrl/player_stats?player_url=$encoded"
+        val url = "$baseUrl/player_stats?url=$encoded"
         Log.d(TAG, "Fetching player stats: $url")
 
         val request = Request.Builder()
