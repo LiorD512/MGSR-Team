@@ -125,8 +125,16 @@ export async function POST(request: NextRequest) {
     const nationality = (tmData as Record<string, unknown>).nationality as string ||
       ((tmData as Record<string, unknown>).nationalities as string[])?.[0] || '';
 
-    // 2. Fetch similar players + FM intelligence in parallel
-    const [similarData, fmDataRaw] = await Promise.all([
+    // 2. Fetch player stats, similar players + FM intelligence in parallel
+    //    Primary: direct player_stats by URL (has API-Football data)
+    //    Secondary: recruitment endpoint with player ID (finds player even with URL mismatches)
+    //    Tertiary: similar_players (self-match)
+    const playerId = extractPlayerIdFromUrl(playerUrl);
+    const [playerStatsData, similarData, fmDataRaw] = await Promise.all([
+      // Direct stats lookup — most reliable
+      fetchJson<Record<string, unknown>>(
+        `${getScoutBaseUrl()}/player_stats?url=${encodeURIComponent(playerUrl)}`
+      ),
       fetchJson<{ results?: Record<string, unknown>[] }>(
         `${getScoutBaseUrl()}/similar_players?player_url=${encodeURIComponent(playerUrl)}&lang=${lang}&limit=5`
       ),
@@ -134,6 +142,44 @@ export async function POST(request: NextRequest) {
         `${getScoutBaseUrl()}/fm_intelligence?player_name=${encodeURIComponent(name)}`
       ),
     ]);
+
+    // Fallback: search recruitment with broad query, find player by TM ID
+    let directStats = playerStatsData && !playerStatsData.error ? playerStatsData : null;
+    if (!directStats) {
+      try {
+        // Map TM position to server position code
+        const posMap: Record<string, string> = {
+          'Centre-Forward': 'CF', 'Second Striker': 'SS',
+          'Left Winger': 'LW', 'Right Winger': 'RW',
+          'Attacking Midfield': 'AM', 'Central Midfield': 'CM',
+          'Defensive Midfield': 'DM',
+          'Centre-Back': 'CB', 'Left-Back': 'LB', 'Right-Back': 'RB',
+          'Goalkeeper': 'GK',
+        };
+        const pos = posMap[position] || '';
+        const recruitParams = new URLSearchParams({
+          notes: 'x',
+          limit: '30',
+          sort_by: 'score',
+          lang,
+        });
+        if (pos) recruitParams.set('position', pos);
+        const recruitData = await fetchJson<{ results?: Record<string, unknown>[] }>(
+          `${getScoutBaseUrl()}/recruitment?${recruitParams.toString()}`
+        );
+        const recruitResults = recruitData?.results ?? [];
+        // Try by TM player ID first, then by exact name match (handles duplicate TM profiles)
+        directStats = recruitResults.find((r) =>
+          playerId && samePlayer((r.url as string) || '', playerUrl)
+        ) ?? recruitResults.find((r) => {
+          const rName = ((r.name as string) || '').toLowerCase().trim();
+          return rName === name.toLowerCase().trim();
+        }) ?? null;
+        if (directStats) {
+          console.log(`[War Room] Found player stats via recruitment fallback: ${name}`);
+        }
+      } catch { /* non-critical */ }
+    }
 
     // Fallback: direct FMInside scrape when scout server has no FM data
     let fmData = fmDataRaw && !(fmDataRaw as Record<string, unknown>).error ? fmDataRaw : null;
@@ -150,8 +196,9 @@ export async function POST(request: NextRequest) {
     }
 
     const similarResults = (similarData?.results ?? []) as Record<string, unknown>[];
-    const playerMatch = similarResults.find((r) => samePlayer((r.url as string) || '', playerUrl));
-    const statsSource = playerMatch ?? similarResults[0];
+    // Stats priority: direct player_stats > similar_players self-match > first similar
+    const similarMatch = similarResults.find((r) => samePlayer((r.url as string) || '', playerUrl));
+    const statsSource = directStats ?? similarMatch ?? similarResults[0];
     const statsContext = statsSource
       ? buildStatsContext(statsSource)
       : 'No stats available';
