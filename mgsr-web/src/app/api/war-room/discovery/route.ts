@@ -378,11 +378,11 @@ export async function GET(request: NextRequest) {
 
     // Dedupe, shuffle for variety, then limit
     let unique = Array.from(new Map(candidates.map((c) => [c.transfermarktUrl, c])).values());
-    unique = shuffle(unique).slice(0, 25);
+    unique = shuffle(unique).slice(0, 30);
 
     // Enrich with profile images from Transfermarkt
     const imageMap = new Map<string, string>();
-    const toEnrich = unique.slice(0, 20);
+    const toEnrich = unique.slice(0, 30);
     for (let i = 0; i < toEnrich.length; i += IMAGE_FETCH_CONCURRENCY) {
       const chunk = toEnrich.slice(i, i + IMAGE_FETCH_CONCURRENCY);
       await Promise.all(
