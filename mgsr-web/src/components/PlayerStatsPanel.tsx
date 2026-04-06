@@ -466,6 +466,17 @@ export default function PlayerStatsPanel({
   const seasonLabel = `${season}/${String(season + 1).slice(-2)}`;
   const isLowerBetterKeys = new Set(['api_fouls_per90', 'api_conceded']);
 
+  const INACCURATE_LEAGUES = new Set([
+    'Liga Portugal 2', 'Liga Portugal SABSEG',
+    'A Division Cyprus', 'Cyprus League', 'First Division',
+    'Veikkausliiga',
+    'Premier League Ukraine', 'Premier Liga',
+    'Parva Liga', 'efbet Liga', 'First Professional Football League',
+    'NB I', 'NB I.', 'Nb I Ungarn', 'OTP Bank Liga',
+  ]);
+  const leagueName = data.api_league || data.league || '';
+  const isInaccurateLeague = INACCURATE_LEAGUES.has(leagueName);
+
   return (
     <div className="bg-mgsr-card border border-mgsr-border rounded-2xl overflow-hidden">
       {/* Header */}
@@ -485,6 +496,17 @@ export default function PlayerStatsPanel({
           {rating != null && rating > 0 && <RatingRing rating={rating} />}
         </div>
       </div>
+
+      {/* Inaccurate league disclaimer */}
+      {isInaccurateLeague && (
+        <div className="px-5 py-2 bg-amber-950/30 border-b border-amber-700/30">
+          <p className="text-[11px] text-amber-400/90 leading-relaxed">
+            ⚠️ {isRtl
+              ? 'הנתונים לליגה זו עשויים להיות לא מדויקים. שערים, בישולים ודקות עלולים לא לשקף את המציאות.'
+              : 'Data for this league may be inaccurate. Goals, assists and minutes may not reflect actual figures.'}
+          </p>
+        </div>
+      )}
 
       {/* Overview chips */}
       <div className="px-5 py-3 border-b border-mgsr-border/30">
