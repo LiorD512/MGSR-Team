@@ -1,15 +1,12 @@
 /**
  * GET /api/war-room/discovery
  * Fetches AI-curated discovery candidates for the War Room.
- * Ligat Ha'Al filter: value_max €2.5m, last transfer fee ≤€2.5m, reachable leagues.
  * Varies queries each request for fresh discovery.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
-import { handlePlayer, getLastTransferFee } from '@/lib/transfermarkt';
+import { handlePlayer } from '@/lib/transfermarkt';
 const IMAGE_FETCH_CONCURRENCY = 3;
-const LIGAT_HAAL_VALUE_MAX = 4_000_000;
-const LIGAT_HAAL_LAST_TRANSFER_MAX = 4_000_000;
 const DISCOVERY_AGE_MAX = 31;
 const HIDDEN_GEM_VALUE_MAX = 1_500_000; // Very low market value
 const HIDDEN_GEM_AGE_MAX = 24;
@@ -149,7 +146,6 @@ function parseMarketValueToEuro(val: string | undefined): number {
 
 async function fetchRecruitment(params: Record<string, string>): Promise<Record<string, unknown>[]> {
   const search = new URLSearchParams(params);
-  search.set('value_max', String(LIGAT_HAAL_VALUE_MAX));
   search.set('limit', '15');
   search.set('sort_by', 'score');
   search.set('_t', String(Date.now()));
@@ -255,8 +251,6 @@ export async function GET(request: NextRequest) {
           if (!url || seen.has(url)) continue;
           const pickAge = typeof d.age === 'number' ? d.age : parseAge(String(d.age ?? ''));
           if (pickAge != null && pickAge > DISCOVERY_AGE_MAX) continue;
-          const pickVal = parseMarketValueToEuro(d.marketValue);
-          if (pickVal > LIGAT_HAAL_VALUE_MAX) continue;
           seen.add(url);
           const id = extractPlayerId(url);
           const derivedImage = id ? `https://img.a.transfermarkt.technology/portrait/medium/${id}.jpg` : undefined;
@@ -340,7 +334,6 @@ export async function GET(request: NextRequest) {
         if (!url || seen.has(url)) continue;
         seen.add(url);
         const val = parseMarketValueToEuro(p.market_value as string);
-        if (val > LIGAT_HAAL_VALUE_MAX) continue;
         const ageN = parseAge(p.age as string);
         if (ageN != null && ageN > DISCOVERY_AGE_MAX) continue;
         candidates.push(
@@ -369,7 +362,6 @@ export async function GET(request: NextRequest) {
         const url = (p.url as string) || '';
         if (!url || seen.has(url)) continue;
         const val = parseMarketValueToEuro(p.market_value as string);
-        if (val > LIGAT_HAAL_VALUE_MAX) continue;
         seen.add(url);
         const ageNum = parseAge(p.age as string);
         if (ageNum != null && ageNum > DISCOVERY_AGE_MAX) continue;
@@ -388,29 +380,9 @@ export async function GET(request: NextRequest) {
     let unique = Array.from(new Map(candidates.map((c) => [c.transfermarktUrl, c])).values());
     unique = shuffle(unique).slice(0, 25);
 
-    // Filter by last transfer fee — exclude players bought for >€2.5M (not realistic for Ligat Ha'Al)
-    const passedTransferFilter: DiscoveryCandidate[] = [];
-    for (let i = 0; i < unique.length; i += IMAGE_FETCH_CONCURRENCY) {
-      const chunk = unique.slice(i, i + IMAGE_FETCH_CONCURRENCY);
-      const results = await Promise.all(
-        chunk.map(async (c) => {
-          try {
-            const last = await getLastTransferFee(c.transfermarktUrl);
-            if (last && last.fee > LIGAT_HAAL_LAST_TRANSFER_MAX) return null;
-            return c;
-          } catch {
-            return c;
-          }
-        })
-      );
-      for (const c of results) {
-        if (c) passedTransferFilter.push(c);
-      }
-    }
-
     // Enrich with profile images from Transfermarkt
     const imageMap = new Map<string, string>();
-    const toEnrich = passedTransferFilter.slice(0, 20);
+    const toEnrich = unique.slice(0, 20);
     for (let i = 0; i < toEnrich.length; i += IMAGE_FETCH_CONCURRENCY) {
       const chunk = toEnrich.slice(i, i + IMAGE_FETCH_CONCURRENCY);
       await Promise.all(

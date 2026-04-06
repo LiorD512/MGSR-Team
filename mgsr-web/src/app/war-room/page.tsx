@@ -667,8 +667,8 @@ export default function WarRoomPage() {
             <>
           <p className="text-sm md:text-base text-mgsr-muted mt-1">
             {isHe
-              ? 'פיד גילוי מבוסס AI. רק שחקנים ריאליסטיים לליגת העל — שווי €0–€2.5m.'
-              : "AI-curated discovery feed. Only players realistic for Ligat Ha'Al — value €0–€2.5m."}
+              ? 'פיד גילוי מבוסס AI. שחקנים ריאליסטיים עד גיל 31.'
+              : 'AI-curated discovery feed. Realistic players up to age 31.'}
           </p>
 
           <div className="flex gap-2 mt-4 overflow-x-auto pb-2 -mx-1 px-1" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
@@ -679,9 +679,6 @@ export default function WarRoomPage() {
             )}
             <span className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-teal/15 text-mgsr-teal border border-mgsr-teal/30 whitespace-nowrap">
               {candidates.length} {isHe ? 'שחקנים' : 'players'}
-            </span>
-            <span className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-500/15 text-green-400 border border-green-500/30 whitespace-nowrap">
-              {isHe ? 'מסנן ליגת העל: פעיל' : 'Ligat Ha\'Al filter: on'}
             </span>
             <button
               onClick={fetchDiscovery}
