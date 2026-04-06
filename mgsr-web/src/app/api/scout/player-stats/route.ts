@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(50000),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {

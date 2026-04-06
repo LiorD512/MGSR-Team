@@ -361,28 +361,48 @@ export default function PlayerStatsPanel({
     else if (playerName) params.set('name', playerName);
     if (playerClub) params.set('club', playerClub);
 
-    fetch(`/api/scout/player-stats?${params.toString()}`, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(20000),
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          if (res.status === 404) {
-            setError('not_found');
-          } else {
-            setError('failed');
-          }
-          return;
-        }
-        const json = await res.json();
-        if (json.api_matched) {
-          setData(json);
-        } else {
-          setError('not_enriched');
-        }
+    const endpoint = `/api/scout/player-stats?${params.toString()}`;
+
+    const attemptFetch = (attempt: number) => {
+      fetch(endpoint, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(45000),
       })
-      .catch(() => setError('failed'))
-      .finally(() => setLoading(false));
+        .then(async (res) => {
+          if (!res.ok) {
+            // Retry on 502/503 (Render cold start) — up to 2 attempts
+            if ((res.status === 502 || res.status === 503) && attempt < 2) {
+              setTimeout(() => attemptFetch(attempt + 1), 2000);
+              return;
+            }
+            if (res.status === 404) {
+              setError('not_found');
+            } else {
+              setError('failed');
+            }
+            setLoading(false);
+            return;
+          }
+          const json = await res.json();
+          if (json.api_matched) {
+            setData(json);
+          } else {
+            setError('not_enriched');
+          }
+          setLoading(false);
+        })
+        .catch(() => {
+          // Retry on network timeout — up to 2 attempts
+          if (attempt < 2) {
+            setTimeout(() => attemptFetch(attempt + 1), 2000);
+            return;
+          }
+          setError('failed');
+          setLoading(false);
+        });
+    };
+
+    attemptFetch(1);
   }, [playerUrl, playerName, playerClub]);
 
   const posGroup = useMemo(() => {
