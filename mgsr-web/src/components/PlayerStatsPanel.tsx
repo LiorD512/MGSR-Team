@@ -110,32 +110,32 @@ const CORE_STATS: Record<PosGroup, StatDef[]> = {
     { key: 'api_saves_per90', label: 'Saves / 90', labelHe: 'הצלות / 90', format: 'decimal', max: 5, thresholds: [2.0, 3.0, 4.0], icon: '🧤' },
     { key: 'api_conceded', label: 'Goals Conceded', labelHe: 'שערים שספג', format: 'number', max: 40, thresholds: [25, 15, 8], icon: '🥅' },
     { key: 'api_passes_accuracy', label: 'Pass Accuracy', labelHe: 'דיוק מסירות', format: 'pct', max: 100, thresholds: [55, 65, 75], icon: '🎯' },
-    { key: 'api_duels_won_pct', label: 'Duels Won %', labelHe: '% דו-קרבות', format: 'pct', max: 100, thresholds: [40, 55, 70], icon: '💪' },
+    { key: 'api_duels_won_pct', label: 'Duels Won %', labelHe: '% מאבקים מוצלחים', format: 'pct', max: 100, thresholds: [40, 55, 70], icon: '💪' },
     { key: 'api_blocks_per90', label: 'Blocks / 90', labelHe: 'חסימות / 90', format: 'decimal', max: 3, thresholds: [0.3, 0.6, 1.0], icon: '🛡️' },
   ],
   DEF: [
     { key: 'api_rating', label: 'Rating', labelHe: 'דירוג', format: 'rating', max: 10, thresholds: [6.5, 7.0, 7.5], icon: '⭐' },
-    { key: 'api_tackles_interceptions_per90', label: 'Tackles+Int / 90', labelHe: 'נטילות+יירוטים / 90', format: 'decimal', max: 8, thresholds: [2.5, 4.0, 5.5], icon: '🛡️' },
-    { key: 'api_duels_won_pct', label: 'Duels Won %', labelHe: '% דו-קרבות', format: 'pct', max: 100, thresholds: [55, 65, 75], icon: '💪' },
+    { key: 'api_tackles_interceptions_per90', label: 'Tackles+Int / 90', labelHe: 'תיקולים וחטיפות / 90', format: 'decimal', max: 8, thresholds: [2.5, 4.0, 5.5], icon: '🛡️' },
+    { key: 'api_duels_won_pct', label: 'Duels Won %', labelHe: '% מאבקים מוצלחים', format: 'pct', max: 100, thresholds: [55, 65, 75], icon: '💪' },
     { key: 'api_blocks_per90', label: 'Blocks / 90', labelHe: 'חסימות / 90', format: 'decimal', max: 3, thresholds: [0.5, 1.0, 1.5], icon: '🧱' },
     { key: 'api_passes_accuracy', label: 'Pass Accuracy', labelHe: 'דיוק מסירות', format: 'pct', max: 100, thresholds: [70, 80, 88], icon: '🎯' },
     { key: 'api_fouls_per90', label: 'Fouls / 90', labelHe: 'עבירות / 90', format: 'decimal', max: 3, thresholds: [2.0, 1.5, 0.8], icon: '⚠️' },
   ],
   FB: [
     { key: 'api_rating', label: 'Rating', labelHe: 'דירוג', format: 'rating', max: 10, thresholds: [6.5, 7.0, 7.5], icon: '⭐' },
-    { key: 'api_tackles_interceptions_per90', label: 'Tackles+Int / 90', labelHe: 'נטילות+יירוטים / 90', format: 'decimal', max: 6, thresholds: [2.0, 3.0, 4.5], icon: '🛡️' },
+    { key: 'api_tackles_interceptions_per90', label: 'Tackles+Int / 90', labelHe: 'תיקולים וחטיפות / 90', format: 'decimal', max: 6, thresholds: [2.0, 3.0, 4.5], icon: '🛡️' },
     { key: 'api_key_passes_per90', label: 'Key Passes / 90', labelHe: 'מסירות מפתח / 90', format: 'decimal', max: 3, thresholds: [0.5, 1.0, 1.8], icon: '🔑' },
     { key: 'api_dribbles_success_per90', label: 'Dribbles / 90', labelHe: 'כדרורים / 90', format: 'decimal', max: 3, thresholds: [0.5, 1.0, 1.5], icon: '⚡' },
     { key: 'api_goal_contributions_per90', label: 'G+A / 90', labelHe: 'שערים+בישולים / 90', format: 'decimal', max: 0.6, thresholds: [0.1, 0.2, 0.35], icon: '⚽' },
-    { key: 'api_duels_won_pct', label: 'Duels Won %', labelHe: '% דו-קרבות', format: 'pct', max: 100, thresholds: [50, 55, 65], icon: '💪' },
+    { key: 'api_duels_won_pct', label: 'Duels Won %', labelHe: '% מאבקים מוצלחים', format: 'pct', max: 100, thresholds: [50, 55, 65], icon: '💪' },
   ],
   MID: [
     { key: 'api_rating', label: 'Rating', labelHe: 'דירוג', format: 'rating', max: 10, thresholds: [6.5, 7.0, 7.5], icon: '⭐' },
     { key: 'api_key_passes_per90', label: 'Key Passes / 90', labelHe: 'מסירות מפתח / 90', format: 'decimal', max: 3, thresholds: [0.8, 1.5, 2.5], icon: '🔑' },
     { key: 'api_passes_accuracy', label: 'Pass Accuracy', labelHe: 'דיוק מסירות', format: 'pct', max: 100, thresholds: [72, 82, 90], icon: '🎯' },
-    { key: 'api_tackles_interceptions_per90', label: 'Tackles+Int / 90', labelHe: 'נטילות+יירוטים / 90', format: 'decimal', max: 6, thresholds: [1.5, 3.0, 4.5], icon: '🛡️' },
+    { key: 'api_tackles_interceptions_per90', label: 'Tackles+Int / 90', labelHe: 'תיקולים וחטיפות / 90', format: 'decimal', max: 6, thresholds: [1.5, 3.0, 4.5], icon: '🛡️' },
     { key: 'api_goal_contributions_per90', label: 'G+A / 90', labelHe: 'שערים+בישולים / 90', format: 'decimal', max: 0.8, thresholds: [0.15, 0.3, 0.5], icon: '⚽' },
-    { key: 'api_duels_won_pct', label: 'Duels Won %', labelHe: '% דו-קרבות', format: 'pct', max: 100, thresholds: [48, 55, 65], icon: '💪' },
+    { key: 'api_duels_won_pct', label: 'Duels Won %', labelHe: '% מאבקים מוצלחים', format: 'pct', max: 100, thresholds: [48, 55, 65], icon: '💪' },
   ],
   ATT_MID: [
     { key: 'api_rating', label: 'Rating', labelHe: 'דירוג', format: 'rating', max: 10, thresholds: [6.5, 7.0, 7.5], icon: '⭐' },
@@ -143,7 +143,7 @@ const CORE_STATS: Record<PosGroup, StatDef[]> = {
     { key: 'api_key_passes_per90', label: 'Key Passes / 90', labelHe: 'מסירות מפתח / 90', format: 'decimal', max: 4, thresholds: [1.0, 2.0, 3.0], icon: '🔑' },
     { key: 'api_dribbles_success_per90', label: 'Dribbles / 90', labelHe: 'כדרורים / 90', format: 'decimal', max: 4, thresholds: [0.8, 1.5, 2.5], icon: '⚡' },
     { key: 'api_shots_per90', label: 'Shots / 90', labelHe: 'בעיטות / 90', format: 'decimal', max: 4, thresholds: [1.0, 2.0, 3.0], icon: '🎯' },
-    { key: 'api_fouled_per90', label: 'Fouled / 90', labelHe: 'עבירות שנפלו / 90', format: 'decimal', max: 4, thresholds: [1.0, 1.8, 2.5], icon: '⚡' },
+    { key: 'api_fouled_per90', label: 'Fouled / 90', labelHe: 'עבירות שספג / 90', format: 'decimal', max: 4, thresholds: [1.0, 1.8, 2.5], icon: '⚡' },
   ],
   WING: [
     { key: 'api_rating', label: 'Rating', labelHe: 'דירוג', format: 'rating', max: 10, thresholds: [6.5, 7.0, 7.5], icon: '⭐' },
@@ -151,7 +151,7 @@ const CORE_STATS: Record<PosGroup, StatDef[]> = {
     { key: 'api_dribbles_success_per90', label: 'Dribbles / 90', labelHe: 'כדרורים / 90', format: 'decimal', max: 4, thresholds: [0.8, 1.5, 2.5], icon: '⚡' },
     { key: 'api_key_passes_per90', label: 'Key Passes / 90', labelHe: 'מסירות מפתח / 90', format: 'decimal', max: 3, thresholds: [0.8, 1.5, 2.5], icon: '🔑' },
     { key: 'api_shots_on_target_per90', label: 'Shots on Target / 90', labelHe: 'בעיטות למסגרת / 90', format: 'decimal', max: 2.5, thresholds: [0.5, 1.0, 1.5], icon: '🎯' },
-    { key: 'api_fouled_per90', label: 'Fouled / 90', labelHe: 'עבירות שנפלו / 90', format: 'decimal', max: 4, thresholds: [1.0, 2.0, 3.0], icon: '⚡' },
+    { key: 'api_fouled_per90', label: 'Fouled / 90', labelHe: 'עבירות שספג / 90', format: 'decimal', max: 4, thresholds: [1.0, 2.0, 3.0], icon: '⚡' },
   ],
   FWD: [
     { key: 'api_rating', label: 'Rating', labelHe: 'דירוג', format: 'rating', max: 10, thresholds: [6.5, 7.0, 7.5], icon: '⭐' },
@@ -159,7 +159,7 @@ const CORE_STATS: Record<PosGroup, StatDef[]> = {
     { key: 'api_goal_contributions_per90', label: 'G+A / 90', labelHe: 'שערים+בישולים / 90', format: 'decimal', max: 1.5, thresholds: [0.35, 0.6, 0.9], icon: '🔥' },
     { key: 'api_shots_on_target_per90', label: 'Shots on Target / 90', labelHe: 'בעיטות למסגרת / 90', format: 'decimal', max: 3, thresholds: [0.8, 1.2, 2.0], icon: '🎯' },
     { key: 'api_goals_per_shot', label: 'Conversion Rate', labelHe: 'אחוז המרה', format: 'pct', max: 1, thresholds: [0.1, 0.2, 0.35], icon: '💎' },
-    { key: 'api_duels_won_pct', label: 'Duels Won %', labelHe: '% דו-קרבות', format: 'pct', max: 100, thresholds: [40, 50, 60], icon: '💪' },
+    { key: 'api_duels_won_pct', label: 'Duels Won %', labelHe: '% מאבקים מוצלחים', format: 'pct', max: 100, thresholds: [40, 50, 60], icon: '💪' },
   ],
 };
 
@@ -602,13 +602,13 @@ function SecondaryStats({
     if (!coreKeys.has('api_dribbles_success_per90') && data.api_dribbles_success_per90)
       s.push({ label: 'Dribbles / 90', labelHe: 'כדרורים / 90', value: data.api_dribbles_success_per90.toFixed(2) });
     if (!coreKeys.has('api_tackles_interceptions_per90') && data.api_tackles_interceptions_per90)
-      s.push({ label: 'Tackles+Int / 90', labelHe: 'נטילות+יירוטים / 90', value: data.api_tackles_interceptions_per90.toFixed(2) });
+      s.push({ label: 'Tackles+Int / 90', labelHe: 'תיקולים וחטיפות / 90', value: data.api_tackles_interceptions_per90.toFixed(2) });
     if (!coreKeys.has('api_blocks_per90') && data.api_blocks_per90)
       s.push({ label: 'Blocks / 90', labelHe: 'חסימות / 90', value: data.api_blocks_per90.toFixed(2) });
     if (!coreKeys.has('api_duels_won_pct') && data.api_duels_won_pct)
-      s.push({ label: 'Duels Won', labelHe: 'דו-קרבות', value: `${data.api_duels_won_pct.toFixed(0)}%` });
+      s.push({ label: 'Duels Won', labelHe: 'מאבקים מוצלחים', value: `${data.api_duels_won_pct.toFixed(0)}%` });
     if (!coreKeys.has('api_fouled_per90') && data.api_fouled_per90)
-      s.push({ label: 'Fouled / 90', labelHe: 'עבירות שנפלו / 90', value: data.api_fouled_per90.toFixed(2) });
+      s.push({ label: 'Fouled / 90', labelHe: 'עבירות שספג / 90', value: data.api_fouled_per90.toFixed(2) });
     if (!coreKeys.has('api_fouls_per90') && data.api_fouls_per90)
       s.push({ label: 'Fouls / 90', labelHe: 'עבירות / 90', value: data.api_fouls_per90.toFixed(2) });
     if (data.api_cards_yellow)
@@ -616,7 +616,7 @@ function SecondaryStats({
     if (data.api_cards_red)
       s.push({ label: 'Red Cards', labelHe: 'כרטיסים אדומים', value: String(data.api_cards_red) });
     if (data.api_penalty_scored)
-      s.push({ label: 'Penalties Scored', labelHe: 'פנדלים שהוכנסו', value: String(data.api_penalty_scored) });
+      s.push({ label: 'Penalties Scored', labelHe: 'פנדלים שהובקעו', value: String(data.api_penalty_scored) });
 
     return s;
   }, [data, posGroup]);
