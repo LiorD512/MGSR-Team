@@ -370,6 +370,27 @@ function getApiPassAccuracy(p) { return getApiStat(p, "api_passes_accuracy"); }
 function getApiScoutingScore(p) { return getApiStat(p, "scouting_score"); }
 
 /**
+ * Extract rich API stats from player object for Firestore profile data.
+ * Used by all sweep loops to pass stats through to Sport Director.
+ */
+function extractRichApiStats(p) {
+  const r = (v) => typeof v === "number" && v > 0 ? Math.round(v * 100) / 100 : null;
+  return {
+    apiTacklesPer90: r(getApiStat(p, "api_tackles_per90")),
+    apiInterceptionsPer90: r(getApiStat(p, "api_interceptions_per90")),
+    apiDuelsWonPct: r(getApiStat(p, "api_duels_won_pct")),
+    apiKeyPassesPer90: r(getApiStat(p, "api_key_passes_per90")),
+    apiDribblesSuccessPer90: r(getApiStat(p, "api_dribbles_success_per90")),
+    apiGoalsPer90: r(getApiStat(p, "api_goals_per90")),
+    apiAssistsPer90: r(getApiStat(p, "api_assists_per90")),
+    apiShotsPer90: r(getApiStat(p, "api_shots_per90")),
+    apiGoalsPerShot: r(getApiStat(p, "api_goals_per_shot")),
+    apiPassAccuracy: r(getApiStat(p, "api_passes_accuracy")),
+    apiScoutingScore: getApiStat(p, "scouting_score") || null,
+  };
+}
+
+/**
  * @param {Object} p - Player object
  * @param {string} profileType
  * @param {number} valEuro
@@ -516,6 +537,33 @@ function buildMatchReason(p, profileType, valEuro, ageNum) {
   if (contractYear != null && profileType === "CONTRACT_EXPIRING") {
     parts.push(`contract → ${contractYear}`);
   }
+
+  // Rich API stats for new profile types
+  const apiRating = getApiRating(p);
+  if (apiRating >= 6.5) parts.push(`rating ${apiRating.toFixed(2)}`);
+
+  if (profileType === "DEFENSIVE_WALL") {
+    const ti = getApiTacklesIntPer90(p);
+    const dw = getApiDuelsWonPct(p);
+    if (ti > 0) parts.push(`${ti.toFixed(1)} tkl+int/90`);
+    if (dw > 0) parts.push(`${dw.toFixed(0)}% duels won`);
+  } else if (profileType === "CREATIVE_ENGINE") {
+    const kp = getApiKeyPassesPer90(p);
+    const dr = getApiDribblesSuccessPer90(p);
+    const gc = getApiContribPer90(p);
+    if (kp > 0) parts.push(`${kp.toFixed(1)} key passes/90`);
+    if (dr > 0) parts.push(`${dr.toFixed(1)} dribbles/90`);
+    if (gc > 0) parts.push(`${gc.toFixed(2)} G+A/90`);
+  } else if (profileType === "SHOT_MACHINE") {
+    const sp = getApiShotsPer90(p);
+    const gps = getApiGoalsPerShot(p);
+    if (sp > 0) parts.push(`${sp.toFixed(1)} shots/90`);
+    if (gps > 0) parts.push(`${(gps * 100).toFixed(0)}% conversion`);
+  }
+
+  const scoutScore = getApiScoutingScore(p);
+  if (scoutScore >= 70) parts.push(`scout ${scoutScore}`);
+
   return parts.join(" · ") || "Matches profile criteria";
 }
 
@@ -903,6 +951,7 @@ async function runScoutAgent() {
               apiAssists,
               goalsPer90: Math.round(goalsPer90 * 100) / 100,
               contribPer90: Math.round(contribPer90 * 100) / 100,
+              ...extractRichApiStats(p),
               discoveredAt: now,
               lastRefreshedAt: now,
             },
@@ -1018,6 +1067,7 @@ async function runScoutAgent() {
               apiAssists,
               goalsPer90: Math.round(goalsPer90 * 100) / 100,
               contribPer90: Math.round(contribPer90 * 100) / 100,
+              ...extractRichApiStats(p),
               discoveredAt: now,
               lastRefreshedAt: now,
             },
@@ -1138,6 +1188,7 @@ async function runScoutAgent() {
               apiAssists,
               goalsPer90: Math.round(goalsPer90 * 100) / 100,
               contribPer90: Math.round(contribPer90 * 100) / 100,
+              ...extractRichApiStats(p),
               discoveredAt: now,
               lastRefreshedAt: now,
             },
@@ -1245,6 +1296,7 @@ async function runScoutAgent() {
               apiAssists,
               goalsPer90: Math.round(goalsPer90 * 100) / 100,
               contribPer90: Math.round(contribPer90 * 100) / 100,
+              ...extractRichApiStats(p),
               discoveredAt: now,
               lastRefreshedAt: now,
             },
@@ -1351,6 +1403,7 @@ async function runScoutAgent() {
               apiAssists,
               goalsPer90: Math.round(goalsPer90 * 100) / 100,
               contribPer90: Math.round(contribPer90 * 100) / 100,
+              ...extractRichApiStats(p),
               discoveredAt: now,
               lastRefreshedAt: now,
             },
@@ -1773,6 +1826,7 @@ async function runScoutAgent() {
                   apiAssists,
                   goalsPer90: Math.round(goalsPer90 * 100) / 100,
                   contribPer90: Math.round(contribPer90 * 100) / 100,
+              ...extractRichApiStats(p),
                   source: p._tmEnriched ? "tm_enriched" : "tm_fallback",
                   discoveredAt: now,
                   lastRefreshedAt: now,
@@ -1898,6 +1952,7 @@ async function runScoutAgent() {
                   apiAssists,
                   goalsPer90: Math.round(goalsPer90 * 100) / 100,
                   contribPer90: Math.round(contribPer90 * 100) / 100,
+              ...extractRichApiStats(p),
                   source: "tm_enriched",
                   discoveredAt: now,
                   lastRefreshedAt: now,

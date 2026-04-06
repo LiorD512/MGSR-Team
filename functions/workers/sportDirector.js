@@ -268,6 +268,17 @@ const QUALITY_BARS = {
     attacker: { minContribPer90: 0.10 },
     midfielder: { minContribPer90: 0.06 },
   },
+  // New stats-based profiles — validated via API-Football per-90 stats
+  DEFENSIVE_WALL: {
+    other: { minTacklesIntPer90: 2.5, minDuelsWonPct: 45 },
+  },
+  CREATIVE_ENGINE: {
+    midfielder: { minKeyPassesPer90: 1.0, minContribPer90: 0.15 },
+    attacker: { minKeyPassesPer90: 1.2, minContribPer90: 0.20 },
+  },
+  SHOT_MACHINE: {
+    attacker: { minShotsPer90: 1.5, minGoalsPer90: 0.12 },
+  },
 };
 
 // Minimum matchScore by league tier
@@ -323,11 +334,12 @@ function checkCompleteness(data) {
     issues.push("missing_fm_critical");
   }
 
-  // Insufficient data: no minutes AND no FM = blind profile, can't validate anything
-  // Only allow through: CONTRACT_EXPIRING (contract alone is signal) and TM-enriched
+  // Insufficient data: no minutes AND no FM AND no API stats = blind profile
+  // Allow through: CONTRACT_EXPIRING (contract alone is signal), TM-enriched, or profiles with rich API stats
   const hasMinutes = (data.apiMinutes90s || 0) > 0;
   const hasFm = data.fmPa != null;
-  if (!hasMinutes && !hasFm && !isTmSource && data.profileType !== "CONTRACT_EXPIRING") {
+  const hasApiStats = (data.apiRating || 0) > 0 || (data.apiScoutingScore || 0) > 0;
+  if (!hasMinutes && !hasFm && !hasApiStats && !isTmSource && data.profileType !== "CONTRACT_EXPIRING") {
     issues.push("insufficient_data_critical");
   }
 
@@ -365,6 +377,21 @@ function checkPer90Quality(data) {
   }
   if (posBar.minContribPer90 && contribPer90 < posBar.minContribPer90) {
     issues.push(`low_contrib_per90:${contribPer90.toFixed(2)}<${posBar.minContribPer90}`);
+  }
+
+  // New stats-based quality bars
+  const tacklesIntPer90 = (data.apiTacklesPer90 || 0) + (data.apiInterceptionsPer90 || 0);
+  if (posBar.minTacklesIntPer90 && tacklesIntPer90 < posBar.minTacklesIntPer90) {
+    issues.push(`low_tackles_int_per90:${tacklesIntPer90.toFixed(2)}<${posBar.minTacklesIntPer90}`);
+  }
+  if (posBar.minDuelsWonPct && (data.apiDuelsWonPct || 0) < posBar.minDuelsWonPct) {
+    issues.push(`low_duels_won_pct:${(data.apiDuelsWonPct || 0).toFixed(0)}<${posBar.minDuelsWonPct}`);
+  }
+  if (posBar.minKeyPassesPer90 && (data.apiKeyPassesPer90 || 0) < posBar.minKeyPassesPer90) {
+    issues.push(`low_key_passes_per90:${(data.apiKeyPassesPer90 || 0).toFixed(2)}<${posBar.minKeyPassesPer90}`);
+  }
+  if (posBar.minShotsPer90 && (data.apiShotsPer90 || 0) < posBar.minShotsPer90) {
+    issues.push(`low_shots_per90:${(data.apiShotsPer90 || 0).toFixed(2)}<${posBar.minShotsPer90}`);
   }
 
   return issues;
@@ -783,6 +810,19 @@ function reEvaluateProfileType(d) {
     market_value: d.marketValue,
     league: d.league,
     name: d.playerName,
+    // Rich API stats for new profile types
+    api_tackles_per90: d.apiTacklesPer90,
+    api_interceptions_per90: d.apiInterceptionsPer90,
+    api_duels_won_pct: d.apiDuelsWonPct,
+    api_key_passes_per90: d.apiKeyPassesPer90,
+    api_dribbles_success_per90: d.apiDribblesSuccessPer90,
+    api_goals_per90: d.apiGoalsPer90,
+    api_assists_per90: d.apiAssistsPer90,
+    api_shots_per90: d.apiShotsPer90,
+    api_goals_per_shot: d.apiGoalsPerShot,
+    api_rating: d.apiRating,
+    api_scouting_score: d.apiScoutingScore,
+    api_pass_accuracy: d.apiPassAccuracy,
   };
 
   const valEuro = d.marketValueEuro;
@@ -802,6 +842,7 @@ function reEvaluateProfileType(d) {
     "HIGH_VALUE_BENCHED", "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT",
     "CONTRACT_EXPIRING", "HIDDEN_GEM", "LOWER_LEAGUE_RISER",
     "BREAKOUT_SEASON", "UNDERVALUED_BY_FM",
+    "DEFENSIVE_WALL", "CREATIVE_ENGINE", "SHOT_MACHINE",
   ];
 
   let bestType = null;
@@ -832,6 +873,9 @@ const STATS_DEPENDENT_PROFILES = new Set([
   "HIGH_VALUE_BENCHED",
   "BREAKOUT_SEASON",
   "YOUNG_STRIKER_HOT",
+  "DEFENSIVE_WALL",
+  "CREATIVE_ENGINE",
+  "SHOT_MACHINE",
 ]);
 
 /**
