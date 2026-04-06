@@ -62,6 +62,7 @@ interface PlayerStatsData {
   api_blocks_per90?: number;
   api_team?: string;
   api_league?: string;
+  api_league_country?: string;
   api_photo?: string;
   api_season?: number;
 }
@@ -466,16 +467,21 @@ export default function PlayerStatsPanel({
   const seasonLabel = `${season}/${String(season + 1).slice(-2)}`;
   const isLowerBetterKeys = new Set(['api_fouls_per90', 'api_conceded']);
 
-  const INACCURATE_LEAGUES = new Set([
-    'Liga Portugal 2', 'Liga Portugal SABSEG',
-    'A Division Cyprus', 'Cyprus League', 'First Division',
-    'Veikkausliiga',
-    'Premier League Ukraine', 'Premier Liga',
-    'Parva Liga', 'efbet Liga', 'First Professional Football League',
-    'NB I', 'NB I.', 'Nb I Ungarn', 'OTP Bank Liga',
+  const INACCURATE_DB_LEAGUES = new Set([
+    'Liga Portugal 2', 'A Division Cyprus', 'Veikkausliiga',
+    'Premier League Ukraine', 'Parva Liga', 'Nb I Ungarn',
   ]);
-  const leagueName = data.api_league || data.league || '';
-  const isInaccurateLeague = INACCURATE_LEAGUES.has(leagueName);
+  const INACCURATE_API_LEAGUES = new Set([
+    'Segunda Liga', '1. Division', 'Veikkausliiga',
+    'First League', 'NB I',
+  ]);
+  const apiLeague = data.api_league || '';
+  const dbLeague = data.league || '';
+  const apiCountry = (data.api_league_country || '').toLowerCase();
+  const isInaccurateLeague =
+    INACCURATE_DB_LEAGUES.has(dbLeague) ||
+    INACCURATE_API_LEAGUES.has(apiLeague) ||
+    (apiLeague === 'Premier League' && apiCountry === 'ukraine');
 
   return (
     <div className="bg-mgsr-card border border-mgsr-border rounded-2xl overflow-hidden">
