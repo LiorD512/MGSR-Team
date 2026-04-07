@@ -692,8 +692,8 @@ export default function WarRoomPage() {
           <p className="text-xs text-mgsr-muted mt-3 px-3 py-2 rounded-lg bg-mgsr-card/50 border border-mgsr-border/50 hidden sm:block">
             <strong className="text-mgsr-text">{isHe ? 'מסנן רלוונטיות:' : 'Relevance filter:'}</strong>{' '}
             {isHe
-              ? "שווי נוכחי €0–€2.5m, דמי העברה אחרונים ≤€2.5m, ליגות נגישות. ללא כוכבים שנקנו ביוקר."
-              : 'Current value €0–€2.5m, last transfer fee ≤€2.5m, reachable leagues. Excludes players bought for big money.'}
+              ? "שווי שוק עד €4m, גיל 18–30, 2–3 שחקנים לכל עמדה, סינון איכות לפי סטטיסטיקות עמדה."
+              : 'Market value up to €4m, age 18–30, 2–3 players per position, quality filtered by position stats.'}
           </p>
 
         {/* Source tabs */}
