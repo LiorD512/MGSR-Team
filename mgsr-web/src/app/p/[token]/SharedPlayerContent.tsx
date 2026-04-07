@@ -481,20 +481,6 @@ export default function SharedPlayerContent({
             </div>
             {/* Hook line — 3-second pitch */}
             <HookLine hookLine={enrichment?.hookLine} hookLineHe={enrichment?.hookLineHe} isWomen={isWomen} useHebrew={useHebrew} />
-            {/* Availability indicator */}
-            {data.mandateInfo?.hasMandate && (
-              <div className={`mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide ${
-                isWomen
-                  ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)] border border-[var(--women-rose)]/25'
-                  : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
-              }`}>
-                <span className="relative flex h-2 w-2">
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isWomen ? 'bg-[var(--women-rose)]' : 'bg-emerald-400'}`} />
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isWomen ? 'bg-[var(--women-rose)]' : 'bg-emerald-400'}`} />
-                </span>
-                {useHebrew ? '📌 זמין להעברה — מעבר מיידי אפשרי' : '📌 Available for transfer — immediate move possible'}
-              </div>
-            )}
           </div>
         </div>
 

@@ -88,8 +88,6 @@ export function TransferTicker({
     if (p.positions?.length) ticks.push(`⚽ ${p.positions.map(pos => getPositionDisplayName(pos, useHebrew)).join(' / ')}`);
     if (p.contractExpired?.trim() && p.contractExpired !== '-') ticks.push(`📋 ${useHebrew ? 'חוזה' : 'Contract'}: ${p.contractExpired}`);
     
-    if (data.mandateInfo?.hasMandate) ticks.push(`✅ ${useHebrew ? 'מנדט פעיל' : 'Active Mandate'}`);
-    
     return ticks;
   }, [data, enrichment, useHebrew]);
 
@@ -218,10 +216,6 @@ function deriveUrgencyBadges(data: ShareData): { type: string; label: string; la
       labelHe: `חוזה מסתיים ${data.player.contractExpired}`,
       variant: 'red',
     });
-  }
-
-  if (data.mandateInfo?.hasMandate) {
-    badges.push({ type: 'mandate', label: 'Mandate', labelHe: 'מנדט', variant: 'teal' });
   }
 
   const age = parseInt(data.player.age || '');
