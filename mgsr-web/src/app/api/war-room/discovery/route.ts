@@ -381,8 +381,14 @@ export async function GET(request: NextRequest) {
       console.warn('[War Room Discovery] Agent picks load failed (non-fatal):', err);
     }
 
-    // Add agent picks first — they're the highest quality
-    candidates.push(...agentPicks);
+    // Add agent picks first — they're the highest quality (but respect position cap)
+    const positionCounts = new Map<string, number>();
+    for (const pick of agentPicks) {
+      const shortPos = mapToShortPosition(pick.position);
+      if (shortPos && (positionCounts.get(shortPos) || 0) >= PLAYERS_PER_POSITION) continue;
+      candidates.push(pick);
+      if (shortPos) positionCounts.set(shortPos, (positionCounts.get(shortPos) || 0) + 1);
+    }
 
     // 1. Request matches (if Firestore available)
     let requests: { id: string; position?: string; minAge?: number; maxAge?: number; dominateFoot?: string; transferFee?: string; clubName?: string }[] = [];
@@ -433,26 +439,21 @@ export async function GET(request: NextRequest) {
       for (const p of results) {
         const url = (p.url as string) || '';
         if (!url || seen.has(url)) continue;
-        seen.add(url);
         const val = parseMarketValueToEuro(p.market_value as string);
         if (val > DISCOVERY_VALUE_MAX) continue;
         const ageN = parseAge(p.age as string);
         if (ageN != null && (ageN < DISCOVERY_AGE_MIN || ageN > DISCOVERY_AGE_MAX)) continue;
-        candidates.push(
-          toCandidate(p, 'request_match', `Matches ${req.clubName || 'request'}`.slice(0, 40), req.id, req.clubName)
-        );
+        const shortPos = mapToShortPosition((p.position as string) || req.position || '');
+        if (shortPos && (positionCounts.get(shortPos) || 0) >= PLAYERS_PER_POSITION) continue;
+        seen.add(url);
+        const cand = toCandidate(p, 'request_match', `Matches ${req.clubName || 'request'}`.slice(0, 40), req.id, req.clubName);
+        candidates.push(cand);
+        if (shortPos) positionCounts.set(shortPos, (positionCounts.get(shortPos) || 0) + 1);
       }
     }
 
     // 3. Position-balanced discovery with quality filters
-    // Track slots already filled by agent picks + request matches
-    const positionCounts = new Map<string, number>();
-    for (const c of candidates) {
-      const shortPos = mapToShortPosition(c.position);
-      if (shortPos && ALL_POSITIONS.includes(shortPos)) {
-        positionCounts.set(shortPos, (positionCounts.get(shortPos) || 0) + 1);
-      }
-    }
+    // positionCounts already tracks agent picks + request matches
 
     // Determine which positions still need filling
     const positionsToFill = ALL_POSITIONS.filter(
@@ -510,8 +511,16 @@ export async function GET(request: NextRequest) {
 
     console.log(`[War Room Discovery] Position distribution:`, Object.fromEntries(positionCounts));
 
-    // Dedupe (safety net) and shuffle for variety between refreshes
+    // Dedupe (safety net), enforce position cap, shuffle for variety
     let unique = Array.from(new Map(candidates.map((c) => [c.transfermarktUrl, c])).values());
+    const finalPosCounts = new Map<string, number>();
+    unique = unique.filter((c) => {
+      const sp = mapToShortPosition(c.position);
+      if (!sp) return true; // Unknown position — allow
+      if ((finalPosCounts.get(sp) || 0) >= PLAYERS_PER_POSITION) return false;
+      finalPosCounts.set(sp, (finalPosCounts.get(sp) || 0) + 1);
+      return true;
+    });
     unique = shuffle(unique).slice(0, 35);
 
     // Enrich with profile images from Transfermarkt
