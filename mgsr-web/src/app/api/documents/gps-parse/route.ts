@@ -43,6 +43,19 @@ MATCH INFO:
 
 MULTI-MATCH REPORTS: If one player has multiple rows with different dates (one row per match), output EACH ROW as a separate player entry with the same playerName but a different per-row "matchDate" field.
 
+SINGLE-PLAYER REPORTS: Some reports (especially STATSports individual exports) show data for ONE player across MULTIPLE matches. In these reports:
+- Each ROW is a MATCH (e.g. "VLLAZNIA 1-0 EGNATIA", "EGNATIA 2-2 ELBASANI"), not a player
+- There is NO player name column — the entire report is about one player
+- The header/title shows the latest match (e.g. "MATCH DAY - VLLAZNIA 1-0 EGNATIA")
+- A summary section shows aggregate stats (total distance, sprints, etc.)
+- Charts show per-match bars/lines for each metric
+- A data table on the last page has one row per match
+
+For SINGLE-PLAYER REPORTS, set "isSinglePlayerReport": true and output each match row as a player entry where:
+- "playerName" = the match title for that row (e.g. "VLLAZNIA 1-0 EGNATIA (MD)")
+- All metric fields contain that match's data
+Do NOT use the average/summary row — only individual match rows.
+
 For EACH player/row return:
 {
   "playerName": "Full Name",
@@ -80,6 +93,7 @@ Return ONLY a JSON object:
   "matchTitle": "LEON VS FOLGORE",
   "matchDate": "21/02/2026",
   "teamName": "FOLGORE",
+  "isSinglePlayerReport": false,
   "teamAverageTotalDist": 9250,
   "teamAverageMeteragePerMin": 107,
   "teamAverageHighIntensityRuns": 32,
@@ -131,6 +145,7 @@ interface GpsReportResult {
   matchTitle: string;
   matchDate: string;
   teamName: string;
+  isSinglePlayerReport?: boolean;
   teamAverageTotalDist: number;
   teamAverageMeteragePerMin: number;
   teamAverageHighIntensityRuns: number;
@@ -551,14 +566,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No players found in GPS report' }, { status: 422 });
     }
 
-    // Find matching player rows — multi-match reports have many rows for same player
-    const allPlayerRows = findAllPlayerRows(report.players, playerName);
-    if (allPlayerRows.length === 0) {
-      console.log(`[gps-parse] Player "${playerName}" not found. Available: ${report.players.map(p => p.playerName).join(', ')}`);
-      return NextResponse.json({ 
-        error: 'Player not found in GPS report',
-        availablePlayers: report.players.map(p => p.playerName),
-      }, { status: 404 });
+    // Single-player report: each row is a match, not a player
+    // Use all rows directly — no player name matching needed
+    const isSinglePlayer = report.isSinglePlayerReport === true;
+
+    let allPlayerRows: GpsPlayerRow[];
+    if (isSinglePlayer) {
+      allPlayerRows = report.players;
+      console.log(`[gps-parse] Single-player report: ${allPlayerRows.length} matches for "${playerName}"`);
+    } else {
+      // Multi-player report: find matching player rows
+      allPlayerRows = findAllPlayerRows(report.players, playerName);
+      if (allPlayerRows.length === 0) {
+        console.log(`[gps-parse] Player "${playerName}" not found. Available: ${report.players.map(p => p.playerName).join(', ')}`);
+        return NextResponse.json({ 
+          error: 'Player not found in GPS report',
+          availablePlayers: report.players.map(p => p.playerName),
+        }, { status: 404 });
+      }
     }
 
     console.log(`[gps-parse] Found ${allPlayerRows.length} rows for "${playerName}"`);
@@ -569,22 +594,26 @@ export async function POST(req: NextRequest) {
       const rowDateStr = playerRow.matchDate || report.matchDate;
       const matchDate = parseMatchDate(rowDateStr);
 
+      // For single-player reports, each row's "playerName" is actually the match title
+      const rowMatchTitle = isSinglePlayer
+        ? (playerRow.playerName || report.matchTitle || '')
+        : (report.matchTitle || '');
+
       // Check for duplicate — same date AND same match title → replace it
-      const matchTitle = report.matchTitle || '';
       let existing: FirebaseFirestore.QuerySnapshot | null = null;
-      if (rowDateStr || matchTitle) {
+      if (rowDateStr || rowMatchTitle) {
         let q = adminDb().collection('GpsMatchData')
           .where('playerTmProfile', '==', playerTmProfile);
         if (rowDateStr) q = q.where('matchDateStr', '==', rowDateStr);
-        if (matchTitle) q = q.where('matchTitle', '==', matchTitle);
+        if (rowMatchTitle) q = q.where('matchTitle', '==', rowMatchTitle);
         existing = await q.limit(1).get();
       }
 
       // Write to Firestore
       const gpsDoc: Record<string, unknown> = {
         playerTmProfile,
-        playerName: playerRow.playerName,
-        matchTitle: report.matchTitle,
+        playerName: isSinglePlayer ? playerName : playerRow.playerName,
+        matchTitle: rowMatchTitle,
         matchDate: matchDate ?? Date.now(),
         matchDateStr: rowDateStr || '',
         teamName: report.teamName,

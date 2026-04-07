@@ -59,6 +59,19 @@ MATCH INFO:
 
 MULTI-MATCH REPORTS: If one player has multiple rows with different dates (one row per match), output EACH ROW as a separate player entry with the same playerName but a different per-row "matchDate" field.
 
+SINGLE-PLAYER REPORTS: Some reports (especially STATSports individual exports) show data for ONE player across MULTIPLE matches. In these reports:
+- Each ROW is a MATCH (e.g. "VLLAZNIA 1-0 EGNATIA", "EGNATIA 2-2 ELBASANI"), not a player
+- There is NO player name column — the entire report is about one player
+- The header/title shows the latest match (e.g. "MATCH DAY - VLLAZNIA 1-0 EGNATIA")
+- A summary section shows aggregate stats (total distance, sprints, etc.)
+- Charts show per-match bars/lines for each metric
+- A data table on the last page has one row per match
+
+For SINGLE-PLAYER REPORTS, set "isSinglePlayerReport": true and output each match row as a player entry where:
+- "playerName" = the match title for that row (e.g. "VLLAZNIA 1-0 EGNATIA (MD)")
+- All metric fields contain that match's data
+Do NOT use the average/summary row — only individual match rows.
+
 For EACH player/row return:
 {
   "playerName": "Full Name",
@@ -96,6 +109,7 @@ Return ONLY a JSON object:
   "matchTitle": "LEON VS FOLGORE",
   "matchDate": "21/02/2026",
   "teamName": "FOLGORE",
+  "isSinglePlayerReport": false,
   "teamAverageTotalDist": 7285,
   "teamAverageMeteragePerMin": 107,
   "teamAverageHighIntensityRuns": 32,
@@ -202,6 +216,7 @@ Return ONLY valid JSON. No markdown, no explanation."""
             val teamAvgHI = json.optInt("teamAverageHighIntensityRuns", 0)
             val teamAvgSprints = json.optInt("teamAverageSprints", 0)
             val teamAvgMaxVel = json.optDouble("teamAverageMaxVelocity", 0.0)
+            val isSinglePlayerReport = json.optBoolean("isSinglePlayerReport", false)
 
             val playersArr = json.optJSONArray("players") ?: return null
             val players = mutableListOf<GpsPlayerRow>()
@@ -242,6 +257,7 @@ Return ONLY valid JSON. No markdown, no explanation."""
                 matchDate = matchDate,
                 matchDateStr = matchDateStr,
                 teamName = teamName,
+                isSinglePlayerReport = isSinglePlayerReport,
                 teamAverageTotalDist = teamAvgDist,
                 teamAverageMeteragePerMin = teamAvgMeterage,
                 teamAverageHighIntensityRuns = teamAvgHI,
@@ -361,6 +377,7 @@ data class GpsReportResult(
     val matchDate: Long?,
     val matchDateStr: String,
     val teamName: String,
+    val isSinglePlayerReport: Boolean = false,
     val teamAverageTotalDist: Int,
     val teamAverageMeteragePerMin: Int,
     val teamAverageHighIntensityRuns: Int,

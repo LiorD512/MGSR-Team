@@ -946,42 +946,47 @@ exports.onAgentTransferResolved = onDocumentUpdated(
 /**
  * Extract ISO DOB (YYYY-MM-DD) from a TM profile page's cheerio document.
  * Priority order:
- *  1. Link href inside birthDate span: datum/YYYY-MM-DD (unambiguous)
- *  2. Named-month text: "Jul 4, 1997" (parsed by JS Date)
+ *  1. datum/ link anywhere on page: datum/YYYY-MM-DD (unambiguous ISO)
+ *  2. Named-month text from birthDate span: "Jul 4, 1997" (parsed by JS Date)
  *  3. Returns null if nothing reliable found
  *
- * NEVER assumes DD/MM vs MM/DD — only uses unambiguous sources.
+ * NEVER assumes DD/MM vs MM/DD from numeric slash dates — only uses unambiguous sources.
  */
 function extractDobFromTmPage($) {
+  // 1. Find the datum/ link near the DOB section — this contains unambiguous ISO date
+  //    TM puts this in the info-table section as <a href="/aktuell/.../datum/YYYY-MM-DD">
+  const datumLinks = $('a[href*="datum/"]');
+  for (let i = 0; i < datumLinks.length; i++) {
+    const href = $(datumLinks[i]).attr("href") || "";
+    const isoMatch = href.match(/datum\/(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+    }
+  }
+
+  // 2. Try content attribute on birthDate span
   const birthSpan = $("span[itemprop=birthDate]").first();
-  if (!birthSpan.length) return null;
+  if (birthSpan.length) {
+    const contentAttr = birthSpan.attr("content") || "";
+    const isoFromContent = contentAttr.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (isoFromContent) {
+      return `${isoFromContent[1]}-${isoFromContent[2]}-${isoFromContent[3]}`;
+    }
 
-  // 1. Try the link href — contains unambiguous ISO date: datum/YYYY-MM-DD
-  const birthLink = birthSpan.find("a").first().attr("href") || "";
-  const isoFromLink = birthLink.match(/datum\/(\d{4})-(\d{2})-(\d{2})/);
-  if (isoFromLink) {
-    return `${isoFromLink[1]}-${isoFromLink[2]}-${isoFromLink[3]}`;
-  }
-
-  // 2. Try content attribute (some TM versions include it)
-  const contentAttr = birthSpan.attr("content") || "";
-  const isoFromContent = contentAttr.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (isoFromContent) {
-    return `${isoFromContent[1]}-${isoFromContent[2]}-${isoFromContent[3]}`;
-  }
-
-  // 3. Fallback: parse named-month text like "Jul 4, 1997 (28)"
-  const birthText = birthSpan.text().trim();
-  if (!birthText) return null;
-  const dateStr = birthText.replace(/\s*\(\d+\)\s*$/, "").trim();
-  // Only trust named-month formats (e.g. "Jun 15, 2000") — NOT numeric DD/MM or MM/DD
-  if (/[a-zA-Z]/.test(dateStr)) {
-    const parsed = new Date(dateStr);
-    if (!isNaN(parsed.getTime())) {
-      const yyyy = parsed.getFullYear();
-      const mm = String(parsed.getMonth() + 1).padStart(2, "0");
-      const dd = String(parsed.getDate()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd}`;
+    // 3. Fallback: parse named-month text like "Jul 4, 1997 (28)"
+    const birthText = birthSpan.text().trim();
+    if (birthText) {
+      const dateStr = birthText.replace(/\s*\(\d+\)\s*$/, "").trim();
+      // Only trust named-month formats (e.g. "Jun 15, 2000") — NOT numeric DD/MM or MM/DD
+      if (/[a-zA-Z]/.test(dateStr)) {
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) {
+          const yyyy = parsed.getFullYear();
+          const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+          const dd = String(parsed.getDate()).padStart(2, "0");
+          return `${yyyy}-${mm}-${dd}`;
+        }
+      }
     }
   }
 

@@ -1484,11 +1484,19 @@ class PlayerInfoViewModel(
                     return@launch
                 }
 
-                // Find this player's rows in the report (may be multiple for multi-match reports)
-                val allRows = com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.findAllPlayerRows(report, playerName)
-                if (allRows.isEmpty()) {
-                    Log.w(TAG, "Player '$playerName' not found in GPS report with ${report.players.size} players")
-                    return@launch
+                // Single-player report: each row is a match, not a player — use all rows directly
+                val isSinglePlayer = report.isSinglePlayerReport
+                val allRows = if (isSinglePlayer) {
+                    Log.i(TAG, "Single-player report: ${report.players.size} matches for '$playerName'")
+                    report.players
+                } else {
+                    // Find this player's rows in the report (may be multiple for multi-match reports)
+                    val rows = com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.findAllPlayerRows(report, playerName)
+                    if (rows.isEmpty()) {
+                        Log.w(TAG, "Player '$playerName' not found in GPS report with ${report.players.size} players")
+                        return@launch
+                    }
+                    rows
                 }
 
                 Log.i(TAG, "Found ${allRows.size} GPS match rows for '$playerName'")
@@ -1503,9 +1511,16 @@ class PlayerInfoViewModel(
                         try { sdf.parse(playerRow.perRowMatchDate)?.time } catch (_: Exception) { null }
                     } else report.matchDate
 
+                    // For single-player reports, each row's "playerName" is actually the match title
+                    val rowMatchTitle = if (isSinglePlayer) {
+                        playerRow.playerName.ifEmpty { report.matchTitle ?: "" }
+                    } else {
+                        report.matchTitle ?: ""
+                    }
+
                     val matchData = playerRow.toGpsMatchData(
                         playerTmProfile = storageKey,
-                        matchTitle = report.matchTitle,
+                        matchTitle = rowMatchTitle,
                         matchDate = rowDateMs,
                         matchDateStr = rowDateStr,
                         documentId = documentId,
@@ -1518,21 +1533,20 @@ class PlayerInfoViewModel(
                     )
 
                     // Check for duplicate (same player + same match date + same match title) — replace if exists
-                    val matchTitleVal = report.matchTitle ?: ""
                     val existingQuery = store.collection("GpsMatchData")
                         .whereEqualTo("playerTmProfile", storageKey)
                     val existing = withContext(Dispatchers.IO) {
                         var q = existingQuery
                         if (!rowDateStr.isNullOrEmpty()) q = q.whereEqualTo("matchDateStr", rowDateStr)
-                        if (matchTitleVal.isNotEmpty()) q = q.whereEqualTo("matchTitle", matchTitleVal)
+                        if (rowMatchTitle.isNotEmpty()) q = q.whereEqualTo("matchTitle", rowMatchTitle)
                         q.get().await()
                     }
 
                     // Write to Firestore
                     val dataMap = hashMapOf<String, Any?>(
                         "playerTmProfile" to matchData.playerTmProfile,
-                        "playerName" to matchData.playerName,
-                        "matchTitle" to matchData.matchTitle,
+                        "playerName" to if (isSinglePlayer) playerName else matchData.playerName,
+                        "matchTitle" to rowMatchTitle,
                         "matchDate" to matchData.matchDate,
                         "matchDateStr" to matchData.matchDateStr,
                         "documentId" to matchData.documentId,
