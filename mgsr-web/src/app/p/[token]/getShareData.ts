@@ -43,6 +43,16 @@ export async function getShareData(token: string): Promise<ShareData | null> {
     }
   }
 
+  // 4. Live stats fallback for shares created before stats were included
+  if (data && !data.playerStats && data.player?.tmProfile) {
+    try {
+      const { fetchPlayerStatsForShare } = await import('@/lib/fetchPlayerStats');
+      data.playerStats = await fetchPlayerStatsForShare(data.player.tmProfile, data.player.positions);
+    } catch {
+      // Stats enrichment is best-effort
+    }
+  }
+
   return data;
 }
 

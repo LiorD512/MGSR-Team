@@ -103,35 +103,6 @@ function buildRadarFromFM(fm: FmData | null) {
   ];
 }
 
-/* ── Build AI score from FM + API stats ── */
-
-function buildAIScore(fm: FmData | null, player: Record<string, unknown>) {
-  const age = parseInt((player.age || '25') as string) || 25;
-
-  if (fm?.ca) {
-    const overall = clamp(Math.round(fm.ca / 2), 30, 95);
-    const dims = fm.dimension_scores;
-    const potential = fm.pa ? clamp(Math.round(fm.pa / 2), 30, 99) : (age <= 24 ? overall + 8 : overall + 2);
-
-    const tierBonus: Record<string, number> = { world_class: 50, elite: 60, top_league: 70, solid_pro: 80, lower_league: 85, prospect: 90 };
-    const valueDeal = clamp(tierBonus[fm.tier ?? 'solid_pro'] ?? 75, 30, 95);
-
-    return {
-      overall,
-      categories: [
-        { name: 'Technical', nameHe: 'טכני', value: clamp(dims?.overall ?? overall, 30, 95) },
-        { name: 'Physical', nameHe: 'פיזי', value: clamp(dims?.physical ?? overall - 3, 30, 95) },
-        { name: 'Tactical IQ', nameHe: 'חוש טקטי', value: clamp(dims?.passing ?? overall, 30, 95) },
-        { name: 'Consistency', nameHe: 'עקביות', value: clamp(overall - 2, 30, 95) },
-        { name: 'Potential', nameHe: 'פוטנציאל', value: clamp(potential, 30, 99) },
-        { name: 'Value Deal', nameHe: 'עסקה משתלמת', value: valueDeal },
-      ],
-    };
-  }
-
-  return null;
-}
-
 /* ── Gemini: generate full dossier content in one call ── */
 
 async function generateDossierContent(
@@ -158,9 +129,13 @@ async function generateDossierContent(
     if (profile.player_style) facts.push(`Playing style: ${profile.player_style}`);
   }
   if (fm?.ca) {
-    facts.push(`FM Current Ability: ${fm.ca}/200, Potential: ${fm.pa}/200, Tier: ${fm.tier}`);
-    if (fm.top_attributes?.length) {
-      facts.push(`Top attributes: ${fm.top_attributes.slice(0, 5).map((a) => `${a.name}(${a.value})`).join(', ')}`);
+    // Only use FM best position — do NOT expose raw FM numbers (CA, PA, tier, attributes)
+    if (fm.position_fit) {
+      const fits = Object.entries(fm.position_fit as Record<string, number>)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 2)
+        .map(([pos]) => pos);
+      if (fits.length) facts.push(`Strongest positions: ${fits.join(', ')}`);
     }
   }
 
@@ -200,6 +175,7 @@ Generate a JSON object with ALL of these fields:
 RULES:
 - Reference REAL data from the facts above
 - NEVER invent statistics that aren't in the data
+- NEVER reference FM (Football Manager) data: no CA, PA, tier names, attribute scores, or any game data as numbers
 - Be persuasive and direct — this is a sales document, not an academic report
 - Hebrew must be proper modern Hebrew (not transliteration)
 - Return ONLY valid JSON object, no markdown fences`;
@@ -236,9 +212,8 @@ export async function generateEnrichment(
     ? await fetchScoutData(tmProfile, name, langStr, club, age)
     : { profile: null, fm: null };
 
-  // Build enrichment from REAL data
-  const radarAttributes = buildRadarFromFM(fm);
-  const aiScore = buildAIScore(fm, player);
+  // AI score and radar are no longer generated — they were based on FM game data
+  // which produces misleading scores for real scouting contexts
 
   // Only use Gemini for qualitative dossier content
   const apiKey = process.env.GEMINI_API_KEY;
@@ -247,8 +222,6 @@ export async function generateEnrichment(
     : null;
 
   const enrichment: PortfolioEnrichment = {};
-  if (aiScore) enrichment.aiScore = aiScore;
-  if (radarAttributes) enrichment.radarAttributes = radarAttributes;
   if (dossier?.sellingPoints) enrichment.sellingPoints = dossier.sellingPoints;
   if (dossier?.hookLine) enrichment.hookLine = dossier.hookLine;
   if (dossier?.hookLineHe) enrichment.hookLineHe = dossier.hookLineHe;

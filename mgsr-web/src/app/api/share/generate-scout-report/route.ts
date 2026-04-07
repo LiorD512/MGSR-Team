@@ -149,29 +149,10 @@ function buildPlayerContext(player: PlayerPayload, scoutData?: ScoutData): strin
   }
   if (scoutData?.fm && !scoutData.fm.error) {
     const f = scoutData.fm;
-    parts.push(`FM CA: ${f.ca}, PA: ${f.pa}, Tier: ${f.tier}`);
-    if (f.best_position) parts.push(`Best position: ${(f.best_position as { position?: string }).position} (fit ${(f.best_position as { fit?: number }).fit})`);
-    if (typeof f.dimension_scores === 'object' && f.dimension_scores) {
-      const dims = Object.entries(f.dimension_scores as Record<string, number>)
-        .filter(([k]) => k !== 'overall')
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(', ');
-      if (dims) parts.push(`FM dimension scores: ${dims}`);
-    }
-    if (typeof f.position_fit === 'object' && f.position_fit) {
-      const fits = Object.entries(f.position_fit as Record<string, number>)
-        .sort(([, a], [, b]) => (b as number) - (a as number))
-        .slice(0, 5)
-        .map(([pos, fit]) => `${pos}: ${fit}`)
-        .join(', ');
-      if (fits) parts.push(`FM position fit: ${fits}`);
-    }
-    if (Array.isArray(f.top_attributes) && f.top_attributes.length > 0) {
-      const attrs = (f.top_attributes as { name: string; value: number }[])
-        .slice(0, 8)
-        .map((a) => `${a.name} ${a.value}`)
-        .join(', ');
-      parts.push(`Top attributes: ${attrs}`);
+    // Only pass best position and playing style descriptions — no raw FM numbers, CA/PA, tier, or attribute scores
+    if (f.best_position) {
+      const bp = f.best_position as { position?: string };
+      if (bp.position) parts.push(`Strongest position: ${bp.position}`);
     }
   }
   return parts.join('\n');
@@ -278,12 +259,7 @@ function buildTemplateScoutReport(
   }
   if (fm) {
     const f = fm as { ca?: number; pa?: number; tier?: string; best_position?: { position?: string; fit?: number }; top_attributes?: { name: string; value: number }[] };
-    if (f.ca != null) strengths.push(`FM CA **${f.ca}**${f.tier ? ` (${f.tier})` : ''}`);
-    if (f.best_position?.position) strengths.push(`${isHe ? 'עמדה מובילה' : 'Best position'}: **${f.best_position.position}** (fit ${f.best_position.fit ?? '?'})`);
-    if (Array.isArray(f.top_attributes) && f.top_attributes.length) {
-      const attrs = f.top_attributes.slice(0, 4).map((a) => `${a.name} ${a.value}`).join(', ');
-      strengths.push(`${L.fmAttr}: ${attrs}`);
-    }
+    if (f.best_position?.position) strengths.push(`${isHe ? 'עמדה מובילה' : 'Best position'}: **${f.best_position.position}**`);
   }
   if (profile?.player_style) strengths.push(`${L.style}: ${profile.player_style}`);
   if (strengths.length) sections.push(`## ${L.strengths}\n\n- ${strengths.join('\n- ')}`);
@@ -370,7 +346,7 @@ REQUIRED SECTIONS (use these EXACT ## headers — do not translate or change the
 1–2 sentences. Narrative hook: e.g. "A [nationality] [position] with [key standout trait] who could [value proposition for Ligat Ha'Al]." Start with impact, not "Player X is 24 years old."
 
 ## ${h.strengths}
-2–4 bullet points. Each must cite specific data: "2.1 tackles/90", "FM CA 78", "X goals/90". Include playing style if available.
+2–4 bullet points. Each must cite specific data: "2.1 tackles/90", "X goals/90". Include playing style if available. NEVER reference FM CA, FM PA, FM tier, FM attribute scores, or any Football Manager game data as numbers.
 
 ## ${h.fit}
 Best role (from FM best_position), Ligat Ha'Al fit (rotation/squad/starter for top-6 or mid-table). Be specific.

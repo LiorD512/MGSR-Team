@@ -36,7 +36,7 @@ interface Account {
 const PORTFOLIO_COLLECTION = 'Portfolio';
 
 /** Fetch GPS data for a player to include in share payload */
-async function fetchGpsDataForShare(tmProfile: string | undefined, lang: string) {
+async function fetchGpsDataForShare(tmProfile: string | undefined, lang: string, playerId?: string, playersColl?: string) {
   if (!tmProfile) return undefined;
   try {
     const gpsSnap = await getDocs(query(
@@ -70,10 +70,25 @@ async function fetchGpsDataForShare(tmProfile: string | undefined, lang: string)
           benchmark: i.benchmark,
         }));
     }
+    // Fetch GPS document URLs from player documents subcollection
+    let documentUrls: string[] | undefined;
+    if (playerId && playersColl) {
+      try {
+        const docsSnap = await getDocs(query(
+          collection(db, playersColl, playerId, 'documents'),
+          where('type', '==', 'GPS_DATA')
+        ));
+        const urls = docsSnap.docs
+          .map(d => (d.data().storageUrl as string | undefined))
+          .filter((u): u is string => !!u);
+        if (urls.length > 0) documentUrls = urls;
+      } catch { /* non-critical */ }
+    }
     return {
       matchCount: n, totalMinutesPlayed: totalMin, avgTotalDistance: avgDist,
       avgMeteragePerMinute: avgMeterage, avgHighIntensityRuns: avgHI, avgSprints,
       peakMaxVelocity: peakVel, avgMaxVelocity: avgMaxVel, totalStars, strengths,
+      ...(documentUrls ? { documentUrls } : {}),
     };
   } catch { return undefined; }
 }
@@ -174,7 +189,7 @@ export default function PortfolioPage() {
             ? (sharerAccount?.hebrewName ?? sharerAccount?.name)
             : (sharerAccount?.name ?? sharerAccount?.hebrewName);
 
-        const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang);
+        const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang, item.playerWomenId ?? item.playerId, PLAYERS_COLLECTIONS[platform]);
         const familyStatus = await fetchFamilyStatus(
           item.playerWomenId ?? item.playerId,
           PLAYERS_COLLECTIONS[platform]
@@ -247,7 +262,7 @@ export default function PortfolioPage() {
             ? (sharerAccount?.hebrewName ?? sharerAccount?.name)
             : (sharerAccount?.name ?? sharerAccount?.hebrewName);
 
-        const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang);
+        const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang, item.playerWomenId ?? item.playerId, PLAYERS_COLLECTIONS[platform]);
         const familyStatusView = await fetchFamilyStatus(
           item.playerWomenId ?? item.playerId,
           PLAYERS_COLLECTIONS[platform]

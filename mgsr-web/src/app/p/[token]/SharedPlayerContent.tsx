@@ -11,25 +11,20 @@ import ReactMarkdown from 'react-markdown';
 import type { ShareData, PortfolioEnrichment } from './types';
 import {
   UrgencyBadgesStrip,
-  AIScoutScoreSection,
-  PlayerRadarChart,
   WhyThisPlayerPitch,
   HighlightsGrid,
   InterestHeaderCTA,
-  EnrichmentSkeleton,
   TransferTicker,
-  DealValueMeter,
   MiniPitchPosition,
   ContractCountdown,
-  ScoutVerdictStamp,
   HookLine,
   ClubSummarySection,
   KeyTraitsGrid,
   TacticalFitSection,
-  AvailabilitySection,
   BottomCTASection,
 } from './PortfolioEnrichments';
 import { GpsPerformanceShowcase } from './GpsPerformanceShowcase';
+import { PlayerStatsShowcase } from './PlayerStatsShowcase';
 
 /** Scout report markdown styling — teal/rose section headers */
 function getScoutReportComponents(isWomen: boolean) {
@@ -94,7 +89,6 @@ export default function SharedPlayerContent({
 
   // Portfolio enrichment state
   const [enrichment, setEnrichment] = useState<PortfolioEnrichment | null>(initialData?.enrichment ?? null);
-  const [enrichmentLoading, setEnrichmentLoading] = useState(false);
 
   // Initialize edited report when data loads
   useEffect(() => {
@@ -209,31 +203,12 @@ export default function SharedPlayerContent({
       .finally(() => setLoading(false));
   }, [token, initialData]);
 
-  // Fetch enrichment data if missing
+  // Enrichment is pre-computed at share-creation time and stored in Firestore.
+  // No client-side fetch fallback — if enrichment wasn't generated, we skip those sections.
+  // This ensures the page loads instantly with no loading spinners.
   useEffect(() => {
-    if (!data || enrichment || enrichmentLoading) return;
-    setEnrichmentLoading(true);
-    fetch('/api/share/enrich-portfolio', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        player: data.player,
-        scoutReport: data.scoutReport,
-        platform: data.platform,
-        lang: data.lang,
-      }),
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        // Always set enrichment (even empty {}) to prevent infinite retry loop
-        setEnrichment(json?.enrichment ?? {});
-      })
-      .catch(() => {
-        // Set empty enrichment on error to prevent infinite retry loop
-        setEnrichment({});
-      })
-      .finally(() => setEnrichmentLoading(false));
-  }, [data, enrichment, enrichmentLoading]);
+    if (!enrichment && data) setEnrichment({});
+  }, [data, enrichment]);
 
   // "I'm Interested" handler — opens WhatsApp to the sharer
   const handleInterested = useCallback(() => {
@@ -529,9 +504,6 @@ export default function SharedPlayerContent({
         {/* Urgency badges */}
         <UrgencyBadgesStrip data={data} useHebrew={useHebrew} />
 
-        {/* Loading skeleton for enrichment */}
-        {enrichmentLoading && <EnrichmentSkeleton isWomen={isWomen} />}
-
         {/* ═══ CLUB SUMMARY — "Why Clubs Like Him" ═══ */}
         <ClubSummarySection items={enrichment?.clubSummary} itemsHe={enrichment?.clubSummaryHe} isWomen={isWomen} useHebrew={useHebrew} />
 
@@ -546,24 +518,19 @@ export default function SharedPlayerContent({
           <MiniPitchPosition positions={player.positions} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
-        {/* ═══ AI SCORE + RADAR ═══ */}
-        {enrichment?.aiScore && (
-          <AIScoutScoreSection score={enrichment.aiScore} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
-        {enrichment?.radarAttributes && (
-          <PlayerRadarChart attributes={enrichment.radarAttributes} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
-        {enrichment?.aiScore && (
-          <DealValueMeter player={player} enrichment={enrichment} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
-        {enrichment?.aiScore && (
-          <ScoutVerdictStamp score={enrichment.aiScore} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
-
-        {/* Contract countdown */}
-        {player.contractExpired?.trim() && player.contractExpired !== '-' && (
-          <ContractCountdown contractExpiry={player.contractExpired} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
+        {/* Contract countdown — only show when contract expires within 6 months */}
+        {(() => {
+          if (!player.contractExpired?.trim() || player.contractExpired === '-') return null;
+          const ce = player.contractExpired;
+          let expiryDate: Date | null = null;
+          const ddmmyyyy = ce.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+          if (ddmmyyyy) expiryDate = new Date(+ddmmyyyy[3], +ddmmyyyy[2] - 1, +ddmmyyyy[1]);
+          else { const yyyy = ce.match(/(\d{4})/); if (yyyy) expiryDate = new Date(+yyyy[1], 5, 30); }
+          if (!expiryDate) return null;
+          const daysUntil = Math.floor((expiryDate.getTime() - Date.now()) / 86400000);
+          if (daysUntil <= 0 || daysUntil > 180) return null;
+          return <ContractCountdown contractExpiry={ce} isWomen={isWomen} useHebrew={useHebrew} />;
+        })()}
 
         {/* ═══ SCOUT REPORT ═══ */}
         {data.scoutReport && (
@@ -673,6 +640,13 @@ export default function SharedPlayerContent({
           <WhyThisPlayerPitch points={enrichment.sellingPoints} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
+        {/* ═══ SEASON STATISTICS (API Football) ═══ */}
+        {data.playerStats && data.playerStats.stats.length > 0 && (
+          <div className="mb-8">
+            <PlayerStatsShowcase stats={data.playerStats} isWomen={isWomen} useHebrew={useHebrew} />
+          </div>
+        )}
+
         {/* Highlights — thumbnail grid with lazy iframe */}
         {data.highlights && data.highlights.length > 0 && (
           <HighlightsGrid highlights={data.highlights} isWomen={isWomen} useHebrew={useHebrew} />
@@ -711,9 +685,6 @@ export default function SharedPlayerContent({
             <GpsPerformanceShowcase gpsData={data.gpsData} isWomen={isWomen} useHebrew={useHebrew} />
           </div>
         )}
-
-        {/* ═══ AVAILABILITY / TRANSFER DETAILS ═══ */}
-        <AvailabilitySection data={data} isWomen={isWomen} useHebrew={useHebrew} />
 
         {!isWomen && player.tmProfile && (
           <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>

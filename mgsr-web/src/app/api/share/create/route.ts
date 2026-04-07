@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin, adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { generateEnrichment } from '@/lib/generateEnrichment';
+import { fetchPlayerStatsForShare } from '@/lib/fetchPlayerStats';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 45;
@@ -128,6 +129,17 @@ export async function POST(request: NextRequest) {
       console.error('[share] Enrichment pre-generation failed (non-blocking):', e);
     }
 
+    // Pre-fetch API Football stats for share page
+    let playerStats = undefined;
+    try {
+      playerStats = await fetchPlayerStatsForShare(
+        (player as { tmProfile?: string }).tmProfile,
+        player.positions,
+      );
+    } catch (e) {
+      console.error('[share] Stats pre-fetch failed (non-blocking):', e);
+    }
+
     /** Firestore rejects undefined values – strip them recursively */
     const stripUndefined = (obj: Record<string, unknown>): Record<string, unknown> => {
       const result: Record<string, unknown> = {};
@@ -187,6 +199,7 @@ export async function POST(request: NextRequest) {
       enrichment: Object.keys(enrichment).length ? enrichment : null,
       familyStatus: (body as { familyStatus?: { isMarried?: boolean; kidsCount?: number } }).familyStatus ?? null,
       gpsData: gpsData ?? null,
+      playerStats: playerStats ?? null,
       createdAt: Date.now(),
       createdBy: uid,
     });

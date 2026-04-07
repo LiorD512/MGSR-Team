@@ -783,69 +783,6 @@ export function ContractCountdown({
 }
 
 /* ═══════════════════════════════════════════════════════
-   4d. SCOUT VERDICT STAMP — Animated decision indicator
-   ═══════════════════════════════════════════════════════ */
-
-export function ScoutVerdictStamp({
-  score,
-  isWomen,
-  useHebrew,
-}: {
-  score: AIScoutScore;
-} & ThemeProps) {
-  const [stamped, setStamped] = useState(false);
-  const stampRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = stampRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setTimeout(() => setStamped(true), 400);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.5 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  const overall = score.overall;
-  const verdict = overall >= 80
-    ? { text: useHebrew ? 'לחתום!' : 'SIGN', textEn: 'SIGN', color: '#22C55E', emoji: '🏆' }
-    : overall >= 65
-      ? { text: useHebrew ? 'מעקב' : 'MONITOR', textEn: 'MONITOR', color: accent(isWomen), emoji: '👀' }
-      : { text: useHebrew ? 'לבדוק' : 'SCOUT', textEn: 'SCOUT', color: '#FF9800', emoji: '📋' };
-
-  return (
-    <div ref={stampRef} className={`${sectionCard(isWomen)} flex flex-col items-center py-8`}>
-      <h3 className="text-xs font-bold uppercase tracking-widest text-mgsr-muted mb-6">
-        {useHebrew ? 'המלצת סקאוט' : 'Scout Recommendation'}
-      </h3>
-      <div
-        className={`relative w-36 h-36 rounded-full border-[3px] border-dashed flex flex-col items-center justify-center transition-all duration-500 ${
-          stamped ? 'scout-stamp-in' : 'opacity-0 scale-150'
-        }`}
-        style={{ borderColor: verdict.color }}
-      >
-        <span className="text-2xl mb-1">{verdict.emoji}</span>
-        <span
-          className="font-display text-2xl font-black uppercase tracking-widest"
-          style={{ color: verdict.color }}
-        >
-          {verdict.text}
-        </span>
-        <span className="text-[10px] text-mgsr-muted mt-0.5">
-          {useHebrew ? `ציון ${overall}/100` : `Score ${overall}/100`}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════
    5. WHY THIS PLAYER (SELLING POINTS)
    ═══════════════════════════════════════════════════════ */
 

@@ -19,6 +19,7 @@ const SHARE_ALLOWED_FIELDS = new Set([
   "playerId", "player", "mandateInfo", "mandateUrl",
   "sharerPhone", "sharerName", "scoutReport", "highlights",
   "lang", "platform", "createdAt", "createdBy",
+  "familyStatus", "gpsData", "includePlayerContact", "includeAgencyContact",
 ]);
 
 async function sharePlayerCreate(data) {

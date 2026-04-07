@@ -34,10 +34,35 @@ export interface ShareData {
   scoutReport?: string;
   highlights?: SharedHighlightVideo[];
   lang?: 'he' | 'en';
-  platform?: 'men' | 'women';
+  platform?: 'men' | 'women' | 'youth';
   enrichment?: PortfolioEnrichment;
   familyStatus?: { isMarried?: boolean; kidsCount?: number };
   gpsData?: SharedGpsData;
+  playerStats?: SharedPlayerStats;
+}
+
+/* ── API Football Stats types ── */
+
+export interface SharedPlayerStats {
+  position: string; // e.g. "Defender", "Midfielder", "Forward"
+  league: string;
+  leagueCountry: string;
+  season?: number;
+  appearances: number;
+  minutes: number;
+  rating?: number;
+  stats: SharedStatItem[];
+}
+
+export interface SharedStatItem {
+  key: string;
+  label: string;
+  labelHe: string;
+  value: number;
+  format: 'decimal' | 'pct' | 'number' | 'rating';
+  /** 'good' | 'great' | 'elite' — only impressive stats are included */
+  tier: 'good' | 'great' | 'elite';
+  icon: string;
 }
 
 /* ── GPS Performance types ── */

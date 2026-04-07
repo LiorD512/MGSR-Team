@@ -1656,6 +1656,13 @@ class PlayerInfoViewModel(
                 if (agentPhone != null) playerMap["agentPhoneNumber"] = agentPhone
             }
 
+            val mandateUrl = mandateDoc?.storageUrl?.takeIf { it.isNotBlank() }
+            val platformStr = when (platformManager.current.value) {
+                Platform.WOMEN -> "women"
+                Platform.YOUTH -> "youth"
+                else -> "men"
+            }
+
             val shareData = hashMapOf<String, Any?>(
                 "playerId" to playerDocId,
                 "player" to playerMap,
@@ -1663,13 +1670,17 @@ class PlayerInfoViewModel(
                     "hasMandate" to hasValidMandate,
                     "expiresAt" to mandateExpiry
                 ),
+                "mandateUrl" to mandateUrl,
                 "scoutReport" to (scoutReport?.takeIf { it.isNotBlank() }
                     ?: fetchShareScoutReport(player, lang)
                     ?: buildScoutSummary(player)),
                 "createdAt" to System.currentTimeMillis(),
                 "lang" to (lang.takeIf { it in listOf("he", "en") } ?: "en"),
+                "platform" to platformStr,
                 "sharerPhone" to sharerPhone,
                 "sharerName" to sharerName,
+                "includePlayerContact" to includePlayerContact,
+                "includeAgencyContact" to includeAgencyContact,
                 "highlights" to player.pinnedHighlights
                     ?.takeIf { it.isNotEmpty() }
                     ?.map { h ->
