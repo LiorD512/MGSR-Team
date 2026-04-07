@@ -7,7 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 import { handlePlayer } from '@/lib/transfermarkt';
 const IMAGE_FETCH_CONCURRENCY = 3;
-const DISCOVERY_AGE_MAX = 31;
+const DISCOVERY_AGE_MIN = 18;
+const DISCOVERY_AGE_MAX = 30;
+const DISCOVERY_VALUE_MAX = 4_000_000;
+const PLAYERS_PER_POSITION = 3;
 const HIDDEN_GEM_VALUE_MAX = 1_500_000; // Very low market value
 const HIDDEN_GEM_AGE_MAX = 24;
 const HIDDEN_GEM_FM_PA_MIN = 130; // Impressive PA
@@ -99,6 +102,100 @@ function buildHiddenGemReason(
   };
 }
 
+/* ── Position mapping ──────────────────────────────────────── */
+function mapToShortPosition(pos: string): string {
+  if (!pos?.trim()) return '';
+  const p = pos.trim();
+  if (ALL_POSITIONS.includes(p)) return p;
+  if (p.includes('Centre-Forward') || p.includes('Center-Forward')) return 'CF';
+  if (p.includes('Second Striker')) return 'SS';
+  if (p.includes('Centre-Back') || p.includes('Center-Back')) return 'CB';
+  if (p.includes('Left-Back')) return 'LB';
+  if (p.includes('Right-Back')) return 'RB';
+  if (p.includes('Defensive Midfield')) return 'DM';
+  if (p.includes('Central Midfield')) return 'CM';
+  if (p.includes('Attacking Midfield')) return 'AM';
+  if (p.includes('Left Wing')) return 'LW';
+  if (p.includes('Right Wing')) return 'RW';
+  return '';
+}
+
+/* ── Numeric value helper ─────────────────────────────────── */
+function toNum(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') return parseFloat(v) || 0;
+  return 0;
+}
+
+/* ── Position-specific quality filters (API-Football stats) ─ */
+function passesPositionQuality(p: Record<string, unknown>, position: string): boolean {
+  if (p.api_matched !== true) return true; // No API data — allow through
+
+  const rating = toNum(p.api_rating);
+  const min90s = toNum(p.api_minutes_90s);
+  if (min90s < 3) return false; // Too few minutes to judge
+  if (rating > 0 && rating < 6.2) return false; // Universal minimum
+
+  const goals = toNum(p.api_goals);
+  const assists = toNum(p.api_assists);
+  const goalsPer90 = toNum(p.api_goals_per90);
+  const gcPer90 = toNum(p.api_goal_contributions_per90);
+  const keyPassesPer90 = toNum(p.api_key_passes_per90);
+  const tackles = toNum(p.api_tackles);
+  const interceptions = toNum(p.api_interceptions);
+  const passAcc = toNum(p.api_passes_accuracy);
+  const duelsWonPct = toNum(p.api_duels_won_pct);
+  const dribblesPer90 = toNum(p.api_dribbles_per90);
+
+  switch (position) {
+    case 'CF': case 'SS':
+      return goalsPer90 >= 0.25 || goals >= 3;
+    case 'AM':
+      return gcPer90 >= 0.3 || (goals + assists) >= 3;
+    case 'LW': case 'RW':
+      return gcPer90 >= 0.25 || (goals + assists) >= 3 || (dribblesPer90 >= 1.5 && keyPassesPer90 >= 0.8);
+    case 'CM':
+      return keyPassesPer90 >= 0.8 || passAcc >= 78 || (goals + assists) >= 2;
+    case 'DM':
+      return (tackles + interceptions) >= 15 || duelsWonPct >= 55;
+    case 'CB':
+      return (tackles + interceptions) >= 15 || duelsWonPct >= 55;
+    case 'LB': case 'RB':
+      return (tackles + interceptions) >= 10 || duelsWonPct >= 52;
+    default:
+      return true;
+  }
+}
+
+/* ── Pick players with value spread across tiers ──────────── */
+function pickWithValueSpread(
+  players: { candidate: DiscoveryCandidate; valEuro: number }[],
+  count: number
+): DiscoveryCandidate[] {
+  if (players.length <= count) return players.map((p) => p.candidate);
+
+  const low = players.filter((p) => p.valEuro < 750_000);
+  const mid = players.filter((p) => p.valEuro >= 750_000 && p.valEuro < 2_000_000);
+  const high = players.filter((p) => p.valEuro >= 2_000_000);
+
+  const picked: DiscoveryCandidate[] = [];
+  const tiers = [low, mid, high].filter((t) => t.length > 0);
+
+  let tierIdx = 0;
+  while (picked.length < count && tiers.length > 0) {
+    const tier = tiers[tierIdx % tiers.length];
+    if (tier.length > 0) {
+      picked.push(tier.shift()!.candidate);
+    }
+    // Remove empty tiers
+    for (let i = tiers.length - 1; i >= 0; i--) {
+      if (tiers[i].length === 0) tiers.splice(i, 1);
+    }
+    tierIdx++;
+  }
+  return picked;
+}
+
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
@@ -144,9 +241,9 @@ function parseMarketValueToEuro(val: string | undefined): number {
   return num;
 }
 
-async function fetchRecruitment(params: Record<string, string>): Promise<Record<string, unknown>[]> {
+async function fetchRecruitment(params: Record<string, string>, limit = 15): Promise<Record<string, unknown>[]> {
   const search = new URLSearchParams(params);
-  search.set('limit', '15');
+  search.set('limit', String(limit));
   search.set('sort_by', 'score');
   search.set('_t', String(Date.now()));
 
@@ -250,7 +347,9 @@ export async function GET(request: NextRequest) {
           const url = d.tmProfileUrl || '';
           if (!url || seen.has(url)) continue;
           const pickAge = typeof d.age === 'number' ? d.age : parseAge(String(d.age ?? ''));
-          if (pickAge != null && pickAge > DISCOVERY_AGE_MAX) continue;
+          if (pickAge != null && (pickAge < DISCOVERY_AGE_MIN || pickAge > DISCOVERY_AGE_MAX)) continue;
+          const pickVal = parseMarketValueToEuro(d.marketValue || '');
+          if (pickVal > DISCOVERY_VALUE_MAX) continue;
           seen.add(url);
           const id = extractPlayerId(url);
           const derivedImage = id ? `https://img.a.transfermarkt.technology/portrait/medium/${id}.jpg` : undefined;
@@ -315,14 +414,16 @@ export async function GET(request: NextRequest) {
       // Firestore not configured or error — continue with generic discovery
     }
 
-    // 2. For each request, fetch recruitment (with Ligat Ha'Al value cap)
+    // 2. For each request, fetch recruitment
     for (const req of requests) {
       if (!req.position?.trim()) continue;
       const params: Record<string, string> = {
         position: req.position.trim(),
         lang: 'en',
+        value_max: String(DISCOVERY_VALUE_MAX),
       };
-      if (req.minAge != null) params.age_min = String(req.minAge);
+      if (req.minAge != null) params.age_min = String(Math.max(req.minAge, DISCOVERY_AGE_MIN));
+      else params.age_min = String(DISCOVERY_AGE_MIN);
       if (req.maxAge != null) params.age_max = String(Math.min(req.maxAge, DISCOVERY_AGE_MAX));
       else params.age_max = String(DISCOVERY_AGE_MAX);
       if (req.dominateFoot?.trim() && req.dominateFoot !== 'any') params.foot = req.dominateFoot.trim();
@@ -334,57 +435,89 @@ export async function GET(request: NextRequest) {
         if (!url || seen.has(url)) continue;
         seen.add(url);
         const val = parseMarketValueToEuro(p.market_value as string);
+        if (val > DISCOVERY_VALUE_MAX) continue;
         const ageN = parseAge(p.age as string);
-        if (ageN != null && ageN > DISCOVERY_AGE_MAX) continue;
+        if (ageN != null && (ageN < DISCOVERY_AGE_MIN || ageN > DISCOVERY_AGE_MAX)) continue;
         candidates.push(
           toCandidate(p, 'request_match', `Matches ${req.clubName || 'request'}`.slice(0, 40), req.id, req.clubName)
         );
       }
     }
 
-    // 3. Varied discovery — mixed ages for All tab; only players passing strict criteria appear in Hidden Gems tab
-    const shuffledPositions = shuffle(ALL_POSITIONS);
-    const ageMax = Math.min(DISCOVERY_AGE_MAX, 24 + Math.floor(Math.random() * 6)); // 24–29 for variety, capped at 31
-    let debugLogged = false;
-    for (const pos of shuffledPositions) {
-      if (candidates.length >= 25) break;
-      const params: Record<string, string> = {
-        position: pos,
-        age_max: String(ageMax),
-        lang: 'en',
-      };
-      const results = await fetchRecruitment(params);
-      if (results.length > 0 && !debugLogged) {
-        console.log('[War Room Discovery] Recruitment sample keys:', Object.keys(results[0]));
-        debugLogged = true;
-      }
-      for (const p of results) {
-        const url = (p.url as string) || '';
-        if (!url || seen.has(url)) continue;
-        const val = parseMarketValueToEuro(p.market_value as string);
-        seen.add(url);
-        const ageNum = parseAge(p.age as string);
-        if (ageNum != null && ageNum > DISCOVERY_AGE_MAX) continue;
-        const isHg = isRealHiddenGem(p, val, ageNum);
-        const stats = getStatsScore(p);
-        const source: DiscoveryCandidate['source'] = isHg ? 'hidden_gem' : 'general';
-        const sourceLabel = isHg ? `Hidden Gem ${stats}` : 'Discovery';
-        const reason = isHg && ageNum != null ? buildHiddenGemReason(p, val, ageNum, (p.market_value as string) || '') : undefined;
-        candidates.push(
-          toCandidate(p, source, sourceLabel, undefined, undefined, isHg ? { hiddenGemScore: stats, hiddenGemReason: reason } : undefined)
-        );
+    // 3. Position-balanced discovery with quality filters
+    // Track slots already filled by agent picks + request matches
+    const positionCounts = new Map<string, number>();
+    for (const c of candidates) {
+      const shortPos = mapToShortPosition(c.position);
+      if (shortPos && ALL_POSITIONS.includes(shortPos)) {
+        positionCounts.set(shortPos, (positionCounts.get(shortPos) || 0) + 1);
       }
     }
 
-    // Dedupe, shuffle for variety, then limit
+    // Determine which positions still need filling
+    const positionsToFill = ALL_POSITIONS.filter(
+      (p) => (positionCounts.get(p) || 0) < PLAYERS_PER_POSITION
+    );
+
+    // Parallel fetch for all positions that need more players
+    const positionResults = await Promise.all(
+      positionsToFill.map(async (pos) => {
+        const results = await fetchRecruitment({
+          position: pos,
+          age_min: String(DISCOVERY_AGE_MIN),
+          age_max: String(DISCOVERY_AGE_MAX),
+          value_max: String(DISCOVERY_VALUE_MAX),
+          lang: 'en',
+        }, 20);
+        return { pos, results };
+      })
+    );
+
+    for (const { pos, results } of positionResults) {
+      const currentCount = positionCounts.get(pos) || 0;
+      const slotsRemaining = PLAYERS_PER_POSITION - currentCount;
+      if (slotsRemaining <= 0) continue;
+
+      const qualified: { candidate: DiscoveryCandidate; valEuro: number }[] = [];
+
+      for (const p of results) {
+        const url = (p.url as string) || '';
+        if (!url || seen.has(url)) continue;
+        const ageN = parseAge(p.age as string);
+        if (ageN != null && (ageN < DISCOVERY_AGE_MIN || ageN > DISCOVERY_AGE_MAX)) continue;
+        const val = parseMarketValueToEuro(p.market_value as string);
+        if (val > DISCOVERY_VALUE_MAX) continue;
+        if (!passesPositionQuality(p, pos)) continue;
+
+        seen.add(url);
+        const isHg = isRealHiddenGem(p, val, ageN);
+        const stats = getStatsScore(p);
+        const source: DiscoveryCandidate['source'] = isHg ? 'hidden_gem' : 'general';
+        const sourceLabel = isHg ? `Hidden Gem ${stats}` : 'Discovery';
+        const reason = isHg && ageN != null ? buildHiddenGemReason(p, val, ageN, (p.market_value as string) || '') : undefined;
+
+        qualified.push({
+          candidate: toCandidate(p, source, sourceLabel, undefined, undefined, isHg ? { hiddenGemScore: stats, hiddenGemReason: reason } : undefined),
+          valEuro: val,
+        });
+      }
+
+      // Pick with value spread across tiers for variety
+      const picked = pickWithValueSpread(qualified, slotsRemaining);
+      candidates.push(...picked);
+      positionCounts.set(pos, currentCount + picked.length);
+    }
+
+    console.log(`[War Room Discovery] Position distribution:`, Object.fromEntries(positionCounts));
+
+    // Dedupe (safety net) and shuffle for variety between refreshes
     let unique = Array.from(new Map(candidates.map((c) => [c.transfermarktUrl, c])).values());
-    unique = shuffle(unique).slice(0, 30);
+    unique = shuffle(unique).slice(0, 35);
 
     // Enrich with profile images from Transfermarkt
     const imageMap = new Map<string, string>();
-    const toEnrich = unique.slice(0, 30);
-    for (let i = 0; i < toEnrich.length; i += IMAGE_FETCH_CONCURRENCY) {
-      const chunk = toEnrich.slice(i, i + IMAGE_FETCH_CONCURRENCY);
+    for (let i = 0; i < unique.length; i += IMAGE_FETCH_CONCURRENCY) {
+      const chunk = unique.slice(i, i + IMAGE_FETCH_CONCURRENCY);
       await Promise.all(
         chunk.map(async (c) => {
           try {
@@ -397,7 +530,7 @@ export async function GET(request: NextRequest) {
         })
       );
     }
-    const final = toEnrich.map((c) => {
+    const final = unique.map((c) => {
       const img = imageMap.get(c.transfermarktUrl) || c.profileImage;
       return { ...c, profileImage: img || c.profileImage };
     });

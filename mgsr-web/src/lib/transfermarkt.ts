@@ -1960,7 +1960,8 @@ export interface TmRumour {
 }
 
 const RUMOURS_CACHE: { data: TmRumour[]; ts: number } = { data: [], ts: 0 };
-const RUMOURS_CACHE_TTL = 15 * 60 * 1000; // 15 min
+const RUMOURS_CACHE_TTL = 15 * 60 * 1000; // 15 min in-memory (L1)
+const RUMOURS_FIRESTORE_TTL = 4 * 60 * 60 * 1000; // 4 hours in Firestore (L2)
 const RUMOURS_MAX_PAGES = 15; // fetch up to 15 pages = ~225 rumours
 
 async function scrapeSingleRumoursPage(page: number): Promise<TmRumour[]> {
@@ -2067,9 +2068,21 @@ const MAX_MV_EUROS = 4_000_000; // Filter out players above €4M
 
 export async function handleRumours(maxPages = RUMOURS_MAX_PAGES): Promise<TmRumour[]> {
   const now = Date.now();
+  // L1: in-memory cache (survives within warm instance)
   if (RUMOURS_CACHE.data.length && now - RUMOURS_CACHE.ts < RUMOURS_CACHE_TTL) {
     return RUMOURS_CACHE.data;
   }
+
+  // L2: Firestore cache (survives cold starts)
+  try {
+    const { getCached } = await import('@/lib/scrapingCache');
+    const cached = await getCached<TmRumour[]>('rumours', RUMOURS_FIRESTORE_TTL);
+    if (cached?.length) {
+      RUMOURS_CACHE.data = cached;
+      RUMOURS_CACHE.ts = now;
+      return cached;
+    }
+  } catch { /* continue to scrape */ }
 
   const pages = Math.min(Math.max(maxPages, 1), 20);
   // Fetch all pages in parallel (batches of 8 to avoid rate-limiting)
@@ -2121,6 +2134,13 @@ export async function handleRumours(maxPages = RUMOURS_MAX_PAGES): Promise<TmRum
 
   RUMOURS_CACHE.data = filtered;
   RUMOURS_CACHE.ts = now;
+
+  // Write to Firestore L2 cache
+  try {
+    const { setCache } = await import('@/lib/scrapingCache');
+    await setCache('rumours', filtered);
+  } catch { /* non-critical */ }
+
   return filtered;
 }
 

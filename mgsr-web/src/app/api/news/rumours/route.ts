@@ -7,7 +7,9 @@ export async function GET(request: NextRequest) {
   try {
     const pages = parseInt(request.nextUrl.searchParams.get('pages') || '5', 10);
     const data = await handleRumours(pages);
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: { 'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=3600' },
+    });
   } catch (err) {
     console.error('Rumours error:', err);
     return NextResponse.json(

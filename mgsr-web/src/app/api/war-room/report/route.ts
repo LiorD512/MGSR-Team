@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { handlePlayer } from '@/lib/transfermarkt';
 import { extractPlayerIdFromUrl } from '@/lib/api';
+import { getCached, setCache } from '@/lib/scrapingCache';
 
 import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 
@@ -99,6 +100,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'player_url required' }, { status: 400 });
   }
 
+  // Check Firestore cache (30-day TTL) keyed by player ID + lang
+  const playerId = extractPlayerIdFromUrl(playerUrl);
+  const cacheKey = `war-room-report-${playerId || playerUrl.replace(/[^a-zA-Z0-9]/g, '_')}-${lang}`;
+  const REPORT_CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+  const refresh = new URL(request.url).searchParams.get('refresh') === 'true';
+  if (!refresh) {
+    const cached = await getCached<Record<string, unknown>>(cacheKey, REPORT_CACHE_TTL);
+    if (cached) {
+      return NextResponse.json(cached, {
+        headers: { 'X-Cache': 'HIT', 'Cache-Control': 'private, max-age=86400' },
+      });
+    }
+  }
+
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
@@ -129,7 +144,6 @@ export async function POST(request: NextRequest) {
     //    Primary: direct player_stats by URL (has API-Football data)
     //    Secondary: recruitment endpoint with player ID (finds player even with URL mismatches)
     //    Tertiary: similar_players (self-match)
-    const playerId = extractPlayerIdFromUrl(playerUrl);
     const [playerStatsData, similarData, fmDataRaw] = await Promise.all([
       // Direct stats lookup — most reliable
       fetchJson<Record<string, unknown>>(
@@ -301,11 +315,18 @@ RULES:
 
     const synthesisText = await generateWithRetry(model, synthesisPrompt);
 
-    return NextResponse.json({
+    const result = {
       stats: (combined.stats as Record<string, unknown>) ?? {},
       market: (combined.market as Record<string, unknown>) ?? {},
       tactics: (combined.tactics as Record<string, unknown>) ?? {},
       synthesis: parseJson(synthesisText),
+    };
+
+    // Cache the report in Firestore
+    await setCache(cacheKey, result);
+
+    return NextResponse.json(result, {
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'private, max-age=86400' },
     });
   } catch (err) {
     console.error('[War Room Report] Error:', err);

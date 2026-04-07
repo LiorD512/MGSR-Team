@@ -18,6 +18,7 @@ import { parseScoutQueryWithGemini } from '@/lib/aiQueryParser';
 import { SCOUT_PERSONA, SEARCH_PERSONA_EXT } from '@/lib/scoutPersona';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 const FREESEARCH_URL = process.env.SCOUT_FREESEARCH_URL; // When set: use freesearch proxy (Python parse)
 
 const LEAGUE_NAMES: Record<string, string> = {
