@@ -504,17 +504,32 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json() as {
-      base64: string;
+      base64?: string;
       mimeType: string;
       playerName: string;
       playerTmProfile: string;
-      storageUrl: string;
+      storageUrl?: string;
       documentId?: string;
     };
 
-    const { base64, mimeType, playerName, playerTmProfile, storageUrl, documentId } = body;
-    if (!base64 || !playerName || !playerTmProfile) {
+    const { base64: bodyBase64, mimeType, playerName, playerTmProfile, storageUrl, documentId } = body;
+    if (!playerName || !playerTmProfile) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Resolve file data: prefer storageUrl (avoids payload size limits), fall back to inline base64
+    let base64: string;
+    if (bodyBase64) {
+      base64 = bodyBase64;
+    } else if (storageUrl) {
+      const fileRes = await fetch(storageUrl);
+      if (!fileRes.ok) {
+        return NextResponse.json({ error: `Failed to download file from storage: ${fileRes.status}` }, { status: 502 });
+      }
+      const buf = await fileRes.arrayBuffer();
+      base64 = Buffer.from(buf).toString('base64');
+    } else {
+      return NextResponse.json({ error: 'Either base64 or storageUrl must be provided' }, { status: 400 });
     }
 
     // Parse with Gemini

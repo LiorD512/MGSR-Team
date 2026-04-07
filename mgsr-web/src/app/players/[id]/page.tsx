@@ -768,19 +768,14 @@ export default function PlayerInfoPage() {
         if (looksLikeGps) {
           setParsingGps(true);
           try {
-            const rawBytes = new Uint8Array(originalBytes);
-            let binary = '';
-            for (let i = 0; i < rawBytes.length; i++) binary += String.fromCharCode(rawBytes[i]);
-            const base64 = btoa(binary);
             const parseRes = await fetch('/api/documents/gps-parse', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                base64,
+                storageUrl: url,
                 mimeType: file.type || 'application/pdf',
                 playerName: player.fullName,
                 playerTmProfile: tmProfile,
-                storageUrl: url,
               }),
             });
             if (!parseRes.ok) {
