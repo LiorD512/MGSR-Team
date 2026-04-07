@@ -178,7 +178,6 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
-import com.liordahan.mgsrteam.features.players.playerinfo.highlights.PlayerHighlightsSection
 import com.liordahan.mgsrteam.features.players.playerinfo.highlights.YouthHighlightsSection
 import com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence.FmIntelligenceSection
 import com.liordahan.mgsrteam.utils.EuCountries
@@ -306,10 +305,6 @@ fun PlayerInfoScreen(
     var allAccounts by remember { mutableStateOf<List<com.liordahan.mgsrteam.features.login.models.Account>>(emptyList()) }
     var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
     val scoutReport by viewModel.scoutReportFlow.collectAsStateWithLifecycle()
-    val highlightVideos by viewModel.highlightVideosFlow.collectAsStateWithLifecycle()
-    val isHighlightsLoading by viewModel.isHighlightsLoading.collectAsStateWithLifecycle()
-    val highlightsError by viewModel.highlightsError.collectAsStateWithLifecycle()
-    val highlightsHasFetched by viewModel.highlightsHasFetched.collectAsStateWithLifecycle()
     val isHighlightsSaving by viewModel.isHighlightsSaving.collectAsStateWithLifecycle()
     val fmIntelligenceData by viewModel.fmIntelligenceFlow.collectAsStateWithLifecycle()
     val isFmIntelligenceLoading by viewModel.isFmIntelligenceLoading.collectAsStateWithLifecycle()
@@ -758,32 +753,13 @@ fun PlayerInfoScreen(
                 }
             }
 
-            // Section: Highlights (men only)
-            if (currentPlatform == Platform.MEN) {
-                playerToPresent?.let { player ->
-                    PlayerInfoSectionHeader(stringResource(R.string.player_info_highlights))
-                    PlayerHighlightsSection(
-                        pinnedHighlights = player.pinnedHighlights ?: emptyList(),
-                        videos = highlightVideos,
-                        isLoading = isHighlightsLoading,
-                        error = highlightsError,
-                        hasFetched = highlightsHasFetched,
-                        onSearch = { refresh -> viewModel.searchHighlights(player, refresh) },
-                        onSavePinned = { videos -> viewModel.savePinnedHighlights(videos) },
-                        isSaving = isHighlightsSaving
-                    )
-                }
-            }
-
-            // Section: Highlights (youth — manual URLs only)
-            if (currentPlatform == Platform.YOUTH) {
-                playerToPresent?.let { player ->
-                    YouthHighlightsSection(
-                        pinnedHighlights = player.pinnedHighlights ?: emptyList(),
-                        onSave = { highlights -> viewModel.saveYouthHighlights(highlights) },
-                        isSaving = isHighlightsSaving
-                    )
-                }
+            // Section: Highlights (all platforms — manual URL input)
+            playerToPresent?.let { player ->
+                YouthHighlightsSection(
+                    pinnedHighlights = player.pinnedHighlights ?: emptyList(),
+                    onSave = { highlights -> viewModel.saveYouthHighlights(highlights) },
+                    isSaving = isHighlightsSaving
+                )
             }
 
             // Section: FM Intelligence (men only)

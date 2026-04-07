@@ -21,7 +21,7 @@ import { flattenPdf } from '@/lib/pdfFlatten';
 import FmIntelligencePanel from '@/components/FmIntelligencePanel';
 import GpsPerformancePanel from './GpsPerformancePanel';
 import SimilarPlayersPanel from '@/components/SimilarPlayersPanel';
-import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
+import YouthHighlightsPanel from '@/components/YouthHighlightsPanel';
 import PlayerStatsPanel from '@/components/PlayerStatsPanel';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import ProposalHistorySection, { type ProposalOffer } from '@/components/ProposalHistorySection';
@@ -2555,17 +2555,11 @@ export default function PlayerInfoPage() {
 
             {/* Player Highlights Panel */}
             {(merged.fullName || player?.fullName) && (
-              <PlayerHighlightsPanel
+              <YouthHighlightsPanel
                 playerId={id}
                 pinnedHighlights={(player?.pinnedHighlights ?? []) as HighlightVideo[]}
-                playerName={merged.fullName || player?.fullName || ''}
-                teamName={merged.currentClub?.clubName || player?.currentClub?.clubName || ''}
-                position={merged.positions?.[0] || player?.positions?.[0] || ''}
-                parentClub={merged.isOnLoan ? (merged.onLoanFromClub || player?.onLoanFromClub) : undefined}
-                nationality={merged.nationality || player?.nationality}
-                fullNameHe={merged.fullNameHe || player?.fullNameHe}
-                clubCountry={merged.currentClub?.clubCountry || player?.currentClub?.clubCountry}
                 isRtl={isRtl}
+                playerCollection="Players"
               />
             )}
 

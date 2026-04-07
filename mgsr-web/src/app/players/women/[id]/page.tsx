@@ -24,7 +24,7 @@ import {
 } from '@/lib/playersWomen';
 import { flattenPdf } from '@/lib/pdfFlatten';
 import type { HighlightVideo } from '@/lib/highlightsApi';
-import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
+import YouthHighlightsPanel from '@/components/YouthHighlightsPanel';
 import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
 import FmInsideWomenPanel from '@/components/FmInsideWomenPanel';
 import AppLayout from '@/components/AppLayout';
@@ -1123,17 +1123,11 @@ export default function WomanPlayerPage() {
 
             {/* Highlights */}
             {player.fullName && (
-              <PlayerHighlightsPanel
+              <YouthHighlightsPanel
                 playerId={id!}
                 pinnedHighlights={(player.pinnedHighlights ?? []) as HighlightVideo[]}
-                playerName={player.fullName}
-                teamName={player.currentClub?.clubName}
-                position={player.positions?.[0] ?? ''}
-                nationality={player.nationality}
-                clubCountry={player.currentClub?.clubCountry}
                 isRtl={isRtl}
                 playerCollection="PlayersWomen"
-                accentVariant="women"
               />
             )}
 

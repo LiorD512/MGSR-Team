@@ -117,12 +117,14 @@ interface YouthHighlightsPanelProps {
   playerId: string;
   pinnedHighlights?: HighlightVideo[];
   isRtl?: boolean;
+  playerCollection?: 'Players' | 'PlayersWomen' | 'PlayersYouth';
 }
 
 export default function YouthHighlightsPanel({
   playerId,
   pinnedHighlights,
   isRtl: isRtlProp,
+  playerCollection = 'PlayersYouth',
 }: YouthHighlightsPanelProps) {
   const { t, isRtl: contextRtl } = useLanguage();
   const isRtl = isRtlProp ?? contextRtl;
@@ -190,7 +192,7 @@ export default function YouthHighlightsPanel({
 
       const newPinned = [...pinned, video];
       setSaving(true);
-      await savePinnedHighlights(playerId, newPinned, 'PlayersYouth');
+      await savePinnedHighlights(playerId, newPinned, playerCollection);
       setUrlInput('');
       setActiveIndex(newPinned.length - 1);
     } catch (err) {
@@ -205,7 +207,7 @@ export default function YouthHighlightsPanel({
     const newPinned = pinned.filter((v) => v.id !== videoId);
     setSaving(true);
     try {
-      await savePinnedHighlights(playerId, newPinned, 'PlayersYouth');
+      await savePinnedHighlights(playerId, newPinned, playerCollection);
       setActiveIndex(0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove video');
