@@ -13,6 +13,8 @@ export interface PortfolioItem {
   playerId: string;
   /** Women: playerWomenId (from PlayersWomen) */
   playerWomenId?: string;
+  /** Youth: playerYouthId (from PlayersYouth) */
+  playerYouthId?: string;
   createdAt: number;
   player: PortfolioPlayer;
   mandateInfo?: SharePayload['mandateInfo'];

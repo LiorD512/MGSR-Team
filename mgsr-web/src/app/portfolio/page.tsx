@@ -189,14 +189,15 @@ export default function PortfolioPage() {
             ? (sharerAccount?.hebrewName ?? sharerAccount?.name)
             : (sharerAccount?.name ?? sharerAccount?.hebrewName);
 
-        const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang, item.playerWomenId ?? item.playerId, PLAYERS_COLLECTIONS[platform]);
+        const resolvedPlayerId = item.playerYouthId ?? item.playerWomenId ?? item.playerId;
+        const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang, resolvedPlayerId, PLAYERS_COLLECTIONS[platform]);
         const familyStatus = await fetchFamilyStatus(
-          item.playerWomenId ?? item.playerId,
+          resolvedPlayerId,
           PLAYERS_COLLECTIONS[platform]
         );
         const { url } = await createShare(
           {
-            playerId: item.playerWomenId ?? item.playerId,
+            playerId: resolvedPlayerId,
             player: item.player,
             mandateInfo: item.mandateInfo,
             mandateUrl: item.mandateUrl,
@@ -242,7 +243,7 @@ export default function PortfolioPage() {
         setShowShareModal(null);
       }
     },
-    [sharingId, user, accounts]
+    [sharingId, user, accounts, platform, isYouth, isWomen]
   );
 
   const handleView = useCallback(
@@ -262,14 +263,15 @@ export default function PortfolioPage() {
             ? (sharerAccount?.hebrewName ?? sharerAccount?.name)
             : (sharerAccount?.name ?? sharerAccount?.hebrewName);
 
-        const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang, item.playerWomenId ?? item.playerId, PLAYERS_COLLECTIONS[platform]);
+        const resolvedPlayerId = item.playerYouthId ?? item.playerWomenId ?? item.playerId;
+        const gpsData = await fetchGpsDataForShare(item.player.tmProfile, lang, resolvedPlayerId, PLAYERS_COLLECTIONS[platform]);
         const familyStatusView = await fetchFamilyStatus(
-          item.playerWomenId ?? item.playerId,
+          resolvedPlayerId,
           PLAYERS_COLLECTIONS[platform]
         );
         const { token } = await createShare(
           {
-            playerId: item.playerWomenId ?? item.playerId,
+            playerId: resolvedPlayerId,
             player: item.player,
             mandateInfo: item.mandateInfo,
             mandateUrl: item.mandateUrl,
@@ -293,7 +295,7 @@ export default function PortfolioPage() {
         setViewingId(null);
       }
     },
-    [viewingId, user, accounts, router]
+    [viewingId, user, accounts, router, platform]
   );
 
   const handleRemove = useCallback(async (id: string) => {
@@ -480,7 +482,7 @@ export default function PortfolioPage() {
                         disabled={!!viewingId}
                         className="px-4 py-2.5 rounded-xl border border-mgsr-border text-mgsr-text font-medium hover:bg-mgsr-card/80 transition disabled:opacity-50 flex items-center gap-2"
                       >
-                            {viewingId ? (
+                            {viewingId === item.id ? (
                           <>
                             <div className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isYouth ? 'border-[var(--youth-cyan)]' : isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`} />
                             {isRtl ? 'טוען...' : 'Loading...'}
