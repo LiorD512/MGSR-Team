@@ -75,6 +75,8 @@ object NoteParser {
                 return when {
                     fullMatch.contains("מיליון") || fullMatch.lowercase().contains("million") -> value * 1000
                     value >= 1000 -> value / 1000
+                    // Values > 30 are seasonal salaries (in K) — divide by 10 for monthly
+                    value > 30 -> value / 10
                     else -> value
                 }
             }

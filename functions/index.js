@@ -944,6 +944,51 @@ exports.onAgentTransferResolved = onDocumentUpdated(
 // ─── Backfill DOB from TransferMarkt ────────────────────────────────────────
 
 /**
+ * Extract ISO DOB (YYYY-MM-DD) from a TM profile page's cheerio document.
+ * Priority order:
+ *  1. Link href inside birthDate span: datum/YYYY-MM-DD (unambiguous)
+ *  2. Named-month text: "Jul 4, 1997" (parsed by JS Date)
+ *  3. Returns null if nothing reliable found
+ *
+ * NEVER assumes DD/MM vs MM/DD — only uses unambiguous sources.
+ */
+function extractDobFromTmPage($) {
+  const birthSpan = $("span[itemprop=birthDate]").first();
+  if (!birthSpan.length) return null;
+
+  // 1. Try the link href — contains unambiguous ISO date: datum/YYYY-MM-DD
+  const birthLink = birthSpan.find("a").first().attr("href") || "";
+  const isoFromLink = birthLink.match(/datum\/(\d{4})-(\d{2})-(\d{2})/);
+  if (isoFromLink) {
+    return `${isoFromLink[1]}-${isoFromLink[2]}-${isoFromLink[3]}`;
+  }
+
+  // 2. Try content attribute (some TM versions include it)
+  const contentAttr = birthSpan.attr("content") || "";
+  const isoFromContent = contentAttr.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (isoFromContent) {
+    return `${isoFromContent[1]}-${isoFromContent[2]}-${isoFromContent[3]}`;
+  }
+
+  // 3. Fallback: parse named-month text like "Jul 4, 1997 (28)"
+  const birthText = birthSpan.text().trim();
+  if (!birthText) return null;
+  const dateStr = birthText.replace(/\s*\(\d+\)\s*$/, "").trim();
+  // Only trust named-month formats (e.g. "Jun 15, 2000") — NOT numeric DD/MM or MM/DD
+  if (/[a-zA-Z]/.test(dateStr)) {
+    const parsed = new Date(dateStr);
+    if (!isNaN(parsed.getTime())) {
+      const yyyy = parsed.getFullYear();
+      const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+      const dd = String(parsed.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Callable function that scrapes dateOfBirth from TM profiles for all players
  * that have a tmProfile URL but no dateOfBirth on their player document.
  * Updates the Player document directly (not passportDetails).
@@ -982,34 +1027,11 @@ exports.backfillPlayerDob = onCall(
           batch.map(async (player) => {
             try {
               const $ = await fetchDocument(player.tmProfile);
-              const birthText = $("span[itemprop=birthDate]").first().text().trim();
-              // birthText is like "Jun 15, 2000 (24)" or "Mar 5, 1998 (28)"
-              if (!birthText) {
+              const dob = extractDobFromTmPage($);
+              if (!dob) {
                 results.skipped++;
                 return;
               }
-              // Remove the "(age)" suffix and parse the date
-              const dateStr = birthText.replace(/\s*\(\d+\)\s*$/, "").trim();
-              // Try DD/MM/YYYY first (common TM format for non-English locales)
-              const ddmmyyyy = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-              let yyyy, mm, dd;
-              if (ddmmyyyy) {
-                dd = String(ddmmyyyy[1]).padStart(2, "0");
-                mm = String(ddmmyyyy[2]).padStart(2, "0");
-                yyyy = ddmmyyyy[3];
-              } else {
-                const parsed = new Date(dateStr);
-                if (isNaN(parsed.getTime())) {
-                  console.warn(`[backfillPlayerDob] Could not parse date "${dateStr}" for ${player.name}`);
-                  results.failed++;
-                  results.errors.push(`${player.name}: unparseable "${dateStr}"`);
-                  return;
-                }
-                yyyy = parsed.getFullYear();
-                mm = String(parsed.getMonth() + 1).padStart(2, "0");
-                dd = String(parsed.getDate()).padStart(2, "0");
-              }
-              const dob = `${yyyy}-${mm}-${dd}`;
 
               await player.ref.update({ dateOfBirth: dob });
               console.log(`[backfillPlayerDob] ${player.name} -> ${dob}`);
@@ -1025,6 +1047,77 @@ exports.backfillPlayerDob = onCall(
     }
 
     console.log(`[backfillPlayerDob] Done. Updated: ${results.updated}, Skipped: ${results.skipped}, Failed: ${results.failed}`);
+    return results;
+  }
+);
+
+/**
+ * Revalidate ALL existing DOBs by re-scraping from TM.
+ * For every player with a tmProfile AND existing dateOfBirth,
+ * re-scrapes the DOB and compares. Fixes any that differ.
+ * Returns: { checked, fixed, skipped, failed, fixes: [{name, old, new}] }
+ */
+exports.revalidatePlayerDob = onCall(
+  { timeoutSeconds: 540, memory: "512MiB" },
+  async (request) => {
+    requireAuth(request);
+    const collections = ["Players", "PlayersWomen", "PlayersYouth"];
+    const BATCH_SIZE = 5;
+    const BATCH_DELAY = 2000;
+    const results = { checked: 0, fixed: 0, skipped: 0, failed: 0, fixes: [], errors: [] };
+
+    for (const collName of collections) {
+      console.log(`[revalidatePlayerDob] Processing ${collName}...`);
+      const snap = await db.collection(collName).get();
+      const candidates = [];
+
+      snap.forEach((doc) => {
+        const d = doc.data();
+        if (d.tmProfile && d.dateOfBirth) {
+          candidates.push({
+            ref: doc.ref,
+            tmProfile: d.tmProfile,
+            name: d.fullName || doc.id,
+            currentDob: d.dateOfBirth,
+          });
+        }
+      });
+
+      console.log(`[revalidatePlayerDob] ${collName}: ${candidates.length} players to check`);
+
+      for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+        if (i > 0) await new Promise((r) => setTimeout(r, BATCH_DELAY));
+        const batch = candidates.slice(i, i + BATCH_SIZE);
+
+        await Promise.all(
+          batch.map(async (player) => {
+            try {
+              const $ = await fetchDocument(player.tmProfile);
+              const correctDob = extractDobFromTmPage($);
+              results.checked++;
+
+              if (!correctDob) {
+                results.skipped++;
+                return;
+              }
+
+              if (correctDob !== player.currentDob) {
+                await player.ref.update({ dateOfBirth: correctDob });
+                console.log(`[revalidatePlayerDob] FIXED ${player.name}: ${player.currentDob} -> ${correctDob}`);
+                results.fixed++;
+                results.fixes.push({ name: player.name, old: player.currentDob, new: correctDob });
+              }
+            } catch (err) {
+              console.error(`[revalidatePlayerDob] Error for ${player.name}:`, err.message);
+              results.failed++;
+              results.errors.push(`${player.name}: ${err.message}`);
+            }
+          })
+        );
+      }
+    }
+
+    console.log(`[revalidatePlayerDob] Done. Checked: ${results.checked}, Fixed: ${results.fixed}, Skipped: ${results.skipped}, Failed: ${results.failed}`);
     return results;
   }
 );

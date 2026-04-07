@@ -563,20 +563,54 @@ async function playerDocumentsMarkExpired(data) {
 // Helpers — salary/fee extraction from notes (matches Android NoteParser)
 // ═══════════════════════════════════════════════════════════════════════════
 
-const SALARY_PATTERN = /(?:salary|שכר)[:\s]*([0-9]+(?:\.[0-9]+)?[kK]?\s*[-–]\s*[0-9]+(?:\.[0-9]+)?[kK]?|[0-9]+(?:\.[0-9]+)?[kK]?)/i;
+const SALARY_KEYWORDS = /(?:salary|שכר|משכורת|מבקש)\s*[:\-=]?\s*/i;
+const SALARY_NUMBER = /(\d+(?:[.,]\d+)?)\s*(?:k|K|k€|€k|thousand|אלף|מיליון)?/;
 const FREE_PATTERN = /\b(?:free\s*(?:agent|transfer)?|free\/free\s*loan|חופשי|שחקן\s*חופשי)\b/i;
+const CF_SALARY_RANGES = [">5", "6-10", "11-15", "16-20", "20-25", "26-30", "30+"];
+
+function findSalaryNumber(text) {
+  const lower = text.toLowerCase();
+  const keywordMatch = lower.match(SALARY_KEYWORDS);
+  if (!keywordMatch) return null;
+  const afterIdx = (keywordMatch.index ?? 0) + keywordMatch[0].length;
+  const afterKeyword = text.slice(afterIdx).trim();
+  const numberMatch = afterKeyword.match(SALARY_NUMBER);
+  if (!numberMatch) return null;
+  const numStr = numberMatch[1].replace(",", ".");
+  const value = parseFloat(numStr);
+  if (isNaN(value)) return null;
+  const fullMatch = numberMatch[0].toLowerCase();
+  if (fullMatch.includes("מיליון") || fullMatch.includes("million")) return value * 1000;
+  if (value >= 1000) return value / 1000;
+  // Values > 30 are seasonal salaries (in K) — divide by 10 for monthly
+  if (value > 30) return value / 10;
+  return value;
+}
+
+function numberToSalaryRange(value) {
+  const v = Math.max(0, Math.min(100, Math.floor(value)));
+  if (v <= 5) return ">5";
+  if (v >= 6 && v <= 10) return "6-10";
+  if (v >= 11 && v <= 15) return "11-15";
+  if (v >= 16 && v <= 20) return "16-20";
+  if (v >= 20 && v <= 25) return "20-25";
+  if (v >= 26 && v <= 30) return "26-30";
+  if (v > 30) return "30+";
+  return null;
+}
 
 function extractSalaryFromNotes(noteList) {
   let salaryRange = null;
   let isFree = false;
   if (!Array.isArray(noteList)) return { salaryRange, isFree };
 
-  for (const note of noteList) {
-    const text = note?.notes || "";
-    const salaryMatch = text.match(SALARY_PATTERN);
-    if (salaryMatch) salaryRange = salaryMatch[1].trim();
-    if (FREE_PATTERN.test(text)) isFree = true;
-  }
+  const text = noteList.map((n) => n?.notes || "").join(" ").trim();
+  if (!text) return { salaryRange, isFree };
+
+  const salaryValue = findSalaryNumber(text);
+  if (salaryValue != null) salaryRange = numberToSalaryRange(salaryValue);
+  if (FREE_PATTERN.test(text)) isFree = true;
+
   return { salaryRange, isFree };
 }
 

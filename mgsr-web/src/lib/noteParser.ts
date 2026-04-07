@@ -37,6 +37,8 @@ function findSalaryNumber(text: string): number | null {
     return value * 1000;
   }
   if (value >= 1000) return value / 1000;
+  // Values > 30 are seasonal salaries (in K) — divide by 10 for monthly
+  if (value > 30) return value / 10;
   return value;
 }
 
