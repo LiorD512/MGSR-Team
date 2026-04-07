@@ -42,6 +42,7 @@ const { portfolioUpsert, portfolioDelete } = require("./callables/portfolio");
 const { sharePlayerCreate, shadowTeamsSave, scoutProfileFeedbackSet, birthdayWishSend, offersUpdateHistorySummary, mandateSigningCreate } = require("./callables/phase6Misc");
 const { accountUpdate } = require("./callables/phase7Account");
 const { chatRoomSend, chatRoomEdit, chatRoomDelete } = require("./callables/chatRoom");
+const { ifaFetchProfile } = require("./callables/ifaFetch");
 
 initializeApp();
 const db = getFirestore();
@@ -1314,3 +1315,9 @@ exports.accountUpdate = onCall(async (req) => { requireAuth(req); return account
 exports.chatRoomSend = onCall(async (req) => { requireAuth(req); return chatRoomSend(req.data); });
 exports.chatRoomEdit = onCall(async (req) => { requireAuth(req); return chatRoomEdit(req.data); });
 exports.chatRoomDelete = onCall(async (req) => { requireAuth(req); return chatRoomDelete(req.data); });
+
+// ── IFA Profile Fetch ──────────────────────────────────────────────────
+exports.ifaFetchProfile = onCall({ timeoutSeconds: 60, memory: "256MiB" }, async (req) => {
+  // No auth required — this fetches public IFA data (no Firestore writes)
+  return ifaFetchProfile(req);
+});

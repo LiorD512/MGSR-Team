@@ -1,6 +1,12 @@
 /**
  * Fetch and parse an IFA (football.org.il) player profile by URL.
  * Accepts POST with { url: "https://www.football.org.il/players/player/?player_id=..." }
+ *
+ * Strategy (in order):
+ *   1. Firebase Cloud Function `ifaFetchProfile` (cheerio + proxy fallbacks, runs on Google Cloud)
+ *   2. Direct fetch from Vercel (may 403 on datacenter IPs)
+ *   3. AllOrigins proxy fallback
+ *   4. Serper.dev image search (returns only photo)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,7 +19,32 @@ import {
 } from '@/lib/ifa';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 120; // Scout cold start + retry can take ~2 min
+export const maxDuration = 60;
+
+/** Call the Firebase callable `ifaFetchProfile` via its REST endpoint. */
+async function callIfaCloudFunction(url: string): Promise<IFAPlayerProfile | null> {
+  // Firebase callable v2 REST URL:
+  // https://us-central1-<project>.cloudfunctions.net/ifaFetchProfile
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'mgsr-64e4b';
+  const cfUrl = `https://us-central1-${projectId}.cloudfunctions.net/ifaFetchProfile`;
+  try {
+    const res = await fetch(cfUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { url } }),
+      signal: AbortSignal.timeout(55000),
+    });
+    if (!res.ok) {
+      console.warn(`[youth-fetch-profile] Cloud Function HTTP ${res.status}`);
+      return null;
+    }
+    const json = (await res.json()) as { result?: IFAPlayerProfile };
+    return json.result ?? null;
+  } catch (err) {
+    console.warn('[youth-fetch-profile] Cloud Function failed:', err);
+    return null;
+  }
+}
 
 /** Use Serper.dev image search as a last resort to find IFA player photo + basic data */
 async function serperImageFallback(playerName: string, playerId: string): Promise<{ profileImage?: string } | null> {
@@ -28,10 +59,8 @@ async function serperImageFallback(playerName: string, playerId: string): Promis
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { images?: Array<{ imageUrl?: string; link?: string }> };
-    // Find image whose source link matches the player_id
     const match = data.images?.find((img) => img.link?.includes(`player_id=${playerId}`));
     if (match?.imageUrl) return { profileImage: match.imageUrl };
-    // Fallback: first football.org.il image
     const ifaImg = data.images?.find((img) => img.imageUrl?.includes('football.org.il'));
     if (ifaImg?.imageUrl) return { profileImage: ifaImg.imageUrl };
     return null;
@@ -54,7 +83,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Normalize to Hebrew URL for reliable scraping (strip /en/ prefix)
     const normalizedUrl = normalizeIfaUrl(url);
 
     const toResponse = (data: IFAPlayerProfile) =>
@@ -75,71 +103,48 @@ export async function POST(request: NextRequest) {
         stats: data.stats,
       });
 
-    // Scout server (Playwright) bypasses 403 — use same default as other scout routes
-    const scoutBase = (process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com').trim();
-    const base = scoutBase.replace(/\/$/, '');
-    const scoutFetch = () =>
-      fetch(`${base}/ifa/fetch-profile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: normalizedUrl }),
-        signal: AbortSignal.timeout(90000), // 90s — Render cold start can take 60–90s
-      });
-
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const res = await scoutFetch();
-        if (res.ok) {
-          const data = (await res.json()) as IFAPlayerProfile;
-          return toResponse(data);
-        }
-        if (res.status !== 502 && res.status !== 503) break;
-      } catch (scoutErr) {
-        if (attempt === 0) console.warn('[youth-fetch-profile] Scout attempt 1 failed, retrying:', scoutErr);
-        else console.warn('[youth-fetch-profile] Scout server failed:', scoutErr);
-      }
-      if (attempt === 0) await new Promise((r) => setTimeout(r, 3000));
+    // ── Strategy 1: Firebase Cloud Function (Google Cloud IPs + proxy fallbacks) ──
+    const cfResult = await callIfaCloudFunction(normalizedUrl);
+    if (cfResult && (cfResult.fullName || cfResult.fullNameHe)) {
+      return toResponse(cfResult);
     }
 
-    // Direct fetch (or fallback when scout fails)
-    let profile: IFAPlayerProfile;
+    // ── Strategy 2: Direct fetch from Vercel ──
     try {
-      profile = await fetchIFAProfile(normalizedUrl);
+      const profile = await fetchIFAProfile(normalizedUrl);
+      return toResponse(profile);
     } catch (directErr) {
       const msg = directErr instanceof Error ? directErr.message : '';
-      if (msg.includes('403')) {
-        // Try AllOrigins proxy — free, no config
-        try {
-          profile = await fetchIFAProfileViaProxy(normalizedUrl);
-          return toResponse(profile);
-        } catch (proxyErr) {
-          console.warn('[youth-fetch-profile] Proxy fallback failed:', proxyErr);
-        }
-        // Last resort: Serper.dev image search — at least return the photo
-        const pidMatch = normalizedUrl.match(/player_id=(\d+)/);
-        if (pidMatch) {
-          const imgResult = await serperImageFallback('', pidMatch[1]);
-          if (imgResult?.profileImage) {
-            return NextResponse.json({ ifaUrl: normalizedUrl, ifaPlayerId: pidMatch[1], profileImage: imgResult.profileImage });
-          }
-        }
-        return NextResponse.json(
-          { error: 'Could not load profile from football.org.il. Enter details manually or try again later.' },
-          { status: 500 }
-        );
-      }
-      throw directErr;
+      if (!msg.includes('403')) throw directErr;
     }
 
-    return toResponse(profile);
+    // ── Strategy 3: AllOrigins proxy ──
+    try {
+      const profile = await fetchIFAProfileViaProxy(normalizedUrl);
+      return toResponse(profile);
+    } catch (proxyErr) {
+      console.warn('[youth-fetch-profile] Proxy fallback failed:', proxyErr);
+    }
+
+    // ── Strategy 4: Serper.dev image search (photo only) ──
+    const pidMatch = normalizedUrl.match(/player_id=(\d+)/);
+    if (pidMatch) {
+      const imgResult = await serperImageFallback('', pidMatch[1]);
+      if (imgResult?.profileImage) {
+        return NextResponse.json({ ifaUrl: normalizedUrl, ifaPlayerId: pidMatch[1], profileImage: imgResult.profileImage });
+      }
+    }
+
+    return NextResponse.json(
+      { error: 'Could not load profile from football.org.il. Enter details manually or try again later.' },
+      { status: 500 }
+    );
   } catch (err) {
     console.error('[youth-fetch-profile]', err);
     const msg = err instanceof Error ? err.message : 'Failed to fetch profile';
     const isTimeout = msg.includes('abort') || msg.includes('timeout') || msg.includes('Timeout');
     const isNetwork = msg.includes('fetch') || msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND');
-    const is403 = msg.includes('403') || msg.includes('Forbidden');
 
-    // Last resort on any failure: try Serper.dev image search for the photo
     const pidMatch = requestUrl.match(/player_id=(\d+)/);
     if (pidMatch) {
       const imgResult = await serperImageFallback('', pidMatch[1]);
@@ -148,13 +153,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const userMsg = is403
-      ? 'Could not load profile from football.org.il. Enter details manually or try again later.'
-      : isTimeout
-        ? 'Request timed out. IFA site may be slow — try again.'
-        : isNetwork
-          ? 'Could not reach football.org.il. Check your connection and try again.'
-          : msg;
+    const userMsg = isTimeout
+      ? 'Request timed out. IFA site may be slow — try again.'
+      : isNetwork
+        ? 'Could not reach football.org.il. Check your connection and try again.'
+        : msg;
     return NextResponse.json({ error: userMsg }, { status: 500 });
   }
 }
