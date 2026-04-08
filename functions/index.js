@@ -1246,6 +1246,33 @@ exports.onRequestYouthWriteMatchRecalc = onDocumentWritten("ClubRequestsYouth/{r
   await triggerRecalcIfNeeded("youth", event.data?.before?.data(), event.data?.after?.data(), REQUEST_MATCHING_FIELDS);
 });
 
+// --- Mandate changes trigger recalculation (mandate auto-matches player to request club) ---
+const MANDATE_MATCHING_FIELDS = new Set(["type", "validLeagues", "expired", "expiresAt"]);
+exports.onMandateWriteMatchRecalc = onDocumentWritten("PlayerDocuments/{docId}", async (event) => {
+  const before = event.data?.before?.data();
+  const after = event.data?.after?.data();
+  const isMandateBefore = before?.type === "MANDATE";
+  const isMandateAfter = after?.type === "MANDATE";
+  if (!isMandateBefore && !isMandateAfter) return;
+  await triggerRecalcIfNeeded("men", before, after, MANDATE_MATCHING_FIELDS);
+});
+exports.onMandateWomenWriteMatchRecalc = onDocumentWritten("PlayerDocumentsWomen/{docId}", async (event) => {
+  const before = event.data?.before?.data();
+  const after = event.data?.after?.data();
+  const isMandateBefore = before?.type === "MANDATE";
+  const isMandateAfter = after?.type === "MANDATE";
+  if (!isMandateBefore && !isMandateAfter) return;
+  await triggerRecalcIfNeeded("women", before, after, MANDATE_MATCHING_FIELDS);
+});
+exports.onMandateYouthWriteMatchRecalc = onDocumentWritten("PlayerDocumentsYouth/{docId}", async (event) => {
+  const before = event.data?.before?.data();
+  const after = event.data?.after?.data();
+  const isMandateBefore = before?.type === "MANDATE";
+  const isMandateAfter = after?.type === "MANDATE";
+  if (!isMandateBefore && !isMandateAfter) return;
+  await triggerRecalcIfNeeded("youth", before, after, MANDATE_MATCHING_FIELDS);
+});
+
 // Players
 exports.playersUpdate = onCall(async (req) => { requireAuth(req); return playersUpdate(req.data); });
 

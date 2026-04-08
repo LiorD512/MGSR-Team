@@ -7,6 +7,7 @@ const { getFirestore } = require("firebase-admin/firestore");
 const {
   PLAYERS_COLLECTIONS,
   CLUB_REQUESTS_COLLECTIONS,
+  PLAYER_DOCUMENTS_COLLECTIONS,
   validatePlatform,
 } = require("../lib/platformCollections");
 
@@ -90,11 +91,11 @@ function matchesSalaryRange(player, request) {
   const reqIndex = SALARY_RANGES.findIndex((r) => r.toLowerCase() === reqSalary.toLowerCase());
   if (reqIndex < 0) return playerSalary.toLowerCase() === reqSalary.toLowerCase();
 
-  const accepted = [SALARY_RANGES[reqIndex]];
-  if (reqIndex > 0) accepted.push(SALARY_RANGES[reqIndex - 1]);
-  if (reqIndex < SALARY_RANGES.length - 1) accepted.push(SALARY_RANGES[reqIndex + 1]);
+  const playerIndex = SALARY_RANGES.findIndex((r) => r.toLowerCase() === playerSalary.toLowerCase());
+  if (playerIndex < 0) return playerSalary.toLowerCase() === reqSalary.toLowerCase();
 
-  return accepted.some((r) => r.toLowerCase() === playerSalary.toLowerCase());
+  // Match if player salary is at or below request tier, or up to 2 tiers above
+  return playerIndex <= reqIndex + 2;
 }
 
 /**
@@ -116,8 +117,8 @@ function matchesTransferFee(player, request) {
   // If either tier is unknown, fall back to exact string match
   if (reqIndex < 0 || playerIndex < 0) return playerFee.toLowerCase() === reqFee.toLowerCase();
 
-  // Player is within budget if their fee tier is at or below the request tier
-  return playerIndex <= reqIndex;
+  // Match if player fee is at or below request tier, or up to 1 tier above
+  return playerIndex <= reqIndex + 1;
 }
 
 /** Transfer fee string to value range in euros. Matches Android AiHelperService. */
@@ -165,6 +166,35 @@ function matchesEu(player, request, euCountries) {
   return nats.some((n) => eu.has(n.trim().toLowerCase()));
 }
 
+/**
+ * Check if a mandate's validLeagues covers the given club.
+ * Matches: "WorldWide", country-wide (e.g. "Israel"), or specific club ("ClubName - Country").
+ */
+function mandateMatchesClub(validLeagues, clubName, clubCountry) {
+  if (!validLeagues || validLeagues.length === 0) return false;
+  if (!clubName && !clubCountry) return false;
+  const leaguesNorm = validLeagues.map((l) => l.trim().toLowerCase());
+  if (leaguesNorm.some((l) => l === "worldwide")) return true;
+  const countryNorm = clubCountry ? clubCountry.trim().toLowerCase() : null;
+  const clubNorm = clubName ? clubName.trim().toLowerCase() : null;
+  // Country-wide mandate
+  if (countryNorm && leaguesNorm.some((l) => l === countryNorm)) return true;
+  // Specific club: "ClubName - Country"
+  if (clubNorm && countryNorm) {
+    const clubEntry = `${clubNorm} - ${countryNorm}`;
+    if (leaguesNorm.some((l) => l === clubEntry)) return true;
+  }
+  // Fuzzy club-name match within league entries
+  if (clubNorm) {
+    for (const l of leaguesNorm) {
+      const clubPart = l.includes(" - ") ? l.split(" - ")[0].trim() : l;
+      if (clubPart === clubNorm) return true;
+      if (clubPart.length >= 4 && clubNorm.length >= 4 && (clubPart.includes(clubNorm) || clubNorm.includes(clubPart))) return true;
+    }
+  }
+  return false;
+}
+
 function matchPlayer(player, request, euCountries) {
   const position = (request.position || "").trim();
   if (!position) return false;
@@ -207,11 +237,37 @@ async function matchRequestToPlayers(data) {
   if (!requestSnap.exists) throw new Error("Request not found.");
   const request = { id: requestSnap.id, ...requestSnap.data() };
 
-  const playersSnap = await db.collection(PLAYERS_COLLECTIONS[data.platform]).get();
+  const [playersSnap, mandateDocsSnap] = await Promise.all([
+    db.collection(PLAYERS_COLLECTIONS[data.platform]).get(),
+    db.collection(PLAYER_DOCUMENTS_COLLECTIONS[data.platform])
+      .where("type", "==", "MANDATE")
+      .get(),
+  ]);
   const players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
+  // Build mandate map
+  const now = Date.now();
+  const linkKey = data.platform === "women" ? "playerWomenId" : data.platform === "youth" ? "playerYouthId" : "playerTmProfile";
+  const mandateByPlayerRef = {};
+  for (const doc of mandateDocsSnap.docs) {
+    const d = doc.data();
+    if (d.expired) continue;
+    if (d.expiresAt && d.expiresAt < now) continue;
+    const ref = d[linkKey];
+    if (!ref) continue;
+    if (!mandateByPlayerRef[ref]) mandateByPlayerRef[ref] = [];
+    mandateByPlayerRef[ref].push(...(d.validLeagues || []));
+  }
+
   const eu = data.euCountries ? new Set(data.euCountries.map((c) => c.toLowerCase())) : EU_COUNTRIES;
-  const matched = players.filter((p) => matchPlayer(p, request, eu));
+  const matched = players.filter((p) => {
+    if (matchPlayer(p, request, eu)) return true;
+    const playerRef = p.tmProfile || (data.platform !== "men" ? p.id : null);
+    if (playerRef && mandateByPlayerRef[playerRef]) {
+      return mandateMatchesClub(mandateByPlayerRef[playerRef], request.clubName, request.clubCountry);
+    }
+    return false;
+  });
 
   return { matchedPlayerIds: matched.map((p) => p.id) };
 }
@@ -231,11 +287,35 @@ async function matchingRequestsForPlayer(data) {
   if (!playerSnap.exists) throw new Error("Player not found.");
   const player = { id: playerSnap.id, ...playerSnap.data() };
 
-  const requestsSnap = await db.collection(CLUB_REQUESTS_COLLECTIONS[data.platform]).get();
+  const [requestsSnap, mandateDocsSnap] = await Promise.all([
+    db.collection(CLUB_REQUESTS_COLLECTIONS[data.platform]).get(),
+    db.collection(PLAYER_DOCUMENTS_COLLECTIONS[data.platform])
+      .where("type", "==", "MANDATE")
+      .get(),
+  ]);
   const requests = requestsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
+  // Build mandate validLeagues for this player
+  const now = Date.now();
+  const linkKey = data.platform === "women" ? "playerWomenId" : data.platform === "youth" ? "playerYouthId" : "playerTmProfile";
+  const playerRef = player.tmProfile || (data.platform !== "men" ? player.id : null);
+  let playerMandateLeagues = [];
+  if (playerRef) {
+    for (const doc of mandateDocsSnap.docs) {
+      const d = doc.data();
+      if (d.expired) continue;
+      if (d.expiresAt && d.expiresAt < now) continue;
+      if (d[linkKey] !== playerRef) continue;
+      playerMandateLeagues.push(...(d.validLeagues || []));
+    }
+  }
+
   const eu = data.euCountries ? new Set(data.euCountries.map((c) => c.toLowerCase())) : EU_COUNTRIES;
-  const matched = requests.filter((r) => matchPlayer(player, r, eu));
+  const matched = requests.filter((r) => {
+    if (matchPlayer(player, r, eu)) return true;
+    if (playerMandateLeagues.length > 0 && mandateMatchesClub(playerMandateLeagues, r.clubName, r.clubCountry)) return true;
+    return false;
+  });
 
   return { matchedRequestIds: matched.map((r) => r.id) };
 }
@@ -265,14 +345,37 @@ async function recalculateAllMatches(platform) {
   validatePlatform(platform);
   const db = getFirestore();
 
-  const [playersSnap, requestsSnap] = await Promise.all([
+  const [playersSnap, requestsSnap, mandateDocsSnap] = await Promise.all([
     db.collection(PLAYERS_COLLECTIONS[platform]).get(),
     db.collection(CLUB_REQUESTS_COLLECTIONS[platform]).get(),
+    db.collection(PLAYER_DOCUMENTS_COLLECTIONS[platform])
+      .where("type", "==", "MANDATE")
+      .get(),
   ]);
 
   const players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   const requests = requestsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   const pendingRequests = requests.filter((r) => (r.status || "pending") === "pending");
+
+  // Build mandate map: playerRefId → validLeagues[]
+  const now = Date.now();
+  const linkKey = platform === "women" ? "playerWomenId" : platform === "youth" ? "playerYouthId" : "playerTmProfile";
+  const mandateByPlayerRef = {};  // playerRefId → validLeagues[]
+  for (const doc of mandateDocsSnap.docs) {
+    const d = doc.data();
+    if (d.expired) continue;
+    if (d.expiresAt && d.expiresAt < now) continue;
+    const ref = d[linkKey];
+    if (!ref) continue;
+    const leagues = d.validLeagues || [];
+    if (leagues.length === 0) continue;
+    if (!mandateByPlayerRef[ref]) mandateByPlayerRef[ref] = [];
+    mandateByPlayerRef[ref].push(...leagues);
+  }
+  // Deduplicate
+  for (const ref of Object.keys(mandateByPlayerRef)) {
+    mandateByPlayerRef[ref] = [...new Set(mandateByPlayerRef[ref])];
+  }
 
   // Build match maps
   const byRequestId = {};   // requestId → playerIds[]
@@ -287,7 +390,14 @@ async function recalculateAllMatches(platform) {
 
   for (const req of pendingRequests) {
     for (const player of players) {
-      if (matchPlayer(player, req, EU_COUNTRIES)) {
+      // Normal criteria match
+      const criteriaMatch = matchPlayer(player, req, EU_COUNTRIES);
+      // Mandate match: player has mandate covering the request's club → auto-match
+      const playerRef = player.tmProfile || (platform !== "men" ? player.id : null);
+      const mandateMatch = playerRef && mandateByPlayerRef[playerRef]
+        ? mandateMatchesClub(mandateByPlayerRef[playerRef], req.clubName, req.clubCountry)
+        : false;
+      if (criteriaMatch || mandateMatch) {
         byRequestId[req.id].push(player.id);
         byPlayerId[player.id].push(req.id);
       }
@@ -300,7 +410,7 @@ async function recalculateAllMatches(platform) {
     byRequestId[id] = [];
   }
 
-  const now = Date.now();
+  const writeTimestamp = Date.now();
   const reqResultsCol = REQUEST_MATCH_RESULTS[platform];
   const playerResultsCol = PLAYER_MATCH_RESULTS[platform];
 
@@ -331,7 +441,7 @@ async function recalculateAllMatches(platform) {
       requestId,
       matchingPlayerIds: playerIds,
       matchCount: playerIds.length,
-      updatedAt: now,
+      updatedAt: writeTimestamp,
     });
     opCount++;
     if (opCount >= 490) { batches.push(batch); batch = db.batch(); opCount = 0; }
@@ -344,7 +454,7 @@ async function recalculateAllMatches(platform) {
       playerId,
       matchingRequestIds: requestIds,
       matchCount: requestIds.length,
-      updatedAt: now,
+      updatedAt: writeTimestamp,
     });
     opCount++;
     if (opCount >= 490) { batches.push(batch); batch = db.batch(); opCount = 0; }

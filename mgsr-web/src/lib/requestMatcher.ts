@@ -80,12 +80,11 @@ function matchesSalaryRange(player: RosterPlayer, request: ClubRequest): boolean
   const reqIndex = SALARY_RANGES.findIndex((r) => r.toLowerCase() === reqSalary.toLowerCase());
   if (reqIndex < 0) return playerSalary.toLowerCase() === reqSalary.toLowerCase();
 
-  const acceptedRanges: string[] = [SALARY_RANGES[reqIndex]];
-  if (reqIndex > 0) acceptedRanges.push(SALARY_RANGES[reqIndex - 1]);
-  if (reqIndex < SALARY_RANGES.length - 1) acceptedRanges.push(SALARY_RANGES[reqIndex + 1]);
+  const playerIndex = SALARY_RANGES.findIndex((r) => r.toLowerCase() === playerSalary.toLowerCase());
+  if (playerIndex < 0) return playerSalary.toLowerCase() === reqSalary.toLowerCase();
 
-  const playerLower = playerSalary.toLowerCase();
-  return acceptedRanges.some((r) => r.toLowerCase() === playerLower);
+  // Match if player salary is at or below request tier, or up to 2 tiers above
+  return playerIndex <= reqIndex + 2;
 }
 
 /**
@@ -107,8 +106,8 @@ function matchesTransferFee(player: RosterPlayer, request: ClubRequest): boolean
   // If either tier is unknown, fall back to exact string match
   if (reqIndex < 0 || playerIndex < 0) return playerFee.toLowerCase() === reqFee.toLowerCase();
 
-  // Player is within budget if their fee tier is at or below the request tier
-  return playerIndex <= reqIndex;
+  // Match if player fee is at or below request tier, or up to 1 tier above
+  return playerIndex <= reqIndex + 1;
 }
 
 /** Transfer fee string to (min, max) value range in euros. Matches Android AiHelperService. */

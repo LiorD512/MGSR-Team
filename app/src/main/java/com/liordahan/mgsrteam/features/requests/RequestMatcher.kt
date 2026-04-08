@@ -120,12 +120,11 @@ object RequestMatcher {
         val reqIndex = ranges.indexOfFirst { it.equals(reqSalary, ignoreCase = true) }
         if (reqIndex < 0) return playerSalary.equals(reqSalary, ignoreCase = true) // fallback for unknown range
 
-        val acceptedRanges = buildSet {
-            add(ranges[reqIndex])
-            if (reqIndex > 0) add(ranges[reqIndex - 1])
-            if (reqIndex < ranges.lastIndex) add(ranges[reqIndex + 1])
-        }
-        return acceptedRanges.any { it.equals(playerSalary, ignoreCase = true) }
+        val playerIndex = ranges.indexOfFirst { it.equals(playerSalary, ignoreCase = true) }
+        if (playerIndex < 0) return playerSalary.equals(reqSalary, ignoreCase = true)
+
+        // Match if player salary is at or below request tier, or up to 2 tiers above
+        return playerIndex <= reqIndex + 2
     }
 
     /**
@@ -146,7 +145,7 @@ object RequestMatcher {
         // If either tier is unknown, fall back to exact string match
         if (reqIndex < 0 || playerIndex < 0) return playerFee.equals(reqFee, ignoreCase = true)
 
-        // Player is within budget if their fee tier is at or below the request tier
-        return playerIndex <= reqIndex
+        // Match if player fee is at or below request tier, or up to 1 tier above
+        return playerIndex <= reqIndex + 1
     }
 }
