@@ -49,21 +49,14 @@ function fetchHtml(url) {
 }
 
 /**
- * Fetch TM HTML with mgsr-backend proxy fallback.
- * Direct fetch first (fast); on block → proxy through Render.
+ * Fetch TM HTML — always through Render proxy when configured.
+ * Direct fetch only used when proxy env vars are missing (local dev).
  */
 async function fetchHtmlWithFallback(url) {
-  try {
-    return await fetchHtml(url);
-  } catch (directErr) {
-    // Only fallback on blocking errors, not 404 etc.
-    const status = directErr.message.match(/HTTP (\d+)/)?.[1];
-    if (status && !["403", "405", "429", "503"].includes(status)) throw directErr;
+  const proxyUrl = process.env.SCOUT_TM_PROXY_URL;
+  const secret = process.env.SCOUT_ENRICH_SECRET;
 
-    const proxyUrl = process.env.SCOUT_TM_PROXY_URL;
-    const secret = process.env.SCOUT_ENRICH_SECRET;
-    if (!proxyUrl || !secret) throw directErr;
-
+  if (proxyUrl && secret) {
     const res = await fetch(proxyUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -73,6 +66,9 @@ async function fetchHtmlWithFallback(url) {
     if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`);
     return res.text();
   }
+
+  // Fallback: direct fetch (local dev only)
+  return fetchHtml(url);
 }
 
 async function fetchDocument(url) {
