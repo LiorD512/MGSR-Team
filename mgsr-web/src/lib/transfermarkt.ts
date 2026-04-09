@@ -18,6 +18,13 @@ function getRandomUserAgent(): string {
 }
 
 export async function fetchHtml(url: string): Promise<string> {
+  // Always use Render proxy when configured — bulletproof, no Vercel IP blocks
+  const backendUrl = process.env.MGSR_BACKEND_URL;
+  const secret = process.env.SCOUT_ENRICH_SECRET;
+  if (backendUrl && secret) {
+    return fetchHtmlViaProxy(url, backendUrl, secret);
+  }
+  // Fallback to direct fetch only when proxy is not configured (local dev)
   const res = await fetch(url, {
     headers: {
       'User-Agent': getRandomUserAgent(),
@@ -26,25 +33,15 @@ export async function fetchHtml(url: string): Promise<string> {
     },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
-  if (!res.ok) {
-    // On block/rate-limit, try mgsr-backend proxy as fallback
-    if ([403, 405, 429, 503].includes(res.status)) {
-      return fetchHtmlViaProxy(url);
-    }
-    throw new Error(`HTTP ${res.status}`);
-  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
 
 /**
- * Fallback: fetch TM HTML through mgsr-backend (Render) when direct fetch is blocked.
- * Requires MGSR_BACKEND_URL and SCOUT_ENRICH_SECRET env vars on Vercel.
+ * Fetch TM HTML through mgsr-backend (Render) — primary method for all TM scraping.
+ * Render has session-based anti-blocking engine with cookie persistence.
  */
-async function fetchHtmlViaProxy(url: string): Promise<string> {
-  const backendUrl = process.env.MGSR_BACKEND_URL;
-  const secret = process.env.SCOUT_ENRICH_SECRET;
-  if (!backendUrl || !secret) throw new Error('Direct TM blocked and MGSR_BACKEND_URL not configured');
-
+async function fetchHtmlViaProxy(url: string, backendUrl: string, secret: string): Promise<string> {
   const proxyRes = await fetch(`${backendUrl}/tm_proxy`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
