@@ -12,25 +12,24 @@ import { createHash } from 'crypto';
 import { fetchHtmlWithRetry } from './src/lib/transfermarkt';
 
 // ── Firebase init ──
-const projectId = process.env.FIREBASE_PROJECT_ID;
-const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+let projectId = process.env.FIREBASE_PROJECT_ID;
+let clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
 
 if (!projectId || !clientEmail || !privateKey) {
-  // Try .env.local
-  const dotenv = await import('dotenv');
-  dotenv.config({ path: '.env.local' });
-  const p = process.env.FIREBASE_PROJECT_ID;
-  const c = process.env.FIREBASE_CLIENT_EMAIL;
-  const k = process.env.FIREBASE_PRIVATE_KEY || '';
-  if (!p || !c || !k) {
+  // Try .env.local (local dev)
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require('dotenv').config({ path: '.env.local' });
+  projectId = process.env.FIREBASE_PROJECT_ID;
+  clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+  if (!projectId || !clientEmail || !privateKey) {
     console.error('Missing Firebase credentials');
     process.exit(1);
   }
-  initializeApp({ credential: cert({ projectId: p, clientEmail: c, privateKey: k.replace(/\\n/g, '\n') } as ServiceAccount) });
-} else {
-  initializeApp({ credential: cert({ projectId, clientEmail, privateKey: privateKey.replace(/\\n/g, '\n') } as ServiceAccount) });
 }
+
+initializeApp({ credential: cert({ projectId, clientEmail, privateKey: privateKey.replace(/\\n/g, '\n') } as ServiceAccount) });
 
 const db = getFirestore();
 const TM_DEFAULT_IMG = 'https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1';
@@ -166,8 +165,8 @@ async function main() {
 
   // GitHub Actions summary
   if (process.env.GITHUB_STEP_SUMMARY) {
-    const { appendFileSync } = await import('fs');
-    appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
+    const fs = require('fs');
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
       '## Scout Image Enrichment Report',
       `| Metric | Value |`,
       `|--------|-------|`,
