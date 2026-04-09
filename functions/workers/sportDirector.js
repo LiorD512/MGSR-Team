@@ -44,15 +44,36 @@ function getAgentFns() {
 // Note: API-Football blocked by Cloudflare/403 from server-side
 // ═══════════════════════════════════════════════════════════════
 const INTEL_TIMEOUT = 10000;
-const INTEL_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+const INTEL_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+// ── header-generator for TM-specific requests ──
+const { HeaderGenerator } = require("header-generator");
+const _sdHeaderGen = new HeaderGenerator({
+  browsers: [{ name: "chrome", minVersion: 128, maxVersion: 135 }],
+  devices: ["desktop"],
+  operatingSystems: ["windows", "macos"],
+  locales: ["en-US"],
+});
+
+function getTmHeaders() {
+  const h = _sdHeaderGen.getHeaders();
+  h["referer"] = "https://www.transfermarkt.com/";
+  if (!h["accept-language"]) h["accept-language"] = "en-US,en;q=0.9";
+  return h;
+}
 
 async function intelFetch(url, opts = {}) {
+  // Use realistic browser headers for TM URLs, standard for others
+  const isTm = url.includes("transfermarkt.com");
+  const headers = isTm ? getTmHeaders() : {
+    "User-Agent": INTEL_UA,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+  };
   return fetch(url, {
     ...opts,
     headers: {
-      "User-Agent": INTEL_UA,
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
+      ...headers,
       ...(opts.headers || {}),
     },
     signal: AbortSignal.timeout(INTEL_TIMEOUT),
@@ -880,6 +901,8 @@ const STATS_DEPENDENT_PROFILES = new Set([
 
 // ── Rate limiter for TM stats fetches ──
 let _sdLastTmFetch = 0;
+const SD_MIN_GAP = 2000;
+const SD_MAX_GAP = 5000;
 
 /**
  * Fetch TM stats via direct fetch with rate limiting.
@@ -888,8 +911,9 @@ async function fetchTmStatsWithProxy(tmProfileUrl) {
   const id = extractTmPlayerId(tmProfileUrl);
   if (!id) return null;
 
-  // Rate limit: 2s gap between TM calls
-  const wait = 2000 - (Date.now() - _sdLastTmFetch);
+  // Rate limit: randomized gap between TM calls
+  const gap = SD_MIN_GAP + Math.floor(Math.random() * (SD_MAX_GAP - SD_MIN_GAP));
+  const wait = gap - (Date.now() - _sdLastTmFetch);
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   _sdLastTmFetch = Date.now();
 

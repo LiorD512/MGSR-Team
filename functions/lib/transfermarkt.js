@@ -1,19 +1,22 @@
 /**
  * Transfermarkt scraping — Node.js port of Kotlin LatestReleases logic.
- * Uses Node built-in https + cheerio (no axios/undici to avoid Firebase deploy issues).
+ * Uses header-generator for realistic browser headers (TLS fingerprint not
+ * available in pure JS, but realistic headers + sec-ch-ua + sec-fetch-*
+ * dramatically reduce detection).
  */
 
 const https = require("https");
 const cheerio = require("cheerio");
+const { HeaderGenerator } = require("header-generator");
 const { makeAbsoluteUrl, TRANSFERMARKT_BASE_URL } = require("./utils");
 
-const USER_AGENTS = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-];
+// ── header-generator: produces realistic Chrome/Firefox header sets ──
+const headerGen = new HeaderGenerator({
+  browsers: [{ name: "chrome", minVersion: 128, maxVersion: 135 }],
+  devices: ["desktop"],
+  operatingSystems: ["windows", "macos"],
+  locales: ["en-US"],
+});
 
 // ── Circuit breaker: stop hammering TM if it starts blocking ──
 let _consecutiveBlocks = 0;
@@ -21,10 +24,19 @@ let _circuitOpenUntil = 0;
 const CIRCUIT_THRESHOLD = 3;
 const CIRCUIT_COOLDOWN = 5 * 60 * 1000; // 5 min
 let _lastFetchTime = 0;
-const MIN_FETCH_GAP_MS = 1500; // 1.5s between requests
+const MIN_FETCH_GAP_MS = 1500;
+const MAX_FETCH_GAP_MS = 4000;
 
-function getRandomUserAgent() {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+function randomDelay() {
+  return MIN_FETCH_GAP_MS + Math.floor(Math.random() * (MAX_FETCH_GAP_MS - MIN_FETCH_GAP_MS));
+}
+
+function getRealisticHeaders() {
+  const h = headerGen.getHeaders();
+  // Add Referer + ensure Accept-Language
+  h["referer"] = "https://www.transfermarkt.com/";
+  if (!h["accept-language"]) h["accept-language"] = "en-US,en;q=0.9";
+  return h;
 }
 
 function buildReleasesUrl(minValue, maxValue, page = 1) {
@@ -38,10 +50,10 @@ function fetchHtml(url) {
       reject(new Error("TM circuit breaker open — cooling down"));
       return;
     }
-    const ua = getRandomUserAgent();
+    const headers = getRealisticHeaders();
     const req = https.get(
       url,
-      { headers: { "User-Agent": ua, "Accept-Language": "en-US,en;q=0.9" } },
+      { headers },
       (res) => {
         if (res.statusCode === 429 || res.statusCode === 403 || res.statusCode === 503) {
           _consecutiveBlocks++;
@@ -75,9 +87,10 @@ function fetchHtml(url) {
  * Fetch TM HTML with rate limiting.
  */
 async function fetchHtmlWithFallback(url) {
-  // Rate limiter: enforce minimum gap
+  // Rate limiter: enforce randomized gap
   const now = Date.now();
-  const wait = MIN_FETCH_GAP_MS - (now - _lastFetchTime);
+  const gap = randomDelay();
+  const wait = gap - (now - _lastFetchTime);
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   _lastFetchTime = Date.now();
   return fetchHtml(url);

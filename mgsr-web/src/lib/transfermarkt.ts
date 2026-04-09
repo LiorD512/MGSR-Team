@@ -1,17 +1,29 @@
 /**
  * Transfermarkt scraping logic (ported from mgsr-backend).
  * Used by Next.js API routes.
+ * Uses header-generator for realistic browser headers (sec-ch-ua, sec-fetch-*, etc.).
  */
 import * as cheerio from 'cheerio';
+import { HeaderGenerator } from 'header-generator';
 
 const TRANSFERMARKT_BASE = 'https://www.transfermarkt.com';
 
-const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-];
-
 const FETCH_TIMEOUT_MS = 60000;
+
+// ── header-generator: produces realistic Chrome headers via Bayesian networks ──
+const headerGen = new HeaderGenerator({
+  browsers: [{ name: 'chrome', minVersion: 128, maxVersion: 135 }],
+  devices: ['desktop'],
+  operatingSystems: ['windows', 'macos'],
+  locales: ['en-US'],
+});
+
+function getRealisticHeaders(): Record<string, string> {
+  const h = headerGen.getHeaders() as Record<string, string>;
+  h['referer'] = 'https://www.transfermarkt.com/';
+  if (!h['accept-language']) h['accept-language'] = 'en-US,en;q=0.9';
+  return h;
+}
 
 // ── Circuit breaker: stop hammering TM if it starts blocking ──
 let _consecutiveBlocks = 0;
@@ -19,10 +31,11 @@ let _circuitOpenUntil = 0;
 const CIRCUIT_THRESHOLD = 3;   // 3 consecutive 429/503 → trip
 const CIRCUIT_COOLDOWN = 5 * 60 * 1000; // 5 min cooldown
 let _lastFetchTime = 0;
-const MIN_FETCH_GAP_MS = 1500; // 1.5s between requests
+const MIN_FETCH_GAP_MS = 1500;
+const MAX_FETCH_GAP_MS = 4000;
 
-function getRandomUserAgent(): string {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+function randomDelay(): number {
+  return MIN_FETCH_GAP_MS + Math.floor(Math.random() * (MAX_FETCH_GAP_MS - MIN_FETCH_GAP_MS));
 }
 
 export async function fetchHtml(url: string): Promise<string> {
@@ -30,18 +43,15 @@ export async function fetchHtml(url: string): Promise<string> {
   if (_circuitOpenUntil > Date.now()) {
     throw new Error(`TM circuit breaker open — cooling down until ${new Date(_circuitOpenUntil).toISOString()}`);
   }
-  // Rate limiter: enforce minimum gap between requests
+  // Rate limiter: enforce randomized gap between requests
   const now = Date.now();
-  const wait = MIN_FETCH_GAP_MS - (now - _lastFetchTime);
+  const gap = randomDelay();
+  const wait = gap - (now - _lastFetchTime);
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   _lastFetchTime = Date.now();
 
   const res = await fetch(url, {
-    headers: {
-      'User-Agent': getRandomUserAgent(),
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
+    headers: getRealisticHeaders(),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
 

@@ -1480,34 +1480,36 @@ async function runScoutAgent() {
     mexico: ["https://www.transfermarkt.com/liga-mx/startseite/wettbewerb/MEX1"],
   };
 
-  const TM_USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-  ];
+  const TM_HEADER_GEN = new (require("header-generator").HeaderGenerator)({
+    browsers: [{ name: "chrome", minVersion: 128, maxVersion: 135 }],
+    devices: ["desktop"],
+    operatingSystems: ["windows", "macos"],
+    locales: ["en-US"],
+  });
 
   // ── Circuit breaker for scout agent TM fetches ──
   let _scoutBlocks = 0;
   let _scoutCircuitUntil = 0;
   let _scoutLastFetch = 0;
+  const SCOUT_MIN_GAP = 1500;
+  const SCOUT_MAX_GAP = 4000;
 
   async function fetchTmHtml(url) {
     // Circuit breaker
     if (_scoutCircuitUntil > Date.now()) {
       throw new Error("TM circuit breaker open — cooling down");
     }
-    // Rate limiter: 1.5s gap
-    const wait = 1500 - (Date.now() - _scoutLastFetch);
+    // Rate limiter: randomized gap
+    const gap = SCOUT_MIN_GAP + Math.floor(Math.random() * (SCOUT_MAX_GAP - SCOUT_MIN_GAP));
+    const wait = gap - (Date.now() - _scoutLastFetch);
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     _scoutLastFetch = Date.now();
 
-    const ua = TM_USER_AGENTS[Math.floor(Math.random() * TM_USER_AGENTS.length)];
+    const headers = TM_HEADER_GEN.getHeaders();
+    headers["referer"] = "https://www.transfermarkt.com/";
+    if (!headers["accept-language"]) headers["accept-language"] = "en-US,en;q=0.9";
     const res = await fetch(url, {
-      headers: {
-        "User-Agent": ua,
-        Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
+      headers,
       signal: AbortSignal.timeout(30000),
     });
 

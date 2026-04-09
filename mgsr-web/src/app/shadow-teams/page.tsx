@@ -10,7 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { callShadowTeamsSave } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
 import { FORMATIONS } from '@/lib/shadowTeamFormations';
-import { convertPosition } from '@/lib/transfermarkt';
+import { convertPosition } from '@/lib/transfermarkt-utils';
 
 interface ShadowPlayer {
   id: string;
