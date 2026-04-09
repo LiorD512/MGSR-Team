@@ -132,48 +132,69 @@ async function main() {
     );
   }
 
-  // Step 4: Fresh read of ScoutProfiles + batch apply all cached images
-  // This ensures we use the LATEST doc IDs, even if they changed during scraping
+  // Step 4: Apply cached images to ScoutProfiles
+  // Use chunked WHERE-IN queries instead of a full collection read for reliability
   console.log('\nApplying images to current ScoutProfiles...');
-  const freshSnap = await db.collection('ScoutProfiles').get();
   let applied = 0;
   let skipped = 0;
+  let notFound = 0;
   const BATCH_SIZE = 450;
-  let batch = db.batch();
-  let batchCount = 0;
+  const IN_LIMIT = 30; // Firestore WHERE IN max
 
-  for (const doc of freshSnap.docs) {
-    const d = doc.data();
-    const tmUrl = d.tmProfileUrl;
-    if (!tmUrl) continue;
-    const cached = imageCache.get(tmUrl);
-    if (!cached) continue;
+  // Build list of all tmUrls we have cached images for
+  const cachedUrls = Array.from(imageCache.keys());
+  console.log(`Have ${cachedUrls.length} cached URLs to apply`);
 
-    const currentImg = d.profileImage || '';
-    if (currentImg === cached.imageUrl) { skipped++; continue; }
+  for (let i = 0; i < cachedUrls.length; i += IN_LIMIT) {
+    const urlChunk = cachedUrls.slice(i, i + IN_LIMIT);
+    try {
+      const querySnap = await db.collection('ScoutProfiles')
+        .where('tmProfileUrl', 'in', urlChunk)
+        .get();
 
-    batch.update(doc.ref, { profileImage: cached.imageUrl });
-    batchCount++;
-    applied++;
+      if (querySnap.empty) {
+        notFound += urlChunk.length;
+        continue;
+      }
 
-    if (batchCount >= BATCH_SIZE) {
-      await batch.commit();
-      batch = db.batch();
-      batchCount = 0;
+      let batch = db.batch();
+      let batchCount = 0;
+
+      for (const doc of querySnap.docs) {
+        const d = doc.data();
+        const cached = imageCache.get(d.tmProfileUrl);
+        if (!cached) continue;
+
+        const currentImg = d.profileImage || '';
+        if (currentImg === cached.imageUrl) { skipped++; continue; }
+
+        batch.update(doc.ref, { profileImage: cached.imageUrl });
+        batchCount++;
+        applied++;
+
+        if (batchCount >= BATCH_SIZE) {
+          await batch.commit();
+          batch = db.batch();
+          batchCount = 0;
+        }
+      }
+      if (batchCount > 0) await batch.commit();
+    } catch (err: any) {
+      console.log(`  Query chunk ${i / IN_LIMIT + 1} failed: ${err.message}`);
+      notFound += urlChunk.length;
     }
   }
-  if (batchCount > 0) await batch.commit();
-  console.log(`Applied ${applied} images, ${skipped} already up-to-date`);
+  console.log(`Applied ${applied} images, ${skipped} already up-to-date, ${notFound} URLs not found in profiles`);
 
   const durationMin = ((Date.now() - startTime) / 60000).toFixed(1);
   console.log(`\n=== REPORT ===`);
   console.log(`Duration: ${durationMin} minutes`);
-  console.log(`Profiles: ${profilesSnap.size} initial, ${freshSnap.size} at apply time`);
+  console.log(`Profiles: ${profilesSnap.size} initial`);
   console.log(`Already good: ${alreadyGood}`);
   console.log(`From cache (pre-existing): ${cacheHits}`);
   console.log(`Freshly scraped: ${enriched} real images, ${defaultPlaceholders} no-photo`);
   console.log(`Failed scrapes: ${failed}`);
-  console.log(`Images applied to profiles: ${applied}`);
+  console.log(`Images applied: ${applied}, skipped: ${skipped}, not found: ${notFound}`);
 
   // GitHub Actions summary
   if (process.env.GITHUB_STEP_SUMMARY) {
@@ -184,13 +205,14 @@ async function main() {
       `|--------|-------|`,
       `| Duration | ${durationMin} min |`,
       `| Initial profiles | ${profilesSnap.size} |`,
-      `| Profiles at apply | ${freshSnap.size} |`,
       `| Already good | ${alreadyGood} |`,
       `| From cache | ${cacheHits} |`,
       `| Scraped (real) | ${enriched} |`,
       `| Scraped (no-photo) | ${defaultPlaceholders} |`,
       `| Failed scrapes | ${failed} |`,
       `| Images applied | ${applied} |`,
+      `| Skipped (up-to-date) | ${skipped} |`,
+      `| Not found | ${notFound} |`,
       '',
     ].join('\n'));
   }
