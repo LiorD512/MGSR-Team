@@ -1,19 +1,12 @@
 {
   "windows": [
     {
-      "countryName": "Japan",
-      "countryCode": "jp",
-      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/77.png",
-      "confederation": "AFC",
-      "daysLeft": 0
-    },
-    {
       "countryName": "Canada",
       "countryCode": "ca",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/80.png",
       "confederation": "CONCACAF",
-      "daysLeft": 9
+      "daysLeft": 8
     }
   ],
-  "updatedAt": "2026-04-08T08:52:38.607Z"
+  "updatedAt": "2026-04-09T09:07:05.075Z"
 }
