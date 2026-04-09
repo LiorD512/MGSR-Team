@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleContractFinishers } from '@/lib/transfermarkt';
-import { getCached, setCache } from '@/lib/scrapingCache';
+import { getCachedChunked, setCacheChunked } from '@/lib/scrapingCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const refresh = request.nextUrl.searchParams.get('refresh') === 'true';
     if (!refresh) {
-      const cached = await getCached<Record<string, unknown>[]>(CACHE_KEY, CACHE_TTL);
+      const cached = await getCachedChunked<Record<string, unknown>>(CACHE_KEY, CACHE_TTL);
       if (cached) {
         return NextResponse.json(cached, {
           headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' },
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       }
     }
     const data = await handleContractFinishers();
-    await setCache(CACHE_KEY, data);
+    await setCacheChunked(CACHE_KEY, Array.isArray(data) ? data : (data as any).players || []);
     return NextResponse.json(data, {
       headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' },
     });
