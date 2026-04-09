@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleReturneesStream } from '@/lib/transfermarkt';
-import { getCached, setCache } from '@/lib/scrapingCache';
+import { getCachedChunked, setCacheChunked } from '@/lib/scrapingCache';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   // Check Firestore cache — return as single SSE frame
   if (!refresh) {
-    const cached = await getCached<Record<string, unknown>[]>(CACHE_KEY, CACHE_TTL);
+    const cached = await getCachedChunked<Record<string, unknown>>(CACHE_KEY, CACHE_TTL);
     if (cached) {
       const body = encoder.encode(
         `data: ${JSON.stringify({ players: cached, loadedLeagues: 27, totalLeagues: 27, isLoading: false })}\n\n`
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
           if (event.players?.length) { allPlayers.length = 0; allPlayers.push(...event.players); }
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
         }
-        if (allPlayers.length) await setCache(CACHE_KEY, allPlayers);
+        if (allPlayers.length) await setCacheChunked(CACHE_KEY, allPlayers);
         controller.close();
       } catch (err) {
         console.error('Returnees stream error:', err);
