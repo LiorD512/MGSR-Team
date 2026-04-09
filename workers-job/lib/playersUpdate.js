@@ -18,18 +18,6 @@ function getRandomUserAgent() {
 }
 
 async function fetchDocument(url) {
-  const proxyUrl = process.env.SCOUT_TM_PROXY_URL;
-  const proxySecret = process.env.SCOUT_ENRICH_SECRET;
-
-  // Use Vercel proxy if available (TM blocks Cloud Run IPs)
-  if (proxyUrl && proxySecret) {
-    const res = await axios.post(proxyUrl, { secret: proxySecret, url }, {
-      timeout: 20000,
-      validateStatus: (s) => s === 200,
-    });
-    return cheerio.load(res.data);
-  }
-
   const res = await axios.get(url, {
     headers: {
       "User-Agent": getRandomUserAgent(),

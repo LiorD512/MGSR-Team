@@ -1487,22 +1487,7 @@ async function runScoutAgent() {
   ];
 
   async function fetchTmHtml(url) {
-    // Try Vercel proxy first (bypasses TM's Google Cloud IP block)
-    const proxyUrl = process.env.SCOUT_TM_PROXY_URL;
-    const proxySecret = process.env.SCOUT_ENRICH_SECRET;
-    if (proxyUrl && proxySecret) {
-      try {
-        const proxyRes = await fetch(proxyUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ secret: proxySecret, url }),
-          signal: AbortSignal.timeout(25000),
-        });
-        if (proxyRes.ok) return proxyRes.text();
-        // Proxy returned error — fall through to direct fetch
-      } catch { /* proxy failed — fall through */ }
-    }
-    // Direct fetch fallback (works locally, may fail on Cloud Functions)
+    // Direct fetch with user-agent rotation
     const ua = TM_USER_AGENTS[Math.floor(Math.random() * TM_USER_AGENTS.length)];
     const res = await fetch(url, {
       headers: {

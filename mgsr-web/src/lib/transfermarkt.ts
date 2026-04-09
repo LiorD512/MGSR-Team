@@ -18,13 +18,6 @@ function getRandomUserAgent(): string {
 }
 
 export async function fetchHtml(url: string): Promise<string> {
-  // Always use Render proxy when configured — bulletproof, no Vercel IP blocks
-  const backendUrl = process.env.MGSR_BACKEND_URL;
-  const secret = process.env.SCOUT_ENRICH_SECRET;
-  if (backendUrl && secret) {
-    return fetchHtmlViaProxy(url, backendUrl, secret);
-  }
-  // Fallback to direct fetch only when proxy is not configured (local dev)
   const res = await fetch(url, {
     headers: {
       'User-Agent': getRandomUserAgent(),
@@ -35,21 +28,6 @@ export async function fetchHtml(url: string): Promise<string> {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
-}
-
-/**
- * Fetch TM HTML through mgsr-backend (Render) — primary method for all TM scraping.
- * Render has session-based anti-blocking engine with cookie persistence.
- */
-async function fetchHtmlViaProxy(url: string, backendUrl: string, secret: string): Promise<string> {
-  const proxyRes = await fetch(`${backendUrl}/tm_proxy`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret, url }),
-    signal: AbortSignal.timeout(30000),
-  });
-  if (!proxyRes.ok) throw new Error(`Proxy HTTP ${proxyRes.status}`);
-  return proxyRes.text();
 }
 
 export async function fetchHtmlWithRetry(url: string, maxRetries = 2): Promise<string> {

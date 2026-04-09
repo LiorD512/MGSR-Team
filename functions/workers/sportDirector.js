@@ -879,13 +879,9 @@ const STATS_DEPENDENT_PROFILES = new Set([
 ]);
 
 /**
- * Fetch TM stats via Vercel proxy (if configured) or direct fetch.
- * Vercel proxy bypasses TM's Google Cloud IP blocks.
+ * Fetch TM stats via direct fetch with user-agent rotation.
  */
 async function fetchTmStatsWithProxy(tmProfileUrl) {
-  const proxyUrl = process.env.SCOUT_TM_PROXY_URL;
-  const secret = process.env.SCOUT_ENRICH_SECRET;
-
   const id = extractTmPlayerId(tmProfileUrl);
   if (!id) return null;
 
@@ -897,31 +893,11 @@ async function fetchTmStatsWithProxy(tmProfileUrl) {
   const urlWithSeason = perfUrl.includes("saison") ? perfUrl : `${perfUrl}/saison/${season}`;
 
   let html;
-  if (proxyUrl && secret) {
-    try {
-      const res = await fetch(proxyUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret, url: urlWithSeason }),
-        signal: AbortSignal.timeout(20000),
-      });
-      if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`);
-      html = await res.text();
-    } catch (proxyErr) {
-      // Fall back to direct fetch if proxy fails
-      try {
-        const directRes = await intelFetch(urlWithSeason);
-        if (!directRes.ok) return null;
-        html = await directRes.text();
-      } catch { return null; }
-    }
-  } else {
-    try {
-      const res = await intelFetch(urlWithSeason);
-      if (!res.ok) return null;
-      html = await res.text();
-    } catch { return null; }
-  }
+  try {
+    const res = await intelFetch(urlWithSeason);
+    if (!res.ok) return null;
+    html = await res.text();
+  } catch { return null; }
 
   if (!html) return null;
 

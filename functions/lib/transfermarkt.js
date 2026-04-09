@@ -49,25 +49,9 @@ function fetchHtml(url) {
 }
 
 /**
- * Fetch TM HTML — always through Render proxy when configured.
- * Direct fetch only used when proxy env vars are missing (local dev).
+ * Fetch TM HTML — direct fetch with user-agent rotation.
  */
 async function fetchHtmlWithFallback(url) {
-  const proxyUrl = process.env.SCOUT_TM_PROXY_URL;
-  const secret = process.env.SCOUT_ENRICH_SECRET;
-
-  if (proxyUrl && secret) {
-    const res = await fetch(proxyUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ secret, url }),
-      signal: AbortSignal.timeout(25000),
-    });
-    if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`);
-    return res.text();
-  }
-
-  // Fallback: direct fetch (local dev only)
   return fetchHtml(url);
 }
 
