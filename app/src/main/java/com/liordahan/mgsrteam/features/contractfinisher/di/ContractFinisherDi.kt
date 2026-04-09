@@ -9,5 +9,5 @@ import org.koin.dsl.module
 val contractFinisherModule = module {
 
     single { ContractFinisher() }
-    viewModel<IContractFinisherViewModel> { ContractFinisherViewModel(get(), get()) }
+    viewModel<IContractFinisherViewModel> { ContractFinisherViewModel(get(), get(), get()) }
 }

@@ -9,6 +9,6 @@ import org.koin.dsl.module
 val returneeModule = module {
 
     single { Returnees() }
-    viewModel<IReturneeViewModel> { ReturneeViewModel(get(), get()) }
+    viewModel<IReturneeViewModel> { ReturneeViewModel(get(), get(), get()) }
 
 }

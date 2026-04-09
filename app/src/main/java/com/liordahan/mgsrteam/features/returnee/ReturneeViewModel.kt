@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.returnee.model.Leagues
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.firebase.ScrapingCacheRepository
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.transfermarket.Returnees
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
@@ -54,7 +55,8 @@ abstract class IReturneeViewModel : ViewModel() {
 
 class ReturneeViewModel(
     private val returnees: Returnees,
-    private val firebaseHandler: FirebaseHandler
+    private val firebaseHandler: FirebaseHandler,
+    private val scrapingCache: ScrapingCacheRepository
 ) : IReturneeViewModel() {
 
     private val _returneeFlow = MutableStateFlow(ReturneeUiState())
@@ -65,6 +67,28 @@ class ReturneeViewModel(
         getAllPositions()
         val leagues = updateLeagues().sortedBy { it.leagueName }
         _returneeFlow.update { it.copy(leaguesList = leagues, totalLeaguesCount = leagues.size) }
+        loadFromCacheThenFetch()
+    }
+
+    /**
+     * Load returnees from Firestore cache first (populated weekly by GitHub Actions).
+     * If cache has data, show it instantly. Otherwise fall back to live scraping.
+     */
+    private fun loadFromCacheThenFetch() {
+        viewModelScope.launch {
+            _returneeFlow.update { it.copy(isLoading = true) }
+            val cached = scrapingCache.getCachedPlayers("returnees-stream-all")
+            if (!cached.isNullOrEmpty()) {
+                updatePlayersState(
+                    allPlayers = cached,
+                    isLoading = false,
+                    loadedCount = _returneeFlow.value.totalLeaguesCount
+                )
+                return@launch
+            }
+            // No cache — fall back to live scraping
+            fetchAllReturneesFromAllLeagues()
+        }
     }
 
     /**

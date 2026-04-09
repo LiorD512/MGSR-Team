@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.firebase.ScrapingCacheRepository
 import com.liordahan.mgsrteam.transfermarket.Confederation
 import com.liordahan.mgsrteam.transfermarket.ContractFinisher
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
@@ -66,7 +67,8 @@ abstract class IContractFinisherViewModel : ViewModel() {
 
 class ContractFinisherViewModel(
     private val firebaseHandler: FirebaseHandler,
-    private val contractFinisher: ContractFinisher
+    private val contractFinisher: ContractFinisher,
+    private val scrapingCache: ScrapingCacheRepository
 ) : IContractFinisherViewModel() {
 
     private val config = contractFinisher.getCurrentWindowConfig()
@@ -159,7 +161,8 @@ class ContractFinisherViewModel(
     }
 
     /**
-     * Fetches contract finishers page by page, updating UI after each page (like Returnees).
+     * Tries Firestore cache first (populated weekly by GitHub Actions).
+     * Falls back to live TM scraping if cache is empty or expired.
      */
     private fun fetchByDetailsuche() {
         fetchJob?.cancel()
@@ -167,13 +170,21 @@ class ContractFinisherViewModel(
             _isLoadingFlow.value = true
             _fetchErrorFlow.value = null
 
+            // Try cache first
+            val cached = scrapingCache.getCachedPlayers("contract-finishers")
+            if (!cached.isNullOrEmpty()) {
+                _playersFlow.value = cached.sortedByDescending { it.getRealMarketValue() }
+                _isLoadingFlow.value = false
+                return@launch
+            }
+
+            // Fallback: live scraping
             try {
                 contractFinisher.fetchContractFinishersAsFlow(config).collect { progress ->
                     _playersFlow.value = progress.players
                     _isLoadingFlow.value = progress.isLoading
                     progress.error?.let { _fetchErrorFlow.value = it }
                 }
-                // Safety net: flow completed normally – ensure loading is off
                 _isLoadingFlow.value = false
             } catch (e: CancellationException) {
                 throw e
