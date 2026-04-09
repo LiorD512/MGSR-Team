@@ -225,7 +225,7 @@ export default function FindNextTab() {
       if (valueMax > 0) {
         params.set('value_max', String(valueMax));
       }
-      const res = await fetch(`/api/scout/find-next?${params.toString()}`, {
+      const res = await fetch(`https://football-scout-server-l38w.onrender.com/find_next?${params.toString()}`, {
         headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(120000),
       });

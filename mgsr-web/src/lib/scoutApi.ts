@@ -7,6 +7,9 @@
 // Use proxy to avoid CORS when deployed (browser → Vercel → Render)
 const SCOUT_BASE_URL = '/api/scout';
 
+// Direct Render URL for endpoints with server-side Gemini enrichment (no Vercel proxy needed)
+const RENDER_SCOUT_URL = 'https://football-scout-server-l38w.onrender.com';
+
 /** Classify FM Current Ability into a tier label (mirrors Python classify_fm_tier) */
 function classifyFmTier(ca: number): string | undefined {
   if (ca <= 0) return undefined;
@@ -97,6 +100,8 @@ function parseResult(p: Record<string, unknown>): ScoutPlayerSuggestion {
 
   const playingStyle = (p.playing_style as string)?.trim() || undefined;
   const serverExplanation = (p.explanation as string)?.trim() || undefined;
+  // Prefer Gemini-enriched analysis (from Render) over basic Python explanation
+  const geminiAnalysis = (p.scoutAnalysis as string)?.trim() || (p.scout_analysis as string)?.trim() || undefined;
   const reason = [playingStyle, effectiveScore != null ? `Match: ${effectiveScore}%` : null].filter(Boolean).join(' · ') || undefined;
 
   const clubFit = (p.club_fit_score as number) ?? undefined;
@@ -112,7 +117,7 @@ function parseResult(p: Record<string, unknown>): ScoutPlayerSuggestion {
     similarityReason: reason || undefined,
     playingStyle,
     matchPercent: effectiveScore ?? undefined,
-    scoutAnalysis: serverExplanation,
+    scoutAnalysis: geminiAnalysis || serverExplanation,
     scoreBreakdown:
       clubFit != null || realism != null || noteFit != null
         ? { clubFit, realism, noteFit }
@@ -301,7 +306,7 @@ export async function findSimilarPlayers(
   if (ctx?.playerMarketValue) search.set('player_market_value', ctx.playerMarketValue);
   search.set('_t', String(Date.now()));
 
-  const url = `${SCOUT_BASE_URL}/similar-players?${search.toString()}`;
+  const url = `${RENDER_SCOUT_URL}/similar_players?${search.toString()}`;
   const res = await fetch(url, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
