@@ -1,14 +1,52 @@
 # MGSR Team — Agent Instructions
 
+> **MANDATORY: Every agent MUST read this file AND `ARCHITECTURE.md` before writing a single line of code.**
+> **After every fix or feature, update `ARCHITECTURE.md` with changes.**
+
+---
+
+## ABSOLUTE RULES — NON-NEGOTIABLE
+
+### 1. NEVER Revert, Delete, or Remove ANYTHING Without Explicit Approval
+- **NEVER remove any feature, workflow, file, function, import, or logic without the user's explicit written approval.**
+- **NEVER revert a change, undo a commit, or reset code without asking first.**
+- **NEVER assume something is "stale", "unused", "dead code", or "safe to delete".** Verify across ALL references: runtime code, Cloud Functions, API routes, GitHub Actions, workers, scripts, Android, Web, build configs, deployment configs, env files, and documentation.
+- If asked "is this safe to delete?", search EVERYTHING before answering. If there is any doubt, say "I'm not sure — let me check further" or "I found references in X, Y, Z — not safe."
+- When cleaning up after a change, only remove code YOU introduced in the current session that is confirmed unused. Do NOT touch pre-existing code.
+
+### 2. No Assumptions — Only Verified, Tested Answers
+- **NEVER guess, assume, or provide theoretical answers.** Every answer and recommendation must be based on verified facts from the actual codebase.
+- Before answering any question about how something works, **read the actual source code**. Do not rely on pattern-matching or assumptions about "typical" implementations.
+- Before suggesting a fix, **understand the full call chain**: caller → function → dependencies → side effects. Read all relevant files.
+- Before saying "this doesn't exist" or "this isn't used", **search comprehensively**: grep the entire workspace, check all platforms (Android, Web, Cloud Functions, workers, scripts, GitHub Actions).
+- If you don't know something, say "I need to check" and then check. Never fabricate an answer.
+
+### 3. Read Architecture Before Working
+- Read `ARCHITECTURE.md` for the complete system map: every screen, every callable, every API route, every data flow, where every service runs.
+- Read this instructions file for coding rules and patterns.
+- If a feature touches multiple platforms, understand all affected files before making any change.
+
+### 4. Update Architecture After Every Change
+- After completing any feature or fix, update `ARCHITECTURE.md` to reflect the new state.
+- If you added a new screen, callable, API route, component, or external integration — add it to the architecture file.
+- If you changed data flow, collection names, or deployment config — update the architecture file.
+
+---
+
 ## Project Overview
 
 MGSR Team is a **multi-platform football agent management system** with:
 - **Android app** — Kotlin + Jetpack Compose (module: `app/`)
-- **Web app** — Next.js + TypeScript + Tailwind (module: `mgsr-web/`)
-- **Cloud Functions** — Node.js Firebase Functions (module: `functions/`)
+- **Web app** — Next.js 14 + TypeScript + Tailwind (module: `mgsr-web/`), deployed on **Vercel**
+- **Cloud Functions** — Node.js Firebase Functions (module: `functions/`), deployed on **Firebase**
+- **Football Scout Server** — Python FastAPI (separate repo), deployed on **Render**
+- **Cloud Run Workers** — GCP Cloud Run Jobs (`workers-job/`, `workers-job-scout-build/`)
 - **Transfermarkt scraper** — Kotlin Android library (module: `transfermarkt/`)
+- **GitHub Actions** — Scheduled cache population and data refresh
 
 The app supports **three platforms** (Men, Women, Youth) switchable at runtime via `PlatformManager`. Each platform has its own Firestore collections, UI accent colors, and data sources.
+
+**Full architecture details → `ARCHITECTURE.md`**
 
 ---
 
@@ -45,9 +83,11 @@ Add new remote config values to the Config collection, not as hardcoded constant
 
 ### Platform-Aware Code
 - Use `PlatformManager.current` to check active platform
-- Collections are platform-specific: `Players` (Men), `WomenPlayers`, `YouthPlayers`
-- Feed events: `FeedEvents`, `WomenFeedEvents`, `YouthFeedEvents`
+- Collections are platform-specific: `Players` (Men), `PlayersWomen` (Women), `PlayersYouth` (Youth)
+- Feed events: `FeedEvents`, `FeedEventsWomen`, `FeedEventsYouth`
+- All platform-specific collections follow the same pattern: `{CollectionName}Women`, `{CollectionName}Youth`
 - Cloud Functions accept `platform: "men" | "women" | "youth"` and resolve collections server-side via `platformCollections.js`
+- See `ARCHITECTURE.md` § "Platform System" and § "Firestore Data Model" for the complete collection mapping
 
 ---
 
@@ -113,7 +153,15 @@ Add new remote config values to the Config collection, not as hardcoded constant
 
 ## Testing & Verification
 
-**After every new feature or major fix, verify on both platforms:**
+**After every new feature or major fix, verify on both platforms.**
+
+### Mandatory Pre-Work Checklist
+Before writing any code:
+1. Read `ARCHITECTURE.md` — understand the full system
+2. Read this instructions file
+3. Identify ALL files that will be affected (Android, Web, Cloud Functions, workers, scripts)
+4. Read every file you plan to modify BEFORE modifying it
+5. Understand the full call chain: UI → ViewModel/State → callable → Cloud Function → Firestore → triggers
 
 ### Git — Never Push Without Approval
 **Never push to git, deploy functions, or perform any destructive/shared-system action without explicit user approval.** Always show what will be committed/pushed and wait for confirmation.
@@ -121,48 +169,42 @@ Add new remote config values to the Config collection, not as hardcoded constant
 ### Cost Awareness
 **Before implementing anything that incurs recurring or usage-based costs (Gemini API, OpenAI, Firebase Extensions, paid SDKs, Cloud Run scaling, etc.), inform the user with an estimate of the billing impact.** Do not silently add services that increase the monthly bill.
 
-### Android
+### Compilation Verification
 ```bash
-./gradlew :app:compileDebugKotlin    # Full app compilation
-./gradlew :transfermarkt:compileDebugKotlin  # Scraper module
+# Android — MUST pass after every change
+./gradlew :app:compileDebugKotlin
+./gradlew :transfermarkt:compileDebugKotlin
+
+# Web — MUST pass after every change
+cd mgsr-web && npx tsc --noEmit
+
+# Cloud Functions — deploy after adding/changing callables
+firebase deploy --only functions
 ```
-
-### Web
-```bash
-cd mgsr-web && npx tsc --noEmit      # TypeScript type checking
-```
-
-### Cloud Functions
-```bash
-firebase deploy --only functions      # Deploy after adding/changing callables
-firebase functions:list               # Verify functions are deployed
-```
-
-### Firestore Security Rules — Must Match Features
-**After every fix or new feature, verify that `firestore.rules` includes read/write rules for all Firestore collections used by the app.** Missing rules cause silent failures — the client SDK swallows permission errors and falls back to defaults.
-
-- Every new Firestore collection needs a corresponding `match` rule in `firestore.rules`
-- Deploy updated rules immediately: `firebase deploy --only firestore:rules`
-- Client-read collections (e.g. `Config`) need at least `allow read: if request.auth != null`
-- Write-only-by-backend collections should use `allow write: if false` (writes go through Cloud Functions with admin SDK, which bypasses rules)
-- After deploying, verify the rules are live in the Firebase Console
 
 ### What to Check
 - Both platforms compile with zero errors (warnings are acceptable)
 - New callables are exported in `functions/index.js`
-- Firestore rules in `firestore.rules` cover all collections used by the app
 - String resources exist in both `values/strings.xml` and `values-iw/strings.xml`
 - Filters, sorting, and empty states work correctly
 - Data flows: scraping → parsing → filtering → display → action (add to shortlist, etc.)
 
 ### Cleanup After Every Change
-**After completing a feature or fix, clean up:**
-- Remove unused imports, functions, classes, and variables
-- Delete dead code paths that were replaced
-- Remove temporary debug logs (keep meaningful ones)
-- Verify no orphaned files were left behind
+**After completing a feature or fix, clean up only what YOU introduced:**
+- Remove unused imports, functions, and variables that YOU added in this session
+- Remove temporary debug logs that YOU added (keep meaningful ones)
+- **NEVER delete pre-existing code, files, or imports unless the user explicitly approves**
+- **NEVER assume pre-existing code is "unused" or "dead"** — it may be referenced by other platforms, workers, scripts, or scheduled jobs you haven't checked
+- When unsure, **ask the user before removing anything**
 
-**Be careful not to delete files or code that are still needed.** When unsure, check for usages before removing.
+### Post-Change Architecture Update
+**After every fix or feature, update `ARCHITECTURE.md`:**
+- New screens → add to Feature Inventory
+- New callables → add to Callable Inventory
+- New API routes → add to API Route Inventory
+- New components → add to component list
+- Changed data flow → update relevant sections
+- New external integrations → add to External Data Sources
 
 ---
 
@@ -198,12 +240,35 @@ firebase functions:list               # Verify functions are deployed
 |---|---|
 | Entry point | `functions/index.js` |
 | Player ops | `functions/callables/players.js` |
+| Player create | `functions/callables/playersCreate.js` |
 | Contact ops | `functions/callables/contacts.js` |
 | Request ops | `functions/callables/requests.js` |
+| Request matching | `functions/callables/requestMatcher.js` |
 | Shortlist ops | `functions/callables/shortlists.js` |
 | Task ops | `functions/callables/tasks.js` |
+| Offers | `functions/callables/playerOffers.js` |
+| Agent transfers | `functions/callables/agentTransfers.js` |
+| Chat room | `functions/callables/chatRoom.js` |
+| Portfolio | `functions/callables/portfolio.js` |
+| Misc (share, shadow, birthday) | `functions/callables/phase6Misc.js` |
+| Account | `functions/callables/phase7Account.js` |
+| IFA fetch | `functions/callables/ifaFetch.js` |
 | Platform resolver | `functions/lib/platformCollections.js` |
 | Validation helpers | `functions/lib/validation.js` |
+
+### External Services
+| Purpose | Path / URL |
+|---|---|
+| Render scout server | `https://football-scout-server-l38w.onrender.com` |
+| Scout server URL config | `mgsr-web/src/lib/scoutServerUrl.ts` |
+| Scout API client (web) | `mgsr-web/src/lib/scoutApi.ts` |
+| GCP player refresh worker | `workers-job/run.js` |
+| GCP scout DB build worker | `workers-job-scout-build/run.sh` |
+| GitHub Actions | `.github/workflows/*.yml` |
+| Cache population script | `mgsr-web/_populate_cache.ts` |
+| Image enrichment script | `mgsr-web/_enrich_images.ts` |
+
+**For the complete architecture reference → see `ARCHITECTURE.md`**
 
 ---
 
