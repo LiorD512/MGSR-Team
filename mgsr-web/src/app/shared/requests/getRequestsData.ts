@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import type { Platform } from '@/contexts/PlatformContext';
 
@@ -33,7 +34,7 @@ const POSITION_ORDER = [
   'GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LM', 'RM', 'LW', 'RW', 'CF', 'SS',
 ];
 
-export async function getRequestsData(
+export const getRequestsData = cache(async function getRequestsData(
   platform: Platform = 'men'
 ): Promise<RequestsPageData | null> {
   try {
@@ -124,7 +125,7 @@ export async function getRequestsData(
     console.error('[getRequestsData]', e);
     return null;
   }
-}
+});
 
 /** Check if text contains Hebrew characters */
 function hasHebrew(text: string): boolean {
@@ -164,7 +165,13 @@ async function translateNotes(requests: SharedRequest[]): Promise<void> {
     ].join('\n');
 
     console.log('[translateNotes] Translating', toTranslate.length, 'notes');
-    const result = await model.generateContent(prompt);
+    // Timeout after 8s so we don't block the entire page render
+    const result = await Promise.race([
+      model.generateContent(prompt),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Gemini translation timeout')), 8000)
+      ),
+    ]);
     let text = result.response.text()?.trim() || '';
     console.log('[translateNotes] Raw response:', text.substring(0, 200));
 

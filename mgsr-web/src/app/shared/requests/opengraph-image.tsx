@@ -4,6 +4,7 @@ import { getRequestsData } from './getRequestsData';
 export const alt = 'MGSR Active Recruitment';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
+export const maxDuration = 30;
 
 const BG = '#0A1018';
 const CARD = '#1A2736';

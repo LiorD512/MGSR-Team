@@ -3,6 +3,7 @@ import SharedRequestsContent from './SharedRequestsContent';
 import type { Platform } from '@/contexts/PlatformContext';
 
 export const revalidate = 60; // Cache page, refresh every 60s in background
+export const maxDuration = 30;
 
 function getBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
