@@ -2014,15 +2014,51 @@ async function runScoutAgent() {
   console.log(`[ScoutAgent] Sport Director: ${approvedProfiles.length} approved, ${rejectedProfiles.length} rejected`);
 
   // ═══════════════════════════════════════════════════════════════
-  // Enrich approved profiles with TM images (before Firestore write)
-  // TM image URLs now require a timestamp suffix, so we scrape the actual URL
+  // Enrich approved profiles with TM images — CACHE-FIRST
+  // Uses persistent ScoutImageCache collection (survives nightly wipe).
+  // Only scrapes TM for players with no cached image at all.
+  // Images cached for 14 days — weekly GH Actions workflow fills gaps.
   // ═══════════════════════════════════════════════════════════════
-  const ENRICH_CONCURRENCY = 5;
   const TM_DEFAULT_IMG = "https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1";
-  // Re-enrich profiles that have no image OR have the old broken format (no timestamp suffix)
+  const IMAGE_CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+  const imageCacheRef = db.collection("ScoutImageCache");
+
+  // Step 1: Load existing image cache into memory (fast single query)
+  const imageCacheSnap = await imageCacheRef.get();
+  const imageCache = new Map(); // playerUrl → { imageUrl, cachedAt }
+  for (const doc of imageCacheSnap.docs) {
+    const d = doc.data();
+    if (d.imageUrl && d.cachedAt && (Date.now() - d.cachedAt) < IMAGE_CACHE_TTL_MS) {
+      imageCache.set(d.playerUrl, d.imageUrl);
+    }
+  }
+  console.log(`[ScoutAgent] Image cache: ${imageCache.size} valid entries (of ${imageCacheSnap.size} total)`);
+
+  // Step 2: Apply cached images to approved profiles
+  let cacheHits = 0;
   const needsEnrich = (img) => !img || (!img.includes("default.jpg") && !/\d+-\d+\.\w+/.test(img));
-  const profilesToEnrich = approvedProfiles.filter((p) => needsEnrich(p.data.profileImage));
-  console.log(`[ScoutAgent] Enriching ${profilesToEnrich.length} profiles with TM images...`);
+  for (const profile of approvedProfiles) {
+    const tmUrl = profile.data.tmProfileUrl;
+    if (!tmUrl) continue;
+    const cachedImg = imageCache.get(tmUrl);
+    if (cachedImg) {
+      profile.data.profileImage = cachedImg;
+      cacheHits++;
+    }
+  }
+
+  // Step 3: Only scrape TM for profiles that have NO cached image at all
+  const profilesToEnrich = approvedProfiles.filter((p) => {
+    const tmUrl = p.data.tmProfileUrl;
+    // Already got a cache hit — skip
+    if (tmUrl && imageCache.has(tmUrl)) return false;
+    // Needs enrichment: no image or broken format
+    return needsEnrich(p.data.profileImage);
+  });
+  console.log(`[ScoutAgent] Image enrichment: ${cacheHits} from cache, ${profilesToEnrich.length} need TM scrape`);
+
+  const ENRICH_CONCURRENCY = 5;
+  const imageCacheWrites = []; // batch write to ScoutImageCache after enrichment
   for (let i = 0; i < profilesToEnrich.length; i += ENRICH_CONCURRENCY) {
     const chunk = profilesToEnrich.slice(i, i + ENRICH_CONCURRENCY);
     await Promise.all(
@@ -2031,25 +2067,23 @@ async function runScoutAgent() {
           const url = profile.data.tmProfileUrl;
           if (!url) return;
           const html = await fetchTmHtml(url);
-          // Look for portrait image URL with the player ID (.jpg or .png)
           const idMatch = url.match(/\/profil\/spieler\/(\d+)/);
           if (!idMatch) return;
           const pid = idMatch[1];
           const imgMatch = html.match(new RegExp(`https://img[^"']*?/portrait/(?:big|medium|header)/${pid}-[^"'?]+\\.(?:jpg|png)[^"']*`));
+          let imgUrl;
           if (imgMatch) {
-            let imgUrl = imgMatch[0];
-            imgUrl = imgUrl.replace("/medium/", "/big/").replace("/header/", "/big/");
-            profile.data.profileImage = imgUrl;
+            imgUrl = imgMatch[0].replace("/medium/", "/big/").replace("/header/", "/big/");
           } else {
-            // Player has no personal photo — use TM default placeholder
-            profile.data.profileImage = TM_DEFAULT_IMG;
+            imgUrl = TM_DEFAULT_IMG;
           }
+          profile.data.profileImage = imgUrl;
+          // Queue cache write
+          imageCacheWrites.push({ playerUrl: url, imageUrl: imgUrl, cachedAt: Date.now() });
         } catch (err) {
-          // Log first failure to help diagnose TM blocking
           if (i === 0 && profile === chunk[0]) {
             console.warn(`[ScoutAgent] TM image fetch failed: ${err.message || err}`);
           }
-          // Set default placeholder so frontend doesn't try broken timestamp-less URLs
           if (!profile.data.profileImage) {
             profile.data.profileImage = TM_DEFAULT_IMG;
           }
@@ -2058,9 +2092,26 @@ async function runScoutAgent() {
     );
     if (i + ENRICH_CONCURRENCY < profilesToEnrich.length) await sleep(2000);
   }
+
+  // Step 4: Persist newly scraped images to ScoutImageCache
+  if (imageCacheWrites.length > 0) {
+    const writeBatches = [];
+    let wb = db.batch();
+    let wc = 0;
+    for (const entry of imageCacheWrites) {
+      const docId = crypto.createHash("md5").update(entry.playerUrl).digest("hex");
+      wb.set(imageCacheRef.doc(docId), entry, { merge: true });
+      wc++;
+      if (wc % 450 === 0) { writeBatches.push(wb); wb = db.batch(); }
+    }
+    writeBatches.push(wb);
+    for (const b of writeBatches) await b.commit();
+    console.log(`[ScoutAgent] Wrote ${imageCacheWrites.length} images to ScoutImageCache`);
+  }
+
   const enrichedReal = profilesToEnrich.filter((p) => p.data.profileImage && !p.data.profileImage.includes("default.jpg")).length;
   const enrichedDefault = profilesToEnrich.filter((p) => p.data.profileImage && p.data.profileImage.includes("default.jpg")).length;
-  console.log(`[ScoutAgent] Image enrichment: ${enrichedReal} real TM images, ${enrichedDefault} default placeholders, ${profilesToEnrich.length - enrichedReal - enrichedDefault} failed`);
+  console.log(`[ScoutAgent] Image enrichment: ${cacheHits} cached, ${enrichedReal} freshly scraped, ${enrichedDefault} no-photo placeholders`);
 
   // ═══════════════════════════════════════════════════════════════
   // DELETE all old profiles before writing fresh batch
@@ -2216,27 +2267,11 @@ ONLY valid JSON.`;
   const durationMs = Date.now() - startTime;
 
   // ═══════════════════════════════════════════════════════════════
-  // Trigger Vercel-side image enrichment (Vercel can reach TM, Cloud Functions cannot)
+  // Vercel image enrichment REMOVED — replaced by:
+  // 1. ScoutImageCache (persistent, 14-day TTL) in Cloud Function above
+  // 2. Weekly GH Actions workflow (weekly-scout-images.yml) fills gaps
+  // TM blocks both Vercel and Cloud Functions IPs anyway.
   // ═══════════════════════════════════════════════════════════════
-  const enrichSecret = process.env.SCOUT_ENRICH_SECRET;
-  const enrichUrl = process.env.SCOUT_ENRICH_URL; // e.g. https://management.mgsrfa.com/api/war-room/enrich-images
-  if (enrichSecret && enrichUrl && approvedProfiles.length > 0) {
-    try {
-      const enrichRes = await fetch(enrichUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret: enrichSecret }),
-        signal: AbortSignal.timeout(65000),
-      });
-      const enrichData = await enrichRes.json().catch(() => ({}));
-      if (!enrichRes.ok) {
-        console.warn(`[ScoutAgent] Vercel image enrichment HTTP ${enrichRes.status}: ${enrichData.error || JSON.stringify(enrichData)}`);
-      }
-      console.log(`[ScoutAgent] Vercel image enrichment: ${enrichData.enriched || 0} enriched, ${enrichData.failed || 0} failed`);
-    } catch (err) {
-      console.warn(`[ScoutAgent] Vercel image enrichment failed (non-fatal): ${err.message || err}`);
-    }
-  }
 
   const runDoc = await runsRef.add({
     runAt: startTime,

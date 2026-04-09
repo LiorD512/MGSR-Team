@@ -1,0 +1,31 @@
+name: Weekly Scout Image Enrichment
+
+on:
+  schedule:
+    # Tuesday 3:00 AM Israel time (00:00 UTC Tuesday)
+    - cron: '0 0 * * 2'
+  workflow_dispatch: {} # manual trigger
+
+jobs:
+  enrich-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: mgsr-web
+        run: npm ci
+
+      - name: Enrich scout profile images
+        working-directory: mgsr-web
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+        run: npx tsx _enrich_images.ts

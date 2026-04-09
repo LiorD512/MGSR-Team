@@ -176,5 +176,10 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+    // ScoutImageCache: persistent TM image cache (written by Admin SDK, read-only for clients)
+    match /ScoutImageCache/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
   }
 }
