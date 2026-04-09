@@ -152,10 +152,6 @@ fun ReturneeScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.fetchAllReturneesFromAllLeagues()
-    }
-
     LaunchedEffect(showAddPlayerBottomSheet, addPlayerTmUrl) {
         if (showAddPlayerBottomSheet && !addPlayerTmUrl.isNullOrBlank()) {
             addPlayerViewModel.loadPlayerByTmProfileUrl(addPlayerTmUrl!!)
