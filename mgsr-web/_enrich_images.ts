@@ -63,9 +63,9 @@ async function main() {
   }
   console.log(`Image cache: ${imageCache.size} valid entries (of ${cacheSnap.size} total)`);
 
-  // Step 2: Load ScoutProfiles needing images
+  // Step 2: Load ScoutProfiles, collect TM URLs that need scraping
   const profilesSnap = await db.collection('ScoutProfiles').get();
-  const toEnrich: { docId: string; tmUrl: string }[] = [];
+  const urlsToScrape = new Set<string>();
   let alreadyGood = 0;
   let cacheHits = 0;
 
@@ -75,45 +75,34 @@ async function main() {
     if (!tmUrl) continue;
     const img = d.profileImage || '';
 
-    // Check cache first
-    const cached = imageCache.get(tmUrl);
-    if (cached) {
-      // If profile has different image than cache, update it
-      if (img !== cached.imageUrl) {
-        await doc.ref.update({ profileImage: cached.imageUrl });
-        cacheHits++;
-      } else {
-        alreadyGood++;
-      }
+    // Already in cache — skip scraping (will apply in step 4)
+    if (imageCache.has(tmUrl)) {
+      if (img !== imageCache.get(tmUrl)!.imageUrl) cacheHits++;
+      else alreadyGood++;
       continue;
     }
 
     // Needs enrichment: no image, default placeholder, or broken format
     if (!img || img.includes('default.jpg') || (img.includes('/portrait/') && !/-\d+\./.test(img))) {
-      toEnrich.push({ docId: doc.id, tmUrl });
+      urlsToScrape.add(tmUrl);
     } else {
       alreadyGood++;
     }
   }
 
-  console.log(`Profiles: ${profilesSnap.size} total, ${alreadyGood} good, ${cacheHits} updated from cache, ${toEnrich.length} need TM scrape\n`);
+  console.log(`Profiles: ${profilesSnap.size} total, ${alreadyGood} good, ${cacheHits} will update from cache, ${urlsToScrape.size} unique URLs need TM scrape\n`);
 
-  if (toEnrich.length === 0) {
-    console.log('Nothing to scrape — all profiles have images.');
-    process.exit(0);
-  }
-
-  // Step 3: Scrape TM for missing images
+  // Step 3: Scrape TM for missing images → write directly to ScoutImageCache
   let enriched = 0;
   let failed = 0;
   let defaultPlaceholders = 0;
-  const cacheWrites: { playerUrl: string; imageUrl: string; cachedAt: number }[] = [];
+  const urlList = Array.from(urlsToScrape);
 
-  for (let i = 0; i < toEnrich.length; i += CONCURRENCY) {
+  for (let i = 0; i < urlList.length; i += CONCURRENCY) {
     if (i > 0) await sleep(DELAY_MS);
-    const chunk = toEnrich.slice(i, i + CONCURRENCY);
+    const chunk = urlList.slice(i, i + CONCURRENCY);
     await Promise.all(
-      chunk.map(async ({ docId, tmUrl }) => {
+      chunk.map(async (tmUrl) => {
         try {
           const html = await fetchHtmlWithRetry(tmUrl);
           const idMatch = tmUrl.match(/\/profil\/spieler\/(\d+)/);
@@ -121,47 +110,70 @@ async function main() {
           const imgUrl = extractImageFromHtml(html, idMatch[1]);
           const finalImg = imgUrl || TM_DEFAULT_IMG;
 
-          // Update profile
-          await db.collection('ScoutProfiles').doc(docId).update({ profileImage: finalImg });
+          // Write to cache immediately (deterministic doc ID — never fails)
+          const cacheDocId = createHash('md5').update(tmUrl).digest('hex');
+          await db.collection('ScoutImageCache').doc(cacheDocId).set(
+            { playerUrl: tmUrl, imageUrl: finalImg, cachedAt: Date.now() },
+            { merge: true }
+          );
 
-          // Queue cache write
-          cacheWrites.push({ playerUrl: tmUrl, imageUrl: finalImg, cachedAt: Date.now() });
+          // Also add to in-memory cache for step 4
+          imageCache.set(tmUrl, { imageUrl: finalImg, cachedAt: Date.now() });
 
           if (imgUrl) enriched++;
           else defaultPlaceholders++;
 
-          console.log(`  [${i + 1}/${toEnrich.length}] ${imgUrl ? '✅' : '📷'} ${tmUrl.split('/').pop()}`);
+          console.log(`  [${i + 1}/${urlList.length}] ${imgUrl ? '✅' : '📷'} ${tmUrl.split('/').pop()}`);
         } catch (err: any) {
           failed++;
-          console.log(`  [${i + 1}/${toEnrich.length}] ❌ ${tmUrl.split('/').pop()} — ${err.message || err}`);
+          console.log(`  [${i + 1}/${urlList.length}] ❌ ${tmUrl.split('/').pop()} — ${err.message || err}`);
         }
       })
     );
   }
 
-  // Step 4: Batch write to ScoutImageCache
-  if (cacheWrites.length > 0) {
-    const BATCH_SIZE = 450;
-    for (let i = 0; i < cacheWrites.length; i += BATCH_SIZE) {
-      const batch = db.batch();
-      for (const entry of cacheWrites.slice(i, i + BATCH_SIZE)) {
-        const docId = createHash('md5').update(entry.playerUrl).digest('hex');
-        batch.set(db.collection('ScoutImageCache').doc(docId), entry, { merge: true });
-      }
+  // Step 4: Fresh read of ScoutProfiles + batch apply all cached images
+  // This ensures we use the LATEST doc IDs, even if they changed during scraping
+  console.log('\nApplying images to current ScoutProfiles...');
+  const freshSnap = await db.collection('ScoutProfiles').get();
+  let applied = 0;
+  let skipped = 0;
+  const BATCH_SIZE = 450;
+  let batch = db.batch();
+  let batchCount = 0;
+
+  for (const doc of freshSnap.docs) {
+    const d = doc.data();
+    const tmUrl = d.tmProfileUrl;
+    if (!tmUrl) continue;
+    const cached = imageCache.get(tmUrl);
+    if (!cached) continue;
+
+    const currentImg = d.profileImage || '';
+    if (currentImg === cached.imageUrl) { skipped++; continue; }
+
+    batch.update(doc.ref, { profileImage: cached.imageUrl });
+    batchCount++;
+    applied++;
+
+    if (batchCount >= BATCH_SIZE) {
       await batch.commit();
+      batch = db.batch();
+      batchCount = 0;
     }
-    console.log(`\nWrote ${cacheWrites.length} entries to ScoutImageCache`);
   }
+  if (batchCount > 0) await batch.commit();
+  console.log(`Applied ${applied} images, ${skipped} already up-to-date`);
 
   const durationMin = ((Date.now() - startTime) / 60000).toFixed(1);
   console.log(`\n=== REPORT ===`);
   console.log(`Duration: ${durationMin} minutes`);
-  console.log(`Profiles: ${profilesSnap.size} total`);
+  console.log(`Profiles: ${profilesSnap.size} initial, ${freshSnap.size} at apply time`);
   console.log(`Already good: ${alreadyGood}`);
-  console.log(`Updated from cache: ${cacheHits}`);
+  console.log(`From cache (pre-existing): ${cacheHits}`);
   console.log(`Freshly scraped: ${enriched} real images, ${defaultPlaceholders} no-photo`);
-  console.log(`Failed: ${failed}`);
-  console.log(`Cache entries written: ${cacheWrites.length}`);
+  console.log(`Failed scrapes: ${failed}`);
+  console.log(`Images applied to profiles: ${applied}`);
 
   // GitHub Actions summary
   if (process.env.GITHUB_STEP_SUMMARY) {
@@ -171,13 +183,14 @@ async function main() {
       `| Metric | Value |`,
       `|--------|-------|`,
       `| Duration | ${durationMin} min |`,
-      `| Total profiles | ${profilesSnap.size} |`,
+      `| Initial profiles | ${profilesSnap.size} |`,
+      `| Profiles at apply | ${freshSnap.size} |`,
       `| Already good | ${alreadyGood} |`,
       `| From cache | ${cacheHits} |`,
       `| Scraped (real) | ${enriched} |`,
       `| Scraped (no-photo) | ${defaultPlaceholders} |`,
-      `| Failed | ${failed} |`,
-      `| Cache writes | ${cacheWrites.length} |`,
+      `| Failed scrapes | ${failed} |`,
+      `| Images applied | ${applied} |`,
       '',
     ].join('\n'));
   }
