@@ -26,7 +26,7 @@ if gcloud run jobs describe $JOB_NAME --region $REGION --project $PROJECT_ID 2>/
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \
-    --set-env-vars "SCOUT_TM_PROXY_URL=https://management.mgsrfa.com/api/war-room/tm-fetch" \
+    --set-env-vars "SCOUT_TM_PROXY_URL=https://mgsr-backend.onrender.com/tm_proxy" \
     --set-secrets "SCOUT_ENRICH_SECRET=SCOUT_ENRICH_SECRET:latest"
 else
   gcloud run jobs create $JOB_NAME \
@@ -37,7 +37,7 @@ else
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \
-    --set-env-vars "SCOUT_TM_PROXY_URL=https://management.mgsrfa.com/api/war-room/tm-fetch" \
+    --set-env-vars "SCOUT_TM_PROXY_URL=https://mgsr-backend.onrender.com/tm_proxy" \
     --set-secrets "SCOUT_ENRICH_SECRET=SCOUT_ENRICH_SECRET:latest"
 fi
 

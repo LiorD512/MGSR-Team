@@ -48,8 +48,35 @@ function fetchHtml(url) {
   });
 }
 
+/**
+ * Fetch TM HTML with mgsr-backend proxy fallback.
+ * Direct fetch first (fast); on block → proxy through Render.
+ */
+async function fetchHtmlWithFallback(url) {
+  try {
+    return await fetchHtml(url);
+  } catch (directErr) {
+    // Only fallback on blocking errors, not 404 etc.
+    const status = directErr.message.match(/HTTP (\d+)/)?.[1];
+    if (status && !["403", "405", "429", "503"].includes(status)) throw directErr;
+
+    const proxyUrl = process.env.SCOUT_TM_PROXY_URL;
+    const secret = process.env.SCOUT_ENRICH_SECRET;
+    if (!proxyUrl || !secret) throw directErr;
+
+    const res = await fetch(proxyUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secret, url }),
+      signal: AbortSignal.timeout(25000),
+    });
+    if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`);
+    return res.text();
+  }
+}
+
 async function fetchDocument(url) {
-  const html = await fetchHtml(url);
+  const html = await fetchHtmlWithFallback(url);
   return cheerio.load(html);
 }
 

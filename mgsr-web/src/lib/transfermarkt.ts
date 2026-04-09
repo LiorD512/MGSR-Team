@@ -26,8 +26,33 @@ export async function fetchHtml(url: string): Promise<string> {
     },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    // On block/rate-limit, try mgsr-backend proxy as fallback
+    if ([403, 405, 429, 503].includes(res.status)) {
+      return fetchHtmlViaProxy(url);
+    }
+    throw new Error(`HTTP ${res.status}`);
+  }
   return res.text();
+}
+
+/**
+ * Fallback: fetch TM HTML through mgsr-backend (Render) when direct fetch is blocked.
+ * Requires MGSR_BACKEND_URL and SCOUT_ENRICH_SECRET env vars on Vercel.
+ */
+async function fetchHtmlViaProxy(url: string): Promise<string> {
+  const backendUrl = process.env.MGSR_BACKEND_URL;
+  const secret = process.env.SCOUT_ENRICH_SECRET;
+  if (!backendUrl || !secret) throw new Error('Direct TM blocked and MGSR_BACKEND_URL not configured');
+
+  const proxyRes = await fetch(`${backendUrl}/tm_proxy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ secret, url }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!proxyRes.ok) throw new Error(`Proxy HTTP ${proxyRes.status}`);
+  return proxyRes.text();
 }
 
 export async function fetchHtmlWithRetry(url: string, maxRetries = 2): Promise<string> {
