@@ -13,11 +13,29 @@ const USER_AGENTS = [
 
 const FETCH_TIMEOUT_MS = 60000;
 
+// ── Circuit breaker: stop hammering TM if it starts blocking ──
+let _consecutiveBlocks = 0;
+let _circuitOpenUntil = 0;
+const CIRCUIT_THRESHOLD = 3;   // 3 consecutive 429/503 → trip
+const CIRCUIT_COOLDOWN = 5 * 60 * 1000; // 5 min cooldown
+let _lastFetchTime = 0;
+const MIN_FETCH_GAP_MS = 1500; // 1.5s between requests
+
 function getRandomUserAgent(): string {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
 export async function fetchHtml(url: string): Promise<string> {
+  // Circuit breaker check
+  if (_circuitOpenUntil > Date.now()) {
+    throw new Error(`TM circuit breaker open — cooling down until ${new Date(_circuitOpenUntil).toISOString()}`);
+  }
+  // Rate limiter: enforce minimum gap between requests
+  const now = Date.now();
+  const wait = MIN_FETCH_GAP_MS - (now - _lastFetchTime);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  _lastFetchTime = Date.now();
+
   const res = await fetch(url, {
     headers: {
       'User-Agent': getRandomUserAgent(),
@@ -26,7 +44,18 @@ export async function fetchHtml(url: string): Promise<string> {
     },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
+
+  if (res.status === 429 || res.status === 403 || res.status === 503) {
+    _consecutiveBlocks++;
+    if (_consecutiveBlocks >= CIRCUIT_THRESHOLD) {
+      _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN;
+      console.warn(`[TM] Circuit breaker TRIPPED after ${_consecutiveBlocks} blocks. Cooling down 5 min.`);
+    }
+    throw new Error(`HTTP ${res.status}`);
+  }
+
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  _consecutiveBlocks = 0; // reset on success
   return res.text();
 }
 
@@ -37,7 +66,8 @@ export async function fetchHtmlWithRetry(url: string, maxRetries = 2): Promise<s
       return await fetchHtml(url);
     } catch (err) {
       lastErr = err instanceof Error ? err : new Error(String(err));
-      if (i < maxRetries - 1) await new Promise((r) => setTimeout(r, 2000));
+      if (lastErr.message.includes('circuit breaker')) throw lastErr; // don't retry if circuit is open
+      if (i < maxRetries - 1) await new Promise((r) => setTimeout(r, 3000));
     }
   }
   throw lastErr;

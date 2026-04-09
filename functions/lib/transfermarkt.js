@@ -15,6 +15,14 @@ const USER_AGENTS = [
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
 ];
 
+// ── Circuit breaker: stop hammering TM if it starts blocking ──
+let _consecutiveBlocks = 0;
+let _circuitOpenUntil = 0;
+const CIRCUIT_THRESHOLD = 3;
+const CIRCUIT_COOLDOWN = 5 * 60 * 1000; // 5 min
+let _lastFetchTime = 0;
+const MIN_FETCH_GAP_MS = 1500; // 1.5s between requests
+
 function getRandomUserAgent() {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
@@ -25,15 +33,30 @@ function buildReleasesUrl(minValue, maxValue, page = 1) {
 
 function fetchHtml(url) {
   return new Promise((resolve, reject) => {
+    // Circuit breaker check
+    if (_circuitOpenUntil > Date.now()) {
+      reject(new Error("TM circuit breaker open — cooling down"));
+      return;
+    }
     const ua = getRandomUserAgent();
     const req = https.get(
       url,
       { headers: { "User-Agent": ua, "Accept-Language": "en-US,en;q=0.9" } },
       (res) => {
+        if (res.statusCode === 429 || res.statusCode === 403 || res.statusCode === 503) {
+          _consecutiveBlocks++;
+          if (_consecutiveBlocks >= CIRCUIT_THRESHOLD) {
+            _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN;
+            console.warn(`[TM] Circuit breaker TRIPPED after ${_consecutiveBlocks} blocks. Cooling down 5 min.`);
+          }
+          reject(new Error(`HTTP ${res.statusCode}`));
+          return;
+        }
         if (res.statusCode !== 200) {
           reject(new Error(`HTTP ${res.statusCode}`));
           return;
         }
+        _consecutiveBlocks = 0; // reset on success
         const chunks = [];
         res.on("data", (c) => chunks.push(c));
         res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
@@ -49,9 +72,14 @@ function fetchHtml(url) {
 }
 
 /**
- * Fetch TM HTML — direct fetch with user-agent rotation.
+ * Fetch TM HTML with rate limiting.
  */
 async function fetchHtmlWithFallback(url) {
+  // Rate limiter: enforce minimum gap
+  const now = Date.now();
+  const wait = MIN_FETCH_GAP_MS - (now - _lastFetchTime);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  _lastFetchTime = Date.now();
   return fetchHtml(url);
 }
 

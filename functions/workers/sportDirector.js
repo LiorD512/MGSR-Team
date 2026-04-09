@@ -878,12 +878,20 @@ const STATS_DEPENDENT_PROFILES = new Set([
   "SHOT_MACHINE",
 ]);
 
+// ── Rate limiter for TM stats fetches ──
+let _sdLastTmFetch = 0;
+
 /**
- * Fetch TM stats via direct fetch with user-agent rotation.
+ * Fetch TM stats via direct fetch with rate limiting.
  */
 async function fetchTmStatsWithProxy(tmProfileUrl) {
   const id = extractTmPlayerId(tmProfileUrl);
   if (!id) return null;
+
+  // Rate limit: 2s gap between TM calls
+  const wait = 2000 - (Date.now() - _sdLastTmFetch);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  _sdLastTmFetch = Date.now();
 
   const season = getCurrentSeasonYear();
   const perfUrl = tmProfileUrl

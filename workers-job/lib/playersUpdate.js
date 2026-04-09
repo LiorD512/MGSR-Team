@@ -13,19 +13,37 @@ const USER_AGENTS = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
 ];
 
+// ── Circuit breaker for workers-job ──
+let _consecutiveBlocks = 0;
+let _circuitOpenUntil = 0;
+const CIRCUIT_THRESHOLD = 3;
+const CIRCUIT_COOLDOWN = 5 * 60 * 1000;
+
 function getRandomUserAgent() {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
 async function fetchDocument(url) {
+  if (_circuitOpenUntil > Date.now()) {
+    throw new Error("TM circuit breaker open — cooling down");
+  }
   const res = await axios.get(url, {
     headers: {
       "User-Agent": getRandomUserAgent(),
       "Accept-Language": "en-US,en;q=0.9",
     },
     timeout: 12000,
-    validateStatus: (s) => s === 200,
+    validateStatus: (s) => s < 500,
   });
+  if (res.status === 429 || res.status === 403 || res.status === 503) {
+    _consecutiveBlocks++;
+    if (_consecutiveBlocks >= CIRCUIT_THRESHOLD) {
+      _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN;
+      console.warn(`[TM] Circuit breaker TRIPPED. Cooling down 5 min.`);
+    }
+    throw new Error(`HTTP ${res.status}`);
+  }
+  _consecutiveBlocks = 0;
   return cheerio.load(res.data);
 }
 

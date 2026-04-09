@@ -1486,8 +1486,21 @@ async function runScoutAgent() {
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
   ];
 
+  // ── Circuit breaker for scout agent TM fetches ──
+  let _scoutBlocks = 0;
+  let _scoutCircuitUntil = 0;
+  let _scoutLastFetch = 0;
+
   async function fetchTmHtml(url) {
-    // Direct fetch with user-agent rotation
+    // Circuit breaker
+    if (_scoutCircuitUntil > Date.now()) {
+      throw new Error("TM circuit breaker open — cooling down");
+    }
+    // Rate limiter: 1.5s gap
+    const wait = 1500 - (Date.now() - _scoutLastFetch);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    _scoutLastFetch = Date.now();
+
     const ua = TM_USER_AGENTS[Math.floor(Math.random() * TM_USER_AGENTS.length)];
     const res = await fetch(url, {
       headers: {
@@ -1497,7 +1510,17 @@ async function runScoutAgent() {
       },
       signal: AbortSignal.timeout(30000),
     });
+
+    if (res.status === 429 || res.status === 403 || res.status === 503) {
+      _scoutBlocks++;
+      if (_scoutBlocks >= 3) {
+        _scoutCircuitUntil = Date.now() + 5 * 60 * 1000;
+        console.warn(`[ScoutAgent TM] Circuit breaker TRIPPED. Cooling down 5 min.`);
+      }
+      throw new Error(`HTTP ${res.status}`);
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    _scoutBlocks = 0;
     return res.text();
   }
 
