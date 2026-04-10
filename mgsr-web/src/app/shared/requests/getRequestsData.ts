@@ -133,63 +133,50 @@ function hasHebrew(text: string): boolean {
 }
 
 /**
- * Translate Hebrew notes to English using Gemini.
+ * Translate Hebrew notes to English using MyMemory API (free, no API key).
+ * Uses the same football glossary approach as translateQuery.ts.
  * Mutates requests in-place for simplicity.
  */
 async function translateNotes(requests: SharedRequest[]): Promise<void> {
   const toTranslate = requests.filter((r) => r.notes && hasHebrew(r.notes));
   if (toTranslate.length === 0) return;
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.warn('[translateNotes] GEMINI_API_KEY not set');
-    return;
-  }
+  console.log('[translateNotes] Translating', toTranslate.length, 'notes via MyMemory');
 
-  try {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: { temperature: 0.1 },
-    });
+  const MYMEMORY_URL = 'https://api.mymemory.translated.net/get';
+  const email = process.env.MYMEMORY_EMAIL || '';
 
-    const numbered = toTranslate.map((r, i) => ({ idx: i + 1, req: r }));
-    const prompt = [
-      'Translate the following football/soccer recruitment notes from Hebrew to English.',
-      'Keep it concise and professional. Football terminology should be accurate.',
-      'Return ONLY a valid JSON object where keys are the numbers (as strings) and values are the English translations.',
-      'Example: {"1": "Looking for a fast winger", "2": "Must have EU passport"}',
-      '',
-      ...numbered.map(({ idx, req }) => `${idx}: ${req.notes}`),
-    ].join('\n');
+  let translated = 0;
+  // Translate each note individually (MyMemory works best with single texts)
+  await Promise.all(
+    toTranslate.map(async (req) => {
+      try {
+        const params = new URLSearchParams({
+          q: req.notes!,
+          langpair: 'he|en',
+        });
+        if (email) params.set('de', email);
 
-    console.log('[translateNotes] Translating', toTranslate.length, 'notes');
-    // Timeout after 8s so we don't block the entire page render
-    const result = await Promise.race([
-      model.generateContent(prompt),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Gemini translation timeout')), 8000)
-      ),
-    ]);
-    let text = result.response.text()?.trim() || '';
-    console.log('[translateNotes] Raw response:', text.substring(0, 200));
+        const res = await fetch(`${MYMEMORY_URL}?${params.toString()}`, {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!res.ok) return;
 
-    // Strip markdown code fences if present
-    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    if (!text) {
-      console.warn('[translateNotes] Empty response from Gemini');
-      return;
-    }
+        const data = (await res.json()) as {
+          responseStatus?: number;
+          responseData?: { translatedText?: string; match?: number };
+        };
 
-    const parsed = JSON.parse(text) as Record<string, string>;
-    let translated = 0;
-    for (const { idx, req } of numbered) {
-      const t = parsed[String(idx)];
-      if (t) { req.notes = t; translated++; }
-    }
-    console.log('[translateNotes] Translated', translated, '/', toTranslate.length, 'notes');
-  } catch (e) {
-    console.error('[translateNotes] Failed:', e);
-  }
+        const text = data?.responseData?.translatedText;
+        if (text && data.responseStatus === 200 && (data.responseData?.match ?? 0) > 0) {
+          req.notes = text;
+          translated++;
+        }
+      } catch {
+        // Non-fatal — keep original Hebrew note
+      }
+    })
+  );
+  console.log('[translateNotes] Translated', translated, '/', toTranslate.length, 'notes');
 }
