@@ -1,7 +1,7 @@
 # MGSR Team — Complete Architecture Reference
 
 > **Every agent MUST read this file before writing a single line of code.**
-> Last updated: 2026-04-09
+> Last updated: 2026-04-10
 
 ---
 
@@ -76,7 +76,8 @@ MGSR Team is a **multi-platform football agent management system** for managing 
 │      ├─ FMInside enrichment (FM attributes, CA/PA)                 │
 │      ├─ Similarity engine + recruitment search                     │
 │      ├─ Scout report generation                                    │
-│      └─ "Find Next" feature (signature-based discovery)            │
+│      ├─ "Find Next" feature (signature-based discovery)            │
+│      └─ Gemini enrichment for similar_players (scout analysis)     │
 │                                                                     │
 │  GOOGLE CLOUD PLATFORM (Workers)                                   │
 │  ├─ Cloud Run Job: player-refresh-job (daily 2am)                  │
@@ -358,9 +359,9 @@ Separate Gradle module for HTML scraping via JSoup:
 | `scoutPersona.ts` | AI scout persona definition |
 | `fetchPlayerStats.ts` | Render server player stats fetcher |
 | `aiScoutGeminiFirst.ts` | Gemini-first AI scout search |
-| `aiQueryParser.ts` | Natural language query parser |
-| `parseFreeQuery.ts` | Free-text search query parser |
-| `translateQuery.ts` | Hebrew ↔ English query translation |
+| `aiQueryParser.ts` | Gemini AI query parser (UNUSED — kept as reference, search uses `parseFreeQuery.ts`) |
+| `parseFreeQuery.ts` | Free-text search query parser (868 lines, regex+keyword, Hebrew+English — primary parser for all scout searches) |
+| `translateQuery.ts` | Hebrew ↔ English query translation (MyMemory API, free) |
 | `requestMatcher.ts` | Client-side request ↔ player matching |
 | `noteParser.ts` | Parse structured data from agent notes |
 | `shortlistIntelligence.ts` | Shortlist analytics |
@@ -447,7 +448,7 @@ Separate Gradle module for HTML scraping via JSoup:
 |----------|----------|---------|
 | `mandateExpiryScheduled` | 04:00 daily | Scan and expire mandates, write FeedEvents |
 | `releasesRefreshScheduled` | 03:00 daily | Scrape TM for new releases → Pub/Sub worker |
-| `scoutAgentScheduled` | 00:00 daily | AI Scout Agent (44 leagues, stats enrichment) → Pub/Sub worker |
+| `scoutAgentScheduled` | 00:00 every 3 days | AI Scout Agent (44 leagues, stats enrichment) → Pub/Sub worker |
 | `onTaskRemindersScheduled` | 09:00 daily | Task reminders at 7d, 3d, 1d, today milestones |
 
 ### Helper Libraries (`functions/lib/`)
@@ -485,10 +486,10 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/health` | GET | Detailed health with DB statistics |
 | `/players` | GET | Return all players in database |
 | `/player_stats?url=...` | GET | API-Football stats for single player (by TM URL or name+club) |
-| `/similar_players?player_name=...` | GET | Find similar players (style, stats, attributes) |
+| `/similar_players?player_name=...` | GET | Find similar players (style, stats, attributes) + Gemini scout analysis enrichment |
 | `/recruitment?position=CB&notes=fast&transfer_fee=300-600` | GET | Smart recruitment search (request matching) |
 | `/scout_report?player_url=...&lang=en` | GET | AI-generated scout report |
-| `/find_next?player_name=Mohamed Salah&age_max=22` | GET | "Find me the next X" signature-based discovery |
+| `/find_next?player_name=Mohamed Salah&age_max=22` | GET | "Find me the next X" — signature-based discovery (deterministic explanation, no Gemini) |
 | `/fm_profile?player_name=...&club=...` | GET | FM Inside profile (CA, PA, attributes) |
 | `/fm_intelligence?player_name=...` | GET | Full FM intelligence report with position fit heatmap |
 | `/fm_stats` | GET | FM enrichment coverage statistics |
@@ -511,18 +512,25 @@ Web app **never calls Render directly from the browser** (CORS). Instead:
 2. Vercel API route → `https://football-scout-server-l38w.onrender.com/recruitment` (server-to-server)
 3. Response flows back through the proxy
 
+**Exception:** `find_next` and `similar_players` are called directly from server components (no Vercel proxy route).
+
 Key proxy routes in `mgsr-web/src/app/api/scout/`:
 - `/api/scout/recruitment` → Render `/recruitment`
-- `/api/scout/similar-players` → Render `/similar_players`
-- `/api/scout/find-next` → Render `/find_next`
 - `/api/scout/player-stats` → Render `/player_stats`
-- `/api/scout/search` → Render `/recruitment` (with AI query parsing)
+- `/api/scout/search` → Render `/recruitment` (rule-based query parsing via `parseFreeQuery.ts`)
 - `/api/scout/fm-intelligence` → Render `/fm_intelligence`
 - `/api/scout/warm` → Render `/` (keep-alive ping)
 
+**Deleted proxy routes** (Android/Web now call Render directly):
+- ~`/api/scout/find-next`~ → Android/Web call Render `/find_next` directly
+- ~`/api/scout/similar-players`~ → Android/Web call Render `/similar_players` directly
+
 ### How Android App Calls Render
 
-Android app calls via `MgsrWebApiClient` which hits the **Vercel API routes** (same proxy as web), not Render directly.
+Android app calls Render **directly** for performance-critical endpoints:
+- `MgsrWebApiClient.findNext()` → Render `/find_next` directly
+- `ScoutApiClient.fetchSimilarPlayers()` → Render `/similar_players` directly
+- Other scout features still go through Vercel API routes (search, recruitment, etc.)
 
 ### Data Sources Used by Render Server
 
@@ -717,7 +725,7 @@ Both Android and Web support switching between Men, Women, and Youth platforms a
 | Google News | Web API route | Football news articles |
 | YouTube / Vimeo | Web API route, Android | Player highlight videos |
 | Google Cloud Vision | Android service | Passport OCR |
-| Gemini AI | Web API routes, Android service | Document detection, scout reports, AI search |
+| Gemini AI | Web API routes, Android service | Document detection, scout reports, similar_players enrichment (find_next narrative removed, AI query parser removed, translation switched to MyMemory) |
 
 ---
 
@@ -830,13 +838,13 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | `AiScoutScreen` | `/ai-scout/page.tsx` |
 | Data | Vercel API → Render server | API route `/api/scout/search` |
-| Features | Natural language search, AI query parsing | Same |
+| Features | Natural language search, rule-based query parsing (`parseFreeQuery.ts`) | Same |
 
 ### Find Next
 | Aspect | Android | Web |
 |--------|---------|-----|
 | Screen | (inside AI Scout) | `/find-next/page.tsx` |
-| Data | Vercel API → Render server `/find_next` | API route `/api/scout/find-next` |
+| Data | Render server `/find_next` directly | Render server `/find_next` directly |
 | Features | "Find me the next Salah" — signature-based talent discovery | Same |
 
 ### Chat Room
@@ -915,9 +923,8 @@ All proxy to Render server (`football-scout-server-l38w.onrender.com`):
 |-------|-----------|---------|
 | `/api/scout/recruitment` | `/recruitment` | Smart recruitment search |
 | `/api/scout/similar-players` | `/similar_players` | Find similar players |
-| `/api/scout/find-next` | `/find_next` | Signature-based talent discovery |
 | `/api/scout/player-stats` | `/player_stats` | API-Football per-90 stats |
-| `/api/scout/search` | `/recruitment` (with AI query parsing) | Natural language search |
+| `/api/scout/search` | `/recruitment` (rule-based `parseFreeQuery.ts`) | Natural language search |
 | `/api/scout/fm-intelligence` | `/fm_intelligence` | FM attributes + position fit |
 | `/api/scout/warm` | `/` | Keep-alive ping for Render |
 
