@@ -50,6 +50,8 @@ class MgsrWebApiClient(
         // For local testing change to "http://10.0.2.2:3000" (Android emulator → host)
         // For production use the Vercel URL
         const val DEFAULT_BASE_URL = "https://management.mgsrfa.com"
+        // Render scout server — used for endpoints with server-side Gemini enrichment
+        private const val RENDER_SCOUT_URL = "https://football-scout-server-l38w.onrender.com"
     }
 
     private val client = OkHttpClient.Builder()
@@ -144,7 +146,7 @@ class MgsrWebApiClient(
                 }
 
                 val httpRequest = Request.Builder()
-                    .url("$baseUrl/api/scout/find-next?$params")
+                    .url("$RENDER_SCOUT_URL/find_next?$params")
                     .get()
                     .build()
 
