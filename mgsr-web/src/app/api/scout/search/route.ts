@@ -14,7 +14,6 @@ import { parseFreeQuery } from '@/lib/parseFreeQuery';
 import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 import { getLeagueAvgMarketValue, searchFreeAgentsFallback } from '@/lib/transfermarkt';
 import { translateHebrewToEnglish } from '@/lib/translateQuery';
-import { parseScoutQueryWithGemini } from '@/lib/aiQueryParser';
 import { SCOUT_PERSONA, SEARCH_PERSONA_EXT } from '@/lib/scoutPersona';
 
 export const dynamic = 'force-dynamic';
@@ -330,113 +329,18 @@ export async function POST(request: NextRequest) {
         : Promise.resolve(null);
 
       // ═══════════════════════════════════════════════════════════════════
-      // STEP 2: Parallel — Scout server fetch + Gemini AI parse (enrichment)
+      // STEP 2: Scout server fetch (rule-based parse only)
       // ═══════════════════════════════════════════════════════════════════
-      const geminiApiKey = process.env.GEMINI_API_KEY;
-      const isComplexQuery = _isComplexQuery(query);
-
-      // Fire scout server request immediately with rule-based params
+      // Fire scout server request with rule-based params
       const scoutPromise = fetchScoutRecruitment({ ...parsed, limit: scoutLimit, excludeUrls }, lang);
 
-      // In parallel: Gemini AI parse for complex queries (enriches notes & catches nuances)
-      let geminiEnrichment: {
-        notes?: string;
-        interpretation?: string;
-        position?: string;
-        ageMax?: number;
-        transferFee?: string;
-      } | null = null;
-
-      const geminiPromise = (geminiApiKey && isComplexQuery && !initial)
-        ? parseScoutQueryWithGemini(query, lang, geminiApiKey)
-            .then((aiParsed) => {
-              console.log('[AI Scout] Step 2: Gemini parse completed:', aiParsed.interpretation?.slice(0, 60));
-              return aiParsed;
-            })
-            .catch((err) => {
-              console.warn('[AI Scout] Gemini parse failed (non-fatal):', err instanceof Error ? err.message : err);
-              return null;
-            })
-        : Promise.resolve(null);
-
-      // Wait for both to complete
-      const [scoutResponse, geminiResult, leagueAvg] = await Promise.all([
+      // Wait for scout + league avg to complete
+      const [scoutResponse, leagueAvg] = await Promise.all([
         scoutPromise,
-        geminiPromise,
         leagueAvgPromise,
       ]);
 
-      geminiEnrichment = geminiResult;
-
-      // ═══════════════════════════════════════════════════════════════════
-      // STEP 3: Merge results — if Gemini enriched notes, do a second
-      //         scout fetch with richer query (only if notes differ significantly)
-      // ═══════════════════════════════════════════════════════════════════
       let results = scoutResponse.results ?? [];
-      let enrichedScoutResults: Record<string, unknown>[] | null = null;
-
-      if (geminiEnrichment?.notes && geminiEnrichment.notes !== parsed.notes) {
-        // Gemini caught nuances the regex missed — do a refined search
-        const enrichedNotes = _mergeNotes(parsed.notes, geminiEnrichment.notes);
-        const enrichedPosition = geminiEnrichment.position || parsed.position;
-        const enrichedAgeMax = geminiEnrichment.ageMax ?? parsed.ageMax;
-        const enrichedTransferFee = geminiEnrichment.transferFee || parsed.transferFee;
-
-        // Only fetch if the enrichment actually changes the query
-        const notesChanged = enrichedNotes !== parsed.notes;
-        const posChanged = enrichedPosition !== parsed.position;
-        if (notesChanged || posChanged) {
-          console.log('[AI Scout] Step 3: Enriched search with Gemini notes:', enrichedNotes?.slice(0, 60));
-          try {
-            const enrichedResponse = await fetchScoutRecruitment(
-              {
-                ...parsed,
-                notes: enrichedNotes,
-                position: enrichedPosition,
-                ageMax: enrichedAgeMax,
-                transferFee: enrichedTransferFee,
-                limit: scoutLimit,
-                excludeUrls,
-              },
-              lang
-            );
-            enrichedScoutResults = enrichedResponse.results ?? [];
-          } catch (err) {
-            console.warn('[AI Scout] Enriched fetch failed (non-fatal):', err);
-          }
-        }
-      }
-
-      // Merge: deduplicate by URL, boost players found in BOTH searches
-      if (enrichedScoutResults && enrichedScoutResults.length > 0) {
-        const urlSet = new Set<string>();
-        const merged: Record<string, unknown>[] = [];
-        const enrichedUrlSet = new Set(enrichedScoutResults.map((p) => (p.url as string || '').trim().toLowerCase()));
-
-        // Add all primary results, marking those also found by enriched search
-        for (const p of results) {
-          const url = (p.url as string || '').trim().toLowerCase();
-          if (urlSet.has(url)) continue;
-          urlSet.add(url);
-          // Boost: if found in both, increase smart_score by 10%
-          if (enrichedUrlSet.has(url)) {
-            const score = Number(p.smart_score || p.scouting_score || 0);
-            if (score > 0) p.smart_score = Math.min(100, Math.round(score * 1.1));
-          }
-          merged.push(p);
-        }
-
-        // Add enriched-only results (new discoveries) at the end
-        for (const p of enrichedScoutResults) {
-          const url = (p.url as string || '').trim().toLowerCase();
-          if (urlSet.has(url)) continue;
-          urlSet.add(url);
-          merged.push(p);
-        }
-
-        results = merged;
-        console.log('[AI Scout] Merged results:', results.length, '(primary + enriched)');
-      }
 
       // ═══════════════════════════════════════════════════════════════════
       // Post-filtering: goals + market value enforcement
@@ -547,11 +451,6 @@ export async function POST(request: NextRequest) {
       // ═══════════════════════════════════════════════════════════════════
       const iLines: string[] = [];
 
-      // Use Gemini interpretation as the top summary line if available
-      if (geminiEnrichment?.interpretation) {
-        iLines.push(`🧠 ${geminiEnrichment.interpretation}`);
-      }
-
       // Parsed criteria (each as its own line from buildInterpretation)
       const parsedInterp = parsed.interpretation || '';
       if (parsedInterp) {
@@ -609,15 +508,12 @@ export async function POST(request: NextRequest) {
 
       const interpretation = iLines.join('\n');
 
-      // Add search method indicator
-      const searchMethod = geminiEnrichment ? 'hybrid' : 'rule-based';
       console.log(
-        `[AI Scout] ${searchMethod} search returned`,
+        '[AI Scout] rule-based search returned',
         results.length,
         'results for',
         parsed.position || 'any',
-        targetLeague ? `(league ${targetLeague})` : '',
-        geminiEnrichment ? '(Gemini-enriched)' : ''
+        targetLeague ? `(league ${targetLeague})` : ''
       );
 
       return NextResponse.json(
@@ -628,7 +524,7 @@ export async function POST(request: NextRequest) {
           leagueInfo,
           hasMore,
           requestedTotal,
-          searchMethod,
+          searchMethod: 'rule-based',
         },
         {
           headers: {
@@ -662,29 +558,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-/**
- * Detect if a query is "complex" enough to benefit from Gemini AI parsing.
- * Simple queries like "CF under 23" don't need AI — regex handles them fine.
- * Complex queries have playing style descriptors, comparisons, or nuanced requirements.
- */
-function _isComplexQuery(query: string): boolean {
-  const q = query.toLowerCase();
-  // Style descriptors
-  if (/target\s*man|playmaker|box[\s-]to[\s-]box|deep[\s-]lying|false\s*9|inverted/i.test(q)) return true;
-  if (/דמוי|כמו|סגנון|טרגט|פלייסמייקר|בוקס|עמוק/i.test(q)) return true;
-  // Player comparisons ("like Drogba", "next Messi")
-  if (/like\s+\w+|כמו\s+\w+|next\s+\w+|הבא\s+של|דומה\s+ל/i.test(q)) return true;
-  // Tactical context
-  if (/counter[\s-]attack|press|possession|4[\s-]?[23][\s-]?[123]|3[\s-]?[45][\s-]?[123]/i.test(q)) return true;
-  if (/הגנתי|התקפי|לחץ|החזקה|קונטרה|מערך/i.test(q)) return true;
-  // Multiple style attributes (more than regex can handle well)
-  const styleWords = q.match(/(fast|pace|quick|strong|physical|aerial|creative|technical|dribbl|pass|shoot|מהיר|חזק|טכני|אווירי|יצירתי|דריבל)/gi) || [];
-  if (styleWords.length >= 3) return true;
-  // Long complex query
-  if (q.split(/\s+/).length >= 10) return true;
-  return false;
 }
 
 /** Merge notes from Hebrew parse and English parse, de-duplicating */
