@@ -174,10 +174,10 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.offset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.google.firebase.ai.FirebaseAI
-import com.google.firebase.ai.type.GenerativeBackend
-import com.google.firebase.ai.type.generationConfig
 import org.json.JSONObject
+import java.net.URLEncoder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -2418,7 +2418,7 @@ private fun formatRequestsForShare(
 }
 
 /**
- * Translates all non-empty request notes to English using Gemini.
+ * Translates all non-empty request notes to English using MyMemory API (free).
  * Returns a map of requestId -> translated note.
  * If translation fails, returns the original notes as-is.
  */
@@ -2444,39 +2444,31 @@ private suspend fun translateNotesToEnglish(
     val hasHebrew = notesById.values.any { text -> text.any { it in '\u0590'..'\u05FF' } }
     if (!hasHebrew) return notesById
 
-    return try {
-        val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
-            modelName = "gemini-2.5-flash",
-            generationConfig = generationConfig {
-                temperature = 0.1f
-                responseMimeType = "application/json"
-            }
-        )
-
-        val numbered = notesById.entries.mapIndexed { i, (id, note) -> Triple(i + 1, id, note) }
-        val prompt = buildString {
-            appendLine("Translate the following football/soccer recruitment notes to English.")
-            appendLine("Keep it concise and professional. Football terminology should be accurate.")
-            appendLine("Return a JSON object where keys are the numbers and values are the English translations.")
-            appendLine()
-            numbered.forEach { (num, _, note) ->
-                appendLine("$num: $note")
-            }
-        }
-
-        val response = model.generateContent(prompt)
-        val json = response.text?.trim() ?: return notesById
-        val jsonObj = JSONObject(json)
-
+    return withContext(Dispatchers.IO) {
         val result = mutableMapOf<String, String>()
-        numbered.forEach { (num, id, original) ->
-            val translated = jsonObj.optString(num.toString(), "").takeIf { it.isNotBlank() } ?: original
-            result[id] = translated
+        for ((id, note) in notesById) {
+            // Skip notes that are already English
+            val isHebrew = note.any { it in '\u0590'..'\u05FF' }
+            if (!isHebrew) {
+                result[id] = note
+                continue
+            }
+            result[id] = try {
+                val encoded = URLEncoder.encode(note, "UTF-8")
+                val url = java.net.URL("https://api.mymemory.translated.net/get?q=$encoded&langpair=he|en")
+                val connection = url.openConnection() as java.net.HttpURLConnection
+                connection.connectTimeout = 5000
+                connection.readTimeout = 5000
+                val response = connection.inputStream.bufferedReader().readText()
+                connection.disconnect()
+                val json = JSONObject(response)
+                val translated = json.optJSONObject("responseData")?.optString("translatedText", "") ?: ""
+                translated.takeIf { it.isNotBlank() } ?: note
+            } catch (_: Exception) {
+                note
+            }
         }
         result
-    } catch (e: Exception) {
-        // Fallback: return original notes
-        notesById
     }
 }
 

@@ -77,7 +77,7 @@ MGSR Team is a **multi-platform football agent management system** for managing 
 │      ├─ Similarity engine + recruitment search                     │
 │      ├─ Scout report generation                                    │
 │      ├─ "Find Next" feature (signature-based discovery)            │
-│      └─ Gemini enrichment for similar_players (scout analysis)     │
+│      └─ Deterministic enrichment (comparisonQuality + uniqueTrait) │
 │                                                                     │
 │  GOOGLE CLOUD PLATFORM (Workers)                                   │
 │  ├─ Cloud Run Job: player-refresh-job (daily 2am)                  │
@@ -161,7 +161,7 @@ app/src/main/java/com/liordahan/mgsrteam/
 │   ├── GeminiPassportOcrProvider.kt     # Gemini AI OCR for passports
 │   ├── PdfFlattener.kt                  # PDF form flattening
 │   ├── GpsPdfParser.kt                  # GPS performance PDF parsing
-│   └── AiHelperService.kt              # Scout reports, similar player discovery
+│   └── AiHelperService.kt              # Scout reports, similar player discovery (hidden gem removed)
 ├── ui/                                  # Shared UI components, theme, styles
 └── util/                                # Utilities, extensions
 ```
@@ -358,8 +358,8 @@ Separate Gradle module for HTML scraping via JSoup:
 | `scoutAgentConfig.ts` | Scout agent configuration |
 | `scoutPersona.ts` | AI scout persona definition |
 | `fetchPlayerStats.ts` | Render server player stats fetcher |
-| `aiScoutGeminiFirst.ts` | Gemini-first AI scout search |
-| `aiQueryParser.ts` | Gemini AI query parser (UNUSED — kept as reference, search uses `parseFreeQuery.ts`) |
+| `aiScoutGeminiFirst.ts` | Gemini-first AI scout search (DEAD CODE — never imported) |
+| `aiQueryParser.ts` | Gemini AI query parser (DEAD CODE — removed from search route, never called) |
 | `parseFreeQuery.ts` | Free-text search query parser (868 lines, regex+keyword, Hebrew+English — primary parser for all scout searches) |
 | `translateQuery.ts` | Hebrew ↔ English query translation (MyMemory API, free) |
 | `requestMatcher.ts` | Client-side request ↔ player matching |
@@ -486,7 +486,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/health` | GET | Detailed health with DB statistics |
 | `/players` | GET | Return all players in database |
 | `/player_stats?url=...` | GET | API-Football stats for single player (by TM URL or name+club) |
-| `/similar_players?player_name=...` | GET | Find similar players (style, stats, attributes) + Gemini scout analysis enrichment |
+| `/similar_players?player_name=...` | GET | Find similar players (style, stats, attributes) + deterministic enrichment (comparisonQuality, uniqueTrait) |
 | `/recruitment?position=CB&notes=fast&transfer_fee=300-600` | GET | Smart recruitment search (request matching) |
 | `/scout_report?player_url=...&lang=en` | GET | AI-generated scout report |
 | `/find_next?player_name=Mohamed Salah&age_max=22` | GET | "Find me the next X" — signature-based discovery (deterministic explanation, no Gemini) |
@@ -725,7 +725,7 @@ Both Android and Web support switching between Men, Women, and Youth platforms a
 | Google News | Web API route | Football news articles |
 | YouTube / Vimeo | Web API route, Android | Player highlight videos |
 | Google Cloud Vision | Android service | Passport OCR |
-| Gemini AI | Web API routes, Android service | Document detection, scout reports, similar_players enrichment (find_next narrative removed, AI query parser removed, translation switched to MyMemory) |
+| Gemini AI | Web API routes, Android service | Document detection, scout reports (find_next narrative removed, AI query parser removed, translation switched to MyMemory on both web and Android, hidden gem score removed, similar_players Gemini enrichment replaced with deterministic logic) |
 
 ---
 

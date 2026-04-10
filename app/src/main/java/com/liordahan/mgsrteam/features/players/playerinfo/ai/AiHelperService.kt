@@ -72,15 +72,6 @@ class AiHelperService(
         )
     }
 
-    /**
-     * Result of AI hidden gem analysis for a player.
-     * Score 0-100: potential as undervalued/hidden gem.
-     */
-    data class HiddenGemResult(
-        val score: Int,
-        val reason: String?
-    )
-
     suspend fun findSimilarPlayers(
         player: Player,
         languageCode: String = "en",
@@ -905,70 +896,6 @@ class AiHelperService(
             } catch (e: Exception) {
                 val msg = e.message ?: e.javaClass.simpleName
                 Log.e(TAG, "generateScoutReport failed: $msg", e)
-                Result.failure(e)
-            }
-        }
-
-    /**
-     * Computes a "hidden gem" score for a player: potential as undervalued talent.
-     * Uses profile data: age, value, value trend, contract, club level.
-     * Score 0-100 with a short reason.
-     */
-    suspend fun computeHiddenGemScore(
-        player: Player,
-        languageCode: String = "en"
-    ): Result<HiddenGemResult> =
-        withContext(Dispatchers.IO) {
-            try {
-                val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
-                    modelName = "gemini-2.5-flash",
-                    generationConfig = generationConfig {
-                        temperature = 0.3f
-                        responseMimeType = "application/json"
-                        responseSchema = Schema.obj(
-                            mapOf(
-                                "score" to Schema.integer(),
-                                "reason" to Schema.string()
-                            ),
-                            optionalProperties = listOf("reason")
-                        )
-                    }
-                )
-
-                val playerContext = buildPlayerContext(player)
-                val outputLanguage = if (languageCode == "he" || languageCode == "iw") "Hebrew" else "English"
-
-                val prompt = """
-                    You are a CHIEF SCOUT with 25+ years at top clubs. You specialize in finding undervalued talent — "hidden gems" that other agents overlook.
-
-                    TASK: Score this player's potential as a HIDDEN GEM (0-100). A hidden gem is: young, low market value relative to profile, at a solid club, with upside (rising value, contract expiring, etc.). Agents who find these players first have a competitive edge.
-
-                    SCORING GUIDELINES:
-                    - 70-100: Strong hidden gem — young (18-24), low value (under €1.5m for Israeli/similar leagues), rising value trend, or contract expiring soon. Would recommend to agents.
-                    - 40-69: Moderate potential — some signals (young OR low value OR rising trend) but not all.
-                    - 20-39: Weak — established player, high value, or declining trend. Not a hidden gem.
-                    - 0-19: Not a hidden gem — veteran, zero transfer value, or profile doesn't fit.
-
-                    Base analysis ONLY on the data provided. NEVER invent facts. If data is missing, score conservatively.
-
-                    Player profile:
-                    $playerContext
-
-                    Return JSON: { "score": 0-100, "reason": "1-2 sentences in $outputLanguage explaining why. Reference: age, value, value trend, contract, club level." }
-                """.trimIndent()
-
-                val response = model.generateContent(prompt)
-                val text = response.text ?: return@withContext Result.failure(
-                    IllegalStateException("Empty response from AI")
-                )
-
-                val json = JSONObject(text)
-                val score = json.optInt("score", 0).coerceIn(0, 100)
-                val reason = json.optString("reason").takeIf { it.isNotBlank() }
-                Log.d(TAG, "computeHiddenGemScore: ${player.fullName} score=$score reason=$reason")
-                Result.success(HiddenGemResult(score = score, reason = reason))
-            } catch (e: Exception) {
-                Log.e(TAG, "computeHiddenGemScore failed", e)
                 Result.failure(e)
             }
         }
