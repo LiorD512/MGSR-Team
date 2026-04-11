@@ -690,7 +690,7 @@ export default function SharedPlayerContent({
               <div
                 className={`overflow-hidden transition-all duration-500 ease-in-out ${showMore ? 'max-h-[5000px] opacity-100 mt-6' : 'max-h-0 opacity-0 mt-0'}`}
               >
-                <div className="space-y-0">
+                <div>
                   {/* Key Traits */}
                   <KeyTraitsGrid traits={enrichment?.keyTraits} traitsHe={enrichment?.keyTraitsHe} isWomen={isWomen} useHebrew={useHebrew} />
 
