@@ -209,6 +209,9 @@ export default function SharedPlayerContent({
     if (!enrichment && data) setEnrichment({});
   }, [data, enrichment]);
 
+  // "Show more" expandable state
+  const [showMore, setShowMore] = useState(false);
+
   // "I'm Interested" handler — opens WhatsApp to the sharer
   const handleInterested = useCallback(() => {
     if (!data) return;
@@ -481,7 +484,40 @@ export default function SharedPlayerContent({
         {/* Urgency badges */}
         <UrgencyBadgesStrip data={data} useHebrew={useHebrew} />
 
-        {/* ═══ INTRODUCTION (formerly Scout Report) — first after tags ═══ */}
+        {/* ═══ TRANSFERMARKT PROFILE — prominent, redesigned ═══ */}
+        {!isWomen && player.tmProfile && (
+          <a
+            href={player.tmProfile}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`group flex items-center justify-between gap-4 p-4 rounded-xl mb-8 border transition-all duration-300 ${
+              isWomen
+                ? 'border-[var(--women-rose)]/30 bg-[var(--women-rose)]/5 hover:bg-[var(--women-rose)]/10 hover:border-[var(--women-rose)]/50'
+                : 'border-mgsr-teal/30 bg-mgsr-teal/5 hover:bg-mgsr-teal/10 hover:border-mgsr-teal/50'
+            }`}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${isWomen ? 'bg-[var(--women-rose)]/15' : 'bg-mgsr-teal/15'}`}>
+                <svg className={`w-5 h-5 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <div className={`text-xs font-semibold uppercase tracking-wider ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                  Transfermarkt
+                </div>
+                <div className="text-sm text-mgsr-muted truncate">
+                  {useHebrew ? 'צפה בפרופיל המלא' : 'View full player profile'}
+                </div>
+              </div>
+            </div>
+            <svg className={`w-5 h-5 shrink-0 transition-transform group-hover:translate-x-1 ${useHebrew ? 'rotate-180 group-hover:-translate-x-1' : ''} ${isWomen ? 'text-[var(--women-rose)]/60' : 'text-mgsr-teal/60'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </a>
+        )}
+
+        {/* ═══ INTRODUCTION ═══ */}
         {data.scoutReport && (
           <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
             {/* Header with edit controls when from portfolio */}
@@ -589,103 +625,134 @@ export default function SharedPlayerContent({
           <WhyThisPlayerPitch points={enrichment.sellingPoints} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
-        {/* ═══ TRANSFERMARKT PROFILE ═══ */}
-        {!isWomen && player.tmProfile && (
-          <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
-            <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
-              {labels.transfermarkt}
-            </h3>
-            <a
-              href={player.tmProfile}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-flex items-center gap-2 font-medium ${accentLink}`}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              {data.lang === 'he' ? 'צפה בפרופיל' : 'View profile'}
-            </a>
-          </div>
-        )}
-
-        {/* ═══ HIGHLIGHTS ═══ */}
+        {/* ═══ HIGHLIGHTS — right after intro ═══ */}
         {data.highlights && data.highlights.length > 0 && (
           <HighlightsGrid highlights={data.highlights} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
-        {/* ═══ KEY TRAITS — scannable grid ═══ */}
-        <KeyTraitsGrid traits={enrichment?.keyTraits} traitsHe={enrichment?.keyTraitsHe} isWomen={isWomen} useHebrew={useHebrew} />
-
-        {/* ═══ TACTICAL FIT ═══ */}
-        <TacticalFitSection fit={enrichment?.tacticalFit} isWomen={isWomen} useHebrew={useHebrew} />
-
-        {/* Mini pitch position map */}
-        {player.positions && player.positions.length > 0 && (
-          <MiniPitchPosition positions={player.positions} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
-
-        {/* Contract countdown — only show when contract expires within 6 months */}
-        {(() => {
-          if (!player.contractExpired?.trim() || player.contractExpired === '-') return null;
-          const ce = player.contractExpired;
-          let expiryDate: Date | null = null;
-          const ddmmyyyy = ce.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-          if (ddmmyyyy) expiryDate = new Date(+ddmmyyyy[3], +ddmmyyyy[2] - 1, +ddmmyyyy[1]);
-          else { const yyyy = ce.match(/(\d{4})/); if (yyyy) expiryDate = new Date(+yyyy[1], 5, 30); }
-          if (!expiryDate) return null;
-          const daysUntil = Math.floor((expiryDate.getTime() - Date.now()) / 86400000);
-          if (daysUntil <= 0 || daysUntil > 180) return null;
-          return <ContractCountdown contractExpiry={ce} isWomen={isWomen} useHebrew={useHebrew} />;
-        })()}
-
-        {/* ═══ SEASON STATISTICS (API Football) ═══ */}
-        {data.playerStats && data.playerStats.stats.length > 0 && (
-          <div className="mb-8">
-            <PlayerStatsShowcase stats={data.playerStats} isWomen={isWomen} useHebrew={useHebrew} />
-          </div>
-        )}
-
-        {/* ═══ GPS PERFORMANCE ═══ */}
+        {/* ═══ GPS PERFORMANCE — early visibility ═══ */}
         {data.gpsData && data.gpsData.matchCount > 0 && (
           <div className="mb-8">
             <GpsPerformanceShowcase gpsData={data.gpsData} isWomen={isWomen} useHebrew={useHebrew} />
           </div>
         )}
 
-        {/* ═══ FAMILY STATUS ═══ */}
-        {data.familyStatus && (data.familyStatus.isMarried || (data.familyStatus.kidsCount ?? 0) > 0) && (
-          <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
-            <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-muted'}`}>
-              {useHebrew ? 'מצב משפחתי' : 'Family Status'}
-            </h3>
-            <div className="flex items-center gap-6 flex-wrap">
-              {data.familyStatus.isMarried && (
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">💍</span>
-                  <span className={`text-sm font-medium ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
-                    {useHebrew ? 'נשוי' : 'Married'}
-                  </span>
-                </div>
-              )}
-              {(data.familyStatus.kidsCount ?? 0) > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">👶</span>
-                  <span className={`text-sm font-medium ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
-                    {data.familyStatus.kidsCount} {useHebrew ? 'ילדים' : (data.familyStatus.kidsCount === 1 ? 'Kid' : 'Kids')}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* ═══ SHOW MORE — expandable section for deeper data ═══ */}
+        {(() => {
+          const hasTraits = enrichment?.keyTraits && enrichment.keyTraits.length > 0;
+          const hasTactical = !!enrichment?.tacticalFit;
+          const hasPositions = player.positions && player.positions.length > 0;
+          const hasStats = data.playerStats && data.playerStats.stats.length > 0;
+          const hasFamilyStatus = data.familyStatus && (data.familyStatus.isMarried || (data.familyStatus.kidsCount ?? 0) > 0);
+          const hasContractCountdown = (() => {
+            if (!player.contractExpired?.trim() || player.contractExpired === '-') return false;
+            const ce = player.contractExpired;
+            let expiryDate: Date | null = null;
+            const ddmmyyyy = ce.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (ddmmyyyy) expiryDate = new Date(+ddmmyyyy[3], +ddmmyyyy[2] - 1, +ddmmyyyy[1]);
+            else { const yyyy = ce.match(/(\d{4})/); if (yyyy) expiryDate = new Date(+yyyy[1], 5, 30); }
+            if (!expiryDate) return false;
+            const daysUntil = Math.floor((expiryDate.getTime() - Date.now()) / 86400000);
+            return daysUntil > 0 && daysUntil <= 180;
+          })();
+          const hasAnythingToExpand = hasTraits || hasTactical || hasPositions || hasStats || hasFamilyStatus || hasContractCountdown || playerPhone || agencyPhone;
 
-        {playerPhone && (
-          <ContactBlock phone={playerPhone} title={labels.playerContact} contactName={displayName || '—'} />
-        )}
-        {agencyPhone && (
-          <ContactBlock phone={agencyPhone} title={labels.agencyContact} contactName={`${displayName || '—'} agent`} />
-        )}
+          if (!hasAnythingToExpand) return null;
+          return (
+            <div className="mb-8">
+              {/* Toggle button */}
+              <button
+                type="button"
+                onClick={() => setShowMore(!showMore)}
+                className={`w-full group flex items-center justify-center gap-3 py-4 px-6 rounded-2xl border transition-all duration-300 ${
+                  showMore
+                    ? (isWomen
+                        ? 'border-[var(--women-rose)]/30 bg-[var(--women-rose)]/5'
+                        : 'border-mgsr-teal/30 bg-mgsr-teal/5')
+                    : `border-mgsr-border bg-mgsr-card hover:border-mgsr-border/80 ${isWomen ? 'hover:bg-[var(--women-rose)]/5' : 'hover:bg-mgsr-teal/5'}`
+                }`}
+              >
+                <span className={`text-sm font-semibold tracking-wide ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                  {showMore
+                    ? (useHebrew ? 'הסתר פרטים' : 'Show Less')
+                    : (useHebrew ? 'פרטים נוספים על השחקן' : 'More Player Details')
+                  }
+                </span>
+                <svg
+                  className={`w-4 h-4 transition-transform duration-300 ${showMore ? 'rotate-180' : ''} ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Expandable content */}
+              <div
+                className={`overflow-hidden transition-all duration-500 ease-in-out ${showMore ? 'max-h-[5000px] opacity-100 mt-6' : 'max-h-0 opacity-0 mt-0'}`}
+              >
+                <div className="space-y-0">
+                  {/* Key Traits */}
+                  <KeyTraitsGrid traits={enrichment?.keyTraits} traitsHe={enrichment?.keyTraitsHe} isWomen={isWomen} useHebrew={useHebrew} />
+
+                  {/* Tactical Fit */}
+                  <TacticalFitSection fit={enrichment?.tacticalFit} isWomen={isWomen} useHebrew={useHebrew} />
+
+                  {/* Position Map */}
+                  {player.positions && player.positions.length > 0 && (
+                    <MiniPitchPosition positions={player.positions} isWomen={isWomen} useHebrew={useHebrew} />
+                  )}
+
+                  {/* Contract Countdown */}
+                  {hasContractCountdown && (
+                    <ContractCountdown contractExpiry={player.contractExpired!} isWomen={isWomen} useHebrew={useHebrew} />
+                  )}
+
+                  {/* Season Statistics */}
+                  {data.playerStats && data.playerStats.stats.length > 0 && (
+                    <div className="mb-8">
+                      <PlayerStatsShowcase stats={data.playerStats} isWomen={isWomen} useHebrew={useHebrew} />
+                    </div>
+                  )}
+
+                  {/* Family Status */}
+                  {data.familyStatus && (data.familyStatus.isMarried || (data.familyStatus.kidsCount ?? 0) > 0) && (
+                    <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
+                      <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-muted'}`}>
+                        {useHebrew ? 'מצב משפחתי' : 'Family Status'}
+                      </h3>
+                      <div className="flex items-center gap-6 flex-wrap">
+                        {data.familyStatus.isMarried && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">💍</span>
+                            <span className={`text-sm font-medium ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                              {useHebrew ? 'נשוי' : 'Married'}
+                            </span>
+                          </div>
+                        )}
+                        {(data.familyStatus.kidsCount ?? 0) > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">👶</span>
+                            <span className={`text-sm font-medium ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                              {data.familyStatus.kidsCount} {useHebrew ? 'ילדים' : (data.familyStatus.kidsCount === 1 ? 'Kid' : 'Kids')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Contact blocks */}
+                  {playerPhone && (
+                    <ContactBlock phone={playerPhone} title={labels.playerContact} contactName={displayName || '—'} />
+                  )}
+                  {agencyPhone && (
+                    <ContactBlock phone={agencyPhone} title={labels.agencyContact} contactName={`${displayName || '—'} agent`} />
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ═══ BOTTOM CTA — strong close (external scout view only) ═══ */}
         {!fromPortfolio && (

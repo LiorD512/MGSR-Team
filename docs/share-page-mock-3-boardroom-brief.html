@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mock 3 — The Boardroom Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0c0c0c;--surface:#131313;--elevated:#1a1a1a;
+    --border:#222;--border-hover:#333;
+    --accent:#e0e0e0;--white:#f5f5f5;--muted:#888;--dim:#555;--faint:#333;
+    --green:#22c55e;--green-dim:#22c55e33;--green-glow:#22c55e15;
+    --red:#ef4444;
+    --serif:'Fraunces',Georgia,serif;
+    --sans:'Manrope',system-ui,sans-serif;
+    --mono:'Space Mono',monospace;
+  }
+  html{-webkit-font-smoothing:antialiased;font-size:16px}
+  body{background:var(--bg);color:var(--accent);font-family:var(--sans);line-height:1.6;min-height:100vh}
+
+  .page{max-width:620px;margin:0 auto;padding:0 20px 120px}
+
+  /* ─── TOP STRIP ─── */
+  .topstrip{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 0 20px;border-bottom:1px solid var(--border);margin-bottom:32px;
+  }
+  .ts-brand{
+    font-family:var(--mono);font-size:11px;font-weight:700;
+    letter-spacing:4px;text-transform:uppercase;color:var(--white);
+  }
+  .ts-type{
+    font-family:var(--mono);font-size:10px;letter-spacing:2px;
+    color:var(--dim);text-transform:uppercase;
+  }
+
+  /* ═══ TM DATA STRIP — ultra visible, document-style ═══ */
+  .tm-strip{
+    border:1px solid var(--border);border-radius:0;margin-bottom:32px;
+    overflow:hidden;background:var(--surface);
+  }
+  .tm-strip-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 20px;background:var(--elevated);border-bottom:1px solid var(--border);
+  }
+  .tm-strip-title{
+    font-family:var(--mono);font-size:10px;letter-spacing:3px;
+    text-transform:uppercase;color:var(--green);font-weight:700;
+    display:flex;align-items:center;gap:8px;
+  }
+  .tm-strip-title .dot{
+    width:8px;height:8px;border-radius:50%;background:var(--green);
+    box-shadow:0 0 8px var(--green-dim);
+  }
+  .tm-strip-link{
+    font-family:var(--mono);font-size:10px;color:var(--green);
+    text-decoration:none;display:flex;align-items:center;gap:4px;
+    letter-spacing:1px;text-transform:uppercase;transition:color .3s;
+  }
+  .tm-strip-link:hover{color:var(--white)}
+  .tm-strip-link svg{width:12px;height:12px}
+  .tm-data-row{
+    display:grid;grid-template-columns:repeat(5,1fr);
+    border-bottom:1px solid var(--border);
+  }
+  .tm-data-row:last-child{border-bottom:none}
+  .tm-cell{
+    padding:16px 12px;text-align:center;
+    border-right:1px solid var(--border);
+  }
+  .tm-cell:last-child{border-right:none}
+  .tm-cell-val{font-family:var(--serif);font-size:22px;font-weight:700;color:var(--white);line-height:1.1}
+  .tm-cell-val.nationality{font-size:20px}
+  .tm-cell-key{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-top:4px}
+
+  /* ═══ PLAYER IDENTITY ═══ — Minimal, editorial */
+  .identity{display:flex;gap:24px;align-items:center;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  .identity-photo{
+    width:100px;height:100px;flex-shrink:0;
+    border:1px solid var(--border);filter:grayscale(.3) contrast(1.1);
+    object-fit:cover;
+  }
+  .identity-text{}
+  .identity-name{font-family:var(--serif);font-size:32px;font-weight:900;color:var(--white);line-height:1.05;letter-spacing:-.5px}
+  .identity-pos{
+    font-family:var(--mono);font-size:12px;color:var(--green);
+    letter-spacing:2px;margin-top:4px;
+  }
+  .identity-club{font-size:13px;color:var(--muted);margin-top:6px;font-weight:400}
+  .identity-hook{
+    font-family:var(--serif);font-size:16px;font-weight:400;font-style:italic;
+    color:var(--muted);margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--border);line-height:1.5;
+  }
+
+  /* ═══ SECTION SYSTEM ═══ — Numbered document sections */
+  .doc-section{margin-bottom:28px}
+  .doc-section-head{
+    display:flex;align-items:baseline;gap:12px;margin-bottom:14px;
+  }
+  .doc-section-num{
+    font-family:var(--mono);font-size:11px;font-weight:700;
+    color:var(--faint);letter-spacing:1px;flex-shrink:0;
+  }
+  .doc-section-title{
+    font-family:var(--serif);font-size:15px;font-weight:600;
+    color:var(--white);letter-spacing:.5px;
+  }
+  .doc-section-rule{width:100%;height:1px;background:var(--border);flex:1}
+  .doc-body{font-size:14px;color:var(--muted);line-height:1.8}
+
+  /* ═══ SELLING POINTS — vertical timeline ═══ */
+  .timeline{position:relative;padding-left:24px}
+  .timeline::before{
+    content:'';position:absolute;left:6px;top:8px;bottom:8px;width:1px;
+    background:var(--border);
+  }
+  .tl-item{position:relative;padding:0 0 20px 20px}
+  .tl-item:last-child{padding-bottom:0}
+  .tl-item::before{
+    content:'';position:absolute;left:-20px;top:7px;
+    width:10px;height:10px;border-radius:50%;border:2px solid var(--green);
+    background:var(--bg);z-index:1;
+  }
+  .tl-item h4{font-size:14px;font-weight:600;color:var(--white);margin-bottom:3px}
+  .tl-item p{font-size:12px;color:var(--muted);line-height:1.6}
+
+  /* ═══ STATS — split ledger ═══ */
+  .ledger{border:1px solid var(--border);overflow:hidden}
+  .ledger-header{
+    display:grid;grid-template-columns:repeat(4,1fr);
+    background:var(--elevated);border-bottom:1px solid var(--border);
+  }
+  .ledger-header-cell{
+    padding:14px 12px;text-align:center;border-right:1px solid var(--border);
+  }
+  .ledger-header-cell:last-child{border-right:none}
+  .ledger-val{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--white);line-height:1.1}
+  .ledger-key{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-top:3px}
+
+  .ledger-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 16px;border-bottom:1px solid var(--border);
+  }
+  .ledger-row:last-child{border-bottom:none}
+  .lr-left{display:flex;align-items:center;gap:10px}
+  .lr-icon{font-size:13px;width:18px;text-align:center}
+  .lr-label{font-size:12px;color:var(--muted);font-family:var(--sans)}
+  .lr-right{display:flex;align-items:center;gap:10px}
+  .lr-value{font-family:var(--mono);font-size:13px;color:var(--white)}
+  .lr-tier{
+    font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:2px;
+    text-transform:uppercase;padding:3px 8px;
+  }
+  .lt-good{background:var(--green-glow);color:var(--green)}
+  .lt-great{background:#eab30822;color:#fbbf24}
+
+  /* ═══ TRAITS — mono list ═══ */
+  .mono-traits{display:flex;flex-direction:column;gap:0}
+  .mono-trait{
+    display:flex;align-items:center;gap:12px;padding:10px 0;
+    border-bottom:1px solid var(--border);font-size:13px;
+  }
+  .mono-trait:last-child{border-bottom:none}
+  .mono-trait span{font-size:16px;width:24px;text-align:center;flex-shrink:0}
+  .mono-trait em{font-style:normal;color:var(--white);font-weight:500}
+
+  /* ═══ TACTICAL ═══ */
+  .tac-block{padding:16px;background:var(--surface);border:1px solid var(--border)}
+  .tac-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .tac-chip{
+    font-family:var(--mono);font-size:12px;padding:6px 14px;
+    background:var(--elevated);border:1px solid var(--border);color:var(--white);
+  }
+  .tac-role-line{
+    font-size:13px;color:var(--green);font-weight:600;margin-bottom:8px;
+    font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;
+  }
+  .tac-desc{font-size:12px;color:var(--muted);line-height:1.6}
+
+  /* ═══ PITCH ═══ */
+  .field{
+    width:100%;aspect-ratio:3/4;max-height:240px;
+    background:linear-gradient(180deg,#0d1f14,#091710);
+    border:1px solid #182e20;position:relative;overflow:hidden;margin-top:12px;
+  }
+  .field::before{content:'';position:absolute;top:50%;left:10%;right:10%;height:1px;background:#182e2044}
+  .field-circle{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:48px;height:48px;border-radius:50%;border:1px solid #182e2044;
+  }
+  .fd{
+    position:absolute;transform:translate(-50%,-50%);
+    width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:7px;font-weight:700;letter-spacing:.5px;
+  }
+  .fd.p1{background:var(--green);color:var(--bg);box-shadow:0 0 12px var(--green-dim)}
+  .fd.p2{background:var(--green-dim);color:var(--green);border:1px solid var(--green-dim)}
+
+  /* ═══ HIGHLIGHTS — minimal rows ═══ */
+  .hl-rows{display:flex;flex-direction:column;gap:0}
+  .hl-row{
+    display:flex;align-items:center;gap:12px;padding:14px 0;
+    border-bottom:1px solid var(--border);text-decoration:none;color:var(--white);
+    transition:padding-left .3s;
+  }
+  .hl-row:last-child{border-bottom:none}
+  .hl-row:hover{padding-left:8px}
+  .hl-play-icon{
+    width:32px;height:32px;border:1px solid var(--red);color:var(--red);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;
+  }
+  .hl-row-title{font-size:13px;font-weight:500;flex:1}
+  .hl-row-arr{font-family:var(--mono);font-size:12px;color:var(--dim)}
+
+  /* ═══ CTA ═══ */
+  .final-cta{
+    text-align:center;padding:48px 24px;border:1px solid var(--green);
+    position:relative;margin-top:8px;
+  }
+  .final-cta::before{
+    content:'';position:absolute;inset:-1px;pointer-events:none;
+    background:radial-gradient(ellipse at 50% -20%,var(--green-glow),transparent 60%);
+  }
+  .final-cta h2{font-family:var(--serif);font-size:24px;font-weight:800;color:var(--white);margin-bottom:8px;position:relative}
+  .final-cta p{font-size:12px;color:var(--muted);margin-bottom:28px;position:relative;font-family:var(--mono);letter-spacing:.5px}
+  .cta-action{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:14px 32px;border:none;cursor:pointer;
+    font-family:var(--sans);font-size:14px;font-weight:700;
+    background:var(--green);color:var(--bg);transition:all .3s;
+    letter-spacing:.5px;position:relative;
+  }
+  .cta-action:hover{box-shadow:0 0 30px var(--green-dim)}
+
+  /* ─── FOOTER ─── */
+  .foot{text-align:center;padding:48px 0 20px}
+  .foot-divider{width:40px;height:1px;background:var(--faint);margin:0 auto 20px}
+  .foot-brand{font-family:var(--mono);font-size:10px;letter-spacing:4px;color:var(--dim);text-transform:uppercase}
+  .foot-sub{font-family:var(--mono);font-size:8px;color:var(--faint);letter-spacing:3px;text-transform:uppercase;margin-top:8px}
+
+  /* ANIMATIONS */
+  @keyframes reveal{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  .r{animation:reveal .4s ease forwards;opacity:0}
+  .r1{animation-delay:.05s}.r2{animation-delay:.1s}.r3{animation-delay:.2s}
+  .r4{animation-delay:.3s}.r5{animation-delay:.4s}.r6{animation-delay:.5s}
+  .r7{animation-delay:.6s}.r8{animation-delay:.7s}.r9{animation-delay:.8s}
+
+  @media(max-width:500px){
+    .identity{flex-direction:column;text-align:center}
+    .tm-data-row{grid-template-columns:repeat(3,1fr)}
+    .tm-cell:nth-child(4),.tm-cell:nth-child(5){display:none}
+    .ledger-header{grid-template-columns:repeat(2,1fr)}
+    .ledger-header-cell:nth-child(3),.ledger-header-cell:nth-child(4){display:none}
+    .identity-name{font-size:26px}
+  }
+
+  /* Print-friendly */
+  @media print{
+    body{background:#fff;color:#111}
+    .tm-strip,.ledger,.tac-block{border-color:#ccc}
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Top strip -->
+  <div class="topstrip r r1">
+    <div class="ts-brand">MGSR</div>
+    <div class="ts-type">Executive Brief</div>
+  </div>
+
+  <!-- ═══ TRANSFERMARKT DATA — tabular, document-style ═══ -->
+  <div class="tm-strip r r1">
+    <div class="tm-strip-header">
+      <div class="tm-strip-title">
+        <span class="dot"></span>
+        Transfermarkt Data
+      </div>
+      <a href="https://www.transfermarkt.com/josip-mitrovic/profil/spieler/464332" target="_blank" class="tm-strip-link">
+        View Full Profile
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+      </a>
+    </div>
+    <div class="tm-data-row">
+      <div class="tm-cell">
+        <div class="tm-cell-val">25</div>
+        <div class="tm-cell-key">Age</div>
+      </div>
+      <div class="tm-cell">
+        <div class="tm-cell-val">1.74m</div>
+        <div class="tm-cell-key">Height</div>
+      </div>
+      <div class="tm-cell">
+        <div class="tm-cell-val nationality">🇭🇷</div>
+        <div class="tm-cell-key">Nationality</div>
+      </div>
+      <div class="tm-cell">
+        <div class="tm-cell-val">Jun '27</div>
+        <div class="tm-cell-key">Contract</div>
+      </div>
+      <div class="tm-cell">
+        <div class="tm-cell-val" style="font-size:16px">Right</div>
+        <div class="tm-cell-key">Foot</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PLAYER IDENTITY ═══ -->
+  <div class="identity r r2">
+    <img src="https://img.a.transfermarkt.technology/portrait/header/464332-1663841543.jpg" alt="" class="identity-photo" onerror="this.style.display='none'">
+    <div class="identity-text">
+      <h1 class="identity-name">Josip Mitrovic</h1>
+      <div class="identity-pos">LW · RW · RB</div>
+      <div class="identity-club">Slaven Belupo Koprivnica · Croatia</div>
+    </div>
+  </div>
+
+  <div class="identity-hook r r2">
+    Versatile Croatian wide player, 25, offers immediate impact across both flanks.
+  </div>
+
+  <!-- ═══ 01 INTRODUCTION ═══ -->
+  <div class="doc-section r r3">
+    <div class="doc-section-head">
+      <span class="doc-section-num">01</span>
+      <span class="doc-section-title">Introduction</span>
+      <span class="doc-section-rule"></span>
+    </div>
+    <div class="doc-body">
+      Josip Mitrovic is a 25-year-old Croatian wide player currently with Slaven Belupo Koprivnica. A right-footed athlete, his primary role is as a left winger, where he leverages his preferred foot. Mitrovic also offers valuable positional flexibility, capable of featuring effectively on the right wing and having experience deployed at right-back. This versatility allows him to cover multiple roles across the flanks.
+    </div>
+  </div>
+
+  <!-- ═══ 02 WHY THIS PLAYER — TIMELINE ═══ -->
+  <div class="doc-section r r3">
+    <div class="doc-section-head">
+      <span class="doc-section-num">02</span>
+      <span class="doc-section-title">Why This Player</span>
+      <span class="doc-section-rule"></span>
+    </div>
+    <div class="timeline">
+      <div class="tl-item">
+        <h4>🔄 Flank Versatility & Depth</h4>
+        <p>Rare ability to operate effectively as a left winger, right winger, and experienced right-back provides invaluable tactical flexibility.</p>
+      </div>
+      <div class="tl-item">
+        <h4>📈 Prime Age, Proven Performer</h4>
+        <p>At 25, Mitrovic enters peak performance years with significant experience in a competitive European league. Ready for immediate impact.</p>
+      </div>
+      <div class="tl-item">
+        <h4>🧩 Tactical Flexibility Asset</h4>
+        <p>Right-footed primary role on the left wing, combined with experience across all wide positions, offers diverse tactical solutions.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 03 SEASON STATISTICS — Ledger ═══ -->
+  <div class="doc-section r r4">
+    <div class="doc-section-head">
+      <span class="doc-section-num">03</span>
+      <span class="doc-section-title">Season Statistics</span>
+      <span class="doc-section-rule"></span>
+    </div>
+    <p style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:2px;margin-bottom:12px;text-transform:uppercase">HNL · 2025/26 Season</p>
+    <div class="ledger">
+      <div class="ledger-header">
+        <div class="ledger-header-cell">
+          <div class="ledger-val">27</div>
+          <div class="ledger-key">Apps</div>
+        </div>
+        <div class="ledger-header-cell">
+          <div class="ledger-val">1,991</div>
+          <div class="ledger-key">Minutes</div>
+        </div>
+        <div class="ledger-header-cell">
+          <div class="ledger-val">6</div>
+          <div class="ledger-key">Goals</div>
+        </div>
+        <div class="ledger-header-cell">
+          <div class="ledger-val">2</div>
+          <div class="ledger-key">Assists</div>
+        </div>
+      </div>
+      <div class="ledger-row">
+        <div class="lr-left"><span class="lr-icon">⭐</span><span class="lr-label">Rating</span></div>
+        <div class="lr-right"><span class="lr-value">6.83</span><span class="lr-tier lt-good">GOOD</span></div>
+      </div>
+      <div class="ledger-row">
+        <div class="lr-left"><span class="lr-icon">⚽</span><span class="lr-label">Goals / 90 min</span></div>
+        <div class="lr-right"><span class="lr-value">0.27</span><span class="lr-tier lt-good">GOOD</span></div>
+      </div>
+      <div class="ledger-row">
+        <div class="lr-left"><span class="lr-icon">🔥</span><span class="lr-label">G+A / 90 min</span></div>
+        <div class="lr-right"><span class="lr-value">0.36</span><span class="lr-tier lt-good">GOOD</span></div>
+      </div>
+      <div class="ledger-row">
+        <div class="lr-left"><span class="lr-icon">💎</span><span class="lr-label">Conversion Rate</span></div>
+        <div class="lr-right"><span class="lr-value">21%</span><span class="lr-tier lt-great">GREAT</span></div>
+      </div>
+      <div class="ledger-row">
+        <div class="lr-left"><span class="lr-icon">💪</span><span class="lr-label">Duels Won</span></div>
+        <div class="lr-right"><span class="lr-value">51%</span><span class="lr-tier lt-great">GREAT</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 04 KEY TRAITS ═══ -->
+  <div class="doc-section r r5">
+    <div class="doc-section-head">
+      <span class="doc-section-num">04</span>
+      <span class="doc-section-title">Key Performance Traits</span>
+      <span class="doc-section-rule"></span>
+    </div>
+    <div class="mono-traits">
+      <div class="mono-trait"><span>🔄</span><em>Flank Versatility</em></div>
+      <div class="mono-trait"><span>🦶</span><em>Primary Left Winger</em></div>
+      <div class="mono-trait"><span>➡️</span><em>Right Wing Depth</em></div>
+      <div class="mono-trait"><span>🛡️</span><em>Right-Back Experience</em></div>
+      <div class="mono-trait"><span>💪</span><em>Athletic Build</em></div>
+      <div class="mono-trait"><span>🦵</span><em>Strong Right Foot</em></div>
+    </div>
+  </div>
+
+  <!-- ═══ 05 TACTICAL FIT ═══ -->
+  <div class="doc-section r r6">
+    <div class="doc-section-head">
+      <span class="doc-section-num">05</span>
+      <span class="doc-section-title">Tactical Fit</span>
+      <span class="doc-section-rule"></span>
+    </div>
+    <div class="tac-block">
+      <div class="tac-chips">
+        <span class="tac-chip">4-3-3</span>
+        <span class="tac-chip">4-2-3-1</span>
+        <span class="tac-chip">3-4-3</span>
+      </div>
+      <div class="tac-role-line">→ Versatile Flank Player / Wide Attacker</div>
+      <div class="tac-desc">Provides dynamic width, fitting seamlessly into systems requiring proactive wide attackers. Defensive versatility at RB makes him ideal for fluid tactical setups.</div>
+    </div>
+  </div>
+
+  <!-- ═══ 06 POSITION MAP ═══ -->
+  <div class="doc-section r r6">
+    <div class="doc-section-head">
+      <span class="doc-section-num">06</span>
+      <span class="doc-section-title">Position Map</span>
+      <span class="doc-section-rule"></span>
+    </div>
+    <div class="field">
+      <div class="field-circle"></div>
+      <div class="fd p1" style="top:30%;left:15%">LW</div>
+      <div class="fd p2" style="top:30%;left:85%">RW</div>
+      <div class="fd p2" style="top:65%;left:85%">RB</div>
+    </div>
+  </div>
+
+  <!-- ═══ 07 HIGHLIGHTS ═══ -->
+  <div class="doc-section r r7">
+    <div class="doc-section-head">
+      <span class="doc-section-num">07</span>
+      <span class="doc-section-title">Highlights</span>
+      <span class="doc-section-rule"></span>
+    </div>
+    <div class="hl-rows">
+      <a href="#" class="hl-row">
+        <div class="hl-play-icon">▶</div>
+        <span class="hl-row-title">Josip Mitrovic — Season Highlights 2025/26</span>
+        <span class="hl-row-arr">→</span>
+      </a>
+      <a href="#" class="hl-row">
+        <div class="hl-play-icon">▶</div>
+        <span class="hl-row-title">Goal Compilation — All Competitions</span>
+        <span class="hl-row-arr">→</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ═══ CTA ═══ -->
+  <div class="doc-section r r8">
+    <div class="final-cta">
+      <h2>Interested in Josip Mitrovic?</h2>
+      <p>Click below and we'll send complete deal terms.</p>
+      <button class="cta-action">
+        ✉️ Yes — Send Me Full Deal Details
+      </button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="foot r r9">
+    <div class="foot-divider"></div>
+    <div class="foot-brand">MGSR Team</div>
+    <div class="foot-sub">AI Scouting Intelligence</div>
+  </div>
+
+</div>
+
+</body>
+</html>
