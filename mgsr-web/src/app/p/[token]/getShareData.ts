@@ -2,8 +2,10 @@
  * Server-side fetch of share data for metadata (OG tags) and SSR.
  * Tries Firebase Admin first, falls back to client SDK (works with public read rules).
  * For older shares missing GPS data, fetches it live from Firestore.
+ * For shares missing enrichment/stats (e.g. created from Android), generates on the fly
+ * and backfills the Firestore doc so subsequent loads are instant.
  */
-import type { ShareData, SharedGpsData, GpsStrength } from './types';
+import type { ShareData, SharedGpsData, GpsStrength, PortfolioEnrichment, SharedPlayerStats } from './types';
 
 export async function getShareData(token: string): Promise<ShareData | null> {
   let data: ShareData | null = null;
@@ -51,6 +53,30 @@ export async function getShareData(token: string): Promise<ShareData | null> {
     } catch {
       // Stats enrichment is best-effort
     }
+  }
+
+  // 5. Live enrichment fallback for shares created without enrichment (e.g. from Android)
+  if (data && !data.enrichment && data.player) {
+    try {
+      const { generateEnrichment } = await import('@/lib/generateEnrichment');
+      const enrichment = await generateEnrichment(
+        data.player as Record<string, unknown>,
+        data.scoutReport,
+        data.platform,
+        data.lang,
+      );
+      if (enrichment && Object.keys(enrichment).length > 0) {
+        data.enrichment = enrichment;
+      }
+    } catch {
+      // Enrichment is best-effort
+    }
+  }
+
+  // 6. Backfill: persist any newly-generated enrichment/stats/gps to Firestore
+  //    so subsequent loads are instant (fire-and-forget, non-blocking).
+  if (data) {
+    backfillShareDoc(token, data).catch(() => {});
   }
 
   return data;
@@ -148,4 +174,50 @@ async function fetchLiveGpsData(
     strengths,
     documentUrls,
   };
+}
+
+/**
+ * Backfill newly-generated enrichment, stats, and GPS data into the Firestore doc
+ * so subsequent page loads don't re-generate. Uses Admin SDK merge to avoid overwriting.
+ * This is fire-and-forget — failures are silently ignored.
+ */
+async function backfillShareDoc(token: string, data: ShareData): Promise<void> {
+  const updates: Record<string, unknown> = {};
+
+  if (data.enrichment && Object.keys(data.enrichment).length > 0) {
+    updates.enrichment = data.enrichment;
+  }
+  if (data.playerStats) {
+    updates.playerStats = data.playerStats;
+  }
+  if (data.gpsData) {
+    updates.gpsData = data.gpsData;
+  }
+
+  // Nothing to backfill
+  if (Object.keys(updates).length === 0) return;
+
+  try {
+    const { getFirebaseAdmin } = await import('@/lib/firebaseAdmin');
+    const app = getFirebaseAdmin();
+    if (!app) return;
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const db = getFirestore(app);
+
+    // Only write fields that don't already exist in the doc
+    const snap = await db.collection('SharedPlayers').doc(token).get();
+    if (!snap.exists) return;
+    const existing = snap.data() ?? {};
+    const filtered: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(updates)) {
+      if (!existing[key]) {
+        filtered[key] = val;
+      }
+    }
+    if (Object.keys(filtered).length === 0) return;
+
+    await db.collection('SharedPlayers').doc(token).update(filtered);
+  } catch {
+    // Backfill is best-effort
+  }
 }
