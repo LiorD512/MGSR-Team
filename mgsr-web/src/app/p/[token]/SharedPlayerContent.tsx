@@ -21,6 +21,7 @@ import {
   KeyTraitsGrid,
   TacticalFitSection,
   BottomCTASection,
+  PlayerRadarChart,
 } from './PortfolioEnrichments';
 import { GpsPerformanceShowcase } from './GpsPerformanceShowcase';
 import { PlayerStatsShowcase } from './PlayerStatsShowcase';
@@ -620,21 +621,26 @@ export default function SharedPlayerContent({
           </div>
         )}
 
-        {/* Selling points (after introduction) */}
-        {enrichment?.sellingPoints && (
-          <WhyThisPlayerPitch points={enrichment.sellingPoints} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
-
         {/* ═══ HIGHLIGHTS — right after intro ═══ */}
         {data.highlights && data.highlights.length > 0 && (
           <HighlightsGrid highlights={data.highlights} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
-        {/* ═══ GPS PERFORMANCE — early visibility ═══ */}
+        {/* ═══ GPS PERFORMANCE ═══ */}
         {data.gpsData && data.gpsData.matchCount > 0 && (
           <div className="mb-8">
             <GpsPerformanceShowcase gpsData={data.gpsData} isWomen={isWomen} useHebrew={useHebrew} />
           </div>
+        )}
+
+        {/* ═══ PLAYER RADAR CHART (FM data) ═══ */}
+        {enrichment?.radarAttributes && enrichment.radarAttributes.length >= 3 && (
+          <PlayerRadarChart attributes={enrichment.radarAttributes} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+
+        {/* ═══ WHY THIS PLAYER — above show-more ═══ */}
+        {enrichment?.sellingPoints && (
+          <WhyThisPlayerPitch points={enrichment.sellingPoints} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
         {/* ═══ SHOW MORE — expandable section for deeper data ═══ */}

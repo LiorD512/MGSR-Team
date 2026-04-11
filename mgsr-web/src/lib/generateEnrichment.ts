@@ -213,8 +213,8 @@ export async function generateEnrichment(
     ? await fetchScoutData(tmProfile, name, langStr, club, age)
     : { profile: null, fm: null };
 
-  // AI score and radar are no longer generated — they were based on FM game data
-  // which produces misleading scores for real scouting contexts
+  // Build radar from FM dimension scores (visual-only, no raw numbers exposed)
+  const radarAttributes = buildRadarFromFM(fm);
 
   // Only use Gemini for qualitative dossier content
   const apiKey = process.env.GEMINI_API_KEY;
@@ -231,6 +231,7 @@ export async function generateEnrichment(
   if (dossier?.keyTraits) enrichment.keyTraits = dossier.keyTraits;
   if (dossier?.keyTraitsHe) enrichment.keyTraitsHe = dossier.keyTraitsHe;
   if (dossier?.tacticalFit) enrichment.tacticalFit = dossier.tacticalFit;
+  if (radarAttributes) enrichment.radarAttributes = radarAttributes;
 
   return enrichment;
 }
