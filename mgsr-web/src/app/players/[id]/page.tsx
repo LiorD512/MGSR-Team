@@ -3056,41 +3056,6 @@ export default function PlayerInfoPage() {
               {isRtl ? 'הכן לפורטפוליו' : 'Prepare for Portfolio'}
             </h3>
 
-            {/* Club selection — show matching requests */}
-            {matchingRequests.length > 0 && (
-              <div className="mb-4">
-                <p className="text-sm text-mgsr-muted mb-2">
-                  {isRtl ? 'התאם דוח למועדון ספציפי (אופציונלי):' : 'Tailor report to a specific club (optional):'}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {matchingRequests.map(({ request }) => {
-                    const r = request as typeof request & { clubName?: string; clubLogo?: string; position?: string };
-                    if (!r.clubName) return null;
-                    const isSelected = portfolioTargetClub?.name === r.clubName;
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => setPortfolioTargetClub(isSelected ? null : { name: r.clubName!, position: r.position, salaryRange: (r as typeof r & { salaryRange?: string }).salaryRange, transferFee: (r as typeof r & { transferFee?: string }).transferFee, dominateFoot: (r as typeof r & { dominateFoot?: string }).dominateFoot })}                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition border ${
-                          isSelected
-                            ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
-                            : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-text hover:border-mgsr-teal/40'
-                        }`}
-                      >
-                        {r.clubLogo && (
-                          <img src={r.clubLogo} alt="" className="w-5 h-5 rounded-full object-cover" />
-                        )}
-                        {r.clubName}
-                        {r.position && (
-                          <span className="text-xs text-mgsr-muted">({r.position})</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             <p className="text-sm text-mgsr-muted mb-4">
               {isRtl
                 ? 'בחר את שפת דוח הסקאוט'
