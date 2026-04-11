@@ -633,7 +633,7 @@ export default function SharedPlayerContent({
           </div>
         )}
 
-        {/* ═══ SHOW MORE — expandable section for deeper data ═══ */}}
+        {/* ═══ SHOW MORE — expandable section for deeper data ═══ */}
         {(() => {
           const hasTraits = enrichment?.keyTraits && enrichment.keyTraits.length > 0;
           const hasTactical = !!enrichment?.tacticalFit;
