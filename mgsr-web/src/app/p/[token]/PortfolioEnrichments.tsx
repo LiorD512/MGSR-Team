@@ -513,16 +513,16 @@ export function PlayerRadarChart({
 } & ThemeProps) {
   if (!attributes || attributes.length < 3) return null;
 
-  const cx = 150,
-    cy = 150,
+  const cx = 200,
+    cy = 200,
     maxR = 110;
   const n = attributes.length;
   const acColor = accent(isWomen);
   const rings = [0.25, 0.5, 0.75, 1.0];
   const dataPoints = computeRadarPoints(attributes, maxR, cx, cy);
 
-  // Label positions — slightly outside the outer ring
-  const labelR = maxR + 28;
+  // Label positions — outside the outer ring with enough room for full text
+  const labelR = maxR + 32;
   const labelPoints = attributes.map((attr, i) => {
     const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
     return {
@@ -538,8 +538,8 @@ export function PlayerRadarChart({
       <h3 className="text-xs font-bold uppercase tracking-widest text-mgsr-muted mb-4">
         {useHebrew ? 'פרופיל שחקן' : 'Player Profile'}
       </h3>
-      <div className="w-[280px] h-[280px] mx-auto relative">
-        <svg viewBox="0 0 300 300" className="w-full h-full">
+      <div className="w-[320px] h-[320px] mx-auto relative">
+        <svg viewBox="0 0 400 400" className="w-full h-full overflow-visible">
           {/* Background rings */}
           {rings.map((scale) => (
             <polygon
