@@ -189,7 +189,7 @@ function buildIFAPlayerContext(
   return parts.join('\n');
 }
 
-/** Template-based scout report when Gemini fails. Outputs structured markdown. */
+/** Template-based scout report when Gemini fails. One paragraph, no sections. */
 function buildTemplateScoutReport(
   player: PlayerPayload,
   scoutData: ScoutData | undefined,
@@ -199,93 +199,29 @@ function buildTemplateScoutReport(
   const name = (isHe ? player.fullNameHe || player.fullName : player.fullName || player.fullNameHe) || '—';
   const pos = player.positions?.filter(Boolean).join(', ') || '—';
   const club = player.currentClub?.clubName || '—';
-  const league = player.currentClub?.clubCountry || '';
-  const value = player.marketValue || '—';
   const nat = player.nationality || '—';
-  const contract = player.contractExpired || '—';
   const age = player.age || '—';
   const height = player.height || '';
 
-  const L = isHe
-    ? {
-        exec: 'סיכום',
-        strengths: 'חוזקות מרכזיות',
-        fit: 'התאמה טקטית',
-        stats: 'סטטיסטיקות',
-        fm: 'FM',
-        fmAttr: 'מאפיינים מובילים',
-        style: 'סגנון משחק',
-        minutes: 'דקות',
-        goals: 'שערים',
-        assists: 'אסיסטים',
-        tackles: 'טאקלים',
-        interceptions: 'חטיפות',
-      }
-    : {
-        exec: 'Executive Summary',
-        strengths: 'Key Strengths',
-        fit: 'Tactical Fit',
-        stats: 'Stats',
-        fm: 'FM',
-        fmAttr: 'Top attributes',
-        style: 'Playing style',
-        minutes: 'minutes',
-        goals: 'goals',
-        assists: 'assists',
-        tackles: 'tackles',
-        interceptions: 'interceptions',
-      };
-
-  const sections: string[] = [];
-
-  const execLine = `${name} — ${age}${isHe ? ' שנים' : 'yo'}, ${pos}. ${club}${league ? ` (${league})` : ''}. ${isHe ? 'שווי שוק' : 'Market value'}: **${value}**. ${nat}. ${isHe ? 'חוזה' : 'Contract'}: ${contract}.`;
-  sections.push(`## ${L.exec}\n\n${execLine}${height ? ` ${isHe ? 'גובה' : 'Height'}: ${height}.` : '.'}`);
+  const parts: string[] = [];
+  parts.push(`${name}, ${age}${isHe ? ' שנים' : 'yo'} ${pos} ${isHe ? 'מ' : 'from'} ${club} (${nat}).`);
+  if (height) parts.push(`${isHe ? 'גובה' : 'Height'}: ${height}.`);
 
   const profile = scoutData?.profile;
-  const fm = scoutData?.fm && !scoutData.fm.error ? scoutData.fm : null;
-
-  const strengths: string[] = [];
   if (profile && profile.api_matched) {
-    const p = profile;
-    const mins = p.api_minutes_90s != null ? Math.round(Number(p.api_minutes_90s) * 90) : null;
-    if (mins) strengths.push(`**${mins}** ${L.minutes} (365d)`);
-    if (p.api_rating != null) strengths.push(`${isHe ? 'דירוג' : 'Rating'}: **${p.api_rating}**`);
-    if (p.api_goals_per90 != null) strengths.push(`**${p.api_goals_per90}** ${L.goals}/90`);
-    if (p.api_assists_per90 != null) strengths.push(`**${p.api_assists_per90}** ${L.assists}/90`);
-    if (p.api_tackles_per90 != null) strengths.push(`**${p.api_tackles_per90}** ${L.tackles}/90`);
-    if (p.api_interceptions_per90 != null) strengths.push(`**${p.api_interceptions_per90}** ${L.interceptions}/90`);
-    if (p.api_key_passes_per90 != null) strengths.push(`**${p.api_key_passes_per90}** ${isHe ? 'מסירות מפתח/90' : 'Key passes/90'}`);
-    if (p.api_dribbles_success_per90 != null) strengths.push(`**${p.api_dribbles_success_per90}** ${isHe ? 'כדרורים/90' : 'Dribbles/90'}`);
+    const statParts: string[] = [];
+    if (profile.api_goals_per90 != null) statParts.push(`${profile.api_goals_per90} ${isHe ? 'שערים/90' : 'goals/90'}`);
+    if (profile.api_assists_per90 != null) statParts.push(`${profile.api_assists_per90} ${isHe ? 'בישולים/90' : 'assists/90'}`);
+    if (profile.api_tackles_per90 != null) statParts.push(`${profile.api_tackles_per90} ${isHe ? 'טאקלים/90' : 'tackles/90'}`);
+    if (profile.api_key_passes_per90 != null) statParts.push(`${profile.api_key_passes_per90} ${isHe ? 'מסירות מפתח/90' : 'key passes/90'}`);
+    if (statParts.length) parts.push(statParts.join(', ') + '.');
+    if (profile.player_style) parts.push(`${isHe ? 'סגנון משחק' : 'Playing style'}: ${profile.player_style}.`);
   }
-  if (fm) {
-    const f = fm as { ca?: number; pa?: number; tier?: string; best_position?: { position?: string; fit?: number }; top_attributes?: { name: string; value: number }[] };
-    if (f.best_position?.position) strengths.push(`${isHe ? 'עמדה מובילה' : 'Best position'}: **${f.best_position.position}**`);
-  }
-  if (profile?.player_style) strengths.push(`${L.style}: ${profile.player_style}`);
-  if (strengths.length) sections.push(`## ${L.strengths}\n\n- ${strengths.join('\n- ')}`);
 
-  const valueStr = (value || '').replace(/,/g, '');
-  const hasM = /m|M|million/i.test(valueStr);
-  const hasK = /k|K|thousand/i.test(valueStr);
-  let valueNum = parseFloat(valueStr.replace(/[^0-9.]/g, '')) || 0;
-  if (hasM) valueNum *= 1_000_000;
-  else if (hasK) valueNum *= 1_000;
-  let fit = '';
-  if (valueNum >= 1_500_000) {
-    fit = isHe ? 'שחקן סגל/סטארטר למועדונים מובילים' : 'Squad/starter for top clubs';
-  } else if (valueNum >= 500_000) {
-    fit = isHe ? 'שחקן סגל לליגת העל' : 'Squad player for Ligat Ha\'Al';
-  } else if (valueNum >= 100_000) {
-    fit = isHe ? 'שחקן רוטציה/סגל' : 'Rotation/squad';
-  } else {
-    fit = isHe ? 'שחקן סגל/פרויקט' : 'Squad/project';
-  }
-  sections.push(`## ${L.fit}\n\n${fit}.`);
-
-  return sections.join('\n\n');
+  return parts.join(' ');
 }
 
-/** Youth-specific template when no Transfermarkt/FM data — uses IFA stats */
+/** Youth-specific template when no Transfermarkt/FM data — one paragraph using IFA stats */
 function buildYouthTemplateScoutReport(
   player: PlayerPayload,
   ifaProfile: { fullName?: string; fullNameHe?: string; currentClub?: string; positions?: string[]; stats?: { matches?: number; goals?: number; assists?: number } },
@@ -299,73 +235,57 @@ function buildYouthTemplateScoutReport(
   const nat = player.nationality || '—';
   const stats = player.ifaStats ?? ifaProfile.stats;
 
-  const L = isHe
-    ? { exec: 'סיכום', strengths: 'חוזקות מרכזיות', stats: 'סטטיסטיקות עונה', fit: 'התאמה', matches: 'משחקים', goals: 'שערים', assists: 'בישולים' }
-    : { exec: 'Executive Summary', strengths: 'Key Strengths', stats: 'Season Stats', fit: 'Tactical Fit', matches: 'matches', goals: 'goals', assists: 'assists' };
+  const parts: string[] = [];
+  parts.push(`${name}, ${ageGroup}, ${pos} ${isHe ? 'מ' : 'from'} ${club} (${nat}).`);
 
-  const sections: string[] = [];
-  const execLine = `${name} — ${ageGroup}, ${pos}. ${club}. ${nat}.`;
-  sections.push(`## ${L.exec}\n\n${execLine}`);
-
-  const strengths: string[] = [];
   if (stats) {
-    if (stats.matches != null) strengths.push(`**${stats.matches}** ${L.matches}`);
-    if (stats.goals != null) strengths.push(`**${stats.goals}** ${L.goals}`);
-    if (stats.assists != null) strengths.push(`**${stats.assists}** ${L.assists}`);
+    const statParts: string[] = [];
+    if (stats.matches != null) statParts.push(`${stats.matches} ${isHe ? 'משחקים' : 'matches'}`);
+    if (stats.goals != null) statParts.push(`${stats.goals} ${isHe ? 'שערים' : 'goals'}`);
+    if (stats.assists != null) statParts.push(`${stats.assists} ${isHe ? 'בישולים' : 'assists'}`);
+    if (statParts.length) parts.push(statParts.join(', ') + '.');
   }
-  if (strengths.length) sections.push(`## ${L.strengths}\n\n- ${strengths.join('\n- ')}`);
-  if (stats && (stats.matches != null || stats.goals != null)) {
-    sections.push(`## ${L.stats}\n\n${stats.matches ?? 0} ${L.matches}, ${stats.goals ?? 0} ${L.goals}, ${stats.assists ?? 0} ${L.assists}.`);
-  }
-  sections.push(`## ${L.fit}\n\n${isHe ? 'שחקן נוער מבטיח עם פוטנציאל להתפתחות בליגות הבכירות.' : 'Promising youth player with potential to develop in senior leagues.'}`);
 
-  return sections.join('\n\n');
+  parts.push(isHe ? 'שחקן נוער מבטיח עם פוטנציאל להתפתחות.' : 'Promising youth player with development potential.');
+
+  return parts.join(' ');
 }
 
 function getScoutReportPrompt(outputLang: string): string {
-  const isHe = outputLang === 'Hebrew';
-  const h = isHe
-    ? { exec: 'סיכום', strengths: 'חוזקות מרכזיות', fit: 'התאמה טקטית' }
-    : { exec: 'Executive Summary', strengths: 'Key Strengths', fit: 'Tactical Fit' };
-  return `You are a professional scout presenting a player to clubs. Your job is to showcase the player in the best light — promotional, engaging, data-driven. NO verdict, NO sign/monitor/pass decision. Just present the player attractively.
+  return `You are a professional football scout. Write a SHORT player introduction — one paragraph only (3-5 sentences max).
 
-OUTPUT FORMAT:
-- Use ## for section headers only.
-- Do NOT use ** for bold text — write plain text instead.
-- Do NOT use * for emphasis or italic.
-- ~200–300 words total.
-- Promotional tone: highlight strengths only. Never mention areas to develop, weaknesses, or weak attributes.
-- Never use generic phrases ("works hard", "comfortable on the ball") — always cite specific numbers.
-- Do NOT invent: minutes, stats, or facts not in the profile.
-- Write in ${outputLang}.
-- Do NOT include a comparable players section.
+INCLUDE:
+- Who the player is (name, age, nationality)
+- Where he plays (club, position)
+- His key strengths (be specific, cite stats if available)
+- Notable statistics if available in the profile
 
-REQUIRED SECTIONS (use these EXACT ## headers — do not translate or change them):
+RULES:
+- Do NOT use any section headers (no ##, no bold headers)
+- Do NOT use ** for bold or * for italic — write plain text only
+- Do NOT mention market value, transfer fees, or price
+- Do NOT mention league-specific fit or name specific leagues
+- Do NOT add "Key Strengths" or "Tactical Fit" sections
+- Do NOT invent stats or facts not in the profile
+- Do NOT reference FM (Football Manager) data
+- Keep it professional, direct, and factual — one paragraph
+- ~60-100 words total
+- Write in ${outputLang}
 
-## ${h.exec}
-1–2 sentences. Narrative hook: e.g. "A [nationality] [position] with [key standout trait] who could [value proposition for Ligat Ha'Al]." Start with impact, not "Player X is 24 years old."
-
-## ${h.strengths}
-2–4 bullet points. Each must cite specific data: "2.1 tackles/90", "X goals/90". Include playing style if available. NEVER reference FM CA, FM PA, FM tier, FM attribute scores, or any Football Manager game data as numbers.
-
-## ${h.fit}
-Best role (from FM best_position), Ligat Ha'Al fit (rotation/squad/starter for top-6 or mid-table). Be specific.
-
-Use ONLY data from the profile below. Never invent stats. Israeli clubs typically pay €100k–€2.5m.`;
+Use ONLY data from the profile below. Never invent stats.`;
 }
 
-const YOUTH_SCOUT_PROMPT = `You are a professional scout presenting a youth player to clubs. Showcase the player attractively using IFA (Israel Football Association) data. Promotional tone, data-driven. NO verdict. Write in {outputLang}.
+const YOUTH_SCOUT_PROMPT = `You are a professional football scout. Write a SHORT player introduction for a youth player — one paragraph only (3-5 sentences max). Use IFA (Israel Football Association) data.
 
-OUTPUT FORMAT:
-- Use ## for section headers only.
-- Do NOT use ** for bold or * for italic — write plain text.
-- ~150–250 words.
-- Use ONLY data from the profile below. Never invent stats.
+INCLUDE: Who the player is (name, age group, nationality), where he plays (club, position), key stats if available (matches, goals, assists).
 
-REQUIRED SECTIONS:
-## Executive Summary — 1–2 sentences: age group, position, club, nationality. Highlight standout stats if available.
-## Key Strengths — 2–4 bullet points citing specific numbers from IFA stats (matches, goals, assists).
-## Tactical Fit — 1–2 sentences on potential and fit for youth academies / senior development.`;
+RULES:
+- Do NOT use section headers, bold, or markdown formatting
+- Do NOT mention market value or transfer fees
+- Keep it professional and factual — one paragraph
+- ~60-100 words
+- Write in {outputLang}
+- Use ONLY data from the profile below. Never invent stats.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -426,19 +346,12 @@ export async function POST(request: NextRequest) {
           ? YOUTH_SCOUT_PROMPT.replace('{outputLang}', outputLang)
           : getScoutReportPrompt(outputLang);
         const clubContext = targetClub
-          ? `\n\nCLUB-SPECIFIC BRIEF — This report is a sales pitch to ${targetClub}.
-The club is actively searching for a player for the following request:
-${targetClubRequest?.position ? `- Position needed: ${targetClubRequest.position}` : ''}
-${targetClubRequest?.salaryRange ? `- Salary budget: ${targetClubRequest.salaryRange}` : ''}
-${targetClubRequest?.transferFee ? `- Transfer fee budget: ${targetClubRequest.transferFee}` : ''}
+          ? `\n\nCLUB-SPECIFIC BRIEF — This report is for ${targetClub}.
+The club is searching for:
+${targetClubRequest?.position ? `- Position: ${targetClubRequest.position}` : ''}
 ${targetClubRequest?.dominateFoot ? `- Preferred foot: ${targetClubRequest.dominateFoot}` : ''}
 
-INSTRUCTIONS FOR CLUB-TARGETED REPORT:
-1. Executive Summary: Open with a direct pitch to ${targetClub} — e.g. "For ${targetClub}'s search for a ${targetClubRequest?.position || 'new signing'}, [Player] represents..." Frame the player as THE answer to their specific need.
-2. Key Strengths: Emphasize stats and attributes that directly match what ${targetClub} is looking for in this ${targetClubRequest?.position || 'role'}. Connect each strength to the club's need.
-3. Add a section "## ${isHe ? `למה ${targetClub}?` : `Why ${targetClub}?`}" — 2-3 sentences explaining why this player is a strong match: does the player fit the budget? does his profile/position match exactly what they asked for? mention contract situation if favorable. Place it before Tactical Fit.
-4. Tactical Fit: Be specific about how this player slots into ${targetClub}'s squad for the ${targetClubRequest?.position || 'requested'} role. If salary/fee data fits within budget, mention the financial fit.
-Make it feel like a personalized proposal written specifically for ${targetClub}'s sporting director, not a generic scouting report.`
+Keep it as one paragraph. Mention why this player fits ${targetClub}'s needs based on position and profile. Do NOT mention market value, transfer fees, or salary budgets.`
           : '';
         const prompt = `${promptTemplate}${clubContext}
 

@@ -75,7 +75,7 @@ async function generateShortScoutReport(player: SharePayload['player'], lang: st
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const playerContext = buildPlayerContext(player);
     const outputLang = lang === 'he' || lang === 'iw' ? 'Hebrew' : 'English';
-    const prompt = `You are a football scout. Write a SHORT scout report (2-4 sentences max) for this player. Be punchy and actionable. Focus on: key strengths, fit for Israeli/similar leagues, transfer value assessment. Use ${outputLang}.
+    const prompt = `You are a professional football scout. Write a SHORT player introduction (2-3 sentences, one paragraph). Include: who the player is, where he plays, his key strengths, and any notable statistics if available. Keep it professional, direct, and factual. Do NOT mention market value, transfer fees, or league-specific fit. Do NOT use section headers. Do NOT use bold or markdown. Write in ${outputLang}.
 
 Player profile:
 ${playerContext}

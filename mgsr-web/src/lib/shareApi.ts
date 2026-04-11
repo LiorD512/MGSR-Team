@@ -83,7 +83,6 @@ export function buildScoutSummary(player: SharePayload['player']): string {
   } else if (player.age) parts.push(`${player.age}yo`);
   else if (player.positions?.length) parts.push(player.positions.filter(Boolean).join(', '));
 
-  if (player.marketValue) parts.push(`• ${player.marketValue}`);
   if (player.currentClub?.clubName) parts.push(`• ${player.currentClub.clubName}`);
   if (player.nationality) parts.push(`• ${player.nationality}`);
 

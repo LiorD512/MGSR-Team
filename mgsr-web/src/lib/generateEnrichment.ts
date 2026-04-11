@@ -169,13 +169,14 @@ Generate a JSON object with ALL of these fields:
    - "icon": single emoji
    - "title": 3-5 word English title
    - "titleHe": Hebrew translation
-   - "description": 1-2 English sentences — agent pitch based on FACTS
+   - "description": 1-2 English sentences — agent pitch based on FACTS. Do NOT mention market value, transfer fees, or price.
    - "descriptionHe": Hebrew translation
 
 RULES:
 - Reference REAL data from the facts above
 - NEVER invent statistics that aren't in the data
 - NEVER reference FM (Football Manager) data: no CA, PA, tier names, attribute scores, or any game data as numbers
+- NEVER mention market value, transfer fees, or price in any field
 - Be persuasive and direct — this is a sales document, not an academic report
 - Hebrew must be proper modern Hebrew (not transliteration)
 - Return ONLY valid JSON object, no markdown fences`;

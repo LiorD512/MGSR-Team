@@ -14,7 +14,6 @@ import {
   WhyThisPlayerPitch,
   HighlightsGrid,
   InterestHeaderCTA,
-  TransferTicker,
   MiniPitchPosition,
   ContractCountdown,
   HookLine,
@@ -174,8 +173,8 @@ export default function SharedPlayerContent({
       const height = data.player.height || '';
       const quickFacts = [height, pos].filter(Boolean).join(' ');
       const shareText = useHeb
-        ? `שחקן חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר מיידי.` : 'מוכן למעבר מיידי.'}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n\n🔗 ${url}`
-        : `New player that could fit your needs.\n${quickFacts ? `${quickFacts} — ready for immediate move.` : 'Ready for immediate move.'}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n\n🔗 ${url}`;
+        ? `שחקן חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר מיידי.` : 'מוכן למעבר מיידי.'}\nאם רלוונטי \u2013 לחצו "מעוניין" ונשלח תנאים מלאים.\n\n${url}`
+        : `New player that could fit your needs.\n${quickFacts ? `${quickFacts} — ready for immediate move.` : 'Ready for immediate move.'}\nIf relevant, click "Interested" and we'll send full deal terms.\n\n${url}`;
       if (url.includes('localhost') && typeof window !== 'undefined') {
         await navigator.clipboard.writeText(url);
         alert(useHeb ? 'לינק הועתק!' : 'Link copied!');
@@ -464,16 +463,11 @@ export default function SharedPlayerContent({
                   {player.nationality && <><span className="opacity-30">|</span><span>{player.nationality}</span></>}
                   {player.contractExpired?.trim() && player.contractExpired !== '-' && <><span className="opacity-30">|</span><span>{useHebrew ? 'חוזה' : 'Contract'}: {player.contractExpired}</span></>}
                 </div>
-                {/* Club + Market Value */}
+                {/* Club */}
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-3">
                   {player.currentClub?.clubName && (
                     <span className="text-mgsr-text font-medium text-sm">
                       {player.currentClub.clubName}{player.currentClub.clubCountry ? ` · ${player.currentClub.clubCountry}` : ''}
-                    </span>
-                  )}
-                  {player.marketValue && (
-                    <span className={`text-xl font-display font-bold ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
-                      {player.marketValue}
                     </span>
                   )}
                 </div>
@@ -484,14 +478,8 @@ export default function SharedPlayerContent({
           </div>
         </div>
 
-        {/* Transfer ticker */}
-        <TransferTicker data={data} enrichment={enrichment} isWomen={isWomen} useHebrew={useHebrew} />
-
         {/* Urgency badges */}
         <UrgencyBadgesStrip data={data} useHebrew={useHebrew} />
-
-        {/* ═══ CLUB SUMMARY — "Why Clubs Like Him" ═══ */}
-        <ClubSummarySection items={enrichment?.clubSummary} itemsHe={enrichment?.clubSummaryHe} isWomen={isWomen} useHebrew={useHebrew} />
 
         {/* ═══ KEY TRAITS — scannable grid ═══ */}
         <KeyTraitsGrid traits={enrichment?.keyTraits} traitsHe={enrichment?.keyTraitsHe} isWomen={isWomen} useHebrew={useHebrew} />

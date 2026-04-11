@@ -532,9 +532,9 @@ fun PlayerInfoScreen(
                         val height = player.height?.takeIf { it.isNotBlank() } ?: ""
                         val quickFacts = listOf(height, pos).filter { it.isNotBlank() }.joinToString(" ")
                         val shareText = if (lang == "he") {
-                            "שחקן חדש שעשוי להתאים לכם.\n${if (quickFacts.isNotBlank()) "$quickFacts, מוכן למעבר מיידי." else "מוכן למעבר מיידי."}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n\n🔗 $url"
+                            "שחקן חדש שעשוי להתאים לכם.\n${if (quickFacts.isNotBlank()) "$quickFacts, מוכן למעבר מיידי." else "מוכן למעבר מיידי."}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n\n$url"
                         } else {
-                            "New player that could fit your needs.\n${if (quickFacts.isNotBlank()) "$quickFacts — ready for immediate move." else "Ready for immediate move."}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n\n🔗 $url"
+                            "New player that could fit your needs.\n${if (quickFacts.isNotBlank()) "$quickFacts — ready for immediate move." else "Ready for immediate move."}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n\n$url"
                         }
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
