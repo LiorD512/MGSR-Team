@@ -593,8 +593,8 @@ export default function YouthPlayerPage() {
         const quickFacts = [ageGroup, pos].filter(Boolean).join(' ');
         const shareText =
           lang === 'he'
-            ? `שחקן צעיר חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר.` : 'מוכן למעבר.'}\nאם רלוונטי \u2013 לחצו ״מעוניין״ ונשלח פרטים מלאים.\n\n🔗 ${url}`
-            : `New youth player that could fit your needs.\n${quickFacts ? `${quickFacts} — available for transfer.` : 'Available for transfer.'}\nIf relevant, click "Interested" and we'll send full details.\n\n🔗 ${url}`;
+            ? `שחקן צעיר חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר.` : 'מוכן למעבר.'}\nאם רלוונטי \u2013 לחצו ״מעוניין״ ונשלח פרטים מלאים.\n\n${url}`
+            : `New youth player that could fit your needs.\n${quickFacts ? `${quickFacts} — available for transfer.` : 'Available for transfer.'}\nIf relevant, click "Interested" and we'll send full details.\n\n${url}`;
 
         if (url.includes('localhost') && typeof window !== 'undefined') {
           setPendingShareUrl(shareText);

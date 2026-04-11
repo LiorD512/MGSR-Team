@@ -1246,8 +1246,8 @@ export default function PlayerInfoPage() {
         const quickFacts = [height, pos].filter(Boolean).join(' ');
         const shareText =
           lang === 'he'
-            ? `שחקן חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר מיידי.` : 'מוכן למעבר מיידי.'}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n\n🔗 ${url}`
-            : `New player that could fit your needs.\n${quickFacts ? `${quickFacts} — ready for immediate move.` : 'Ready for immediate move.'}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n\n🔗 ${url}`;
+            ? `שחקן חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר מיידי.` : 'מוכן למעבר מיידי.'}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n\n${url}`
+            : `New player that could fit your needs.\n${quickFacts ? `${quickFacts} — ready for immediate move.` : 'Ready for immediate move.'}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n\n${url}`;
 
         if (url.includes('localhost') && typeof window !== 'undefined') {
           setPendingShareUrl(shareText);
