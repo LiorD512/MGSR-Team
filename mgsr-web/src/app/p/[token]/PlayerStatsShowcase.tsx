@@ -64,26 +64,30 @@ export function PlayerStatsShowcase({
             <div className={`text-2xl font-bold tabular-nums ${accentText}`}>{formatMinutes(stats.minutes)}</div>
             <div className="text-[11px] text-mgsr-muted mt-0.5">{t.minutes}</div>
           </div>
-          {hasGoalsOrAssists && stats.goals != null && (
+          {hasGoalsOrAssists && (
             <div className={`rounded-xl ${accentBg} px-4 py-3 text-center`}>
-              <div className={`text-2xl font-bold tabular-nums ${accentText}`}>{stats.goals}</div>
+              <div className={`text-2xl font-bold tabular-nums ${accentText}`}>{stats.goals ?? 0}</div>
               <div className="text-[11px] text-mgsr-muted mt-0.5">{t.goals}</div>
             </div>
           )}
-          {hasGoalsOrAssists && stats.assists != null && (
+          {hasGoalsOrAssists && (
             <div className={`rounded-xl ${accentBg} px-4 py-3 text-center`}>
-              <div className={`text-2xl font-bold tabular-nums ${accentText}`}>{stats.assists}</div>
+              <div className={`text-2xl font-bold tabular-nums ${accentText}`}>{stats.assists ?? 0}</div>
               <div className="text-[11px] text-mgsr-muted mt-0.5">{t.assists}</div>
             </div>
           )}
         </div>
 
-        {/* Stats list — clean rows */}
-        <div className="space-y-0 divide-y divide-mgsr-border/40">
-          {stats.stats.map((stat) => (
-            <StatRow key={stat.key} stat={stat} useHebrew={useHebrew} isWomen={isWomen} per90Label={t.per90} />
-          ))}
-        </div>
+        {/* Stats list — only great/elite stats */}
+        {stats.stats.filter((s) => s.tier === 'great' || s.tier === 'elite').length > 0 && (
+          <div className="space-y-0 divide-y divide-mgsr-border/40">
+            {stats.stats
+              .filter((s) => s.tier === 'great' || s.tier === 'elite')
+              .map((stat) => (
+                <StatRow key={stat.key} stat={stat} useHebrew={useHebrew} isWomen={isWomen} per90Label={t.per90} />
+              ))}
+          </div>
+        )}
       </div>
     </div>
   );
