@@ -192,6 +192,8 @@ export async function fetchPlayerStatsForShare(
       season: data.api_season,
       appearances: data.api_appearances ?? 0,
       minutes,
+      goals: data.api_goals ?? undefined,
+      assists: data.api_assists ?? undefined,
       rating: data.api_rating,
       stats: impressiveStats,
     };

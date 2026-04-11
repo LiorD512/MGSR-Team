@@ -50,6 +50,8 @@ export interface SharedPlayerStats {
   season?: number;
   appearances: number;
   minutes: number;
+  goals?: number;
+  assists?: number;
   rating?: number;
   stats: SharedStatItem[];
 }

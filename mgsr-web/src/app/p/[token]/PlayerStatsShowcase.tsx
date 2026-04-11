@@ -24,14 +24,20 @@ export function PlayerStatsShowcase({
         title: 'סטטיסטיקות עונה',
         appearances: 'הופעות',
         minutes: 'דקות',
+        goals: 'שערים',
+        assists: 'בישולים',
         per90: '/ 90 דק׳',
       }
     : {
         title: 'Season Statistics',
         appearances: 'Appearances',
         minutes: 'Minutes',
+        goals: 'Goals',
+        assists: 'Assists',
         per90: '/ 90 min',
       };
+
+  const hasGoalsOrAssists = (stats.goals != null && stats.goals > 0) || (stats.assists != null && stats.assists > 0);
 
   const seasonLabel = stats.season ? `${stats.season}/${(stats.season + 1).toString().slice(-2)}` : '';
 
@@ -49,7 +55,7 @@ export function PlayerStatsShowcase({
         </div>
 
         {/* Top-line numbers */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className={`grid ${hasGoalsOrAssists ? 'grid-cols-4' : 'grid-cols-2'} gap-3 mb-5`}>
           <div className={`rounded-xl ${accentBg} px-4 py-3 text-center`}>
             <div className={`text-2xl font-bold tabular-nums ${accentText}`}>{stats.appearances}</div>
             <div className="text-[11px] text-mgsr-muted mt-0.5">{t.appearances}</div>
@@ -58,6 +64,18 @@ export function PlayerStatsShowcase({
             <div className={`text-2xl font-bold tabular-nums ${accentText}`}>{formatMinutes(stats.minutes)}</div>
             <div className="text-[11px] text-mgsr-muted mt-0.5">{t.minutes}</div>
           </div>
+          {hasGoalsOrAssists && stats.goals != null && (
+            <div className={`rounded-xl ${accentBg} px-4 py-3 text-center`}>
+              <div className={`text-2xl font-bold tabular-nums ${accentText}`}>{stats.goals}</div>
+              <div className="text-[11px] text-mgsr-muted mt-0.5">{t.goals}</div>
+            </div>
+          )}
+          {hasGoalsOrAssists && stats.assists != null && (
+            <div className={`rounded-xl ${accentBg} px-4 py-3 text-center`}>
+              <div className={`text-2xl font-bold tabular-nums ${accentText}`}>{stats.assists}</div>
+              <div className="text-[11px] text-mgsr-muted mt-0.5">{t.assists}</div>
+            </div>
+          )}
         </div>
 
         {/* Stats list — clean rows */}
@@ -116,6 +134,5 @@ function formatStatValue(value: number, format: string): string {
 }
 
 function formatMinutes(mins: number): string {
-  if (mins >= 1000) return `${(mins / 1000).toFixed(1)}k`;
-  return String(mins);
+  return mins.toLocaleString('en-US');
 }
