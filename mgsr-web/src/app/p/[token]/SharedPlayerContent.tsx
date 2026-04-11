@@ -277,7 +277,7 @@ export default function SharedPlayerContent({
         height: 'גובה',
         nationality: 'לאום',
         contract: 'חוזה',
-        scoutReport: 'דוח סקאוט',
+        scoutReport: 'הצגה',
         highlights: 'היילייטס',
         contact: 'איש קשר',
         playerContact: isWomen ? 'יצירת קשר עם השחקנית' : 'יצירת קשר עם השחקן',
@@ -297,7 +297,7 @@ export default function SharedPlayerContent({
         height: 'Height',
         nationality: 'Nationality',
         contract: 'Contract',
-        scoutReport: 'Scout Report',
+        scoutReport: 'Introduction',
         highlights: 'Highlights',
         contact: 'Contact',
         playerContact: isWomen ? 'Athlete contact' : 'Player contact',
@@ -481,37 +481,12 @@ export default function SharedPlayerContent({
         {/* Urgency badges */}
         <UrgencyBadgesStrip data={data} useHebrew={useHebrew} />
 
-        {/* ═══ KEY TRAITS — scannable grid ═══ */}
-        <KeyTraitsGrid traits={enrichment?.keyTraits} traitsHe={enrichment?.keyTraitsHe} isWomen={isWomen} useHebrew={useHebrew} />
-
-        {/* ═══ TACTICAL FIT ═══ */}
-        <TacticalFitSection fit={enrichment?.tacticalFit} isWomen={isWomen} useHebrew={useHebrew} />
-
-        {/* Mini pitch position map */}
-        {player.positions && player.positions.length > 0 && (
-          <MiniPitchPosition positions={player.positions} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
-
-        {/* Contract countdown — only show when contract expires within 6 months */}
-        {(() => {
-          if (!player.contractExpired?.trim() || player.contractExpired === '-') return null;
-          const ce = player.contractExpired;
-          let expiryDate: Date | null = null;
-          const ddmmyyyy = ce.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-          if (ddmmyyyy) expiryDate = new Date(+ddmmyyyy[3], +ddmmyyyy[2] - 1, +ddmmyyyy[1]);
-          else { const yyyy = ce.match(/(\d{4})/); if (yyyy) expiryDate = new Date(+yyyy[1], 5, 30); }
-          if (!expiryDate) return null;
-          const daysUntil = Math.floor((expiryDate.getTime() - Date.now()) / 86400000);
-          if (daysUntil <= 0 || daysUntil > 180) return null;
-          return <ContractCountdown contractExpiry={ce} isWomen={isWomen} useHebrew={useHebrew} />;
-        })()}
-
-        {/* ═══ SCOUT REPORT ═══ */}
+        {/* ═══ INTRODUCTION (formerly Scout Report) — first after tags ═══ */}
         {data.scoutReport && (
           <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
             {/* Header with edit controls when from portfolio */}
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider">
+              <h3 className={`text-sm font-semibold uppercase tracking-wider ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
                 {labels.scoutReport}
               </h3>
               {fromPortfolio && editedReport !== null && (
@@ -609,10 +584,60 @@ export default function SharedPlayerContent({
           </div>
         )}
 
-        {/* Selling points + comparison (after scout report) */}
+        {/* Selling points (after introduction) */}
         {enrichment?.sellingPoints && (
           <WhyThisPlayerPitch points={enrichment.sellingPoints} isWomen={isWomen} useHebrew={useHebrew} />
         )}
+
+        {/* ═══ TRANSFERMARKT PROFILE ═══ */}
+        {!isWomen && player.tmProfile && (
+          <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
+            <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
+              {labels.transfermarkt}
+            </h3>
+            <a
+              href={player.tmProfile}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`inline-flex items-center gap-2 font-medium ${accentLink}`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              {data.lang === 'he' ? 'צפה בפרופיל' : 'View profile'}
+            </a>
+          </div>
+        )}
+
+        {/* ═══ HIGHLIGHTS ═══ */}
+        {data.highlights && data.highlights.length > 0 && (
+          <HighlightsGrid highlights={data.highlights} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+
+        {/* ═══ KEY TRAITS — scannable grid ═══ */}
+        <KeyTraitsGrid traits={enrichment?.keyTraits} traitsHe={enrichment?.keyTraitsHe} isWomen={isWomen} useHebrew={useHebrew} />
+
+        {/* ═══ TACTICAL FIT ═══ */}
+        <TacticalFitSection fit={enrichment?.tacticalFit} isWomen={isWomen} useHebrew={useHebrew} />
+
+        {/* Mini pitch position map */}
+        {player.positions && player.positions.length > 0 && (
+          <MiniPitchPosition positions={player.positions} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+
+        {/* Contract countdown — only show when contract expires within 6 months */}
+        {(() => {
+          if (!player.contractExpired?.trim() || player.contractExpired === '-') return null;
+          const ce = player.contractExpired;
+          let expiryDate: Date | null = null;
+          const ddmmyyyy = ce.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+          if (ddmmyyyy) expiryDate = new Date(+ddmmyyyy[3], +ddmmyyyy[2] - 1, +ddmmyyyy[1]);
+          else { const yyyy = ce.match(/(\d{4})/); if (yyyy) expiryDate = new Date(+yyyy[1], 5, 30); }
+          if (!expiryDate) return null;
+          const daysUntil = Math.floor((expiryDate.getTime() - Date.now()) / 86400000);
+          if (daysUntil <= 0 || daysUntil > 180) return null;
+          return <ContractCountdown contractExpiry={ce} isWomen={isWomen} useHebrew={useHebrew} />;
+        })()}
 
         {/* ═══ SEASON STATISTICS (API Football) ═══ */}
         {data.playerStats && data.playerStats.stats.length > 0 && (
@@ -621,9 +646,11 @@ export default function SharedPlayerContent({
           </div>
         )}
 
-        {/* Highlights — thumbnail grid with lazy iframe */}
-        {data.highlights && data.highlights.length > 0 && (
-          <HighlightsGrid highlights={data.highlights} isWomen={isWomen} useHebrew={useHebrew} />
+        {/* ═══ GPS PERFORMANCE ═══ */}
+        {data.gpsData && data.gpsData.matchCount > 0 && (
+          <div className="mb-8">
+            <GpsPerformanceShowcase gpsData={data.gpsData} isWomen={isWomen} useHebrew={useHebrew} />
+          </div>
         )}
 
         {/* ═══ FAMILY STATUS ═══ */}
@@ -650,32 +677,6 @@ export default function SharedPlayerContent({
                 </div>
               )}
             </div>
-          </div>
-        )}
-
-        {/* ═══ GPS PERFORMANCE ═══ */}
-        {data.gpsData && data.gpsData.matchCount > 0 && (
-          <div className="mb-8">
-            <GpsPerformanceShowcase gpsData={data.gpsData} isWomen={isWomen} useHebrew={useHebrew} />
-          </div>
-        )}
-
-        {!isWomen && player.tmProfile && (
-          <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
-            <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
-              {labels.transfermarkt}
-            </h3>
-            <a
-              href={player.tmProfile}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-flex items-center gap-2 font-medium ${accentLink}`}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              {data.lang === 'he' ? 'צפה בפרופיל' : 'View profile'}
-            </a>
           </div>
         )}
 
