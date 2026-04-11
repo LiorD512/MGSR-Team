@@ -1,7 +1,7 @@
 # MGSR Team — Complete Architecture Reference
 
 > **Every agent MUST read this file before writing a single line of code.**
-> Last updated: 2026-04-10
+> Last updated: 2026-04-11
 
 ---
 
@@ -369,7 +369,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `clubIntel.ts` | Club intelligence (league tiers, squad analysis) |
 | `portfolioApi.ts` | Portfolio data access |
 | `shareApi.ts` | Share page token generation |
-| `generateEnrichment.ts` | AI-generated enrichment data |
+| `generateEnrichment.ts` | AI-generated enrichment data (Gemini dossier + FM radar). Used at share-creation (web) and lazy on page load (Android fallback) |
 | `mandatePdfGenerator.ts` | Mandate PDF creation |
 | `pdfFlatten.ts` | PDF form flattening |
 | `documentDetection.ts` | Gemini-based document type detection |
@@ -889,12 +889,35 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Data | N/A | AI-powered discovery of Jewish/Israeli heritage players |
 
 ### Shared Player Page (Public)
-| Aspect | Web Only |
-|--------|----------|
+| Aspect | Detail |
+|--------|--------|
 | Route | `/p/[token]` |
 | Auth | None required |
 | Data | SharedPlayers collection (token lookup via Firebase Admin) |
-| Features | Player profile snapshot, GPS showcase, stats, enrichments, OG image generation |
+| Features | Player profile snapshot, GPS showcase, stats, AI enrichments (radar chart, key traits, tactical fit, selling points, hook line, club summary), OG image generation |
+| Enrichment parity | Both Android and Web produce identical share pages. Web pre-generates enrichment at share-creation time via `/api/share/create`. Android creates shares via `sharePlayerCreate` Cloud Function (basic data only). When `/p/[token]` loads and `enrichment` / `playerStats` are missing, `getShareData.ts` lazy-generates them using the same Gemini + scout server pipeline, then backfills to Firestore so subsequent loads are instant. |
+
+#### Share Creation Paths
+
+```
+─── WEB PATH ───────────────────────────────────────
+Web Client → POST /api/share/create (Next.js API route)
+  ├─ generateEnrichment() → Gemini AI dossier + FM radar
+  ├─ fetchPlayerStatsForShare() → Scout server API-Football stats
+  └─ Writes to SharedPlayers: player + enrichment + playerStats + gpsData
+
+─── ANDROID PATH ───────────────────────────────────
+Android Client → sharePlayerCreate (Cloud Function callable)
+  └─ Writes to SharedPlayers: player + gpsData (NO enrichment, NO stats)
+
+─── LAZY ENRICHMENT (both paths) ──────────────────
+/p/[token] page load → getShareData.ts:
+  1. Read SharedPlayers doc
+  2. If gpsData missing → fetch live from GpsMatchData
+  3. If playerStats missing → fetch from scout server
+  4. If enrichment missing → generateEnrichment() (Gemini + FM radar)
+  5. Backfill any newly-generated data to Firestore (fire-and-forget)
+```
 
 ### Shared Requests Page (Public)
 | Aspect | Web Only |
@@ -988,7 +1011,7 @@ Server-side Cheerio scraping:
 
 | Route | Purpose |
 |-------|---------|
-| `/api/share/create` | Create share token + snapshot |
+| `/api/share/create` | Create share token + snapshot + pre-generate enrichment & stats (web path) |
 | `/api/share/enrich-portfolio` | AI-enrich portfolio for sharing |
 | `/api/share/generate-scout-report` | Generate scout report for share page |
 | `/api/share/image/[token]` | Dynamic OG image generation |
@@ -1052,7 +1075,7 @@ Every write operation goes through this chain:
 | `chatRoomDelete` | ✅ | ✅ | `chatRoom.js` | Delete message |
 | `portfolioUpsert` | ✅ | ✅ | `portfolio.js` | Upsert portfolio entry |
 | `portfolioDelete` | ✅ | ✅ | `portfolio.js` | Delete portfolio entry |
-| `sharePlayerCreate` | ✅ | ✅ | `phase6Misc.js` | Create share token |
+| `sharePlayerCreate` | ✅ | ✅ | `phase6Misc.js` | Create share token (Android uses this; web uses `/api/share/create` with enrichment) |
 | `shadowTeamsSave` | ✅ | ✅ | `phase6Misc.js` | Save shadow team |
 | `scoutProfileFeedbackSet` | ✅ | ✅ | `phase6Misc.js` | Submit scout feedback |
 | `birthdayWishSend` | ✅ | ✅ | `phase6Misc.js` | Send birthday wish |
