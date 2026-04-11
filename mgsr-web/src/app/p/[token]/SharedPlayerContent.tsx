@@ -633,17 +633,7 @@ export default function SharedPlayerContent({
           </div>
         )}
 
-        {/* ═══ PLAYER RADAR CHART (FM data) ═══ */}
-        {enrichment?.radarAttributes && enrichment.radarAttributes.length >= 3 && (
-          <PlayerRadarChart attributes={enrichment.radarAttributes} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
-
-        {/* ═══ WHY THIS PLAYER — above show-more ═══ */}
-        {enrichment?.sellingPoints && (
-          <WhyThisPlayerPitch points={enrichment.sellingPoints} isWomen={isWomen} useHebrew={useHebrew} />
-        )}
-
-        {/* ═══ SHOW MORE — expandable section for deeper data ═══ */}
+        {/* ═══ SHOW MORE — expandable section for deeper data ═══ */}}
         {(() => {
           const hasTraits = enrichment?.keyTraits && enrichment.keyTraits.length > 0;
           const hasTactical = !!enrichment?.tacticalFit;
@@ -661,7 +651,9 @@ export default function SharedPlayerContent({
             const daysUntil = Math.floor((expiryDate.getTime() - Date.now()) / 86400000);
             return daysUntil > 0 && daysUntil <= 180;
           })();
-          const hasAnythingToExpand = hasTraits || hasTactical || hasPositions || hasStats || hasFamilyStatus || hasContractCountdown || playerPhone || agencyPhone;
+          const hasRadar = enrichment?.radarAttributes && enrichment.radarAttributes.length >= 3;
+          const hasSellingPoints = !!enrichment?.sellingPoints;
+          const hasAnythingToExpand = hasRadar || hasSellingPoints || hasTraits || hasTactical || hasPositions || hasStats || hasFamilyStatus || hasContractCountdown || playerPhone || agencyPhone;
 
           if (!hasAnythingToExpand) return null;
           return (
@@ -697,6 +689,16 @@ export default function SharedPlayerContent({
                 className={`overflow-hidden transition-all duration-500 ease-in-out ${showMore ? 'max-h-[5000px] opacity-100 mt-6' : 'max-h-0 opacity-0 mt-0'}`}
               >
                 <div>
+                  {/* Player Radar Chart (FM data) */}
+                  {enrichment?.radarAttributes && enrichment.radarAttributes.length >= 3 && (
+                    <PlayerRadarChart attributes={enrichment.radarAttributes} isWomen={isWomen} useHebrew={useHebrew} />
+                  )}
+
+                  {/* Why This Player */}
+                  {enrichment?.sellingPoints && (
+                    <WhyThisPlayerPitch points={enrichment.sellingPoints} isWomen={isWomen} useHebrew={useHebrew} />
+                  )}
+
                   {/* Key Traits */}
                   <KeyTraitsGrid traits={enrichment?.keyTraits} traitsHe={enrichment?.keyTraitsHe} isWomen={isWomen} useHebrew={useHebrew} />
 
