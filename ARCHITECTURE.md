@@ -80,8 +80,9 @@ MGSR Team is a **multi-platform football agent management system** for managing 
 │      └─ Deterministic enrichment (comparisonQuality + uniqueTrait) │
 │                                                                     │
 │  GOOGLE CLOUD PLATFORM (Workers)                                   │
-│  ├─ Cloud Run Job: player-refresh-job (daily 2am)                  │
-│  │   └─ Refreshes all player data from Transfermarkt               │
+│  ├─ Cloud Run Job: player-refresh-job (hourly micro-batch)         │
+│  │   └─ Refreshes 200 stalest players/hour via TM proxy            │
+│  │       (4,800 players/day capacity; skips recently refreshed)    │
 │  └─ Cloud Run Job: scout-db-build (Monday 4am)                    │
 │      └─ Rebuilds Render server database (12-14 hour job)           │
 │                                                                     │
