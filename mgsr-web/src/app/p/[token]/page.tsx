@@ -1,5 +1,4 @@
 import { cache } from 'react';
-import { headers } from 'next/headers';
 import { getShareData } from './getShareData';
 import SharedPlayerContent from './SharedPlayerContent';
 
@@ -35,18 +34,7 @@ export async function generateMetadata({
   const valueStr = data?.player?.marketValue ?? '';
   const desc = [positionsStr, clubStr, valueStr].filter(Boolean).join(' · ') || 'Player profile shared via MGSR Team';
 
-  let baseUrl = getBaseUrl();
-  try {
-    const h = await headers();
-    const host = h.get('x-forwarded-host') || h.get('host');
-    const proto = h.get('x-forwarded-proto') || 'https';
-    if (host && !host.includes('localhost')) {
-      baseUrl = `${proto === 'https' ? 'https' : 'http'}://${host}`;
-    }
-  } catch {
-    // headers() may fail in some contexts
-  }
-
+  const baseUrl = getBaseUrl();
   const url = `${baseUrl}/p/${params.token}`;
   const imageUrl = `${url}/opengraph-image`;
 
