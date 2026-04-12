@@ -39,6 +39,11 @@ export interface ShareData {
   familyStatus?: { isMarried?: boolean; kidsCount?: number };
   gpsData?: SharedGpsData;
   playerStats?: SharedPlayerStats;
+  /** Timestamps marking when enrichment was last attempted (even if no data found).
+   *  Prevents re-fetching from cold external servers on every page load. */
+  _gpsCheckedAt?: number;
+  _statsCheckedAt?: number;
+  _enrichmentCheckedAt?: number;
 }
 
 /* ── API Football Stats types ── */
