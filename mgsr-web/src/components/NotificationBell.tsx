@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { collection, doc as firestoreDoc, getDoc, getDocs, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -188,6 +189,7 @@ export default function NotificationBell({ variant = 'sidebar' }: { variant?: 's
   const [notifications, setNotifications] = useState<StoredNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLDivElement>(null);
 
   const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
 
@@ -254,7 +256,10 @@ export default function NotificationBell({ variant = 'sidebar' }: { variant?: 's
   useEffect(() => {
     if (!showCenter) return;
     function handleClick(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inPanel = panelRef.current?.contains(target);
+      const inBell = bellRef.current?.contains(target);
+      if (!inPanel && !inBell) {
         setShowCenter(false);
       }
     }
@@ -301,8 +306,8 @@ export default function NotificationBell({ variant = 'sidebar' }: { variant?: 's
       return;
     }
     setShowCenter((prev) => {
-      if (!prev && panelRef.current) {
-        const rect = panelRef.current.getBoundingClientRect();
+      if (!prev && bellRef.current) {
+        const rect = bellRef.current.getBoundingClientRect();
         setDropdownPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
       }
       return !prev;
@@ -339,7 +344,7 @@ export default function NotificationBell({ variant = 'sidebar' }: { variant?: 's
   return (
     <>
       {/* Bell button with unread badge */}
-      <div className="relative" ref={panelRef}>
+      <div className="relative" ref={bellRef}>
         <button
           onClick={handleBellClick}
           className={isHeader
@@ -372,11 +377,23 @@ export default function NotificationBell({ variant = 'sidebar' }: { variant?: 's
           {!isHeader && (status === 'granted' ? t('notif_center_title') : t('notif_enable'))}
         </button>
 
-        {/* Notification Center Dropdown — rendered as fixed overlay to avoid parent stacking context issues */}
-        {showCenter && dropdownPos && (
+        {/* Notification Center Dropdown — portaled to document.body to escape all parent CSS */}
+        {showCenter && dropdownPos && createPortal(
           <div
-            className="fixed w-80 max-h-[480px] rounded-xl shadow-2xl overflow-hidden"
-            style={{ top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999, backgroundColor: '#1A2736', border: '1px solid #253545' }}
+            ref={panelRef}
+            style={{
+              position: 'fixed',
+              top: dropdownPos.top,
+              right: dropdownPos.right,
+              width: 320,
+              maxHeight: 480,
+              zIndex: 99999,
+              backgroundColor: '#1A2736',
+              border: '1px solid #253545',
+              borderRadius: 12,
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)',
+              overflow: 'hidden',
+            }}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-mgsr-border">
@@ -438,7 +455,8 @@ export default function NotificationBell({ variant = 'sidebar' }: { variant?: 's
                 ))
               )}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 
