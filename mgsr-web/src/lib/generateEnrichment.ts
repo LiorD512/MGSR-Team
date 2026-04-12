@@ -71,7 +71,7 @@ async function fetchScoutData(
       if (age) fmiParams.set('age', age);
       const fmiRes = await fetch(`${getSelfBaseUrl()}/api/fminside/player?${fmiParams.toString()}`, {
         cache: 'no-store',
-        signal: AbortSignal.timeout(20000),
+        signal: AbortSignal.timeout(10000),
       }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       if (fmiRes && !fmiRes.error && fmiRes.ca > 0) {
         fm = fmiRes as FmData;

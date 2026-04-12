@@ -36,40 +36,45 @@ export async function getShareData(token: string): Promise<ShareData | null> {
     }
   }
 
-  // 3. Live GPS fallback for shares created before GPS was included
-  if (data && !data.gpsData && data.player?.tmProfile) {
-    try {
-      data.gpsData = await fetchLiveGpsData(data.player.tmProfile, data.lang, data.playerId);
-    } catch {
-      // GPS enrichment is best-effort
-    }
-  }
+  // 3-5. Live fallbacks for missing GPS, stats, enrichment — run in PARALLEL
+  //       to avoid sequential timeouts that exceed Vercel's function limit.
+  if (data) {
+    const needGps = !data.gpsData && data.player?.tmProfile;
+    const needStats = !data.playerStats && data.player?.tmProfile;
+    const needEnrichment = !data.enrichment && data.player;
 
-  // 4. Live stats fallback for shares created before stats were included
-  if (data && !data.playerStats && data.player?.tmProfile) {
-    try {
-      const { fetchPlayerStatsForShare } = await import('@/lib/fetchPlayerStats');
-      data.playerStats = await fetchPlayerStatsForShare(data.player.tmProfile, data.player.positions);
-    } catch {
-      // Stats enrichment is best-effort
-    }
-  }
+    const [gpsResult, statsResult, enrichResult] = await Promise.allSettled([
+      // GPS
+      needGps
+        ? fetchLiveGpsData(data.player!.tmProfile!, data.lang, data.playerId)
+        : Promise.resolve(undefined),
+      // Stats
+      needStats
+        ? import('@/lib/fetchPlayerStats').then(m =>
+            m.fetchPlayerStatsForShare(data.player!.tmProfile!, data.player!.positions),
+          )
+        : Promise.resolve(undefined),
+      // Enrichment
+      needEnrichment
+        ? import('@/lib/generateEnrichment').then(m =>
+            m.generateEnrichment(
+              data.player as Record<string, unknown>,
+              data.scoutReport,
+              data.platform,
+              data.lang,
+            ),
+          )
+        : Promise.resolve(undefined),
+    ]);
 
-  // 5. Live enrichment fallback for shares created without enrichment (e.g. from Android)
-  if (data && !data.enrichment && data.player) {
-    try {
-      const { generateEnrichment } = await import('@/lib/generateEnrichment');
-      const enrichment = await generateEnrichment(
-        data.player as Record<string, unknown>,
-        data.scoutReport,
-        data.platform,
-        data.lang,
-      );
-      if (enrichment && Object.keys(enrichment).length > 0) {
-        data.enrichment = enrichment;
-      }
-    } catch {
-      // Enrichment is best-effort
+    if (gpsResult.status === 'fulfilled' && gpsResult.value) {
+      data.gpsData = gpsResult.value;
+    }
+    if (statsResult.status === 'fulfilled' && statsResult.value) {
+      data.playerStats = statsResult.value;
+    }
+    if (enrichResult.status === 'fulfilled' && enrichResult.value && Object.keys(enrichResult.value).length > 0) {
+      data.enrichment = enrichResult.value;
     }
   }
 

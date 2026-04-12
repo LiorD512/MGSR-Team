@@ -110,7 +110,7 @@ export async function fetchPlayerStatsForShare(
     const params = new URLSearchParams({ url: tmProfile });
     const res = await fetch(`${getScoutBaseUrl()}/player_stats?${params.toString()}`, {
       cache: 'no-store',
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return undefined;
     const data = await res.json();
