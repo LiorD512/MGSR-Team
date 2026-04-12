@@ -367,8 +367,8 @@ export default function NotificationBell({ variant = 'sidebar' }: { variant?: 's
         {/* Notification Center Dropdown */}
         {showCenter && (
           <div
-            className={`absolute ${isHeader ? 'top-full mt-2' : 'bottom-full mb-2'} ${isHeader ? 'right-0' : 'left-0'} w-80 max-h-[480px] bg-mgsr-card border border-mgsr-border rounded-xl shadow-2xl overflow-hidden z-50 animate-in ${isHeader ? 'slide-in-from-top-2' : 'slide-in-from-bottom-2'} fade-in`}
-            style={{ backdropFilter: 'blur(12px)' }}
+            className={`absolute ${isHeader ? 'top-full mt-2' : 'bottom-full mb-2'} ${isHeader ? 'right-0' : 'left-0'} w-80 max-h-[480px] border border-mgsr-border rounded-xl shadow-2xl overflow-hidden z-50 animate-in ${isHeader ? 'slide-in-from-top-2' : 'slide-in-from-bottom-2'} fade-in`}
+            style={{ background: '#1A2736', backdropFilter: 'blur(12px)' }}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-mgsr-border">
