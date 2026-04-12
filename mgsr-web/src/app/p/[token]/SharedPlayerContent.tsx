@@ -69,17 +69,16 @@ function stripComparablePlayers(text: string): string {
 export default function SharedPlayerContent({
   token,
   initialData,
-  fromPortfolio = false,
 }: {
   token: string;
   initialData: ShareData | null;
-  fromPortfolio?: boolean;
 }) {
   const [data, setData] = useState<ShareData | null>(initialData);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const platformParam = searchParams.get('platform');
+  const fromPortfolio = searchParams.get('from') === 'portfolio';
 
   // Scout report editor state (only used when fromPortfolio)
   const [editedReport, setEditedReport] = useState<string | null>(null);
