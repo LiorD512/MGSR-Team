@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -988,7 +989,6 @@ private fun GreetingHeader(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(CircleShape)
                     .clickWithNoRipple { onNotificationClick() },
                 contentAlignment = Alignment.Center
             ) {
@@ -1002,6 +1002,7 @@ private fun GreetingHeader(
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
+                            .offset(x = 2.dp, y = (-2).dp)
                             .size(16.dp)
                             .clip(CircleShape)
                             .background(Color(0xFFEF4444)),
