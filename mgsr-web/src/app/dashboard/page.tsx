@@ -36,6 +36,7 @@ import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { PlatformSwitcher } from '@/components/PlatformSwitcher';
+import NotificationBell from '@/components/NotificationBell';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
 import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
 import { saveAccountLanguage } from '@/lib/accounts';
@@ -936,6 +937,8 @@ export default function DashboardPage() {
           </div>
           {/* Hide platform/lang controls on mobile — MobileHeader handles them */}
           <div className={`hidden lg:flex items-center gap-2 p-1 rounded-xl border bg-mgsr-card/80 relative ${isWomen ? 'border-[var(--women-rose)]/20 rounded-2xl' : isYouth ? 'border-[var(--youth-cyan)]/20 rounded-2xl' : 'border-mgsr-border'}`}>
+            <NotificationBell variant="header" />
+            <span className={`w-px h-6 ${isYouth ? 'bg-[var(--youth-cyan)]/30' : isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
             <PlatformSwitcher variant="grouped" />
             <span className={`w-px h-6 ${isYouth ? 'bg-[var(--youth-cyan)]/30' : isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
             <button

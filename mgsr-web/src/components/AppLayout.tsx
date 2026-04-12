@@ -11,7 +11,6 @@ import { useIsMobileOrTablet } from '@/hooks/useMediaQuery';
 import { useChatUnread } from '@/hooks/useChatUnread';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import MobileBottomTabBar from '@/components/mobile/MobileBottomTabBar';
-import NotificationBell from '@/components/NotificationBell';
 import NotificationPrompt from '@/components/NotificationPrompt';
 
 const navItems = [
@@ -85,15 +84,14 @@ function NavContent({
   const activeClass = platform === 'youth' ? 'bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)]' : platform === 'women' ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]' : 'bg-[var(--mgsr-accent-dim)] text-[var(--mgsr-accent)]';
   return (
     <>
-      <div
+      <Link
+        href="/dashboard"
+        onClick={onNavClick}
         className={`p-4 border-b border-mgsr-border flex items-center gap-3 ${platform === 'women' ? 'justify-end' : ''}`}
       >
-        <Link href="/dashboard" onClick={onNavClick} className="flex items-center gap-3 flex-1 min-w-0">
-          <img src={logo} alt="MGSR" className="w-10 h-10 shrink-0" />
-          <span className={`text-xl font-bold font-display ${accentClass}`}>{brandName}</span>
-        </Link>
-        <NotificationBell variant="header" />
-      </div>
+        <img src={logo} alt="MGSR" className="w-10 h-10 shrink-0" />
+        <span className={`text-xl font-bold font-display ${accentClass}`}>{brandName}</span>
+      </Link>
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {items.map((item) => (
           <Link
