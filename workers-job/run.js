@@ -22,11 +22,23 @@ const WORKER_RUNS_COLLECTION = "WorkerRuns";
 
 const RECENT_REFRESH_THRESHOLD_MS = 20 * 60 * 60 * 1000;
 const MAX_HISTORY_ENTRIES = 24;
-const SINGLE_NET_DELAY_MIN_MS = 12000;
+
+// ── Hourly micro-batch settings ──────────────────────────────────────
+// Each hourly run processes at most MAX_PER_RUN players (stalest first).
+// At ~10s/player, 200 players ≈ 33 min — well within the 2h job timeout.
+// 200 × 24 runs/day = 4,800 players/day capacity.
+const MAX_PER_RUN = 200;
+
+// ── TM anti-detection delays ────────────────────────────────────────
+// Vary delays to avoid a detectable pattern. The proxy handles actual
+// TM rate limits, so we can use shorter intervals than before (was 12-18s).
+const SINGLE_NET_DELAY_MIN_MS = 8000;
 const SINGLE_NET_DELAY_VARIANCE_MS = 6000;
 const BLOCK_BACKOFF_MIN_MS = 90000;
 const MAX_BLOCK_BACKOFF_MS = 300000;
 const MAX_RETRIES = 3;
+// Jitter at start so we don't always hit TM at :00 sharp every hour
+const START_JITTER_MAX_MS = 60000;
 
 const TYPE_BECAME_FREE_AGENT = "BECAME_FREE_AGENT";
 const TYPE_CLUB_CHANGE = "CLUB_CHANGE";
@@ -194,6 +206,11 @@ async function processSuccessfulUpdate(player, data, docRef, feedRef, tmProfile)
 }
 
 async function main() {
+  // Jitter: wait 0-60s before starting so TM doesn't see a pattern
+  const jitter = Math.floor(Math.random() * START_JITTER_MAX_MS);
+  log(`Waiting ${(jitter / 1000).toFixed(0)}s jitter before starting...`);
+  await sleep(jitter);
+
   const startTime = Date.now();
   log("=== PlayerRefreshWorker started ===");
 
@@ -243,13 +260,19 @@ async function main() {
       return;
     }
 
+    // Cap this run to MAX_PER_RUN players. Stalest are first in the array.
+    const batch = stale.slice(0, MAX_PER_RUN);
+    log(
+      `Batch: processing ${batch.length} of ${stale.length} stale players (cap ${MAX_PER_RUN})`
+    );
+
     let successCount = 0;
     let failCount = 0;
     let consecutiveBlocks = 0;
-    const total = stale.length;
+    const total = batch.length;
 
-    for (let index = 0; index < stale.length; index++) {
-      const { player, docRef } = stale[index];
+    for (let index = 0; index < batch.length; index++) {
+      const { player, docRef } = batch[index];
       const tmProfile = player.tmProfile;
       if (!tmProfile) continue;
 
@@ -306,9 +329,15 @@ async function main() {
         log(`Giving up on ${index + 1}/${total}: ${player.fullName}`);
       }
 
-      const baseDelay =
+      // Randomized delay: 8-14s base, with occasional longer pauses to look human
+      let baseDelay =
         SINGLE_NET_DELAY_MIN_MS +
         Math.floor(Math.random() * SINGLE_NET_DELAY_VARIANCE_MS);
+      // Every 20-40 players, take a longer break (30-60s) to avoid pattern detection
+      if ((index + 1) % (20 + Math.floor(Math.random() * 20)) === 0) {
+        baseDelay += 30000 + Math.floor(Math.random() * 30000);
+        log(`Anti-pattern pause: ${(baseDelay / 1000).toFixed(0)}s`);
+      }
       await sleep(baseDelay);
 
       if ((index + 1) % 50 === 0) {
@@ -318,10 +347,11 @@ async function main() {
 
     await markRefreshSuccess();
     const durationMs = Date.now() - startTime;
-    const summary = `${successCount} succeeded, ${failCount} failed out of ${stale.length} (skipped ${skipped} already fresh)`;
+    const remaining = stale.length - batch.length;
+    const summary = `${successCount} succeeded, ${failCount} failed out of ${batch.length} batch (${skipped} fresh, ${remaining} queued for next run)`;
     await recordSuccess(summary, durationMs);
 
-    log(`Roster refresh complete — ${summary} in ${durationMs}ms`);
+    log(`Batch complete — ${summary} in ${durationMs}ms`);
   } catch (err) {
     const durationMs = Date.now() - startTime;
     await recordFailure(err, durationMs);

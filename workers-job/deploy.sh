@@ -22,7 +22,7 @@ if gcloud run jobs describe $JOB_NAME --region $REGION --project $PROJECT_ID 2>/
     --image gcr.io/$PROJECT_ID/$JOB_NAME \
     --region $REGION \
     --project $PROJECT_ID \
-    --task-timeout 4h \
+    --task-timeout 2h \
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \
@@ -33,7 +33,7 @@ else
     --image gcr.io/$PROJECT_ID/$JOB_NAME \
     --region $REGION \
     --project $PROJECT_ID \
-    --task-timeout 4h \
+    --task-timeout 2h \
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \
@@ -50,17 +50,19 @@ gcloud run jobs add-iam-policy-binding $JOB_NAME \
   --role="roles/run.invoker"
 
 echo ""
-echo "=== Step 5: Creating Cloud Scheduler (02:00 Israel time) ==="
+echo "=== Step 5: Creating Cloud Scheduler (every hour) ==="
 gcloud scheduler jobs delete player-refresh-daily --location $REGION --project $PROJECT_ID --quiet 2>/dev/null || true
-gcloud scheduler jobs create http player-refresh-daily \
+gcloud scheduler jobs delete player-refresh-hourly --location $REGION --project $PROJECT_ID --quiet 2>/dev/null || true
+gcloud scheduler jobs create http player-refresh-hourly \
   --location $REGION \
   --project $PROJECT_ID \
-  --schedule "0 2 * * *" \
+  --schedule "0 * * * *" \
   --time-zone "Asia/Jerusalem" \
   --uri "https://run.googleapis.com/v2/projects/$PROJECT_ID/locations/$REGION/jobs/$JOB_NAME:run" \
   --http-method POST \
   --oauth-service-account-email ${PROJECT_NUMBER}-compute@developer.gserviceaccount.com
 
 echo ""
-echo "=== Done! Job will run daily at 02:00 Israel time. ==="
+echo "=== Done! Job will run every hour (200 stalest players per batch). ==="
+echo "Capacity: 200 x 24 = 4,800 players/day"
 echo "Test manually: gcloud run jobs execute $JOB_NAME --region $REGION --project $PROJECT_ID"
