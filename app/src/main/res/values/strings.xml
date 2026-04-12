@@ -1161,6 +1161,11 @@
     <string name="player_info_ai_report_full">Full tactical</string>
     <string name="player_info_ai_report_transfer">Transfer focus</string>
     <string name="player_info_ai_report_youth">Youth potential</string>
+    <!-- Hidden gem / diamond potential -->
+    <string name="player_info_ai_hidden_gem">Diamond Potential</string>
+    <string name="player_info_ai_hidden_gem_check">Check Diamond Potential</string>
+    <string name="player_info_ai_hidden_gem_score">%d/100</string>
+    <string name="player_info_ai_hidden_gem_refresh">Refresh</string>
 
     <!-- Matching Requests -->
     <string name="player_info_matching_requests">Matching Requests</string>
