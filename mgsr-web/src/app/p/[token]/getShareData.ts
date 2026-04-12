@@ -37,51 +37,60 @@ export async function getShareData(token: string): Promise<ShareData | null> {
   }
 
   // 3-5. Live fallbacks for missing GPS, stats, enrichment — run in PARALLEL
-  //       to avoid sequential timeouts that exceed Vercel's function limit.
+  //       with a hard 5s cap to keep page load fast.
   if (data) {
     const needGps = !data.gpsData && data.player?.tmProfile;
     const needStats = !data.playerStats && data.player?.tmProfile;
     const needEnrichment = !data.enrichment && data.player;
 
-    const [gpsResult, statsResult, enrichResult] = await Promise.allSettled([
-      // GPS
-      needGps
-        ? fetchLiveGpsData(data.player!.tmProfile!, data.lang, data.playerId)
-        : Promise.resolve(undefined),
-      // Stats
-      needStats
-        ? import('@/lib/fetchPlayerStats').then(m =>
-            m.fetchPlayerStatsForShare(data.player!.tmProfile!, data.player!.positions),
-          )
-        : Promise.resolve(undefined),
-      // Enrichment
-      needEnrichment
-        ? import('@/lib/generateEnrichment').then(m =>
-            m.generateEnrichment(
-              data.player as Record<string, unknown>,
-              data.scoutReport,
-              data.platform,
-              data.lang,
-            ),
-          )
-        : Promise.resolve(undefined),
-    ]);
+    if (needGps || needStats || needEnrichment) {
+      const enrichmentWork = Promise.allSettled([
+        // GPS
+        needGps
+          ? fetchLiveGpsData(data.player!.tmProfile!, data.lang, data.playerId)
+          : Promise.resolve(undefined),
+        // Stats
+        needStats
+          ? import('@/lib/fetchPlayerStats').then(m =>
+              m.fetchPlayerStatsForShare(data.player!.tmProfile!, data.player!.positions),
+            )
+          : Promise.resolve(undefined),
+        // Enrichment
+        needEnrichment
+          ? import('@/lib/generateEnrichment').then(m =>
+              m.generateEnrichment(
+                data.player as Record<string, unknown>,
+                data.scoutReport,
+                data.platform,
+                data.lang,
+              ),
+            )
+          : Promise.resolve(undefined),
+      ]);
 
-    if (gpsResult.status === 'fulfilled' && gpsResult.value) {
-      data.gpsData = gpsResult.value;
-    }
-    if (statsResult.status === 'fulfilled' && statsResult.value) {
-      data.playerStats = statsResult.value;
-    }
-    if (enrichResult.status === 'fulfilled' && enrichResult.value && Object.keys(enrichResult.value).length > 0) {
-      data.enrichment = enrichResult.value;
+      // Hard cap: don't wait more than 5s for enrichment
+      const timeout = new Promise<'timeout'>(res => setTimeout(() => res('timeout'), 5000));
+      const result = await Promise.race([enrichmentWork, timeout]);
+
+      if (result !== 'timeout') {
+        const [gpsResult, statsResult, enrichResult] = result;
+        if (gpsResult.status === 'fulfilled' && gpsResult.value) {
+          data.gpsData = gpsResult.value;
+        }
+        if (statsResult.status === 'fulfilled' && statsResult.value) {
+          data.playerStats = statsResult.value;
+        }
+        if (enrichResult.status === 'fulfilled' && enrichResult.value && Object.keys(enrichResult.value).length > 0) {
+          data.enrichment = enrichResult.value;
+        }
+      }
     }
   }
 
-  // 6. Backfill: persist any newly-generated enrichment/stats/gps to Firestore
-  //    so subsequent loads are instant (fire-and-forget, non-blocking).
+  // 6. Backfill: persist enrichment/stats/gps to Firestore so subsequent loads skip enrichment.
+  //    MUST be awaited — fire-and-forget gets killed by Vercel after response is sent.
   if (data) {
-    backfillShareDoc(token, data).catch(() => {});
+    await backfillShareDoc(token, data).catch(() => {});
   }
 
   return data;
@@ -183,8 +192,7 @@ async function fetchLiveGpsData(
 
 /**
  * Backfill newly-generated enrichment, stats, and GPS data into the Firestore doc
- * so subsequent page loads don't re-generate. Uses Admin SDK merge to avoid overwriting.
- * This is fire-and-forget — failures are silently ignored.
+ * so subsequent page loads don't re-generate. Uses merge to avoid overwriting existing fields.
  */
 async function backfillShareDoc(token: string, data: ShareData): Promise<void> {
   const updates: Record<string, unknown> = {};
@@ -209,19 +217,8 @@ async function backfillShareDoc(token: string, data: ShareData): Promise<void> {
     const { getFirestore } = await import('firebase-admin/firestore');
     const db = getFirestore(app);
 
-    // Only write fields that don't already exist in the doc
-    const snap = await db.collection('SharedPlayers').doc(token).get();
-    if (!snap.exists) return;
-    const existing = snap.data() ?? {};
-    const filtered: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(updates)) {
-      if (!existing[key]) {
-        filtered[key] = val;
-      }
-    }
-    if (Object.keys(filtered).length === 0) return;
-
-    await db.collection('SharedPlayers').doc(token).update(filtered);
+    // merge: true — only writes new fields, won't overwrite existing ones
+    await db.collection('SharedPlayers').doc(token).set(updates, { merge: true });
   } catch {
     // Backfill is best-effort
   }
