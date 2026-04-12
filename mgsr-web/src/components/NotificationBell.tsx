@@ -189,6 +189,8 @@ export default function NotificationBell({ variant = 'sidebar' }: { variant?: 's
   const [unreadCount, setUnreadCount] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
 
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
+
   useEffect(() => {
     setStatus(getNotificationStatus());
   }, []);
@@ -298,7 +300,13 @@ export default function NotificationBell({ variant = 'sidebar' }: { variant?: 's
       setShowModal(true);
       return;
     }
-    setShowCenter((prev) => !prev);
+    setShowCenter((prev) => {
+      if (!prev && panelRef.current) {
+        const rect = panelRef.current.getBoundingClientRect();
+        setDropdownPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+      }
+      return !prev;
+    });
   }, [status, t]);
 
   const handleMarkAllRead = useCallback(async () => {
@@ -364,11 +372,11 @@ export default function NotificationBell({ variant = 'sidebar' }: { variant?: 's
           {!isHeader && (status === 'granted' ? t('notif_center_title') : t('notif_enable'))}
         </button>
 
-        {/* Notification Center Dropdown */}
-        {showCenter && (
+        {/* Notification Center Dropdown — rendered as fixed overlay to avoid parent stacking context issues */}
+        {showCenter && dropdownPos && (
           <div
-            className={`absolute ${isHeader ? 'top-full mt-2' : 'bottom-full mb-2'} ${isHeader ? 'right-0' : 'left-0'} w-80 max-h-[480px] border border-mgsr-border rounded-xl shadow-2xl overflow-hidden z-50`}
-            style={{ background: '#1A2736', opacity: 1 }}
+            className="fixed w-80 max-h-[480px] rounded-xl shadow-2xl overflow-hidden"
+            style={{ top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999, backgroundColor: '#1A2736', border: '1px solid #253545' }}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-mgsr-border">
