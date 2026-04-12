@@ -84,7 +84,7 @@ export default function MobileHeader() {
 
         {/* Right: notification bell + platform switch + language */}
         <div className="flex items-center gap-1 shrink-0">
-          <NotificationBell />
+          <NotificationBell variant="header" />
           <PlatformSwitcher variant="compact" />
           <button
             onClick={() => setLang(isRtl ? 'en' : 'he')}

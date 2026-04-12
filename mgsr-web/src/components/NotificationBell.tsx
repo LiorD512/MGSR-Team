@@ -173,7 +173,8 @@ function getNotificationUrl(notif: StoredNotification): string {
   }
 }
 
-export default function NotificationBell() {
+export default function NotificationBell({ variant = 'sidebar' }: { variant?: 'sidebar' | 'header' }) {
+  const isHeader = variant === 'header';
   const { user } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
@@ -333,11 +334,14 @@ export default function NotificationBell() {
       <div className="relative" ref={panelRef}>
         <button
           onClick={handleBellClick}
-          className={`flex items-center gap-2 text-sm ${bellColor} hover:text-[var(--mgsr-accent)] transition min-h-[44px] relative`}
+          className={isHeader
+            ? `w-9 h-9 flex items-center justify-center rounded-lg ${bellColor} hover:text-[var(--mgsr-accent)] hover:bg-mgsr-dark/50 transition relative`
+            : `flex items-center gap-2 text-sm ${bellColor} hover:text-[var(--mgsr-accent)] transition min-h-[44px] relative`
+          }
           title={status === 'granted' ? t('notif_center_title') : t('notif_enable')}
         >
           <div className="relative">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isHeader ? 'w-5 h-5' : 'w-4 h-4'}>
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
@@ -357,13 +361,13 @@ export default function NotificationBell() {
               </span>
             )}
           </div>
-          {status === 'granted' ? t('notif_center_title') : t('notif_enable')}
+          {!isHeader && (status === 'granted' ? t('notif_center_title') : t('notif_enable'))}
         </button>
 
         {/* Notification Center Dropdown */}
         {showCenter && (
           <div
-            className="absolute bottom-full mb-2 left-0 w-80 max-h-[480px] bg-mgsr-card border border-mgsr-border rounded-xl shadow-2xl overflow-hidden z-50 animate-in slide-in-from-bottom-2 fade-in"
+            className={`absolute ${isHeader ? 'top-full mt-2' : 'bottom-full mb-2'} ${isHeader ? 'right-0' : 'left-0'} w-80 max-h-[480px] bg-mgsr-card border border-mgsr-border rounded-xl shadow-2xl overflow-hidden z-50 animate-in ${isHeader ? 'slide-in-from-top-2' : 'slide-in-from-bottom-2'} fade-in`}
             style={{ backdropFilter: 'blur(12px)' }}
           >
             {/* Header */}
