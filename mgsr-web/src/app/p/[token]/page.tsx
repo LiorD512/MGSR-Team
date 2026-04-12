@@ -5,6 +5,9 @@ import SharedPlayerContent from './SharedPlayerContent';
 
 export const maxDuration = 30;
 
+// ISR: cache rendered page for 5 min — share data rarely changes
+export const revalidate = 300;
+
 // Deduplicate: generateMetadata + page render share the same request-scoped result
 const getCachedShareData = cache(getShareData);
 
