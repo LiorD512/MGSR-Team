@@ -5,6 +5,7 @@
 import { ImageResponse } from 'next/og';
 import { getShareData } from './getShareData';
 
+export const maxDuration = 30;
 export const alt = 'Player Profile';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';

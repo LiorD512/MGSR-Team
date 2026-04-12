@@ -1,6 +1,12 @@
+import { cache } from 'react';
 import { headers } from 'next/headers';
 import { getShareData } from './getShareData';
 import SharedPlayerContent from './SharedPlayerContent';
+
+export const maxDuration = 30;
+
+// Deduplicate: generateMetadata + page render share the same request-scoped result
+const getCachedShareData = cache(getShareData);
 
 function getBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
@@ -19,7 +25,7 @@ export async function generateMetadata({
 }: {
   params: { token: string };
 }) {
-  const data = await getShareData(params.token);
+  const data = await getCachedShareData(params.token);
   const name = data?.player?.fullName ?? data?.player?.fullNameHe ?? 'Player Profile';
   const positionsStr = (data?.player?.positions ?? []).filter(Boolean).join(', ');
   const clubStr = data?.player?.currentClub?.clubName ?? '';
@@ -67,7 +73,7 @@ export default async function SharedPlayerPage({
   params: { token: string };
   searchParams?: { from?: string };
 }) {
-  const data = await getShareData(params.token);
+  const data = await getCachedShareData(params.token);
   const fromPortfolio = searchParams?.from === 'portfolio';
   return (
     <SharedPlayerContent
