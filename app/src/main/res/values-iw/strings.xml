@@ -1613,4 +1613,9 @@
     <string name="chat_room_search_placeholder">חפש בהודעות…</string>
     <string name="chat_room_search_no_results">לא נמצאו הודעות תואמות</string>
     <string name="chat_room_notify_all_short">כולם</string>
+
+    <!-- Notification Center -->
+    <string name="notification_center_title">התראות</string>
+    <string name="notification_center_empty">אין התראות עדיין</string>
+    <string name="notification_center_mark_all_read">סמן הכל כנקרא</string>
 </resources>

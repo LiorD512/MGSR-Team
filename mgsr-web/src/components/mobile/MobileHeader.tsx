@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { PlatformSwitcher } from '@/components/PlatformSwitcher';
+import NotificationBell from '@/components/NotificationBell';
 
 /* ── Route → page title mapping ── */
 const pageTitleKeys: Record<string, string> = {
@@ -81,8 +82,9 @@ export default function MobileHeader() {
         {/* Center: Page title */}
         <h1 className="flex-1 text-sm font-semibold text-mgsr-text truncate text-center">{title}</h1>
 
-        {/* Right: platform switch + language */}
+        {/* Right: notification bell + platform switch + language */}
         <div className="flex items-center gap-1 shrink-0">
+          <NotificationBell />
           <PlatformSwitcher variant="compact" />
           <button
             onClick={() => setLang(isRtl ? 'en' : 'he')}

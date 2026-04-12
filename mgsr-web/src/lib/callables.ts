@@ -337,3 +337,14 @@ export interface ChatRoomDeletePayload {
   senderAccountId: string;
 }
 export const callChatRoomDelete = callable<ChatRoomDeletePayload, { success: boolean }>('chatRoomDelete');
+
+// ── Notification Center ─────────────────────────────────────────────────
+export const callNotificationMarkRead = callable<
+  { accountId: string; notificationId: string },
+  { success: boolean }
+>('notificationMarkRead');
+
+export const callNotificationMarkAllRead = callable<
+  { accountId: string },
+  { success: boolean; updated?: number }
+>('notificationMarkAllRead');

@@ -6,6 +6,7 @@ import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FcmTokenManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.firebase.ScrapingCacheRepository
+import com.liordahan.mgsrteam.features.notificationcenter.NotificationCenterManager
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -16,5 +17,6 @@ val mainModule = module {
     single { FirebaseHandler(get()) }
     single { FcmTokenManager(androidContext()) }
     single { ScrapingCacheRepository() }
+    single { NotificationCenterManager() }
     viewModel<IMainViewModel> { MainViewModel(get()) }
 }

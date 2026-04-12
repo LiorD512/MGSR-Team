@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { collection, doc as firestoreDoc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, doc as firestoreDoc, getDoc, getDocs, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useRouter } from 'next/navigation';
 import {
   getNotificationStatus,
   requestNotificationPermission,
@@ -12,6 +13,17 @@ import {
   onForegroundMessage,
   NotificationStatus,
 } from '@/lib/notifications';
+import { callNotificationMarkRead, callNotificationMarkAllRead } from '@/lib/callables';
+
+interface StoredNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, string>;
+  timestamp: number;
+  read: boolean;
+}
 
 /** Resolve the Account doc ID for the current user (lookup by email). */
 async function findAccountId(email: string): Promise<string | null> {
@@ -35,12 +47,8 @@ async function ensureTokenSaved(accountId: string): Promise<string | null> {
   const { getMessaging: getMessagingInstance } = await import('@/lib/firebase');
   const messaging = await getMessagingInstance();
   if (!messaging) { console.warn('[FCM-DIAG] no messaging instance'); return null; }
-  console.log('[FCM-DIAG] origin:', window.location.origin);
   const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-  console.log('[FCM-DIAG] SW registered, scope:', swReg.scope, 'active:', !!swReg.active);
-  // Wait for the service worker to be fully active before requesting a token
   await navigator.serviceWorker.ready;
-  console.log('[FCM-DIAG] SW ready');
   if (!swReg.active) {
     await new Promise<void>((resolve) => {
       const sw = swReg.installing || swReg.waiting;
@@ -48,74 +56,185 @@ async function ensureTokenSaved(accountId: string): Promise<string | null> {
       sw.addEventListener('statechange', () => { if (sw.state === 'activated') resolve(); });
     });
   }
-  // Check push subscription state BEFORE getToken
-  const existingSub = await swReg.pushManager.getSubscription();
-  console.log('[FCM-DIAG] existing pushSubscription:', existingSub ? existingSub.endpoint.substring(0, 80) + '...' : 'NONE');
-  // Always delete old token to force a fresh push subscription.
-  // After permission resets the old token in IndexedDB is orphaned —
-  // getToken() would return it (looks valid) but pushes silently fail.
   const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
-  console.log('[FCM-DIAG] VAPID key length:', vapidKey.length, 'first10:', vapidKey.substring(0, 10));
   await deleteToken(messaging).catch(() => {});
-  console.log('[FCM-DIAG] deleteToken done, requesting fresh token...');
-  let token = await getToken(messaging, {
+  const token = await getToken(messaging, {
     vapidKey,
     serviceWorkerRegistration: swReg,
-  }).catch((err) => { console.error('[FCM-DIAG] getToken failed:', err); return null; });
-  console.log('[FCM-DIAG] getToken result:', token ? token.substring(0, 30) + '...' : 'NULL');
-  // Check push subscription AFTER getToken
-  const newSub = await swReg.pushManager.getSubscription();
-  console.log('[FCM-DIAG] pushSubscription after getToken:', newSub ? newSub.endpoint.substring(0, 80) + '...' : 'NONE');
+  }).catch(() => null);
   if (!token) return null;
-  console.log('[FCM-DIAG] FULL TOKEN:', token);
   await saveWebFcmToken(accountId, token);
-  console.log('[FCM-DIAG] token saved to Firestore');
-  // Subscribe to broadcast topic
   try {
     const { httpsCallable, getFunctions } = await import('firebase/functions');
     const functions = getFunctions(undefined, 'us-central1');
     const subscribe = httpsCallable(functions, 'subscribeToTopicCallable');
     await subscribe({ token, topic: 'mgsr_all' });
-    console.log('[FCM-DIAG] topic subscription OK');
-  } catch (err) {
-    console.error('[FCM-DIAG] topic subscription failed:', err);
+  } catch {
+    // Will retry next page load
   }
   return token;
+}
+
+/** Format timestamp to relative time string */
+function formatRelativeTime(ts: number, t: (k: string) => string): string {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return t('notif_center_just_now');
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return new Date(ts).toLocaleDateString();
+}
+
+/** Get a color accent for notification type */
+function getTypeColor(type: string): string {
+  switch (type) {
+    case 'TASK_ASSIGNED':
+    case 'TASK_REMINDER':
+      return '#39D164';
+    case 'CLUB_CHANGE':
+    case 'NOTE_TAGGED':
+    case 'AGENT_TRANSFER_REQUEST':
+    case 'AGENT_TRANSFER_APPROVED':
+    case 'AGENT_TRANSFER_REJECTED':
+      return '#2196F3';
+    case 'BECAME_FREE_AGENT':
+    case 'NEW_RELEASE_FROM_CLUB':
+    case 'MANDATE_EXPIRED':
+      return '#FF9800';
+    case 'MARKET_VALUE_CHANGE':
+      return '#9C27B0';
+    case 'MANDATE_PLAYER_SIGNED':
+      return '#4DB6AC';
+    case 'CHAT_ROOM_TAG':
+      return '#4DB6AC';
+    case 'REQUEST_ADDED':
+      return '#9C27B0';
+    default:
+      return '#4DB6AC';
+  }
+}
+
+/** Get an icon for notification type */
+function getTypeIcon(type: string): string {
+  switch (type) {
+    case 'TASK_ASSIGNED':
+    case 'TASK_REMINDER':
+      return '📋';
+    case 'CLUB_CHANGE':
+      return '🔄';
+    case 'BECAME_FREE_AGENT':
+    case 'NEW_RELEASE_FROM_CLUB':
+      return '🏷️';
+    case 'MARKET_VALUE_CHANGE':
+      return '💰';
+    case 'MANDATE_EXPIRED':
+      return '⏰';
+    case 'MANDATE_PLAYER_SIGNED':
+      return '✍️';
+    case 'NOTE_TAGGED':
+      return '📝';
+    case 'CHAT_ROOM_TAG':
+      return '💬';
+    case 'REQUEST_ADDED':
+      return '📨';
+    case 'AGENT_TRANSFER_REQUEST':
+    case 'AGENT_TRANSFER_APPROVED':
+    case 'AGENT_TRANSFER_REJECTED':
+      return '🤝';
+    default:
+      return '🔔';
+  }
+}
+
+/** Get navigation URL for notification */
+function getNotificationUrl(notif: StoredNotification): string {
+  const data = notif.data || {};
+  switch (notif.type) {
+    case 'TASK_ASSIGNED':
+    case 'TASK_REMINDER':
+      return '/tasks';
+    case 'CHAT_ROOM_TAG':
+      return data.messageId ? `/chat-room?highlight=${data.messageId}` : '/chat-room';
+    case 'NOTE_TAGGED':
+      return data.playerId ? `/players/${data.playerId}` : '/dashboard';
+    case 'MANDATE_PLAYER_SIGNED':
+      return data.token ? `/sign-mandate/${data.token}` : '/dashboard';
+    case 'REQUEST_ADDED':
+      return '/requests';
+    case 'AGENT_TRANSFER_REQUEST':
+    case 'AGENT_TRANSFER_APPROVED':
+    case 'AGENT_TRANSFER_REJECTED':
+      return data.playerId ? `/players/${data.playerId}` : '/dashboard';
+    default:
+      return data.playerTmProfile ? `/players/${encodeURIComponent(data.playerTmProfile)}` : '/dashboard';
+  }
 }
 
 export default function NotificationBell() {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const router = useRouter();
   const [status, setStatus] = useState<NotificationStatus>('default');
   const [showModal, setShowModal] = useState(false);
+  const [showCenter, setShowCenter] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ title: string; body: string } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const [accountId, setAccountId] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<StoredNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setStatus(getNotificationStatus());
   }, []);
 
-  // Ensure FCM token is saved to account whenever notifications are granted.
-  // On every page load: delete + re-register the FCM token to guarantee the
-  // push subscription is paired with the currently-active service worker.
-  // This is cheap (one getToken call) and prevents dead tokens after SW updates.
+  // Resolve account ID
   useEffect(() => {
-    if (status !== 'granted' || !user?.email) return;
+    if (!user?.email) return;
+    let cancelled = false;
+    findAccountId(user.email).then((id) => {
+      if (!cancelled && id) setAccountId(id);
+    });
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Ensure FCM token on page load
+  useEffect(() => {
+    if (status !== 'granted' || !accountId) return;
     let cancelled = false;
     (async () => {
       try {
-        const accountId = await findAccountId(user.email!);
-        if (!accountId || cancelled) return;
-        await ensureTokenSaved(accountId);
+        if (!cancelled) await ensureTokenSaved(accountId);
       } catch {
         // Will retry next page load
       }
     })();
     return () => { cancelled = true; };
-  }, [status, user]);
+  }, [status, accountId]);
 
-  // Foreground message listener — show toast
+  // Real-time listener for notification center subcollection
+  useEffect(() => {
+    if (!accountId) return;
+    const notifRef = collection(db, 'Accounts', accountId, 'Notifications');
+    const q = query(notifRef, orderBy('timestamp', 'desc'), limit(20));
+    const unsub = onSnapshot(q, (snap) => {
+      const items: StoredNotification[] = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      } as StoredNotification));
+      setNotifications(items);
+      setUnreadCount(items.filter((n) => !n.read).length);
+    }, (err) => {
+      console.warn('[NotificationBell] Listener error:', err);
+    });
+    return unsub;
+  }, [accountId]);
+
+  // Foreground message listener — show toast + refresh will auto-update via snapshot
   useEffect(() => {
     let unsub: (() => void) | null = null;
     if (status === 'granted') {
@@ -128,15 +247,28 @@ export default function NotificationBell() {
     return () => { unsub?.(); };
   }, [status]);
 
+  // Close panel on outside click
+  useEffect(() => {
+    if (!showCenter) return;
+    function handleClick(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setShowCenter(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showCenter]);
+
   const handleEnable = useCallback(async () => {
     if (!user?.email) return;
     setLoading(true);
     try {
       const token = await requestNotificationPermission();
       if (token) {
-        const accountId = await findAccountId(user.email);
-        if (accountId) {
-          await saveWebFcmToken(accountId, token);
+        const aid = accountId || await findAccountId(user.email);
+        if (aid) {
+          await saveWebFcmToken(aid, token);
+          if (!accountId) setAccountId(aid);
           try {
             const { httpsCallable, getFunctions } = await import('firebase/functions');
             const functions = getFunctions(undefined, 'us-central1');
@@ -154,7 +286,39 @@ export default function NotificationBell() {
       setLoading(false);
       setShowModal(false);
     }
-  }, [user]);
+  }, [user, accountId]);
+
+  const handleBellClick = useCallback(() => {
+    if (status === 'denied') {
+      alert(t('notif_blocked'));
+      return;
+    }
+    if (status !== 'granted') {
+      setShowModal(true);
+      return;
+    }
+    setShowCenter((prev) => !prev);
+  }, [status, t]);
+
+  const handleMarkAllRead = useCallback(async () => {
+    if (!accountId || unreadCount === 0) return;
+    try {
+      await callNotificationMarkAllRead({ accountId });
+    } catch (err) {
+      console.error('Mark all read failed:', err);
+    }
+  }, [accountId, unreadCount]);
+
+  const handleNotificationClick = useCallback(async (notif: StoredNotification) => {
+    // Mark as read
+    if (!notif.read && accountId) {
+      callNotificationMarkRead({ accountId, notificationId: notif.id }).catch(() => {});
+    }
+    setShowCenter(false);
+    // Navigate
+    const url = getNotificationUrl(notif);
+    router.push(url);
+  }, [accountId, router]);
 
   const bellColor =
     status === 'granted'
@@ -165,29 +329,106 @@ export default function NotificationBell() {
 
   return (
     <>
-      {/* Bell button */}
-      <button
-        onClick={() => {
-          if (status === 'denied') {
-            alert(t('notif_blocked'));
-            return;
-          }
-          if (status === 'granted') {
-            // Re-register token (useful if token was lost)
-            handleEnable();
-            return;
-          }
-          setShowModal(true);
-        }}
-        className={`flex items-center gap-2 text-sm ${bellColor} hover:text-[var(--mgsr-accent)] transition min-h-[44px]`}
-        title={status === 'granted' ? t('notif_enabled') : t('notif_enable')}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-        </svg>
-        {status === 'granted' ? t('notif_enabled') : t('notif_enable')}
-      </button>
+      {/* Bell button with unread badge */}
+      <div className="relative" ref={panelRef}>
+        <button
+          onClick={handleBellClick}
+          className={`flex items-center gap-2 text-sm ${bellColor} hover:text-[var(--mgsr-accent)] transition min-h-[44px] relative`}
+          title={status === 'granted' ? t('notif_center_title') : t('notif_enable')}
+        >
+          <div className="relative">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {unreadCount > 0 && (
+              <span
+                className="absolute -top-1.5 -right-1.5 flex items-center justify-center text-[9px] font-bold leading-none text-white animate-in zoom-in-50"
+                style={{
+                  minWidth: 16,
+                  height: 16,
+                  padding: '0 4px',
+                  borderRadius: 8,
+                  background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+                  boxShadow: '0 0 6px rgba(239,68,68,0.5)',
+                }}
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </div>
+          {status === 'granted' ? t('notif_center_title') : t('notif_enable')}
+        </button>
+
+        {/* Notification Center Dropdown */}
+        {showCenter && (
+          <div
+            className="absolute bottom-full mb-2 left-0 w-80 max-h-[480px] bg-mgsr-card border border-mgsr-border rounded-xl shadow-2xl overflow-hidden z-50 animate-in slide-in-from-bottom-2 fade-in"
+            style={{ backdropFilter: 'blur(12px)' }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-mgsr-border">
+              <h3 className="text-sm font-bold text-mgsr-text">{t('notif_center_title')}</h3>
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="text-xs text-[var(--mgsr-accent)] hover:underline"
+                >
+                  {t('notif_center_mark_all_read')}
+                </button>
+              )}
+            </div>
+
+            {/* Notification List */}
+            <div className="overflow-y-auto max-h-[420px]">
+              {notifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 px-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10 text-mgsr-muted/40 mb-3">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                  <p className="text-sm text-mgsr-muted">{t('notif_center_empty')}</p>
+                </div>
+              ) : (
+                notifications.map((notif) => (
+                  <button
+                    key={notif.id}
+                    onClick={() => handleNotificationClick(notif)}
+                    className={`w-full text-left px-4 py-3 border-b border-mgsr-border/50 hover:bg-mgsr-dark/40 transition flex items-start gap-3 ${
+                      !notif.read ? 'bg-[var(--mgsr-accent)]/5' : ''
+                    }`}
+                  >
+                    {/* Type icon with color accent */}
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm mt-0.5"
+                      style={{ backgroundColor: getTypeColor(notif.type) + '20' }}
+                    >
+                      {getTypeIcon(notif.type)}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs leading-snug ${!notif.read ? 'font-semibold text-mgsr-text' : 'text-mgsr-text/80'}`}>
+                        {notif.title}
+                      </p>
+                      <p className="text-[11px] text-mgsr-muted mt-0.5 line-clamp-2">{notif.body}</p>
+                      <p className="text-[10px] text-mgsr-muted/60 mt-1">{formatRelativeTime(notif.timestamp, t)}</p>
+                    </div>
+
+                    {/* Unread dot */}
+                    {!notif.read && (
+                      <div
+                        className="w-2 h-2 rounded-full shrink-0 mt-2"
+                        style={{ backgroundColor: 'var(--mgsr-accent)' }}
+                      />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Permission modal */}
       {showModal && (

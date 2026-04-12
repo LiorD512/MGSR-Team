@@ -190,6 +190,9 @@ async function chatRoomSend(data) {
   }
 
   // ── Push notification logic ──
+  const { persistNotification, persistNotificationToAll } = require("../lib/notificationCenter");
+  const chatNotifData = { type: "CHAT_ROOM_TAG", title: `${displayName} in The Tunnel`, body: previewText, data: buildPayload().data };
+
   if (notifyAccountId === "ALL") {
     // Notify everyone except the sender
     try {
@@ -204,6 +207,8 @@ async function chatRoomSend(data) {
     } catch (err) {
       console.error("Chat room notify-all error:", err);
     }
+    // Persist to all notification centers (except sender)
+    persistNotificationToAll(chatNotifData, senderAccountId).catch((e) => console.warn("[chatRoom] persist all failed:", e.message));
   } else if (notifyAccountId && notifyAccountId !== senderAccountId) {
     // Notify a single user
     try {
@@ -215,6 +220,8 @@ async function chatRoomSend(data) {
     } catch (err) {
       console.error("Chat room push notification error:", err);
     }
+    // Persist to tagged user's notification center
+    persistNotification(notifyAccountId, chatNotifData).catch((e) => console.warn("[chatRoom] persist failed:", e.message));
   }
 
   return { id: messageId, createdAt: now };

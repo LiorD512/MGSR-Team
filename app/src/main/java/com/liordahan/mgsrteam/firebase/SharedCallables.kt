@@ -468,4 +468,19 @@ object SharedCallables {
             "senderAccountId" to senderAccountId,
         ))
     }
+
+    // ─── Notification Center ────────────────────────────────────────────
+
+    suspend fun notificationMarkRead(accountId: String, notificationId: String) {
+        call("notificationMarkRead", mapOf(
+            "accountId" to accountId,
+            "notificationId" to notificationId,
+        ))
+    }
+
+    suspend fun notificationMarkAllRead(accountId: String) {
+        call("notificationMarkAllRead", mapOf(
+            "accountId" to accountId,
+        ))
+    }
 }

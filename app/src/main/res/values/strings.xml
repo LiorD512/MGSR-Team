@@ -1622,4 +1622,9 @@
     <string name="chat_room_search_placeholder">Search messages…</string>
     <string name="chat_room_search_no_results">No matching messages found</string>
     <string name="chat_room_notify_all_short">Everyone</string>
+
+    <!-- Notification Center -->
+    <string name="notification_center_title">Notifications</string>
+    <string name="notification_center_empty">No notifications yet</string>
+    <string name="notification_center_mark_all_read">Mark all read</string>
 </resources>

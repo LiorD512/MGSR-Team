@@ -169,6 +169,9 @@ import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.features.platform.PlatformSwitcher
+import com.liordahan.mgsrteam.features.notificationcenter.NotificationCenterManager
+import com.liordahan.mgsrteam.features.notificationcenter.NotificationCenterSheet
+import com.liordahan.mgsrteam.features.notificationcenter.NotificationCenterState
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import java.text.SimpleDateFormat
@@ -185,14 +188,25 @@ fun DashboardScreen(
     navController: NavController,
     viewModel: IHomeScreenViewModel = koinViewModel(),
     platformManager: PlatformManager = koinInject(),
+    notificationCenterManager: NotificationCenterManager = koinInject(),
     onSignOut: () -> Unit = {}
 ) {
     val state by viewModel.dashboardState.collectAsStateWithLifecycle()
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
+    val notifState by notificationCenterManager.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val isHebrew = LocaleManager.isHebrew(context)
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showAddTaskSheet by remember { mutableStateOf(false) }
+    var showNotificationCenter by remember { mutableStateOf(false) }
+
+    // Start listening for notifications when account is available
+    LaunchedEffect(state.currentUserAccount?.id) {
+        val accountId = state.currentUserAccount?.id
+        if (accountId != null) {
+            notificationCenterManager.startListening(accountId)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.refreshTransferWindows()
@@ -285,9 +299,55 @@ fun DashboardScreen(
         GreetingHeader(
             state = state,
             isHebrew = isHebrew,
+            unreadNotifCount = notifState.unreadCount,
+            onNotificationClick = { showNotificationCenter = true },
             onLanguageClick = { showLanguageDialog = true },
             onSignOut = onSignOut
         )
+
+        // ── Notification Center Bottom Sheet ────────────────────────────
+        if (showNotificationCenter) {
+            NotificationCenterSheet(
+                state = notifState,
+                onDismiss = { showNotificationCenter = false },
+                onMarkAllRead = {
+                    state.currentUserAccount?.id?.let { notificationCenterManager.markAllRead(it) }
+                },
+                onNotificationClick = { notif ->
+                    state.currentUserAccount?.id?.let { accountId ->
+                        if (!notif.read) {
+                            notificationCenterManager.markRead(accountId, notif.id)
+                        }
+                    }
+                    showNotificationCenter = false
+                    // Navigate based on notification type
+                    val data = notif.data
+                    when (notif.type) {
+                        "TASK_ASSIGNED", "TASK_REMINDER" -> {
+                            navController.navigate(Screens.TasksScreen.route)
+                        }
+                        "CHAT_ROOM_TAG" -> {
+                            navController.navigate(Screens.ChatRoomScreen.route)
+                        }
+                        "NOTE_TAGGED" -> {
+                            val playerId = data["playerId"] as? String
+                            if (!playerId.isNullOrBlank()) {
+                                navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(playerId)}")
+                            }
+                        }
+                        "REQUEST_ADDED" -> {
+                            navController.navigate(Screens.RequestsScreen.route)
+                        }
+                        else -> {
+                            val tmProfile = data["playerTmProfile"] as? String
+                            if (!tmProfile.isNullOrBlank()) {
+                                navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(tmProfile)}")
+                            }
+                        }
+                    }
+                }
+            )
+        }
 
         // ── Platform tagline (animated) ──────────────────────────────────
         AnimatedContent(
@@ -846,6 +906,8 @@ private fun LanguageChangeDialog(
 private fun GreetingHeader(
     state: HomeDashboardState,
     isHebrew: Boolean,
+    unreadNotifCount: Int = 0,
+    onNotificationClick: () -> Unit = {},
     onLanguageClick: () -> Unit,
     onSignOut: () -> Unit = {}
 ) {
@@ -921,6 +983,40 @@ private fun GreetingHeader(
             )
 
             Spacer(Modifier.width(8.dp))
+
+            // ── Notification bell button ─────────────────────────────
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickWithNoRipple { onNotificationClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = stringResource(R.string.notification_center_title),
+                    tint = HomeTealAccent,
+                    modifier = Modifier.size(24.dp)
+                )
+                if (unreadNotifCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFEF4444)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (unreadNotifCount > 9) "9+" else unreadNotifCount.toString(),
+                            style = boldTextStyle(Color.White, 9.sp),
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.width(4.dp))
 
             // ── Language flag button ─────────────────────────────────
             Image(

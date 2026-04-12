@@ -151,6 +151,7 @@ app/src/main/java/com/liordahan/mgsrteam/
 │   ├── aiscout/                         # AiScoutScreen + AiScoutViewModel
 │   ├── chatroom/                        # ChatRoomScreen + ChatRoomViewModel
 │   ├── shadowteams/                     # ShadowTeamsScreen + ShadowTeamsViewModel
+│   ├── notificationcenter/              # NotificationCenterManager + NotificationCenterSheet
 │   ├── platform/                        # PlatformManager (Men/Women/Youth switcher)
 │   └── scouting/                        # Scout profile data
 ├── navigation/
@@ -317,7 +318,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `PlatformSwitcher.tsx` | Men/Women/Youth platform toggle |
 | `PlatformSync.tsx` | Syncs platform state across components |
 | `DirSync.tsx` | Syncs RTL/LTR direction |
-| `NotificationBell.tsx` | Push notification indicator |
+| `NotificationBell.tsx` | Notification center: bell icon with unread badge, dropdown panel showing last 20 notifications, mark read/all read |
 | `NotificationPrompt.tsx` | FCM permission request |
 | `BirthdaysSection.tsx` | Birthday cards on dashboard |
 | `ClubIntelPanel.tsx` | Club intelligence panel (on player detail) |
@@ -431,6 +432,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `phase6Misc.js` | `sharePlayerCreate`, `shadowTeamsSave`, `scoutProfileFeedbackSet`, `birthdayWishSend`, `offersUpdateHistorySummary`, `mandateSigningCreate` |
 | `phase7Account.js` | `accountUpdate` (FCM token validation, language, email lookup) |
 | `ifaFetch.js` | `fetchIfaHtml` (NO auth required, proxy fallbacks for Cloudflare) |
+| `notificationCenter.js` | `notificationMarkRead`, `notificationMarkAllRead` |
 
 ### Firestore Triggers
 
@@ -459,6 +461,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `validation.js` | Input validation helpers |
 | `feedEvents.js` | FeedEvent creation with deduplication |
 | `notifications.js` | FCM push notification sending |
+| `notificationCenter.js` | Persist notifications to Accounts subcollection (last 20 per user) |
 
 ---
 
@@ -605,6 +608,7 @@ Android app calls Render **directly** for performance-critical endpoints:
 | Collection | Purpose |
 |------------|---------|
 | `Accounts` | Agent accounts (name, email, fcmTokens[], language, role) |
+| `Accounts/{id}/Notifications` | Notification center: last 20 push notifications per user (type, title, body, data, timestamp, read) |
 | `Config` | Remote config (6 docs: positions, euCountries, countryNames, salaryRanges, transferFees, taskTemplates) |
 | `AgentTransferRequests` | Player transfer requests between agents |
 | `PlayerOffers` | Offer history (player → club, feedback, request ref) |
@@ -618,6 +622,16 @@ Android app calls Render **directly** for performance-critical endpoints:
 | `ScoutAgentRuns` | Scout agent execution history |
 | `WorkerRuns` | Worker job execution history |
 | `WorkerState` | Worker state tracking (last run, progress) |
+
+### Notification Center
+
+Every FCM push notification is also persisted to `Accounts/{accountId}/Notifications` subcollection (max 20 per user, auto-pruned). Both Android and Web show a bell icon with unread count badge that opens a notification center panel.
+
+**Written by:** Cloud Functions (`lib/notificationCenter.js`) — called from every notification-sending path in `index.js`, `chatRoom.js`, and `players.js`.
+
+**Read by:** Real-time Firestore listeners on both platforms.
+
+**Callables:** `notificationMarkRead`, `notificationMarkAllRead` (in `callables/notificationCenter.js`).
 
 ### FeedEvent Types
 

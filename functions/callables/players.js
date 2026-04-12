@@ -322,6 +322,19 @@ async function playersAddNote(data) {
         } catch (tagErr) {
           console.warn(`[playersAddNote] Failed to notify tagged agent ${taggedId}:`, tagErr.message);
         }
+
+        // Persist to tagged agent's notification center
+        try {
+          const { persistNotification } = require("../lib/notificationCenter");
+          await persistNotification(taggedId, {
+            type: "NOTE_TAGGED",
+            title: notifTitle,
+            body: notifBody,
+            data: { playerName, playerId: playerRefId, agentName: agentName || "", screen: "player" },
+          });
+        } catch (persistErr) {
+          console.warn(`[playersAddNote] Notification center persist failed for ${taggedId}:`, persistErr.message);
+        }
       }
     } catch (err) {
       console.warn("[playersAddNote] Tagged agent notification failed:", err.message);

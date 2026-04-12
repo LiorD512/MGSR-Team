@@ -43,6 +43,8 @@ const { sharePlayerCreate, shadowTeamsSave, scoutProfileFeedbackSet, birthdayWis
 const { accountUpdate } = require("./callables/phase7Account");
 const { chatRoomSend, chatRoomEdit, chatRoomDelete } = require("./callables/chatRoom");
 const { ifaFetchProfile } = require("./callables/ifaFetch");
+const { notificationMarkRead, notificationMarkAllRead } = require("./callables/notificationCenter");
+const { persistNotification, persistNotificationToAll } = require("./lib/notificationCenter");
 
 initializeApp();
 const db = getFirestore();
@@ -238,6 +240,18 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
   } catch (err) {
     console.error("FCM send error:", err);
   }
+
+  // Persist to all accounts' notification centers
+  try {
+    await persistNotificationToAll({
+      type,
+      title,
+      body,
+      data: message.data,
+    });
+  } catch (err) {
+    console.warn("[onNewFeedEvent] Notification center persist failed:", err.message);
+  }
 });
 
 /**
@@ -317,6 +331,18 @@ exports.onNewAgentTask = onDocumentCreated(
       console.log(`Task notification sent to ${agentId} (${tokens.length} token(s)): ${title}`);
     } catch (err) {
       console.error("FCM task notification error:", err);
+    }
+
+    // Persist to assignee's notification center
+    try {
+      await persistNotification(agentId, {
+        type: "TASK_ASSIGNED",
+        title: notifTitle,
+        body: notifBody,
+        data: payload.data,
+      });
+    } catch (err) {
+      console.warn("[onNewAgentTask] Notification center persist failed:", err.message);
     }
   }
 );
@@ -399,6 +425,18 @@ exports.onMandateSigningUpdated = onDocumentUpdated(
       console.log(`Mandate signing notification sent to ${agentAccountId}: ${playerName}`);
     } catch (err) {
       console.error("FCM mandate signing notification error:", err);
+    }
+
+    // Persist to agent's notification center
+    try {
+      await persistNotification(agentAccountId, {
+        type: "MANDATE_PLAYER_SIGNED",
+        title: notifTitle,
+        body: notifBody,
+        data: payload.data,
+      });
+    } catch (err) {
+      console.warn("[onMandateSigningUpdated] Notification center persist failed:", err.message);
     }
   }
 );
@@ -624,6 +662,14 @@ exports.onTaskRemindersScheduled = onSchedule(
           remindersSent: [...remindersSent, reminderDay],
         });
         console.log(`Reminder sent for task ${taskId} (${daysLeft} days)`);
+
+        // Persist to agent's notification center
+        await persistNotification(agentId, {
+          type: "TASK_REMINDER",
+          title: notifTitle,
+          body: notifBody,
+          data: payload.data,
+        }).catch((e) => console.warn("[taskReminders] persist failed:", e.message));
       } catch (err) {
         console.error(`Reminder send failed for task ${taskId}:`, err);
       }
@@ -856,6 +902,18 @@ exports.onAgentTransferRequest = onDocumentCreated(
     } catch (err) {
       console.error("[onAgentTransferRequest] FCM error:", err);
     }
+
+    // Persist to agent's notification center
+    try {
+      await persistNotification(accountId, {
+        type: "AGENT_TRANSFER_REQUEST",
+        title: notifTitle,
+        body: notifBody,
+        data: payload.data,
+      });
+    } catch (err) {
+      console.warn("[onAgentTransferRequest] Notification center persist failed:", err.message);
+    }
   }
 );
 
@@ -938,6 +996,18 @@ exports.onAgentTransferResolved = onDocumentUpdated(
       console.log(`[onAgentTransferResolved] ${notificationType} notification sent to ${accountId} (lang=${lang}): ${playerName}`);
     } catch (err) {
       console.error("[onAgentTransferResolved] FCM error:", err);
+    }
+
+    // Persist to agent's notification center
+    try {
+      await persistNotification(accountId, {
+        type: notificationType,
+        title: notifTitle,
+        body: notifBody,
+        data: payload.data,
+      });
+    } catch (err) {
+      console.warn("[onAgentTransferResolved] Notification center persist failed:", err.message);
     }
   }
 );
@@ -1348,3 +1418,7 @@ exports.ifaFetchProfile = onCall({ timeoutSeconds: 60, memory: "256MiB" }, async
   // No auth required — this fetches public IFA data (no Firestore writes)
   return ifaFetchProfile(req);
 });
+
+// ── Notification Center ────────────────────────────────────────────────
+exports.notificationMarkRead = onCall(async (req) => { requireAuth(req); return notificationMarkRead(req.data); });
+exports.notificationMarkAllRead = onCall(async (req) => { requireAuth(req); return notificationMarkAllRead(req.data); });
