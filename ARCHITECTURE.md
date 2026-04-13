@@ -450,7 +450,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | Function | Schedule | Purpose |
 |----------|----------|---------|
 | `mandateExpiryScheduled` | 04:00 daily | Scan and expire mandates, write FeedEvents |
-| `releasesRefreshScheduled` | 03:00 daily | Scrape TM for new releases → Pub/Sub worker |
+| ~~`releasesRefreshScheduled`~~ | ~~03:00 daily~~ | ~~Scrape TM for new releases~~ — **DISABLED**: moved to GitHub Actions (`daily-releases-refresh.yml`) due to TM HTTP 405 blocking Cloud Functions IPs |
 | `scoutAgentScheduled` | 00:00 every 3 days | AI Scout Agent (44 leagues, stats enrichment) → Pub/Sub worker |
 | `onTaskRemindersScheduled` | 09:00 daily | Task reminders at 7d, 3d, 1d, today milestones |
 
@@ -581,6 +581,7 @@ Android app calls Render **directly** for performance-critical endpoints:
 | `weekly-contract-finishers.yml` | Monday 23:00 UTC (2am Israel) | Populate contract finisher cache in Firestore via `_populate_cache.ts finishers` |
 | `weekly-returnees.yml` | Thursday 23:00 UTC (2am Israel) | Populate returnees cache in Firestore via `_populate_cache.ts returnees` |
 | `weekly-scout-images.yml` | Tuesday 00:00 UTC (3am Israel) | Enrich scout profile images via `_enrich_images.ts` |
+| `daily-releases-refresh.yml` | Daily 00:00 UTC (3am Israel) | Scrape TM for new free agent releases → Firestore FeedEvents via `_releases_refresh.ts` |
 | `test-tm-scraping.yml` | Manual only | Test Transfermarkt fetch logic |
 
 **Pattern:** All workflows use GitHub API for file updates (not git push). Secrets include `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
@@ -1108,7 +1109,7 @@ Every write operation goes through this chain:
 |----------|-----------|---------|
 | Android `transfermarkt/` module | JSoup | Real-time player search, profiles, releases, contract finishers, returnees |
 | Web API routes | Cheerio + impit | Same as Android but server-side on Vercel |
-| Cloud Functions | Cheerio | Releases refresh (scheduled daily) |
+| GitHub Actions | Cheerio | Releases refresh (daily, via `_releases_refresh.ts`) — moved from Cloud Functions due to TM IP blocking |
 | GCP Cloud Run `workers-job/` | Cheerio + impit | Daily player refresh (all roster players) |
 | Render server `football-scout-server` | BeautifulSoup + requests | Full database build (all 44 leagues, 19K+ players) |
 
@@ -1162,6 +1163,7 @@ All parsers handle: `€300k`, `€1.50m`, `€300K`, `€1.50M` (case-insensiti
 |--------|---------|
 | `_populate_cache.ts` | Populate contract finisher / returnee caches (used by GitHub Actions) |
 | `_enrich_images.ts` | Enrich scout profile images (used by GitHub Actions) |
+| `_releases_refresh.ts` | Daily releases refresh — scrape TM for new free agents, write FeedEvents (used by GitHub Actions) |
 | `scripts/convert-logo.js` | Logo conversion (prebuild) |
 | `scripts/test-scout-direct.js` | Test scout server directly |
 | `scripts/freesearch-proxy.py` | Free search proxy |

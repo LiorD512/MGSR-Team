@@ -481,16 +481,20 @@ exports.mandateExpiryScheduled = onSchedule(
 const RELEASES_REFRESH_TOPIC = "releases-refresh-trigger";
 const SCOUT_AGENT_TOPIC = "scout-agent-trigger";
 
-exports.releasesRefreshScheduled = onSchedule(
-  { schedule: "0 3 * * *", timeZone: "Asia/Jerusalem" },
-  async () => {
-    console.log("[releasesRefreshScheduled] Triggered at 03:00 Israel time — publishing to Pub/Sub");
-    const { PubSub } = require("@google-cloud/pubsub");
-    const pubsub = new PubSub();
-    await pubsub.topic(RELEASES_REFRESH_TOPIC).publishMessage({ data: Buffer.from("{}") });
-    console.log("[releasesRefreshScheduled] Published — worker will run asynchronously");
-  }
-);
+// DISABLED 2026-04-13: Moved to GitHub Actions (daily-releases-refresh.yml)
+// TM blocks Cloud Functions IPs with HTTP 405. GH Actions IPs are not blocked.
+// The worker (releasesRefreshWorker) is kept for manual Pub/Sub triggers if needed.
+//
+// exports.releasesRefreshScheduled = onSchedule(
+//   { schedule: "0 3 * * *", timeZone: "Asia/Jerusalem" },
+//   async () => {
+//     console.log("[releasesRefreshScheduled] Triggered at 03:00 Israel time — publishing to Pub/Sub");
+//     const { PubSub } = require("@google-cloud/pubsub");
+//     const pubsub = new PubSub();
+//     await pubsub.topic(RELEASES_REFRESH_TOPIC).publishMessage({ data: Buffer.from("{}") });
+//     console.log("[releasesRefreshScheduled] Published — worker will run asynchronously");
+//   }
+// );
 
 /**
  * Handles releases refresh work. Triggered by Pub/Sub (from releasesRefreshScheduled).
