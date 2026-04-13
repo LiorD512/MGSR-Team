@@ -749,12 +749,55 @@ function hashPlayerUrl(url) {
   return crypto.createHash("sha256").update(url).digest("base64url").slice(0, 40);
 }
 
+// ── Idempotency lock — prevents Pub/Sub redelivery from running 87 parallel copies ──
+const LOCK_DOC = "ScoutAgentWorker";
+const LOCK_COLLECTION = "WorkerLocks";
+const LOCK_TTL_MS = 35 * 60 * 1000; // 35 min — slightly longer than function timeout (30 min)
+
+async function acquireLock(db) {
+  const lockRef = db.collection(LOCK_COLLECTION).doc(LOCK_DOC);
+  try {
+    const result = await db.runTransaction(async (t) => {
+      const doc = await t.get(lockRef);
+      const data = doc.data();
+      if (data && data.lockedAt && (Date.now() - data.lockedAt) < LOCK_TTL_MS) {
+        return false; // lock held by another instance
+      }
+      t.set(lockRef, { lockedAt: Date.now(), status: "running" });
+      return true;
+    });
+    return result;
+  } catch (err) {
+    console.error("[ScoutAgent] Lock acquisition error:", err.message);
+    return false;
+  }
+}
+
+async function releaseLock(db) {
+  try {
+    await db.collection(LOCK_COLLECTION).doc(LOCK_DOC).delete();
+  } catch (err) {
+    console.error("[ScoutAgent] Lock release error:", err.message);
+  }
+}
+
 /**
  * Run the AI Scout Agent Network.
  * Fetches players from recruitment API, assigns to agents, matches profiles, writes to Firestore.
  */
 async function runScoutAgent() {
   const db = getFirestore();
+
+  // ── Idempotency: only one instance runs at a time ──
+  const gotLock = await acquireLock(db);
+  if (!gotLock) {
+    console.log("[ScoutAgent] Another instance already running — skipping (Pub/Sub redelivery)");
+    return { skipped: true, reason: "lock_held" };
+  }
+  console.log("[ScoutAgent] Lock acquired — starting run");
+
+  try {
+  // ── Original logic starts here (now inside try/finally for lock release) ──
   const profilesRef = db.collection("ScoutProfiles");
   const runsRef = db.collection("ScoutAgentRuns");
   const skillsRef = db.collection("ScoutAgentSkills");
@@ -2320,6 +2363,12 @@ ONLY valid JSON.`;
     runId: runDoc.id,
     crossLeagueDetections: crossLeague.length,
   };
+
+  } finally {
+    // Always release lock — whether success or crash
+    await releaseLock(db);
+    console.log("[ScoutAgent] Lock released");
+  }
 }
 
 module.exports = { runScoutAgent, matchesProfile, computeMatchScore, buildMatchReason };

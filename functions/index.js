@@ -26,6 +26,7 @@ const { runReleasesRefresh } = require("./workers/releasesRefresh");
 const { runScoutAgent } = require("./workers/scoutAgent");
 const { runScoutSkillLearning } = require("./workers/scoutSkillLearner");
 const { runDailyDigest } = require("./workers/dailyDigest");
+const { runSystemHealthCheck } = require("./workers/systemHealthCheck");
 const { fetchDocument } = require("./lib/transfermarkt");
 
 // Phase-1 callables — shared business logic for Android & Web
@@ -733,6 +734,31 @@ exports.dailyDigestWorker = onMessagePublished(
     }
     await runDailyDigest(gmailUser, gmailAppPassword);
     console.log("[dailyDigestWorker] Completed");
+  }
+);
+
+// ─── System Health Check Email ──────────────────────────────────────
+// Fires daily at 08:00 Israel time. Sends a system health summary email
+// covering all scheduled workers, Cloud Run jobs, and GitHub Actions.
+// Direct onSchedule (no Pub/Sub — runs in <30s).
+// ─────────────────────────────────────────────────────────────────────
+exports.systemHealthCheckScheduled = onSchedule(
+  {
+    schedule: "0 8 * * *",
+    timeZone: "Asia/Jerusalem",
+    timeoutSeconds: 60,
+    secrets: ["GMAIL_USER", "GMAIL_APP_PASSWORD"],
+  },
+  async () => {
+    console.log("[systemHealthCheckScheduled] Triggered at 08:00 Israel time");
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+    if (!gmailUser || !gmailAppPassword) {
+      console.error("[systemHealthCheckScheduled] Missing GMAIL secrets");
+      return;
+    }
+    await runSystemHealthCheck(gmailUser, gmailAppPassword);
+    console.log("[systemHealthCheckScheduled] Completed");
   }
 );
 
