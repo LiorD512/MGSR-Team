@@ -176,11 +176,11 @@ async function fetchDocument(url: string): Promise<cheerio.Root> {
 }
 
 // ── TM parsing ──
-const WITHOUT_CLUB_VARIANTS = new Set([
+const WITHOUT_CLUB_VARIANTS = [
   'without club', 'ohne verein', 'sans club', 'sin club',
   'senza squadra', 'sem clube', 'geen club', 'bez klubu',
   'klubsuz', 'free agent',
-]);
+];
 
 function convertLongPositionToShort(pos: string): string {
   const map: Record<string, string> = {
@@ -214,7 +214,7 @@ function isWithoutClub($: cheerio.Root, row: cheerio.Cheerio): boolean {
   const newClubCell = tables.eq(2);
   const imgAlt = newClubCell.find('img').attr('alt')?.trim().toLowerCase() || '';
   const cellText = newClubCell.text().trim().toLowerCase();
-  return [...WITHOUT_CLUB_VARIANTS].some((v) => imgAlt.includes(v) || cellText.includes(v));
+  return WITHOUT_CLUB_VARIANTS.some((v) => imgAlt.includes(v) || cellText.includes(v));
 }
 
 function extractNationalityAndFlag($: cheerio.Root, row: cheerio.Cheerio): [string | null, string | null] {
@@ -342,7 +342,7 @@ async function enrichFromProfile(model: ReleaseModel): Promise<ReleaseModel | nu
         }
       });
     }
-    if (clubName && ![...WITHOUT_CLUB_VARIANTS].some((v) => clubName.includes(v))) {
+    if (clubName && !WITHOUT_CLUB_VARIANTS.some((v) => clubName.includes(v))) {
       return null;
     }
 
