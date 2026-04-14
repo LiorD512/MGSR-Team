@@ -118,10 +118,19 @@ export default function ShortlistPage() {
   const isYouth = platform === 'youth';
   const euCountries = useEuCountries();
   const shortlistCacheKey = user ? `shortlist_${platform}_${user.uid}` : undefined;
+  const filtersCacheKey = shortlistCacheKey ? `${shortlistCacheKey}_filters` : undefined;
+  const scrollCacheKey = shortlistCacheKey ? `${shortlistCacheKey}_scrollY` : undefined;
   const cached = shortlistCacheKey ? getScreenCache<ShortlistEntry[]>(shortlistCacheKey) : undefined;
+  const cachedFilters = filtersCacheKey ? getScreenCache<{
+    sortBy: string; filterBy: string; agentFilter: string | null;
+    positionFilter: string | null; specificPositionFilter: string | null;
+    withNotesOnly: boolean; searchQuery: string;
+  }>(filtersCacheKey) : undefined;
   const [entries, setEntries] = useState<ShortlistEntry[]>(cached ?? []);
   const [loadingList, setLoadingList] = useState(cached === undefined);
   const [removingUrl, setRemovingUrl] = useState<string | null>(null);
+  const pendingRemoveRef = useRef<Set<string>>(new Set());
+  const scrollRestoreRef = useRef(false);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
   const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
   const [loadingTeammatesUrl, setLoadingTeammatesUrl] = useState<string | null>(null);
@@ -135,15 +144,15 @@ export default function ShortlistPage() {
   const [performanceCache, setPerformanceCache] = useState<Record<string, { appearances: number; goals: number; assists: number; minutes: number; season: string }>>({});
   const [loadingPerformanceUrl, setLoadingPerformanceUrl] = useState<string | null>(null);
   const [refreshingUrl, setRefreshingUrl] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'added' | 'market_value' | 'matches' | 'name' | 'age'>('added');
-  const [filterBy, setFilterBy] = useState<'all' | 'has_matches' | 'contract_expiring' | 'free_agent' | 'my_players'>('all');
-  const [agentFilter, setAgentFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'added' | 'market_value' | 'matches' | 'name' | 'age'>((cachedFilters?.sortBy as 'added' | 'market_value' | 'matches' | 'name' | 'age') ?? 'added');
+  const [filterBy, setFilterBy] = useState<'all' | 'has_matches' | 'contract_expiring' | 'free_agent' | 'my_players'>((cachedFilters?.filterBy as 'all' | 'has_matches' | 'contract_expiring' | 'free_agent' | 'my_players') ?? 'all');
+  const [agentFilter, setAgentFilter] = useState<string | null>(cachedFilters?.agentFilter ?? null);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [allAccounts, setAllAccounts] = useState<AccountForShortlist[]>([]);
-  const [positionFilter, setPositionFilter] = useState<string | null>(null); // null = All
-  const [specificPositionFilter, setSpecificPositionFilter] = useState<string | null>(null);
-  const [withNotesOnly, setWithNotesOnly] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [positionFilter, setPositionFilter] = useState<string | null>(cachedFilters?.positionFilter ?? null);
+  const [specificPositionFilter, setSpecificPositionFilter] = useState<string | null>(cachedFilters?.specificPositionFilter ?? null);
+  const [withNotesOnly, setWithNotesOnly] = useState(cachedFilters?.withNotesOnly ?? false);
+  const [searchQuery, setSearchQuery] = useState(cachedFilters?.searchQuery ?? '');
 
   // ── Notes state ──
   const [noteModalEntry, setNoteModalEntry] = useState<ShortlistEntry | null>(null);
@@ -211,6 +220,45 @@ export default function ShortlistPage() {
     });
     getAllAccounts().then(setAllAccounts);
   }, [user]);
+
+  // Persist filter state to cache whenever it changes
+  useEffect(() => {
+    if (!filtersCacheKey) return;
+    setScreenCache(filtersCacheKey, { sortBy, filterBy, agentFilter, positionFilter, specificPositionFilter, withNotesOnly, searchQuery });
+  }, [filtersCacheKey, sortBy, filterBy, agentFilter, positionFilter, specificPositionFilter, withNotesOnly, searchQuery]);
+
+  // Save scroll position before navigating away; restore once after mount
+  useEffect(() => {
+    if (!scrollCacheKey) return;
+    const saveScroll = () => setScreenCache(scrollCacheKey, window.scrollY);
+    // Save on every click that may trigger navigation (Link clicks)
+    const handleClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement)?.closest?.('a');
+      if (anchor && anchor.href && !anchor.href.startsWith('javascript')) saveScroll();
+    };
+    document.addEventListener('click', handleClick, true);
+    // Also save on beforeunload (browser back/refresh)
+    window.addEventListener('beforeunload', saveScroll);
+    return () => {
+      document.removeEventListener('click', handleClick, true);
+      window.removeEventListener('beforeunload', saveScroll);
+    };
+  }, [scrollCacheKey]);
+
+  // Restore scroll position once entries are rendered
+  useEffect(() => {
+    if (scrollRestoreRef.current || !scrollCacheKey || entries.length === 0) return;
+    const savedY = getScreenCache<number>(scrollCacheKey);
+    if (savedY != null && savedY > 0) {
+      scrollRestoreRef.current = true;
+      // Use rAF to ensure DOM has rendered the cards
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: savedY, behavior: 'instant' as ScrollBehavior });
+      });
+    } else {
+      scrollRestoreRef.current = true;
+    }
+  }, [entries.length, scrollCacheKey]);
 
   // Handle ?highlight=url — scroll to and animate the matching shortlist entry
   const highlightParam = searchParams.get('highlight');
@@ -343,9 +391,17 @@ export default function ShortlistPage() {
             currentClub,
           };
         }).filter((x): x is NonNullable<typeof x> => x !== null);
-        setEntries(mapped);
+        // Filter out entries with pending optimistic removals
+        const pending = pendingRemoveRef.current;
+        const filtered = pending.size > 0 ? mapped.filter((e) => !pending.has(e.tmProfileUrl)) : mapped;
+        // Clean up confirmed removals (URL no longer in snapshot → removal confirmed)
+        const snapshotUrls = new Set(mapped.map((e) => e.tmProfileUrl));
+        Array.from(pending).forEach((url) => {
+          if (!snapshotUrls.has(url)) pending.delete(url);
+        });
+        setEntries(filtered);
         setLoadingList(false);
-        if (shortlistCacheKey) setScreenCache(shortlistCacheKey, mapped);
+        if (shortlistCacheKey) setScreenCache(shortlistCacheKey, filtered);
       },
       (err) => {
         console.error('Shortlist snapshot error:', err);
@@ -503,22 +559,30 @@ export default function ShortlistPage() {
       : note.createdBy || note.createdByHebrewName || '—',
   [isRtl]);
 
-  const removeFromShortlist = async (entry: ShortlistEntry) => {
+  const removeFromShortlist = useCallback(async (entry: ShortlistEntry) => {
     if (!user) return;
-    setRemovingUrl(entry.tmProfileUrl);
+    const url = entry.tmProfileUrl;
+    // Optimistic removal — hide the card immediately
+    pendingRemoveRef.current.add(url);
+    setEntries((prev) => prev.filter((e) => e.tmProfileUrl !== url));
+    setRemovingUrl(url);
     try {
       const account = await getCurrentAccountForShortlist(user);
       await callShortlistRemove({
         platform,
-        tmProfileUrl: entry.tmProfileUrl,
+        tmProfileUrl: url,
         playerName: entry.playerName,
         playerImage: entry.playerImage,
         agentName: account.name ?? undefined,
       });
+    } catch (err) {
+      // Rollback — re-add entry on failure (onSnapshot will reconcile)
+      pendingRemoveRef.current.delete(url);
+      console.error('[Shortlist] Remove failed, rolling back:', err);
     } finally {
       setRemovingUrl(null);
     }
-  };
+  }, [user, platform]);
 
   // Refresh entry from Transfermarkt (men only, TM URLs)
   const refreshEntry = useCallback(
@@ -1634,7 +1698,7 @@ export default function ShortlistPage() {
                       <div className="w-px h-4 bg-mgsr-border/20" />
                       <button
                         type="button"
-                        onClick={(e) => { e.preventDefault(); removeFromShortlist(entry); }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeFromShortlist(entry); }}
                         disabled={removingUrl === entry.tmProfileUrl}
                         className="w-9 h-9 flex items-center justify-center text-mgsr-muted/40 hover:text-mgsr-red hover:bg-mgsr-red/10 disabled:opacity-40 active:scale-95 transition-all duration-150"
                         title={t('shortlist_remove')}
