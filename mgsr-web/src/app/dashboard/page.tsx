@@ -247,7 +247,7 @@ function getFeedEventLink(
   womenPlayers: WomanPlayer[],
   youthPlayers: YouthPlayer[],
   platform: string
-): { href: string; hasLink: boolean } {
+): { href: string; hasLink: boolean; external?: boolean } {
   const scrollTo = `scrollTo=${encodeURIComponent(ev.id)}`;
   const isShortlistAdded = ev.type === 'SHORTLIST_ADDED';
   if (isShortlistAdded && (ev.playerTmProfile || ev.playerWomenId || ev.playerYouthId)) {
@@ -268,7 +268,7 @@ function getFeedEventLink(
     if (rosterPlayer) {
       return { href: `/players/${rosterPlayer.id}?from=/dashboard&${scrollTo}`, hasLink: true };
     }
-    return { href: `/players/add?url=${encodeURIComponent(ev.playerTmProfile)}&from=/dashboard&${scrollTo}`, hasLink: true };
+    return { href: ev.playerTmProfile, hasLink: true, external: true };
   }
   return { href: '', hasLink: false };
 }
@@ -2015,7 +2015,7 @@ export default function DashboardPage() {
                 {events.slice(0, 15).map((ev, i) => {
                   const color = getEventColor(ev.type || '');
                   const typeLabel = translateType(ev.type || '', t, platform) || ev.type;
-                  const { href, hasLink } = getFeedEventLink(ev, rosterPlayers, womenPlayers, youthPlayers, platform);
+                  const { href, hasLink, external } = getFeedEventLink(ev, rosterPlayers, womenPlayers, youthPlayers, platform);
                   const cardContent = (
                     <div
                       className={`flex-1 min-w-0 rounded-xl border bg-mgsr-card/70 px-4 py-3.5 transition-all duration-200 ${
@@ -2091,9 +2091,15 @@ export default function DashboardPage() {
                         )}
                       </div>
                       {hasLink ? (
-                        <Link href={href} className="flex-1 min-w-0 block">
-                          {cardContent}
-                        </Link>
+                        external ? (
+                          <a href={href} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 block">
+                            {cardContent}
+                          </a>
+                        ) : (
+                          <Link href={href} className="flex-1 min-w-0 block">
+                            {cardContent}
+                          </Link>
+                        )
                       ) : (
                         <div className="flex-1 min-w-0">{cardContent}</div>
                       )}
@@ -2113,7 +2119,7 @@ export default function DashboardPage() {
                 {events.slice(0, 15).map((ev, i) => {
                   const color = getEventColor(ev.type || '');
                   const typeLabel = translateType(ev.type || '', t, platform) || ev.type;
-                  const { href, hasLink } = getFeedEventLink(ev, rosterPlayers, womenPlayers, youthPlayers, platform);
+                  const { href, hasLink, external } = getFeedEventLink(ev, rosterPlayers, womenPlayers, youthPlayers, platform);
                   const cardContent = (
                     <div
                       className={`flex-1 min-w-0 rounded-xl border bg-mgsr-card/40 backdrop-blur-sm px-4 py-3.5 transition-all duration-200 ${
@@ -2177,9 +2183,15 @@ export default function DashboardPage() {
                         )}
                       </div>
                       {hasLink ? (
-                        <Link href={href} className="flex-1 min-w-0 block">
-                          {cardContent}
-                        </Link>
+                        external ? (
+                          <a href={href} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 block">
+                            {cardContent}
+                          </a>
+                        ) : (
+                          <Link href={href} className="flex-1 min-w-0 block">
+                            {cardContent}
+                          </Link>
+                        )
                       ) : (
                         <div className="flex-1 min-w-0">{cardContent}</div>
                       )}
@@ -2199,7 +2211,7 @@ export default function DashboardPage() {
                 {events.slice(0, 15).map((ev, i) => {
                   const color = getEventColor(ev.type || '');
                   const typeLabel = translateType(ev.type || '', t, platform) || ev.type;
-                  const { href, hasLink } = getFeedEventLink(ev, rosterPlayers, womenPlayers, youthPlayers, platform);
+                  const { href, hasLink, external } = getFeedEventLink(ev, rosterPlayers, womenPlayers, youthPlayers, platform);
                   const cardContent = (
                     <div
                       className={`flex-1 min-w-0 rounded-xl border border-mgsr-border bg-mgsr-card/60 px-4 py-3 transition-all duration-200 ${
@@ -2255,9 +2267,15 @@ export default function DashboardPage() {
                         )}
                       </div>
                       {hasLink ? (
-                        <Link href={href} className="flex-1 min-w-0 block">
-                          {cardContent}
-                        </Link>
+                        external ? (
+                          <a href={href} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 block">
+                            {cardContent}
+                          </a>
+                        ) : (
+                          <Link href={href} className="flex-1 min-w-0 block">
+                            {cardContent}
+                          </Link>
+                        )
                       ) : (
                         <div className="flex-1 min-w-0">{cardContent}</div>
                       )}
