@@ -1,19 +1,37 @@
 #!/usr/bin/env node
 /**
- * PlayerRefreshWorker — Cloud Run Job.
- * Refreshes all players from Transfermarkt. Runs at 02:00 Israel time via Cloud Scheduler.
+ * Workers Job — Cloud Run Job entry point.
+ * Runs the job specified by JOB_MODE env var.
  *
- * Usage: node run.js
+ * Modes:
+ *  - player-refresh (default): Refreshes all players from Transfermarkt.
+ *  - releases-refresh: Fetches new free-agent releases from Transfermarkt.
+ *
+ * Usage: JOB_MODE=player-refresh node run.js
+ *        JOB_MODE=releases-refresh node run.js
  * Requires: GOOGLE_APPLICATION_CREDENTIALS or runs with default GCP credentials.
  */
 
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
-const { updatePlayerByTmProfile } = require("./lib/playersUpdate");
-const { feedEventDocId, isNoMarketValue } = require("./lib/utils");
+
+const JOB_MODE = process.env.JOB_MODE || "player-refresh";
 
 initializeApp();
 const db = getFirestore();
+
+if (JOB_MODE === "releases-refresh") {
+  const { runReleasesRefresh } = require("./releasesRefresh");
+  runReleasesRefresh(db);
+} else {
+  // Default: player-refresh (original behavior)
+  runPlayerRefresh();
+}
+
+// ── Player Refresh ──────────────────────────────────────────────────
+
+const { updatePlayerByTmProfile } = require("./lib/playersUpdate");
+const { feedEventDocId, isNoMarketValue } = require("./lib/utils");
 
 const PLAYERS_TABLE = "Players";
 const FEED_EVENTS_TABLE = "FeedEvents";
@@ -205,7 +223,7 @@ async function processSuccessfulUpdate(player, data, docRef, feedRef, tmProfile)
   await docRef.set(updated);
 }
 
-async function main() {
+async function runPlayerRefresh() {
   // Jitter: wait 0-60s before starting so TM doesn't see a pattern
   const jitter = Math.floor(Math.random() * START_JITTER_MAX_MS);
   log(`Waiting ${(jitter / 1000).toFixed(0)}s jitter before starting...`);
@@ -361,4 +379,4 @@ async function main() {
   }
 }
 
-main();
+// runPlayerRefresh is called conditionally at the top of the file

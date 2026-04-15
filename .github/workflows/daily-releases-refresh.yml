@@ -1,9 +1,15 @@
-name: Daily Releases Refresh
+name: Daily Releases Refresh (DISABLED — moved to Cloud Run Job)
+
+# DISABLED: TM blocks plain https.get from both GH Actions and Cloud Functions.
+# Releases refresh now runs as a Cloud Run Job using impit (browser-grade TLS).
+# See workers-job/releasesRefresh.js + workers-job/deploy.sh
+#
+# Kept for reference. The Cloud Run Job "releases-refresh-job" runs daily at 03:00 IST.
 
 on:
-  schedule:
-    # 03:00 Israel time = 00:00 UTC (IST is UTC+3)
-    - cron: '0 0 * * *'
+  # schedule disabled — Cloud Run Job handles this now
+  # schedule:
+  #   - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
