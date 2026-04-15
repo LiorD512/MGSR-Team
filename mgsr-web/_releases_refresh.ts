@@ -386,6 +386,12 @@ async function getLatestReleasesForRange(minValue: number, maxValue: number): Pr
   const pageCount = getTotalPages($);
   const all: ReleaseModel[] = [];
 
+  // ── Diagnostic: log what TM actually returned ──
+  const totalRows = $('table.items').find('tr.odd, tr.even').length;
+  const hasItems = $('table.items').length;
+  const titleTag = $('title').text().trim().slice(0, 80);
+  console.log(`[ReleasesRefresh]   DEBUG: title="${titleTag}" tables=${hasItems} totalRows=${totalRows} pages=${pageCount}`);
+
   const parsePage = async (page: number) => {
     const u = page === 1 ? url : buildReleasesUrl(minValue, maxValue, page);
     const $p = page === 1 ? $ : await fetchDocument(u);
