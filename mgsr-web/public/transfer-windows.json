@@ -1,4 +1,12 @@
 {
-  "windows": [],
-  "updatedAt": "2026-04-14T09:16:13.236Z"
+  "windows": [
+    {
+      "countryName": "Canada",
+      "countryCode": "ca",
+      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/80.png",
+      "confederation": "CONCACAF",
+      "daysLeft": 2
+    }
+  ],
+  "updatedAt": "2026-04-15T09:17:50.690Z"
 }
