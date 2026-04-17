@@ -36,12 +36,22 @@ export async function GET(request: NextRequest) {
     const uid = decoded.uid;
 
     const db = adminDb();
-    const snap = await db
-      .collection('SharedRequestLinks')
-      .where('createdBy', '==', uid)
-      .orderBy('createdAt', 'desc')
-      .limit(100)
-      .get();
+    let snap;
+    try {
+      snap = await db
+        .collection('SharedRequestLinks')
+        .where('createdBy', '==', uid)
+        .orderBy('createdAt', 'desc')
+        .limit(100)
+        .get();
+    } catch {
+      // Composite index may not be deployed yet — fall back to filter-only query
+      snap = await db
+        .collection('SharedRequestLinks')
+        .where('createdBy', '==', uid)
+        .limit(100)
+        .get();
+    }
 
     const links: SharedRequestLinkItem[] = snap.docs.map((doc) => {
       const d = doc.data();
@@ -57,6 +67,9 @@ export async function GET(request: NextRequest) {
         lastViewedAt: d.lastViewedAt || null,
       };
     });
+
+    // Ensure sorted newest first (fallback query may not be ordered)
+    links.sort((a, b) => b.createdAt - a.createdAt);
 
     return NextResponse.json({ links });
   } catch (e) {

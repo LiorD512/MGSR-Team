@@ -92,6 +92,7 @@ export async function generateMetadata({
   const desc = `${count} open positions across ${positions} roles in ${countries} countries. ${plLabel} recruitment by MGSR Team.`;
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}/shared/requests/${params.token}`;
+  const imageUrl = `${url}/opengraph-image`;
 
   return {
     title,
@@ -100,12 +101,14 @@ export async function generateMetadata({
       title,
       description: desc,
       url,
+      images: [{ url: imageUrl, width: 1200, height: 630, alt: title }],
       type: 'website' as const,
     },
     twitter: {
       card: 'summary_large_image' as const,
       title,
       description: desc,
+      images: [imageUrl],
     },
   };
 }
