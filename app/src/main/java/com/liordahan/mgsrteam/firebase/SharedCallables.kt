@@ -370,6 +370,22 @@ object SharedCallables {
         return (result as? Map<*, *>)?.get("token") as? String ?: ""
     }
 
+    /** Create a unique, revocable SharedRequestLinks doc. Returns the doc ID (token). */
+    suspend fun sharedRequestLinkCreate(platform: Platform, showClubs: Boolean, recipientLabel: String?): String {
+        val data = mapOf<String, Any?>(
+            "platform" to platform.callableName(),
+            "showClubs" to showClubs,
+            "recipientLabel" to recipientLabel,
+        )
+        val result = call("sharedRequestLinkCreate", data)
+        return (result as? Map<*, *>)?.get("token") as? String ?: ""
+    }
+
+    /** Revoke a shared request link by token. */
+    suspend fun sharedRequestLinkRevoke(token: String) {
+        call("sharedRequestLinkRevoke", mapOf("token" to token))
+    }
+
     /** Save (overwrite) a ShadowTeams doc. */
     suspend fun shadowTeamsSave(platform: Platform, accountId: String, fields: Map<String, Any?>) {
         val data = fields.toMutableMap()

@@ -165,6 +165,7 @@ import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.RecordingWaveform
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
+import com.liordahan.mgsrteam.firebase.SharedCallables
 import com.liordahan.mgsrteam.ui.components.SkeletonRequestList
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
@@ -262,23 +263,30 @@ fun RequestsScreen(
                         onDismiss = { showShareDialog = false },
                         isSharing = isSharing,
                         onShare = { hideClubNames ->
-                            // Build shared requests page link
-                            val baseUrl = com.liordahan.mgsrteam.BuildConfig.MGSR_WEB_URL.trimEnd('/')
-                            val platformParam = when (currentPlatform) {
-                                Platform.WOMEN -> "women"
-                                Platform.YOUTH -> "youth"
-                                else -> "men"
+                            shareScope.launch {
+                                isSharing = true
+                                try {
+                                    val token = SharedCallables.sharedRequestLinkCreate(
+                                        platform = currentPlatform,
+                                        showClubs = !hideClubNames,
+                                        recipientLabel = null
+                                    )
+                                    val baseUrl = com.liordahan.mgsrteam.BuildConfig.MGSR_WEB_URL.trimEnd('/')
+                                    val shareLink = "$baseUrl/shared/requests/$token"
+                                    val fullText = "View full recruitment brief:\n\n$shareLink"
+                                    showShareDialog = false
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, fullText)
+                                        putExtra(Intent.EXTRA_SUBJECT, "MGSR Team - Active Recruitment Requests")
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Share requests"))
+                                } catch (e: Exception) {
+                                    android.util.Log.e("RequestsScreen", "Failed to create share link", e)
+                                } finally {
+                                    isSharing = false
+                                }
                             }
-                            val clubsParam = if (hideClubNames) "" else "&showClubs=mgsr2026"
-                            val shareLink = "$baseUrl/shared/requests?platform=$platformParam$clubsParam"
-                            val fullText = "View full recruitment brief:\n\n$shareLink"
-                            showShareDialog = false
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, fullText)
-                                putExtra(Intent.EXTRA_SUBJECT, "MGSR Team - Active Recruitment Requests")
-                            }
-                            context.startActivity(Intent.createChooser(intent, "Share requests"))
                         }
                     )
                 }

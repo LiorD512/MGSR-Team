@@ -24,6 +24,7 @@ import { useEuCountries } from '@/hooks/useEuCountries';
 import ClubIntelPanel from '@/components/ClubIntelPanel';
 import { type ClubIntelligence } from '@/lib/clubIntel';
 import AddRequestSheet from './AddRequestSheet';
+import ManageSharedLinksDialog from './ManageSharedLinksDialog';
 
 interface Request {
   id: string;
@@ -170,6 +171,8 @@ export default function RequestsPage() {
   const [deleting, setDeleting] = useState(false);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showManageLinks, setShowManageLinks] = useState(false);
+  const [shareCreating, setShareCreating] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Request | null>(null);
   const [players, setPlayers] = useState<RosterPlayer[]>(cached?.players ?? []);
   const [expandedMatchingPlayers, setExpandedMatchingPlayers] = useState<Set<string>>(new Set());
@@ -1308,24 +1311,53 @@ export default function RequestsPage() {
 
         {/* Share Requests Dialog */}
         {showShareDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowShareDialog(false)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => { if (!shareCreating) setShowShareDialog(false); }}>
             <div className="bg-mgsr-card border border-mgsr-border rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-display font-bold text-mgsr-text mb-4">
+              <h3 className="text-lg font-display font-bold text-mgsr-text mb-2">
                 {isHebrew ? 'שתף בקשות' : 'Share Requests'}
               </h3>
-              <p className="text-sm text-mgsr-muted mb-5">
-                {isHebrew ? 'בחר אם להסתיר שמות מועדונים בקישור המשותף.' : 'Choose whether to hide club names in the shared link.'}
+              <p className="text-sm text-mgsr-muted mb-4">
+                {isHebrew
+                  ? 'כל שיתוף יוצר קישור ייחודי שניתן לבטל בנפרד.'
+                  : 'Each share creates a unique link you can revoke individually.'}
               </p>
+              {/* Optional recipient label */}
+              <input
+                id="share-recipient-label"
+                type="text"
+                placeholder={isHebrew ? 'שם הנמען (אופציונלי)' : 'Recipient name (optional)'}
+                maxLength={100}
+                className="w-full mb-4 px-3.5 py-2.5 rounded-xl bg-white/5 border border-mgsr-border text-mgsr-text text-sm placeholder:text-mgsr-muted/50 focus:outline-none focus:border-mgsr-teal/40"
+                dir={isRtl ? 'rtl' : 'ltr'}
+              />
               <div className="flex flex-col gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
-                    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-                    const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}&showClubs=mgsr2026`;
-                    const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
-                    setShowShareDialog(false);
-                    window.open(`https://wa.me/?text=${text}`, '_blank');
+                  disabled={shareCreating}
+                  onClick={async () => {
+                    if (!user) return;
+                    setShareCreating(true);
+                    try {
+                      const token = await user.getIdToken();
+                      const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
+                      const recipientLabel = (document.getElementById('share-recipient-label') as HTMLInputElement)?.value?.trim() || undefined;
+                      const res = await fetch('/api/shared-requests/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ platform: platformParam, showClubs: true, recipientLabel }),
+                      });
+                      if (!res.ok) throw new Error('Failed');
+                      const { token: shareToken } = await res.json();
+                      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+                      const shareUrl = `${baseUrl}/shared/requests/${shareToken}`;
+                      const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
+                      setShowShareDialog(false);
+                      window.open(`https://wa.me/?text=${text}`, '_blank');
+                    } catch (e) {
+                      console.error('Share create failed:', e);
+                    } finally {
+                      setShareCreating(false);
+                    }
                   }}
                   className={`w-full px-4 py-3 rounded-xl font-semibold transition text-sm ${
                     isYouth
@@ -1333,34 +1365,82 @@ export default function RequestsPage() {
                       : isWomen
                       ? 'bg-[var(--women-rose)]/10 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/20 border border-[var(--women-rose)]/20'
                       : 'bg-mgsr-teal/10 text-mgsr-teal hover:bg-mgsr-teal/20 border border-mgsr-teal/20'
-                  }`}
+                  } disabled:opacity-50`}
                 >
-                  {isHebrew ? 'שתף עם שמות מועדונים' : 'Share with club names'}
+                  {shareCreating
+                    ? (isHebrew ? 'יוצר קישור...' : 'Creating link...')
+                    : (isHebrew ? 'שתף עם שמות מועדונים' : 'Share with club names')}
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
-                    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-                    const shareUrl = `${baseUrl}/shared/requests?platform=${platformParam}`;
-                    const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
-                    setShowShareDialog(false);
-                    window.open(`https://wa.me/?text=${text}`, '_blank');
+                  disabled={shareCreating}
+                  onClick={async () => {
+                    if (!user) return;
+                    setShareCreating(true);
+                    try {
+                      const token = await user.getIdToken();
+                      const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
+                      const recipientLabel = (document.getElementById('share-recipient-label') as HTMLInputElement)?.value?.trim() || undefined;
+                      const res = await fetch('/api/shared-requests/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ platform: platformParam, showClubs: false, recipientLabel }),
+                      });
+                      if (!res.ok) throw new Error('Failed');
+                      const { token: shareToken } = await res.json();
+                      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+                      const shareUrl = `${baseUrl}/shared/requests/${shareToken}`;
+                      const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
+                      setShowShareDialog(false);
+                      window.open(`https://wa.me/?text=${text}`, '_blank');
+                    } catch (e) {
+                      console.error('Share create failed:', e);
+                    } finally {
+                      setShareCreating(false);
+                    }
                   }}
-                  className="w-full px-4 py-3 rounded-xl font-semibold transition text-sm bg-white/5 text-mgsr-muted hover:bg-white/10 border border-mgsr-border"
+                  className="w-full px-4 py-3 rounded-xl font-semibold transition text-sm bg-white/5 text-mgsr-muted hover:bg-white/10 border border-mgsr-border disabled:opacity-50"
                 >
-                  {isHebrew ? 'שתף עם הסתרת מועדונים' : 'Share with hidden clubs'}
+                  {shareCreating
+                    ? (isHebrew ? 'יוצר קישור...' : 'Creating link...')
+                    : (isHebrew ? 'שתף עם הסתרת מועדונים' : 'Share with hidden clubs')}
                 </button>
+                <div className="border-t border-mgsr-border pt-3 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => { setShowShareDialog(false); setShowManageLinks(true); }}
+                    className="w-full px-4 py-2.5 rounded-xl text-sm text-mgsr-muted hover:text-mgsr-text hover:bg-white/5 transition flex items-center justify-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    </svg>
+                    {isHebrew ? 'ניהול קישורים משותפים' : 'Manage shared links'}
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowShareDialog(false)}
-                  className="w-full px-4 py-2.5 rounded-xl text-sm text-mgsr-muted hover:text-mgsr-text transition"
+                  disabled={shareCreating}
+                  className="w-full px-4 py-2.5 rounded-xl text-sm text-mgsr-muted hover:text-mgsr-text transition disabled:opacity-50"
                 >
                   {isHebrew ? 'ביטול' : 'Cancel'}
                 </button>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Manage Shared Links Dialog */}
+        {showManageLinks && (
+          <ManageSharedLinksDialog
+            isHebrew={isHebrew}
+            isRtl={isRtl}
+            isWomen={isWomen}
+            isYouth={isYouth}
+            user={user}
+            onClose={() => setShowManageLinks(false)}
+          />
         )}
       </div>
     </AppLayout>

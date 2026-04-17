@@ -39,6 +39,52 @@ async function sharePlayerCreate(data) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// sharedRequestLinkCreate — create a unique, revocable share link for requests
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function sharedRequestLinkCreate(data, uid) {
+  const db = getDb();
+  const platform = ["men", "women", "youth"].includes(data.platform) ? data.platform : "men";
+  const showClubs = data.showClubs === true;
+  const recipientLabel = typeof data.recipientLabel === "string"
+    ? data.recipientLabel.trim().slice(0, 100) || null
+    : null;
+
+  const entry = {
+    platform,
+    showClubs,
+    recipientLabel,
+    createdBy: uid,
+    createdAt: Date.now(),
+    revoked: false,
+    revokedAt: null,
+    viewCount: 0,
+    lastViewedAt: null,
+  };
+
+  const ref = await db.collection("SharedRequestLinks").add(entry);
+  return { token: ref.id };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// sharedRequestLinkRevoke — revoke a shared request link (only by creator)
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function sharedRequestLinkRevoke(data, uid) {
+  const token = str(data.token);
+  if (!token) throw new Error("token is required.");
+
+  const db = getDb();
+  const docRef = db.collection("SharedRequestLinks").doc(token);
+  const snap = await docRef.get();
+  if (!snap.exists) throw new Error("Link not found.");
+  if (snap.data().createdBy !== uid) throw new Error("Not authorized to revoke this link.");
+
+  await docRef.update({ revoked: true, revokedAt: Date.now() });
+  return { success: true };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // shadowTeamsSave — set (overwrite) a ShadowTeams doc
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -156,6 +202,8 @@ async function mandateSigningCreate(data) {
 
 module.exports = {
   sharePlayerCreate,
+  sharedRequestLinkCreate,
+  sharedRequestLinkRevoke,
   shadowTeamsSave,
   scoutProfileFeedbackSet,
   birthdayWishSend,

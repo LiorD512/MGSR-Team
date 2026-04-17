@@ -40,7 +40,7 @@ const { playersUpdate, playersToggleMandate, playersAddNote, playersDeleteNote, 
 const { shortlistAdd, shortlistRemove, shortlistUpdate, shortlistAddNote, shortlistUpdateNote, shortlistDeleteNote } = require("./callables/shortlists");
 const { playersCreate } = require("./callables/playersCreate");
 const { portfolioUpsert, portfolioDelete } = require("./callables/portfolio");
-const { sharePlayerCreate, shadowTeamsSave, scoutProfileFeedbackSet, birthdayWishSend, offersUpdateHistorySummary, mandateSigningCreate } = require("./callables/phase6Misc");
+const { sharePlayerCreate, sharedRequestLinkCreate, sharedRequestLinkRevoke, shadowTeamsSave, scoutProfileFeedbackSet, birthdayWishSend, offersUpdateHistorySummary, mandateSigningCreate } = require("./callables/phase6Misc");
 const { accountUpdate } = require("./callables/phase7Account");
 const { chatRoomSend, chatRoomEdit, chatRoomDelete } = require("./callables/chatRoom");
 const { ifaFetchProfile } = require("./callables/ifaFetch");
@@ -1429,6 +1429,8 @@ exports.portfolioDelete = onCall(async (req) => { requireAuth(req); return portf
 
 // Phase 6 — misc
 exports.sharePlayerCreate = onCall(async (req) => { requireAuth(req); return sharePlayerCreate(req.data); });
+exports.sharedRequestLinkCreate = onCall(async (req) => { requireAuth(req); return sharedRequestLinkCreate(req.data, req.auth.uid); });
+exports.sharedRequestLinkRevoke = onCall(async (req) => { requireAuth(req); return sharedRequestLinkRevoke(req.data, req.auth.uid); });
 exports.shadowTeamsSave = onCall(async (req) => { requireAuth(req); return shadowTeamsSave(req.data); });
 exports.scoutProfileFeedbackSet = onCall(async (req) => { requireAuth(req); return scoutProfileFeedbackSet(req.data); });
 exports.birthdayWishSend = onCall(async (req) => { requireAuth(req); return birthdayWishSend(req.data); });
