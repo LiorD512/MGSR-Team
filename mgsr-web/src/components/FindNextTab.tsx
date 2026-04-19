@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { onSnapshot, collection } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -139,6 +139,10 @@ export default function FindNextTab() {
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
   const [rosterTmProfiles, setRosterTmProfiles] = useState<Set<string>>(new Set());
 
+  // Track previously seen player URLs so re-searches return fresh results
+  const seenUrlsRef = useRef<Set<string>>(new Set());
+  const lastSearchRef = useRef<string>('');
+
   useEffect(() => {
     if (!user) return;
     const shortlistUnsub = onSnapshot(collection(db, 'Shortlists'), (snap) => {
@@ -212,6 +216,14 @@ export default function FindNextTab() {
   const handleSearch = useCallback(async () => {
     const name = playerName.trim();
     if (!name) return;
+
+    // If searching for a different player, reset seen URLs
+    const searchKey = `${name}|${ageMax}|${valueMax}`;
+    if (searchKey !== lastSearchRef.current) {
+      seenUrlsRef.current = new Set();
+      lastSearchRef.current = searchKey;
+    }
+
     setSearching(true);
     setError(null);
     setResponse(null);
@@ -225,6 +237,10 @@ export default function FindNextTab() {
       if (valueMax > 0) {
         params.set('value_max', String(valueMax));
       }
+      // Exclude previously seen players so re-searches return fresh results
+      if (seenUrlsRef.current.size > 0) {
+        params.set('exclude_urls', Array.from(seenUrlsRef.current).join(','));
+      }
       const res = await fetch(`https://football-scout-server-l38w.onrender.com/find_next?${params.toString()}`, {
         headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(120000),
@@ -233,6 +249,10 @@ export default function FindNextTab() {
       if (data.error) {
         setError(data.error);
       } else {
+        // Track URLs of returned players so next search excludes them
+        for (const r of data.results) {
+          if (r.url) seenUrlsRef.current.add(r.url);
+        }
         setResponse(data);
       }
     } catch (err) {
