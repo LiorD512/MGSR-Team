@@ -1499,6 +1499,7 @@
     <string name="player_info_family_status">מצב משפחתי</string>
     <string name="player_info_married">נשוי</string>
     <string name="player_info_kids">ילדים</string>
+    <string name="player_info_english_level">אנגלית</string>
 
     <!-- Agent filter for shortlist -->
     <string name="shortlist_filter_agent">סוכן</string>

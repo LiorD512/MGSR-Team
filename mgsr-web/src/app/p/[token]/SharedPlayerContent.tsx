@@ -748,6 +748,26 @@ export default function SharedPlayerContent({
                     </div>
                   )}
 
+                  {/* English Level */}
+                  {data.englishLevel && (
+                    <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
+                      <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-muted'}`}>
+                        {useHebrew ? 'רמת אנגלית' : 'English Level'}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🇬🇧</span>
+                        <span className={`text-sm font-medium ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                          {{
+                            none: useHebrew ? 'ללא' : 'No English',
+                            medium: useHebrew ? 'בינוני' : 'Medium',
+                            good: useHebrew ? 'טוב' : 'Good',
+                            native: useHebrew ? 'שפת אם' : 'Native',
+                          }[data.englishLevel] ?? data.englishLevel}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Contact blocks */}
                   {playerPhone && (
                     <ContactBlock phone={playerPhone} title={labels.playerContact} contactName={displayName || '—'} />

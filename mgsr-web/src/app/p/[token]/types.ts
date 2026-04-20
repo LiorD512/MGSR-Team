@@ -37,6 +37,7 @@ export interface ShareData {
   platform?: 'men' | 'women' | 'youth';
   enrichment?: PortfolioEnrichment;
   familyStatus?: { isMarried?: boolean; kidsCount?: number };
+  englishLevel?: string;
   gpsData?: SharedGpsData;
   playerStats?: SharedPlayerStats;
   /** Timestamps marking when enrichment was last attempted (even if no data found).

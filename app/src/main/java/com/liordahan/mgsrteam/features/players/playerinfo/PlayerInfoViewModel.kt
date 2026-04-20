@@ -83,6 +83,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun updateInterestedInIsrael(interested: Boolean)
     abstract fun updateIsMarried(married: Boolean)
     abstract fun updateKidsCount(count: Int)
+    abstract fun updateEnglishLevel(level: String?)
     abstract fun updateSalaryRange(salaryRange: String?)
     abstract fun updateTransferFee(transferFee: String?)
     abstract fun updateNotes(notes: NotesModel)
@@ -703,6 +704,25 @@ class PlayerInfoViewModel(
                 SharedCallables.playersUpdate(platformManager.value, docId, mapOf("kidsCount" to count))
             } finally {
                 _savingFieldsFlow.update { it - "kidsCount" }
+            }
+        }
+    }
+
+    override fun updateEnglishLevel(level: String?) {
+        _playerInfoFlow.update {
+            it?.copy(englishLevel = level)
+        }
+        viewModelScope.launch {
+            _savingFieldsFlow.update { it + "englishLevel" }
+            try {
+                val docId = _playerDocumentIdFlow.value ?: return@launch
+                if (level != null) {
+                    SharedCallables.playersUpdate(platformManager.value, docId, mapOf("englishLevel" to level))
+                } else {
+                    SharedCallables.playersUpdate(platformManager.value, docId, emptyMap(), deleteFields = listOf("englishLevel"))
+                }
+            } finally {
+                _savingFieldsFlow.update { it - "englishLevel" }
             }
         }
     }

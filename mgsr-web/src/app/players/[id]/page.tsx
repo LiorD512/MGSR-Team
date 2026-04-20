@@ -72,6 +72,7 @@ interface Player {
   interestedInIsrael?: boolean;
   isMarried?: boolean;
   kidsCount?: number;
+  englishLevel?: string;
   playerPhoneNumber?: string;
   agentPhoneNumber?: string;
   marketValueHistory?: { value?: string; date?: number }[];
@@ -296,6 +297,7 @@ export default function PlayerInfoPage() {
   const [interestedInIsraelToggling, setInterestedInIsraelToggling] = useState(false);
   const [marriedToggling, setMarriedToggling] = useState(false);
   const [kidsCountSaving, setKidsCountSaving] = useState(false);
+  const [englishLevelSaving, setEnglishLevelSaving] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [playerTasks, setPlayerTasks] = useState<{ id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentId?: string; agentName?: string; createdAt?: number; createdByAgentId?: string; createdByAgentName?: string; templateId?: string; linkedAgentContactId?: string; linkedAgentContactName?: string; linkedAgentContactPhone?: string }[]>([]);
   const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
@@ -895,6 +897,27 @@ export default function PlayerInfoPage() {
     [player, id]
   );
 
+  const handleEnglishLevelUpdate = useCallback(
+    async (level: string | null) => {
+      if (!player || !id) return;
+      const prev = player.englishLevel ?? null;
+      setPlayer((p) => (p ? { ...p, englishLevel: level ?? undefined } : null));
+      setEnglishLevelSaving(true);
+      try {
+        if (level) {
+          await callPlayersUpdate({ platform: 'men', playerId: id, englishLevel: level });
+        } else {
+          await callPlayersUpdate({ platform: 'men', playerId: id, _deleteFields: ['englishLevel'] });
+        }
+      } catch {
+        setPlayer((p) => (p ? { ...p, englishLevel: prev ?? undefined } : null));
+      } finally {
+        setEnglishLevelSaving(false);
+      }
+    },
+    [player, id]
+  );
+
   const handleDeleteDocument = useCallback(
     async (d: PlayerDocument) => {
       if (!d.id || !id) return;
@@ -1182,6 +1205,7 @@ export default function PlayerInfoPage() {
             familyStatus: (player.isMarried || (player.kidsCount ?? 0) > 0)
               ? { isMarried: player.isMarried, kidsCount: player.kidsCount }
               : undefined,
+            englishLevel: player.englishLevel || undefined,
             gpsData: await (async () => {
               try {
                 const tmProfile = merged.tmProfile || player?.tmProfile;
@@ -2299,6 +2323,44 @@ export default function PlayerInfoPage() {
                     +
                   </button>
                 </div>
+              </div>
+            </div>
+
+            {/* English Level */}
+            <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-semibold text-mgsr-muted uppercase tracking-wider">
+                  {t('player_info_english_level')}
+                </h3>
+                {englishLevelSaving && (
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {(['none', 'medium', 'good', 'native'] as const).map((level) => {
+                  const isSelected = player.englishLevel === level;
+                  const labelMap: Record<string, { en: string; he: string }> = {
+                    none: { en: 'No English', he: 'ללא' },
+                    medium: { en: 'Medium', he: 'בינוני' },
+                    good: { en: 'Good', he: 'טוב' },
+                    native: { en: 'Native', he: 'שפת אם' },
+                  };
+                  return (
+                    <button
+                      key={level}
+                      type="button"
+                      disabled={englishLevelSaving}
+                      onClick={() => handleEnglishLevelUpdate(isSelected ? null : level)}
+                      className={`py-1.5 rounded-lg text-xs font-semibold transition ${
+                        isSelected
+                          ? 'bg-mgsr-teal text-white'
+                          : 'bg-mgsr-bg border border-mgsr-border text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal'
+                      } disabled:opacity-30 disabled:cursor-not-allowed`}
+                    >
+                      {labelMap[level][isRtl ? 'he' : 'en']}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

@@ -6,6 +6,18 @@ import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.PropertyName
 import kotlinx.parcelize.Parcelize
 
+enum class EnglishLevel(val displayName: String, val firestoreValue: String) {
+    NONE("No English", "none"),
+    MEDIUM("Medium", "medium"),
+    GOOD("Good", "good"),
+    NATIVE("Native", "native");
+
+    companion object {
+        fun fromFirestore(value: String?): EnglishLevel? =
+            entries.firstOrNull { it.firestoreValue == value }
+    }
+}
+
 @Keep
 @Parcelize
 data class Player(
@@ -47,6 +59,7 @@ data class Player(
     @field:PropertyName("isMarried") @get:PropertyName("isMarried")
     val isMarried: Boolean = false,
     val kidsCount: Int = 0,
+    val englishLevel: String? = null,
     val passportDetails: PassportDetails? = null,
     val foot: String? = null,
     val agency: String? = null,

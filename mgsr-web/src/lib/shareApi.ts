@@ -55,6 +55,7 @@ export interface SharePayload {
     isMarried?: boolean;
     kidsCount?: number;
   };
+  englishLevel?: string;
   gpsData?: {
     matchCount: number;
     totalMinutesPlayed: number;

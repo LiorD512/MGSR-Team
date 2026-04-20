@@ -1519,6 +1519,7 @@
     <string name="player_info_family_status">Family Status</string>
     <string name="player_info_married">Married</string>
     <string name="player_info_kids">Kids</string>
+    <string name="player_info_english_level">English</string>
 
     <!-- Instagram outreach -->
     <string name="shortlist_ig_dm">DM @%1$s on Instagram</string>

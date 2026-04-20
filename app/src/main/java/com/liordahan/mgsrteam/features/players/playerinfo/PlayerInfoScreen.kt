@@ -135,6 +135,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
+import com.liordahan.mgsrteam.features.players.models.EnglishLevel
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.tasks.AddPlayerTaskBottomSheet
@@ -670,6 +671,7 @@ fun PlayerInfoScreen(
                     onInterestedInIsraelChanged = { viewModel.updateInterestedInIsrael(it) },
                     onMarriedChanged = { viewModel.updateIsMarried(it) },
                     onKidsCountChanged = { viewModel.updateKidsCount(it) },
+                    onEnglishLevelChanged = { viewModel.updateEnglishLevel(it) },
                     onSalaryTransferFeeClicked = { showSalaryTransferFeeSheet = true },
                     onClearSalaryAndTransferFee = {
                         viewModel.updateSalaryRange(null)
@@ -1393,6 +1395,7 @@ private fun PlayerInfoHeroCard(
     onInterestedInIsraelChanged: (Boolean) -> Unit,
     onMarriedChanged: (Boolean) -> Unit,
     onKidsCountChanged: (Int) -> Unit,
+    onEnglishLevelChanged: (String?) -> Unit,
     onSalaryTransferFeeClicked: () -> Unit = {},
     onClearSalaryAndTransferFee: () -> Unit = {},
 ) {
@@ -1900,6 +1903,93 @@ private fun PlayerInfoHeroCard(
                     }
                 }
             }
+            }
+
+            // ── English Level ──
+            Spacer(Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(PlatformColors.palette.background)
+                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                val currentEnglishLevel = remember(player.englishLevel) {
+                    EnglishLevel.fromFirestore(player.englishLevel)
+                }
+                var selectedEnglishLevel by remember(player.englishLevel) { mutableStateOf(currentEnglishLevel) }
+                LaunchedEffect(player.englishLevel) {
+                    selectedEnglishLevel = EnglishLevel.fromFirestore(player.englishLevel)
+                }
+                val isSavingEnglish = "englishLevel" in savingFields
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "\uD83C\uDDEC\uD83C\uDDE7",
+                            fontSize = 18.sp,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.player_info_english_level),
+                            style = boldTextStyle(
+                                if (selectedEnglishLevel != null) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                                16.sp
+                            )
+                        )
+                        if (isSavingEnglish) {
+                            Spacer(Modifier.width(6.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp,
+                                color = PlatformColors.palette.blue
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    EnglishLevel.entries.forEach { level ->
+                        val isSelected = selectedEnglishLevel == level
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (isSelected) PlatformColors.palette.blue
+                                    else PlatformColors.palette.cardBorder.copy(alpha = 0.5f)
+                                )
+                                .clickable {
+                                    if (isSelected) {
+                                        selectedEnglishLevel = null
+                                        onEnglishLevelChanged(null)
+                                    } else {
+                                        selectedEnglishLevel = level
+                                        onEnglishLevelChanged(level.firestoreValue)
+                                    }
+                                }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = level.displayName,
+                                style = boldTextStyle(
+                                    if (isSelected) Color.White else PlatformColors.palette.textSecondary,
+                                    11.sp
+                                ),
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(Modifier.height(8.dp))

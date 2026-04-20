@@ -198,6 +198,7 @@ export async function POST(request: NextRequest) {
       platform: platform ?? null,
       enrichment: Object.keys(enrichment).length ? enrichment : null,
       familyStatus: (body as { familyStatus?: { isMarried?: boolean; kidsCount?: number } }).familyStatus ?? null,
+      englishLevel: (body as { englishLevel?: string }).englishLevel ?? null,
       gpsData: gpsData ?? null,
       playerStats: playerStats ?? null,
       createdAt: Date.now(),
