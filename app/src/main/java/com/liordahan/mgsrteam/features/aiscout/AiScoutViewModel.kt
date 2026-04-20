@@ -34,7 +34,9 @@ data class FindNextUiState(
     val valueMax: Int = 3_000_000,
     val isSearching: Boolean = false,
     val response: FindNextResponse? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val seenUrls: Set<String> = emptySet(),
+    val lastSearchKey: String = ""
 )
 
 // ── Interface ───────────────────────────────────────────────────────────────
@@ -205,8 +207,19 @@ class AiScoutViewModel(
         val name = _findNextState.value.playerName.trim()
         if (name.isBlank()) return
 
+        // If search params changed, reset seen URLs for fresh results
+        val searchKey = "${name}|${_findNextState.value.ageMax}|${_findNextState.value.valueMax}"
+        val currentSeenUrls = if (searchKey != _findNextState.value.lastSearchKey) {
+            emptySet()
+        } else {
+            _findNextState.value.seenUrls
+        }
+
         _findNextState.update {
-            it.copy(isSearching = true, errorMessage = null, response = null)
+            it.copy(
+                isSearching = true, errorMessage = null, response = null,
+                seenUrls = currentSeenUrls, lastSearchKey = searchKey
+            )
         }
 
         viewModelScope.launch {
@@ -216,17 +229,20 @@ class AiScoutViewModel(
                         playerName = name,
                         ageMax = _findNextState.value.ageMax,
                         valueMax = _findNextState.value.valueMax,
-                        lang = lang
+                        lang = lang,
+                        excludeUrls = currentSeenUrls.toList()
                     )
 
                     apiClient.findNext(request)
                         .onSuccess { response ->
                             Log.d(TAG, "Find Next returned ${response.results.size} results")
+                            val newSeenUrls = currentSeenUrls + response.results.mapNotNull { it.url }
                             _findNextState.update {
                                 it.copy(
                                     isSearching = false,
                                     response = response,
-                                    errorMessage = response.error
+                                    errorMessage = response.error,
+                                    seenUrls = newSeenUrls
                                 )
                             }
                         }

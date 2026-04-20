@@ -143,6 +143,12 @@ class MgsrWebApiClient(
                     if (request.valueMax > 0) {
                         append("&value_max=${request.valueMax}")
                     }
+                    if (request.excludeUrls.isNotEmpty()) {
+                        val encoded = request.excludeUrls.joinToString(",") {
+                            java.net.URLEncoder.encode(it, "UTF-8")
+                        }
+                        append("&exclude_urls=$encoded")
+                    }
                 }
 
                 val httpRequest = Request.Builder()

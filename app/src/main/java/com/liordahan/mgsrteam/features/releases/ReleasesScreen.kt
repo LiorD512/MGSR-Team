@@ -1071,14 +1071,32 @@ private fun RosterTeammateRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 player.fullName ?: "Unknown",
-                style = boldTextStyle(HomeTextPrimary, 14.sp)
+                style = boldTextStyle(HomeTextPrimary, 14.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "${player.age ?: "-"} • ${player.positions?.firstOrNull()?.takeIf { it.isNotBlank() } ?: "-"} • ${player.marketValue ?: "-"} • ${stringResource(R.string.releases_games_together, matchesPlayedTogether)}",
+                text = listOfNotNull(
+                    player.positions?.firstOrNull()?.takeIf { it.isNotBlank() },
+                    player.age?.let { "$it" },
+                    player.marketValue?.takeIf { it.isNotBlank() }
+                ).joinToString(" · ").ifEmpty { "—" },
                 style = regularTextStyle(HomeTextSecondary, 11.sp, direction = TextDirection.Ltr),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.releases_games_together, matchesPlayedTogether),
+            style = boldTextStyle(HomeTealAccent, 11.sp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(HomeTealAccent.copy(alpha = 0.1f))
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+            maxLines = 1
+        )
         if (playerPhone != null) {
             val firstName = player.fullName?.split(" ")?.firstOrNull().orEmpty()
             val message = "Hey $firstName,\nHope everything is well at your side.\nI need your help with something.\nAny chance you have $targetPlayerName contact number?\nThank you!"

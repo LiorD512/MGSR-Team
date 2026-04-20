@@ -46,6 +46,8 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   "haveMandate", "interestedInIsrael",
   // Family status
   "isMarried", "kidsCount",
+  // English proficiency
+  "englishLevel",
   // Salary / fee
   "salaryRange", "transferFee",
   // Passport

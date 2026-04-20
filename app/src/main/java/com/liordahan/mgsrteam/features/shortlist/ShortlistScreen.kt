@@ -1653,14 +1653,32 @@ private fun ShortlistRosterTeammateRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 player.fullName ?: "Unknown",
-                style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "${player.age ?: "-"} • ${player.positions?.firstOrNull()?.takeIf { it.isNotBlank() } ?: "-"} • ${player.marketValue ?: "-"} • ${stringResource(R.string.releases_games_together, matchesPlayedTogether)}",
+                text = listOfNotNull(
+                    player.positions?.firstOrNull()?.takeIf { it.isNotBlank() },
+                    player.age?.let { "$it" },
+                    player.marketValue?.takeIf { it.isNotBlank() }
+                ).joinToString(" · ").ifEmpty { "—" },
                 style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp, direction = TextDirection.Ltr),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.releases_games_together, matchesPlayedTogether),
+            style = boldTextStyle(PlatformColors.palette.blue, 11.sp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(PlatformColors.palette.blue.copy(alpha = 0.1f))
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+            maxLines = 1
+        )
         if (playerPhone != null) {
             val firstName = player.fullName?.split(" ")?.firstOrNull().orEmpty()
             val message = "Hey $firstName,\nHope everything is well at your side.\nI need your help with something.\nAny chance you have $targetPlayerName contact number?\nThank you!"

@@ -60,16 +60,60 @@ internal object TransfermarktHttp {
     }
 
     /**
+     * Builds a realistic set of browser headers keyed to the active [userAgent].
+     * Mirrors the sec-ch-ua / sec-fetch-* headers that header-generator produces
+     * on the web side, so Transfermarkt's Cloudflare layer treats Android
+     * requests as normal desktop browsers.
+     */
+    private fun buildRealisticHeaders(userAgent: String): Map<String, String> {
+        val headers = mutableMapOf(
+            "User-Agent" to userAgent,
+            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept-Language" to "en-US,en;q=0.9",
+            "Accept-Encoding" to "gzip, deflate, br",
+            "Referer" to "https://www.transfermarkt.com/",
+            "upgrade-insecure-requests" to "1",
+            "sec-fetch-dest" to "document",
+            "sec-fetch-mode" to "navigate",
+            "sec-fetch-site" to "same-origin",
+            "sec-fetch-user" to "?1",
+            "sec-ch-ua-mobile" to "?0",
+        )
+        // Derive sec-ch-ua and sec-ch-ua-platform from the User-Agent string
+        when {
+            userAgent.contains("Chrome/") -> {
+                val ver = Regex("""Chrome/(\d+)""").find(userAgent)?.groupValues?.get(1) ?: "122"
+                headers["sec-ch-ua"] = "\"Chromium\";v=\"$ver\", \"Not(A:Brand\";v=\"24\", \"Google Chrome\";v=\"$ver\""
+                headers["sec-ch-ua-platform"] = if (userAgent.contains("Macintosh")) "\"macOS\"" else "\"Windows\""
+            }
+            userAgent.contains("Edg/") -> {
+                val ver = Regex("""Edg/(\d+)""").find(userAgent)?.groupValues?.get(1) ?: "121"
+                headers["sec-ch-ua"] = "\"Chromium\";v=\"$ver\", \"Not(A:Brand\";v=\"24\", \"Microsoft Edge\";v=\"$ver\""
+                headers["sec-ch-ua-platform"] = "\"Windows\""
+            }
+            userAgent.contains("Firefox/") -> {
+                // Firefox doesn't send sec-ch-ua headers
+                headers.remove("sec-ch-ua-mobile")
+            }
+            userAgent.contains("Safari/") && !userAgent.contains("Chrome") -> {
+                // Safari doesn't send sec-ch-ua headers
+                headers.remove("sec-ch-ua-mobile")
+            }
+        }
+        return headers
+    }
+
+    /**
      * Core async HTTP execution. Uses OkHttp [enqueue] so the coroutine suspends
      * without holding an IO thread during network wait. Supports cancellation.
      */
     private suspend fun executeRequest(url: String, userAgent: String): String =
         suspendCancellableCoroutine { continuation ->
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", userAgent)
-                .header("Accept-Language", "en-US,en;q=0.9")
-                .build()
+            val builder = Request.Builder().url(url)
+            for ((key, value) in buildRealisticHeaders(userAgent)) {
+                builder.header(key, value)
+            }
+            val request = builder.build()
             val call = client.newCall(request)
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
@@ -112,8 +156,9 @@ internal object TransfermarktHttp {
     private fun fetchViaNetwork(url: String, network: Network): Pair<Document, String> {
         val userAgent = getRandomUserAgent()
         val connection = network.openConnection(URL(url)) as HttpURLConnection
-        connection.setRequestProperty("User-Agent", userAgent)
-        connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
+        for ((key, value) in buildRealisticHeaders(userAgent)) {
+            connection.setRequestProperty(key, value)
+        }
         connection.connectTimeout = (CONNECT_TIMEOUT_SECONDS * 1000).toInt()
         connection.readTimeout = (READ_TIMEOUT_SECONDS * 1000).toInt()
         connection.instanceFollowRedirects = true

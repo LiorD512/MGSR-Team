@@ -58,7 +58,8 @@ data class FindNextRequest(
     val playerName: String,
     val ageMax: Int = 23,
     val valueMax: Int = 3_000_000,
-    val lang: String = "en"
+    val lang: String = "en",
+    val excludeUrls: List<String> = emptyList()
 )
 
 data class FindNextResponse(
