@@ -17,17 +17,17 @@ SUPPORTED FORMATS: Catapult, STATSports, K-Sport, InStat, Kinexon, PlayerMaker, 
 
 WHAT TO LOOK FOR (map ANY column to the closest semantic match):
 - totalDuration: Minutes played (e.g. "Tot Dur", "Time", "Minutes", "Min", "TEMPO")
-- totalDistance: Total distance in meters (e.g. "Tot Dist", "D", "Total Distance", "Dist", "DISTÂNCIA TOTAL")
-- highMpEffsDist: High-speed running distance in meters, typically >20 km/h (e.g. "High MP Effs Dist", "D > 20 KM/H", "HSR", "High Speed Running", "High Intensity Dist", "DAV", "HIGH METABOLIC LOAD DISTANCE")
+- totalDistance: Total distance in meters (e.g. "Tot Dist", "D", "Total Distance", "Dist", "DIST", "DISTÂNCIA TOTAL")
+- highMpEffsDist: High-speed running distance in meters, typically >20 km/h (e.g. "High MP Effs Dist", "D > 20 KM/H", "HSR", "HSRD", "High Speed Running", "High Intensity Dist", "DAV", "HIGH METABOLIC LOAD DISTANCE")
 - highMpEffs: Count of high-metabolic-power efforts (0 if not available)
 - meteragePerMinute: Distance per minute in meters/min — if not shown, compute as totalDistance / totalDuration (e.g. "Meterage Per Minute", "DREL", "Dist/Min", "m/min", "DISTÂNCIA/MIN"). IMPORTANT: this must be a number in m/min (typically 80-130), NOT a percentage.
-- accelerations: Number of accelerations (e.g. "Acc #", "Accelerations", "ACEL")
-- decelerations: Number of decelerations (e.g. "Decel #", "Decelerations", "DECEL")
+- accelerations: Number of accelerations (e.g. "Acc #", "Accelerations", "ACEL", "N ACC")
+- decelerations: Number of decelerations (e.g. "Decel #", "Decelerations", "DECEL", "N DEC")
 - highIntensityRuns: Count of high-intensity running efforts (0 if not shown)
-- sprints: Number of sprints, typically at >25 km/h (e.g. "Sprints", "N° > 25 KM/H", "Sprint Count")
+- sprints: Number of sprints, typically at >25 km/h (e.g. "Sprints", "SPR", "N° > 25 KM/H", "Sprint Count")
 - maxVelocity: Peak/maximum speed in km/h (e.g. "Max Vel", "SMAX", "Max Speed", "Top Speed", "TOP SPEED")
-- sprintDistTotal: Distance covered at sprint speed (>25 km/h) in meters (e.g. "Sprint Dist", "D > 25 KM/H", "DISTÂNCIA SPRINT")
-- hiDistTotal: Distance in high-speed zone just below sprint (e.g. "D 20-25 KM/H", "DAV 19.8-25 km/h", speed zone 4-6 combined)
+- sprintDistTotal: Distance covered at sprint speed in meters (e.g. "Sprint Dist", "SPRD", "D > 25 KM/H", "DISTÂNCIA SPRINT")
+- hiDistTotal: Distance in high-speed zone just below sprint (e.g. "D 20-25 KM/H", "HSRD", "DAV 19.8-25 km/h", speed zone 4-6 combined)
 - hiDistPercent / sprintDistPercent: Percentage of total distance at high/sprint speed (e.g. "DISTÂNCIA ALTA INTENSIDADE %"). 0 if not shown
 
 For CHARTS: read annotated numbers above/beside bars. If no exact numbers, estimate from Y-axis. Speed zone colors: Walk (lowest) → Jog → Run → High Speed Run → Sprint (highest/often red).

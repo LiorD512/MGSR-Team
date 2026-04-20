@@ -980,10 +980,18 @@ class PlayerInfoViewModel(
                     if (com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.isGpsReport(pdfText)) {
                         Log.i(TAG, "GPS report detected — uploading as GPS_DATA and parsing")
                         // Build name: GPS_PlayerName_FirstDate_to_LastDate.pdf
+                        // Supports DD/MM/YYYY and YYYY_MM_DD (K-Sport) date formats
                         val dateRegex = Regex("""\d{2}/\d{2}/\d{4}""")
-                        val allDates = dateRegex.findAll(pdfText).map { it.value }.toList()
-                        val firstDate = allDates.firstOrNull()?.replace("/", "-") ?: ""
-                        val lastDate = allDates.lastOrNull()?.replace("/", "-") ?: ""
+                        val dateRegexAlt = Regex("""\d{4}_\d{2}_\d{2}""")
+                        val standardDates = dateRegex.findAll(pdfText).map { it.value }.toList()
+                        val altDates = dateRegexAlt.findAll(pdfText).map { m ->
+                            // Convert YYYY_MM_DD → DD-MM-YYYY for consistent naming
+                            val parts = m.value.split("_")
+                            "${parts[2]}-${parts[1]}-${parts[0]}"
+                        }.toList()
+                        val allDates = standardDates.map { it.replace("/", "-") }.ifEmpty { altDates }
+                        val firstDate = allDates.firstOrNull() ?: ""
+                        val lastDate = allDates.lastOrNull() ?: ""
                         val dateStr = if (firstDate.isNotEmpty() && lastDate.isNotEmpty() && firstDate != lastDate) {
                             "${firstDate}_to_${lastDate}"
                         } else firstDate
