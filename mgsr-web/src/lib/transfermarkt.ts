@@ -933,6 +933,7 @@ export async function handleContractFinishers() {
     while (page <= CF_MAX_PAGES && !batchShouldBreak) {
       const batchEnd = Math.min(page + CF_BATCH_SIZE - 1, CF_MAX_PAGES);
       const batch: { html: string | null; page: number }[] = [];
+      let batchFetchFails = 0;
 
       for (let p = page; p <= batchEnd; p++) {
         const url = `${TRANSFERMARKT_BASE}/transfers/endendevertraege/statistik?plus=1&jahr=${jahr}&land_id=0&ausrichtung=alle&spielerposition_id=alle&altersklasse=alle&page=${p}`;
@@ -941,7 +942,14 @@ export async function handleContractFinishers() {
           batch.push({ html, page: p });
         } catch {
           batch.push({ html: null, page: p });
+          batchFetchFails++;
         }
+      }
+
+      // If every fetch in the batch failed, stop — likely blocked or circuit-tripped
+      if (batchFetchFails === batch.length) {
+        console.warn(`[CF] Entire batch failed (pages ${page}-${batchEnd}), stopping pagination for year ${jahr}`);
+        break;
       }
 
       for (const { html } of batch) {
@@ -1076,6 +1084,7 @@ export async function* handleContractFinishersStream(): AsyncGenerator<
     while (page <= CF_MAX_PAGES && !batchShouldBreak) {
       const batchEnd = Math.min(page + CF_BATCH_SIZE - 1, CF_MAX_PAGES);
       const batch: { html: string | null }[] = [];
+      let batchFetchFails = 0;
 
       for (let p = page; p <= batchEnd; p++) {
         const url = `${TRANSFERMARKT_BASE}/transfers/endendevertraege/statistik?plus=1&jahr=${jahr}&land_id=0&ausrichtung=alle&spielerposition_id=alle&altersklasse=alle&page=${p}`;
@@ -1084,7 +1093,14 @@ export async function* handleContractFinishersStream(): AsyncGenerator<
           batch.push({ html });
         } catch {
           batch.push({ html: null });
+          batchFetchFails++;
         }
+      }
+
+      // If every fetch in the batch failed, stop — likely blocked or circuit-tripped
+      if (batchFetchFails === batch.length) {
+        console.warn(`[CF] Entire batch failed (pages ${page}-${batchEnd}), stopping pagination for year ${jahr}`);
+        break;
       }
 
       const batchPlayers: Record<string, unknown>[] = [];
