@@ -31,8 +31,9 @@ let _circuitOpenUntil = 0;
 const CIRCUIT_THRESHOLD = 3;   // 3 consecutive 429/503 → trip
 const CIRCUIT_COOLDOWN = 5 * 60 * 1000; // 5 min cooldown
 let _lastFetchTime = 0;
-const MIN_FETCH_GAP_MS = 1500;
-const MAX_FETCH_GAP_MS = 4000;
+const _isCI = typeof process !== 'undefined' && !!process.env?.CI;
+const MIN_FETCH_GAP_MS = _isCI ? 2500 : 1500;
+const MAX_FETCH_GAP_MS = _isCI ? 6000 : 4000;
 
 function randomDelay(): number {
   return MIN_FETCH_GAP_MS + Math.floor(Math.random() * (MAX_FETCH_GAP_MS - MIN_FETCH_GAP_MS));
@@ -877,6 +878,7 @@ const CF_MAX_VALUE = 3000000;
 const CF_MAX_AGE = 31;
 const CF_MAX_PAGES = 400;
 const CF_BATCH_SIZE = 3;
+const CF_MAX_COOLDOWN_RETRIES = 3; // how many times to wait out a block before giving up
 
 function getContractFinisherWindow(): { window: string; yearsToQuery: number[] } {
   const now = new Date();
@@ -930,6 +932,8 @@ export async function handleContractFinishers() {
     let page = 1;
     let batchShouldBreak = false;
 
+    let cooldownRetries = 0;
+
     while (page <= CF_MAX_PAGES && !batchShouldBreak) {
       const batchEnd = Math.min(page + CF_BATCH_SIZE - 1, CF_MAX_PAGES);
       const batch: { html: string | null; page: number }[] = [];
@@ -946,11 +950,21 @@ export async function handleContractFinishers() {
         }
       }
 
-      // If every fetch in the batch failed, stop — likely blocked or circuit-tripped
+      // If every fetch in the batch failed, wait out the cooldown and retry
       if (batchFetchFails === batch.length) {
-        console.warn(`[CF] Entire batch failed (pages ${page}-${batchEnd}), stopping pagination for year ${jahr}`);
-        break;
+        cooldownRetries++;
+        if (cooldownRetries > CF_MAX_COOLDOWN_RETRIES) {
+          console.warn(`[CF] Giving up after ${CF_MAX_COOLDOWN_RETRIES} cooldown retries (page ${page}, year ${jahr})`);
+          break;
+        }
+        const waitMs = CIRCUIT_COOLDOWN + 30_000; // circuit cooldown + 30s buffer
+        console.warn(`[CF] Batch failed (pages ${page}-${batchEnd}). Waiting ${Math.round(waitMs / 1000)}s before retry ${cooldownRetries}/${CF_MAX_COOLDOWN_RETRIES}...`);
+        _consecutiveBlocks = 0;
+        _circuitOpenUntil = 0;
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue; // retry same page range
       }
+      cooldownRetries = 0; // reset on any successful batch
 
       for (const { html } of batch) {
         if (!html) continue;
@@ -1081,6 +1095,8 @@ export async function* handleContractFinishersStream(): AsyncGenerator<
     let page = 1;
     let batchShouldBreak = false;
 
+    let cooldownRetries = 0;
+
     while (page <= CF_MAX_PAGES && !batchShouldBreak) {
       const batchEnd = Math.min(page + CF_BATCH_SIZE - 1, CF_MAX_PAGES);
       const batch: { html: string | null }[] = [];
@@ -1097,11 +1113,21 @@ export async function* handleContractFinishersStream(): AsyncGenerator<
         }
       }
 
-      // If every fetch in the batch failed, stop — likely blocked or circuit-tripped
+      // If every fetch in the batch failed, wait out the cooldown and retry
       if (batchFetchFails === batch.length) {
-        console.warn(`[CF] Entire batch failed (pages ${page}-${batchEnd}), stopping pagination for year ${jahr}`);
-        break;
+        cooldownRetries++;
+        if (cooldownRetries > CF_MAX_COOLDOWN_RETRIES) {
+          console.warn(`[CF] Giving up after ${CF_MAX_COOLDOWN_RETRIES} cooldown retries (page ${page}, year ${jahr})`);
+          break;
+        }
+        const waitMs = CIRCUIT_COOLDOWN + 30_000;
+        console.warn(`[CF] Batch failed (pages ${page}-${batchEnd}). Waiting ${Math.round(waitMs / 1000)}s before retry ${cooldownRetries}/${CF_MAX_COOLDOWN_RETRIES}...`);
+        _consecutiveBlocks = 0;
+        _circuitOpenUntil = 0;
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue; // retry same page range
       }
+      cooldownRetries = 0; // reset on any successful batch
 
       const batchPlayers: Record<string, unknown>[] = [];
       for (const { html } of batch) {
