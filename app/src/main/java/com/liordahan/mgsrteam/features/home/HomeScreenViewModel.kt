@@ -97,9 +97,36 @@ data class HomeDashboardState(
     // chat unread
     val chatUnreadCount: Int = 0,
 
+    // dashboard search
+    val dashboardSearchQuery: String = "",
+    val dashboardSearchResults: List<DashboardSearchResult> = emptyList(),
+
     // loading
     val isLoading: Boolean = true
 )
+
+// ─── Dashboard Search ────────────────────────────────────────────────────────
+
+sealed class DashboardSearchResult {
+    data class PlayerResult(
+        val name: String,
+        val imageUrl: String?,
+        val position: String?,
+        val source: PlayerSource,
+        /** tmProfile for roster players, tmProfileUrl for shortlist entries */
+        val navId: String
+    ) : DashboardSearchResult()
+
+    data class RequestResult(
+        val requestId: String,
+        val clubName: String,
+        val clubLogo: String?,
+        val position: String?,
+        val notes: String?
+    ) : DashboardSearchResult()
+}
+
+enum class PlayerSource { ROSTER, SHORTLIST }
 
 data class DocumentReminder(
     val playerName: String,
@@ -137,6 +164,8 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract fun reloadForPlatformSwitch()
     /** Resolves a Firestore doc ID to the correct nav ID for PlayerInfoScreen (tmProfile for Men, doc ID for Women/Youth). */
     abstract fun resolvePlayerNavId(docId: String, onResult: (String?) -> Unit)
+    /** Update the dashboard search query and recompute results. */
+    abstract fun updateDashboardSearch(query: String)
 }
 
 class HomeScreenViewModel(
@@ -152,6 +181,10 @@ class HomeScreenViewModel(
     /** Must be declared before init{} so the JVM field is initialised before any coroutine reads it. */
     @Volatile
     private var _currentPlayers: List<Player> = emptyList()
+    @Volatile
+    private var _currentRequests: List<com.liordahan.mgsrteam.features.requests.models.Request> = emptyList()
+    @Volatile
+    private var _currentShortlist: List<com.liordahan.mgsrteam.features.shortlist.ShortlistEntry> = emptyList()
 
     private val listenerRegistrations = mutableListOf<ListenerRegistration>()
 
@@ -160,6 +193,7 @@ class HomeScreenViewModel(
         loadAllAccounts()
         listenToPlayers()
         listenToRequests()
+        listenToShortlist()
         loadFeedEvents()
         listenToAgentTasks()
         listenToPendingTransfers()
@@ -179,6 +213,8 @@ class HomeScreenViewModel(
         listenerRegistrations.forEach { it.remove() }
         listenerRegistrations.clear()
         _currentPlayers = emptyList()
+        _currentRequests = emptyList()
+        _currentShortlist = emptyList()
         // Reset state (keep greeting & accounts)
         _state.update {
             it.copy(
@@ -187,13 +223,15 @@ class HomeScreenViewModel(
                 feedEvents = emptyList(), agentSummaries = emptyList(),
                 agentTasks = emptyMap(), documentReminders = emptyList(),
                 mandateDocProfiles = emptySet(), mandateStatusByTmProfile = emptyMap(),
-                myAgentOverview = null, isLoading = true
+                myAgentOverview = null, isLoading = true,
+                dashboardSearchQuery = "", dashboardSearchResults = emptyList()
             )
         }
         // Re-subscribe with new collection names
         loadAllAccounts()
         listenToPlayers()
         listenToRequests()
+        listenToShortlist()
         loadFeedEvents()
         listenToAgentTasks()
         listenToPendingTransfers()
@@ -206,6 +244,73 @@ class HomeScreenViewModel(
         viewModelScope.launch(Dispatchers.Main) {
             delay(4000)
             _state.update { if (it.isLoading) it.copy(isLoading = false) else it }
+        }
+    }
+
+    // ── Dashboard Search ─────────────────────────────────────────────────────
+
+    override fun updateDashboardSearch(query: String) {
+        val q = query.trim().lowercase()
+        if (q.length < 2) {
+            _state.update { it.copy(dashboardSearchQuery = query, dashboardSearchResults = emptyList()) }
+            return
+        }
+
+        val playerResults = _currentPlayers
+            .filter { player ->
+                (player.fullName ?: "").lowercase().contains(q) ||
+                (player.fullNameHe ?: "").lowercase().contains(q)
+            }
+            .take(5)
+            .map { player ->
+                DashboardSearchResult.PlayerResult(
+                    name = player.fullName ?: "Unknown",
+                    imageUrl = player.profileImage,
+                    position = player.positions?.filterNotNull()?.firstOrNull(),
+                    source = PlayerSource.ROSTER,
+                    navId = player.tmProfile ?: player.id ?: ""
+                )
+            }
+
+        val shortlistResults = _currentShortlist
+            .filter { entry ->
+                (entry.playerName ?: "").lowercase().contains(q)
+            }
+            .take(5)
+            .mapNotNull { entry ->
+                if (entry.playerName.isNullOrBlank()) return@mapNotNull null
+                // skip if same player already in roster results
+                if (playerResults.any { it.name.equals(entry.playerName, ignoreCase = true) }) return@mapNotNull null
+                DashboardSearchResult.PlayerResult(
+                    name = entry.playerName,
+                    imageUrl = entry.playerImage,
+                    position = entry.playerPosition,
+                    source = PlayerSource.SHORTLIST,
+                    navId = entry.tmProfileUrl
+                )
+            }
+
+        val requestResults = _currentRequests
+            .filter { request ->
+                (request.clubName ?: "").lowercase().contains(q) ||
+                (request.position ?: "").lowercase().contains(q)
+            }
+            .take(5)
+            .map { request ->
+                DashboardSearchResult.RequestResult(
+                    requestId = request.id ?: "",
+                    clubName = request.clubName ?: "",
+                    clubLogo = request.clubLogo,
+                    position = request.position,
+                    notes = request.notes
+                )
+            }
+
+        _state.update {
+            it.copy(
+                dashboardSearchQuery = query,
+                dashboardSearchResults = playerResults + shortlistResults + requestResults
+            )
         }
     }
 
@@ -454,14 +559,40 @@ class HomeScreenViewModel(
         }
     }
 
-    // ── Requests count ───────────────────────────────────────────────────────
+    // ── Requests ──────────────────────────────────────────────────────────
 
     private fun listenToRequests() {
         val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.clubRequestsTable)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
-                val count = snapshot.size()
-                _state.update { it.copy(requestsCount = count) }
+                val requests = snapshot.toObjects(com.liordahan.mgsrteam.features.requests.models.Request::class.java)
+                _currentRequests = requests
+                _state.update { it.copy(requestsCount = requests.size) }
+            }
+        listenerRegistrations.add(reg)
+    }
+
+    // ── Shortlist ────────────────────────────────────────────────────────────
+
+    private fun listenToShortlist() {
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.shortlistsTable)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val entries = snapshot.documents.mapNotNull { doc ->
+                    try {
+                        val url = doc.getString("tmProfileUrl") ?: return@mapNotNull null
+                        com.liordahan.mgsrteam.features.shortlist.ShortlistEntry(
+                            tmProfileUrl = url,
+                            playerImage = doc.getString("playerImage"),
+                            playerName = doc.getString("playerName"),
+                            playerPosition = doc.getString("playerPosition"),
+                            playerAge = doc.getString("playerAge"),
+                            marketValue = doc.getString("marketValue"),
+                            addedByAgentName = doc.getString("addedByAgentName")
+                        )
+                    } catch (_: Exception) { null }
+                }
+                _currentShortlist = entries
             }
         listenerRegistrations.add(reg)
     }

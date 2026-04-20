@@ -50,6 +50,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -190,7 +191,8 @@ import java.util.Locale
 @Composable
 fun RequestsScreen(
     viewModel: IRequestsViewModel = koinViewModel(),
-    navController: NavController
+    navController: NavController,
+    highlightRequestId: String? = null
 ) {
     val platformManager: PlatformManager = koinInject()
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
@@ -433,7 +435,19 @@ fun RequestsScreen(
                             }
                         }
 
+                        val requestsListState = rememberLazyListState()
+                        // Scroll to highlighted request (from dashboard search)
+                        LaunchedEffect(highlightRequestId, filteredRequests) {
+                            if (highlightRequestId != null && filteredRequests.isNotEmpty()) {
+                                val index = filteredRequests.indexOfFirst { it.id == highlightRequestId }
+                                if (index >= 0) {
+                                    kotlinx.coroutines.delay(300)
+                                    requestsListState.animateScrollToItem(index)
+                                }
+                            }
+                        }
                         LazyColumn(
+                            state = requestsListState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)

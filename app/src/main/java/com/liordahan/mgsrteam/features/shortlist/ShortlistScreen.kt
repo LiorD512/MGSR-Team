@@ -218,7 +218,8 @@ fun ShortlistScreen(
     playersRepository: IPlayersRepository = koinInject(),
     teammatesFetcher: TeammatesFetcher = koinInject(),
     platformManager: PlatformManager = koinInject(),
-    mainViewModel: com.liordahan.mgsrteam.IMainViewModel? = null
+    mainViewModel: com.liordahan.mgsrteam.IMainViewModel? = null,
+    highlightTmProfile: String? = null
 ) {
     val state by viewModel.shortlistFlow.collectAsStateWithLifecycle()
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
@@ -317,8 +318,26 @@ fun ShortlistScreen(
     }
 
     val listState = rememberLazyListState()
+    // Track whether the initial highlight scroll has happened
+    var highlightScrollDone by remember { mutableStateOf(highlightTmProfile == null) }
+
     LaunchedEffect(sortOption, selectedPosition, withNotesOnly) {
-        listState.animateScrollToItem(0)
+        if (highlightScrollDone) {
+            listState.animateScrollToItem(0)
+        }
+    }
+
+    // Scroll to highlighted entry (from dashboard search)
+    LaunchedEffect(highlightTmProfile, filteredEntries) {
+        if (highlightTmProfile != null && filteredEntries.isNotEmpty()) {
+            val index = filteredEntries.indexOfFirst { it.tmProfileUrl == highlightTmProfile }
+            if (index >= 0) {
+                // Small delay to let the LazyColumn layout settle after data loads
+                kotlinx.coroutines.delay(300)
+                listState.animateScrollToItem(index)
+                highlightScrollDone = true
+            }
+        }
     }
 
     val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsStateWithLifecycle()

@@ -517,6 +517,38 @@ fun DashboardScreen(
                         .weight(1f),
                     contentPadding = PaddingValues(bottom = 64.dp)
                 ) {
+                    // ── Dashboard Search (Men platform only) ──────────
+                    if (platform == Platform.MEN) {
+                        item {
+                            DashboardSearchBox(
+                                query = state.dashboardSearchQuery,
+                                results = state.dashboardSearchResults,
+                                onQueryChange = { viewModel.updateDashboardSearch(it) },
+                                onPlayerClick = { result ->
+                                    viewModel.updateDashboardSearch("")
+                                    when (result.source) {
+                                        com.liordahan.mgsrteam.features.home.PlayerSource.ROSTER -> {
+                                            navController.navigate(
+                                                "${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(result.navId)}"
+                                            )
+                                        }
+                                        com.liordahan.mgsrteam.features.home.PlayerSource.SHORTLIST -> {
+                                            navController.navigate(
+                                                "${Screens.ShortlistScreen.route}?highlight=${android.net.Uri.encode(result.navId)}"
+                                            )
+                                        }
+                                    }
+                                },
+                                onRequestClick = { result ->
+                                    viewModel.updateDashboardSearch("")
+                                    navController.navigate(
+                                        "${Screens.RequestsScreen.route}?highlight=${android.net.Uri.encode(result.requestId)}"
+                                    )
+                                }
+                            )
+                        }
+                    }
+
                     // ── Pending Agent Transfers ───────────────────────────
                     if (toApprove.isNotEmpty() || waitingApproval.isNotEmpty()) {
                         item {

@@ -334,15 +334,38 @@ fun HomeScreen(
             }
 
             composable(
-                route = Screens.ShortlistScreen.route
-            ) {
-                ShortlistScreen(navController = navController, mainViewModel = mainViewModel)
+                route = "${Screens.ShortlistScreen.route}?highlight={highlight}",
+                arguments = listOf(
+                    androidx.navigation.navArgument("highlight") {
+                        type = androidx.navigation.NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val highlight = backStackEntry.arguments?.getString("highlight")
+                ShortlistScreen(
+                    navController = navController,
+                    mainViewModel = mainViewModel,
+                    highlightTmProfile = highlight
+                )
             }
 
             composable(
-                route = Screens.RequestsScreen.route
-            ) {
-                RequestsScreen(navController = navController)
+                route = "${Screens.RequestsScreen.route}?highlight={highlight}",
+                arguments = listOf(
+                    androidx.navigation.navArgument("highlight") {
+                        type = androidx.navigation.NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    }
+                )
+            ) { backStackEntry ->
+                val highlight = backStackEntry.arguments?.getString("highlight")
+                RequestsScreen(
+                    navController = navController,
+                    highlightRequestId = highlight
+                )
             }
 
             composable(
