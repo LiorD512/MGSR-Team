@@ -146,7 +146,7 @@ abstract class IAddPlayerViewModel : ViewModel() {
     abstract val searchQuery: StateFlow<String>
     abstract fun onPlayerSelected(player: PlayerSearchModel)
     /** Load player by Transfermarkt profile URL (e.g. from Releases/Returnee "Add to agency"). */
-    abstract fun loadPlayerByTmProfileUrl(tmProfileUrl: String)
+    abstract fun loadPlayerByTmProfileUrl(tmProfileUrl: String, fallbackName: String? = null)
     abstract fun updatePlayerNumber(number: String)
     abstract fun updateAgentNumber(number: String)
     abstract fun updateSearchQuery(query: String?)
@@ -986,7 +986,7 @@ class AddPlayerViewModel(
         }
     }
 
-    override fun loadPlayerByTmProfileUrl(tmProfileUrl: String) {
+    override fun loadPlayerByTmProfileUrl(tmProfileUrl: String, fallbackName: String?) {
         val url = tmProfileUrl.trim()
         if (url.isBlank()) return
         // Route SoccerDonna URLs to the Women-specific loader
@@ -1000,7 +1000,7 @@ class AddPlayerViewModel(
             return
         }
         viewModelScope.launch {
-            val searchModel = PlayerSearchModel(tmProfile = url)
+            val searchModel = PlayerSearchModel(tmProfile = url, playerName = fallbackName)
             selectPlayerAndLoadIfNew(searchModel)
         }
     }

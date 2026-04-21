@@ -371,9 +371,11 @@ fun ShortlistScreen(
         }
     }
 
+    var addPlayerFallbackName by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(showAddPlayerBottomSheet, addPlayerTmUrl) {
         if (showAddPlayerBottomSheet && !addPlayerTmUrl.isNullOrBlank()) {
-            addPlayerViewModel.loadPlayerByTmProfileUrl(addPlayerTmUrl!!)
+            addPlayerViewModel.loadPlayerByTmProfileUrl(addPlayerTmUrl!!, fallbackName = addPlayerFallbackName)
         }
     }
 
@@ -382,6 +384,7 @@ fun ShortlistScreen(
             addPlayerTmUrl?.let { url -> viewModel.removeByUrl(url) }
             showAddPlayerBottomSheet = false
             addPlayerTmUrl = null
+            addPlayerFallbackName = null
             addPlayerViewModel.resetAfterAdd()
         }
     }
@@ -624,6 +627,7 @@ fun ShortlistScreen(
                                         )
                                     } else {
                                         addPlayerTmUrl = entry.tmProfileUrl
+                                        addPlayerFallbackName = entry.playerName
                                         showAddPlayerBottomSheet = true
                                     }
                                 },
@@ -675,6 +679,7 @@ fun ShortlistScreen(
                 onDismissRequest = {
                     showAddPlayerBottomSheet = false
                     addPlayerTmUrl = null
+                    addPlayerFallbackName = null
                     addPlayerViewModel.resetAfterAdd()
                 },
                 sheetState = sheetState,

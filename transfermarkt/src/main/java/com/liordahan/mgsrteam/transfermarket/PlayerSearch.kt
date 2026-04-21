@@ -4,6 +4,7 @@ import android.os.Parcelable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
+import org.json.JSONObject
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.IOException
@@ -56,6 +57,11 @@ data class TransfermarktPlayerDetails(
 
 class PlayerSearch {
 
+    companion object {
+        /** Web app base URL — used as proxy for TM requests to bypass Cloudflare TLS fingerprinting. */
+        private const val WEB_PROXY_BASE = "https://management.mgsrfa.com"
+    }
+
     suspend fun getSearchResults(query: String?): TransfermarktResult<List<PlayerSearchModel>> =
         withContext(Dispatchers.IO) {
             val sanitizedQuery = query?.trim().orEmpty()
@@ -63,6 +69,15 @@ class PlayerSearch {
                 return@withContext TransfermarktResult.Success(emptyList())
             }
 
+            // Primary: use web proxy API (bypasses Cloudflare TLS fingerprinting)
+            try {
+                val result = getSearchResultsViaProxy(sanitizedQuery)
+                if (result is TransfermarktResult.Success && result.data.isNotEmpty()) {
+                    return@withContext result
+                }
+            } catch (_: Exception) { /* fall through to direct scraping */ }
+
+            // Fallback: direct scraping
             try {
                 val encodedQuery = URLEncoder.encode(sanitizedQuery, StandardCharsets.UTF_8.toString())
                 val searchUrl =
@@ -89,6 +104,34 @@ class PlayerSearch {
                 TransfermarktResult.Failed(ex.localizedMessage)
             }
         }
+
+    /** Search via the Next.js web proxy API — returns JSON, no HTML scraping needed. */
+    private fun getSearchResultsViaProxy(query: String): TransfermarktResult<List<PlayerSearchModel>> {
+        val encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.toString())
+        val url = "$WEB_PROXY_BASE/api/transfermarkt/search?q=$encoded"
+        val json = TransfermarktHttp.fetchStringSync(url)
+        val root = JSONObject(json)
+        val players = root.optJSONArray("players") ?: return TransfermarktResult.Success(emptyList())
+        val results = mutableListOf<PlayerSearchModel>()
+        for (i in 0 until players.length()) {
+            val p = players.getJSONObject(i)
+            results.add(
+                PlayerSearchModel(
+                    tmProfile = p.optString("tmProfile", null),
+                    playerImage = p.optString("playerImage", null),
+                    playerName = p.optString("playerName", null),
+                    playerPosition = p.optString("playerPosition", null),
+                    playerAge = p.optString("playerAge", null),
+                    playerValue = p.optString("playerValue", null),
+                    nationality = p.optString("nationality", null),
+                    nationalityFlag = p.optString("nationalityFlag", null),
+                    currentClub = p.optString("currentClub", null),
+                    currentClubLogo = p.optString("currentClubLogo", null),
+                )
+            )
+        }
+        return TransfermarktResult.Success(results)
+    }
 
     private fun parsePlayerRow(element: Element): PlayerSearchModel? {
         val tdZentriert = element.select("td.zentriert")
@@ -127,8 +170,18 @@ class PlayerSearch {
 
     suspend fun getPlayerBasicInfo(playerSearchModel: PlayerSearchModel): TransfermarktPlayerDetails =
         withContext(Dispatchers.IO) {
+            val profileUrl = playerSearchModel.tmProfile.orEmpty()
+
+            // Primary: use web proxy API (bypasses Cloudflare TLS fingerprinting)
             try {
-                val profileUrl = playerSearchModel.tmProfile.orEmpty()
+                val result = getPlayerBasicInfoViaProxy(profileUrl, playerSearchModel)
+                if (result.fullName?.isNotBlank() == true) {
+                    return@withContext result
+                }
+            } catch (_: Exception) { /* fall through to direct scraping */ }
+
+            // Fallback: direct scraping
+            try {
                 val doc = TransfermarktHttp.fetchDocument(profileUrl)
 
                 val (allNationalities, allNationalityFlags) = extractAllNationalitiesFromProfile(doc)
@@ -168,7 +221,9 @@ class PlayerSearch {
                 val fullName = playerSearchModel.playerName?.takeIf { it.isNotBlank() }
                     ?: doc.select("h1.data-header__headline").text().trim().takeIf { it.isNotBlank() }
                     ?: doc.select("div.data-header__headline-wrapper h1").text().trim().takeIf { it.isNotBlank() }
+                    ?: doc.select("h1.data-header__headline-wrapper strong").text().trim().takeIf { it.isNotBlank() }
                     ?: doc.select("meta[property=og:title]").attr("content").substringBefore(" - ").trim().takeIf { it.isNotBlank() }
+                    ?: doc.title().substringBefore(" - ").trim().takeIf { it.isNotBlank() }
                 val profileImage = playerSearchModel.playerImage?.takeIf { it.isNotBlank() }
                     ?: doc.select("div.data-header__profile-container img").firstOrNull()?.attr("src").orEmpty()
                 val age = playerSearchModel.playerAge?.takeIf { it.isNotBlank() }
@@ -242,4 +297,66 @@ class PlayerSearch {
 
     private fun extractFootFromProfile(doc: Document): String? = extractFootFromDocument(doc, null)
 
+    /** Fetch player details via the Next.js web proxy API. */
+    private fun getPlayerBasicInfoViaProxy(
+        profileUrl: String,
+        fallback: PlayerSearchModel
+    ): TransfermarktPlayerDetails {
+        val encoded = URLEncoder.encode(profileUrl, StandardCharsets.UTF_8.toString())
+        val url = "$WEB_PROXY_BASE/api/transfermarkt/player?url=$encoded"
+        val json = TransfermarktHttp.fetchStringSync(url)
+        val p = JSONObject(json)
+
+        // Check for error response
+        if (p.has("error")) throw IOException(p.optString("error", "Proxy error"))
+
+        val nationalities = mutableListOf<String>()
+        val nationalityFlags = mutableListOf<String>()
+        p.optJSONArray("nationalities")?.let { arr ->
+            for (i in 0 until arr.length()) nationalities.add(arr.getString(i))
+        }
+        p.optJSONArray("nationalityFlags")?.let { arr ->
+            for (i in 0 until arr.length()) nationalityFlags.add(arr.getString(i))
+        }
+
+        val positions = mutableListOf<String>()
+        p.optJSONArray("positions")?.let { arr ->
+            for (i in 0 until arr.length()) positions.add(arr.getString(i))
+        }
+
+        val clubObj = p.optJSONObject("currentClub")
+
+        return TransfermarktPlayerDetails(
+            tmProfile = p.optString("tmProfile", profileUrl),
+            fullName = p.optString("fullName", null)?.takeIf { it.isNotBlank() }
+                ?: fallback.playerName,
+            height = p.optString("height", "Unknown"),
+            age = p.optString("age", null)?.takeIf { it.isNotBlank() }
+                ?: fallback.playerAge,
+            positions = positions.ifEmpty { null },
+            profileImage = p.optString("profileImage", null)?.takeIf { it.isNotBlank() }
+                ?: fallback.playerImage,
+            nationality = nationalities.firstOrNull() ?: p.optString("nationality", "Unknown"),
+            nationalities = nationalities,
+            nationalityFlag = nationalityFlags.firstOrNull()
+                ?: p.optString("nationalityFlag", null)?.takeIf { it.isNotBlank() }
+                ?: fallback.nationalityFlag,
+            nationalityFlags = nationalityFlags,
+            contractExpires = p.optString("contractExpires", null),
+            marketValue = p.optString("marketValue", null),
+            currentClub = clubObj?.let {
+                TransfermarktClub(
+                    clubName = it.optString("clubName", null),
+                    clubLogo = it.optString("clubLogo", null),
+                    clubTmProfile = it.optString("clubTmProfile", null),
+                    clubCountry = it.optString("clubCountry", null),
+                )
+            },
+            isOnLoan = p.optBoolean("isOnLoan", false),
+            onLoanFromClub = p.optString("onLoanFromClub", null)?.takeIf { it != "null" && it.isNotBlank() },
+            foot = p.optString("foot", null)?.takeIf { it.isNotBlank() },
+            agency = p.optString("agency", null)?.takeIf { it != "null" && it.isNotBlank() },
+            agencyUrl = p.optString("agencyUrl", null)?.takeIf { it != "null" && it.isNotBlank() },
+        )
+    }
 }

@@ -465,6 +465,23 @@ export async function handlePlayer(urlParam: string) {
     }
   });
 
+  // Extract agency from info table
+  let agency: string | null = null;
+  let agencyUrl: string | null = null;
+  $('span.info-table__content--regular').each((_: number, el: cheerio.Element) => {
+    const labelText = $(el).text().trim().toLowerCase();
+    if (labelText.includes('player agent') || labelText === 'agent:') {
+      const valueEl = $(el).next('.info-table__content--bold');
+      const link = valueEl.find('a').first();
+      agency = (link.text().trim() || valueEl.text().trim()) || null;
+      const href = link.attr('href') || '';
+      if (href) {
+        agencyUrl = href.startsWith('http') ? href : TRANSFERMARKT_BASE + href;
+      }
+      return false;
+    }
+  });
+
   return {
     tmProfile: url,
     fullName,
@@ -487,6 +504,8 @@ export async function handlePlayer(urlParam: string) {
     isOnLoan: !!isOnLoan,
     onLoanFromClub: onLoanFromClub || null,
     foot: foot || null,
+    agency,
+    agencyUrl,
     instagramHandle,
     instagramUrl,
   };
