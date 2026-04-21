@@ -157,6 +157,15 @@ class MainActivity : AppCompatActivity() {
                 intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_MESSAGE_ID)
                 return
             }
+            "shortlist" -> {
+                val tmProfileUrl = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_PLAYER_TM_PROFILE)
+                if (!tmProfileUrl.isNullOrBlank()) {
+                    viewModel.setPendingShortlistHighlightUrl(tmProfileUrl)
+                }
+                intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
+                intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_PLAYER_TM_PROFILE)
+                return
+            }
             "mandate_signing" -> {
                 val token = intent.getStringExtra("token").orEmpty()
                 if (token.isNotBlank()) {
@@ -189,6 +198,15 @@ class MainActivity : AppCompatActivity() {
         // check above may miss it. Handle it here before playerTmProfile processing.
         if (dataType == com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.TYPE_REQUEST_ADDED) {
             viewModel.setPendingOpenRequestsScreen(true)
+            return
+        }
+
+        // SHORTLIST_NOTE_TAGGED — background notifications may lack "screen" extra
+        if (dataType == com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.TYPE_SHORTLIST_NOTE_TAGGED) {
+            val tmProfile = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_PLAYER_TM_PROFILE)
+            if (!tmProfile.isNullOrBlank()) {
+                viewModel.setPendingShortlistHighlightUrl(tmProfile)
+            }
             return
         }
 

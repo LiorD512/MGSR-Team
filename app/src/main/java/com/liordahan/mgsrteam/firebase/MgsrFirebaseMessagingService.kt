@@ -167,6 +167,16 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
                 }
                 title to body
             }
+            TYPE_SHORTLIST_NOTE_TAGGED -> {
+                val taggerName = data[KEY_AGENT_NAME].orEmpty()
+                val title = ctx.getString(R.string.notification_shortlist_note_tagged_title)
+                val body = if (taggerName.isNotBlank()) {
+                    ctx.getString(R.string.notification_shortlist_note_tagged_body, taggerName, playerName)
+                } else {
+                    ctx.getString(R.string.notification_shortlist_note_tagged_body_fallback, playerName)
+                }
+                title to body
+            }
             TYPE_CHAT_ROOM_TAG -> {
                 val senderName = data["senderName"].orEmpty()
                 val senderNameHe = data["senderNameHe"].orEmpty()
@@ -242,6 +252,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
                 0xFF2196F3.toInt() to R.drawable.notification_accent_blue
             TYPE_REQUEST_ADDED -> 0xFF9C27B0.toInt() to R.drawable.notification_accent_green
             TYPE_NOTE_TAGGED -> 0xFF2196F3.toInt() to R.drawable.notification_accent_blue
+            TYPE_SHORTLIST_NOTE_TAGGED -> 0xFF2196F3.toInt() to R.drawable.notification_accent_blue
             TYPE_CHAT_ROOM_TAG -> 0xFF4DB6AC.toInt() to R.drawable.notification_accent_green
             else -> 0xFF39D164.toInt() to R.drawable.notification_accent_green
         }
@@ -370,6 +381,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         const val TYPE_AGENT_TRANSFER_APPROVED = "AGENT_TRANSFER_APPROVED"
         const val TYPE_AGENT_TRANSFER_REJECTED = "AGENT_TRANSFER_REJECTED"
         const val TYPE_NOTE_TAGGED = "NOTE_TAGGED"
+        const val TYPE_SHORTLIST_NOTE_TAGGED = "SHORTLIST_NOTE_TAGGED"
         const val TYPE_CHAT_ROOM_TAG = "CHAT_ROOM_TAG"
         private const val KEY_REQUESTER_NAME = "requesterName"
         private const val KEY_AGENT_NAME = "agentName"

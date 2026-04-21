@@ -172,6 +172,10 @@ async function shortlistAddNote(data) {
   if (!tmProfileUrl) throw new Error("tmProfileUrl is required.");
   const noteText = str(data.noteText);
   if (!noteText) throw new Error("noteText is required.");
+  const agentName = str(data.agentName);
+  const taggedAgentIds = Array.isArray(data.taggedAgentIds)
+    ? data.taggedAgentIds.filter(id => typeof id === "string" && id.length > 0)
+    : [];
 
   const db = getDb();
   const col = SHORTLISTS_COLLECTIONS[data.platform];
@@ -181,6 +185,7 @@ async function shortlistAddNote(data) {
   if (snap.empty) throw new Error("Shortlist entry not found.");
 
   const docRef = snap.docs[0].ref;
+  const entryData = snap.docs[0].data();
 
   // Use transaction for atomic note append
   await db.runTransaction(async (tx) => {
@@ -196,10 +201,120 @@ async function shortlistAddNote(data) {
     if (createdBy) note.createdBy = createdBy;
     if (createdByHebrewName) note.createdByHebrewName = createdByHebrewName;
     if (createdById) note.createdById = createdById;
+    if (taggedAgentIds.length > 0) {
+      note.taggedAgentIds = taggedAgentIds;
+    }
 
     notes.push(note);
     tx.update(docRef, { notes });
   });
+
+  // ═══ SEND PUSH NOTIFICATIONS TO TAGGED AGENTS ═══
+  if (taggedAgentIds.length > 0) {
+    try {
+      const { getMessaging } = require("firebase-admin/messaging");
+      const ACCOUNTS_COLLECTION = "Accounts";
+      const playerName = str(data.playerName) || entryData.playerName || "Unknown";
+      const playerImage = str(data.playerImage) || entryData.playerImage || "";
+
+      const notifTitle = "Tagged in Shortlist Note";
+      const notifBody = agentName
+        ? `${agentName} tagged you in ${playerName}'s shortlist notes`
+        : `You were tagged in ${playerName}'s shortlist notes`;
+
+      for (const taggedId of taggedAgentIds) {
+        try {
+          const accountSnap = await db.collection(ACCOUNTS_COLLECTION).doc(taggedId).get();
+          if (!accountSnap.exists) continue;
+          const accountData = accountSnap.data();
+
+          // Collect all FCM tokens
+          const tokens = new Set();
+          if (accountData.fcmToken) tokens.add(accountData.fcmToken);
+          if (Array.isArray(accountData.fcmTokens)) {
+            for (const entry of accountData.fcmTokens) {
+              const t = typeof entry === "string" ? entry : entry?.token;
+              if (t) tokens.add(t);
+            }
+          }
+          if (tokens.size === 0) {
+            console.log(`No FCM tokens for tagged agent ${taggedId}, skipping`);
+            continue;
+          }
+
+          const fcmData = {
+            type: "SHORTLIST_NOTE_TAGGED",
+            playerName,
+            playerImage,
+            playerTmProfile: tmProfileUrl,
+            agentName: agentName || "",
+            screen: "shortlist",
+          };
+
+          const messages = [...tokens].map((token) => ({
+            token,
+            notification: { title: notifTitle, body: notifBody },
+            data: fcmData,
+            android: {
+              priority: "high",
+              notification: { channelId: "mgsr_team_notifications", tag: `shortlist-note-${tmProfileUrl}-${Date.now()}` },
+            },
+            webpush: {
+              notification: {
+                title: notifTitle,
+                body: notifBody,
+                icon: "/logo.svg",
+                tag: `shortlist-note-tag-${Date.now()}`,
+              },
+              fcmOptions: { link: `/shortlist?highlight=${encodeURIComponent(tmProfileUrl)}` },
+            },
+          }));
+
+          const results = await getMessaging().sendEach(messages);
+
+          // Clean up invalid tokens
+          const invalidTokens = [];
+          results.responses.forEach((resp, idx) => {
+            if (resp.error && (
+              resp.error.code === "messaging/registration-token-not-registered" ||
+              resp.error.code === "messaging/invalid-registration-token"
+            )) {
+              invalidTokens.push([...tokens][idx]);
+            }
+          });
+          if (invalidTokens.length > 0) {
+            const accountRef = db.collection(ACCOUNTS_COLLECTION).doc(taggedId);
+            const updates = {};
+            if (invalidTokens.includes(accountData.fcmToken)) updates.fcmToken = "";
+            if (Array.isArray(accountData.fcmTokens)) {
+              updates.fcmTokens = accountData.fcmTokens.filter((entry) => {
+                const t = typeof entry === "string" ? entry : entry?.token;
+                return !invalidTokens.includes(t);
+              });
+            }
+            if (Object.keys(updates).length > 0) await accountRef.update(updates);
+          }
+        } catch (tagErr) {
+          console.warn(`[shortlistAddNote] Failed to notify tagged agent ${taggedId}:`, tagErr.message);
+        }
+
+        // Persist to tagged agent's notification center
+        try {
+          const { persistNotification } = require("../lib/notificationCenter");
+          await persistNotification(taggedId, {
+            type: "SHORTLIST_NOTE_TAGGED",
+            title: notifTitle,
+            body: notifBody,
+            data: { playerName, playerTmProfile: tmProfileUrl, agentName: agentName || "", screen: "shortlist" },
+          });
+        } catch (persistErr) {
+          console.warn(`[shortlistAddNote] Notification center persist failed for ${taggedId}:`, persistErr.message);
+        }
+      }
+    } catch (err) {
+      console.warn("[shortlistAddNote] Tagged agent notification failed:", err.message);
+    }
+  }
 
   return { success: true };
 }

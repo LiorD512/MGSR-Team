@@ -1592,6 +1592,11 @@
     <string name="notification_note_tagged_body">%1$s tagged you in %2$s\'s notes</string>
     <string name="notification_note_tagged_body_fallback">You were tagged in %1$s\'s notes</string>
 
+    <!-- Shortlist Note @mention tagging -->
+    <string name="notification_shortlist_note_tagged_title">Tagged in Shortlist Note</string>
+    <string name="notification_shortlist_note_tagged_body">%1$s tagged you in %2$s\'s shortlist notes</string>
+    <string name="notification_shortlist_note_tagged_body_fallback">You were tagged in %1$s\'s shortlist notes</string>
+
     <!-- The Tunnel (Chat Room) -->
     <string name="quick_action_chat_room">The Tunnel</string>
     <string name="chat_room_title">The Tunnel</string>

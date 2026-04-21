@@ -28,6 +28,10 @@ self.addEventListener('notificationclick', (event) => {
       const mid = fcmMsg.data.messageId;
       path = mid ? '/chat-room?highlight=' + mid : '/chat-room';
     }
+    if (path === '/' && fcmMsg.data?.screen === 'shortlist') {
+      const tmProfile = fcmMsg.data.playerTmProfile;
+      path = tmProfile ? '/shortlist?highlight=' + encodeURIComponent(tmProfile) : '/shortlist';
+    }
   } catch (_) {}
 
   const targetUrl = PROD + path;

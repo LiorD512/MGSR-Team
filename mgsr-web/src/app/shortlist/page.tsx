@@ -10,6 +10,7 @@ import { doc, onSnapshot, getDoc, collection, getDocs, query, orderBy, where, wr
 import { callShortlistUpdate, callShortlistRemove, callShortlistAddNote, callShortlistUpdateNote, callShortlistDeleteNote } from '@/lib/callables';
 import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist, getAllAccounts, type AccountForShortlist } from '@/lib/accounts';
+import NoteTextarea, { type NoteAccount } from '@/components/NoteTextarea';
 import { getTeammates, extractPlayerIdFromUrl, getPlayerDetails, getPlayerPerformanceStats, getCurrentSeasonLabel } from '@/lib/api';
 import { SHORTLISTS_COLLECTIONS, PLAYERS_COLLECTIONS, FEED_EVENTS_COLLECTIONS, CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
@@ -162,6 +163,7 @@ export default function ShortlistPage() {
   const [savingNote, setSavingNote] = useState(false);
   const [deletingNoteKey, setDeletingNoteKey] = useState<string | null>(null);
   const [expandedNotesUrl, setExpandedNotesUrl] = useState<string | null>(null);
+  const [noteTaggedAgentIds, setNoteTaggedAgentIds] = useState<string[]>([]);
   const [igLoadingUrl, setIgLoadingUrl] = useState<string | null>(null);
   const [igCopiedUrl, setIgCopiedUrl] = useState<string | null>(null);
   const [igConfirmUrl, setIgConfirmUrl] = useState<string | null>(null);
@@ -489,7 +491,7 @@ export default function ShortlistPage() {
   };
 
   // ── Notes CRUD ──
-  const addNoteToEntry = useCallback(async (entry: ShortlistEntry, noteText: string) => {
+  const addNoteToEntry = useCallback(async (entry: ShortlistEntry, noteText: string, taggedIds: string[] = []) => {
     if (!user) return;
     setSavingNote(true);
     try {
@@ -501,6 +503,10 @@ export default function ShortlistPage() {
         createdBy: account.name ?? 'Unknown',
         createdByHebrewName: account.hebrewName ?? undefined,
         createdById: account.id,
+        taggedAgentIds: taggedIds.length > 0 ? taggedIds : undefined,
+        agentName: account.name ?? undefined,
+        playerName: entry.playerName ?? undefined,
+        playerImage: entry.playerImage ?? undefined,
       });
     } finally {
       setSavingNote(false);
@@ -535,12 +541,13 @@ export default function ShortlistPage() {
     if (noteModalMode === 'edit' && noteModalEditIndex >= 0) {
       await updateNoteInEntry(noteModalEntry, noteModalEditIndex, noteModalText.trim());
     } else {
-      await addNoteToEntry(noteModalEntry, noteModalText.trim());
+      await addNoteToEntry(noteModalEntry, noteModalText.trim(), noteTaggedAgentIds);
     }
     setNoteModalEntry(null);
     setNoteModalText('');
     setNoteModalEditIndex(-1);
-  }, [noteModalEntry, noteModalText, noteModalMode, noteModalEditIndex, addNoteToEntry, updateNoteInEntry]);
+    setNoteTaggedAgentIds([]);
+  }, [noteModalEntry, noteModalText, noteModalMode, noteModalEditIndex, addNoteToEntry, updateNoteInEntry, noteTaggedAgentIds]);
 
   const formatNoteDate = useCallback((timestamp?: number) => {
     if (!timestamp) return '';
@@ -1720,7 +1727,7 @@ export default function ShortlistPage() {
 
       {/* ── Note Add/Edit Modal ── */}
       {noteModalEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => { setNoteModalEntry(null); setNoteModalText(''); setNoteModalEditIndex(-1); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => { setNoteModalEntry(null); setNoteModalText(''); setNoteModalEditIndex(-1); setNoteTaggedAgentIds([]); }}>
           <div
             onClick={(e) => e.stopPropagation()}
             className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl ${
@@ -1736,7 +1743,7 @@ export default function ShortlistPage() {
               <h3 className="text-lg font-bold text-mgsr-text">
                 {noteModalMode === 'edit' ? t('shortlist_notes_edit_title') : t('shortlist_notes_add_title')}
               </h3>
-              <button onClick={() => { setNoteModalEntry(null); setNoteModalText(''); setNoteModalEditIndex(-1); }} className="text-mgsr-muted hover:text-mgsr-text transition">
+              <button onClick={() => { setNoteModalEntry(null); setNoteModalText(''); setNoteModalEditIndex(-1); setNoteTaggedAgentIds([]); }} className="text-mgsr-muted hover:text-mgsr-text transition">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -1760,10 +1767,12 @@ export default function ShortlistPage() {
               </div>
             </div>
 
-            {/* Text input */}
-            <textarea
+            {/* Text input with @mention support */}
+            <NoteTextarea
               value={noteModalText}
-              onChange={(e) => setNoteModalText(e.target.value)}
+              onChange={setNoteModalText}
+              accounts={allAccounts.map((a) => ({ id: a.id, name: a.name ?? undefined, hebrewName: a.hebrewName ?? undefined })) as NoteAccount[]}
+              isRtl={isRtl}
               placeholder={t('shortlist_notes_placeholder')}
               rows={4}
               autoFocus
@@ -1774,13 +1783,13 @@ export default function ShortlistPage() {
                     ? 'border-[var(--women-rose)]/30 focus:border-[var(--women-rose)]/60'
                     : 'border-mgsr-border focus:border-orange-400/60'
               }`}
-              dir="auto"
+              onTaggedAgentsChange={setNoteTaggedAgentIds}
             />
 
             {/* Actions */}
             <div className="flex justify-end gap-3 mt-4">
               <button
-                onClick={() => { setNoteModalEntry(null); setNoteModalText(''); setNoteModalEditIndex(-1); }}
+                onClick={() => { setNoteModalEntry(null); setNoteModalText(''); setNoteModalEditIndex(-1); setNoteTaggedAgentIds([]); }}
                 className="px-4 py-2 rounded-xl text-sm font-medium text-mgsr-muted border border-mgsr-border hover:text-mgsr-text transition"
               >
                 {t('common_cancel')}

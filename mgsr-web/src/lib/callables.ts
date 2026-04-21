@@ -239,7 +239,7 @@ export const callShortlistUpdate = callable<
 >('shortlistUpdate');
 
 export const callShortlistAddNote = callable<
-  { platform: string; tmProfileUrl: string; noteText: string; createdBy?: string; createdByHebrewName?: string; createdById?: string },
+  { platform: string; tmProfileUrl: string; noteText: string; createdBy?: string; createdByHebrewName?: string; createdById?: string; taggedAgentIds?: string[]; agentName?: string; playerName?: string; playerImage?: string },
   { success: boolean }
 >('shortlistAddNote');
 

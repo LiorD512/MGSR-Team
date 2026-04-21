@@ -37,6 +37,10 @@ abstract class IMainViewModel : ViewModel() {
     abstract fun setPendingOpenChatRoomScreen(value: Boolean)
     abstract val pendingChatRoomMessageId: StateFlow<String?>
     abstract fun setPendingChatRoomMessageId(id: String?)
+    /** When set, navigate to Shortlist screen and highlight the entry with this TM profile URL. */
+    abstract val pendingShortlistHighlightUrl: StateFlow<String?>
+    abstract fun setPendingShortlistHighlightUrl(url: String?)
+    abstract fun clearPendingShortlistHighlightUrl()
     abstract fun signOut()
 }
 
@@ -123,6 +127,17 @@ class MainViewModel(
 
     override fun setPendingChatRoomMessageId(id: String?) {
         _pendingChatRoomMessageId.value = id
+    }
+
+    private val _pendingShortlistHighlightUrl = MutableStateFlow<String?>(null)
+    override val pendingShortlistHighlightUrl: StateFlow<String?> = _pendingShortlistHighlightUrl
+
+    override fun setPendingShortlistHighlightUrl(url: String?) {
+        _pendingShortlistHighlightUrl.value = url
+    }
+
+    override fun clearPendingShortlistHighlightUrl() {
+        _pendingShortlistHighlightUrl.value = null
     }
 
     init {

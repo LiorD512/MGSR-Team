@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -77,6 +78,7 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -729,16 +731,22 @@ fun ShortlistScreen(
                 entry = entry,
                 mode = noteDialogMode,
                 initialText = noteDialogText,
+                allAccounts = allAccounts,
+                currentUserName = currentUserName,
                 onDismiss = {
                     noteDialogEntry = null
                     noteDialogText = ""
                     noteDialogEditIndex = -1
                 },
-                onSave = { text ->
+                onSave = { text, taggedIds ->
                     if (noteDialogMode == "edit" && noteDialogEditIndex >= 0) {
                         viewModel.updateNote(entry.tmProfileUrl, noteDialogEditIndex, text)
                     } else {
-                        viewModel.addNote(entry.tmProfileUrl, text)
+                        viewModel.addNote(
+                            entry.tmProfileUrl, text, taggedIds,
+                            playerName = entry.playerName,
+                            playerImage = entry.playerImage
+                        )
                     }
                     noteDialogEntry = null
                     noteDialogText = ""
@@ -1822,10 +1830,27 @@ private fun NoteDialog(
     entry: ShortlistEntry,
     mode: String,
     initialText: String,
+    allAccounts: List<Account>,
+    currentUserName: String?,
     onDismiss: () -> Unit,
-    onSave: (String) -> Unit
+    onSave: (String, List<String>) -> Unit
 ) {
     var text by remember(initialText) { mutableStateOf(initialText) }
+    val isHebrew = LocaleManager.isHebrew(context)
+
+    // Agent mention state
+    val taggedAgentIds = remember { mutableStateListOf<String>() }
+    var showMentionDropdown by remember { mutableStateOf(false) }
+    var mentionQuery by remember { mutableStateOf("") }
+    var mentionStartIndex by remember { mutableStateOf(-1) }
+    val filteredMentionAccounts = remember(allAccounts, currentUserName, mentionQuery) {
+        val accounts = allAccounts.filter { !it.name.equals(currentUserName, ignoreCase = true) }
+        if (mentionQuery.isBlank()) accounts
+        else accounts.filter {
+            val displayName = if (isHebrew) (it.hebrewName ?: it.name).orEmpty() else it.name.orEmpty()
+            displayName.contains(mentionQuery, ignoreCase = true)
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -1907,10 +1932,91 @@ private fun NoteDialog(
 
                 Spacer(Modifier.height(16.dp))
 
+                // @ Mention agent suggestions dropdown
+                if (showMentionDropdown && filteredMentionAccounts.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 200.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = PlatformColors.palette.background
+                        ),
+                        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+                    ) {
+                        LazyColumn {
+                            items(filteredMentionAccounts) { account ->
+                                val displayName = if (isHebrew) {
+                                    account.hebrewName ?: account.name
+                                } else {
+                                    account.name
+                                } ?: ""
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickWithNoRipple {
+                                            if (mentionStartIndex >= 0) {
+                                                val before = text.substring(0, mentionStartIndex)
+                                                val cursorPos = text.length
+                                                val after = if (cursorPos < text.length) text.substring(cursorPos) else ""
+                                                val insertion = "@$displayName "
+                                                text = "$before$insertion$after"
+                                                if (account.id != null && !taggedAgentIds.contains(account.id)) {
+                                                    taggedAgentIds.add(account.id!!)
+                                                }
+                                            }
+                                            showMentionDropdown = false
+                                            mentionQuery = ""
+                                            mentionStartIndex = -1
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = PlatformColors.palette.accent
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(
+                                        text = displayName,
+                                        style = regularTextStyle(
+                                            PlatformColors.palette.textPrimary,
+                                            14.sp
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+
                 // Text input
                 OutlinedTextField(
                     value = text,
-                    onValueChange = { text = it },
+                    onValueChange = { newText ->
+                        text = newText
+                        // Detect @ mention
+                        val lastAt = newText.lastIndexOf('@')
+                        if (lastAt >= 0) {
+                            val afterAt = newText.substring(lastAt + 1)
+                            if (!afterAt.contains('\n') && afterAt.length < 30) {
+                                mentionStartIndex = lastAt
+                                mentionQuery = afterAt
+                                showMentionDropdown = true
+                            } else {
+                                showMentionDropdown = false
+                                mentionQuery = ""
+                                mentionStartIndex = -1
+                            }
+                        } else {
+                            showMentionDropdown = false
+                            mentionQuery = ""
+                            mentionStartIndex = -1
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp),
@@ -1961,7 +2067,7 @@ private fun NoteDialog(
                                 else PlatformColors.palette.orange.copy(alpha = 0.4f)
                             )
                             .clickWithNoRipple {
-                                if (text.isNotBlank()) onSave(text.trim())
+                                if (text.isNotBlank()) onSave(text.trim(), taggedAgentIds.toList())
                             }
                             .padding(horizontal = 20.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center

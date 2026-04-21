@@ -340,7 +340,13 @@ class ShortlistRepository(
 
     // ── Notes CRUD ──────────────────────────────────────────────────────────
 
-    suspend fun addNoteToEntry(tmProfileUrl: String, noteText: String) {
+    suspend fun addNoteToEntry(
+        tmProfileUrl: String,
+        noteText: String,
+        taggedAgentIds: List<String> = emptyList(),
+        playerName: String? = null,
+        playerImage: String? = null
+    ) {
         val account = getCurrentUserAccount()
         SharedCallables.shortlistAddNote(
             platform = platformManager.value,
@@ -348,7 +354,11 @@ class ShortlistRepository(
             noteText = noteText,
             createdBy = account?.name,
             createdByHebrewName = account?.hebrewName,
-            createdById = account?.id
+            createdById = account?.id,
+            taggedAgentIds = taggedAgentIds,
+            agentName = account?.name,
+            playerName = playerName,
+            playerImage = playerImage
         )
     }
 

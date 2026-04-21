@@ -97,6 +97,7 @@ function getTypeColor(type: string): string {
       return '#39D164';
     case 'CLUB_CHANGE':
     case 'NOTE_TAGGED':
+    case 'SHORTLIST_NOTE_TAGGED':
     case 'AGENT_TRANSFER_REQUEST':
     case 'AGENT_TRANSFER_APPROVED':
     case 'AGENT_TRANSFER_REJECTED':
@@ -136,6 +137,7 @@ function getTypeIcon(type: string): string {
     case 'MANDATE_PLAYER_SIGNED':
       return '✍️';
     case 'NOTE_TAGGED':
+    case 'SHORTLIST_NOTE_TAGGED':
       return '📝';
     case 'CHAT_ROOM_TAG':
       return '💬';
@@ -161,6 +163,8 @@ function getNotificationUrl(notif: StoredNotification): string {
       return data.messageId ? `/chat-room?highlight=${data.messageId}` : '/chat-room';
     case 'NOTE_TAGGED':
       return data.playerId ? `/players/${data.playerId}` : '/dashboard';
+    case 'SHORTLIST_NOTE_TAGGED':
+      return data.playerTmProfile ? `/shortlist?highlight=${encodeURIComponent(data.playerTmProfile)}` : '/shortlist';
     case 'MANDATE_PLAYER_SIGNED':
       return data.token ? `/sign-mandate/${data.token}` : '/dashboard';
     case 'REQUEST_ADDED':

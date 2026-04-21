@@ -178,6 +178,18 @@ fun HomeScreen(
         }
     }
 
+    // Navigate to Shortlist + highlight (from shortlist note tag notification)
+    LaunchedEffect(Unit) {
+        mainViewModel.pendingShortlistHighlightUrl.collectLatest { tmUrl ->
+            if (!tmUrl.isNullOrBlank()) {
+                navController.navigate(
+                    "${Screens.ShortlistScreen.route}?highlight=${android.net.Uri.encode(tmUrl)}"
+                )
+                mainViewModel.clearPendingShortlistHighlightUrl()
+            }
+        }
+    }
+
     val platformManager: PlatformManager = koinInject()
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
 

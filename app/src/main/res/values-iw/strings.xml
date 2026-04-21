@@ -1578,6 +1578,11 @@
     <string name="notification_note_tagged_body">%1$s תייג אותך בהערות של %2$s</string>
     <string name="notification_note_tagged_body_fallback">תויגת בהערות של %1$s</string>
 
+    <!-- Shortlist Note @mention tagging -->
+    <string name="notification_shortlist_note_tagged_title">תויגת בהערת שורטליסט</string>
+    <string name="notification_shortlist_note_tagged_body">%1$s תייג אותך בהערות השורטליסט של %2$s</string>
+    <string name="notification_shortlist_note_tagged_body_fallback">תויגת בהערות השורטליסט של %1$s</string>
+
     <!-- The Tunnel (Chat Room) -->
     <string name="quick_action_chat_room">המנהרה</string>
     <string name="chat_room_title">המנהרה</string>

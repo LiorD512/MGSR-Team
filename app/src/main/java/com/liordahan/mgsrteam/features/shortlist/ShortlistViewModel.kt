@@ -30,7 +30,7 @@ interface IShortlistViewModel {
     fun remove(entry: ShortlistEntry)
     fun removeByUrl(tmProfileUrl: String)
     fun addByUrl(tmProfileUrl: String)
-    fun addNote(tmProfileUrl: String, text: String)
+    fun addNote(tmProfileUrl: String, text: String, taggedAgentIds: List<String> = emptyList(), playerName: String? = null, playerImage: String? = null)
     fun updateNote(tmProfileUrl: String, noteIndex: Int, newText: String)
     fun deleteNote(tmProfileUrl: String, noteIndex: Int)
     fun setSortOption(option: SortOption)
@@ -97,11 +97,11 @@ class ShortlistViewModel(
         }
     }
 
-    override fun addNote(tmProfileUrl: String, text: String) {
+    override fun addNote(tmProfileUrl: String, text: String, taggedAgentIds: List<String>, playerName: String?, playerImage: String?) {
         viewModelScope.launch {
             _shortlistFlow.update { it.copy(isSavingNote = true) }
             try {
-                repository.addNoteToEntry(tmProfileUrl, text)
+                repository.addNoteToEntry(tmProfileUrl, text, taggedAgentIds, playerName, playerImage)
             } finally {
                 _shortlistFlow.update { it.copy(isSavingNote = false) }
             }

@@ -320,7 +320,11 @@ object SharedCallables {
         noteText: String,
         createdBy: String? = null,
         createdByHebrewName: String? = null,
-        createdById: String? = null
+        createdById: String? = null,
+        taggedAgentIds: List<String>? = null,
+        agentName: String? = null,
+        playerName: String? = null,
+        playerImage: String? = null
     ) {
         call("shortlistAddNote", mapOf(
             "platform" to platform.callableName(),
@@ -329,6 +333,10 @@ object SharedCallables {
             "createdBy" to (createdBy ?: ""),
             "createdByHebrewName" to (createdByHebrewName ?: ""),
             "createdById" to (createdById ?: ""),
+            "taggedAgentIds" to (taggedAgentIds ?: emptyList<String>()),
+            "agentName" to (agentName ?: ""),
+            "playerName" to (playerName ?: ""),
+            "playerImage" to (playerImage ?: ""),
         ))
     }
 
