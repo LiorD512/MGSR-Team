@@ -312,6 +312,7 @@ export default function DashboardPage() {
   const [womenPlayers, setWomenPlayers] = useState<WomanPlayer[]>([]);
   const [youthPlayers, setYouthPlayers] = useState<YouthPlayer[]>([]);
   const [mandateProfiles, setMandateProfiles] = useState<Set<string>>(new Set());
+  const [mandateExpiryMap, setMandateExpiryMap] = useState<Map<string, number>>(new Map());
   const searchParams = useSearchParams();
 
   // When returning from player page with scrollTo, scroll to that feed item
@@ -419,6 +420,7 @@ export default function DashboardPage() {
     const unsub = onSnapshot(mandateQuery, (snap) => {
       const now = Date.now();
       const profiles = new Set<string>();
+      const expiryMap = new Map<string, number>();
       snap.docs.forEach((doc) => {
         const d = doc.data();
         const profile = d.playerTmProfile as string | undefined;
@@ -426,9 +428,11 @@ export default function DashboardPage() {
         const expired = d.expired as boolean | undefined;
         if (profile && expiresAt && !expired && expiresAt >= now) {
           profiles.add(profile);
+          expiryMap.set(profile, expiresAt);
         }
       });
       setMandateProfiles(profiles);
+      setMandateExpiryMap(expiryMap);
     });
     return () => unsub();
   }, [platform]);
@@ -853,6 +857,26 @@ export default function DashboardPage() {
     ].filter((d) => d.value > 0);
   }, [rosterPlayers, mandateProfiles, t]);
 
+  // Players with mandates expiring within 30 days (men only)
+  const expiringMandates = useMemo(() => {
+    if (platform !== 'men') return [];
+    const now = Date.now();
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    const cutoff = now + thirtyDaysMs;
+    return rosterPlayers
+      .filter((p) => {
+        if (!p.tmProfile) return false;
+        const expiresAt = mandateExpiryMap.get(p.tmProfile);
+        return expiresAt != null && expiresAt >= now && expiresAt <= cutoff;
+      })
+      .map((p) => {
+        const expiresAt = mandateExpiryMap.get(p.tmProfile!)!;
+        const daysLeft = Math.max(0, Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000)));
+        return { ...p, mandateExpiresAt: expiresAt, daysLeft };
+      })
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+  }, [rosterPlayers, mandateExpiryMap, platform]);
+
   const isWomen = platform === 'women';
   const isYouth = platform === 'youth';
 
@@ -1063,6 +1087,56 @@ export default function DashboardPage() {
                   </div>
                   <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-400 px-2 py-1 rounded-md whitespace-nowrap">
                     {isRtl ? 'ממתין' : 'Waiting'}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mandate Expiring Soon (men only) */}
+        {platform === 'men' && expiringMandates.length > 0 && (
+          <div className="mb-6 sm:mb-10 p-5 sm:p-6 bg-mgsr-card/60 border border-orange-500/20 rounded-2xl backdrop-blur-sm animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/15 flex items-center justify-center">
+                <span className="text-lg">📋</span>
+              </div>
+              <h3 className="text-base font-bold text-white font-display">
+                {t('mandate_expiring_title')}
+              </h3>
+              <span className="ms-auto text-[0.65rem] font-bold bg-orange-500/20 text-orange-400 px-2.5 py-1 rounded-full">
+                {expiringMandates.length}
+              </span>
+            </div>
+            <div className="space-y-2.5">
+              {expiringMandates.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/players/${p.id}`}
+                  className="group flex items-center gap-3.5 p-3.5 rounded-xl bg-mgsr-dark/50 hover:bg-mgsr-dark/80 transition-all duration-200 border border-mgsr-border/40 hover:border-orange-500/30 hover:translate-x-0.5 rtl:hover:-translate-x-0.5"
+                >
+                  {p.profileImage ? (
+                    <img src={p.profileImage} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-mgsr-border/60 group-hover:border-orange-500/30 transition-colors" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-mgsr-border/20 flex items-center justify-center text-mgsr-muted text-sm">⚽</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{p.fullName || 'Unknown'}</p>
+                    <p className="text-xs text-mgsr-muted/70 mt-0.5">
+                      {p.currentClub?.clubName || '—'}
+                      {p.agentInChargeName ? ` · ${resolveAgentDisplayName(p.agentInChargeName, accounts, isRtl)}` : ''}
+                    </p>
+                  </div>
+                  <span className={`text-[0.6rem] font-bold uppercase tracking-wider px-2 py-1 rounded-md whitespace-nowrap ${
+                    p.daysLeft <= 7
+                      ? 'bg-red-500/15 text-red-400'
+                      : p.daysLeft <= 14
+                      ? 'bg-orange-500/15 text-orange-400'
+                      : 'bg-amber-500/15 text-amber-400'
+                  }`}>
+                    {p.daysLeft === 0
+                      ? t('mandate_expiring_today')
+                      : t('mandate_expiring_days_left').replace('%d', String(p.daysLeft))}
                   </span>
                 </Link>
               ))}
