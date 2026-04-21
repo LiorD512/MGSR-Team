@@ -1619,4 +1619,7 @@
     <string name="notification_center_title">התראות</string>
     <string name="notification_center_empty">אין התראות עדיין</string>
     <string name="notification_center_mark_all_read">סמן הכל כנקרא</string>
+
+    <!-- Dashboard Search -->
+    <string name="dashboard_search_hint">חפש שחקן, מועדון או עמדה…</string>
 </resources>

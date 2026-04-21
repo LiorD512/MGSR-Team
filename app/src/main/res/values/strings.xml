@@ -1633,4 +1633,7 @@
     <string name="notification_center_title">Notifications</string>
     <string name="notification_center_empty">No notifications yet</string>
     <string name="notification_center_mark_all_read">Mark all read</string>
+
+    <!-- Dashboard Search -->
+    <string name="dashboard_search_hint">Search player, club or position…</string>
 </resources>
