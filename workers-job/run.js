@@ -23,10 +23,8 @@ const db = getFirestore();
 if (JOB_MODE === "releases-refresh") {
   const { runReleasesRefresh } = require("./releasesRefresh");
   runReleasesRefresh(db);
-} else {
-  // Default: player-refresh (original behavior)
-  runPlayerRefresh();
 }
+// player-refresh is dispatched at the bottom of the file after all const declarations
 
 // ── Player Refresh ──────────────────────────────────────────────────
 
@@ -379,4 +377,7 @@ async function runPlayerRefresh() {
   }
 }
 
-// runPlayerRefresh is called conditionally at the top of the file
+// runPlayerRefresh is dispatched here — after all const declarations are initialized
+if (JOB_MODE !== "releases-refresh") {
+  runPlayerRefresh();
+}
