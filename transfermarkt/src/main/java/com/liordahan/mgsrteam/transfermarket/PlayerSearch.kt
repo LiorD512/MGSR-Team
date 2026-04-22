@@ -57,11 +57,6 @@ data class TransfermarktPlayerDetails(
 
 class PlayerSearch {
 
-    companion object {
-        /** Web app base URL — used as proxy for TM requests to bypass Cloudflare TLS fingerprinting. */
-        private const val WEB_PROXY_BASE = "https://management.mgsrfa.com"
-    }
-
     suspend fun getSearchResults(query: String?): TransfermarktResult<List<PlayerSearchModel>> =
         withContext(Dispatchers.IO) {
             val sanitizedQuery = query?.trim().orEmpty()

@@ -1,6 +1,7 @@
 package com.liordahan.mgsrteam.transfermarket
 
 import android.net.Network
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -20,6 +21,7 @@ import org.jsoup.nodes.Element
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -67,15 +69,17 @@ internal object TransfermarktHttp {
             .build()
     }
 
-    /** Fetches and parses an HTML page. Suspends without blocking an IO thread. */
+    private const val TAG = "TransfermarktHttp"
+
+    /** Fetches and parses an HTML page. Tries the Vercel HTML proxy first, falls back to direct OkHttp. */
     suspend fun fetchDocument(url: String, userAgent: String = getRandomUserAgent()): Document {
-        val html = executeRequest(url, userAgent)
+        val html = fetchWithProxyFallback(url, userAgent)
         return Jsoup.parse(html, url)
     }
 
-    /** Fetches raw string (e.g. JSON). Suspends without blocking an IO thread. */
+    /** Fetches raw string (e.g. JSON). Tries the Vercel HTML proxy first, falls back to direct OkHttp. */
     suspend fun fetchString(url: String, userAgent: String = getRandomUserAgent()): String =
-        executeRequest(url, userAgent)
+        fetchWithProxyFallback(url, userAgent)
 
     /**
      * Synchronous fetch for use inside already-dispatched IO blocks (e.g. proxy calls).
@@ -94,11 +98,47 @@ internal object TransfermarktHttp {
     }
 
     /**
+     * Tries to fetch the URL via the Vercel HTML proxy first (bypasses Cloudflare TLS
+     * fingerprinting). If the proxy fails, falls back to direct OkHttp request.
+     * Only proxies transfermarkt.com URLs; other URLs go direct.
+     */
+    private suspend fun fetchWithProxyFallback(url: String, userAgent: String): String {
+        if (url.contains("transfermarkt.")) {
+            try {
+                val html = fetchViaHtmlProxy(url)
+                if (html.isNotBlank()) return html
+            } catch (e: Exception) {
+                Log.w(TAG, "HTML proxy failed for $url, falling back to direct: ${e.message}")
+            }
+        }
+        return executeRequest(url, userAgent)
+    }
+
+    /**
+     * Fetches raw HTML through the Vercel HTML proxy endpoint.
+     * The web server uses header-generator for realistic Chrome headers,
+     * which bypasses Cloudflare's TLS fingerprinting that blocks OkHttp.
+     */
+    private suspend fun fetchViaHtmlProxy(url: String): String = withContext(Dispatchers.IO) {
+        val encoded = URLEncoder.encode(url, "UTF-8")
+        val proxyUrl = "$WEB_PROXY_BASE/api/transfermarkt/html-proxy?url=$encoded"
+        val request = Request.Builder()
+            .url(proxyUrl)
+            .header("Accept", "text/html")
+            .build()
+        val response = client.newCall(request).execute()
+        response.use { resp ->
+            if (!resp.isSuccessful) throw IOException("HTML proxy HTTP ${resp.code} for $url")
+            resp.body?.string() ?: throw IOException("Empty proxy response for $url")
+        }
+    }
+
+    /**
      * Fetches a page and returns both the parsed [Document] and the raw HTML string.
-     * Use when raw HTML is needed for regex-based parsing (avoids expensive `doc.html()` re-serialization).
+     * Tries the Vercel HTML proxy first, falls back to direct OkHttp.
      */
     suspend fun fetchDocumentWithHtml(url: String, userAgent: String = getRandomUserAgent()): Pair<Document, String> {
-        val html = executeRequest(url, userAgent)
+        val html = fetchWithProxyFallback(url, userAgent)
         return Jsoup.parse(html, url) to html
     }
 

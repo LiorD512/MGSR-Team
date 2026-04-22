@@ -16,6 +16,8 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
 internal const val TRANSFERMARKT_BASE_URL: String = "https://www.transfermarkt.com"
+/** Web app proxy base URL — bypasses Cloudflare TLS fingerprinting on Android. */
+internal const val WEB_PROXY_BASE: String = "https://management.mgsrfa.com"
 internal const val TRANSFERMARKT_USER_AGENT: String =
     "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"
 internal const val TRANSFERMARKT_TIMEOUT_MS: Int = 12_000

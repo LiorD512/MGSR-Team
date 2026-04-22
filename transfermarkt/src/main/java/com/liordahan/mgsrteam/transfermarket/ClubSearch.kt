@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.transfermarket
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import org.jsoup.nodes.Element
 import java.io.IOException
 import java.net.URLEncoder
@@ -22,7 +23,7 @@ class ClubSearch {
 
     /**
      * Returns a list of clubs matching the query (logo, name, country).
-     * Use the same quick-search endpoint as player search; results include a "clubs" section.
+     * Primary: web proxy API. Fallback: direct scraping.
      */
     suspend fun getClubSearchResults(query: String?): TransfermarktResult<List<ClubSearchModel>> =
         withContext(Dispatchers.IO) {
@@ -31,6 +32,13 @@ class ClubSearch {
                 return@withContext TransfermarktResult.Success(emptyList())
             }
 
+            // Primary: web proxy API
+            try {
+                val result = getClubSearchViaProxy(sanitizedQuery)
+                if (result.isNotEmpty()) return@withContext TransfermarktResult.Success(result)
+            } catch (_: Exception) { /* fall through to direct scraping */ }
+
+            // Fallback: direct scraping
             try {
                 val encodedQuery = URLEncoder.encode(sanitizedQuery, StandardCharsets.UTF_8.toString())
                 val searchUrl = "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$encodedQuery"
@@ -96,5 +104,28 @@ class ClubSearch {
         } catch (e: Exception) {
             null
         }
+    }
+
+    /** Search clubs via the Next.js web proxy API. */
+    private fun getClubSearchViaProxy(query: String): List<ClubSearchModel> {
+        val encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.toString())
+        val url = "$WEB_PROXY_BASE/api/transfermarkt/club-search?q=$encoded"
+        val json = TransfermarktHttp.fetchStringSync(url)
+        val root = JSONObject(json)
+        val clubs = root.optJSONArray("clubs") ?: return emptyList()
+        val results = mutableListOf<ClubSearchModel>()
+        for (i in 0 until clubs.length()) {
+            val c = clubs.getJSONObject(i)
+            results.add(
+                ClubSearchModel(
+                    clubName = c.optString("clubName", null),
+                    clubLogo = c.optString("clubLogo", null),
+                    clubTmProfile = c.optString("clubTmProfile", null),
+                    clubCountry = c.optString("clubCountry", null),
+                    clubCountryFlag = c.optString("clubCountryFlag", null),
+                )
+            )
+        }
+        return results
     }
 }

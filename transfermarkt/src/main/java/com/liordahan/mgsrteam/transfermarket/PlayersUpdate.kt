@@ -3,6 +3,10 @@ package com.liordahan.mgsrteam.transfermarket
 import android.net.Network
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.io.IOException
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 data class PlayerToUpdateValues(
     val marketValue: String?,
@@ -37,6 +41,15 @@ class PlayersUpdate {
             val profileUrl = tmProfile?.trim()
                 ?: return@withContext TransfermarktResult.Failed("Profile URL is null or blank")
 
+            // Primary: web proxy API (bypasses Cloudflare TLS fingerprinting)
+            if (network == null) {
+                try {
+                    val result = updatePlayerViaProxy(profileUrl)
+                    if (result != null) return@withContext TransfermarktResult.Success(result)
+                } catch (_: Exception) { /* fall through to direct scraping */ }
+            }
+
+            // Fallback: direct scraping (or when specific network is requested for IP rotation)
             return@withContext try {
                 val doc = if (network != null) {
                     TransfermarktHttp.fetchDocument(profileUrl, network)
@@ -165,4 +178,54 @@ class PlayersUpdate {
                 TransfermarktResult.Failed(ex.localizedMessage ?: "Unknown error")
             }
         }
+
+    /** Fetch player update data via the Next.js web proxy API. */
+    private fun updatePlayerViaProxy(profileUrl: String): PlayerToUpdateValues? {
+        val encoded = URLEncoder.encode(profileUrl, StandardCharsets.UTF_8.toString())
+        val url = "$WEB_PROXY_BASE/api/transfermarkt/player?url=$encoded"
+        val json = TransfermarktHttp.fetchStringSync(url)
+        val p = JSONObject(json)
+        if (p.has("error")) throw IOException(p.optString("error", "Proxy error"))
+        val fullName = p.optString("fullName", "")
+        if (fullName.isBlank()) return null // proxy returned no useful data
+
+        val nationalities = mutableListOf<String>()
+        val nationalityFlags = mutableListOf<String>()
+        p.optJSONArray("nationalities")?.let { arr ->
+            for (i in 0 until arr.length()) nationalities.add(arr.getString(i))
+        }
+        p.optJSONArray("nationalityFlags")?.let { arr ->
+            for (i in 0 until arr.length()) nationalityFlags.add(arr.getString(i))
+        }
+        val positions = mutableListOf<String>()
+        p.optJSONArray("positions")?.let { arr ->
+            for (i in 0 until arr.length()) positions.add(arr.getString(i))
+        }
+        val clubObj = p.optJSONObject("currentClub")
+
+        return PlayerToUpdateValues(
+            marketValue = p.optString("marketValue", null)?.takeIf { it.isNotBlank() },
+            profileImage = p.optString("profileImage", null)?.takeIf { it.isNotBlank() },
+            nationalityFlag = nationalityFlags.firstOrNull(),
+            citizenship = nationalities.firstOrNull(),
+            citizenships = nationalities,
+            citizenshipFlags = nationalityFlags,
+            age = p.optString("age", null)?.takeIf { it.isNotBlank() },
+            contract = p.optString("contractExpires", null)?.takeIf { it.isNotBlank() },
+            positions = positions.ifEmpty { null },
+            currentClub = clubObj?.let {
+                TransfermarktClub(
+                    clubName = it.optString("clubName", null),
+                    clubLogo = it.optString("clubLogo", null),
+                    clubTmProfile = it.optString("clubTmProfile", null),
+                    clubCountry = it.optString("clubCountry", null),
+                )
+            },
+            isOnLoan = p.optBoolean("isOnLoan", false),
+            onLoanFromClub = p.optString("onLoanFromClub", null)?.takeIf { it != "null" && it.isNotBlank() },
+            foot = p.optString("foot", null)?.takeIf { it.isNotBlank() },
+            agency = p.optString("agency", null)?.takeIf { it != "null" && it.isNotBlank() },
+            agencyUrl = p.optString("agencyUrl", null)?.takeIf { it != "null" && it.isNotBlank() },
+        )
+    }
 }
