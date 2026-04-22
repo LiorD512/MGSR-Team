@@ -222,18 +222,18 @@ async function processSuccessfulUpdate(player, data, docRef, feedRef, tmProfile)
 }
 
 async function runPlayerRefresh() {
-  // Jitter: wait 0-60s before starting so TM doesn't see a pattern
-  const jitter = Math.floor(Math.random() * START_JITTER_MAX_MS);
-  log(`Waiting ${(jitter / 1000).toFixed(0)}s jitter before starting...`);
-  await sleep(jitter);
-
   const startTime = Date.now();
-  log("=== PlayerRefreshWorker started ===");
-
-  const playersRef = db.collection(PLAYERS_TABLE);
-  const feedRef = db.collection(FEED_EVENTS_TABLE);
 
   try {
+    // Jitter: wait 0-60s before starting so TM doesn't see a pattern
+    const jitter = Math.floor(Math.random() * START_JITTER_MAX_MS);
+    log(`Waiting ${(jitter / 1000).toFixed(0)}s jitter before starting...`);
+    await sleep(jitter);
+
+    log("=== PlayerRefreshWorker started ===");
+
+    const playersRef = db.collection(PLAYERS_TABLE);
+    const feedRef = db.collection(FEED_EVENTS_TABLE);
     const snapshot = await playersRef.get();
     log(`Fetched ${snapshot.size} players from Firestore`);
 
