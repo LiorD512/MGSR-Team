@@ -401,6 +401,19 @@ fun PlayerInfoScreen(
                     ToastManager.showError(message)
                 }
             }
+
+            launch {
+                viewModel.transferSuccessFlow.collect { event ->
+                    when (event) {
+                        "request_sent" -> ToastManager.showSuccess(context.getString(R.string.agent_transfer_request_sent))
+                        "request_already_pending" -> ToastManager.showInfo(context.getString(R.string.agent_transfer_already_pending))
+                        "transfer_approved" -> ToastManager.showSuccess(context.getString(R.string.agent_transfer_approved))
+                        "transfer_rejected" -> ToastManager.showInfo(context.getString(R.string.agent_transfer_rejected))
+                        "request_cancelled" -> ToastManager.showInfo(context.getString(R.string.agent_transfer_cancelled))
+                        "request_failed" -> ToastManager.showError(context.getString(R.string.agent_transfer_request_failed))
+                    }
+                }
+            }
         }
     }
 

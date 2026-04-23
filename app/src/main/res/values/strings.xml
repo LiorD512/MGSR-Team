@@ -1553,6 +1553,7 @@
     <string name="agent_transfer_approved">Transfer approved! You are now the agent in charge</string>
     <string name="agent_transfer_rejected">Transfer request rejected</string>
     <string name="agent_transfer_cancelled">Transfer request cancelled</string>
+    <string name="agent_transfer_request_failed">Failed to send transfer request. Please try again.</string>
     <string name="notification_transfer_request_title">Agent Transfer Request</string>
     <string name="notification_transfer_request_body">%1$s wants to take over as agent for %2$s</string>
     <string name="notification_transfer_approved_title">Transfer Approved</string>

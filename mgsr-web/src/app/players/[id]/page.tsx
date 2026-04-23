@@ -495,18 +495,23 @@ export default function PlayerInfoPage() {
 
   const handleRequestTransfer = useCallback(async () => {
     if (!player || !id || !currentUserAccountId || !currentUserAccountName) return;
-    const result = await requestAgentTransfer({
-      playerId: id,
-      playerName: player.fullName,
-      playerImage: player.profileImage,
-      platform: 'Men',
-      fromAgentId: player.agentInChargeId || '',
-      fromAgentName: player.agentInChargeName,
-      toAgentId: currentUserAccountId,
-      toAgentName: currentUserAccountName,
-    });
-    if (!result) {
-      alert(t('agent_transfer_already_pending'));
+    try {
+      const result = await requestAgentTransfer({
+        playerId: id,
+        playerName: player.fullName,
+        playerImage: player.profileImage,
+        platform: 'men',
+        fromAgentId: player.agentInChargeId || '',
+        fromAgentName: player.agentInChargeName,
+        toAgentId: currentUserAccountId,
+        toAgentName: currentUserAccountName,
+      });
+      if (!result) {
+        alert(t('agent_transfer_already_pending'));
+      }
+    } catch (e) {
+      console.error('requestAgentTransfer failed:', e);
+      alert(t('agent_transfer_request_failed') || 'Failed to send transfer request. Please try again.');
     }
   }, [player, id, currentUserAccountId, currentUserAccountName, t]);
 

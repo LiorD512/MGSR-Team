@@ -152,7 +152,7 @@ function validateOfferCreate(data) {
 
 function validateTransferRequest(data) {
   const playerId = requireId(data.playerId, "playerId");
-  const fromAgentId = requireId(data.fromAgentId, "fromAgentId");
+  const fromAgentId = str(data.fromAgentId); // May be empty if player has no current agent
   const toAgentId = requireId(data.toAgentId, "toAgentId");
   return {
     playerId,

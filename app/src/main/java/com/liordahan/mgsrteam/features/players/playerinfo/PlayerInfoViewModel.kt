@@ -1868,8 +1868,7 @@ class PlayerInfoViewModel(
                 val player = _playerInfoFlow.value ?: return@launch
                 val docId = _playerDocumentIdFlow.value ?: return@launch
                 val currentUser = _currentUserAccountFlow.value ?: getCurrentUserAccount() ?: return@launch
-                // Allow empty fromAgentId — cloud function uses name fallback
-                val fromAgentId = player.agentInChargeId ?: ""
+                val fromAgentId = player.agentInChargeId.orEmpty()
                 val fromAgentName = player.agentInChargeName
 
                 val result = agentTransferRepository.requestTransfer(
@@ -1887,6 +1886,9 @@ class PlayerInfoViewModel(
                 } else {
                     _transferSuccessFlow.emit("request_already_pending")
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "requestAgentTransfer failed", e)
+                _transferSuccessFlow.emit("request_failed")
             } finally {
                 _isRequestingTransferFlow.value = false
             }
