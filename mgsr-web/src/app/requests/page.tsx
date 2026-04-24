@@ -165,6 +165,7 @@ export default function RequestsPage() {
   const [expandedCountries, setExpandedCountries] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [positionFilter, setPositionFilter] = useState<string>('all');
+  const [countryFilter, setCountryFilter] = useState<string>('all');
   const [matchStatusFilter, setMatchStatusFilter] = useState<'all' | 'matched' | 'unmatched'>('all');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Request | null>(null);
@@ -446,11 +447,24 @@ export default function RequestsPage() {
     return posOrder.filter((p) => posSet.has(p)).concat(posSet.has('Other') ? ['Other'] : []);
   }, [pendingRequests]);
 
+  /** All unique countries present in pending requests, sorted alphabetically */
+  const activeCountries = useMemo(() => {
+    const countrySet = new Set<string>();
+    for (const r of pendingRequests) {
+      const c = r.clubCountry?.trim();
+      if (c) countrySet.add(c);
+    }
+    return Array.from(countrySet).sort((a, b) => a.localeCompare(b));
+  }, [pendingRequests]);
+
   /** Filtered requests based on search, position, and match status */
   const filteredRequests = useMemo(() => {
     let list = pendingRequests;
     if (positionFilter !== 'all') {
       list = list.filter((r) => (normalizePosition(r.position) || 'Other') === positionFilter);
+    }
+    if (countryFilter !== 'all') {
+      list = list.filter((r) => (r.clubCountry?.trim() || '') === countryFilter);
     }
     if (matchStatusFilter === 'matched') {
       list = list.filter((r) => (matchingPlayersByRequestId[r.id] ?? []).length > 0);
@@ -469,7 +483,7 @@ export default function RequestsPage() {
       );
     }
     return list;
-  }, [pendingRequests, positionFilter, matchStatusFilter, searchQuery, matchingPlayersByRequestId]);
+  }, [pendingRequests, positionFilter, countryFilter, matchStatusFilter, searchQuery, matchingPlayersByRequestId]);
 
   /** Stats for summary strip */
   const matchStats = useMemo(() => {
@@ -797,6 +811,36 @@ export default function RequestsPage() {
                 {getPositionDisplayName(pos, isHebrew)}
               </button>
             ))}
+            {activeCountries.length > 1 && (
+              <>
+                <div className="w-px h-5 bg-mgsr-border shrink-0 mx-1" />
+                <button
+                  type="button"
+                  onClick={() => setCountryFilter('all')}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition border flex items-center gap-1 ${
+                    countryFilter === 'all'
+                      ? 'border-sky-500 text-sky-400 bg-sky-500/10'
+                      : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-border/80'
+                  }`}
+                >
+                  🌍 {isHebrew ? 'כל המדינות' : 'All Countries'}
+                </button>
+                {activeCountries.map((country) => (
+                  <button
+                    key={country}
+                    type="button"
+                    onClick={() => setCountryFilter(countryFilter === country ? 'all' : country)}
+                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition border whitespace-nowrap ${
+                      countryFilter === country
+                        ? 'border-sky-500 text-sky-400 bg-sky-500/10'
+                        : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-border/80'
+                    }`}
+                  >
+                    {getCountryDisplayName(country, isHebrew)}
+                  </button>
+                ))}
+              </>
+            )}
             <div className="w-px h-5 bg-mgsr-border shrink-0 mx-1" />
             <button
               type="button"
@@ -838,7 +882,7 @@ export default function RequestsPage() {
         ) : filteredRequests.length === 0 ? (
           <div className="p-12 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center">
             <p className="text-mgsr-muted">{isHebrew ? 'אין תוצאות עם הסינון הנוכחי' : 'No results with current filters'}</p>
-            <button type="button" onClick={() => { setSearchQuery(''); setPositionFilter('all'); setMatchStatusFilter('all'); }} className="text-mgsr-teal text-sm mt-2 hover:underline">
+            <button type="button" onClick={() => { setSearchQuery(''); setPositionFilter('all'); setCountryFilter('all'); setMatchStatusFilter('all'); }} className="text-mgsr-teal text-sm mt-2 hover:underline">
               {isHebrew ? 'נקה סינונים' : 'Clear filters'}
             </button>
           </div>
