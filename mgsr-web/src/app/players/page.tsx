@@ -191,6 +191,7 @@ export default function PlayersPage() {
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { clubName?: string; clubLogo?: string; clubCountry?: string; clubCountryFlag?: string; notes?: string; contactName?: string; minAge?: number; maxAge?: number; ageDoesntMatter?: boolean; dominateFoot?: string; euOnly?: boolean; salaryRange?: string; transferFee?: string })[]>([]);
   const [expandedMatchingPlayerId, setExpandedMatchingPlayerId] = useState<string | null>(null);
+  const [sortOption, setSortOption] = useState<'default' | 'age' | 'marketValue' | 'name'>('default');
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -579,7 +580,39 @@ export default function PlayersPage() {
     return map;
   }, [platform, clubRequests, precomputedRequestMatchResults]);
 
-  const displayList = filtered;
+  const sortedFiltered = useMemo(() => {
+    if (platform !== 'men' || sortOption === 'default') return filtered;
+    const parseMarketValue = (val: string | undefined): number => {
+      if (!val) return 0;
+      const cleaned = val.replace(/[€$£,\s]/g, '').toLowerCase();
+      const match = cleaned.match(/^([\d.]+)(k|m)?$/);
+      if (!match) return 0;
+      const num = parseFloat(match[1]!);
+      if (isNaN(num)) return 0;
+      if (match[2] === 'm') return num * 1_000_000;
+      if (match[2] === 'k') return num * 1_000;
+      return num;
+    };
+    const sorted = [...filtered];
+    switch (sortOption) {
+      case 'age':
+        sorted.sort((a, b) => {
+          const ageA = a.age ? parseInt(a.age, 10) : 999;
+          const ageB = b.age ? parseInt(b.age, 10) : 999;
+          return ageA - ageB;
+        });
+        break;
+      case 'marketValue':
+        sorted.sort((a, b) => parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue));
+        break;
+      case 'name':
+        sorted.sort((a, b) => (a.fullName ?? '').localeCompare(b.fullName ?? ''));
+        break;
+    }
+    return sorted;
+  }, [filtered, sortOption, platform]);
+
+  const displayList = sortedFiltered;
   const isLoading = platform === 'youth' ? youthLoading : platform === 'women' ? womenLoading : playersLoading;
 
   // Restore scroll position after list renders
@@ -968,6 +1001,31 @@ export default function PlayersPage() {
             </div>
           </div>
         </div>
+        )}
+
+        {/* Sort options — men only */}
+        {platform === 'men' && (
+          <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <span className="shrink-0 text-xs font-medium text-mgsr-muted uppercase tracking-wider">{t('players_sort_label')}</span>
+            {([
+              { key: 'default', label: t('players_sort_default') },
+              { key: 'age', label: t('players_sort_age') },
+              { key: 'marketValue', label: t('players_sort_market_value') },
+              { key: 'name', label: t('players_sort_name') },
+            ] as const).map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setSortOption(opt.key)}
+                className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  sortOption === opt.key
+                    ? 'bg-[var(--mgsr-accent)] text-mgsr-dark shadow-sm'
+                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-[var(--mgsr-accent)]/40'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         )}
 
         {/* Mobile filter bottom sheet */}
