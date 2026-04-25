@@ -9,8 +9,9 @@ import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
 import { callShortlistAdd, callScoutProfileFeedbackSet } from '@/lib/callables';
-import { extractPlayerIdFromUrl, getPlayerDetails } from '@/lib/api';
+import { extractPlayerIdFromUrl, getPlayerDetails, getTeammates } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
+import Link from 'next/link';
 import { AGENTS_CONFIG, type AgentId } from '@/lib/scoutAgentConfig';
 import type { ScoutProfileResponse } from '@/types/scoutProfiles';
 import { aiScoutSearch, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
@@ -59,6 +60,23 @@ interface WarRoomReport {
 }
 
 type ReportCache = Record<string, WarRoomReport | { error: string }>;
+
+interface RosterPlayer {
+  id: string;
+  fullName?: string;
+  profileImage?: string;
+  positions?: string[];
+  marketValue?: string;
+  currentClub?: { clubName?: string; clubLogo?: string };
+  age?: string;
+  tmProfile?: string;
+  playerPhoneNumber?: string;
+}
+
+interface RosterTeammateMatch {
+  player: RosterPlayer;
+  matchesPlayedTogether: number;
+}
 
 function shortenPosition(pos: string | undefined): string {
   if (!pos?.trim()) return '—';
@@ -160,15 +178,19 @@ export default function WarRoomPage() {
   const [loadingDiscovery, setLoadingDiscovery] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
-  const [expandedUrl, setExpandedUrl] = useState<string | null>(null);
   const [reportCache, setReportCache] = useState<ReportCache>({});
   const [loadingReport, setLoadingReport] = useState<string | null>(null);
-  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
   const [rosterTmProfiles, setRosterTmProfiles] = useState<Set<string>>(new Set());
+  const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const fetchIdRef = useRef(0);
+
+  // Teammates (played with) state
+  const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
+  const [loadingTeammatesUrl, setLoadingTeammatesUrl] = useState<string | null>(null);
+  const [expandedTeammatesUrl, setExpandedTeammatesUrl] = useState<string | null>(null);
 
   // War Room main tabs: Discovery | AI Scout Agents | AI Scout Search
   const [warRoomTab, setWarRoomTab] = useState<'discovery' | 'scout-agents' | 'ai-scout' | 'find-next'>('discovery');
@@ -221,8 +243,10 @@ export default function WarRoomPage() {
       setShortlistUrls(new Set(snap.docs.map((d) => d.data().tmProfileUrl as string).filter((u): u is string => !!u)));
     });
     const rosterUnsub = onSnapshot(collection(db, 'Players'), (snap) => {
-      const urls = snap.docs
-        .map((d) => (d.data().tmProfile as string)?.trim())
+      const players = snap.docs.map((d) => ({ id: d.id, ...d.data() } as RosterPlayer));
+      setRosterPlayers(players);
+      const urls = players
+        .map((p) => p.tmProfile?.trim())
         .filter((u): u is string => !!u);
       setRosterTmProfiles(new Set(urls));
     });
@@ -395,17 +419,41 @@ export default function WarRoomPage() {
     }
   }, [lang, reportCache]);
 
-  const handleExpand = useCallback(
-    (url: string) => {
-      if (expandedUrl === url) {
-        setExpandedUrl(null);
-        return;
-      }
-      setExpandedUrl(url);
-      fetchReport(url);
-    },
-    [expandedUrl, fetchReport]
-  );
+  // Teammates (played with) helpers
+  const fetchTeammates = useCallback(async (playerUrl: string) => {
+    setLoadingTeammatesUrl(playerUrl);
+    try {
+      const teammates = await getTeammates(playerUrl);
+      const rosterIds = new Set(rosterPlayers.map((p) => extractPlayerIdFromUrl(p.tmProfile)).filter(Boolean));
+      const matches: RosterTeammateMatch[] = teammates
+        .filter((t) => rosterIds.has(extractPlayerIdFromUrl(t.tmProfileUrl) ?? ''))
+        .map((t) => {
+          const id = extractPlayerIdFromUrl(t.tmProfileUrl);
+          const rosterPlayer = rosterPlayers.find((p) => extractPlayerIdFromUrl(p.tmProfile) === id);
+          return rosterPlayer ? { player: rosterPlayer, matchesPlayedTogether: t.matchesPlayedTogether } : null;
+        })
+        .filter((m): m is RosterTeammateMatch => m != null)
+        .sort((a, b) => b.matchesPlayedTogether - a.matchesPlayedTogether);
+      setTeammatesCache((prev) => ({ ...prev, [playerUrl]: matches }));
+    } catch {
+      setTeammatesCache((prev) => ({ ...prev, [playerUrl]: [] }));
+    } finally {
+      setLoadingTeammatesUrl(null);
+    }
+  }, [rosterPlayers]);
+
+  const toggleTeammates = useCallback((url: string) => {
+    setExpandedTeammatesUrl((prev) => (prev === url ? null : url));
+  }, []);
+
+  const handleTeammatesClick = useCallback((e: React.MouseEvent, playerUrl: string) => {
+    e.stopPropagation();
+    if (!playerUrl) return;
+    toggleTeammates(playerUrl);
+    if (!(playerUrl in teammatesCache) && !loadingTeammatesUrl) {
+      fetchTeammates(playerUrl);
+    }
+  }, [toggleTeammates, fetchTeammates, teammatesCache, loadingTeammatesUrl]);
 
   // AI Scout search expand (uses same report cache)
   const handleScoutExpand = useCallback(
@@ -526,15 +574,7 @@ export default function WarRoomPage() {
     [user, rosterTmProfiles, lang]
   );
 
-  const filteredCandidates = (
-    sourceFilter === 'all'
-      ? candidates
-      : sourceFilter === 'request'
-        ? candidates.filter((c) => c.source === 'request_match')
-        : sourceFilter === 'hidden_gem'
-          ? candidates.filter((c) => c.source === 'hidden_gem')
-          : candidates
-  ).filter((c) => {
+  const filteredCandidates = candidates.filter((c) => {
     const url = c.transfermarktUrl;
     if (!url) return true;
     if (Array.from(rosterTmProfiles).some((r) => samePlayer(r, url))) return false;
@@ -696,26 +736,7 @@ export default function WarRoomPage() {
               : 'Market value up to €4m, age 18–30, 2–3 players per position, quality filtered by position stats.'}
           </p>
 
-        {/* Source tabs */}
-        <div className="flex gap-1 p-1.5 rounded-2xl bg-mgsr-card/80 backdrop-blur-md border border-mgsr-border/80 mt-4 sm:mt-6 mb-4 sm:mb-6 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-          {[
-            { key: 'all', label: isHe ? 'הכל' : 'All' },
-            { key: 'request', label: isHe ? 'התאמות לבקשות' : 'Request Matches' },
-            { key: 'hidden_gem', label: isHe ? 'יהלומים חבויים' : 'Hidden Gems' },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setSourceFilter(key)}
-              className={`shrink-0 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap min-h-[40px] ${
-                sourceFilter === key
-                  ? 'bg-gradient-to-r from-purple-500/20 to-indigo-500/15 text-purple-400 border border-purple-500/25 shadow-sm shadow-purple-500/5'
-                  : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-card/80 border border-transparent'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <div className="mt-4 sm:mt-6 mb-4 sm:mb-6" />
 
         {/* Error */}
         {error && (
@@ -790,25 +811,9 @@ export default function WarRoomPage() {
           </div>
         )}
 
-        {/* Discovery feed — filtered tab has no results */}
-        {!loadingDiscovery && candidates.length > 0 && filteredCandidates.length === 0 && !error && (
-          <div className="py-12 text-center rounded-2xl bg-mgsr-card border border-mgsr-border">
-            <p className="text-mgsr-muted">
-              {sourceFilter === 'request'
-                ? (isHe ? 'אין התאמות לבקשות כרגע. נסה "הכל" או הוסף בקשות.' : 'No request matches right now. Try "All" or add club requests.')
-                : (isHe ? 'אין יהלומים חבויים כרגע. נסה "הכל".' : 'No hidden gems right now. Try "All".')}
-            </p>
-          </div>
-        )}
-
         {!loadingDiscovery && filteredCandidates.length > 0 && (
           <div className="space-y-4">
             {filteredCandidates.map((c, idx) => {
-              const isExpanded = expandedUrl === c.transfermarktUrl;
-              const report = reportCache[c.transfermarktUrl];
-              const validReport = report && !('error' in report) ? report : undefined;
-              const isLoadingReport = loadingReport === c.transfermarktUrl;
-              const rec = validReport?.synthesis?.recommendation?.toUpperCase();
               const inRoster = Array.from(rosterTmProfiles).some((r) => samePlayer(r, c.transfermarktUrl));
               const inShortlist = Array.from(shortlistUrls).some((s) => samePlayer(s, c.transfermarktUrl));
               const isAdding = addingUrl === c.transfermarktUrl;
@@ -816,13 +821,8 @@ export default function WarRoomPage() {
               return (
                 <div
                   key={c.transfermarktUrl}
-                  className={`rounded-2xl border transition-all duration-300 cursor-pointer animate-war-card-in war-card-glow ${
-                    isExpanded
-                      ? 'border-purple-500/40 bg-gradient-to-br from-mgsr-card to-purple-950/10 shadow-xl shadow-purple-500/8'
-                      : 'border-mgsr-border/70 bg-mgsr-card hover:border-purple-500/30'
-                  }`}
+                  className="rounded-2xl border transition-all duration-300 animate-war-card-in war-card-glow border-mgsr-border/70 bg-mgsr-card hover:border-purple-500/30"
                   style={{ animationDelay: `${Math.min(idx, 8) * 60}ms` }}
-                  onClick={() => handleExpand(c.transfermarktUrl)}
                 >
                   <div className="p-3 sm:p-5">
                     <div className="flex gap-3 sm:gap-4 items-start">
@@ -835,37 +835,7 @@ export default function WarRoomPage() {
                         }}
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="font-display font-bold text-base sm:text-lg text-mgsr-text truncate">{c.name}</p>
-                          <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
-                            {validReport?.synthesis?.recommendation ? (
-                              <span
-                                className={`inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold shadow-sm ${
-                                  rec === 'SIGN'
-                                    ? 'bg-gradient-to-r from-green-500/25 to-emerald-500/15 text-green-400 border border-green-500/30 shadow-green-500/10'
-                                    : rec === 'MONITOR'
-                                      ? 'bg-gradient-to-r from-amber-500/25 to-orange-500/15 text-amber-400 border border-amber-500/30 shadow-amber-500/10'
-                                      : 'bg-gradient-to-r from-red-500/25 to-rose-500/15 text-red-400 border border-red-500/30 shadow-red-500/10'
-                                }`}
-                              >
-                                {rec === 'SIGN' && <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
-                                {rec === 'MONITOR' && <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>}
-                                {rec === 'PASS' && <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>}
-                                {rec === 'SIGN' ? t('rec_sign') : rec === 'MONITOR' ? t('rec_monitor') : rec === 'PASS' ? t('rec_pass') : validReport.synthesis.recommendation}
-                              </span>
-                            ) : (
-                              <span className="text-mgsr-muted text-[10px] sm:text-xs hidden sm:inline opacity-60">{isHe ? 'לחץ לדוח' : 'Tap for report'}</span>
-                            )}
-                            <svg
-                              className={`w-4 h-4 sm:w-5 sm:h-5 text-mgsr-muted transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        </div>
+                        <p className="font-display font-bold text-base sm:text-lg text-mgsr-text truncate">{c.name}</p>
                         <p className="text-xs sm:text-sm text-mgsr-muted mt-0.5">
                           {c.age}
                           <span className="mx-1 sm:mx-1.5">·</span>
@@ -885,23 +855,18 @@ export default function WarRoomPage() {
                             className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
                               c.source === 'request_match'
                                 ? 'bg-mgsr-teal/20 text-mgsr-teal'
-                                : sourceFilter === 'hidden_gem' && c.source === 'hidden_gem'
+                                : c.source === 'hidden_gem'
                                   ? 'bg-amber-500/20 text-amber-400'
                                   : 'bg-purple-500/20 text-purple-400'
                             }`}
-                            title={sourceFilter === 'all' && c.source !== 'request_match' ? (isHe ? 'שחקן שנמצא בחיפוש כללי' : 'Player found in general discovery') : undefined}
                           >
-                            {sourceFilter === 'all'
-                              ? c.source === 'request_match'
-                                ? c.sourceLabel
-                                : (isHe ? 'גילוי' : 'Discovery')
-                              : c.source === 'request_match'
-                                ? c.sourceLabel
-                                : c.source === 'hidden_gem'
-                                  ? (isHe ? `יהלום חבוי ${c.sourceLabel.replace('Hidden Gem ', '')}` : c.sourceLabel)
-                                  : (isHe ? 'גילוי' : 'Discovery')}
+                            {c.source === 'request_match'
+                              ? c.sourceLabel
+                              : c.source === 'hidden_gem'
+                                ? (isHe ? `יהלום חבוי ${c.sourceLabel.replace('Hidden Gem ', '')}` : c.sourceLabel)
+                                : (isHe ? 'גילוי' : 'Discovery')}
                           </span>
-                          {sourceFilter === 'hidden_gem' && c.hiddenGemScore != null && (
+                          {c.source === 'hidden_gem' && c.hiddenGemScore != null && (
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/30 text-amber-300 border border-amber-500/40">
                               ★ {c.hiddenGemScore}
                             </span>
@@ -944,7 +909,7 @@ export default function WarRoomPage() {
                             )}
                           </p>
                         )}
-                        {sourceFilter === 'hidden_gem' && c.hiddenGemReason && (
+                        {c.source === 'hidden_gem' && c.hiddenGemReason && (
                           <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-start">
                             <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1.5">
                               {isHe ? 'למה יהלום חבוי?' : 'Why hidden gem?'}
@@ -954,143 +919,137 @@ export default function WarRoomPage() {
                             </p>
                           </div>
                         )}
-                        <div className="flex flex-wrap gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
-                          <a
-                            href={c.transfermarktUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-border text-mgsr-muted hover:bg-mgsr-teal/20 hover:text-mgsr-teal border border-mgsr-border transition min-h-[36px]"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                            {isHe ? 'Transfermarkt' : 'Transfermarkt'}
-                          </a>
-                          {!inRoster && (
-                            <button
-                              onClick={() => addToShortlist(c)}
-                              disabled={isAdding || inShortlist}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 border border-mgsr-teal/40 transition disabled:opacity-50 disabled:cursor-not-allowed min-h-[36px]"
-                            >
-                              {isAdding ? (
-                                <>
-                                  <div className="w-3 h-3 border-2 border-mgsr-teal/50 border-t-mgsr-teal rounded-full animate-spin" />
-                                  {isHe ? 'מוסיף...' : 'Adding...'}
-                                </>
-                              ) : inShortlist ? (
-                                <>{isHe ? 'ברשימת מעקב' : 'In shortlist'}</>
-                              ) : (
-                                <>
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                  </svg>
-                                  {isHe ? 'הוסף לרשימת מעקב' : 'Add to shortlist'}
-                                </>
+
+                        {/* Roster teammates (played with) */}
+                        {(() => {
+                          const tmUrl = c.transfermarktUrl;
+                          const rosterTeammates = tmUrl ? teammatesCache[tmUrl] : undefined;
+                          const isLoadingTm = loadingTeammatesUrl === tmUrl;
+                          const isTmExpanded = expandedTeammatesUrl === tmUrl;
+                          return (
+                            <div className="mt-3">
+                              <button
+                                type="button"
+                                onClick={(e) => handleTeammatesClick(e, tmUrl)}
+                                className="w-full flex items-center gap-2 py-2.5 px-3 rounded-xl bg-mgsr-dark/60 border border-mgsr-border hover:border-mgsr-teal/30 transition-all text-left rtl:text-right"
+                              >
+                                <svg className="w-4 h-4 text-mgsr-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <span className="text-sm text-mgsr-text flex-1">
+                                  {isLoadingTm
+                                    ? t('releases_roster_teammates_loading')
+                                    : rosterTeammates != null
+                                      ? t('releases_roster_teammates').replace('{count}', String(rosterTeammates.length))
+                                      : t('releases_roster_teammates_tap')}
+                                </span>
+                                <svg
+                                  className={`w-4 h-4 text-mgsr-muted shrink-0 transition-transform duration-200 ${isTmExpanded ? 'rotate-180' : ''}`}
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+                              {isTmExpanded && (
+                                <div className="mt-2 space-y-2">
+                                  {isLoadingTm ? (
+                                    <div className="py-6 flex justify-center">
+                                      <div className="w-5 h-5 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" />
+                                    </div>
+                                  ) : rosterTeammates?.length === 0 ? (
+                                    <p className="text-xs text-mgsr-muted py-3 px-3 rounded-lg bg-mgsr-dark/40 border border-mgsr-border/60">
+                                      {t('releases_no_roster_teammates')}
+                                    </p>
+                                  ) : (
+                                    rosterTeammates?.map((match) => (
+                                      <div key={match.player.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-mgsr-dark/50 border border-mgsr-border/80 hover:border-mgsr-teal/40 hover:bg-mgsr-dark/70 transition-all">
+                                        <Link
+                                          href={`/players/${match.player.id}?from=/war-room`}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="flex items-center gap-3 flex-1 min-w-0"
+                                        >
+                                          <img
+                                            src={match.player.profileImage || TM_DEFAULT_IMG}
+                                            alt=""
+                                            className="w-9 h-9 rounded-full object-cover bg-mgsr-card ring-1 ring-mgsr-border"
+                                          />
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-mgsr-text truncate">
+                                              {match.player.fullName || 'Unknown'}
+                                            </p>
+                                            <p className="text-xs text-mgsr-muted truncate">
+                                              {match.player.positions?.filter(Boolean).join(', ') || '—'} • {match.player.age ? t('players_age_display').replace('{age}', match.player.age) : '—'} • {match.player.marketValue || '—'}
+                                            </p>
+                                          </div>
+                                        </Link>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          {match.player.playerPhoneNumber && (
+                                            <a
+                                              href={`https://wa.me/${match.player.playerPhoneNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hey ${(match.player.fullName || '').split(' ')[0]},\nHope everything is well at your side.\nI need your help with something.\nAny chance you have ${c.name || ''} contact number?\nThank you!`)}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              onClick={(e) => e.stopPropagation()}
+                                              title={`WhatsApp ${match.player.fullName || ''}`}
+                                              className="p-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/25 transition-colors"
+                                            >
+                                              <svg className="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                            </a>
+                                          )}
+                                          <span className="text-xs font-medium text-mgsr-teal px-2 py-0.5 rounded-md bg-mgsr-teal/15">
+                                            {t('releases_games_together').replace('{n}', String(match.matchesPlayedTogether))}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
                               )}
-                            </button>
-                          )}
-                        </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Action buttons — end of card, centered vertically */}
+                      <div className="flex flex-col gap-2 shrink-0 self-center">
+                        <a
+                          href={c.transfermarktUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-mgsr-border/80 text-mgsr-muted hover:bg-mgsr-teal/20 hover:text-mgsr-teal border border-mgsr-border transition whitespace-nowrap"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          Transfermarkt
+                        </a>
+                        {!inRoster && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); addToShortlist(c); }}
+                            disabled={isAdding || inShortlist}
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 border border-mgsr-teal/40 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                          >
+                            {isAdding ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-mgsr-teal/50 border-t-mgsr-teal rounded-full animate-spin" />
+                                {isHe ? 'מוסיף...' : 'Adding...'}
+                              </>
+                            ) : inShortlist ? (
+                              <>{isHe ? 'ברשימת מעקב' : 'In shortlist'}</>
+                            ) : (
+                              <>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                {isHe ? 'הוסף למעקב' : 'Shortlist'}
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
-
-                    {/* Expanded report */}
-                    {isExpanded && (
-                      <div className="mt-3 sm:mt-5 pt-3 sm:pt-5 border-t border-purple-500/20">
-                        {isLoadingReport && (
-                          <div className="flex items-center gap-3 text-mgsr-muted py-5">
-                            <div className="war-orbital" style={{ width: 32, height: 32 }}>
-                              <div className="ring ring-1" />
-                              <div className="ring ring-2" />
-                              <div className="core" />
-                            </div>
-                            <div>
-                              <span className="text-sm text-purple-400 font-medium">{isHe ? 'מריץ ניתוח מולטי-סוכנים...' : 'Running multi-agent analysis...'}</span>
-                              <div className="war-dots mt-1"><span className="bg-purple-400" /><span className="bg-purple-400" /><span className="bg-purple-400" /></div>
-                            </div>
-                          </div>
-                        )}
-                        {validReport && (
-                          <div className="space-y-4">
-                            {validReport.synthesis && (
-                              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/15 via-purple-500/10 to-indigo-500/10 border border-purple-500/25 shadow-sm shadow-purple-500/5">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <div className="w-6 h-6 rounded-lg bg-purple-500/25 flex items-center justify-center">
-                                    <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                  </div>
-                                  <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider">
-                                    {isHe ? 'סיכום' : 'Synthesis'}
-                                  </h4>
-                                </div>
-                                <p className="text-sm text-mgsr-text leading-relaxed">
-                                  {validReport.synthesis.executive_summary}
-                                </p>
-                                {validReport.synthesis.key_risks?.length ? (
-                                  <p className="text-xs text-mgsr-muted mt-2">
-                                    {isHe ? 'סיכונים:' : 'Risks:'} {validReport.synthesis.key_risks.join('; ')}
-                                  </p>
-                                ) : null}
-                                {validReport.synthesis.key_opportunities?.length ? (
-                                  <p className="text-xs text-mgsr-muted mt-1">
-                                    {isHe ? 'הזדמנויות:' : 'Opportunities:'} {validReport.synthesis.key_opportunities.join('; ')}
-                                  </p>
-                                ) : null}
-                              </div>
-                            )}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                              {validReport.stats?.summary && (
-                                <div className="p-3 rounded-xl bg-mgsr-dark/80 border border-mgsr-border/80 hover:border-blue-400/30 transition-colors">
-                                  <div className="flex items-center gap-1.5 mb-1.5">
-                                    <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
-                                    <h5 className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">
-                                      {isHe ? 'סטטיסטיקות' : 'Stats'}
-                                    </h5>
-                                  </div>
-                                  <p className="text-xs text-mgsr-text">{validReport.stats.summary}</p>
-                                </div>
-                              )}
-                              {validReport.market?.summary && (
-                                <div className="p-3 rounded-xl bg-mgsr-dark/80 border border-mgsr-border/80 hover:border-emerald-400/30 transition-colors">
-                                  <div className="flex items-center gap-1.5 mb-1.5">
-                                    <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>
-                                    <h5 className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-                                      {isHe ? 'שוק' : 'Market'}
-                                    </h5>
-                                  </div>
-                                  <p className="text-xs text-mgsr-text">{validReport.market.summary}</p>
-                                </div>
-                              )}
-                              {validReport.tactics?.summary && (
-                                <div className="p-3 rounded-xl bg-mgsr-dark/80 border border-mgsr-border/80 hover:border-amber-400/30 transition-colors">
-                                  <div className="flex items-center gap-1.5 mb-1.5">
-                                    <svg className="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" /></svg>
-                                    <h5 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
-                                      {isHe ? 'טקטיקה' : 'Tactics'}
-                                    </h5>
-                                  </div>
-                                  <p className="text-xs text-mgsr-text">{validReport.tactics.summary}</p>
-                                </div>
-                              )}
-                            </div>
-                            {c.transfermarktUrl && (
-                              <a
-                                href={c.transfermarktUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-block text-sm text-mgsr-teal hover:underline"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {isHe ? 'צפה ב-Transfermarkt' : 'View on Transfermarkt'} →
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        {report && 'error' in report && (
-                          <p className="text-red-400 text-sm">{report.error}</p>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               );
@@ -1366,6 +1325,96 @@ export default function WarRoomPage() {
                                       </span>
                                     )}
                                   </div>
+
+                                  {/* Roster teammates (played with) */}
+                                  {(() => {
+                                    const tmUrl = p.tmProfileUrl;
+                                    const rosterTeammates = tmUrl ? teammatesCache[tmUrl] : undefined;
+                                    const isLoadingTm = loadingTeammatesUrl === tmUrl;
+                                    const isTmExpanded = expandedTeammatesUrl === tmUrl;
+                                    return (
+                                      <div className="mt-2">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleTeammatesClick(e, tmUrl)}
+                                          className="w-full flex items-center gap-2 py-2 px-3 rounded-xl bg-mgsr-dark/60 border border-mgsr-border hover:border-mgsr-teal/30 transition-all text-left rtl:text-right"
+                                        >
+                                          <svg className="w-3.5 h-3.5 text-mgsr-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                          </svg>
+                                          <span className="text-xs text-mgsr-text flex-1">
+                                            {isLoadingTm
+                                              ? t('releases_roster_teammates_loading')
+                                              : rosterTeammates != null
+                                                ? t('releases_roster_teammates').replace('{count}', String(rosterTeammates.length))
+                                                : t('releases_roster_teammates_tap')}
+                                          </span>
+                                          <svg
+                                            className={`w-3.5 h-3.5 text-mgsr-muted shrink-0 transition-transform duration-200 ${isTmExpanded ? 'rotate-180' : ''}`}
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                          >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                          </svg>
+                                        </button>
+                                        {isTmExpanded && (
+                                          <div className="mt-2 space-y-2">
+                                            {isLoadingTm ? (
+                                              <div className="py-4 flex justify-center">
+                                                <div className="w-5 h-5 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" />
+                                              </div>
+                                            ) : rosterTeammates?.length === 0 ? (
+                                              <p className="text-xs text-mgsr-muted py-2 px-3 rounded-lg bg-mgsr-dark/40 border border-mgsr-border/60">
+                                                {t('releases_no_roster_teammates')}
+                                              </p>
+                                            ) : (
+                                              rosterTeammates?.map((match) => (
+                                                <div key={match.player.id} className="flex items-center gap-3 p-2 rounded-xl bg-mgsr-dark/50 border border-mgsr-border/80 hover:border-mgsr-teal/40 hover:bg-mgsr-dark/70 transition-all">
+                                                  <Link
+                                                    href={`/players/${match.player.id}?from=/war-room`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="flex items-center gap-2 flex-1 min-w-0"
+                                                  >
+                                                    <img
+                                                      src={match.player.profileImage || TM_DEFAULT_IMG}
+                                                      alt=""
+                                                      className="w-8 h-8 rounded-full object-cover bg-mgsr-card ring-1 ring-mgsr-border"
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                      <p className="text-xs font-medium text-mgsr-text truncate">
+                                                        {match.player.fullName || 'Unknown'}
+                                                      </p>
+                                                      <p className="text-[10px] text-mgsr-muted truncate">
+                                                        {match.player.positions?.filter(Boolean).join(', ') || '—'} • {match.player.age ? t('players_age_display').replace('{age}', match.player.age) : '—'}
+                                                      </p>
+                                                    </div>
+                                                  </Link>
+                                                  <div className="flex items-center gap-1.5 shrink-0">
+                                                    {match.player.playerPhoneNumber && (
+                                                      <a
+                                                        href={`https://wa.me/${match.player.playerPhoneNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hey ${(match.player.fullName || '').split(' ')[0]},\nHope everything is well at your side.\nI need your help with something.\nAny chance you have ${p.playerName || ''} contact number?\nThank you!`)}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        title={`WhatsApp ${match.player.fullName || ''}`}
+                                                        className="p-1 rounded-lg bg-green-500/10 hover:bg-green-500/25 transition-colors"
+                                                      >
+                                                        <svg className="w-3.5 h-3.5 text-green-400" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                                      </a>
+                                                    )}
+                                                    <span className="text-[10px] font-medium text-mgsr-teal px-1.5 py-0.5 rounded-md bg-mgsr-teal/15">
+                                                      {t('releases_games_together').replace('{n}', String(match.matchesPlayedTogether))}
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              ))
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             );
@@ -1780,6 +1829,95 @@ export default function WarRoomPage() {
                                     </button>
                                   )}
                                 </div>
+
+                                {/* Roster teammates (played with) */}
+                                {url && (() => {
+                                  const rosterTeammates = teammatesCache[url];
+                                  const isLoadingTm = loadingTeammatesUrl === url;
+                                  const isTmExpanded = expandedTeammatesUrl === url;
+                                  return (
+                                    <div className="mt-2">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleTeammatesClick(e, url)}
+                                        className="w-full flex items-center gap-2 py-2.5 px-3 rounded-xl bg-mgsr-dark/60 border border-mgsr-border hover:border-cyan-500/30 transition-all text-left rtl:text-right"
+                                      >
+                                        <svg className="w-4 h-4 text-mgsr-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        <span className="text-sm text-mgsr-text flex-1">
+                                          {isLoadingTm
+                                            ? t('releases_roster_teammates_loading')
+                                            : rosterTeammates != null
+                                              ? t('releases_roster_teammates').replace('{count}', String(rosterTeammates.length))
+                                              : t('releases_roster_teammates_tap')}
+                                        </span>
+                                        <svg
+                                          className={`w-4 h-4 text-mgsr-muted shrink-0 transition-transform duration-200 ${isTmExpanded ? 'rotate-180' : ''}`}
+                                          fill="none"
+                                          viewBox="0 0 24 24"
+                                          stroke="currentColor"
+                                        >
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                      </button>
+                                      {isTmExpanded && (
+                                        <div className="mt-2 space-y-2">
+                                          {isLoadingTm ? (
+                                            <div className="py-6 flex justify-center">
+                                              <div className="w-5 h-5 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" />
+                                            </div>
+                                          ) : rosterTeammates?.length === 0 ? (
+                                            <p className="text-xs text-mgsr-muted py-3 px-3 rounded-lg bg-mgsr-dark/40 border border-mgsr-border/60">
+                                              {t('releases_no_roster_teammates')}
+                                            </p>
+                                          ) : (
+                                            rosterTeammates?.map((match) => (
+                                              <div key={match.player.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-mgsr-dark/50 border border-mgsr-border/80 hover:border-mgsr-teal/40 hover:bg-mgsr-dark/70 transition-all">
+                                                <Link
+                                                  href={`/players/${match.player.id}?from=/war-room`}
+                                                  onClick={(e) => e.stopPropagation()}
+                                                  className="flex items-center gap-3 flex-1 min-w-0"
+                                                >
+                                                  <img
+                                                    src={match.player.profileImage || TM_DEFAULT_IMG}
+                                                    alt=""
+                                                    className="w-9 h-9 rounded-full object-cover bg-mgsr-card ring-1 ring-mgsr-border"
+                                                  />
+                                                  <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-mgsr-text truncate">
+                                                      {match.player.fullName || 'Unknown'}
+                                                    </p>
+                                                    <p className="text-xs text-mgsr-muted truncate">
+                                                      {match.player.positions?.filter(Boolean).join(', ') || '—'} • {match.player.age ? t('players_age_display').replace('{age}', match.player.age) : '—'} • {match.player.marketValue || '—'}
+                                                    </p>
+                                                  </div>
+                                                </Link>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                  {match.player.playerPhoneNumber && (
+                                                    <a
+                                                      href={`https://wa.me/${match.player.playerPhoneNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hey ${(match.player.fullName || '').split(' ')[0]},\nHope everything is well at your side.\nI need your help with something.\nAny chance you have ${s.name || ''} contact number?\nThank you!`)}`}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      onClick={(e) => e.stopPropagation()}
+                                                      title={`WhatsApp ${match.player.fullName || ''}`}
+                                                      className="p-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/25 transition-colors"
+                                                    >
+                                                      <svg className="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                                    </a>
+                                                  )}
+                                                  <span className="text-xs font-medium text-mgsr-teal px-2 py-0.5 rounded-md bg-mgsr-teal/15">
+                                                    {t('releases_games_together').replace('{n}', String(match.matchesPlayedTogether))}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            ))
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </div>
 
