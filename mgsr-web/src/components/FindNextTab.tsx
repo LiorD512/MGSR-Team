@@ -153,6 +153,54 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
+/** Weighted random sample: picks `count` items from `pool`, favoring higher scores but with variety. */
+function weightedRandomSample(pool: FindNextResult[], count: number): FindNextResult[] {
+  if (pool.length <= count) return shuffleArray(pool);
+  const selected: FindNextResult[] = [];
+  const remaining = [...pool];
+  for (let i = 0; i < count && remaining.length > 0; i++) {
+    // Use score^0.5 as weight — softens the bias so lower-ranked players still appear
+    const weights = remaining.map((p) => Math.pow(Math.max(p.find_next_score, 0.01), 0.5));
+    const totalWeight = weights.reduce((s, w) => s + w, 0);
+    let r = Math.random() * totalWeight;
+    let idx = 0;
+    for (idx = 0; idx < weights.length - 1; idx++) {
+      r -= weights[idx];
+      if (r <= 0) break;
+    }
+    selected.push(remaining[idx]);
+    remaining.splice(idx, 1);
+  }
+  return selected;
+}
+
+const SEEN_URLS_STORAGE_KEY = 'findNext_seenUrls';
+const SEEN_URLS_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function loadSeenUrls(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SEEN_URLS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as { urls: string[]; ts: number };
+    if (Date.now() - parsed.ts > SEEN_URLS_TTL_MS) {
+      localStorage.removeItem(SEEN_URLS_STORAGE_KEY);
+      return new Set();
+    }
+    return new Set(parsed.urls);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveSeenUrls(urls: Set<string>) {
+  try {
+    localStorage.setItem(
+      SEEN_URLS_STORAGE_KEY,
+      JSON.stringify({ urls: Array.from(urls), ts: Date.now() })
+    );
+  } catch { /* quota exceeded — ignore */ }
+}
+
 const VALUE_PRESETS = [
   { label: '€500K', value: 500000 },
   { label: '€1M', value: 1000000 },
@@ -184,7 +232,8 @@ export default function FindNextTab() {
   const [expandedTeammatesUrl, setExpandedTeammatesUrl] = useState<string | null>(null);
 
   // Track previously seen player URLs so re-searches return fresh results
-  const seenUrlsRef = useRef<Set<string>>(new Set());
+  // Persisted in localStorage so variety survives page reloads (24h TTL)
+  const seenUrlsRef = useRef<Set<string>>(loadSeenUrls());
   const lastSearchRef = useRef<string>('');
 
   useEffect(() => {
@@ -325,12 +374,12 @@ export default function FindNextTab() {
         player_name: name,
         age_max: String(ageMax),
         lang: lang,
-        limit: '15',
+        limit: '80', // Request large pool; we randomly sample 15 on the client for variety
       });
       if (valueMax > 0) {
         params.set('value_max', String(valueMax));
       }
-      // Exclude previously seen players so re-searches return fresh results
+      // Exclude previously seen players (persisted in localStorage) so re-searches return fresh results
       if (seenUrlsRef.current.size > 0) {
         params.set('exclude_urls', Array.from(seenUrlsRef.current).join(','));
       }
@@ -342,11 +391,14 @@ export default function FindNextTab() {
       if (data.error) {
         setError(data.error);
       } else {
-        // Track URLs of returned players so next search excludes them
+        // Randomly sample 15 from the larger pool — weighted by score but with variety
+        const sampled = weightedRandomSample(data.results, 15);
+        // Track ALL returned URLs (not just sampled) so future searches exclude the full pool
         for (const r of data.results) {
           if (r.url) seenUrlsRef.current.add(r.url);
         }
-        setResponse(data);
+        saveSeenUrls(seenUrlsRef.current);
+        setResponse({ ...data, results: sampled, result_count: sampled.length });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
