@@ -766,10 +766,9 @@ export default function RequestsPage() {
           )}
         </div>
 
-        {/* Search + Filter bar */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
-          {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-mgsr-card border border-mgsr-border flex-1 sm:max-w-sm">
+        {/* Search bar (full width, above filters) */}
+        <div className="mb-3">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-mgsr-card border border-mgsr-border w-full">
             <svg className="w-4 h-4 text-mgsr-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input
               type="text"
@@ -784,8 +783,9 @@ export default function RequestsPage() {
               </button>
             )}
           </div>
-          {/* Position filter pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        </div>
+        {/* Position and other filter pills (below search) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none mb-4">
             <button
               type="button"
               onClick={() => setPositionFilter('all')}
@@ -1486,7 +1486,6 @@ export default function RequestsPage() {
             onClose={() => setShowManageLinks(false)}
           />
         )}
-      </div>
     </AppLayout>
   );
 }
