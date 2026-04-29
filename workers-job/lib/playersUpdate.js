@@ -118,6 +118,14 @@ async function updatePlayerByTmProfile(tmProfile) {
   try {
     const $ = await fetchDocument(url);
 
+    // Sentinel: a real active profile always renders the market-value box.
+    // Anomalous TM responses (retired-archive layouts, partial pages) lack it
+    // and would otherwise yield empty club / positions / market value that
+    // overwrite valid data in Firestore.
+    if ($("div.data-header__box--small").length === 0) {
+      return { success: false, error: "Profile page not rendered (no market value box)" };
+    }
+
     // Info-table Citizenship row has ALL citizenships; header itemprop only has primary
     const citizenshipLabel = $('span.info-table__content--regular').filter(function() {
       return $(this).text().trim().startsWith('Citizenship');
