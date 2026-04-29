@@ -141,7 +141,10 @@ async function writeFeedEvent(feedRef, event) {
 async function processSuccessfulUpdate(player, data, docRef, feedRef, tmProfile) {
   const currentValue = player.marketValue;
   const newValueRaw = data.marketValue;
-  const newValue = newValueRaw?.trim() ? newValueRaw : "€0";
+  // If the parser returned a blank market value despite the sentinel passing,
+  // keep the existing value rather than silently coercing to "€0". A genuine
+  // "no value" profile renders the MV box with "-" or "€0" inside.
+  const newValue = newValueRaw?.trim() ? newValueRaw.trim() : currentValue;
 
   const valueChanged = !(
     isNoMarketValue(currentValue) &&
@@ -160,7 +163,7 @@ async function processSuccessfulUpdate(player, data, docRef, feedRef, tmProfile)
   }
   const trimmedHistory = history.slice(-MAX_HISTORY_ENTRIES);
 
-  const club = data.currentClub
+  const club = data.currentClub?.clubName
     ? {
         clubName: data.currentClub.clubName,
         clubLogo: data.currentClub.clubLogo,
@@ -200,7 +203,7 @@ async function processSuccessfulUpdate(player, data, docRef, feedRef, tmProfile)
     nationalityFlags: data.citizenshipFlags?.length ? data.citizenshipFlags : (player.nationalityFlags || []),
     age: data.age || player.age,
     contractExpired: data.contract || player.contractExpired,
-    positions: data.positions || player.positions,
+    positions: data.positions?.length ? data.positions : player.positions,
     currentClub: club || player.currentClub,
     marketValueHistory: trimmedHistory,
     lastRefreshedAt: now,
