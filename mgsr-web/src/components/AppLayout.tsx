@@ -22,9 +22,10 @@ const navItems = [
   { href: '/releases', labelKey: 'nav_releases' },
   { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
   { href: '/returnees', labelKey: 'nav_returnee' },
-  { href: '/news', labelKey: 'nav_news' },
+  // DISABLED — Vercel cost optimization (May 2026)
+  // { href: '/news', labelKey: 'nav_news' },
   { href: '/war-room', labelKey: 'nav_war_room' },
-  { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
+  // { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
   { href: '/portfolio', labelKey: 'nav_portfolio' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
@@ -36,7 +37,8 @@ const womenNavItems = [
   { href: '/tasks', labelKey: 'nav_tasks' },
   { href: '/players', labelKey: 'nav_players_women' },
   { href: '/shortlist', labelKey: 'nav_shortlist' },
-  { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
+  // DISABLED — Vercel cost optimization (May 2026)
+  // { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
   { href: '/portfolio', labelKey: 'nav_portfolio' },
@@ -151,14 +153,15 @@ function NavContent({
   );
 }
 
-const WOMEN_ALLOWED_PATHS = ['/dashboard', '/tasks', '/players', '/players/add', '/portfolio', '/shortlist', '/contacts', '/requests', '/jewish-finder'];
+const WOMEN_ALLOWED_PATHS = ['/dashboard', '/tasks', '/players', '/players/add', '/portfolio', '/shortlist', '/contacts', '/requests' /* , '/jewish-finder' — DISABLED */];
 function isWomenAllowedPath(pathname: string | null): boolean {
   if (!pathname) return false;
   if (pathname === '/dashboard' || pathname === '/tasks') return true;
   if (pathname === '/players' || pathname === '/players/add') return true;
   if (pathname === '/portfolio') return true;
   if (pathname === '/shortlist' || pathname === '/contacts' || pathname === '/requests') return true;
-  if (pathname === '/jewish-finder') return true;
+  // DISABLED — Vercel cost optimization (May 2026)
+  // if (pathname === '/jewish-finder') return true;
   if (pathname.startsWith('/players/women/')) return true;
   return false;
 }

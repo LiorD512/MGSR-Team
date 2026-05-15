@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 
-export const dynamic = 'force-dynamic';
+// REMOVED force-dynamic — layout is purely static shell (all pages are 'use client')
+// This allows Vercel to cache the layout from CDN instead of spinning up a function per visit
+// export const dynamic = 'force-dynamic';
 
 export const viewport: Viewport = {
   width: 'device-width',
