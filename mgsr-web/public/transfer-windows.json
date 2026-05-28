@@ -1,4 +1,12 @@
 {
-  "windows": [],
-  "updatedAt": "2026-05-27T11:36:36.893Z"
+  "windows": [
+    {
+      "countryName": "Chinese Taipei",
+      "countryCode": "tw",
+      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/164.png",
+      "confederation": "AFC",
+      "daysLeft": 54
+    }
+  ],
+  "updatedAt": "2026-05-28T11:36:35.491Z"
 }
