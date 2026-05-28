@@ -569,7 +569,8 @@ private fun ContractFinisherFilterSheetContent(
         ContractFinisherMarketValueRange.RANGE_150K_500K to R.string.contract_finisher_filter_value_150k_500k,
         ContractFinisherMarketValueRange.RANGE_500K_1M to R.string.contract_finisher_filter_value_500k_1m,
         ContractFinisherMarketValueRange.RANGE_1M_2M to R.string.contract_finisher_filter_value_1m_2m,
-        ContractFinisherMarketValueRange.RANGE_2M_3M to R.string.contract_finisher_filter_value_2m_3m
+        ContractFinisherMarketValueRange.RANGE_2M_3M to R.string.contract_finisher_filter_value_2m_3m,
+        ContractFinisherMarketValueRange.RANGE_3M_5M to R.string.contract_finisher_filter_value_3m_5m
     )
 
     Column(

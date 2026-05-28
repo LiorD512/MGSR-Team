@@ -856,7 +856,7 @@ app.get('/api/transfermarkt/releases', async (req, res) => {
 
 // ─── Contract Finishers (contracts expiring in next transfer window) ─────────────
 const CF_MIN_VALUE = 150000;
-const CF_MAX_VALUE = 3000000;
+const CF_MAX_VALUE = 5000000;
 const CF_MAX_AGE = 31;
 const CF_MAX_PAGES = 80;
 const CF_BATCH_SIZE = 3;

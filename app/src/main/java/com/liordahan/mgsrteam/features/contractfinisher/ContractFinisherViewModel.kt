@@ -35,7 +35,8 @@ enum class ContractFinisherMarketValueRange(val minValue: Int?, val maxValue: In
     RANGE_150K_500K(150_000, 500_000),
     RANGE_500K_1M(500_000, 1_000_000),
     RANGE_1M_2M(1_000_000, 2_000_000),
-    RANGE_2M_3M(2_000_000, 3_000_000)
+    RANGE_2M_3M(2_000_000, 3_000_000),
+    RANGE_3M_5M(3_000_000, 5_000_000)
 }
 
 data class ContractFinisherUiState(

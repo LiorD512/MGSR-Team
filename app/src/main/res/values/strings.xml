@@ -365,6 +365,7 @@
     <string name="contract_finisher_filter_value_500k_1m">€500K–1M</string>
     <string name="contract_finisher_filter_value_1m_2m">€1M–2M</string>
     <string name="contract_finisher_filter_value_2m_3m">€2M–3M</string>
+    <string name="contract_finisher_filter_value_3m_5m">€3M–5M</string>
     <string name="contract_finisher_filter_label_value">Value</string>
     <string name="contract_finisher_filter_label_position">Position</string>
     <string name="contract_finisher_filter_label_foot">Foot</string>

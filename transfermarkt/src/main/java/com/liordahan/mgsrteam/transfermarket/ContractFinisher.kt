@@ -26,7 +26,7 @@ class ContractFinisher {
     private companion object {
         private const val TAG = "ContractFinisher"
         private const val MIN_VALUE = 150_000
-        private const val MAX_VALUE = 3_000_000
+        private const val MAX_VALUE = 5_000_000
         private const val MAX_AGE = 31
         private const val MAX_PAGES = 400
         private const val BATCH_SIZE = 3

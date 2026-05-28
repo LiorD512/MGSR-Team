@@ -24,6 +24,7 @@ const VALUE_FILTERS = [
   { min: 500000, max: 1000000, key: '500k_1m' },
   { min: 1000000, max: 2000000, key: '1m_2m' },
   { min: 2000000, max: 3000000, key: '2m_3m' },
+  { min: 3000000, max: 5000000, key: '3m_5m' },
 ] as const;
 
 const AGE_FILTERS = [
