@@ -165,25 +165,12 @@ function getTotalPages($) {
 async function enrichFromProfile(model) {
   try {
     const $ = await fetchDocument(model.playerUrl);
-    const clubSelectors = [
-      "span.data-header__club a",
-      "span.data-header__club",
-      "div.data-header a[href*='/startseite/verein/']",
-      "div.info-table__content--bold a[href*='/startseite/verein/']",
-    ];
-    let clubName = "";
-    for (const sel of clubSelectors) {
-      const elements = $(sel);
-      for (let i = 0; i < elements.length; i++) {
-        const text = (elements.eq(i).attr("title")?.trim() || elements.eq(i).text().trim()).toLowerCase();
-        if (text && text.length < 80 && !text.includes("transfermarkt")) { clubName = text; break; }
-      }
-      if (clubName) break;
-    }
-    // If player already signed for a new club, skip them
-    if (clubName && !WITHOUT_CLUB_VARIANTS.some((v) => clubName.includes(v))) {
-      return null;
-    }
+
+    // NOTE: We do NOT check the profile's current club anymore.
+    // TM profile pages lag behind the transfer list — they often still show
+    // the old club for days/weeks after a player is released. The transfer list
+    // itself is the authoritative source for "this player became without club."
+    // We only use the profile for enrichment (citizenships, market value).
 
     const marketValue = model.marketValue?.trim() ||
       $("div.data-header__box--small").text().split("Last")[0].trim() || undefined;
@@ -232,25 +219,11 @@ async function getReleasesForRange(minValue, maxValue) {
   };
 
   const firstPage = await parsePage(1);
-  for (const model of firstPage) {
-    if (model.playerUrl) {
-      const enriched = await enrichFromProfile(model);
-      if (enriched) all.push(enriched);
-    } else {
-      all.push(model);
-    }
-  }
+  all.push(...firstPage);
 
   for (let page = 2; page <= pageCount; page++) {
     const items = await parsePage(page);
-    for (const model of items) {
-      if (model.playerUrl) {
-        const enriched = await enrichFromProfile(model);
-        if (enriched) all.push(enriched);
-      } else {
-        all.push(model);
-      }
-    }
+    all.push(...items);
   }
 
   return all;
@@ -412,10 +385,13 @@ async function runReleasesRefresh(db) {
       }
     }
 
-    await saveKnownReleaseUrls(db, currentUrls);
+    // Merge current URLs with known URLs — never shrink the set.
+    // This prevents wiping known URLs when TM returns fewer results (flaky pages, partial data).
+    const mergedUrls = new Set([...knownUrls, ...currentUrls]);
+    await saveKnownReleaseUrls(db, mergedUrls);
 
     const durationMs = Date.now() - startTime;
-    const summary = `${releasesToCreate.length} new events, ${currentUrls.size} total known`;
+    const summary = `${releasesToCreate.length} new events, ${mergedUrls.size} total known (${currentUrls.size} current)`;
     await recordSuccess(db, summary, durationMs);
     log(`Complete — ${summary} in ${durationMs}ms`);
   } catch (err) {

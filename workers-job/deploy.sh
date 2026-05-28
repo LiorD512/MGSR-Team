@@ -75,7 +75,7 @@ if gcloud run jobs describe $RELEASES_JOB --region $REGION --project $PROJECT_ID
     --image gcr.io/$PROJECT_ID/$IMAGE_NAME \
     --region $REGION \
     --project $PROJECT_ID \
-    --task-timeout 30m \
+    --task-timeout 1h \
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \
@@ -85,7 +85,7 @@ else
     --image gcr.io/$PROJECT_ID/$IMAGE_NAME \
     --region $REGION \
     --project $PROJECT_ID \
-    --task-timeout 30m \
+    --task-timeout 1h \
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \

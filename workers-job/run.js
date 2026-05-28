@@ -247,6 +247,8 @@ async function runPlayerRefresh() {
       .map((doc) => {
         const player = doc.data();
         if (!player.tmProfile?.trim()) return null;
+        // Skip players marked as unfetchable (TM profile retired/broken)
+        if (player.tmProfileUnfetchable) return null;
         return { player, docRef: doc.ref };
       })
       .filter(Boolean)
@@ -310,6 +312,10 @@ async function runPlayerRefresh() {
               feedRef,
               tmProfile
             );
+            // Clear any previous failure state on success
+            if (player.refreshFailCount || player.tmProfileUnfetchable) {
+              try { await docRef.update({ refreshFailCount: 0, lastRefreshError: null, tmProfileUnfetchable: false }); } catch (_) {}
+            }
             successCount++;
             consecutiveBlocks = 0;
             log(`Updated ${index + 1}/${total}: ${player.fullName}`);
@@ -337,7 +343,20 @@ async function runPlayerRefresh() {
             await sleep(backoff);
           } else {
             failCount++;
-            log(`Failed ${index + 1}/${total}: ${player.fullName} — ${cause}`);
+            // Update lastRefreshedAt on non-rate-limit failures so the player
+            // cycles out of the "stalest" queue and doesn't block every batch.
+            const consecutiveFailures = (player.refreshFailCount || 0) + 1;
+            const updateData = {
+              lastRefreshedAt: Date.now(),
+              lastRefreshError: cause,
+              refreshFailCount: consecutiveFailures,
+            };
+            // After 5 consecutive failures, mark as unfetchable so we skip it
+            if (consecutiveFailures >= 5) {
+              updateData.tmProfileUnfetchable = true;
+            }
+            try { await docRef.update(updateData); } catch (_) {}
+            log(`Failed ${index + 1}/${total}: ${player.fullName} — ${cause} (fails: ${consecutiveFailures})`);
             break;
           }
         }
