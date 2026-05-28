@@ -4,6 +4,7 @@ import { getCachedChunked, setCacheChunked } from '@/lib/scrapingCache';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const maxDuration = 300;
 
 const CACHE_KEY = 'contract-finishers';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
