@@ -8,7 +8,6 @@ import { collection, getDocs, query, orderBy, onSnapshot } from 'firebase/firest
 import { callShortlistAdd } from '@/lib/callables';
 import { db } from '@/lib/firebase';
 import {
-  getReleasesAllPages,
   getReleasesAllRanges,
   getTeammates,
   extractPlayerIdFromUrl,
@@ -19,6 +18,7 @@ import {
   sortReleases,
   getUniquePositions,
   filterByAge,
+  parseMarketValue,
   type AgeFilter,
   type SortBy,
 } from '@/lib/releases';
@@ -37,7 +37,7 @@ const VALUE_PRESETS = [
 ];
 
 /** Session cache: do not refetch unless user presses Reload */
-const sessionCache: Record<number, ReleasePlayer[]> = {};
+let sessionCacheAll: ReleasePlayer[] | null = null;
 
 const POSITION_ORDER = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 const POSITION_EXCLUDED = new Set(['LM', 'RM']);
@@ -391,15 +391,11 @@ export default function ReleasesPage() {
   const loadReleases = useCallback(async () => {
     setError('');
     setLoadingList(true);
-    const currentPreset = preset;
     const uid = user?.uid;
     try {
-      const p = VALUE_PRESETS[preset];
-      const list = p.isAll
-        ? await getReleasesAllRanges()
-        : await getReleasesAllPages(p.min, p.max);
+      const list = await getReleasesAllRanges();
       const sorted = sortByMarketValue(list);
-      sessionCache[currentPreset] = sorted;
+      sessionCacheAll = sorted;
       if (isMountedRef.current) {
         setPlayers(sorted);
       } else if (uid) {
@@ -407,7 +403,7 @@ export default function ReleasesPage() {
           'releases',
           {
             players: sorted,
-            preset: currentPreset,
+            preset,
             search,
             positionFilter,
             ageFilter,
@@ -431,14 +427,14 @@ export default function ReleasesPage() {
   }, [preset, t, user?.uid, search, positionFilter, ageFilter, sortBy, rosterPlayers, shortlistUrls]);
 
   useEffect(() => {
-    const sessionCached = sessionCache[preset];
-    if (sessionCached) {
-      setPlayers(sessionCached);
+    if (sessionCacheAll) {
+      setPlayers(sessionCacheAll);
       setLoadingList(false);
     } else {
       loadReleases();
     }
-  }, [preset, loadReleases]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setScreenCache<ReleasesCache>(
@@ -540,31 +536,39 @@ export default function ReleasesPage() {
 
   const filteredPlayers = useMemo(() => {
     let result = players;
+    // Value range filter (client-side)
+    const p = VALUE_PRESETS[preset];
+    if (!p.isAll) {
+      result = result.filter((pl) => {
+        const v = parseMarketValue(pl.marketValue);
+        return v >= p.min && v <= p.max;
+      });
+    }
     if (search.trim()) {
       const q = search.toLowerCase().trim();
       result = result.filter(
-        (p) =>
-          p.playerName?.toLowerCase().includes(q) ||
-          p.playerPosition?.toLowerCase().includes(q) ||
-          p.playerNationality?.toLowerCase().includes(q)
+        (pl) =>
+          pl.playerName?.toLowerCase().includes(q) ||
+          pl.playerPosition?.toLowerCase().includes(q) ||
+          pl.playerNationality?.toLowerCase().includes(q)
       );
     }
     if (positionFilter) {
       result = result.filter(
-        (p) => p.playerPosition?.toLowerCase() === positionFilter.toLowerCase()
+        (pl) => pl.playerPosition?.toLowerCase() === positionFilter.toLowerCase()
       );
     }
     result = filterByAge(result, ageFilter);
     // Exclude players already in roster or shortlist
-    const rosterTmIds = new Set(rosterPlayers.map((p) => extractPlayerIdFromUrl(p.tmProfile)).filter(Boolean));
-    result = result.filter((p) => {
-      const id = extractPlayerIdFromUrl(p.playerUrl);
+    const rosterTmIds = new Set(rosterPlayers.map((rp) => extractPlayerIdFromUrl(rp.tmProfile)).filter(Boolean));
+    result = result.filter((pl) => {
+      const id = extractPlayerIdFromUrl(pl.playerUrl);
       if (id && rosterTmIds.has(id)) return false;
-      if (p.playerUrl && shortlistUrls.has(p.playerUrl)) return false;
+      if (pl.playerUrl && shortlistUrls.has(pl.playerUrl)) return false;
       return true;
     });
     return result;
-  }, [players, search, positionFilter, ageFilter, rosterPlayers, shortlistUrls]);
+  }, [players, preset, search, positionFilter, ageFilter, rosterPlayers, shortlistUrls]);
 
   const sortedPlayers = useMemo(
     () => sortReleases(filteredPlayers, sortBy),
