@@ -35,13 +35,15 @@ export async function GET(request: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
         }
         // Cache the final result in chunks
-        if (allPlayers.length) await setCacheChunked(CACHE_KEY, allPlayers);
+        if (allPlayers.length) await setCacheChunked(CACHE_KEY, allPlayers).catch(() => {});
         controller.close();
       } catch (err) {
+        // Cache whatever we have so far (partial results)
+        if (allPlayers.length) await setCacheChunked(CACHE_KEY, allPlayers).catch(() => {});
         console.error('Contract finishers stream error:', err);
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ error: err instanceof Error ? err.message : 'Failed', isLoading: false })}\n\n`
+            `data: ${JSON.stringify({ players: allPlayers, isLoading: false })}\n\n`
           )
         );
         controller.close();

@@ -369,10 +369,12 @@ export function streamContractFinishers(
     ? `${BACKEND_URL}/api/transfermarkt/contract-finishers/stream`
     : '/api/transfermarkt/contract-finishers/stream';
   const es = new EventSource(url);
+  let hasReceivedPlayers = false;
 
   es.onmessage = (e) => {
     try {
       const data = JSON.parse(e.data) as ContractFinisherStreamEvent;
+      if (data.players && data.players.length > 0) hasReceivedPlayers = true;
       onBatch(data);
       if (data.isLoading === false) es.close();
     } catch (err) {
@@ -383,7 +385,12 @@ export function streamContractFinishers(
 
   es.onerror = () => {
     es.close();
-    onError?.(new Error('Stream connection failed'));
+    // If we already received players, treat as graceful end (Vercel timeout)
+    if (hasReceivedPlayers) {
+      onBatch({ players: [], isLoading: false } as unknown as ContractFinisherStreamEvent);
+    } else {
+      onError?.(new Error('Stream connection failed'));
+    }
   };
 
   return () => es.close();
