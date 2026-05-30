@@ -8,7 +8,7 @@ import { collection, getDocs, query, orderBy, onSnapshot } from 'firebase/firest
 import { callShortlistAdd } from '@/lib/callables';
 import { db } from '@/lib/firebase';
 import {
-  getReleasesAllRanges,
+  getReleasesFromCache,
   getTeammates,
   extractPlayerIdFromUrl,
   ReleasePlayer,
@@ -393,8 +393,15 @@ export default function ReleasesPage() {
     setLoadingList(true);
     const uid = user?.uid;
     try {
-      const list = await getReleasesAllRanges();
-      const sorted = sortByMarketValue(list);
+      const list = await getReleasesFromCache();
+      // Deduplicate by playerUrl
+      const seen = new Set<string>();
+      const deduped = list.filter((p) => {
+        if (!p.playerUrl || seen.has(p.playerUrl)) return false;
+        seen.add(p.playerUrl);
+        return true;
+      });
+      const sorted = sortByMarketValue(deduped);
       sessionCacheAll = sorted;
       if (isMountedRef.current) {
         setPlayers(sorted);

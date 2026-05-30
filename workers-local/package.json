@@ -1,0 +1,18 @@
+{
+  "name": "mgsr-workers-local",
+  "description": "Local machine worker — Contract Finishers scraping (runs every 3 days)",
+  "version": "1.0.0",
+  "main": "contract-finishers-refresh.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "refresh": "node contract-finishers-refresh.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "firebase-admin": "^13.0.0",
+    "impit": "^0.13.0"
+  }
+}

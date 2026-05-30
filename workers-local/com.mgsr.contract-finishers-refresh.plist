@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mgsr.contract-finishers-refresh</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-c</string>
+        <string>source ~/.nvm/nvm.sh &amp;&amp; nvm use 22 &amp;&amp; node /Users/lior.dahan/AndroidStudioProjects/MGSRTeam/workers-local/contract-finishers-refresh.js</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/lior.dahan/AndroidStudioProjects/MGSRTeam/workers-local</string>
+
+    <!-- Run every 3 days (259200 seconds) -->
+    <key>StartInterval</key>
+    <integer>259200</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/lior.dahan/AndroidStudioProjects/MGSRTeam/workers-local/logs/stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/lior.dahan/AndroidStudioProjects/MGSRTeam/workers-local/logs/stderr.log</string>
+
+    <!-- Run missed jobs when machine wakes from sleep -->
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>

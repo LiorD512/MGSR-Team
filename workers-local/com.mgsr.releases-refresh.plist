@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mgsr.releases-refresh</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-c</string>
+        <string>source ~/.nvm/nvm.sh &amp;&amp; nvm use 22 &amp;&amp; node /Users/lior.dahan/AndroidStudioProjects/MGSRTeam/workers-local/releases-refresh.js</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/lior.dahan/AndroidStudioProjects/MGSRTeam/workers-local</string>
+
+    <!-- Run daily (86400 seconds) -->
+    <key>StartInterval</key>
+    <integer>86400</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/lior.dahan/AndroidStudioProjects/MGSRTeam/workers-local/logs/releases-stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/lior.dahan/AndroidStudioProjects/MGSRTeam/workers-local/logs/releases-stderr.log</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
