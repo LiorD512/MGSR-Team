@@ -564,11 +564,14 @@ Android app calls Render **directly** for performance-critical endpoints:
 - **Runtime:** Bash + Python
 - **Duration:** 12-14 hours
 - **Purpose:** Rebuild the football-scout-server database from scratch
+- **Secrets:** `GITHUB_TOKEN` + `SCOUT_ENRICH_SECRET` (mounted as `APIFOOTBALL_KEY`)
+- **Guardrail:** Build refuses to push when API enrichment percentage is below `MIN_API_ENRICHED_PCT` (default 40%)
 - **Flow:**
   1. Clone football-scout-server repo
   2. Run `python3 build.py` (scrapes all 44 leagues from Transfermarkt)
-  3. Commit DB files to GitHub
-  4. Push → Render auto-deploys with new database
+  3. Validate enrichment threshold before git push
+  4. Commit DB files to GitHub
+  5. Push → Render auto-deploys with new database
 
 ---
 
@@ -862,7 +865,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | (inside AI Scout) | `/find-next/page.tsx` |
 | Data | Render server `/find_next` directly | Render server `/find_next` directly |
-| Features | "Find me the next Salah" — signature-based talent discovery | Same |
+| Features | "Find me the next Salah" — signature-based talent discovery | Same + expanded star examples, finer max market-value presets (€250K→€20M + no limit), and age slider range 17-30 |
 
 ### Chat Room
 | Aspect | Android | Web |

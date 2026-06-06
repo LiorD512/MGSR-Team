@@ -142,6 +142,36 @@ const ALL_EXAMPLE_PLAYERS = [
   'Aurélien Tchouaméni',
   'Sandro Tonali',
   'William Saliba',
+  'Lionel Messi',
+  'Cristiano Ronaldo',
+  'Neymar',
+  'Son Heung-min',
+  'Luka Modric',
+  'Toni Kroos',
+  'Bruno Guimaraes',
+  'Alexis Mac Allister',
+  'Martin Zubimendi',
+  'Joao Neves',
+  'Ruben Dias',
+  'Virgil van Dijk',
+  'Josko Gvardiol',
+  'Alphonso Davies',
+  'Achraf Hakimi',
+  'Trent Alexander-Arnold',
+  'Federico Chiesa',
+  'Julian Alvarez',
+  'Lautaro Martinez',
+  'Benjamin Sesko',
+  'Victor Boniface',
+  'Xavi Simons',
+  'Arda Guler',
+  'Warren Zaire-Emery',
+  'Kobbie Mainoo',
+  'Pau Cubarsi',
+  'Endrick',
+  'Joao Pedro',
+  'Dominik Szoboszlai',
+  'Matheus Nunes',
 ];
 
 function shuffleArray<T>(arr: T[]): T[] {
@@ -175,11 +205,20 @@ function weightedRandomSample(pool: FindNextResult[], count: number): FindNextRe
 }
 
 const VALUE_PRESETS = [
+  { label: '€250K', value: 250000 },
   { label: '€500K', value: 500000 },
+  { label: '€750K', value: 750000 },
   { label: '€1M', value: 1000000 },
+  { label: '€1.5M', value: 1500000 },
+  { label: '€2M', value: 2000000 },
+  { label: '€2.5M', value: 2500000 },
   { label: '€3M', value: 3000000 },
+  { label: '€4M', value: 4000000 },
   { label: '€5M', value: 5000000 },
+  { label: '€7.5M', value: 7500000 },
   { label: '€10M', value: 10000000 },
+  { label: '€15M', value: 15000000 },
+  { label: '€20M', value: 20000000 },
   { label: 'No limit', value: 0, labelHe: 'ללא הגבלה' },
 ];
 
@@ -465,7 +504,7 @@ export default function FindNextTab() {
                   <input
                     type="range"
                     min={17}
-                    max={27}
+                    max={30}
                     value={ageMax}
                     onChange={(e) => setAgeMax(Number(e.target.value))}
                     className="flex-1 accent-purple-500"
