@@ -858,14 +858,14 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | `AiScoutScreen` | `/ai-scout/page.tsx` |
 | Data | Vercel API → Render server | API route `/api/scout/search` |
-| Features | Natural language search, rule-based query parsing (`parseFreeQuery.ts`) | Same |
+| Features | Natural language search, rule-based query parsing (`parseFreeQuery.ts`) | Same + diversity modes (`strict`/`balanced`/`discovery`), seeded diversity re-ranking, novelty memory (seen-player penalties), and "search other" exclusion continuity |
 
 ### Find Next
 | Aspect | Android | Web |
 |--------|---------|-----|
 | Screen | (inside AI Scout) | `/find-next/page.tsx` |
 | Data | Render server `/find_next` directly | Render server `/find_next` directly |
-| Features | "Find me the next Salah" — signature-based talent discovery | Same + expanded star examples, finer max market-value presets (€250K→€20M + no limit), and age slider range 17-30 |
+| Features | "Find me the next Salah" — signature-based talent discovery | Same + expanded star examples, finer max market-value presets (€250K→€20M + no limit), age slider range 17-30, client-side diversity selection (league/club/nationality/value/age buckets), and per-query novelty memory to reduce repeated players across repeated searches |
 
 ### Chat Room
 | Aspect | Android | Web |
@@ -967,7 +967,7 @@ All proxy to Render server (`football-scout-server-l38w.onrender.com`):
 | `/api/scout/recruitment` | `/recruitment` | Smart recruitment search |
 | `/api/scout/similar-players` | `/similar_players` | Find similar players |
 | `/api/scout/player-stats` | `/player_stats` | API-Football per-90 stats |
-| `/api/scout/search` | `/recruitment` (rule-based `parseFreeQuery.ts`) | Natural language search |
+| `/api/scout/search` | `/recruitment` (rule-based `parseFreeQuery.ts`) | Natural language search + diversity reranking + novelty penalties (`seenKeys`) + mode controls (`strict`/`balanced`/`discovery`) |
 | `/api/scout/fm-intelligence` | `/fm_intelligence` | FM attributes + position fit |
 | `/api/scout/warm` | `/` | Keep-alive ping for Render |
 

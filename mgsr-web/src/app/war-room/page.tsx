@@ -16,6 +16,10 @@ import { AGENTS_CONFIG, type AgentId } from '@/lib/scoutAgentConfig';
 import type { ScoutProfileResponse } from '@/types/scoutProfiles';
 import { aiScoutSearch, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import FindNextTab from '@/components/FindNextTab';
+import { buildPlayerKey, type DiversityMode } from '@/lib/discoveryDiversity';
+import { appendSeenKeys, getSeenKeys } from '@/lib/searchNoveltyMemory';
+
+const WAR_ROOM_SCOUT_MEMORY_SCOPE = 'war-room-ai-scout';
 
 interface DiscoveryCandidate {
   name: string;
@@ -211,6 +215,7 @@ export default function WarRoomPage() {
   const [addingScoutUrl, setAddingScoutUrl] = useState<string | null>(null);
   const [scoutSeenUrls, setScoutSeenUrls] = useState<string[]>([]);
   const [scoutSearchingOther, setScoutSearchingOther] = useState(false);
+  const [scoutDiversityMode, setScoutDiversityMode] = useState<DiversityMode>('balanced');
 
   const SCOUT_EXAMPLES_EN = [
     'Fast strikers under 24 with 5+ goals for Israeli market',
@@ -472,42 +477,60 @@ export default function WarRoomPage() {
   const handleScoutSearch = useCallback(async () => {
     const q = scoutQuery.trim();
     if (!q) return;
+    const priorSeenKeys = getSeenKeys(WAR_ROOM_SCOUT_MEMORY_SCOPE, q);
+    const seed = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     setScoutSearching(true);
     setScoutError(null);
     setScoutResults([]);
     setScoutInterpretation(null);
     setScoutSeenUrls([]);
     try {
-      const data = await aiScoutSearch(q, lang as 'en' | 'he', true, false);
+      const data = await aiScoutSearch(q, lang as 'en' | 'he', true, false, [], scoutDiversityMode, seed, priorSeenKeys);
       setScoutResults(data.players);
       setScoutInterpretation(data.interpretation ?? null);
       const urls = data.players.map((p) => p.transfermarktUrl).filter((u): u is string => !!u);
       setScoutSeenUrls(urls);
+      const keys = data.players.map((p) => buildPlayerKey(p.transfermarktUrl, p.name)).filter(Boolean);
+      appendSeenKeys(WAR_ROOM_SCOUT_MEMORY_SCOPE, q, keys);
     } catch (err) {
       setScoutError(err instanceof Error ? err.message : String(err));
       setScoutResults([]);
     } finally {
       setScoutSearching(false);
     }
-  }, [scoutQuery, lang]);
+  }, [scoutQuery, lang, scoutDiversityMode]);
 
   const handleScoutSearchOther = useCallback(async () => {
     const q = scoutQuery.trim();
     if (!q || scoutSearchingOther) return;
+    const memoryKeys = getSeenKeys(WAR_ROOM_SCOUT_MEMORY_SCOPE, q);
+    const currentKeys = scoutResults.map((p) => buildPlayerKey(p.transfermarktUrl, p.name)).filter(Boolean);
+    const seed = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     setScoutSearchingOther(true);
     setScoutError(null);
     try {
-      const data = await aiScoutSearch(q, lang as 'en' | 'he', false, false, scoutSeenUrls);
+      const data = await aiScoutSearch(
+        q,
+        lang as 'en' | 'he',
+        false,
+        false,
+        scoutSeenUrls,
+        scoutDiversityMode,
+        seed,
+        [...memoryKeys, ...currentKeys],
+      );
       setScoutResults(data.players);
       setScoutInterpretation(data.interpretation ?? null);
       const newUrls = data.players.map((p) => p.transfermarktUrl).filter((u): u is string => !!u);
       setScoutSeenUrls((prev) => [...prev, ...newUrls.filter((u) => !prev.includes(u))]);
+      const newKeys = data.players.map((p) => buildPlayerKey(p.transfermarktUrl, p.name)).filter(Boolean);
+      appendSeenKeys(WAR_ROOM_SCOUT_MEMORY_SCOPE, q, newKeys);
     } catch (err) {
       setScoutError(err instanceof Error ? err.message : String(err));
     } finally {
       setScoutSearchingOther(false);
     }
-  }, [scoutQuery, lang, scoutSearchingOther, scoutSeenUrls]);
+  }, [scoutQuery, lang, scoutSearchingOther, scoutSeenUrls, scoutDiversityMode, scoutResults]);
 
   const handleScoutKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -1484,6 +1507,31 @@ export default function WarRoomPage() {
                     </button>
                   </div>
 
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] text-cyan-300/80 font-semibold">
+                      {isHe ? 'מצב גיוון' : 'Diversity mode'}
+                    </span>
+                    {([
+                      { key: 'strict', en: 'Strict', he: 'מדויק' },
+                      { key: 'balanced', en: 'Balanced', he: 'מאוזן' },
+                      { key: 'discovery', en: 'Discovery', he: 'תגלית' },
+                    ] as { key: DiversityMode; en: string; he: string }[]).map((m) => (
+                      <button
+                        key={m.key}
+                        type="button"
+                        onClick={() => setScoutDiversityMode(m.key)}
+                        disabled={scoutSearching || scoutSearchingOther}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] border transition ${
+                          scoutDiversityMode === m.key
+                            ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200'
+                            : 'bg-mgsr-dark/40 border-cyan-500/20 text-cyan-300/70 hover:border-cyan-400/40'
+                        }`}
+                      >
+                        {isHe ? m.he : m.en}
+                      </button>
+                    ))}
+                  </div>
+
                   {/* Example chips */}
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     {(isHe ? SCOUT_EXAMPLES_HE : SCOUT_EXAMPLES_EN).map((ex) => (
@@ -1576,6 +1624,9 @@ export default function WarRoomPage() {
                       <p className="font-display font-bold text-mgsr-text text-sm">
                         {scoutResults.length} {isHe ? 'מטרות נמצאו' : 'targets acquired'}
                       </p>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-cyan-500/25 text-cyan-300/80 uppercase tracking-wide">
+                        {scoutDiversityMode}
+                      </span>
                     </div>
                     <button
                       type="button"

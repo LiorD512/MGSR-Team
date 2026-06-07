@@ -15,6 +15,13 @@ import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 import { getLeagueAvgMarketValue, searchFreeAgentsFallback } from '@/lib/transfermarkt';
 import { translateHebrewToEnglish } from '@/lib/translateQuery';
 import { SCOUT_PERSONA, SEARCH_PERSONA_EXT } from '@/lib/scoutPersona';
+import {
+  buildPlayerKey,
+  diversifyCandidates,
+  normalizeDiversityMode,
+  parseMarketValueEuro,
+  type DiversityMode,
+} from '@/lib/discoveryDiversity';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -33,7 +40,10 @@ const LEAGUE_NAMES: Record<string, string> = {
 async function fetchFreesearch(
   query: string,
   lang: 'en' | 'he',
-  initial: boolean
+  initial: boolean,
+  diversityMode: DiversityMode,
+  seed: string,
+  seenKeys: string[]
 ): Promise<NextResponse | null> {
   const parsed = parseFreeQuery(query, lang);
   const requestedTotal = parsed.limit ?? 15;
@@ -139,11 +149,49 @@ async function fetchFreesearch(
       }
     }
 
+    results = diversifyCandidates({
+      candidates: results,
+      limit: fetchLimit,
+      mode: diversityMode,
+      seed,
+      seenKeys,
+      getKey: (p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''),
+      getBaseScore: (p) => {
+        const smart = Number(p.smart_score ?? 0);
+        const sim = Number(p.similarity_score ?? 0);
+        const scout = Number(p.scouting_score ?? 0);
+        if (smart > 0) return smart;
+        if (sim > 0) return sim * 100;
+        if (scout > 0) return scout;
+        return 1;
+      },
+      getTokens: (p) => {
+        const league = String(p.league ?? '').trim().toLowerCase();
+        const club = String(p.club ?? '').trim().toLowerCase();
+        const nation = String(p.citizenship ?? '').trim().toLowerCase();
+        const position = String(p.position ?? '').trim().toLowerCase();
+        const age = String(p.age ?? '').replace(/[^\d]/g, '');
+        const market = parseMarketValueEuro(p.market_value);
+        const valueBucket = market <= 0 ? 'value:unknown' : market <= 1_000_000 ? 'value:<=1m' : market <= 3_000_000 ? 'value:1-3m' : 'value:3m+';
+        return [
+          league ? `league:${league}` : '',
+          club ? `club:${club}` : '',
+          nation ? `nation:${nation}` : '',
+          position ? `pos:${position}` : '',
+          age ? `age:${Math.floor((parseInt(age, 10) || 0) / 3) * 3}` : 'age:unknown',
+          valueBucket,
+        ].filter(Boolean);
+      },
+    });
+
     let interpretation =
       parsed.interpretation ||
       (lang === 'he'
         ? `מצאתי ${results.length} שחקנים מתוך מאגר (freesearch).${fsFallbackNote}`
         : `Found ${results.length} players (freesearch).${fsFallbackNote}`);
+    interpretation += lang === 'he'
+      ? ` מצב גיוון: ${diversityMode}`
+      : ` Diversity mode: ${diversityMode}`;
     if (results.length < requestedTotal && requestedTotal > 0) {
       interpretation +=
         lang === 'he'
@@ -201,6 +249,11 @@ export async function POST(request: NextRequest) {
     const initial = body?.initial === true; // Progressive: first request gets 5 only
     const demo = body?.demo === true; // Demo mode: return mock data immediately (for local testing)
     const excludeUrls: string[] = Array.isArray(body?.excludeUrls) ? body.excludeUrls.filter((u: unknown) => typeof u === 'string' && u.trim()) : [];
+    const diversityMode = normalizeDiversityMode(body?.diversityMode);
+    const seed = typeof body?.seed === 'string' && body.seed.trim() ? body.seed.trim() : `${query}:${Date.now()}`;
+    const seenKeys: string[] = Array.isArray(body?.seenKeys)
+      ? body.seenKeys.filter((k: unknown) => typeof k === 'string' && k.trim()).map((k: string) => k.trim())
+      : [];
 
     if (!query) {
       return NextResponse.json(
@@ -230,7 +283,7 @@ export async function POST(request: NextRequest) {
 
       // Use freesearch proxy (Python) when SCOUT_FREESEARCH_URL is set
       if (FREESEARCH_URL) {
-        const freesearchRes = await fetchFreesearch(query, lang, initial);
+        const freesearchRes = await fetchFreesearch(query, lang, initial, diversityMode, seed, seenKeys);
         if (freesearchRes) {
           return freesearchRes;
         }
@@ -431,7 +484,48 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      results = results.slice(0, fetchLimit);
+      const modeLabel = diversityMode;
+      const seenAndExcluded = new Set<string>([
+        ...excludeUrls.map((u) => buildPlayerKey(u, '')),
+        ...seenKeys,
+      ]);
+
+      results = diversifyCandidates({
+        candidates: results,
+        limit: fetchLimit,
+        mode: diversityMode,
+        seed,
+        seenKeys: Array.from(seenAndExcluded),
+        getKey: (p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''),
+        getBaseScore: (p) => {
+          const smart = Number(p.smart_score ?? 0);
+          const sim = Number(p.similarity_score ?? 0);
+          const scout = Number(p.scouting_score ?? 0);
+          if (smart > 0) return smart;
+          if (sim > 0) return sim * 100;
+          if (scout > 0) return scout;
+          return 1;
+        },
+        getTokens: (p) => {
+          const league = String(p.league ?? '').trim().toLowerCase();
+          const club = String(p.club ?? '').trim().toLowerCase();
+          const nation = String(p.citizenship ?? '').trim().toLowerCase();
+          const position = String(p.position ?? '').trim().toLowerCase();
+          const style = String(p.playing_style ?? '').trim().toLowerCase();
+          const age = String(p.age ?? '').replace(/[^\d]/g, '');
+          const market = parseMarketValueEuro(p.market_value);
+          const valueBucket = market <= 0 ? 'value:unknown' : market <= 1_000_000 ? 'value:<=1m' : market <= 3_000_000 ? 'value:1-3m' : 'value:3m+';
+          return [
+            league ? `league:${league}` : '',
+            club ? `club:${club}` : '',
+            nation ? `nation:${nation}` : '',
+            position ? `pos:${position}` : '',
+            style ? `style:${style}` : '',
+            age ? `age:${Math.floor((parseInt(age, 10) || 0) / 3) * 3}` : 'age:unknown',
+            valueBucket,
+          ].filter(Boolean);
+        },
+      });
 
       const leagueAvgEuro =
         targetLeague && leagueAvg != null && leagueAvg > 0 ? leagueAvg : 398_000;
@@ -500,6 +594,10 @@ export async function POST(request: NextRequest) {
           ? `💰 סינון שווי שוק: עד ${capStr}${leagueName ? ` (${leagueName})` : ''}`
           : `💰 Value cap: up to ${capStr}${leagueName ? ` (${leagueName})` : ''}`);
       }
+
+      iLines.push(lang === 'he'
+        ? `🎛️ מצב גיוון: ${modeLabel}`
+        : `🎛️ Diversity mode: ${modeLabel}`);
 
       // Append free agent fallback note if no free agents were found
       if (freeAgentFallbackNote) {

@@ -194,7 +194,10 @@ export async function aiScoutSearch(
   lang?: 'en' | 'he',
   initial?: boolean,
   demo?: boolean,
-  excludeUrls?: string[]
+  excludeUrls?: string[],
+  diversityMode?: 'strict' | 'balanced' | 'discovery',
+  seed?: string,
+  seenKeys?: string[]
 ): Promise<AiScoutSearchResult> {
   const res = await fetch('/api/scout/search', {
     method: 'POST',
@@ -205,6 +208,9 @@ export async function aiScoutSearch(
       initial: initial === true,
       demo: demo === true,
       ...(excludeUrls?.length ? { excludeUrls } : {}),
+      diversityMode: diversityMode || 'balanced',
+      ...(seed ? { seed } : {}),
+      ...(seenKeys?.length ? { seenKeys } : {}),
     }),
     cache: 'no-store',
     signal: AbortSignal.timeout(180000), // 3 min - scout server cold start

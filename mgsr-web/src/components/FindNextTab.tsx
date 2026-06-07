@@ -9,6 +9,10 @@ import { db } from '@/lib/firebase';
 import { getPlayerDetails, extractPlayerIdFromUrl, getTeammates } from '@/lib/api';
 import { callShortlistAdd } from '@/lib/callables';
 import Link from 'next/link';
+import { appendSeenKeys, getSeenKeys } from '@/lib/searchNoveltyMemory';
+import { buildPlayerKey, diversifyCandidates, type DiversityMode } from '@/lib/discoveryDiversity';
+
+const FIND_NEXT_MEMORY_SCOPE = 'find-next';
 
 const TM_DEFAULT_IMG = 'https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1';
 
@@ -183,25 +187,42 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
-/** Weighted random sample: picks `count` items from `pool`, favoring higher scores but with variety. */
-function weightedRandomSample(pool: FindNextResult[], count: number): FindNextResult[] {
-  if (pool.length <= count) return shuffleArray(pool);
-  const selected: FindNextResult[] = [];
-  const remaining = [...pool];
-  for (let i = 0; i < count && remaining.length > 0; i++) {
-    // Use score^0.5 as weight — softens the bias so lower-ranked players still appear
-    const weights = remaining.map((p) => Math.pow(Math.max(p.find_next_score, 0.01), 0.5));
-    const totalWeight = weights.reduce((s, w) => s + w, 0);
-    let r = Math.random() * totalWeight;
-    let idx = 0;
-    for (idx = 0; idx < weights.length - 1; idx++) {
-      r -= weights[idx];
-      if (r <= 0) break;
-    }
-    selected.push(remaining[idx]);
-    remaining.splice(idx, 1);
-  }
-  return selected;
+function getFindNextKey(player: FindNextResult): string {
+  return buildPlayerKey(player.url, player.name);
+}
+
+function selectFindNextResults(
+  pool: FindNextResult[],
+  count: number,
+  mode: DiversityMode,
+  seenKeys: string[],
+  seed: string,
+): FindNextResult[] {
+  return diversifyCandidates({
+    candidates: pool,
+    limit: count,
+    mode,
+    seed,
+    seenKeys,
+    getKey: (p) => getFindNextKey(p),
+    getBaseScore: (p) => Math.max(0.1, p.find_next_score),
+    getTokens: (p) => {
+      const league = (p.league || '').trim().toLowerCase();
+      const club = (p.club || p.api_team || '').trim().toLowerCase();
+      const nation = (p.citizenship || '').trim().toLowerCase();
+      const position = (p.position || '').trim().toLowerCase();
+      const age = parseInt((p.age || '').replace(/[^\d]/g, ''), 10);
+      const value = p.market_value || '';
+      return [
+        league ? `league:${league}` : '',
+        club ? `club:${club}` : '',
+        nation ? `nation:${nation}` : '',
+        position ? `pos:${position}` : '',
+        Number.isNaN(age) ? 'age:unknown' : `age:${Math.floor(age / 3) * 3}`,
+        value ? `value:${value.toLowerCase()}` : 'value:unknown',
+      ].filter(Boolean);
+    },
+  });
 }
 
 const VALUE_PRESETS = [
@@ -233,6 +254,7 @@ export default function FindNextTab() {
   const [response, setResponse] = useState<FindNextResponse | null>(null);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [diversityMode, setDiversityMode] = useState<DiversityMode>('balanced');
   const [examples, setExamples] = useState<string[]>([]);
   const [addingToShortlistUrl, setAddingToShortlistUrl] = useState<string | null>(null);
   const [shortlistError, setShortlistError] = useState<string | null>(null);
@@ -365,6 +387,9 @@ export default function FindNextTab() {
   const handleSearch = useCallback(async () => {
     const name = playerName.trim();
     if (!name) return;
+    const noveltyQuery = `${name}|age:${ageMax}|value:${valueMax}`;
+    const seenKeys = getSeenKeys(FIND_NEXT_MEMORY_SCOPE, noveltyQuery);
+    const seed = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     setSearching(true);
     setError(null);
@@ -387,16 +412,18 @@ export default function FindNextTab() {
       if (data.error) {
         setError(data.error);
       } else {
-        // Randomly sample 15 from the 500-player pool — weighted by score but with real variety
-        const sampled = weightedRandomSample(data.results, 15);
+        // Diversify by league/club/nationality and penalize previously seen keys per reference player query.
+        const sampled = selectFindNextResults(data.results, 15, diversityMode, seenKeys, seed);
         setResponse({ ...data, results: sampled, result_count: sampled.length });
+        const keys = sampled.map((p) => getFindNextKey(p)).filter(Boolean);
+        appendSeenKeys(FIND_NEXT_MEMORY_SCOPE, noveltyQuery, keys);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSearching(false);
     }
-  }, [playerName, ageMax, valueMax, lang]);
+  }, [playerName, ageMax, valueMax, lang, diversityMode]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -542,7 +569,31 @@ export default function FindNextTab() {
             </div>
 
             {/* Search button */}
-            <div className="flex justify-end">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-mgsr-muted">
+                  {isHe ? 'מצב גיוון' : 'Diversity mode'}
+                </span>
+                {([
+                  { key: 'strict', en: 'Strict', he: 'מדויק' },
+                  { key: 'balanced', en: 'Balanced', he: 'מאוזן' },
+                  { key: 'discovery', en: 'Discovery', he: 'תגלית' },
+                ] as { key: DiversityMode; en: string; he: string }[]).map((m) => (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => setDiversityMode(m.key)}
+                    disabled={searching}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs border transition ${
+                      diversityMode === m.key
+                        ? 'border-purple-500 bg-purple-500/20 text-purple-300 font-semibold'
+                        : 'border-mgsr-border text-mgsr-muted hover:text-purple-300 hover:border-purple-400/50'
+                    }`}
+                  >
+                    {isHe ? m.he : m.en}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
                 onClick={handleSearch}
