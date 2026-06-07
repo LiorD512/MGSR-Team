@@ -63,6 +63,10 @@ async function collectSeries(mode, runs, useSeenMemory) {
   return { unique, repeated2Plus, perRunCounts };
 }
 
+function runScore(r) {
+  return r.unique - r.repeated2Plus;
+}
+
 (async () => {
   const RUNS = 10;
 
@@ -84,6 +88,10 @@ async function collectSeries(mode, runs, useSeenMemory) {
 
   if (discovery.unique <= strict.unique) {
     throw new Error(`Expected discovery unique (${discovery.unique}) to be greater than strict unique (${strict.unique}).`);
+  }
+
+  if (runScore(discovery) <= runScore(strict)) {
+    throw new Error(`Expected discovery diversity score (${runScore(discovery)}) to exceed strict (${runScore(strict)}).`);
   }
 
   if (discovery.unique < 15) {

@@ -13,6 +13,17 @@ export interface DiversifyOptions<T> {
   getTokens?: (candidate: T) => string[];
 }
 
+interface DiversityParams {
+  overlapPenalty: number;
+  seenPenalty: number;
+  noise: number;
+  rarityBonus: number;
+  poolFactor: number;
+  maxPerClub: number;
+  maxPerLeague: number;
+  maxPerNation: number;
+}
+
 function hashString(input: string): number {
   let h = 2166136261;
   for (let i = 0; i < input.length; i += 1) {
@@ -134,7 +145,10 @@ export function diversifyCandidates<T>(options: DiversifyOptions<T>): T[] {
 
   if (limit <= 0 || candidates.length === 0) return [];
   const rng = createSeededRng(seed);
-  const seen = new Set(seenKeys.filter(Boolean));
+  const seenCount = new Map<string, number>();
+  for (const k of seenKeys.filter(Boolean)) {
+    seenCount.set(k, (seenCount.get(k) ?? 0) + 1);
+  }
 
   const dedup = new Map<string, { candidate: T; base: number; tokens: string[] }>();
   for (const candidate of candidates) {
@@ -156,7 +170,7 @@ export function diversifyCandidates<T>(options: DiversifyOptions<T>): T[] {
   if (mode === 'strict') {
     return pool
       .sort((a, b) => {
-        const seenDelta = Number(seen.has(a.key)) - Number(seen.has(b.key));
+        const seenDelta = (seenCount.get(a.key) ?? 0) - (seenCount.get(b.key) ?? 0);
         if (seenDelta !== 0) return seenDelta;
         return b.base - a.base;
       })
@@ -164,10 +178,28 @@ export function diversifyCandidates<T>(options: DiversifyOptions<T>): T[] {
       .map((p) => p.candidate);
   }
 
-  const params =
+  const params: DiversityParams =
     mode === 'discovery'
-      ? { overlapPenalty: 0.42, seenPenalty: 0.55, noise: 0.15, rarityBonus: 0.32, poolFactor: 12 }
-      : { overlapPenalty: 0.26, seenPenalty: 0.33, noise: 0.08, rarityBonus: 0.18, poolFactor: 8 };
+      ? {
+          overlapPenalty: 0.56,
+          seenPenalty: 0.8,
+          noise: 0.12,
+          rarityBonus: 0.38,
+          poolFactor: 16,
+          maxPerClub: 1,
+          maxPerLeague: 3,
+          maxPerNation: 3,
+        }
+      : {
+          overlapPenalty: 0.36,
+          seenPenalty: 0.48,
+          noise: 0.08,
+          rarityBonus: 0.24,
+          poolFactor: 10,
+          maxPerClub: 1,
+          maxPerLeague: 4,
+          maxPerNation: 4,
+        };
 
   const maxPool = Math.min(pool.length, Math.max(limit * params.poolFactor, 60));
   const candidatePool = pool.slice(0, maxPool);
@@ -181,15 +213,50 @@ export function diversifyCandidates<T>(options: DiversifyOptions<T>): T[] {
 
   const maxBase = candidatePool[0]?.base || 1;
   const selected: typeof candidatePool = [];
+  const selectedClubCount = new Map<string, number>();
+  const selectedLeagueCount = new Map<string, number>();
+  const selectedNationCount = new Map<string, number>();
+
+  const getTokenValue = (tokens: string[], prefix: string): string | null => {
+    const token = tokens.find((t) => t.startsWith(prefix));
+    if (!token) return null;
+    return token.slice(prefix.length);
+  };
+
+  const addCounter = (m: Map<string, number>, key: string | null): void => {
+    if (!key) return;
+    m.set(key, (m.get(key) ?? 0) + 1);
+  };
+
+  const isHardCapped = (tokens: string[]): boolean => {
+    const club = getTokenValue(tokens, 'club:');
+    const league = getTokenValue(tokens, 'league:');
+    const nation = getTokenValue(tokens, 'nation:');
+    if (club && (selectedClubCount.get(club) ?? 0) >= params.maxPerClub) return true;
+    if (league && (selectedLeagueCount.get(league) ?? 0) >= params.maxPerLeague) return true;
+    if (nation && (selectedNationCount.get(nation) ?? 0) >= params.maxPerNation) return true;
+    return false;
+  };
 
   while (selected.length < limit && candidatePool.length > 0) {
     let bestIdx = 0;
     let bestScore = -Infinity;
+    let foundUncapped = false;
+
+    for (const c of candidatePool) {
+      if (!isHardCapped(c.tokens)) {
+        foundUncapped = true;
+        break;
+      }
+    }
 
     for (let i = 0; i < candidatePool.length; i += 1) {
       const c = candidatePool[i];
+      if (foundUncapped && isHardCapped(c.tokens)) continue;
+
       const relevance = c.base / maxBase;
-      const noveltyPenalty = seen.has(c.key) ? params.seenPenalty : 0;
+      const seenTimes = seenCount.get(c.key) ?? 0;
+      const noveltyPenalty = seenTimes > 0 ? params.seenPenalty * Math.min(1.9, 0.5 + seenTimes * 0.3) : 0;
 
       let overlap = 0;
       if (selected.length > 0) {
@@ -224,7 +291,11 @@ export function diversifyCandidates<T>(options: DiversifyOptions<T>): T[] {
       }
     }
 
-    selected.push(candidatePool[bestIdx]);
+    const picked = candidatePool[bestIdx];
+    selected.push(picked);
+    addCounter(selectedClubCount, getTokenValue(picked.tokens, 'club:'));
+    addCounter(selectedLeagueCount, getTokenValue(picked.tokens, 'league:'));
+    addCounter(selectedNationCount, getTokenValue(picked.tokens, 'nation:'));
     candidatePool.splice(bestIdx, 1);
   }
 

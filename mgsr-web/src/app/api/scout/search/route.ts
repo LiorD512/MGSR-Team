@@ -16,12 +16,14 @@ import { getLeagueAvgMarketValue, searchFreeAgentsFallback } from '@/lib/transfe
 import { translateHebrewToEnglish } from '@/lib/translateQuery';
 import { SCOUT_PERSONA, SEARCH_PERSONA_EXT } from '@/lib/scoutPersona';
 import {
+  buildQueryFingerprint,
   buildPlayerKey,
   diversifyCandidates,
   normalizeDiversityMode,
   parseMarketValueEuro,
   type DiversityMode,
 } from '@/lib/discoveryDiversity';
+import { getRecentServedKeysForQuery, recordServedKeysForQuery } from '@/lib/queryDiversityMemory';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -39,6 +41,7 @@ const LEAGUE_NAMES: Record<string, string> = {
 /** Call freesearch proxy (Python) - returns full response or null on failure */
 async function fetchFreesearch(
   query: string,
+  queryFingerprint: string,
   lang: 'en' | 'he',
   initial: boolean,
   diversityMode: DiversityMode,
@@ -183,6 +186,12 @@ async function fetchFreesearch(
         ].filter(Boolean);
       },
     });
+    const servedKeys = results
+      .map((p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''))
+      .filter(Boolean);
+    if (servedKeys.length > 0) {
+      recordServedKeysForQuery(queryFingerprint, servedKeys);
+    }
 
     let interpretation =
       parsed.interpretation ||
@@ -251,9 +260,12 @@ export async function POST(request: NextRequest) {
     const excludeUrls: string[] = Array.isArray(body?.excludeUrls) ? body.excludeUrls.filter((u: unknown) => typeof u === 'string' && u.trim()) : [];
     const diversityMode = normalizeDiversityMode(body?.diversityMode);
     const seed = typeof body?.seed === 'string' && body.seed.trim() ? body.seed.trim() : `${query}:${Date.now()}`;
-    const seenKeys: string[] = Array.isArray(body?.seenKeys)
+    const clientSeenKeys: string[] = Array.isArray(body?.seenKeys)
       ? body.seenKeys.filter((k: unknown) => typeof k === 'string' && k.trim()).map((k: string) => k.trim())
       : [];
+    const queryFingerprint = buildQueryFingerprint(query);
+    const serverRecentKeys = getRecentServedKeysForQuery(queryFingerprint, diversityMode === 'discovery' ? 260 : 140);
+    const seenKeys: string[] = [...serverRecentKeys, ...clientSeenKeys];
 
     if (!query) {
       return NextResponse.json(
@@ -283,7 +295,7 @@ export async function POST(request: NextRequest) {
 
       // Use freesearch proxy (Python) when SCOUT_FREESEARCH_URL is set
       if (FREESEARCH_URL) {
-        const freesearchRes = await fetchFreesearch(query, lang, initial, diversityMode, seed, seenKeys);
+        const freesearchRes = await fetchFreesearch(query, queryFingerprint, lang, initial, diversityMode, seed, seenKeys);
         if (freesearchRes) {
           return freesearchRes;
         }
@@ -485,17 +497,17 @@ export async function POST(request: NextRequest) {
       }
 
       const modeLabel = diversityMode;
-      const seenAndExcluded = new Set<string>([
-        ...excludeUrls.map((u) => buildPlayerKey(u, '')),
+      const seenAndExcluded: string[] = [
         ...seenKeys,
-      ]);
+        ...excludeUrls.map((u) => buildPlayerKey(u, '')),
+      ];
 
       results = diversifyCandidates({
         candidates: results,
         limit: fetchLimit,
         mode: diversityMode,
         seed,
-        seenKeys: Array.from(seenAndExcluded),
+        seenKeys: seenAndExcluded,
         getKey: (p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''),
         getBaseScore: (p) => {
           const smart = Number(p.smart_score ?? 0);
@@ -526,6 +538,12 @@ export async function POST(request: NextRequest) {
           ].filter(Boolean);
         },
       });
+      const servedKeys = results
+        .map((p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''))
+        .filter(Boolean);
+      if (servedKeys.length > 0) {
+        recordServedKeysForQuery(queryFingerprint, servedKeys);
+      }
 
       const leagueAvgEuro =
         targetLeague && leagueAvg != null && leagueAvg > 0 ? leagueAvg : 398_000;
