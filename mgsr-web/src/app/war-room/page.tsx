@@ -485,7 +485,7 @@ export default function WarRoomPage() {
     setScoutInterpretation(null);
     setScoutSeenUrls([]);
     try {
-      const data = await aiScoutSearch(q, lang as 'en' | 'he', true, false, [], scoutDiversityMode, seed, priorSeenKeys);
+      const data = await aiScoutSearch(q, lang as 'en' | 'he', true, false, [], scoutDiversityMode, seed, priorSeenKeys, user?.uid);
       setScoutResults(data.players);
       setScoutInterpretation(data.interpretation ?? null);
       const urls = data.players.map((p) => p.transfermarktUrl).filter((u): u is string => !!u);
@@ -518,6 +518,7 @@ export default function WarRoomPage() {
         scoutDiversityMode,
         seed,
         [...memoryKeys, ...currentKeys],
+        user?.uid,
       );
       setScoutResults(data.players);
       setScoutInterpretation(data.interpretation ?? null);
@@ -530,7 +531,7 @@ export default function WarRoomPage() {
     } finally {
       setScoutSearchingOther(false);
     }
-  }, [scoutQuery, lang, scoutSearchingOther, scoutSeenUrls, scoutDiversityMode, scoutResults]);
+  }, [scoutQuery, lang, scoutSearchingOther, scoutSeenUrls, scoutDiversityMode, scoutResults, user?.uid]);
 
   const handleScoutKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

@@ -15,6 +15,7 @@ import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 import { getLeagueAvgMarketValue, searchFreeAgentsFallback } from '@/lib/transfermarkt';
 import { translateHebrewToEnglish } from '@/lib/translateQuery';
 import { SCOUT_PERSONA, SEARCH_PERSONA_EXT } from '@/lib/scoutPersona';
+import { getFirebaseAdmin } from '@/lib/firebaseAdmin';
 import {
   buildQueryFingerprint,
   buildPlayerKey,
@@ -38,10 +39,61 @@ const LEAGUE_NAMES: Record<string, string> = {
   PO1: 'Liga Portugal',
 };
 
+function shortHash(input: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(36);
+}
+
+function buildPersistentMemoryScope(userId: string | null, queryFingerprint: string): string | null {
+  if (!userId?.trim() || !queryFingerprint) return null;
+  return `${userId.trim()}__${shortHash(queryFingerprint)}`;
+}
+
+async function getPersistentSeenKeys(scope: string | null, maxRecent: number): Promise<string[]> {
+  if (!scope || maxRecent <= 0) return [];
+  const app = getFirebaseAdmin();
+  if (!app) return [];
+  try {
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const db = getFirestore(app);
+    const snap = await db.collection('ScoutSearchDiversityMemory').doc(scope).get();
+    if (!snap.exists) return [];
+    const keys = Array.isArray(snap.data()?.keys) ? (snap.data()?.keys as string[]) : [];
+    return keys.slice(-maxRecent).filter(Boolean);
+  } catch (err) {
+    console.warn('[AI Scout] persistent memory read failed:', err);
+    return [];
+  }
+}
+
+async function appendPersistentSeenKeys(scope: string | null, keys: string[]): Promise<void> {
+  if (!scope || keys.length === 0) return;
+  const app = getFirebaseAdmin();
+  if (!app) return;
+  try {
+    const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
+    const db = getFirestore(app);
+    await db.collection('ScoutSearchDiversityMemory').doc(scope).set(
+      {
+        keys: FieldValue.arrayUnion(...keys.slice(0, 120)),
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+  } catch (err) {
+    console.warn('[AI Scout] persistent memory write failed:', err);
+  }
+}
+
 /** Call freesearch proxy (Python) - returns full response or null on failure */
 async function fetchFreesearch(
   query: string,
   queryFingerprint: string,
+  persistentScope: string | null,
   lang: 'en' | 'he',
   initial: boolean,
   diversityMode: DiversityMode,
@@ -191,6 +243,7 @@ async function fetchFreesearch(
       .filter(Boolean);
     if (servedKeys.length > 0) {
       recordServedKeysForQuery(queryFingerprint, servedKeys);
+      await appendPersistentSeenKeys(persistentScope, servedKeys);
     }
 
     let interpretation =
@@ -222,6 +275,11 @@ async function fetchFreesearch(
           : undefined,
       hasMore,
       requestedTotal,
+      diversityDebug: {
+        mode: diversityMode,
+        seenKeysInput: seenKeys.length,
+        returned: results.length,
+      },
     });
   } catch (err) {
     console.error('[AI Scout] Freesearch error:', err);
@@ -260,12 +318,15 @@ export async function POST(request: NextRequest) {
     const excludeUrls: string[] = Array.isArray(body?.excludeUrls) ? body.excludeUrls.filter((u: unknown) => typeof u === 'string' && u.trim()) : [];
     const diversityMode = normalizeDiversityMode(body?.diversityMode);
     const seed = typeof body?.seed === 'string' && body.seed.trim() ? body.seed.trim() : `${query}:${Date.now()}`;
+    const userId = typeof body?.userId === 'string' && body.userId.trim() ? body.userId.trim() : null;
     const clientSeenKeys: string[] = Array.isArray(body?.seenKeys)
       ? body.seenKeys.filter((k: unknown) => typeof k === 'string' && k.trim()).map((k: string) => k.trim())
       : [];
     const queryFingerprint = buildQueryFingerprint(query);
+    const persistentScope = buildPersistentMemoryScope(userId, queryFingerprint);
     const serverRecentKeys = getRecentServedKeysForQuery(queryFingerprint, diversityMode === 'discovery' ? 260 : 140);
-    const seenKeys: string[] = [...serverRecentKeys, ...clientSeenKeys];
+    const persistentSeenKeys = await getPersistentSeenKeys(persistentScope, diversityMode === 'discovery' ? 260 : 140);
+    const seenKeys: string[] = [...serverRecentKeys, ...persistentSeenKeys, ...clientSeenKeys];
 
     if (!query) {
       return NextResponse.json(
@@ -295,7 +356,7 @@ export async function POST(request: NextRequest) {
 
       // Use freesearch proxy (Python) when SCOUT_FREESEARCH_URL is set
       if (FREESEARCH_URL) {
-        const freesearchRes = await fetchFreesearch(query, queryFingerprint, lang, initial, diversityMode, seed, seenKeys);
+        const freesearchRes = await fetchFreesearch(query, queryFingerprint, persistentScope, lang, initial, diversityMode, seed, seenKeys);
         if (freesearchRes) {
           return freesearchRes;
         }
@@ -385,10 +446,10 @@ export async function POST(request: NextRequest) {
       // If we have market cap, minGoals, minGC, or freeAgent filter → fetch extra to have enough after filtering
       const wantsFreeAgentEarly = parsed.freeAgent === true || /free\s*agent/i.test(parsed.notes ?? '');
       const needsOverfetch = minGoals != null || minGC != null || marketCap != null || wantsFreeAgentEarly;
-      // Free agents are rare — fetch aggressively (up to 80) to maximize chance of finding some
+      // Fetch aggressively to preserve quality after post-filtering and diversity penalties.
       const scoutLimit = wantsFreeAgentEarly
-        ? Math.min(80, Math.max(fetchLimit * 10, 40))
-        : needsOverfetch ? Math.min(30, Math.max(fetchLimit * 3, 15)) : fetchLimit;
+        ? Math.min(220, Math.max(fetchLimit * 14, 90))
+        : needsOverfetch ? Math.min(180, Math.max(fetchLimit * 10, 80)) : Math.min(140, Math.max(fetchLimit * 8, 60));
       const leagueAvgPromise = targetLeague
         ? getLeagueAvgMarketValue(targetLeague, 2025).catch(() => null)
         : Promise.resolve(null);
@@ -406,6 +467,7 @@ export async function POST(request: NextRequest) {
       ]);
 
       let results = scoutResponse.results ?? [];
+      const preFilterPoolSize = results.length;
 
       // ═══════════════════════════════════════════════════════════════════
       // Post-filtering: goals + market value enforcement
@@ -496,6 +558,53 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Guardrail: if strict notes/filters collapsed the pool too far, backfill with a relaxed second pass.
+      if (!wantsFreeAgent && results.length < fetchLimit) {
+        try {
+          const seenUrls = results
+            .map((p) => (typeof p.url === 'string' ? p.url : ''))
+            .filter(Boolean);
+          const relaxedResponse = await fetchScoutRecruitment(
+            {
+              ...parsed,
+              notes: undefined,
+              limit: Math.min(240, Math.max(fetchLimit * 16, 120)),
+              excludeUrls: [...excludeUrls, ...seenUrls],
+            },
+            lang,
+          );
+          const relaxedResults = (relaxedResponse.results ?? []).filter((p) => {
+            const mv = p.market_value;
+            if (marketCap != null && marketCap > 0 && mv != null && mv !== '') {
+              const valEuro = _parseMarketValue(String(mv));
+              if (valEuro > marketCap) return false;
+            }
+            if (minGoals != null && minGoals > 0) {
+              const goals = p.api_goals;
+              const g = typeof goals === 'string' ? parseInt(goals, 10) : Number(goals);
+              if (Number.isNaN(g) || g < minGoals) return false;
+            }
+            if (minGC != null && minGC > 0) {
+              const goals = Number(p.api_goals ?? 0);
+              const assists = Number(p.api_assists ?? 0);
+              if ((goals + assists) < minGC) return false;
+            }
+            return true;
+          });
+
+          if (relaxedResults.length > 0) {
+            const byKey = new Map<string, Record<string, unknown>>();
+            for (const p of [...results, ...relaxedResults]) {
+              const key = buildPlayerKey((p.url as string) || null, (p.name as string) || '');
+              if (key && !byKey.has(key)) byKey.set(key, p);
+            }
+            results = Array.from(byKey.values());
+          }
+        } catch (err) {
+          console.warn('[AI Scout] relaxed backfill failed:', err);
+        }
+      }
+
       const modeLabel = diversityMode;
       const seenAndExcluded: string[] = [
         ...seenKeys,
@@ -543,6 +652,7 @@ export async function POST(request: NextRequest) {
         .filter(Boolean);
       if (servedKeys.length > 0) {
         recordServedKeysForQuery(queryFingerprint, servedKeys);
+        await appendPersistentSeenKeys(persistentScope, servedKeys);
       }
 
       const leagueAvgEuro =
@@ -641,6 +751,15 @@ export async function POST(request: NextRequest) {
           hasMore,
           requestedTotal,
           searchMethod: 'rule-based',
+          diversityDebug: {
+            mode: modeLabel,
+            preFilterPoolSize,
+            postSelectionCount: results.length,
+            fetchLimit,
+            scoutLimit,
+            seenKeysInput: seenKeys.length,
+            persistentScopeEnabled: !!persistentScope,
+          },
         },
         {
           headers: {

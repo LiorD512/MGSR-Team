@@ -967,7 +967,7 @@ All proxy to Render server (`football-scout-server-l38w.onrender.com`):
 | `/api/scout/recruitment` | `/recruitment` | Smart recruitment search |
 | `/api/scout/similar-players` | `/similar_players` | Find similar players |
 | `/api/scout/player-stats` | `/player_stats` | API-Football per-90 stats |
-| `/api/scout/search` | `/recruitment` (rule-based `parseFreeQuery.ts`) | Natural language search + diversity reranking + novelty penalties (`seenKeys`) + mode controls (`strict`/`balanced`/`discovery`) + server-side per-query recent-memory window (6h TTL) to reduce repeated names even when client does not send memory |
+| `/api/scout/search` | `/recruitment` (rule-based `parseFreeQuery.ts`) | Natural language search + diversity reranking + novelty penalties (`seenKeys`) + mode controls (`strict`/`balanced`/`discovery`) + server-side per-query recent-memory window (6h TTL) to reduce repeated names even when client does not send memory. Includes Firestore-backed per-user query memory (`ScoutSearchDiversityMemory`) for cross-instance persistence on serverless deployments and adaptive overfetch/backfill when strict constraints underfill results |
 | `/api/scout/fm-intelligence` | `/fm_intelligence` | FM attributes + position fit |
 | `/api/scout/warm` | `/` | Keep-alive ping for Render |
 

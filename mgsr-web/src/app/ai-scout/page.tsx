@@ -179,7 +179,7 @@ export default function AiScoutPage() {
     setRequestedTotal(null);
     setSeenUrls([]);
     try {
-      const data = await aiScoutSearch(q, lang, true, false);
+      const data = await aiScoutSearch(q, lang, true, false, [], 'balanced', undefined, [], user?.uid);
       setResults(data.players);
       setInterpretation(data.interpretation ?? null);
       setLeagueInfo(data.leagueInfo ?? null);
@@ -204,7 +204,7 @@ export default function AiScoutPage() {
     setLoadingMore(true);
     setError(null);
     try {
-      const data = await aiScoutSearch(q, lang, false, false);
+      const data = await aiScoutSearch(q, lang, false, false, [], 'balanced', undefined, [], user?.uid);
       setResults(data.players);
       setInterpretation(data.interpretation ?? null);
       setHasMore(false);
@@ -232,7 +232,7 @@ export default function AiScoutPage() {
     setSearchingOther(true);
     setError(null);
     try {
-      const data = await aiScoutSearch(q, lang, false, false, seenUrls);
+      const data = await aiScoutSearch(q, lang, false, false, seenUrls, 'balanced', undefined, [], user?.uid);
       setResults(data.players);
       setInterpretation(data.interpretation ?? null);
       setLeagueInfo(data.leagueInfo ?? null);
