@@ -119,7 +119,11 @@ export interface ReleasePlayer {
   playerPosition?: string;
   playerAge?: string;
   playerNationality?: string;
+  playerNationalities?: string[];
   playerNationalityFlag?: string;
+  playerFoot?: string | null;
+  clubJoinedLogo?: string | null;
+  clubJoinedName?: string | null;
   transferDate?: string;
   marketValue?: string;
 }

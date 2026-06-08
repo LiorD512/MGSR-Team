@@ -725,7 +725,7 @@ function parseFreeAgentsReleaseRow($: cheerio.Root, row: cheerio.Element): Recor
     const playerPosition = (t0.find('tr').eq(1).text() || '').replace(/-/g, ' ').trim();
     const zentriert = $(row).find('td.zentriert');
     const playerAge = zentriert.eq(0).text().trim() || zentriert.eq(1).text().trim() || '';
-    const marketValue = $(row).find('td.rechts').eq(0).text().trim() || '';
+    const marketValue = $(row).find('td.rechts').last().text().trim() || '';
     const natImg = $(row).find('td.zentriert img[title]').first();
     const playerNationality = natImg.attr('title') || natImg.attr('alt') || '';
     const playerNationalityFlag = (natImg.attr('data-src') || natImg.attr('src') || '')
@@ -746,6 +746,86 @@ function parseFreeAgentsReleaseRow($: cheerio.Root, row: cheerio.Element): Recor
   } catch {
     return null;
   }
+}
+
+function isInvalidReleaseMarketValue(value: string | undefined): boolean {
+  if (!value) return true;
+  const trimmed = value.trim();
+  return trimmed.includes('/') || trimmed.includes('-');
+}
+
+async function enrichReleaseFromProfile(model: Record<string, unknown>): Promise<Record<string, unknown>> {
+  try {
+    const profileUrl = String(model.playerUrl || '').trim();
+    if (!profileUrl) return model;
+
+    const html = await fetchHtmlWithRetry(profileUrl);
+    const $ = cheerio.load(html);
+
+    const citizenshipLabel = $('span.info-table__content--regular').filter(function(this: cheerio.Element) {
+      return $(this).text().trim().startsWith('Citizenship');
+    });
+    const citizenshipContent = citizenshipLabel.next('.info-table__content--bold');
+    let nationalityEls = citizenshipContent.find('img');
+    if (!nationalityEls.length) nationalityEls = $('[itemprop=nationality] img');
+
+    const allNationalities: string[] = [];
+    const allFlags: string[] = [];
+    nationalityEls.each((_: number, el: cheerio.Element) => {
+      const title = $(el).attr('title');
+      if (title) allNationalities.push(title.trim());
+      const src = $(el).attr('src');
+      if (src) allFlags.push(src.replace('tiny', 'head').replace('verysmall', 'head'));
+    });
+
+    let playerFoot = '';
+    $('span.info-table__content--regular').each((_, el) => {
+      const label = $(el).text().toLowerCase();
+      if (label.includes('foot') || label.includes('preferred foot')) {
+        playerFoot = $(el).next().text().trim() || '';
+        return false;
+      }
+    });
+
+    const clubLink = $('span.data-header__club a').first();
+    const clubJoinedName = clubLink.attr('title') || clubLink.text().trim() || null;
+    const clubLogoEl = $('div.data-header__box--big img').first();
+    const clubLogoRaw =
+      (clubLogoEl.attr('srcset') || '').split('1x')[0]?.trim() || clubLogoEl.attr('src') || '';
+
+    const marketValueBox = $('div[class*="data-header__box--small"]').text();
+    const profileMarketValue = marketValueBox.substring(0, marketValueBox.indexOf('Last')).trim() || '';
+
+    return {
+      ...model,
+      marketValue: isInvalidReleaseMarketValue(String(model.marketValue || ''))
+        ? profileMarketValue || ''
+        : model.marketValue,
+      playerNationality: String(model.playerNationality || '').trim() || allNationalities[0] || null,
+      playerNationalities: allNationalities.length ? allNationalities : undefined,
+      playerNationalityFlag:
+        String(model.playerNationalityFlag || '').trim() ||
+        (allFlags[0] ? makeAbsoluteUrl(allFlags[0]) : null),
+      playerFoot: playerFoot || null,
+      clubJoinedName,
+      clubJoinedLogo: clubLogoRaw ? makeAbsoluteUrl(clubLogoRaw) : null,
+    };
+  } catch {
+    return model;
+  }
+}
+
+async function enrichReleasePlayers(
+  models: Record<string, unknown>[],
+  batchSize = 4
+): Promise<Record<string, unknown>[]> {
+  const enriched: Record<string, unknown>[] = [];
+  for (let index = 0; index < models.length; index += batchSize) {
+    const batch = models.slice(index, index + batchSize);
+    const items = await Promise.all(batch.map((model) => enrichReleaseFromProfile(model)));
+    enriched.push(...items);
+  }
+  return enriched;
 }
 
 // ─── Releases (merged: newest-transfers without-club + free-agents page) ──────
@@ -776,7 +856,7 @@ export async function handleReleases(minVal = 0, maxVal = 50000000, page = 1) {
     distinctByUrl.set(key, parsed);
   });
 
-  const players = Array.from(distinctByUrl.values());
+  const players = await enrichReleasePlayers(Array.from(distinctByUrl.values()));
 
   return { players };
 }

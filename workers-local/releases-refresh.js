@@ -92,6 +92,8 @@ const RELEASE_RANGES = [
 ];
 
 const DELAY_BETWEEN_RANGES_MS = 5000;
+const RANGE_RETRY_ATTEMPTS = 3;
+const RANGE_RETRY_DELAY_MS = 4000;
 
 const WITHOUT_CLUB_VARIANTS = [
   "without club", "ohne verein", "sans club", "sin club",
@@ -162,6 +164,31 @@ async function fetchDocument(url) {
   const wait = gap - (now - _lastFetchTime);
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   _lastFetchTime = Date.now();
+
+  const impit = await getImpit();
+  const res = await impit.fetch(url, {
+    headers: getRandomHeaders(),
+    signal: AbortSignal.timeout(15000),
+  });
+
+  if (res.status === 429 || res.status === 403 || res.status === 503) {
+    _consecutiveBlocks++;
+    if (_consecutiveBlocks >= CIRCUIT_THRESHOLD) {
+      _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN;
+      log(`Circuit breaker TRIPPED. Cooling down 5 min.`);
+    }
+    throw new Error(`HTTP ${res.status}`);
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  _consecutiveBlocks = 0;
+  const html = await res.text();
+  return cheerio.load(html);
+}
+
+async function fetchDocumentFast(url) {
+  if (_circuitOpenUntil > Date.now()) {
+    throw new Error("TM circuit breaker open — cooling down");
+  }
 
   const impit = await getImpit();
   const res = await impit.fetch(url, {
@@ -317,7 +344,7 @@ function parseFreeAgentsList($) {
       const playerPosition = convertPosition(positionText);
       const zentriert = row.find("td.zentriert");
       const playerAge = zentriert.eq(0).text().trim() || zentriert.eq(1).text().trim();
-      const marketValue = row.find("td.rechts").eq(0).text().trim();
+      const marketValue = row.find("td.rechts").last().text().trim();
       const [playerNationality, playerNationalityFlag] = extractNationalityAndFlag($, row);
 
       return {
@@ -328,6 +355,10 @@ function parseFreeAgentsList($) {
         playerAge,
         playerNationality,
         playerNationalityFlag,
+        playerNationalities: undefined,
+        playerFoot: null,
+        clubJoinedName: null,
+        clubJoinedLogo: null,
         transferDate: "",
         marketValue,
       };
@@ -335,6 +366,77 @@ function parseFreeAgentsList($) {
       return null;
     }
   }).filter(Boolean);
+}
+
+function isInvalidReleaseMarketValue(value) {
+  if (!value) return true;
+  const trimmed = String(value).trim();
+  return trimmed.includes("/") || trimmed.includes("-");
+}
+
+async function enrichFromProfile(model) {
+  try {
+    const $ = await fetchDocumentFast(model.playerUrl);
+
+    const marketValueBox = $("div[class*='data-header__box--small']").text();
+    const lastIdx = marketValueBox.indexOf("Last");
+    const profileMarketValue = (lastIdx >= 0 ? marketValueBox.substring(0, lastIdx) : marketValueBox).trim();
+
+    const citizenshipLabel = $("span.info-table__content--regular").filter(function () {
+      return $(this).text().trim().startsWith("Citizenship");
+    });
+    const citizenshipContent = citizenshipLabel.next(".info-table__content--bold");
+    let nationalityEls = citizenshipContent.find("img");
+    if (!nationalityEls.length) nationalityEls = $("[itemprop=nationality] img");
+    const allNationalities = [];
+    const allFlags = [];
+    nationalityEls.each((_, el) => {
+      const title = $(el).attr("title");
+      if (title) allNationalities.push(title.trim());
+      const src = $(el).attr("src");
+      if (src) allFlags.push(src.replace("tiny", "head").replace("verysmall", "head"));
+    });
+
+    let playerFoot = "";
+    $("span.info-table__content--regular").each((_, el) => {
+      const label = $(el).text().toLowerCase();
+      if (label.includes("foot") || label.includes("preferred foot")) {
+        playerFoot = $(el).next().text().trim() || "";
+        return false;
+      }
+    });
+
+    const clubLink = $("span.data-header__club a").first();
+    const clubJoinedName = clubLink.attr("title") || clubLink.text().trim() || null;
+    const clubLogoEl = $("div.data-header__box--big img").first();
+    const clubLogoRaw = ((clubLogoEl.attr("srcset") || "").split("1x")[0] || "").trim() || clubLogoEl.attr("src") || "";
+
+    return {
+      ...model,
+      marketValue: isInvalidReleaseMarketValue(model.marketValue)
+        ? (profileMarketValue || "")
+        : model.marketValue,
+      playerNationality: (model.playerNationality || "").trim() || allNationalities[0] || null,
+      playerNationalities: allNationalities.length ? allNationalities : undefined,
+      playerNationalityFlag: (model.playerNationalityFlag || "").trim() || (allFlags[0] ? makeAbsoluteUrl(allFlags[0]) : null),
+      playerFoot: playerFoot || null,
+      clubJoinedName,
+      clubJoinedLogo: clubLogoRaw ? makeAbsoluteUrl(clubLogoRaw) : null,
+    };
+  } catch {
+    return model;
+  }
+}
+
+async function enrichReleaseProfiles(models, batchSize = 6) {
+  const enriched = [];
+  for (let index = 0; index < models.length; index += batchSize) {
+    const batch = models.slice(index, index + batchSize);
+    const items = await Promise.all(batch.map((model) => enrichFromProfile(model)));
+    enriched.push(...items.filter(Boolean));
+    log(`  enriched ${Math.min(index + batch.length, models.length)}/${models.length} profiles`);
+  }
+  return enriched;
 }
 
 // ── Cache write ──────────────────────────────────────────────────────────────
@@ -424,21 +526,29 @@ async function scrapeAllReleases() {
   for (let i = 0; i < RELEASE_RANGES.length; i++) {
     const [minVal, maxVal] = RELEASE_RANGES[i];
     log(`Fetching range ${i + 1}/${RELEASE_RANGES.length}: ${minVal}-${maxVal}`);
-    try {
-      const releases = await getReleasesForRange(minVal, maxVal);
-      allReleases.push(...releases);
-      log(`  ✅ ${releases.length} releases`);
-    } catch (err) {
-      rangesFailed++;
-      log(`  ❌ Failed: ${err.message}`);
-      // Reset circuit breaker and wait
-      if (err.message.includes("circuit breaker") || err.message.includes("HTTP 429")) {
-        _consecutiveBlocks = 0;
-        _circuitOpenUntil = 0;
-        log(`  Waiting 5 min for cooldown...`);
-        await sleep(CIRCUIT_COOLDOWN + 30000);
+    let success = false;
+    for (let attempt = 1; attempt <= RANGE_RETRY_ATTEMPTS; attempt++) {
+      try {
+        const releases = await getReleasesForRange(minVal, maxVal);
+        allReleases.push(...releases);
+        log(`  ✅ ${releases.length} releases`);
+        success = true;
+        break;
+      } catch (err) {
+        log(`  ❌ Attempt ${attempt}/${RANGE_RETRY_ATTEMPTS} failed: ${err.message}`);
+        if (attempt < RANGE_RETRY_ATTEMPTS) {
+          if (err.message.includes("circuit breaker") || err.message.includes("HTTP 429")) {
+            _consecutiveBlocks = 0;
+            _circuitOpenUntil = 0;
+            log(`  Waiting 5 min for cooldown...`);
+            await sleep(CIRCUIT_COOLDOWN + 30000);
+          } else {
+            await sleep(RANGE_RETRY_DELAY_MS);
+          }
+        }
       }
     }
+    if (!success) rangesFailed++;
     if (i < RELEASE_RANGES.length - 1) {
       await sleep(DELAY_BETWEEN_RANGES_MS);
     }
@@ -453,7 +563,7 @@ async function scrapeAllReleases() {
   allReleases.forEach((r) => {
     if (r.playerUrl) distinctByUrl.set(r.playerUrl, r);
   });
-  const distinct = Array.from(distinctByUrl.values());
+  const distinct = await enrichReleaseProfiles(Array.from(distinctByUrl.values()));
 
   // Sort by market value descending
   distinct.sort((a, b) => {

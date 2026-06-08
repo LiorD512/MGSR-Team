@@ -37,6 +37,8 @@ const RELEASE_RANGES = [
 ];
 
 const DELAY_BETWEEN_RANGES_MS = 6000;
+const RANGE_RETRY_ATTEMPTS = 3;
+const RANGE_RETRY_DELAY_MS = 4000;
 
 const WITHOUT_CLUB_VARIANTS = [
   "without club", "ohne verein", "sans club", "sin club",
@@ -163,7 +165,7 @@ function parseFreeAgentsList($) {
       const playerPosition = convertPosition(positionText);
       const zentriert = row.find("td.zentriert");
       const playerAge = zentriert.eq(0).text().trim() || zentriert.eq(1).text().trim();
-      const marketValue = row.find("td.rechts").eq(0).text().trim();
+      const marketValue = row.find("td.rechts").last().text().trim();
       const [playerNationality, playerNationalityFlag] = extractNationalityAndFlag($, row);
 
       return {
@@ -174,6 +176,10 @@ function parseFreeAgentsList($) {
         playerAge,
         playerNationality,
         playerNationalityFlag,
+        playerNationalities: undefined,
+        playerFoot: null,
+        clubJoinedName: null,
+        clubJoinedLogo: null,
         transferDate: "",
         marketValue,
       };
@@ -207,6 +213,12 @@ function getTotalPages($) {
   return Math.max(1, maxPage);
 }
 
+function isInvalidReleaseMarketValue(value) {
+  if (!value) return true;
+  const trimmed = String(value).trim();
+  return trimmed.includes("/") || trimmed.includes("-");
+}
+
 async function enrichFromProfile(model) {
   try {
     const $ = await fetchDocument(model.playerUrl);
@@ -217,8 +229,8 @@ async function enrichFromProfile(model) {
     // itself is the authoritative source for "this player became without club."
     // We only use the profile for enrichment (citizenships, market value).
 
-    const marketValue = model.marketValue?.trim() ||
-      $("div.data-header__box--small").text().split("Last")[0].trim() || undefined;
+    const marketValueText = $("div.data-header__box--small").text();
+    const marketValue = (marketValueText.split("Last")[0] || "").trim() || undefined;
 
     const citizenshipLabel = $("span.info-table__content--regular").filter(function () {
       return $(this).text().trim().startsWith("Citizenship");
@@ -235,17 +247,45 @@ async function enrichFromProfile(model) {
       if (src) allFlags.push(src.replace("tiny", "head").replace("verysmall", "head"));
     });
 
+    let playerFoot = "";
+    $("span.info-table__content--regular").each((_, el) => {
+      const label = $(el).text().toLowerCase();
+      if (label.includes("foot") || label.includes("preferred foot")) {
+        playerFoot = $(el).next().text().trim() || "";
+        return false;
+      }
+    });
+
+    const clubLink = $("span.data-header__club a").first();
+    const clubJoinedName = clubLink.attr("title") || clubLink.text().trim() || null;
+    const clubLogoEl = $("div.data-header__box--big img").first();
+    const clubLogoRaw = ((clubLogoEl.attr("srcset") || "").split("1x")[0] || "").trim() || clubLogoEl.attr("src") || "";
+
     return {
       ...model,
-      marketValue: marketValue || model.marketValue,
+      marketValue: isInvalidReleaseMarketValue(model.marketValue) ? (marketValue || "") : model.marketValue,
       playerNationality: model.playerNationality?.trim() || allNationalities[0] || null,
       playerNationalities: allNationalities.length ? allNationalities : [],
       playerNationalityFlag: model.playerNationalityFlag?.trim() ||
         (allFlags[0] ? makeAbsoluteUrl(allFlags[0]) : null),
+      playerFoot: playerFoot || null,
+      clubJoinedName,
+      clubJoinedLogo: clubLogoRaw ? makeAbsoluteUrl(clubLogoRaw) : null,
     };
   } catch {
     return model; // On error, keep the listing data as-is
   }
+}
+
+async function enrichReleaseProfiles(models, batchSize = 4) {
+  const enriched = [];
+  for (let index = 0; index < models.length; index += batchSize) {
+    const batch = models.slice(index, index + batchSize);
+    const items = await Promise.all(batch.map((model) => enrichFromProfile(model)));
+    enriched.push(...items.filter(Boolean));
+    log(`  enriched ${Math.min(index + batch.length, models.length)}/${models.length} profiles`);
+  }
+  return enriched;
 }
 
 async function getReleasesForRange(minValue, maxValue) {
@@ -356,14 +396,22 @@ async function runReleasesRefresh(db) {
     for (let i = 0; i < RELEASE_RANGES.length; i++) {
       const [minVal, maxVal] = RELEASE_RANGES[i];
       log(`Fetching range ${i + 1}/${RELEASE_RANGES.length}: ${minVal}-${maxVal}`);
-      try {
-        const releases = await getReleasesForRange(minVal, maxVal);
-        allReleases.push(...releases);
-        log(`  ✅ ${releases.length} releases`);
-      } catch (err) {
-        rangesFailed++;
-        log(`  ❌ Failed: ${err.message}`);
+      let success = false;
+      for (let attempt = 1; attempt <= RANGE_RETRY_ATTEMPTS; attempt++) {
+        try {
+          const releases = await getReleasesForRange(minVal, maxVal);
+          allReleases.push(...releases);
+          log(`  ✅ ${releases.length} releases`);
+          success = true;
+          break;
+        } catch (err) {
+          log(`  ❌ Attempt ${attempt}/${RANGE_RETRY_ATTEMPTS} failed: ${err.message}`);
+          if (attempt < RANGE_RETRY_ATTEMPTS) {
+            await sleep(RANGE_RETRY_DELAY_MS);
+          }
+        }
       }
+      if (!success) rangesFailed++;
       if (i < RELEASE_RANGES.length - 1) {
         await sleep(DELAY_BETWEEN_RANGES_MS);
       }
@@ -380,7 +428,7 @@ async function runReleasesRefresh(db) {
     // Deduplicate by URL
     const distinctByUrl = new Map();
     allReleases.forEach((r) => { if (r.playerUrl) distinctByUrl.set(r.playerUrl, r); });
-    const distinctReleases = Array.from(distinctByUrl.values());
+    const distinctReleases = await enrichReleaseProfiles(Array.from(distinctByUrl.values()));
     const currentUrls = new Set(distinctReleases.map((r) => r.playerUrl).filter(Boolean));
     const newReleases = distinctReleases.filter((r) => !knownUrls.has(r.playerUrl || ""));
 
