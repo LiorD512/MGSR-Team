@@ -241,6 +241,7 @@ function parseMarketValueToEuro(value: string | undefined): number | null {
 }
 
 const VALUE_PRESETS = [
+  { label: '€100K', value: 100000 },
   { label: '€250K', value: 250000 },
   { label: '€500K', value: 500000 },
   { label: '€750K', value: 750000 },
@@ -266,7 +267,7 @@ export default function FindNextTab() {
   const [playerName, setPlayerName] = useState('');
   const [ageMin, setAgeMin] = useState(17);
   const [ageMax, setAgeMax] = useState(23);
-  const [valueMin, setValueMin] = useState<number>(0);
+  const [valueMin, setValueMin] = useState<number>(100000);
   const [valueMax, setValueMax] = useState<number>(3000000);
 
   const [response, setResponse] = useState<FindNextResponse | null>(null);
@@ -657,7 +658,7 @@ export default function FindNextTab() {
                     {isHe ? 'טווח שווי שוק' : 'Market value range'}
                   </label>
                   <span className="text-sm font-display font-bold text-cyan-300">
-                    {valueMin > 0 ? VALUE_PRESETS.find((preset) => preset.value === valueMin)?.label ?? `€${valueMin}` : (isHe ? 'ללא מינימום' : 'No minimum')}
+                    {VALUE_PRESETS.find((preset) => preset.value === valueMin)?.label ?? `€${valueMin}`}
                     <span className="mx-2 text-mgsr-muted">→</span>
                     {valueMax > 0 ? VALUE_PRESETS.find((preset) => preset.value === valueMax)?.label ?? `€${valueMax}` : (isHe ? 'ללא הגבלה' : 'No limit')}
                   </span>
@@ -673,7 +674,6 @@ export default function FindNextTab() {
                       disabled={searching}
                       className="w-full rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text px-3 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500/60 transition-all duration-200 disabled:opacity-50"
                     >
-                      <option value="0">{isHe ? 'ללא מינימום' : 'No minimum'}</option>
                       {VALUE_PRESETS.filter((preset) => preset.value > 0).map((preset) => (
                         <option key={`min-${preset.value}`} value={preset.value}>
                           {isHe && preset.labelHe ? preset.labelHe : preset.label}
