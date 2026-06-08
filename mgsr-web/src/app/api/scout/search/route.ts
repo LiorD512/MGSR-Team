@@ -48,6 +48,248 @@ function shortHash(input: string): string {
   return (h >>> 0).toString(36);
 }
 
+interface ExposureLedger {
+  counts: Record<string, number>;
+  updatedAt: number;
+}
+
+interface GovernedSelectionResult {
+  selected: Record<string, unknown>[];
+  slotTypeByKey: Record<string, 'relevance' | 'underexposed' | 'wildcard' | 'fallback'>;
+}
+
+function valueBucket(v?: number): string {
+  if (v == null || v <= 0) return 'any';
+  if (v <= 500_000) return '<=500k';
+  if (v <= 1_000_000) return '<=1m';
+  if (v <= 2_500_000) return '<=2.5m';
+  if (v <= 5_000_000) return '<=5m';
+  return '>5m';
+}
+
+function ageBucket(v?: number): string {
+  if (v == null || v <= 0) return 'any';
+  if (v <= 21) return '<=21';
+  if (v <= 24) return '<=24';
+  if (v <= 28) return '<=28';
+  return '>28';
+}
+
+function buildExposureClusterKey(parsed: {
+  position?: string;
+  nationality?: string;
+  valueMax?: number;
+  ageMax?: number;
+  notes?: string;
+}): string {
+  const pos = (parsed.position || 'any').toLowerCase();
+  const nat = (parsed.nationality || 'any').toLowerCase();
+  const vb = valueBucket(parsed.valueMax);
+  const ab = ageBucket(parsed.ageMax);
+  const notes = (parsed.notes || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('|');
+  return `${pos}__${nat}__${vb}__${ab}__${shortHash(notes || 'none')}`;
+}
+
+async function getExposureLedger(clusterKey: string): Promise<ExposureLedger> {
+  const app = getFirebaseAdmin();
+  if (!app) return { counts: {}, updatedAt: 0 };
+  try {
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const db = getFirestore(app);
+    const snap = await db.collection('ScoutExposureLedger').doc(clusterKey).get();
+    if (!snap.exists) return { counts: {}, updatedAt: 0 };
+    const data = snap.data() || {};
+    const counts = typeof data.counts === 'object' && data.counts ? (data.counts as Record<string, number>) : {};
+    return { counts, updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0 };
+  } catch (err) {
+    console.warn('[AI Scout] exposure ledger read failed:', err);
+    return { counts: {}, updatedAt: 0 };
+  }
+}
+
+async function updateExposureLedger(clusterKey: string, keys: string[]): Promise<void> {
+  if (keys.length === 0) return;
+  const app = getFirebaseAdmin();
+  if (!app) return;
+  try {
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const db = getFirestore(app);
+    const ref = db.collection('ScoutExposureLedger').doc(clusterKey);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.exists ? (snap.data() || {}) : {};
+      const counts = typeof data.counts === 'object' && data.counts ? { ...(data.counts as Record<string, number>) } : {};
+      for (const k of keys) {
+        counts[k] = (counts[k] || 0) + 1;
+      }
+      const all = Object.entries(counts);
+      if (all.length > 3000) {
+        all.sort((a, b) => b[1] - a[1]);
+        const trimmed = all.slice(0, 2200);
+        const next: Record<string, number> = {};
+        for (const [k, v] of trimmed) next[k] = v;
+        tx.set(ref, { counts: next, updatedAt: Date.now() }, { merge: true });
+      } else {
+        tx.set(ref, { counts, updatedAt: Date.now() }, { merge: true });
+      }
+    });
+  } catch (err) {
+    console.warn('[AI Scout] exposure ledger write failed:', err);
+  }
+}
+
+function governedSelectCandidates(args: {
+  candidates: Record<string, unknown>[];
+  limit: number;
+  mode: DiversityMode;
+  seed: string;
+  seenKeys: string[];
+  exposureCounts: Record<string, number>;
+}): GovernedSelectionResult {
+  const { candidates, limit, mode, seed, seenKeys, exposureCounts } = args;
+  const slotTypeByKey: Record<string, 'relevance' | 'underexposed' | 'wildcard' | 'fallback'> = {};
+  if (limit <= 0 || candidates.length === 0) return { selected: [], slotTypeByKey };
+
+  const scored = candidates.map((p) => {
+    const key = buildPlayerKey((p.url as string) || null, (p.name as string) || '');
+    const smart = Number(p.smart_score ?? 0);
+    const sim = Number(p.similarity_score ?? 0);
+    const scout = Number(p.scouting_score ?? 0);
+    const base = smart > 0 ? smart : sim > 0 ? sim * 100 : scout > 0 ? scout : 1;
+    const exposure = exposureCounts[key] || 0;
+    const seenTimes = seenKeys.filter((k) => k === key).length;
+    return { p, key, base, exposure, seenTimes };
+  });
+
+  const blockedSeen = new Set(seenKeys);
+  const unseenCount = scored.filter((s) => !blockedSeen.has(s.key)).length;
+  const allowSeenReuse = unseenCount < limit;
+  const isEligible = (key: string) => allowSeenReuse || !blockedSeen.has(key);
+
+  const baseSorted = [...scored].sort((a, b) => b.base - a.base);
+  const floorIndex = Math.min(baseSorted.length - 1, Math.floor(baseSorted.length * (mode === 'discovery' ? 0.7 : 0.6)));
+  const qualityFloor = baseSorted[Math.max(0, floorIndex)]?.base ?? 0;
+
+  const quotas =
+    mode === 'strict'
+      ? { relevance: limit, under: 0, wild: 0 }
+      : mode === 'discovery'
+        ? { relevance: Math.max(2, Math.ceil(limit * 0.45)), under: Math.max(2, Math.floor(limit * 0.35)), wild: Math.max(1, limit - Math.ceil(limit * 0.45) - Math.floor(limit * 0.35)) }
+        : { relevance: Math.max(3, Math.ceil(limit * 0.6)), under: Math.max(2, Math.floor(limit * 0.3)), wild: Math.max(1, limit - Math.ceil(limit * 0.6) - Math.floor(limit * 0.3)) };
+
+  const chosen = new Set<string>();
+  const out: Record<string, unknown>[] = [];
+
+  const relevanceList = diversifyCandidates({
+    candidates,
+    limit: Math.min(candidates.length, Math.max(limit * 3, 30)),
+    mode: mode === 'strict' ? 'strict' : 'balanced',
+    seed: `${seed}:rel`,
+    seenKeys,
+    getKey: (p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''),
+    getBaseScore: (p) => {
+      const smart = Number(p.smart_score ?? 0);
+      const sim = Number(p.similarity_score ?? 0);
+      const scout = Number(p.scouting_score ?? 0);
+      return smart > 0 ? smart : sim > 0 ? sim * 100 : scout > 0 ? scout : 1;
+    },
+    getTokens: (p) => {
+      const league = String(p.league ?? '').trim().toLowerCase();
+      const club = String(p.club ?? '').trim().toLowerCase();
+      const nation = String(p.citizenship ?? '').trim().toLowerCase();
+      const pos = String(p.position ?? '').trim().toLowerCase();
+      return [league ? `league:${league}` : '', club ? `club:${club}` : '', nation ? `nation:${nation}` : '', pos ? `pos:${pos}` : ''].filter(Boolean);
+    },
+  });
+
+  for (const p of relevanceList) {
+    if (out.length >= quotas.relevance) break;
+    const key = buildPlayerKey((p.url as string) || null, (p.name as string) || '');
+    if (!key || chosen.has(key) || !isEligible(key)) continue;
+    chosen.add(key);
+    slotTypeByKey[key] = 'relevance';
+    out.push(p);
+  }
+
+  const underexposed = [...scored]
+    .filter((s) => !chosen.has(s.key) && s.base >= qualityFloor && isEligible(s.key))
+    .sort((a, b) => (a.exposure - b.exposure) || (a.seenTimes - b.seenTimes) || (b.base - a.base));
+
+  for (const s of underexposed) {
+    if (out.length >= quotas.relevance + quotas.under) break;
+    chosen.add(s.key);
+    slotTypeByKey[s.key] = 'underexposed';
+    out.push(s.p);
+  }
+
+  const rng = (() => {
+    let x = 0;
+    for (let i = 0; i < seed.length; i += 1) x = Math.imul(31, x) + seed.charCodeAt(i);
+    return () => {
+      x ^= x << 13;
+      x ^= x >>> 17;
+      x ^= x << 5;
+      return ((x >>> 0) % 1_000_000) / 1_000_000;
+    };
+  })();
+
+  let wildcardPool = [...scored].filter((s) => !chosen.has(s.key) && s.base >= qualityFloor && isEligible(s.key));
+  while (out.length < quotas.relevance + quotas.under + quotas.wild && wildcardPool.length > 0) {
+    const maxBase = wildcardPool[0] ? Math.max(...wildcardPool.map((s) => s.base)) : 1;
+    const weights = wildcardPool.map((s) => {
+      const rarity = 1 / (1 + s.exposure);
+      const seenPenalty = 1 / (1 + s.seenTimes);
+      const relevance = Math.pow(Math.max(0.0001, s.base / Math.max(1, maxBase)), 0.7);
+      return Math.max(0.00001, rarity * seenPenalty * relevance);
+    });
+    const sum = weights.reduce((a, b) => a + b, 0);
+    let r = rng() * sum;
+    let idx = 0;
+    for (; idx < weights.length - 1; idx += 1) {
+      r -= weights[idx];
+      if (r <= 0) break;
+    }
+    const pick = wildcardPool[idx];
+    chosen.add(pick.key);
+    slotTypeByKey[pick.key] = 'wildcard';
+    out.push(pick.p);
+    wildcardPool.splice(idx, 1);
+  }
+
+  if (out.length < limit) {
+    for (const s of baseSorted) {
+      if (out.length >= limit) break;
+      if (chosen.has(s.key)) continue;
+      if (!isEligible(s.key) && out.length < Math.min(limit, unseenCount)) continue;
+      chosen.add(s.key);
+      slotTypeByKey[s.key] = 'fallback';
+      out.push(s.p);
+    }
+  }
+
+  return { selected: out.slice(0, limit), slotTypeByKey };
+}
+
+function preferUnseenCandidates(
+  candidates: Record<string, unknown>[],
+  seenKeys: string[],
+  limit: number,
+): Record<string, unknown>[] {
+  if (limit <= 0 || candidates.length === 0 || seenKeys.length === 0) return candidates;
+  const seen = new Set(seenKeys.filter(Boolean));
+  if (seen.size === 0) return candidates;
+  const unseen = candidates.filter((p) => {
+    const key = buildPlayerKey((p.url as string) || null, (p.name as string) || '');
+    return key && !seen.has(key);
+  });
+  return unseen.length >= limit ? unseen : candidates;
+}
+
 function buildPersistentMemoryScope(userId: string | null, queryFingerprint: string): string | null {
   if (!userId?.trim() || !queryFingerprint) return null;
   return `${userId.trim()}__${shortHash(queryFingerprint)}`;
@@ -98,7 +340,8 @@ async function fetchFreesearch(
   initial: boolean,
   diversityMode: DiversityMode,
   seed: string,
-  seenKeys: string[]
+  seenKeys: string[],
+  hardSeenKeys: string[]
 ): Promise<NextResponse | null> {
   const parsed = parseFreeQuery(query, lang);
   const requestedTotal = parsed.limit ?? 15;
@@ -204,8 +447,9 @@ async function fetchFreesearch(
       }
     }
 
+    const selectionPool = preferUnseenCandidates(results, hardSeenKeys, fetchLimit);
     results = diversifyCandidates({
-      candidates: results,
+      candidates: selectionPool,
       limit: fetchLimit,
       mode: diversityMode,
       seed,
@@ -241,9 +485,26 @@ async function fetchFreesearch(
     const servedKeys = results
       .map((p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''))
       .filter(Boolean);
-    if (servedKeys.length > 0) {
-      recordServedKeysForQuery(queryFingerprint, servedKeys);
-      await appendPersistentSeenKeys(persistentScope, servedKeys);
+
+    if (!fsFreeAgent && results.length < fetchLimit) {
+      results = await topUpWithRelaxedRecruitment({
+        parsed,
+        lang,
+        marketCap: fsCap,
+        minGoals: fsMinGoals,
+        minGC: fsMinGC,
+        currentResults: results,
+        fetchLimit,
+        excludeUrls: [],
+      });
+    }
+
+    const servedKeysAfterTopUp = results
+      .map((p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''))
+      .filter(Boolean);
+    if (servedKeysAfterTopUp.length > 0) {
+      recordServedKeysForQuery(queryFingerprint, servedKeysAfterTopUp);
+      await appendPersistentSeenKeys(persistentScope, servedKeysAfterTopUp);
     }
 
     let interpretation =
@@ -317,6 +578,7 @@ export async function POST(request: NextRequest) {
     const demo = body?.demo === true; // Demo mode: return mock data immediately (for local testing)
     const excludeUrls: string[] = Array.isArray(body?.excludeUrls) ? body.excludeUrls.filter((u: unknown) => typeof u === 'string' && u.trim()) : [];
     const diversityMode = normalizeDiversityMode(body?.diversityMode);
+    const useExposureGovernance = body?.useExposureGovernance === true;
     const seed = typeof body?.seed === 'string' && body.seed.trim() ? body.seed.trim() : `${query}:${Date.now()}`;
     const userId = typeof body?.userId === 'string' && body.userId.trim() ? body.userId.trim() : null;
     const clientSeenKeys: string[] = Array.isArray(body?.seenKeys)
@@ -324,9 +586,14 @@ export async function POST(request: NextRequest) {
       : [];
     const queryFingerprint = buildQueryFingerprint(query);
     const persistentScope = buildPersistentMemoryScope(userId, queryFingerprint);
-    const serverRecentKeys = getRecentServedKeysForQuery(queryFingerprint, diversityMode === 'discovery' ? 260 : 140);
-    const persistentSeenKeys = await getPersistentSeenKeys(persistentScope, diversityMode === 'discovery' ? 260 : 140);
-    const seenKeys: string[] = [...serverRecentKeys, ...persistentSeenKeys, ...clientSeenKeys];
+    const anonymousRecentWindow = diversityMode === 'discovery' ? 260 : 140;
+    const userRecentWindow = diversityMode === 'discovery' ? 500 : 320;
+    const serverRecentKeys = userId
+      ? []
+      : getRecentServedKeysForQuery(queryFingerprint, anonymousRecentWindow);
+    const persistentSeenKeys = await getPersistentSeenKeys(persistentScope, userRecentWindow);
+    const hardSeenKeys: string[] = [...persistentSeenKeys, ...clientSeenKeys];
+    const seenKeys: string[] = [...serverRecentKeys, ...hardSeenKeys];
 
     if (!query) {
       return NextResponse.json(
@@ -356,7 +623,7 @@ export async function POST(request: NextRequest) {
 
       // Use freesearch proxy (Python) when SCOUT_FREESEARCH_URL is set
       if (FREESEARCH_URL) {
-        const freesearchRes = await fetchFreesearch(query, queryFingerprint, persistentScope, lang, initial, diversityMode, seed, seenKeys);
+        const freesearchRes = await fetchFreesearch(query, queryFingerprint, persistentScope, lang, initial, diversityMode, seed, seenKeys, hardSeenKeys);
         if (freesearchRes) {
           return freesearchRes;
         }
@@ -447,9 +714,13 @@ export async function POST(request: NextRequest) {
       const wantsFreeAgentEarly = parsed.freeAgent === true || /free\s*agent/i.test(parsed.notes ?? '');
       const needsOverfetch = minGoals != null || minGC != null || marketCap != null || wantsFreeAgentEarly;
       // Fetch aggressively to preserve quality after post-filtering and diversity penalties.
-      const scoutLimit = wantsFreeAgentEarly
+      const scoutLimitBase = wantsFreeAgentEarly
         ? Math.min(220, Math.max(fetchLimit * 14, 90))
         : needsOverfetch ? Math.min(180, Math.max(fetchLimit * 10, 80)) : Math.min(140, Math.max(fetchLimit * 8, 60));
+      // As user memory grows, expand fetch window to keep returning unseen profiles.
+      const noveltyPressure = Math.min(1, hardSeenKeys.length / Math.max(fetchLimit * 8, 80));
+      const noveltyBoost = Math.floor(120 * noveltyPressure);
+      const scoutLimit = Math.min(280, scoutLimitBase + noveltyBoost);
       const leagueAvgPromise = targetLeague
         ? getLeagueAvgMarketValue(targetLeague, 2025).catch(() => null)
         : Promise.resolve(null);
@@ -468,6 +739,8 @@ export async function POST(request: NextRequest) {
 
       let results = scoutResponse.results ?? [];
       const preFilterPoolSize = results.length;
+      const exposureClusterKey = buildExposureClusterKey(parsed);
+      const exposureLedger = await getExposureLedger(exposureClusterKey);
 
       // ═══════════════════════════════════════════════════════════════════
       // Post-filtering: goals + market value enforcement
@@ -610,49 +883,91 @@ export async function POST(request: NextRequest) {
         ...seenKeys,
         ...excludeUrls.map((u) => buildPlayerKey(u, '')),
       ];
+      const hardSeenAndExcluded: string[] = [
+        ...hardSeenKeys,
+        ...excludeUrls.map((u) => buildPlayerKey(u, '')),
+      ];
 
-      results = diversifyCandidates({
-        candidates: results,
-        limit: fetchLimit,
-        mode: diversityMode,
-        seed,
-        seenKeys: seenAndExcluded,
-        getKey: (p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''),
-        getBaseScore: (p) => {
-          const smart = Number(p.smart_score ?? 0);
-          const sim = Number(p.similarity_score ?? 0);
-          const scout = Number(p.scouting_score ?? 0);
-          if (smart > 0) return smart;
-          if (sim > 0) return sim * 100;
-          if (scout > 0) return scout;
-          return 1;
-        },
-        getTokens: (p) => {
-          const league = String(p.league ?? '').trim().toLowerCase();
-          const club = String(p.club ?? '').trim().toLowerCase();
-          const nation = String(p.citizenship ?? '').trim().toLowerCase();
-          const position = String(p.position ?? '').trim().toLowerCase();
-          const style = String(p.playing_style ?? '').trim().toLowerCase();
-          const age = String(p.age ?? '').replace(/[^\d]/g, '');
-          const market = parseMarketValueEuro(p.market_value);
-          const valueBucket = market <= 0 ? 'value:unknown' : market <= 1_000_000 ? 'value:<=1m' : market <= 3_000_000 ? 'value:1-3m' : 'value:3m+';
-          return [
-            league ? `league:${league}` : '',
-            club ? `club:${club}` : '',
-            nation ? `nation:${nation}` : '',
-            position ? `pos:${position}` : '',
-            style ? `style:${style}` : '',
-            age ? `age:${Math.floor((parseInt(age, 10) || 0) / 3) * 3}` : 'age:unknown',
-            valueBucket,
-          ].filter(Boolean);
-        },
-      });
+      let slotTypeByKey: Record<string, 'relevance' | 'underexposed' | 'wildcard' | 'fallback'> = {};
+      if (diversityMode === 'discovery' && useExposureGovernance) {
+        const governed = governedSelectCandidates({
+          candidates: results,
+          limit: fetchLimit,
+          mode: diversityMode,
+          seed,
+          seenKeys: seenAndExcluded,
+          exposureCounts: exposureLedger.counts,
+        });
+        results = governed.selected;
+        slotTypeByKey = governed.slotTypeByKey;
+      } else {
+        const selectionPool = preferUnseenCandidates(results, hardSeenAndExcluded, fetchLimit);
+        results = diversifyCandidates({
+          candidates: selectionPool,
+          limit: fetchLimit,
+          mode: diversityMode,
+          seed,
+          seenKeys: seenAndExcluded,
+          getKey: (p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''),
+          getBaseScore: (p) => {
+            const smart = Number(p.smart_score ?? 0);
+            const sim = Number(p.similarity_score ?? 0);
+            const scout = Number(p.scouting_score ?? 0);
+            if (smart > 0) return smart;
+            if (sim > 0) return sim * 100;
+            if (scout > 0) return scout;
+            return 1;
+          },
+          getTokens: (p) => {
+            const league = String(p.league ?? '').trim().toLowerCase();
+            const club = String(p.club ?? '').trim().toLowerCase();
+            const nation = String(p.citizenship ?? '').trim().toLowerCase();
+            const position = String(p.position ?? '').trim().toLowerCase();
+            const style = String(p.playing_style ?? '').trim().toLowerCase();
+            const age = String(p.age ?? '').replace(/[^\d]/g, '');
+            const market = parseMarketValueEuro(p.market_value);
+            const valueBucket = market <= 0 ? 'value:unknown' : market <= 1_000_000 ? 'value:<=1m' : market <= 3_000_000 ? 'value:1-3m' : 'value:3m+';
+            return [
+              league ? `league:${league}` : '',
+              club ? `club:${club}` : '',
+              nation ? `nation:${nation}` : '',
+              position ? `pos:${position}` : '',
+              style ? `style:${style}` : '',
+              age ? `age:${Math.floor((parseInt(age, 10) || 0) / 3) * 3}` : 'age:unknown',
+              valueBucket,
+            ].filter(Boolean);
+          },
+        });
+        slotTypeByKey = results.reduce<Record<string, 'relevance'>>((acc, p) => {
+          const k = buildPlayerKey((p.url as string) || null, (p.name as string) || '');
+          if (k) acc[k] = 'relevance';
+          return acc;
+        }, {});
+      }
       const servedKeys = results
         .map((p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''))
         .filter(Boolean);
-      if (servedKeys.length > 0) {
-        recordServedKeysForQuery(queryFingerprint, servedKeys);
-        await appendPersistentSeenKeys(persistentScope, servedKeys);
+
+      if (!wantsFreeAgent && results.length < fetchLimit) {
+        results = await topUpWithRelaxedRecruitment({
+          parsed,
+          lang,
+          marketCap,
+          minGoals,
+          minGC,
+          currentResults: results,
+          fetchLimit,
+          excludeUrls,
+        });
+      }
+
+      const finalServedKeys = results
+        .map((p) => buildPlayerKey((p.url as string) || null, (p.name as string) || ''))
+        .filter(Boolean);
+      if (finalServedKeys.length > 0) {
+        recordServedKeysForQuery(queryFingerprint, finalServedKeys);
+        await appendPersistentSeenKeys(persistentScope, finalServedKeys);
+        await updateExposureLedger(exposureClusterKey, finalServedKeys);
       }
 
       const leagueAvgEuro =
@@ -753,12 +1068,22 @@ export async function POST(request: NextRequest) {
           searchMethod: 'rule-based',
           diversityDebug: {
             mode: modeLabel,
+            useExposureGovernance,
             preFilterPoolSize,
             postSelectionCount: results.length,
             fetchLimit,
             scoutLimit,
             seenKeysInput: seenKeys.length,
+            hardSeenKeysInput: hardSeenKeys.length,
             persistentScopeEnabled: !!persistentScope,
+            exposureClusterKey,
+            exposureKnownPlayers: Object.keys(exposureLedger.counts).length,
+            slotMix: results.reduce<Record<string, number>>((acc, p) => {
+              const k = buildPlayerKey((p.url as string) || null, (p.name as string) || '');
+              const t = slotTypeByKey[k] || 'fallback';
+              acc[t] = (acc[t] || 0) + 1;
+              return acc;
+            }, {}),
           },
         },
         {
@@ -875,4 +1200,107 @@ async function fetchScoutRecruitment(
   const count = data?.results?.length ?? 0;
   console.log('[AI Scout] Scout server OK:', count, 'results');
   return data;
+}
+
+function scoreCandidate(p: Record<string, unknown>): number {
+  const smart = Number(p.smart_score ?? 0);
+  const sim = Number(p.similarity_score ?? 0);
+  const scout = Number(p.scouting_score ?? 0);
+  if (smart > 0) return smart;
+  if (sim > 0) return sim * 100;
+  if (scout > 0) return scout;
+  return 1;
+}
+
+async function topUpWithRelaxedRecruitment(params: {
+  parsed: {
+    position?: string;
+    ageMin?: number;
+    ageMax?: number;
+    foot?: string;
+    nationality?: string;
+    notes?: string;
+    transferFee?: string;
+    valueMin?: number;
+    valueMax?: number;
+    salaryRange?: string;
+  };
+  lang: string;
+  marketCap?: number;
+  minGoals?: number;
+  minGC?: number;
+  currentResults: Record<string, unknown>[];
+  fetchLimit: number;
+  excludeUrls: string[];
+}): Promise<Record<string, unknown>[]> {
+  const { parsed, lang, marketCap, minGoals, minGC, currentResults, fetchLimit, excludeUrls } = params;
+  if (currentResults.length >= fetchLimit) return currentResults;
+
+  try {
+    const seenUrls = currentResults
+      .map((p) => (typeof p.url === 'string' ? p.url : ''))
+      .filter(Boolean);
+
+    const relaxed = await fetchScoutRecruitment(
+      {
+        ...parsed,
+        notes: undefined,
+        limit: Math.min(260, Math.max(fetchLimit * 18, 140)),
+        excludeUrls: [...excludeUrls, ...seenUrls],
+      },
+      lang,
+    );
+
+    const relaxedBasePool = (relaxed.results ?? []).filter((p) => {
+      const mv = p.market_value;
+      if (marketCap != null && marketCap > 0 && mv != null && mv !== '') {
+        const valEuro = _parseMarketValue(String(mv));
+        if (valEuro > marketCap) return false;
+      }
+      return true;
+    });
+
+    const relaxedPool = relaxedBasePool.filter((p) => {
+      if (minGoals != null && minGoals > 0) {
+        const goals = p.api_goals;
+        const g = typeof goals === 'string' ? parseInt(goals, 10) : Number(goals);
+        if (Number.isNaN(g) || g < minGoals) return false;
+      }
+      if (minGC != null && minGC > 0) {
+        const goals = Number(p.api_goals ?? 0);
+        const assists = Number(p.api_assists ?? 0);
+        if ((goals + assists) < minGC) return false;
+      }
+      return true;
+    });
+
+    const byKey = new Map<string, Record<string, unknown>>();
+    for (const p of currentResults) {
+      const key = buildPlayerKey((p.url as string) || null, (p.name as string) || '');
+      if (key && !byKey.has(key)) byKey.set(key, p);
+    }
+    for (const p of relaxedPool) {
+      const key = buildPlayerKey((p.url as string) || null, (p.name as string) || '');
+      if (key && !byKey.has(key)) byKey.set(key, p);
+    }
+
+    // If strict performance floors collapse results too much, relax only those
+    // floors (keep core identity/value constraints) to avoid 3-4 result lists.
+    if (byKey.size < fetchLimit && (minGoals != null || minGC != null)) {
+      for (const p of relaxedBasePool) {
+        const key = buildPlayerKey((p.url as string) || null, (p.name as string) || '');
+        if (key && !byKey.has(key)) byKey.set(key, p);
+        if (byKey.size >= fetchLimit) break;
+      }
+    }
+
+    const merged = Array.from(byKey.values());
+    if (merged.length <= fetchLimit) return merged;
+    return merged
+      .sort((a, b) => scoreCandidate(b) - scoreCandidate(a))
+      .slice(0, fetchLimit);
+  } catch (err) {
+    console.warn('[AI Scout] top-up backfill failed:', err);
+    return currentResults;
+  }
 }

@@ -10,9 +10,16 @@ REPO_URL="${SCOUT_REPO_URL:?SCOUT_REPO_URL required}"
 BUILD_CMD="${BUILD_COMMAND:-python3 build.py}"
 DB_FILES="${DB_FILES_TO_COMMIT:-*.db data/*.db}"
 GIT_BRANCH="${GIT_BRANCH:-main}"
+MIN_API_ENRICHED_PCT="${MIN_API_ENRICHED_PCT:-40}"
+ENRICH_GUARD_DISABLED="${ENRICH_GUARD_DISABLED:-false}"
 
 if [ -z "$GITHUB_TOKEN" ]; then
   echo "ERROR: GITHUB_TOKEN not set (mount from Secret Manager)"
+  exit 1
+fi
+
+if [ -z "$APIFOOTBALL_KEY" ]; then
+  echo "ERROR: APIFOOTBALL_KEY not set (mount from Secret Manager)"
   exit 1
 fi
 
@@ -34,6 +41,49 @@ fi
 
 echo "=== Running build: $BUILD_CMD ==="
 $BUILD_CMD
+
+if [ "$ENRICH_GUARD_DISABLED" != "true" ]; then
+  echo "=== Validating API enrichment threshold (min ${MIN_API_ENRICHED_PCT}%) ==="
+  export MIN_API_ENRICHED_PCT
+  python3 - <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+min_pct = float(os.getenv("MIN_API_ENRICHED_PCT", "40"))
+candidate_paths = [
+  Path("data/global_players.json"),
+  Path("global_players.json"),
+]
+
+db_path = next((p for p in candidate_paths if p.exists()), None)
+if db_path is None:
+  print("ERROR: Could not find global players JSON after build (expected data/global_players.json)")
+  sys.exit(1)
+
+with db_path.open("r", encoding="utf-8") as f:
+  data = json.load(f)
+
+if not isinstance(data, list) or not data:
+  print(f"ERROR: Invalid or empty player dataset at {db_path}")
+  sys.exit(1)
+
+total = len(data)
+enriched = sum(1 for p in data if isinstance(p, dict) and p.get("api_matched"))
+pct = round((enriched / total) * 100.0, 2)
+
+print(f"Enrichment summary: {enriched}/{total} players ({pct}%)")
+if pct < min_pct:
+  print(
+    f"ERROR: Enrichment guard failed ({pct}% < {min_pct}%). "
+    "Refusing to commit/push this DB snapshot."
+  )
+  sys.exit(1)
+
+print("Enrichment guard passed")
+PY
+fi
 
 echo "=== Committing and pushing ==="
 git config user.email "scout-build@mgsr.local"

@@ -5,8 +5,9 @@ Weekly build of the football scout server database. Runs **every Monday at 04:00
 ## Prerequisites
 
 1. **GITHUB_TOKEN** — GitHub Personal Access Token with `repo` scope (clone + push to scout server repo)
-2. **SCOUT_REPO_URL** — Your football scout server repo URL
-3. **Build command** — The exact command you run locally (default: `python build.py`)
+2. **SCOUT_ENRICH_SECRET** — API-Football key secret (mounted as `APIFOOTBALL_KEY`)
+3. **SCOUT_REPO_URL** — Your football scout server repo URL
+4. **Build command** — The exact command you run locally (default: `python build.py`)
 
 ## One-Time Setup
 
@@ -17,6 +18,13 @@ Weekly build of the football scout server database. Runs **every Monday at 04:00
 # Scope: repo (full control of private repositories)
 
 echo -n "ghp_YOUR_TOKEN" | gcloud secrets create GITHUB_TOKEN --data-file=- --project=mgsr-64e4b
+```
+
+### 1b. Create/update API-Football key secret
+
+```bash
+# Store the raw API-Football application key
+echo -n "YOUR_API_FOOTBALL_KEY" | gcloud secrets versions add SCOUT_ENRICH_SECRET --data-file=- --project=mgsr-64e4b
 ```
 
 ### 2. Deploy the job
@@ -32,6 +40,9 @@ export SCOUT_REPO_URL="https://github.com/YOUR_USER/football-scout-server"
 
 # Optional: if your DB output path is different
 # export DB_FILES_TO_COMMIT="players.db"
+
+# Optional: guardrail threshold (default 40). Build will fail if below this %.
+# export MIN_API_ENRICHED_PCT="40"
 
 ./deploy.sh
 ```
@@ -58,6 +69,8 @@ export SCOUT_REPO_URL="https://github.com/YOUR_USER/football-scout-server"
 | Issue | Fix |
 |-------|-----|
 | `GITHUB_TOKEN not set` | Create secret: `gcloud secrets create GITHUB_TOKEN --data-file=-` |
+| `APIFOOTBALL_KEY not set` | Ensure `SCOUT_ENRICH_SECRET` exists and redeploy job (`./deploy.sh`) |
+| Build exits with enrichment guard error | API quota likely exhausted or enrichment failed; rerun after quota reset or lower threshold temporarily (`MIN_API_ENRICHED_PCT`) |
 | `SCOUT_REPO_URL required` | Set before deploy: `export SCOUT_REPO_URL="https://github.com/..."` |
 | Clone fails (404) | Token needs `repo` scope; repo must be accessible |
 | Push fails | Token needs write access; check branch name (GIT_BRANCH) |

@@ -35,7 +35,8 @@ echo "=== Step 3: Creating/updating Cloud Run Job ==="
 BUILD_CMD="${BUILD_COMMAND:-python3 run_build.py}"
 DB_FILES="${DB_FILES_TO_COMMIT:-*.db data/*.db}"
 BRANCH="${GIT_BRANCH:-main}"
-ENV_VARS="SCOUT_REPO_URL=$SCOUT_REPO_URL,BUILD_COMMAND=$BUILD_CMD,DB_FILES_TO_COMMIT=$DB_FILES,GIT_BRANCH=$BRANCH"
+MIN_ENRICHED="${MIN_API_ENRICHED_PCT:-40}"
+ENV_VARS="SCOUT_REPO_URL=$SCOUT_REPO_URL,BUILD_COMMAND=$BUILD_CMD,DB_FILES_TO_COMMIT=$DB_FILES,GIT_BRANCH=$BRANCH,MIN_API_ENRICHED_PCT=$MIN_ENRICHED"
 
 if gcloud run jobs describe $JOB_NAME --region $REGION --project $PROJECT_ID 2>/dev/null; then
   gcloud run jobs update $JOB_NAME \
@@ -47,7 +48,7 @@ if gcloud run jobs describe $JOB_NAME --region $REGION --project $PROJECT_ID 2>/
     --cpu 1 \
     --max-retries 0 \
     --set-env-vars "$ENV_VARS" \
-    --set-secrets "GITHUB_TOKEN=GITHUB_TOKEN:latest"
+    --set-secrets "GITHUB_TOKEN=GITHUB_TOKEN:latest,APIFOOTBALL_KEY=SCOUT_ENRICH_SECRET:latest"
 else
   gcloud run jobs create $JOB_NAME \
     --image gcr.io/$PROJECT_ID/$JOB_NAME \
@@ -58,7 +59,7 @@ else
     --cpu 1 \
     --max-retries 0 \
     --set-env-vars "$ENV_VARS" \
-    --set-secrets "GITHUB_TOKEN=GITHUB_TOKEN:latest"
+    --set-secrets "GITHUB_TOKEN=GITHUB_TOKEN:latest,APIFOOTBALL_KEY=SCOUT_ENRICH_SECRET:latest"
 fi
 
 echo ""
@@ -75,6 +76,11 @@ gcloud secrets add-iam-policy-binding GITHUB_TOKEN \
   --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor" \
   --project $PROJECT_ID 2>/dev/null || echo "(Secret access may already be granted)"
+
+gcloud secrets add-iam-policy-binding SCOUT_ENRICH_SECRET \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project $PROJECT_ID 2>/dev/null || echo "(Scout enrich secret access may already be granted)"
 
 echo ""
 echo "=== Step 6: Creating Cloud Scheduler (Monday 04:00 Israel time) ==="
