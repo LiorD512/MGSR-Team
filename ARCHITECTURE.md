@@ -494,7 +494,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/similar_players?player_name=...` | GET | Find similar players (style, stats, attributes) + deterministic enrichment (comparisonQuality, uniqueTrait) |
 | `/recruitment?position=CB&notes=fast&transfer_fee=300-600` | GET | Smart recruitment search (request matching) |
 | `/scout_report?player_url=...&lang=en` | GET | AI-generated scout report |
-| `/find_next?player_name=Mohamed Salah&age_max=22` | GET | "Find me the next X" — signature-based discovery (deterministic explanation, no Gemini) |
+| `/find_next?player_name=Mohamed Salah&age_min=18&age_max=22&value_max=3000000` | GET | "Find me the next X" — signature-based discovery (deterministic explanation, no Gemini). Web Find Next UI exposes min/max age, min/max value controls; `value_min` is enforced client-side in the web app because the Render response does not currently honor that bound reliably |
 | `/fm_profile?player_name=...&club=...` | GET | FM Inside profile (CA, PA, attributes) |
 | `/fm_intelligence?player_name=...` | GET | Full FM intelligence report with position fit heatmap |
 | `/fm_stats` | GET | FM enrichment coverage statistics |
@@ -534,6 +534,7 @@ Key proxy routes in `mgsr-web/src/app/api/scout/`:
 
 Android app calls Render **directly** for performance-critical endpoints:
 - `MgsrWebApiClient.findNext()` → Render `/find_next` directly
+- Web `FindNextTab` → Render `/find_next` directly with abortable browser fetch; immediate Stop button cancels the active request on the client
 - `ScoutApiClient.fetchSimilarPlayers()` → Render `/similar_players` directly
 - Other scout features still go through Vercel API routes (search, recruitment, etc.)
 

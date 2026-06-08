@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { onSnapshot, collection } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -225,6 +225,21 @@ function selectFindNextResults(
   });
 }
 
+function parseAgeValue(age: string | undefined): number | null {
+  const parsed = parseInt((age || '').replace(/[^\d]/g, ''), 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function parseMarketValueToEuro(value: string | undefined): number | null {
+  if (!value?.trim()) return null;
+  const normalized = value.trim().replace(/,/g, '').toLowerCase();
+  const number = parseFloat(normalized.replace(/[^\d.]/g, ''));
+  if (Number.isNaN(number)) return null;
+  if (normalized.includes('m')) return Math.round(number * 1_000_000);
+  if (normalized.includes('k')) return Math.round(number * 1_000);
+  return Math.round(number);
+}
+
 const VALUE_PRESETS = [
   { label: '€250K', value: 250000 },
   { label: '€500K', value: 500000 },
@@ -246,9 +261,12 @@ const VALUE_PRESETS = [
 export default function FindNextTab() {
   const { user } = useAuth();
   const { isRtl, lang, t } = useLanguage();
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   const [playerName, setPlayerName] = useState('');
+  const [ageMin, setAgeMin] = useState(17);
   const [ageMax, setAgeMax] = useState(23);
+  const [valueMin, setValueMin] = useState<number>(0);
   const [valueMax, setValueMax] = useState<number>(3000000);
 
   const [response, setResponse] = useState<FindNextResponse | null>(null);
@@ -384,12 +402,52 @@ export default function FindNextTab() {
     setExamples(shuffleArray(ALL_EXAMPLE_PLAYERS));
   }, []);
 
+  useEffect(() => {
+    return () => {
+      searchAbortRef.current?.abort();
+    };
+  }, []);
+
+  const handleAgeMinChange = useCallback((next: number) => {
+    setAgeMin(next);
+    setAgeMax((current) => Math.max(current, next));
+  }, []);
+
+  const handleAgeMaxChange = useCallback((next: number) => {
+    setAgeMax(next);
+    setAgeMin((current) => Math.min(current, next));
+  }, []);
+
+  const handleValueMinChange = useCallback((next: number) => {
+    setValueMin(next);
+    setValueMax((current) => (current > 0 && current < next ? next : current));
+  }, []);
+
+  const handleValueMaxChange = useCallback((next: number) => {
+    setValueMax(next);
+    if (next > 0) {
+      setValueMin((current) => Math.min(current, next));
+    }
+  }, []);
+
+  const handleStopSearch = useCallback(() => {
+    searchAbortRef.current?.abort();
+    searchAbortRef.current = null;
+  }, []);
+
   const handleSearch = useCallback(async () => {
     const name = playerName.trim();
     if (!name) return;
-    const noveltyQuery = `${name}|age:${ageMax}|value:${valueMax}`;
+    const normalizedAgeMin = Math.min(ageMin, ageMax);
+    const normalizedAgeMax = Math.max(ageMin, ageMax);
+    const normalizedValueMin = valueMin;
+    const normalizedValueMax = valueMax > 0 && valueMax < normalizedValueMin ? normalizedValueMin : valueMax;
+    const noveltyQuery = `${name}|age:${normalizedAgeMin}-${normalizedAgeMax}|value:${normalizedValueMin}-${normalizedValueMax || 'any'}`;
     const seenKeys = getSeenKeys(FIND_NEXT_MEMORY_SCOPE, noveltyQuery);
     const seed = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
 
     setSearching(true);
     setError(null);
@@ -397,33 +455,61 @@ export default function FindNextTab() {
     try {
       const params = new URLSearchParams({
         player_name: name,
-        age_max: String(ageMax),
+        age_min: String(normalizedAgeMin),
+        age_max: String(normalizedAgeMax),
         lang: lang,
         limit: '500', // Request large pool; we randomly sample 15 on the client for variety
       });
-      if (valueMax > 0) {
-        params.set('value_max', String(valueMax));
+      if (normalizedValueMin > 0) {
+        params.set('value_min', String(normalizedValueMin));
+      }
+      if (normalizedValueMax > 0) {
+        params.set('value_max', String(normalizedValueMax));
       }
       const res = await fetch(`https://football-scout-server-l38w.onrender.com/find_next?${params.toString()}`, {
         headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(120000),
+        signal: controller.signal,
       });
       const data = (await res.json()) as FindNextResponse;
       if (data.error) {
         setError(data.error);
       } else {
+        const filteredResults = (data.results ?? []).filter((player) => {
+          const playerAge = parseAgeValue(player.age);
+          if (playerAge == null || playerAge < normalizedAgeMin || playerAge > normalizedAgeMax) {
+            return false;
+          }
+
+          const playerValue = parseMarketValueToEuro(player.market_value);
+          if (normalizedValueMin > 0) {
+            if (playerValue == null || playerValue < normalizedValueMin) return false;
+          }
+          if (normalizedValueMax > 0 && playerValue != null && playerValue > normalizedValueMax) {
+            return false;
+          }
+          return true;
+        });
+
         // Diversify by league/club/nationality and penalize previously seen keys per reference player query.
-        const sampled = selectFindNextResults(data.results, 15, diversityMode, seenKeys, seed);
+        const sampled = selectFindNextResults(filteredResults, 15, diversityMode, seenKeys, seed);
         setResponse({ ...data, results: sampled, result_count: sampled.length });
         const keys = sampled.map((p) => getFindNextKey(p)).filter(Boolean);
         appendSeenKeys(FIND_NEXT_MEMORY_SCOPE, noveltyQuery, keys);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError(null);
+      } else {
+        setError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
+      clearTimeout(timeoutId);
+      if (searchAbortRef.current === controller) {
+        searchAbortRef.current = null;
+      }
       setSearching(false);
     }
-  }, [playerName, ageMax, valueMax, lang, diversityMode]);
+  }, [playerName, ageMin, ageMax, valueMin, valueMax, lang, diversityMode]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -521,49 +607,97 @@ export default function FindNextTab() {
             </div>
 
             {/* Filters row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Age Max */}
-              <div>
-                <label className="block text-sm font-semibold text-mgsr-text mb-2">
-                  {isHe ? 'גיל מקסימלי' : 'Max age'}
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min={17}
-                    max={30}
-                    value={ageMax}
-                    onChange={(e) => setAgeMax(Number(e.target.value))}
-                    className="flex-1 accent-purple-500"
-                    disabled={searching}
-                  />
-                  <span className="text-lg font-display font-bold text-purple-400 w-8 text-center">
-                    {ageMax}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <div className="rounded-2xl border border-mgsr-border/60 bg-mgsr-dark/40 p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <label className="block text-sm font-semibold text-mgsr-text">
+                    {isHe ? 'טווח גיל' : 'Age range'}
+                  </label>
+                  <span className="text-sm font-display font-bold text-purple-300">
+                    {ageMin} - {ageMax}
                   </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-mgsr-muted mb-2">
+                      <span>{isHe ? 'מינימום' : 'Minimum'}</span>
+                      <span>{ageMin}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={17}
+                      max={35}
+                      value={ageMin}
+                      onChange={(e) => handleAgeMinChange(Number(e.target.value))}
+                      className="w-full accent-purple-500"
+                      disabled={searching}
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-mgsr-muted mb-2">
+                      <span>{isHe ? 'מקסימום' : 'Maximum'}</span>
+                      <span>{ageMax}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={17}
+                      max={35}
+                      value={ageMax}
+                      onChange={(e) => handleAgeMaxChange(Number(e.target.value))}
+                      className="w-full accent-cyan-400"
+                      disabled={searching}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Value Max */}
-              <div>
-                <label className="block text-sm font-semibold text-mgsr-text mb-2">
-                  {isHe ? 'שווי מקסימלי' : 'Max market value'}
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {VALUE_PRESETS.map((preset) => (
-                    <button
-                      key={preset.value}
-                      type="button"
-                      onClick={() => setValueMax(preset.value)}
+              <div className="rounded-2xl border border-mgsr-border/60 bg-mgsr-dark/40 p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <label className="block text-sm font-semibold text-mgsr-text">
+                    {isHe ? 'טווח שווי שוק' : 'Market value range'}
+                  </label>
+                  <span className="text-sm font-display font-bold text-cyan-300">
+                    {valueMin > 0 ? VALUE_PRESETS.find((preset) => preset.value === valueMin)?.label ?? `€${valueMin}` : (isHe ? 'ללא מינימום' : 'No minimum')}
+                    <span className="mx-2 text-mgsr-muted">→</span>
+                    {valueMax > 0 ? VALUE_PRESETS.find((preset) => preset.value === valueMax)?.label ?? `€${valueMax}` : (isHe ? 'ללא הגבלה' : 'No limit')}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-mgsr-muted mb-2">
+                      {isHe ? 'שווי מינימלי' : 'Min market value'}
+                    </label>
+                    <select
+                      value={String(valueMin)}
+                      onChange={(e) => handleValueMinChange(Number(e.target.value))}
                       disabled={searching}
-                      className={`px-3 py-1.5 rounded-lg text-xs border transition ${
-                        valueMax === preset.value
-                          ? 'border-purple-500 bg-purple-500/20 text-purple-300 font-semibold'
-                          : 'border-mgsr-border text-mgsr-muted hover:text-purple-400 hover:border-purple-400/50'
-                      } disabled:opacity-50`}
+                      className="w-full rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text px-3 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500/60 transition-all duration-200 disabled:opacity-50"
                     >
-                      {isHe && preset.labelHe ? preset.labelHe : preset.label}
-                    </button>
-                  ))}
+                      <option value="0">{isHe ? 'ללא מינימום' : 'No minimum'}</option>
+                      {VALUE_PRESETS.filter((preset) => preset.value > 0).map((preset) => (
+                        <option key={`min-${preset.value}`} value={preset.value}>
+                          {isHe && preset.labelHe ? preset.labelHe : preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-mgsr-muted mb-2">
+                      {isHe ? 'שווי מקסימלי' : 'Max market value'}
+                    </label>
+                    <select
+                      value={String(valueMax)}
+                      onChange={(e) => handleValueMaxChange(Number(e.target.value))}
+                      disabled={searching}
+                      className="w-full rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text px-3 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/60 transition-all duration-200 disabled:opacity-50"
+                    >
+                      {VALUE_PRESETS.map((preset) => (
+                        <option key={`max-${preset.value}`} value={preset.value}>
+                          {isHe && preset.labelHe ? preset.labelHe : preset.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -594,30 +728,41 @@ export default function FindNextTab() {
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={handleSearch}
-                disabled={searching || !playerName.trim()}
-                className="group/btn px-7 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold hover:from-purple-500 hover:to-indigo-500 hover:shadow-lg hover:shadow-purple-500/20 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none flex items-center justify-center gap-2.5 min-w-[180px]"
-              >
-                {searching ? (
-                  <>
-                    <span className="flex gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-dot-pulse" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-dot-pulse" style={{ animationDelay: '0.15s' }} />
-                      <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-dot-pulse" style={{ animationDelay: '0.3s' }} />
-                    </span>
-                    {isHe ? 'מחפש...' : 'Searching...'}
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                    </svg>
-                    {isHe ? 'מצא את הכוכב הבא' : 'Find The Next'}
-                  </>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                {searching && (
+                  <button
+                    type="button"
+                    onClick={handleStopSearch}
+                    className="px-4 py-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-300 font-semibold hover:bg-red-500/15 hover:border-red-400/60 transition-all duration-200 min-w-[110px]"
+                  >
+                    {isHe ? 'עצור' : 'Stop'}
+                  </button>
                 )}
-              </button>
+                <button
+                  type="button"
+                  onClick={handleSearch}
+                  disabled={searching || !playerName.trim()}
+                  className="group/btn px-7 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold hover:from-purple-500 hover:to-indigo-500 hover:shadow-lg hover:shadow-purple-500/20 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none flex items-center justify-center gap-2.5 min-w-[180px]"
+                >
+                  {searching ? (
+                    <>
+                      <span className="flex gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-dot-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-dot-pulse" style={{ animationDelay: '0.15s' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-dot-pulse" style={{ animationDelay: '0.3s' }} />
+                      </span>
+                      {isHe ? 'מחפש...' : 'Searching...'}
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                      </svg>
+                      {isHe ? 'מצא את הכוכב הבא' : 'Find The Next'}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
