@@ -15,9 +15,14 @@
     <key>WorkingDirectory</key>
     <string>/Users/lior.dahan/AndroidStudioProjects/MGSRTeam/workers-local</string>
 
-    <!-- Run daily (86400 seconds) -->
-    <key>StartInterval</key>
-    <integer>86400</integer>
+    <!-- Run daily at 10:00 local system time (set macOS timezone to Israel for exact 10:00 Israel time) -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>10</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
 
     <key>StandardOutPath</key>
     <string>/Users/lior.dahan/AndroidStudioProjects/MGSRTeam/workers-local/logs/releases-stdout.log</string>

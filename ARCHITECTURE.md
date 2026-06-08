@@ -591,6 +591,8 @@ Android app calls Render **directly** for performance-critical endpoints:
 
 **Pattern:** All workflows use GitHub API for file updates (not git push). Secrets include `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
 
+**Local macOS schedule:** `workers-local/com.mgsr.releases-refresh.plist` runs the merged releases worker every day at 10:00 local system time via LaunchAgent. Set the Mac timezone to Israel if you want that to mean 10:00 Israel time exactly.
+
 ---
 
 ## 9. Firestore Data Model
@@ -830,7 +832,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Aspect | Android | Web |
 |--------|---------|-----|
 | Screen | `ReleasesScreen` | `/releases/page.tsx` |
-| Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`) |
+| Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`); web Releases UI hard-caps visible players at €6M |
 | Filters | Position, market value | Same |
 
 ### Contract Finishers

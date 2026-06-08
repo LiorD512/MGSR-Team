@@ -29,11 +29,11 @@ import { enrichShortlistInstagram } from '@/lib/outreach';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 
 const VALUE_PRESETS = [
-  { min: 0, max: 50000000, label: 'All', labelHe: 'הכל', isAll: true },
+  { min: 0, max: 6000000, label: 'All', labelHe: 'הכל', isAll: true },
   { min: 0, max: 500000, label: '0-500K', labelHe: '0-500K', isAll: false },
   { min: 500000, max: 1000000, label: '500K-1M', labelHe: '500K-1M', isAll: false },
   { min: 1000000, max: 5000000, label: '1M-5M', labelHe: '1M-5M', isAll: false },
-  { min: 5000000, max: 50000000, label: '5M+', labelHe: '5M+', isAll: false },
+  { min: 5000000, max: 6000000, label: '5M-6M', labelHe: '5M-6M', isAll: false },
 ];
 
 /** Session cache: do not refetch unless user presses Reload */
@@ -543,6 +543,8 @@ export default function ReleasesPage() {
 
   const filteredPlayers = useMemo(() => {
     let result = players;
+    const absoluteMaxValue = 6000000;
+    result = result.filter((pl) => parseMarketValue(pl.marketValue) <= absoluteMaxValue);
     // Value range filter (client-side)
     const p = VALUE_PRESETS[preset];
     if (!p.isAll) {
