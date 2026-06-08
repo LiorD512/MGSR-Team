@@ -647,16 +647,38 @@ export async function getPlayerPerformanceStats(
   }
 }
 
-// ─── Releases (free agents from vertragslosespieler page) ─────────────────────
-// Uses the dedicated free agents page instead of latest transfers - yields many more results.
+const WITHOUT_CLUB_VARIANTS = [
+  'without club',
+  'ohne verein',
+  'sans club',
+  'sin club',
+  'senza squadra',
+  'sem clube',
+  'geen club',
+  'bez klubu',
+  'klubsuz',
+  'free agent',
+];
+
+function isWithoutClubTransferRow($: cheerio.Root, row: cheerio.Element): boolean {
+  const tables = $(row).find('table.inline-table');
+  if (tables.length < 3) return false;
+  const newClubCell = tables.eq(2);
+  const imgAlt = (newClubCell.find('img').attr('alt') || '').trim().toLowerCase();
+  const cellText = newClubCell.text().trim().toLowerCase();
+  return WITHOUT_CLUB_VARIANTS.some((v) => imgAlt.includes(v) || cellText.includes(v));
+}
+
+// ─── Releases (without-club rows from newest transfers page) ───────────────────
 export async function handleReleases(minVal = 0, maxVal = 50000000, page = 1) {
-  const url = `${TRANSFERMARKT_BASE}/transfers/vertragslosespieler/statistik?ausrichtung=&spielerposition_id=0&land_id=&wettbewerb_id=alle&seit=0&altersklasse=&minMarktwert=${minVal}&maxMarktwert=${maxVal}&plus=1&page=${page}`;
+  const url = `${TRANSFERMARKT_BASE}/transfers/neuestetransfers/statistik?land_id=0&wettbewerb_id=alle&minMarktwert=${minVal}&maxMarktwert=${maxVal}&plus=1&page=${page}`;
   const html = await fetchHtmlWithRetry(url);
   const $ = cheerio.load(html);
 
   const players: Record<string, unknown>[] = [];
   $('table.items tr.odd, table.items tr.even').each((_, row) => {
     try {
+      if (!isWithoutClubTransferRow($, row)) return;
       const tables = $(row).find('table.inline-table');
       if (tables.length === 0) return;
       const t0 = tables.eq(0);
@@ -668,10 +690,10 @@ export async function handleReleases(minVal = 0, maxVal = 50000000, page = 1) {
       const playerUrl = t0.find('a').attr('href') || '';
       const fullUrl = playerUrl.startsWith('http') ? playerUrl : TRANSFERMARKT_BASE + playerUrl;
       const playerPosition = (t0.find('tr').eq(1).text() || '').replace(/-/g, ' ').trim();
-      const playerAge = $(row).find('td.zentriert').eq(1).text().trim() || '';
-      const rechts = $(row).find('td.rechts');
-      const transferDate = rechts.eq(0).text().trim() || '';
-      const marketValue = rechts.eq(1).text().trim() || '';
+      const zentriert = $(row).find('td.zentriert');
+      const playerAge = zentriert.eq(0).text().trim() || zentriert.eq(1).text().trim() || '';
+      const transferDate = zentriert.eq(2).text().trim() || '';
+      const marketValue = $(row).find('td.rechts').eq(0).text().trim() || '';
       const natImg = $(row).find('td.zentriert img[title]').first();
       const playerNationality = natImg.attr('title') || natImg.attr('alt') || '';
       const playerNationalityFlag = (natImg.attr('data-src') || natImg.attr('src') || '')

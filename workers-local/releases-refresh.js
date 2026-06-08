@@ -70,23 +70,9 @@ const TRANSFERMARKT_BASE = "https://www.transfermarkt.com";
 const CACHE_KEY = "releases-all";
 const CHUNK_SIZE = 2000;
 
-// Same ranges as the Cloud Run worker
+// Pull full newest-transfers scope so pages 1-10 "Without club" rows are all included.
 const RELEASE_RANGES = [
-  [125000, 250000],
-  [250001, 400000],
-  [400001, 600000],
-  [600001, 800000],
-  [800001, 1000000],
-  [1000001, 1200000],
-  [1200001, 1400000],
-  [1400001, 1600000],
-  [1600001, 1800000],
-  [1800001, 2000000],
-  [2000001, 2200000],
-  [2200001, 2500000],
-  [2500001, 3000000],
-  [3000001, 3500000],
-  [3500001, 4000000],
+  [0, 50000000],
 ];
 
 const DELAY_BETWEEN_RANGES_MS = 5000;

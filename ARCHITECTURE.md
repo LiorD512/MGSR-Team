@@ -586,7 +586,7 @@ Android app calls Render **directly** for performance-critical endpoints:
 | `weekly-contract-finishers.yml` | Monday 23:00 UTC (2am Israel) | Populate contract finisher cache in Firestore via `_populate_cache.ts finishers` |
 | `weekly-returnees.yml` | Thursday 23:00 UTC (2am Israel) | Populate returnees cache in Firestore via `_populate_cache.ts returnees` |
 | `weekly-scout-images.yml` | Tuesday 00:00 UTC (3am Israel) | Enrich scout profile images via `_enrich_images.ts` |
-| `daily-releases-refresh.yml` | Daily 00:00 UTC (3am Israel) | Scrape TM for new free agent releases → Firestore FeedEvents via `_releases_refresh.ts` |
+| `daily-releases-refresh.yml` | Daily 00:00 UTC (3am Israel) | Scrape TM newest transfers (`neuestetransfers`) and keep only "Without club" rows across pages 1-10 (full market-value span) → Firestore cache (`releases-all`) + FeedEvents via `_releases_refresh.ts` |
 | `test-tm-scraping.yml` | Manual only | Test Transfermarkt fetch logic |
 
 **Pattern:** All workflows use GitHub API for file updates (not git push). Secrets include `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
@@ -830,7 +830,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Aspect | Android | Web |
 |--------|---------|-----|
 | Screen | `ReleasesScreen` | `/releases/page.tsx` |
-| Data | Transfermarkt scraping (latest 24-48h releases) | API route `/api/transfermarkt/releases` |
+| Data | Transfermarkt newest transfers (`neuestetransfers`) filtered to rows where destination club is "Without club" | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`) |
 | Filters | Position, market value | Same |
 
 ### Contract Finishers
