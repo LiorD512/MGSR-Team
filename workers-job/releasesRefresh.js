@@ -17,7 +17,23 @@ const WORKER_RUNS_COLLECTION = "WorkerRuns";
 const FEED_EVENT_TYPE = "NEW_RELEASE_FROM_CLUB";
 
 const RELEASE_RANGES = [
-  [0, 50000000],
+  [0, 125000],
+  [125001, 250000],
+  [250001, 400000],
+  [400001, 600000],
+  [600001, 800000],
+  [800001, 1000000],
+  [1000001, 1200000],
+  [1200001, 1400000],
+  [1400001, 1600000],
+  [1600001, 1800000],
+  [1800001, 2000000],
+  [2000001, 2200000],
+  [2200001, 2500000],
+  [2500001, 3000000],
+  [3000001, 3500000],
+  [3500001, 4000000],
+  [4000001, 50000000],
 ];
 
 const DELAY_BETWEEN_RANGES_MS = 6000;
@@ -60,6 +76,10 @@ function convertPosition(pos) {
 
 function buildReleasesUrl(minValue, maxValue, page = 1) {
   return `${TRANSFERMARKT_BASE_URL}/transfers/neuestetransfers/statistik?land_id=0&wettbewerb_id=alle&minMarktwert=${minValue}&maxMarktwert=${maxValue}&plus=1&page=${page}`;
+}
+
+function buildFreeAgentsUrl(minValue, maxValue, page = 1) {
+  return `${TRANSFERMARKT_BASE_URL}/transfers/vertragslosespieler/statistik?ausrichtung=&spielerposition_id=0&land_id=&wettbewerb_id=alle&seit=0&altersklasse=&minMarktwert=${minValue}&maxMarktwert=${maxValue}&plus=1&page=${page}`;
 }
 
 // ── HTML parsing ──
@@ -117,6 +137,45 @@ function parseTransferList($) {
         playerImage, playerName, playerUrl, playerPosition,
         playerAge, playerNationality, playerNationalityFlag,
         transferDate, marketValue,
+      };
+    } catch {
+      return null;
+    }
+  }).filter(Boolean);
+}
+
+function parseFreeAgentsList($) {
+  const rows = $("table.items")
+    .find("tr.odd, tr.even")
+    .get();
+
+  return rows.map((el) => {
+    try {
+      const row = $(el);
+      const tables = row.find("td").find("table.inline-table");
+      const firstTable = tables.eq(0);
+      const playerImage = (firstTable.find("img").attr("data-src") || firstTable.find("img").attr("src") || "").replace("medium", "big");
+      const playerName = firstTable.find("img").attr("title") || "";
+      const href = firstTable.find("a").attr("href") || "";
+      if (!href) return null;
+      const playerUrl = `${TRANSFERMARKT_BASE_URL}${href}`;
+      const positionText = firstTable.find("tr").eq(1).text().replace(/-/g, " ").trim();
+      const playerPosition = convertPosition(positionText);
+      const zentriert = row.find("td.zentriert");
+      const playerAge = zentriert.eq(0).text().trim() || zentriert.eq(1).text().trim();
+      const marketValue = row.find("td.rechts").eq(0).text().trim();
+      const [playerNationality, playerNationalityFlag] = extractNationalityAndFlag($, row);
+
+      return {
+        playerImage: makeAbsoluteUrl(playerImage),
+        playerName,
+        playerUrl,
+        playerPosition,
+        playerAge,
+        playerNationality,
+        playerNationalityFlag,
+        transferDate: "",
+        marketValue,
       };
     } catch {
       return null;
@@ -190,26 +249,46 @@ async function enrichFromProfile(model) {
 }
 
 async function getReleasesForRange(minValue, maxValue) {
+  const all = [];
+
+  // Source 1: newest transfers where destination is Without Club
   const url = buildReleasesUrl(minValue, maxValue, 1);
   const $ = await fetchDocument(url);
   const pageCount = getTotalPages($);
-  const all = [];
 
   const totalRows = $("table.items").find("tr.odd, tr.even").length;
   const hasItems = $("table.items").length;
-  log(`  page 1: ${hasItems} table(s), ${totalRows} row(s), ${pageCount} page(s)`);
+  log(`  newest-transfers page 1: ${hasItems} table(s), ${totalRows} row(s), ${pageCount} page(s)`);
 
-  const parsePage = async (page) => {
+  const parseNewestPage = async (page) => {
     const $p = page === 1 ? $ : await fetchDocument(buildReleasesUrl(minValue, maxValue, page));
     return parseTransferList($p);
   };
 
-  const firstPage = await parsePage(1);
-  all.push(...firstPage);
-
+  all.push(...await parseNewestPage(1));
   for (let page = 2; page <= pageCount; page++) {
-    const items = await parsePage(page);
-    all.push(...items);
+    all.push(...await parseNewestPage(page));
+  }
+
+  // Source 2: dedicated free agents list (vertragslosespieler)
+  try {
+    const freeUrl = buildFreeAgentsUrl(minValue, maxValue, 1);
+    const $free = await fetchDocument(freeUrl);
+    const freePageCount = getTotalPages($free);
+    const freeRows = $free("table.items").find("tr.odd, tr.even").length;
+    log(`  free-agents page 1: ${freeRows} row(s), ${freePageCount} page(s)`);
+
+    const parseFreePage = async (page) => {
+      const $p = page === 1 ? $free : await fetchDocument(buildFreeAgentsUrl(minValue, maxValue, page));
+      return parseFreeAgentsList($p);
+    };
+
+    all.push(...await parseFreePage(1));
+    for (let page = 2; page <= freePageCount; page++) {
+      all.push(...await parseFreePage(page));
+    }
+  } catch (err) {
+    log(`  free-agents source failed: ${err.message}`);
   }
 
   return all;

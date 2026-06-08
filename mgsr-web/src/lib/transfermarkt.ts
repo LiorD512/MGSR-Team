@@ -669,52 +669,114 @@ function isWithoutClubTransferRow($: cheerio.Root, row: cheerio.Element): boolea
   return WITHOUT_CLUB_VARIANTS.some((v) => imgAlt.includes(v) || cellText.includes(v));
 }
 
-// ─── Releases (without-club rows from newest transfers page) ───────────────────
+function parseNewestTransfersReleaseRow($: cheerio.Root, row: cheerio.Element): Record<string, unknown> | null {
+  try {
+    if (!isWithoutClubTransferRow($, row)) return null;
+    const tables = $(row).find('table.inline-table');
+    if (tables.length === 0) return null;
+    const t0 = tables.eq(0);
+    const playerImage = (t0.find('img').attr('data-src') || t0.find('img').attr('src') || '').replace(
+      'medium',
+      'big'
+    );
+    const playerName = t0.find('img').attr('title') || '';
+    const playerUrl = t0.find('a').attr('href') || '';
+    const fullUrl = playerUrl.startsWith('http') ? playerUrl : TRANSFERMARKT_BASE + playerUrl;
+    const playerPosition = (t0.find('tr').eq(1).text() || '').replace(/-/g, ' ').trim();
+    const zentriert = $(row).find('td.zentriert');
+    const playerAge = zentriert.eq(0).text().trim() || zentriert.eq(1).text().trim() || '';
+    const transferDate = zentriert.eq(2).text().trim() || '';
+    const marketValue = $(row).find('td.rechts').eq(0).text().trim() || '';
+    const natImg = $(row).find('td.zentriert img[title]').first();
+    const playerNationality = natImg.attr('title') || natImg.attr('alt') || '';
+    const playerNationalityFlag = (natImg.attr('data-src') || natImg.attr('src') || '')
+      .replace('verysmall', 'head')
+      .replace('tiny', 'head');
+
+    return {
+      playerImage: makeAbsoluteUrl(playerImage),
+      playerName,
+      playerUrl: fullUrl,
+      playerPosition: convertPosition(playerPosition) || playerPosition,
+      playerAge,
+      playerNationality,
+      playerNationalityFlag: makeAbsoluteUrl(playerNationalityFlag),
+      transferDate,
+      marketValue,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseFreeAgentsReleaseRow($: cheerio.Root, row: cheerio.Element): Record<string, unknown> | null {
+  try {
+    const tables = $(row).find('table.inline-table');
+    if (tables.length === 0) return null;
+    const t0 = tables.eq(0);
+    const playerImage = (t0.find('img').attr('data-src') || t0.find('img').attr('src') || '').replace(
+      'medium',
+      'big'
+    );
+    const playerName = t0.find('img').attr('title') || '';
+    const playerUrl = t0.find('a').attr('href') || '';
+    const fullUrl = playerUrl.startsWith('http') ? playerUrl : TRANSFERMARKT_BASE + playerUrl;
+    if (!fullUrl) return null;
+    const playerPosition = (t0.find('tr').eq(1).text() || '').replace(/-/g, ' ').trim();
+    const zentriert = $(row).find('td.zentriert');
+    const playerAge = zentriert.eq(0).text().trim() || zentriert.eq(1).text().trim() || '';
+    const marketValue = $(row).find('td.rechts').eq(0).text().trim() || '';
+    const natImg = $(row).find('td.zentriert img[title]').first();
+    const playerNationality = natImg.attr('title') || natImg.attr('alt') || '';
+    const playerNationalityFlag = (natImg.attr('data-src') || natImg.attr('src') || '')
+      .replace('verysmall', 'head')
+      .replace('tiny', 'head');
+
+    return {
+      playerImage: makeAbsoluteUrl(playerImage),
+      playerName,
+      playerUrl: fullUrl,
+      playerPosition: convertPosition(playerPosition) || playerPosition,
+      playerAge,
+      playerNationality,
+      playerNationalityFlag: makeAbsoluteUrl(playerNationalityFlag),
+      transferDate: '',
+      marketValue,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ─── Releases (merged: newest-transfers without-club + free-agents page) ──────
 export async function handleReleases(minVal = 0, maxVal = 50000000, page = 1) {
-  const url = `${TRANSFERMARKT_BASE}/transfers/neuestetransfers/statistik?land_id=0&wettbewerb_id=alle&minMarktwert=${minVal}&maxMarktwert=${maxVal}&plus=1&page=${page}`;
-  const html = await fetchHtmlWithRetry(url);
-  const $ = cheerio.load(html);
+  const newestUrl = `${TRANSFERMARKT_BASE}/transfers/neuestetransfers/statistik?land_id=0&wettbewerb_id=alle&minMarktwert=${minVal}&maxMarktwert=${maxVal}&plus=1&page=${page}`;
+  const freeAgentsUrl = `${TRANSFERMARKT_BASE}/transfers/vertragslosespieler/statistik?ausrichtung=&spielerposition_id=0&land_id=&wettbewerb_id=alle&seit=0&altersklasse=&minMarktwert=${minVal}&maxMarktwert=${maxVal}&plus=1&page=${page}`;
 
-  const players: Record<string, unknown>[] = [];
-  $('table.items tr.odd, table.items tr.even').each((_, row) => {
-    try {
-      if (!isWithoutClubTransferRow($, row)) return;
-      const tables = $(row).find('table.inline-table');
-      if (tables.length === 0) return;
-      const t0 = tables.eq(0);
-      const playerImage = (t0.find('img').attr('data-src') || t0.find('img').attr('src') || '').replace(
-        'medium',
-        'big'
-      );
-      const playerName = t0.find('img').attr('title') || '';
-      const playerUrl = t0.find('a').attr('href') || '';
-      const fullUrl = playerUrl.startsWith('http') ? playerUrl : TRANSFERMARKT_BASE + playerUrl;
-      const playerPosition = (t0.find('tr').eq(1).text() || '').replace(/-/g, ' ').trim();
-      const zentriert = $(row).find('td.zentriert');
-      const playerAge = zentriert.eq(0).text().trim() || zentriert.eq(1).text().trim() || '';
-      const transferDate = zentriert.eq(2).text().trim() || '';
-      const marketValue = $(row).find('td.rechts').eq(0).text().trim() || '';
-      const natImg = $(row).find('td.zentriert img[title]').first();
-      const playerNationality = natImg.attr('title') || natImg.attr('alt') || '';
-      const playerNationalityFlag = (natImg.attr('data-src') || natImg.attr('src') || '')
-        .replace('verysmall', 'head')
-        .replace('tiny', 'head');
+  const [newestHtml, freeAgentsHtml] = await Promise.all([
+    fetchHtmlWithRetry(newestUrl),
+    fetchHtmlWithRetry(freeAgentsUrl),
+  ]);
+  const newest$ = cheerio.load(newestHtml);
+  const freeAgents$ = cheerio.load(freeAgentsHtml);
 
-      players.push({
-        playerImage: makeAbsoluteUrl(playerImage),
-        playerName,
-        playerUrl: fullUrl,
-        playerPosition: convertPosition(playerPosition) || playerPosition,
-        playerAge,
-        playerNationality,
-        playerNationalityFlag: makeAbsoluteUrl(playerNationalityFlag),
-        transferDate,
-        marketValue,
-      });
-    } catch {
-      // skip
-    }
+  const distinctByUrl = new Map<string, Record<string, unknown>>();
+
+  newest$('table.items tr.odd, table.items tr.even').each((_, row) => {
+    const parsed = parseNewestTransfersReleaseRow(newest$, row);
+    const key = (parsed?.playerUrl as string) || '';
+    if (parsed && key) distinctByUrl.set(key, parsed);
   });
+
+  freeAgents$('table.items tr.odd, table.items tr.even').each((_, row) => {
+    const parsed = parseFreeAgentsReleaseRow(freeAgents$, row);
+    const key = (parsed?.playerUrl as string) || '';
+    if (!parsed || !key) return;
+    if (distinctByUrl.has(key)) return;
+    distinctByUrl.set(key, parsed);
+  });
+
+  const players = Array.from(distinctByUrl.values());
 
   return { players };
 }

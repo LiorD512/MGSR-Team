@@ -52,7 +52,23 @@ const WORKER_RUNS_COLLECTION = 'WorkerRuns';
 const FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB = 'NEW_RELEASE_FROM_CLUB';
 
 const RELEASE_RANGES: [number, number][] = [
-  [0, 50000000],
+  [0, 125000],
+  [125001, 250000],
+  [250001, 400000],
+  [400001, 600000],
+  [600001, 800000],
+  [800001, 1000000],
+  [1000001, 1200000],
+  [1200001, 1400000],
+  [1400001, 1600000],
+  [1600001, 1800000],
+  [1800001, 2000000],
+  [2000001, 2200000],
+  [2200001, 2500000],
+  [2500001, 3000000],
+  [3000001, 3500000],
+  [3500001, 4000000],
+  [4000001, 50000000],
 ];
 
 const DELAY_BETWEEN_RANGES_MS = 6000;
@@ -297,6 +313,55 @@ function buildReleasesUrl(minValue: number, maxValue: number, page = 1): string 
   return `${TRANSFERMARKT_BASE_URL}/transfers/neuestetransfers/statistik?land_id=0&wettbewerb_id=alle&minMarktwert=${minValue}&maxMarktwert=${maxValue}&plus=1&page=${page}`;
 }
 
+function buildFreeAgentsUrl(minValue: number, maxValue: number, page = 1): string {
+  return `${TRANSFERMARKT_BASE_URL}/transfers/vertragslosespieler/statistik?ausrichtung=&spielerposition_id=0&land_id=&wettbewerb_id=alle&seit=0&altersklasse=&minMarktwert=${minValue}&maxMarktwert=${maxValue}&plus=1&page=${page}`;
+}
+
+function parseFreeAgentsList($: cheerio.Root): ReleaseModel[] {
+  const rows = $('table.items').find('tr.odd, tr.even').get();
+
+  return rows.map((el) => {
+    try {
+      const row = $(el);
+      const td = row.find('td');
+      const tables = td.find('table.inline-table');
+      const firstTable = tables.eq(0);
+      const playerImage =
+        (firstTable.find('img').attr('data-src') || firstTable.find('img').attr('src') || '').replace(
+          'medium',
+          'big'
+        );
+      const playerName = firstTable.find('img').attr('title') || '';
+      const href = firstTable.find('a').attr('href') || '';
+      if (!href) return null;
+      const playerUrl = `${TRANSFERMARKT_BASE_URL}${href}`;
+      const positionText = firstTable.find('tr').eq(1).text().replace(/-/g, ' ');
+      const playerPosition = convertLongPositionToShort(positionText.trim());
+      const zentriert = row.find('td.zentriert');
+      const playerAge = zentriert.eq(0).text().trim() || zentriert.eq(1).text().trim();
+      const marketValue = row.find('td.rechts').eq(0).text().trim();
+      const [playerNationality, playerNationalityFlag] = extractNationalityAndFlag($, row);
+
+      return {
+        playerImage,
+        playerName,
+        playerUrl,
+        playerPosition,
+        playerAge,
+        playerNationality,
+        playerNationalityFlag,
+        playerFoot: null,
+        clubJoinedLogo: null,
+        clubJoinedName: null,
+        transferDate: '',
+        marketValue,
+      };
+    } catch {
+      return null;
+    }
+  }).filter(Boolean) as ReleaseModel[];
+}
+
 async function enrichFromProfile(model: ReleaseModel): Promise<ReleaseModel | null> {
   try {
     const $ = await fetchDocument(model.playerUrl);
@@ -407,6 +472,26 @@ async function getLatestReleasesForRange(minValue: number, maxValue: number): Pr
   return all;
 }
 
+async function getFreeAgentReleasesForRange(minValue: number, maxValue: number): Promise<ReleaseModel[]> {
+  const url = buildFreeAgentsUrl(minValue, maxValue, 1);
+  const $ = await fetchDocument(url);
+  const pageCount = getTotalPages($);
+  const all: ReleaseModel[] = [];
+
+  const parsePage = async (page: number) => {
+    const u = page === 1 ? url : buildFreeAgentsUrl(minValue, maxValue, page);
+    const $p = page === 1 ? $ : await fetchDocument(u);
+    return parseFreeAgentsList($p);
+  };
+
+  all.push(...(await parsePage(1)));
+  for (let page = 2; page <= pageCount; page++) {
+    all.push(...(await parsePage(page)));
+  }
+
+  return all;
+}
+
 // ── Firestore helpers (match Cloud Function WorkerState/WorkerRuns) ──
 async function getKnownReleaseUrls(db: Firestore): Promise<Set<string>> {
   const doc = await db.collection(WORKER_STATE_COLLECTION).doc('ReleasesRefreshWorker').get();
@@ -467,9 +552,12 @@ async function main() {
       const [minVal, maxVal] = RELEASE_RANGES[i];
       log(`Fetching range ${i + 1}/${RELEASE_RANGES.length}: ${minVal}-${maxVal}`);
       try {
-        const releases = await getLatestReleasesForRange(minVal, maxVal);
-        allReleases.push(...releases);
-        log(`  ✅ ${releases.length} releases`);
+        const [latestWithoutClub, freeAgents] = await Promise.all([
+          getLatestReleasesForRange(minVal, maxVal),
+          getFreeAgentReleasesForRange(minVal, maxVal),
+        ]);
+        allReleases.push(...latestWithoutClub, ...freeAgents);
+        log(`  ✅ ${latestWithoutClub.length} newest-without-club + ${freeAgents.length} free-agent releases`);
       } catch (err: any) {
         rangesFailed++;
         log(`  ❌ Failed: ${err.message}`);
