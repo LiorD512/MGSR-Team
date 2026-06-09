@@ -18,6 +18,7 @@ import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import { type ClubRequest, type RosterPlayer } from '@/lib/requestMatcher';
 import { useAllRequestMatchResults } from '@/hooks/useMatchResults';
 import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
+import { getTeammates, extractPlayerIdFromUrl } from '@/lib/api';
 import Link from 'next/link';
 
 interface Player {
@@ -45,6 +46,12 @@ interface Player {
   notes?: string;
   noteList?: { notes?: string; createBy?: string; createdAt?: number }[];
   agency?: string;
+  playerPhoneNumber?: string;
+}
+
+interface RosterTeammateMatch {
+  player: Player;
+  matchesPlayedTogether: number;
 }
 
 interface PlayersCache {
@@ -191,6 +198,9 @@ export default function PlayersPage() {
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { clubName?: string; clubLogo?: string; clubCountry?: string; clubCountryFlag?: string; notes?: string; contactName?: string; minAge?: number; maxAge?: number; ageDoesntMatter?: boolean; dominateFoot?: string; euOnly?: boolean; salaryRange?: string; transferFee?: string })[]>([]);
   const [expandedMatchingPlayerId, setExpandedMatchingPlayerId] = useState<string | null>(null);
+  const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
+  const [loadingTeammatesUrl, setLoadingTeammatesUrl] = useState<string | null>(null);
+  const [expandedTeammatesUrl, setExpandedTeammatesUrl] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<'default' | 'age' | 'marketValue' | 'name'>('default');
 
   useEffect(() => {
@@ -579,6 +589,41 @@ export default function PlayersPage() {
     }
     return map;
   }, [platform, clubRequests, precomputedRequestMatchResults]);
+
+  const fetchTeammates = useCallback(async (playerUrl: string) => {
+    setLoadingTeammatesUrl(playerUrl);
+    try {
+      const teammates = await getTeammates(playerUrl);
+      const sourcePlayerId = extractPlayerIdFromUrl(playerUrl);
+      const rosterByTmId = new Map(
+        players
+          .map((p) => [extractPlayerIdFromUrl(p.tmProfile), p] as const)
+          .filter((entry): entry is [string, Player] => !!entry[0])
+      );
+
+      const matches: RosterTeammateMatch[] = teammates
+        .map((teammate) => {
+          const teammateTmId = extractPlayerIdFromUrl(teammate.tmProfileUrl);
+          if (!teammateTmId || teammateTmId === sourcePlayerId) return null;
+          const rosterPlayer = rosterByTmId.get(teammateTmId);
+          return rosterPlayer
+            ? { player: rosterPlayer, matchesPlayedTogether: teammate.matchesPlayedTogether }
+            : null;
+        })
+        .filter((m): m is RosterTeammateMatch => m != null)
+        .sort((a, b) => b.matchesPlayedTogether - a.matchesPlayedTogether);
+
+      setTeammatesCache((prev) => ({ ...prev, [playerUrl]: matches }));
+    } catch {
+      setTeammatesCache((prev) => ({ ...prev, [playerUrl]: [] }));
+    } finally {
+      setLoadingTeammatesUrl(null);
+    }
+  }, [players]);
+
+  const toggleTeammates = useCallback((url: string) => {
+    setExpandedTeammatesUrl((prev) => (prev === url ? null : url));
+  }, []);
 
   const sortedFiltered = useMemo(() => {
     if (platform !== 'men' || sortOption === 'default') return filtered;
@@ -1202,6 +1247,10 @@ export default function PlayersPage() {
             {displayList.map((p, i) => {
               const playerMatchingReqs = platform === 'men' ? matchingRequestsByPlayerId.get(p.id) : undefined;
               const matchCount = playerMatchingReqs?.length ?? 0;
+              const playerUrl = platform === 'men' ? ((p as Player).tmProfile || '') : '';
+              const rosterTeammates = playerUrl ? teammatesCache[playerUrl] : undefined;
+              const isLoadingTeammates = loadingTeammatesUrl === playerUrl;
+              const isTeammatesExpanded = expandedTeammatesUrl === playerUrl;
               return (
               <div
                 key={p.id}
@@ -1492,6 +1541,78 @@ export default function PlayersPage() {
                   </div>
                 );
               })()}
+
+              {/* Played with him — men only */}
+              {platform === 'men' && playerUrl && (
+                <div className="border-t border-mgsr-border/20 px-3 sm:px-4 py-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleTeammates(playerUrl);
+                      if (!(playerUrl in teammatesCache) && !loadingTeammatesUrl) {
+                        void fetchTeammates(playerUrl);
+                      }
+                    }}
+                    className="w-full flex items-center justify-between text-left rtl:text-right py-0.5 group/acc"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-mgsr-teal/15 text-mgsr-teal text-[10px] font-bold ring-1 ring-mgsr-teal/20">
+                        {isLoadingTeammates ? '…' : rosterTeammates != null ? rosterTeammates.length : '?'}
+                      </span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-mgsr-teal/60 group-hover/acc:text-mgsr-teal/80 transition">
+                        {isLoadingTeammates
+                          ? t('releases_roster_teammates_loading')
+                          : rosterTeammates != null
+                            ? t('releases_roster_teammates').replace('{count}', String(rosterTeammates.length))
+                            : t('releases_roster_teammates_tap')}
+                      </span>
+                    </span>
+                    <svg className={`w-3.5 h-3.5 text-mgsr-muted/40 transition-transform ${isTeammatesExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {isTeammatesExpanded && (
+                    <div className="mt-2 pb-1 space-y-1.5">
+                      {isLoadingTeammates ? (
+                        <div className="py-6 flex justify-center">
+                          <span className="w-4 h-4 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" />
+                        </div>
+                      ) : rosterTeammates?.length === 0 ? (
+                        <p className="text-[13px] text-mgsr-muted/50 py-3 text-center">{t('releases_no_roster_teammates')}</p>
+                      ) : (
+                        rosterTeammates?.map((match) => (
+                          <div key={match.player.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-mgsr-dark/30 border border-mgsr-border/30 hover:border-mgsr-teal/30 transition">
+                            <Link href={`/players/${match.player.id}?from=/players`} className="flex items-center gap-2.5 flex-1 min-w-0">
+                              <img src={match.player.profileImage || 'https://via.placeholder.com/40'} alt="" className="w-8 h-8 rounded-full object-cover ring-1 ring-mgsr-border/50" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-medium text-mgsr-text truncate">{match.player.fullName || 'Unknown'}</p>
+                                <p className="text-[11px] text-mgsr-muted/60 truncate">{match.player.positions?.filter(Boolean).join(', ') || '—'} · {match.player.age ? t('players_age_display').replace('{age}', match.player.age) : '—'}</p>
+                              </div>
+                            </Link>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {match.player.playerPhoneNumber && (
+                                <a
+                                  href={`https://wa.me/${match.player.playerPhoneNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hey ${(match.player.fullName || '').split(' ')[0]},\nHope everything is well at your side.\nI need your help with something.\nAny chance you have ${p.fullName || ''} contact number?\nThank you!`)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={`WhatsApp ${match.player.fullName || ''}`}
+                                  className="p-1 rounded-lg bg-green-500/10 hover:bg-green-500/25 transition-colors"
+                                >
+                                  <svg className="w-3.5 h-3.5 text-green-400" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                </a>
+                              )}
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md text-mgsr-teal bg-mgsr-teal/10">
+                                {t('releases_games_together').replace('{n}', String(match.matchesPlayedTogether))}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Matching Requests — expandable accordion, men only */}
               {matchCount > 0 && (
