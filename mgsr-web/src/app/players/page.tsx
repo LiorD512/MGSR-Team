@@ -46,11 +46,22 @@ interface Player {
   notes?: string;
   noteList?: { notes?: string; createBy?: string; createdAt?: number }[];
   agency?: string;
+}
+
+interface TeammatesRosterPlayer {
+  id: string;
+  fullName?: string;
+  profileImage?: string;
+  positions?: string[];
+  marketValue?: string;
+  currentClub?: { clubName?: string; clubLogo?: string };
+  age?: string;
+  tmProfile?: string;
   playerPhoneNumber?: string;
 }
 
 interface RosterTeammateMatch {
-  player: Player;
+  player: TeammatesRosterPlayer;
   matchesPlayedTogether: number;
 }
 
@@ -160,6 +171,7 @@ export default function PlayersPage() {
   const precomputedRequestMatchResults = useAllRequestMatchResults();
   const cached = getScreenCache<PlayersCache>('players');
   const [players, setPlayers] = useState<Player[]>(cached?.players ?? []);
+  const [rosterPlayers, setRosterPlayers] = useState<TeammatesRosterPlayer[]>([]);
   const [womenPlayers, setWomenPlayers] = useState<WomanPlayer[]>([]);
   const [youthPlayers, setYouthPlayers] = useState<YouthPlayer[]>([]);
   const [playersLoading, setPlayersLoading] = useState(cached === undefined);
@@ -232,6 +244,17 @@ export default function PlayersPage() {
       });
       setPlayers(list);
       setPlayersLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'Players'),
+      orderBy('createdAt', 'desc')
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setRosterPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() } as TeammatesRosterPlayer)));
     });
     return () => unsub();
   }, []);
@@ -594,21 +617,13 @@ export default function PlayersPage() {
     setLoadingTeammatesUrl(playerUrl);
     try {
       const teammates = await getTeammates(playerUrl);
-      const sourcePlayerId = extractPlayerIdFromUrl(playerUrl);
-      const rosterByTmId = new Map(
-        players
-          .map((p) => [extractPlayerIdFromUrl(p.tmProfile), p] as const)
-          .filter((entry): entry is [string, Player] => !!entry[0])
-      );
-
+      const rosterIds = new Set(rosterPlayers.map((p) => extractPlayerIdFromUrl(p.tmProfile)).filter(Boolean));
       const matches: RosterTeammateMatch[] = teammates
-        .map((teammate) => {
-          const teammateTmId = extractPlayerIdFromUrl(teammate.tmProfileUrl);
-          if (!teammateTmId || teammateTmId === sourcePlayerId) return null;
-          const rosterPlayer = rosterByTmId.get(teammateTmId);
-          return rosterPlayer
-            ? { player: rosterPlayer, matchesPlayedTogether: teammate.matchesPlayedTogether }
-            : null;
+        .filter((t) => rosterIds.has(extractPlayerIdFromUrl(t.tmProfileUrl) ?? ''))
+        .map((t) => {
+          const id = extractPlayerIdFromUrl(t.tmProfileUrl);
+          const rosterPlayer = rosterPlayers.find((p) => extractPlayerIdFromUrl(p.tmProfile) === id);
+          return rosterPlayer ? { player: rosterPlayer, matchesPlayedTogether: t.matchesPlayedTogether } : null;
         })
         .filter((m): m is RosterTeammateMatch => m != null)
         .sort((a, b) => b.matchesPlayedTogether - a.matchesPlayedTogether);
@@ -619,7 +634,7 @@ export default function PlayersPage() {
     } finally {
       setLoadingTeammatesUrl(null);
     }
-  }, [players]);
+  }, [rosterPlayers]);
 
   const toggleTeammates = useCallback((url: string) => {
     setExpandedTeammatesUrl((prev) => (prev === url ? null : url));

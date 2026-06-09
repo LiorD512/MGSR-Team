@@ -794,7 +794,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | ViewModel/State | `PlayersViewModel` | Client-side with Firestore listeners |
 | Data | Firestore Players (real-time listener) | Same |
 | Filters | Position, foot, contract status, agent, search text | Same filters |
-| Actions | Navigate to player detail, filter, sort | Same + per-player "played with him" accordion (Transfermarkt teammates matched against roster, games-together badges, WhatsApp outreach shortcut) |
+| Actions | Navigate to player detail, filter, sort | Same + per-player "played with him" accordion (Transfermarkt teammates matched against roster, games-together badges, WhatsApp outreach shortcut; matching pipeline aligned with Web Shortlist teammates logic) |
 
 ### Player Detail
 | Aspect | Android | Web |
