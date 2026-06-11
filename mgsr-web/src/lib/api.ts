@@ -207,7 +207,17 @@ export async function getReleases(min = 0, max = 5000000, page = 1): Promise<Rel
  * Falls back to live scraping if cache is empty.
  */
 export async function getReleasesFromCache(): Promise<ReleasePlayer[]> {
-  const res = await fetchBackend('/api/transfermarkt/releases?all=true');
+  // Always read releases cache from this app's API route so local worker writes
+  // to Firestore ScrapingCache are reflected even when NEXT_PUBLIC_BACKEND_URL is set.
+  const cacheBust = Date.now();
+  const res = await fetch(`/api/transfermarkt/releases?all=true&_=${cacheBust}`, {
+    cache: 'no-store',
+    headers: { 'Cache-Control': 'no-cache' },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
   const data = await res.json();
   if (data.players && data.players.length > 0) return data.players;
   // Fallback: live scrape

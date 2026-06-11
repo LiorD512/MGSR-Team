@@ -26,7 +26,7 @@ import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
-import { getScreenCache, setScreenCache } from '@/lib/screenCache';
+import { clearScreenCache, getScreenCache, setScreenCache } from '@/lib/screenCache';
 
 const VALUE_PRESETS = [
   { min: 0, max: 6000000, label: 'All', labelHe: 'הכל', isAll: true },
@@ -453,6 +453,12 @@ export default function ReleasesPage() {
     }
   }, [preset, t, user?.uid, search, positionFilter, ageFilter, sortBy, rosterPlayers, shortlistUrls]);
 
+  const handleReload = useCallback(() => {
+    sessionCacheAll = null;
+    clearScreenCache('releases', user?.uid ?? undefined);
+    loadReleases();
+  }, [loadReleases, user?.uid]);
+
   useEffect(() => {
     if (sessionCacheAll) {
       setPlayers(sessionCacheAll);
@@ -645,7 +651,7 @@ export default function ReleasesPage() {
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             {(!loadingList || players.length > 0 || error) && (
               <button
-                onClick={() => loadReleases()}
+                onClick={handleReload}
                 disabled={loadingList}
                 className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 disabled:opacity-50 transition"
               >
