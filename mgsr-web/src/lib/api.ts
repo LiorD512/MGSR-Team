@@ -119,11 +119,7 @@ export interface ReleasePlayer {
   playerPosition?: string;
   playerAge?: string;
   playerNationality?: string;
-  playerNationalities?: string[];
   playerNationalityFlag?: string;
-  playerFoot?: string | null;
-  clubJoinedLogo?: string | null;
-  clubJoinedName?: string | null;
   transferDate?: string;
   marketValue?: string;
 }
@@ -203,25 +199,22 @@ export async function getReleases(min = 0, max = 5000000, page = 1): Promise<Rel
 }
 
 /**
- * Fetch all releases from local worker cache (populated every 3 days).
- * Falls back to live scraping if cache is empty.
+ * Fetch all releases from local worker cache (populated periodically).
+ * If `forceFresh` is true, bypasses cache and fetches live across all value ranges.
  */
-export async function getReleasesFromCache(): Promise<ReleasePlayer[]> {
-  // Always read releases cache from this app's API route so local worker writes
-  // to Firestore ScrapingCache are reflected even when NEXT_PUBLIC_BACKEND_URL is set.
-  const cacheBust = Date.now();
-  const res = await fetch(`/api/transfermarkt/releases?all=true&_=${cacheBust}`, {
-    cache: 'no-store',
-    headers: { 'Cache-Control': 'no-cache' },
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
+export async function getReleasesFromCache(
+  forceFresh = false,
+  onProgress?: (progress: ReleasesProgress) => void
+): Promise<ReleasePlayer[]> {
+  if (forceFresh) {
+    return getReleasesAllRanges(onProgress);
   }
+
+  const res = await fetchBackend('/api/transfermarkt/releases?all=true');
   const data = await res.json();
   if (data.players && data.players.length > 0) return data.players;
   // Fallback: live scrape
-  return getReleasesAllPages(0, 50000000);
+  return getReleasesAllRanges(onProgress);
 }
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -231,7 +224,8 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * results from Transfermarkt than a single broad range.
  */
 export const RELEASE_RANGES: { min: number; max: number }[] = [
-  { min: 125000, max: 250000 },
+  { min: 0, max: 125000 },
+  { min: 125001, max: 250000 },
   { min: 250001, max: 400000 },
   { min: 400001, max: 600000 },
   { min: 600001, max: 800000 },
@@ -240,8 +234,13 @@ export const RELEASE_RANGES: { min: number; max: number }[] = [
   { min: 1200001, max: 1400000 },
   { min: 1400001, max: 1600000 },
   { min: 1600001, max: 1800000 },
-  { min: 1800000, max: 2000000 },
-  { min: 2000000, max: 2200000 },
+  { min: 1800001, max: 2000000 },
+  { min: 2000001, max: 2200000 },
+  { min: 2200001, max: 2500000 },
+  { min: 2500001, max: 3000000 },
+  { min: 3000001, max: 3500000 },
+  { min: 3500001, max: 4000000 },
+  { min: 4000001, max: 50000000 },
 ];
 
 /**
@@ -285,9 +284,23 @@ export type ReleasesProgress = { range: number; totalRanges: number; total: numb
 export async function getReleasesAllRanges(
   onProgress?: (progress: ReleasesProgress) => void
 ): Promise<ReleasePlayer[]> {
-  return getReleasesAllPages(0, 50000000, (page, total) => {
-    onProgress?.({ range: page, totalRanges: 25, total });
-  });
+  const merged = new Map<string, ReleasePlayer>();
+
+  for (let i = 0; i < RELEASE_RANGES.length; i++) {
+    const range = RELEASE_RANGES[i];
+    const players = await getReleasesAllPages(range.min, range.max);
+
+    for (const player of players) {
+      if (!player.playerUrl) continue;
+      if (!merged.has(player.playerUrl)) {
+        merged.set(player.playerUrl, player);
+      }
+    }
+
+    onProgress?.({ range: i + 1, totalRanges: RELEASE_RANGES.length, total: merged.size });
+  }
+
+  return Array.from(merged.values());
 }
 
 // ─── Contract Finishers (contracts expiring in next transfer window) ─────────────

@@ -832,7 +832,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Aspect | Android | Web |
 |--------|---------|-----|
 | Screen | `ReleasesScreen` | `/releases/page.tsx` |
-| Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`); cache entries are post-enriched from player profile pages with citizenships, preferred foot, and club metadata; Releases page fetches this endpoint via same-origin `no-store` request with cache-busting to avoid stale browser/backend cache, and the Reload button clears session/screen in-memory cache before refetching; web Releases UI hard-caps visible players at €6M |
+| Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`) is used for default load; Reload on web now forces a live multi-range Transfermarkt fetch (0 → 50M buckets aligned with releases worker ranges) and bypasses stale cache to reflect newest releases immediately |
 | Filters | Position, market value | Same; Web "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first |
 
 ### Contract Finishers

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { collection, getDocs, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { callShortlistAdd } from '@/lib/callables';
 import { db } from '@/lib/firebase';
 import {
@@ -26,14 +26,14 @@ import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
-import { clearScreenCache, getScreenCache, setScreenCache } from '@/lib/screenCache';
+import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 
 const VALUE_PRESETS = [
-  { min: 0, max: 6000000, label: 'All', labelHe: 'הכל', isAll: true },
+  { min: 0, max: 50000000, label: 'All', labelHe: 'הכל', isAll: true },
   { min: 0, max: 500000, label: '0-500K', labelHe: '0-500K', isAll: false },
   { min: 500000, max: 1000000, label: '500K-1M', labelHe: '500K-1M', isAll: false },
   { min: 1000000, max: 5000000, label: '1M-5M', labelHe: '1M-5M', isAll: false },
-  { min: 5000000, max: 6000000, label: '5M-6M', labelHe: '5M-6M', isAll: false },
+  { min: 5000000, max: 50000000, label: '5M+', labelHe: '5M+', isAll: false },
 ];
 
 /** Session cache: do not refetch unless user presses Reload */
@@ -349,7 +349,6 @@ export default function ReleasesPage() {
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(
     () => new Set(cached?.shortlistUrls ?? [])
   );
-  const [releaseAddedAtByUrl, setReleaseAddedAtByUrl] = useState<Record<string, number>>({});
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -386,34 +385,15 @@ export default function ReleasesPage() {
   }, [user]);
 
   useEffect(() => {
-    const releasesFeedQuery = query(
-      collection(db, 'FeedEvents'),
-      where('type', '==', 'NEW_RELEASE_FROM_CLUB')
-    );
-    const unsub = onSnapshot(releasesFeedQuery, (snap) => {
-      const next: Record<string, number> = {};
-      snap.docs.forEach((doc) => {
-        const data = doc.data();
-        const playerUrl = data.playerTmProfile as string | undefined;
-        const timestamp = data.timestamp as number | undefined;
-        if (!playerUrl || !timestamp) return;
-        next[playerUrl] = Math.max(next[playerUrl] ?? 0, timestamp);
-      });
-      setReleaseAddedAtByUrl(next);
-    });
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
-  const loadReleases = useCallback(async () => {
+  const loadReleases = useCallback(async (forceFresh = false) => {
     setError('');
     setLoadingList(true);
     const uid = user?.uid;
     try {
-      const list = await getReleasesFromCache();
+      const list = await getReleasesFromCache(forceFresh);
       // Deduplicate by playerUrl
       const seen = new Set<string>();
       const deduped = list.filter((p) => {
@@ -452,12 +432,6 @@ export default function ReleasesPage() {
       }
     }
   }, [preset, t, user?.uid, search, positionFilter, ageFilter, sortBy, rosterPlayers, shortlistUrls]);
-
-  const handleReload = useCallback(() => {
-    sessionCacheAll = null;
-    clearScreenCache('releases', user?.uid ?? undefined);
-    loadReleases();
-  }, [loadReleases, user?.uid]);
 
   useEffect(() => {
     if (sessionCacheAll) {
@@ -506,8 +480,7 @@ export default function ReleasesPage() {
           playerAge: player.playerAge ?? null,
           playerNationality: player.playerNationality ?? null,
           playerNationalityFlag: player.playerNationalityFlag ?? null,
-          clubJoinedName: player.clubJoinedName ?? null,
-          clubJoinedLogo: player.clubJoinedLogo ?? null,
+          clubJoinedName: null,
           transferDate: player.transferDate ?? null,
           marketValue: player.marketValue ?? null,
           addedByAgentId: account.id,
@@ -570,8 +543,6 @@ export default function ReleasesPage() {
 
   const filteredPlayers = useMemo(() => {
     let result = players;
-    const absoluteMaxValue = 6000000;
-    result = result.filter((pl) => parseMarketValue(pl.marketValue) <= absoluteMaxValue);
     // Value range filter (client-side)
     const p = VALUE_PRESETS[preset];
     if (!p.isAll) {
@@ -606,27 +577,10 @@ export default function ReleasesPage() {
     return result;
   }, [players, preset, search, positionFilter, ageFilter, rosterPlayers, shortlistUrls]);
 
-  const sortedPlayers = useMemo(() => {
-    if (sortBy !== 'date') {
-      return sortReleases(filteredPlayers, sortBy);
-    }
-
-    const parseTransferDate = (dateStr: string | undefined): number => {
-      if (!dateStr) return 0;
-      const parts = dateStr.trim().split(/[/.-]/);
-      if (parts.length !== 3) return 0;
-      const [d, m, y] = parts.map((p) => parseInt(p, 10));
-      if (Number.isNaN(d) || Number.isNaN(m) || Number.isNaN(y)) return 0;
-      return new Date(y, m - 1, d).getTime();
-    };
-
-    return [...filteredPlayers].sort((a, b) => {
-      const addedAtA = (a.playerUrl && releaseAddedAtByUrl[a.playerUrl]) || 0;
-      const addedAtB = (b.playerUrl && releaseAddedAtByUrl[b.playerUrl]) || 0;
-      if (addedAtA !== addedAtB) return addedAtB - addedAtA;
-      return parseTransferDate(b.transferDate) - parseTransferDate(a.transferDate);
-    });
-  }, [filteredPlayers, sortBy, releaseAddedAtByUrl]);
+  const sortedPlayers = useMemo(
+    () => sortReleases(filteredPlayers, sortBy),
+    [filteredPlayers, sortBy]
+  );
 
   const hasActiveFilters = search.trim() || positionFilter || ageFilter !== 'all';
 
@@ -651,7 +605,7 @@ export default function ReleasesPage() {
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             {(!loadingList || players.length > 0 || error) && (
               <button
-                onClick={handleReload}
+                onClick={() => loadReleases(true)}
                 disabled={loadingList}
                 className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 disabled:opacity-50 transition"
               >
