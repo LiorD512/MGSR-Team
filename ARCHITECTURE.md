@@ -793,7 +793,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Screen | `PlayersScreen` | `/players/page.tsx` |
 | ViewModel/State | `PlayersViewModel` | Client-side with Firestore listeners |
 | Data | Firestore Players (real-time listener) | Same |
-| Filters | Position, foot, contract status, agent, search text | Same filters |
+| Filters | Position, foot, contract status, agent, search text | Same filters; Players sort default label is "Release date" (HE: "תאריך שחרור") in web UI |
 | Actions | Navigate to player detail, filter, sort | Same + per-player "played with him" accordion (Transfermarkt teammates matched against roster, games-together badges, WhatsApp outreach shortcut; matching pipeline aligned with Web Shortlist teammates logic) |
 
 ### Player Detail
@@ -833,7 +833,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | `ReleasesScreen` | `/releases/page.tsx` |
 | Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`) is used for default load; Reload on web now forces a latest persisted cache read (`all=true&refresh=true`, TTL bypass) and merges latest `FeedEvents.NEW_RELEASE_FROM_CLUB` entries so newly notified releases appear immediately even before next cache cycle; route explicitly sets `maxDuration=300` on Vercel |
-| Filters | Position, market value | Same; Web "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first; release cards display explicit "Release date" when available |
+| Filters | Position, market value | Same; Web adds age + confederation (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC) filters, "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first, and release cards display explicit "Release date" when available |
 
 ### Contract Finishers
 | Aspect | Android | Web |

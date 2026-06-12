@@ -22,6 +22,8 @@ import {
   type AgeFilter,
   type SortBy,
 } from '@/lib/releases';
+import { getConfederation } from '@/lib/nationToConfederation';
+import type { Confederation } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
@@ -48,6 +50,15 @@ const AGE_FILTERS: { value: AgeFilter; labelKey: string }[] = [
   { value: 'u23', labelKey: 'releases_age_u23' },
   { value: '23-30', labelKey: 'releases_age_23_30' },
   { value: '30+', labelKey: 'releases_age_30plus' },
+];
+
+const REGION_OPTIONS: { value: Confederation; key: string }[] = [
+  { value: 'UEFA', key: 'transfer_windows_group_uefa' },
+  { value: 'CONMEBOL', key: 'transfer_windows_group_conmebol' },
+  { value: 'CONCACAF', key: 'transfer_windows_group_concacaf' },
+  { value: 'AFC', key: 'transfer_windows_group_afc' },
+  { value: 'CAF', key: 'transfer_windows_group_caf' },
+  { value: 'OFC', key: 'transfer_windows_group_ofc' },
 ];
 
 const RELEASES_MAX_VISIBLE_VALUE = 6000000;
@@ -349,6 +360,7 @@ interface ReleasesCache {
   search: string;
   positionFilter: string | null;
   ageFilter: AgeFilter;
+  regionFilter: Confederation | null;
   sortBy: SortBy;
   rosterPlayers: RosterPlayer[];
   shortlistUrls: string[];
@@ -367,6 +379,7 @@ export default function ReleasesPage() {
   const [search, setSearch] = useState(cached?.search ?? '');
   const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
   const [ageFilter, setAgeFilter] = useState<AgeFilter>(cached?.ageFilter ?? 'all');
+  const [regionFilter, setRegionFilter] = useState<Confederation | null>(cached?.regionFilter ?? null);
   const [sortBy, setSortBy] = useState<SortBy>(cached?.sortBy ?? 'value');
   const [firestorePositions, setFirestorePositions] = useState<{ name?: string; hebrewName?: string }[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>(cached?.rosterPlayers ?? []);
@@ -441,6 +454,7 @@ export default function ReleasesPage() {
             search,
             positionFilter,
             ageFilter,
+            regionFilter,
             sortBy,
             rosterPlayers,
             shortlistUrls: Array.from(shortlistUrls),
@@ -458,7 +472,7 @@ export default function ReleasesPage() {
         setLoadingList(false);
       }
     }
-  }, [preset, t, user?.uid, search, positionFilter, ageFilter, sortBy, rosterPlayers, shortlistUrls]);
+  }, [preset, t, user?.uid, search, positionFilter, ageFilter, regionFilter, sortBy, rosterPlayers, shortlistUrls]);
 
   useEffect(() => {
     if (sessionCacheAll) {
@@ -479,13 +493,14 @@ export default function ReleasesPage() {
         search,
         positionFilter,
         ageFilter,
+        regionFilter,
         sortBy,
         rosterPlayers,
         shortlistUrls: Array.from(shortlistUrls),
       },
       user?.uid ?? undefined
     );
-  }, [players, preset, search, positionFilter, ageFilter, sortBy, rosterPlayers, shortlistUrls, user?.uid]);
+  }, [players, preset, search, positionFilter, ageFilter, regionFilter, sortBy, rosterPlayers, shortlistUrls, user?.uid]);
 
   const addToShortlist = useCallback(
     async (player: ReleasePlayer) => {
@@ -596,6 +611,9 @@ export default function ReleasesPage() {
       );
     }
     result = filterByAge(result, ageFilter);
+    if (regionFilter) {
+      result = result.filter((pl) => getConfederation(pl.playerNationality) === regionFilter);
+    }
     // Exclude players already in roster or shortlist
     const rosterTmIds = new Set(rosterPlayers.map((rp) => extractPlayerIdFromUrl(rp.tmProfile)).filter(Boolean));
     result = result.filter((pl) => {
@@ -605,14 +623,14 @@ export default function ReleasesPage() {
       return true;
     });
     return result;
-  }, [players, preset, search, positionFilter, ageFilter, rosterPlayers, shortlistUrls]);
+  }, [players, preset, search, positionFilter, ageFilter, regionFilter, rosterPlayers, shortlistUrls]);
 
   const sortedPlayers = useMemo(
     () => sortReleases(filteredPlayers, sortBy),
     [filteredPlayers, sortBy]
   );
 
-  const hasActiveFilters = search.trim() || positionFilter || ageFilter !== 'all';
+  const hasActiveFilters = search.trim() || positionFilter || ageFilter !== 'all' || regionFilter;
 
   if (loading || !user) {
     return (
@@ -754,6 +772,32 @@ export default function ReleasesPage() {
                     }`}
                   >
                     {t(labelKey)}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_region')}:</span>
+                <button
+                  onClick={() => setRegionFilter(null)}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    !regionFilter
+                      ? 'bg-mgsr-teal text-mgsr-dark'
+                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                  }`}
+                >
+                  {t('releases_all')}
+                </button>
+                {REGION_OPTIONS.map((region) => (
+                  <button
+                    key={region.value}
+                    onClick={() => setRegionFilter(regionFilter === region.value ? null : region.value)}
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      regionFilter === region.value
+                        ? 'bg-mgsr-teal text-mgsr-dark'
+                        : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    {t(region.key)}
                   </button>
                 ))}
               </div>
