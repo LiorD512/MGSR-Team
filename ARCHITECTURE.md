@@ -841,7 +841,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | Feed/notification center only | `/release-notifications/page.tsx` |
 | Data | `FeedEvents` release notifications | Direct Firestore `FeedEvents` listener filtered to `type=NEW_RELEASE_FROM_CLUB` and `extraInfo=NOT_IN_DATABASE`, with a live exclusion against `Players.tmProfile` so entries disappear once they are added to the database |
-| Purpose | Alerting | Dedicated fallback screen for release alerts missing from the cached Releases dataset |
+| Purpose | Alerting | Dedicated fallback screen for release alerts missing from the cached Releases dataset, including add-to-shortlist and "played-with-him" teammate lookup |
 
 ### Contract Finishers
 | Aspect | Android | Web |
