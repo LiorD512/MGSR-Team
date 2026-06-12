@@ -124,6 +124,9 @@ function ReleaseNotificationCard({
   const playerUrl = event.playerTmProfile || '';
   const playerPosition = event.playerPosition || meta?.playerPosition || '—';
   const marketValue = event.marketValue || meta?.marketValue || '—';
+  const playerAge = event.playerAge || meta?.playerAge;
+  const playerNationality = event.playerNationality || meta?.playerNationality;
+  const playerNationalityFlag = event.playerNationalityFlag || meta?.playerNationalityFlag;
   const rosterTeammates = playerUrl ? teammatesCache[playerUrl] : undefined;
   const isLoadingTeammates = loadingTeammatesUrl === playerUrl;
   const isExpanded = isTeammatesExpanded === playerUrl;
@@ -168,16 +171,35 @@ function ReleaseNotificationCard({
           {t('release_notifications_badge')}
         </span>
         <div className="flex gap-4 mt-6">
-          <img
-            src={event.playerImage || 'https://via.placeholder.com/72'}
-            alt=""
-            className="w-16 h-16 rounded-2xl object-cover bg-mgsr-dark ring-2 ring-mgsr-border group-hover:ring-mgsr-teal/50 transition-all duration-300 group-hover:scale-105 shrink-0"
-          />
+          <div className="relative shrink-0">
+            <img
+              src={event.playerImage || 'https://via.placeholder.com/72'}
+              alt=""
+              className="w-16 h-16 rounded-2xl object-cover bg-mgsr-dark ring-2 ring-mgsr-border group-hover:ring-mgsr-teal/50 transition-all duration-300 group-hover:scale-105"
+            />
+            {playerNationalityFlag && (
+              <img
+                src={playerNationalityFlag}
+                alt=""
+                className="absolute -bottom-1 -right-1 w-6 h-4 rounded object-cover border border-mgsr-dark shadow"
+              />
+            )}
+          </div>
           <div className="flex-1 min-w-0">
             <p className="font-display font-semibold text-lg text-mgsr-text truncate group-hover:text-mgsr-teal transition-colors">
               {event.playerName || 'Unknown'}
             </p>
             <p className="text-sm text-mgsr-muted mt-1">{playerPosition}</p>
+            <div className="flex items-center gap-2 mt-2">
+              {playerAge && (
+                <span className="text-xs px-2 py-0.5 rounded-md bg-mgsr-card border border-mgsr-border text-mgsr-muted">
+                  {t('players_age_display').replace('{age}', playerAge)}
+                </span>
+              )}
+              {playerNationality && (
+                <span className="text-xs text-mgsr-muted truncate">{playerNationality}</span>
+              )}
+            </div>
             <p className="text-xs text-mgsr-muted mt-2">
               {t('releases_sort_date')}: {formatTimestamp(event.timestamp, isRtl)}
             </p>
