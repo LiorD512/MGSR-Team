@@ -69,6 +69,23 @@ interface RosterTeammateMatch {
   matchesPlayedTogether: number;
 }
 
+function formatReleaseDate(value?: string, isRtl?: boolean): string | null {
+  if (!value) return null;
+  const text = value.trim();
+  if (!text) return null;
+
+  // Keep Transfermarkt-native format as-is when already DD/MM/YYYY.
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) return text;
+
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return text;
+  return new Intl.DateTimeFormat(isRtl ? 'he-IL' : 'en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
 function ReleaseCard({
   player,
   onAddToShortlist,
@@ -97,6 +114,7 @@ function ReleaseCard({
   isTeammatesExpanded: string | null;
 }) {
   const playerUrl = player.playerUrl || '';
+  const releaseDate = formatReleaseDate(player.transferDate, isRtl);
   const rosterTeammates = playerUrl ? teammatesCache[playerUrl] : undefined;
   const isLoadingTeammates = loadingTeammatesUrl === playerUrl;
   const isExpanded = isTeammatesExpanded === playerUrl;
@@ -178,9 +196,9 @@ function ReleaseCard({
             <span className="text-xl font-display font-bold text-mgsr-teal">
               {player.marketValue || '—'}
             </span>
-            {player.transferDate && (
+            {releaseDate && (
               <span className="text-xs text-mgsr-muted truncate max-w-[100px]">
-                {player.transferDate}
+                {releaseDate}
               </span>
             )}
           </div>
@@ -224,6 +242,13 @@ function ReleaseCard({
             )}
           </div>
         </div>
+
+        {releaseDate && (
+          <div className="mt-2 text-xs text-mgsr-muted">
+            <span className="text-mgsr-muted/80">{t('releases_sort_date')}:</span>{' '}
+            <span className="text-mgsr-text">{releaseDate}</span>
+          </div>
+        )}
 
         {/* Roster teammates section */}
         <div className="mt-4" data-no-propagate>
