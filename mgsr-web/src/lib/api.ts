@@ -200,21 +200,24 @@ export async function getReleases(min = 0, max = 5000000, page = 1): Promise<Rel
 
 /**
  * Fetch all releases from local worker cache (populated periodically).
- * If `forceFresh` is true, bypasses cache and fetches live across all value ranges.
+ * If `forceFresh` is true, bypasses TTL and returns the latest persisted cache.
  */
 export async function getReleasesFromCache(
   forceFresh = false,
   onProgress?: (progress: ReleasesProgress) => void
 ): Promise<ReleasePlayer[]> {
   if (forceFresh) {
-    return getReleasesAllRanges(onProgress);
+    const res = await fetchBackend('/api/transfermarkt/releases?all=true&refresh=true');
+    const data = await res.json();
+    if (data.players && data.players.length > 0) return data.players;
+    return [];
   }
 
   const res = await fetchBackend('/api/transfermarkt/releases?all=true');
   const data = await res.json();
   if (data.players && data.players.length > 0) return data.players;
-  // Fallback: live scrape
-  return getReleasesAllRanges(onProgress);
+  // Do not live scrape from client reload path; this times out on serverless.
+  return [];
 }
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));

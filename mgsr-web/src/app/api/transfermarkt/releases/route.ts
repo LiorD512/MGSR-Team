@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleReleases } from '@/lib/transfermarkt';
-import { getCached, setCache, sanitizeKey, getCachedChunked } from '@/lib/scrapingCache';
+import { getCached, setCache, sanitizeKey, getCachedChunked, getCachedChunkedWithOptions } from '@/lib/scrapingCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,14 +16,31 @@ export async function GET(request: NextRequest) {
     const refresh = request.nextUrl.searchParams.get('refresh') === 'true';
     const all = request.nextUrl.searchParams.get('all') === 'true';
 
-    // If requesting all releases, return from chunked cache (populated by local worker)
-    if (all && !refresh) {
-      const cached = await getCachedChunked<Record<string, unknown>>(ALL_CACHE_KEY, ALL_CACHE_TTL);
+    // If requesting all releases, always serve from chunked cache.
+    // refresh=true means "force latest persisted cache" (ignore TTL), not live scrape.
+    if (all) {
+      const cached = refresh
+        ? await getCachedChunkedWithOptions<Record<string, unknown>>(ALL_CACHE_KEY, ALL_CACHE_TTL, { ignoreTtl: true })
+        : await getCachedChunked<Record<string, unknown>>(ALL_CACHE_KEY, ALL_CACHE_TTL);
+
       if (cached && cached.length > 0) {
-        return NextResponse.json({ players: cached, fromCache: true }, {
-          headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=43200' },
-        });
+        return NextResponse.json(
+          { players: cached, fromCache: true, forcedRefresh: refresh },
+          {
+            headers: {
+              'X-Cache': 'HIT',
+              'Cache-Control': refresh
+                ? 'no-store'
+                : 'public, s-maxage=3600, stale-while-revalidate=43200',
+            },
+          }
+        );
       }
+
+      return NextResponse.json(
+        { players: [], fromCache: false, forcedRefresh: refresh },
+        { headers: { 'X-Cache': 'MISS', 'Cache-Control': 'no-store' } }
+      );
     }
 
     const cacheKey = `releases-${sanitizeKey(`${min}-${max}-${page}`)}`;

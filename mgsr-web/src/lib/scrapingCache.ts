@@ -80,6 +80,46 @@ export async function getCachedChunked<T>(key: string, ttlMs: number): Promise<T
 }
 
 /**
+ * Same as getCachedChunked, but can ignore TTL checks.
+ * Useful for user-triggered refresh actions that should return the latest
+ * persisted worker output immediately without falling back to live scraping.
+ */
+export async function getCachedChunkedWithOptions<T>(
+  key: string,
+  ttlMs: number,
+  options?: { ignoreTtl?: boolean }
+): Promise<T[] | null> {
+  try {
+    const db = await getDb();
+    if (!db) return null;
+    const col = db.collection('ScrapingCache');
+    const snap = await col.doc(`${key}-chunk-0`).get();
+    if (!snap.exists) return null;
+    const data = snap.data();
+    if (!data) return null;
+
+    const isExpired = Date.now() - (data.cachedAt as number) > ttlMs;
+    if (isExpired && !options?.ignoreTtl) return null;
+
+    const all: T[] = [...(data.payload as T[])];
+    const totalChunks = (data.totalChunks as number) || 1;
+    if (totalChunks > 1) {
+      const promises = [];
+      for (let i = 1; i < totalChunks; i++) {
+        promises.push(col.doc(`${key}-chunk-${i}`).get());
+      }
+      const snaps = await Promise.all(promises);
+      for (const s of snaps) {
+        if (s.exists) all.push(...((s.data()?.payload as T[]) || []));
+      }
+    }
+    return all;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Write an array to Firestore split across multiple documents.
  * Each chunk stores up to CHUNK_SIZE items. Chunk-0 also stores totalChunks.
  */
