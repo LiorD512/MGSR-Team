@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { collection, onSnapshot, orderBy, query, limit } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot, orderBy, query, limit } from 'firebase/firestore';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -13,6 +13,50 @@ import { callShortlistAdd } from '@/lib/callables';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
 import { extractPlayerIdFromUrl, getReleasesFromCache, getTeammates, type ReleasePlayer } from '@/lib/api';
+import {
+  filterByAge,
+  getUniquePositions,
+  parseMarketValue,
+  sortReleases,
+  type AgeFilter,
+  type SortBy,
+} from '@/lib/releases';
+import { getConfederation } from '@/lib/nationToConfederation';
+import type { Confederation } from '@/lib/api';
+
+const VALUE_PRESETS = [
+  { min: 0, max: 50000000, label: 'All', labelHe: 'הכל', isAll: true },
+  { min: 0, max: 500000, label: '0-500K', labelHe: '0-500K', isAll: false },
+  { min: 500000, max: 1000000, label: '500K-1M', labelHe: '500K-1M', isAll: false },
+  { min: 1000000, max: 5000000, label: '1M-5M', labelHe: '1M-5M', isAll: false },
+  { min: 5000000, max: 50000000, label: '5M+', labelHe: '5M+', isAll: false },
+];
+
+const AGE_FILTERS: { value: AgeFilter; labelKey: string }[] = [
+  { value: 'all', labelKey: 'releases_age_all' },
+  { value: 'u23', labelKey: 'releases_age_u23' },
+  { value: '23-30', labelKey: 'releases_age_23_30' },
+  { value: '30+', labelKey: 'releases_age_30plus' },
+];
+
+const REGION_OPTIONS: { value: Confederation; key: string }[] = [
+  { value: 'UEFA', key: 'transfer_windows_group_uefa' },
+  { value: 'CONMEBOL', key: 'transfer_windows_group_conmebol' },
+  { value: 'CONCACAF', key: 'transfer_windows_group_concacaf' },
+  { value: 'AFC', key: 'transfer_windows_group_afc' },
+  { value: 'CAF', key: 'transfer_windows_group_caf' },
+  { value: 'OFC', key: 'transfer_windows_group_ofc' },
+];
+
+const SORT_OPTIONS: { value: SortBy; labelKey: string }[] = [
+  { value: 'value', labelKey: 'releases_sort_value' },
+  { value: 'date', labelKey: 'releases_sort_date' },
+  { value: 'age', labelKey: 'releases_sort_age' },
+];
+
+const POSITION_ORDER = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
+const POSITION_EXCLUDED = new Set(['LM', 'RM']);
+const POSITION_HEBREW: Record<string, string> = { SS: 'חלוץ שני' };
 
 interface FeedEvent {
   id: string;
@@ -37,6 +81,11 @@ interface ReleaseMeta {
   playerNationality?: string;
   playerNationalityFlag?: string;
   transferDate?: string;
+}
+
+interface NotificationPlayer extends ReleaseMeta {
+  event: FeedEvent;
+  playerUrl: string;
 }
 
 interface RosterPlayer {
@@ -81,6 +130,15 @@ function formatTimestamp(timestamp: number | undefined, isRtl: boolean): string 
 function formatTransferDateForShortlist(timestamp: number | undefined): string | null {
   if (!timestamp) return null;
   return new Date(timestamp).toISOString().slice(0, 10);
+}
+
+function timestampToDdMmYyyy(timestamp: number | undefined): string | undefined {
+  if (!timestamp) return undefined;
+  const d = new Date(timestamp);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 function toReleaseMeta(player: ReleasePlayer): ReleaseMeta {
@@ -326,6 +384,12 @@ export default function ReleaseNotificationsPage() {
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
   const [releaseMetaByUrl, setReleaseMetaByUrl] = useState<Record<string, ReleaseMeta>>({});
+  const [firestorePositions, setFirestorePositions] = useState<{ name?: string; hebrewName?: string }[]>([]);
+  const [preset, setPreset] = useState(0);
+  const [positionFilter, setPositionFilter] = useState<string | null>(null);
+  const [ageFilter, setAgeFilter] = useState<AgeFilter>('all');
+  const [regionFilter, setRegionFilter] = useState<Confederation | null>(null);
+  const [sortBy, setSortBy] = useState<SortBy>('value');
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
   const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
@@ -337,6 +401,16 @@ export default function ReleaseNotificationsPage() {
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  useEffect(() => {
+    getDocs(collection(db, 'Positions'))
+      .then((snap) =>
+        setFirestorePositions(
+          snap.docs.map((doc) => doc.data()).sort((a, b) => (b.sort ?? 0) - (a.sort ?? 0))
+        )
+      )
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -390,7 +464,7 @@ export default function ReleaseNotificationsPage() {
     };
   }, []);
 
-  const notificationOnlyPlayers = useMemo(() => {
+  const notificationOnlyPlayers = useMemo<FeedEvent[]>(() => {
     const rosterProfiles = new Set(rosterPlayers.map((player) => player.tmProfile).filter(Boolean));
     const deduped = deduplicateReleaseEvents(
       events.filter(
@@ -400,39 +474,130 @@ export default function ReleaseNotificationsPage() {
           !!event.playerTmProfile
       )
     );
-
     return deduped.filter((event) => !rosterProfiles.has(event.playerTmProfile));
   }, [events, rosterPlayers]);
 
-  const filteredPlayers = useMemo(() => {
+  const resolvedPlayers = useMemo<NotificationPlayer[]>(() => {
+    return notificationOnlyPlayers
+      .filter((event): event is FeedEvent & { playerTmProfile: string } => !!event.playerTmProfile)
+      .map((event) => {
+        const meta = releaseMetaByUrl[event.playerTmProfile] || {};
+        return {
+          event,
+          playerUrl: event.playerTmProfile,
+          playerPosition: event.playerPosition ?? meta.playerPosition,
+          marketValue: event.marketValue ?? meta.marketValue,
+          playerAge: event.playerAge ?? meta.playerAge,
+          playerNationality: event.playerNationality ?? meta.playerNationality,
+          playerNationalityFlag: event.playerNationalityFlag ?? meta.playerNationalityFlag,
+          transferDate: event.transferDate ?? meta.transferDate ?? timestampToDdMmYyyy(event.timestamp),
+        };
+      });
+  }, [notificationOnlyPlayers, releaseMetaByUrl]);
+
+  const positions = useMemo(() => {
+    const fromData = getUniquePositions(
+      resolvedPlayers.map((player) => ({ playerPosition: player.playerPosition } as ReleasePlayer))
+    );
+    const fromFirestore = firestorePositions.map((p) => p.name).filter(Boolean) as string[];
+    const merged = new Set([...fromFirestore, ...fromData]);
+    return Array.from(merged)
+      .filter((position) => !POSITION_EXCLUDED.has(position.toUpperCase()))
+      .sort((a, b) => {
+        const ia = POSITION_ORDER.indexOf(a.toUpperCase());
+        const ib = POSITION_ORDER.indexOf(b.toUpperCase());
+        if (ia >= 0 && ib >= 0) return ia - ib;
+        if (ia >= 0) return -1;
+        if (ib >= 0) return 1;
+        return a.localeCompare(b);
+      });
+  }, [resolvedPlayers, firestorePositions]);
+
+  const filteredPlayers = useMemo<NotificationPlayer[]>(() => {
+    let result = resolvedPlayers;
     const queryText = search.trim().toLowerCase();
-    if (!queryText) return notificationOnlyPlayers;
-    return notificationOnlyPlayers.filter((event) => {
-      const name = event.playerName?.toLowerCase() ?? '';
-      const profile = event.playerTmProfile?.toLowerCase() ?? '';
-      return name.includes(queryText) || profile.includes(queryText);
-    });
-  }, [notificationOnlyPlayers, search]);
+
+    const selectedPreset = VALUE_PRESETS[preset];
+    if (!selectedPreset.isAll) {
+      result = result.filter((player) => {
+        const value = parseMarketValue(player.marketValue);
+        return value >= selectedPreset.min && value <= selectedPreset.max;
+      });
+    }
+
+    if (queryText) {
+      result = result.filter((player) => {
+        const name = player.event.playerName?.toLowerCase() ?? '';
+        const profile = player.playerUrl.toLowerCase();
+        const position = player.playerPosition?.toLowerCase() ?? '';
+        const nationality = player.playerNationality?.toLowerCase() ?? '';
+        return (
+          name.includes(queryText) ||
+          profile.includes(queryText) ||
+          position.includes(queryText) ||
+          nationality.includes(queryText)
+        );
+      });
+    }
+
+    if (positionFilter) {
+      result = result.filter(
+        (player) => player.playerPosition?.toLowerCase() === positionFilter.toLowerCase()
+      );
+    }
+
+    if (ageFilter !== 'all') {
+      const allowed = new Set(
+        filterByAge(
+          result.map((player) => ({ playerUrl: player.playerUrl, playerAge: player.playerAge } as ReleasePlayer)),
+          ageFilter
+        )
+          .map((player) => player.playerUrl)
+          .filter(Boolean) as string[]
+      );
+      result = result.filter((player) => allowed.has(player.playerUrl));
+    }
+
+    if (regionFilter) {
+      result = result.filter((player) => getConfederation(player.playerNationality) === regionFilter);
+    }
+
+    const sortedReleasePlayers = sortReleases(
+      result.map((player) => ({
+        playerUrl: player.playerUrl,
+        marketValue: player.marketValue,
+        transferDate: player.transferDate,
+        playerAge: player.playerAge,
+      } as ReleasePlayer)),
+      sortBy
+    );
+    const sortedOrder = new Map(sortedReleasePlayers.map((player, index) => [player.playerUrl, index]));
+    return [...result].sort((a, b) => (sortedOrder.get(a.playerUrl) ?? 0) - (sortedOrder.get(b.playerUrl) ?? 0));
+  }, [resolvedPlayers, preset, search, positionFilter, ageFilter, regionFilter, sortBy]);
+
+  const hasActiveFilters = useMemo(() => {
+    return search.trim() || positionFilter || ageFilter !== 'all' || regionFilter || preset !== 0;
+  }, [search, positionFilter, ageFilter, regionFilter, preset]);
 
   const addToShortlist = useCallback(
     async (event: FeedEvent) => {
       if (!user || !event.playerTmProfile) return;
       setAddingUrl(event.playerTmProfile);
       try {
-        const meta = releaseMetaByUrl[event.playerTmProfile];
+        const playerMeta = releaseMetaByUrl[event.playerTmProfile] || {};
         const account = await getCurrentAccountForShortlist(user);
         const result = await callShortlistAdd({
           platform: 'men',
           tmProfileUrl: event.playerTmProfile,
           playerImage: event.playerImage ?? null,
           playerName: event.playerName ?? null,
-          playerPosition: event.playerPosition ?? meta?.playerPosition ?? null,
-          playerAge: event.playerAge ?? meta?.playerAge ?? null,
-          playerNationality: event.playerNationality ?? meta?.playerNationality ?? null,
-          playerNationalityFlag: event.playerNationalityFlag ?? meta?.playerNationalityFlag ?? null,
+          playerPosition: event.playerPosition ?? playerMeta.playerPosition ?? null,
+          playerAge: event.playerAge ?? playerMeta.playerAge ?? null,
+          playerNationality: event.playerNationality ?? playerMeta.playerNationality ?? null,
+          playerNationalityFlag: event.playerNationalityFlag ?? playerMeta.playerNationalityFlag ?? null,
           clubJoinedName: null,
-          transferDate: event.transferDate ?? meta?.transferDate ?? formatTransferDateForShortlist(event.timestamp),
-          marketValue: event.marketValue ?? meta?.marketValue ?? null,
+          transferDate: event.transferDate ?? playerMeta.transferDate ?? formatTransferDateForShortlist(event.timestamp),
+          marketValue: event.marketValue ?? playerMeta.marketValue ?? null,
           addedByAgentId: account.id,
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
@@ -491,24 +656,55 @@ export default function ReleaseNotificationsPage() {
             </h1>
             <p className="text-mgsr-muted mt-1 text-sm">{t('release_notifications_subtitle')}</p>
           </div>
-          <Link
-            href="/releases"
-            className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 transition text-center"
-          >
-            {t('release_notifications_back_to_releases')}
-          </Link>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <Link
+              href="/releases"
+              className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 transition text-center"
+            >
+              {t('release_notifications_back_to_releases')}
+            </Link>
+            {VALUE_PRESETS.map((valuePreset, index) => (
+              <button
+                key={index}
+                onClick={() => setPreset(index)}
+                className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium transition ${
+                  preset === index
+                    ? 'bg-mgsr-teal text-mgsr-dark'
+                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/30'
+                }`}
+              >
+                {valuePreset.isAll ? t('releases_all') : isRtl ? valuePreset.labelHe : valuePreset.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
           <span className="text-sm text-mgsr-muted">
-            {t('release_notifications_total')}: <strong className="text-mgsr-text">{notificationOnlyPlayers.length}</strong>
+            {t('release_notifications_total')}: <strong className="text-mgsr-text">{resolvedPlayers.length}</strong>
           </span>
           <span className="text-sm text-mgsr-muted">
             {t('release_notifications_visible')}: <strong className="text-mgsr-teal">{filteredPlayers.length}</strong>
           </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-mgsr-muted">{t('releases_sort')}:</span>
+            {SORT_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSortBy(option.value)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  sortBy === option.value
+                    ? 'bg-mgsr-teal text-mgsr-dark'
+                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                }`}
+              >
+                {t(option.labelKey)}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="mb-5">
+        <div className="flex flex-col gap-3 sm:gap-4 mb-5">
           <input
             type="text"
             value={search}
@@ -516,6 +712,78 @@ export default function ReleaseNotificationsPage() {
             placeholder={t('release_notifications_search')}
             className="w-full max-w-md px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal/60"
           />
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_position')}:</span>
+            <button
+              onClick={() => setPositionFilter(null)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                !positionFilter
+                  ? 'bg-mgsr-teal text-mgsr-dark'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+              }`}
+            >
+              {t('releases_all')}
+            </button>
+            {positions.map((position) => {
+              const firestorePosition = firestorePositions.find((p) => p.name?.toLowerCase() === position.toLowerCase());
+              const label = isRtl ? (firestorePosition?.hebrewName || POSITION_HEBREW[position] || position) : position;
+              return (
+                <button
+                  key={position}
+                  onClick={() => setPositionFilter(positionFilter === position ? null : position)}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    positionFilter === position
+                      ? 'bg-mgsr-teal text-mgsr-dark'
+                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_age')}:</span>
+            {AGE_FILTERS.map(({ value, labelKey }) => (
+              <button
+                key={value}
+                onClick={() => setAgeFilter(ageFilter === value ? 'all' : value)}
+                className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  ageFilter === value
+                    ? 'bg-mgsr-teal text-mgsr-dark'
+                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                }`}
+              >
+                {t(labelKey)}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_region')}:</span>
+            <button
+              onClick={() => setRegionFilter(null)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                !regionFilter
+                  ? 'bg-mgsr-teal text-mgsr-dark'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+              }`}
+            >
+              {t('releases_all')}
+            </button>
+            {REGION_OPTIONS.map((region) => (
+              <button
+                key={region.value}
+                onClick={() => setRegionFilter(regionFilter === region.value ? null : region.value)}
+                className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  regionFilter === region.value
+                    ? 'bg-mgsr-teal text-mgsr-dark'
+                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                }`}
+              >
+                {t(region.key)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loadingList ? (
@@ -525,19 +793,21 @@ export default function ReleaseNotificationsPage() {
         ) : filteredPlayers.length === 0 ? (
           <div className="relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]" />
-            <p className="text-mgsr-muted text-lg mb-2 relative">{t('release_notifications_empty')}</p>
+            <p className="text-mgsr-muted text-lg mb-2 relative">
+              {hasActiveFilters ? t('search_no_results') : t('release_notifications_empty')}
+            </p>
           </div>
         ) : (
           <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredPlayers.map((event) => (
+            {filteredPlayers.map((player) => (
               <ReleaseNotificationCard
-                key={event.playerTmProfile}
-                event={event}
+                key={player.playerUrl}
+                event={player.event}
                 t={t}
                 isRtl={isRtl}
-                isInShortlist={!!event.playerTmProfile && shortlistUrls.has(event.playerTmProfile)}
-                isAdding={addingUrl === event.playerTmProfile}
-                meta={event.playerTmProfile ? releaseMetaByUrl[event.playerTmProfile] : undefined}
+                isInShortlist={shortlistUrls.has(player.playerUrl)}
+                isAdding={addingUrl === player.playerUrl}
+                meta={player}
                 onAddToShortlist={addToShortlist}
                 teammatesCache={teammatesCache}
                 loadingTeammatesUrl={loadingTeammatesUrl}
