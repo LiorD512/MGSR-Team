@@ -12,7 +12,7 @@ import { FEED_EVENTS_COLLECTIONS, PLAYERS_COLLECTIONS } from '@/lib/platformColl
 import { callShortlistAdd } from '@/lib/callables';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
-import { extractPlayerIdFromUrl, getTeammates } from '@/lib/api';
+import { extractPlayerIdFromUrl, getReleasesFromCache, getTeammates, type ReleasePlayer } from '@/lib/api';
 
 interface FeedEvent {
   id: string;
@@ -20,8 +20,23 @@ interface FeedEvent {
   playerName?: string;
   playerImage?: string;
   playerTmProfile?: string;
+  playerPosition?: string;
+  marketValue?: string;
+  playerAge?: string;
+  playerNationality?: string;
+  playerNationalityFlag?: string;
+  transferDate?: string;
   extraInfo?: string;
   timestamp?: number;
+}
+
+interface ReleaseMeta {
+  playerPosition?: string;
+  marketValue?: string;
+  playerAge?: string;
+  playerNationality?: string;
+  playerNationalityFlag?: string;
+  transferDate?: string;
 }
 
 interface RosterPlayer {
@@ -68,12 +83,24 @@ function formatTransferDateForShortlist(timestamp: number | undefined): string |
   return new Date(timestamp).toISOString().slice(0, 10);
 }
 
+function toReleaseMeta(player: ReleasePlayer): ReleaseMeta {
+  return {
+    playerPosition: player.playerPosition,
+    marketValue: player.marketValue,
+    playerAge: player.playerAge,
+    playerNationality: player.playerNationality,
+    playerNationalityFlag: player.playerNationalityFlag,
+    transferDate: player.transferDate,
+  };
+}
+
 function ReleaseNotificationCard({
   event,
   t,
   isRtl,
   isInShortlist,
   isAdding,
+  meta,
   onAddToShortlist,
   teammatesCache,
   loadingTeammatesUrl,
@@ -86,6 +113,7 @@ function ReleaseNotificationCard({
   isRtl: boolean;
   isInShortlist: boolean;
   isAdding: boolean;
+  meta?: ReleaseMeta;
   onAddToShortlist: (event: FeedEvent) => void;
   teammatesCache: Record<string, RosterTeammateMatch[]>;
   loadingTeammatesUrl: string | null;
@@ -94,6 +122,8 @@ function ReleaseNotificationCard({
   onFetchTeammates: (url: string) => void;
 }) {
   const playerUrl = event.playerTmProfile || '';
+  const playerPosition = event.playerPosition || meta?.playerPosition || '—';
+  const marketValue = event.marketValue || meta?.marketValue || '—';
   const rosterTeammates = playerUrl ? teammatesCache[playerUrl] : undefined;
   const isLoadingTeammates = loadingTeammatesUrl === playerUrl;
   const isExpanded = isTeammatesExpanded === playerUrl;
@@ -147,7 +177,7 @@ function ReleaseNotificationCard({
             <p className="font-display font-semibold text-lg text-mgsr-text truncate group-hover:text-mgsr-teal transition-colors">
               {event.playerName || 'Unknown'}
             </p>
-            <p className="text-sm text-mgsr-muted mt-1">{t('new_release_from_club')}</p>
+            <p className="text-sm text-mgsr-muted mt-1">{playerPosition}</p>
             <p className="text-xs text-mgsr-muted mt-2">
               {t('releases_sort_date')}: {formatTimestamp(event.timestamp, isRtl)}
             </p>
@@ -155,6 +185,7 @@ function ReleaseNotificationCard({
         </div>
 
         <div className="mt-4 pt-4 border-t border-mgsr-border/80 flex items-center justify-between gap-3" data-no-propagate>
+          <span className="text-base font-display font-bold text-mgsr-teal shrink-0">{marketValue}</span>
           {isInShortlist ? (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30">
               <svg className="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
@@ -192,7 +223,6 @@ function ReleaseNotificationCard({
               </span>
             </button>
           )}
-          <span className="text-sm font-medium text-mgsr-teal shrink-0">{t('release_notifications_open_tm')}</span>
         </div>
 
         <div className="mt-4" data-no-propagate>
@@ -273,6 +303,7 @@ export default function ReleaseNotificationsPage() {
   const router = useRouter();
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
+  const [releaseMetaByUrl, setReleaseMetaByUrl] = useState<Record<string, ReleaseMeta>>({});
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
   const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
@@ -284,6 +315,28 @@ export default function ReleaseNotificationsPage() {
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const releases = await getReleasesFromCache(false);
+        if (cancelled) return;
+        const byUrl: Record<string, ReleaseMeta> = {};
+        for (const release of releases) {
+          if (!release.playerUrl) continue;
+          byUrl[release.playerUrl] = toReleaseMeta(release);
+        }
+        setReleaseMetaByUrl(byUrl);
+      } catch {
+        // Best-effort enrichment: keep screen live even if cache fetch fails.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const playersQuery = query(collection(db, PLAYERS_COLLECTIONS.men), orderBy('createdAt', 'desc'));
@@ -344,19 +397,20 @@ export default function ReleaseNotificationsPage() {
       if (!user || !event.playerTmProfile) return;
       setAddingUrl(event.playerTmProfile);
       try {
+        const meta = releaseMetaByUrl[event.playerTmProfile];
         const account = await getCurrentAccountForShortlist(user);
         const result = await callShortlistAdd({
           platform: 'men',
           tmProfileUrl: event.playerTmProfile,
           playerImage: event.playerImage ?? null,
           playerName: event.playerName ?? null,
-          playerPosition: null,
-          playerAge: null,
-          playerNationality: null,
-          playerNationalityFlag: null,
+          playerPosition: event.playerPosition ?? meta?.playerPosition ?? null,
+          playerAge: event.playerAge ?? meta?.playerAge ?? null,
+          playerNationality: event.playerNationality ?? meta?.playerNationality ?? null,
+          playerNationalityFlag: event.playerNationalityFlag ?? meta?.playerNationalityFlag ?? null,
           clubJoinedName: null,
-          transferDate: formatTransferDateForShortlist(event.timestamp),
-          marketValue: null,
+          transferDate: event.transferDate ?? meta?.transferDate ?? formatTransferDateForShortlist(event.timestamp),
+          marketValue: event.marketValue ?? meta?.marketValue ?? null,
           addedByAgentId: account.id,
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
@@ -368,7 +422,7 @@ export default function ReleaseNotificationsPage() {
         setAddingUrl(null);
       }
     },
-    [user]
+    [user, releaseMetaByUrl]
   );
 
   const fetchTeammates = useCallback(async (playerUrl: string) => {
@@ -461,6 +515,7 @@ export default function ReleaseNotificationsPage() {
                 isRtl={isRtl}
                 isInShortlist={!!event.playerTmProfile && shortlistUrls.has(event.playerTmProfile)}
                 isAdding={addingUrl === event.playerTmProfile}
+                meta={event.playerTmProfile ? releaseMetaByUrl[event.playerTmProfile] : undefined}
                 onAddToShortlist={addToShortlist}
                 teammatesCache={teammatesCache}
                 loadingTeammatesUrl={loadingTeammatesUrl}
