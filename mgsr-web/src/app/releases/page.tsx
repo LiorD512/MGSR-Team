@@ -50,6 +50,8 @@ const AGE_FILTERS: { value: AgeFilter; labelKey: string }[] = [
   { value: '30+', labelKey: 'releases_age_30plus' },
 ];
 
+const RELEASES_MAX_VISIBLE_VALUE = 6000000;
+
 interface RosterPlayer {
   id: string;
   fullName?: string;
@@ -543,6 +545,9 @@ export default function ReleasesPage() {
 
   const filteredPlayers = useMemo(() => {
     let result = players;
+    // Web releases is intentionally capped at €6M.
+    result = result.filter((pl) => parseMarketValue(pl.marketValue) <= RELEASES_MAX_VISIBLE_VALUE);
+
     // Value range filter (client-side)
     const p = VALUE_PRESETS[preset];
     if (!p.isAll) {
