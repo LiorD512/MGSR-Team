@@ -3,6 +3,7 @@ import { handleReleases } from '@/lib/transfermarkt';
 import { getCached, setCache, sanitizeKey, getCachedChunked, getCachedChunkedWithOptions } from '@/lib/scrapingCache';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 const ALL_CACHE_KEY = 'releases-all';

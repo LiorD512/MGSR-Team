@@ -832,7 +832,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Aspect | Android | Web |
 |--------|---------|-----|
 | Screen | `ReleasesScreen` | `/releases/page.tsx` |
-| Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`) is used for default load; Reload on web now forces a latest persisted cache read (`all=true&refresh=true`, TTL bypass) to avoid serverless timeouts while still showing the newest worker-written data |
+| Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`) is used for default load; Reload on web now forces a latest persisted cache read (`all=true&refresh=true`, TTL bypass) to avoid serverless timeouts while still showing the newest worker-written data; route explicitly sets `maxDuration=300` on Vercel |
 | Filters | Position, market value | Same; Web "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first |
 
 ### Contract Finishers
