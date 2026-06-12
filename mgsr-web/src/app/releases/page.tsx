@@ -651,6 +651,12 @@ export default function ReleasesPage() {
             <p className="text-mgsr-muted mt-1 text-sm">{t('releases_value_filter')}</p>
           </div>
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <Link
+              href="/release-notifications"
+              className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 transition"
+            >
+              {t('release_notifications_title')}
+            </Link>
             {(!loadingList || players.length > 0 || error) && (
               <button
                 onClick={() => loadReleases(true)}

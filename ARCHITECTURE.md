@@ -277,7 +277,7 @@ Separate Gradle module for HTML scraping via JSoup:
 </AuthProvider>
 ```
 
-### Page Routes (28 pages)
+### Page Routes (29 pages)
 
 | Route | Page | Purpose |
 |-------|------|---------|
@@ -295,6 +295,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/contacts` | Contacts | Club/agency contact database |
 | `/requests` | Requests | Club player requests + matching workbench |
 | `/releases` | Releases | Recently released free agents |
+| `/release-notifications` | Release Notifications | FeedEvents-driven list of `NEW_RELEASE_FROM_CLUB` players still not in `Players` |
 | `/contract-finisher` | Contract Finisher | Expiring contracts next window |
 | `/returnees` | Returnees | Players returning from loans |
 | `/war-room` | War Room | AI discovery candidates + scout agents |
@@ -834,6 +835,13 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Screen | `ReleasesScreen` | `/releases/page.tsx` |
 | Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`) is used for default load; Reload on web now forces a latest persisted cache read (`all=true&refresh=true`, TTL bypass) and merges latest `FeedEvents.NEW_RELEASE_FROM_CLUB` entries so newly notified releases appear immediately even before next cache cycle; route explicitly sets `maxDuration=300` on Vercel |
 | Filters | Position, market value | Same; Web adds age + confederation (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC) filters, "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first, and release cards display explicit "Release date" when available |
+
+### Release Notifications
+| Aspect | Android | Web |
+|--------|---------|-----|
+| Screen | Feed/notification center only | `/release-notifications/page.tsx` |
+| Data | `FeedEvents` release notifications | Direct Firestore `FeedEvents` listener filtered to `type=NEW_RELEASE_FROM_CLUB` and `extraInfo=NOT_IN_DATABASE`, with a live exclusion against `Players.tmProfile` so entries disappear once they are added to the database |
+| Purpose | Alerting | Dedicated fallback screen for release alerts missing from the cached Releases dataset |
 
 ### Contract Finishers
 | Aspect | Android | Web |

@@ -20,6 +20,7 @@ const navItems = [
   { href: '/shortlist', labelKey: 'nav_shortlist' },
   { href: '/shadow-teams', labelKey: 'nav_shadow_teams' },
   { href: '/releases', labelKey: 'nav_releases' },
+  { href: '/release-notifications', labelKey: 'nav_release_notifications' },
   { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
   { href: '/returnees', labelKey: 'nav_returnee' },
   // DISABLED — Vercel cost optimization (May 2026)
