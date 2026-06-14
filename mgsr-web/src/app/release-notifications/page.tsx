@@ -109,6 +109,20 @@ interface RosterTeammateMatch {
   matchesPlayedTogether: number;
 }
 
+type ManualRefreshStage = 'idle' | 'fetching' | 'preparing' | 'enriching' | 'completed' | 'failed';
+
+interface ManualRefreshProgress {
+  stage: ManualRefreshStage;
+  total: number;
+  completed: number;
+  succeeded: number;
+  failed: number;
+  currentPlayerName?: string;
+  startedAt?: number;
+  finishedAt?: number;
+  lastError?: string;
+}
+
 function deduplicateReleaseEvents(events: FeedEvent[]): FeedEvent[] {
   const isMeaningful = (value?: string | null): value is string => {
     if (!value) return false;
@@ -209,6 +223,13 @@ async function getPlayerDetailsWithTimeout(url: string, timeoutMs = ENRICHMENT_R
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function formatDurationMs(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 function formatTimestamp(timestamp: number | undefined, isRtl: boolean): string {
@@ -517,10 +538,29 @@ export default function ReleaseNotificationsPage() {
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [enrichmentRunNonce, setEnrichmentRunNonce] = useState(0);
   const [manualForcedEnrichmentUrls, setManualForcedEnrichmentUrls] = useState<Set<string>>(new Set());
+  const [manualRefreshProgress, setManualRefreshProgress] = useState<ManualRefreshProgress>({
+    stage: 'idle',
+    total: 0,
+    completed: 0,
+    succeeded: 0,
+    failed: 0,
+  });
+  const [progressNow, setProgressNow] = useState(() => Date.now());
   const fetchedProfileMetaRef = useRef<Set<string>>(new Set());
   const inFlightProfileMetaRef = useRef<Set<string>>(new Set());
   const profileAttemptCountRef = useRef<Map<string, number>>(new Map());
   const profileLastAttemptAtRef = useRef<Map<string, number>>(new Map());
+  const manualForcedEnrichmentUrlsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    manualForcedEnrichmentUrlsRef.current = manualForcedEnrichmentUrls;
+  }, [manualForcedEnrichmentUrls]);
+
+  useEffect(() => {
+    if (!isManualRefreshing) return;
+    const timer = setInterval(() => setProgressNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [isManualRefreshing]);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -610,7 +650,7 @@ export default function ReleaseNotificationsPage() {
         if (!event) return false;
         const cacheMeta = releaseMetaByUrl[url];
         const profileMeta = profileMetaByUrl[url];
-        const forceNow = manualForcedEnrichmentUrls.has(url);
+        const forceNow = manualForcedEnrichmentUrlsRef.current.has(url);
         if (!forceNow && profileMeta && !needsProfileEnrichment(event, { ...cacheMeta, ...profileMeta })) return false;
         const attempts = profileAttemptCountRef.current.get(url) ?? 0;
         const lastAttemptAt = profileLastAttemptAtRef.current.get(url) ?? 0;
@@ -630,6 +670,17 @@ export default function ReleaseNotificationsPage() {
     const run = async () => {
       for (let i = 0; i < missingUrls.length; i++) {
         const url = missingUrls[i];
+        const event = notificationOnlyPlayers.find((entry) => entry.playerTmProfile === url);
+        const isManualUrl = manualForcedEnrichmentUrlsRef.current.has(url);
+
+        if (isManualUrl) {
+          setManualRefreshProgress((prev) => ({
+            ...prev,
+            stage: 'enriching',
+            currentPlayerName: event?.playerName || url,
+          }));
+        }
+
         inFlightProfileMetaRef.current.add(url);
         setEnrichingUrls((prev) => {
           const next = new Set(prev);
@@ -647,7 +698,21 @@ export default function ReleaseNotificationsPage() {
             fetchedProfileMetaRef.current.add(url);
             setProfileMetaByUrl((prev) => ({ ...prev, [url]: meta }));
           }
+          if (isManualUrl) {
+            setManualRefreshProgress((prev) => ({
+              ...prev,
+              completed: Math.min(prev.total, prev.completed + 1),
+              succeeded: prev.succeeded + 1,
+            }));
+          }
         } catch {
+          if (isManualUrl) {
+            setManualRefreshProgress((prev) => ({
+              ...prev,
+              completed: Math.min(prev.total, prev.completed + 1),
+              failed: prev.failed + 1,
+            }));
+          }
           // Keep UI responsive even when some profile fetches fail.
         } finally {
           inFlightProfileMetaRef.current.delete(url);
@@ -662,6 +727,12 @@ export default function ReleaseNotificationsPage() {
             next.delete(url);
             return next;
           });
+          if (isManualUrl) {
+            setManualRefreshProgress((prev) => ({
+              ...prev,
+              currentPlayerName: prev.currentPlayerName === (event?.playerName || url) ? undefined : prev.currentPlayerName,
+            }));
+          }
         }
 
         if (cancelled) break;
@@ -676,11 +747,23 @@ export default function ReleaseNotificationsPage() {
     return () => {
       cancelled = true;
     };
-  }, [notificationOnlyPlayers, releaseMetaByUrl, profileMetaByUrl, enrichmentRunNonce, manualForcedEnrichmentUrls]);
+  }, [notificationOnlyPlayers, releaseMetaByUrl, profileMetaByUrl, enrichmentRunNonce]);
 
   const runManualFetchAndEnrichment = useCallback(async () => {
     if (isManualRefreshing) return;
 
+    const startedAt = Date.now();
+    setManualRefreshProgress({
+      stage: 'fetching',
+      total: 0,
+      completed: 0,
+      succeeded: 0,
+      failed: 0,
+      startedAt,
+      finishedAt: undefined,
+      lastError: undefined,
+      currentPlayerName: undefined,
+    });
     setIsManualRefreshing(true);
     try {
       const releases = await getReleasesFromCache(true);
@@ -690,6 +773,10 @@ export default function ReleaseNotificationsPage() {
         byUrl[release.playerUrl] = toReleaseMeta(release);
       }
       setReleaseMetaByUrl(byUrl);
+      setManualRefreshProgress((prev) => ({
+        ...prev,
+        stage: 'preparing',
+      }));
 
       const targetUrls = new Set(
         notificationOnlyPlayers
@@ -698,6 +785,15 @@ export default function ReleaseNotificationsPage() {
       );
 
       if (targetUrls.size === 0) {
+        setManualRefreshProgress((prev) => ({
+          ...prev,
+          stage: 'completed',
+          total: 0,
+          completed: 0,
+          succeeded: 0,
+          failed: 0,
+          finishedAt: Date.now(),
+        }));
         setIsManualRefreshing(false);
         return;
       }
@@ -711,6 +807,15 @@ export default function ReleaseNotificationsPage() {
       profileLastAttemptAtRef.current = new Map();
       setEnrichingUrls(new Set());
       setManualForcedEnrichmentUrls(targetUrls);
+      setManualRefreshProgress((prev) => ({
+        ...prev,
+        stage: 'enriching',
+        total: targetUrls.size,
+        completed: 0,
+        succeeded: 0,
+        failed: 0,
+        currentPlayerName: undefined,
+      }));
 
       setProfileMetaByUrl((prev) => {
         if (targetUrls.size === 0) return prev;
@@ -722,7 +827,14 @@ export default function ReleaseNotificationsPage() {
       });
 
       setEnrichmentRunNonce((prev) => prev + 1);
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : undefined;
+      setManualRefreshProgress((prev) => ({
+        ...prev,
+        stage: 'failed',
+        lastError: message,
+        finishedAt: Date.now(),
+      }));
       setIsManualRefreshing(false);
     }
   }, [isManualRefreshing, notificationOnlyPlayers]);
@@ -731,8 +843,35 @@ export default function ReleaseNotificationsPage() {
     if (!isManualRefreshing) return;
     if (manualForcedEnrichmentUrls.size > 0) return;
     if (enrichingUrls.size > 0) return;
+    setManualRefreshProgress((prev) => ({
+      ...prev,
+      stage: 'completed',
+      currentPlayerName: undefined,
+      finishedAt: Date.now(),
+    }));
     setIsManualRefreshing(false);
   }, [isManualRefreshing, manualForcedEnrichmentUrls, enrichingUrls]);
+
+  const manualRefreshUi = useMemo(() => {
+    const total = manualRefreshProgress.total;
+    const completed = manualRefreshProgress.completed;
+    const startedAt = manualRefreshProgress.startedAt;
+    const activeEnd = manualRefreshProgress.finishedAt ?? progressNow;
+    const elapsedMs = startedAt ? Math.max(0, activeEnd - startedAt) : 0;
+    const remaining = Math.max(0, total - completed);
+    const etaMs = completed > 0 && remaining > 0
+      ? Math.round((elapsedMs / completed) * remaining)
+      : null;
+    const progressPercent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
+    return {
+      total,
+      completed,
+      remaining,
+      elapsedMs,
+      etaMs,
+      progressPercent,
+    };
+  }, [manualRefreshProgress, progressNow]);
 
   const resolvedPlayers = useMemo<NotificationPlayer[]>(() => {
     return notificationOnlyPlayers
@@ -990,6 +1129,71 @@ export default function ReleaseNotificationsPage() {
             ))}
           </div>
         </div>
+
+        {(isManualRefreshing || manualRefreshProgress.stage === 'completed' || manualRefreshProgress.stage === 'failed') && (
+          <div className="mb-4 rounded-xl border border-mgsr-border bg-mgsr-card/60 p-3 sm:p-4">
+            <div className="flex flex-wrap items-center gap-2 justify-between">
+              <div className="text-sm font-medium text-mgsr-text">
+                {t('release_notifications_progress_title')}
+              </div>
+              <div className="text-xs text-mgsr-muted">
+                {manualRefreshProgress.stage === 'fetching' && t('release_notifications_progress_stage_fetching')}
+                {manualRefreshProgress.stage === 'preparing' && t('release_notifications_progress_stage_preparing')}
+                {manualRefreshProgress.stage === 'enriching' && t('release_notifications_progress_stage_enriching')}
+                {manualRefreshProgress.stage === 'completed' && t('release_notifications_progress_stage_completed')}
+                {manualRefreshProgress.stage === 'failed' && t('release_notifications_progress_stage_failed')}
+              </div>
+            </div>
+
+            {manualRefreshUi.total > 0 && (
+              <>
+                <div className="mt-3 h-2 rounded-full bg-mgsr-dark/70 overflow-hidden">
+                  <div
+                    className="h-full bg-mgsr-teal transition-all duration-300"
+                    style={{ width: `${manualRefreshUi.progressPercent}%` }}
+                  />
+                </div>
+                <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                  <div className="text-mgsr-muted">
+                    {t('release_notifications_progress_processed')
+                      .replace('{done}', String(manualRefreshUi.completed))
+                      .replace('{total}', String(manualRefreshUi.total))}
+                  </div>
+                  <div className="text-mgsr-muted">
+                    {t('release_notifications_progress_success')
+                      .replace('{count}', String(manualRefreshProgress.succeeded))}
+                  </div>
+                  <div className="text-mgsr-muted">
+                    {t('release_notifications_progress_failed')
+                      .replace('{count}', String(manualRefreshProgress.failed))}
+                  </div>
+                  <div className="text-mgsr-muted">
+                    {t('release_notifications_progress_elapsed')
+                      .replace('{time}', formatDurationMs(manualRefreshUi.elapsedMs))}
+                  </div>
+                </div>
+                <div className="mt-2 text-xs text-mgsr-muted">
+                  {manualRefreshUi.etaMs != null
+                    ? t('release_notifications_progress_eta').replace('{time}', formatDurationMs(manualRefreshUi.etaMs))
+                    : t('release_notifications_progress_eta_unknown')}
+                </div>
+              </>
+            )}
+
+            {manualRefreshProgress.currentPlayerName && (
+              <div className="mt-2 text-xs text-mgsr-muted truncate">
+                {t('release_notifications_progress_current')
+                  .replace('{name}', manualRefreshProgress.currentPlayerName)}
+              </div>
+            )}
+
+            {manualRefreshProgress.lastError && (
+              <div className="mt-2 text-xs text-rose-400">
+                {manualRefreshProgress.lastError}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col gap-3 sm:gap-4 mb-5">
           <input
