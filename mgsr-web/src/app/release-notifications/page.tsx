@@ -121,6 +121,7 @@ interface ManualRefreshProgress {
   startedAt?: number;
   finishedAt?: number;
   lastError?: string;
+  fetchInfo?: string;
 }
 
 function deduplicateReleaseEvents(events: FeedEvent[]): FeedEvent[] {
@@ -763,10 +764,24 @@ export default function ReleaseNotificationsPage() {
       finishedAt: undefined,
       lastError: undefined,
       currentPlayerName: undefined,
+      fetchInfo: undefined,
     });
     setIsManualRefreshing(true);
     try {
-      const releases = await getReleasesFromCache(true);
+      const liveResponse = await fetch('/api/transfermarkt/releases?all=true&refresh=true&live=true', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+
+      if (!liveResponse.ok) {
+        throw new Error(`Live refresh failed: HTTP ${liveResponse.status}`);
+      }
+
+      const liveData = await liveResponse.json();
+      const releases = Array.isArray(liveData?.players)
+        ? (liveData.players as ReleasePlayer[])
+        : await getReleasesFromCache(true);
+
       const byUrl: Record<string, ReleaseMeta> = {};
       for (const release of releases) {
         if (!release.playerUrl) continue;
@@ -776,6 +791,10 @@ export default function ReleaseNotificationsPage() {
       setManualRefreshProgress((prev) => ({
         ...prev,
         stage: 'preparing',
+        fetchInfo:
+          typeof liveData?.pagesFetched === 'number' && typeof liveData?.rangesProcessed === 'number'
+            ? `pages=${liveData.pagesFetched}, ranges=${liveData.rangesProcessed}`
+            : undefined,
       }));
 
       const targetUrls = new Set(
@@ -1144,6 +1163,12 @@ export default function ReleaseNotificationsPage() {
                 {manualRefreshProgress.stage === 'failed' && t('release_notifications_progress_stage_failed')}
               </div>
             </div>
+
+            {manualRefreshProgress.fetchInfo && (
+              <div className="mt-2 text-xs text-mgsr-muted">
+                {manualRefreshProgress.fetchInfo}
+              </div>
+            )}
 
             {manualRefreshUi.total > 0 && (
               <>

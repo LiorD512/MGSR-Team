@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleReleases } from '@/lib/transfermarkt';
-import { getCached, setCache, sanitizeKey, getCachedChunked, getCachedChunkedWithOptions } from '@/lib/scrapingCache';
+import { getCached, setCache, sanitizeKey, getCachedChunked, getCachedChunkedWithOptions, setCacheChunked } from '@/lib/scrapingCache';
 import { adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +10,27 @@ const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 const ALL_CACHE_KEY = 'releases-all';
 const ALL_CACHE_TTL = 3 * 24 * 60 * 60 * 1000; // 3 days (matches local worker schedule)
 const FEED_EVENTS_RELEASE_TYPE = 'NEW_RELEASE_FROM_CLUB';
+const LIVE_REFRESH_RANGES: Array<[number, number]> = [
+  [0, 125000],
+  [125001, 250000],
+  [250001, 400000],
+  [400001, 600000],
+  [600001, 800000],
+  [800001, 1000000],
+  [1000001, 1200000],
+  [1200001, 1400000],
+  [1400001, 1600000],
+  [1600001, 1800000],
+  [1800001, 2000000],
+  [2000001, 2200000],
+  [2200001, 2500000],
+  [2500001, 3000000],
+  [3000001, 3500000],
+  [3500001, 4000000],
+  [4000001, 50000000],
+];
+const LIVE_REFRESH_MAX_PAGES_PER_RANGE = 8;
+const LIVE_REFRESH_DELAY_MS = 220;
 
 type ReleaseLike = {
   playerName?: string;
@@ -22,6 +43,44 @@ type ReleaseLike = {
   transferDate?: string;
   marketValue?: string;
 };
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+async function scrapeLatestReleasesLive(): Promise<{ players: ReleaseLike[]; pagesFetched: number; rangesProcessed: number }> {
+  const all = new Map<string, ReleaseLike>();
+  let pagesFetched = 0;
+  let rangesProcessed = 0;
+
+  for (const [min, max] of LIVE_REFRESH_RANGES) {
+    rangesProcessed += 1;
+    for (let page = 1; page <= LIVE_REFRESH_MAX_PAGES_PER_RANGE; page++) {
+      const data = await handleReleases(min, max, page);
+      const players = (data?.players as ReleaseLike[] | undefined) || [];
+      pagesFetched += 1;
+
+      if (players.length === 0) break;
+
+      for (const player of players) {
+        if (!player?.playerUrl) continue;
+        if (!all.has(player.playerUrl)) {
+          all.set(player.playerUrl, player);
+        }
+      }
+
+      // Last page in range or sparse page: move to next range quickly.
+      if (players.length < 25) break;
+      await delay(LIVE_REFRESH_DELAY_MS);
+    }
+  }
+
+  return {
+    players: Array.from(all.values()),
+    pagesFetched,
+    rangesProcessed,
+  };
+}
 
 function mergeByPlayerUrl(base: ReleaseLike[], incoming: ReleaseLike[]): ReleaseLike[] {
   const merged = new Map<string, ReleaseLike>();
@@ -77,10 +136,32 @@ export async function GET(request: NextRequest) {
     const page = parseInt(request.nextUrl.searchParams.get('page') || '1', 10);
     const refresh = request.nextUrl.searchParams.get('refresh') === 'true';
     const all = request.nextUrl.searchParams.get('all') === 'true';
+    const live = request.nextUrl.searchParams.get('live') === 'true';
 
     // If requesting all releases, always serve from chunked cache.
     // refresh=true means "force latest persisted cache" (ignore TTL), not live scrape.
     if (all) {
+      if (live) {
+        const liveResult = await scrapeLatestReleasesLive();
+        const feedPlayers = await getLatestReleaseFeedPlayers();
+        const merged = mergeByPlayerUrl(liveResult.players, feedPlayers);
+
+        await setCacheChunked(ALL_CACHE_KEY, merged);
+
+        return NextResponse.json(
+          {
+            players: merged,
+            fromCache: false,
+            forcedRefresh: true,
+            liveRefreshed: true,
+            feedMerged: true,
+            pagesFetched: liveResult.pagesFetched,
+            rangesProcessed: liveResult.rangesProcessed,
+          },
+          { headers: { 'X-Cache': 'MISS', 'Cache-Control': 'no-store' } }
+        );
+      }
+
       const cached = refresh
         ? await getCachedChunkedWithOptions<Record<string, unknown>>(ALL_CACHE_KEY, ALL_CACHE_TTL, { ignoreTtl: true })
         : await getCachedChunked<Record<string, unknown>>(ALL_CACHE_KEY, ALL_CACHE_TTL);
