@@ -10,6 +10,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { GoogleAuth } = require("google-auth-library");
 
 /**
  * Auth guard for onCall handlers. Throws UNAUTHENTICATED if no auth token.
@@ -58,6 +59,10 @@ const FCM_TOPIC = "mgsr_all";
 
 const ACCOUNTS_COLLECTION = "Accounts";
 const AGENT_TASKS_COLLECTION = "AgentTasks";
+const WORKER_RUNS_COLLECTION = "WorkerRuns";
+const RELEASES_WORKER_NAME = "ReleasesRefreshWorker";
+const RELEASES_JOB_NAME = process.env.RELEASES_REFRESH_JOB_NAME || "releases-refresh-job";
+const RELEASES_JOB_REGION = process.env.RELEASES_REFRESH_JOB_REGION || "us-central1";
 
 /**
  * Only these FeedEvent types trigger a push notification.
@@ -85,6 +90,29 @@ function getAllTokens(accountData) {
     }
   }
   return [...tokens];
+}
+
+function resolveProjectId() {
+  const direct = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || process.env.PROJECT_ID;
+  if (direct) return direct;
+  try {
+    const firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
+    if (firebaseConfig?.projectId) return firebaseConfig.projectId;
+  } catch {
+    // ignore malformed FIREBASE_CONFIG
+  }
+  return null;
+}
+
+async function getCloudAccessToken() {
+  const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
+  const client = await auth.getClient();
+  const tokenResult = await client.getAccessToken();
+  const token = typeof tokenResult === "string" ? tokenResult : tokenResult?.token;
+  if (!token) {
+    throw new Error("Failed to obtain Cloud access token");
+  }
+  return token;
 }
 
 /**
@@ -782,6 +810,101 @@ exports.backfillMandateLeagues = onCall(
     return result;
   }
 );
+
+/**
+ * Manually trigger the Cloud Run releases refresh job.
+ * Used by web release-notifications manual refresh button.
+ */
+exports.triggerReleasesRefreshJob = onCall(
+  { timeoutSeconds: 120, memory: "256MiB" },
+  async (req) => {
+    requireAuth(req);
+
+    const requestedAt = Date.now();
+    await db.collection(WORKER_RUNS_COLLECTION).doc(RELEASES_WORKER_NAME).set(
+      {
+        workerName: RELEASES_WORKER_NAME,
+        status: "running",
+        startedAt: requestedAt,
+        updatedAt: requestedAt,
+        error: null,
+        summary: "Manual trigger requested",
+      },
+      { merge: true }
+    );
+
+    try {
+      const projectId = resolveProjectId();
+      if (!projectId) {
+        throw new HttpsError("internal", "Unable to resolve GCP project ID");
+      }
+
+      const token = await getCloudAccessToken();
+      const runUrl = `https://run.googleapis.com/v2/projects/${projectId}/locations/${RELEASES_JOB_REGION}/jobs/${RELEASES_JOB_NAME}:run`;
+      const response = await fetch(runUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: "{}",
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const message = payload?.error?.message || `${response.status} ${response.statusText}`;
+        throw new HttpsError("internal", `Cloud Run releases job trigger failed: ${message}`);
+      }
+
+      return {
+        success: true,
+        requestedAt,
+        projectId,
+        region: RELEASES_JOB_REGION,
+        jobName: RELEASES_JOB_NAME,
+        operationName: payload?.name || null,
+      };
+    } catch (error) {
+      await db.collection(WORKER_RUNS_COLLECTION).doc(RELEASES_WORKER_NAME).set(
+        {
+          status: "failed",
+          lastRunAt: Date.now(),
+          updatedAt: Date.now(),
+          error: error?.message || String(error),
+        },
+        { merge: true }
+      );
+
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+
+      throw new HttpsError("internal", error?.message || "Failed to trigger releases refresh job");
+    }
+  }
+);
+
+/**
+ * Returns the latest worker status for the releases refresh job.
+ */
+exports.getReleasesRefreshJobStatus = onCall(async (req) => {
+  requireAuth(req);
+  const snap = await db.collection(WORKER_RUNS_COLLECTION).doc(RELEASES_WORKER_NAME).get();
+  const data = snap.exists ? snap.data() : {};
+  return {
+    exists: snap.exists,
+    workerName: RELEASES_WORKER_NAME,
+    status: data?.status || null,
+    startedAt: typeof data?.startedAt === "number" ? data.startedAt : null,
+    lastRunAt: typeof data?.lastRunAt === "number" ? data.lastRunAt : null,
+    durationMs: typeof data?.durationMs === "number" ? data.durationMs : null,
+    summary: data?.summary || null,
+    error: data?.error || null,
+    updatedAt: typeof data?.updatedAt === "number" ? data.updatedAt : null,
+    serverTime: Date.now(),
+  };
+});
 
 // ─── Instagram enrichment on new shortlist entry ──────────────────────────────
 exports.onShortlistAdd = onDocumentCreated("Shortlists/{entryId}", async (event) => {

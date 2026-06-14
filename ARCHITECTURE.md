@@ -832,7 +832,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Aspect | Android | Web |
 |--------|---------|-----|
 | Screen | `ReleasesScreen` | `/releases/page.tsx` |
-| Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`); cache entries are post-enriched from player profile pages with citizenships, preferred foot, and club metadata; web Releases UI hard-caps visible players at €6M. `/release-notifications` exposes a manual "Fetch + Enrich now" action that calls `all=true&refresh=true&live=true`, performs a fresh multi-range scrape, syncs `FeedEvents` (`NEW_RELEASE_FROM_CLUB`, `IN_DATABASE/NOT_IN_DATABASE`) before merging cache, then re-runs per-player profile enrichment (`getPlayerDetails`) with reset retry guards using returned fresh not-in-database URLs. |
+| Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`); cache entries are post-enriched from player profile pages with citizenships, preferred foot, and club metadata; web Releases UI hard-caps visible players at €6M. `/release-notifications` manual "Fetch + Enrich now" now triggers the real Cloud Run releases worker via callable (`triggerReleasesRefreshJob`), polls `WorkerRuns/ReleasesRefreshWorker` via callable (`getReleasesRefreshJobStatus`) until success/failure, then pulls fresh cache and enriches newly created `NEW_RELEASE_FROM_CLUB` + `NOT_IN_DATABASE` feed events from that run. |
 | Filters | Position, market value | Same; Web "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first |
 
 ### Contract Finishers
@@ -1105,6 +1105,8 @@ Every write operation goes through this chain:
 | `mandateSigningCreate` | ✅ | ✅ | `phase6Misc.js` | Create mandate signing request |
 | `accountUpdate` | ✅ | ✅ | `phase7Account.js` | Update account (FCM tokens, language) |
 | `ifaFetchProfile` | ✅ | ✅ | `ifaFetch.js` | Fetch IFA player profile (NO AUTH) |
+| `triggerReleasesRefreshJob` | ❌ | ✅ | `index.js` | Manually execute Cloud Run `releases-refresh-job` |
+| `getReleasesRefreshJobStatus` | ❌ | ✅ | `index.js` | Poll latest releases worker status from `WorkerRuns` |
 
 ---
 

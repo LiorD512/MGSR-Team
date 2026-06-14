@@ -9,7 +9,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { db } from '@/lib/firebase';
 import { FEED_EVENTS_COLLECTIONS, PLAYERS_COLLECTIONS } from '@/lib/platformCollections';
-import { callShortlistAdd } from '@/lib/callables';
+import {
+  callGetReleasesRefreshJobStatus,
+  callShortlistAdd,
+  callTriggerReleasesRefreshJob,
+} from '@/lib/callables';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
 import { extractPlayerIdFromUrl, getPlayerDetails, getReleasesFromCache, getTeammates, type ReleasePlayer } from '@/lib/api';
@@ -61,6 +65,8 @@ const ENRICHMENT_REQUEST_TIMEOUT_MS = 15000;
 const ENRICHMENT_RETRY_COOLDOWN_MS = 30000;
 const ENRICHMENT_MAX_ATTEMPTS = 3;
 const ENRICHMENT_DELAY_BETWEEN_REQUESTS_MS = 450;
+const MANUAL_REFRESH_STATUS_POLL_MS = 5000;
+const MANUAL_REFRESH_MAX_WAIT_MS = 45 * 60 * 1000;
 
 interface FeedEvent {
   id: string;
@@ -768,19 +774,50 @@ export default function ReleaseNotificationsPage() {
     });
     setIsManualRefreshing(true);
     try {
-      const liveResponse = await fetch('/api/transfermarkt/releases?all=true&refresh=true&live=true', {
-        method: 'GET',
-        cache: 'no-store',
-      });
+      const triggerResult = await callTriggerReleasesRefreshJob({});
+      const requestedAt = triggerResult?.requestedAt || Date.now();
 
-      if (!liveResponse.ok) {
-        throw new Error(`Live refresh failed: HTTP ${liveResponse.status}`);
+      setManualRefreshProgress((prev) => ({
+        ...prev,
+        stage: 'fetching',
+        fetchInfo: `job=${triggerResult.jobName}, operation=${triggerResult.operationName ?? 'pending'}, status=running`,
+      }));
+
+      let workerCompleted = false;
+      let finalStatus: string | null = null;
+      let finalSummary: string | null = null;
+      let finalError: string | null = null;
+
+      while (Date.now() - startedAt < MANUAL_REFRESH_MAX_WAIT_MS) {
+        const status = await callGetReleasesRefreshJobStatus({});
+        finalStatus = status?.status ?? null;
+        finalSummary = status?.summary ?? null;
+        finalError = status?.error ?? null;
+
+        setManualRefreshProgress((prev) => ({
+          ...prev,
+          stage: 'fetching',
+          fetchInfo: `job=${triggerResult.jobName}, operation=${triggerResult.operationName ?? 'pending'}, status=${finalStatus ?? 'unknown'}, updatedAt=${status.updatedAt ?? 0}`,
+        }));
+
+        const hasFreshRun = typeof status?.lastRunAt === 'number' && status.lastRunAt >= requestedAt;
+        if (hasFreshRun && (finalStatus === 'success' || finalStatus === 'failed')) {
+          workerCompleted = true;
+          break;
+        }
+
+        await wait(MANUAL_REFRESH_STATUS_POLL_MS);
       }
 
-      const liveData = await liveResponse.json();
-      const releases = Array.isArray(liveData?.players)
-        ? (liveData.players as ReleasePlayer[])
-        : await getReleasesFromCache(true);
+      if (!workerCompleted) {
+        throw new Error('Releases refresh worker timeout. Check WorkerRuns/ReleasesRefreshWorker.');
+      }
+
+      if (finalStatus !== 'success') {
+        throw new Error(finalError || finalSummary || 'Releases refresh worker failed.');
+      }
+
+      const releases = await getReleasesFromCache(true);
 
       const byUrl: Record<string, ReleaseMeta> = {};
       for (const release of releases) {
@@ -788,20 +825,38 @@ export default function ReleaseNotificationsPage() {
         byUrl[release.playerUrl] = toReleaseMeta(release);
       }
       setReleaseMetaByUrl(byUrl);
+
+      const freshFeedSnapshot = await getDocs(
+        query(
+          collection(db, FEED_EVENTS_COLLECTIONS.men),
+          orderBy('timestamp', 'desc'),
+          limit(1200)
+        )
+      );
+
+      const freshNotInDatabaseUrls = new Set<string>(
+        freshFeedSnapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() } as FeedEvent))
+          .filter(
+            (event) =>
+              event.type === 'NEW_RELEASE_FROM_CLUB' &&
+              event.extraInfo === 'NOT_IN_DATABASE' &&
+              !!event.playerTmProfile &&
+              typeof event.timestamp === 'number' &&
+              event.timestamp >= requestedAt
+          )
+          .map((event) => event.playerTmProfile as string)
+      );
+
       setManualRefreshProgress((prev) => ({
         ...prev,
         stage: 'preparing',
-        fetchInfo:
-          typeof liveData?.pagesFetched === 'number' && typeof liveData?.rangesProcessed === 'number'
-            ? `pages=${liveData.pagesFetched}, ranges=${liveData.rangesProcessed}, scanned=${liveData.feedPlayersScanned ?? 0}, newEvents=${liveData.feedEventsCreated ?? 0}`
-            : undefined,
+        fetchInfo: `jobStatus=success, freshNewEvents=${freshNotInDatabaseUrls.size}, cachePlayers=${releases.length}`,
       }));
 
       const targetUrlList: string[] =
-        Array.isArray(liveData?.notInDatabaseUrls) && liveData.notInDatabaseUrls.length > 0
-          ? liveData.notInDatabaseUrls.filter(
-              (url: unknown): url is string => typeof url === 'string' && !!url
-            )
+        freshNotInDatabaseUrls.size > 0
+          ? Array.from(freshNotInDatabaseUrls)
           : notificationOnlyPlayers
               .map((event) => event.playerTmProfile)
               .filter((url): url is string => !!url);

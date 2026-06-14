@@ -348,3 +348,29 @@ export const callNotificationMarkAllRead = callable<
   { accountId: string },
   { success: boolean; updated?: number }
 >('notificationMarkAllRead');
+
+// ── Releases Refresh Worker Control ────────────────────────────────────────
+export interface ReleasesRefreshTriggerResult {
+  success: boolean;
+  requestedAt: number;
+  projectId: string;
+  region: string;
+  jobName: string;
+  operationName: string | null;
+}
+
+export interface ReleasesRefreshStatusResult {
+  exists: boolean;
+  workerName: string;
+  status: string | null;
+  startedAt: number | null;
+  lastRunAt: number | null;
+  durationMs: number | null;
+  summary: string | null;
+  error: string | null;
+  updatedAt: number | null;
+  serverTime: number;
+}
+
+export const callTriggerReleasesRefreshJob = callable<Record<string, never>, ReleasesRefreshTriggerResult>('triggerReleasesRefreshJob');
+export const callGetReleasesRefreshJobStatus = callable<Record<string, never>, ReleasesRefreshStatusResult>('getReleasesRefreshJobStatus');
