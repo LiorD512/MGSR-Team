@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, getDocs, onSnapshot, orderBy, query, limit } from 'firebase/firestore';
@@ -12,7 +12,7 @@ import { FEED_EVENTS_COLLECTIONS, PLAYERS_COLLECTIONS } from '@/lib/platformColl
 import { callShortlistAdd } from '@/lib/callables';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
-import { extractPlayerIdFromUrl, getReleasesFromCache, getTeammates, type ReleasePlayer } from '@/lib/api';
+import { extractPlayerIdFromUrl, getPlayerDetails, getReleasesFromCache, getTeammates, type ReleasePlayer } from '@/lib/api';
 import {
   filterByAge,
   getUniquePositions,
@@ -106,16 +106,89 @@ interface RosterTeammateMatch {
 }
 
 function deduplicateReleaseEvents(events: FeedEvent[]): FeedEvent[] {
+  const isMeaningful = (value?: string | null): value is string => {
+    if (!value) return false;
+    const v = value.trim();
+    return !!v && v !== '-' && v !== '—' && v.toLowerCase() !== 'unknown';
+  };
+
+  const pickField = (newer?: string, older?: string): string | undefined => {
+    if (isMeaningful(newer)) return newer;
+    if (isMeaningful(older)) return older;
+    return newer ?? older;
+  };
+
   const seen = new Map<string, FeedEvent>();
   for (const event of events) {
     const profile = event.playerTmProfile?.trim();
     if (!profile) continue;
     const existing = seen.get(profile);
-    if (!existing || (event.timestamp ?? 0) > (existing.timestamp ?? 0)) {
+    if (!existing) {
       seen.set(profile, event);
+      continue;
     }
+
+    const eventTs = event.timestamp ?? 0;
+    const existingTs = existing.timestamp ?? 0;
+    const newer = eventTs >= existingTs ? event : existing;
+    const older = eventTs >= existingTs ? existing : event;
+
+    seen.set(profile, {
+      ...newer,
+      playerPosition: pickField(newer.playerPosition, older.playerPosition),
+      marketValue: pickField(newer.marketValue, older.marketValue),
+      playerAge: pickField(newer.playerAge, older.playerAge),
+      playerNationality: pickField(newer.playerNationality, older.playerNationality),
+      playerNationalityFlag: pickField(newer.playerNationalityFlag, older.playerNationalityFlag),
+      transferDate: pickField(newer.transferDate, older.transferDate),
+      playerImage: pickField(newer.playerImage, older.playerImage),
+      playerName: pickField(newer.playerName, older.playerName),
+    });
   }
   return Array.from(seen.values()).sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+}
+
+function hasMeaningfulText(value?: string | null): value is string {
+  if (!value) return false;
+  const v = value.trim();
+  return !!v && v !== '-' && v !== '—' && v.toLowerCase() !== 'unknown';
+}
+
+function firstMeaningful(...values: Array<string | undefined | null>): string | undefined {
+  for (const value of values) {
+    if (hasMeaningfulText(value)) return value.trim();
+  }
+  return undefined;
+}
+
+function cleanMeta(meta: ReleaseMeta): ReleaseMeta {
+  return {
+    playerPosition: firstMeaningful(meta.playerPosition),
+    marketValue: firstMeaningful(meta.marketValue),
+    playerAge: firstMeaningful(meta.playerAge),
+    playerNationality: firstMeaningful(meta.playerNationality),
+    playerNationalityFlag: firstMeaningful(meta.playerNationalityFlag),
+    transferDate: firstMeaningful(meta.transferDate),
+  };
+}
+
+function needsProfileEnrichment(event: FeedEvent, cacheMeta?: ReleaseMeta): boolean {
+  return !firstMeaningful(event.playerPosition, cacheMeta?.playerPosition) ||
+    !firstMeaningful(event.marketValue, cacheMeta?.marketValue) ||
+    !firstMeaningful(event.playerAge, cacheMeta?.playerAge) ||
+    !firstMeaningful(event.playerNationality, cacheMeta?.playerNationality);
+}
+
+function profileToReleaseMeta(details: Awaited<ReturnType<typeof getPlayerDetails>>): ReleaseMeta {
+  return cleanMeta({
+    playerPosition: Array.isArray(details.positions)
+      ? details.positions.find((p) => hasMeaningfulText(p))
+      : undefined,
+    marketValue: details.marketValue,
+    playerAge: details.age,
+    playerNationality: details.nationality,
+    playerNationalityFlag: details.nationalityFlag,
+  });
 }
 
 function formatTimestamp(timestamp: number | undefined, isRtl: boolean): string {
@@ -398,6 +471,7 @@ export default function ReleaseNotificationsPage() {
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
   const [releaseMetaByUrl, setReleaseMetaByUrl] = useState<Record<string, ReleaseMeta>>({});
+  const [profileMetaByUrl, setProfileMetaByUrl] = useState<Record<string, ReleaseMeta>>({});
   const [firestorePositions, setFirestorePositions] = useState<{ name?: string; hebrewName?: string }[]>([]);
   const [preset, setPreset] = useState(0);
   const [positionFilter, setPositionFilter] = useState<string | null>(null);
@@ -411,6 +485,7 @@ export default function ReleaseNotificationsPage() {
   const [expandedTeammatesUrl, setExpandedTeammatesUrl] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
   const [search, setSearch] = useState('');
+  const fetchedProfileMetaRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -491,23 +566,71 @@ export default function ReleaseNotificationsPage() {
     return deduped.filter((event) => !rosterProfiles.has(event.playerTmProfile));
   }, [events, rosterPlayers]);
 
+  useEffect(() => {
+    const missingUrls = notificationOnlyPlayers
+      .map((event) => event.playerTmProfile)
+      .filter((url): url is string => !!url)
+      .filter((url) => {
+        const event = notificationOnlyPlayers.find((e) => e.playerTmProfile === url);
+        if (!event) return false;
+        const cacheMeta = releaseMetaByUrl[url];
+        const profileMeta = profileMetaByUrl[url];
+        if (profileMeta && !needsProfileEnrichment(event, { ...cacheMeta, ...profileMeta })) return false;
+        return needsProfileEnrichment(event, cacheMeta) && !fetchedProfileMetaRef.current.has(url);
+      })
+      .slice(0, 120);
+
+    if (missingUrls.length === 0) return;
+
+    let cancelled = false;
+    const run = async () => {
+      for (let i = 0; i < missingUrls.length; i += 4) {
+        const batch = missingUrls.slice(i, i + 4);
+        await Promise.all(
+          batch.map(async (url) => {
+            fetchedProfileMetaRef.current.add(url);
+            try {
+              const details = await getPlayerDetails(url);
+              if (cancelled) return;
+              const meta = profileToReleaseMeta(details);
+              if (Object.values(meta).some(Boolean)) {
+                setProfileMetaByUrl((prev) => ({ ...prev, [url]: meta }));
+              }
+            } catch {
+              // Keep UI responsive even when some profile fetches fail.
+            }
+          })
+        );
+        if (cancelled) break;
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [notificationOnlyPlayers, releaseMetaByUrl, profileMetaByUrl]);
+
   const resolvedPlayers = useMemo<NotificationPlayer[]>(() => {
     return notificationOnlyPlayers
       .filter((event): event is FeedEvent & { playerTmProfile: string } => !!event.playerTmProfile)
       .map((event) => {
-        const meta = releaseMetaByUrl[event.playerTmProfile] || {};
+        const meta = {
+          ...(releaseMetaByUrl[event.playerTmProfile] || {}),
+          ...(profileMetaByUrl[event.playerTmProfile] || {}),
+        };
         return {
           event,
           playerUrl: event.playerTmProfile,
-          playerPosition: event.playerPosition ?? meta.playerPosition,
-          marketValue: event.marketValue ?? meta.marketValue,
-          playerAge: event.playerAge ?? meta.playerAge,
-          playerNationality: event.playerNationality ?? meta.playerNationality,
-          playerNationalityFlag: event.playerNationalityFlag ?? meta.playerNationalityFlag,
-          transferDate: event.transferDate ?? meta.transferDate ?? timestampToDdMmYyyy(event.timestamp),
+          playerPosition: firstMeaningful(event.playerPosition, meta.playerPosition),
+          marketValue: firstMeaningful(event.marketValue, meta.marketValue),
+          playerAge: firstMeaningful(event.playerAge, meta.playerAge),
+          playerNationality: firstMeaningful(event.playerNationality, meta.playerNationality),
+          playerNationalityFlag: firstMeaningful(event.playerNationalityFlag, meta.playerNationalityFlag),
+          transferDate: firstMeaningful(event.transferDate, meta.transferDate) ?? timestampToDdMmYyyy(event.timestamp),
         };
       });
-  }, [notificationOnlyPlayers, releaseMetaByUrl]);
+  }, [notificationOnlyPlayers, releaseMetaByUrl, profileMetaByUrl]);
 
   const positions = useMemo(() => {
     const fromData = getUniquePositions(
@@ -608,20 +731,23 @@ export default function ReleaseNotificationsPage() {
       if (!user || !event.playerTmProfile) return;
       setAddingUrl(event.playerTmProfile);
       try {
-        const playerMeta = releaseMetaByUrl[event.playerTmProfile] || {};
+        const playerMeta = {
+          ...(releaseMetaByUrl[event.playerTmProfile] || {}),
+          ...(profileMetaByUrl[event.playerTmProfile] || {}),
+        };
         const account = await getCurrentAccountForShortlist(user);
         const result = await callShortlistAdd({
           platform: 'men',
           tmProfileUrl: event.playerTmProfile,
           playerImage: event.playerImage ?? null,
           playerName: event.playerName ?? null,
-          playerPosition: event.playerPosition ?? playerMeta.playerPosition ?? null,
-          playerAge: event.playerAge ?? playerMeta.playerAge ?? null,
-          playerNationality: event.playerNationality ?? playerMeta.playerNationality ?? null,
-          playerNationalityFlag: event.playerNationalityFlag ?? playerMeta.playerNationalityFlag ?? null,
+          playerPosition: firstMeaningful(event.playerPosition, playerMeta.playerPosition) ?? null,
+          playerAge: firstMeaningful(event.playerAge, playerMeta.playerAge) ?? null,
+          playerNationality: firstMeaningful(event.playerNationality, playerMeta.playerNationality) ?? null,
+          playerNationalityFlag: firstMeaningful(event.playerNationalityFlag, playerMeta.playerNationalityFlag) ?? null,
           clubJoinedName: null,
-          transferDate: event.transferDate ?? playerMeta.transferDate ?? formatTransferDateForShortlist(event.timestamp),
-          marketValue: event.marketValue ?? playerMeta.marketValue ?? null,
+          transferDate: firstMeaningful(event.transferDate, playerMeta.transferDate) ?? formatTransferDateForShortlist(event.timestamp),
+          marketValue: firstMeaningful(event.marketValue, playerMeta.marketValue) ?? null,
           addedByAgentId: account.id,
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
@@ -633,7 +759,7 @@ export default function ReleaseNotificationsPage() {
         setAddingUrl(null);
       }
     },
-    [user, releaseMetaByUrl]
+    [user, releaseMetaByUrl, profileMetaByUrl]
   );
 
   const fetchTeammates = useCallback(async (playerUrl: string) => {
