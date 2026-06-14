@@ -516,6 +516,7 @@ export default function ReleaseNotificationsPage() {
   const [enrichingUrls, setEnrichingUrls] = useState<Set<string>>(new Set());
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [enrichmentRunNonce, setEnrichmentRunNonce] = useState(0);
+  const [manualForcedEnrichmentUrls, setManualForcedEnrichmentUrls] = useState<Set<string>>(new Set());
   const fetchedProfileMetaRef = useRef<Set<string>>(new Set());
   const inFlightProfileMetaRef = useRef<Set<string>>(new Set());
   const profileAttemptCountRef = useRef<Map<string, number>>(new Map());
@@ -609,12 +610,13 @@ export default function ReleaseNotificationsPage() {
         if (!event) return false;
         const cacheMeta = releaseMetaByUrl[url];
         const profileMeta = profileMetaByUrl[url];
-        if (profileMeta && !needsProfileEnrichment(event, { ...cacheMeta, ...profileMeta })) return false;
+        const forceNow = manualForcedEnrichmentUrls.has(url);
+        if (!forceNow && profileMeta && !needsProfileEnrichment(event, { ...cacheMeta, ...profileMeta })) return false;
         const attempts = profileAttemptCountRef.current.get(url) ?? 0;
         const lastAttemptAt = profileLastAttemptAtRef.current.get(url) ?? 0;
         const cooldownPassed = Date.now() - lastAttemptAt >= ENRICHMENT_RETRY_COOLDOWN_MS;
         return (
-          needsProfileEnrichment(event, cacheMeta) &&
+          (forceNow || needsProfileEnrichment(event, cacheMeta)) &&
           !fetchedProfileMetaRef.current.has(url) &&
           !inFlightProfileMetaRef.current.has(url) &&
           attempts < ENRICHMENT_MAX_ATTEMPTS &&
@@ -649,6 +651,12 @@ export default function ReleaseNotificationsPage() {
           // Keep UI responsive even when some profile fetches fail.
         } finally {
           inFlightProfileMetaRef.current.delete(url);
+          setManualForcedEnrichmentUrls((prev) => {
+            if (!prev.has(url)) return prev;
+            const next = new Set(prev);
+            next.delete(url);
+            return next;
+          });
           setEnrichingUrls((prev) => {
             const next = new Set(prev);
             next.delete(url);
@@ -668,7 +676,7 @@ export default function ReleaseNotificationsPage() {
     return () => {
       cancelled = true;
     };
-  }, [notificationOnlyPlayers, releaseMetaByUrl, profileMetaByUrl, enrichmentRunNonce]);
+  }, [notificationOnlyPlayers, releaseMetaByUrl, profileMetaByUrl, enrichmentRunNonce, manualForcedEnrichmentUrls]);
 
   const runManualFetchAndEnrichment = useCallback(async () => {
     if (isManualRefreshing) return;
@@ -689,6 +697,11 @@ export default function ReleaseNotificationsPage() {
           .filter((url): url is string => !!url)
       );
 
+      if (targetUrls.size === 0) {
+        setIsManualRefreshing(false);
+        return;
+      }
+
       // Reset enrichment guards so the same enrichment pipeline can run again on demand.
       fetchedProfileMetaRef.current = new Set(
         Array.from(fetchedProfileMetaRef.current).filter((url) => !targetUrls.has(url))
@@ -697,6 +710,7 @@ export default function ReleaseNotificationsPage() {
       profileAttemptCountRef.current = new Map();
       profileLastAttemptAtRef.current = new Map();
       setEnrichingUrls(new Set());
+      setManualForcedEnrichmentUrls(targetUrls);
 
       setProfileMetaByUrl((prev) => {
         if (targetUrls.size === 0) return prev;
@@ -708,10 +722,17 @@ export default function ReleaseNotificationsPage() {
       });
 
       setEnrichmentRunNonce((prev) => prev + 1);
-    } finally {
+    } catch {
       setIsManualRefreshing(false);
     }
   }, [isManualRefreshing, notificationOnlyPlayers]);
+
+  useEffect(() => {
+    if (!isManualRefreshing) return;
+    if (manualForcedEnrichmentUrls.size > 0) return;
+    if (enrichingUrls.size > 0) return;
+    setIsManualRefreshing(false);
+  }, [isManualRefreshing, manualForcedEnrichmentUrls, enrichingUrls]);
 
   const resolvedPlayers = useMemo<NotificationPlayer[]>(() => {
     return notificationOnlyPlayers
