@@ -514,6 +514,8 @@ export default function ReleaseNotificationsPage() {
   const [loadingList, setLoadingList] = useState(true);
   const [search, setSearch] = useState('');
   const [enrichingUrls, setEnrichingUrls] = useState<Set<string>>(new Set());
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const [enrichmentRunNonce, setEnrichmentRunNonce] = useState(0);
   const fetchedProfileMetaRef = useRef<Set<string>>(new Set());
   const inFlightProfileMetaRef = useRef<Set<string>>(new Set());
   const profileAttemptCountRef = useRef<Map<string, number>>(new Map());
@@ -537,7 +539,7 @@ export default function ReleaseNotificationsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const releases = await getReleasesFromCache(false);
+        const releases = await getReleasesFromCache();
         if (cancelled) return;
         const byUrl: Record<string, ReleaseMeta> = {};
         for (const release of releases) {
@@ -666,7 +668,50 @@ export default function ReleaseNotificationsPage() {
     return () => {
       cancelled = true;
     };
-  }, [notificationOnlyPlayers, releaseMetaByUrl, profileMetaByUrl]);
+  }, [notificationOnlyPlayers, releaseMetaByUrl, profileMetaByUrl, enrichmentRunNonce]);
+
+  const runManualFetchAndEnrichment = useCallback(async () => {
+    if (isManualRefreshing) return;
+
+    setIsManualRefreshing(true);
+    try {
+      const releases = await getReleasesFromCache(true);
+      const byUrl: Record<string, ReleaseMeta> = {};
+      for (const release of releases) {
+        if (!release.playerUrl) continue;
+        byUrl[release.playerUrl] = toReleaseMeta(release);
+      }
+      setReleaseMetaByUrl(byUrl);
+
+      const targetUrls = new Set(
+        notificationOnlyPlayers
+          .map((event) => event.playerTmProfile)
+          .filter((url): url is string => !!url)
+      );
+
+      // Reset enrichment guards so the same enrichment pipeline can run again on demand.
+      fetchedProfileMetaRef.current = new Set(
+        Array.from(fetchedProfileMetaRef.current).filter((url) => !targetUrls.has(url))
+      );
+      inFlightProfileMetaRef.current = new Set();
+      profileAttemptCountRef.current = new Map();
+      profileLastAttemptAtRef.current = new Map();
+      setEnrichingUrls(new Set());
+
+      setProfileMetaByUrl((prev) => {
+        if (targetUrls.size === 0) return prev;
+        const next = { ...prev };
+        targetUrls.forEach((url) => {
+          delete next[url];
+        });
+        return next;
+      });
+
+      setEnrichmentRunNonce((prev) => prev + 1);
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [isManualRefreshing, notificationOnlyPlayers]);
 
   const resolvedPlayers = useMemo<NotificationPlayer[]>(() => {
     return notificationOnlyPlayers
@@ -870,6 +915,20 @@ export default function ReleaseNotificationsPage() {
             >
               {t('release_notifications_back_to_releases')}
             </Link>
+            <button
+              onClick={runManualFetchAndEnrichment}
+              disabled={isManualRefreshing}
+              className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 transition text-center disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isManualRefreshing && (
+                <span className="w-4 h-4 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" />
+              )}
+              <span>
+                {isManualRefreshing
+                  ? t('release_notifications_manual_refreshing')
+                  : t('release_notifications_manual_refresh')}
+              </span>
+            </button>
             {VALUE_PRESETS.map((valuePreset, index) => (
               <button
                 key={index}
