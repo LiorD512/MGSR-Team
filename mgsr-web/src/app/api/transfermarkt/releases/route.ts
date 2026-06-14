@@ -31,6 +31,8 @@ const LIVE_REFRESH_RANGES: Array<[number, number]> = [
 ];
 const LIVE_REFRESH_MAX_PAGES_PER_RANGE = 8;
 const LIVE_REFRESH_DELAY_MS = 220;
+const PLAYERS_COLLECTION = 'Players';
+const FEED_EVENTS_COLLECTION = 'FeedEvents';
 
 type ReleaseLike = {
   playerName?: string;
@@ -46,6 +48,27 @@ type ReleaseLike = {
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function javaHashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash >>> 0;
+}
+
+function feedEventDocIdForRelease(playerTmProfile: string): string {
+  return `NEW_RELEASE_FROM_CLUB_${javaHashCode(playerTmProfile || '')}`;
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
 }
 
 async function scrapeLatestReleasesLive(): Promise<{ players: ReleaseLike[]; pagesFetched: number; rangesProcessed: number }> {
@@ -79,6 +102,91 @@ async function scrapeLatestReleasesLive(): Promise<{ players: ReleaseLike[]; pag
     players: Array.from(all.values()),
     pagesFetched,
     rangesProcessed,
+  };
+}
+
+async function syncReleaseFeedEvents(players: ReleaseLike[]): Promise<{
+  createdEvents: number;
+  scannedPlayers: number;
+  notInDatabaseUrls: string[];
+}> {
+  const app = getFirebaseAdmin();
+  if (!app) {
+    return { createdEvents: 0, scannedPlayers: 0, notInDatabaseUrls: [] };
+  }
+
+  const db = adminDb();
+  const feedRef = db.collection(FEED_EVENTS_COLLECTION);
+  const playersRef = db.collection(PLAYERS_COLLECTION);
+
+  const byUrl = new Map<string, ReleaseLike>();
+  for (const player of players) {
+    if (!player?.playerUrl) continue;
+    if (!byUrl.has(player.playerUrl)) byUrl.set(player.playerUrl, player);
+  }
+  const urls = Array.from(byUrl.keys());
+  if (urls.length === 0) {
+    return { createdEvents: 0, scannedPlayers: 0, notInDatabaseUrls: [] };
+  }
+
+  const existingEventUrls = new Set<string>();
+  for (const urlChunk of chunk(urls, 30)) {
+    const snap = await feedRef
+      .where('type', '==', FEED_EVENTS_RELEASE_TYPE)
+      .where('playerTmProfile', 'in', urlChunk)
+      .get();
+    snap.docs.forEach((doc) => {
+      const tm = doc.get('playerTmProfile');
+      if (typeof tm === 'string' && tm) existingEventUrls.add(tm);
+    });
+  }
+
+  const playersInDb = new Set<string>();
+  for (const urlChunk of chunk(urls, 30)) {
+    const snap = await playersRef.where('tmProfile', 'in', urlChunk).get();
+    snap.docs.forEach((doc) => {
+      const tm = doc.data()?.tmProfile;
+      if (typeof tm === 'string' && tm) playersInDb.add(tm);
+    });
+  }
+
+  const notInDatabaseUrls = urls.filter((url) => !playersInDb.has(url));
+  const toCreate = urls.filter((url) => !existingEventUrls.has(url));
+  const now = Date.now();
+
+  let createdEvents = 0;
+  for (const createChunk of chunk(toCreate, 350)) {
+    const batch = db.batch();
+    for (const url of createChunk) {
+      const release = byUrl.get(url);
+      if (!release) continue;
+      const isInDatabase = playersInDb.has(url);
+      const docId = feedEventDocIdForRelease(url);
+      batch.set(feedRef.doc(docId), {
+        type: FEED_EVENTS_RELEASE_TYPE,
+        playerName: release.playerName || 'Unknown',
+        playerImage: release.playerImage || null,
+        playerTmProfile: url,
+        playerPosition: release.playerPosition || null,
+        marketValue: release.marketValue || null,
+        playerAge: release.playerAge || null,
+        playerNationality: release.playerNationality || null,
+        playerNationalityFlag: release.playerNationalityFlag || null,
+        transferDate: release.transferDate || null,
+        oldValue: null,
+        newValue: 'Without club',
+        extraInfo: isInDatabase ? 'IN_DATABASE' : 'NOT_IN_DATABASE',
+        timestamp: now,
+      });
+      createdEvents += 1;
+    }
+    await batch.commit();
+  }
+
+  return {
+    createdEvents,
+    scannedPlayers: urls.length,
+    notInDatabaseUrls,
   };
 }
 
@@ -143,6 +251,7 @@ export async function GET(request: NextRequest) {
     if (all) {
       if (live) {
         const liveResult = await scrapeLatestReleasesLive();
+        const feedSync = await syncReleaseFeedEvents(liveResult.players);
         const feedPlayers = await getLatestReleaseFeedPlayers();
         const merged = mergeByPlayerUrl(liveResult.players, feedPlayers);
 
@@ -157,6 +266,9 @@ export async function GET(request: NextRequest) {
             feedMerged: true,
             pagesFetched: liveResult.pagesFetched,
             rangesProcessed: liveResult.rangesProcessed,
+            feedEventsCreated: feedSync.createdEvents,
+            feedPlayersScanned: feedSync.scannedPlayers,
+            notInDatabaseUrls: feedSync.notInDatabaseUrls,
           },
           { headers: { 'X-Cache': 'MISS', 'Cache-Control': 'no-store' } }
         );

@@ -277,7 +277,7 @@ Separate Gradle module for HTML scraping via JSoup:
 </AuthProvider>
 ```
 
-### Page Routes (29 pages)
+### Page Routes (28 pages)
 
 | Route | Page | Purpose |
 |-------|------|---------|
@@ -295,7 +295,6 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/contacts` | Contacts | Club/agency contact database |
 | `/requests` | Requests | Club player requests + matching workbench |
 | `/releases` | Releases | Recently released free agents |
-| `/release-notifications` | Release Notifications | FeedEvents-driven list of `NEW_RELEASE_FROM_CLUB` players still not in `Players` |
 | `/contract-finisher` | Contract Finisher | Expiring contracts next window |
 | `/returnees` | Returnees | Players returning from loans |
 | `/war-room` | War Room | AI discovery candidates + scout agents |
@@ -794,7 +793,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Screen | `PlayersScreen` | `/players/page.tsx` |
 | ViewModel/State | `PlayersViewModel` | Client-side with Firestore listeners |
 | Data | Firestore Players (real-time listener) | Same |
-| Filters | Position, foot, contract status, agent, search text | Same filters; Players sort default label is "Release date" (HE: "תאריך שחרור") in web UI |
+| Filters | Position, foot, contract status, agent, search text | Same filters |
 | Actions | Navigate to player detail, filter, sort | Same + per-player "played with him" accordion (Transfermarkt teammates matched against roster, games-together badges, WhatsApp outreach shortcut; matching pipeline aligned with Web Shortlist teammates logic) |
 
 ### Player Detail
@@ -833,16 +832,8 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Aspect | Android | Web |
 |--------|---------|-----|
 | Screen | `ReleasesScreen` | `/releases/page.tsx` |
-| Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`) is used for default load; Reload on web now forces a latest persisted cache read (`all=true&refresh=true`, TTL bypass) and merges latest `FeedEvents.NEW_RELEASE_FROM_CLUB` entries so newly notified releases appear immediately even before next cache cycle; route explicitly sets `maxDuration=300` on Vercel |
-| Filters | Position, market value | Same; Web adds age + confederation (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC) filters, "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first, release cards display explicit "Release date" when available, and date parsing accepts both `DD/MM/YYYY` and `YYYY-MM-DD` formats to avoid mis-ordering |
-
-### Release Notifications
-| Aspect | Android | Web |
-|--------|---------|-----|
-| Screen | Feed/notification center only | `/release-notifications/page.tsx` |
-| Data | `FeedEvents` release notifications | Direct Firestore `FeedEvents` listener filtered to `type=NEW_RELEASE_FROM_CLUB` and `extraInfo=NOT_IN_DATABASE`, with a live exclusion against `Players.tmProfile` so entries disappear once they are added to the database; feed events now persist `playerPosition` and `marketValue` (plus age/nationality/transferDate), with web fallback enrichment from cached Releases data for older events and immediate live Transfermarkt profile enrichment for all rows still missing real metadata when the screen loads; enrichment requests use timeout + retry/backoff and run one-by-one with a short delay between requests to reduce Transfermarkt blocking |
-| Filters/Sorting | N/A | Matches Releases behavior: market-value preset chips, free-text search, position filter, age bucket filter, confederation filter (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC), and sort by market value/date/age; on this screen, "date" sort is driven by `FeedEvents.timestamp` (same source shown on card date) |
-| Purpose | Alerting | Dedicated fallback screen for release alerts missing from the cached Releases dataset, including add-to-shortlist, "played-with-him" teammate lookup, a WhatsApp quick-action on teammate rows (shown only when teammate `playerPhoneNumber` exists), and a per-card loader indicator while profile enrichment is still running |
+| Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`); cache entries are post-enriched from player profile pages with citizenships, preferred foot, and club metadata; web Releases UI hard-caps visible players at €6M. `/release-notifications` exposes a manual "Fetch + Enrich now" action that calls `all=true&refresh=true&live=true`, performs a fresh multi-range scrape, syncs `FeedEvents` (`NEW_RELEASE_FROM_CLUB`, `IN_DATABASE/NOT_IN_DATABASE`) before merging cache, then re-runs per-player profile enrichment (`getPlayerDetails`) with reset retry guards using returned fresh not-in-database URLs. |
+| Filters | Position, market value | Same; Web "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first |
 
 ### Contract Finishers
 | Aspect | Android | Web |
@@ -991,7 +982,7 @@ Server-side Cheerio scraping:
 | `/api/transfermarkt/search` | Player search |
 | `/api/transfermarkt/player` | Single player profile |
 | `/api/transfermarkt/club-search` | Club search |
-| `/api/transfermarkt/releases` | Latest free agents |
+| `/api/transfermarkt/releases` | Latest free agents (cached mode) + live refresh mode (`live=true`) that scrapes fresh data and syncs release `FeedEvents` |
 | `/api/transfermarkt/contract-finishers` | Expiring contracts (with Firestore cache) |
 | `/api/transfermarkt/contract-finishers/stream` | SSE streaming for progressive loading |
 | `/api/transfermarkt/returnees` | Loan returnees (with Firestore cache) |

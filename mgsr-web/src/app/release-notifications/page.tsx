@@ -793,15 +793,19 @@ export default function ReleaseNotificationsPage() {
         stage: 'preparing',
         fetchInfo:
           typeof liveData?.pagesFetched === 'number' && typeof liveData?.rangesProcessed === 'number'
-            ? `pages=${liveData.pagesFetched}, ranges=${liveData.rangesProcessed}`
+            ? `pages=${liveData.pagesFetched}, ranges=${liveData.rangesProcessed}, scanned=${liveData.feedPlayersScanned ?? 0}, newEvents=${liveData.feedEventsCreated ?? 0}`
             : undefined,
       }));
 
-      const targetUrls = new Set(
-        notificationOnlyPlayers
-          .map((event) => event.playerTmProfile)
-          .filter((url): url is string => !!url)
-      );
+      const targetUrlList: string[] =
+        Array.isArray(liveData?.notInDatabaseUrls) && liveData.notInDatabaseUrls.length > 0
+          ? liveData.notInDatabaseUrls.filter(
+              (url: unknown): url is string => typeof url === 'string' && !!url
+            )
+          : notificationOnlyPlayers
+              .map((event) => event.playerTmProfile)
+              .filter((url): url is string => !!url);
+      const targetUrls = new Set<string>(targetUrlList);
 
       if (targetUrls.size === 0) {
         setManualRefreshProgress((prev) => ({
