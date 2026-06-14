@@ -139,15 +139,67 @@ async function getCloudRunOperationStatus(operationName, projectId) {
   }
 
   if (typeof payload?.done === "boolean") {
+    const executionName = payload?.response?.name || payload?.metadata?.name || null;
     return {
       done: payload.done,
       error: payload?.error?.message || null,
+      executionName,
       metadata: payload?.metadata || null,
       response: payload?.response || null,
     };
   }
 
   return { done: null, error: null };
+}
+
+async function getCloudRunExecutionStatus(executionName) {
+  if (!executionName) {
+    return { done: null, success: null, error: null };
+  }
+
+  const normalized = String(executionName).replace(/^\/+/, "");
+  if (!normalized.startsWith("projects/")) {
+    return { done: null, success: null, error: "Invalid executionName format" };
+  }
+
+  const token = await getCloudAccessToken();
+  const execUrl = `https://run.googleapis.com/v2/${normalized}`;
+  const response = await fetch(execUrl, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const msg = payload?.error?.message || `${response.status} ${response.statusText}`;
+    return { done: null, success: null, error: `Execution lookup failed: ${msg}` };
+  }
+
+  const completionTime = payload?.completionTime || null;
+  const failedCount = Number(payload?.failedCount || 0);
+  const cancelledCount = Number(payload?.cancelledCount || 0);
+  const succeededCount = Number(payload?.succeededCount || 0);
+
+  if (!completionTime) {
+    return {
+      done: false,
+      success: null,
+      error: null,
+      failedCount,
+      cancelledCount,
+      succeededCount,
+    };
+  }
+
+  const success = failedCount === 0 && cancelledCount === 0 && succeededCount > 0;
+  return {
+    done: true,
+    success,
+    error: success ? null : "Cloud Run execution completed with failures",
+    failedCount,
+    cancelledCount,
+    succeededCount,
+  };
 }
 
 /**
@@ -899,6 +951,7 @@ exports.triggerReleasesRefreshJob = onCall(
         region: RELEASES_JOB_REGION,
         jobName: RELEASES_JOB_NAME,
         operationName: payload?.name || null,
+        executionName: payload?.metadata?.name || payload?.response?.name || null,
       };
     } catch (error) {
       await db.collection(WORKER_RUNS_COLLECTION).doc(RELEASES_WORKER_NAME).set(
@@ -926,20 +979,41 @@ exports.triggerReleasesRefreshJob = onCall(
 exports.getReleasesRefreshJobStatus = onCall(async (req) => {
   requireAuth(req);
   const operationName = typeof req?.data?.operationName === "string" ? req.data.operationName : null;
+  const requestedExecutionName = typeof req?.data?.executionName === "string" ? req.data.executionName : null;
   const projectId = resolveProjectId();
   const snap = await db.collection(WORKER_RUNS_COLLECTION).doc(RELEASES_WORKER_NAME).get();
   const data = snap.exists ? snap.data() : {};
   let operationDone = null;
   let operationError = null;
+  let executionName = requestedExecutionName;
+  let executionDone = null;
+  let executionSucceeded = null;
+  let executionError = null;
 
   if (operationName && projectId) {
     try {
       const operation = await getCloudRunOperationStatus(operationName, projectId);
       operationDone = typeof operation?.done === "boolean" ? operation.done : null;
       operationError = operation?.error || null;
+      if (!executionName && typeof operation?.executionName === "string") {
+        executionName = operation.executionName;
+      }
     } catch (error) {
       operationDone = null;
       operationError = error?.message || String(error);
+    }
+  }
+
+  if (executionName) {
+    try {
+      const execution = await getCloudRunExecutionStatus(executionName);
+      executionDone = typeof execution?.done === "boolean" ? execution.done : null;
+      executionSucceeded = typeof execution?.success === "boolean" ? execution.success : null;
+      executionError = execution?.error || null;
+    } catch (error) {
+      executionDone = null;
+      executionSucceeded = null;
+      executionError = error?.message || String(error);
     }
   }
 
@@ -956,6 +1030,10 @@ exports.getReleasesRefreshJobStatus = onCall(async (req) => {
     operationName,
     operationDone,
     operationError,
+    executionName,
+    executionDone,
+    executionSucceeded,
+    executionError,
     serverTime: Date.now(),
   };
 });

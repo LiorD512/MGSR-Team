@@ -776,11 +776,12 @@ export default function ReleaseNotificationsPage() {
     try {
       const triggerResult = await callTriggerReleasesRefreshJob({});
       const requestedAt = triggerResult?.requestedAt || Date.now();
+      const executionName = triggerResult?.executionName ?? null;
 
       setManualRefreshProgress((prev) => ({
         ...prev,
         stage: 'fetching',
-        fetchInfo: `job=${triggerResult.jobName}, operation=${triggerResult.operationName ?? 'pending'}, status=running`,
+        fetchInfo: `job=${triggerResult.jobName}, operation=${triggerResult.operationName ?? 'pending'}, execution=${executionName ?? 'pending'}, status=running`,
       }));
 
       let workerCompleted = false;
@@ -791,28 +792,38 @@ export default function ReleaseNotificationsPage() {
       while (Date.now() - startedAt < MANUAL_REFRESH_MAX_WAIT_MS) {
         const status = await callGetReleasesRefreshJobStatus({
           operationName: triggerResult.operationName ?? undefined,
+          executionName: executionName ?? undefined,
         });
         finalStatus = status?.status ?? null;
         finalSummary = status?.summary ?? null;
         finalError = status?.error ?? null;
         const operationDone = status?.operationDone;
         const operationError = status?.operationError;
+        const executionDone = status?.executionDone;
+        const executionSucceeded = status?.executionSucceeded;
+        const executionError = status?.executionError;
 
         setManualRefreshProgress((prev) => ({
           ...prev,
           stage: 'fetching',
-          fetchInfo: `job=${triggerResult.jobName}, operation=${triggerResult.operationName ?? 'pending'}, opDone=${String(operationDone)}, status=${finalStatus ?? 'unknown'}, updatedAt=${status.updatedAt ?? 0}`,
+          fetchInfo: `job=${triggerResult.jobName}, operation=${triggerResult.operationName ?? 'pending'}, opDone=${String(operationDone)}, execDone=${String(executionDone)}, execOk=${String(executionSucceeded)}, status=${finalStatus ?? 'unknown'}, updatedAt=${status.updatedAt ?? 0}`,
         }));
 
         if (operationError) {
           throw new Error(`Cloud Run operation failed: ${operationError}`);
         }
+        if (executionError) {
+          throw new Error(`Cloud Run execution failed: ${executionError}`);
+        }
 
         const hasFreshRun = typeof status?.lastRunAt === 'number' && status.lastRunAt >= requestedAt;
+        const executionAllowsCompletion = executionName
+          ? executionDone === true && executionSucceeded === true
+          : false;
         const operationAllowsCompletion = triggerResult.operationName
           ? operationDone === true
           : true;
-        if (operationAllowsCompletion && hasFreshRun && (finalStatus === 'success' || finalStatus === 'failed')) {
+        if (operationAllowsCompletion && executionAllowsCompletion && hasFreshRun && (finalStatus === 'success' || finalStatus === 'failed')) {
           workerCompleted = true;
           break;
         }

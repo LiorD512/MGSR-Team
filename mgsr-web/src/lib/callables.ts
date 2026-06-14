@@ -357,6 +357,7 @@ export interface ReleasesRefreshTriggerResult {
   region: string;
   jobName: string;
   operationName: string | null;
+  executionName: string | null;
 }
 
 export interface ReleasesRefreshStatusResult {
@@ -372,8 +373,12 @@ export interface ReleasesRefreshStatusResult {
   operationName: string | null;
   operationDone: boolean | null;
   operationError: string | null;
+  executionName: string | null;
+  executionDone: boolean | null;
+  executionSucceeded: boolean | null;
+  executionError: string | null;
   serverTime: number;
 }
 
 export const callTriggerReleasesRefreshJob = callable<Record<string, never>, ReleasesRefreshTriggerResult>('triggerReleasesRefreshJob');
-export const callGetReleasesRefreshJobStatus = callable<{ operationName?: string }, ReleasesRefreshStatusResult>('getReleasesRefreshJobStatus');
+export const callGetReleasesRefreshJobStatus = callable<{ operationName?: string; executionName?: string }, ReleasesRefreshStatusResult>('getReleasesRefreshJobStatus');
