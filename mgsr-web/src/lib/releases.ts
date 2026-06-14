@@ -25,14 +25,30 @@ export function sortByMarketValue(players: ReleasePlayer[]): ReleasePlayer[] {
   return [...players].sort((a, b) => parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue));
 }
 
-/** Parse release date string (DD/MM/YYYY) to timestamp for sorting. */
+/** Parse release date string to timestamp for sorting (supports DD/MM/YYYY and YYYY-MM-DD). */
 function parseReleaseDate(dateStr: string | undefined): number {
   if (!dateStr) return 0;
-  const parts = dateStr.trim().split(/[/.-]/);
-  if (parts.length !== 3) return 0;
-  const [d, m, y] = parts.map((p) => parseInt(p, 10));
-  if (Number.isNaN(d) || Number.isNaN(m) || Number.isNaN(y)) return 0;
-  return new Date(y, m - 1, d).getTime();
+  const raw = dateStr.trim();
+  const parts = raw.split(/[\/.-]/);
+  if (parts.length === 3) {
+    const [p1, p2, p3] = parts;
+    const n1 = parseInt(p1, 10);
+    const n2 = parseInt(p2, 10);
+    const n3 = parseInt(p3, 10);
+    if (!Number.isNaN(n1) && !Number.isNaN(n2) && !Number.isNaN(n3)) {
+      // ISO-like format: YYYY-MM-DD
+      if (p1.length === 4 && n1 > 1900) {
+        return new Date(n1, n2 - 1, n3).getTime();
+      }
+      // Transfermarkt/common format: DD/MM/YYYY
+      if (p3.length === 4 && n3 > 1900) {
+        return new Date(n3, n2 - 1, n1).getTime();
+      }
+    }
+  }
+
+  const parsed = Date.parse(raw);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 /** Sort players by release date descending (newest first). */

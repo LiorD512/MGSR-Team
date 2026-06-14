@@ -834,7 +834,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | `ReleasesScreen` | `/releases/page.tsx` |
 | Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`) is used for default load; Reload on web now forces a latest persisted cache read (`all=true&refresh=true`, TTL bypass) and merges latest `FeedEvents.NEW_RELEASE_FROM_CLUB` entries so newly notified releases appear immediately even before next cache cycle; route explicitly sets `maxDuration=300` on Vercel |
-| Filters | Position, market value | Same; Web adds age + confederation (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC) filters, "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first, and release cards display explicit "Release date" when available |
+| Filters | Position, market value | Same; Web adds age + confederation (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC) filters, "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first, release cards display explicit "Release date" when available, and date parsing accepts both `DD/MM/YYYY` and `YYYY-MM-DD` formats to avoid mis-ordering |
 
 ### Release Notifications
 | Aspect | Android | Web |
