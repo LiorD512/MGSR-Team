@@ -576,6 +576,16 @@ export default function ReleaseNotificationsPage() {
       result = result.filter((player) => getConfederation(player.playerNationality) === regionFilter);
     }
 
+    if (sortBy === 'date') {
+      // Keep date sort aligned with what the UI shows on cards (FeedEvents timestamp).
+      return [...result].sort((a, b) => {
+        const tsA = a.event.timestamp ?? 0;
+        const tsB = b.event.timestamp ?? 0;
+        if (tsA !== tsB) return tsB - tsA;
+        return (b.playerUrl || '').localeCompare(a.playerUrl || '');
+      });
+    }
+
     const sortedReleasePlayers = sortReleases(
       result.map((player) => ({
         playerUrl: player.playerUrl,
