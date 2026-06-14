@@ -60,6 +60,7 @@ const POSITION_HEBREW: Record<string, string> = { SS: 'חלוץ שני' };
 const ENRICHMENT_REQUEST_TIMEOUT_MS = 15000;
 const ENRICHMENT_RETRY_COOLDOWN_MS = 30000;
 const ENRICHMENT_MAX_ATTEMPTS = 3;
+const ENRICHMENT_DELAY_BETWEEN_REQUESTS_MS = 450;
 
 interface FeedEvent {
   id: string;
@@ -204,6 +205,10 @@ async function getPlayerDetailsWithTimeout(url: string, timeoutMs = ENRICHMENT_R
       }, timeoutMs);
     }),
   ]);
+}
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
 function formatTimestamp(timestamp: number | undefined, isRtl: boolean): string {
@@ -619,41 +624,41 @@ export default function ReleaseNotificationsPage() {
 
     let cancelled = false;
     const run = async () => {
-      const concurrency = 12;
-      for (let i = 0; i < missingUrls.length; i += concurrency) {
-        const batch = missingUrls.slice(i, i + concurrency);
-        batch.forEach((url) => inFlightProfileMetaRef.current.add(url));
+      for (let i = 0; i < missingUrls.length; i++) {
+        const url = missingUrls[i];
+        inFlightProfileMetaRef.current.add(url);
         setEnrichingUrls((prev) => {
           const next = new Set(prev);
-          batch.forEach((url) => next.add(url));
+          next.add(url);
           return next;
         });
 
-        await Promise.allSettled(
-          batch.map(async (url) => {
-            profileLastAttemptAtRef.current.set(url, Date.now());
-            profileAttemptCountRef.current.set(url, (profileAttemptCountRef.current.get(url) ?? 0) + 1);
-            try {
-              const details = await getPlayerDetailsWithTimeout(url);
-              if (cancelled) return;
-              const meta = profileToReleaseMeta(details);
-              if (Object.values(meta).some(Boolean)) {
-                fetchedProfileMetaRef.current.add(url);
-                setProfileMetaByUrl((prev) => ({ ...prev, [url]: meta }));
-              }
-            } catch {
-              // Keep UI responsive even when some profile fetches fail.
-            } finally {
-              inFlightProfileMetaRef.current.delete(url);
-              setEnrichingUrls((prev) => {
-                const next = new Set(prev);
-                next.delete(url);
-                return next;
-              });
-            }
-          })
-        );
+        profileLastAttemptAtRef.current.set(url, Date.now());
+        profileAttemptCountRef.current.set(url, (profileAttemptCountRef.current.get(url) ?? 0) + 1);
+        try {
+          const details = await getPlayerDetailsWithTimeout(url);
+          if (cancelled) return;
+          const meta = profileToReleaseMeta(details);
+          if (Object.values(meta).some(Boolean)) {
+            fetchedProfileMetaRef.current.add(url);
+            setProfileMetaByUrl((prev) => ({ ...prev, [url]: meta }));
+          }
+        } catch {
+          // Keep UI responsive even when some profile fetches fail.
+        } finally {
+          inFlightProfileMetaRef.current.delete(url);
+          setEnrichingUrls((prev) => {
+            const next = new Set(prev);
+            next.delete(url);
+            return next;
+          });
+        }
+
         if (cancelled) break;
+        if (i < missingUrls.length - 1) {
+          await wait(ENRICHMENT_DELAY_BETWEEN_REQUESTS_MS);
+          if (cancelled) break;
+        }
       }
     };
 
