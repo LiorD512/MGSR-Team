@@ -789,19 +789,30 @@ export default function ReleaseNotificationsPage() {
       let finalError: string | null = null;
 
       while (Date.now() - startedAt < MANUAL_REFRESH_MAX_WAIT_MS) {
-        const status = await callGetReleasesRefreshJobStatus({});
+        const status = await callGetReleasesRefreshJobStatus({
+          operationName: triggerResult.operationName ?? undefined,
+        });
         finalStatus = status?.status ?? null;
         finalSummary = status?.summary ?? null;
         finalError = status?.error ?? null;
+        const operationDone = status?.operationDone;
+        const operationError = status?.operationError;
 
         setManualRefreshProgress((prev) => ({
           ...prev,
           stage: 'fetching',
-          fetchInfo: `job=${triggerResult.jobName}, operation=${triggerResult.operationName ?? 'pending'}, status=${finalStatus ?? 'unknown'}, updatedAt=${status.updatedAt ?? 0}`,
+          fetchInfo: `job=${triggerResult.jobName}, operation=${triggerResult.operationName ?? 'pending'}, opDone=${String(operationDone)}, status=${finalStatus ?? 'unknown'}, updatedAt=${status.updatedAt ?? 0}`,
         }));
 
+        if (operationError) {
+          throw new Error(`Cloud Run operation failed: ${operationError}`);
+        }
+
         const hasFreshRun = typeof status?.lastRunAt === 'number' && status.lastRunAt >= requestedAt;
-        if (hasFreshRun && (finalStatus === 'success' || finalStatus === 'failed')) {
+        const operationAllowsCompletion = triggerResult.operationName
+          ? operationDone === true
+          : true;
+        if (operationAllowsCompletion && hasFreshRun && (finalStatus === 'success' || finalStatus === 'failed')) {
           workerCompleted = true;
           break;
         }

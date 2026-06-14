@@ -369,8 +369,11 @@ export interface ReleasesRefreshStatusResult {
   summary: string | null;
   error: string | null;
   updatedAt: number | null;
+  operationName: string | null;
+  operationDone: boolean | null;
+  operationError: string | null;
   serverTime: number;
 }
 
 export const callTriggerReleasesRefreshJob = callable<Record<string, never>, ReleasesRefreshTriggerResult>('triggerReleasesRefreshJob');
-export const callGetReleasesRefreshJobStatus = callable<Record<string, never>, ReleasesRefreshStatusResult>('getReleasesRefreshJobStatus');
+export const callGetReleasesRefreshJobStatus = callable<{ operationName?: string }, ReleasesRefreshStatusResult>('getReleasesRefreshJobStatus');

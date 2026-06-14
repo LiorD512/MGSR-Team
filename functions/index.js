@@ -115,6 +115,41 @@ async function getCloudAccessToken() {
   return token;
 }
 
+async function getCloudRunOperationStatus(operationName, projectId) {
+  if (!operationName) {
+    return { done: null, error: null };
+  }
+
+  const normalized = String(operationName).replace(/^\/+/, "");
+  if (!normalized.startsWith("projects/")) {
+    return { done: null, error: "Invalid operationName format" };
+  }
+
+  const token = await getCloudAccessToken();
+  const opUrl = `https://run.googleapis.com/v2/${normalized}`;
+  const response = await fetch(opUrl, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const msg = payload?.error?.message || `${response.status} ${response.statusText}`;
+    return { done: null, error: `Operation lookup failed: ${msg}` };
+  }
+
+  if (typeof payload?.done === "boolean") {
+    return {
+      done: payload.done,
+      error: payload?.error?.message || null,
+      metadata: payload?.metadata || null,
+      response: payload?.response || null,
+    };
+  }
+
+  return { done: null, error: null };
+}
+
 /**
  * Send a notification to all tokens of an account. Cleans up invalid tokens.
  * @param {string} accountId Firestore Account doc ID
@@ -890,8 +925,24 @@ exports.triggerReleasesRefreshJob = onCall(
  */
 exports.getReleasesRefreshJobStatus = onCall(async (req) => {
   requireAuth(req);
+  const operationName = typeof req?.data?.operationName === "string" ? req.data.operationName : null;
+  const projectId = resolveProjectId();
   const snap = await db.collection(WORKER_RUNS_COLLECTION).doc(RELEASES_WORKER_NAME).get();
   const data = snap.exists ? snap.data() : {};
+  let operationDone = null;
+  let operationError = null;
+
+  if (operationName && projectId) {
+    try {
+      const operation = await getCloudRunOperationStatus(operationName, projectId);
+      operationDone = typeof operation?.done === "boolean" ? operation.done : null;
+      operationError = operation?.error || null;
+    } catch (error) {
+      operationDone = null;
+      operationError = error?.message || String(error);
+    }
+  }
+
   return {
     exists: snap.exists,
     workerName: RELEASES_WORKER_NAME,
@@ -902,6 +953,9 @@ exports.getReleasesRefreshJobStatus = onCall(async (req) => {
     summary: data?.summary || null,
     error: data?.error || null,
     updatedAt: typeof data?.updatedAt === "number" ? data.updatedAt : null,
+    operationName,
+    operationDone,
+    operationError,
     serverTime: Date.now(),
   };
 });
