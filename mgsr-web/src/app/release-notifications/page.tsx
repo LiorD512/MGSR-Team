@@ -486,6 +486,7 @@ export default function ReleaseNotificationsPage() {
   const [loadingList, setLoadingList] = useState(true);
   const [search, setSearch] = useState('');
   const fetchedProfileMetaRef = useRef<Set<string>>(new Set());
+  const inFlightProfileMetaRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -576,17 +577,23 @@ export default function ReleaseNotificationsPage() {
         const cacheMeta = releaseMetaByUrl[url];
         const profileMeta = profileMetaByUrl[url];
         if (profileMeta && !needsProfileEnrichment(event, { ...cacheMeta, ...profileMeta })) return false;
-        return needsProfileEnrichment(event, cacheMeta) && !fetchedProfileMetaRef.current.has(url);
-      })
-      .slice(0, 120);
+        return (
+          needsProfileEnrichment(event, cacheMeta) &&
+          !fetchedProfileMetaRef.current.has(url) &&
+          !inFlightProfileMetaRef.current.has(url)
+        );
+      });
 
     if (missingUrls.length === 0) return;
 
     let cancelled = false;
     const run = async () => {
-      for (let i = 0; i < missingUrls.length; i += 4) {
-        const batch = missingUrls.slice(i, i + 4);
-        await Promise.all(
+      const concurrency = 12;
+      for (let i = 0; i < missingUrls.length; i += concurrency) {
+        const batch = missingUrls.slice(i, i + concurrency);
+        batch.forEach((url) => inFlightProfileMetaRef.current.add(url));
+
+        await Promise.allSettled(
           batch.map(async (url) => {
             fetchedProfileMetaRef.current.add(url);
             try {
@@ -598,6 +605,8 @@ export default function ReleaseNotificationsPage() {
               }
             } catch {
               // Keep UI responsive even when some profile fetches fail.
+            } finally {
+              inFlightProfileMetaRef.current.delete(url);
             }
           })
         );
