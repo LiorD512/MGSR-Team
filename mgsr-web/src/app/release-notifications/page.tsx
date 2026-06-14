@@ -57,6 +57,9 @@ const SORT_OPTIONS: { value: SortBy; labelKey: string }[] = [
 const POSITION_ORDER = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 const POSITION_EXCLUDED = new Set(['LM', 'RM']);
 const POSITION_HEBREW: Record<string, string> = { SS: 'חלוץ שני' };
+const ENRICHMENT_REQUEST_TIMEOUT_MS = 15000;
+const ENRICHMENT_RETRY_COOLDOWN_MS = 30000;
+const ENRICHMENT_MAX_ATTEMPTS = 3;
 
 interface FeedEvent {
   id: string;
@@ -189,6 +192,18 @@ function profileToReleaseMeta(details: Awaited<ReturnType<typeof getPlayerDetail
     playerNationality: details.nationality,
     playerNationalityFlag: details.nationalityFlag,
   });
+}
+
+async function getPlayerDetailsWithTimeout(url: string, timeoutMs = ENRICHMENT_REQUEST_TIMEOUT_MS) {
+  return Promise.race([
+    getPlayerDetails(url),
+    new Promise<never>((_, reject) => {
+      const timer = setTimeout(() => {
+        clearTimeout(timer);
+        reject(new Error('Profile enrichment timeout'));
+      }, timeoutMs);
+    }),
+  ]);
 }
 
 function formatTimestamp(timestamp: number | undefined, isRtl: boolean): string {
@@ -496,6 +511,8 @@ export default function ReleaseNotificationsPage() {
   const [enrichingUrls, setEnrichingUrls] = useState<Set<string>>(new Set());
   const fetchedProfileMetaRef = useRef<Set<string>>(new Set());
   const inFlightProfileMetaRef = useRef<Set<string>>(new Set());
+  const profileAttemptCountRef = useRef<Map<string, number>>(new Map());
+  const profileLastAttemptAtRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -586,10 +603,15 @@ export default function ReleaseNotificationsPage() {
         const cacheMeta = releaseMetaByUrl[url];
         const profileMeta = profileMetaByUrl[url];
         if (profileMeta && !needsProfileEnrichment(event, { ...cacheMeta, ...profileMeta })) return false;
+        const attempts = profileAttemptCountRef.current.get(url) ?? 0;
+        const lastAttemptAt = profileLastAttemptAtRef.current.get(url) ?? 0;
+        const cooldownPassed = Date.now() - lastAttemptAt >= ENRICHMENT_RETRY_COOLDOWN_MS;
         return (
           needsProfileEnrichment(event, cacheMeta) &&
           !fetchedProfileMetaRef.current.has(url) &&
-          !inFlightProfileMetaRef.current.has(url)
+          !inFlightProfileMetaRef.current.has(url) &&
+          attempts < ENRICHMENT_MAX_ATTEMPTS &&
+          cooldownPassed
         );
       });
 
@@ -609,25 +631,25 @@ export default function ReleaseNotificationsPage() {
 
         await Promise.allSettled(
           batch.map(async (url) => {
-            fetchedProfileMetaRef.current.add(url);
+            profileLastAttemptAtRef.current.set(url, Date.now());
+            profileAttemptCountRef.current.set(url, (profileAttemptCountRef.current.get(url) ?? 0) + 1);
             try {
-              const details = await getPlayerDetails(url);
+              const details = await getPlayerDetailsWithTimeout(url);
               if (cancelled) return;
               const meta = profileToReleaseMeta(details);
               if (Object.values(meta).some(Boolean)) {
+                fetchedProfileMetaRef.current.add(url);
                 setProfileMetaByUrl((prev) => ({ ...prev, [url]: meta }));
               }
             } catch {
               // Keep UI responsive even when some profile fetches fail.
             } finally {
               inFlightProfileMetaRef.current.delete(url);
-              if (!cancelled) {
-                setEnrichingUrls((prev) => {
-                  const next = new Set(prev);
-                  next.delete(url);
-                  return next;
-                });
-              }
+              setEnrichingUrls((prev) => {
+                const next = new Set(prev);
+                next.delete(url);
+                return next;
+              });
             }
           })
         );
