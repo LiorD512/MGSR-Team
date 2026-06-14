@@ -231,6 +231,7 @@ function ReleaseNotificationCard({
   isRtl,
   isInShortlist,
   isAdding,
+  isEnriching,
   meta,
   onAddToShortlist,
   teammatesCache,
@@ -244,6 +245,7 @@ function ReleaseNotificationCard({
   isRtl: boolean;
   isInShortlist: boolean;
   isAdding: boolean;
+  isEnriching: boolean;
   meta?: ReleaseMeta;
   onAddToShortlist: (event: FeedEvent) => void;
   teammatesCache: Record<string, RosterTeammateMatch[]>;
@@ -301,6 +303,12 @@ function ReleaseNotificationCard({
         <span className="absolute top-4 left-4 rtl:left-auto rtl:right-4 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30">
           {t('release_notifications_badge')}
         </span>
+        {isEnriching && (
+          <div className="absolute top-4 right-4 rtl:right-auto rtl:left-4 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-mgsr-dark/85 border border-mgsr-teal/30 backdrop-blur-sm shadow-lg">
+            <span className="w-3.5 h-3.5 border-2 border-mgsr-teal/30 border-t-mgsr-teal rounded-full animate-spin" />
+            <span className="w-1.5 h-1.5 rounded-full bg-mgsr-teal/70 animate-pulse" />
+          </div>
+        )}
         <div className="flex gap-4 mt-6">
           <div className="relative shrink-0">
             <img
@@ -485,6 +493,7 @@ export default function ReleaseNotificationsPage() {
   const [expandedTeammatesUrl, setExpandedTeammatesUrl] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
   const [search, setSearch] = useState('');
+  const [enrichingUrls, setEnrichingUrls] = useState<Set<string>>(new Set());
   const fetchedProfileMetaRef = useRef<Set<string>>(new Set());
   const inFlightProfileMetaRef = useRef<Set<string>>(new Set());
 
@@ -592,6 +601,11 @@ export default function ReleaseNotificationsPage() {
       for (let i = 0; i < missingUrls.length; i += concurrency) {
         const batch = missingUrls.slice(i, i + concurrency);
         batch.forEach((url) => inFlightProfileMetaRef.current.add(url));
+        setEnrichingUrls((prev) => {
+          const next = new Set(prev);
+          batch.forEach((url) => next.add(url));
+          return next;
+        });
 
         await Promise.allSettled(
           batch.map(async (url) => {
@@ -607,6 +621,13 @@ export default function ReleaseNotificationsPage() {
               // Keep UI responsive even when some profile fetches fail.
             } finally {
               inFlightProfileMetaRef.current.delete(url);
+              if (!cancelled) {
+                setEnrichingUrls((prev) => {
+                  const next = new Set(prev);
+                  next.delete(url);
+                  return next;
+                });
+              }
             }
           })
         );
@@ -966,6 +987,7 @@ export default function ReleaseNotificationsPage() {
                 isRtl={isRtl}
                 isInShortlist={shortlistUrls.has(player.playerUrl)}
                 isAdding={addingUrl === player.playerUrl}
+                isEnriching={enrichingUrls.has(player.playerUrl)}
                 meta={player}
                 onAddToShortlist={addToShortlist}
                 teammatesCache={teammatesCache}

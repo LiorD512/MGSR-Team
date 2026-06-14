@@ -842,7 +842,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Screen | Feed/notification center only | `/release-notifications/page.tsx` |
 | Data | `FeedEvents` release notifications | Direct Firestore `FeedEvents` listener filtered to `type=NEW_RELEASE_FROM_CLUB` and `extraInfo=NOT_IN_DATABASE`, with a live exclusion against `Players.tmProfile` so entries disappear once they are added to the database; feed events now persist `playerPosition` and `marketValue` (plus age/nationality/transferDate), with web fallback enrichment from cached Releases data for older events and immediate live Transfermarkt profile enrichment for all rows still missing real metadata when the screen loads |
 | Filters/Sorting | N/A | Matches Releases behavior: market-value preset chips, free-text search, position filter, age bucket filter, confederation filter (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC), and sort by market value/date/age; on this screen, "date" sort is driven by `FeedEvents.timestamp` (same source shown on card date) |
-| Purpose | Alerting | Dedicated fallback screen for release alerts missing from the cached Releases dataset, including add-to-shortlist, "played-with-him" teammate lookup, and a WhatsApp quick-action on teammate rows (shown only when teammate `playerPhoneNumber` exists) |
+| Purpose | Alerting | Dedicated fallback screen for release alerts missing from the cached Releases dataset, including add-to-shortlist, "played-with-him" teammate lookup, a WhatsApp quick-action on teammate rows (shown only when teammate `playerPhoneNumber` exists), and a per-card loader indicator while profile enrichment is still running |
 
 ### Contract Finishers
 | Aspect | Android | Web |
