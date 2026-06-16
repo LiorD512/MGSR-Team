@@ -144,23 +144,23 @@ export default function MobileBottomTabBar() {
   return (
     <>
       <nav
-        className="fixed bottom-0 inset-x-0 z-40 border-t border-white/8 bg-[rgba(10,15,22,0.92)] backdrop-blur-2xl lg:hidden"
+        className="fixed bottom-0 inset-x-0 z-40 border-t border-white/10 bg-[linear-gradient(180deg,rgba(11,15,23,0.9),rgba(8,11,17,0.95))] backdrop-blur-2xl lg:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div className="flex items-stretch justify-around max-w-lg mx-auto px-2 pt-1.5">
           {tabs.map((tab) => {
             const active = isTabActive(tab, pathname);
-            return (
+            return ( 
               <Link
                 key={tab.href}
                 href={tab.href}
                 className="flex flex-col items-center justify-center py-2 px-1 min-w-0 flex-1 min-h-[56px] transition-colors relative rounded-2xl"
                 style={{ color: active ? accentColor : 'var(--mgsr-muted)' }}
               >
-                {active && (
+                {active && ( 
                   <span
                     className="absolute inset-0 rounded-2xl border"
-                    style={{ borderColor: accentColor, background: platform === 'men' ? 'rgba(200, 169, 104, 0.08)' : platform === 'women' ? 'rgba(232, 160, 191, 0.08)' : 'rgba(0, 212, 255, 0.08)' }}
+                    style={{ borderColor: accentColor, background: platform === 'men' ? 'rgba(245, 200, 116, 0.1)' : platform === 'women' ? 'rgba(232, 160, 191, 0.1)' : 'rgba(0, 212, 255, 0.1)' }}
                   />
                 )}
                 <tab.icon className="relative w-5 h-5 mb-1" />
@@ -177,10 +177,10 @@ export default function MobileBottomTabBar() {
               className="flex flex-col items-center justify-center py-2 px-1 min-w-0 flex-1 min-h-[56px] transition-colors relative rounded-2xl"
               style={{ color: moreActive ? accentColor : 'var(--mgsr-muted)' }}
             >
-              {moreActive && (
+                {moreActive && ( 
                 <span
                   className="absolute inset-0 rounded-2xl border"
-                  style={{ borderColor: accentColor, background: platform === 'men' ? 'rgba(200, 169, 104, 0.08)' : platform === 'women' ? 'rgba(232, 160, 191, 0.08)' : 'rgba(0, 212, 255, 0.08)' }}
+                    style={{ borderColor: accentColor, background: platform === 'men' ? 'rgba(245, 200, 116, 0.1)' : platform === 'women' ? 'rgba(232, 160, 191, 0.1)' : 'rgba(0, 212, 255, 0.1)' }}
                 />
               )}
               <IconMore className="relative w-5 h-5 mb-1" />

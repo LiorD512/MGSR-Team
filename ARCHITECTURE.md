@@ -262,6 +262,7 @@ Separate Gradle module for HTML scraping via JSoup:
 - Web mandate flows now use BRIT branding end-to-end: mandate PDF generator logo/source text and signing page metadata/footer labels.
 - The authenticated web app now uses a BRIT premium shell across desktop and mobile (`AppLayout`, `MobileHeader`, `MobileBottomTabBar`) with black/gold-glass surfaces; route hero/filter sections for dashboard, players, requests, tasks, shortlist, contacts, releases, contract-finisher, returnees, release-notifications, shadow-teams, and portfolio are aligned to that shared visual language.
 - BRIT redesign copy in shell/hero surfaces is now routed through `LanguageProvider` translation keys (EN/HE) instead of hardcoded English text, including route meta labels, navigation section headers, workspace badges, and redesigned hero/filter labels across the upgraded feature pages.
+- Web theme tokens were upgraded in `mgsr-web/src/app/globals.css` + `mgsr-web/tailwind.config.ts` to a richer cinematic palette (deep navy, luminous teal, premium gold) with shared aurora and sheen effects so all screens inherit the updated wow-style surfaces consistently.
 
 ### Key Dependencies
 

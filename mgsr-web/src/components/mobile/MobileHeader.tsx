@@ -58,7 +58,7 @@ export default function MobileHeader() {
 
   return (
     <header
-      className="fixed top-0 inset-x-0 z-40 border-b border-white/8 bg-[rgba(10,15,22,0.9)] backdrop-blur-2xl lg:hidden"
+      className="fixed top-0 inset-x-0 z-40 border-b border-white/10 bg-[linear-gradient(180deg,rgba(12,16,25,0.92),rgba(8,11,17,0.86))] backdrop-blur-2xl lg:hidden"
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       <div className="flex items-center h-16 px-3 gap-2">

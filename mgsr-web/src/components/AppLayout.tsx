@@ -199,9 +199,9 @@ function NavContent({
                             height: 20,
                             padding: '0 6px',
                             borderRadius: 10,
-                            background: 'linear-gradient(135deg, #22c7b8, #0ea5a0)',
-                            color: '#041217',
-                            boxShadow: '0 0 18px rgba(34,199,184,0.28)',
+                            background: 'linear-gradient(135deg, var(--mgsr-teal), var(--mgsr-gold))',
+                            color: '#0a0d13',
+                            boxShadow: '0 0 18px rgba(85, 231, 214, 0.3)',
                             animation: 'chat-unread-pop 0.3s ease-out',
                           }}
                         >
@@ -330,7 +330,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-mgsr-dark flex min-h-[100dvh] app-shell-bg">
       <aside
         className={`
-          w-[320px] bg-[rgba(11,16,23,0.82)] backdrop-blur-2xl flex flex-col shrink-0 static inset-y-0
+          w-[320px] bg-[rgba(9,12,18,0.82)] backdrop-blur-2xl flex flex-col shrink-0 static inset-y-0
           ${isRtl ? 'border-l' : 'border-r'} border-white/6 shadow-[0_30px_80px_rgba(0,0,0,0.35)]
         `}
       >
@@ -350,7 +350,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 overflow-auto min-w-0">
         <div className="p-6 xl:p-8">
-          <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(16,23,32,0.82),rgba(11,16,23,0.68))] backdrop-blur-xl shadow-[0_30px_80px_rgba(0,0,0,0.28)] overflow-hidden">
+          <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,35,0.86),rgba(10,14,22,0.72))] backdrop-blur-xl shadow-[0_34px_90px_rgba(2,4,8,0.34)] overflow-hidden">
             <div className="border-b border-white/6 px-6 py-5 xl:px-8 xl:py-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
