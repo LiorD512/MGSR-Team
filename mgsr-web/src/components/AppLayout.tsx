@@ -27,7 +27,7 @@ const navSections: NavSection[] = [
       { href: '/shortlist', labelKey: 'nav_shortlist' },
       { href: '/requests', labelKey: 'nav_requests' },
       { href: '/contacts', labelKey: 'nav_contacts' },
-      { href: '/portfolio', labelKey: 'nav_portfolio' },
+      // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio' },
     ],
   },
   {
@@ -38,7 +38,7 @@ const navSections: NavSection[] = [
       { href: '/release-notifications', labelKey: 'nav_release_notifications', badge: 'new' },
       { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
       { href: '/returnees', labelKey: 'nav_returnee' },
-      { href: '/shadow-teams', labelKey: 'nav_shadow_teams' },
+      // TEMP HIDDEN (user request): { href: '/shadow-teams', labelKey: 'nav_shadow_teams' },
     ],
   },
   {
@@ -62,7 +62,7 @@ const womenNavSections: NavSection[] = [
       { href: '/shortlist', labelKey: 'nav_shortlist' },
       { href: '/requests', labelKey: 'nav_requests' },
       { href: '/contacts', labelKey: 'nav_contacts' },
-      { href: '/portfolio', labelKey: 'nav_portfolio' },
+      // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio' },
     ],
   },
 ];
@@ -78,7 +78,7 @@ const youthNavSections: NavSection[] = [
       { href: '/shortlist', labelKey: 'nav_shortlist' },
       { href: '/requests', labelKey: 'nav_requests' },
       { href: '/contacts', labelKey: 'nav_contacts' },
-      { href: '/portfolio', labelKey: 'nav_portfolio' },
+      // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio' },
     ],
   },
 ];

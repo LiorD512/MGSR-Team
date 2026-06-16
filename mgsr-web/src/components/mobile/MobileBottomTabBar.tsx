@@ -74,13 +74,13 @@ const womenTabs: TabItem[] = [
   { href: '/dashboard', labelKey: 'nav_dashboard', icon: IconDashboard },
   { href: '/players', labelKey: 'nav_players_women', icon: IconPlayers, matchPrefixes: ['/players'] },
   { href: '/tasks', labelKey: 'nav_tasks', icon: IconTasks },
-  { href: '/portfolio', labelKey: 'nav_portfolio', icon: IconPortfolio },
+  // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio', icon: IconPortfolio },
 ];
 
 /* ── The remaining nav items that go to the "More" sheet ── */
 export const menMoreItems = [
   { href: '/shortlist', labelKey: 'nav_shortlist' },
-  { href: '/shadow-teams', labelKey: 'nav_shadow_teams' },
+  // TEMP HIDDEN (user request): { href: '/shadow-teams', labelKey: 'nav_shadow_teams' },
   { href: '/releases', labelKey: 'nav_releases' },
   { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
   { href: '/returnees', labelKey: 'nav_returnee' },
@@ -88,7 +88,7 @@ export const menMoreItems = [
   // { href: '/news', labelKey: 'nav_news' },
   { href: '/war-room', labelKey: 'nav_war_room' },
   // { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
-  { href: '/portfolio', labelKey: 'nav_portfolio' },
+  // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
   { href: '/chat-room', labelKey: 'nav_chat_room' },
@@ -100,14 +100,14 @@ export const womenMoreItems = [
   // { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
-  { href: '/portfolio', labelKey: 'nav_portfolio' },
+  // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio' },
 ];
 
 const youthTabs: TabItem[] = [
   { href: '/dashboard', labelKey: 'nav_dashboard', icon: IconDashboard },
   { href: '/players', labelKey: 'nav_players', icon: IconPlayers, matchPrefixes: ['/players'] },
   { href: '/tasks', labelKey: 'nav_tasks', icon: IconTasks },
-  { href: '/portfolio', labelKey: 'nav_portfolio', icon: IconPortfolio },
+  // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio', icon: IconPortfolio },
 ];
 
 export const youthMoreItems = [

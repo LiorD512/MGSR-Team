@@ -1271,8 +1271,10 @@ export default function DashboardPage() {
         </div>
         )}
 
-        {/* Ligat Ha'al Analyze — Foreign Arrivals (men only) */}
-        {platform === 'men' && (
+        {/*
+          TEMP HIDDEN (user request): Ligat Ha'al analytics panel
+        */}
+        {/* {platform === 'men' && (
           <div className="mb-10">
             <h2 className="text-lg font-semibold text-mgsr-text font-display">{t('fa_section_title')}</h2>
             <div className="w-10 h-0.5 rounded-full bg-mgsr-teal mb-4 mt-2" />
@@ -1280,7 +1282,7 @@ export default function DashboardPage() {
               <ForeignArrivalsPanel leagueCode="ISR1" />
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Roster Analytics (men only) */}
         {platform === 'men' && rosterPlayers.length > 0 && (
@@ -1742,8 +1744,10 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Transfer Windows — Open worldwide (men only) */}
-        {platform === 'men' && (
+        {/*
+          TEMP HIDDEN (user request): Open Transfer Windows dashboard section
+        */}
+        {/* {platform === 'men' && (
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-mgsr-text font-display">
@@ -2018,7 +2022,7 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-        )}
+        )} */}
 
         {/* Quick actions — scrollable on mobile */}
         <div className={`mb-6 sm:mb-10 ${platform === 'women' || platform === 'youth' ? '' : ''}`}>
@@ -2030,7 +2034,7 @@ export default function DashboardPage() {
                 { href: '/tasks', label: t('tasks') },
                 { href: '/shortlist', label: t('shortlist') },
                 { href: '/contacts', label: t('contacts') },
-                { href: '/portfolio', label: t('nav_portfolio') },
+                // TEMP HIDDEN (user request): { href: '/portfolio', label: t('nav_portfolio') },
               ]
             : platform === 'women'
             ? [
