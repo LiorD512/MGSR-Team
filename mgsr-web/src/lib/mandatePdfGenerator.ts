@@ -14,8 +14,8 @@ const LINE_HEIGHT = 14;
 const TITLE_SIZE = 16;
 const HEADING_SIZE = 12;
 const BODY_SIZE = 10;
-const AGENCY_NAME = 'MGSR Group';
-const LOGO_WIDTH_PT = 120;
+const AGENCY_NAME = 'BRIT Sport Group';
+const LOGO_WIDTH_PT = 42;
 const LOGO_HEIGHT_PT = 42;
 
 export interface PassportDetails {
@@ -60,8 +60,7 @@ function formatDate(d: Date): string {
 
 async function loadLogoPng(): Promise<Uint8Array | null> {
   try {
-    // Use logo_black.svg (matches Android mandate - horizontal layout, black text)
-    const logoPath = path.join(process.cwd(), 'public', 'logo_black.svg');
+    const logoPath = path.join(process.cwd(), 'public', 'brit_circle_black_gold.svg');
     if (!fs.existsSync(logoPath)) return null;
     const svgBuffer = fs.readFileSync(logoPath);
     const pngBuffer = await sharp(svgBuffer)

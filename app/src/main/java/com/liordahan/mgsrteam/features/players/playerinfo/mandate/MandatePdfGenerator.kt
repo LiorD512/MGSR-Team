@@ -19,7 +19,7 @@ import java.util.Locale
 
 /**
  * Generates a Football Agent Mandate PDF matching the template structure.
- * Uses player info from PassportDetails and agent info (Lior Dahan, FIFA ID, MGSR Group).
+ * Uses player info from PassportDetails and agent info (Lior Dahan, FIFA ID, BRIT Sport Group).
  */
 object MandatePdfGenerator {
 
@@ -30,8 +30,8 @@ object MandatePdfGenerator {
     private const val TITLE_SIZE = 16f
     private const val HEADING_SIZE = 12f
     private const val BODY_SIZE = 10f
-    private const val AGENCY_NAME = "MGSR Group"
-    private const val LOGO_WIDTH_PT = 120
+    private const val AGENCY_NAME = "BRIT Sport Group"
+    private const val LOGO_WIDTH_PT = 42
     private const val LOGO_HEIGHT_PT = 42
 
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.US)
@@ -77,7 +77,7 @@ object MandatePdfGenerator {
         var y = MARGIN.toFloat()
 
         // Logo at top left (PDF canvas uses points; bitmap drawn at pixel size = point size)
-        ContextCompat.getDrawable(context, R.drawable.logo_black)?.let { drawable ->
+        ContextCompat.getDrawable(context, R.drawable.brit_circle_black_gold)?.let { drawable ->
             val bitmap = Bitmap.createBitmap(LOGO_WIDTH_PT, LOGO_HEIGHT_PT, Bitmap.Config.ARGB_8888)
             val bitmapCanvas = Canvas(bitmap)
             drawable.setBounds(0, 0, LOGO_WIDTH_PT, LOGO_HEIGHT_PT)
@@ -412,7 +412,7 @@ object MandatePdfGenerator {
         drawLine(8)
         val hasLicensedOriginAgent = !data.originAgentName.isNullOrBlank() && !data.originAgentId.isNullOrBlank() && data.originAgentIdLabel == "FIFA License"
         val playerFullName = listOfNotNull(data.passportDetails.firstName, data.passportDetails.lastName).joinToString(" ").ifBlank { "the Player" }
-        val sig1Name = if (hasLicensedOriginAgent) data.originAgentName!! else playerFullName
+        val sig1Name = if (hasLicensedOriginAgent) data.originAgentName.orEmpty() else playerFullName
         y = drawText("Signed by $sig1Name: _________________________ Date:", bodyPaint)
         drawLine(4)
         y = drawText("Print Name: ______________", bodyPaint)

@@ -689,9 +689,9 @@ export default function SignMandatePage() {
         {/* Footer */}
         <div className="mt-10 pt-6 border-t border-mgsr-border text-center space-y-2">
           <p className="text-mgsr-muted text-[11px] leading-relaxed max-w-lg mx-auto">
-            MGSR is a licensed football agency operating in full compliance with FIFA regulations. No personal data submitted in this process is stored or retained in our systems.
+            BRIT Sport Group is a licensed football agency operating in full compliance with FIFA regulations. No personal data submitted in this process is stored or retained in our systems.
           </p>
-          <p className="text-mgsr-muted text-xs">MGSR Group — Football Agent Mandate Digital Signing</p>
+          <p className="text-mgsr-muted text-xs">BRIT Sport Group — Football Agent Mandate Digital Signing</p>
         </div>
       </div>
     </div>

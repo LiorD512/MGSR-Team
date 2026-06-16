@@ -129,6 +129,7 @@ Firebase Scheduled ──cron──→ Mandate expiry, task reminders, scout age
 
 - Public-facing Android branding now uses **BRIT Sport Group** labels in string resources (`app_name`, logo content description, notification channel display name).
 - The shared Android logo drawable `for_app_logo.xml` now points to the BRIT circular black/gold mark (`brit_circle_black_gold` asset), so login/splash/notification visual surfaces inherit the new logo without changing internal identifiers.
+- Android mandate PDF generation now renders the BRIT circular logo asset and uses **BRIT Sport Group** as the agency name in mandate text.
 
 ### Package Structure
 
@@ -258,6 +259,7 @@ Separate Gradle module for HTML scraping via JSoup:
 
 - Public-facing web labels and metadata now present **BRIT Sport Group** while preserving internal code/package/API naming.
 - Web logo asset for user-visible surfaces is `mgsr-web/public/brit_circle_black_gold.svg` (used in app chrome, mobile header, shared pages, and share OG visuals).
+- Web mandate flows now use BRIT branding end-to-end: mandate PDF generator logo/source text and signing page metadata/footer labels.
 
 ### Key Dependencies
 
