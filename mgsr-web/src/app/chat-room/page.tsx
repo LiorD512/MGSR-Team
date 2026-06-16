@@ -661,7 +661,7 @@ export default function ChatRoomPage() {
       >
         {/* ═══ HEADER ═══ */}
         <div
-          className="chat-noir-header-line relative flex items-center gap-3 sm:gap-4 px-4 sm:px-7 py-4 sm:py-5"
+          className="chat-noir-header-line brit-hero-panel relative flex items-center gap-3 sm:gap-4 px-4 sm:px-7 py-4 sm:py-5"
           style={{
             borderBottom: '1px solid var(--noir-border)',
             background: 'linear-gradient(180deg, rgba(17,19,24,0.95) 0%, var(--noir-surface) 100%)',
@@ -741,7 +741,7 @@ export default function ChatRoomPage() {
         {/* ═══ SEARCH BAR ═══ */}
         {showSearch && (
           <div
-            className="chat-noir-search-enter flex items-center gap-3 px-4 sm:px-7 py-3"
+            className="chat-noir-search-enter brit-filter-tray flex items-center gap-3 px-4 sm:px-7 py-3"
             style={{ borderBottom: '1px solid var(--noir-border)', background: 'rgba(77,182,172,0.02)' }}
           >
             <svg className="h-4 w-4 shrink-0" style={{ color: 'var(--noir-muted)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>

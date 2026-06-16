@@ -598,14 +598,15 @@ export default function ReleasesPage() {
   return (
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
-              {t('releases_title')}
-            </h1>
-            <p className="text-mgsr-muted mt-1 text-sm">{t('releases_value_filter')}</p>
-          </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+        <div className="brit-hero-panel rounded-[28px] p-5 sm:p-6 lg:p-7 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
+                {t('releases_title')}
+              </h1>
+              <p className="text-mgsr-muted mt-1 text-sm">{t('releases_value_filter')}</p>
+            </div>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             {(!loadingList || players.length > 0 || error) && (
               <button
                 onClick={() => loadReleases()}
@@ -628,6 +629,7 @@ export default function ReleasesPage() {
                 {p.isAll ? t('releases_all') : isRtl ? p.labelHe : p.label}
               </button>
             ))}
+            </div>
           </div>
         </div>
 
@@ -650,7 +652,7 @@ export default function ReleasesPage() {
         ) : (
           <>
             {/* Stats strip */}
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                        <div className="brit-filter-tray flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
               <span className="text-sm text-mgsr-muted">
                 {t('releases_stats_total')}: <strong className="text-mgsr-text">{players.length}</strong>
               </span>
@@ -676,7 +678,7 @@ export default function ReleasesPage() {
             </div>
 
             {/* Search + filters */}
-            <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="brit-filter-tray rounded-2xl p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
               <input
                 type="text"
                 value={search}

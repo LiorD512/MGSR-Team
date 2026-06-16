@@ -831,18 +831,19 @@ export default function ShortlistPage() {
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto sm:px-0">
         {/* Header — clean, informative */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
-              {isWomen ? t('shortlist_title_women') : t('shortlist_title')}
-            </h1>
-            <p className="text-mgsr-muted mt-1 text-sm">
-              {isFiltered
-                ? t('shortlist_showing_filtered').replace('{showing}', String(showingCount)).replace('{total}', String(totalCount))
-                : `${totalCount} ${isWomen ? t('players_women') : t('players')}`}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
+        <div className="brit-hero-panel rounded-[28px] p-5 sm:p-6 lg:p-7 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
+                {isWomen ? t('shortlist_title_women') : t('shortlist_title')}
+              </h1>
+              <p className="text-mgsr-muted mt-1 text-sm">
+                {isFiltered
+                  ? t('shortlist_showing_filtered').replace('{showing}', String(showingCount)).replace('{total}', String(totalCount))
+                  : `${totalCount} ${isWomen ? t('players_women') : t('players')}`}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
             {platform === 'men' && (
               <>
                 <Link
@@ -872,6 +873,7 @@ export default function ShortlistPage() {
               <span>+</span>
               {isYouth ? t('shortlist_add_youth_player') : t(isWomen ? 'shortlist_add_from_soccerdonna' : 'shortlist_add_from_tm')}
             </Link>
+            </div>
           </div>
         </div>
 
@@ -931,7 +933,7 @@ export default function ShortlistPage() {
 
             {/* Sort & Filter bar — men only, always visible when we have entries */}
             {platform === 'men' && entries.length > 0 && (
-              <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl bg-mgsr-card/80 border border-mgsr-border">
+              <div className="brit-filter-tray flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl">
                 {/* Search bar */}
                 <div className="relative">
                   <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mgsr-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>

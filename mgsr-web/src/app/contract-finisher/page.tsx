@@ -558,18 +558,19 @@ export default function ContractFinisherPage() {
   return (
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
-              {t('contract_finisher_title')}
-            </h1>
-            <p className="text-mgsr-muted mt-1 text-sm">
-              {windowLabel === 'Summer'
-                ? t('contract_finisher_subtitle_summer')
-                : t('contract_finisher_subtitle_winter')}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="brit-hero-panel rounded-[28px] p-5 sm:p-6 lg:p-7 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
+                {t('contract_finisher_title')}
+              </h1>
+              <p className="text-mgsr-muted mt-1 text-sm">
+                {windowLabel === 'Summer'
+                  ? t('contract_finisher_subtitle_summer')
+                  : t('contract_finisher_subtitle_winter')}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
             {(players.length > 0 || error) && (
               <button
                 onClick={() => startLoad()}
@@ -590,6 +591,7 @@ export default function ContractFinisherPage() {
                 </span>
               )}
             </button>
+            </div>
           </div>
         </div>
 
@@ -611,7 +613,7 @@ export default function ContractFinisherPage() {
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border">
+            <div className="brit-filter-tray flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl">
               {loadingList && (
                 <span className="text-sm text-mgsr-teal animate-pulse">{t('contract_finisher_loading_more')}</span>
               )}

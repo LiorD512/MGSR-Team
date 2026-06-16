@@ -490,29 +490,31 @@ export default function ReturneesPage() {
   return (
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
-              {t('returnee_title')}
-            </h1>
-            <p className="text-mgsr-muted mt-1 text-sm">{t('returnee_subtitle')}</p>
-            {addError && (
-              <p className="text-mgsr-red text-sm mt-2">{addError}</p>
+        <div className="brit-hero-panel rounded-[28px] p-5 sm:p-6 lg:p-7 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
+                {t('returnee_title')}
+              </h1>
+              <p className="text-mgsr-muted mt-1 text-sm">{t('returnee_subtitle')}</p>
+              {addError && (
+                <p className="text-mgsr-red text-sm mt-2">{addError}</p>
+              )}
+            </div>
+            {(players.length > 0 || !loadingList) && (
+              <button
+                onClick={startLoad}
+                disabled={loadingList}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-purple-400 hover:bg-purple-500/20 hover:border-purple-500/40 disabled:opacity-50 transition shrink-0"
+              >
+                {t('releases_reload')}
+              </button>
             )}
           </div>
-          {(players.length > 0 || !loadingList) && (
-            <button
-              onClick={startLoad}
-              disabled={loadingList}
-              className="px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-purple-400 hover:bg-purple-500/20 hover:border-purple-500/40 disabled:opacity-50 transition shrink-0"
-            >
-              {t('releases_reload')}
-            </button>
-          )}
         </div>
 
         {/* Stats strip */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border">
+        <div className="brit-filter-tray flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl">
           <span className="text-sm text-mgsr-muted">
             {t('releases_stats_total')}: <strong className="text-mgsr-text">{players.length}</strong>
           </span>

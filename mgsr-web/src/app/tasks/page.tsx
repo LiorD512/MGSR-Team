@@ -449,7 +449,7 @@ export default function TasksPage() {
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         {/* Hero stats strip */}
-        <div className={`relative overflow-hidden mb-8 ${isYouth ? 'rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.12)]' : isWomen ? 'rounded-2xl shadow-[0_0_40px_rgba(232,160,191,0.12)]' : 'rounded-2xl'}`}>
+        <div className={`brit-hero-panel relative overflow-hidden mb-8 ${isYouth ? 'rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.12)]' : isWomen ? 'rounded-2xl shadow-[0_0_40px_rgba(232,160,191,0.12)]' : 'rounded-2xl'}`}>
           <div
             className="absolute inset-0 opacity-30"
             style={
@@ -518,7 +518,7 @@ export default function TasksPage() {
         </div>
 
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <div className="brit-filter-tray rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className={`flex overflow-hidden border border-mgsr-border bg-mgsr-card/60 p-0.5 ${isYouth || isWomen ? 'rounded-2xl' : 'rounded-xl'}`}>
             {(['all', 'mine'] as const).map((f) => (
               <button

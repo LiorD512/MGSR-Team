@@ -1161,14 +1161,15 @@ export default function ReleaseNotificationsPage() {
   return (
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
-              {t('release_notifications_title')}
-            </h1>
-            <p className="text-mgsr-muted mt-1 text-sm">{t('release_notifications_subtitle')}</p>
-          </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+        <div className="brit-hero-panel rounded-[28px] p-5 sm:p-6 lg:p-7 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
+                {t('release_notifications_title')}
+              </h1>
+              <p className="text-mgsr-muted mt-1 text-sm">{t('release_notifications_subtitle')}</p>
+            </div>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             <Link
               href="/releases"
               className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 transition text-center"
@@ -1202,10 +1203,11 @@ export default function ReleaseNotificationsPage() {
                 {valuePreset.isAll ? t('releases_all') : isRtl ? valuePreset.labelHe : valuePreset.label}
               </button>
             ))}
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+        <div className="brit-filter-tray flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
           <span className="text-sm text-mgsr-muted">
             {t('release_notifications_total')}: <strong className="text-mgsr-text">{resolvedPlayers.length}</strong>
           </span>
@@ -1301,7 +1303,7 @@ export default function ReleaseNotificationsPage() {
           </div>
         )}
 
-        <div className="flex flex-col gap-3 sm:gap-4 mb-5">
+        <div className="brit-filter-tray rounded-2xl p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 mb-5">
           <input
             type="text"
             value={search}

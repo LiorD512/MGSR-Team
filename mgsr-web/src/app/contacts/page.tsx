@@ -193,32 +193,34 @@ export default function ContactsPage() {
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
-              {isWomen ? t('contacts_title_women') : t('contacts_title')}
-            </h1>
-            <p className="text-mgsr-muted mt-1 text-sm">
-              {contacts.length} {t('contacts')} • {clubsCount} {t('contacts_clubs')}{!isYouth ? ` • ${agenciesCount} ${t('contacts_agencies')}` : ''}
-            </p>
+        <div className="brit-hero-panel rounded-[28px] p-5 sm:p-6 lg:p-7 mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
+                {isWomen ? t('contacts_title_women') : t('contacts_title')}
+              </h1>
+              <p className="text-mgsr-muted mt-1 text-sm">
+                {contacts.length} {t('contacts')} • {clubsCount} {t('contacts_clubs')}{!isYouth ? ` • ${agenciesCount} ${t('contacts_agencies')}` : ''}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddSheet(true)}
+              className={`shrink-0 px-5 py-2.5 rounded-xl font-semibold transition ${
+                isYouth
+                  ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.2)] hover:opacity-90'
+                  : isWomen
+                    ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
+                    : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
+              }`}
+            >
+              {t('contacts_add')}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowAddSheet(true)}
-            className={`shrink-0 px-5 py-2.5 rounded-xl font-semibold transition ${
-              isYouth
-                ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.2)] hover:opacity-90'
-                : isWomen
-                  ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
-                  : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
-            }`}
-          >
-            {t('contacts_add')}
-          </button>
         </div>
 
         {/* Filters + Search */}
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="brit-filter-tray rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex gap-2">
             {(isYouth ? ['all', 'club'] as const : ['all', 'club', 'agency'] as const).map((f) => (
               <button

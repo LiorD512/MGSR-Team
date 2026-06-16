@@ -464,7 +464,7 @@ export default function ShadowTeamsPage() {
     <AppLayout>
       <div className="max-w-[720px] mx-auto px-3 sm:px-4 py-6 sm:py-12 md:py-16">
         {/* Premium header */}
-        <header className="mb-6 sm:mb-12">
+        <header className="brit-hero-panel rounded-[28px] p-5 sm:p-6 lg:p-7 mb-6 sm:mb-12">
           <h1 className="font-serif text-[1.5rem] sm:text-[2rem] md:text-[2.25rem] font-normal text-mgsr-text tracking-tight">
             {t('shadow_teams_title')}
             {saving && <span className="inline-block ml-3 w-4 h-4 border-2 border-mgsr-teal/20 border-t-mgsr-teal rounded-full animate-spin align-middle" />}
@@ -475,7 +475,7 @@ export default function ShadowTeamsPage() {
         </header>
 
         {/* Toolbar — agent pills + formation */}
-        <div className="flex flex-wrap items-center justify-between gap-4 sm:gap-6 mb-5 sm:mb-8">
+  <div className="brit-filter-tray rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-4 sm:gap-6 mb-5 sm:mb-8">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {accounts.map((acc) => (
               <button
