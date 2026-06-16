@@ -14,12 +14,12 @@ import MobileBottomTabBar from '@/components/mobile/MobileBottomTabBar';
 import NotificationPrompt from '@/components/NotificationPrompt';
 
 type NavItem = { href: string; labelKey: string; badge?: 'chat' | 'new' };
-type NavSection = { id: string; title: string; items: NavItem[] };
+type NavSection = { id: string; titleKey: string; items: NavItem[] };
 
 const navSections: NavSection[] = [
   {
     id: 'core',
-    title: 'Core Ops',
+    titleKey: 'app_shell_section_core_ops',
     items: [
       { href: '/dashboard', labelKey: 'nav_dashboard' },
       { href: '/tasks', labelKey: 'nav_tasks' },
@@ -32,7 +32,7 @@ const navSections: NavSection[] = [
   },
   {
     id: 'market',
-    title: 'Market Radar',
+    titleKey: 'app_shell_section_market_radar',
     items: [
       { href: '/releases', labelKey: 'nav_releases' },
       { href: '/release-notifications', labelKey: 'nav_release_notifications', badge: 'new' },
@@ -43,7 +43,7 @@ const navSections: NavSection[] = [
   },
   {
     id: 'intel',
-    title: 'Intelligence',
+    titleKey: 'app_shell_section_intelligence',
     items: [
       { href: '/war-room', labelKey: 'nav_war_room' },
       { href: '/chat-room', labelKey: 'nav_chat_room', badge: 'chat' },
@@ -54,7 +54,7 @@ const navSections: NavSection[] = [
 const womenNavSections: NavSection[] = [
   {
     id: 'core',
-    title: 'Core Ops',
+    titleKey: 'app_shell_section_core_ops',
     items: [
       { href: '/dashboard', labelKey: 'nav_dashboard' },
       { href: '/tasks', labelKey: 'nav_tasks' },
@@ -70,7 +70,7 @@ const womenNavSections: NavSection[] = [
 const youthNavSections: NavSection[] = [
   {
     id: 'core',
-    title: 'Core Ops',
+    titleKey: 'app_shell_section_core_ops',
     items: [
       { href: '/dashboard', labelKey: 'nav_dashboard' },
       { href: '/tasks', labelKey: 'nav_tasks' },
@@ -83,26 +83,26 @@ const youthNavSections: NavSection[] = [
   },
 ];
 
-const routeMeta: Array<{ match: RegExp; label: string; eyebrow: string }> = [
-  { match: /^\/dashboard$/, label: 'Command Center', eyebrow: 'Agency Pulse' },
-  { match: /^\/players(\/.*)?$/, label: 'Player Operations', eyebrow: 'Roster Intelligence' },
-  { match: /^\/tasks$/, label: 'Execution Desk', eyebrow: 'Daily Flow' },
-  { match: /^\/shortlist$/, label: 'Acquisition Pipeline', eyebrow: 'Target Board' },
-  { match: /^\/requests$/, label: 'Club Requests Workbench', eyebrow: 'Matching Engine' },
-  { match: /^\/contacts$/, label: 'Relationship Network', eyebrow: 'Agency CRM' },
-  { match: /^\/portfolio$/, label: 'Portfolio Studio', eyebrow: 'Presentation Layer' },
-  { match: /^\/releases$/, label: 'Release Radar', eyebrow: 'Opportunity Feed' },
-  { match: /^\/release-notifications$/, label: 'Release Signals', eyebrow: 'Realtime Alerts' },
-  { match: /^\/contract-finisher$/, label: 'Expiry Forecast', eyebrow: 'Contract Intelligence' },
-  { match: /^\/returnees$/, label: 'Returnee Watch', eyebrow: 'Loan Market' },
-  { match: /^\/shadow-teams$/, label: 'Shadow Teams', eyebrow: 'Scenario Design' },
-  { match: /^\/war-room$/, label: 'War Room', eyebrow: 'AI Discovery' },
-  { match: /^\/chat-room$/, label: 'Chat Room', eyebrow: 'Team Collaboration' },
+const routeMeta: Array<{ match: RegExp; labelKey: string; eyebrowKey: string }> = [
+  { match: /^\/dashboard$/, labelKey: 'app_shell_route_dashboard_label', eyebrowKey: 'app_shell_route_dashboard_eyebrow' },
+  { match: /^\/players(\/.*)?$/, labelKey: 'app_shell_route_players_label', eyebrowKey: 'app_shell_route_players_eyebrow' },
+  { match: /^\/tasks$/, labelKey: 'app_shell_route_tasks_label', eyebrowKey: 'app_shell_route_tasks_eyebrow' },
+  { match: /^\/shortlist$/, labelKey: 'app_shell_route_shortlist_label', eyebrowKey: 'app_shell_route_shortlist_eyebrow' },
+  { match: /^\/requests$/, labelKey: 'app_shell_route_requests_label', eyebrowKey: 'app_shell_route_requests_eyebrow' },
+  { match: /^\/contacts$/, labelKey: 'app_shell_route_contacts_label', eyebrowKey: 'app_shell_route_contacts_eyebrow' },
+  { match: /^\/portfolio$/, labelKey: 'app_shell_route_portfolio_label', eyebrowKey: 'app_shell_route_portfolio_eyebrow' },
+  { match: /^\/releases$/, labelKey: 'app_shell_route_releases_label', eyebrowKey: 'app_shell_route_releases_eyebrow' },
+  { match: /^\/release-notifications$/, labelKey: 'app_shell_route_release_notifications_label', eyebrowKey: 'app_shell_route_release_notifications_eyebrow' },
+  { match: /^\/contract-finisher$/, labelKey: 'app_shell_route_contract_finisher_label', eyebrowKey: 'app_shell_route_contract_finisher_eyebrow' },
+  { match: /^\/returnees$/, labelKey: 'app_shell_route_returnees_label', eyebrowKey: 'app_shell_route_returnees_eyebrow' },
+  { match: /^\/shadow-teams$/, labelKey: 'app_shell_route_shadow_teams_label', eyebrowKey: 'app_shell_route_shadow_teams_eyebrow' },
+  { match: /^\/war-room$/, labelKey: 'app_shell_route_war_room_label', eyebrowKey: 'app_shell_route_war_room_eyebrow' },
+  { match: /^\/chat-room$/, labelKey: 'app_shell_route_chat_room_label', eyebrowKey: 'app_shell_route_chat_room_eyebrow' },
 ];
 
 function getRouteMeta(pathname: string | null) {
   const found = routeMeta.find((item) => item.match.test(pathname || ''));
-  return found ?? { label: 'BRIT Workspace', eyebrow: 'Management Platform' };
+  return found ?? { labelKey: 'app_shell_route_default_label', eyebrowKey: 'app_shell_route_default_eyebrow' };
 }
 
 function isNavItemActive(pathname: string, href: string) {
@@ -144,6 +144,12 @@ function NavContent({
   const logo = '/brit_circle_black_gold.svg';
   const accentClass = platform === 'youth' ? 'text-[var(--youth-cyan)]' : platform === 'women' ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-gold)]';
   const activeClass = platform === 'youth' ? 'bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)] border-[var(--youth-cyan)]/30' : platform === 'women' ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)] border-[var(--women-rose)]/30' : 'bg-[var(--mgsr-gold-dim)] text-[var(--mgsr-gold)] border-[var(--mgsr-gold)]/30';
+  const platformLabel =
+    platform === 'men'
+      ? t('app_shell_platform_men')
+      : platform === 'women'
+        ? t('app_shell_platform_women')
+        : t('app_shell_platform_youth');
   return (
     <>
       <Link
@@ -156,14 +162,14 @@ function NavContent({
           <img src={logo} alt="BRIT Sport Group" className="relative w-12 h-12 shrink-0" />
         </div>
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.28em] text-mgsr-muted">Elite Operations</div>
+          <div className="text-[10px] uppercase tracking-[0.28em] text-mgsr-muted">{t('app_shell_brand_eyebrow')}</div>
           <span className={`block truncate text-lg font-bold font-display ${accentClass}`}>{brandName}</span>
         </div>
       </Link>
       <nav className="flex-1 px-4 pb-4 pt-5 space-y-5 overflow-y-auto">
         {sections.map((section) => (
           <div key={section.id} className="space-y-2">
-            <div className="px-3 text-[10px] uppercase tracking-[0.24em] text-mgsr-muted/80">{section.title}</div>
+            <div className="px-3 text-[10px] uppercase tracking-[0.24em] text-mgsr-muted/80">{t(section.titleKey)}</div>
             <div className="space-y-1.5">
               {section.items.map((item) => {
                 const isActive = isNavItemActive(pathname, item.href);
@@ -182,7 +188,7 @@ function NavContent({
                     <div className="flex items-center gap-2">
                       {item.badge === 'new' && (
                         <span className="rounded-full border border-[var(--mgsr-gold)]/25 bg-[var(--mgsr-gold-dim)] px-2 py-1 text-[9px] uppercase tracking-[0.18em] text-[var(--mgsr-gold)]">
-                          New
+                          {t('app_shell_badge_new')}
                         </span>
                       )}
                       {item.badge === 'chat' && chatUnreadCount > 0 && (
@@ -212,8 +218,8 @@ function NavContent({
       </nav>
       <div className="m-4 mt-0 rounded-[22px] border border-white/8 bg-white/[0.03] p-4 space-y-3 shrink-0">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.22em] text-mgsr-muted">Active Workspace</div>
-          <div className="mt-1 text-sm font-semibold text-mgsr-text">{platform === 'men' ? 'Men Platform' : platform === 'women' ? 'Women Platform' : 'Youth Platform'}</div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-mgsr-muted">{t('app_shell_workspace_label')}</div>
+          <div className="mt-1 text-sm font-semibold text-mgsr-text">{platformLabel}</div>
         </div>
         {platformSwitcher}
         <button
@@ -286,6 +292,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const toggleLang = () => setLang(isRtl ? 'en' : 'he');
   const currentSections = platform === 'youth' ? youthNavSections : platform === 'women' ? womenNavSections : navSections;
   const chatUnreadCount = useChatUnread();
+  const platformLabel =
+    platform === 'men'
+      ? t('app_shell_platform_men')
+      : platform === 'women'
+        ? t('app_shell_platform_women')
+        : t('app_shell_platform_youth');
+  const activeModulesLabel = t('app_shell_active_modules').replace('{count}', String(flattenNavSections(currentSections).length));
 
   /* ═══════════════════════════════════════════════════════════
    *  MOBILE / TABLET layout (< 1024px)
@@ -341,20 +354,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="border-b border-white/6 px-6 py-5 xl:px-8 xl:py-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <div className="text-[11px] uppercase tracking-[0.28em] text-mgsr-muted">{route.eyebrow}</div>
+                  <div className="text-[11px] uppercase tracking-[0.28em] text-mgsr-muted">{t(route.eyebrowKey)}</div>
                   <h1 className="mt-2 font-display text-2xl xl:text-3xl font-semibold tracking-[-0.03em] text-mgsr-text">
-                    {route.label}
+                    {t(route.labelKey)}
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm text-mgsr-muted">
-                    BRIT Sport Group management workspace with a premium operations shell for scouting, mandates, requests, and player execution.
+                    {t('app_shell_description')}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="rounded-full border border-[var(--mgsr-gold)]/20 bg-[var(--mgsr-gold-dim)] px-3 py-2 text-xs font-medium text-[var(--mgsr-gold)]">
-                    {platform === 'men' ? 'Men Platform' : platform === 'women' ? 'Women Platform' : 'Youth Platform'}
+                    {platformLabel}
                   </div>
                   <div className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-2 text-xs text-mgsr-muted">
-                    {flattenNavSections(currentSections).length} active modules
+                    {activeModulesLabel}
                   </div>
                 </div>
               </div>

@@ -753,7 +753,7 @@ export default function PlayersPage() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.24em] text-mgsr-muted mb-3">
                 <span className={`inline-block w-2 h-2 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-[var(--mgsr-gold)]'}`} />
-                Roster Intelligence
+                {t('players_hero_eyebrow')}
               </div>
               <h1
                 className={`font-display font-bold text-mgsr-text tracking-tight ${
@@ -871,7 +871,7 @@ export default function PlayersPage() {
                   }`}
                   style={{ paddingRight: '28px', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: `${isRtl ? 'left 8px center' : 'right 8px center'}` }}
                 >
-                  <option value="">{lang === 'he' ? 'עמדה ספציפית' : 'Specific Position'}</option>
+                  <option value="">{t('players_specific_position')}</option>
                   {options.map((code) => (
                     <option key={code} value={code}>
                       {labels[code] ?? code} ({code})

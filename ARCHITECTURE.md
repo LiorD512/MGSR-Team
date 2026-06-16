@@ -261,6 +261,7 @@ Separate Gradle module for HTML scraping via JSoup:
 - Web logo asset for user-visible surfaces is `mgsr-web/public/brit_circle_black_gold.svg` (used in app chrome, mobile header, shared pages, and share OG visuals).
 - Web mandate flows now use BRIT branding end-to-end: mandate PDF generator logo/source text and signing page metadata/footer labels.
 - The authenticated web app now uses a BRIT premium shell across desktop and mobile (`AppLayout`, `MobileHeader`, `MobileBottomTabBar`) with black/gold-glass surfaces; core route hero sections for dashboard, players, and requests were redesigned on top of that shared language.
+- BRIT redesign copy in shell/hero surfaces is now routed through `LanguageProvider` translation keys (EN/HE) instead of hardcoded English text, including route meta labels, navigation section headers, workspace badges, and redesigned hero/filter labels.
 
 ### Key Dependencies
 
@@ -746,6 +747,7 @@ Both Android and Web support switching between Men, Women, and Youth platforms a
 - `DirSync` component sets `dir="rtl"` on document element
 - Country names: `countryTranslations.ts` (delegates to remote config)
 - Position names: `appConfig.getPositionDisplayName(code, isHebrew)`
+- BRIT redesign UI copy (app shell + mobile header + redesigned dashboard/players/requests hero sections) is defined in `mgsr-web/src/contexts/LanguageContext.tsx` and consumed via `t()` to keep Hebrew parity.
 
 ---
 

@@ -954,7 +954,7 @@ export default function DashboardPage() {
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.24em] text-mgsr-muted">
                 <span className={`inline-block w-2 h-2 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-[var(--mgsr-gold)]'}`} />
-                Agency Pulse
+                {t('dashboard_hero_eyebrow')}
               </div>
               <p className="text-mgsr-muted text-sm font-medium">
                 {greeting},
@@ -973,7 +973,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => setLang(lang === 'en' ? 'he' : 'en')}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition ${isYouth ? 'text-mgsr-muted hover:text-[var(--youth-cyan)]' : isWomen ? 'text-mgsr-muted hover:text-[var(--women-rose)]' : 'text-mgsr-muted hover:text-[var(--mgsr-gold)]'}`}
-                aria-label={lang === 'en' ? 'Switch to Hebrew' : 'עברית לאנגלית'}
+                aria-label={lang === 'en' ? t('dashboard_switch_to_hebrew') : t('dashboard_switch_to_english')}
               >
                 {lang === 'en' ? 'עברית' : 'English'}
               </button>

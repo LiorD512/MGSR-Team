@@ -683,7 +683,7 @@ export default function RequestsPage() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.24em] text-mgsr-muted mb-3">
                 <span className={`inline-block w-2 h-2 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-[var(--mgsr-gold)]'}`} />
-                Matching Engine
+                {t('requests_hero_eyebrow')}
               </div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-mgsr-text tracking-tight">
                 {isYouth ? t('requests_title_youth') : isWomen ? t('requests_title_women') : t('requests_title')}
@@ -702,7 +702,7 @@ export default function RequestsPage() {
                       ? 'border-[var(--women-rose)]/30 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/10'
                       : 'border-[var(--mgsr-gold)]/30 text-[var(--mgsr-gold)] hover:bg-[var(--mgsr-gold-dim)]'
                   }`}
-                  title={isHebrew ? 'שתף בקשות' : 'Share requests'}
+                  title={t('requests_share')}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
@@ -743,20 +743,20 @@ export default function RequestsPage() {
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <span className="text-emerald-400 font-semibold">{matchStats.matched}</span>
-            <span className="text-mgsr-muted text-sm">{isHebrew ? 'עם התאמות' : 'Matched'}</span>
+            <span className="text-mgsr-muted text-sm">{t('requests_stat_matched')}</span>
           </div>
           <div className="w-px bg-mgsr-border" />
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
             <span className="text-orange-400 font-semibold">{matchStats.unmatched}</span>
-            <span className="text-mgsr-muted text-sm">{isHebrew ? 'ללא התאמות' : 'Unmatched'}</span>
+            <span className="text-mgsr-muted text-sm">{t('requests_stat_unmatched')}</span>
           </div>
           {matchStats.countries > 0 && (
             <>
               <div className="w-px bg-mgsr-border hidden sm:block" />
               <div className="flex items-center gap-2 hidden sm:flex">
                 <span className="text-mgsr-text font-semibold">{matchStats.countries}</span>
-                <span className="text-mgsr-muted text-sm">{isHebrew ? 'מדינות' : 'Countries'}</span>
+                <span className="text-mgsr-muted text-sm">{t('requests_stat_countries')}</span>
               </div>
             </>
           )}
@@ -765,7 +765,7 @@ export default function RequestsPage() {
               <div className="w-px bg-mgsr-border hidden sm:block" />
               <div className="flex items-center gap-2 hidden sm:flex">
                 <span className="text-emerald-400 font-semibold">{matchStats.newToday}</span>
-                <span className="text-mgsr-muted text-sm">{isHebrew ? 'חדשות היום' : 'New today'}</span>
+                <span className="text-mgsr-muted text-sm">{t('requests_stat_new_today')}</span>
               </div>
             </>
           )}
@@ -779,7 +779,7 @@ export default function RequestsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={isHebrew ? 'חיפוש מועדון, מדינה, איש קשר...' : 'Search club, country, contact...'}
+              placeholder={t('requests_search_placeholder')}
               className="bg-transparent text-mgsr-text text-sm outline-none w-full placeholder:text-mgsr-muted/50"
             />
             {searchQuery && (
@@ -828,7 +828,7 @@ export default function RequestsPage() {
                       : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-border/80'
                   }`}
                 >
-                  🌍 {isHebrew ? 'כל המדינות' : 'All Countries'}
+                  🌍 {t('requests_filter_all_countries')}
                 </button>
                 {activeCountries.map((country) => (
                   <button
@@ -856,7 +856,7 @@ export default function RequestsPage() {
                   : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
               }`}
             >
-              {isHebrew ? 'עם התאמות' : 'Has Matches'}
+              {t('requests_filter_has_matches')}
             </button>
             <button
               type="button"
@@ -867,7 +867,7 @@ export default function RequestsPage() {
                   : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
               }`}
             >
-              {isHebrew ? 'ללא התאמות' : 'No Matches'}
+              {t('requests_filter_no_matches')}
             </button>
           </div>
         </div>
@@ -886,9 +886,9 @@ export default function RequestsPage() {
           </div>
         ) : filteredRequests.length === 0 ? (
           <div className="p-12 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center">
-            <p className="text-mgsr-muted">{isHebrew ? 'אין תוצאות עם הסינון הנוכחי' : 'No results with current filters'}</p>
+            <p className="text-mgsr-muted">{t('requests_no_results_filtered')}</p>
             <button type="button" onClick={() => { setSearchQuery(''); setPositionFilter('all'); setCountryFilter('all'); setMatchStatusFilter('all'); }} className="text-mgsr-teal text-sm mt-2 hover:underline">
-              {isHebrew ? 'נקה סינונים' : 'Clear filters'}
+              {t('requests_clear_filters')}
             </button>
           </div>
         ) : (
