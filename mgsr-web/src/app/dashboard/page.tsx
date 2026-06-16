@@ -948,36 +948,41 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Header: greeting + platform switch & language */}
-        <div className={`flex flex-wrap items-start justify-between gap-3 sm:gap-4 mb-6 sm:mb-10 animate-fade-in ${isWomen || isYouth ? 'sm:mb-12' : ''}`}>
-          <div className="space-y-1">
-            <p className="text-mgsr-muted text-sm font-medium">
-              {greeting},
-            </p>
-            <h1 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold font-display tracking-tight ${isWomen ? 'text-mgsr-text bg-clip-text' : 'text-mgsr-text'}`}>
-              {userName}
-            </h1>
-            <p className="text-mgsr-muted text-sm mt-1">{dateStr}</p>
+        <div className={`brit-hero-panel rounded-[28px] p-5 sm:p-6 lg:p-7 mb-6 sm:mb-10 animate-fade-in ${isWomen || isYouth ? 'sm:mb-12' : ''}`}>
+          {/* Header: greeting + platform switch & language */}
+          <div className="relative z-[1] flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.24em] text-mgsr-muted">
+                <span className={`inline-block w-2 h-2 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-[var(--mgsr-gold)]'}`} />
+                Agency Pulse
+              </div>
+              <p className="text-mgsr-muted text-sm font-medium">
+                {greeting},
+              </p>
+              <h1 className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-display tracking-tight ${isWomen ? 'text-mgsr-text bg-clip-text' : 'text-mgsr-text'}`}>
+                {userName}
+              </h1>
+              <p className="text-mgsr-muted text-sm mt-1">{dateStr}</p>
+            </div>
+            {/* Hide platform/lang controls on mobile — MobileHeader handles them */}
+            <div className={`hidden lg:flex items-center gap-2 p-1.5 rounded-2xl brit-filter-tray relative ${isWomen ? 'border-[var(--women-rose)]/20' : isYouth ? 'border-[var(--youth-cyan)]/20' : 'border-white/10'}`}>
+              <NotificationBell variant="header" />
+              <span className={`w-px h-6 ${isYouth ? 'bg-[var(--youth-cyan)]/30' : isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
+              <PlatformSwitcher variant="grouped" />
+              <span className={`w-px h-6 ${isYouth ? 'bg-[var(--youth-cyan)]/30' : isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
+              <button
+                onClick={() => setLang(lang === 'en' ? 'he' : 'en')}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${isYouth ? 'text-mgsr-muted hover:text-[var(--youth-cyan)]' : isWomen ? 'text-mgsr-muted hover:text-[var(--women-rose)]' : 'text-mgsr-muted hover:text-[var(--mgsr-gold)]'}`}
+                aria-label={lang === 'en' ? 'Switch to Hebrew' : 'עברית לאנגלית'}
+              >
+                {lang === 'en' ? 'עברית' : 'English'}
+              </button>
+            </div>
           </div>
-          {/* Hide platform/lang controls on mobile — MobileHeader handles them */}
-          <div className={`hidden lg:flex items-center gap-2 p-1 rounded-xl border bg-mgsr-card/80 relative ${isWomen ? 'border-[var(--women-rose)]/20 rounded-2xl' : isYouth ? 'border-[var(--youth-cyan)]/20 rounded-2xl' : 'border-mgsr-border'}`}>
-            <NotificationBell variant="header" />
-            <span className={`w-px h-6 ${isYouth ? 'bg-[var(--youth-cyan)]/30' : isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
-            <PlatformSwitcher variant="grouped" />
-            <span className={`w-px h-6 ${isYouth ? 'bg-[var(--youth-cyan)]/30' : isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
-            <button
-              onClick={() => setLang(lang === 'en' ? 'he' : 'en')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${isYouth ? 'text-mgsr-muted hover:text-[var(--youth-cyan)]' : isWomen ? 'text-mgsr-muted hover:text-[var(--women-rose)]' : 'text-mgsr-muted hover:text-mgsr-teal'}`}
-              aria-label={lang === 'en' ? 'Switch to Hebrew' : 'עברית לאנגלית'}
-            >
-              {lang === 'en' ? 'עברית' : 'English'}
-            </button>
-          </div>
-        </div>
 
-        {/* Stats row — horizontally scrollable on phone, grid on tablet/desktop */}
-        <div className={`mb-6 sm:mb-10 ${isWomen ? '' : ''}`}>
-          <div className={`${isWomen || isYouth ? 'grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0'}`}
+          {/* Stats row — horizontally scrollable on phone, grid on tablet/desktop */}
+          <div className={`relative z-[1] mt-6 ${isWomen ? '' : ''}`}>
+            <div className={`${isWomen || isYouth ? 'grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-2 px-2 lg:mx-0 lg:px-0'}`}
                style={!isWomen && !isYouth ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
           {(platform === 'youth'
             ? [
@@ -1006,7 +1011,7 @@ export default function DashboardPage() {
             <Link
               key={item.href}
               href={item.href}
-              className={`group relative p-3 sm:p-5 border rounded-2xl transition-all duration-300 animate-slide-up min-h-[72px] sm:min-h-[80px] flex flex-col justify-center shrink-0 ${
+              className={`group brit-metric-card relative p-3 sm:p-5 rounded-2xl transition-all duration-300 animate-slide-up min-h-[72px] sm:min-h-[80px] flex flex-col justify-center shrink-0 ${
                 !isWomen && !isYouth ? 'min-w-[120px] lg:min-w-0' : ''
               } ${
                 isYouth
@@ -1028,6 +1033,7 @@ export default function DashboardPage() {
               )}
             </Link>
           ))}
+            </div>
           </div>
         </div>
 

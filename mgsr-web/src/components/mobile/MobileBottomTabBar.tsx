@@ -144,27 +144,27 @@ export default function MobileBottomTabBar() {
   return (
     <>
       <nav
-        className="fixed bottom-0 inset-x-0 z-40 bg-mgsr-card/95 backdrop-blur-md border-t border-mgsr-border lg:hidden"
+        className="fixed bottom-0 inset-x-0 z-40 border-t border-white/8 bg-[rgba(10,15,22,0.92)] backdrop-blur-2xl lg:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="flex items-stretch justify-around max-w-lg mx-auto">
+        <div className="flex items-stretch justify-around max-w-lg mx-auto px-2 pt-1.5">
           {tabs.map((tab) => {
             const active = isTabActive(tab, pathname);
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
-                className="flex flex-col items-center justify-center py-1.5 px-0.5 min-w-0 flex-1 min-h-[48px] transition-colors relative"
+                className="flex flex-col items-center justify-center py-2 px-1 min-w-0 flex-1 min-h-[56px] transition-colors relative rounded-2xl"
                 style={{ color: active ? accentColor : 'var(--mgsr-muted)' }}
               >
                 {active && (
                   <span
-                    className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                    style={{ background: accentColor }}
+                    className="absolute inset-0 rounded-2xl border"
+                    style={{ borderColor: accentColor, background: platform === 'men' ? 'rgba(200, 169, 104, 0.08)' : platform === 'women' ? 'rgba(232, 160, 191, 0.08)' : 'rgba(0, 212, 255, 0.08)' }}
                   />
                 )}
-                <tab.icon className="w-5 h-5 mb-0.5" />
-                <span className="text-[10px] font-medium leading-tight truncate max-w-[64px]">
+                <tab.icon className="relative w-5 h-5 mb-1" />
+                <span className="relative text-[10px] font-medium leading-tight truncate max-w-[64px]">
                   {t(tab.labelKey)}
                 </span>
               </Link>
@@ -174,17 +174,17 @@ export default function MobileBottomTabBar() {
           {showMore && (
             <button
               onClick={() => setMoreOpen(true)}
-              className="flex flex-col items-center justify-center py-1.5 px-0.5 min-w-0 flex-1 min-h-[48px] transition-colors relative"
+              className="flex flex-col items-center justify-center py-2 px-1 min-w-0 flex-1 min-h-[56px] transition-colors relative rounded-2xl"
               style={{ color: moreActive ? accentColor : 'var(--mgsr-muted)' }}
             >
               {moreActive && (
                 <span
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                  style={{ background: accentColor }}
+                  className="absolute inset-0 rounded-2xl border"
+                  style={{ borderColor: accentColor, background: platform === 'men' ? 'rgba(200, 169, 104, 0.08)' : platform === 'women' ? 'rgba(232, 160, 191, 0.08)' : 'rgba(0, 212, 255, 0.08)' }}
                 />
               )}
-              <IconMore className="w-5 h-5 mb-0.5" />
-              <span className="text-[10px] font-medium leading-tight">{t('nav_more') || 'More'}</span>
+              <IconMore className="relative w-5 h-5 mb-1" />
+              <span className="relative text-[10px] font-medium leading-tight">{t('nav_more') || 'More'}</span>
             </button>
           )}
         </div>

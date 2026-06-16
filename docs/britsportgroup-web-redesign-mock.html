@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BRIT Sport Group - Management Web Redesign Mock</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #080b0f;
+      --bg-soft: #10151e;
+      --bg-panel: #121a24;
+      --panel-elevated: #18222f;
+      --text: #f4f7fb;
+      --text-dim: #9aa9bc;
+      --line: #233247;
+      --gold: #c8a968;
+      --gold-soft: #9e8248;
+      --teal: #22c7b8;
+      --danger: #ff6b65;
+      --success: #31d48d;
+      --radius: 18px;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 12% 15%, rgba(34, 199, 184, 0.18), transparent 32%),
+        radial-gradient(circle at 86% 12%, rgba(200, 169, 104, 0.2), transparent 36%),
+        linear-gradient(140deg, #07090d 0%, #0b1018 45%, #090d14 100%);
+      color: var(--text);
+      font-family: "Manrope", sans-serif;
+      min-height: 100%;
+    }
+
+    .grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.04) 0.6px, transparent 0.6px);
+      background-size: 3px 3px;
+      opacity: 0.1;
+      z-index: 0;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: min(1240px, calc(100% - 40px));
+      margin: 30px auto 50px;
+      display: grid;
+      gap: 22px;
+    }
+
+    .hero {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(150deg, rgba(24, 34, 47, 0.96), rgba(13, 19, 28, 0.94));
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 26px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero:before {
+      content: "";
+      position: absolute;
+      width: 440px;
+      height: 440px;
+      border-radius: 50%;
+      right: -150px;
+      top: -170px;
+      background: radial-gradient(circle, rgba(34, 199, 184, 0.22), transparent 65%);
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(9, 14, 20, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .brand img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #0b1118;
+    }
+
+    .brand strong {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 16px;
+      letter-spacing: 0.2px;
+    }
+
+    .hero h1 {
+      margin: 16px 0 8px;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: clamp(28px, 5vw, 46px);
+      line-height: 1.03;
+      letter-spacing: -0.03em;
+      max-width: 920px;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--text-dim);
+      font-size: 15px;
+      max-width: 860px;
+      line-height: 1.6;
+    }
+
+    .tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .tag {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: #d9e6f7;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .pill-gold {
+      color: #fde9bf;
+      border-color: rgba(200, 169, 104, 0.45);
+      background: rgba(200, 169, 104, 0.12);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(20, 28, 38, 0.95), rgba(14, 20, 29, 0.95));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .section-title {
+      margin: 0;
+      padding: 18px 18px 12px;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 17px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .route-list {
+      list-style: none;
+      margin: 0;
+      padding: 10px;
+      max-height: 680px;
+      overflow: auto;
+      display: grid;
+      gap: 8px;
+    }
+
+    .route {
+      border: 1px solid transparent;
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.02);
+      transition: 180ms ease;
+      cursor: pointer;
+    }
+
+    .route:hover {
+      border-color: rgba(34, 199, 184, 0.35);
+      transform: translateY(-1px);
+      background: rgba(34, 199, 184, 0.08);
+    }
+
+    .route.active {
+      border-color: rgba(200, 169, 104, 0.65);
+      background: linear-gradient(145deg, rgba(200, 169, 104, 0.2), rgba(24, 33, 45, 0.25));
+    }
+
+    .route strong {
+      font-size: 13px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .route code {
+      color: #d4def2;
+      font-size: 11px;
+      opacity: 0.92;
+    }
+
+    .route small {
+      display: block;
+      color: var(--text-dim);
+      margin-top: 6px;
+      line-height: 1.45;
+      font-size: 11px;
+    }
+
+    .mock-wrap {
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .mock-frame {
+      background: linear-gradient(180deg, rgba(11, 16, 23, 0.94), rgba(16, 24, 35, 0.96));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .browser-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .lights {
+      display: inline-flex;
+      gap: 6px;
+    }
+
+    .lights span {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .lights span:nth-child(1) { background: #ff6c61; }
+    .lights span:nth-child(2) { background: #ffd35c; }
+    .lights span:nth-child(3) { background: #47cc8f; }
+
+    .screen {
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background:
+        radial-gradient(circle at 86% 12%, rgba(200, 169, 104, 0.16), transparent 28%),
+        radial-gradient(circle at 10% 80%, rgba(34, 199, 184, 0.12), transparent 34%),
+        #0f1620;
+      overflow: hidden;
+    }
+
+    .screen-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .screen-top h3 {
+      margin: 0;
+      font-size: 15px;
+      font-family: "Bricolage Grotesque", sans-serif;
+    }
+
+    .screen-kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      padding: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .kpi {
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 9px;
+    }
+
+    .kpi b {
+      font-size: 16px;
+      display: block;
+      font-family: "Bricolage Grotesque", sans-serif;
+    }
+
+    .kpi span {
+      color: var(--text-dim);
+      font-size: 11px;
+    }
+
+    .screen-body {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .module-card {
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(170deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+      padding: 10px;
+      min-height: 96px;
+    }
+
+    .module-card h4 {
+      margin: 0 0 6px;
+      font-size: 12px;
+      color: #f0f5ff;
+      font-family: "Bricolage Grotesque", sans-serif;
+      letter-spacing: 0.02em;
+    }
+
+    .module-card p {
+      margin: 0;
+      font-size: 11px;
+      color: #a4b3c8;
+      line-height: 1.5;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .chip {
+      font-size: 10px;
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: rgba(34, 199, 184, 0.14);
+      color: #c7f5f0;
+      border: 1px solid rgba(34, 199, 184, 0.35);
+    }
+
+    .chip.gold {
+      background: rgba(200, 169, 104, 0.14);
+      color: #fde9bf;
+      border-color: rgba(200, 169, 104, 0.4);
+    }
+
+    .mobile-preview {
+      width: 280px;
+      justify-self: end;
+      border-radius: 26px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(180deg, rgba(11, 16, 23, 0.94), rgba(16, 24, 35, 0.96));
+      padding: 12px;
+    }
+
+    .notch {
+      width: 110px;
+      height: 18px;
+      margin: 0 auto 8px;
+      border-radius: 14px;
+      background: #0a0f15;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .m-line,
+    .m-block {
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .m-line {
+      height: 10px;
+      margin-bottom: 8px;
+    }
+
+    .m-block {
+      height: 62px;
+      margin-bottom: 8px;
+    }
+
+    .coverage {
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .coverage-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .coverage-item {
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 10px;
+      font-size: 12px;
+      color: #d8e3f4;
+    }
+
+    .coverage-item b {
+      display: block;
+      font-family: "Bricolage Grotesque", sans-serif;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .footer-note {
+      color: var(--text-dim);
+      font-size: 12px;
+      line-height: 1.6;
+      padding: 0 4px 4px;
+    }
+
+    @media (max-width: 1080px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .route-list {
+        max-height: 360px;
+      }
+
+      .mobile-preview {
+        justify-self: stretch;
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(1240px, calc(100% - 22px));
+        margin-top: 14px;
+      }
+
+      .hero {
+        padding: 18px;
+      }
+
+      .hero h1 {
+        font-size: 31px;
+      }
+
+      .screen-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .screen-body {
+        grid-template-columns: 1fr;
+      }
+
+      .coverage-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="grain"></div>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-top">
+        <div class="brand">
+          <img src="../mgsr-web/public/brit_circle_black_gold.svg" alt="BRIT logo" />
+          <strong>BRIT Sport Group</strong>
+        </div>
+        <div class="tag pill-gold">Concept: Elite Operations Deck</div>
+      </div>
+      <h1>Management Platform Redesign Proposal for BRIT Sport Group</h1>
+      <p>
+        This mock reimagines the full management web app as a premium football operations cockpit: cinematic dark canvas,
+        black-gold identity, high-signal data cards, and modular page structures that keep every existing feature while
+        elevating brand clarity and cross-page consistency.
+      </p>
+      <div class="tags">
+        <div class="tag">Bold editorial typography</div>
+        <div class="tag">Glass + metal panel language</div>
+        <div class="tag">Route-complete coverage</div>
+        <div class="tag">Mobile-first adaptations</div>
+        <div class="tag">EN/HE friendly spacing</div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <aside class="panel">
+        <h2 class="section-title">Page Coverage</h2>
+        <ul class="route-list" id="routeList"></ul>
+      </aside>
+
+      <section class="panel">
+        <h2 class="section-title">Interactive Page Mock</h2>
+        <div class="mock-wrap">
+          <div class="mock-frame">
+            <div class="browser-head">
+              <div class="lights"><span></span><span></span><span></span></div>
+              <div id="routePath">/dashboard</div>
+              <div>BRIT Management vNext</div>
+            </div>
+
+            <div class="screen">
+              <div class="screen-top">
+                <h3 id="screenTitle">Dashboard Control Center</h3>
+                <div class="tags" id="screenTags"></div>
+              </div>
+              <div class="screen-kpis" id="screenKpis"></div>
+              <div class="screen-body" id="screenBody"></div>
+            </div>
+          </div>
+
+          <div class="mobile-preview" aria-label="Mobile adaptation preview">
+            <div class="notch"></div>
+            <div class="m-line" style="width: 58%"></div>
+            <div class="m-line" style="width: 74%"></div>
+            <div class="m-block"></div>
+            <div class="m-block"></div>
+            <div class="m-line" style="width: 66%"></div>
+            <div class="m-line" style="width: 89%"></div>
+            <div class="m-line" style="width: 53%"></div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel">
+      <h2 class="section-title">Global Design System Direction</h2>
+      <div class="coverage">
+        <div class="coverage-grid">
+          <div class="coverage-item">
+            <b>Navigation</b>
+            Left rail with domain groups: Core Ops, Discovery, Intelligence, Collaboration, Public Flows.
+          </div>
+          <div class="coverage-item">
+            <b>Card Language</b>
+            Unified modules with status border semantics (teal live, gold spotlight, red risk) and hover depth.
+          </div>
+          <div class="coverage-item">
+            <b>AI Surfaces</b>
+            Prompt studio shell for AI Scout / Find Next / War Room with clear explainability modules.
+          </div>
+          <div class="coverage-item">
+            <b>Data Density</b>
+            Progressive disclosure: overview cards first, expandable tactical details second.
+          </div>
+          <div class="coverage-item">
+            <b>Public Pages</b>
+            Shared player, shared requests, and mandate signing follow premium BRIT public-facing identity.
+          </div>
+          <div class="coverage-item">
+            <b>Localization Ready</b>
+            Balanced spacing scale and mirrored blocks support English/Hebrew with minimal layout shift.
+          </div>
+        </div>
+        <p class="footer-note">
+          Coverage includes all current app routes from architecture inventory: login, dashboard, players + platform variants,
+          discovery pipelines (releases/contract finishers/returnees), requests, shortlist, tasks, contacts, AI modules,
+          collaboration pages, and public share/sign flows.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const pages = [
+      {
+        name: "Login",
+        route: "/login",
+        focus: "Brand-first auth, platform selector, trust markers",
+        chips: ["Auth", "Brand"],
+        kpis: ["2-Step", "3 Platforms", "99.9%", "SSO Ready"],
+        modules: [
+          ["Hero Authentication Panel", "Cinematic BRIT entry with gold accent field focus, recent account switcher, and secure-device hints."],
+          ["Platform Quick Pick", "Men, Women, Youth entry cards with color-coded cues and remembered last context."]
+        ]
+      },
+      {
+        name: "Dashboard",
+        route: "/dashboard",
+        focus: "Agency pulse: KPIs, feed, birthdays, task pressure",
+        chips: ["Core Ops", "Realtime"],
+        kpis: ["412 Players", "54 Mandates", "17 Tasks", "6 Risks"],
+        modules: [
+          ["Executive Snapshot", "Top metrics, pipeline momentum, and platform distribution presented in one fold."],
+          ["Signal Feed", "Timeline cards for mandates, releases, signings, and club request shifts with severity coding."]
+        ]
+      },
+      {
+        name: "Players",
+        route: "/players",
+        focus: "High-speed roster operations and filtering",
+        chips: ["Core Ops", "Roster"],
+        kpis: ["196 Visible", "34 Shortlisted", "22 Expiring", "9 No Agent"],
+        modules: [
+          ["Adaptive Filter Rail", "Position, contract, foot, market value, agency status with sticky chips and quick resets."],
+          ["Player Grid", "Rich row/cards with trend indicators, status tags, and one-click action dock."]
+        ]
+      },
+      {
+        name: "Add Player",
+        route: "/players/add",
+        focus: "Unified intake from TM, SoccerDonna, IFA",
+        chips: ["Core Ops", "Ingestion"],
+        kpis: ["3 Sources", "Auto Parse", "OCR On", "Validation"],
+        modules: [
+          ["Source Tabs", "Source-specific parser states and confidence scoring before final player create."],
+          ["Draft Review", "Side-by-side extracted values with conflict highlights and remote config dropdowns."]
+        ]
+      },
+      {
+        name: "Player Detail (Men)",
+        route: "/players/[id]",
+        focus: "Single source of truth per player",
+        chips: ["Core Ops", "Player 360"],
+        kpis: ["7 Docs", "2 Offers", "86 Form", "3 Alerts"],
+        modules: [
+          ["Player Intelligence Header", "Identity, market trend, mandate state, and fast action cluster."],
+          ["Tabbed Deep Modules", "Notes, docs, FM intelligence, GPS, highlights, offers, outreach history."]
+        ]
+      },
+      {
+        name: "Mandate Generator",
+        route: "/players/[id]/generate-mandate",
+        focus: "Guided mandate drafting with BRIT branding",
+        chips: ["Legal", "Docs"],
+        kpis: ["Template v2", "Dual Sign", "PDF", "Link TTL"],
+        modules: [
+          ["Mandate Builder", "Editable clauses, league scope, and signatures with compliance checklist."],
+          ["PDF/Signing Actions", "Generate, preview, create signing link, and monitor signature progression."]
+        ]
+      },
+      {
+        name: "Women Player Detail",
+        route: "/players/women/[id]",
+        focus: "Women-platform specific profile behavior",
+        chips: ["Women", "Player 360"],
+        kpis: ["Source SD", "3 Docs", "1 Offer", "FM Link"],
+        modules: [
+          ["Women Data Attribution", "SoccerDonna sourcing badge and women-specific context strips."],
+          ["Shared Module Consistency", "Same interaction framework as men/youth with platform-aware data hooks."]
+        ]
+      },
+      {
+        name: "Youth Player Detail",
+        route: "/players/youth/[id]",
+        focus: "Youth progression and academy lifecycle",
+        chips: ["Youth", "Player 360"],
+        kpis: ["U19", "Growth +12", "2 Trials", "IFA Synced"],
+        modules: [
+          ["Development Timeline", "Progression milestones, minutes trend, and long-term potential band."],
+          ["Guardrail Notes", "Eligibility, guardian/legal flags, and scout readiness prompts."]
+        ]
+      },
+      {
+        name: "Shortlist",
+        route: "/shortlist",
+        focus: "Acquisition board with decision momentum",
+        chips: ["Core Ops", "Pipeline"],
+        kpis: ["48 Targets", "11 Hot", "7 Pending", "12 Dropped"],
+        modules: [
+          ["Kanban + Table Toggle", "Choose tactical board or dense analytics table while preserving filters."],
+          ["Outreach Tracker", "Stage transitions, contact attempts, and expected response windows."]
+        ]
+      },
+      {
+        name: "Contacts",
+        route: "/contacts",
+        focus: "Network intelligence and relationship score",
+        chips: ["CRM", "Core Ops"],
+        kpis: ["302 Contacts", "18 Agencies", "44 Clubs", "73 Warm"],
+        modules: [
+          ["Contact Graph", "Visualizes influence links between agents, clubs, and decision makers."],
+          ["Action Rail", "Quick WhatsApp/email actions, note snippets, and reminder assignment."]
+        ]
+      },
+      {
+        name: "Requests",
+        route: "/requests",
+        focus: "Club needs to candidate matching cockpit",
+        chips: ["Core Ops", "Matching"],
+        kpis: ["27 Live", "132 Matches", "14 High Fit", "4 Critical"],
+        modules: [
+          ["Request Intelligence Card", "Budget, profile constraints, urgency, and confidence guidance."],
+          ["Match Workbench", "Candidate stack with explainability labels, fit deltas, and shortlist push."]
+        ]
+      },
+      {
+        name: "Releases",
+        route: "/releases",
+        focus: "Fresh free-agent radar",
+        chips: ["Discovery", "Realtime"],
+        kpis: ["96 New", "24h", "41 Fit", "6 Priority"],
+        modules: [
+          ["Live/Cache Mode", "Switch between immediate scrape and cached set while showing freshness tags."],
+          ["Opportunity Heatmap", "Position-country-value lens to surface actionable release clusters."]
+        ]
+      },
+      {
+        name: "Contract Finisher",
+        route: "/contract-finisher",
+        focus: "Expiring contracts scouting",
+        chips: ["Discovery", "Forecast"],
+        kpis: ["242 Players", "90 Days", "57 Priority", "11 Contacted"],
+        modules: [
+          ["Expiry Horizon", "Quarter-based timeline with age/value overlays and league drilldowns."],
+          ["Action Queue", "Bulk shortlist, bulk outreach draft, and pipeline handoff tools."]
+        ]
+      },
+      {
+        name: "Returnees",
+        route: "/returnees",
+        focus: "Loan return opportunity scanner",
+        chips: ["Discovery", "Forecast"],
+        kpis: ["173 Returnees", "38 Fit", "29 Watch", "8 Immediate"],
+        modules: [
+          ["Return Window Cards", "Loan end date emphasis with parent club strategy hints."],
+          ["Re-entry Match", "Overlay with active requests and current roster gaps."]
+        ]
+      },
+      {
+        name: "War Room",
+        route: "/war-room",
+        focus: "Discovery command center + scout agents",
+        chips: ["AI", "Discovery"],
+        kpis: ["19K DB", "3 Agents", "78 Candidates", "9 New Gems"],
+        modules: [
+          ["Scout Agent Deck", "Parallel agent lanes with confidence scores and novelty pressure meter."],
+          ["Candidate Board", "AI-generated options grouped by tactical objective and budget range."]
+        ]
+      },
+      {
+        name: "AI Scout",
+        route: "/ai-scout",
+        focus: "Natural-language search and explainable results",
+        chips: ["AI", "Core"],
+        kpis: ["Strict/Balanced", "Diversity", "Memory", "Reasons"],
+        modules: [
+          ["Prompt Studio", "Structured free-text prompt builder with role, style, and constraints presets."],
+          ["Explainability Drawer", "Why matched, what disqualified, and recommended next check."]
+        ]
+      },
+      {
+        name: "Find Next",
+        route: "/find-next",
+        focus: "Signature-based archetype discovery",
+        chips: ["AI", "Discovery"],
+        kpis: ["Archetype", "Similarity", "Value Cap", "Age Band"],
+        modules: [
+          ["Player Signature Input", "Reference player profile and weighted trait sliders."],
+          ["Next-Star Matrix", "Candidate comparables with uniqueness score and market move signal."]
+        ]
+      },
+      {
+        name: "Chat Room",
+        route: "/chat-room",
+        focus: "Team collaboration with context-aware threads",
+        chips: ["Collaboration", "Realtime"],
+        kpis: ["24 Active", "Mentions", "Threads", "Pinned"],
+        modules: [
+          ["Channel + Thread Split", "Persistent team channels with tactical thread nesting for player/context."],
+          ["Smart Mentions", "Inline entity references to players, requests, and shortlist items."]
+        ]
+      },
+      {
+        name: "Shadow Teams",
+        route: "/shadow-teams",
+        focus: "Formation and scenario planning",
+        chips: ["Strategy", "Visualization"],
+        kpis: ["4 Formations", "2 Scenarios", "Depth", "Export"],
+        modules: [
+          ["Interactive Pitch", "Drag/drop formation board with chemistry and role-coverage warnings."],
+          ["Scenario Compare", "Compare current XI vs target XI with acquisition recommendations."]
+        ]
+      },
+      {
+        name: "Tasks",
+        route: "/tasks",
+        focus: "Execution lane for agents",
+        chips: ["Execution", "Core Ops"],
+        kpis: ["71 Open", "9 Due", "14 Today", "3 Overdue"],
+        modules: [
+          ["Timeline + Board", "Switch between time-sorted agenda and ownership board."],
+          ["Task Automation", "Template actions for mandate followup, docs, and outreach cadence."]
+        ]
+      },
+      {
+        name: "Portfolio",
+        route: "/portfolio",
+        focus: "Curated player portfolio management",
+        chips: ["Core Ops", "Brand"],
+        kpis: ["54 Portfolios", "32 Shared", "11 Updated", "95% Complete"],
+        modules: [
+          ["Portfolio Composer", "Drag sections, media highlights, and narrative fragments."],
+          ["Share Readiness", "Completeness scoring and one-click public share generation."]
+        ]
+      },
+      {
+        name: "News",
+        route: "/news",
+        focus: "Signal feed for transfer and league developments",
+        chips: ["Intelligence", "Monitoring"],
+        kpis: ["Live Feed", "Rumours", "Leagues", "Alerts"],
+        modules: [
+          ["League Radar", "Clustered stories by league relevance and proximity to managed players."],
+          ["Rumour Confidence", "Source weighting and trend velocity indicator for rumor maturity."]
+        ]
+      },
+      {
+        name: "Jewish Finder",
+        route: "/jewish-finder",
+        focus: "Heritage discovery and prospect filtering",
+        chips: ["Intelligence", "Specialized"],
+        kpis: ["Discovery", "Confidence", "Sources", "Manual Verify"],
+        modules: [
+          ["Discovery Workspace", "Batch discovery with confidence tiers and traceable source snippets."],
+          ["Verification Flow", "Analyst review panel before moving prospects into operations."]
+        ]
+      },
+      {
+        name: "Shared Player",
+        route: "/p/[token]",
+        focus: "Public player one-pager",
+        chips: ["Public", "Share"],
+        kpis: ["No Auth", "OG Card", "Insights", "Contact CTA"],
+        modules: [
+          ["Public Hero", "Premium BRIT presentation with highlights and key attributes."],
+          ["Scouting Snapshot", "Curated profile, stats, clips, and action CTA for clubs."]
+        ]
+      },
+      {
+        name: "Shared Requests",
+        route: "/shared/requests",
+        focus: "Public request board",
+        chips: ["Public", "Share"],
+        kpis: ["Open Roles", "Budget", "League", "Apply"],
+        modules: [
+          ["Request Gallery", "Open opportunities displayed with qualification schema and filters."],
+          ["Lead Capture", "Structured response form and CRM-compliant capture."]
+        ]
+      },
+      {
+        name: "Mandate Signing",
+        route: "/sign-mandate/[token]",
+        focus: "Digital signature ceremony",
+        chips: ["Public", "Legal"],
+        kpis: ["Token", "TTL", "2 Signers", "Audit"],
+        modules: [
+          ["Signing Surface", "Clear legal summary, signer states, and frictionless signature flow."],
+          ["Trust & Compliance", "Expiry timer, identity hints, and verification/audit confirmations."]
+        ]
+      }
+    ];
+
+    const routeList = document.getElementById("routeList");
+    const routePath = document.getElementById("routePath");
+    const screenTitle = document.getElementById("screenTitle");
+    const screenTags = document.getElementById("screenTags");
+    const screenKpis = document.getElementById("screenKpis");
+    const screenBody = document.getElementById("screenBody");
+
+    function renderRouteList() {
+      routeList.innerHTML = pages.map((page, i) => `
+        <li class="route ${i === 1 ? "active" : ""}" data-index="${i}">
+          <strong>${page.name}</strong>
+          <code>${page.route}</code>
+          <small>${page.focus}</small>
+        </li>
+      `).join("");
+    }
+
+    function renderMock(index) {
+      const page = pages[index];
+      routePath.textContent = page.route;
+      screenTitle.textContent = `${page.name} Mock`;
+
+      screenTags.innerHTML = page.chips
+        .map((chip, i) => `<span class="tag ${i % 2 === 0 ? "pill-gold" : ""}">${chip}</span>`)
+        .join("");
+
+      screenKpis.innerHTML = page.kpis
+        .map((kpi, i) => `
+          <div class="kpi">
+            <b>${kpi}</b>
+            <span>${["Velocity", "Coverage", "Quality", "Actionability"][i] || "Signal"}</span>
+          </div>
+        `)
+        .join("");
+
+      screenBody.innerHTML = page.modules
+        .map((module, i) => `
+          <article class="module-card">
+            <h4>${module[0]}</h4>
+            <p>${module[1]}</p>
+            <div class="chips">
+              <span class="chip">BRIT vNext</span>
+              <span class="chip ${i % 2 === 0 ? "gold" : ""}">${page.chips[0]}</span>
+              <span class="chip">Responsive</span>
+            </div>
+          </article>
+        `)
+        .join("");
+
+      document.querySelectorAll(".route").forEach((node, i) => {
+        node.classList.toggle("active", i === index);
+      });
+    }
+
+    renderRouteList();
+    renderMock(1);
+
+    routeList.addEventListener("click", (event) => {
+      const target = event.target.closest(".route");
+      if (!target) return;
+      const index = Number(target.dataset.index);
+      renderMock(index);
+    });
+  </script>
+</body>
+</html>

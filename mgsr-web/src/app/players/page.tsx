@@ -747,42 +747,47 @@ export default function PlayersPage() {
           </div>
         )}
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <div>
-            <h1
-              className={`font-display font-bold text-mgsr-text tracking-tight ${
-                isYouth ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold' : isWomen ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold' : 'text-2xl sm:text-3xl'
+        <div className="brit-hero-panel rounded-[28px] p-5 sm:p-6 lg:p-7 mb-6 sm:mb-8">
+          {/* Header */}
+          <div className="relative z-[1] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.24em] text-mgsr-muted mb-3">
+                <span className={`inline-block w-2 h-2 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-[var(--mgsr-gold)]'}`} />
+                Roster Intelligence
+              </div>
+              <h1
+                className={`font-display font-bold text-mgsr-text tracking-tight ${
+                  isYouth ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold' : isWomen ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold' : 'text-2xl sm:text-3xl md:text-4xl'
+                }`}
+              >
+                {isYouth ? <span className="youth-gradient-text">{t('players_title_youth')}</span> : t(isWomen ? 'players_title_women' : 'players_title')}
+              </h1>
+              <p className="text-mgsr-muted mt-2 text-sm">
+                {platform === 'youth' ? youthPlayers.length : platform === 'women' ? womenPlayers.length : players.length} {isYouth ? t('players_subtitle_youth') : t(isWomen ? 'players_women' : 'players')}
+                {filtered.length !== (platform === 'youth' ? youthPlayers.length : platform === 'women' ? womenPlayers.length : players.length) && (
+                  <span className={isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}>{` → ${filtered.length}`}</span>
+                )}
+                <span className="block text-xs text-mgsr-muted/80 mt-1">{dataSourceLabel}</span>
+              </p>
+            </div>
+            <Link
+              href="/players/add"
+              className={`inline-flex items-center justify-center gap-2 font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                isYouth
+                  ? 'px-6 py-3 rounded-2xl text-white shadow-[0_0_30px_rgba(0,212,255,0.15)] hover:shadow-[0_0_40px_rgba(0,212,255,0.25)]'
+                  : isWomen
+                    ? 'px-6 py-3 rounded-2xl bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
+                    : 'px-5 py-3 rounded-2xl bg-[var(--mgsr-accent)] text-mgsr-dark hover:opacity-90 shadow-[0_16px_40px_rgba(200,169,104,0.18)]'
               }`}
+              style={isYouth ? { background: 'linear-gradient(135deg, var(--youth-cyan), var(--youth-violet))' } : undefined}
             >
-              {isYouth ? <span className="youth-gradient-text">{t('players_title_youth')}</span> : t(isWomen ? 'players_title_women' : 'players_title')}
-            </h1>
-            <p className="text-mgsr-muted mt-1 text-sm">
-              {platform === 'youth' ? youthPlayers.length : platform === 'women' ? womenPlayers.length : players.length} {isYouth ? t('players_subtitle_youth') : t(isWomen ? 'players_women' : 'players')}
-              {filtered.length !== (platform === 'youth' ? youthPlayers.length : platform === 'women' ? womenPlayers.length : players.length) && (
-                <span className={isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}>{` → ${filtered.length}`}</span>
-              )}
-              <span className="block text-xs text-mgsr-muted/80 mt-0.5">{dataSourceLabel}</span>
-            </p>
+              <span>+</span>
+              {isYouth ? t('players_add_youth') : t(isWomen ? 'players_add_women' : 'players_add')}
+            </Link>
           </div>
-          <Link
-            href="/players/add"
-            className={`inline-flex items-center justify-center gap-2 font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] ${
-              isYouth
-                ? 'px-6 py-3 rounded-2xl text-white shadow-[0_0_30px_rgba(0,212,255,0.15)] hover:shadow-[0_0_40px_rgba(0,212,255,0.25)]'
-                : isWomen
-                  ? 'px-6 py-3 rounded-2xl bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
-                  : 'px-5 py-2.5 rounded-xl bg-[var(--mgsr-accent)] text-mgsr-dark hover:opacity-90'
-            }`}
-            style={isYouth ? { background: 'linear-gradient(135deg, var(--youth-cyan), var(--youth-violet))' } : undefined}
-          >
-            <span>+</span>
-            {isYouth ? t('players_add_youth') : t(isWomen ? 'players_add_women' : 'players_add')}
-          </Link>
-        </div>
 
-        {/* Search + filter trigger */}
-        <div className="mb-4 flex items-center gap-2">
+          {/* Search + filter trigger */}
+          <div className="relative z-[1] mb-4 flex items-center gap-2">
           <input
             type="text"
             value={search}
@@ -884,6 +889,7 @@ export default function PlayersPage() {
                 {t('players_filter_clear')}
               </button>
             )}
+          </div>
           </div>
         </div>
 

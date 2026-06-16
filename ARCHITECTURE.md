@@ -260,6 +260,7 @@ Separate Gradle module for HTML scraping via JSoup:
 - Public-facing web labels and metadata now present **BRIT Sport Group** while preserving internal code/package/API naming.
 - Web logo asset for user-visible surfaces is `mgsr-web/public/brit_circle_black_gold.svg` (used in app chrome, mobile header, shared pages, and share OG visuals).
 - Web mandate flows now use BRIT branding end-to-end: mandate PDF generator logo/source text and signing page metadata/footer labels.
+- The authenticated web app now uses a BRIT premium shell across desktop and mobile (`AppLayout`, `MobileHeader`, `MobileBottomTabBar`) with black/gold-glass surfaces; core route hero sections for dashboard, players, and requests were redesigned on top of that shared language.
 
 ### Key Dependencies
 
@@ -1159,6 +1160,10 @@ All parsers handle: `€300k`, `€1.50m`, `€300K`, `€1.50M` (case-insensiti
 
 - Landing site public copy and metadata are rebranded to **BRIT Sport Group**.
 - Landing logo assets now use `mgsr-landing/brit_circle_black_gold.svg` in header/hero branding and `site.webmanifest` name/short_name were updated accordingly.
+
+### Design Artifact
+
+- `docs/britsportgroup-web-redesign-mock.html` is the current BRIT Sport Group management-web redesign concept. The mock is a single interactive HTML document covering the main authenticated pages, public share flows, and mandate signing flow with a unified black/gold premium UI direction.
 
 ---
 

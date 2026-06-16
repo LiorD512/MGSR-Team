@@ -53,15 +53,15 @@ export default function MobileHeader() {
 
   return (
     <header
-      className="fixed top-0 inset-x-0 z-40 bg-mgsr-card/95 backdrop-blur-md border-b border-mgsr-border lg:hidden"
+      className="fixed top-0 inset-x-0 z-40 border-b border-white/8 bg-[rgba(10,15,22,0.9)] backdrop-blur-2xl lg:hidden"
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
-      <div className="flex items-center h-14 px-3 gap-2">
+      <div className="flex items-center h-16 px-3 gap-2">
         {/* Left: Logo or back button */}
         {isDetailPage ? (
           <Link
             href="/players"
-            className="flex items-center justify-center w-10 h-10 -ml-1 rounded-lg hover:bg-mgsr-dark/50 transition"
+            className="flex items-center justify-center w-10 h-10 -ml-1 rounded-2xl border border-white/8 bg-white/[0.03] hover:bg-white/[0.05] transition"
             aria-label="Back"
           >
             <svg
@@ -75,13 +75,20 @@ export default function MobileHeader() {
             </svg>
           </Link>
         ) : (
-          <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
-            <img src={logo} alt="BRIT Sport Group" className="w-8 h-8" />
+          <Link href="/dashboard" className="flex items-center gap-2 shrink-0 min-w-0">
+            <img src={logo} alt="BRIT Sport Group" className="w-9 h-9" />
+            <div className="min-w-0">
+              <div className="text-[9px] uppercase tracking-[0.22em] text-mgsr-muted">BRIT</div>
+              <div className="max-w-[92px] truncate text-[12px] font-semibold text-mgsr-text">{isWomen ? 'Women Desk' : platform === 'youth' ? 'Youth Desk' : 'Men Desk'}</div>
+            </div>
           </Link>
         )}
 
         {/* Center: Page title */}
-        <h1 className="flex-1 text-sm font-semibold text-mgsr-text truncate text-center">{title}</h1>
+        <div className="flex-1 min-w-0 text-center px-1">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-mgsr-muted">Workspace</div>
+          <h1 className="text-sm font-semibold text-mgsr-text truncate">{title}</h1>
+        </div>
 
         {/* Right: notification bell + platform switch + language */}
         <div className="flex items-center gap-1 shrink-0">

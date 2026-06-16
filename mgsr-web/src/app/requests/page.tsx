@@ -677,52 +677,57 @@ export default function RequestsPage() {
   return (
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
-              {isYouth ? t('requests_title_youth') : isWomen ? t('requests_title_women') : t('requests_title')}
-            </h1>
-            <p className="text-mgsr-muted mt-1 text-sm">{isYouth ? t('requests_subtitle_youth') : isWomen ? t('requests_subtitle_women') : t('requests_subtitle')}</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {pendingRequests.length > 0 && (
+        <div className="brit-hero-panel rounded-[28px] p-5 sm:p-6 lg:p-7 mb-4 sm:mb-6">
+          {/* Header */}
+          <div className="relative z-[1] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-5">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.24em] text-mgsr-muted mb-3">
+                <span className={`inline-block w-2 h-2 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-[var(--mgsr-gold)]'}`} />
+                Matching Engine
+              </div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-mgsr-text tracking-tight">
+                {isYouth ? t('requests_title_youth') : isWomen ? t('requests_title_women') : t('requests_title')}
+              </h1>
+              <p className="text-mgsr-muted mt-2 text-sm">{isYouth ? t('requests_subtitle_youth') : isWomen ? t('requests_subtitle_women') : t('requests_subtitle')}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {pendingRequests.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowShareDialog(true)}
+                  className={`px-4 py-2.5 rounded-2xl font-semibold transition border ${
+                    isYouth
+                      ? 'border-[var(--youth-cyan)]/30 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/10'
+                      : isWomen
+                      ? 'border-[var(--women-rose)]/30 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/10'
+                      : 'border-[var(--mgsr-gold)]/30 text-[var(--mgsr-gold)] hover:bg-[var(--mgsr-gold-dim)]'
+                  }`}
+                  title={isHebrew ? 'שתף בקשות' : 'Share requests'}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                  </svg>
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => setShowShareDialog(true)}
-                className={`px-4 py-2.5 rounded-xl font-semibold transition border ${
+                onClick={() => setShowAddSheet(true)}
+                className={`px-5 py-3 rounded-2xl font-semibold transition ${
                   isYouth
-                    ? 'border-[var(--youth-cyan)]/30 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/10'
+                    ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.3)] hover:opacity-90'
                     : isWomen
-                    ? 'border-[var(--women-rose)]/30 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/10'
-                    : 'border-mgsr-teal/30 text-mgsr-teal hover:bg-mgsr-teal/10'
+                    ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
+                    : 'bg-[var(--mgsr-accent)] text-mgsr-dark hover:opacity-90 shadow-[0_16px_40px_rgba(200,169,104,0.18)]'
                 }`}
-                title={isHebrew ? 'שתף בקשות' : 'Share requests'}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                </svg>
+                {t('requests_add')}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowAddSheet(true)}
-              className={`px-5 py-2.5 rounded-xl font-semibold transition ${
-                isYouth
-                  ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.3)] hover:opacity-90'
-                  : isWomen
-                  ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
-                  : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
-              }`}
-            >
-              {t('requests_add')}
-            </button>
+            </div>
           </div>
-        </div>
 
-        {/* Summary strip with match stats */}
-        <div className={`flex flex-wrap gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-5 p-3 sm:p-4 rounded-2xl bg-mgsr-card border border-mgsr-border ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
+          {/* Summary strip with match stats */}
+          <div className={`relative z-[1] flex flex-wrap gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-5 p-3 sm:p-4 rounded-2xl brit-filter-tray ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
           <div className="flex items-center gap-2">
             <div className={`w-1.5 h-1.5 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal'}`} />
             <span className="text-mgsr-text font-semibold">{pendingRequests.length}</span>
@@ -764,11 +769,11 @@ export default function RequestsPage() {
               </div>
             </>
           )}
-        </div>
+          </div>
 
-        {/* Search bar (full width, above filters) */}
-        <div className="mb-3">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-mgsr-card border border-mgsr-border w-full">
+          {/* Search bar (full width, above filters) */}
+          <div className="relative z-[1] mb-1">
+          <div className="flex items-center gap-2 px-3 py-3 rounded-2xl brit-filter-tray w-full">
             <svg className="w-4 h-4 text-mgsr-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             <input
               type="text"
@@ -1486,6 +1491,7 @@ export default function RequestsPage() {
             onClose={() => setShowManageLinks(false)}
           />
         )}
+      </div>
     </AppLayout>
   );
 }
