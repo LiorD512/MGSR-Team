@@ -280,7 +280,7 @@ fun RequestsScreen(
                                     val intent = Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
                                         putExtra(Intent.EXTRA_TEXT, fullText)
-                                        putExtra(Intent.EXTRA_SUBJECT, "MGSR Team - Active Recruitment Requests")
+                                        putExtra(Intent.EXTRA_SUBJECT, "BRIT Sport Group - Active Recruitment Requests")
                                     }
                                     context.startActivity(Intent.createChooser(intent, "Share requests"))
                                 } catch (e: Exception) {

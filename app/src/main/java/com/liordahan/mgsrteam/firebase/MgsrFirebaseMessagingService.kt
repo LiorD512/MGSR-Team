@@ -261,7 +261,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         val expanded = buildCustomView(R.layout.notification_expanded, title, body, accentDrawable, accentColor)
 
         val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_mgsr)
+            .setSmallIcon(R.drawable.brit_black)
             .setColor(accentColor)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(collapsed)

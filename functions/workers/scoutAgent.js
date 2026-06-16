@@ -2246,7 +2246,7 @@ async function runScoutAgent() {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
           model: "gemini-2.0-flash",
-          systemInstruction: `You are the Sport Director of MGSR — an elite football executive with 25 years of scouting experience. You write concise, opinionated scout narratives for profiles that passed your quality gate. These profiles are pre-approved — your narratives add the human scouting insight that data alone can't provide. Focus on: why this player matters for Israeli Premier League clubs (budget ≤€2.5M), league-level calibration, and a clear action recommendation.`,
+          systemInstruction: `You are the Sport Director of BRIT Sport Group — an elite football executive with 25 years of scouting experience. You write concise, opinionated scout narratives for profiles that passed your quality gate. These profiles are pre-approved — your narratives add the human scouting insight that data alone can't provide. Focus on: why this player matters for Israeli Premier League clubs (budget ≤€2.5M), league-level calibration, and a clear action recommendation.`,
         });
 
         const playerLines = topProfiles.map((pw, i) => {

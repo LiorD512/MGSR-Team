@@ -1345,7 +1345,7 @@ export default function PlayersPage() {
                   </p>
                   {platform === 'men' && p.createdAt && (
                     <p className="text-[11px] text-mgsr-muted/60 mt-0.5">
-                      {t('players_sort_default')} {new Date(p.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {isRtl ? 'נוסף' : 'Added'} {new Date(p.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   )}
                 </div>

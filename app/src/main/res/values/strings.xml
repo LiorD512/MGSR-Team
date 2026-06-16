@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">MGSR Team</string>
+    <string name="app_name" translatable="false">BRIT Sport Group</string>
     <string name="splash_tagline">Player recruitment made simple</string>
 
     <!-- Navigation -->
@@ -21,7 +21,7 @@
     <string name="login_error_invalid_email">Please enter a valid email address</string>
     <string name="login_button_email_hint">Your email address</string>
     <string name="login_button_password_hint">Your password</string>
-    <string name="login_cd_app_logo">MGSR Team logo</string>
+    <string name="login_cd_app_logo">BRIT Sport Group logo</string>
     <string name="login_cd_toggle_password">Toggle password visibility</string>
     <string name="login_cd_language_toggle">Switch language</string>
 
@@ -177,7 +177,7 @@
     <string name="account_not_allowed">Account not allowed</string>
 
     <!-- Notifications -->
-    <string name="notification_channel_name">MGSR Team Alerts</string>
+    <string name="notification_channel_name">BRIT Sport Group Alerts</string>
     <string name="notification_channel_description">Contract reminders, new releases and agency updates</string>
     <string name="notification_channel_contract_reminder">Contract reminders</string>
     <string name="notification_contract_reminder_title">Contract expiring soon</string>

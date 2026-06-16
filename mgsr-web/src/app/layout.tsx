@@ -44,7 +44,7 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: 'MGSR Team',
+  title: 'BRIT Sport Group',
   description: 'Football Agent CRM',
 };
 

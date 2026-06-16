@@ -125,6 +125,11 @@ Firebase Scheduled ──cron──→ Mandate expiry, task reminders, scout age
 **Architecture:** MVVM (ViewModel + StateFlow + Compose)
 **DI:** Manual dependency injection via `MainDi.kt`
 
+### Branding Note (External-Facing)
+
+- Public-facing Android branding now uses **BRIT Sport Group** labels in string resources (`app_name`, logo content description, notification channel display name).
+- The shared Android logo drawable `for_app_logo.xml` now points to the BRIT circular black/gold mark (`brit_circle_black_gold` asset), so login/splash/notification visual surfaces inherit the new logo without changing internal identifiers.
+
 ### Package Structure
 
 ```
@@ -248,6 +253,11 @@ Separate Gradle module for HTML scraping via JSoup:
 **Deployment:** Vercel
 **Domain:** management.mgsrfa.com
 **Rendering:** Mostly client-side with `force-dynamic` layout
+
+### Branding Note (External-Facing)
+
+- Public-facing web labels and metadata now present **BRIT Sport Group** while preserving internal code/package/API naming.
+- Web logo asset for user-visible surfaces is `mgsr-web/public/brit_circle_black_gold.svg` (used in app chrome, mobile header, shared pages, and share OG visuals).
 
 ### Key Dependencies
 
@@ -1142,6 +1152,11 @@ All parsers handle: `€300k`, `€1.50m`, `€300K`, `€1.50M` (case-insensiti
 **Domain:** mgsrfa.com
 **Content:** Static marketing page with team photos, analytics integration
 **Config:** `vercel.json` with redirects (`/team` → `/`, Hebrew URL → `/`)
+
+### Branding Note (External-Facing)
+
+- Landing site public copy and metadata are rebranded to **BRIT Sport Group**.
+- Landing logo assets now use `mgsr-landing/brit_circle_black_gold.svg` in header/hero branding and `site.webmanifest` name/short_name were updated accordingly.
 
 ---
 

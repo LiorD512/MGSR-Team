@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 import { getRequestsData } from '../getRequestsData';
 import type { Platform } from '@/contexts/PlatformContext';
 
-export const alt = 'MGSR Active Recruitment';
+export const alt = 'BRIT Sport Group Active Recruitment';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 export const maxDuration = 30;
@@ -148,7 +148,7 @@ export default async function OpenGraphImage({
                 textTransform: 'uppercase',
               }}
             >
-              MGSR TEAM
+              BRIT SPORT GROUP
             </span>
           </div>
 

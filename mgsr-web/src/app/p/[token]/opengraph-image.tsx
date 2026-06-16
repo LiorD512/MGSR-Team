@@ -182,7 +182,7 @@ export default async function OpenGraphImage({
                 fontWeight: 800,
               }}
             >
-              M
+              B
             </div>
             <div
               style={{
@@ -192,7 +192,7 @@ export default async function OpenGraphImage({
                 letterSpacing: '0.05em',
               }}
             >
-              MGSR TEAM
+              BRIT SPORT GROUP
             </div>
           </div>
         </div>

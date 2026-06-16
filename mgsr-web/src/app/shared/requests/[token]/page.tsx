@@ -76,7 +76,7 @@ export async function generateMetadata({
 
   if (!linkData || linkData.revoked) {
     return {
-      title: 'Link Expired — MGSR Team',
+      title: 'Link Expired — BRIT Sport Group',
       description: 'This shared recruitment brief is no longer available.',
     };
   }
@@ -88,8 +88,8 @@ export async function generateMetadata({
   const countries = Object.keys(data?.countryCounts || {}).length;
   const plLabel = PLATFORM_LABELS[platform] || 'Football';
 
-  const title = `${count} Active Recruitment Requests — MGSR Team`;
-  const desc = `${count} open positions across ${positions} roles in ${countries} countries. ${plLabel} recruitment by MGSR Team.`;
+  const title = `${count} Active Recruitment Requests — BRIT Sport Group`;
+  const desc = `${count} open positions across ${positions} roles in ${countries} countries. ${plLabel} recruitment by BRIT Sport Group.`;
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}/shared/requests/${params.token}`;
   const imageUrl = `${url}/opengraph-image`;

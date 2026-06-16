@@ -304,7 +304,7 @@ function buildEmailHtml(summary, top5, suggestions, workerHealth, allProfiles) {
 
     <!-- Header -->
     <div style="text-align:center;padding:20px 0;border-bottom:2px solid #ffd700;">
-      <div style="font-size:28px;font-weight:bold;color:#ffd700;">⚽ MGSR Daily Digest</div>
+      <div style="font-size:28px;font-weight:bold;color:#ffd700;">⚽ BRIT Sport Group Daily Digest</div>
       <div style="color:#999;font-size:14px;margin-top:4px;">${date}</div>
     </div>
 
@@ -379,7 +379,7 @@ function buildEmailHtml(summary, top5, suggestions, workerHealth, allProfiles) {
 
     <!-- Footer -->
     <div style="margin-top:24px;text-align:center;color:#555;font-size:12px;border-top:1px solid #333;padding-top:12px;">
-      MGSR Scout Platform · Automated Daily Digest<br/>
+      BRIT Sport Group Scout Platform · Automated Daily Digest<br/>
       Sent at ${new Date().toLocaleTimeString("en-IL", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit" })} Israel Time
     </div>
 
@@ -414,7 +414,7 @@ async function sendEmail(subject, html, gmailUser, gmailAppPassword) {
   });
 
   await transporter.sendMail({
-    from: `"MGSR Scout Platform" <${gmailUser}>`,
+    from: `"BRIT Sport Group Scout Platform" <${gmailUser}>`,
     to: RECIPIENT,
     subject,
     html,
@@ -445,7 +445,7 @@ async function runDailyDigest(gmailUser, gmailAppPassword) {
 
   // Build & send
   const date = formatDate();
-  const subject = `⚽ MGSR Daily Digest — ${date} — ${profiles.length} profiles, ${runs.length} runs`;
+  const subject = `⚽ BRIT Sport Group Daily Digest — ${date} — ${profiles.length} profiles, ${runs.length} runs`;
   const html = buildEmailHtml(summary, top5, suggestions, workerHealth, profiles);
 
   await sendEmail(subject, html, gmailUser, gmailAppPassword);

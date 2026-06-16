@@ -46,7 +46,7 @@ export default function MobileHeader() {
   const titleKey = getPageTitleKey(pathname);
   const title = t(titleKey);
   const isWomen = platform === 'women';
-  const logo = isWomen ? '/logo-women.svg' : '/logo.svg';
+  const logo = '/brit_circle_black_gold.svg';
 
   // Show back button on detail pages
   const isDetailPage = pathname.startsWith('/players/') && pathname !== '/players' && pathname !== '/players/add';
@@ -76,7 +76,7 @@ export default function MobileHeader() {
           </Link>
         ) : (
           <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
-            <img src={logo} alt="MGSR" className="w-8 h-8" />
+            <img src={logo} alt="BRIT Sport Group" className="w-8 h-8" />
           </Link>
         )}
 

@@ -84,7 +84,7 @@ export function PlatformSwitcher({ variant = 'default' }: { variant?: 'default' 
             : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark/60'
         }`}
       >
-        MGSR Team
+        BRIT Sport Group
       </Link>
       <Link
         href="/dashboard"
@@ -98,7 +98,7 @@ export function PlatformSwitcher({ variant = 'default' }: { variant?: 'default' 
             : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark/60'
         }`}
       >
-        MGSR Women
+        BRIT Sport Group Women
       </Link>
       <Link
         href="/dashboard"
@@ -112,7 +112,7 @@ export function PlatformSwitcher({ variant = 'default' }: { variant?: 'default' 
             : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark/60'
         }`}
       >
-        MGSR Youth
+        BRIT Sport Group Youth
       </Link>
     </div>
   ) : null;
@@ -128,7 +128,7 @@ export function PlatformSwitcher({ variant = 'default' }: { variant?: 'default' 
         aria-haspopup="true"
       >
         <span className={platform === 'youth' ? 'text-[var(--youth-cyan)]' : platform === 'men' ? 'text-[var(--mgsr-accent)]' : 'text-[var(--women-rose)]'}>
-          {platform === 'youth' ? 'MGSR Youth' : platform === 'men' ? 'MGSR Team' : 'MGSR Women'}
+          {platform === 'youth' ? 'BRIT Sport Group Youth' : platform === 'men' ? 'BRIT Sport Group' : 'BRIT Sport Group Women'}
         </span>
         <svg
           className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`}

@@ -3,7 +3,7 @@ export const maxDuration = 30;
 
 export async function generateMetadata() {
   return {
-    title: 'Access Required — MGSR Team',
+    title: 'Access Required — BRIT Sport Group',
     description: 'A valid share link is required to view recruitment requests.',
   };
 }
@@ -31,7 +31,7 @@ export default async function SharedRequestsPage() {
           Valid Link Required
         </h1>
         <p className="text-[#6B7B8D] text-sm max-w-xs mx-auto">
-          This page requires a unique share link from an MGSR agent. Please contact your agent if you believe this is an error.
+          This page requires a unique share link from a BRIT Sport Group agent. Please contact your agent if you believe this is an error.
         </p>
       </div>
     </div>

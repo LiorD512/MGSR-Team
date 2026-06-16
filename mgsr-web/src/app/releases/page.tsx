@@ -22,8 +22,6 @@ import {
   type AgeFilter,
   type SortBy,
 } from '@/lib/releases';
-import { getConfederation } from '@/lib/nationToConfederation';
-import type { Confederation } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
@@ -31,11 +29,11 @@ import { enrichShortlistInstagram } from '@/lib/outreach';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 
 const VALUE_PRESETS = [
-  { min: 0, max: 50000000, label: 'All', labelHe: 'הכל', isAll: true },
+  { min: 0, max: 6000000, label: 'All', labelHe: 'הכל', isAll: true },
   { min: 0, max: 500000, label: '0-500K', labelHe: '0-500K', isAll: false },
   { min: 500000, max: 1000000, label: '500K-1M', labelHe: '500K-1M', isAll: false },
   { min: 1000000, max: 5000000, label: '1M-5M', labelHe: '1M-5M', isAll: false },
-  { min: 5000000, max: 50000000, label: '5M+', labelHe: '5M+', isAll: false },
+  { min: 5000000, max: 6000000, label: '5M-6M', labelHe: '5M-6M', isAll: false },
 ];
 
 /** Session cache: do not refetch unless user presses Reload */
@@ -52,17 +50,6 @@ const AGE_FILTERS: { value: AgeFilter; labelKey: string }[] = [
   { value: '30+', labelKey: 'releases_age_30plus' },
 ];
 
-const REGION_OPTIONS: { value: Confederation; key: string }[] = [
-  { value: 'UEFA', key: 'transfer_windows_group_uefa' },
-  { value: 'CONMEBOL', key: 'transfer_windows_group_conmebol' },
-  { value: 'CONCACAF', key: 'transfer_windows_group_concacaf' },
-  { value: 'AFC', key: 'transfer_windows_group_afc' },
-  { value: 'CAF', key: 'transfer_windows_group_caf' },
-  { value: 'OFC', key: 'transfer_windows_group_ofc' },
-];
-
-const RELEASES_MAX_VISIBLE_VALUE = 6000000;
-
 interface RosterPlayer {
   id: string;
   fullName?: string;
@@ -78,23 +65,6 @@ interface RosterPlayer {
 interface RosterTeammateMatch {
   player: RosterPlayer;
   matchesPlayedTogether: number;
-}
-
-function formatReleaseDate(value?: string, isRtl?: boolean): string | null {
-  if (!value) return null;
-  const text = value.trim();
-  if (!text) return null;
-
-  // Keep Transfermarkt-native format as-is when already DD/MM/YYYY.
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) return text;
-
-  const date = new Date(text);
-  if (Number.isNaN(date.getTime())) return text;
-  return new Intl.DateTimeFormat(isRtl ? 'he-IL' : 'en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date);
 }
 
 function ReleaseCard({
@@ -125,7 +95,6 @@ function ReleaseCard({
   isTeammatesExpanded: string | null;
 }) {
   const playerUrl = player.playerUrl || '';
-  const releaseDate = formatReleaseDate(player.transferDate, isRtl);
   const rosterTeammates = playerUrl ? teammatesCache[playerUrl] : undefined;
   const isLoadingTeammates = loadingTeammatesUrl === playerUrl;
   const isExpanded = isTeammatesExpanded === playerUrl;
@@ -207,9 +176,9 @@ function ReleaseCard({
             <span className="text-xl font-display font-bold text-mgsr-teal">
               {player.marketValue || '—'}
             </span>
-            {releaseDate && (
+            {player.transferDate && (
               <span className="text-xs text-mgsr-muted truncate max-w-[100px]">
-                {releaseDate}
+                {player.transferDate}
               </span>
             )}
           </div>
@@ -253,13 +222,6 @@ function ReleaseCard({
             )}
           </div>
         </div>
-
-        {releaseDate && (
-          <div className="mt-2 text-xs text-mgsr-muted">
-            <span className="text-mgsr-muted/80">{t('releases_sort_date')}:</span>{' '}
-            <span className="text-mgsr-text">{releaseDate}</span>
-          </div>
-        )}
 
         {/* Roster teammates section */}
         <div className="mt-4" data-no-propagate>
@@ -360,7 +322,6 @@ interface ReleasesCache {
   search: string;
   positionFilter: string | null;
   ageFilter: AgeFilter;
-  regionFilter: Confederation | null;
   sortBy: SortBy;
   rosterPlayers: RosterPlayer[];
   shortlistUrls: string[];
@@ -379,7 +340,6 @@ export default function ReleasesPage() {
   const [search, setSearch] = useState(cached?.search ?? '');
   const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
   const [ageFilter, setAgeFilter] = useState<AgeFilter>(cached?.ageFilter ?? 'all');
-  const [regionFilter, setRegionFilter] = useState<Confederation | null>(cached?.regionFilter ?? null);
   const [sortBy, setSortBy] = useState<SortBy>(cached?.sortBy ?? 'value');
   const [firestorePositions, setFirestorePositions] = useState<{ name?: string; hebrewName?: string }[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>(cached?.rosterPlayers ?? []);
@@ -428,12 +388,12 @@ export default function ReleasesPage() {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
-  const loadReleases = useCallback(async (forceFresh = false) => {
+  const loadReleases = useCallback(async () => {
     setError('');
     setLoadingList(true);
     const uid = user?.uid;
     try {
-      const list = await getReleasesFromCache(forceFresh);
+      const list = await getReleasesFromCache();
       // Deduplicate by playerUrl
       const seen = new Set<string>();
       const deduped = list.filter((p) => {
@@ -454,7 +414,6 @@ export default function ReleasesPage() {
             search,
             positionFilter,
             ageFilter,
-            regionFilter,
             sortBy,
             rosterPlayers,
             shortlistUrls: Array.from(shortlistUrls),
@@ -472,7 +431,7 @@ export default function ReleasesPage() {
         setLoadingList(false);
       }
     }
-  }, [preset, t, user?.uid, search, positionFilter, ageFilter, regionFilter, sortBy, rosterPlayers, shortlistUrls]);
+  }, [preset, t, user?.uid, search, positionFilter, ageFilter, sortBy, rosterPlayers, shortlistUrls]);
 
   useEffect(() => {
     if (sessionCacheAll) {
@@ -493,14 +452,13 @@ export default function ReleasesPage() {
         search,
         positionFilter,
         ageFilter,
-        regionFilter,
         sortBy,
         rosterPlayers,
         shortlistUrls: Array.from(shortlistUrls),
       },
       user?.uid ?? undefined
     );
-  }, [players, preset, search, positionFilter, ageFilter, regionFilter, sortBy, rosterPlayers, shortlistUrls, user?.uid]);
+  }, [players, preset, search, positionFilter, ageFilter, sortBy, rosterPlayers, shortlistUrls, user?.uid]);
 
   const addToShortlist = useCallback(
     async (player: ReleasePlayer) => {
@@ -522,7 +480,8 @@ export default function ReleasesPage() {
           playerAge: player.playerAge ?? null,
           playerNationality: player.playerNationality ?? null,
           playerNationalityFlag: player.playerNationalityFlag ?? null,
-          clubJoinedName: null,
+          clubJoinedName: player.clubJoinedName ?? null,
+          clubJoinedLogo: player.clubJoinedLogo ?? null,
           transferDate: player.transferDate ?? null,
           marketValue: player.marketValue ?? null,
           addedByAgentId: account.id,
@@ -585,9 +544,8 @@ export default function ReleasesPage() {
 
   const filteredPlayers = useMemo(() => {
     let result = players;
-    // Web releases is intentionally capped at €6M.
-    result = result.filter((pl) => parseMarketValue(pl.marketValue) <= RELEASES_MAX_VISIBLE_VALUE);
-
+    const absoluteMaxValue = 6000000;
+    result = result.filter((pl) => parseMarketValue(pl.marketValue) <= absoluteMaxValue);
     // Value range filter (client-side)
     const p = VALUE_PRESETS[preset];
     if (!p.isAll) {
@@ -611,9 +569,6 @@ export default function ReleasesPage() {
       );
     }
     result = filterByAge(result, ageFilter);
-    if (regionFilter) {
-      result = result.filter((pl) => getConfederation(pl.playerNationality) === regionFilter);
-    }
     // Exclude players already in roster or shortlist
     const rosterTmIds = new Set(rosterPlayers.map((rp) => extractPlayerIdFromUrl(rp.tmProfile)).filter(Boolean));
     result = result.filter((pl) => {
@@ -623,14 +578,14 @@ export default function ReleasesPage() {
       return true;
     });
     return result;
-  }, [players, preset, search, positionFilter, ageFilter, regionFilter, rosterPlayers, shortlistUrls]);
+  }, [players, preset, search, positionFilter, ageFilter, rosterPlayers, shortlistUrls]);
 
   const sortedPlayers = useMemo(
     () => sortReleases(filteredPlayers, sortBy),
     [filteredPlayers, sortBy]
   );
 
-  const hasActiveFilters = search.trim() || positionFilter || ageFilter !== 'all' || regionFilter;
+  const hasActiveFilters = search.trim() || positionFilter || ageFilter !== 'all';
 
   if (loading || !user) {
     return (
@@ -651,15 +606,9 @@ export default function ReleasesPage() {
             <p className="text-mgsr-muted mt-1 text-sm">{t('releases_value_filter')}</p>
           </div>
           <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-            <Link
-              href="/release-notifications"
-              className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 transition"
-            >
-              {t('release_notifications_title')}
-            </Link>
             {(!loadingList || players.length > 0 || error) && (
               <button
-                onClick={() => loadReleases(true)}
+                onClick={() => loadReleases()}
                 disabled={loadingList}
                 className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 disabled:opacity-50 transition"
               >
@@ -778,32 +727,6 @@ export default function ReleasesPage() {
                     }`}
                   >
                     {t(labelKey)}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_region')}:</span>
-                <button
-                  onClick={() => setRegionFilter(null)}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    !regionFilter
-                      ? 'bg-mgsr-teal text-mgsr-dark'
-                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                  }`}
-                >
-                  {t('releases_all')}
-                </button>
-                {REGION_OPTIONS.map((region) => (
-                  <button
-                    key={region.value}
-                    onClick={() => setRegionFilter(regionFilter === region.value ? null : region.value)}
-                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                      regionFilter === region.value
-                        ? 'bg-mgsr-teal text-mgsr-dark'
-                        : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                    }`}
-                  >
-                    {t(region.key)}
                   </button>
                 ))}
               </div>

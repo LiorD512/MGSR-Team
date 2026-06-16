@@ -81,8 +81,8 @@ function NavContent({
   platformSwitcher: React.ReactNode;
   chatUnreadCount: number;
 }) {
-  const brandName = platform === 'youth' ? 'MGSR Youth' : platform === 'women' ? 'MGSR Women' : 'MGSR Team';
-  const logo = platform === 'youth' ? '/logo.svg' : platform === 'women' ? '/logo-women.svg' : '/logo.svg';
+  const brandName = platform === 'youth' ? 'BRIT Sport Group Youth' : platform === 'women' ? 'BRIT Sport Group Women' : 'BRIT Sport Group';
+  const logo = '/brit_circle_black_gold.svg';
   const accentClass = platform === 'youth' ? 'text-[var(--youth-cyan)]' : platform === 'women' ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]';
   const activeClass = platform === 'youth' ? 'bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)]' : platform === 'women' ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]' : 'bg-[var(--mgsr-accent-dim)] text-[var(--mgsr-accent)]';
   return (
@@ -92,7 +92,7 @@ function NavContent({
         onClick={onNavClick}
         className={`p-4 border-b border-mgsr-border flex items-center gap-3 ${platform === 'women' ? 'justify-end' : ''}`}
       >
-        <img src={logo} alt="MGSR" className="w-10 h-10 shrink-0" />
+        <img src={logo} alt="BRIT Sport Group" className="w-10 h-10 shrink-0" />
         <span className={`text-xl font-bold font-display ${accentClass}`}>{brandName}</span>
       </Link>
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">

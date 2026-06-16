@@ -32,7 +32,7 @@ export async function generateMetadata({
   const positionsStr = (data?.player?.positions ?? []).filter(Boolean).join(', ');
   const clubStr = data?.player?.currentClub?.clubName ?? '';
   const valueStr = data?.player?.marketValue ?? '';
-  const desc = [positionsStr, clubStr, valueStr].filter(Boolean).join(' · ') || 'Player profile shared via MGSR Team';
+  const desc = [positionsStr, clubStr, valueStr].filter(Boolean).join(' · ') || 'Player profile shared via BRIT Sport Group';
 
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}/p/${params.token}`;

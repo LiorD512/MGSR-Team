@@ -167,7 +167,7 @@ export default function SharedPlayerContent({
         ? (data.player.fullNameHe || data.player.fullName || '—')
         : (data.player.fullName || data.player.fullNameHe || '—');
       const isWom = data.platform === 'women';
-      const brand = isWom ? 'MGSR Women' : 'MGSR';
+      const brand = isWom ? 'BRIT Sport Group Women' : 'BRIT Sport Group';
       const rawPos = (data.player.positions ?? [])[0] || '';
       const pos = useHeb ? getPositionDisplayName(rawPos, true) : rawPos;
       const height = data.player.height || '';
@@ -220,7 +220,7 @@ export default function SharedPlayerContent({
       ? (data.player.fullNameHe || data.player.fullName || '')
       : (data.player.fullName || data.player.fullNameHe || '');
     const isWom = data.platform === 'women';
-    const brand = isWom ? 'MGSR Women' : 'MGSR';
+    const brand = isWom ? 'BRIT Sport Group Women' : 'BRIT Sport Group';
     if (data.sharerPhone) {
       const msg = useHeb
         ? `היי, ראיתי את הפרופיל של ${name} דרך ${brand} ואני מעוניין לשמוע עוד.`
@@ -250,7 +250,7 @@ export default function SharedPlayerContent({
       <div className="min-h-screen bg-mgsr-dark flex flex-col items-center justify-center p-6">
         <p className="text-mgsr-muted text-lg mb-6">{error}</p>
         <span className="text-mgsr-teal">
-          MGSR Team
+          BRIT Sport Group
         </span>
       </div>
     );
@@ -288,7 +288,7 @@ export default function SharedPlayerContent({
         addToContacts: 'הוסף לרשימת אנשי קשר',
         openWhatsApp: 'פתח WhatsApp',
         transfermarkt: 'פרופיל Transfermarkt',
-        sharedVia: isWomen ? 'שותף דרך MGSR Women' : 'שותף דרך MGSR Team',
+        sharedVia: isWomen ? 'שותף דרך BRIT Sport Group Women' : 'שותף דרך BRIT Sport Group',
         viewMandate: 'צפה במנדט',
         marketValue: 'שווי שוק',
         interested: 'מעוניין',
@@ -308,7 +308,7 @@ export default function SharedPlayerContent({
         addToContacts: 'Add to contacts',
         openWhatsApp: 'Open WhatsApp',
         transfermarkt: 'Transfermarkt profile',
-        sharedVia: isWomen ? 'Shared via MGSR Women' : 'Shared via MGSR Team',
+        sharedVia: isWomen ? 'Shared via BRIT Sport Group Women' : 'Shared via BRIT Sport Group',
         viewMandate: 'View mandate',
         marketValue: 'Market value',
         interested: "I'm Interested",
@@ -401,16 +401,16 @@ export default function SharedPlayerContent({
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            <img src="/logo.svg" alt="" className="w-8 h-8" />
+            <img src="/brit_circle_black_gold.svg" alt="" className="w-8 h-8" />
             <span className="font-bold font-display">
               {useHebrew ? 'חזרה לפורטפוליו' : 'Back to Portfolio'}
             </span>
           </Link>
         ) : (
           <div className="inline-flex items-center gap-2">
-            <img src="/logo.svg" alt="" className="w-8 h-8" />
+            <img src="/brit_circle_black_gold.svg" alt="" className="w-8 h-8" />
             <span className={`font-bold font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
-              {isWomen ? 'MGSR Women' : 'MGSR Team'}
+              {isWomen ? 'BRIT Sport Group Women' : 'BRIT Sport Group'}
             </span>
           </div>
         )}
@@ -438,7 +438,7 @@ export default function SharedPlayerContent({
           <div className={`absolute inset-0 ${isWomen ? 'bg-gradient-to-br from-[var(--women-rose)]/15 via-mgsr-card to-mgsr-dark' : 'bg-gradient-to-br from-mgsr-card via-mgsr-card to-mgsr-dark'}`} />
           <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_30%_20%,rgba(232,160,191,0.25)_0%,transparent_50%)]' : 'bg-[radial-gradient(ellipse_at_30%_20%,rgba(77,182,172,0.15)_0%,transparent_50%)]'}`} />
           <img
-            src="/mgsr-white.png"
+            src="/brit_circle_black_gold.svg"
             alt=""
             className="absolute -right-8 -bottom-6 w-[280px] sm:w-[340px] opacity-[0.03] pointer-events-none select-none"
             draggable={false}

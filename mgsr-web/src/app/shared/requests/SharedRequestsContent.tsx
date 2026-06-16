@@ -428,7 +428,7 @@ export default function SharedRequestsContent({
               </div>
               <div className="flex flex-col">
                 <span className="font-display font-bold text-[13px] tracking-[0.2em] teal-gradient-text leading-none">
-                  MGSR TEAM
+                  BRIT SPORT GROUP
                 </span>
                 <span className="font-premium text-[11px] tracking-[0.12em] uppercase text-[#6B7B8D] mt-0.5">
                   {PLATFORM_LABELS[platform] || 'Football'}
@@ -636,7 +636,7 @@ export default function SharedRequestsContent({
                 M
               </div>
               <span className="font-display font-bold text-sm tracking-[0.2em] text-[#B0B8C1] select-none">
-                MGSR TEAM
+                BRIT SPORT GROUP
               </span>
             </div>
             <p className="text-[11px] font-premium text-[#6B7B8D] tracking-[0.12em] uppercase">

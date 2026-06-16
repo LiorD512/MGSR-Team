@@ -175,7 +175,7 @@ function buildHealthEmail(workers, scoutRun, lockData, date) {
 
     <div style="text-align:center;padding:16px 0;border-bottom:2px solid ${headerColor};">
       <div style="font-size:24px;font-weight:bold;color:${headerColor};">${headerText}</div>
-      <div style="color:#999;font-size:14px;margin-top:4px;">MGSR System Health — ${date}</div>
+      <div style="color:#999;font-size:14px;margin-top:4px;">BRIT Sport Group System Health — ${date}</div>
     </div>
 
     <div style="margin-top:16px;overflow-x:auto;">
@@ -199,7 +199,7 @@ function buildHealthEmail(workers, scoutRun, lockData, date) {
     ${lockSection}
 
     <div style="margin-top:20px;padding:10px;text-align:center;color:#555;font-size:11px;border-top:1px solid #222;">
-      MGSR Football Agent Platform — Automated System Health Check
+      BRIT Sport Group Football Agent Platform — Automated System Health Check
     </div>
   </div>
 </body>
@@ -212,7 +212,7 @@ async function sendEmail(subject, html, gmailUser, gmailAppPassword) {
     auth: { user: gmailUser, pass: gmailAppPassword },
   });
   await transporter.sendMail({
-    from: `"MGSR System Health" <${gmailUser}>`,
+    from: `"BRIT Sport Group System Health" <${gmailUser}>`,
     to: RECIPIENT,
     subject,
     html,
@@ -246,8 +246,8 @@ async function runSystemHealthCheck(gmailUser, gmailAppPassword) {
   });
 
   const subject = issues === 0
-    ? `✅ MGSR Health — All Systems OK — ${date}`
-    : `⚠️ MGSR Health — ${issues} Issue${issues > 1 ? "s" : ""} — ${date}`;
+    ? `✅ BRIT Sport Group Health — All Systems OK — ${date}`
+    : `⚠️ BRIT Sport Group Health — ${issues} Issue${issues > 1 ? "s" : ""} — ${date}`;
 
   const html = buildHealthEmail(workers, scoutRun, lockData, date);
   await sendEmail(subject, html, gmailUser, gmailAppPassword);
