@@ -1,9 +1,7 @@
 name: Scrape Transfer Windows
 
 on:
-  schedule:
-    - cron: '0 8 * * *'  # 8am UTC daily
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:  # Manual trigger only (daily schedule disabled)
 
 concurrency:
   group: transfer-windows

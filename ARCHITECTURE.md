@@ -87,7 +87,7 @@ MGSR Team is a **multi-platform football agent management system** for managing 
 │      └─ Rebuilds Render server database (12-14 hour job)           │
 │                                                                     │
 │  GITHUB ACTIONS (Scheduled Automation)                             │
-│  ├─ transfer-windows.yml ──── Daily 8am UTC                        │
+│  ├─ transfer-windows.yml ──── Manual only (schedule disabled)       │
 │  ├─ weekly-contract-finishers.yml ──── Monday 2am Israel           │
 │  ├─ weekly-returnees.yml ──── Thursday 2am Israel                  │
 │  └─ weekly-scout-images.yml ──── Tuesday 3am Israel                │
@@ -598,7 +598,7 @@ Android app calls Render **directly** for performance-critical endpoints:
 
 | Workflow | Schedule | Purpose |
 |----------|----------|---------|
-| `transfer-windows.yml` | Daily 8am UTC | Scrape transfer window dates → commit to `mgsr-web/public/transfer-windows.json` |
+| `transfer-windows.yml` | Manual only (schedule disabled) | Scrape transfer window dates on demand → update `mgsr-web/public/transfer-windows.json` |
 | `weekly-contract-finishers.yml` | Monday 23:00 UTC (2am Israel) | Populate contract finisher cache in Firestore via `_populate_cache.ts finishers` |
 | `weekly-returnees.yml` | Thursday 23:00 UTC (2am Israel) | Populate returnees cache in Firestore via `_populate_cache.ts returnees` |
 | `weekly-scout-images.yml` | Tuesday 00:00 UTC (3am Israel) | Enrich scout profile images via `_enrich_images.ts` |
@@ -606,6 +606,8 @@ Android app calls Render **directly** for performance-critical endpoints:
 | `test-tm-scraping.yml` | Manual only | Test Transfermarkt fetch logic |
 
 **Pattern:** All workflows use GitHub API for file updates (not git push). Secrets include `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
+
+**Deployment guardrails (Vercel):** `mgsr-web/vercel.json` defines `ignoreCommand` (`scripts/vercel-ignored-build.sh`) to skip web production builds when commits are not web-relevant or when only `mgsr-web/public/transfer-windows.json` changed. Override token in commit message: `[force vercel build]`.
 
 **Local macOS schedule:** `workers-local/com.mgsr.releases-refresh.plist` runs the merged releases worker every day at 10:00 local system time via LaunchAgent. Set the Mac timezone to Israel if you want that to mean 10:00 Israel time exactly.
 
@@ -1164,6 +1166,23 @@ All parsers handle: `€300k`, `€1.50m`, `€300K`, `€1.50M` (case-insensiti
 
 - Landing site public copy and metadata are rebranded to **BRIT Sport Group**.
 - Landing logo assets now use `mgsr-landing/brit_circle_black_gold.svg` in header/hero branding and `site.webmanifest` name/short_name were updated accordingly.
+- The landing page visual language now uses the BRIT premium cinematic palette and editorial typography, with aurora background effects, premium hero trust cards, and darker glass surfaces to match the new agency brand direction.
+- Hero copy was simplified so the top hero label shows **BRIT Sport Group** (larger type) and the previous two-line hero headline was removed while keeping the supporting subtitle paragraph.
+- Landing page UI was further refined for stronger visual impact: larger hero brand title, increased top spacing under fixed navigation, improved section-by-section color gradients (About/Services/Platforms/Team/Contact), and explicit z-index/isolation updates to reduce overlap risks between floating and fixed elements.
+- Hero layout spacing was adjusted to avoid visual collision between trust cards and the scroll indicator (dedicated bottom space in hero content + lower indicator anchor), improving readability in the first viewport.
+- Landing color system was further intensified to align with BRIT logo language (deeper black base + stronger gold/mint accents across hero and section gradients), and the hero scroll indicator was updated to true auto-centering to keep it visually centered after responsive spacing changes.
+- About-section stat counters (Countries and Years) now use BRIT gold glow styling to better match the updated black/gold visual language.
+- Services icon accents were refined to better match the BRIT palette for key cards: Player Representation and Contract Management now use richer gold tones, while Youth Development uses a brighter mint accent.
+- Title styling on the landing page was unified: hero/section/card/form headings now use a consistent BRIT gold treatment (including hover behavior updates to avoid inconsistent teal title shifts).
+- Section kicker labels (the smaller pre-title text before major headings) were updated to a complementary mint accent to keep hierarchy clear while staying within the BRIT palette.
+- The “Three Divisions, One Vision” platform cards were recolored with new premium per-division palettes (mint-teal for Men, warm bronze-gold for Women, and deep steel-blue/mint for Youth) including updated badge tones for clearer visual separation.
+- Landing palette was fully normalized to the new BRIT direction by replacing remaining legacy accent values with the current black/gold/mint system across hero effects, CTA glows, section dividers, services effects, platform backdrop, team/tooltips, contact cards, and social hover states.
+- Platform visual tuning continued: Men and Youth boxes were recolored with new premium gradients/borders for stronger fit with the updated design language, and icon colors were refined in Services/Contact (including Youth Development and contact channel icons) to better match each card's palette.
+- The public landing-page team roster was updated to remove Roy Elgrabli from the visible team section and its related landing-page structured data/translations.
+- Final landing-page icon normalization aligned remaining outliers with the shared gold accent system, specifically Youth Development in Services and the Phone/Location icons in Contact.
+- Hebrew RTL hero info boxes were updated to right-align their label/value text instead of inheriting the default left-aligned card layout.
+- Hebrew RTL hero info boxes now also enforce RTL text flow for the inner label/value content so the text itself aligns naturally inside each card.
+- Hebrew landing-page team copy was corrected so the team description refers to knowing the game from the inside, not the computer.
 
 ### Design Artifact
 
