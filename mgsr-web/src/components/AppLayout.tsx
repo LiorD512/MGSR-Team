@@ -162,7 +162,7 @@ function NavContent({
           <img src={logo} alt="BRIT Sport Group" className="relative w-12 h-12 shrink-0" />
         </div>
         <div className="min-w-0 flex h-12 items-center">
-          <span className={`block truncate text-[1.35rem] font-extrabold font-display tracking-[-0.03em] ${accentClass}`} style={platform === 'men' ? { color: '#f5c874', textShadow: '0 0 18px rgba(245, 200, 116, 0.18)' } : undefined}>{brandName}</span>
+          <span className={`block truncate text-lg font-bold font-display ${accentClass}`} style={platform === 'men' ? { color: '#f5c874', textShadow: '0 0 18px rgba(245, 200, 116, 0.18)' } : undefined}>{brandName}</span>
         </div>
       </Link>
       <nav className="flex-1 px-4 pb-4 pt-5 space-y-5 overflow-y-auto">
@@ -291,13 +291,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const toggleLang = () => setLang(isRtl ? 'en' : 'he');
   const currentSections = platform === 'youth' ? youthNavSections : platform === 'women' ? womenNavSections : navSections;
   const chatUnreadCount = useChatUnread();
-  const platformLabel =
-    platform === 'men'
-      ? t('app_shell_platform_men')
-      : platform === 'women'
-        ? t('app_shell_platform_women')
-        : t('app_shell_platform_youth');
-  const activeModulesLabel = t('app_shell_active_modules').replace('{count}', String(flattenNavSections(currentSections).length));
 
   /* ═══════════════════════════════════════════════════════════
    *  MOBILE / TABLET layout (< 1024px)
@@ -349,26 +342,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 overflow-auto min-w-0">
         <div className="p-6 xl:p-8">
-          <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,35,0.86),rgba(10,14,22,0.72))] backdrop-blur-xl shadow-[0_34px_90px_rgba(2,4,8,0.34)] overflow-hidden">
-            <div className="border-b border-white/6 px-6 py-5 xl:px-8 xl:py-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h1 className="font-display text-2xl xl:text-3xl font-semibold tracking-[-0.03em] text-mgsr-text">
-                    {t(route.labelKey)}
-                  </h1>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="rounded-full border border-[var(--mgsr-gold)]/20 bg-[var(--mgsr-gold-dim)] px-3 py-2 text-xs font-medium text-[var(--mgsr-gold)]">
-                    {platformLabel}
-                  </div>
-                  <div className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-2 text-xs text-mgsr-muted">
-                    {activeModulesLabel}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="p-6 xl:p-8 min-w-0">{children}</div>
+          <div className="mb-6 xl:mb-8">
+            <h1 className="font-display text-2xl xl:text-3xl font-semibold tracking-[-0.03em] text-mgsr-text">
+              {t(route.labelKey)}
+            </h1>
           </div>
+          <div className="min-w-0">{children}</div>
         </div>
       </main>
       <NotificationPrompt />
