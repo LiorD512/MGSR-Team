@@ -41,21 +41,27 @@ export default function LoginPage() {
       {/* Language toggle - RTL: button on left */}
       <button
         onClick={() => setLang(isRtl ? 'en' : 'he')}
-        className={`absolute top-4 sm:top-6 px-3 py-1.5 rounded-lg text-sm text-mgsr-muted hover:text-mgsr-teal hover:bg-mgsr-teal/10 transition z-20 ${isRtl ? 'left-4 sm:left-6' : 'right-4 sm:right-6'}`}
+        className={`absolute top-4 sm:top-6 px-3 py-1.5 rounded-lg text-sm text-mgsr-muted hover:text-[var(--mgsr-gold)] hover:bg-[var(--mgsr-gold-dim)] transition z-20 ${isRtl ? 'left-4 sm:left-6' : 'right-4 sm:right-6'}`}
       >
         {isRtl ? 'English' : 'עברית'}
       </button>
       {/* Background atmosphere */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(77,182,172,0.12)_0%,transparent_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_80%,rgba(77,182,172,0.06)_0%,transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_24%_18%,rgba(245,200,116,0.16)_0%,transparent_48%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_78%_82%,rgba(245,200,116,0.08)_0%,transparent_46%)]" />
       <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22 opacity=%220.03%22/%3E%3C/svg%3E')] opacity-30" />
 
       <div className="w-full max-w-md relative z-10">
-        <div className="bg-mgsr-card border border-mgsr-border rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/30">
-          <h1 className="text-3xl font-display font-bold text-mgsr-teal tracking-tight mb-2">
-            {t('login_title')}
-          </h1>
-          <p className="text-mgsr-muted mb-8">{t('login_subtitle')}</p>
+        <div className="bg-mgsr-card border border-[var(--mgsr-gold)]/15 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/30">
+          <div className="mb-6 flex items-center gap-4">
+            <img src="/brit_circle_black_gold.svg" alt="BRIT Sport Group" className="h-14 w-14 shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-3xl font-display font-bold text-[var(--mgsr-gold)] tracking-tight mb-1">
+                {t('login_title')}
+              </h1>
+              <p className="text-mgsr-muted">{t('login_subtitle')}</p>
+            </div>
+          </div>
+          <div className="h-px w-full bg-gradient-to-r from-transparent via-[var(--mgsr-gold)]/25 to-transparent mb-6" />
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
@@ -67,7 +73,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal/60 focus:ring-1 focus:ring-mgsr-teal/30 transition"
+                className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--mgsr-gold)]/60 focus:ring-1 focus:ring-[var(--mgsr-gold)]/25 transition"
                 placeholder="you@example.com"
               />
             </div>
@@ -80,7 +86,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal/60 focus:ring-1 focus:ring-mgsr-teal/30 transition"
+                className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--mgsr-gold)]/60 focus:ring-1 focus:ring-[var(--mgsr-gold)]/25 transition"
                 placeholder="••••••••"
               />
             </div>
@@ -90,7 +96,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 disabled:opacity-50 disabled:cursor-not-allowed transition hover:scale-[1.01] active:scale-[0.99]"
+              className="w-full py-3.5 rounded-xl bg-[var(--mgsr-gold)] text-mgsr-dark font-semibold hover:bg-[#e8bb67] disabled:opacity-50 disabled:cursor-not-allowed transition hover:scale-[1.01] active:scale-[0.99]"
             >
               {loading ? t('login_signing_in') : t('login_sign_in')}
             </button>

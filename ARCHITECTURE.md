@@ -258,6 +258,7 @@ Separate Gradle module for HTML scraping via JSoup:
 ### Branding Note (External-Facing)
 
 - Public-facing web labels and metadata now present **BRIT Sport Group** while preserving internal code/package/API naming.
+- Web login screen now presents BRIT Sport Group branding directly in the auth card and uses the shared black/gold visual palette instead of the older teal-accent treatment.
 - Web logo asset for user-visible surfaces is `mgsr-web/public/brit_circle_black_gold.svg` (used in app chrome, mobile header, shared pages, and share OG visuals).
 - Web mandate flows now use BRIT branding end-to-end: mandate PDF generator logo/source text and signing page metadata/footer labels.
 - The authenticated web app now uses a BRIT premium shell across desktop and mobile (`AppLayout`, `MobileHeader`, `MobileBottomTabBar`) with black/gold-glass surfaces; route hero/filter sections for dashboard, players, requests, tasks, shortlist, contacts, releases, contract-finisher, returnees, release-notifications, shadow-teams, and portfolio are aligned to that shared visual language.
