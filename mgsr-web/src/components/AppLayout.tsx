@@ -46,7 +46,7 @@ const navSections: NavSection[] = [
     titleKey: 'app_shell_section_intelligence',
     items: [
       { href: '/war-room', labelKey: 'nav_war_room' },
-      { href: '/chat-room', labelKey: 'nav_chat_room', badge: 'chat' },
+      // TEMP HIDDEN (user request): { href: '/chat-room', labelKey: 'nav_chat_room', badge: 'chat' },
     ],
   },
 ];

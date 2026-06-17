@@ -344,17 +344,17 @@ function ReleaseNotificationCard({
           handleCardClick(e as unknown as React.MouseEvent);
         }
       }}
-      className="group relative overflow-hidden rounded-2xl bg-mgsr-card border border-mgsr-border hover:border-mgsr-teal/40 transition-all duration-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 focus:ring-offset-2 focus:ring-offset-mgsr-dark"
+      className="group relative overflow-hidden rounded-2xl bg-mgsr-card border border-mgsr-border hover:border-[var(--mgsr-accent)]/45 transition-all duration-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--mgsr-accent)]/50 focus:ring-offset-2 focus:ring-offset-mgsr-dark"
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-mgsr-teal/5 via-transparent to-mgsr-dark/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[var(--mgsr-accent)]/10 via-transparent to-mgsr-dark/35 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       <div className="relative p-5">
-        <span className="absolute top-4 left-4 rtl:left-auto rtl:right-4 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30">
+        <span className="absolute top-4 left-4 rtl:left-auto rtl:right-4 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md bg-[var(--mgsr-accent)]/20 text-[var(--mgsr-accent)] border border-[var(--mgsr-accent)]/35">
           {t('release_notifications_badge')}
         </span>
         {isEnriching && (
-          <div className="absolute top-4 right-4 rtl:right-auto rtl:left-4 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-mgsr-dark/85 border border-mgsr-teal/30 backdrop-blur-sm shadow-lg">
-            <span className="w-3.5 h-3.5 border-2 border-mgsr-teal/30 border-t-mgsr-teal rounded-full animate-spin" />
-            <span className="w-1.5 h-1.5 rounded-full bg-mgsr-teal/70 animate-pulse" />
+          <div className="absolute top-4 right-4 rtl:right-auto rtl:left-4 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-mgsr-dark/85 border border-[var(--mgsr-accent)]/35 backdrop-blur-sm shadow-lg">
+            <span className="w-3.5 h-3.5 border-2 border-[var(--mgsr-accent)]/35 border-t-[var(--mgsr-accent)] rounded-full animate-spin" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--mgsr-accent)]/80 animate-pulse" />
           </div>
         )}
         <div className="flex gap-4 mt-6">
@@ -362,7 +362,7 @@ function ReleaseNotificationCard({
             <img
               src={event.playerImage || 'https://via.placeholder.com/72'}
               alt=""
-              className="w-16 h-16 rounded-2xl object-cover bg-mgsr-dark ring-2 ring-mgsr-border group-hover:ring-mgsr-teal/50 transition-all duration-300 group-hover:scale-105"
+              className="w-16 h-16 rounded-2xl object-cover bg-mgsr-dark ring-2 ring-mgsr-border group-hover:ring-[var(--mgsr-accent)]/55 transition-all duration-300 group-hover:scale-105"
             />
             {playerNationalityFlag && (
               <img
@@ -373,7 +373,7 @@ function ReleaseNotificationCard({
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-display font-semibold text-lg text-mgsr-text truncate group-hover:text-mgsr-teal transition-colors">
+            <p className="font-display font-semibold text-lg text-mgsr-text truncate group-hover:text-[var(--mgsr-accent)] transition-colors">
               {event.playerName || 'Unknown'}
             </p>
             <p className="text-sm text-mgsr-muted mt-1">{playerPosition}</p>
@@ -394,7 +394,7 @@ function ReleaseNotificationCard({
         </div>
 
         <div className="mt-4 pt-4 border-t border-mgsr-border/80 flex items-center justify-between gap-3" data-no-propagate>
-          <span className="text-base font-display font-bold text-mgsr-teal shrink-0">{marketValue}</span>
+          <span className="text-base font-display font-bold text-[var(--mgsr-accent)] shrink-0">{marketValue}</span>
           {isInShortlist ? (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30">
               <svg className="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
@@ -438,9 +438,9 @@ function ReleaseNotificationCard({
           <button
             type="button"
             onClick={handleTeammatesClick}
-            className="w-full flex items-center gap-2 py-2.5 px-3 rounded-xl bg-mgsr-dark/60 border border-mgsr-border hover:border-mgsr-teal/30 transition-all text-left rtl:text-right"
+            className="w-full flex items-center gap-2 py-2.5 px-3 rounded-xl bg-mgsr-dark/60 border border-mgsr-border hover:border-[var(--mgsr-accent)]/35 transition-all text-left rtl:text-right"
           >
-            <svg className="w-4 h-4 text-mgsr-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 text-[var(--mgsr-accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             <span className="text-sm text-mgsr-text flex-1">
@@ -464,7 +464,7 @@ function ReleaseNotificationCard({
             <div className="mt-2 space-y-2">
               {isLoadingTeammates ? (
                 <div className="py-6 flex justify-center">
-                  <div className="w-5 h-5 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-[var(--mgsr-accent)]/35 border-t-[var(--mgsr-accent)] rounded-full animate-spin" />
                 </div>
               ) : rosterTeammates?.length === 0 ? (
                 <p className="text-xs text-mgsr-muted py-3 px-3 rounded-lg bg-mgsr-dark/40 border border-mgsr-border/60">
@@ -472,7 +472,7 @@ function ReleaseNotificationCard({
                 </p>
               ) : (
                 rosterTeammates?.map((match) => (
-                  <div key={match.player.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-mgsr-dark/50 border border-mgsr-border/80 hover:border-mgsr-teal/40 hover:bg-mgsr-dark/70 transition-all">
+                  <div key={match.player.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-mgsr-dark/50 border border-mgsr-border/80 hover:border-[var(--mgsr-accent)]/40 hover:bg-mgsr-dark/70 transition-all">
                     <Link
                       href={`/players/${match.player.id}?from=/release-notifications`}
                       onClick={(e) => e.stopPropagation()}
@@ -505,7 +505,7 @@ function ReleaseNotificationCard({
                           <svg className="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                         </a>
                       )}
-                      <span className="text-xs font-medium text-mgsr-teal px-2 py-0.5 rounded-md bg-mgsr-teal/15 shrink-0">
+                      <span className="text-xs font-medium text-[var(--mgsr-accent)] px-2 py-0.5 rounded-md bg-[var(--mgsr-accent)]/18 border border-[var(--mgsr-accent)]/25 shrink-0">
                         {t('releases_games_together').replace('{n}', String(match.matchesPlayedTogether))}
                       </span>
                     </div>
@@ -1153,7 +1153,7 @@ export default function ReleaseNotificationsPage() {
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className="animate-pulse text-mgsr-teal font-display">{t('loading')}</div>
+        <div className="animate-pulse text-[var(--mgsr-accent)] font-display">{t('loading')}</div>
       </div>
     );
   }
@@ -1172,17 +1172,17 @@ export default function ReleaseNotificationsPage() {
             <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             <Link
               href="/releases"
-              className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 transition text-center"
+              className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-[var(--mgsr-accent)] hover:bg-[var(--mgsr-accent)]/15 hover:border-[var(--mgsr-accent)]/40 transition text-center"
             >
               {t('release_notifications_back_to_releases')}
             </Link>
             <button
               onClick={runManualFetchAndEnrichment}
               disabled={isManualRefreshing}
-              className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 transition text-center disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+              className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-[var(--mgsr-accent)] hover:bg-[var(--mgsr-accent)]/15 hover:border-[var(--mgsr-accent)]/40 transition text-center disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isManualRefreshing && (
-                <span className="w-4 h-4 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-[var(--mgsr-accent)]/35 border-t-[var(--mgsr-accent)] rounded-full animate-spin" />
               )}
               <span>
                 {isManualRefreshing
@@ -1196,8 +1196,8 @@ export default function ReleaseNotificationsPage() {
                 onClick={() => setPreset(index)}
                 className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium transition ${
                   preset === index
-                    ? 'bg-mgsr-teal text-mgsr-dark'
-                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/30'
+                    ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
+                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-[var(--mgsr-accent)]/35'
                 }`}
               >
                 {valuePreset.isAll ? t('releases_all') : isRtl ? valuePreset.labelHe : valuePreset.label}
@@ -1212,7 +1212,7 @@ export default function ReleaseNotificationsPage() {
             {t('release_notifications_total')}: <strong className="text-mgsr-text">{resolvedPlayers.length}</strong>
           </span>
           <span className="text-sm text-mgsr-muted">
-            {t('release_notifications_visible')}: <strong className="text-mgsr-teal">{filteredPlayers.length}</strong>
+            {t('release_notifications_visible')}: <strong className="text-[var(--mgsr-accent)]">{filteredPlayers.length}</strong>
           </span>
           <div className="flex items-center gap-2">
             <span className="text-xs text-mgsr-muted">{t('releases_sort')}:</span>
@@ -1222,7 +1222,7 @@ export default function ReleaseNotificationsPage() {
                 onClick={() => setSortBy(option.value)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                   sortBy === option.value
-                    ? 'bg-mgsr-teal text-mgsr-dark'
+                    ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
                     : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
                 }`}
               >
@@ -1257,7 +1257,7 @@ export default function ReleaseNotificationsPage() {
               <>
                 <div className="mt-3 h-2 rounded-full bg-mgsr-dark/70 overflow-hidden">
                   <div
-                    className="h-full bg-mgsr-teal transition-all duration-300"
+                    className="h-full bg-[var(--mgsr-accent)] transition-all duration-300"
                     style={{ width: `${manualRefreshUi.progressPercent}%` }}
                   />
                 </div>
@@ -1309,7 +1309,7 @@ export default function ReleaseNotificationsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('release_notifications_search')}
-            className="w-full max-w-md px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal/60"
+            className="w-full max-w-md px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--mgsr-accent)]/60"
           />
           <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_position')}:</span>
@@ -1317,7 +1317,7 @@ export default function ReleaseNotificationsPage() {
               onClick={() => setPositionFilter(null)}
               className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                 !positionFilter
-                  ? 'bg-mgsr-teal text-mgsr-dark'
+                  ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
                   : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
               }`}
             >
@@ -1332,7 +1332,7 @@ export default function ReleaseNotificationsPage() {
                   onClick={() => setPositionFilter(positionFilter === position ? null : position)}
                   className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                     positionFilter === position
-                      ? 'bg-mgsr-teal text-mgsr-dark'
+                      ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
                       : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
                   }`}
                 >
@@ -1349,7 +1349,7 @@ export default function ReleaseNotificationsPage() {
                 onClick={() => setAgeFilter(ageFilter === value ? 'all' : value)}
                 className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                   ageFilter === value
-                    ? 'bg-mgsr-teal text-mgsr-dark'
+                    ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
                     : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
                 }`}
               >
@@ -1363,7 +1363,7 @@ export default function ReleaseNotificationsPage() {
               onClick={() => setRegionFilter(null)}
               className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                 !regionFilter
-                  ? 'bg-mgsr-teal text-mgsr-dark'
+                  ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
                   : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
               }`}
             >
@@ -1375,7 +1375,7 @@ export default function ReleaseNotificationsPage() {
                 onClick={() => setRegionFilter(regionFilter === region.value ? null : region.value)}
                 className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                   regionFilter === region.value
-                    ? 'bg-mgsr-teal text-mgsr-dark'
+                    ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
                     : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
                 }`}
               >
@@ -1391,7 +1391,7 @@ export default function ReleaseNotificationsPage() {
           </div>
         ) : filteredPlayers.length === 0 ? (
           <div className="relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(245,200,116,0.12)_0%,transparent_72%)]" />
             <p className="text-mgsr-muted text-lg mb-2 relative">
               {hasActiveFilters ? t('search_no_results') : t('release_notifications_empty')}
             </p>

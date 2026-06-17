@@ -25,7 +25,7 @@ const pageTitleKeys: Record<string, string> = {
   '/requests': 'nav_requests',
   // DISABLED — Vercel cost optimization (May 2026)
   // '/jewish-finder': 'nav_jewish_finder',
-  '/chat-room': 'nav_chat_room',
+  // TEMP HIDDEN (user request): '/chat-room': 'nav_chat_room',
   // '/news': 'nav_news', — DISABLED
 };
 
