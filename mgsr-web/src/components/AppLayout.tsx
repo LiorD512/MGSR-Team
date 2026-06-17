@@ -83,35 +83,9 @@ const youthNavSections: NavSection[] = [
   },
 ];
 
-const routeMeta: Array<{ match: RegExp; labelKey: string; eyebrowKey: string }> = [
-  { match: /^\/dashboard$/, labelKey: 'app_shell_route_dashboard_label', eyebrowKey: 'app_shell_route_dashboard_eyebrow' },
-  { match: /^\/players(\/.*)?$/, labelKey: 'app_shell_route_players_label', eyebrowKey: 'app_shell_route_players_eyebrow' },
-  { match: /^\/tasks$/, labelKey: 'app_shell_route_tasks_label', eyebrowKey: 'app_shell_route_tasks_eyebrow' },
-  { match: /^\/shortlist$/, labelKey: 'app_shell_route_shortlist_label', eyebrowKey: 'app_shell_route_shortlist_eyebrow' },
-  { match: /^\/requests$/, labelKey: 'app_shell_route_requests_label', eyebrowKey: 'app_shell_route_requests_eyebrow' },
-  { match: /^\/contacts$/, labelKey: 'app_shell_route_contacts_label', eyebrowKey: 'app_shell_route_contacts_eyebrow' },
-  { match: /^\/portfolio$/, labelKey: 'app_shell_route_portfolio_label', eyebrowKey: 'app_shell_route_portfolio_eyebrow' },
-  { match: /^\/releases$/, labelKey: 'app_shell_route_releases_label', eyebrowKey: 'app_shell_route_releases_eyebrow' },
-  { match: /^\/release-notifications$/, labelKey: 'app_shell_route_release_notifications_label', eyebrowKey: 'app_shell_route_release_notifications_eyebrow' },
-  { match: /^\/contract-finisher$/, labelKey: 'app_shell_route_contract_finisher_label', eyebrowKey: 'app_shell_route_contract_finisher_eyebrow' },
-  { match: /^\/returnees$/, labelKey: 'app_shell_route_returnees_label', eyebrowKey: 'app_shell_route_returnees_eyebrow' },
-  { match: /^\/shadow-teams$/, labelKey: 'app_shell_route_shadow_teams_label', eyebrowKey: 'app_shell_route_shadow_teams_eyebrow' },
-  { match: /^\/war-room$/, labelKey: 'app_shell_route_war_room_label', eyebrowKey: 'app_shell_route_war_room_eyebrow' },
-  { match: /^\/chat-room$/, labelKey: 'app_shell_route_chat_room_label', eyebrowKey: 'app_shell_route_chat_room_eyebrow' },
-];
-
-function getRouteMeta(pathname: string | null) {
-  const found = routeMeta.find((item) => item.match.test(pathname || ''));
-  return found ?? { labelKey: 'app_shell_route_default_label', eyebrowKey: 'app_shell_route_default_eyebrow' };
-}
-
 function isNavItemActive(pathname: string, href: string) {
   if (href === '/dashboard') return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function flattenNavSections(sections: NavSection[]) {
-  return sections.flatMap((section) => section.items);
 }
 
 /* ── Desktop sidebar nav content (unchanged) ── */
@@ -276,7 +250,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { t, isRtl, setLang } = useLanguage();
   const { platform, setPlatform } = usePlatform();
   const isMobileOrTablet = useIsMobileOrTablet();
-  const route = getRouteMeta(pathname);
 
   // Route guard: when women/youth platform, only allow specific paths
   useEffect(() => {
@@ -342,11 +315,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 overflow-auto min-w-0">
         <div className="p-6 xl:p-8">
-          <div className="mb-6 xl:mb-8">
-            <h1 className="font-display text-2xl xl:text-3xl font-semibold tracking-[-0.03em] text-mgsr-text">
-              {t(route.labelKey)}
-            </h1>
-          </div>
           <div className="min-w-0">{children}</div>
         </div>
       </main>

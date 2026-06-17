@@ -46,14 +46,14 @@ interface Account {
 }
 
 const AGENT_COLORS = [
-  '#4DB6AC',
-  '#5C6BC0',
-  '#FF7043',
-  '#66BB6A',
-  '#EC407A',
-  '#AB47BC',
-  '#42A5F5',
-  '#8D6E63',
+  '#F5C874',
+  '#D8A94C',
+  '#B98939',
+  '#9C7636',
+  '#D9B47B',
+  '#C79452',
+  '#8A6433',
+  '#6F5530',
 ];
 
 const AGENT_COLORS_WOMEN = [
@@ -79,8 +79,8 @@ const AGENT_COLORS_YOUTH = [
 ];
 
 const PRIORITY_COLORS = {
-  0: { bg: 'rgba(77, 182, 172, 0.25)', accent: '#4DB6AC', label: 'low' },
-  1: { bg: 'rgba(255, 112, 67, 0.25)', accent: '#FF7043', label: 'medium' },
+  0: { bg: 'rgba(245, 200, 116, 0.18)', accent: '#F5C874', label: 'low' },
+  1: { bg: 'rgba(217, 169, 76, 0.24)', accent: '#D8A94C', label: 'medium' },
   2: { bg: 'rgba(229, 57, 53, 0.25)', accent: '#E53935', label: 'high' },
 };
 
@@ -117,13 +117,13 @@ export default function TasksPage() {
   const isYouth = platform === 'youth';
 
   // Platform-aware accent helpers
-  const accentText = isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal';
-  const accentBg = isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal';
-  const accentBg20 = isYouth ? 'bg-[var(--youth-cyan)]/20' : isWomen ? 'bg-[var(--women-rose)]/20' : 'bg-mgsr-teal/20';
-  const accentHoverBg30 = isYouth ? 'hover:bg-[var(--youth-cyan)]/30' : isWomen ? 'hover:bg-[var(--women-rose)]/30' : 'hover:bg-mgsr-teal/30';
-  const focusBorder = isYouth ? 'focus:border-[var(--youth-cyan)]/50' : isWomen ? 'focus:border-[var(--women-rose)]/50' : 'focus:border-mgsr-teal';
-  const borderAccent = isYouth ? 'border-[var(--youth-cyan)]' : isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal';
-  const hoverBorderAccent = isYouth ? 'hover:border-[var(--youth-cyan)]' : isWomen ? 'hover:border-[var(--women-rose)]' : 'hover:border-mgsr-teal';
+  const accentText = isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-gold)]';
+  const accentBg = isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-[var(--mgsr-gold)]';
+  const accentBg20 = isYouth ? 'bg-[var(--youth-cyan)]/20' : isWomen ? 'bg-[var(--women-rose)]/20' : 'bg-[var(--mgsr-gold)]/16';
+  const accentHoverBg30 = isYouth ? 'hover:bg-[var(--youth-cyan)]/30' : isWomen ? 'hover:bg-[var(--women-rose)]/30' : 'hover:bg-[var(--mgsr-gold)]/24';
+  const focusBorder = isYouth ? 'focus:border-[var(--youth-cyan)]/50' : isWomen ? 'focus:border-[var(--women-rose)]/50' : 'focus:border-[var(--mgsr-gold)]/55';
+  const borderAccent = isYouth ? 'border-[var(--youth-cyan)]' : isWomen ? 'border-[var(--women-rose)]' : 'border-[var(--mgsr-gold)]';
+  const hoverBorderAccent = isYouth ? 'hover:border-[var(--youth-cyan)]' : isWomen ? 'hover:border-[var(--women-rose)]' : 'hover:border-[var(--mgsr-gold)]';
   const cached = getScreenCache<TasksCache>('tasks');
   const [tasks, setTasks] = useState<AgentTask[]>(cached?.tasks ?? []);
   const [accounts, setAccounts] = useState<Account[]>(cached?.accounts ?? []);
@@ -449,7 +449,7 @@ export default function TasksPage() {
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         {/* Hero stats strip */}
-        <div className={`brit-hero-panel relative overflow-hidden mb-8 ${isYouth ? 'rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.12)]' : isWomen ? 'rounded-2xl shadow-[0_0_40px_rgba(232,160,191,0.12)]' : 'rounded-2xl'}`}>
+        <div className={`brit-hero-panel relative overflow-hidden mb-8 ${isYouth ? 'rounded-2xl shadow-[0_0_40px_rgba(0,212,255,0.12)]' : isWomen ? 'rounded-2xl shadow-[0_0_40px_rgba(232,160,191,0.12)]' : 'rounded-3xl border border-[var(--mgsr-gold)]/15 shadow-[0_24px_70px_rgba(2,4,8,0.42)]'}`}>
           <div
             className="absolute inset-0 opacity-30"
             style={
@@ -457,7 +457,7 @@ export default function TasksPage() {
                 ? { background: 'linear-gradient(135deg, #00D4FF 0%, #1A2736 45%, #A855F7 100%)' }
                 : isWomen
                 ? { background: 'linear-gradient(135deg, #E8A0BF 0%, #1A2736 45%, #C9B1BD 100%)' }
-                : { background: 'linear-gradient(135deg, #4DB6AC 0%, #1A2736 50%, #5C6BC0 100%)' }
+                : { background: 'linear-gradient(135deg, rgba(245,200,116,0.34) 0%, rgba(27,23,18,0.96) 42%, rgba(111,85,48,0.78) 100%)' }
             }
           />
           <div
@@ -467,7 +467,7 @@ export default function TasksPage() {
                 ? { background: 'radial-gradient(ellipse at top right, rgba(0,212,255,0.2) 0%, transparent 50%)' }
                 : isWomen
                 ? { background: 'radial-gradient(ellipse at top right, rgba(232,160,191,0.2) 0%, transparent 50%)' }
-                : { background: 'radial-gradient(ellipse_at_top_right, rgba(77,182,172,0.15) 0%, transparent 50%)' }
+                : { background: 'radial-gradient(ellipse at top right, rgba(245,200,116,0.22) 0%, transparent 52%)' }
             }
           />
           <div
@@ -477,7 +477,7 @@ export default function TasksPage() {
                 ? { background: 'radial-gradient(ellipse at bottom left, rgba(168,85,247,0.12) 0%, transparent 50%)' }
                 : isWomen
                 ? { background: 'radial-gradient(ellipse at bottom left, rgba(212,165,165,0.12) 0%, transparent 50%)' }
-                : { background: 'radial-gradient(ellipse_at_bottom_left, rgba(92,107,192,0.1) 0%, transparent 50%)' }
+                : { background: 'radial-gradient(ellipse at bottom left, rgba(169,124,58,0.18) 0%, transparent 54%)' }
             }
           />
           <div className="relative flex flex-wrap items-center justify-between gap-3 sm:gap-6 p-4 sm:p-6 md:p-8">
@@ -519,7 +519,7 @@ export default function TasksPage() {
 
         {/* Toolbar */}
         <div className="brit-filter-tray rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <div className={`flex overflow-hidden border border-mgsr-border bg-mgsr-card/60 p-0.5 ${isYouth || isWomen ? 'rounded-2xl' : 'rounded-xl'}`}>
+          <div className={`flex overflow-hidden border border-mgsr-border bg-mgsr-card/60 p-0.5 ${isYouth || isWomen ? 'rounded-2xl' : 'rounded-2xl border-[var(--mgsr-gold)]/15'}`}>
             {(['all', 'mine'] as const).map((f) => (
               <button
                 key={f}
@@ -543,7 +543,7 @@ export default function TasksPage() {
                   ? 'rounded-2xl border-[var(--youth-cyan)]/30 bg-[var(--youth-cyan)]/10 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/20'
                   : isWomen
                   ? 'rounded-2xl border-[var(--women-rose)]/30 bg-[var(--women-rose)]/10 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/20'
-                  : 'rounded-xl border-mgsr-teal/30 bg-mgsr-teal/10 text-mgsr-teal hover:bg-mgsr-teal/20'
+                    : 'rounded-2xl border-[var(--mgsr-gold)]/30 bg-[var(--mgsr-gold)]/10 text-[var(--mgsr-gold)] hover:bg-[var(--mgsr-gold)]/18'
               } ${syncing ? 'opacity-60 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
             >
               {syncing ? (
@@ -571,7 +571,7 @@ export default function TasksPage() {
                   ? 'rounded-2xl bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-mgsr-dark shadow-lg shadow-[var(--youth-cyan)]/25 hover:opacity-90 hover:-translate-y-0.5'
                   : isWomen
                   ? 'rounded-2xl bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90 hover:-translate-y-0.5'
-                  : 'rounded-xl bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90 shadow-lg shadow-mgsr-teal/25 hover:shadow-mgsr-teal/40 hover:-translate-y-0.5'
+                    : 'rounded-2xl bg-[var(--mgsr-gold)] text-mgsr-dark hover:bg-[#e8bb67] shadow-lg shadow-[rgba(245,200,116,0.20)] hover:shadow-[rgba(245,200,116,0.32)] hover:-translate-y-0.5'
               }`}
             >
               <span className="text-xl leading-none">+</span>
@@ -589,7 +589,7 @@ export default function TasksPage() {
               ? 'bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)] border border-[var(--youth-cyan)]/20'
               : isWomen
               ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)] border border-[var(--women-rose)]/20'
-              : 'bg-mgsr-teal/15 text-mgsr-teal border border-mgsr-teal/20'
+                : 'bg-[var(--mgsr-gold)]/12 text-[var(--mgsr-gold)] border border-[var(--mgsr-gold)]/20'
           }`}>
             {syncToast.isError ? (
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
@@ -603,14 +603,14 @@ export default function TasksPage() {
         {/* Content: My tasks (personal view) vs All agents (team lanes) */}
         {loadingList ? (
           <div className={`flex items-center gap-3 py-20 text-mgsr-muted`}>
-            <div className={`w-3 h-3 rounded-full animate-pulse ${isYouth ? 'bg-[var(--youth-cyan)]/50' : isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-mgsr-teal/50'}`} />
+            <div className={`w-3 h-3 rounded-full animate-pulse ${isYouth ? 'bg-[var(--youth-cyan)]/50' : isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-[var(--mgsr-gold)]/60'}`} />
             {t('tasks_loading')}
           </div>
         ) : filter === 'mine' ? (
           /* ─── My tasks: personal, informative, grouped by time ─── */
           myTasks.length === 0 ? (
             <div className={`relative overflow-hidden py-24 px-8 text-center ${isYouth ? 'rounded-2xl border border-[var(--youth-cyan)]/20 bg-mgsr-card/30 shadow-[0_0_30px_rgba(0,212,255,0.06)] backdrop-blur-sm' : isWomen ? 'rounded-2xl border border-mgsr-border bg-mgsr-card/30 shadow-[0_0_30px_rgba(232,160,191,0.06)]' : 'rounded-2xl border border-mgsr-border bg-mgsr-card/30'}`}>
-              <div className={`absolute inset-0 ${isYouth ? 'bg-gradient-to-b from-[var(--youth-cyan)]/5 to-transparent' : isWomen ? 'bg-gradient-to-b from-[var(--women-rose)]/5 to-transparent' : 'bg-gradient-to-b from-mgsr-teal/5 to-transparent'}`} />
+              <div className={`absolute inset-0 ${isYouth ? 'bg-gradient-to-b from-[var(--youth-cyan)]/5 to-transparent' : isWomen ? 'bg-gradient-to-b from-[var(--women-rose)]/5 to-transparent' : 'bg-gradient-to-b from-[var(--mgsr-gold)]/8 to-transparent'}`} />
               <p className="relative text-mgsr-muted text-xl">{isWomen ? t('tasks_empty_women') : t('tasks_empty')}</p>
               <p className="relative text-mgsr-muted/80 text-sm mt-2">{isWomen ? t('tasks_empty_hint_women') : t('tasks_empty_hint')}</p>
               <button
@@ -631,7 +631,7 @@ export default function TasksPage() {
                       ? { background: 'linear-gradient(120deg, #00D4FF 0%, transparent 40%, #A855F7 100%)' }
                       : isWomen
                       ? { background: 'linear-gradient(120deg, #E8A0BF 0%, transparent 40%, #C9B1BD 100%)' }
-                      : { background: 'linear-gradient(120deg, #4DB6AC 0%, transparent 40%, #5C6BC0 100%)' }
+                      : { background: 'linear-gradient(120deg, rgba(245,200,116,0.24) 0%, transparent 38%, rgba(169,124,58,0.22) 100%)' }
                   }
                 />
                 <div className="relative p-4 sm:p-6 md:p-8">
@@ -726,7 +726,7 @@ export default function TasksPage() {
                                   ? 'bg-mgsr-card/70 border-mgsr-border hover:border-[var(--youth-cyan)]/30 hover:shadow-[0_0_20px_rgba(0,212,255,0.1)]'
                                   : isWomen
                                     ? 'bg-mgsr-card/70 border-mgsr-border hover:border-[var(--women-rose)]/30 hover:shadow-[0_0_20px_rgba(232,160,191,0.1)]'
-                                    : 'bg-mgsr-card/70 border-mgsr-border hover:border-mgsr-teal/30 hover:shadow-lg'
+                                        : 'bg-mgsr-card/70 border-mgsr-border hover:border-[var(--mgsr-gold)]/35 hover:shadow-[0_18px_30px_rgba(245,200,116,0.08)]'
                             }`}
                           >
                             <div
@@ -748,7 +748,7 @@ export default function TasksPage() {
                               }`}
                             >
                               {togglingTaskId === task.id ? (
-                                <span className="inline-block w-4 h-4 border-2 border-mgsr-muted/30 border-t-mgsr-teal rounded-full animate-spin" />
+                                <span className="inline-block w-4 h-4 border-2 border-mgsr-muted/30 border-t-[var(--mgsr-gold)] rounded-full animate-spin" />
                               ) : task.isCompleted ? (
                                 <span className="text-mgsr-dark text-sm font-bold">✓</span>
                               ) : null}
@@ -818,7 +818,7 @@ export default function TasksPage() {
                             <div className="flex items-center gap-1 shrink-0 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                               <button
                                 onClick={(e) => { e.stopPropagation(); openEditTask(task); }}
-                                className="p-2 rounded-lg text-mgsr-muted hover:text-mgsr-teal hover:bg-mgsr-teal/10 transition"
+                                className="p-2 rounded-lg text-mgsr-muted hover:text-[var(--mgsr-gold)] hover:bg-[var(--mgsr-gold)]/10 transition"
                                 title={t('tasks_edit')}
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -853,7 +853,7 @@ export default function TasksPage() {
           )
         ) : tasksByAgent.length === 0 ? (
           <div className={`relative overflow-hidden py-24 px-8 text-center ${isYouth ? 'rounded-2xl border border-[var(--youth-cyan)]/20 bg-mgsr-card/30 shadow-[0_0_30px_rgba(0,212,255,0.06)] backdrop-blur-sm' : isWomen ? 'rounded-2xl border border-mgsr-border bg-mgsr-card/30 shadow-[0_0_30px_rgba(232,160,191,0.06)]' : 'rounded-2xl border border-mgsr-border bg-mgsr-card/30'}`}>
-            <div className={`absolute inset-0 ${isYouth ? 'bg-gradient-to-b from-[var(--youth-cyan)]/5 to-transparent' : isWomen ? 'bg-gradient-to-b from-[var(--women-rose)]/5 to-transparent' : 'bg-gradient-to-b from-mgsr-teal/5 to-transparent'}`} />
+            <div className={`absolute inset-0 ${isYouth ? 'bg-gradient-to-b from-[var(--youth-cyan)]/5 to-transparent' : isWomen ? 'bg-gradient-to-b from-[var(--women-rose)]/5 to-transparent' : 'bg-gradient-to-b from-[var(--mgsr-gold)]/8 to-transparent'}`} />
             <p className="relative text-mgsr-muted text-xl">{isWomen ? t('tasks_empty_women') : t('tasks_empty')}</p>
             <p className="relative text-mgsr-muted/80 text-sm mt-2">{isWomen ? t('tasks_empty_hint_women') : t('tasks_empty_hint')}</p>
             <button
@@ -941,7 +941,7 @@ export default function TasksPage() {
                                   ? 'bg-mgsr-card/80 border-mgsr-border hover:border-[var(--youth-cyan)]/30'
                                   : isWomen
                                     ? 'bg-mgsr-card/80 border-mgsr-border hover:border-[var(--women-rose)]/30'
-                                    : 'bg-mgsr-card/80 border-mgsr-border hover:border-mgsr-teal/30'
+                                        : 'bg-mgsr-card/80 border-mgsr-border hover:border-[var(--mgsr-gold)]/35'
                             }`}
                           >
                             <div
@@ -963,7 +963,7 @@ export default function TasksPage() {
                               }`}
                             >
                               {togglingTaskId === task.id ? (
-                                <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-muted/30 border-t-mgsr-teal rounded-full animate-spin" />
+                                <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-muted/30 border-t-[var(--mgsr-gold)] rounded-full animate-spin" />
                               ) : task.isCompleted ? (
                                 <span className="text-mgsr-dark text-xs font-bold">✓</span>
                               ) : null}
@@ -1032,7 +1032,7 @@ export default function TasksPage() {
                             <div className="flex items-center gap-1 shrink-0 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                               <button
                                 onClick={(e) => { e.stopPropagation(); openEditTask(task); }}
-                                className={`p-1.5 rounded-lg text-mgsr-muted transition ${isYouth ? 'hover:text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/10' : isWomen ? 'hover:text-[var(--women-rose)] hover:bg-[var(--women-rose)]/10' : 'hover:text-mgsr-teal hover:bg-mgsr-teal/10'}`}
+                                className={`p-1.5 rounded-lg text-mgsr-muted transition ${isYouth ? 'hover:text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/10' : isWomen ? 'hover:text-[var(--women-rose)] hover:bg-[var(--women-rose)]/10' : 'hover:text-[var(--mgsr-gold)] hover:bg-[var(--mgsr-gold)]/10'}`}
                                 title={t('tasks_edit')}
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1176,7 +1176,7 @@ export default function TasksPage() {
                 <button
                   onClick={createTask}
                   disabled={addSaving || !addTitle.trim()}
-                  className={`flex-1 py-3 rounded-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${isYouth ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.25)] hover:opacity-95' : isWomen ? 'bg-[var(--women-gradient)] text-white shadow-[0_0_20px_rgba(232,160,191,0.25)] hover:opacity-95' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
+                  className={`flex-1 py-3 rounded-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${isYouth ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.25)] hover:opacity-95' : isWomen ? 'bg-[var(--women-gradient)] text-white shadow-[0_0_20px_rgba(232,160,191,0.25)] hover:opacity-95' : 'bg-[var(--mgsr-gold)] text-mgsr-dark hover:bg-[#e8bb67] shadow-[0_0_20px_rgba(245,200,116,0.18)]'}`}
                 >
                   {addSaving ? '...' : t('tasks_create')}
                 </button>
@@ -1295,7 +1295,7 @@ export default function TasksPage() {
                 <button
                   onClick={updateTask}
                   disabled={editSaving || !editTitle.trim()}
-                  className={`flex-1 py-3 rounded-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${isYouth ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.25)] hover:opacity-95' : isWomen ? 'bg-[var(--women-gradient)] text-white shadow-[0_0_20px_rgba(232,160,191,0.25)] hover:opacity-95' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
+                  className={`flex-1 py-3 rounded-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${isYouth ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.25)] hover:opacity-95' : isWomen ? 'bg-[var(--women-gradient)] text-white shadow-[0_0_20px_rgba(232,160,191,0.25)] hover:opacity-95' : 'bg-[var(--mgsr-gold)] text-mgsr-dark hover:bg-[#e8bb67] shadow-[0_0_20px_rgba(245,200,116,0.18)]'}`}
                 >
                   {editSaving ? '...' : t('tasks_save')}
                 </button>
