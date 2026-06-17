@@ -161,9 +161,8 @@ function NavContent({
           <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(200,169,104,0.25),transparent_70%)] blur-md" />
           <img src={logo} alt="BRIT Sport Group" className="relative w-12 h-12 shrink-0" />
         </div>
-        <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.28em] text-mgsr-muted">{t('app_shell_brand_eyebrow')}</div>
-          <span className={`block truncate text-lg font-bold font-display ${accentClass}`}>{brandName}</span>
+        <div className="min-w-0 flex h-12 items-center">
+          <span className={`block truncate text-[1.35rem] font-extrabold font-display tracking-[-0.03em] ${accentClass}`} style={platform === 'men' ? { color: '#f5c874', textShadow: '0 0 18px rgba(245, 200, 116, 0.18)' } : undefined}>{brandName}</span>
         </div>
       </Link>
       <nav className="flex-1 px-4 pb-4 pt-5 space-y-5 overflow-y-auto">
@@ -354,13 +353,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="border-b border-white/6 px-6 py-5 xl:px-8 xl:py-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <div className="text-[11px] uppercase tracking-[0.28em] text-mgsr-muted">{t(route.eyebrowKey)}</div>
-                  <h1 className="mt-2 font-display text-2xl xl:text-3xl font-semibold tracking-[-0.03em] text-mgsr-text">
+                  <h1 className="font-display text-2xl xl:text-3xl font-semibold tracking-[-0.03em] text-mgsr-text">
                     {t(route.labelKey)}
                   </h1>
-                  <p className="mt-2 max-w-2xl text-sm text-mgsr-muted">
-                    {t('app_shell_description')}
-                  </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="rounded-full border border-[var(--mgsr-gold)]/20 bg-[var(--mgsr-gold-dim)] px-3 py-2 text-xs font-medium text-[var(--mgsr-gold)]">
