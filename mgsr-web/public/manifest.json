@@ -3,11 +3,11 @@
   "short_name": "BRIT",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#0d1117",
-  "theme_color": "#4DB6AC",
+  "background_color": "#050608",
+  "theme_color": "#050608",
   "icons": [
     {
-      "src": "/logo.svg",
+      "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }

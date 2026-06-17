@@ -46,6 +46,11 @@ const sora = Sora({
 export const metadata: Metadata = {
   title: 'BRIT Sport Group',
   description: 'Football Agent CRM',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
