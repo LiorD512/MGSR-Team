@@ -688,13 +688,6 @@ export default function WarRoomPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-cyan-500/25 bg-gradient-to-r from-cyan-500/10 via-[#111a2a]/90 to-[#101826]/85 px-3 py-3">
-                  <p className="text-sm text-mgsr-text leading-relaxed">
-                    {isHe
-                      ? 'מודל V3: Signal Rail משמאל, סביבת עבודה מבצעית מימין, וכל פעולת מפתח גלויה במבט ראשון.'
-                      : 'V3 model: Signal Rail on the left, operational workspace on the right, and every key action visible at first scan.'}
-                  </p>
-                </div>
               </div>
 
               <div className="p-4 sm:p-5 space-y-2.5">
@@ -715,9 +708,6 @@ export default function WarRoomPage() {
                     <p className="text-[10px] uppercase tracking-wider text-mgsr-muted font-semibold">{isHe ? 'ברשימת מעקב' : 'Shortlist'}</p>
                     <p className="text-xl font-display font-bold text-amber-300">{shortlistUrls.size}</p>
                   </div>
-                </div>
-                <div className="rounded-xl border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-[11px] uppercase tracking-wider text-amber-200/95 font-semibold">
-                  {isHe ? 'אין פעולות נסתרות. מעבר לשלב הבא מתוך ה-Signal Rail.' : 'No hidden controls. Move to the next decision step via the Signal Rail.'}
                 </div>
               </div>
             </div>
@@ -753,27 +743,6 @@ export default function WarRoomPage() {
                 ))}
               </div>
 
-              <div className="space-y-1.5">
-                <div className="rounded-xl border border-rose-400/35 bg-rose-500/10 px-3 py-2">
-                  <p className="text-xs font-semibold text-rose-200">{isHe ? 'חלון חוזים דחוף' : 'Urgent contract window'}</p>
-                  <p className="text-xs text-rose-100/80">{isHe ? '3 שחקנים עם התאמה גבוהה לפני תפוגת סעיף.' : '3 high-fit players nearing clause expiry.'}</p>
-                </div>
-                <div className="rounded-xl border border-lime-400/35 bg-lime-500/10 px-3 py-2">
-                  <p className="text-xs font-semibold text-lime-200">{isHe ? 'הרצת סוכנים טרייה' : 'Fresh scout run'}</p>
-                  <p className="text-xs text-lime-100/80">
-                    {scoutLastRunAt
-                      ? `${isHe ? 'עודכן' : 'Updated'} ${formatTimeAgo(scoutLastRunAt)}`
-                      : isHe ? 'ממתין להרצה הבאה' : 'Waiting for next run'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-dashed border-white/20 p-3 space-y-2">
-                <p className="text-[10px] uppercase tracking-[0.08em] text-mgsr-muted font-semibold">{isHe ? 'Decision Ladder' : 'Decision Ladder'}</p>
-                <p className="text-xs text-mgsr-text">1. {isHe ? 'סריקת אותות לפי מדינה/עמדה' : 'Scan country and role signals'}</p>
-                <p className="text-xs text-mgsr-text">2. {isHe ? 'פתיחת דוח טקטי ושוק' : 'Expand tactical and market report'}</p>
-                <p className="text-xs text-mgsr-text">3. {isHe ? 'שיוך לרשימת מעקב עם תיעדוף' : 'Shortlist with decision priority'}</p>
-              </div>
             </aside>
 
             <div className="rounded-[20px] border border-white/10 bg-gradient-to-b from-[#111a2b]/96 to-[#0b1422]/96 shadow-[0_20px_50px_rgba(0,0,0,0.4)] overflow-hidden min-h-[760px]">

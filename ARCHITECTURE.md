@@ -916,6 +916,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 - `mgsr-web/src/app/war-room/page.tsx` AI Search command header copy was corrected to describe search behavior (query + tactical/stat/market analysis) instead of showing unrelated "no profiles yet" text.
 - `mgsr-web/src/app/globals.css` War Room shared utilities (`war-shimmer`, `war-card-glow`, `war-gradient-text`, `war-orbital`) were updated to match the new cyan/amber command palette.
 - `mgsr-web/src/app/war-room/page.tsx` now ports the V3 IA structure into production: top command masthead with operational KPIs, left `Signal Rail` decision navigation (Discovery / Scout Agents / AI Search / Find Next), and right `Stage` workspace with active-section header while preserving the existing tab data logic and call chains.
+- `mgsr-web/src/app/war-room/page.tsx` removed non-essential informational boxes from the V3 shell per UX refinement: masthead narrative banner, masthead amber command strip, and all alert/decision-ladder cards beneath the Signal Rail tab stack.
 
 ### AI Scout
 | Aspect | Android | Web |
