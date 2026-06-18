@@ -38,6 +38,18 @@ const db = getFirestore(app);
 
 const CHUNK_SIZE = 2000;
 
+async function hasExistingChunkedCache(key: string): Promise<boolean> {
+  try {
+    const snap = await db.collection('ScrapingCache').doc(`${key}-chunk-0`).get();
+    if (!snap.exists) return false;
+    const data = snap.data();
+    const payload = data?.payload;
+    return Array.isArray(payload) && payload.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 async function writeChunked(key: string, items: unknown[]): Promise<{ written: number; chunks: number; errors: string[] }> {
   const totalChunks = Math.ceil(items.length / CHUNK_SIZE);
   const now = Date.now();
@@ -160,7 +172,13 @@ async function main() {
   const totalPlayers = (cfResult?.total ?? 0) + (retResult?.total ?? 0);
 
   if (totalPlayers === 0) {
-    console.log('❌ FAILED — no players scraped at all');
+    const returneesStaleExists = await hasExistingChunkedCache('returnees-stream-all');
+    const finishersStaleExists = await hasExistingChunkedCache('contract-finishers');
+    if (returneesStaleExists || finishersStaleExists) {
+      console.log('⚠️  NO FRESH DATA — keeping existing cache (stale fallback available)');
+      process.exit(0);
+    }
+    console.log('❌ FAILED — no players scraped and no existing cache available');
     process.exit(1);
   } else if (hasErrors) {
     console.log('⚠️  COMPLETED WITH ERRORS');

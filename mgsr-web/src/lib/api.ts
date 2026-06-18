@@ -358,10 +358,16 @@ export function streamReturnees(
   // Always use relative path — the stream route lives in the Next.js app, not the external backend
   const url = '/api/transfermarkt/returnees/stream';
   const es = new EventSource(url);
+  let lastEvent: ReturneeStreamEvent | null = null;
+  let hasProgress = false;
 
   es.onmessage = (e) => {
     try {
       const data = JSON.parse(e.data) as ReturneeStreamEvent;
+      lastEvent = data;
+      if ((data.players?.length ?? 0) > 0 || (data.loadedLeagues ?? 0) > 0 || data.isLoading === false) {
+        hasProgress = true;
+      }
       onBatch(data);
       if (data.isLoading === false) es.close();
     } catch (err) {
@@ -372,6 +378,10 @@ export function streamReturnees(
 
   es.onerror = () => {
     es.close();
+    if (hasProgress && lastEvent) {
+      onBatch({ ...lastEvent, isLoading: false });
+      return;
+    }
     onError?.(new Error('Stream connection failed'));
   };
 

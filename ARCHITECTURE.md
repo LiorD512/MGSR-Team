@@ -884,12 +884,23 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Data | Transfermarkt scraping | API route `/api/transfermarkt/returnees` (cached by GitHub Actions weekly) |
 | Filters | Position, market value | Same |
 
+#### Returnees Reliability Notes
+- `mgsr-web/src/app/api/transfermarkt/returnees/stream/route.ts` now falls back to stale Firestore chunk cache (`X-Cache: STALE`) when fresh cache is unavailable/expired, preventing empty-screen failures when the weekly returnees cache workflow misses a run.
+- On live stream scrape errors, the route now returns partial collected players (when available) as a final `isLoading: false` SSE frame instead of always returning an error-only empty payload.
+- `mgsr-web/src/lib/api.ts` returnees `EventSource` handler now treats transient post-progress stream closes as graceful completion (uses last received event) instead of raising `Stream connection failed` after data/progress already arrived.
+- `mgsr-web/_populate_cache.ts` now keeps workflow success when a run scrapes zero fresh players but an existing chunked cache already exists, so scheduled TM volatility does not remove usable cached returnees/finishers data.
+
 ### War Room (AI Discovery)
 | Aspect | Android | Web |
 |--------|---------|-----|
 | Screen | `WarRoomScreen` + `WarRoomReportScreen` | `/war-room/page.tsx` |
 | Data | Vercel API → Render server (recruitment + scout reports) | Direct API route calls |
 | Features | AI-discovered candidates, scout agent profiles, per-position discovery | Same |
+
+#### War Room Design Mock (Docs)
+- `docs/war-room-aggressive-redesign-mock.html` is an HTML redesign mock that now mirrors the existing War Room IA and flows (Discovery, Scout Agents, AI Search with expandable report, Find Next).
+- Scope of this mock is visual redesign only; no new War Room feature modules or data flows were introduced.
+- Visual language of the mock is aligned to current web theme tokens (BRIT black/gold + mgsr teal surfaces) instead of introducing an unrelated palette.
 
 ### AI Scout
 | Aspect | Android | Web |

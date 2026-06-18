@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleReturneesStream } from '@/lib/transfermarkt';
-import { getCachedChunked, setCacheChunked } from '@/lib/scrapingCache';
+import { getCachedChunked, getCachedChunkedWithOptions, setCacheChunked } from '@/lib/scrapingCache';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const maxDuration = 300;
 
 const CACHE_KEY = 'returnees-stream-all';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -21,6 +22,19 @@ export async function GET(request: NextRequest) {
       );
       return new NextResponse(body, {
         headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Cache': 'HIT' },
+      });
+    }
+
+    // If fresh cache is missing/expired, serve last known cache to avoid blank screens.
+    const staleCached = await getCachedChunkedWithOptions<Record<string, unknown>>(CACHE_KEY, CACHE_TTL, {
+      ignoreTtl: true,
+    });
+    if (staleCached) {
+      const body = encoder.encode(
+        `data: ${JSON.stringify({ players: staleCached, loadedLeagues: 27, totalLeagues: 27, isLoading: false })}\n\n`
+      );
+      return new NextResponse(body, {
+        headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Cache': 'STALE' },
       });
     }
   }
@@ -43,15 +57,15 @@ export async function GET(request: NextRequest) {
           if (event.players?.length) { allPlayers.length = 0; allPlayers.push(...event.players); }
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
         }
-        if (allPlayers.length) await setCacheChunked(CACHE_KEY, allPlayers);
+        if (allPlayers.length) await setCacheChunked(CACHE_KEY, allPlayers).catch(() => {});
         controller.close();
       } catch (err) {
+        if (allPlayers.length) await setCacheChunked(CACHE_KEY, allPlayers).catch(() => {});
         console.error('Returnees stream error:', err);
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ players: [], loadedLeagues: 0, totalLeagues: 27, isLoading: false, error: err instanceof Error ? err.message : 'Failed' })}\n\n`
-          )
-        );
+        const payload = allPlayers.length
+          ? { players: allPlayers, loadedLeagues: 27, totalLeagues: 27, isLoading: false }
+          : { players: [], loadedLeagues: 0, totalLeagues: 27, isLoading: false, error: err instanceof Error ? err.message : 'Failed' };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
         controller.close();
       } finally {
         clearInterval(heartbeat);
