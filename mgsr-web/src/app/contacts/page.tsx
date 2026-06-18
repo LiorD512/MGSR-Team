@@ -184,7 +184,7 @@ export default function ContactsPage() {
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className={`animate-pulse font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
+        <div className={`animate-pulse font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{t('loading')}</div>
       </div>
     );
   }
@@ -211,7 +211,7 @@ export default function ContactsPage() {
                   ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.2)] hover:opacity-90'
                   : isWomen
                     ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
-                    : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
+                    : 'bg-[var(--mgsr-accent)] text-mgsr-dark hover:bg-[var(--mgsr-accent)]/90 shadow-[0_16px_40px_rgba(200,169,104,0.18)]'
               }`}
             >
               {t('contacts_add')}
@@ -232,8 +232,8 @@ export default function ContactsPage() {
                       ? 'bg-[var(--youth-cyan)] text-mgsr-dark'
                       : isWomen
                         ? 'bg-[var(--women-rose)] text-mgsr-dark'
-                        : 'bg-mgsr-teal text-mgsr-dark'
-                    : `bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text ${isYouth ? 'hover:border-[var(--youth-cyan)]/30' : isWomen ? 'hover:border-[var(--women-rose)]/30' : 'hover:border-mgsr-teal/30'}`
+                        : 'bg-[var(--mgsr-accent)] text-mgsr-dark'
+                    : `bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text ${isYouth ? 'hover:border-[var(--youth-cyan)]/30' : isWomen ? 'hover:border-[var(--women-rose)]/30' : 'hover:border-[var(--mgsr-accent)]/30'}`
                 }`}
               >
                 {f === 'all' ? t('contacts_all') : f === 'club' ? t('contacts_clubs') : t('contacts_agencies')}
@@ -245,20 +245,20 @@ export default function ContactsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('search_placeholder')}
-            className={`flex-1 max-w-md px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${isYouth ? 'focus:border-[var(--youth-cyan)]/50' : isWomen ? 'focus:border-[var(--women-rose)]/50' : 'focus:border-mgsr-teal/60'}`}
+            className={`flex-1 max-w-md px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${isYouth ? 'focus:border-[var(--youth-cyan)]/50' : isWomen ? 'focus:border-[var(--women-rose)]/50' : 'focus:border-[var(--mgsr-accent)]/60'}`}
           />
         </div>
 
         {loadingList ? (
           <div className="flex items-center justify-center py-20">
             <div className={`flex items-center gap-3 ${isYouth ? 'text-[var(--youth-cyan)]/70' : isWomen ? 'text-[var(--women-rose)]/70' : 'text-mgsr-muted'}`}>
-              <div className={`w-3 h-3 rounded-full animate-pulse ${isYouth ? 'bg-[var(--youth-cyan)]/50' : isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-mgsr-teal/50'}`} />
+              <div className={`w-3 h-3 rounded-full animate-pulse ${isYouth ? 'bg-[var(--youth-cyan)]/50' : isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-[var(--mgsr-accent)]/50'}`} />
               {isWomen ? t('contacts_loading_women') : t('contacts_loading')}
             </div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className={`relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
-            <div className={`absolute inset-0 ${isYouth ? 'bg-[radial-gradient(ellipse_at_center,rgba(0,212,255,0.08)_0%,transparent_70%)]' : isWomen ? 'bg-[radial-gradient(ellipse_at_center,rgba(232,160,191,0.08)_0%,transparent_70%)]' : 'bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]'}`} />
+          <div className={`relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : 'shadow-[0_0_30px_rgba(200,169,104,0.08)]'}`}>
+            <div className={`absolute inset-0 ${isYouth ? 'bg-[radial-gradient(ellipse_at_center,rgba(0,212,255,0.08)_0%,transparent_70%)]' : isWomen ? 'bg-[radial-gradient(ellipse_at_center,rgba(232,160,191,0.08)_0%,transparent_70%)]' : 'bg-[radial-gradient(ellipse_at_center,rgba(200,169,104,0.10)_0%,transparent_70%)]'}`} />
             <p className="text-mgsr-muted text-lg relative">{isWomen ? t('contacts_empty_women') : t('contacts_empty')}</p>
             <button
               type="button"
@@ -268,7 +268,7 @@ export default function ContactsPage() {
                   ? 'bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/30'
                   : isWomen
                     ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/30'
-                    : 'bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30'
+                    : 'bg-[var(--mgsr-accent)]/20 text-[var(--mgsr-accent)] hover:bg-[var(--mgsr-accent)]/30'
               }`}
             >
               {t('contacts_add')}
@@ -294,7 +294,7 @@ export default function ContactsPage() {
                   {group.contacts.map((c, i) => (
                     <div
                       key={c.id}
-                      className={`group flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-mgsr-card border border-mgsr-border rounded-xl transition-all duration-300 animate-fade-in ${isYouth ? 'hover:border-[var(--youth-cyan)]/30' : isWomen ? 'hover:border-[var(--women-rose)]/30' : 'hover:border-mgsr-teal/30'}`}
+                      className={`group flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-mgsr-card border border-mgsr-border rounded-2xl transition-all duration-300 animate-fade-in ${isYouth ? 'hover:border-[var(--youth-cyan)]/30' : isWomen ? 'hover:border-[var(--women-rose)]/30' : 'hover:border-[var(--mgsr-accent)]/30 hover:shadow-[0_18px_45px_rgba(200,169,104,0.10)]'}`}
                       style={{ animationDelay: `${i * 30}ms` }}
                     >
                       <div className="shrink-0">
@@ -305,8 +305,8 @@ export default function ContactsPage() {
                             className="w-11 h-11 sm:w-14 sm:h-14 rounded-full object-cover bg-mgsr-dark ring-2 ring-mgsr-border"
                           />
                         ) : (
-                          <div className={`w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ${isYouth ? 'bg-[var(--youth-cyan)]/20' : isWomen ? 'bg-[var(--women-rose)]/20' : 'bg-mgsr-teal/20'}`}>
-                            <span className={`text-xl font-display font-bold ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                          <div className={`w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ${isYouth ? 'bg-[var(--youth-cyan)]/20' : isWomen ? 'bg-[var(--women-rose)]/20' : 'bg-[var(--mgsr-accent)]/20'}`}>
+                            <span className={`text-xl font-display font-bold ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>
                               {(c.name || c.clubName || '?')[0]}
                             </span>
                           </div>
@@ -318,12 +318,16 @@ export default function ContactsPage() {
                           <span
                             className={`text-xs px-2 py-0.5 rounded-md shrink-0 ${
                               c.contactType === 'AGENCY'
-                                ? 'bg-blue-500/20 text-blue-400'
+                                ? isYouth
+                                  ? 'bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)]'
+                                  : isWomen
+                                    ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)]'
+                                    : 'bg-[var(--mgsr-accent)]/20 text-[var(--mgsr-accent)]'
                                 : isYouth
                                   ? 'bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)]'
                                   : isWomen
                                     ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)]'
-                                    : 'bg-mgsr-teal/20 text-mgsr-teal'
+                                    : 'bg-[var(--mgsr-accent)]/20 text-[var(--mgsr-accent)]'
                             }`}
                           >
                             {getContactRoleOrType(c)}
@@ -337,7 +341,7 @@ export default function ContactsPage() {
                             href={toWhatsAppUrl(c.phoneNumber) ?? `tel:${c.phoneNumber}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`inline-flex items-center mt-2 py-1.5 text-sm hover:underline ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
+                            className={`inline-flex items-center mt-2 py-1.5 text-sm hover:underline ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}
                             dir="ltr"
                           >
                             {c.phoneNumber}
@@ -352,7 +356,7 @@ export default function ContactsPage() {
                                 ? 'text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/20'
                                 : isWomen
                                   ? 'text-[var(--women-rose)] hover:bg-[var(--women-rose)]/20'
-                                  : 'text-mgsr-teal hover:bg-mgsr-teal/20'
+                                  : 'text-[var(--mgsr-accent)] hover:bg-[var(--mgsr-accent)]/20'
                             }`}
                           >
                             {t('contacts_edit')}

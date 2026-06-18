@@ -681,10 +681,6 @@ export default function RequestsPage() {
           {/* Header */}
           <div className="relative z-[1] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-5">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.24em] text-mgsr-muted mb-3">
-                <span className={`inline-block w-2 h-2 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-[var(--mgsr-gold)]'}`} />
-                {t('requests_hero_eyebrow')}
-              </div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-mgsr-text tracking-tight">
                 {isYouth ? t('requests_title_youth') : isWomen ? t('requests_title_women') : t('requests_title')}
               </h1>

@@ -751,10 +751,6 @@ export default function PlayersPage() {
           {/* Header */}
           <div className="relative z-[1] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.24em] text-mgsr-muted mb-3">
-                <span className={`inline-block w-2 h-2 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-[var(--mgsr-gold)]'}`} />
-                {t('players_hero_eyebrow')}
-              </div>
               <h1
                 className={`font-display font-bold text-mgsr-text tracking-tight ${
                   isYouth ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold' : isWomen ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold' : 'text-2xl sm:text-3xl md:text-4xl'
@@ -1159,18 +1155,18 @@ export default function PlayersPage() {
           <div className="mb-6">
             <button
               onClick={() => setMandateExpanded((v) => !v)}
-              className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/25 hover:border-blue-500/40 transition"
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-[var(--mgsr-gold-dim)] border border-[var(--mgsr-gold)]/25 hover:border-[var(--mgsr-gold)]/45 transition"
             >
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--mgsr-gold)]/20 text-[var(--mgsr-gold)] text-xs font-bold">
                   {playersWithMandate.length}
                 </span>
-                <span className="text-blue-400 font-semibold text-sm">
+                <span className="text-[var(--mgsr-gold)] font-semibold text-sm">
                   {t('players_with_mandate_title')}
                 </span>
               </div>
               <svg
-                className={`w-4 h-4 text-blue-400 transition-transform ${mandateExpanded ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 text-[var(--mgsr-gold)] transition-transform ${mandateExpanded ? 'rotate-180' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1180,28 +1176,28 @@ export default function PlayersPage() {
               </svg>
             </button>
             {mandateExpanded && (
-              <div className="mt-2 rounded-xl bg-mgsr-card border border-mgsr-border divide-y divide-mgsr-border overflow-hidden">
+              <div className="mt-2 rounded-xl bg-gradient-to-b from-mgsr-card to-mgsr-dark border border-[var(--mgsr-gold)]/18 divide-y divide-[var(--mgsr-gold)]/12 overflow-hidden">
                 {playersWithMandate.map((pwm) => (
                   <Link
                     key={pwm.player.id}
                     href={`/players/${pwm.player.id}?from=/players`}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-mgsr-dark/40 transition"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--mgsr-gold-dim)]/40 transition"
                   >
                     <img
                       src={pwm.player.profileImage || '/placeholder-player.png'}
                       alt=""
-                      className="w-9 h-9 rounded-full object-cover bg-mgsr-dark ring-1 ring-mgsr-border"
+                      className="w-9 h-9 rounded-full object-cover bg-mgsr-dark ring-1 ring-[var(--mgsr-gold)]/25"
                       onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/36?text=?'; }}
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-mgsr-text truncate">{pwm.player.fullName || 'Unknown'}</p>
                       <p className="text-xs text-mgsr-muted truncate">{pwm.player.currentClub?.clubName || '—'}</p>
                       {pwm.validLeagues.length > 0 && (
-                        <p className="text-xs text-blue-400 truncate">{pwm.validLeagues.join(', ')}</p>
+                        <p className="text-xs text-[var(--mgsr-gold)] truncate">{pwm.validLeagues.join(', ')}</p>
                       )}
                     </div>
                     {pwm.expiryAt && (
-                      <span className="shrink-0 px-2 py-1 rounded-lg bg-blue-500/12 text-blue-400 text-[11px] font-semibold">
+                      <span className="shrink-0 px-2 py-1 rounded-lg bg-[var(--mgsr-gold)]/12 text-[var(--mgsr-gold)] text-[11px] font-semibold border border-[var(--mgsr-gold)]/20">
                         {t('players_mandate_expires_label')} {new Date(pwm.expiryAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                       </span>
                     )}

@@ -110,7 +110,7 @@ const TASKS_COLLECTIONS = { men: 'AgentTasks', women: 'AgentTasksWomen', youth: 
 export default function TasksPage() {
   const { user, loading } = useAuth();
   const { platform } = usePlatform();
-  const { lang, setLang, t, isRtl } = useLanguage();
+  const { t, isRtl } = useLanguage();
   const router = useRouter();
   const taskCollection = TASKS_COLLECTIONS[platform];
   const isWomen = platform === 'women';
@@ -485,12 +485,6 @@ export default function TasksPage() {
               <h1 className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-bold text-mgsr-text font-display tracking-tight">
                 {isYouth ? t('tasks_title') : isWomen ? t('tasks_title_women') : t('tasks_title')}
               </h1>
-              <button
-                onClick={() => setLang(lang === 'en' ? 'he' : 'en')}
-                className="hidden lg:block px-3 py-1.5 rounded-lg border border-white/20 bg-white/5 text-mgsr-text/90 hover:bg-white/10 transition text-sm font-medium"
-              >
-                {lang === 'en' ? 'עברית' : 'English'}
-              </button>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-6">
               <div className="flex items-center gap-2">
