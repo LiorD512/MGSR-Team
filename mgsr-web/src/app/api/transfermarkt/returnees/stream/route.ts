@@ -28,6 +28,16 @@ export async function GET(request: NextRequest) {
   const allPlayers: Record<string, unknown>[] = [];
   const stream = new ReadableStream({
     async start(controller) {
+      // Keep the SSE connection alive while long scraping batches run.
+      // Without heartbeats, some proxies terminate the stream before the next data event.
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(': keepalive\n\n'));
+        } catch {
+          // Ignore enqueue errors when stream is already closing.
+        }
+      }, 5000);
+
       try {
         for await (const event of handleReturneesStream()) {
           if (event.players?.length) { allPlayers.length = 0; allPlayers.push(...event.players); }
@@ -43,6 +53,8 @@ export async function GET(request: NextRequest) {
           )
         );
         controller.close();
+      } finally {
+        clearInterval(heartbeat);
       }
     },
   });
