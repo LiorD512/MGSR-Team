@@ -1,7 +1,7 @@
 # MGSR Team — Complete Architecture Reference
 
 > **Every agent MUST read this file before writing a single line of code.**
-> Last updated: 2026-04-11
+> Last updated: 2026-06-17
 
 ---
 
@@ -264,8 +264,11 @@ Separate Gradle module for HTML scraping via JSoup:
 - The authenticated web app now uses a BRIT premium shell across desktop and mobile (`AppLayout`, `MobileHeader`, `MobileBottomTabBar`) with black/gold-glass surfaces; route hero/filter sections for dashboard, players, requests, tasks, shortlist, contacts, releases, contract-finisher, returnees, release-notifications, shadow-teams, and portfolio are aligned to that shared visual language.
 - Tunnel (`/chat-room`) remains implemented, but is currently hidden from desktop and mobile navigation menus (commented nav entries) per management-web configuration request.
 - Desktop app-shell brand block now removes the eyebrow microcopy near the sidebar logo and renders a single gold BRIT Sport Group wordmark vertically centered with the logo, while preserving the original wordmark size.
+- Dashboard hero no longer renders the "Agency Pulse / דופק הסוכנות" eyebrow badge; only greeting, user name, and date remain in the hero header.
+- Desktop and mobile web app chrome removed the BRIT logo mark from shell/header entry points and flattened the branded framing treatment to a cleaner text-first desk label.
 - Desktop app-shell desktop page chrome no longer renders the shared framed header card, status pills, or shared page-title headline; pages now begin directly with their own content.
 - Web Tasks page (men platform) now uses the BRIT gold/black treatment instead of the older teal/blue palette across the hero, toolbar actions, task cards, empty states, and create/edit task flows.
+- Web Shortlist page (men platform) now uses BRIT gold accent tokens end-to-end (hero CTAs, filter tray, chips, cards, loading states, badges, action pills, and empty states), replacing the legacy teal/purple split.
 - BRIT redesign copy in shell/hero surfaces is now routed through `LanguageProvider` translation keys (EN/HE) instead of hardcoded English text, including route meta labels, navigation section headers, workspace badges, and redesigned hero/filter labels across the upgraded feature pages.
 - Web theme tokens were upgraded in `mgsr-web/src/app/globals.css` + `mgsr-web/tailwind.config.ts` to a richer cinematic palette (deep navy, luminous teal, premium gold) with shared aurora and sheen effects so all screens inherit the updated wow-style surfaces consistently.
 - Temporary feature visibility toggle (commented, not deleted): `Shadow Teams`, `Portfolio`, dashboard `Open Transfer Windows`, and dashboard `Ligat Ha'al analytics` are hidden from primary navigation/dashboard UI via commented entries/sections in app shell and dashboard files.

@@ -115,7 +115,6 @@ function NavContent({
   chatUnreadCount: number;
 }) {
   const brandName = platform === 'youth' ? 'BRIT Sport Group Youth' : platform === 'women' ? 'BRIT Sport Group Women' : 'BRIT Sport Group';
-  const logo = '/brit_circle_black_gold.svg';
   const accentClass = platform === 'youth' ? 'text-[var(--youth-cyan)]' : platform === 'women' ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-gold)]';
   const activeClass = platform === 'youth' ? 'bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)] border-[var(--youth-cyan)]/30' : platform === 'women' ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)] border-[var(--women-rose)]/30' : 'bg-[var(--mgsr-gold-dim)] text-[var(--mgsr-gold)] border-[var(--mgsr-gold)]/30';
   const platformLabel =
@@ -129,13 +128,9 @@ function NavContent({
       <Link
         href="/dashboard"
         onClick={onNavClick}
-        className={`mx-4 mt-4 rounded-[22px] border border-white/8 bg-[linear-gradient(145deg,rgba(18,25,35,0.95),rgba(10,14,21,0.92))] p-4 flex items-center gap-3 ${platform === 'women' ? 'justify-end' : ''}`}
+        className={`mx-4 mt-4 px-2 py-2 flex items-center ${platform === 'women' ? 'justify-end' : ''}`}
       >
-        <div className="relative shrink-0">
-          <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(200,169,104,0.25),transparent_70%)] blur-md" />
-          <img src={logo} alt="BRIT Sport Group" className="relative w-12 h-12 shrink-0" />
-        </div>
-        <div className="min-w-0 flex h-12 items-center">
+        <div className="min-w-0 flex h-10 items-center">
           <span className={`block truncate text-lg font-bold font-display ${accentClass}`} style={platform === 'men' ? { color: '#f5c874', textShadow: '0 0 18px rgba(245, 200, 116, 0.18)' } : undefined}>{brandName}</span>
         </div>
       </Link>

@@ -818,7 +818,7 @@ export default function ShortlistPage() {
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className={`animate-pulse font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
+        <div className={`animate-pulse font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{t('loading')}</div>
       </div>
     );
   }
@@ -848,13 +848,13 @@ export default function ShortlistPage() {
               <>
                 <Link
                   href="/releases"
-                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text font-medium hover:border-mgsr-teal/50 hover:text-mgsr-teal transition"
+                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text font-medium hover:border-[var(--mgsr-accent)]/50 hover:text-[var(--mgsr-accent)] transition"
                 >
                   {t('shortlist_browse_releases')}
                 </Link>
                 <Link
                   href="/returnees"
-                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text font-medium hover:border-purple-500/50 hover:text-purple-400 transition"
+                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text font-medium hover:border-[var(--mgsr-accent)]/50 hover:text-[var(--mgsr-accent)] transition"
                 >
                   {t('shortlist_browse_returnees')}
                 </Link>
@@ -867,7 +867,7 @@ export default function ShortlistPage() {
                   ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.2)] hover:opacity-90'
                   : isWomen
                     ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
-                    : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
+                    : 'bg-[var(--mgsr-accent)] text-mgsr-dark hover:bg-[var(--mgsr-accent)]/90'
               }`}
             >
               <span>+</span>
@@ -880,7 +880,7 @@ export default function ShortlistPage() {
         {loadingList ? (
           <div className="flex items-center justify-center py-20">
             <div className={`flex items-center gap-3 ${isYouth ? 'text-[var(--youth-cyan)]/70' : isWomen ? 'text-[var(--women-rose)]/70' : 'text-mgsr-muted'}`}>
-              <div className={`w-3 h-3 rounded-full animate-pulse ${isYouth ? 'bg-[var(--youth-cyan)]/50' : isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-mgsr-teal/50'}`} />
+              <div className={`w-3 h-3 rounded-full animate-pulse ${isYouth ? 'bg-[var(--youth-cyan)]/50' : isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-[var(--mgsr-accent)]/50'}`} />
               {isWomen ? t('shortlist_loading_women') : t('shortlist_loading')}
             </div>
           </div>
@@ -942,7 +942,7 @@ export default function ShortlistPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={isRtl ? '\u05D7\u05E4\u05E9 \u05E9\u05D7\u05E7\u05DF \u05DC\u05E4\u05D9 \u05E9\u05DD\u2026' : 'Search player by name\u2026'}
-                    className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder:text-mgsr-muted/50 focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 focus:border-mgsr-teal/50 transition"
+                    className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder:text-mgsr-muted/50 focus:outline-none focus:ring-2 focus:ring-[var(--mgsr-accent)]/50 focus:border-[var(--mgsr-accent)]/50 transition"
                   />
                   {searchQuery && (
                     <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-mgsr-muted hover:text-mgsr-text transition">
@@ -959,7 +959,7 @@ export default function ShortlistPage() {
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                      className="rounded-xl px-4 py-2.5 text-sm font-medium bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 hover:border-mgsr-teal/50 transition"
+                      className="rounded-xl px-4 py-2.5 text-sm font-medium bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:outline-none focus:ring-2 focus:ring-[var(--mgsr-accent)]/50 hover:border-[var(--mgsr-accent)]/50 transition"
                     >
                       <option value="added">{t('shortlist_sort_added')}</option>
                       <option value="market_value">{t('shortlist_sort_market_value')}</option>
@@ -989,8 +989,8 @@ export default function ShortlistPage() {
                           }}
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                             isSelected
-                              ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
-                              : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                              ? 'bg-[var(--mgsr-accent)] text-mgsr-dark shadow-lg shadow-[var(--mgsr-accent)]/20'
+                              : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-[var(--mgsr-accent)]/40'
                           }`}
                         >
                           {t(`shortlist_filter_position_${pos.toLowerCase()}`)}
@@ -1016,8 +1016,8 @@ export default function ShortlistPage() {
                           onChange={(e) => setSpecificPositionFilter(e.target.value || null)}
                           className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all appearance-none cursor-pointer ${
                             specificPositionFilter
-                              ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
-                              : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                              ? 'bg-[var(--mgsr-accent)] text-mgsr-dark shadow-lg shadow-[var(--mgsr-accent)]/20'
+                              : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-[var(--mgsr-accent)]/40'
                           }`}
                           style={{ paddingRight: '24px', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: `${isRtl ? 'left 6px center' : 'right 6px center'}` }}
                         >
@@ -1044,8 +1044,8 @@ export default function ShortlistPage() {
                       onClick={() => { setFilterBy(f); if (f !== 'all') setAgentFilter(null); }}
                       className={`shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                         filterBy === f && !agentFilter
-                          ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
-                          : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                          ? 'bg-[var(--mgsr-accent)] text-mgsr-dark shadow-lg shadow-[var(--mgsr-accent)]/20'
+                          : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-[var(--mgsr-accent)]/40'
                       }`}
                     >
                       {t(`shortlist_filter_${f}`)}
@@ -1056,8 +1056,8 @@ export default function ShortlistPage() {
                     onClick={() => setWithNotesOnly((prev) => !prev)}
                     className={`shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                       withNotesOnly
-                        ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
-                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                        ? 'bg-[var(--mgsr-accent)] text-mgsr-dark shadow-lg shadow-[var(--mgsr-accent)]/20'
+                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-[var(--mgsr-accent)]/40'
                     }`}
                   >
                     {t('shortlist_filter_with_notes')}
@@ -1067,8 +1067,8 @@ export default function ShortlistPage() {
                     onChange={(e) => { setAgentFilter(e.target.value || null); if (e.target.value) setFilterBy('all'); }}
                     className={`shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all appearance-none cursor-pointer ${
                       agentFilter
-                        ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
-                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                        ? 'bg-[var(--mgsr-accent)] text-mgsr-dark shadow-lg shadow-[var(--mgsr-accent)]/20'
+                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-[var(--mgsr-accent)]/40'
                     }`}
                   >
                     <option value="">{t('shortlist_filter_agent')} ▾</option>
@@ -1093,7 +1093,7 @@ export default function ShortlistPage() {
                 className={`px-6 py-3 rounded-xl font-semibold transition shadow-lg ${
                   isYouth
                     ? 'text-white hover:opacity-90 shadow-[0_0_20px_rgba(0,212,255,0.2)]'
-                    : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90 shadow-mgsr-teal/20'
+                    : 'bg-[var(--mgsr-accent)] text-mgsr-dark hover:bg-[var(--mgsr-accent)]/90 shadow-[var(--mgsr-accent)]/20'
                 }`}
                 style={isYouth ? { background: 'linear-gradient(135deg, var(--youth-cyan), var(--youth-violet))' } : undefined}
               >
@@ -1110,13 +1110,13 @@ export default function ShortlistPage() {
                   <>
                     <Link
                       href="/releases"
-                      className="inline-block px-5 py-2.5 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition"
+                      className="inline-block px-5 py-2.5 rounded-xl bg-[var(--mgsr-accent)] text-mgsr-dark font-semibold hover:bg-[var(--mgsr-accent)]/90 transition"
                     >
                       {t('shortlist_browse_releases')}
                     </Link>
                     <Link
                       href="/returnees"
-                      className="inline-block px-5 py-2.5 rounded-xl bg-purple-500 text-white font-semibold hover:bg-purple-600 transition"
+                      className="inline-block px-5 py-2.5 rounded-xl bg-[var(--mgsr-accent)] text-mgsr-dark font-semibold hover:bg-[var(--mgsr-accent)]/90 transition"
                     >
                       {t('shortlist_browse_returnees')}
                     </Link>
@@ -1130,7 +1130,7 @@ export default function ShortlistPage() {
                       ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white hover:opacity-90'
                       : isWomen
                         ? 'bg-[var(--women-gradient)] text-white hover:opacity-90'
-                        : 'border border-mgsr-teal text-mgsr-teal hover:bg-mgsr-teal/10'
+                        : 'border border-[var(--mgsr-accent)] text-[var(--mgsr-accent)] hover:bg-[var(--mgsr-accent)]/10'
                   }`}
                 >
                   {isYouth ? t('shortlist_add_youth_player') : t(isWomen ? 'shortlist_add_from_soccerdonna' : 'shortlist_add_from_tm')}
@@ -1185,7 +1185,7 @@ export default function ShortlistPage() {
                     : isWomen
                       ? 'rounded-2xl border border-[var(--women-rose)]/25 bg-mgsr-card shadow-[0_0_30px_rgba(232,160,191,0.06)] hover:border-[var(--women-rose)]/40 hover:shadow-[0_0_30px_rgba(232,160,191,0.12)]'
                       : `rounded-2xl border bg-mgsr-card transition-all ${
-                          isHot ? 'border-amber-500/30 shadow-lg shadow-amber-500/5' : 'border-mgsr-border/60 hover:border-mgsr-teal/30'
+                          isHot ? 'border-amber-500/30 shadow-lg shadow-amber-500/5' : 'border-mgsr-border/60 hover:border-[var(--mgsr-accent)]/30'
                         }`
                 }`}
                 style={{ animationDelay: `${i * 40}ms` }}
@@ -1347,16 +1347,16 @@ export default function ShortlistPage() {
                       <img
                         src={entry.playerImage || 'https://via.placeholder.com/64'}
                         alt=""
-                        className={`w-[52px] h-[52px] rounded-xl object-cover bg-mgsr-dark shrink-0 ring-1 transition-all ${isHot ? 'ring-amber-500/40' : 'ring-mgsr-border/50 group-hover:ring-mgsr-teal/40'}`}
+                        className={`w-[52px] h-[52px] rounded-xl object-cover bg-mgsr-dark shrink-0 ring-1 transition-all ${isHot ? 'ring-amber-500/40' : 'ring-mgsr-border/50 group-hover:ring-[var(--mgsr-accent)]/40'}`}
                         onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/64'; }}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline justify-between gap-2">
-                          <h3 className="text-[15px] font-semibold text-mgsr-text truncate leading-snug group-hover:text-mgsr-teal transition">
+                          <h3 className="text-[15px] font-semibold text-mgsr-text truncate leading-snug group-hover:text-[var(--mgsr-accent)] transition">
                             {entry.playerName || 'Unknown'}
                           </h3>
                           <div className="flex items-baseline gap-1.5 shrink-0">
-                            <span className={`text-[15px] font-bold tabular-nums leading-snug ${valueChangePct != null && valueChangePct < -10 ? 'text-red-400' : 'text-mgsr-teal'}`}>
+                            <span className={`text-[15px] font-bold tabular-nums leading-snug ${valueChangePct != null && valueChangePct < -10 ? 'text-red-400' : 'text-[var(--mgsr-accent)]'}`}>
                               {sanitizeMarketValue(entry.marketValue)}
                             </span>
                             {valueChangePct != null && valueChangePct !== 0 && (
@@ -1419,16 +1419,16 @@ export default function ShortlistPage() {
                               if (r.contactName) rows.push({ icon: '👤', label: r.contactName });
                               if (r.notes) rows.push({ icon: '📝', label: r.notes.length > 60 ? r.notes.slice(0, 57) + '…' : r.notes });
                               return (
-                                <span key={req.id} className="relative group/tip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-mgsr-dark/30 text-[12px] text-mgsr-text cursor-default hover:bg-mgsr-teal/20 transition">
+                                <span key={req.id} className="relative group/tip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-mgsr-dark/30 text-[12px] text-mgsr-text cursor-default hover:bg-[var(--mgsr-accent)]/20 transition">
                                   {req.clubLogo && <img src={req.clubLogo} alt="" className="w-4 h-4 rounded object-cover" />}
                                   {req.clubName ?? '—'} · {req.position}
                                   {rows.length > 0 && (
                                     <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 hidden group-hover/tip:block z-50 animate-fade-in">
-                                      <span className="block rounded-xl bg-gradient-to-b from-mgsr-card to-mgsr-dark border border-mgsr-teal/20 shadow-[0_8px_30px_rgba(0,0,0,0.5)] px-4 py-3 min-w-[180px] max-w-[260px]">
+                                      <span className="block rounded-xl bg-gradient-to-b from-mgsr-card to-mgsr-dark border border-[var(--mgsr-accent)]/20 shadow-[0_8px_30px_rgba(0,0,0,0.5)] px-4 py-3 min-w-[180px] max-w-[260px]">
                                         <span className="flex items-center gap-2 mb-2 pb-2 border-b border-mgsr-border/30">
                                           {req.clubLogo && <img src={req.clubLogo} alt="" className="w-5 h-5 rounded object-cover" />}
                                           <span className="font-semibold text-[13px] text-mgsr-text">{req.clubName ?? '—'}</span>
-                                          <span className="ml-auto text-mgsr-teal font-bold text-[13px]">{req.position}</span>
+                                          <span className="ml-auto text-[var(--mgsr-accent)] font-bold text-[13px]">{req.position}</span>
                                         </span>
                                         <span className="flex flex-col gap-1.5">
                                           {rows.map((row, i) => (
@@ -1439,7 +1439,7 @@ export default function ShortlistPage() {
                                           ))}
                                         </span>
                                       </span>
-                                      <span className="block w-2.5 h-2.5 mx-auto bg-mgsr-dark border-b border-r border-mgsr-teal/20 rotate-45 -mt-[6px]" />
+                                      <span className="block w-2.5 h-2.5 mx-auto bg-mgsr-dark border-b border-r border-[var(--mgsr-accent)]/20 rotate-45 -mt-[6px]" />
                                     </span>
                                   )}
                                 </span>
@@ -1558,12 +1558,12 @@ export default function ShortlistPage() {
                         {isExpanded && (
                           <div className="mt-2 pb-1 space-y-1.5">
                             {isLoadingTeammates ? (
-                              <div className="py-6 flex justify-center"><span className="w-4 h-4 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" /></div>
+                              <div className="py-6 flex justify-center"><span className="w-4 h-4 border-2 border-[var(--mgsr-accent)]/40 border-t-[var(--mgsr-accent)] rounded-full animate-spin" /></div>
                             ) : rosterTeammates?.length === 0 ? (
                               <p className="text-[13px] text-mgsr-muted/50 py-3 text-center">{t('releases_no_roster_teammates')}</p>
                             ) : (
                               rosterTeammates?.map((match) => (
-                                <div key={match.player.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-mgsr-dark/30 border border-mgsr-border/30 hover:border-mgsr-teal/30 transition">
+                                <div key={match.player.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-mgsr-dark/30 border border-mgsr-border/30 hover:border-[var(--mgsr-accent)]/30 transition">
                                   <Link href={`/players/${match.player.id}?from=/shortlist`} className="flex items-center gap-2.5 flex-1 min-w-0">
                                     <img src={match.player.profileImage || 'https://via.placeholder.com/40'} alt="" className="w-8 h-8 rounded-full object-cover ring-1 ring-mgsr-border/50" />
                                     <div className="flex-1 min-w-0">
@@ -1584,7 +1584,7 @@ export default function ShortlistPage() {
                                         <svg className="w-3.5 h-3.5 text-green-400" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                                       </a>
                                     )}
-                                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md text-mgsr-teal bg-mgsr-teal/10">{t('releases_games_together').replace('{n}', String(match.matchesPlayedTogether))}</span>
+                                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md text-[var(--mgsr-accent)] bg-[var(--mgsr-accent)]/10">{t('releases_games_together').replace('{n}', String(match.matchesPlayedTogether))}</span>
                                   </div>
                                 </div>
                               ))
@@ -1604,8 +1604,8 @@ export default function ShortlistPage() {
                         </span>
                       )}
                       {matchCount > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-purple-500/10 text-purple-400">
-                          <span className="w-1 h-1 rounded-full bg-purple-400" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-[var(--mgsr-accent)]/10 text-[var(--mgsr-accent)]">
+                          <span className="w-1 h-1 rounded-full bg-[var(--mgsr-accent)]" />
                           {t('shortlist_matches_requests').replace('{n}', String(matchCount))}
                         </span>
                       )}
@@ -1660,7 +1660,7 @@ export default function ShortlistPage() {
                     <button
                       type="button"
                       onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setNoteModalEntry(entry); setNoteModalMode('add'); setNoteModalText(''); setNoteModalEditIndex(-1); }}
-                      className="flex items-center gap-1.5 px-3.5 py-[7px] rounded-full text-[13px] font-semibold bg-mgsr-teal/[0.12] text-mgsr-teal border border-mgsr-teal/20 hover:bg-mgsr-teal/20 hover:border-mgsr-teal/35 active:scale-[0.97] transition-all duration-150"
+                      className="flex items-center gap-1.5 px-3.5 py-[7px] rounded-full text-[13px] font-semibold bg-[var(--mgsr-accent)]/10 text-[var(--mgsr-accent)] border border-[var(--mgsr-accent)]/20 hover:bg-[var(--mgsr-accent)]/20 hover:border-[var(--mgsr-accent)]/35 active:scale-[0.97] transition-all duration-150"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                       {t('shortlist_notes_add')}

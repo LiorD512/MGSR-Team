@@ -952,10 +952,6 @@ export default function DashboardPage() {
           {/* Header: greeting + platform switch & language */}
           <div className="relative z-[1] flex flex-wrap items-start justify-between gap-3 sm:gap-4">
             <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.24em] text-mgsr-muted">
-                <span className={`inline-block w-2 h-2 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-[var(--mgsr-gold)]'}`} />
-                {t('dashboard_hero_eyebrow')}
-              </div>
               <p className="text-mgsr-muted text-sm font-medium">
                 {greeting},
               </p>
