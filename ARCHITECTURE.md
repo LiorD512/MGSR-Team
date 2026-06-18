@@ -898,6 +898,11 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Data | Vercel API → Render server (recruitment + scout reports) | Direct API route calls |
 | Features | AI-discovered candidates, scout agent profiles, per-position discovery | Same |
 
+#### War Room Scout Agents List Behavior
+- Web Scout Agents tab now renders all profiles in one continuous list per country/agent (no pagination and no page indicator like `5/15`).
+- Country headers now show total players per country (e.g., `24 players`) while preserving existing roster/shortlist exclusion filtering.
+- The Scout Agents header refresh button was removed from this screen to keep the view as a single continuous list.
+
 #### War Room Design Mock (Docs)
 - `docs/war-room-aggressive-redesign-mock.html` is an HTML redesign mock that now mirrors the existing War Room IA and flows (Discovery, Scout Agents, AI Search with expandable report, Find Next).
 - Scope of this mock is visual redesign only; no new War Room feature modules or data flows were introduced.
