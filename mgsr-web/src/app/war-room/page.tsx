@@ -616,14 +616,14 @@ export default function WarRoomPage() {
           <div className="ring ring-3" />
           <div className="core" />
         </div>
-        <span className="text-sm text-purple-400 font-medium">{t('loading')}</span>
+        <span className="text-sm text-cyan-300 font-medium">{t('loading')}</span>
       </div>
     );
   }
 
   return (
     <AppLayout>
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="relative max-w-[52rem] mx-auto">
+      <div dir={isRtl ? 'rtl' : 'ltr'} className="relative max-w-[78rem] mx-auto">
         {/* Hero gradient — multi-layered command center glow */}
         <div
           className="absolute inset-0 pointer-events-none overflow-hidden -top-20 -left-20"
@@ -632,13 +632,13 @@ export default function WarRoomPage() {
           <div
             className="w-[80%] h-[60%] opacity-100"
             style={{
-              background: 'radial-gradient(ellipse at 30% 20%, rgba(168, 85, 247, 0.1) 0%, transparent 60%)',
+              background: 'radial-gradient(ellipse at 30% 20%, rgba(95, 240, 222, 0.1) 0%, transparent 60%)',
             }}
           />
           <div
             className="absolute top-10 right-0 w-[50%] h-[40%] opacity-100"
             style={{
-              background: 'radial-gradient(ellipse at 70% 30%, rgba(99, 102, 241, 0.06) 0%, transparent 50%)',
+              background: 'radial-gradient(ellipse at 70% 30%, rgba(255, 200, 121, 0.08) 0%, transparent 50%)',
             }}
           />
         </div>
@@ -647,8 +647,8 @@ export default function WarRoomPage() {
           {/* War Room Header */}
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="relative">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/25 flex items-center justify-center">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-cyan-500/20 border border-amber-400/30 flex items-center justify-center">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
                 </svg>
               </div>
@@ -660,7 +660,7 @@ export default function WarRoomPage() {
               </h1>
               <div className="flex items-center gap-2 mt-0.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-400 war-live-dot" />
-                <span className="text-[10px] sm:text-xs font-medium text-mgsr-muted uppercase tracking-wider">
+                <span className="text-[10px] sm:text-xs font-medium text-cyan-200/90 uppercase tracking-wider">
                   {isHe ? 'מערכת פעילה' : 'Systems Active'}
                 </span>
               </div>
@@ -668,12 +668,12 @@ export default function WarRoomPage() {
           </div>
 
           {/* War Room Tabs — premium glassmorphic design with SVG icons */}
-          <div className="flex gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-mgsr-card/80 backdrop-blur-md border border-mgsr-border/80 mt-5 mb-5 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-gradient-to-r from-[#111a2b]/95 via-[#0f1a2a]/95 to-[#121a27]/95 backdrop-blur-md border border-cyan-500/15 mt-5 mb-5 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             {[
               {
                 id: 'discovery' as const,
                 label: isHe ? 'גילוי' : 'Discovery',
-                activeClass: 'bg-gradient-to-r from-purple-500/20 to-indigo-500/15 text-purple-400 border-purple-500/30 shadow-lg shadow-purple-500/5',
+                activeClass: 'bg-gradient-to-r from-amber-500/20 to-orange-500/15 text-amber-300 border-amber-400/35 shadow-lg shadow-amber-500/10',
                 icon: (
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -717,7 +717,7 @@ export default function WarRoomPage() {
                 className={`shrink-0 flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[44px] border ${
                   warRoomTab === tab.id
                     ? `${tab.activeClass} war-tab-indicator`
-                    : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark/60 border-transparent'
+                    : 'text-mgsr-muted hover:text-cyan-100 hover:bg-[#0f1b2a]/80 hover:border-cyan-500/25 border-transparent'
                 }`}
               >
                 {tab.icon}
@@ -728,7 +728,7 @@ export default function WarRoomPage() {
 
           {warRoomTab === 'discovery' && (
             <>
-          <p className="text-sm md:text-base text-mgsr-muted mt-1">
+          <p className="text-sm md:text-base text-mgsr-muted mt-1 leading-relaxed">
             {isHe
               ? 'פיד גילוי מבוסס AI. שחקנים ריאליסטיים עד גיל 31.'
               : 'AI-curated discovery feed. Realistic players up to age 31.'}
@@ -746,13 +746,13 @@ export default function WarRoomPage() {
             <button
               onClick={fetchDiscovery}
               disabled={loadingDiscovery}
-              className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border border-mgsr-border text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal/50 transition disabled:opacity-50 whitespace-nowrap min-h-[36px]"
+              className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border border-amber-400/30 text-amber-200/90 hover:text-amber-100 hover:border-amber-300/60 hover:bg-amber-500/10 transition disabled:opacity-50 whitespace-nowrap min-h-[36px]"
             >
               {loadingDiscovery ? (isHe ? 'מרענן...' : 'Refreshing...') : isHe ? 'רענן גילוי' : 'Refresh discovery'}
             </button>
           </div>
 
-          <p className="text-xs text-mgsr-muted mt-3 px-3 py-2 rounded-lg bg-mgsr-card/50 border border-mgsr-border/50 hidden sm:block">
+          <p className="text-xs text-mgsr-muted mt-3 px-3 py-2 rounded-lg bg-gradient-to-r from-[#121b2a]/90 to-[#101a28]/80 border border-cyan-500/15 hidden sm:block">
             <strong className="text-mgsr-text">{isHe ? 'מסנן רלוונטיות:' : 'Relevance filter:'}</strong>{' '}
             {isHe
               ? "שווי שוק עד €4m, גיל 18–30, 2–3 שחקנים לכל עמדה, סינון איכות לפי סטטיסטיקות עמדה."
@@ -787,7 +787,7 @@ export default function WarRoomPage() {
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className={`rounded-2xl border border-purple-500/10 bg-mgsr-card p-5 animate-war-card-in war-stagger-${i}`}
+                className={`rounded-2xl border border-cyan-500/10 bg-mgsr-card p-5 animate-war-card-in war-stagger-${i}`}
               >
                 <div className="flex gap-4 items-start">
                   <div className="w-14 h-14 rounded-xl bg-mgsr-border/60 shrink-0 war-shimmer" />
@@ -795,7 +795,7 @@ export default function WarRoomPage() {
                     <div className="h-5 w-3/4 rounded-lg bg-mgsr-border/60 war-shimmer" />
                     <div className="h-4 w-1/2 rounded-lg bg-mgsr-border/40 war-shimmer" style={{ animationDelay: '0.2s' }} />
                     <div className="flex gap-2">
-                      <div className="h-5 w-16 rounded-lg bg-purple-500/10 war-shimmer" style={{ animationDelay: '0.4s' }} />
+                      <div className="h-5 w-16 rounded-lg bg-amber-500/10 war-shimmer" style={{ animationDelay: '0.4s' }} />
                       <div className="h-5 w-12 rounded-lg bg-mgsr-border/30 war-shimmer" style={{ animationDelay: '0.5s' }} />
                     </div>
                   </div>
@@ -811,8 +811,8 @@ export default function WarRoomPage() {
                 <div className="core" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-purple-400 font-medium">{isHe ? 'סורק רשתות מודיעין...' : 'Scanning intelligence networks...'}</span>
-                <div className="war-dots"><span className="bg-purple-400" /><span className="bg-purple-400" /><span className="bg-purple-400" /></div>
+                <span className="text-sm text-cyan-300 font-medium">{isHe ? 'סורק רשתות מודיעין...' : 'Scanning intelligence networks...'}</span>
+                <div className="war-dots"><span className="bg-cyan-300" /><span className="bg-cyan-300" /><span className="bg-cyan-300" /></div>
               </div>
             </div>
           </div>
@@ -821,8 +821,8 @@ export default function WarRoomPage() {
         {/* Discovery feed — empty (no candidates at all) */}
         {!loadingDiscovery && candidates.length === 0 && !error && (
           <div className="py-20 text-center rounded-2xl bg-gradient-to-b from-mgsr-card to-mgsr-card/50 border border-mgsr-border/50">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-              <svg className="w-8 h-8 text-purple-400/50" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+              <svg className="w-8 h-8 text-cyan-300/60" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             </div>
@@ -844,7 +844,7 @@ export default function WarRoomPage() {
               return (
                 <div
                   key={c.transfermarktUrl}
-                  className="rounded-2xl border transition-all duration-300 animate-war-card-in war-card-glow border-mgsr-border/70 bg-mgsr-card hover:border-purple-500/30"
+                  className="rounded-2xl border transition-all duration-300 animate-war-card-in war-card-glow border-mgsr-border/70 bg-mgsr-card hover:border-cyan-400/30 shadow-sm shadow-black/20"
                   style={{ animationDelay: `${Math.min(idx, 8) * 60}ms` }}
                 >
                   <div className="p-3 sm:p-5">
@@ -880,7 +880,7 @@ export default function WarRoomPage() {
                                 ? 'bg-mgsr-teal/20 text-mgsr-teal'
                                 : c.source === 'hidden_gem'
                                   ? 'bg-amber-500/20 text-amber-400'
-                                  : 'bg-purple-500/20 text-purple-400'
+                                  : 'bg-slate-600/20 text-slate-300'
                             }`}
                           >
                             {c.source === 'request_match'
@@ -1279,7 +1279,7 @@ export default function WarRoomPage() {
                                       <span className="sm:hidden">{p.agentName}</span>
                                       {p.league && <span className="hidden sm:inline">· {p.league}</span>}
                                     </div>
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-purple-500/20 text-purple-400 shrink-0">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-amber-500/20 text-amber-300 shrink-0">
                                       {isHe ? p.profileTypeLabelHe : p.profileTypeLabel}
                                     </span>
                                   </div>
@@ -1455,8 +1455,8 @@ export default function WarRoomPage() {
                   </div>
                     <p className="text-sm text-mgsr-muted mb-3">
                       {isHe
-                      ? 'אין פרופילים עדיין. הסוכנים רצים כל 3 ימים (עם בדיקת שחזור יומית).'
-                      : 'No profiles yet. Agents run every 3 days (with a daily recovery watchdog).'}
+                        ? 'כתוב חיפוש בשפה חופשית וקבל שחקנים עם ניתוח מלא: התאמה טקטית, סטטיסטיקה, והיתכנות שוק.'
+                        : 'Write a natural-language search and get players with full analysis: tactical fit, stats, and market feasibility.'}
                     </p>
 
                   {/* Search input */}
@@ -1978,14 +1978,14 @@ export default function WarRoomPage() {
                                 {validReport && (
                                   <div className="space-y-3">
                                     {validReport.synthesis && (
-                                      <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/15 to-cyan-500/10 border border-purple-500/25">
+                                      <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/15 to-cyan-500/10 border border-amber-500/25">
                                         <div className="flex items-center gap-2 mb-2">
-                                          <div className="w-6 h-6 rounded-lg bg-purple-500/25 flex items-center justify-center">
-                                            <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <div className="w-6 h-6 rounded-lg bg-amber-500/25 flex items-center justify-center">
+                                            <svg className="w-3.5 h-3.5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                           </div>
-                                          <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider">
+                                          <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
                                             {isHe ? 'חוות דעת ראש הסקאוטינג' : 'Chief Scout Verdict'}
                                           </h4>
                                         </div>

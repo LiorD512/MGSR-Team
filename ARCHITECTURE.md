@@ -905,8 +905,16 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 
 #### War Room Design Mock (Docs)
 - `docs/war-room-aggressive-redesign-mock.html` is an HTML redesign mock that now mirrors the existing War Room IA and flows (Discovery, Scout Agents, AI Search with expandable report, Find Next).
+- `docs/war-room-redesign-v3/index.html` is the latest standalone redesign artifact with a different IA direction: a left "Signal Rail" (tabs, alerting, decision ladder) and a right operational workspace that preserves the same War Room feature coverage.
+- `docs/war-room-redesign-v3/index.html` keeps bilingual runtime switching (EN/HE), RTL/LTR direction handling, and a continuous Scout Agents country stream with visible per-country player counts.
 - Scope of this mock is visual redesign only; no new War Room feature modules or data flows were introduced.
 - Visual language of the mock is aligned to current web theme tokens (BRIT black/gold + mgsr teal surfaces) instead of introducing an unrelated palette.
+
+#### War Room Production Visual Language (Web)
+- `mgsr-web/src/app/war-room/page.tsx` now applies the same command-center palette direction in production UI: deep navy surfaces with cyan/amber accents replacing the previous purple-heavy accenting.
+- `mgsr-web/src/app/war-room/page.tsx` now uses a wider desktop content container for the War Room layout (`max-w-[78rem]`) to improve scanability of Discovery, Scout Agents, and AI Search cards.
+- `mgsr-web/src/app/war-room/page.tsx` AI Search command header copy was corrected to describe search behavior (query + tactical/stat/market analysis) instead of showing unrelated "no profiles yet" text.
+- `mgsr-web/src/app/globals.css` War Room shared utilities (`war-shimmer`, `war-card-glow`, `war-gradient-text`, `war-orbital`) were updated to match the new cyan/amber command palette.
 
 ### AI Scout
 | Aspect | Android | Web |

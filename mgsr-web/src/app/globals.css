@@ -277,14 +277,14 @@ textarea {
 
 /* ═══ War Room — Premium Command Center Styling ═══ */
 
-/* War room shimmer skeleton with purple tint */
+/* War room shimmer skeleton in cyan/amber command palette */
 .war-shimmer {
   background-image: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(168, 85, 247, 0.12) 25%,
-    rgba(168, 85, 247, 0.25) 50%,
-    rgba(168, 85, 247, 0.12) 75%,
+    rgba(95, 240, 222, 0.12) 25%,
+    rgba(95, 240, 222, 0.24) 50%,
+    rgba(255, 200, 121, 0.12) 75%,
     transparent 100%
   );
   background-size: 200% 100%;
@@ -312,7 +312,7 @@ textarea {
   transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s;
 }
 .war-card-glow:hover {
-  box-shadow: 0 0 30px rgba(168, 85, 247, 0.08), 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 30px rgba(95, 240, 222, 0.09), 0 0 18px rgba(255, 200, 121, 0.08), 0 8px 32px rgba(0, 0, 0, 0.3);
   transform: translateY(-1px);
 }
 
@@ -336,7 +336,7 @@ textarea {
 
 /* Gradient text for war room title */
 .war-gradient-text {
-  background: linear-gradient(135deg, #a855f7 0%, #6366f1 40%, #22d3ee 100%);
+  background: linear-gradient(135deg, #ffc879 0%, #5ff0de 52%, #8df4c7 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -371,27 +371,27 @@ textarea {
 }
 .war-orbital .ring-1 {
   inset: 0;
-  border-top-color: #a855f7;
-  border-right-color: rgba(168, 85, 247, 0.3);
+  border-top-color: #ffc879;
+  border-right-color: rgba(255, 200, 121, 0.3);
   animation: orbitalSpin 1.2s linear infinite;
 }
 .war-orbital .ring-2 {
   inset: 5px;
-  border-bottom-color: #6366f1;
-  border-left-color: rgba(99, 102, 241, 0.3);
+  border-bottom-color: #5ff0de;
+  border-left-color: rgba(95, 240, 222, 0.32);
   animation: orbitalReverse 1.8s linear infinite;
 }
 .war-orbital .ring-3 {
   inset: 10px;
-  border-top-color: #22d3ee;
-  border-right-color: rgba(34, 211, 238, 0.3);
+  border-top-color: #8df4c7;
+  border-right-color: rgba(141, 244, 199, 0.3);
   animation: orbitalSpin 2.4s linear infinite;
 }
 .war-orbital .core {
   position: absolute;
   inset: 14px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.5) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(95, 240, 222, 0.5) 0%, transparent 70%);
   animation: glowPulse 2s ease-in-out infinite;
 }
 
