@@ -129,7 +129,7 @@ function NavContent({
       <Link
         href="/dashboard"
         onClick={onNavClick}
-        className={`mx-4 mt-4 rounded-[22px] border border-white/8 bg-[linear-gradient(145deg,rgba(18,25,35,0.95),rgba(10,14,21,0.92))] p-4 flex items-center gap-3 ${platform === 'women' ? 'justify-end' : ''}`}
+        className={`mx-4 mt-4 p-4 flex items-center gap-3 ${platform === 'women' ? 'justify-end' : ''}`}
       >
         <div className="relative shrink-0">
           <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(200,169,104,0.25),transparent_70%)] blur-md" />

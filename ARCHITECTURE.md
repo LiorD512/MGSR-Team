@@ -264,6 +264,8 @@ Separate Gradle module for HTML scraping via JSoup:
 - The authenticated web app now uses a BRIT premium shell across desktop and mobile (`AppLayout`, `MobileHeader`, `MobileBottomTabBar`) with black/gold-glass surfaces; route hero/filter sections for dashboard, players, requests, tasks, shortlist, contacts, releases, contract-finisher, returnees, release-notifications, shadow-teams, and portfolio are aligned to that shared visual language.
 - Tunnel (`/chat-room`) remains implemented, but is currently hidden from desktop and mobile navigation menus (commented nav entries) per management-web configuration request.
 - Desktop app-shell brand block now removes the eyebrow microcopy near the sidebar logo and renders a single gold BRIT Sport Group wordmark vertically centered with the logo, while preserving the original wordmark size.
+- Desktop app-shell sidebar brand link no longer renders the rounded white framed container behind the BRIT logo/wordmark; only the logo + text remain visible.
+- Web browser/tab branding now forces BRIT icon assets via `mgsr-web/src/app/layout.tsx` metadata icons and `mgsr-web/public/manifest.json` icon source, both pointed to `brit_circle_black_gold.svg` with a version query to bypass stale favicon cache.
 - Dashboard hero no longer renders the "Agency Pulse / דופק הסוכנות" eyebrow badge; only greeting, user name, and date remain in the hero header.
 - Players hero no longer renders the "Squad Intelligence / מודיעין סגל" eyebrow badge and now starts directly with the page headline and stats subtitle.
 - Requests hero no longer renders the "Matching Engine / מנוע התאמות" eyebrow badge and now starts directly with the page headline and subtitle.

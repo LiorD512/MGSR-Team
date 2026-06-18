@@ -47,9 +47,9 @@ export const metadata: Metadata = {
   title: 'BRIT Sport Group',
   description: 'Football Agent CRM',
   icons: {
-    icon: '/favicon.svg',
-    shortcut: '/favicon.svg',
-    apple: '/favicon.svg',
+    icon: '/brit_circle_black_gold.svg?v=20260618',
+    shortcut: '/brit_circle_black_gold.svg?v=20260618',
+    apple: '/brit_circle_black_gold.svg?v=20260618',
   },
 };
 
