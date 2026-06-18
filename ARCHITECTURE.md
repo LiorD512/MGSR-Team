@@ -483,6 +483,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `mandateExpiryScheduled` | 04:00 daily | Scan and expire mandates, write FeedEvents |
 | ~~`releasesRefreshScheduled`~~ | ~~03:00 daily~~ | ~~Scrape TM for new releases~~ — **DISABLED**: moved to GitHub Actions (`daily-releases-refresh.yml`) due to TM HTTP 405 blocking Cloud Functions IPs |
 | `scoutAgentScheduled` | 00:00 every 3 days | AI Scout Agent (44 leagues, stats enrichment) → Pub/Sub worker. **Idempotency lock** prevents Pub/Sub redelivery cascades |
+| `scoutAgentWatchdogScheduled` | 06:00 daily | Scout-agent cadence watchdog. If latest `ScoutAgentRuns.runAt` is stale (>80h), republishes Pub/Sub trigger for recovery |
 | `onTaskRemindersScheduled` | 09:00 daily | Task reminders at 7d, 3d, 1d, today milestones |
 | `systemHealthCheckScheduled` | 08:00 daily | System health check email — status of all automated workers |
 

@@ -597,6 +597,15 @@ exports.mandateExpiryScheduled = onSchedule(
 const RELEASES_REFRESH_TOPIC = "releases-refresh-trigger";
 const SCOUT_AGENT_TOPIC = "scout-agent-trigger";
 
+async function publishScoutAgentTrigger(reason) {
+  const { PubSub } = require("@google-cloud/pubsub");
+  const pubsub = new PubSub();
+  await pubsub.topic(SCOUT_AGENT_TOPIC).publishMessage({
+    data: Buffer.from("{}"),
+    attributes: { reason: reason || "scheduled" },
+  });
+}
+
 // DISABLED 2026-04-13: Moved to GitHub Actions (daily-releases-refresh.yml)
 // TM blocks Cloud Functions IPs with HTTP 405. GH Actions IPs are not blocked.
 // The worker (releasesRefreshWorker) is kept for manual Pub/Sub triggers if needed.
@@ -638,10 +647,41 @@ exports.scoutAgentScheduled = onSchedule(
   { schedule: "0 0 */3 * *", timeZone: "Asia/Jerusalem" },
   async () => {
     console.log("[scoutAgentScheduled] Triggered (every 3 days 00:00) — publishing to Pub/Sub");
-    const { PubSub } = require("@google-cloud/pubsub");
-    const pubsub = new PubSub();
-    await pubsub.topic(SCOUT_AGENT_TOPIC).publishMessage({ data: Buffer.from("{}") });
+    await publishScoutAgentTrigger("scheduled_every_3_days");
     console.log("[scoutAgentScheduled] Published — worker will run asynchronously");
+  }
+);
+
+/**
+ * Daily watchdog for Scout Agent cadence.
+ * If latest run is stale (>80h), republish trigger to self-heal missed schedule runs.
+ */
+exports.scoutAgentWatchdogScheduled = onSchedule(
+  { schedule: "0 6 * * *", timeZone: "Asia/Jerusalem" },
+  async () => {
+    const MAX_STALENESS_MS = 80 * 60 * 60 * 1000; // 80h for "every 3 days" expectation
+
+    const lastRunSnap = await db
+      .collection("ScoutAgentRuns")
+      .orderBy("runAt", "desc")
+      .limit(1)
+      .get();
+
+    const lastRunAt = lastRunSnap.docs[0]?.data()?.runAt ?? null;
+    const isStale = !lastRunAt || (Date.now() - lastRunAt) > MAX_STALENESS_MS;
+
+    if (!isStale) {
+      console.log("[scoutAgentWatchdogScheduled] Fresh run detected — no action", {
+        lastRunAt,
+        hoursAgo: Number(((Date.now() - lastRunAt) / 3600000).toFixed(2)),
+      });
+      return;
+    }
+
+    console.warn("[scoutAgentWatchdogScheduled] Stale/missing scout run — publishing recovery trigger", {
+      lastRunAt,
+    });
+    await publishScoutAgentTrigger("watchdog_recovery_stale_run");
   }
 );
 

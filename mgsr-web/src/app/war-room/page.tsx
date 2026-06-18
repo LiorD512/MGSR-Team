@@ -1467,11 +1467,11 @@ export default function WarRoomPage() {
                       {isHe ? 'מסוף חיפוש מודיעיני' : 'Intelligence Search Terminal'}
                     </span>
                   </div>
-                  <p className="text-sm text-mgsr-muted mb-4">
-                    {isHe
-                      ? 'חפש שחקנים בשפה חופשית. הסקאוט AI מבין עברית ואנגלית, תנאי גיל, עמדות, סגנון משחק ותקציב.'
-                      : 'Free-text player search. The AI Scout understands Hebrew & English, age, position, play style, and budget constraints.'}
-                  </p>
+                    <p className="text-sm text-mgsr-muted mb-3">
+                      {isHe
+                      ? 'אין פרופילים עדיין. הסוכנים רצים כל 3 ימים (עם בדיקת שחזור יומית).'
+                      : 'No profiles yet. Agents run every 3 days (with a daily recovery watchdog).'}
+                    </p>
 
                   {/* Search input */}
                   <div className="flex gap-2">
