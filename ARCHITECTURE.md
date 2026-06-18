@@ -265,7 +265,6 @@ Separate Gradle module for HTML scraping via JSoup:
 - Tunnel (`/chat-room`) remains implemented, but is currently hidden from desktop and mobile navigation menus (commented nav entries) per management-web configuration request.
 - Desktop app-shell brand block now removes the eyebrow microcopy near the sidebar logo and renders a single gold BRIT Sport Group wordmark vertically centered with the logo, while preserving the original wordmark size.
 - Dashboard hero no longer renders the "Agency Pulse / דופק הסוכנות" eyebrow badge; only greeting, user name, and date remain in the hero header.
-- Desktop and mobile web app chrome removed the BRIT logo mark from shell/header entry points and flattened the branded framing treatment to a cleaner text-first desk label.
 - Desktop app-shell desktop page chrome no longer renders the shared framed header card, status pills, or shared page-title headline; pages now begin directly with their own content.
 - Web Tasks page (men platform) now uses the BRIT gold/black treatment instead of the older teal/blue palette across the hero, toolbar actions, task cards, empty states, and create/edit task flows.
 - Web Shortlist page (men platform) now uses BRIT gold accent tokens end-to-end (hero CTAs, filter tray, chips, cards, loading states, badges, action pills, and empty states), replacing the legacy teal/purple split.

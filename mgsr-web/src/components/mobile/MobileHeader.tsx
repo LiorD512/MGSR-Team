@@ -45,6 +45,7 @@ export default function MobileHeader() {
 
   const titleKey = getPageTitleKey(pathname);
   const title = t(titleKey);
+  const logo = '/brit_circle_black_gold.svg';
   const deskTitle =
     platform === 'women'
       ? t('mobile_header_desk_women')
@@ -79,8 +80,12 @@ export default function MobileHeader() {
             </svg>
           </Link>
         ) : (
-          <Link href="/dashboard" className="shrink-0 min-w-0 rounded-lg border border-white/10 bg-black/10 px-2.5 py-1.5">
-            <div className="max-w-[110px] truncate text-[12px] font-semibold text-mgsr-text">{deskTitle}</div>
+          <Link href="/dashboard" className="flex items-center gap-2 shrink-0 min-w-0">
+            <img src={logo} alt="BRIT Sport Group" className="w-9 h-9" />
+            <div className="min-w-0">
+              <div className="text-[9px] uppercase tracking-[0.22em] text-mgsr-muted">BRIT</div>
+              <div className="max-w-[92px] truncate text-[12px] font-semibold text-mgsr-text">{deskTitle}</div>
+            </div>
           </Link>
         )}
 
