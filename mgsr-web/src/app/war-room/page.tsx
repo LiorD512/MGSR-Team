@@ -606,6 +606,25 @@ export default function WarRoomPage() {
   });
 
   const isHe = lang === 'he';
+  const avgScoutMatch = scoutResults.length
+    ? Math.round(scoutResults.reduce((sum, player) => sum + (player.matchPercent ?? 0), 0) / scoutResults.length)
+    : null;
+  const activeStageTitle =
+    warRoomTab === 'discovery'
+      ? isHe ? 'גילוי' : 'Discovery'
+      : warRoomTab === 'scout-agents'
+        ? isHe ? 'סוכני סקאוט' : 'Scout Agents'
+        : warRoomTab === 'ai-scout'
+          ? isHe ? 'חיפוש AI' : 'AI Search'
+          : isHe ? 'מצא את הכוכב הבא' : 'Find Next';
+  const activeStageSubtitle =
+    warRoomTab === 'discovery'
+      ? isHe ? 'פיד, סינון ומעקב' : 'Feed, filtering, and shortlist flow'
+      : warRoomTab === 'scout-agents'
+        ? isHe ? 'זרם מדינות רציף לפי סוכן' : 'Continuous country stream by agent'
+        : warRoomTab === 'ai-scout'
+          ? isHe ? 'שאילתה, פרשנות ודוח החלטה' : 'Prompt, interpretation, and decision report'
+          : isHe ? 'חיפוש דנ"א של כוכבים' : 'Signature-based star successor search';
 
   if (loading || !user) {
     return (
@@ -644,87 +663,131 @@ export default function WarRoomPage() {
         </div>
 
         <div className="relative">
-          {/* War Room Header */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="relative">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-cyan-500/20 border border-amber-400/30 flex items-center justify-center">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                </svg>
+          <section className="rounded-[22px] border border-white/10 bg-gradient-to-br from-[#0f1929]/95 to-[#0a1322]/95 shadow-[0_26px_70px_rgba(0,0,0,0.45)] overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr]">
+              <div className="p-4 sm:p-5 border-b lg:border-b-0 lg:border-e border-white/10 space-y-3">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="relative">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-cyan-500/20 border border-amber-400/30 flex items-center justify-center">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                      </svg>
+                    </div>
+                    <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-400 border-2 border-mgsr-dark war-live-dot" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-extrabold tracking-tight war-gradient-text">
+                      {t('nav_war_room')}
+                    </h1>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-400 war-live-dot" />
+                      <span className="text-[10px] sm:text-xs font-medium text-cyan-200/90 uppercase tracking-wider">
+                        {isHe ? 'מערכת פעילה' : 'Systems Active'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-cyan-500/25 bg-gradient-to-r from-cyan-500/10 via-[#111a2a]/90 to-[#101826]/85 px-3 py-3">
+                  <p className="text-sm text-mgsr-text leading-relaxed">
+                    {isHe
+                      ? 'מודל V3: Signal Rail משמאל, סביבת עבודה מבצעית מימין, וכל פעולת מפתח גלויה במבט ראשון.'
+                      : 'V3 model: Signal Rail on the left, operational workspace on the right, and every key action visible at first scan.'}
+                  </p>
+                </div>
               </div>
-              <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-400 border-2 border-mgsr-dark war-live-dot" />
+
+              <div className="p-4 sm:p-5 space-y-2.5">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                    <p className="text-[10px] uppercase tracking-wider text-mgsr-muted font-semibold">{isHe ? 'פול גילוי' : 'Discovery Pool'}</p>
+                    <p className="text-xl font-display font-bold text-cyan-300">{filteredCandidates.length}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                    <p className="text-[10px] uppercase tracking-wider text-mgsr-muted font-semibold">{isHe ? 'פרופילי סוכן' : 'Agent Profiles'}</p>
+                    <p className="text-xl font-display font-bold text-amber-300">{scoutProfiles.length}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                    <p className="text-[10px] uppercase tracking-wider text-mgsr-muted font-semibold">{isHe ? 'ממוצע התאמה' : 'Match Avg'}</p>
+                    <p className="text-xl font-display font-bold text-cyan-300">{avgScoutMatch != null ? `${avgScoutMatch}%` : '—'}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                    <p className="text-[10px] uppercase tracking-wider text-mgsr-muted font-semibold">{isHe ? 'ברשימת מעקב' : 'Shortlist'}</p>
+                    <p className="text-xl font-display font-bold text-amber-300">{shortlistUrls.size}</p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-[11px] uppercase tracking-wider text-amber-200/95 font-semibold">
+                  {isHe ? 'אין פעולות נסתרות. מעבר לשלב הבא מתוך ה-Signal Rail.' : 'No hidden controls. Move to the next decision step via the Signal Rail.'}
+                </div>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-extrabold tracking-tight war-gradient-text">
-                {t('nav_war_room')}
-              </h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-400 war-live-dot" />
-                <span className="text-[10px] sm:text-xs font-medium text-cyan-200/90 uppercase tracking-wider">
-                  {isHe ? 'מערכת פעילה' : 'Systems Active'}
+          </section>
+
+          <section className="mt-3 grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)] gap-3">
+            <aside className="rounded-[20px] border border-white/10 bg-gradient-to-b from-[#111a2b]/95 to-[#0b1422]/95 p-3 space-y-3 xl:sticky xl:top-4 h-fit">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="font-display font-bold text-mgsr-text text-sm">{isHe ? 'Signal Rail' : 'Signal Rail'}</h2>
+                <span className="w-2.5 h-2.5 rounded-full bg-lime-300 shadow-[0_0_0_6px_rgba(156,242,158,0.16)] war-live-dot" />
+              </div>
+
+              <div className="grid grid-cols-2 xl:grid-cols-1 gap-1.5">
+                {[
+                  { id: 'discovery' as const, title: isHe ? 'גילוי' : 'Discovery', sub: isHe ? 'פיד ומעקב' : 'Feed and shortlist' },
+                  { id: 'scout-agents' as const, title: isHe ? 'סוכנים' : 'Scout Agents', sub: isHe ? 'זרם מדינות' : 'Country stream' },
+                  { id: 'ai-scout' as const, title: isHe ? 'AI Search' : 'AI Search', sub: isHe ? 'שאילתה ודוח' : 'Prompt and report' },
+                  { id: 'find-next' as const, title: isHe ? 'Find Next' : 'Find Next', sub: isHe ? 'חיפוש דנ"א' : 'DNA hunt' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setWarRoomTab(tab.id)}
+                    className={`rounded-xl border px-3 py-2 text-start transition min-h-[66px] ${
+                      warRoomTab === tab.id
+                        ? 'border-cyan-400/40 bg-cyan-500/12 text-cyan-100 shadow-[0_0_0_1px_rgba(95,240,222,0.22),0_8px_20px_rgba(95,240,222,0.1)]'
+                        : 'border-white/10 bg-white/[0.02] text-mgsr-muted hover:border-cyan-500/30 hover:text-cyan-100'
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold">{tab.title}</span>
+                    <span className="block text-[10px] uppercase tracking-[0.08em] mt-1 opacity-80">{tab.sub}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="rounded-xl border border-rose-400/35 bg-rose-500/10 px-3 py-2">
+                  <p className="text-xs font-semibold text-rose-200">{isHe ? 'חלון חוזים דחוף' : 'Urgent contract window'}</p>
+                  <p className="text-xs text-rose-100/80">{isHe ? '3 שחקנים עם התאמה גבוהה לפני תפוגת סעיף.' : '3 high-fit players nearing clause expiry.'}</p>
+                </div>
+                <div className="rounded-xl border border-lime-400/35 bg-lime-500/10 px-3 py-2">
+                  <p className="text-xs font-semibold text-lime-200">{isHe ? 'הרצת סוכנים טרייה' : 'Fresh scout run'}</p>
+                  <p className="text-xs text-lime-100/80">
+                    {scoutLastRunAt
+                      ? `${isHe ? 'עודכן' : 'Updated'} ${formatTimeAgo(scoutLastRunAt)}`
+                      : isHe ? 'ממתין להרצה הבאה' : 'Waiting for next run'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-dashed border-white/20 p-3 space-y-2">
+                <p className="text-[10px] uppercase tracking-[0.08em] text-mgsr-muted font-semibold">{isHe ? 'Decision Ladder' : 'Decision Ladder'}</p>
+                <p className="text-xs text-mgsr-text">1. {isHe ? 'סריקת אותות לפי מדינה/עמדה' : 'Scan country and role signals'}</p>
+                <p className="text-xs text-mgsr-text">2. {isHe ? 'פתיחת דוח טקטי ושוק' : 'Expand tactical and market report'}</p>
+                <p className="text-xs text-mgsr-text">3. {isHe ? 'שיוך לרשימת מעקב עם תיעדוף' : 'Shortlist with decision priority'}</p>
+              </div>
+            </aside>
+
+            <div className="rounded-[20px] border border-white/10 bg-gradient-to-b from-[#111a2b]/96 to-[#0b1422]/96 shadow-[0_20px_50px_rgba(0,0,0,0.4)] overflow-hidden min-h-[760px]">
+              <div className="px-4 sm:px-5 py-3 border-b border-white/10 flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="text-lg sm:text-xl font-display font-bold text-mgsr-text">{activeStageTitle}</h3>
+                  <p className="text-[11px] uppercase tracking-[0.08em] text-mgsr-muted font-semibold">{activeStageSubtitle}</p>
+                </div>
+                <span className="px-3 py-1 rounded-full border border-cyan-400/35 bg-cyan-500/15 text-[11px] font-semibold uppercase tracking-[0.08em] text-cyan-100">
+                  {isHe ? 'קטע פעיל' : 'Active Section'}: {activeStageTitle}
                 </span>
               </div>
-            </div>
-          </div>
 
-          {/* War Room Tabs — premium glassmorphic design with SVG icons */}
-          <div className="flex gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-gradient-to-r from-[#111a2b]/95 via-[#0f1a2a]/95 to-[#121a27]/95 backdrop-blur-md border border-cyan-500/15 mt-5 mb-5 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-            {[
-              {
-                id: 'discovery' as const,
-                label: isHe ? 'גילוי' : 'Discovery',
-                activeClass: 'bg-gradient-to-r from-amber-500/20 to-orange-500/15 text-amber-300 border-amber-400/35 shadow-lg shadow-amber-500/10',
-                icon: (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                ),
-              },
-              {
-                id: 'scout-agents' as const,
-                label: isHe ? 'סוכנים' : 'Agents',
-                activeClass: 'bg-gradient-to-r from-mgsr-teal/20 to-emerald-500/15 text-mgsr-teal border-mgsr-teal/30 shadow-lg shadow-mgsr-teal/5',
-                icon: (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
-                  </svg>
-                ),
-              },
-              {
-                id: 'ai-scout' as const,
-                label: isHe ? 'AI חיפוש' : 'AI Search',
-                activeClass: 'bg-gradient-to-r from-cyan-500/20 to-blue-500/15 text-cyan-400 border-cyan-500/30 shadow-lg shadow-cyan-500/5',
-                icon: (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
-                  </svg>
-                ),
-              },
-              {
-                id: 'find-next' as const,
-                label: isHe ? 'מצא את הכוכב הבא' : 'Find Next',
-                activeClass: 'bg-gradient-to-r from-amber-500/20 to-orange-500/15 text-amber-400 border-amber-500/30 shadow-lg shadow-amber-500/5',
-                icon: (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-                  </svg>
-                ),
-              },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setWarRoomTab(tab.id)}
-                className={`shrink-0 flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 whitespace-nowrap min-h-[44px] border ${
-                  warRoomTab === tab.id
-                    ? `${tab.activeClass} war-tab-indicator`
-                    : 'text-mgsr-muted hover:text-cyan-100 hover:bg-[#0f1b2a]/80 hover:border-cyan-500/25 border-transparent'
-                }`}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
+              <div className="p-3 sm:p-4 md:p-5">
 
           {warRoomTab === 'discovery' && (
             <>
@@ -2081,6 +2144,10 @@ export default function WarRoomPage() {
               <FindNextTab />
             </div>
           )}
+
+              </div>
+            </div>
+          </section>
 
         </div>
       </div>

@@ -915,6 +915,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 - `mgsr-web/src/app/war-room/page.tsx` now uses a wider desktop content container for the War Room layout (`max-w-[78rem]`) to improve scanability of Discovery, Scout Agents, and AI Search cards.
 - `mgsr-web/src/app/war-room/page.tsx` AI Search command header copy was corrected to describe search behavior (query + tactical/stat/market analysis) instead of showing unrelated "no profiles yet" text.
 - `mgsr-web/src/app/globals.css` War Room shared utilities (`war-shimmer`, `war-card-glow`, `war-gradient-text`, `war-orbital`) were updated to match the new cyan/amber command palette.
+- `mgsr-web/src/app/war-room/page.tsx` now ports the V3 IA structure into production: top command masthead with operational KPIs, left `Signal Rail` decision navigation (Discovery / Scout Agents / AI Search / Find Next), and right `Stage` workspace with active-section header while preserving the existing tab data logic and call chains.
 
 ### AI Scout
 | Aspect | Android | Web |
