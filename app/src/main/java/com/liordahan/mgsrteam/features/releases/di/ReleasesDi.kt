@@ -11,5 +11,5 @@ val releasesModule = module {
 
     single { LatestReleases() }
     single { TeammatesFetcher() }
-    viewModel<IReleasesViewModel> { ReleasesViewModel(get(), get()) }
+    viewModel<IReleasesViewModel> { ReleasesViewModel(get(), get(), get(), get()) }
 }

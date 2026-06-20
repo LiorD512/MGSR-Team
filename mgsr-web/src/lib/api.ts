@@ -233,6 +233,12 @@ export const RELEASE_RANGES: { min: number; max: number }[] = [
   { min: 1600001, max: 1800000 },
   { min: 1800000, max: 2000000 },
   { min: 2000000, max: 2200000 },
+  { min: 2200001, max: 2500000 },
+  { min: 2500001, max: 3000000 },
+  { min: 3000001, max: 3500000 },
+  { min: 3500001, max: 4000000 },
+  { min: 4000001, max: 5000000 },
+  { min: 5000001, max: 6000000 },
 ];
 
 /**

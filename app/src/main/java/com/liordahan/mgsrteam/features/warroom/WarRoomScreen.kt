@@ -192,7 +192,7 @@ fun WarRoomScreen(
 
     val pagerState = rememberPagerState(
         initialPage = initialTab?.ordinal ?: 0,
-        pageCount = { 3 }
+        pageCount = { 4 }
     )
 
     // Sync pager → ViewModel tab
@@ -330,28 +330,68 @@ fun WarRoomScreen(
                 }
             )
 
+            WarRoomStageStrip(selectedTab = state.selectedTab, state = state)
+            WarRoomOperationsBar(
+                state = state,
+                viewModel = viewModel,
+                navController = navController,
+                selectedTab = state.selectedTab,
+                onTabSelected = { tab ->
+                    coroutineScope.launch { pagerState.animateScrollToPage(tab.ordinal) }
+                }
+            )
+
             // Swipeable pager content
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize(),
-                beyondViewportPageCount = 1
-            ) { page ->
-                when (page) {
-                    0 -> DiscoveryTab(
-                        state = state,
-                        viewModel = viewModel,
-                        navController = navController,
-                        onShowReport = { candidate ->
-                            reportSheetCandidate = candidate
-                            if (!state.candidateReports.containsKey(candidate.transfermarktUrl) &&
-                                !state.loadingReportUrls.contains(candidate.transfermarktUrl)
-                            ) {
-                                viewModel.toggleCandidateExpanded(candidate.transfermarktUrl)
-                            }
-                        }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                WrSurfaceElevated.copy(alpha = 0.82f),
+                                WrSurface.copy(alpha = 0.96f)
+                            )
+                        )
                     )
-                    1 -> AgentsTab(state = state, viewModel = viewModel, navController = navController)
-                    2 -> AiScoutContentBody(navController = navController, showTopBar = false)
+                    .border(1.dp, WrSurfaceBorder.copy(alpha = 0.45f), RoundedCornerShape(24.dp))
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    beyondViewportPageCount = 1
+                ) { page ->
+                    when (page) {
+                        0 -> DiscoveryTab(
+                            state = state,
+                            viewModel = viewModel,
+                            navController = navController,
+                            onShowReport = { candidate ->
+                                reportSheetCandidate = candidate
+                                if (!state.candidateReports.containsKey(candidate.transfermarktUrl) &&
+                                    !state.loadingReportUrls.contains(candidate.transfermarktUrl)
+                                ) {
+                                    viewModel.toggleCandidateExpanded(candidate.transfermarktUrl)
+                                }
+                            }
+                        )
+                        1 -> AgentsTab(state = state, viewModel = viewModel, navController = navController)
+                        2 -> AiScoutContentBody(
+                            navController = navController,
+                            showTopBar = false,
+                            startWithFindNext = false,
+                            lockTab = true,
+                            warRoomMode = true
+                        )
+                        3 -> AiScoutContentBody(
+                            navController = navController,
+                            showTopBar = false,
+                            startWithFindNext = true,
+                            lockTab = true,
+                            warRoomMode = true
+                        )
+                    }
                 }
             }
         }
@@ -426,11 +466,18 @@ private fun CommandHeader(
                 )
             }
 
-            Text(
-                text = stringResource(R.string.war_room_title),
-                style = boldTextStyle(HomeTextPrimary, 22.sp),
-                letterSpacing = (-0.3).sp
-            )
+            Column {
+                Text(
+                    text = stringResource(R.string.war_room_title),
+                    style = boldTextStyle(HomeTextPrimary, 22.sp),
+                    letterSpacing = (-0.3).sp
+                )
+                Text(
+                    text = stringResource(R.string.war_room_subtitle),
+                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    letterSpacing = 0.3.sp
+                )
+            }
 
             Spacer(Modifier.weight(1f))
 
@@ -469,6 +516,189 @@ private fun CommandHeader(
     }
 }
 
+@Composable
+private fun WarRoomStageStrip(selectedTab: WarRoomTab, state: WarRoomUiState) {
+    data class StageStripSpec(val subtitleRes: Int, val accent: Color, val metricValue: Int, val metricLabelRes: Int)
+    val spec = when (selectedTab) {
+        WarRoomTab.DISCOVERY -> StageStripSpec(
+            subtitleRes = R.string.war_room_stage_discovery_subtitle,
+            accent = WrIndigo,
+            metricValue = state.discoveryCount,
+            metricLabelRes = R.string.war_room_stage_metric_candidates
+        )
+        WarRoomTab.AGENTS -> StageStripSpec(
+            subtitleRes = R.string.war_room_stage_agents_subtitle,
+            accent = WrAgent,
+            metricValue = state.scoutProfilesTotal,
+            metricLabelRes = R.string.war_room_stage_metric_profiles
+        )
+        WarRoomTab.AI_SCOUT -> StageStripSpec(
+            subtitleRes = R.string.war_room_stage_ai_scout_subtitle,
+            accent = WrMatch,
+            metricValue = state.candidates.size,
+            metricLabelRes = R.string.war_room_stage_metric_live_signals
+        )
+        WarRoomTab.FIND_NEXT -> StageStripSpec(
+            subtitleRes = R.string.war_room_stage_find_next_subtitle,
+            accent = WrGem,
+            metricValue = state.discoveryCount,
+            metricLabelRes = R.string.war_room_stage_metric_targets
+        )
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(WrSurfaceElevated.copy(alpha = 0.8f))
+            .border(1.dp, spec.accent.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(spec.subtitleRes),
+            style = regularTextStyle(HomeTextSecondary, 12.sp),
+            modifier = Modifier.weight(1f),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(spec.accent.copy(alpha = 0.14f))
+                .border(1.dp, spec.accent.copy(alpha = 0.32f), RoundedCornerShape(10.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = spec.metricValue.toString(),
+                style = boldTextStyle(spec.accent, 13.sp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = stringResource(spec.metricLabelRes),
+                style = regularTextStyle(HomeTextSecondary, 10.sp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun WarRoomOperationsBar(
+    state: WarRoomUiState,
+    viewModel: IWarRoomViewModel,
+    navController: NavController,
+    selectedTab: WarRoomTab,
+    onTabSelected: (WarRoomTab) -> Unit
+) {
+    val accent = when (selectedTab) {
+        WarRoomTab.DISCOVERY -> WrIndigo
+        WarRoomTab.AGENTS -> WrAgent
+        WarRoomTab.AI_SCOUT -> WrMatch
+        WarRoomTab.FIND_NEXT -> WrGem
+    }
+
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 2.dp)
+    ) {
+        item {
+            WarRoomActionChip(
+                label = stringResource(R.string.war_room_refresh),
+                accent = accent,
+                onClick = {
+                    when (selectedTab) {
+                        WarRoomTab.DISCOVERY -> viewModel.loadDiscovery()
+                        WarRoomTab.AGENTS -> viewModel.loadScoutProfiles(state.selectedAgentFilter)
+                        WarRoomTab.AI_SCOUT,
+                        WarRoomTab.FIND_NEXT -> onTabSelected(WarRoomTab.DISCOVERY)
+                    }
+                }
+            )
+        }
+
+        if (selectedTab == WarRoomTab.DISCOVERY) {
+            item {
+                WarRoomActionChip(
+                    label = stringResource(R.string.war_room_filter_all),
+                    accent = if (state.selectedSourceFilter == "all") WrMatch else WrSurfaceBorder,
+                    onClick = { viewModel.setSourceFilter("all") }
+                )
+            }
+            item {
+                WarRoomActionChip(
+                    label = stringResource(R.string.war_room_filter_requests),
+                    accent = if (state.selectedSourceFilter == "request_match") WrMatch else WrSurfaceBorder,
+                    onClick = { viewModel.setSourceFilter("request_match") }
+                )
+            }
+            item {
+                WarRoomActionChip(
+                    label = stringResource(R.string.war_room_filter_gems),
+                    accent = if (state.selectedSourceFilter == "hidden_gem") WrGem else WrSurfaceBorder,
+                    onClick = { viewModel.setSourceFilter("hidden_gem") }
+                )
+            }
+        }
+
+        if (selectedTab == WarRoomTab.AGENTS) {
+            item {
+                WarRoomActionChip(
+                    label = stringResource(R.string.war_room_all_agents),
+                    accent = if (state.selectedAgentFilter == null) WrMatch else WrSurfaceBorder,
+                    onClick = { viewModel.setAgentFilter(null) }
+                )
+            }
+        }
+
+        if (selectedTab == WarRoomTab.AI_SCOUT || selectedTab == WarRoomTab.FIND_NEXT) {
+            item {
+                WarRoomActionChip(
+                    label = stringResource(R.string.war_room_open_full_ai_scout),
+                    accent = accent,
+                    onClick = { navController.navigate(Screens.AiScoutScreen.route) { launchSingleTop = true } }
+                )
+            }
+            item {
+                WarRoomActionChip(
+                    label = stringResource(R.string.war_room_switch_ai_find_next),
+                    accent = secondaryActionAccent(selectedTab),
+                    onClick = {
+                        onTabSelected(if (selectedTab == WarRoomTab.AI_SCOUT) WarRoomTab.FIND_NEXT else WarRoomTab.AI_SCOUT)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WarRoomActionChip(label: String, accent: Color, onClick: () -> Unit) {
+    val displayAccent = if (accent == WrSurfaceBorder) HomeTextSecondary else accent
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(11.dp))
+            .background(displayAccent.copy(alpha = if (accent == WrSurfaceBorder) 0.12f else 0.18f))
+            .border(1.dp, displayAccent.copy(alpha = if (accent == WrSurfaceBorder) 0.24f else 0.40f), RoundedCornerShape(11.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = label,
+            style = boldTextStyle(displayAccent, 11.sp)
+        )
+    }
+}
+
+private fun secondaryActionAccent(selectedTab: WarRoomTab): Color {
+    return if (selectedTab == WarRoomTab.AI_SCOUT) WrGem else WrMatch
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  SEGMENTED TAB BAR — Pill-style tab selector
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -478,7 +708,8 @@ private fun SegmentedTabBar(selectedTab: WarRoomTab, onTabSelected: (WarRoomTab)
     val tabs = listOf(
         WarRoomTab.DISCOVERY to R.string.war_room_tab_discovery,
         WarRoomTab.AGENTS to R.string.war_room_tab_agents,
-        WarRoomTab.AI_SCOUT to R.string.war_room_tab_ai_scout
+        WarRoomTab.AI_SCOUT to R.string.war_room_tab_ai_scout,
+        WarRoomTab.FIND_NEXT to R.string.war_room_tab_find_next
     )
 
     Row(
@@ -523,11 +754,28 @@ private fun SegmentedTabBar(selectedTab: WarRoomTab, onTabSelected: (WarRoomTab)
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = stringResource(labelRes),
-                    style = boldTextStyle(textColor, 13.sp),
-                    letterSpacing = if (isSelected) 0.3.sp else 0.sp
-                )
+                val icon = when (tab) {
+                    WarRoomTab.DISCOVERY -> "⚡"
+                    WarRoomTab.AGENTS -> "🕵"
+                    WarRoomTab.AI_SCOUT -> "🔍"
+                    WarRoomTab.FIND_NEXT -> "🧠"
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = icon,
+                        style = regularTextStyle(textColor, 12.sp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(labelRes),
+                        style = boldTextStyle(textColor, 12.sp),
+                        letterSpacing = if (isSelected) 0.3.sp else 0.sp,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }

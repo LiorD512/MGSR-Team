@@ -50,10 +50,12 @@ const FEED_EVENTS_TABLE = 'FeedEvents';
 const WORKER_STATE_COLLECTION = 'WorkerState';
 const WORKER_RUNS_COLLECTION = 'WorkerRuns';
 const FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB = 'NEW_RELEASE_FROM_CLUB';
+const NOTIFICATION_MIN_MARKET_VALUE = 150000;
+const NOTIFICATION_MAX_MARKET_VALUE = 4000000;
+const NOTIFICATION_MAX_AGE = 33;
 
 const RELEASE_RANGES: [number, number][] = [
-  [0, 125000],
-  [125001, 250000],
+  [150000, 250000],
   [250001, 400000],
   [400001, 600000],
   [600001, 800000],
@@ -68,7 +70,6 @@ const RELEASE_RANGES: [number, number][] = [
   [2500001, 3000000],
   [3000001, 3500000],
   [3500001, 4000000],
-  [4000001, 50000000],
 ];
 
 const DELAY_BETWEEN_RANGES_MS = 6000;
@@ -317,6 +318,43 @@ function buildReleasesUrl(minValue: number, maxValue: number, page = 1): string 
 
 function buildFreeAgentsUrl(minValue: number, maxValue: number, page = 1): string {
   return `${TRANSFERMARKT_BASE_URL}/transfers/vertragslosespieler/statistik?ausrichtung=&spielerposition_id=0&land_id=&wettbewerb_id=alle&seit=0&altersklasse=&minMarktwert=${minValue}&maxMarktwert=${maxValue}&plus=1&page=${page}`;
+}
+
+function parseMarketValueToEur(value?: string | null): number | null {
+  if (!value) return null;
+  const normalized = String(value)
+    .replace(/\u20ac/g, '')
+    .replace(/,/g, '')
+    .trim()
+    .toLowerCase();
+  const match = normalized.match(/([0-9]+(?:\.[0-9]+)?)\s*([mk])?/);
+  if (!match) return null;
+  const num = Number.parseFloat(match[1]);
+  if (Number.isNaN(num)) return null;
+  const unit = match[2];
+  if (unit === 'm') return Math.round(num * 1000000);
+  if (unit === 'k') return Math.round(num * 1000);
+  return Math.round(num);
+}
+
+function parsePlayerAge(value?: string | null): number | null {
+  if (!value) return null;
+  const match = String(value).match(/\d{1,2}/);
+  if (!match) return null;
+  const age = Number.parseInt(match[0], 10);
+  return Number.isNaN(age) ? null : age;
+}
+
+function isNotificationReleaseCandidate(release: ReleaseModel): boolean {
+  const marketValueEur = parseMarketValueToEur(release.marketValue);
+  const age = parsePlayerAge(release.playerAge);
+  return (
+    marketValueEur !== null &&
+    marketValueEur >= NOTIFICATION_MIN_MARKET_VALUE &&
+    marketValueEur <= NOTIFICATION_MAX_MARKET_VALUE &&
+    age !== null &&
+    age <= NOTIFICATION_MAX_AGE
+  );
 }
 
 function parseFreeAgentsList($: cheerio.Root): ReleaseModel[] {
@@ -588,13 +626,14 @@ async function main() {
       if (r.playerUrl) distinctByUrl.set(r.playerUrl, r);
     });
     const distinctReleases = await enrichReleaseProfiles(Array.from(distinctByUrl.values()));
-    const currentUrls = new Set(distinctReleases.map((r) => r.playerUrl).filter(Boolean));
-    const newReleases = distinctReleases.filter((r) => !knownUrls.has(r.playerUrl || ''));
+    const constrainedReleases = distinctReleases.filter(isNotificationReleaseCandidate);
+    const currentUrls = new Set(constrainedReleases.map((r) => r.playerUrl).filter(Boolean));
+    const newReleases = constrainedReleases.filter((r) => !knownUrls.has(r.playerUrl || ''));
 
-    log(`Total releases: ${distinctReleases.length}, new: ${newReleases.length}`);
+    log(`Total releases after constraints: ${constrainedReleases.length}, new: ${newReleases.length}`);
 
     // Bootstrap: first run has empty knownUrls — avoid 100+ duplicate events
-    const isBootstrap = knownUrls.size === 0 && distinctReleases.length > 50;
+    const isBootstrap = knownUrls.size === 0 && constrainedReleases.length > 50;
     if (isBootstrap) {
       log('Bootstrap mode: saving known URLs without creating events (first run)');
       await saveKnownReleaseUrls(db, currentUrls);

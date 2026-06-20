@@ -67,6 +67,9 @@ const ENRICHMENT_MAX_ATTEMPTS = 3;
 const ENRICHMENT_DELAY_BETWEEN_REQUESTS_MS = 450;
 const MANUAL_REFRESH_STATUS_POLL_MS = 5000;
 const MANUAL_REFRESH_MAX_WAIT_MS = 45 * 60 * 1000;
+const NOTIFICATION_MIN_MARKET_VALUE = 150000;
+const NOTIFICATION_MAX_MARKET_VALUE = 4000000;
+const NOTIFICATION_MAX_AGE = 33;
 
 interface FeedEvent {
   id: string;
@@ -230,6 +233,39 @@ async function getPlayerDetailsWithTimeout(url: string, timeoutMs = ENRICHMENT_R
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function parsePlayerAge(value?: string | null): number | null {
+  if (!value) return null;
+  const match = String(value).match(/\d{1,2}/);
+  if (!match) return null;
+  const age = Number.parseInt(match[0], 10);
+  return Number.isNaN(age) ? null : age;
+}
+
+function parseReleaseDateToEpoch(value?: string | null): number {
+  if (!value) return 0;
+  const raw = value.trim();
+  if (!raw) return 0;
+
+  const parts = raw.split(/[\/.-]/);
+  if (parts.length === 3) {
+    const [p1, p2, p3] = parts;
+    const n1 = Number.parseInt(p1, 10);
+    const n2 = Number.parseInt(p2, 10);
+    const n3 = Number.parseInt(p3, 10);
+    if (!Number.isNaN(n1) && !Number.isNaN(n2) && !Number.isNaN(n3)) {
+      if (p1.length === 4 && n1 > 1900) {
+        return new Date(n1, n2 - 1, n3).getTime();
+      }
+      if (p3.length === 4 && n3 > 1900) {
+        return new Date(n3, n2 - 1, n1).getTime();
+      }
+    }
+  }
+
+  const parsed = Date.parse(raw);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function formatDurationMs(ms: number): string {
@@ -1013,7 +1049,16 @@ export default function ReleaseNotificationsPage() {
   }, [resolvedPlayers, firestorePositions]);
 
   const filteredPlayers = useMemo<NotificationPlayer[]>(() => {
-    let result = resolvedPlayers;
+    let result = resolvedPlayers.filter((player) => {
+      const value = parseMarketValue(player.marketValue);
+      const age = parsePlayerAge(player.playerAge);
+      return (
+        value >= NOTIFICATION_MIN_MARKET_VALUE &&
+        value <= NOTIFICATION_MAX_MARKET_VALUE &&
+        age !== null &&
+        age <= NOTIFICATION_MAX_AGE
+      );
+    });
     const queryText = search.trim().toLowerCase();
 
     const selectedPreset = VALUE_PRESETS[preset];
@@ -1062,11 +1107,20 @@ export default function ReleaseNotificationsPage() {
     }
 
     if (sortBy === 'date') {
-      // Keep date sort aligned with what the UI shows on cards (FeedEvents timestamp).
+      // Use release date first, then feed timestamp and market value for deterministic ordering.
       return [...result].sort((a, b) => {
+        const dateA = parseReleaseDateToEpoch(a.transferDate ?? a.event.transferDate);
+        const dateB = parseReleaseDateToEpoch(b.transferDate ?? b.event.transferDate);
+        if (dateA !== dateB) return dateB - dateA;
+
         const tsA = a.event.timestamp ?? 0;
         const tsB = b.event.timestamp ?? 0;
         if (tsA !== tsB) return tsB - tsA;
+
+        const valueA = parseMarketValue(a.marketValue);
+        const valueB = parseMarketValue(b.marketValue);
+        if (valueA !== valueB) return valueB - valueA;
+
         return (b.playerUrl || '').localeCompare(a.playerUrl || '');
       });
     }
@@ -1170,12 +1224,6 @@ export default function ReleaseNotificationsPage() {
               <p className="text-mgsr-muted mt-1 text-sm">{t('release_notifications_subtitle')}</p>
             </div>
             <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-            <Link
-              href="/releases"
-              className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-[var(--mgsr-accent)] hover:bg-[var(--mgsr-accent)]/15 hover:border-[var(--mgsr-accent)]/40 transition text-center"
-            >
-              {t('release_notifications_back_to_releases')}
-            </Link>
             <button
               onClick={runManualFetchAndEnrichment}
               disabled={isManualRefreshing}

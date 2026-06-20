@@ -54,7 +54,7 @@ data class WarRoomUiState(
     val savingFeedbackIds: Set<String> = emptySet()
 )
 
-enum class WarRoomTab { DISCOVERY, AGENTS, AI_SCOUT }
+enum class WarRoomTab { DISCOVERY, AGENTS, AI_SCOUT, FIND_NEXT }
 
 // ── Interface ───────────────────────────────────────────────────────────────
 
@@ -112,6 +112,7 @@ class WarRoomViewModel(
                 }
             }
             WarRoomTab.AI_SCOUT -> { /* Content uses its own ViewModel */ }
+            WarRoomTab.FIND_NEXT -> { /* Content uses its own ViewModel */ }
         }
     }
 

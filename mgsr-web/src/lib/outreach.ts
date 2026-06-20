@@ -2,7 +2,7 @@ import { getPlayerDetails } from '@/lib/api';
 import { callShortlistUpdate } from '@/lib/callables';
 
 const DEFAULT_TEMPLATE =
-  "Hey {firstName}, {agentName} here from MGSR Football Agency. Been tracking your recent performances — really like what I see. I think there could be some interesting options for you. Drop me your WhatsApp and let's talk.";
+  "Hey {firstName}, {agentName} here from BRIT Sport Group. Been tracking your recent performances — really like what I see. I think there could be some interesting options for you. Drop me your WhatsApp and let's talk.";
 
 interface TemplateVars {
   playerName?: string;

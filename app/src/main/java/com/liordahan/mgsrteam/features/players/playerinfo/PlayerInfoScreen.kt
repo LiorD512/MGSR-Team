@@ -26,8 +26,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -43,29 +43,27 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.PersonAddAlt
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.PersonAddAlt
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Whatsapp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -74,6 +72,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -148,7 +148,6 @@ import com.liordahan.mgsrteam.features.players.models.isFreeAgentClub
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
-import com.liordahan.mgsrteam.features.players.playerinfo.ai.ScoutReportOptions
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.SimilarPlayersOptions
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentsSection
@@ -191,6 +190,21 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+
+private val MenInfoBg = Color(0xFF0A121E)
+private val MenInfoCard = Color(0xFF152131)
+private val MenInfoCardAlt = Color(0xFF1A2A3D)
+private val MenInfoBorder = Color(0x55C7A35A)
+private val MenInfoGold = Color(0xFFC7A35A)
+private val MenInfoGoldSoft = Color(0xFFDDC187)
+private val MenInfoTextSubtle = Color(0xFFBFAF8A)
+private val MenInfoBronze = Color(0xFFAE8A4A)
+
+private fun isMenPalette(): Boolean = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+private fun playerInfoAccentColor(): Color = if (isMenPalette()) MenInfoGold else PlatformColors.palette.accent
+private fun playerInfoMutedColor(): Color = if (isMenPalette()) MenInfoTextSubtle else PlatformColors.palette.textSecondary
+private fun playerInfoBorderColor(): Color = if (isMenPalette()) MenInfoBorder else PlatformColors.palette.cardBorder
+private fun playerInfoCardColor(): Color = if (isMenPalette()) MenInfoCard else PlatformColors.palette.card
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -294,10 +308,6 @@ fun PlayerInfoScreen(
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSalaryTransferFeeSheet by remember { mutableStateOf(false) }
-    var showShareLanguageSheet by remember { mutableStateOf(false) }
-    var isPreparingShare by remember { mutableStateOf(false) }
-    var includePlayerContact by remember { mutableStateOf(false) }
-    var includeAgencyContact by remember { mutableStateOf(false) }
     var showAddNoteSheet by remember { mutableStateOf(false) }
     var showAllNotes by remember { mutableStateOf(false) }
     var showAddPlayerTaskSheet by remember { mutableStateOf(false) }
@@ -305,14 +315,10 @@ fun PlayerInfoScreen(
     var playerDocumentId by remember { mutableStateOf<String?>(null) }
     var allAccounts by remember { mutableStateOf<List<com.liordahan.mgsrteam.features.login.models.Account>>(emptyList()) }
     var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
-    val scoutReport by viewModel.scoutReportFlow.collectAsStateWithLifecycle()
     val isHighlightsSaving by viewModel.isHighlightsSaving.collectAsStateWithLifecycle()
     val fmIntelligenceData by viewModel.fmIntelligenceFlow.collectAsStateWithLifecycle()
     val isFmIntelligenceLoading by viewModel.isFmIntelligenceLoading.collectAsStateWithLifecycle()
     val fmIntelligenceError by viewModel.fmIntelligenceError.collectAsStateWithLifecycle()
-    val playerStatsData by viewModel.playerStatsFlow.collectAsStateWithLifecycle()
-    val isPlayerStatsLoading by viewModel.isPlayerStatsLoading.collectAsStateWithLifecycle()
-    val playerStatsError by viewModel.playerStatsError.collectAsStateWithLifecycle()
     val deletingDocId by viewModel.deletingDocIdFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
@@ -419,14 +425,14 @@ fun PlayerInfoScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = PlatformColors.palette.background
+        containerColor = if (currentPlatform == Platform.MEN) MenInfoBg else PlatformColors.palette.background
     ) { paddingValues ->
 
         if (showLoader) {
             SkeletonPlayerInfoLayout(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(PlatformColors.palette.background)
+                    .background(if (currentPlatform == Platform.MEN) MenInfoBg else PlatformColors.palette.background)
             )
             return@Scaffold
         }
@@ -531,83 +537,6 @@ fun PlayerInfoScreen(
                 deleteInFlight = false
             }
         }
-        fun performShare(lang: String) {
-            val player = playerToPresent
-            val docId = playerDocumentId
-            if (player == null || docId == null) return
-            showShareLanguageSheet = false
-            isPreparingShare = true
-            scope.launch {
-                viewModel.createShareUrl(player, docId, documentsList, scoutReport, lang, includePlayerContact, includeAgencyContact)
-                    .onSuccess { url ->
-                        isPreparingShare = false
-                        val rawPos = player.positions?.firstOrNull()?.takeIf { it.isNotBlank() } ?: ""
-                        val pos = if (lang == "he") PositionDisplayNames.getDisplayName(context, rawPos) else rawPos
-                        val height = player.height?.takeIf { it.isNotBlank() } ?: ""
-                        val quickFacts = listOf(height, pos).filter { it.isNotBlank() }.joinToString(" ")
-                        val shareText = if (lang == "he") {
-                            "שחקן חדש שעשוי להתאים לכם.\n${if (quickFacts.isNotBlank()) "$quickFacts, מוכן למעבר מיידי." else "מוכן למעבר מיידי."}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n\n$url"
-                        } else {
-                            "New player that could fit your needs.\n${if (quickFacts.isNotBlank()) "$quickFacts — ready for immediate move." else "Ready for immediate move."}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n\n$url"
-                        }
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, shareText)
-                        }
-                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.player_info_share_with)))
-                    }
-                    .onFailure {
-                        isPreparingShare = false
-                        ToastManager.showError(context.getString(R.string.player_info_share_error))
-                    }
-            }
-        }
-        if (isPreparingShare) {
-            Dialog(onDismissRequest = { /* non-dismissable while preparing */ }) {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(8.dp),
-                    colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-                    border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(40.dp),
-                            color = PlatformColors.palette.accent,
-                            strokeWidth = 3.dp
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = stringResource(R.string.player_info_share_preparing),
-                            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp),
-                        )
-                    }
-                }
-            }
-        }
-        if (showShareLanguageSheet) {
-            val hasPlayerPhone = playerToPresent?.playerPhoneNumber?.takeIf { it.isNotBlank() } != null
-            val hasAgentPhone = playerToPresent?.agentPhoneNumber?.takeIf { it.isNotBlank() } != null
-            ShareLanguageBottomSheet(
-                hasPlayerPhone = hasPlayerPhone,
-                hasAgentPhone = hasAgentPhone,
-                includePlayerContact = includePlayerContact,
-                includeAgencyContact = includeAgencyContact,
-                onIncludePlayerContactChanged = { includePlayerContact = it },
-                onIncludeAgencyContactChanged = { includeAgencyContact = it },
-                onDismiss = {
-                    showShareLanguageSheet = false
-                    includePlayerContact = false
-                    includeAgencyContact = false
-                },
-                onLangSelected = { performShare(it) }
-            )
-        }
         if (showSalaryTransferFeeSheet) {
             playerToPresent?.let { player ->
                 SalaryTransferFeeBottomSheet(
@@ -625,10 +554,28 @@ fun PlayerInfoScreen(
 
         val shareAction: () -> Unit = shareAction@ {
             val player = playerToPresent
-            val docId = playerDocumentId
-            if (player == null || docId == null) return@shareAction
+            if (player == null) return@shareAction
+            val transfermarktUrl = player.tmProfile?.trim().orEmpty()
+            if (transfermarktUrl.isBlank()) {
+                ToastManager.showError(context.getString(R.string.player_info_share_error))
+                return@shareAction
+            }
+            val highlightsUrl = player.pinnedHighlights
+                ?.firstOrNull { it.embedUrl.isNotBlank() }
+                ?.embedUrl
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+            val shareText = if (highlightsUrl != null) {
+                "$transfermarktUrl\n\n$highlightsUrl"
+            } else {
+                transfermarktUrl
+            }
             com.liordahan.mgsrteam.analytics.AnalyticsHelper.logSharePlayer(player.tmProfile)
-            showShareLanguageSheet = true
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, shareText)
+            }
+            context.startActivity(Intent.createChooser(intent, context.getString(R.string.player_info_share_with)))
         }
 
         val isRefreshing = isRefreshingPlayer is UiResult.Loading
@@ -792,23 +739,6 @@ fun PlayerInfoScreen(
                 }
             }
 
-            // Section: API Performance Stats (men only)
-            if (currentPlatform == Platform.MEN) {
-                playerToPresent?.let { player ->
-                    player.tmProfile?.let { tmProfile ->
-                        LaunchedEffect(tmProfile) {
-                            viewModel.fetchPlayerStats(tmProfile)
-                        }
-                        PlayerInfoSectionHeader(stringResource(R.string.player_stats_section_title))
-                        com.liordahan.mgsrteam.features.players.playerinfo.playerstats.PlayerStatsSection(
-                            data = playerStatsData,
-                            isLoading = isPlayerStatsLoading,
-                            error = playerStatsError
-                        )
-                    }
-                }
-            }
-
             // Section: Matching Requests
             playerToPresent?.let { player ->
                 val matchingRequests by viewModel.matchingRequestsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -838,6 +768,8 @@ fun PlayerInfoScreen(
             PlayerInfoCard(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
+                val infoMuted = playerInfoMutedColor()
+                val infoBorder = playerInfoBorderColor()
                 InfoRow(
                         stringResource(R.string.player_info_height),
                         playerToPresent?.height?.replace(",", "."),
@@ -847,11 +779,11 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_height),
                                 contentDescription = null,
-                                tint = PlatformColors.palette.textSecondary
+                                tint = infoMuted
                             )
                         })
                     HorizontalDivider(
-                        color = PlatformColors.palette.cardBorder,
+                        color = infoBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -864,11 +796,11 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 imageVector = Icons.Default.CalendarMonth,
                                 contentDescription = null,
-                                tint = PlatformColors.palette.textSecondary
+                                tint = infoMuted
                             )
                         })
                     HorizontalDivider(
-                        color = dividerColor,
+                        color = infoBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -882,12 +814,12 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_soccer),
                                 contentDescription = null,
-                                tint = PlatformColors.palette.textSecondary
+                                tint = infoMuted
                             )
                         }
                     )
                     HorizontalDivider(
-                        color = PlatformColors.palette.cardBorder,
+                        color = infoBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -906,12 +838,12 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_foot),
                                 contentDescription = null,
-                                tint = PlatformColors.palette.textSecondary
+                                tint = infoMuted
                             )
                         }
                     )
                     HorizontalDivider(
-                        color = PlatformColors.palette.cardBorder,
+                        color = infoBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -925,6 +857,8 @@ fun PlayerInfoScreen(
                     )
 
                     if (currentPlatform == Platform.MEN && EuCountries.isEuNational(playerToPresent?.nationalities, playerToPresent?.nationality)) {
+                        val euBadgeBg = MenInfoGold
+                        val euBadgeText = Color(0xFF0E1219)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -934,17 +868,17 @@ fun PlayerInfoScreen(
                         ) {
                             Text(
                                 text = stringResource(R.string.eu_nat_badge),
-                                style = boldTextStyle(Color.White, 9.sp),
+                                style = boldTextStyle(euBadgeText, 9.sp),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(Color(0xFF1565C0))
+                                    .background(euBadgeBg)
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
                     }
 
                     HorizontalDivider(
-                        color = PlatformColors.palette.cardBorder,
+                        color = infoBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -960,12 +894,12 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_contract),
                                 contentDescription = null,
-                                tint = PlatformColors.palette.textSecondary
+                                tint = infoMuted
                             )
                         })
 
                     HorizontalDivider(
-                        color = PlatformColors.palette.cardBorder,
+                        color = infoBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -977,7 +911,7 @@ fun PlayerInfoScreen(
                     )
 
                     HorizontalDivider(
-                        color = dividerColor,
+                        color = infoBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -994,7 +928,7 @@ fun PlayerInfoScreen(
                     // Date added row — men only
                     if (currentPlatform == Platform.MEN && (playerToPresent?.createdAt ?: 0L) > 0L) {
                         HorizontalDivider(
-                            color = dividerColor,
+                            color = infoBorder,
                             thickness = 0.5.dp,
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
@@ -1007,14 +941,14 @@ fun PlayerInfoScreen(
                                     modifier = Modifier.size(24.dp),
                                     imageVector = Icons.Default.CalendarMonth,
                                     contentDescription = null,
-                                    tint = PlatformColors.palette.textSecondary
+                                    tint = infoMuted
                                 )
                             }
                         )
                     }
 
                     HorizontalDivider(
-                        color = dividerColor,
+                        color = infoBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -1038,7 +972,7 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_euro),
                                 contentDescription = null,
-                                tint = PlatformColors.palette.textSecondary
+                                tint = infoMuted
                             )
                         }
                     )
@@ -1049,7 +983,7 @@ fun PlayerInfoScreen(
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = stringResource(R.string.player_info_previously, it.value ?: "", SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(it.date ?: 0))),
-                                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
+                                style = regularTextStyle(infoMuted, 12.sp),
                                 modifier = Modifier.padding(start = 28.dp)
                             )
                         }
@@ -1149,7 +1083,8 @@ fun PlayerInfoScreen(
                 onShareClicked = shareAction,
                 onGenerateMandateClicked = {
                     navController.navigate("${Screens.GenerateMandateScreen.route}/${Uri.encode(playerId)}")
-                }
+                },
+                currentPlatform = currentPlatform
             )
         }
     }
@@ -1412,6 +1347,7 @@ private fun PlayerInfoHeroCard(
     onSalaryTransferFeeClicked: () -> Unit = {},
     onClearSalaryAndTransferFee: () -> Unit = {},
 ) {
+    val isMen = currentPlatform == Platform.MEN
     val context = LocalContext.current
     val resources = context.resources
     val valueTrend = remember(player.marketValueHistory) {
@@ -1426,7 +1362,7 @@ private fun PlayerInfoHeroCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        colors = CardDefaults.cardColors(containerColor = if (isMen) MenInfoCard else PlatformColors.palette.card),
         border = if (currentPlatform == Platform.WOMEN) {
             BorderStroke(
                 1.dp,
@@ -1438,6 +1374,8 @@ private fun PlayerInfoHeroCard(
                     )
                 )
             )
+        } else if (isMen) {
+            BorderStroke(1.dp, MenInfoBorder)
         } else {
             BorderStroke(1.dp, PlatformColors.palette.cardBorder)
         }
@@ -1533,13 +1471,13 @@ private fun PlayerInfoHeroCard(
                     modifier = Modifier
                         .size(96.dp)
                         .clip(CircleShape)
-                        .border(2.dp, PlatformColors.palette.cardBorder, CircleShape)
+                        .border(2.dp, if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder, CircleShape)
                 )
             }
             Spacer(Modifier.height(12.dp))
             Text(
                 text = player.fullName ?: stringResource(R.string.player_info_unknown),
-                style = boldTextStyle(PlatformColors.palette.textPrimary, 22.sp)
+                style = boldTextStyle(if (isMen) MenInfoGoldSoft else PlatformColors.palette.textPrimary, 22.sp)
             )
             if (player.isOnLoan) {
                 Spacer(Modifier.height(6.dp))
@@ -1555,7 +1493,7 @@ private fun PlayerInfoHeroCard(
                     player.age?.let { append(" • ${it.trim()} ${stringResource(R.string.player_info_years_short)}") }
                     player.currentClub?.clubName?.let { append(" • $it") }
                 }.ifEmpty { "—" },
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
+                style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 13.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1568,7 +1506,7 @@ private fun PlayerInfoHeroCard(
             )
             Text(
                 text = stringResource(R.string.player_info_added_by, addedByName),
-                style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.8f), 11.sp)
+                style = regularTextStyle(if (isMen) MenInfoTextSubtle.copy(alpha = 0.85f) else PlatformColors.palette.textSecondary.copy(alpha = 0.8f), 11.sp)
             )
 
             if (currentPlatform == Platform.MEN && (player.createdAt ?: 0L) > 0L) {
@@ -1578,14 +1516,14 @@ private fun PlayerInfoHeroCard(
                         R.string.player_info_added_on,
                         java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(player.createdAt!!))
                     ),
-                    style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 11.sp)
+                    style = regularTextStyle(if (isMen) MenInfoTextSubtle.copy(alpha = 0.72f) else PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 11.sp)
                 )
             }
             player.lastRefreshedAt?.takeIf { it > 0 }?.let { ts ->
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = playerInfoFormatLastRefreshed(resources, ts),
-                    style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.7f), 11.sp)
+                    style = regularTextStyle(if (isMen) MenInfoTextSubtle.copy(alpha = 0.76f) else PlatformColors.palette.textSecondary.copy(alpha = 0.7f), 11.sp)
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -1604,7 +1542,7 @@ private fun PlayerInfoHeroCard(
                             when {
                                 valueTrend > 0 -> PlatformColors.palette.green
                                 valueTrend < 0 -> PlatformColors.palette.red
-                                else -> PlatformColors.palette.accent
+                                else -> if (isMen) MenInfoGold else PlatformColors.palette.accent
                             },
                             14.sp
                         )
@@ -1618,15 +1556,15 @@ private fun PlayerInfoHeroCard(
                         )
                     }
                 }
-                Box(modifier = Modifier.width(1.dp).height(14.dp).background(PlatformColors.palette.cardBorder))
+                Box(modifier = Modifier.width(1.dp).height(14.dp).background(if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder))
                 Text(
                     text = player.height?.replace(",", ".") ?: "—",
-                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                    style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp)
                 )
-                Box(modifier = Modifier.width(1.dp).height(14.dp).background(PlatformColors.palette.cardBorder))
+                Box(modifier = Modifier.width(1.dp).height(14.dp).background(if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder))
                 Text(
                     text = player.nationality ?: "—",
-                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                    style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp)
                 )
                 AsyncImage(
                     model = player.nationalityFlag,
@@ -1643,27 +1581,31 @@ private fun PlayerInfoHeroCard(
                         .clip(RoundedCornerShape(8.dp))
                         .background(
                             if (isExpired) PlatformColors.palette.red.copy(alpha = 0.15f)
-                            else PlatformColors.palette.orange.copy(alpha = 0.15f)
+                            else if (isMen) MenInfoBronze.copy(alpha = 0.18f) else PlatformColors.palette.orange.copy(alpha = 0.15f)
                         )
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.player_info_contract, text),
                         style = boldTextStyle(
-                            if (isExpired) PlatformColors.palette.red else PlatformColors.palette.orange,
+                            if (isExpired) PlatformColors.palette.red else if (isMen) MenInfoGold else PlatformColors.palette.orange,
                             11.sp
                         )
                     )
                 }
             }
             if (currentPlatform != Platform.YOUTH) {
+            val infoToggleContainer = if (isMen) MenInfoCard else PlatformColors.palette.background
+            val infoToggleBorder = if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder
+            val infoToggleAccent = if (isMen) MenInfoGold else PlatformColors.palette.blue
+            val infoToggleMuted = if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary
             Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(PlatformColors.palette.background)
-                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                    .background(infoToggleContainer)
+                    .border(1.dp, infoToggleBorder, RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1678,14 +1620,14 @@ private fun PlayerInfoHeroCard(
                         imageVector = Icons.Default.VerifiedUser,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = if (isMandateOn) PlatformColors.palette.blue else PlatformColors.palette.textSecondary
+                        tint = if (isMandateOn) infoToggleAccent else infoToggleMuted
                     )
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text(
                             text = stringResource(R.string.player_info_mandate),
                             style = boldTextStyle(
-                                if (isMandateOn) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                                if (isMandateOn) infoToggleAccent else infoToggleMuted,
                                 16.sp
                             )
                         )
@@ -1696,7 +1638,7 @@ private fun PlayerInfoHeroCard(
                             Text(
                                 text = mandateExpiryStr,
                                 style = regularTextStyle(
-                                    if (isMandateOn) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                                    if (isMandateOn) infoToggleAccent else infoToggleMuted,
                                     11.sp
                                 )
                             )
@@ -1705,7 +1647,7 @@ private fun PlayerInfoHeroCard(
                             Text(
                                 text = mandateValidLeagues.joinToString(", "),
                                 style = regularTextStyle(
-                                    PlatformColors.palette.blue.copy(alpha = 0.7f),
+                                    infoToggleAccent.copy(alpha = 0.7f),
                                     10.sp
                                 ),
                                 maxLines = 2,
@@ -1722,9 +1664,9 @@ private fun PlayerInfoHeroCard(
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = PlatformColors.palette.blue,
-                        uncheckedThumbColor = PlatformColors.palette.textSecondary,
-                        uncheckedTrackColor = PlatformColors.palette.cardBorder
+                        checkedTrackColor = infoToggleAccent,
+                        uncheckedThumbColor = infoToggleMuted,
+                        uncheckedTrackColor = infoToggleBorder
                     )
                 )
             }
@@ -1736,8 +1678,8 @@ private fun PlayerInfoHeroCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(PlatformColors.palette.background)
-                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                    .background(infoToggleContainer)
+                    .border(1.dp, infoToggleBorder, RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1754,7 +1696,7 @@ private fun PlayerInfoHeroCard(
                     Text(
                         text = stringResource(R.string.player_info_interested_in_israel),
                         style = boldTextStyle(
-                            if (isInterestedInIsrael) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                            if (isInterestedInIsrael) infoToggleAccent else infoToggleMuted,
                             16.sp
                         )
                     )
@@ -1767,9 +1709,9 @@ private fun PlayerInfoHeroCard(
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = PlatformColors.palette.blue,
-                        uncheckedThumbColor = PlatformColors.palette.textSecondary,
-                        uncheckedTrackColor = PlatformColors.palette.cardBorder
+                        checkedTrackColor = infoToggleAccent,
+                        uncheckedThumbColor = infoToggleMuted,
+                        uncheckedTrackColor = infoToggleBorder
                     )
                 )
             }
@@ -1782,14 +1724,14 @@ private fun PlayerInfoHeroCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(PlatformColors.palette.background)
-                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                    .background(infoToggleContainer)
+                    .border(1.dp, infoToggleBorder, RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 // Section title
                 Text(
                     text = stringResource(R.string.player_info_family_status),
-                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp),
+                    style = boldTextStyle(infoToggleMuted, 12.sp),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
@@ -1812,7 +1754,7 @@ private fun PlayerInfoHeroCard(
                         Text(
                             text = stringResource(R.string.player_info_married),
                             style = boldTextStyle(
-                                if (isMarried) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                                if (isMarried) infoToggleAccent else infoToggleMuted,
                                 16.sp
                             )
                         )
@@ -1821,7 +1763,7 @@ private fun PlayerInfoHeroCard(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
                                 strokeWidth = 2.dp,
-                                color = PlatformColors.palette.blue
+                                color = infoToggleAccent
                             )
                         }
                     }
@@ -1833,15 +1775,15 @@ private fun PlayerInfoHeroCard(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
-                            checkedTrackColor = PlatformColors.palette.blue,
-                            uncheckedThumbColor = PlatformColors.palette.textSecondary,
-                            uncheckedTrackColor = PlatformColors.palette.cardBorder
+                            checkedTrackColor = infoToggleAccent,
+                            uncheckedThumbColor = infoToggleMuted,
+                            uncheckedTrackColor = infoToggleBorder
                         )
                     )
                 }
 
                 Spacer(Modifier.height(4.dp))
-                HorizontalDivider(color = PlatformColors.palette.cardBorder)
+                HorizontalDivider(color = infoToggleBorder)
                 Spacer(Modifier.height(4.dp))
 
                 // Kids row
@@ -1863,7 +1805,7 @@ private fun PlayerInfoHeroCard(
                         Text(
                             text = stringResource(R.string.player_info_kids),
                             style = boldTextStyle(
-                                if (kidsCount > 0) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                                if (kidsCount > 0) infoToggleAccent else infoToggleMuted,
                                 16.sp
                             )
                         )
@@ -1872,7 +1814,7 @@ private fun PlayerInfoHeroCard(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
                                 strokeWidth = 2.dp,
-                                color = PlatformColors.palette.blue
+                                color = infoToggleAccent
                             )
                         }
                     }
@@ -1890,7 +1832,7 @@ private fun PlayerInfoHeroCard(
                             Icon(
                                 Icons.Default.Remove,
                                 contentDescription = "Minus",
-                                tint = if (kidsCount > 0) PlatformColors.palette.blue else PlatformColors.palette.textSecondary.copy(alpha = 0.3f),
+                                tint = if (kidsCount > 0) infoToggleAccent else infoToggleMuted.copy(alpha = 0.3f),
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -1909,7 +1851,7 @@ private fun PlayerInfoHeroCard(
                             Icon(
                                 Icons.Default.Add,
                                 contentDescription = "Plus",
-                                tint = PlatformColors.palette.blue,
+                                tint = infoToggleAccent,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -1924,8 +1866,8 @@ private fun PlayerInfoHeroCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(PlatformColors.palette.background)
-                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                    .background(infoToggleContainer)
+                    .border(1.dp, infoToggleBorder, RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 val currentEnglishLevel = remember(player.englishLevel) {
@@ -1951,7 +1893,7 @@ private fun PlayerInfoHeroCard(
                         Text(
                             text = stringResource(R.string.player_info_english_level),
                             style = boldTextStyle(
-                                if (selectedEnglishLevel != null) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                                if (selectedEnglishLevel != null) infoToggleAccent else infoToggleMuted,
                                 16.sp
                             )
                         )
@@ -1960,7 +1902,7 @@ private fun PlayerInfoHeroCard(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
                                 strokeWidth = 2.dp,
-                                color = PlatformColors.palette.blue
+                                color = infoToggleAccent
                             )
                         }
                     }
@@ -1977,8 +1919,8 @@ private fun PlayerInfoHeroCard(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(
-                                    if (isSelected) PlatformColors.palette.blue
-                                    else PlatformColors.palette.cardBorder.copy(alpha = 0.5f)
+                                    if (isSelected) infoToggleAccent
+                                    else infoToggleBorder.copy(alpha = 0.5f)
                                 )
                                 .clickable {
                                     if (isSelected) {
@@ -1995,7 +1937,7 @@ private fun PlayerInfoHeroCard(
                             Text(
                                 text = level.displayName,
                                 style = boldTextStyle(
-                                    if (isSelected) Color.White else PlatformColors.palette.textSecondary,
+                                    if (isSelected) Color.White else infoToggleMuted,
                                     11.sp
                                 ),
                                 maxLines = 1
@@ -2013,8 +1955,8 @@ private fun PlayerInfoHeroCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(PlatformColors.palette.background)
-                        .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                        .background(infoToggleContainer)
+                        .border(1.dp, infoToggleBorder, RoundedCornerShape(12.dp))
                         .padding(horizontal = 14.dp, vertical = 10.dp)
                         .combinedClickable(
                             onClick = onSalaryTransferFeeClicked,
@@ -2036,7 +1978,7 @@ private fun PlayerInfoHeroCard(
                         }
                         Text(
                             text = "$salaryStr • $feeDisplay",
-                            style = regularTextStyle(PlatformColors.palette.accent, 11.sp),
+                            style = regularTextStyle(if (isMen) MenInfoGold else PlatformColors.palette.accent, 11.sp),
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -2044,7 +1986,7 @@ private fun PlayerInfoHeroCard(
                         imageVector = Icons.Default.Edit,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
-                        tint = PlatformColors.palette.accent
+                        tint = if (isMen) MenInfoGold else PlatformColors.palette.accent
                     )
                 }
                 DropdownMenu(
@@ -2082,12 +2024,17 @@ private fun PlayerInfoHeroCard(
 
 @Composable
 private fun PlayerInfoOnLoanPill(text: String) {
+    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .background(
                 Brush.linearGradient(
-                    colors = listOf(PlatformColors.palette.purple, Color(0xFF7B1FA2))
+                    colors = if (isMen) {
+                        listOf(MenInfoBronze, MenInfoGold)
+                    } else {
+                        listOf(PlatformColors.palette.purple, Color(0xFF7B1FA2))
+                    }
                 )
             )
             .padding(horizontal = 12.dp, vertical = 5.dp)
@@ -2110,6 +2057,7 @@ private fun PlayerInfoQuickActions(
     onRemoveAgentNumber: () -> Unit,
     platform: Platform = Platform.MEN
 ) {
+    val isMen = platform == Platform.MEN
     val playerPhone = player.getPlayerPhoneNumber()
     val agentPhone = if (platform == Platform.YOUTH) player.parentContact?.parentPhoneNumber else player.getAgentPhoneNumber()
     val hasTmProfile = player.tmProfile != null
@@ -2121,8 +2069,8 @@ private fun PlayerInfoQuickActions(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+        colors = CardDefaults.cardColors(containerColor = if (isMen) MenInfoCard else PlatformColors.palette.card),
+        border = BorderStroke(1.dp, if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder)
     ) {
         Row(
             modifier = Modifier
@@ -2145,7 +2093,7 @@ private fun PlayerInfoQuickActions(
                 modifier = Modifier
                     .width(1.dp)
                     .height(32.dp)
-                    .background(PlatformColors.palette.cardBorder)
+                    .background(playerInfoBorderColor())
             )
 
             // Agent / Parent phone action
@@ -2163,7 +2111,7 @@ private fun PlayerInfoQuickActions(
                     modifier = Modifier
                         .width(1.dp)
                         .height(32.dp)
-                        .background(PlatformColors.palette.cardBorder)
+                        .background(playerInfoBorderColor())
                 )
                 ContactActionChip(
                     modifier = Modifier.weight(1f),
@@ -2172,7 +2120,7 @@ private fun PlayerInfoQuickActions(
                             imageVector = Icons.Default.Link,
                             contentDescription = null,
                             modifier = Modifier.size(24.dp),
-                            tint = PlatformColors.palette.accent
+                            tint = playerInfoAccentColor()
                         )
                     },
                     label = stringResource(R.string.player_info_tm_short),
@@ -2190,7 +2138,7 @@ private fun PlayerInfoQuickActions(
                     modifier = Modifier
                         .width(1.dp)
                         .height(32.dp)
-                        .background(PlatformColors.palette.cardBorder)
+                        .background(playerInfoBorderColor())
                 )
                 ContactActionChip(
                     modifier = Modifier.weight(1f),
@@ -2214,7 +2162,7 @@ private fun PlayerInfoQuickActions(
                     modifier = Modifier
                         .width(1.dp)
                         .height(32.dp)
-                        .background(PlatformColors.palette.cardBorder)
+                        .background(playerInfoBorderColor())
                 )
                 ContactActionChip(
                     modifier = Modifier.weight(1f),
@@ -2260,7 +2208,7 @@ private fun ContactActionChip(
         Spacer(Modifier.height(4.dp))
         Text(
             text = label,
-            style = boldTextStyle(PlatformColors.palette.textSecondary, 11.sp),
+            style = boldTextStyle(playerInfoMutedColor(), 11.sp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
@@ -2322,13 +2270,13 @@ private fun PlayerInfoPhoneAction(
                         imageVector = if (hasPhone) Icons.Default.Whatsapp else Icons.Default.PersonAddAlt,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = PlatformColors.palette.accent
+                        tint = playerInfoAccentColor()
                     )
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = label,
-                    style = boldTextStyle(PlatformColors.palette.textSecondary, 11.sp),
+                    style = boldTextStyle(playerInfoMutedColor(), 11.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center
@@ -2341,7 +2289,7 @@ private fun PlayerInfoPhoneAction(
             onDismissRequest = { showMenu = false },
             containerColor = PlatformColors.palette.card,
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+            border = BorderStroke(1.dp, playerInfoBorderColor())
         ) {
             DropdownMenuItem(
                 text = {
@@ -2355,7 +2303,7 @@ private fun PlayerInfoPhoneAction(
                         imageVector = Icons.Default.Whatsapp,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = PlatformColors.palette.accent
+                        tint = playerInfoAccentColor()
                     )
                 },
                 onClick = {
@@ -2367,7 +2315,7 @@ private fun PlayerInfoPhoneAction(
                 }
             )
             HorizontalDivider(
-                color = PlatformColors.palette.cardBorder,
+                color = playerInfoBorderColor(),
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
@@ -2383,7 +2331,7 @@ private fun PlayerInfoPhoneAction(
                         imageVector = Icons.Default.Edit,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = PlatformColors.palette.accent
+                        tint = playerInfoAccentColor()
                     )
                 },
                 onClick = {
@@ -2392,7 +2340,7 @@ private fun PlayerInfoPhoneAction(
                 }
             )
             HorizontalDivider(
-                color = PlatformColors.palette.cardBorder,
+                color = playerInfoBorderColor(),
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
@@ -2428,6 +2376,10 @@ private fun PlayerInfoAiHelperSection(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val accent = playerInfoAccentColor()
+    val muted = playerInfoMutedColor()
+    val border = playerInfoBorderColor()
+    val card = playerInfoCardColor()
     val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -2438,10 +2390,6 @@ private fun PlayerInfoAiHelperSection(
     var similarPlayersOptions by remember { mutableStateOf(SimilarPlayersOptions()) }
     val similarPlayers by viewModel.similarPlayersFlow.collectAsStateWithLifecycle()
     val isSimilarLoading by viewModel.isSimilarPlayersLoading.collectAsStateWithLifecycle()
-    var isScoutReportExpanded by remember { mutableStateOf(false) }
-    var scoutReportOptions by remember { mutableStateOf(ScoutReportOptions()) }
-    val scoutReport by viewModel.scoutReportFlow.collectAsStateWithLifecycle()
-    val isScoutReportLoading by viewModel.isScoutReportLoading.collectAsStateWithLifecycle()
 
     PlayerInfoSectionHeader(stringResource(R.string.player_info_ai_helper))
     Column(
@@ -2461,8 +2409,8 @@ private fun PlayerInfoAiHelperSection(
                     }
                 },
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+            colors = CardDefaults.cardColors(containerColor = card),
+            border = BorderStroke(1.dp, border)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -2470,7 +2418,7 @@ private fun PlayerInfoAiHelperSection(
                         .fillMaxWidth()
                         .drawBehind {
                             drawRect(
-                                color = PlatformColors.palette.accent,
+                                color = accent,
                                 topLeft = Offset.Zero,
                                 size = Size(3.dp.toPx(), size.height)
                             )
@@ -2487,14 +2435,14 @@ private fun PlayerInfoAiHelperSection(
                     if (similarPlayers.isNotEmpty()) {
                         Text(
                             "(${similarPlayers.size})",
-                            style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
+                            style = regularTextStyle(muted, 12.sp),
                             modifier = Modifier.padding(end = 8.dp)
                         )
                     }
                     Icon(
                         Icons.Default.ExpandMore,
                         contentDescription = if (isFindSimilarExpanded) "Collapse" else "Expand",
-                        tint = PlatformColors.palette.textSecondary,
+                        tint = muted,
                         modifier = Modifier
                             .size(22.dp)
                             .graphicsLayer { rotationZ = if (isFindSimilarExpanded) 180f else 0f }
@@ -2520,7 +2468,7 @@ private fun PlayerInfoAiHelperSection(
                                     )
                                 }
                             ) {
-                                Text(stringResource(R.string.player_info_ai_refresh), color = PlatformColors.palette.accent)
+                                Text(stringResource(R.string.player_info_ai_refresh), color = accent)
                             }
                         }
                         if (isSimilarLoading) {
@@ -2532,13 +2480,13 @@ private fun PlayerInfoAiHelperSection(
                             ) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
-                                    color = PlatformColors.palette.accent,
+                                    color = accent,
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(Modifier.width(12.dp))
                                 Text(
                                     stringResource(R.string.player_info_updating),
-                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
+                                    style = regularTextStyle(muted, 13.sp)
                                 )
                             }
                         } else if (similarPlayers.isEmpty()) {
@@ -2548,12 +2496,12 @@ private fun PlayerInfoAiHelperSection(
                             ) {
                                 Text(
                                     stringResource(R.string.player_info_ai_no_similar_players),
-                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                    style = regularTextStyle(muted, 12.sp)
                                 )
                                 TextButton(
                                     onClick = { viewModel.findSimilarPlayers(player, LocaleManager.getSavedLanguage(context), similarPlayersOptions) }
                                 ) {
-                                    Text(stringResource(R.string.player_info_ai_refresh), color = PlatformColors.palette.accent)
+                                    Text(stringResource(R.string.player_info_ai_refresh), color = accent)
                                 }
                             }
                         } else {
@@ -2607,163 +2555,6 @@ private fun PlayerInfoAiHelperSection(
             }
         }
 
-        // Expandable: Create Scout Report
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickWithNoRipple {
-                    isScoutReportExpanded = !isScoutReportExpanded
-                    if (isScoutReportExpanded && scoutReport == null && !isScoutReportLoading) {
-                        viewModel.generateScoutReport(player, LocaleManager.getSavedLanguage(context), scoutReportOptions)
-                    }
-                },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .drawBehind {
-                            drawRect(
-                                color = PlatformColors.palette.accent,
-                                topLeft = Offset.Zero,
-                                size = Size(3.dp.toPx(), size.height)
-                            )
-                        }
-                        .padding(start = 3.dp)
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.player_info_ai_create_scout_report, player.fullName ?: stringResource(R.string.player_info_unknown)),
-                        style = boldTextStyle(PlatformColors.palette.textPrimary, 15.sp),
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (scoutReport != null) {
-                        Icon(
-                            Icons.Default.Share,
-                            contentDescription = stringResource(R.string.player_info_share),
-                            tint = PlatformColors.palette.accent,
-                            modifier = Modifier
-                                .size(22.dp)
-                                .clickWithNoRipple {
-                                    val shareText = buildString {
-                                        player.tmProfile?.takeIf { it.isNotBlank() }?.let { append(it) }
-                                        if (isNotEmpty()) append("\n\n")
-                                        scoutReport?.let { append(it) }
-                                    }
-                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, shareText)
-                                    }
-                                    context.startActivity(Intent.createChooser(intent, context.getString(R.string.player_info_share_with)))
-                                }
-                                .padding(end = 8.dp)
-                        )
-                    }
-                    Icon(
-                        Icons.Default.ExpandMore,
-                        contentDescription = if (isScoutReportExpanded) "Collapse" else "Expand",
-                        tint = PlatformColors.palette.textSecondary,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .graphicsLayer { rotationZ = if (isScoutReportExpanded) 180f else 0f }
-                    )
-                }
-                AnimatedVisibility(visible = isScoutReportExpanded) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 17.dp, end = 12.dp, bottom = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        // Scout report type options
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                stringResource(R.string.player_info_ai_options),
-                                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
-                            )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                listOf(
-                                    ScoutReportOptions.ScoutReportType.EXECUTIVE_SUMMARY to R.string.player_info_ai_report_executive,
-                                    ScoutReportOptions.ScoutReportType.FULL_TACTICAL to R.string.player_info_ai_report_full,
-                                    ScoutReportOptions.ScoutReportType.TRANSFER_RECOMMENDATION to R.string.player_info_ai_report_transfer,
-                                    ScoutReportOptions.ScoutReportType.YOUTH_POTENTIAL to R.string.player_info_ai_report_youth
-                                ).forEach { (type, resId) ->
-                                    FilterChip(
-                                        selected = scoutReportOptions.reportType == type,
-                                        onClick = { scoutReportOptions = scoutReportOptions.copy(reportType = type) },
-                                        label = { Text(stringResource(resId), style = regularTextStyle(PlatformColors.palette.textPrimary, 11.sp)) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            containerColor = Color.Transparent,
-                                            labelColor = PlatformColors.palette.textPrimary,
-                                            selectedContainerColor = PlatformColors.palette.accent.copy(alpha = 0.4f),
-                                            selectedLabelColor = PlatformColors.palette.accent
-                                        ),
-                                        border = BorderStroke(1.dp, if (scoutReportOptions.reportType == type) PlatformColors.palette.accent else PlatformColors.palette.cardBorder)
-                                    )
-                                }
-                            }
-                            if (scoutReport != null) {
-                                TextButton(
-                                    onClick = { viewModel.generateScoutReport(player, LocaleManager.getSavedLanguage(context), scoutReportOptions) }
-                                ) {
-                                    Text(stringResource(R.string.player_info_ai_refresh), color = PlatformColors.palette.accent)
-                                }
-                            }
-                        }
-                        if (isScoutReportLoading) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = PlatformColors.palette.accent,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    stringResource(R.string.player_info_ai_generating_scout_report),
-                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
-                                )
-                            }
-                        } else if (scoutReport != null) {
-                            ScoutReportContent(
-                                reportText = scoutReport!!,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp)
-                            )
-                        } else {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Text(
-                                    stringResource(R.string.player_info_ai_scout_report_error),
-                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
-                                )
-                                TextButton(
-                                    onClick = { viewModel.generateScoutReport(player, LocaleManager.getSavedLanguage(context), scoutReportOptions) }
-                                ) {
-                                    Text(stringResource(R.string.contract_finisher_retry), color = PlatformColors.palette.accent)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -2777,13 +2568,16 @@ private fun SimilarPlayerSuggestionRow(
     isInShortlist: Boolean = false,
     isShortlistPending: Boolean = false
 ) {
+    val accent = playerInfoAccentColor()
+    val muted = playerInfoMutedColor()
+    val border = playerInfoBorderColor()
     Box(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
                 .background(PlatformColors.palette.background)
-                .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(10.dp))
+                .border(1.dp, border, RoundedCornerShape(10.dp))
         ) {
         Row(
             modifier = Modifier
@@ -2796,12 +2590,12 @@ private fun SimilarPlayerSuggestionRow(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(PlatformColors.palette.cardBorder),
+                    .background(border),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     suggestion.name.take(2).uppercase(),
-                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                    style = boldTextStyle(muted, 12.sp)
                 )
             }
             Spacer(Modifier.width(12.dp))
@@ -2820,7 +2614,7 @@ private fun SimilarPlayerSuggestionRow(
                     suggestion.matchPercent?.let { pct ->
                         val matchColor = when {
                             pct >= 80 -> PlatformColors.palette.green
-                            pct >= 60 -> PlatformColors.palette.accent
+                            pct >= 60 -> accent
                             else -> PlatformColors.palette.orange
                         }
                         Text(
@@ -2835,7 +2629,7 @@ private fun SimilarPlayerSuggestionRow(
                 }
                 Text(
                     "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
-                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
+                    style = regularTextStyle(muted, 11.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp)
@@ -2847,7 +2641,7 @@ private fun SimilarPlayerSuggestionRow(
             Icon(
                 Icons.Default.ExpandMore,
                 contentDescription = if (isExpanded) "Collapse" else "Expand",
-                tint = PlatformColors.palette.textSecondary,
+                tint = muted,
                 modifier = Modifier
                     .size(20.dp)
                     .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
@@ -2863,8 +2657,8 @@ private fun SimilarPlayerSuggestionRow(
                     .fillMaxWidth()
                     .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(PlatformColors.palette.card)
-                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(8.dp))
+                    .background(playerInfoCardColor())
+                    .border(1.dp, border, RoundedCornerShape(8.dp))
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -2878,18 +2672,18 @@ private fun SimilarPlayerSuggestionRow(
                         suggestion.playingStyle?.takeIf { it.isNotBlank() }?.let { style ->
                             Text(
                                 text = style,
-                                style = boldTextStyle(PlatformColors.palette.accent, 12.sp),
+                                style = boldTextStyle(accent, 12.sp),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(PlatformColors.palette.accent.copy(alpha = 0.12f))
-                                    .border(1.dp, PlatformColors.palette.accent.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                    .background(accent.copy(alpha = 0.12f))
+                                    .border(1.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
                         suggestion.matchPercent?.let { pct ->
                             val matchColor = when {
                                 pct >= 80 -> PlatformColors.palette.green
-                                pct >= 60 -> PlatformColors.palette.accent
+                                pct >= 60 -> accent
                                 else -> PlatformColors.palette.orange
                             }
                             Text(
@@ -2934,7 +2728,7 @@ private fun SimilarPlayerSuggestionRow(
                                 ) {
                                     Text(
                                         "$icon ",
-                                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                        style = regularTextStyle(muted, 12.sp)
                                     )
                                     Text(
                                         cleanPart,
@@ -2953,7 +2747,7 @@ private fun SimilarPlayerSuggestionRow(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(1.dp)
-                                .background(PlatformColors.palette.cardBorder)
+                                .background(border)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
 
@@ -2972,7 +2766,7 @@ private fun SimilarPlayerSuggestionRow(
                                 ) {
                                     Text(
                                         "⚡ ",
-                                        style = regularTextStyle(PlatformColors.palette.accent, 11.sp)
+                                        style = regularTextStyle(accent, 11.sp)
                                     )
                                     if (hasVs) {
                                         val colonIdx = cleanStat.indexOf(":")
@@ -2981,11 +2775,11 @@ private fun SimilarPlayerSuggestionRow(
                                             val values = cleanStat.substring(colonIdx + 1).trim()
                                             Text(
                                                 "$statName: ",
-                                                style = boldTextStyle(PlatformColors.palette.textSecondary, 11.sp)
+                                                style = boldTextStyle(muted, 11.sp)
                                             )
                                             Text(
                                                 values,
-                                                style = regularTextStyle(PlatformColors.palette.accent, 11.sp)
+                                                style = regularTextStyle(accent, 11.sp)
                                             )
                                         } else {
                                             Text(
@@ -3009,7 +2803,7 @@ private fun SimilarPlayerSuggestionRow(
                 if (suggestion.scoutAnalysis.isNullOrBlank() && !suggestion.similarityReason.isNullOrBlank()) {
                     Text(
                         text = suggestion.similarityReason,
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
+                        style = regularTextStyle(muted, 12.sp),
                         lineHeight = 18.sp
                     )
                 }
@@ -3032,18 +2826,18 @@ private fun SimilarPlayerSuggestionRow(
                             onClick = { onTmLinkClick() },
                             modifier = Modifier.height(36.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                            colors = ButtonDefaults.textButtonColors(contentColor = PlatformColors.palette.accent)
+                            colors = ButtonDefaults.textButtonColors(contentColor = accent)
                         ) {
                             Icon(
                                 Icons.Default.Link,
                                 contentDescription = null,
-                                tint = PlatformColors.palette.accent,
+                                tint = accent,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 text = stringResource(R.string.shortlist_open_tm),
-                                style = regularTextStyle(PlatformColors.palette.accent, 13.sp)
+                                style = regularTextStyle(accent, 13.sp)
                             )
                         }
                     }
@@ -3060,7 +2854,7 @@ private fun SimilarPlayerSuggestionRow(
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
-                    color = PlatformColors.palette.accent,
+                    color = accent,
                     modifier = Modifier.size(28.dp),
                     strokeWidth = 2.dp
                 )
@@ -3074,20 +2868,22 @@ private fun AiHelperActionItem(
     title: String,
     onClick: () -> Unit
 ) {
+    val accent = playerInfoAccentColor()
+    val muted = playerInfoMutedColor()
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickWithNoRipple { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+        border = BorderStroke(1.dp, playerInfoBorderColor())
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .drawBehind {
                     drawRect(
-                        color = PlatformColors.palette.accent,
+                        color = accent,
                         topLeft = Offset.Zero,
                         size = Size(3.dp.toPx(), size.height)
                     )
@@ -3104,7 +2900,7 @@ private fun AiHelperActionItem(
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = PlatformColors.palette.textSecondary,
+                tint = muted,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -3119,11 +2915,14 @@ private fun PlayerTasksSection(
     onTaskClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val accent = playerInfoAccentColor()
+    val muted = playerInfoMutedColor()
+    val border = playerInfoBorderColor()
     Card(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+        colors = CardDefaults.cardColors(containerColor = playerInfoCardColor()),
+        border = BorderStroke(1.dp, border)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -3136,11 +2935,11 @@ private fun PlayerTasksSection(
                     style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
                 )
                 TextButton(onClick = onAddTaskClick) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp), tint = PlatformColors.palette.accent)
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp), tint = accent)
                     Spacer(Modifier.width(4.dp))
                     Text(
                         text = stringResource(R.string.player_tasks_add),
-                        style = boldTextStyle(PlatformColors.palette.accent, 14.sp)
+                        style = boldTextStyle(accent, 14.sp)
                     )
                 }
             }
@@ -3157,7 +2956,7 @@ private fun PlayerTasksSection(
                 ) {
                     Text(
                         text = stringResource(R.string.player_tasks_empty),
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
+                        style = regularTextStyle(muted, 14.sp)
                     )
                 }
             } else {
@@ -3174,25 +2973,25 @@ private fun PlayerTasksSection(
                         Checkbox(
                             checked = task.isCompleted,
                             onCheckedChange = { onToggleComplete(task) },
-                            colors = CheckboxDefaults.colors(checkedColor = PlatformColors.palette.accent, uncheckedColor = PlatformColors.palette.textSecondary)
+                            colors = CheckboxDefaults.colors(checkedColor = accent, uncheckedColor = muted)
                         )
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = task.title.ifEmpty { "—" },
-                                style = if (task.isCompleted) regularTextStyle(PlatformColors.palette.textSecondary, 14.sp).copy(textDecoration = TextDecoration.LineThrough) else boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                                style = if (task.isCompleted) regularTextStyle(muted, 14.sp).copy(textDecoration = TextDecoration.LineThrough) else boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                             )
                             // "Opened by X"
                             if (task.createdByAgentName.isNotBlank()) {
                                 Text(
                                     text = context.getString(R.string.tasks_opened_by) + " " + task.createdByAgentName,
-                                    style = regularTextStyle(PlatformColors.palette.accent, 11.sp)
+                                    style = regularTextStyle(accent, 11.sp)
                                 )
                             }
                             if (task.agentName.isNotBlank()) {
                                 Text(
                                     text = context.getString(R.string.tasks_assigned_to_label) + ": " + task.agentName,
-                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                    style = regularTextStyle(muted, 12.sp)
                                 )
                             }
                             // Created + Due dates
@@ -3209,7 +3008,7 @@ private fun PlayerTasksSection(
                                 Spacer(Modifier.height(2.dp))
                                 Text(
                                     text = metaLine,
-                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
+                                    style = regularTextStyle(muted, 11.sp)
                                 )
                             }
                             // Linked agent contact
@@ -3218,12 +3017,12 @@ private fun PlayerTasksSection(
                                 Text(
                                     text = context.getString(R.string.tasks_linked_agent) + ": " + task.linkedAgentContactName +
                                         if (task.linkedAgentContactPhone.isNotBlank()) " · ${task.linkedAgentContactPhone}" else "",
-                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
+                                    style = regularTextStyle(muted, 11.sp)
                                 )
                             }
                         }
                         IconButton(onClick = onTaskClick) {
-                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = PlatformColors.palette.textSecondary, modifier = Modifier.size(20.dp))
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = muted, modifier = Modifier.size(20.dp))
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -3236,6 +3035,7 @@ private fun PlayerTasksSection(
 @Composable
 private fun PlayerInfoSectionHeader(title: String) {
     val isWomen = PlatformColors.palette.isWomen
+    val lineAccent = playerInfoAccentColor()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -3255,7 +3055,7 @@ private fun PlayerInfoSectionHeader(title: String) {
                     .width(40.dp)
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(PlatformColors.palette.accent)
+                    .background(lineAccent)
             )
         }
     }
@@ -3269,8 +3069,8 @@ private fun PlayerInfoCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+        colors = CardDefaults.cardColors(containerColor = playerInfoCardColor()),
+        border = BorderStroke(1.dp, playerInfoBorderColor())
     ) {
         Column(modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 20.dp)) {
             content()
@@ -3290,7 +3090,7 @@ fun WhatsAppIcon(phoneNumber: String) {
             val intent = Intent(Intent.ACTION_VIEW, uri)
             context.startActivity(intent)
         },
-        tint = PlatformColors.palette.accent
+        tint = playerInfoAccentColor()
     )
 }
 
@@ -3302,7 +3102,7 @@ fun InfoRow(
     darkTheme: Boolean = false,
     icon: @Composable (() -> Unit)? = null
 ) {
-    val labelColor = if (darkTheme) PlatformColors.palette.textSecondary else contentDefault
+    val labelColor = if (darkTheme) playerInfoMutedColor() else contentDefault
     val valueColor = if (darkTheme) PlatformColors.palette.textPrimary else contentDefault
 
     Row(
@@ -3337,7 +3137,7 @@ fun ClubInfoRow(
     clubLogo: String?,
     darkTheme: Boolean = false
 ) {
-    val labelColor = if (darkTheme) PlatformColors.palette.textSecondary else contentDefault
+    val labelColor = if (darkTheme) playerInfoMutedColor() else contentDefault
     val valueColor = if (darkTheme) {
         if (isFreeAgentClub(value)) PlatformColors.palette.red else PlatformColors.palette.textPrimary
     } else {
@@ -3396,6 +3196,8 @@ fun AgencyInfoRow(
     val url = agencyUrl?.takeIf { it.isNotBlank() }
     val hasAgency = agencyName != null || agencyUrl != null
     var showMenu by remember { mutableStateOf(false) }
+    val muted = playerInfoMutedColor()
+    val accent = playerInfoAccentColor()
 
     Row(
         modifier = Modifier
@@ -3430,12 +3232,12 @@ fun AgencyInfoRow(
             modifier = Modifier.size(24.dp),
             painter = painterResource(R.drawable.ic_agency),
             contentDescription = null,
-            tint = PlatformColors.palette.textSecondary
+            tint = muted
         )
         Spacer(Modifier.width(4.dp))
         Text(
             text = title,
-            style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp),
+            style = regularTextStyle(muted, 14.sp),
             modifier = Modifier.weight(1f)
         )
         Row(
@@ -3445,7 +3247,7 @@ fun AgencyInfoRow(
             Text(
                 text = agencyName ?: "--",
                 style = boldTextStyle(
-                    if (url != null) PlatformColors.palette.accent else PlatformColors.palette.textPrimary,
+                    if (url != null) accent else PlatformColors.palette.textPrimary,
                     14.sp
                 ),
                 textAlign = TextAlign.End,
@@ -3457,7 +3259,7 @@ fun AgencyInfoRow(
                     imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = stringResource(R.string.player_info_cd_open_link),
                     modifier = Modifier.size(16.dp),
-                    tint = PlatformColors.palette.accent
+                    tint = accent
                 )
             }
         }
@@ -3469,7 +3271,7 @@ fun AgencyInfoRow(
             onDismissRequest = { showMenu = false },
             containerColor = PlatformColors.palette.card,
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+            border = BorderStroke(1.dp, playerInfoBorderColor())
         ) {
             DropdownMenuItem(
                 text = {
@@ -3504,7 +3306,7 @@ fun NationalityInfoRow(
     fallbackFlag: String? = null,
     darkTheme: Boolean = false
 ) {
-    val labelColor = if (darkTheme) PlatformColors.palette.textSecondary else contentDefault
+    val labelColor = if (darkTheme) playerInfoMutedColor() else contentDefault
     val valueColor = if (darkTheme) PlatformColors.palette.textPrimary else contentDefault
     val names = nationalities?.filter { it.isNotBlank() }.orEmpty()
     val rawFlags = nationalityFlags?.filter { it.isNotBlank() }.orEmpty()
@@ -3523,7 +3325,7 @@ fun NationalityInfoRow(
             modifier = Modifier.size(24.dp),
             painter = painterResource(R.drawable.ic_world),
             contentDescription = null,
-            tint = if (darkTheme) PlatformColors.palette.textSecondary else contentDefault
+            tint = if (darkTheme) playerInfoMutedColor() else contentDefault
         )
         Spacer(Modifier.width(4.dp))
         Text(
@@ -3561,7 +3363,7 @@ fun NationalityInfoRow(
                                 .size(width = 26.dp, height = 18.dp)
                                 .align(Alignment.BottomEnd)
                                 .clip(RoundedCornerShape(3.dp))
-                                .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(3.dp))
+                                .border(1.dp, playerInfoBorderColor(), RoundedCornerShape(3.dp))
                         )
                         // Front flag (first nationality) — top-left
                         AsyncImage(
@@ -3572,7 +3374,7 @@ fun NationalityInfoRow(
                                 .size(width = 26.dp, height = 18.dp)
                                 .align(Alignment.TopStart)
                                 .clip(RoundedCornerShape(3.dp))
-                                .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(3.dp))
+                                .border(1.dp, playerInfoBorderColor(), RoundedCornerShape(3.dp))
                         )
                     }
                 } else if (flags.size == 1) {
@@ -3584,7 +3386,7 @@ fun NationalityInfoRow(
                         modifier = Modifier
                             .size(width = 26.dp, height = 18.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(3.dp))
+                            .border(1.dp, playerInfoBorderColor(), RoundedCornerShape(3.dp))
                     )
                 }
             }
@@ -3648,6 +3450,7 @@ fun UpdatePlayerUi(modifier: Modifier, message: String, useDarkTheme: Boolean = 
 
 @Composable
 fun PlayerInfoHeader(onBackClicked: () -> Unit, currentPlatform: Platform = Platform.MEN) {
+    val isMen = currentPlatform == Platform.MEN
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -3660,7 +3463,7 @@ fun PlayerInfoHeader(onBackClicked: () -> Unit, currentPlatform: Platform = Plat
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = null,
-                tint = PlatformColors.palette.textSecondary,
+                tint = if (isMen) MenInfoGold else PlatformColors.palette.textSecondary,
                 modifier = Modifier
                     .size(24.dp)
                     .clickWithNoRipple { onBackClicked() }
@@ -3669,11 +3472,11 @@ fun PlayerInfoHeader(onBackClicked: () -> Unit, currentPlatform: Platform = Plat
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = if (currentPlatform == Platform.WOMEN) stringResource(R.string.women_player_info_title) else stringResource(R.string.player_info_title),
-                    style = boldTextStyle(PlatformColors.palette.textPrimary, 26.sp)
+                    style = boldTextStyle(if (isMen) MenInfoGoldSoft else PlatformColors.palette.textPrimary, 26.sp)
                 )
                 Text(
                     text = if (currentPlatform == Platform.WOMEN) stringResource(R.string.women_player_info_subtitle) else stringResource(R.string.player_info_subtitle),
-                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
+                    style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp),
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -3689,13 +3492,15 @@ private fun PlayerInfoBottomBar(
     hasValidMandate: Boolean,
     onDeletePlayerClicked: () -> Unit,
     onShareClicked: () -> Unit,
-    onGenerateMandateClicked: () -> Unit
+    onGenerateMandateClicked: () -> Unit,
+    currentPlatform: Platform = Platform.MEN
 ) {
+    val isMen = currentPlatform == Platform.MEN
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+        colors = CardDefaults.cardColors(containerColor = if (isMen) MenInfoCard else PlatformColors.palette.card),
+        border = BorderStroke(1.dp, if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder)
     ) {
         Row(
             modifier = Modifier
@@ -3718,13 +3523,21 @@ private fun PlayerInfoBottomBar(
                         imageVector = Icons.Default.VerifiedUser,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = if (hasValidMandate) PlatformColors.palette.textSecondary.copy(alpha = 0.5f) else PlatformColors.palette.accent
+                        tint = if (hasValidMandate) {
+                            (if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary).copy(alpha = 0.5f)
+                        } else {
+                            if (isMen) MenInfoGold else PlatformColors.palette.accent
+                        }
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.player_info_generate_mandate),
                         style = boldTextStyle(
-                            if (hasValidMandate) PlatformColors.palette.textSecondary.copy(alpha = 0.5f) else PlatformColors.palette.textSecondary,
+                            if (hasValidMandate) {
+                                (if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary).copy(alpha = 0.5f)
+                            } else {
+                                if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary
+                            },
                             12.sp
                         )
                     )
@@ -3741,12 +3554,12 @@ private fun PlayerInfoBottomBar(
                     imageVector = Icons.Default.Share,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = PlatformColors.palette.accent
+                    tint = if (isMen) MenInfoGold else PlatformColors.palette.accent
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = stringResource(R.string.player_info_share),
-                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                    style = boldTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp)
                 )
             }
             if (showDeletePlayerIcon) {
@@ -3761,12 +3574,12 @@ private fun PlayerInfoBottomBar(
                         imageVector = Icons.Default.Delete,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = PlatformColors.palette.accent
+                        tint = if (isMen) MenInfoGold else PlatformColors.palette.accent
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.player_info_delete),
-                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                        style = boldTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp)
                     )
                 }
             }
@@ -4448,10 +4261,15 @@ private fun AgentTransferResolvedBanner(
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account>,
     isHebrew: Boolean
 ) {
+    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
     val fromName = resolveAgentDisplayName(resolvedTransfer.fromAgentId, resolvedTransfer.fromAgentName, allAccounts, isHebrew)
     val toName = resolveAgentDisplayName(resolvedTransfer.toAgentId, resolvedTransfer.toAgentName, allAccounts, isHebrew)
     val isApproved = resolvedTransfer.status == com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest.STATUS_APPROVED
-    val accentColor = if (isApproved) Color(0xFF10B981) else Color(0xFFEF4444)
+    val accentColor = if (isApproved) {
+        if (isMen) MenInfoGold else Color(0xFF10B981)
+    } else {
+        PlatformColors.palette.red
+    }
     val icon = if (isApproved) "✓" else "✕"
 
     Box(
@@ -4531,7 +4349,7 @@ private fun AgentTransferResolvedBanner(
                         fromName,
                         toName)
                 },
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp).copy(
+                style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp).copy(
                     lineHeight = 18.sp
                 )
             )
@@ -4539,7 +4357,7 @@ private fun AgentTransferResolvedBanner(
                 Spacer(Modifier.height(6.dp))
                 Text(
                     text = java.text.SimpleDateFormat("d MMM yyyy, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(ts)),
-                    style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.5f), 10.sp)
+                    style = regularTextStyle((if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary).copy(alpha = 0.5f), 10.sp)
                 )
             }
         }
@@ -4548,15 +4366,17 @@ private fun AgentTransferResolvedBanner(
 
 @Composable
 private fun AgentTransferRequestButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val tealColor = PlatformColors.palette.accent
+    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+    val actionColor = if (isMen) MenInfoGold else PlatformColors.palette.accent
+    val actionText = if (isMen) MenInfoTextSubtle else PlatformColors.palette.accent
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(tealColor.copy(alpha = 0.05f))
+            .background(actionColor.copy(alpha = 0.07f))
             .border(
                 width = 0.5.dp,
-                color = tealColor.copy(alpha = 0.4f),
+                color = actionColor.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(16.dp)
             )
             .clickWithNoRipple(onClick = onClick)
@@ -4570,13 +4390,13 @@ private fun AgentTransferRequestButton(modifier: Modifier = Modifier, onClick: (
             Icon(
                 imageVector = Icons.Filled.PersonAddAlt,
                 contentDescription = null,
-                tint = tealColor,
+                tint = actionColor,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = stringResource(R.string.agent_transfer_request_button),
-                style = boldTextStyle(tealColor, 12.sp).copy(
+                style = boldTextStyle(actionText, 12.sp).copy(
                     letterSpacing = 0.5.sp
                 )
             )
@@ -4590,8 +4410,10 @@ private fun AgentTransferPendingBanner(
     currentAgentName: String,
     onCancel: () -> Unit
 ) {
-    val amberColor = Color(0xFFF59E0B)
-    val redColor = Color(0xFFEF4444)
+    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+    val amberColor = if (isMen) MenInfoGold else Color(0xFFF59E0B)
+    val amberSoft = if (isMen) MenInfoBronze else Color(0xFFFBBF24)
+    val redColor = PlatformColors.palette.red
 
     Box(
         modifier = modifier
@@ -4601,7 +4423,7 @@ private fun AgentTransferPendingBanner(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         amberColor.copy(alpha = 0.08f),
-                        Color(0xFFFBBF24).copy(alpha = 0.03f)
+                        amberSoft.copy(alpha = 0.03f)
                     ),
                     start = Offset.Zero,
                     end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -4651,7 +4473,7 @@ private fun AgentTransferPendingBanner(
                 Spacer(Modifier.width(10.dp))
                 Text(
                     text = stringResource(R.string.agent_transfer_pending_title),
-                    style = boldTextStyle(Color(0xFFFBBF24), 12.sp).copy(
+                    style = boldTextStyle(amberColor, 12.sp).copy(
                         letterSpacing = 0.5.sp
                     )
                 )
@@ -4659,7 +4481,7 @@ private fun AgentTransferPendingBanner(
             Spacer(Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.agent_transfer_pending_desc, currentAgentName),
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp).copy(
+                style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp).copy(
                     lineHeight = 18.sp
                 )
             )
@@ -4694,9 +4516,11 @@ private fun AgentTransferApprovalBanner(
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
-    val blueColor = Color(0xFF5B8AF5)
-    val emeraldColor = Color(0xFF34D399)
-    val redColor = Color(0xFFEF4444)
+    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+    val blueColor = if (isMen) MenInfoGold else Color(0xFF5B8AF5)
+    val blueSoft = if (isMen) MenInfoBronze else Color(0xFF8B5CF6)
+    val emeraldColor = if (isMen) MenInfoBronze else Color(0xFF34D399)
+    val redColor = PlatformColors.palette.red
 
     Box(
         modifier = modifier
@@ -4706,7 +4530,7 @@ private fun AgentTransferApprovalBanner(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         blueColor.copy(alpha = 0.10f),
-                        Color(0xFF8B5CF6).copy(alpha = 0.05f)
+                        blueSoft.copy(alpha = 0.05f)
                     ),
                     start = Offset.Zero,
                     end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -4764,7 +4588,7 @@ private fun AgentTransferApprovalBanner(
             Spacer(Modifier.height(10.dp))
             Text(
                 text = stringResource(R.string.agent_transfer_approval_desc, requesterName),
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp).copy(
+                style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp).copy(
                     lineHeight = 18.sp
                 )
             )
@@ -4786,13 +4610,13 @@ private fun AgentTransferApprovalBanner(
                     if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            color = Color(0xFF080B12),
+                            color = if (isMen) MenInfoBg else Color(0xFF080B12),
                             strokeWidth = 2.dp
                         )
                     } else {
                         Text(
                             text = stringResource(R.string.agent_transfer_approve),
-                            style = boldTextStyle(Color(0xFF080B12), 12.sp)
+                            style = boldTextStyle(if (isMen) MenInfoBg else Color(0xFF080B12), 12.sp)
                         )
                     }
                 }
@@ -4803,7 +4627,7 @@ private fun AgentTransferApprovalBanner(
                     enabled = !isLoading,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFF43F5E).copy(alpha = 0.06f)
+                        containerColor = redColor.copy(alpha = 0.06f)
                     ),
                     border = BorderStroke(1.dp, redColor.copy(alpha = 0.25f))
                 ) {
@@ -4832,8 +4656,10 @@ private fun AgentTransferConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val blueColor = Color(0xFF5B8AF5)
-    val tealColor = Color(0xFF38E8C6)
+    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+    val blueColor = if (isMen) MenInfoGold else Color(0xFF5B8AF5)
+    val blueSoft = if (isMen) MenInfoBronze else Color(0xFF8B5CF6)
+    val tealColor = if (isMen) MenInfoBronze else Color(0xFF38E8C6)
 
     Dialog(onDismissRequest = onDismiss) {
         Box(
@@ -4873,7 +4699,7 @@ private fun AgentTransferConfirmDialog(
                             brush = Brush.linearGradient(
                                 colors = listOf(
                                     blueColor.copy(alpha = 0.10f),
-                                    Color(0xFF8B5CF6).copy(alpha = 0.08f)
+                                    blueSoft.copy(alpha = 0.08f)
                                 ),
                                 start = Offset.Zero,
                                 end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -4913,13 +4739,13 @@ private fun AgentTransferConfirmDialog(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White.copy(alpha = 0.02f)
+                            containerColor = if (isMen) MenInfoCardAlt.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.02f)
                         ),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
+                        border = BorderStroke(1.dp, if (isMen) MenInfoBorder else Color.White.copy(alpha = 0.06f))
                     ) {
                         Text(
                             text = stringResource(R.string.cancel),
-                            style = boldTextStyle(PlatformColors.palette.textSecondary, 14.sp)
+                            style = boldTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 14.sp)
                         )
                     }
                     // Confirm button — teal
@@ -4933,7 +4759,7 @@ private fun AgentTransferConfirmDialog(
                     ) {
                         Text(
                             text = stringResource(R.string.agent_transfer_send_request),
-                            style = boldTextStyle(Color(0xFF080B12), 14.sp)
+                            style = boldTextStyle(if (isMen) MenInfoBg else Color(0xFF080B12), 14.sp)
                         )
                     }
                 }

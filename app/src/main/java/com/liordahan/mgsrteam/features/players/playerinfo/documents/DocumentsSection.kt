@@ -53,6 +53,10 @@ import java.util.Locale
 
 private val DATE_FORMAT = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
 
+private fun docsIsMenPalette(): Boolean = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+private fun docsActionColor(): Color = if (docsIsMenPalette()) Color(0xFFC7A35A) else PlatformColors.palette.accent
+private fun docsActionTextOnFill(): Color = if (docsIsMenPalette()) Color(0xFF0E1219) else Color.White
+
 @Composable
 fun DocumentsSection(
     documents: List<PlayerDocument>,
@@ -62,6 +66,7 @@ fun DocumentsSection(
     onDeleteDocument: (PlayerDocument) -> Unit
 ) {
     val context = LocalContext.current
+    val actionColor = docsActionColor()
 
     Card(
         modifier = Modifier
@@ -79,7 +84,7 @@ fun DocumentsSection(
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = PlatformColors.palette.accent,
+                        color = actionColor,
                         strokeWidth = 2.dp
                     )
                     Spacer(Modifier.width(12.dp))
@@ -154,6 +159,8 @@ private fun DocumentsEmptyState(onAddDocument: () -> Unit) {
 
 @Composable
 private fun AddDocumentButton(onClick: () -> Unit) {
+    val actionColor = docsActionColor()
+    val actionOnFill = docsActionTextOnFill()
     Button(
         onClick = onClick,
         modifier = Modifier
@@ -161,8 +168,8 @@ private fun AddDocumentButton(onClick: () -> Unit) {
             .height(48.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = PlatformColors.palette.accent,
-            contentColor = Color.White
+            containerColor = actionColor,
+            contentColor = actionOnFill
         )
     ) {
         Icon(
@@ -173,7 +180,7 @@ private fun AddDocumentButton(onClick: () -> Unit) {
         Spacer(Modifier.width(8.dp))
         Text(
             text = stringResource(R.string.player_info_add_document),
-            style = boldTextStyle(Color.White, 14.sp)
+            style = boldTextStyle(actionOnFill, 14.sp)
         )
     }
 }
@@ -185,6 +192,7 @@ private fun DocumentCard(
     onOpen: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val actionColor = docsActionColor()
     val typeIcon = documentTypeIcon(document.documentType)
     val status = documentStatus(document)
     val dateText = formatDocumentDate(document)
@@ -206,7 +214,7 @@ private fun DocumentCard(
                 imageVector = typeIcon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = PlatformColors.palette.accent.copy(alpha = alpha)
+                tint = actionColor.copy(alpha = alpha)
             )
         }
         Spacer(Modifier.width(12.dp))
@@ -259,7 +267,7 @@ private fun DocumentCard(
             Icon(
                 imageVector = Icons.Default.Link,
                 contentDescription = stringResource(R.string.player_info_cd_open_link),
-                tint = PlatformColors.palette.accent.copy(alpha = alpha)
+                tint = actionColor.copy(alpha = alpha)
             )
         }
         if (isDeleting) {

@@ -8,6 +8,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -144,6 +145,15 @@ import androidx.compose.ui.text.style.TextAlign
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.ui.utils.combinedClickWithNoRipple
 
+private val MenRosterBg = Color(0xFF0A121E)
+private val MenRosterCard = Color(0xFF152131)
+private val MenRosterCardAlt = Color(0xFF1A2A3D)
+private val MenRosterBorder = Color(0x55C7A35A)
+private val MenRosterGold = Color(0xFFC7A35A)
+private val MenRosterGoldSoft = Color(0xFFDDC187)
+private val MenRosterBronze = Color(0xFFAE8A4A)
+private val MenRosterTextSubtle = Color(0xFFBDAE8C)
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  PLAYERS SCREEN — Variant A (Enhanced Roster View)
 // ═════════════════════════════════════════════════════════════════════════════
@@ -224,7 +234,7 @@ fun PlayersScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(PlatformColors.palette.background)
+            .background(if (currentPlatform == Platform.MEN) MenRosterBg else PlatformColors.palette.background)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
@@ -245,7 +255,8 @@ fun PlayersScreen(
                 expiring = playersState.expiringCount,
                 free = playersState.freeAgentCount,
                 isWomen = currentPlatform == Platform.WOMEN,
-                isYouth = currentPlatform == Platform.YOUTH
+                isYouth = currentPlatform == Platform.YOUTH,
+                platform = currentPlatform
             )
 
             // ── Search Bar ───────────────────────────────────────────────
@@ -259,7 +270,8 @@ fun PlayersScreen(
                     searchQuery = ""
                     viewModel.updateSearchQuery("")
                 },
-                isWomen = currentPlatform == Platform.WOMEN
+                isWomen = currentPlatform == Platform.WOMEN,
+                platform = currentPlatform
             )
 
             // ── Position Filter Chips ────────────────────────────────────
@@ -299,7 +311,8 @@ fun PlayersScreen(
                 onOfferedNoFeedbackClick = { viewModel.toggleQuickFilterOfferedNoFeedback() },
                 onInterestedInIsraelClick = { viewModel.toggleQuickFilterInterestedInIsrael() },
                 onTaggedInNotesClick = { viewModel.toggleQuickFilterTaggedInNotes() },
-                onFootFilterClick = { viewModel.setFootFilterOption(it) }
+                onFootFilterClick = { viewModel.setFootFilterOption(it) },
+                platform = currentPlatform
             )
             }
 
@@ -347,6 +360,7 @@ fun PlayersScreen(
                                 ExpiringAlertBanner(
                                     count = playersState.expiringSoonPlayers.size,
                                     players = playersState.expiringSoonPlayers,
+                                    platform = currentPlatform,
                                     onPlayerClick = { player ->
                                         val rawId = if (currentPlatform == Platform.MEN) player.tmProfile else player.id
                                         val encodedId = Uri.encode(rawId) ?: return@ExpiringAlertBanner
@@ -361,6 +375,7 @@ fun PlayersScreen(
                             item(key = "mandate_section") {
                                 MandateAlertBanner(
                                     playersWithMandate = playersState.playersWithMandate,
+                                    platform = currentPlatform,
                                     onPlayerClick = { pwm ->
                                         val rawId = if (currentPlatform == Platform.MEN) pwm.player.tmProfile else pwm.player.id
                                         val encodedId = Uri.encode(rawId) ?: return@MandateAlertBanner
@@ -413,14 +428,14 @@ fun PlayersScreen(
                     .align(Alignment.BottomEnd)
                     .padding(end = 20.dp, bottom = 56.dp),
                 shape = RoundedCornerShape(18.dp),
-                containerColor = currentPlatform.accent,
-                contentColor = PlatformColors.palette.background
+                containerColor = if (currentPlatform == Platform.MEN) MenRosterGold else currentPlatform.accent,
+                contentColor = if (currentPlatform == Platform.MEN) MenRosterBg else PlatformColors.palette.background
             ) {
                 Icon(
                     imageVector = Icons.Filled.PersonAdd,
                     contentDescription = stringResource(R.string.players_add_player),
                     modifier = Modifier.size(24.dp),
-                    tint = Color.White
+                    tint = if (currentPlatform == Platform.MEN) MenRosterBg else Color.White
                 )
             }
         }
@@ -513,6 +528,7 @@ private fun PlayersHeader(
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
     val sortContentDesc = stringResource(R.string.players_sort_options)
+    val isMen = platform == Platform.MEN
     val platformAccent = platform.accent
 
     Row(
@@ -524,7 +540,7 @@ private fun PlayersHeader(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = null,
-            tint = PlatformColors.palette.textSecondary,
+            tint = if (isMen) MenRosterGoldSoft else PlatformColors.palette.textSecondary,
             modifier = Modifier
                 .size(24.dp)
                 .clickWithNoRipple { onBackClicked() }
@@ -536,7 +552,7 @@ private fun PlayersHeader(
                 Platform.YOUTH -> stringResource(R.string.youth_roster_title)
                 else -> stringResource(R.string.players_roster_title)
             },
-            style = boldTextStyle(PlatformColors.palette.textPrimary, 26.sp)
+            style = boldTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary, 26.sp)
         )
         // ── Platform badge (only show for Women/Youth) ──
         if (platform != Platform.MEN) {
@@ -561,27 +577,32 @@ private fun PlayersHeader(
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
-                .background(PlatformColors.palette.card.copy(alpha = 0.8f))
+                .background(if (isMen) MenRosterCardAlt.copy(alpha = 0.95f) else PlatformColors.palette.card.copy(alpha = 0.8f))
+                .border(
+                    width = if (isMen) 1.dp else 0.dp,
+                    color = if (isMen) MenRosterBorder else Color.Transparent,
+                    shape = RoundedCornerShape(8.dp)
+                )
                 .clickWithNoRipple { sortMenuExpanded = true }
                 .padding(12.dp)
         ) {
             Icon(
                 imageVector = Icons.Filled.SwapVert,
                 contentDescription = sortContentDesc,
-                tint = platformAccent,
+                tint = if (isMen) MenRosterGold else platformAccent,
                 modifier = Modifier.size(24.dp)
             )
             DropdownMenu(
                 expanded = sortMenuExpanded,
                 onDismissRequest = { sortMenuExpanded = false },
-                modifier = Modifier.background(PlatformColors.palette.card),
-                containerColor = PlatformColors.palette.card
+                modifier = Modifier.background(if (isMen) MenRosterCard else PlatformColors.palette.card),
+                containerColor = if (isMen) MenRosterCard else PlatformColors.palette.card
             ) {
                 DropdownMenuItem(
                     text = {
                         Text(
                             text = stringResource(R.string.players_reset),
-                            style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
+                            style = regularTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary, 13.sp)
                         )
                     },
                     onClick = {
@@ -594,7 +615,11 @@ private fun PlayersHeader(
                         Text(
                             text = stringResource(R.string.players_sort_market_value),
                             style = regularTextStyle(
-                                if (sortOption == SortOption.MARKET_VALUE) PlatformColors.palette.accent else PlatformColors.palette.textPrimary,
+                                if (sortOption == SortOption.MARKET_VALUE) {
+                                    if (isMen) MenRosterGold else PlatformColors.palette.accent
+                                } else {
+                                    if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary
+                                },
                                 13.sp
                             )
                         )
@@ -609,7 +634,11 @@ private fun PlayersHeader(
                         Text(
                             text = stringResource(R.string.players_sort_name),
                             style = regularTextStyle(
-                                if (sortOption == SortOption.NAME) PlatformColors.palette.accent else PlatformColors.palette.textPrimary,
+                                if (sortOption == SortOption.NAME) {
+                                    if (isMen) MenRosterGold else PlatformColors.palette.accent
+                                } else {
+                                    if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary
+                                },
                                 13.sp
                             )
                         )
@@ -624,7 +653,11 @@ private fun PlayersHeader(
                         Text(
                             text = stringResource(R.string.players_sort_age),
                             style = regularTextStyle(
-                                if (sortOption == SortOption.AGE) PlatformColors.palette.accent else PlatformColors.palette.textPrimary,
+                                if (sortOption == SortOption.AGE) {
+                                    if (isMen) MenRosterGold else PlatformColors.palette.accent
+                                } else {
+                                    if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary
+                                },
                                 13.sp
                             )
                         )
@@ -645,42 +678,59 @@ private fun PlayersHeader(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun StatsStrip(total: Int, mandate: Int, expiring: Int, free: Int, isWomen: Boolean = false, isYouth: Boolean = false) {
+private fun StatsStrip(
+    total: Int,
+    mandate: Int,
+    expiring: Int,
+    free: Int,
+    isWomen: Boolean = false,
+    isYouth: Boolean = false,
+    platform: Platform = Platform.MEN
+) {
+    val isMen = platform == Platform.MEN
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(PlatformColors.palette.card)
-            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(16.dp)),
+            .background(if (isMen) MenRosterCard else PlatformColors.palette.card)
+            .border(1.dp, if (isMen) MenRosterBorder else PlatformColors.palette.cardBorder, RoundedCornerShape(16.dp)),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         StatsStripItem(
             value = total.toString(),
             label = stringResource(R.string.players_stat_total),
-            accentColor = PlatformColors.palette.accent,
+            accentColor = if (isMen) MenRosterGold else PlatformColors.palette.accent,
+            valueColor = if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary,
+            labelColor = if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary,
             modifier = Modifier.weight(1f)
         )
         if (!isWomen && !isYouth) {
-            StatsStripDivider()
+            StatsStripDivider(isMen = isMen)
             StatsStripItem(
                 value = mandate.toString(),
                 label = stringResource(R.string.stat_mandate),
-                accentColor = PlatformColors.palette.blue,
+                accentColor = if (isMen) MenRosterGoldSoft else PlatformColors.palette.blue,
+                valueColor = if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary,
+                labelColor = if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary,
                 modifier = Modifier.weight(1f)
             )
-            StatsStripDivider()
+            StatsStripDivider(isMen = isMen)
             StatsStripItem(
                 value = expiring.toString(),
                 label = stringResource(R.string.agent_stat_expiring),
-                accentColor = PlatformColors.palette.orange,
+                accentColor = if (isMen) MenRosterBronze else PlatformColors.palette.orange,
+                valueColor = if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary,
+                labelColor = if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary,
                 modifier = Modifier.weight(1f)
             )
-            StatsStripDivider()
+            StatsStripDivider(isMen = isMen)
             StatsStripItem(
                 value = free.toString(),
                 label = stringResource(R.string.stat_free),
-                accentColor = PlatformColors.palette.red,
+                accentColor = if (isMen) MenRosterBronze else PlatformColors.palette.red,
+                valueColor = if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary,
+                labelColor = if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -692,6 +742,8 @@ private fun StatsStripItem(
     value: String,
     label: String,
     accentColor: Color,
+    valueColor: Color = PlatformColors.palette.textPrimary,
+    labelColor: Color = PlatformColors.palette.textSecondary,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -707,23 +759,23 @@ private fun StatsStripItem(
         Spacer(Modifier.height(4.dp))
         Text(
             text = value,
-            style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
+            style = boldTextStyle(valueColor, 18.sp)
         )
         Text(
             text = label,
-            style = regularTextStyle(PlatformColors.palette.textSecondary, 9.sp)
+            style = regularTextStyle(labelColor, 9.sp)
         )
     }
 }
 
 @Composable
-private fun StatsStripDivider() {
+private fun StatsStripDivider(isMen: Boolean = false) {
     Box(
         modifier = Modifier
             .width(1.dp)
             .height(40.dp)
             .padding(vertical = 4.dp)
-            .background(PlatformColors.palette.cardBorder)
+            .background(if (isMen) MenRosterBorder else PlatformColors.palette.cardBorder)
     )
 }
 
@@ -736,8 +788,10 @@ private fun PlayersSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
-    isWomen: Boolean = false
+    isWomen: Boolean = false,
+    platform: Platform = Platform.MEN
 ) {
+    val isMen = platform == Platform.MEN
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
@@ -748,20 +802,23 @@ private fun PlayersSearchBar(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(14.dp))
-            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(14.dp)),
+            .border(1.dp, if (isMen) MenRosterBorder else PlatformColors.palette.cardBorder, RoundedCornerShape(14.dp)),
         placeholder = {
             Text(
                 text = stringResource(
                     if (isWomen) R.string.women_players_screen_hint else R.string.players_screen_hint
                 ),
-                style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.5f), 13.sp)
+                style = regularTextStyle(
+                    if (isMen) MenRosterTextSubtle.copy(alpha = 0.72f) else PlatformColors.palette.textSecondary.copy(alpha = 0.5f),
+                    13.sp
+                )
             )
         },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Filled.Search,
                 contentDescription = null,
-                tint = PlatformColors.palette.textSecondary,
+                tint = if (isMen) MenRosterGold else PlatformColors.palette.textSecondary,
                 modifier = Modifier.size(20.dp)
             )
         },
@@ -770,7 +827,7 @@ private fun PlayersSearchBar(
                 Icon(
                     imageVector = Icons.Filled.Close,
                     contentDescription = stringResource(R.string.players_clear),
-                    tint = PlatformColors.palette.textSecondary,
+                    tint = if (isMen) MenRosterGoldSoft else PlatformColors.palette.textSecondary,
                     modifier = Modifier
                         .size(18.dp)
                         .clickWithNoRipple {
@@ -781,7 +838,7 @@ private fun PlayersSearchBar(
                 )
             }
         },
-        textStyle = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp),
+        textStyle = regularTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary, 13.sp),
         singleLine = true,
         keyboardOptions = KeyboardOptions(
             imeAction = ImeAction.Done,
@@ -794,9 +851,9 @@ private fun PlayersSearchBar(
             }
         ),
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = PlatformColors.palette.card,
-            unfocusedContainerColor = PlatformColors.palette.card,
-            cursorColor = PlatformColors.palette.accent,
+            focusedContainerColor = if (isMen) MenRosterCardAlt else PlatformColors.palette.card,
+            unfocusedContainerColor = if (isMen) MenRosterCardAlt else PlatformColors.palette.card,
+            cursorColor = if (isMen) MenRosterGold else PlatformColors.palette.accent,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent
@@ -831,11 +888,23 @@ private fun PositionFilterChips(
             else selectedPositions.any { it.equals(position, ignoreCase = true) }
 
             val bgColor by animateColorAsState(
-                targetValue = if (isSelected) PlatformColors.palette.accent else Color.Transparent,
+                targetValue = if (isSelected) {
+                    if (platform == Platform.MEN) MenRosterGold else PlatformColors.palette.accent
+                } else {
+                    Color.Transparent
+                },
                 label = "chipBg"
             )
-            val textColor = if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary
-            val borderColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+            val textColor = if (isSelected) {
+                if (platform == Platform.MEN) MenRosterBg else PlatformColors.palette.background
+            } else {
+                if (platform == Platform.MEN) MenRosterGoldSoft else PlatformColors.palette.textSecondary
+            }
+            val borderColor = if (isSelected) {
+                if (platform == Platform.MEN) MenRosterGold else PlatformColors.palette.accent
+            } else {
+                if (platform == Platform.MEN) MenRosterBorder else PlatformColors.palette.cardBorder
+            }
 
             Text(
                 text = when (position) {
@@ -902,6 +971,8 @@ private fun QuickFilterChips(
     onInterestedInIsraelClick: () -> Unit,
     onTaggedInNotesClick: () -> Unit,
     onFootFilterClick: (FootFilterOption) -> Unit
+    ,
+    platform: Platform = Platform.MEN
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -912,91 +983,104 @@ private fun QuickFilterChips(
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_free_agents),
                 isSelected = freeAgentsSelected,
-                onClick = onFreeAgentsClick
+                onClick = onFreeAgentsClick,
+                platform = platform
             )
         }
         item(key = "contract_expiring") {
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_contract_expiring),
                 isSelected = contractExpiringSelected,
-                onClick = onContractExpiringClick
+                onClick = onContractExpiringClick,
+                platform = platform
             )
         }
         item(key = "with_mandate") {
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_with_mandate),
                 isSelected = withMandateSelected,
-                onClick = onWithMandateClick
+                onClick = onWithMandateClick,
+                platform = platform
             )
         }
         item(key = "my_players") {
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_my_players_only),
                 isSelected = myPlayersOnlySelected,
-                onClick = onMyPlayersOnlyClick
+                onClick = onMyPlayersOnlyClick,
+                platform = platform
             )
         }
         item(key = "loan_players") {
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_loan_players_only),
                 isSelected = loanPlayersOnlySelected,
-                onClick = onLoanPlayersOnlyClick
+                onClick = onLoanPlayersOnlyClick,
+                platform = platform
             )
         }
         item(key = "without_registered_agent") {
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_without_registered_agent),
                 isSelected = withoutRegisteredAgentSelected,
-                onClick = onWithoutRegisteredAgentClick
+                onClick = onWithoutRegisteredAgentClick,
+                platform = platform
             )
         }
         item(key = "eu_national") {
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_eu_national),
                 isSelected = euNationalSelected,
-                onClick = onEuNationalClick
+                onClick = onEuNationalClick,
+                platform = platform
             )
         }
         item(key = "offered_no_feedback") {
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_offered_no_feedback),
                 isSelected = offeredNoFeedbackSelected,
-                onClick = onOfferedNoFeedbackClick
+                onClick = onOfferedNoFeedbackClick,
+                platform = platform
             )
         }
         item(key = "interested_in_israel") {
             QuickFilterChip(
                 label = "\uD83C\uDDEE\uD83C\uDDF1 " + stringResource(R.string.players_filter_interested_in_israel),
                 isSelected = interestedInIsraelSelected,
-                onClick = onInterestedInIsraelClick
+                onClick = onInterestedInIsraelClick,
+                platform = platform
             )
         }
         item(key = "with_notes") {
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_with_notes),
                 isSelected = withNotesOnlySelected,
-                onClick = onWithNotesOnlyClick
+                onClick = onWithNotesOnlyClick,
+                platform = platform
             )
         }
         item(key = "tagged_in_notes") {
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_tagged_in_notes),
                 isSelected = taggedInNotesSelected,
-                onClick = onTaggedInNotesClick
+                onClick = onTaggedInNotesClick,
+                platform = platform
             )
         }
         item(key = "foot_left") {
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_foot_left),
                 isSelected = footFilterOption == FootFilterOption.LEFT,
-                onClick = { onFootFilterClick(FootFilterOption.LEFT) }
+                onClick = { onFootFilterClick(FootFilterOption.LEFT) },
+                platform = platform
             )
         }
         item(key = "foot_right") {
             QuickFilterChip(
                 label = stringResource(R.string.players_filter_foot_right),
                 isSelected = footFilterOption == FootFilterOption.RIGHT,
-                onClick = { onFootFilterClick(FootFilterOption.RIGHT) }
+                onClick = { onFootFilterClick(FootFilterOption.RIGHT) },
+                platform = platform
             )
         }
         item(key = "agent_filter") {
@@ -1004,7 +1088,8 @@ private fun QuickFilterChips(
                 selectedAgentFilter = selectedAgentFilter,
                 allAccounts = allAccounts,
                 currentUserName = currentUserName,
-                onAgentSelected = onAgentFilterSelected
+                onAgentSelected = onAgentFilterSelected,
+                platform = platform
             )
         }
     }
@@ -1014,14 +1099,28 @@ private fun QuickFilterChips(
 private fun QuickFilterChip(
     label: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    platform: Platform = Platform.MEN
 ) {
+    val isMen = platform == Platform.MEN
     val bgColor by animateColorAsState(
-        targetValue = if (isSelected) PlatformColors.palette.accent else Color.Transparent,
+        targetValue = if (isSelected) {
+            if (isMen) MenRosterGold else PlatformColors.palette.accent
+        } else {
+            Color.Transparent
+        },
         label = "quickChipBg"
     )
-    val textColor = if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary
-    val borderColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+    val textColor = if (isSelected) {
+        if (isMen) MenRosterBg else PlatformColors.palette.background
+    } else {
+        if (isMen) MenRosterGoldSoft else PlatformColors.palette.textSecondary
+    }
+    val borderColor = if (isSelected) {
+        if (isMen) MenRosterGold else PlatformColors.palette.accent
+    } else {
+        if (isMen) MenRosterBorder else PlatformColors.palette.cardBorder
+    }
 
     Text(
         text = label,
@@ -1040,17 +1139,31 @@ private fun AgentFilterChip(
     selectedAgentFilter: String?,
     allAccounts: List<Account>,
     currentUserName: String?,
-    onAgentSelected: (String?) -> Unit
+    onAgentSelected: (String?) -> Unit,
+    platform: Platform = Platform.MEN
 ) {
+    val isMen = platform == Platform.MEN
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     val isSelected = selectedAgentFilter != null
     val bgColor by animateColorAsState(
-        targetValue = if (isSelected) PlatformColors.palette.accent else Color.Transparent,
+        targetValue = if (isSelected) {
+            if (isMen) MenRosterGold else PlatformColors.palette.accent
+        } else {
+            Color.Transparent
+        },
         label = "agentChipBg"
     )
-    val textColor = if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary
-    val borderColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+    val textColor = if (isSelected) {
+        if (isMen) MenRosterBg else PlatformColors.palette.background
+    } else {
+        if (isMen) MenRosterGoldSoft else PlatformColors.palette.textSecondary
+    }
+    val borderColor = if (isSelected) {
+        if (isMen) MenRosterGold else PlatformColors.palette.accent
+    } else {
+        if (isMen) MenRosterBorder else PlatformColors.palette.cardBorder
+    }
 
     val filteredAccounts = allAccounts.filter { !it.name.equals(currentUserName, ignoreCase = true) }
 
@@ -1075,12 +1188,17 @@ private fun AgentFilterChip(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.background(PlatformColors.palette.card),
-            containerColor = PlatformColors.palette.card
+            modifier = Modifier.background(if (isMen) MenRosterCard else PlatformColors.palette.card),
+            containerColor = if (isMen) MenRosterCard else PlatformColors.palette.card
         ) {
             if (isSelected) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.filter_clear), style = boldTextStyle(PlatformColors.palette.accent, 13.sp)) },
+                    text = {
+                        Text(
+                            stringResource(R.string.filter_clear),
+                            style = boldTextStyle(if (isMen) MenRosterGold else PlatformColors.palette.accent, 13.sp)
+                        )
+                    },
                     onClick = {
                         onAgentSelected(null)
                         expanded = false
@@ -1094,8 +1212,11 @@ private fun AgentFilterChip(
                     text = {
                         Text(
                             text = displayName,
-                            style = if (isThisSelected) boldTextStyle(PlatformColors.palette.accent, 13.sp)
-                                    else regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
+                            style = if (isThisSelected) {
+                                boldTextStyle(if (isMen) MenRosterGold else PlatformColors.palette.accent, 13.sp)
+                            } else {
+                                regularTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary, 13.sp)
+                            }
                         )
                     },
                     onClick = {
@@ -1116,8 +1237,10 @@ private fun AgentFilterChip(
 private fun ExpiringAlertBanner(
     count: Int,
     players: List<Player>,
+    platform: Platform = Platform.MEN,
     onPlayerClick: (Player) -> Unit
 ) {
+    val isMen = platform == Platform.MEN
     var isExpanded by remember { mutableStateOf(false) }
     var displayPlayers by remember { mutableStateOf<List<Player>>(emptyList()) }
     LaunchedEffect(isExpanded, players) {
@@ -1129,7 +1252,8 @@ private fun ExpiringAlertBanner(
             .fillMaxWidth()
             .clickWithNoRipple { isExpanded = !isExpanded },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card)
+        colors = CardDefaults.cardColors(containerColor = if (isMen) MenRosterCard else PlatformColors.palette.card),
+        border = if (isMen) BorderStroke(1.dp, MenRosterBorder) else null
     ) {
         Column {
             // Banner header with left accent
@@ -1138,7 +1262,7 @@ private fun ExpiringAlertBanner(
                     .fillMaxWidth()
                     .drawBehind {
                         drawRect(
-                            color = Color(0xFFFF9800),
+                            color = if (isMen) MenRosterGold else Color(0xFFFF9800),
                             topLeft = Offset.Zero,
                             size = Size(
                                 width = 3.dp.toPx(),
@@ -1152,36 +1276,36 @@ private fun ExpiringAlertBanner(
                 Icon(
                     imageVector = Icons.Filled.Warning,
                     contentDescription = null,
-                    tint = PlatformColors.palette.orange,
+                    tint = if (isMen) MenRosterGold else PlatformColors.palette.orange,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.players_expiring_soon_count, count),
-                        style = boldTextStyle(PlatformColors.palette.orange, 12.sp)
+                        style = boldTextStyle(if (isMen) MenRosterGold else PlatformColors.palette.orange, 12.sp)
                     )
                     Text(
                         text = stringResource(R.string.players_expiring_action_needed),
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp)
+                        style = regularTextStyle(if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary, 10.sp)
                     )
                 }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
-                        .background(PlatformColors.palette.orange.copy(alpha = 0.15f))
+                        .background(if (isMen) MenRosterGold.copy(alpha = 0.15f) else PlatformColors.palette.orange.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = count.toString(),
-                        style = boldTextStyle(PlatformColors.palette.orange, 11.sp)
+                        style = boldTextStyle(if (isMen) MenRosterGold else PlatformColors.palette.orange, 11.sp)
                     )
                 }
                 Spacer(Modifier.width(4.dp))
                 Icon(
                     imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = PlatformColors.palette.textSecondary,
+                    tint = if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -1203,11 +1327,15 @@ private fun ExpiringAlertBanner(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(PlatformColors.palette.cardBorder)
+                            .background(if (isMen) MenRosterBorder else PlatformColors.palette.cardBorder)
                     )
                     Spacer(Modifier.height(8.dp))
                     displayPlayers.forEach { player ->
-                        ExpiringPlayerRow(player = player, onClick = { onPlayerClick(player) })
+                        ExpiringPlayerRow(
+                            player = player,
+                            platform = platform,
+                            onClick = { onPlayerClick(player) }
+                        )
                     }
                 }
             }
@@ -1222,8 +1350,10 @@ private fun ExpiringAlertBanner(
 @Composable
 private fun MandateAlertBanner(
     playersWithMandate: List<PlayerWithMandateExpiry>,
+    platform: Platform = Platform.MEN,
     onPlayerClick: (PlayerWithMandateExpiry) -> Unit
 ) {
+    val isMen = platform == Platform.MEN
     var isExpanded by remember { mutableStateOf(false) }
 
     Card(
@@ -1231,7 +1361,8 @@ private fun MandateAlertBanner(
             .fillMaxWidth()
             .clickWithNoRipple { isExpanded = !isExpanded },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card)
+        colors = CardDefaults.cardColors(containerColor = if (isMen) MenRosterCard else PlatformColors.palette.card),
+        border = if (isMen) BorderStroke(1.dp, MenRosterBorder) else null
     ) {
         Column {
             Row(
@@ -1239,7 +1370,7 @@ private fun MandateAlertBanner(
                     .fillMaxWidth()
                     .drawBehind {
                         drawRect(
-                            color = PlatformColors.palette.blue,
+                            color = if (isMen) MenRosterGoldSoft else PlatformColors.palette.blue,
                             topLeft = Offset.Zero,
                             size = Size(
                                 width = 3.dp.toPx(),
@@ -1253,36 +1384,36 @@ private fun MandateAlertBanner(
                 Icon(
                     imageVector = Icons.Filled.VerifiedUser,
                     contentDescription = null,
-                    tint = PlatformColors.palette.blue,
+                    tint = if (isMen) MenRosterGoldSoft else PlatformColors.palette.blue,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.players_with_mandate_count, playersWithMandate.size),
-                        style = boldTextStyle(PlatformColors.palette.blue, 12.sp)
+                        style = boldTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.blue, 12.sp)
                     )
                     Text(
                         text = stringResource(R.string.players_with_mandate_subtitle),
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp)
+                        style = regularTextStyle(if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary, 10.sp)
                     )
                 }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
-                        .background(PlatformColors.palette.blue.copy(alpha = 0.15f))
+                        .background(if (isMen) MenRosterGoldSoft.copy(alpha = 0.15f) else PlatformColors.palette.blue.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = playersWithMandate.size.toString(),
-                        style = boldTextStyle(PlatformColors.palette.blue, 11.sp)
+                        style = boldTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.blue, 11.sp)
                     )
                 }
                 Spacer(Modifier.width(4.dp))
                 Icon(
                     imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = PlatformColors.palette.textSecondary,
+                    tint = if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -1303,11 +1434,15 @@ private fun MandateAlertBanner(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(PlatformColors.palette.cardBorder)
+                            .background(if (isMen) MenRosterBorder else PlatformColors.palette.cardBorder)
                     )
                     Spacer(Modifier.height(8.dp))
                     playersWithMandate.forEach { pwm ->
-                        MandatePlayerRow(pwm = pwm, onClick = { onPlayerClick(pwm) })
+                        MandatePlayerRow(
+                            pwm = pwm,
+                            platform = platform,
+                            onClick = { onPlayerClick(pwm) }
+                        )
                     }
                 }
             }
@@ -1316,7 +1451,12 @@ private fun MandateAlertBanner(
 }
 
 @Composable
-private fun MandatePlayerRow(pwm: PlayerWithMandateExpiry, onClick: () -> Unit) {
+private fun MandatePlayerRow(
+    pwm: PlayerWithMandateExpiry,
+    platform: Platform = Platform.MEN,
+    onClick: () -> Unit
+) {
+    val isMen = platform == Platform.MEN
     val player = pwm.player
     val expiryStr = pwm.mandateExpiryAt?.let { ts ->
         java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(ts))
@@ -1345,7 +1485,7 @@ private fun MandatePlayerRow(pwm: PlayerWithMandateExpiry, onClick: () -> Unit) 
                 ) {
                     Text(
                         text = player.fullName ?: "",
-                        style = boldTextStyle(PlatformColors.palette.textPrimary, 13.sp),
+                        style = boldTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary, 13.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1355,14 +1495,14 @@ private fun MandatePlayerRow(pwm: PlayerWithMandateExpiry, onClick: () -> Unit) 
                 }
                 Text(
                     text = player.currentClub?.clubName ?: "",
-                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
+                    style = regularTextStyle(if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary, 11.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (pwm.validLeagues.isNotEmpty()) {
                     Text(
                         text = pwm.validLeagues.joinToString(", "),
-                        style = regularTextStyle(PlatformColors.palette.blue, 10.sp),
+                        style = regularTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.blue, 10.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1372,12 +1512,12 @@ private fun MandatePlayerRow(pwm: PlayerWithMandateExpiry, onClick: () -> Unit) 
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
-                        .background(PlatformColors.palette.blue.copy(alpha = 0.12f))
+                        .background(if (isMen) MenRosterGoldSoft.copy(alpha = 0.14f) else PlatformColors.palette.blue.copy(alpha = 0.12f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.players_mandate_expires, expiryStr),
-                        style = boldTextStyle(PlatformColors.palette.blue, 10.sp)
+                        style = boldTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.blue, 10.sp)
                     )
                 }
             }
@@ -1386,7 +1526,12 @@ private fun MandatePlayerRow(pwm: PlayerWithMandateExpiry, onClick: () -> Unit) 
 }
 
 @Composable
-private fun ExpiringPlayerRow(player: Player, onClick: () -> Unit) {
+private fun ExpiringPlayerRow(
+    player: Player,
+    platform: Platform = Platform.MEN,
+    onClick: () -> Unit
+) {
+    val isMen = platform == Platform.MEN
     Box(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -1411,7 +1556,7 @@ private fun ExpiringPlayerRow(player: Player, onClick: () -> Unit) {
                 ) {
                     Text(
                         text = player.fullName ?: "",
-                        style = boldTextStyle(PlatformColors.palette.textPrimary, 13.sp),
+                        style = boldTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary, 13.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1421,7 +1566,7 @@ private fun ExpiringPlayerRow(player: Player, onClick: () -> Unit) {
                 }
                 Text(
                     text = player.currentClub?.clubName ?: "",
-                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
+                    style = regularTextStyle(if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary, 11.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1429,7 +1574,7 @@ private fun ExpiringPlayerRow(player: Player, onClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
-                    .background(PlatformColors.palette.orange.copy(alpha = 0.12f))
+                    .background(if (isMen) MenRosterGold.copy(alpha = 0.14f) else PlatformColors.palette.orange.copy(alpha = 0.12f))
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
@@ -1439,7 +1584,7 @@ private fun ExpiringPlayerRow(player: Player, onClick: () -> Unit) {
                             stringResource(R.string.players_contract_not_available)
                         else -> player.contractExpired.orEmpty()
                     },
-                    style = boldTextStyle(PlatformColors.palette.orange, 10.sp)
+                    style = boldTextStyle(if (isMen) MenRosterGold else PlatformColors.palette.orange, 10.sp)
                 )
             }
         }
@@ -1679,13 +1824,14 @@ private fun PlayerCardVariantA(
     val hasMandate = player.haveMandate
     val hasNotes = !player.notes.isNullOrEmpty() || !player.noteList.isNullOrEmpty()
     val noteCount = player.noteList?.size ?: if (!player.notes.isNullOrEmpty()) 1 else 0
+    val isMen = platform == Platform.MEN
 
     // Color-coded left border — platform-aware default
     val borderColor = when {
-        isFreeAgent -> PlatformColors.palette.red
-        isExpiring -> PlatformColors.palette.orange
-        hasMandate -> PlatformColors.palette.blue
-        else -> platform.accent
+        isFreeAgent -> if (isMen) MenRosterBronze else PlatformColors.palette.red
+        isExpiring -> if (isMen) MenRosterGold else PlatformColors.palette.orange
+        hasMandate -> if (isMen) MenRosterGoldSoft else PlatformColors.palette.blue
+        else -> if (isMen) MenRosterGold else platform.accent
     }
 
     // Market value trend
@@ -1708,7 +1854,8 @@ private fun PlayerCardVariantA(
                     }
                 ),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card)
+            colors = CardDefaults.cardColors(containerColor = if (isMen) MenRosterCard else PlatformColors.palette.card),
+            border = if (isMen) BorderStroke(1.dp, MenRosterBorder) else null
         ) {
             Column(
                 modifier = Modifier
@@ -1816,7 +1963,7 @@ private fun PlayerCardVariantA(
                             modifier = Modifier
                                 .size(52.dp)
                                 .clip(CircleShape)
-                                .border(2.dp, PlatformColors.palette.cardBorder, CircleShape),
+                                .border(2.dp, if (isMen) MenRosterBorder else PlatformColors.palette.cardBorder, CircleShape),
                             contentScale = ContentScale.Crop
                         )
                     }
@@ -1830,9 +1977,9 @@ private fun PlayerCardVariantA(
                             .clip(CircleShape)
                             .background(
                                 when {
-                                    isFreeAgent -> PlatformColors.palette.red
-                                    isExpiring -> PlatformColors.palette.orange
-                                    else -> PlatformColors.palette.green
+                                    isFreeAgent -> if (isMen) MenRosterBronze else PlatformColors.palette.red
+                                    isExpiring -> if (isMen) MenRosterGold else PlatformColors.palette.orange
+                                    else -> if (isMen) MenRosterGoldSoft else PlatformColors.palette.green
                                 }
                             )
                     )
@@ -1849,7 +1996,7 @@ private fun PlayerCardVariantA(
                     ) {
                         Text(
                             text = player.fullName ?: "",
-                            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp),
+                            style = boldTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary, 14.sp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
@@ -1884,7 +2031,7 @@ private fun PlayerCardVariantA(
 
                         Text(
                             text = player.nationality ?: "",
-                            style = regularTextStyle(PlatformColors.palette.textPrimary, 12.sp),
+                            style = regularTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary, 12.sp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -1920,8 +2067,11 @@ private fun PlayerCardVariantA(
                         Text(
                             text = if (isFreeAgent) stringResource(R.string.players_free_agent) else (player.currentClub?.clubName
                                 ?: ""),
-                            style = if (isFreeAgent) boldTextStyle(PlatformColors.palette.red, 11.sp)
-                            else regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
+                                style = if (isFreeAgent) {
+                                    boldTextStyle(if (isMen) MenRosterBronze else PlatformColors.palette.red, 11.sp)
+                                } else {
+                                    regularTextStyle(if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary, 11.sp)
+                                },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1937,16 +2087,17 @@ private fun PlayerCardVariantA(
                             PlayerTag(text = stringResource(
                                 if (platform == Platform.WOMEN) R.string.women_players_age_format else R.string.players_age_format,
                                 player.age.trim()
-                            ))
+                            ), platform = platform)
                         }
                         player.positions?.filterNotNull()?.take(2)?.forEach { pos ->
                             PlayerTag(
                                 text = pos,
-                                isPosition = true
+                                isPosition = true,
+                                platform = platform
                             )
                         }
                         if (!player.height.isNullOrBlank() && !player.height.equals("Unknown", ignoreCase = true)) {
-                            PlayerTag(text = player.height)
+                            PlayerTag(text = player.height, platform = platform)
                         }
 
                         // Youth-specific tags
@@ -2029,8 +2180,9 @@ private fun PlayerCardVariantA(
                         PlayerBadge(
                             icon = Icons.Filled.Handshake,
                             text = stringResource(R.string.stat_mandate),
-                            backgroundColor = PlatformColors.palette.blue.copy(alpha = 0.15f),
-                            contentColor = PlatformColors.palette.blue
+                            backgroundColor = if (isMen) MenRosterGoldSoft.copy(alpha = 0.16f) else PlatformColors.palette.blue.copy(alpha = 0.15f),
+                            contentColor = if (isMen) MenRosterGoldSoft else PlatformColors.palette.blue,
+                            platform = platform
                         )
                     }
 
@@ -2038,8 +2190,9 @@ private fun PlayerCardVariantA(
                         PlayerBadge(
                             icon = Icons.Filled.Schedule,
                             text = stringResource(R.string.players_expiring_badge),
-                            backgroundColor = PlatformColors.palette.orange.copy(alpha = 0.15f),
-                            contentColor = PlatformColors.palette.orange
+                            backgroundColor = if (isMen) MenRosterGold.copy(alpha = 0.15f) else PlatformColors.palette.orange.copy(alpha = 0.15f),
+                            contentColor = if (isMen) MenRosterGold else PlatformColors.palette.orange,
+                            platform = platform
                         )
                     }
 
@@ -2047,8 +2200,9 @@ private fun PlayerCardVariantA(
                         PlayerBadge(
                             icon = Icons.Filled.PersonOff,
                             text = stringResource(R.string.players_free_agent),
-                            backgroundColor = PlatformColors.palette.red.copy(alpha = 0.15f),
-                            contentColor = PlatformColors.palette.red
+                            backgroundColor = if (isMen) MenRosterBronze.copy(alpha = 0.16f) else PlatformColors.palette.red.copy(alpha = 0.15f),
+                            contentColor = if (isMen) MenRosterBronze else PlatformColors.palette.red,
+                            platform = platform
                         )
                     }
 
@@ -2060,16 +2214,18 @@ private fun PlayerCardVariantA(
                                 stringResource(R.string.players_contract_not_available)
                             else -> player.contractExpired.orEmpty()
                         },
-                        backgroundColor = Color.White.copy(alpha = 0.05f),
-                        contentColor = PlatformColors.palette.textSecondary
+                        backgroundColor = if (isMen) MenRosterCardAlt else Color.White.copy(alpha = 0.05f),
+                        contentColor = if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary,
+                        platform = platform
                     )
 
                     if (hasNotes && noteCount > 0) {
                         PlayerBadge(
                             icon = Icons.AutoMirrored.Filled.StickyNote2,
                             text = noteCount.toString(),
-                            backgroundColor = PlatformColors.palette.purple.copy(alpha = 0.12f),
-                            contentColor = PlatformColors.palette.purple
+                            backgroundColor = if (isMen) MenRosterGold.copy(alpha = 0.12f) else PlatformColors.palette.purple.copy(alpha = 0.12f),
+                            contentColor = if (isMen) MenRosterGold else PlatformColors.palette.purple,
+                            platform = platform
                         )
                     }
 
@@ -2086,8 +2242,9 @@ private fun PlayerCardVariantA(
                         PlayerBadge(
                             icon = Icons.Filled.Person,
                             text = agentDisplayName,
-                            backgroundColor = PlatformColors.palette.accent.copy(alpha = 0.15f),
-                            contentColor = PlatformColors.palette.accent
+                            backgroundColor = if (isMen) MenRosterGoldSoft.copy(alpha = 0.14f) else PlatformColors.palette.accent.copy(alpha = 0.15f),
+                            contentColor = if (isMen) MenRosterGoldSoft else PlatformColors.palette.accent,
+                            platform = platform
                         )
                     }
 
@@ -2099,8 +2256,9 @@ private fun PlayerCardVariantA(
                                 R.string.player_info_added_on,
                                 java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(player.createdAt!!))
                             ),
-                            backgroundColor = Color.White.copy(alpha = 0.05f),
-                            contentColor = PlatformColors.palette.textSecondary
+                            backgroundColor = MenRosterCardAlt,
+                            contentColor = MenRosterTextSubtle,
+                            platform = platform
                         )
                     }
                 }
@@ -2307,10 +2465,20 @@ private fun PlayerTag(
     text: String,
     isPosition: Boolean = false,
     tagColor: Color? = null,
-    textColor: Color? = null
+    textColor: Color? = null,
+    platform: Platform = Platform.MEN
 ) {
-    val resolvedTextColor = textColor ?: if (isPosition) PlatformColors.palette.accent else PlatformColors.palette.textSecondary
-    val resolvedBgColor = tagColor ?: if (isPosition) PlatformColors.palette.accent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
+    val isMen = platform == Platform.MEN
+    val resolvedTextColor = textColor ?: if (isPosition) {
+        if (isMen) MenRosterGold else PlatformColors.palette.accent
+    } else {
+        if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary
+    }
+    val resolvedBgColor = tagColor ?: if (isPosition) {
+        if (isMen) MenRosterGold.copy(alpha = 0.14f) else PlatformColors.palette.accent.copy(alpha = 0.15f)
+    } else {
+        if (isMen) MenRosterCardAlt else Color.White.copy(alpha = 0.05f)
+    }
 
     Text(
         text = text,
@@ -2331,12 +2499,19 @@ private fun PlayerBadge(
     icon: ImageVector,
     text: String,
     backgroundColor: Color,
-    contentColor: Color
+    contentColor: Color,
+    platform: Platform = Platform.MEN
 ) {
+    val isMen = platform == Platform.MEN
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(backgroundColor)
+            .border(
+                width = if (isMen) 1.dp else 0.dp,
+                color = if (isMen) contentColor.copy(alpha = 0.35f) else Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
+            )
             .padding(horizontal = 6.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(3.dp)

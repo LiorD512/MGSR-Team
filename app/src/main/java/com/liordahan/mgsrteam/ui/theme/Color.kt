@@ -22,28 +22,28 @@ val searchHeaderButtonBackground = Color(0xFFF5F3F1)
 val dividerColor = Color(0x14000000)
 val redErrorColor = Color(0XFFD50525)
 
-// ── Home Dashboard (dark theme) ── matching navigation bar DarkCharcoal / TealAccent
-val HomeDarkBackground = Color(0xFF0F1923)
-val HomeDarkCard = Color(0xFF1A2736)
-val HomeDarkCardBorder = Color(0xFF253545)
-val HomeTealAccent = Color(0xFF4DB6AC)     // same teal as nav-bar
-val HomeDarkCharcoal = Color(0xFF1A2327)   // same as nav-bar
-val HomeTextPrimary = Color(0xFFE8EAED)
-val HomeTextSecondary = Color(0xFF8C999B)
+// ── Men platform base palette (roster-aligned premium black/gold) ──
+val HomeDarkBackground = Color(0xFF0A121E)
+val HomeDarkCard = Color(0xFF152131)
+val HomeDarkCardBorder = Color(0x55C7A35A)
+val HomeTealAccent = Color(0xFFC7A35A)     // kept var name for compatibility; now men gold accent
+val HomeDarkCharcoal = Color(0xFF0E1724)
+val HomeTextPrimary = Color(0xFFF1E6CF)
+val HomeTextSecondary = Color(0xFFBDAE8C)
 val HomeGreenAccent = Color(0xFF4CAF50)
 val HomeOrangeAccent = Color(0xFFFF9800)
 val HomeRedAccent = Color(0xFFE53935)
-val HomeBlueAccent = Color(0xFF42A5F5)
-val HomePurpleAccent = Color(0xFFAB47BC)
-val HomeYellowAccent = Color(0xFFFDD835)  // bright yellow for contacts - unique across all chips
-val HomeRoseAccent = Color(0xFFF48FB1)   // soft rose/pink for notes - distinct from other accents
-val HomeAmberAccent = Color(0xFFEC407A)   // hot pink for contract finisher — totally distinct from all other chips
+val HomeBlueAccent = Color(0xFF8CA0BD)
+val HomePurpleAccent = Color(0xFFAE8A4A)
+val HomeYellowAccent = Color(0xFFE0BC74)
+val HomeRoseAccent = Color(0xFFD7A766)
+val HomeAmberAccent = Color(0xFFAE8A4A)
 val HomeLiveRed = Color(0xFFFF1744)
 /** War Room command center — indigo for strategic/tactical hub (unused elsewhere) */
 val WarRoomAccent = Color(0xFF6366F1)
 
-// ── Platform accent colours (matched to web CSS variables) ──
-val PlatformMenAccent = HomeTealAccent            // 0xFF4DB6AC
+// ── Platform accent colours (matched to current product direction) ──
+val PlatformMenAccent = HomeTealAccent            // men gold accent
 val PlatformWomenAccent = Color(0xFFE8A0BF)       // rose (web --women-rose)
 val PlatformWomenSecondary = Color(0xFFD4A5A5)    // blush (web --women-blush)
 val PlatformYouthAccent = Color(0xFF00D4FF)       // cyan (web --youth-cyan)

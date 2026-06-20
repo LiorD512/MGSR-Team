@@ -265,7 +265,7 @@ export default function PlayerInfoPage() {
   const backLabelKey =
     fromPath === '/requests'
       ? 'player_info_back_requests'
-      : fromPath === '/releases'
+      : (fromPath === '/releases' || fromPath === '/release-notifications')
         ? 'player_info_back_releases'
         : fromPath === '/contract-finisher'
           ? 'player_info_back_contract_finisher'

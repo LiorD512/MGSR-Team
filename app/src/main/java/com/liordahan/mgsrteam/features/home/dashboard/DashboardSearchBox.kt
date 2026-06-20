@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +53,13 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 
+private val MenSearchBg = Color(0xFF152131)
+private val MenSearchBgAlt = Color(0xFF1A2A3D)
+private val MenSearchBorder = Color(0x55C7A35A)
+private val MenSearchGold = Color(0xFFC7A35A)
+private val MenSearchGoldSoft = Color(0xFFDDC187)
+private val MenSearchSubtle = Color(0xFFBFAF8A)
+
 @Composable
 fun DashboardSearchBox(
     query: String,
@@ -73,7 +81,7 @@ fun DashboardSearchBox(
             placeholder = {
                 Text(
                     stringResource(R.string.dashboard_search_hint),
-                    color = HomeTextSecondary,
+                    color = MenSearchSubtle,
                     fontSize = 14.sp
                 )
             },
@@ -81,7 +89,7 @@ fun DashboardSearchBox(
                 Icon(
                     Icons.Default.Search,
                     contentDescription = null,
-                    tint = HomeTextSecondary
+                    tint = MenSearchGold
                 )
             },
             trailingIcon = {
@@ -89,7 +97,7 @@ fun DashboardSearchBox(
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Clear",
-                        tint = HomeTextSecondary,
+                        tint = MenSearchSubtle,
                         modifier = Modifier.clickWithNoRipple { onQueryChange("") }
                     )
                 }
@@ -97,13 +105,13 @@ fun DashboardSearchBox(
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = HomeDarkCard,
-                unfocusedContainerColor = HomeDarkCard,
-                focusedBorderColor = HomeBlueAccent.copy(alpha = 0.5f),
-                unfocusedBorderColor = HomeDarkCardBorder,
-                cursorColor = HomeBlueAccent,
-                focusedTextColor = HomeTextPrimary,
-                unfocusedTextColor = HomeTextPrimary
+                focusedContainerColor = MenSearchBg,
+                unfocusedContainerColor = MenSearchBg,
+                focusedBorderColor = MenSearchGold,
+                unfocusedBorderColor = MenSearchBorder,
+                cursorColor = MenSearchGold,
+                focusedTextColor = MenSearchGoldSoft,
+                unfocusedTextColor = MenSearchGoldSoft
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -119,7 +127,8 @@ fun DashboardSearchBox(
                     .fillMaxWidth()
                     .padding(top = 6.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(HomeDarkCard)
+                    .background(MenSearchBgAlt)
+                    .border(1.dp, MenSearchBorder, RoundedCornerShape(12.dp))
                     .padding(vertical = 4.dp)
             ) {
                 results.forEach { result ->
@@ -171,12 +180,12 @@ private fun PlayerSearchResultItem(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(HomeDarkCardBorder)
+                    .background(MenSearchBorder)
             ) {
                 Icon(
                     Icons.Default.People,
                     contentDescription = null,
-                    tint = HomeTextSecondary,
+                    tint = MenSearchGold,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -188,7 +197,7 @@ private fun PlayerSearchResultItem(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = result.name,
-                color = HomeTextPrimary,
+                color = MenSearchGoldSoft,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -197,7 +206,7 @@ private fun PlayerSearchResultItem(
             if (!result.position.isNullOrBlank()) {
                 Text(
                     text = result.position,
-                    color = HomeTextSecondary,
+                    color = MenSearchSubtle,
                     fontSize = 12.sp,
                     maxLines = 1
                 )
@@ -208,8 +217,8 @@ private fun PlayerSearchResultItem(
 
         // Source tag
         val tagColor = when (result.source) {
-            PlayerSource.ROSTER -> HomeGreenAccent
-            PlayerSource.SHORTLIST -> HomeBlueAccent
+            PlayerSource.ROSTER -> MenSearchGold
+            PlayerSource.SHORTLIST -> MenSearchSubtle
         }
         val tagLabel = when (result.source) {
             PlayerSource.ROSTER -> "Roster"
@@ -256,12 +265,12 @@ private fun RequestSearchResultItem(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(HomeDarkCardBorder)
+                    .background(MenSearchBorder)
             ) {
                 Icon(
                     Icons.Default.RequestQuote,
                     contentDescription = null,
-                    tint = HomeTextSecondary,
+                    tint = MenSearchGold,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -273,7 +282,7 @@ private fun RequestSearchResultItem(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = result.clubName,
-                color = HomeTextPrimary,
+                color = MenSearchGoldSoft,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -282,7 +291,7 @@ private fun RequestSearchResultItem(
             if (!result.position.isNullOrBlank()) {
                 Text(
                     text = "Looking for: ${result.position}",
-                    color = HomeTextSecondary,
+                    color = MenSearchSubtle,
                     fontSize = 12.sp,
                     maxLines = 1
                 )
@@ -294,12 +303,12 @@ private fun RequestSearchResultItem(
         // Request tag
         Text(
             text = "Request",
-            color = HomeOrangeAccent,
+            color = MenSearchGold,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .clip(RoundedCornerShape(6.dp))
-                .background(HomeOrangeAccent.copy(alpha = 0.15f))
+                .background(MenSearchGold.copy(alpha = 0.15f))
                 .padding(horizontal = 8.dp, vertical = 3.dp)
         )
     }

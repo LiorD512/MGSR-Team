@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +48,11 @@ import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 
+private val MenSwitchBg = Color(0xFF111D2C)
+private val MenSwitchBorder = Color(0x55C7A35A)
+private val MenSwitchText = Color(0xFFDCC286)
+private val MenSwitchIndicatorText = Color(0xFF0B1522)
+
 /**
  * Tri-segment platform switcher (Men / Women / Youth).
  *
@@ -58,7 +64,8 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 fun PlatformSwitcher(
     platformManager: PlatformManager,
     onSwitch: (Platform) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    useDashboardMenPalette: Boolean = false
 ) {
     val current by platformManager.current.collectAsStateWithLifecycle()
     val platforms = Platform.entries
@@ -67,6 +74,7 @@ fun PlatformSwitcher(
     val totalWidth = segmentWidth * platforms.size
 
     val selectedIndex = platforms.indexOf(current)
+    val useMenPalette = useDashboardMenPalette && current == Platform.MEN
 
     // Animated offset for the sliding indicator
     val indicatorOffset: Dp by animateDpAsState(
@@ -83,7 +91,12 @@ fun PlatformSwitcher(
             .width(totalWidth)
             .height(40.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(HomeDarkCard)
+            .background(if (useMenPalette) MenSwitchBg else HomeDarkCard)
+            .border(
+                width = if (useMenPalette) 1.dp else 0.dp,
+                color = if (useMenPalette) MenSwitchBorder else Color.Transparent,
+                shape = RoundedCornerShape(20.dp)
+            )
     ) {
         // ── Sliding indicator (gradient pill) ────────────────────────
         Box(
@@ -94,7 +107,16 @@ fun PlatformSwitcher(
                 .padding(3.dp)
                 .clip(RoundedCornerShape(18.dp))
                 .background(
-                    brush = current.gradient
+                    brush = if (useMenPalette) {
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color(0xFFE0C892),
+                                Color(0xFFB9954E)
+                            )
+                        )
+                    } else {
+                        current.gradient
+                    }
                 )
         )
 
@@ -109,7 +131,11 @@ fun PlatformSwitcher(
             platforms.forEach { platform ->
                 val isSelected = platform == current
                 val textColor by animateColorAsState(
-                    targetValue = if (isSelected) Color.White else HomeTextSecondary,
+                    targetValue = if (isSelected) {
+                        if (useMenPalette) MenSwitchIndicatorText else Color.White
+                    } else {
+                        if (useMenPalette) MenSwitchText else HomeTextSecondary
+                    },
                     label = "text_color_${platform.name}"
                 )
 

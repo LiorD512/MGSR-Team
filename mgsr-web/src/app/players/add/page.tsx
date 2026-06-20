@@ -46,7 +46,8 @@ export default function AddPlayerPage() {
     return <AddYouthPlayerForm />;
   }
   const forShortlist = searchParams.get('shortlist') === '1';
-  const fromReleases = searchParams.get('from') === 'releases';
+  const fromParam = searchParams.get('from');
+  const fromReleases = fromParam === 'releases' || fromParam === 'release-notifications';
   const fromShortlist = searchParams.get('from') === 'shortlist';
   const fromDashboard = searchParams.get('from') === '/dashboard';
   const scrollTo = searchParams.get('scrollTo');
@@ -169,7 +170,7 @@ export default function AddPlayerPage() {
           setSaving(false);
           return;
         }
-        router.push(fromReleases ? '/releases' : '/shortlist');
+        router.push(fromReleases ? '/release-notifications' : '/shortlist');
       } else {
         const playersRef = collection(db, 'Players');
         const existing = await getDocs(
@@ -228,7 +229,7 @@ export default function AddPlayerPage() {
           return;
         }
 
-        router.push(fromReleases ? '/releases' : fromShortlist ? '/shortlist' : '/players');
+        router.push(fromReleases ? '/release-notifications' : fromShortlist ? '/shortlist' : '/players');
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save';
@@ -260,7 +261,7 @@ export default function AddPlayerPage() {
   }
 
   const backHref = fromReleases
-    ? '/releases'
+    ? '/release-notifications'
     : fromDashboard
       ? scrollTo ? `/dashboard?scrollTo=${encodeURIComponent(scrollTo)}` : '/dashboard'
       : (forShortlist || fromShortlist)

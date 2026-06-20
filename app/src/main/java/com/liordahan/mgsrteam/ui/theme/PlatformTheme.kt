@@ -16,7 +16,7 @@ import com.liordahan.mgsrteam.features.platform.Platform
  *  Instead of branching `if (isWomen)` in every screen file,
  *  all Home* colors resolve through [PlatformPalette].
  *
- *  Men  → original navy / teal / blue-grey
+ *  Men  → roster-aligned premium black / gold / bronze
  *  Women→ ATHENA orchid / gold / rose coral on deep purple background
  *  Youth→ keeps the standard (men) palette for now
  *

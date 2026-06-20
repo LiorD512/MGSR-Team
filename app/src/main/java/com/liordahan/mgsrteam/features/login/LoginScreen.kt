@@ -60,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -83,11 +84,7 @@ import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.components.AppTextField
 import com.liordahan.mgsrteam.ui.components.PrimaryButtonNewDesign
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
 import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
@@ -101,6 +98,14 @@ import kotlin.math.roundToInt
 
 private const val ENTRANCE_DURATION_MS = 800
 private const val SHAKE_DURATION_MS = 400
+
+private val LoginLogoGold = Color(0xFFC7A35A)
+private val LoginLogoGoldSoft = Color(0xFFDEC287)
+private val LoginBackgroundTop = Color(0xFF070D16)
+private val LoginBackgroundBottom = Color(0xFF101A28)
+private val LoginCardBackground = Color(0xFF162131)
+private val LoginCardBorder = Color(0x33C7A35A)
+private val LoginToggleIdle = Color(0xFF141F2E)
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  LOGIN SCREEN
@@ -214,7 +219,7 @@ fun LoginScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = HomeDarkBackground,
+        containerColor = LoginBackgroundTop,
         contentWindowInsets = WindowInsets.systemBars,
     ) { padding ->
 
@@ -222,6 +227,11 @@ fun LoginScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(LoginBackgroundTop, LoginBackgroundBottom)
+                    )
+                )
                 .imePadding()
         ) {
             // ── Main login form (scrollable, centred) ────────────────────
@@ -255,9 +265,9 @@ fun LoginScreen(
                         .background(
                             brush = Brush.horizontalGradient(
                                 colors = listOf(
-                                    HomeTealAccent.copy(alpha = 0.4f),
-                                    HomeTealAccent,
-                                    HomeTealAccent.copy(alpha = 0.4f)
+                                    LoginLogoGold.copy(alpha = 0.35f),
+                                    LoginLogoGoldSoft,
+                                    LoginLogoGold.copy(alpha = 0.35f)
                                 )
                             ),
                             shape = RoundedCornerShape(2.dp)
@@ -298,8 +308,8 @@ fun LoginScreen(
                                 y = (formOffsetY * density).roundToInt()
                             )
                         }
-                        .background(HomeDarkCard, RoundedCornerShape(16.dp))
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp))
+                        .background(LoginCardBackground, RoundedCornerShape(16.dp))
+                        .border(1.dp, LoginCardBorder, RoundedCornerShape(16.dp))
                         .padding(20.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -389,8 +399,8 @@ fun LoginScreen(
                         isEnabled = isFormValid && !showButtonProgress,
                         showProgress = showButtonProgress,
                         loadingText = stringResource(R.string.login_signing_in),
-                        containerColor = HomeTealAccent,
-                        disabledContainerColor = HomeDarkCard,
+                        containerColor = LoginLogoGold,
+                        disabledContainerColor = LoginCardBackground,
                         onButtonClicked = performLogin
                     )
                 }
@@ -432,8 +442,8 @@ private fun LanguageToggle(
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(HomeDarkCard)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(20.dp))
+            .background(LoginToggleIdle)
+            .border(1.dp, LoginCardBorder, RoundedCornerShape(20.dp))
             .padding(3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -467,10 +477,10 @@ private fun LanguageOption(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(17.dp))
-            .background(if (isSelected) HomeTealAccent else HomeDarkCard)
+            .background(if (isSelected) LoginLogoGold else LoginToggleIdle)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = true, color = HomeTealAccent),
+                indication = ripple(bounded = true, color = LoginLogoGold),
                 onClick = onClick
             )
             .padding(horizontal = 14.dp, vertical = 7.dp),
@@ -488,7 +498,7 @@ private fun LanguageOption(
             Text(
                 text = label,
                 style = boldTextStyle(
-                    if (isSelected) HomeDarkBackground else HomeTextSecondary,
+                    if (isSelected) LoginBackgroundTop else HomeTextSecondary,
                     12.sp
                 )
             )

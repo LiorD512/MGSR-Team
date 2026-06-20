@@ -10,9 +10,11 @@ const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 const ALL_CACHE_KEY = 'releases-all';
 const ALL_CACHE_TTL = 3 * 24 * 60 * 60 * 1000; // 3 days (matches local worker schedule)
 const FEED_EVENTS_RELEASE_TYPE = 'NEW_RELEASE_FROM_CLUB';
+const NOTIFICATION_MIN_MARKET_VALUE = 150000;
+const NOTIFICATION_MAX_MARKET_VALUE = 4000000;
+const NOTIFICATION_MAX_AGE = 33;
 const LIVE_REFRESH_RANGES: Array<[number, number]> = [
-  [0, 125000],
-  [125001, 250000],
+  [150000, 250000],
   [250001, 400000],
   [400001, 600000],
   [600001, 800000],
@@ -27,7 +29,6 @@ const LIVE_REFRESH_RANGES: Array<[number, number]> = [
   [2500001, 3000000],
   [3000001, 3500000],
   [3500001, 4000000],
-  [4000001, 50000000],
 ];
 const LIVE_REFRESH_MAX_PAGES_PER_RANGE = 8;
 const LIVE_REFRESH_DELAY_MS = 220;
@@ -63,12 +64,53 @@ function feedEventDocIdForRelease(playerTmProfile: string): string {
   return `NEW_RELEASE_FROM_CLUB_${javaHashCode(playerTmProfile || '')}`;
 }
 
+function orderedReleaseTimestamp(baseTs: number, index: number): number {
+  return baseTs - index;
+}
+
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) {
     chunks.push(items.slice(i, i + size));
   }
   return chunks;
+}
+
+function parseMarketValueToEur(value?: string | null): number | null {
+  if (!value) return null;
+  const normalized = String(value)
+    .replace(/\u20ac/g, '')
+    .replace(/,/g, '')
+    .trim()
+    .toLowerCase();
+  const match = normalized.match(/([0-9]+(?:\.[0-9]+)?)\s*([mk])?/);
+  if (!match) return null;
+  const num = Number.parseFloat(match[1]);
+  if (Number.isNaN(num)) return null;
+  const unit = match[2];
+  if (unit === 'm') return Math.round(num * 1000000);
+  if (unit === 'k') return Math.round(num * 1000);
+  return Math.round(num);
+}
+
+function parsePlayerAge(value?: string | null): number | null {
+  if (!value) return null;
+  const match = String(value).match(/\d{1,2}/);
+  if (!match) return null;
+  const age = Number.parseInt(match[0], 10);
+  return Number.isNaN(age) ? null : age;
+}
+
+function isNotificationReleaseCandidate(player: ReleaseLike): boolean {
+  const marketValueEur = parseMarketValueToEur(player.marketValue);
+  const age = parsePlayerAge(player.playerAge);
+  return (
+    marketValueEur !== null &&
+    marketValueEur >= NOTIFICATION_MIN_MARKET_VALUE &&
+    marketValueEur <= NOTIFICATION_MAX_MARKET_VALUE &&
+    age !== null &&
+    age <= NOTIFICATION_MAX_AGE
+  );
 }
 
 async function scrapeLatestReleasesLive(): Promise<{ players: ReleaseLike[]; pagesFetched: number; rangesProcessed: number }> {
@@ -120,7 +162,7 @@ async function syncReleaseFeedEvents(players: ReleaseLike[]): Promise<{
   const playersRef = db.collection(PLAYERS_COLLECTION);
 
   const byUrl = new Map<string, ReleaseLike>();
-  for (const player of players) {
+  for (const player of players.filter(isNotificationReleaseCandidate)) {
     if (!player?.playerUrl) continue;
     if (!byUrl.has(player.playerUrl)) byUrl.set(player.playerUrl, player);
   }
@@ -155,9 +197,11 @@ async function syncReleaseFeedEvents(players: ReleaseLike[]): Promise<{
   const now = Date.now();
 
   let createdEvents = 0;
+  let createdOffset = 0;
   for (const createChunk of chunk(toCreate, 350)) {
     const batch = db.batch();
-    for (const url of createChunk) {
+    for (let chunkIndex = 0; chunkIndex < createChunk.length; chunkIndex++) {
+      const url = createChunk[chunkIndex];
       const release = byUrl.get(url);
       if (!release) continue;
       const isInDatabase = playersInDb.has(url);
@@ -176,11 +220,12 @@ async function syncReleaseFeedEvents(players: ReleaseLike[]): Promise<{
         oldValue: null,
         newValue: 'Without club',
         extraInfo: isInDatabase ? 'IN_DATABASE' : 'NOT_IN_DATABASE',
-        timestamp: now,
+        timestamp: orderedReleaseTimestamp(now, createdOffset + chunkIndex),
       });
       createdEvents += 1;
     }
     await batch.commit();
+    createdOffset += createChunk.length;
   }
 
   return {

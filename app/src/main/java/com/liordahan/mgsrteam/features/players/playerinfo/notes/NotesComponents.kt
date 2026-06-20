@@ -119,6 +119,10 @@ import java.util.Locale
 private const val MAX_NOTE_LENGTH = 500
 private const val PREVIEW_NOTE_COUNT = 3
 
+private fun notesIsMenPalette(): Boolean = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+private fun notesActionColor(): Color = if (notesIsMenPalette()) Color(0xFFC7A35A) else PlatformColors.palette.accent
+private fun notesActionTextOnFill(): Color = if (notesIsMenPalette()) Color(0xFF0E1219) else Color.White
+
 private fun appendToNote(current: String, addition: String): String {
     val trimmed = addition.trim()
     if (trimmed.isBlank()) return current
@@ -164,6 +168,8 @@ fun NotesSection(
     val sortedNotes = noteList?.sortedByDescending { it.createdAt }.orEmpty()
     val noteCount = sortedNotes.size
     val previewNotes = sortedNotes.take(PREVIEW_NOTE_COUNT)
+    val actionColor = notesActionColor()
+    val actionOnFill = notesActionTextOnFill()
 
     Card(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -204,7 +210,7 @@ fun NotesSection(
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = stringResource(R.string.player_info_view_all_notes, noteCount),
-                        style = boldTextStyle(PlatformColors.palette.accent, 14.sp),
+                        style = boldTextStyle(actionColor, 14.sp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
@@ -223,8 +229,8 @@ fun NotesSection(
                         .height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = PlatformColors.palette.accent,
-                        contentColor = Color.White
+                        containerColor = actionColor,
+                        contentColor = actionOnFill
                     )
                 ) {
                     Icon(
@@ -235,7 +241,7 @@ fun NotesSection(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.player_info_add_note),
-                        style = boldTextStyle(Color.White, 14.sp)
+                        style = boldTextStyle(actionOnFill, 14.sp)
                     )
                 }
             }
@@ -247,6 +253,8 @@ fun NotesSection(
 
 @Composable
 private fun NotesEmptyState(onAddNoteClicked: () -> Unit) {
+    val actionColor = notesActionColor()
+    val actionOnFill = notesActionTextOnFill()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -278,8 +286,8 @@ private fun NotesEmptyState(onAddNoteClicked: () -> Unit) {
                 .height(48.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = PlatformColors.palette.accent,
-                contentColor = Color.White
+                containerColor = actionColor,
+                contentColor = actionOnFill
             )
         ) {
             Icon(
@@ -290,7 +298,7 @@ private fun NotesEmptyState(onAddNoteClicked: () -> Unit) {
             Spacer(Modifier.width(8.dp))
             Text(
                 text = stringResource(R.string.player_info_add_note),
-                style = boldTextStyle(Color.White, 14.sp)
+                style = boldTextStyle(actionOnFill, 14.sp)
             )
         }
     }

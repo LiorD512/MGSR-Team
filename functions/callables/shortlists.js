@@ -263,7 +263,7 @@ async function shortlistAddNote(data) {
               notification: {
                 title: notifTitle,
                 body: notifBody,
-                icon: "/logo.svg",
+                icon: "/brit_circle_black_gold.svg?v=20260620",
                 tag: `shortlist-note-tag-${Date.now()}`,
               },
               fcmOptions: { link: `/shortlist?highlight=${encodeURIComponent(tmProfileUrl)}` },

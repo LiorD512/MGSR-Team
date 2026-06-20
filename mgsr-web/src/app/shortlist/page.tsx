@@ -847,7 +847,7 @@ export default function ShortlistPage() {
             {platform === 'men' && (
               <>
                 <Link
-                  href="/releases"
+                  href="/release-notifications"
                   className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text font-medium hover:border-[var(--mgsr-accent)]/50 hover:text-[var(--mgsr-accent)] transition"
                 >
                   {t('shortlist_browse_releases')}
@@ -1109,7 +1109,7 @@ export default function ShortlistPage() {
                 {platform === 'men' && (
                   <>
                     <Link
-                      href="/releases"
+                      href="/release-notifications"
                       className="inline-block px-5 py-2.5 rounded-xl bg-[var(--mgsr-accent)] text-mgsr-dark font-semibold hover:bg-[var(--mgsr-accent)]/90 transition"
                     >
                       {t('shortlist_browse_releases')}

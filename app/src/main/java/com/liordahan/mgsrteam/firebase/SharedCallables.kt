@@ -11,6 +11,36 @@ import kotlinx.coroutines.tasks.await
  */
 object SharedCallables {
 
+    data class ReleasesRefreshTriggerResult(
+        val success: Boolean,
+        val requestedAt: Long,
+        val projectId: String?,
+        val region: String?,
+        val jobName: String?,
+        val operationName: String?,
+        val executionName: String?,
+    )
+
+    data class ReleasesRefreshStatusResult(
+        val exists: Boolean,
+        val workerName: String?,
+        val status: String?,
+        val startedAt: Long?,
+        val lastRunAt: Long?,
+        val durationMs: Long?,
+        val summary: String?,
+        val error: String?,
+        val updatedAt: Long?,
+        val operationName: String?,
+        val operationDone: Boolean?,
+        val operationError: String?,
+        val executionName: String?,
+        val executionDone: Boolean?,
+        val executionSucceeded: Boolean?,
+        val executionError: String?,
+        val serverTime: Long?,
+    )
+
     private val functions: FirebaseFunctions by lazy { FirebaseFunctions.getInstance() }
 
     // ─── helpers ────────────────────────────────────────────────────────
@@ -22,6 +52,16 @@ object SharedCallables {
             .await()
         return (result.data as? Map<String, Any?>) ?: emptyMap()
     }
+
+    private fun Any?.asString(): String? = this as? String
+    private fun Any?.asLong(): Long? = when (this) {
+        is Long -> this
+        is Int -> this.toLong()
+        is Double -> this.toLong()
+        is Float -> this.toLong()
+        else -> null
+    }
+    private fun Any?.asBoolean(): Boolean? = this as? Boolean
 
     fun Platform.callableName(): String = when (this) {
         Platform.MEN -> "men"
@@ -506,5 +546,49 @@ object SharedCallables {
         call("notificationMarkAllRead", mapOf(
             "accountId" to accountId,
         ))
+    }
+
+    // ─── Releases Refresh Worker Control ──────────────────────────────
+
+    suspend fun triggerReleasesRefreshJob(): ReleasesRefreshTriggerResult {
+        val result = call("triggerReleasesRefreshJob", emptyMap())
+        return ReleasesRefreshTriggerResult(
+            success = result["success"].asBoolean() ?: false,
+            requestedAt = result["requestedAt"].asLong() ?: 0L,
+            projectId = result["projectId"].asString(),
+            region = result["region"].asString(),
+            jobName = result["jobName"].asString(),
+            operationName = result["operationName"].asString(),
+            executionName = result["executionName"].asString(),
+        )
+    }
+
+    suspend fun getReleasesRefreshJobStatus(
+        operationName: String? = null,
+        executionName: String? = null,
+    ): ReleasesRefreshStatusResult {
+        val payload = mutableMapOf<String, Any?>()
+        if (!operationName.isNullOrBlank()) payload["operationName"] = operationName
+        if (!executionName.isNullOrBlank()) payload["executionName"] = executionName
+        val result = call("getReleasesRefreshJobStatus", payload)
+        return ReleasesRefreshStatusResult(
+            exists = result["exists"].asBoolean() ?: false,
+            workerName = result["workerName"].asString(),
+            status = result["status"].asString(),
+            startedAt = result["startedAt"].asLong(),
+            lastRunAt = result["lastRunAt"].asLong(),
+            durationMs = result["durationMs"].asLong(),
+            summary = result["summary"].asString(),
+            error = result["error"].asString(),
+            updatedAt = result["updatedAt"].asLong(),
+            operationName = result["operationName"].asString(),
+            operationDone = result["operationDone"].asBoolean(),
+            operationError = result["operationError"].asString(),
+            executionName = result["executionName"].asString(),
+            executionDone = result["executionDone"].asBoolean(),
+            executionSucceeded = result["executionSucceeded"].asBoolean(),
+            executionError = result["executionError"].asString(),
+            serverTime = result["serverTime"].asLong(),
+        )
     }
 }

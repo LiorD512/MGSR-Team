@@ -180,6 +180,47 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
+private val MenDashboardBg = Color(0xFF0A121E)
+private val MenDashboardGold = Color(0xFFC7A35A)
+private val MenDashboardGoldSoft = Color(0xFFDDC187)
+private val MenDashboardCyan = Color(0xFF5BC7BA)
+private val MenDashboardCyanSoft = Color(0xFF89DCD2)
+private val MenDashboardCard = Color(0xFF152131)
+private val MenDashboardCardAlt = Color(0xFF1A2A3D)
+private val MenDashboardBorder = Color(0x33C7A35A)
+private val MenDashboardDanger = Color(0xFFD88989)
+private val MenDashboardBronze = Color(0xFFAE8A4A)
+private val MenChipPlayers = Color(0xFFE3C78F)
+private val MenChipShortlist = Color(0xFFCCAA6A)
+private val MenChipReleases = Color(0xFFD7B57A)
+private val MenChipContracts = Color(0xFFBE995B)
+private val MenChipReturnees = Color(0xFFA8834C)
+private val MenChipWarRoom = Color(0xFFF0DAB0)
+private val MenChipContacts = Color(0xFFC39B68)
+private val MenChipRequests = Color(0xFFD1AE79)
+private val MenChipTasks = Color(0xFFB78E57)
+private val MenChipSand = Color(0xFFEAD8B6)
+private val MenChipCopper = Color(0xFF9B6D45)
+private val MenChipAmber = Color(0xFFD9A75D)
+private val MenChipOliveGold = Color(0xFF8F7A4F)
+private val MenChipRoseGold = Color(0xFFB88973)
+private val MenChipBrass = Color(0xFFA8854E)
+private val MenChipHoney = Color(0xFFD6B06E)
+private val MenChipTaupeGold = Color(0xFFB59A72)
+
+private fun mapAccentForMen(base: Color): Color = when (base) {
+    HomeTealAccent -> MenDashboardCyan
+    HomeBlueAccent -> MenDashboardCyanSoft
+    HomeOrangeAccent -> MenDashboardGold
+    HomePurpleAccent -> MenDashboardGoldSoft
+    HomeGreenAccent -> MenDashboardCyan
+    HomeYellowAccent -> MenDashboardGoldSoft
+    HomeAmberAccent -> MenDashboardGold
+    HomeRoseAccent -> MenDashboardGoldSoft
+    HomeRedAccent -> MenDashboardDanger
+    else -> base
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  DASHBOARD SCREEN
 // ═════════════════════════════════════════════════════════════════════════════
@@ -209,28 +250,24 @@ fun DashboardScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.refreshTransferWindows()
-    }
-
     val isWomenPlatform = currentPlatform == Platform.WOMEN
     val isYouthPlatform = currentPlatform == Platform.YOUTH
     val dashboardBg by animateColorAsState(
         targetValue = when {
             isWomenPlatform -> WomenColors.Background
             isYouthPlatform -> YouthColors.Background
-            else -> HomeDarkBackground
+            else -> MenDashboardBg
         },
         animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
         label = "dashboard_bg"
     )
     val dividerAccent1 by animateColorAsState(
-        targetValue = currentPlatform.accent,
+        targetValue = if (currentPlatform == Platform.MEN) MenDashboardGold else currentPlatform.accent,
         animationSpec = tween(400, easing = FastOutSlowInEasing),
         label = "divider_c1"
     )
     val dividerAccent2 by animateColorAsState(
-        targetValue = currentPlatform.accentSecondary,
+        targetValue = if (currentPlatform == Platform.MEN) MenDashboardCyan else currentPlatform.accentSecondary,
         animationSpec = tween(400, easing = FastOutSlowInEasing),
         label = "divider_c2"
     )
@@ -249,7 +286,7 @@ fun DashboardScreen(
         sweepProgress.snapTo(0f)
         sweepProgress.animateTo(1f, tween(600, easing = FastOutSlowInEasing))
     }
-    val sweepAccentColor = currentPlatform.accent
+    val sweepAccentColor = if (currentPlatform == Platform.MEN) MenDashboardGold else currentPlatform.accent
 
     if (state.isLoading) {
         SkeletonDashboardLayout(
@@ -299,6 +336,7 @@ fun DashboardScreen(
         // ── Sticky top section (does NOT scroll) ─────────────────────────
         GreetingHeader(
             state = state,
+            platform = currentPlatform,
             isHebrew = isHebrew,
             unreadNotifCount = notifState.unreadCount,
             onNotificationClick = { showNotificationCenter = true },
@@ -377,7 +415,7 @@ fun DashboardScreen(
                 else -> Column {
                     Text(
                         text = stringResource(R.string.men_dashboard_greeting_tagline),
-                        style = boldTextStyle(HomeTealAccent.copy(alpha = 0.7f), 13.sp),
+                        style = boldTextStyle(MenDashboardGold.copy(alpha = 0.88f), 13.sp),
                         letterSpacing = 0.8.sp,
                         modifier = Modifier.padding(horizontal = 20.dp)
                     )
@@ -399,7 +437,8 @@ fun DashboardScreen(
                 onSwitch = { platform ->
                     platformManager.switchTo(platform)
                     viewModel.reloadForPlatformSwitch()
-                }
+                },
+                useDashboardMenPalette = true
             )
         }
 
@@ -753,66 +792,7 @@ fun DashboardScreen(
                         )
                     }
 
-                    // ── Transfer Windows — hidden for women & youth ──────────────
-                    if (!isWomen && !isYouth) {
-                        item {
-                            TransferWindowsSectionHeader(totalCount = state.transferWindows.size)
-                        }
-                        when {
-                            state.transferWindowsLoading -> {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 24.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(28.dp),
-                                            color = HomeTealAccent,
-                                            strokeWidth = 2.dp
-                                        )
-                                    }
-                                }
-                            }
-                            state.transferWindowGroups.isEmpty() -> {
-                                item {
-                                    Text(
-                                        text = stringResource(R.string.transfer_windows_empty),
-                                        style = regularTextStyle(HomeTextSecondary, 13.sp),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 20.dp, vertical = 16.dp)
-                                    )
-                                }
-                            }
-                            else -> {
-                                state.transferWindowGroups.forEach { (confederation, windows) ->
-                                    val isExpanded = confederation in state.expandedConfederations
-                                    item(key = "tw_header_${confederation.name}") {
-                                        TransferWindowGroupHeader(
-                                            confederation = confederation,
-                                            count = windows.size,
-                                            isExpanded = isExpanded,
-                                            closingSoonCount = windows.count { (it.daysLeft ?: Int.MAX_VALUE) <= 7 },
-                                            onToggle = { viewModel.toggleTransferWindowGroup(confederation) }
-                                        )
-                                    }
-                                    if (isExpanded) {
-                                        items(
-                                            items = windows,
-                                            key = { "tw_${confederation.name}_${it.countryName}" }
-                                        ) { window ->
-                                            TransferWindowRow(
-                                                window = window,
-                                                modifier = Modifier.padding(horizontal = 20.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // Transfer windows section removed from dashboard per updated product direction.
 
                     // ── Document Reminders ───────────────────────────────────────
                     if (state.documentReminders.isNotEmpty()) {
@@ -866,10 +846,12 @@ private fun LanguageChangeDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+            colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCard else HomeDarkCard),
+            border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -915,14 +897,14 @@ private fun LanguageChangeDialog(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(HomeTealAccent)
+                            .background(if (isMen) MenDashboardGold else HomeTealAccent)
                             .clickWithNoRipple { onConfirm() }
                             .padding(horizontal = 24.dp, vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             stringResource(R.string.language_confirm),
-                            style = boldTextStyle(HomeDarkBackground, 14.sp)
+                            style = boldTextStyle(if (isMen) MenDashboardBg else HomeDarkBackground, 14.sp)
                         )
                     }
                 }
@@ -938,6 +920,7 @@ private fun LanguageChangeDialog(
 @Composable
 private fun GreetingHeader(
     state: HomeDashboardState,
+    platform: Platform,
     isHebrew: Boolean,
     unreadNotifCount: Int = 0,
     onNotificationClick: () -> Unit = {},
@@ -949,21 +932,24 @@ private fun GreetingHeader(
         ?: stringResource(R.string.greeting_agent_default)
     val dateStr = SimpleDateFormat("EEEE, MMM d, yyyy", Locale.getDefault()).format(Date())
     var showLogoutConfirm by remember { mutableStateOf(false) }
+    val headerAccent = if (platform == Platform.MEN) MenDashboardGold else platform.accent
+    val bellAccent = if (platform == Platform.MEN) MenDashboardGoldSoft else platform.accent
 
     if (showLogoutConfirm) {
+        val isMen = platform == Platform.MEN
         AlertDialog(
             onDismissRequest = { showLogoutConfirm = false },
-            containerColor = HomeDarkCard,
+            containerColor = if (isMen) MenDashboardCard else HomeDarkCard,
             title = {
                 Text(
                     text = stringResource(R.string.logout_confirm_title),
-                    style = boldTextStyle(HomeTextPrimary, 16.sp)
+                    style = boldTextStyle(if (isMen) MenDashboardGoldSoft else HomeTextPrimary, 16.sp)
                 )
             },
             text = {
                 Text(
                     text = stringResource(R.string.logout_confirm_message),
-                    style = regularTextStyle(HomeTextSecondary, 14.sp)
+                    style = regularTextStyle(if (isMen) MenDashboardCyanSoft else HomeTextSecondary, 14.sp)
                 )
             },
             confirmButton = {
@@ -973,7 +959,7 @@ private fun GreetingHeader(
                 }) {
                     Text(
                         text = stringResource(R.string.logout_confirm_yes),
-                        style = boldTextStyle(HomeRedAccent, 14.sp)
+                        style = boldTextStyle(if (isMen) MenDashboardDanger else HomeRedAccent, 14.sp)
                     )
                 }
             },
@@ -981,7 +967,7 @@ private fun GreetingHeader(
                 TextButton(onClick = { showLogoutConfirm = false }) {
                     Text(
                         text = stringResource(R.string.cancel),
-                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                        style = regularTextStyle(if (isMen) MenDashboardCyanSoft else HomeTextSecondary, 14.sp)
                     )
                 }
             }
@@ -1001,17 +987,23 @@ private fun GreetingHeader(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "${stringResource(state.greetingRes)},",
-                    style = regularTextStyle(HomeTextSecondary, 16.sp)
+                    style = regularTextStyle(
+                        if (platform == Platform.MEN) MenDashboardGold.copy(alpha = 0.82f) else HomeTextSecondary,
+                        16.sp
+                    )
                 )
                 Text(
                     text = userName,
-                    style = boldTextStyle(HomeTextPrimary, 26.sp)
+                    style = boldTextStyle(
+                        if (platform == Platform.MEN) MenDashboardGoldSoft else HomeTextPrimary,
+                        26.sp
+                    )
                 )
             }
 
             Text(
                 text = stringResource(R.string.logout_confirm_title),
-                style = boldTextStyle(HomeTealAccent, 13.sp),
+                style = boldTextStyle(headerAccent, 13.sp),
                 modifier = Modifier.clickWithNoRipple { showLogoutConfirm = true }
             )
 
@@ -1027,7 +1019,7 @@ private fun GreetingHeader(
                 Icon(
                     imageVector = Icons.Default.Notifications,
                     contentDescription = stringResource(R.string.notification_center_title),
-                    tint = HomeTealAccent,
+                    tint = bellAccent,
                     modifier = Modifier.size(24.dp)
                 )
                 if (unreadNotifCount > 0) {
@@ -1067,7 +1059,10 @@ private fun GreetingHeader(
 
         Text(
             text = dateStr,
-            style = regularTextStyle(HomeTextSecondary, 13.sp),
+            style = regularTextStyle(
+                if (platform == Platform.MEN) MenDashboardGoldSoft.copy(alpha = 0.76f) else HomeTextSecondary,
+                13.sp
+            ),
             modifier = Modifier.padding(top = 4.dp)
         )
     }
@@ -1079,7 +1074,11 @@ private fun GreetingHeader(
 
 @Composable
 private fun StatsRow(state: HomeDashboardState, platform: Platform = Platform.MEN) {
-    val accent = platform.accent
+    val isMen = platform == Platform.MEN
+    val playersAccent = if (isMen) MenDashboardGold else platform.accent
+    val mandateAccent = if (isMen) MenDashboardGoldSoft else HomeBlueAccent
+    val freeAccent = if (isMen) MenDashboardBronze else HomeRedAccent
+    val requestsAccent = if (isMen) MenDashboardGoldSoft else HomePurpleAccent
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1091,28 +1090,32 @@ private fun StatsRow(state: HomeDashboardState, platform: Platform = Platform.ME
             icon = Icons.Default.People,
             value = state.totalPlayers.toString(),
             label = stringResource(R.string.stat_players),
-            accentColor = accent
+            accentColor = playersAccent,
+            useMenPalette = isMen
         )
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.Handshake,
             value = state.withMandate.toString(),
             label = stringResource(R.string.stat_mandate),
-            accentColor = HomeBlueAccent
+            accentColor = mandateAccent,
+            useMenPalette = isMen
         )
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.PersonOff,
             value = state.freeAgents.toString(),
             label = stringResource(R.string.stat_free),
-            accentColor = HomeRedAccent
+            accentColor = freeAccent,
+            useMenPalette = isMen
         )
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.RequestQuote,
             value = state.requestsCount.toString(),
             label = stringResource(R.string.stat_requests),
-            accentColor = HomePurpleAccent
+            accentColor = requestsAccent,
+            useMenPalette = isMen
         )
     }
 }
@@ -1123,12 +1126,19 @@ private fun StatCard(
     icon: ImageVector,
     value: String,
     label: String,
-    accentColor: Color
+    accentColor: Color,
+    useMenPalette: Boolean = false
 ) {
+    val cardBg = if (useMenPalette) Color(0xFF152131) else HomeDarkCard
+    val cardBorder = if (useMenPalette) MenDashboardGold.copy(alpha = 0.42f) else HomeDarkCardBorder
+    val valueColor = if (useMenPalette) MenDashboardGoldSoft else HomeTextPrimary
+    val labelColor = if (useMenPalette) MenDashboardGoldSoft.copy(alpha = 0.84f) else HomeTextSecondary
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        border = androidx.compose.foundation.BorderStroke(1.dp, cardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -1145,11 +1155,11 @@ private fun StatCard(
             Spacer(Modifier.height(6.dp))
             Text(
                 text = value,
-                style = boldTextStyle(HomeTextPrimary, 20.sp)
+                style = boldTextStyle(valueColor, 20.sp)
             )
             Text(
                 text = label,
-                style = regularTextStyle(HomeTextSecondary, 11.sp)
+                style = regularTextStyle(labelColor, 11.sp)
             )
         }
     }
@@ -1167,10 +1177,8 @@ private enum class QuickActionKey {
     CONTRACT_FINISHER,
     RETURNEES,
     WAR_ROOM,
-    CHAT_ROOM,
     CONTACTS,
     REQUESTS,
-    SHADOW_TEAMS,
     TASKS,
 }
 
@@ -1183,10 +1191,9 @@ private fun quickActionsFor(platform: Platform): Set<QuickActionKey> = when (pla
         QuickActionKey.CONTRACT_FINISHER,
         QuickActionKey.RETURNEES,
         QuickActionKey.WAR_ROOM,
-        QuickActionKey.CHAT_ROOM,
         QuickActionKey.CONTACTS,
         QuickActionKey.REQUESTS,
-        QuickActionKey.SHADOW_TEAMS,
+        QuickActionKey.TASKS,
     )
     Platform.WOMEN -> setOf(
         QuickActionKey.PLAYERS,
@@ -1207,176 +1214,221 @@ private fun quickActionsFor(platform: Platform): Set<QuickActionKey> = when (pla
 @Composable
 private fun QuickActionsRow(navController: NavController, platform: Platform = Platform.MEN, chatUnreadCount: Int = 0) {
     val actions = quickActionsFor(platform)
+    val isMen = platform == Platform.MEN
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.padding(vertical = 14.dp)
     ) {
-        if (QuickActionKey.PLAYERS in actions) {
-            item {
-                QuickActionChip(
-                    icon = Icons.Default.People,
-                    label = stringResource(R.string.quick_action_players),
-                    color = platform.accent,
-                    onClick = {
-                        navController.navigate(Screens.PlayersScreen.route) {
-                            launchSingleTop = true
-                        }
+        if (QuickActionKey.PLAYERS in actions) item {
+            QuickActionChip(
+                icon = Icons.Default.People,
+                label = stringResource(R.string.quick_action_players),
+                color = if (isMen) MenChipPlayers else platform.accent,
+                onClick = {
+                    navController.navigate(Screens.PlayersScreen.route) {
+                        launchSingleTop = true
                     }
-                )
-            }
+                },
+                gradientBg = if (isMen) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            MenChipPlayers.copy(alpha = 0.34f),
+                            MenChipSand.copy(alpha = 0.18f)
+                        )
+                    )
+                } else null,
+                borderTint = if (isMen) MenChipSand else null,
+                useMenPalette = isMen
+            )
         }
-        if (QuickActionKey.SHORTLIST in actions) {
-            item {
-                QuickActionChip(
-                    icon = Icons.AutoMirrored.Filled.List,
-                    label = stringResource(R.string.quick_action_shortlist),
-                    color = HomeBlueAccent,
-                    onClick = {
-                        navController.navigate(Screens.ShortlistScreen.route) {
-                            launchSingleTop = true
-                        }
+        if (QuickActionKey.SHORTLIST in actions) item {
+            QuickActionChip(
+                icon = Icons.AutoMirrored.Filled.List,
+                label = stringResource(R.string.quick_action_shortlist),
+                color = if (isMen) MenChipShortlist else HomeBlueAccent,
+                onClick = {
+                    navController.navigate(Screens.ShortlistScreen.route) {
+                        launchSingleTop = true
                     }
-                )
-            }
+                },
+                gradientBg = if (isMen) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            MenChipShortlist.copy(alpha = 0.34f),
+                            MenChipCopper.copy(alpha = 0.22f)
+                        )
+                    )
+                } else null,
+                borderTint = if (isMen) MenChipCopper else null,
+                useMenPalette = isMen
+            )
         }
-        if (QuickActionKey.RELEASES in actions) {
-            item {
-                QuickActionChip(
-                    icon = Icons.Default.Search,
-                    label = stringResource(R.string.quick_action_releases),
-                    color = HomeOrangeAccent,
-                    onClick = {
-                        navController.navigate(Screens.ReleasesScreen.route) {
-                            launchSingleTop = true
-                        }
+        if (QuickActionKey.RELEASES in actions) item {
+            QuickActionChip(
+                icon = Icons.Default.Search,
+                label = stringResource(R.string.quick_action_releases),
+                color = if (isMen) MenChipReleases else HomeOrangeAccent,
+                onClick = {
+                    navController.navigate(Screens.ReleasesScreen.route) {
+                        launchSingleTop = true
                     }
-                )
-            }
+                },
+                gradientBg = if (isMen) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            MenChipReleases.copy(alpha = 0.34f),
+                            MenChipAmber.copy(alpha = 0.20f)
+                        )
+                    )
+                } else null,
+                borderTint = if (isMen) MenChipAmber else null,
+                useMenPalette = isMen
+            )
         }
-        if (QuickActionKey.CONTRACT_FINISHER in actions) {
-            item {
-                QuickActionChip(
-                    icon = Icons.Default.CalendarToday,
-                    label = stringResource(
-                        if (java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1 in 2..9)
-                            R.string.quick_action_contract_finisher_summer
-                        else
-                            R.string.quick_action_contract_finisher_winter
-                    ),
-                    color = HomeAmberAccent,
-                    onClick = {
-                        navController.navigate(Screens.ContractFinisherScreen.route) {
-                            launchSingleTop = true
-                        }
+        if (QuickActionKey.CONTRACT_FINISHER in actions) item {
+            QuickActionChip(
+                icon = Icons.Default.CalendarToday,
+                label = stringResource(
+                    if (java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1 in 2..9)
+                        R.string.quick_action_contract_finisher_summer
+                    else
+                        R.string.quick_action_contract_finisher_winter
+                ),
+                color = if (isMen) MenChipContracts else HomeAmberAccent,
+                onClick = {
+                    navController.navigate(Screens.ContractFinisherScreen.route) {
+                        launchSingleTop = true
                     }
-                )
-            }
+                },
+                gradientBg = if (isMen) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            MenChipContracts.copy(alpha = 0.34f),
+                            MenChipOliveGold.copy(alpha = 0.20f)
+                        )
+                    )
+                } else null,
+                borderTint = if (isMen) MenChipOliveGold else null,
+                useMenPalette = isMen
+            )
         }
-        if (QuickActionKey.RETURNEES in actions) {
-            item {
-                QuickActionChip(
-                    icon = Icons.Default.Autorenew,
-                    label = stringResource(R.string.quick_action_returnees),
-                    color = HomeRedAccent,
-                    onClick = {
-                        navController.navigate(Screens.ReturneeScreen.route) {
-                            launchSingleTop = true
-                        }
+        if (QuickActionKey.RETURNEES in actions) item {
+            QuickActionChip(
+                icon = Icons.Default.Autorenew,
+                label = stringResource(R.string.quick_action_returnees),
+                color = if (isMen) MenChipReturnees else HomeRedAccent,
+                onClick = {
+                    navController.navigate(Screens.ReturneeScreen.route) {
+                        launchSingleTop = true
                     }
-                )
-            }
+                },
+                gradientBg = if (isMen) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            MenChipReturnees.copy(alpha = 0.34f),
+                            MenChipRoseGold.copy(alpha = 0.20f)
+                        )
+                    )
+                } else null,
+                borderTint = if (isMen) MenChipRoseGold else null,
+                useMenPalette = isMen
+            )
         }
-        if (QuickActionKey.WAR_ROOM in actions) {
-            item {
-                QuickActionChip(
-                    icon = Icons.Default.Psychology,
-                    label = stringResource(R.string.quick_action_war_room),
-                    color = WarRoomAccent,
-                    onClick = {
-                        navController.navigate(Screens.WarRoomScreen.route) {
-                            launchSingleTop = true
-                        }
-                    },
-                    gradientBg = Brush.horizontalGradient(
+        if (QuickActionKey.WAR_ROOM in actions) item {
+            QuickActionChip(
+                icon = Icons.Default.Psychology,
+                label = stringResource(R.string.quick_action_war_room),
+                color = if (isMen) MenChipWarRoom else WarRoomAccent,
+                onClick = {
+                    navController.navigate(Screens.WarRoomScreen.route) {
+                        launchSingleTop = true
+                    }
+                },
+                gradientBg = if (isMen) {
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            MenChipWarRoom.copy(alpha = 0.34f),
+                            MenChipRequests.copy(alpha = 0.20f)
+                        )
+                    )
+                } else {
+                    Brush.horizontalGradient(
                         colors = listOf(
                             WarRoomAccent.copy(alpha = 0.25f),
                             WarRoomAccent.copy(alpha = 0.12f)
                         )
                     )
-                )
-            }
+                },
+                borderTint = if (isMen) MenChipWarRoom else null,
+                useMenPalette = isMen
+            )
         }
-        if (QuickActionKey.CHAT_ROOM in actions) {
-            item {
-                QuickActionChip(
-                    icon = Icons.AutoMirrored.Filled.Chat,
-                    label = stringResource(R.string.quick_action_chat_room),
-                    color = HomeTealAccent,
-                    onClick = {
-                        navController.navigate(Screens.ChatRoomScreen.route) {
-                            launchSingleTop = true
-                        }
-                    },
-                    badgeCount = chatUnreadCount
-                )
-            }
-        }
-        if (QuickActionKey.CONTACTS in actions) {
-            item {
-                QuickActionChip(
-                    icon = Icons.Default.ContactPhone,
-                    label = stringResource(R.string.quick_action_contacts),
-                    color = HomeYellowAccent,
-                    onClick = {
-                        navController.navigate(Screens.ContactsScreen.route) {
-                            launchSingleTop = true
-                        }
+        if (QuickActionKey.CONTACTS in actions) item {
+            QuickActionChip(
+                icon = Icons.Default.ContactPhone,
+                label = stringResource(R.string.quick_action_contacts),
+                color = if (isMen) MenChipContacts else HomeYellowAccent,
+                onClick = {
+                    navController.navigate(Screens.ContactsScreen.route) {
+                        launchSingleTop = true
                     }
-                )
-            }
+                },
+                gradientBg = if (isMen) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            MenChipContacts.copy(alpha = 0.34f),
+                            MenChipBrass.copy(alpha = 0.20f)
+                        )
+                    )
+                } else null,
+                borderTint = if (isMen) MenChipBrass else null,
+                useMenPalette = isMen
+            )
         }
-        if (QuickActionKey.REQUESTS in actions) {
-            item {
-                QuickActionChip(
-                    icon = Icons.Default.RequestQuote,
-                    label = stringResource(R.string.quick_action_requests),
-                    color = HomePurpleAccent,
-                    onClick = {
-                        navController.navigate(Screens.RequestsScreen.route) {
-                            launchSingleTop = true
-                        }
+        if (QuickActionKey.REQUESTS in actions) item {
+            QuickActionChip(
+                icon = Icons.Default.RequestQuote,
+                label = stringResource(R.string.quick_action_requests),
+                color = if (isMen) MenChipRequests else HomePurpleAccent,
+                onClick = {
+                    navController.navigate(Screens.RequestsScreen.route) {
+                        launchSingleTop = true
                     }
-                )
-            }
+                },
+                gradientBg = if (isMen) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            MenChipRequests.copy(alpha = 0.34f),
+                            MenChipHoney.copy(alpha = 0.18f)
+                        )
+                    )
+                } else null,
+                borderTint = if (isMen) MenChipHoney else null,
+                useMenPalette = isMen
+            )
         }
-        if (QuickActionKey.SHADOW_TEAMS in actions) {
-            item {
-                QuickActionChip(
-                    icon = Icons.Default.SportsSoccer,
-                    label = stringResource(R.string.quick_action_shadow_teams),
-                    color = HomeGreenAccent,
-                    onClick = {
-                        navController.navigate(Screens.ShadowTeamsScreen.route) {
-                            launchSingleTop = true
-                        }
+        if (QuickActionKey.TASKS in actions) item {
+            QuickActionChip(
+                icon = Icons.Default.CheckCircle,
+                label = stringResource(R.string.tasks_title),
+                color = if (isMen) MenChipTasks else platform.accent,
+                onClick = {
+                    navController.navigate(Screens.TasksScreen.route) {
+                        launchSingleTop = true
                     }
-                )
-            }
-        }
-        if (QuickActionKey.TASKS in actions) {
-            item {
-                QuickActionChip(
-                    icon = Icons.Default.CheckCircle,
-                    label = stringResource(R.string.tasks_title),
-                    color = platform.accent,
-                    onClick = {
-                        navController.navigate(Screens.TasksScreen.route) {
-                            launchSingleTop = true
-                        }
-                    }
-                )
-            }
+                },
+                gradientBg = if (isMen) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            MenChipTasks.copy(alpha = 0.34f),
+                            MenChipTaupeGold.copy(alpha = 0.20f)
+                        )
+                    )
+                } else null,
+                borderTint = if (isMen) MenChipTaupeGold else null,
+                useMenPalette = isMen
+            )
         }
     }
 }
@@ -1388,20 +1440,37 @@ private fun QuickActionChip(
     color: Color,
     onClick: () -> Unit,
     gradientBg: Brush? = null,
-    badgeCount: Int = 0
+    borderTint: Color? = null,
+    badgeCount: Int = 0,
+    useMenPalette: Boolean = false
 ) {
+    val chipBg = if (gradientBg != null) {
+        gradientBg
+    } else if (useMenPalette) {
+        Brush.horizontalGradient(
+            colors = listOf(
+                MenDashboardCardAlt.copy(alpha = 0.88f),
+                MenDashboardCard.copy(alpha = 0.92f)
+            )
+        )
+    } else {
+        Brush.horizontalGradient(
+            colors = listOf(
+                color.copy(alpha = 0.15f),
+                color.copy(alpha = 0.15f)
+            )
+        )
+    }
+
     Box {
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
+                .background(chipBg)
                 .then(
-                    if (gradientBg != null) Modifier.background(gradientBg)
-                    else Modifier.background(color.copy(alpha = 0.15f))
-                )
-                .then(
-                    if (gradientBg != null) Modifier.border(
+                    if (gradientBg != null || useMenPalette) Modifier.border(
                         1.dp,
-                        color.copy(alpha = 0.4f),
+                        if (useMenPalette) (borderTint ?: color).copy(alpha = 0.64f) else color.copy(alpha = 0.4f),
                         RoundedCornerShape(20.dp)
                     ) else Modifier
                 )
@@ -1446,20 +1515,29 @@ private fun FeedSectionHeader(
     selectedFilter: FeedFilter,
     onFilterSelected: (FeedFilter) -> Unit
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 10.dp)) {
         Text(
             text = stringResource(R.string.feed_recent_updates),
-            style = boldTextStyle(HomeTextPrimary, 18.sp)
+            style = boldTextStyle(if (isMen) MenDashboardGoldSoft else HomeTextPrimary, 18.sp)
         )
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FeedFilter.entries.forEach { filter ->
                 val isSelected = filter == selectedFilter
                 val bgColor by animateColorAsState(
-                    targetValue = if (isSelected) HomeTealAccent else Color.Transparent,
+                    targetValue = if (isSelected) {
+                        if (isMen) MenDashboardGold else HomeTealAccent
+                    } else {
+                        Color.Transparent
+                    },
                     label = "filterBg"
                 )
-                val textColor = if (isSelected) HomeDarkBackground else HomeTextSecondary
+                val textColor = if (isSelected) {
+                    if (isMen) MenDashboardBg else HomeDarkBackground
+                } else {
+                    if (isMen) MenDashboardCyanSoft else HomeTextSecondary
+                }
 
                 Text(
                     text = stringResource(filter.labelRes),
@@ -1470,7 +1548,7 @@ private fun FeedSectionHeader(
                         .then(
                             if (!isSelected) Modifier.border(
                                 1.dp,
-                                HomeDarkCardBorder,
+                                if (isMen) MenDashboardBorder else HomeDarkCardBorder,
                                 RoundedCornerShape(16.dp)
                             ) else Modifier
                         )
@@ -1487,13 +1565,25 @@ private fun FeedShowMoreLessButton(
     isExpanded: Boolean,
     onToggle: () -> Unit
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(HomeDarkCardBorder.copy(alpha = 0.5f))
+            .background(
+                if (isMen) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            MenDashboardGold.copy(alpha = 0.16f),
+                            MenDashboardCyan.copy(alpha = 0.12f)
+                        )
+                    )
+                } else {
+                    Brush.horizontalGradient(listOf(HomeDarkCardBorder.copy(alpha = 0.5f), HomeDarkCardBorder.copy(alpha = 0.5f)))
+                }
+            )
             .clickWithNoRipple { onToggle() },
         contentAlignment = Alignment.Center
     ) {
@@ -1501,7 +1591,7 @@ private fun FeedShowMoreLessButton(
             text = stringResource(
                 if (isExpanded) R.string.feed_show_less else R.string.feed_show_all
             ),
-            style = boldTextStyle(HomeTealAccent, 14.sp)
+            style = boldTextStyle(if (isMen) MenDashboardGoldSoft else HomeTealAccent, 14.sp)
         )
     }
 }
@@ -1516,6 +1606,7 @@ private fun FeedEventCard(
     onNavigateToPlayer: (tmProfile: String, autoRefresh: Boolean) -> Unit = { _, _ -> },
     onNavigateToPlayerByName: (playerName: String) -> Unit = {}
 ) {
+    val isMenDashboard = !isWomenPlatform && !isYouthPlatform
     val (icon, accentColor, title) = when (event.type) {
         FeedEvent.TYPE_MARKET_VALUE_CHANGE -> {
             val isDrop = isMarketValueDrop(event.oldValue, event.newValue)
@@ -1558,6 +1649,7 @@ private fun FeedEventCard(
         ))
         else -> Triple(Icons.Default.Notifications, HomeTextSecondary, stringResource(R.string.feed_update))
     }
+    val cardAccent = if (isMenDashboard) mapAccentForMen(accentColor) else accentColor
 
     val context = LocalContext.current
     Card(
@@ -1596,7 +1688,8 @@ private fun FeedEventCard(
                 }
             },
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        colors = CardDefaults.cardColors(containerColor = if (isMenDashboard) MenDashboardCard else HomeDarkCard),
+        border = if (isMenDashboard) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
     ) {
         Row(
             modifier = Modifier
@@ -1609,13 +1702,13 @@ private fun FeedEventCard(
                 modifier = Modifier
                     .size(38.dp)
                     .clip(CircleShape)
-                    .background(accentColor.copy(alpha = 0.15f)),
+                    .background(cardAccent.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = accentColor,
+                    tint = cardAccent,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -1625,7 +1718,7 @@ private fun FeedEventCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = boldTextStyle(accentColor, 11.sp)
+                    style = boldTextStyle(cardAccent, 11.sp)
                 )
                 Spacer(Modifier.height(2.dp))
 
@@ -2039,6 +2132,9 @@ private fun MyAgentHubSection(
     navController: NavController,
     onTaskToggle: (AgentTask) -> Unit
 ) {
+    val platform = koinInject<PlatformManager>().current.value
+    val isMen = platform == Platform.MEN
+
     Column(modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)) {
 
         // ── Header ─────────────────────────────────────────────────────
@@ -2053,10 +2149,10 @@ private fun MyAgentHubSection(
                 style = boldTextStyle(HomeTextPrimary, 18.sp),
                 modifier = Modifier.weight(1f)
             )
-            val isWomen = koinInject<PlatformManager>().current.value == Platform.WOMEN
+            val isWomen = platform == Platform.WOMEN
             Text(
                 text = stringResource(if (isWomen) R.string.women_my_hub_view_my_players else R.string.my_hub_view_my_players),
-                style = boldTextStyle(HomeTealAccent, 12.sp),
+                style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 12.sp),
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { navController.navigate(Screens.playersRoute(myPlayersOnly = true)) }
@@ -2071,7 +2167,7 @@ private fun MyAgentHubSection(
                 .width(40.dp)
                 .height(3.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(HomeTealAccent)
+                .background(if (isMen) MenDashboardGold else HomeTealAccent)
         )
         Spacer(Modifier.height(14.dp))
 
@@ -2081,7 +2177,8 @@ private fun MyAgentHubSection(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+            colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCardAlt else HomeDarkCard),
+            border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
         ) {
             Row(
                 modifier = Modifier.padding(16.dp),
@@ -2104,7 +2201,7 @@ private fun MyAgentHubSection(
                     ) {
                         Text(
                             text = "${overview.completedTaskCount}/${overview.totalTaskCount}",
-                            style = boldTextStyle(HomeTealAccent, 11.sp),
+                            style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 11.sp),
                             textAlign = TextAlign.Center,
                             maxLines = 1
                         )
@@ -2124,16 +2221,36 @@ private fun MyAgentHubSection(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        HubStatItem(overview.totalPlayers.toString(), stringResource(R.string.my_hub_players), HomeBlueAccent)
-                        HubStatItem(overview.withMandate.toString(), stringResource(R.string.my_hub_mandate), HomeGreenAccent)
+                        HubStatItem(
+                            overview.totalPlayers.toString(),
+                            stringResource(R.string.my_hub_players),
+                            if (isMen) MenDashboardCyan else HomeBlueAccent,
+                            isMen = isMen
+                        )
+                        HubStatItem(
+                            overview.withMandate.toString(),
+                            stringResource(R.string.my_hub_mandate),
+                            if (isMen) MenDashboardGold else HomeGreenAccent,
+                            isMen = isMen
+                        )
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        HubStatItem(overview.freeAgents.toString(), stringResource(R.string.my_hub_free), HomeOrangeAccent)
-                        HubStatItem(overview.expiringContracts.toString(), stringResource(R.string.my_hub_expiring), HomeRedAccent)
+                        HubStatItem(
+                            overview.freeAgents.toString(),
+                            stringResource(R.string.my_hub_free),
+                            if (isMen) MenDashboardGoldSoft else HomeOrangeAccent,
+                            isMen = isMen
+                        )
+                        HubStatItem(
+                            overview.expiringContracts.toString(),
+                            stringResource(R.string.my_hub_expiring),
+                            if (isMen) MenDashboardDanger else HomeRedAccent,
+                            isMen = isMen
+                        )
                     }
                 }
             }
@@ -2147,7 +2264,8 @@ private fun MyAgentHubSection(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+            colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCard else HomeDarkCard),
+            border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Row(
@@ -2159,7 +2277,7 @@ private fun MyAgentHubSection(
                         Icon(
                             Icons.Filled.CalendarToday,
                             contentDescription = null,
-                            tint = HomeBlueAccent,
+                            tint = if (isMen) MenDashboardCyan else HomeBlueAccent,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.width(6.dp))
@@ -2174,19 +2292,19 @@ private fun MyAgentHubSection(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(HomeRedAccent.copy(alpha = 0.15f))
+                                    .background((if (isMen) MenDashboardDanger else HomeRedAccent).copy(alpha = 0.15f))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = stringResource(R.string.my_hub_overdue_tasks, overview.overdueTaskCount),
-                                    style = boldTextStyle(HomeRedAccent, 10.sp)
+                                    style = boldTextStyle(if (isMen) MenDashboardDanger else HomeRedAccent, 10.sp)
                                 )
                             }
                             Spacer(Modifier.width(6.dp))
                         }
                         Text(
                             text = stringResource(R.string.my_hub_view_all_tasks),
-                            style = boldTextStyle(HomeTealAccent, 12.sp),
+                            style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 12.sp),
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable { navController.navigate(Screens.TasksScreen.route) }
@@ -2231,14 +2349,15 @@ private fun MyAgentHubSection(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+                colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCard else HomeDarkCard),
+                border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Filled.Warning,
                             contentDescription = null,
-                            tint = HomeOrangeAccent,
+                            tint = if (isMen) MenDashboardGold else HomeOrangeAccent,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.width(6.dp))
@@ -2259,12 +2378,14 @@ private fun MyAgentHubSection(
 
 @Composable
 private fun MyBoardLoadingPlaceholder() {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCard else HomeDarkCard),
+        border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
     ) {
         Column(
             modifier = Modifier
@@ -2275,7 +2396,7 @@ private fun MyBoardLoadingPlaceholder() {
         ) {
             CircularProgressIndicator(
                 modifier = Modifier.size(32.dp),
-                color = HomeTealAccent,
+                color = if (isMen) MenDashboardGold else HomeTealAccent,
                 strokeWidth = 2.dp
             )
             Spacer(Modifier.height(12.dp))
@@ -2289,12 +2410,14 @@ private fun MyBoardLoadingPlaceholder() {
 
 @Composable
 private fun MyAgentEmptyState() {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCard else HomeDarkCard),
+        border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
     ) {
         Column(
             modifier = Modifier
@@ -2327,8 +2450,8 @@ private fun MyAgentEmptyState() {
 
 @Composable
 private fun MandateRingChart(percentage: Float, modifier: Modifier = Modifier) {
-    val tealColor = HomeTealAccent
-    val trackColor = HomeDarkCardBorder
+    val tealColor = MenDashboardGold
+    val trackColor = MenDashboardBorder
     Canvas(modifier = modifier) {
         val strokeWidth = 8.dp.toPx()
         val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
@@ -2356,10 +2479,10 @@ private fun MandateRingChart(percentage: Float, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun HubStatItem(value: String, label: String, color: Color) {
+private fun HubStatItem(value: String, label: String, color: Color, isMen: Boolean = false) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(64.dp)) {
         Text(text = value, style = boldTextStyle(color, 18.sp))
-        Text(text = label, style = regularTextStyle(HomeTextSecondary, 10.sp))
+        Text(text = label, style = regularTextStyle(if (isMen) MenDashboardCyan.copy(alpha = 0.85f) else HomeTextSecondary, 10.sp))
     }
 }
 
@@ -2370,6 +2493,7 @@ private fun HubTaskRow(
     onToggle: () -> Unit,
     onClick: () -> Unit
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2382,7 +2506,7 @@ private fun HubTaskRow(
             checked = task.isCompleted,
             onCheckedChange = { onToggle() },
             colors = CheckboxDefaults.colors(
-                checkedColor = HomeTealAccent,
+                checkedColor = if (isMen) MenDashboardGold else HomeTealAccent,
                 uncheckedColor = HomeTextSecondary
             ),
             modifier = Modifier.size(20.dp)
@@ -2401,7 +2525,7 @@ private fun HubTaskRow(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(HomeTealAccent.copy(alpha = 0.2f))
+                        .background((if (isMen) MenDashboardGold else HomeTealAccent).copy(alpha = 0.2f))
                         .clickable {
                             val navId = task.playerTmProfile.takeIf { it.isNotBlank() } ?: task.playerId
                             navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(navId)}")
@@ -2410,7 +2534,7 @@ private fun HubTaskRow(
                 ) {
                     Text(
                         text = task.playerName,
-                        style = boldTextStyle(HomeTealAccent, 10.sp),
+                        style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 10.sp),
                         maxLines = 1
                     )
                 }
@@ -2428,8 +2552,8 @@ private fun HubTaskRow(
 @Composable
 private fun HubAlertRow(alert: AgentAlert) {
     val alertColor = when (alert.severity) {
-        AlertSeverity.URGENT -> HomeRedAccent
-        AlertSeverity.WARNING -> HomeOrangeAccent
+        AlertSeverity.URGENT -> MenDashboardDanger
+        AlertSeverity.WARNING -> MenDashboardGold
     }
     Row(
         modifier = Modifier
@@ -2470,6 +2594,7 @@ private fun TeamOverviewSection(
     isExpanded: Boolean,
     onToggle: () -> Unit
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     val context = LocalContext.current
     val chevronRotation by animateFloatAsState(
         targetValue = if (isExpanded) 180f else 0f,
@@ -2483,7 +2608,7 @@ private fun TeamOverviewSection(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(HomeTealAccent.copy(alpha = 0.08f))
+                .background((if (isMen) MenDashboardGold else HomeTealAccent).copy(alpha = 0.08f))
                 .clickable { onToggle() }
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -2491,7 +2616,7 @@ private fun TeamOverviewSection(
             Icon(
                 Icons.Filled.People,
                 contentDescription = null,
-                tint = HomeTealAccent,
+                tint = if (isMen) MenDashboardGold else HomeTealAccent,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(8.dp))
@@ -2503,12 +2628,12 @@ private fun TeamOverviewSection(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
-                    .background(HomeTealAccent.copy(alpha = 0.15f))
+                    .background((if (isMen) MenDashboardGold else HomeTealAccent).copy(alpha = 0.15f))
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
                     text = stringResource(R.string.team_overview_agents_count, agents.size),
-                    style = boldTextStyle(HomeTealAccent, 11.sp)
+                    style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 11.sp)
                 )
             }
             Spacer(Modifier.width(6.dp))
@@ -2532,7 +2657,7 @@ private fun TeamOverviewSection(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(agents, key = { it.agentId ?: it.agentName }) { agent ->
-                    TeamAgentCard(agent = agent, allAccounts = allAccounts, context = context)
+                    TeamAgentCard(agent = agent, allAccounts = allAccounts, context = context, isMen = isMen)
                 }
             }
         }
@@ -2543,7 +2668,8 @@ private fun TeamOverviewSection(
 private fun TeamAgentCard(
     agent: AgentSummary,
     allAccounts: List<Account>,
-    context: android.content.Context
+    context: android.content.Context,
+    isMen: Boolean = false
 ) {
     val agentDisplayName = allAccounts
         .find { it.name.equals(agent.agentName, ignoreCase = true) || it.hebrewName?.equals(agent.agentName, ignoreCase = true) == true }
@@ -2553,7 +2679,8 @@ private fun TeamAgentCard(
     Card(
         modifier = Modifier.width(220.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCard else HomeDarkCard),
+        border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2561,12 +2688,12 @@ private fun TeamAgentCard(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(HomeTealAccent.copy(alpha = 0.2f)),
+                        .background((if (isMen) MenDashboardGold else HomeTealAccent).copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = agentDisplayName.take(1).uppercase(),
-                        style = boldTextStyle(HomeTealAccent, 14.sp)
+                        style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 14.sp)
                     )
                 }
                 Spacer(Modifier.width(8.dp))
@@ -2590,19 +2717,19 @@ private fun TeamAgentCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                MiniStat(value = agent.withMandate.toString(), label = stringResource(R.string.agent_stat_mandate), color = HomeBlueAccent)
-                MiniStat(value = agent.expiringContracts.toString(), label = stringResource(R.string.agent_stat_expiring), color = HomeOrangeAccent)
-                MiniStat(value = agent.withNotes.toString(), label = stringResource(R.string.agent_stat_notes), color = HomePurpleAccent)
+                MiniStat(value = agent.withMandate.toString(), label = stringResource(R.string.agent_stat_mandate), color = if (isMen) MenDashboardCyan else HomeBlueAccent, isMen = isMen)
+                MiniStat(value = agent.expiringContracts.toString(), label = stringResource(R.string.agent_stat_expiring), color = if (isMen) MenDashboardGold else HomeOrangeAccent, isMen = isMen)
+                MiniStat(value = agent.withNotes.toString(), label = stringResource(R.string.agent_stat_notes), color = if (isMen) MenDashboardGoldSoft else HomePurpleAccent, isMen = isMen)
             }
         }
     }
 }
 
 @Composable
-private fun MiniStat(value: String, label: String, color: Color) {
+private fun MiniStat(value: String, label: String, color: Color, isMen: Boolean = false) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = value, style = boldTextStyle(color, 14.sp))
-        Text(text = label, style = regularTextStyle(HomeTextSecondary, 9.sp))
+        Text(text = label, style = regularTextStyle(if (isMen) MenDashboardCyan.copy(alpha = 0.82f) else HomeTextSecondary, 9.sp))
     }
 }
 
@@ -2841,6 +2968,7 @@ private fun TasksSummaryWidget(
     onTaskClick: (AgentTask) -> Unit,
     onToggleTask: (AgentTask) -> Unit
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     val allTasks = remember(agentTasks) { agentTasks.values.flatten() }
     val now = System.currentTimeMillis()
 
@@ -2866,7 +2994,7 @@ private fun TasksSummaryWidget(
         ) {
             Text(
                 text = stringResource(R.string.tasks_overview),
-                style = boldTextStyle(HomeTextPrimary, 18.sp),
+                style = boldTextStyle(if (isMen) MenDashboardGoldSoft else HomeTextPrimary, 18.sp),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -2878,7 +3006,7 @@ private fun TasksSummaryWidget(
                 .width(40.dp)
                 .height(3.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(HomeTealAccent)
+                .background(if (isMen) MenDashboardGold else HomeTealAccent)
         )
 
         Spacer(Modifier.height(14.dp))
@@ -2888,7 +3016,8 @@ private fun TasksSummaryWidget(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+            colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCard else HomeDarkCard),
+            border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 // Stat pills row
@@ -2899,19 +3028,19 @@ private fun TasksSummaryWidget(
                     StatPill(
                         value = dueToday.toString(),
                         label = stringResource(R.string.tasks_due_today),
-                        color = HomeOrangeAccent,
+                        color = if (isMen) MenDashboardGold else HomeOrangeAccent,
                         modifier = Modifier.weight(1f)
                     )
                     StatPill(
                         value = overdue.toString(),
                         label = stringResource(R.string.tasks_overdue),
-                        color = HomeRedAccent,
+                        color = if (isMen) MenDashboardDanger else HomeRedAccent,
                         modifier = Modifier.weight(1f)
                     )
                     StatPill(
                         value = total.toString(),
                         label = stringResource(R.string.tasks_total),
-                        color = HomeTextSecondary,
+                        color = if (isMen) MenDashboardCyanSoft else HomeTextSecondary,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -2922,7 +3051,7 @@ private fun TasksSummaryWidget(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(HomeDarkCardBorder)
+                            .background(if (isMen) MenDashboardBorder else HomeDarkCardBorder)
                     )
                     Spacer(Modifier.height(10.dp))
 
@@ -2942,9 +3071,9 @@ private fun TasksSummaryWidget(
                                     .clip(CircleShape)
                                     .background(
                                         when (task.priority) {
-                                            2 -> HomeRedAccent
-                                            1 -> HomeOrangeAccent
-                                            else -> HomeGreenAccent
+                                            2 -> if (isMen) MenDashboardDanger else HomeRedAccent
+                                            1 -> if (isMen) MenDashboardGold else HomeOrangeAccent
+                                            else -> if (isMen) MenDashboardCyan else HomeGreenAccent
                                         }
                                     )
                             )
@@ -2968,7 +3097,7 @@ private fun TasksSummaryWidget(
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(6.dp))
-                                            .background(HomeTealAccent.copy(alpha = 0.2f))
+                                            .background((if (isMen) MenDashboardGold else HomeTealAccent).copy(alpha = 0.2f))
                                             .clickable {
                                                 val navId = task.playerTmProfile.takeIf { it.isNotBlank() } ?: task.playerId
                                                 navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(navId)}")
@@ -2977,7 +3106,7 @@ private fun TasksSummaryWidget(
                                     ) {
                                         Text(
                                             text = task.playerName,
-                                            style = boldTextStyle(HomeTealAccent, 10.sp),
+                                            style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 10.sp),
                                             maxLines = 1
                                         )
                                     }
@@ -3004,7 +3133,7 @@ private fun TasksSummaryWidget(
                     Spacer(Modifier.height(14.dp))
                     Text(
                         text = stringResource(R.string.tasks_empty_hint),
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        style = regularTextStyle(if (isMen) MenDashboardCyanSoft else HomeTextSecondary, 12.sp),
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                 }
@@ -3021,13 +3150,13 @@ private fun TasksSummaryWidget(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(HomeTealAccent.copy(alpha = 0.12f))
+                            .background((if (isMen) MenDashboardGold else HomeTealAccent).copy(alpha = 0.12f))
                             .clickable { onViewAllClick() }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Text(
                             text = stringResource(R.string.tasks_view_all),
-                            style = boldTextStyle(HomeTealAccent, 13.sp)
+                            style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 13.sp)
                         )
                     }
 
@@ -3036,14 +3165,14 @@ private fun TasksSummaryWidget(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(HomeTealAccent)
+                            .background(if (isMen) MenDashboardGold else HomeTealAccent)
                             .clickable { onAddTaskClick() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.Add,
                             contentDescription = stringResource(R.string.agent_add_task),
-                            tint = HomeDarkBackground,
+                            tint = if (isMen) MenDashboardBg else HomeDarkBackground,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -3060,6 +3189,7 @@ private fun StatPill(
     color: Color,
     modifier: Modifier = Modifier
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
@@ -3069,7 +3199,7 @@ private fun StatPill(
     ) {
         Text(text = value, style = boldTextStyle(color, 18.sp))
         Spacer(Modifier.height(2.dp))
-        Text(text = label, style = regularTextStyle(color, 10.sp))
+        Text(text = label, style = regularTextStyle(if (isMen) color.copy(alpha = 0.86f) else color, 10.sp))
     }
 }
 
@@ -3092,6 +3222,7 @@ private fun AgentTasksSection(
     onAddTask: (agentId: String, agentName: String, title: String, dueDate: Long) -> Unit,
     onDeleteTask: (AgentTask) -> Unit
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     var showAddDialogForAccount by remember { mutableStateOf<Account?>(null) }
 
     Column(modifier = Modifier.padding(top = 20.dp)) {
@@ -3104,21 +3235,21 @@ private fun AgentTasksSection(
         ) {
             Text(
                 text = stringResource(R.string.agent_tasks_title),
-                style = boldTextStyle(HomeTextPrimary, 18.sp),
+                style = boldTextStyle(if (isMen) MenDashboardGoldSoft else HomeTextPrimary, 18.sp),
                 modifier = Modifier.weight(1f)
             )
         }
 
         Spacer(Modifier.height(4.dp))
 
-        // Teal accent line
+        // Section accent line
         Box(
             modifier = Modifier
                 .padding(horizontal = 20.dp)
                 .width(40.dp)
                 .height(3.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(HomeTealAccent)
+            .background(if (isMen) MenDashboardGold else HomeTealAccent)
         )
 
         Spacer(Modifier.height(14.dp))
@@ -3128,7 +3259,17 @@ private fun AgentTasksSection(
             val accountId = account.id ?: return@forEachIndexed
             val tasks = agentTasks[accountId] ?: emptyList()
             val isExpanded = expandedAgentId == accountId
-            val accentColor = agentColors[index % agentColors.size]
+            val accentColor = if (isMen) {
+                listOf(
+                    MenDashboardGold,
+                    MenDashboardCyan,
+                    MenDashboardGoldSoft,
+                    MenDashboardCyanSoft,
+                    MenDashboardDanger
+                )[index % 5]
+            } else {
+                agentColors[index % agentColors.size]
+            }
 
             ExpandableAgentTaskCard(
                 account = account,
@@ -3174,6 +3315,7 @@ private fun ExpandableAgentTaskCard(
     onAddTaskClick: () -> Unit,
     onDeleteTask: (AgentTask) -> Unit
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     val context = LocalContext.current
     val agentName = account.getDisplayName(context).ifEmpty { stringResource(R.string.greeting_agent_default) }
     val completedCount = tasks.count { it.isCompleted }
@@ -3191,7 +3333,8 @@ private fun ExpandableAgentTaskCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCard else HomeDarkCard),
+        border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
     ) {
         Column {
             // ── Header (always visible) ──────────────────────────────────
@@ -3254,7 +3397,7 @@ private fun ExpandableAgentTaskCard(
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
-                    tint = HomeTextSecondary,
+                    tint = if (isMen) MenDashboardCyanSoft else HomeTextSecondary,
                     modifier = Modifier
                         .size(22.dp)
                         .rotate(chevronRotation)
@@ -3274,7 +3417,7 @@ private fun ExpandableAgentTaskCard(
                             .fillMaxWidth()
                             .padding(horizontal = 14.dp)
                             .height(1.dp)
-                            .background(HomeDarkCardBorder)
+                            .background(if (isMen) MenDashboardBorder else HomeDarkCardBorder)
                     )
 
                     // Task list
@@ -3315,7 +3458,7 @@ private fun ExpandableAgentTaskCard(
                                 .height(4.dp)
                                 .clip(RoundedCornerShape(2.dp)),
                             color = accentColor,
-                            trackColor = HomeDarkCardBorder,
+                            trackColor = if (isMen) MenDashboardBorder else HomeDarkCardBorder,
                         )
                         Spacer(Modifier.height(8.dp))
                     }
@@ -3330,7 +3473,7 @@ private fun ExpandableAgentTaskCard(
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(HomeTealAccent.copy(alpha = 0.12f))
+                                .background((if (isMen) MenDashboardGold else HomeTealAccent).copy(alpha = 0.12f))
                                 .clickWithNoRipple { onAddTaskClick() }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -3338,13 +3481,13 @@ private fun ExpandableAgentTaskCard(
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = stringResource(R.string.agent_add_task),
-                                tint = HomeTealAccent,
+                                tint = if (isMen) MenDashboardGold else HomeTealAccent,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 text = stringResource(R.string.agent_add_task),
-                                style = boldTextStyle(HomeTealAccent, 12.sp)
+                                style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 12.sp)
                             )
                         }
                     }
@@ -3362,6 +3505,7 @@ private fun TaskRow(
     onToggle: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     val dueDateStr = formatDueDate(task.dueDate)
     val dueDateColor = dueDateColor(task.dueDate, task.isCompleted)
 
@@ -3375,9 +3519,9 @@ private fun TaskRow(
             checked = task.isCompleted,
             onCheckedChange = { onToggle() },
             colors = CheckboxDefaults.colors(
-                checkedColor = HomeTealAccent,
-                uncheckedColor = HomeTextSecondary,
-                checkmarkColor = HomeDarkBackground
+                checkedColor = if (isMen) MenDashboardGold else HomeTealAccent,
+                uncheckedColor = if (isMen) MenDashboardCyanSoft else HomeTextSecondary,
+                checkmarkColor = if (isMen) MenDashboardBg else HomeDarkBackground
             ),
             modifier = Modifier.size(36.dp)
         )
@@ -3436,6 +3580,7 @@ private fun CircularProgressRing(
     accentColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(500),
@@ -3450,7 +3595,7 @@ private fun CircularProgressRing(
 
             // Track
             drawArc(
-                color = HomeDarkCardBorder,
+                color = if (isMen) MenDashboardBorder else HomeDarkCardBorder,
                 startAngle = -90f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -3487,6 +3632,7 @@ private fun AddTaskDialog(
     onDismiss: () -> Unit,
     onConfirm: (title: String, dueDate: Long) -> Unit
 ) {
+    val isMen = koinInject<PlatformManager>().current.value == Platform.MEN
     var title by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf(0L) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -3494,17 +3640,16 @@ private fun AddTaskDialog(
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+            colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCard else HomeDarkCard),
+            border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                // Title
                 Text(
                     text = stringResource(R.string.agent_new_task_for, agentName),
-                    style = boldTextStyle(HomeTextPrimary, 16.sp)
+                    style = boldTextStyle(if (isMen) MenDashboardGoldSoft else HomeTextPrimary, 16.sp)
                 )
                 Spacer(Modifier.height(16.dp))
 
-                // Task name field
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
@@ -3518,24 +3663,23 @@ private fun AddTaskDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = HomeTealAccent,
-                        unfocusedBorderColor = HomeDarkCardBorder,
-                        cursorColor = HomeTealAccent,
-                        focusedContainerColor = HomeDarkBackground,
-                        unfocusedContainerColor = HomeDarkBackground
+                        focusedBorderColor = if (isMen) MenDashboardGold else HomeTealAccent,
+                        unfocusedBorderColor = if (isMen) MenDashboardBorder else HomeDarkCardBorder,
+                        cursorColor = if (isMen) MenDashboardGold else HomeTealAccent,
+                        focusedContainerColor = if (isMen) MenDashboardBg else HomeDarkBackground,
+                        unfocusedContainerColor = if (isMen) MenDashboardBg else HomeDarkBackground
                     ),
                     singleLine = true
                 )
 
                 Spacer(Modifier.height(12.dp))
 
-                // Due date picker button
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
-                        .background(HomeDarkBackground)
+                        .border(1.dp, if (isMen) MenDashboardBorder else HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                        .background(if (isMen) MenDashboardBg else HomeDarkBackground)
                         .clickWithNoRipple { showDatePicker = true }
                         .padding(horizontal = 14.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -3543,7 +3687,11 @@ private fun AddTaskDialog(
                     Icon(
                         imageVector = Icons.Default.CalendarToday,
                         contentDescription = null,
-                        tint = if (selectedDate > 0) HomeTealAccent else HomeTextSecondary,
+                        tint = if (selectedDate > 0) {
+                            if (isMen) MenDashboardGold else HomeTealAccent
+                        } else {
+                            if (isMen) MenDashboardCyanSoft else HomeTextSecondary
+                        },
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(10.dp))
@@ -3554,15 +3702,18 @@ private fun AddTaskDialog(
                             stringResource(R.string.agent_select_due_date)
                         },
                         style = regularTextStyle(
-                            if (selectedDate > 0) HomeTextPrimary else HomeTextSecondary,
+                            if (selectedDate > 0) {
+                                if (isMen) MenDashboardGoldSoft else HomeTextPrimary
+                            } else {
+                                if (isMen) MenDashboardCyanSoft else HomeTextSecondary
+                            },
                             14.sp
                         )
                     )
                 }
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
 
-                // Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
@@ -3570,7 +3721,7 @@ private fun AddTaskDialog(
                     TextButton(onClick = onDismiss) {
                         Text(
                             stringResource(R.string.cancel),
-                            style = boldTextStyle(HomeTextSecondary, 13.sp)
+                            style = boldTextStyle(if (isMen) MenDashboardCyanSoft else HomeTextSecondary, 13.sp)
                         )
                     }
                     Spacer(Modifier.width(8.dp))
@@ -3578,8 +3729,11 @@ private fun AddTaskDialog(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(
-                                if (title.isNotBlank()) HomeTealAccent
-                                else HomeTealAccent.copy(alpha = 0.3f)
+                                if (title.isNotBlank()) {
+                                    if (isMen) MenDashboardGold else HomeTealAccent
+                                } else {
+                                    (if (isMen) MenDashboardGold else HomeTealAccent).copy(alpha = 0.3f)
+                                }
                             )
                             .then(
                                 if (title.isNotBlank()) Modifier.clickWithNoRipple {
@@ -3591,7 +3745,7 @@ private fun AddTaskDialog(
                     ) {
                         Text(
                             stringResource(R.string.agent_add_task),
-                            style = boldTextStyle(HomeDarkBackground, 13.sp)
+                            style = boldTextStyle(if (isMen) MenDashboardBg else HomeDarkBackground, 13.sp)
                         )
                     }
                 }
@@ -3599,7 +3753,6 @@ private fun AddTaskDialog(
         }
     }
 
-    // Date picker dialog
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
         DatePickerDialog(
@@ -3609,12 +3762,18 @@ private fun AddTaskDialog(
                     datePickerState.selectedDateMillis?.let { selectedDate = datePickerMillisToLocalMidnight(it) }
                     showDatePicker = false
                 }) {
-                    Text(stringResource(R.string.ok), style = boldTextStyle(HomeTealAccent, 14.sp))
+                    Text(
+                        stringResource(R.string.ok),
+                        style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 14.sp)
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.cancel), style = boldTextStyle(HomeTextSecondary, 14.sp))
+                    Text(
+                        stringResource(R.string.cancel),
+                        style = boldTextStyle(if (isMen) MenDashboardCyanSoft else HomeTextSecondary, 14.sp)
+                    )
                 }
             }
         ) {

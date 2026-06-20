@@ -15,10 +15,12 @@ const FEED_EVENTS_TABLE = "FeedEvents";
 const WORKER_STATE_COLLECTION = "WorkerState";
 const WORKER_RUNS_COLLECTION = "WorkerRuns";
 const FEED_EVENT_TYPE = "NEW_RELEASE_FROM_CLUB";
+const NOTIFICATION_MIN_MARKET_VALUE = 150000;
+const NOTIFICATION_MAX_MARKET_VALUE = 4000000;
+const NOTIFICATION_MAX_AGE = 33;
 
 const RELEASE_RANGES = [
-  [0, 125000],
-  [125001, 250000],
+  [150000, 250000],
   [250001, 400000],
   [400001, 600000],
   [600001, 800000],
@@ -33,8 +35,11 @@ const RELEASE_RANGES = [
   [2500001, 3000000],
   [3000001, 3500000],
   [3500001, 4000000],
-  [4000001, 50000000],
 ];
+
+// Keep releases source aligned with the app's "latest releases" scope.
+// The dedicated free-agents endpoint returns historical free agents and can flood the feed.
+const INCLUDE_FREE_AGENTS_SOURCE = false;
 
 const DELAY_BETWEEN_RANGES_MS = 6000;
 const RANGE_RETRY_ATTEMPTS = 3;
@@ -57,6 +62,42 @@ function sleep(ms) {
 function feedEventDocIdForRelease(playerTmProfile) {
   const profileHash = javaHashCode(playerTmProfile || "");
   return `${FEED_EVENT_TYPE}_${profileHash}`;
+}
+
+function buildReleaseEventPayload(release, isInDatabase, nowTs) {
+  return {
+    type: FEED_EVENT_TYPE,
+    playerName: release.playerName || "Unknown",
+    playerImage: release.playerImage || null,
+    playerTmProfile: release.playerUrl || null,
+    playerPosition: release.playerPosition || null,
+    marketValue: release.marketValue || null,
+    playerAge: release.playerAge || null,
+    playerNationality: release.playerNationality || null,
+    playerNationalityFlag: release.playerNationalityFlag || null,
+    transferDate: release.transferDate || null,
+    oldValue: null,
+    newValue: "Without club",
+    extraInfo: isInDatabase ? "IN_DATABASE" : "NOT_IN_DATABASE",
+    timestamp: nowTs,
+  };
+}
+
+function orderedReleaseTimestamp(baseTs, index) {
+  return baseTs - index;
+}
+
+function buildReleaseEnrichmentPatch(release) {
+  const patch = {};
+  if (release.playerName) patch.playerName = release.playerName;
+  if (release.playerImage) patch.playerImage = release.playerImage;
+  if (release.playerPosition) patch.playerPosition = release.playerPosition;
+  if (release.marketValue) patch.marketValue = release.marketValue;
+  if (release.playerAge) patch.playerAge = release.playerAge;
+  if (release.playerNationality) patch.playerNationality = release.playerNationality;
+  if (release.playerNationalityFlag) patch.playerNationalityFlag = release.playerNationalityFlag;
+  if (release.transferDate) patch.transferDate = release.transferDate;
+  return patch;
 }
 
 function makeAbsoluteUrl(url) {
@@ -82,6 +123,43 @@ function buildReleasesUrl(minValue, maxValue, page = 1) {
 
 function buildFreeAgentsUrl(minValue, maxValue, page = 1) {
   return `${TRANSFERMARKT_BASE_URL}/transfers/vertragslosespieler/statistik?ausrichtung=&spielerposition_id=0&land_id=&wettbewerb_id=alle&seit=0&altersklasse=&minMarktwert=${minValue}&maxMarktwert=${maxValue}&plus=1&page=${page}`;
+}
+
+function parseMarketValueToEur(value) {
+  if (!value) return null;
+  const normalized = String(value)
+    .replace(/\u20ac/g, "")
+    .replace(/,/g, "")
+    .trim()
+    .toLowerCase();
+  const match = normalized.match(/([0-9]+(?:\.[0-9]+)?)\s*([mk])?/);
+  if (!match) return null;
+  const num = parseFloat(match[1]);
+  if (Number.isNaN(num)) return null;
+  const unit = match[2];
+  if (unit === "m") return Math.round(num * 1000000);
+  if (unit === "k") return Math.round(num * 1000);
+  return Math.round(num);
+}
+
+function parsePlayerAge(value) {
+  if (!value) return null;
+  const match = String(value).match(/\d{1,2}/);
+  if (!match) return null;
+  const age = parseInt(match[0], 10);
+  return Number.isNaN(age) ? null : age;
+}
+
+function isNotificationReleaseCandidate(release) {
+  const marketValueEur = parseMarketValueToEur(release?.marketValue);
+  const age = parsePlayerAge(release?.playerAge);
+  return (
+    marketValueEur !== null &&
+    marketValueEur >= NOTIFICATION_MIN_MARKET_VALUE &&
+    marketValueEur <= NOTIFICATION_MAX_MARKET_VALUE &&
+    age !== null &&
+    age <= NOTIFICATION_MAX_AGE
+  );
 }
 
 // ── HTML parsing ──
@@ -310,25 +388,27 @@ async function getReleasesForRange(minValue, maxValue) {
     all.push(...await parseNewestPage(page));
   }
 
-  // Source 2: dedicated free agents list (vertragslosespieler)
-  try {
-    const freeUrl = buildFreeAgentsUrl(minValue, maxValue, 1);
-    const $free = await fetchDocument(freeUrl);
-    const freePageCount = getTotalPages($free);
-    const freeRows = $free("table.items").find("tr.odd, tr.even").length;
-    log(`  free-agents page 1: ${freeRows} row(s), ${freePageCount} page(s)`);
+  if (INCLUDE_FREE_AGENTS_SOURCE) {
+    // Source 2: dedicated free agents list (vertragslosespieler)
+    try {
+      const freeUrl = buildFreeAgentsUrl(minValue, maxValue, 1);
+      const $free = await fetchDocument(freeUrl);
+      const freePageCount = getTotalPages($free);
+      const freeRows = $free("table.items").find("tr.odd, tr.even").length;
+      log(`  free-agents page 1: ${freeRows} row(s), ${freePageCount} page(s)`);
 
-    const parseFreePage = async (page) => {
-      const $p = page === 1 ? $free : await fetchDocument(buildFreeAgentsUrl(minValue, maxValue, page));
-      return parseFreeAgentsList($p);
-    };
+      const parseFreePage = async (page) => {
+        const $p = page === 1 ? $free : await fetchDocument(buildFreeAgentsUrl(minValue, maxValue, page));
+        return parseFreeAgentsList($p);
+      };
 
-    all.push(...await parseFreePage(1));
-    for (let page = 2; page <= freePageCount; page++) {
-      all.push(...await parseFreePage(page));
+      all.push(...await parseFreePage(1));
+      for (let page = 2; page <= freePageCount; page++) {
+        all.push(...await parseFreePage(page));
+      }
+    } catch (err) {
+      log(`  free-agents source failed: ${err.message}`);
     }
-  } catch (err) {
-    log(`  free-agents source failed: ${err.message}`);
   }
 
   return all;
@@ -429,13 +509,14 @@ async function runReleasesRefresh(db) {
     const distinctByUrl = new Map();
     allReleases.forEach((r) => { if (r.playerUrl) distinctByUrl.set(r.playerUrl, r); });
     const distinctReleases = await enrichReleaseProfiles(Array.from(distinctByUrl.values()));
-    const currentUrls = new Set(distinctReleases.map((r) => r.playerUrl).filter(Boolean));
-    const newReleases = distinctReleases.filter((r) => !knownUrls.has(r.playerUrl || ""));
+    const constrainedReleases = distinctReleases.filter(isNotificationReleaseCandidate);
+    const currentUrls = new Set(constrainedReleases.map((r) => r.playerUrl).filter(Boolean));
+    const newReleases = constrainedReleases.filter((r) => !knownUrls.has(r.playerUrl || ""));
 
-    log(`Total releases: ${distinctReleases.length}, new: ${newReleases.length}`);
+    log(`Total releases after constraints: ${constrainedReleases.length}, new: ${newReleases.length}`);
 
     // Bootstrap: first run with empty knownUrls — save URLs without creating events
-    const isBootstrap = knownUrls.size === 0 && distinctReleases.length > 50;
+    const isBootstrap = knownUrls.size === 0 && constrainedReleases.length > 50;
     if (isBootstrap) {
       log("Bootstrap mode: saving known URLs without creating events (first run)");
       await saveKnownReleaseUrls(db, currentUrls);
@@ -447,6 +528,7 @@ async function runReleasesRefresh(db) {
     // Check which releases already have FeedEvents
     const newReleaseUrls = newReleases.map((r) => r.playerUrl).filter(Boolean);
     const alreadyHaveEvents = new Set();
+    const existingEventIdsByUrl = new Map();
     for (let i = 0; i < newReleaseUrls.length; i += 30) {
       const chunk = newReleaseUrls.slice(i, i + 30);
       const snapshot = await feedRef
@@ -455,12 +537,22 @@ async function runReleasesRefresh(db) {
         .get();
       snapshot.docs.forEach((d) => {
         const tm = d.get("playerTmProfile");
-        if (tm) alreadyHaveEvents.add(tm);
+        if (!tm) return;
+        alreadyHaveEvents.add(tm);
+        if (!existingEventIdsByUrl.has(tm)) existingEventIdsByUrl.set(tm, []);
+        existingEventIdsByUrl.get(tm).push(d.id);
       });
     }
 
     const releasesToCreate = newReleases.filter((r) => !alreadyHaveEvents.has(r.playerUrl || ""));
     log(`Already in feed: ${alreadyHaveEvents.size}, creating events for: ${releasesToCreate.length}`);
+
+    // Backfill existing release events with enriched metadata so clients never need to enrich repeatedly.
+    const releaseByUrl = new Map(
+      constrainedReleases
+        .filter((r) => r.playerUrl)
+        .map((r) => [r.playerUrl, r])
+    );
 
     // Batch player lookups (Firestore "in" max 30)
     const playersInDb = new Set();
@@ -476,22 +568,31 @@ async function runReleasesRefresh(db) {
 
     // Write FeedEvents
     const now = Date.now();
-    for (const release of releasesToCreate) {
+
+    for (const [playerUrl, eventIds] of existingEventIdsByUrl.entries()) {
+      const release = releaseByUrl.get(playerUrl);
+      if (!release) continue;
+      const payload = buildReleaseEnrichmentPatch(release);
+      if (Object.keys(payload).length === 0) continue;
+      try {
+        await Promise.all(
+          eventIds.map((eventId) => feedRef.doc(eventId).set(payload, { merge: true }))
+        );
+      } catch (err) {
+        log(`Failed to backfill existing release event(s) for ${release.playerName || playerUrl}: ${err.message}`);
+      }
+    }
+
+    for (const [index, release] of releasesToCreate.entries()) {
       const playerUrl = release.playerUrl;
       if (!playerUrl) continue;
       const isInDatabase = playersInDb.has(playerUrl);
       const docId = feedEventDocIdForRelease(playerUrl);
       try {
-        await feedRef.doc(docId).set({
-          type: FEED_EVENT_TYPE,
-          playerName: release.playerName || "Unknown",
-          playerImage: release.playerImage || null,
-          playerTmProfile: playerUrl,
-          oldValue: null,
-          newValue: "Without club",
-          extraInfo: isInDatabase ? "IN_DATABASE" : "NOT_IN_DATABASE",
-          timestamp: now,
-        });
+        await feedRef.doc(docId).set(
+          buildReleaseEventPayload(release, isInDatabase, orderedReleaseTimestamp(now, index)),
+          { merge: true }
+        );
         log(`New release: ${release.playerName} (in DB: ${isInDatabase})`);
       } catch (err) {
         log(`Failed to write feed event for ${release.playerName}: ${err.message}`);

@@ -152,11 +152,22 @@ fun AiScoutContentBody(
     navController: NavController,
     viewModel: IAiScoutViewModel = koinViewModel(),
     showTopBar: Boolean = true,
-    onBack: (() -> Unit)? = null
+    onBack: (() -> Unit)? = null,
+    startWithFindNext: Boolean = false,
+    lockTab: Boolean = false,
+    warRoomMode: Boolean = false
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val findNextState by viewModel.findNextState.collectAsStateWithLifecycle()
-    var selectedTab by remember { mutableStateOf(AiScoutTab.SCOUT) }
+    var selectedTab by remember(startWithFindNext) {
+        mutableStateOf(if (startWithFindNext) AiScoutTab.FIND_NEXT else AiScoutTab.SCOUT)
+    }
+
+    LaunchedEffect(startWithFindNext) {
+        if (lockTab) {
+            selectedTab = if (startWithFindNext) AiScoutTab.FIND_NEXT else AiScoutTab.SCOUT
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -167,11 +178,17 @@ fun AiScoutContentBody(
             AiScoutTopBar(onBack = onBack ?: { navController.popBackStack(); kotlin.Unit })
         }
 
-        // Tab Row
-        AiScoutTabBar(
-            selectedTab = selectedTab,
-            onTabSelected = { selectedTab = it }
-        )
+        if (!lockTab) {
+            // Tab Row
+            AiScoutTabBar(
+                selectedTab = selectedTab,
+                onTabSelected = { selectedTab = it }
+            )
+        }
+
+        if (warRoomMode) {
+            AiScoutWarRoomCommandStrip(selectedTab = selectedTab)
+        }
 
         // Tab Content
         when (selectedTab) {
@@ -184,6 +201,89 @@ fun AiScoutContentBody(
             }
             AiScoutTab.FIND_NEXT -> {
                 FindNextTabContent(state = findNextState, viewModel = viewModel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiScoutWarRoomCommandStrip(selectedTab: AiScoutTab) {
+    val accent = if (selectedTab == AiScoutTab.SCOUT) WTeal else WPurple
+    val secondary = if (selectedTab == AiScoutTab.SCOUT) WCyan else WIndigo
+    val titleRes = if (selectedTab == AiScoutTab.SCOUT) {
+        R.string.ai_scout_war_room_strip_title
+    } else {
+        R.string.ai_scout_find_next_war_room_strip_title
+    }
+    val subtitleRes = if (selectedTab == AiScoutTab.SCOUT) {
+        R.string.ai_scout_war_room_strip_subtitle
+    } else {
+        R.string.ai_scout_find_next_war_room_strip_subtitle
+    }
+
+    val checkpoints = if (selectedTab == AiScoutTab.SCOUT) {
+        listOf(
+            R.string.ai_scout_war_room_step_query,
+            R.string.ai_scout_war_room_step_analyze,
+            R.string.ai_scout_war_room_step_shortlist
+        )
+    } else {
+        listOf(
+            R.string.ai_scout_find_next_step_reference,
+            R.string.ai_scout_find_next_step_range,
+            R.string.ai_scout_find_next_step_hunt
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(WCard.copy(alpha = 0.72f))
+            .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+            .padding(14.dp)
+    ) {
+        Text(
+            text = stringResource(titleRes),
+            style = boldTextStyle(WText, 14.sp),
+            letterSpacing = 0.3.sp
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(
+            text = stringResource(subtitleRes),
+            style = regularTextStyle(WMuted, 12.sp),
+            lineHeight = 17.sp
+        )
+
+        Spacer(Modifier.height(10.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            checkpoints.forEachIndexed { index, labelRes ->
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (index == 0) accent.copy(alpha = 0.18f) else secondary.copy(alpha = 0.14f))
+                        .border(
+                            1.dp,
+                            if (index == 0) accent.copy(alpha = 0.40f) else secondary.copy(alpha = 0.28f),
+                            RoundedCornerShape(10.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = (index + 1).toString(),
+                        style = boldTextStyle(if (index == 0) accent else secondary, 11.sp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(labelRes),
+                        style = regularTextStyle(WText, 11.sp)
+                    )
+                }
             }
         }
     }
@@ -447,16 +547,30 @@ private fun AiScoutTabBar(selectedTab: AiScoutTab, onTabSelected: (AiScoutTab) -
 // ═══════════════════════════════════════════════════════════════════════════════
 
 private val FIND_NEXT_EXAMPLE_PLAYERS = listOf(
-    "Mohamed Salah", "Erling Haaland", "Jude Bellingham",
-    "Florian Wirtz", "Bukayo Saka", "Phil Foden", "Rodri"
+    "Mohamed Salah", "Erling Haaland", "Jude Bellingham", "Vinicius Junior", "Florian Wirtz",
+    "Lamine Yamal", "Bukayo Saka", "Phil Foden", "Rodri", "Jamal Musiala",
+    "Martin Ødegaard", "Pedri", "Kylian Mbappé", "Cole Palmer", "Bruno Fernandes",
+    "Kevin De Bruyne", "Harry Kane", "Robert Lewandowski", "Declan Rice", "Federico Valverde",
+    "Gavi", "Bernardo Silva", "Leroy Sané", "Rafael Leão", "Dani Olmo",
+    "Khvicha Kvaratskhelia", "Victor Osimhen", "Alexander Isak", "Nico Williams", "Alejandro Garnacho"
 )
 
 private val VALUE_PRESETS = listOf(
+    100_000 to "€100K",
+    250_000 to "€250K",
     500_000 to "€500K",
+    750_000 to "€750K",
     1_000_000 to "€1M",
+    1_500_000 to "€1.5M",
+    2_000_000 to "€2M",
+    2_500_000 to "€2.5M",
     3_000_000 to "€3M",
+    4_000_000 to "€4M",
     5_000_000 to "€5M",
+    7_500_000 to "€7.5M",
     10_000_000 to "€10M",
+    15_000_000 to "€15M",
+    20_000_000 to "€20M",
     0 to "No limit"
 )
 
@@ -479,6 +593,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
         .collectAsStateWithLifecycle(initialValue = emptySet())
     val coroutineScope = rememberCoroutineScope()
+    val examplePlayers = remember { FIND_NEXT_EXAMPLE_PLAYERS.shuffled() }
 
     val infiniteTransition = rememberInfiniteTransition(label = "find_next_bg")
     val orbPulse by infiniteTransition.animateFloat(
@@ -616,7 +731,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(FIND_NEXT_EXAMPLE_PLAYERS, key = { it }) { name ->
+                    items(examplePlayers, key = { it }) { name ->
                         val isSelected = state.playerName == name
                         Box(
                             modifier = Modifier
@@ -679,7 +794,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = stringResource(R.string.ai_scout_find_next_age_max, state.ageMax),
+                        text = stringResource(R.string.ai_scout_find_next_age_range, state.ageMin, state.ageMax),
                         style = regularTextStyle(WMuted, 13.sp)
                     )
                     // Age badge
@@ -691,22 +806,41 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Text(
-                            text = "≤ ${state.ageMax}",
+                                text = "${state.ageMin}-${state.ageMax}",
                             style = boldTextStyle(WPurple, 14.sp)
                         )
                     }
                 }
+                    Text(
+                        text = stringResource(R.string.ai_scout_find_next_age_min),
+                        style = regularTextStyle(WMuted.copy(alpha = 0.8f), 11.sp)
+                    )
                 Slider(
-                    value = state.ageMax.toFloat(),
-                    onValueChange = { viewModel.updateFindNextAgeMax(it.toInt()) },
-                    valueRange = 17f..27f,
-                    steps = 9,
+                        value = state.ageMin.toFloat(),
+                        onValueChange = { viewModel.updateFindNextAgeMin(it.toInt()) },
+                        valueRange = 17f..35f,
+                        steps = 17,
                     colors = SliderDefaults.colors(
                         thumbColor = WPurple,
                         activeTrackColor = WPurple.copy(alpha = 0.6f),
                         inactiveTrackColor = WBorder
                     )
                 )
+                    Text(
+                        text = stringResource(R.string.ai_scout_find_next_age_max_label),
+                        style = regularTextStyle(WMuted.copy(alpha = 0.8f), 11.sp)
+                    )
+                    Slider(
+                        value = state.ageMax.toFloat(),
+                        onValueChange = { viewModel.updateFindNextAgeMax(it.toInt()) },
+                        valueRange = 17f..35f,
+                        steps = 17,
+                        colors = SliderDefaults.colors(
+                            thumbColor = WIndigo,
+                            activeTrackColor = WIndigo.copy(alpha = 0.6f),
+                            inactiveTrackColor = WBorder
+                        )
+                    )
 
                 // Divider
                 Spacer(Modifier.height(10.dp))
@@ -724,16 +858,58 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
 
                 // Value section
                 Text(
-                    text = stringResource(R.string.ai_scout_find_next_value_max),
+                    text = stringResource(R.string.ai_scout_find_next_value_range_title),
                     style = regularTextStyle(WMuted, 13.sp)
                 )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_value_min),
+                    style = regularTextStyle(WMuted.copy(alpha = 0.8f), 11.sp)
+                )
                 Spacer(Modifier.height(12.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    VALUE_PRESETS.forEach { (value, label) ->
+                    items(VALUE_PRESETS.filter { it.first > 0 }, key = { it.first }) { (value, label) ->
+                        val isSelected = state.valueMin == value
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isSelected) WIndigo.copy(alpha = 0.18f)
+                                    else WDark.copy(alpha = 0.45f)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (isSelected) WIndigo.copy(alpha = 0.45f) else WBorder.copy(alpha = 0.15f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .clickable { viewModel.updateFindNextValueMin(value) }
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                label,
+                                style = boldTextStyle(
+                                    if (isSelected) WIndigo else WText,
+                                    12.sp
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_value_max),
+                    style = regularTextStyle(WMuted.copy(alpha = 0.8f), 11.sp)
+                )
+                Spacer(Modifier.height(12.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(VALUE_PRESETS, key = { it.first }) { (value, label) ->
                         val isSelected = state.valueMax == value
                         Box(
                             modifier = Modifier
@@ -748,7 +924,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                                     RoundedCornerShape(12.dp)
                                 )
                                 .clickable { viewModel.updateFindNextValueMax(value) }
-                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
                         ) {
                             Text(
                                 if (value == 0) stringResource(R.string.ai_scout_find_next_no_limit) else label,

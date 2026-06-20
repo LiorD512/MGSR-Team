@@ -314,7 +314,7 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
         : `New request added from ${playerName}`;
       break;
     default:
-      title = "MGSR Team Update";
+      title = "BRIT Sport Group Update";
       body = `New update for ${playerName}`;
   }
 
@@ -341,7 +341,7 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
       notification: {
         title,
         body,
-        icon: "/logo.svg",
+        icon: "/brit_circle_black_gold.svg?v=20260620",
         tag: `feed-${event.params.eventId}`,
       },
       fcmOptions: {
@@ -433,7 +433,7 @@ exports.onNewAgentTask = onDocumentCreated(
         notification: {
           title: notifTitle,
           body: notifBody,
-          icon: "/logo.svg",
+          icon: "/brit_circle_black_gold.svg?v=20260620",
           tag: `task-${event.params.taskId}`,
         },
         fcmOptions: {
@@ -527,7 +527,7 @@ exports.onMandateSigningUpdated = onDocumentUpdated(
         notification: {
           title: notifTitle,
           body: notifBody,
-          icon: "/logo.svg",
+          icon: "/brit_circle_black_gold.svg?v=20260620",
           tag: `mandate-sign-${event.params.token}`,
         },
         fcmOptions: {
@@ -811,7 +811,7 @@ exports.onTaskRemindersScheduled = onSchedule(
           },
         },
         webpush: {
-          notification: { title: notifTitle, body: notifBody, icon: "/logo.svg", tag: `reminder-${taskId}` },
+          notification: { title: notifTitle, body: notifBody, icon: "/brit_circle_black_gold.svg?v=20260620", tag: `reminder-${taskId}` },
           fcmOptions: { link: "/tasks" },
         },
       };
@@ -1214,7 +1214,7 @@ exports.onAgentTransferRequest = onDocumentCreated(
         notification: {
           title: notifTitle,
           body: notifBody,
-          icon: "/logo.svg",
+          icon: "/brit_circle_black_gold.svg?v=20260620",
           tag: `transfer-req-${event.params.requestId}`,
         },
         fcmOptions: { link: data.playerId ? `/players/${data.playerId}` : "/" },
@@ -1309,7 +1309,7 @@ exports.onAgentTransferResolved = onDocumentUpdated(
         notification: {
           title: notifTitle,
           body: notifBody,
-          icon: "/logo.svg",
+          icon: "/brit_circle_black_gold.svg?v=20260620",
           tag: `transfer-res-${event.params.requestId}`,
         },
         fcmOptions: { link: after.playerId ? `/players/${after.playerId}` : "/" },

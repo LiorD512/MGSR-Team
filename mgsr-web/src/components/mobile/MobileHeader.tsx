@@ -16,7 +16,7 @@ const pageTitleKeys: Record<string, string> = {
   '/tasks': 'nav_tasks',
   '/shortlist': 'nav_shortlist',
   '/shadow-teams': 'nav_shadow_teams',
-  '/releases': 'nav_releases',
+  '/release-notifications': 'nav_release_notifications',
   '/contract-finisher': 'nav_contract_finisher',
   '/returnees': 'nav_returnee',
   '/war-room': 'nav_war_room',

@@ -56,7 +56,9 @@ data class LeagueInfo(
 
 data class FindNextRequest(
     val playerName: String,
+    val ageMin: Int = 17,
     val ageMax: Int = 23,
+    val valueMin: Int = 100_000,
     val valueMax: Int = 3_000_000,
     val lang: String = "en",
     val excludeUrls: List<String> = emptyList()

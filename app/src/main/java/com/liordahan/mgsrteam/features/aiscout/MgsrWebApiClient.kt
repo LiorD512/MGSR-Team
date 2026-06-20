@@ -137,9 +137,13 @@ class MgsrWebApiClient(
                 retryOnNetworkError {
                 val params = buildString {
                     append("player_name=${java.net.URLEncoder.encode(request.playerName, "UTF-8")}")
+                    append("&age_min=${request.ageMin}")
                     append("&age_max=${request.ageMax}")
                     append("&lang=${request.lang}")
-                    append("&limit=15")
+                    append("&limit=500")
+                    if (request.valueMin > 0) {
+                        append("&value_min=${request.valueMin}")
+                    }
                     if (request.valueMax > 0) {
                         append("&value_max=${request.valueMax}")
                     }

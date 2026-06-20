@@ -116,9 +116,54 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import java.util.Calendar
+import java.util.Date
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 /** Roster player who played with the release/returnee player, with match count from Transfermarkt. */
 data class RosterTeammateMatch(val player: Player, val matchesPlayedTogether: Int)
+
+private enum class ReleasesSortOption {
+    DATE_ADDED,
+    MARKET_VALUE
+}
+
+private fun parseReleaseDateToEpoch(dateStr: String?): Long {
+    val raw = dateStr?.trim().orEmpty()
+    if (raw.isBlank()) return 0L
+
+    val parts = raw.split('/', '.', '-')
+    if (parts.size == 3) {
+        val p1 = parts[0]
+        val p2 = parts[1]
+        val p3 = parts[2]
+        val n1 = p1.toIntOrNull()
+        val n2 = p2.toIntOrNull()
+        val n3 = p3.toIntOrNull()
+        if (n1 != null && n2 != null && n3 != null) {
+            return when {
+                p1.length == 4 && n1 > 1900 -> {
+                    toEpochMillis(n1, n2, n3)
+                }
+                p3.length == 4 && n3 > 1900 -> {
+                    toEpochMillis(n3, n2, n1)
+                }
+                else -> 0L
+            }
+        }
+    }
+
+    return runCatching { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(raw)?.time ?: 0L }
+        .getOrDefault(0L)
+}
+
+private fun toEpochMillis(year: Int, month: Int, day: Int): Long {
+    val calendar = Calendar.getInstance()
+    calendar.clear()
+    calendar.set(year, month - 1, day, 0, 0, 0)
+    return calendar.timeInMillis
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -148,6 +193,7 @@ fun ReleasesScreen(
     val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsStateWithLifecycle()
     val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsStateWithLifecycle()
     val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsStateWithLifecycle()
+    val refreshState by viewModel.refreshStateFlow.collectAsStateWithLifecycle()
 
     var showLoader by remember {
         mutableStateOf(true)
@@ -171,6 +217,14 @@ fun ReleasesScreen(
 
     var showError by remember {
         mutableStateOf(false)
+    }
+
+    var releaseAddedAtByUrl by remember {
+        mutableStateOf<Map<String, Long>>(emptyMap())
+    }
+
+    var selectedSortOption by rememberSaveable {
+        mutableStateOf(ReleasesSortOption.DATE_ADDED)
     }
 
     var countMap by remember {
@@ -221,12 +275,21 @@ fun ReleasesScreen(
         }
     }
 
+    LaunchedEffect(refreshState.lastError) {
+        val message = refreshState.lastError ?: return@LaunchedEffect
+        snackBarHostState.showSnackbar(
+            message = message,
+            duration = SnackbarDuration.Short
+        )
+    }
+
     LaunchedEffect(Unit) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             launch {
                 viewModel.releasesFlow.collect {
                     releaseList = it.visibleList
                     originalReleaseList = it.releasesList
+                    releaseAddedAtByUrl = it.releaseAddedAtByUrl
                     showLoader = it.isLoading
                     showError = it.showError
                     countMap = it.playersCount
@@ -261,6 +324,20 @@ fun ReleasesScreen(
             val url = release.playerUrl ?: return@filter true
             val id = extractPlayerIdFromUrl(url)
             (id == null || id !in rosterIds) && url !in shortlistUrls
+        }
+    }
+
+    val sortedFilteredReleaseList = remember(filteredReleaseList, selectedSortOption, releaseAddedAtByUrl) {
+        when (selectedSortOption) {
+            ReleasesSortOption.DATE_ADDED -> filteredReleaseList.sortedWith(
+                compareByDescending<LatestTransferModel> { release ->
+                    parseReleaseDateToEpoch(release.transferDate)
+                }.thenByDescending { release ->
+                    val url = release.playerUrl
+                    if (url.isNullOrBlank()) 0L else (releaseAddedAtByUrl[url] ?: 0L)
+                }.thenByDescending { it.getRealMarketValue() }
+            )
+            ReleasesSortOption.MARKET_VALUE -> filteredReleaseList.sortedByDescending { it.getRealMarketValue() }
         }
     }
 
@@ -302,7 +379,11 @@ fun ReleasesScreen(
         ) {
 
             // Header
-            ReleasesHeader(onBackClicked = { navController.popBackStack() })
+            ReleasesHeader(
+                onBackClicked = { navController.popBackStack() },
+                isRefreshing = refreshState.isRefreshing,
+                onRefreshClicked = { viewModel.triggerManualRefresh() }
+            )
 
             if (showLoader) {
                 SkeletonPlayerCardList(
@@ -343,6 +424,11 @@ fun ReleasesScreen(
                 }
             )
 
+            ReleasesSortChips(
+                selected = selectedSortOption,
+                onSelected = { selectedSortOption = it }
+            )
+
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = state,
@@ -354,7 +440,7 @@ fun ReleasesScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(filteredReleaseList, key = { it.playerUrl ?: it.hashCode() }) { release ->
+                items(sortedFilteredReleaseList, key = { it.playerUrl ?: it.hashCode() }) { release ->
                     val playerUrl = release.playerUrl
                     val isExpanded = playerUrl != null && expandedPlayerUrl == playerUrl
                     val rosterTeammates = playerUrl?.let { teammatesCache[it] }
@@ -458,13 +544,71 @@ fun ReleasesScreen(
     }
 }
 
+@Composable
+private fun ReleasesSortChips(
+    selected: ReleasesSortOption,
+    onSelected: (ReleasesSortOption) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.releases_sort_options),
+            style = regularTextStyle(HomeTextSecondary, 12.sp)
+        )
+
+        SortChip(
+            text = stringResource(R.string.releases_sort_date_added),
+            selected = selected == ReleasesSortOption.DATE_ADDED,
+            onClick = { onSelected(ReleasesSortOption.DATE_ADDED) }
+        )
+
+        SortChip(
+            text = stringResource(R.string.releases_sort_market_value),
+            selected = selected == ReleasesSortOption.MARKET_VALUE,
+            onClick = { onSelected(ReleasesSortOption.MARKET_VALUE) }
+        )
+    }
+}
+
+@Composable
+private fun SortChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor = if (selected) HomeTealAccent else Color.Transparent
+    val textColor = if (selected) HomeDarkBackground else HomeTextSecondary
+    val borderColor = if (selected) HomeTealAccent else HomeDarkCardBorder
+
+    Text(
+        text = text,
+        style = boldTextStyle(textColor, 11.sp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+            .clickWithNoRipple(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+    )
+}
+
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  HEADER
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun ReleasesHeader(onBackClicked: () -> Unit) {
+private fun ReleasesHeader(
+    onBackClicked: () -> Unit,
+    isRefreshing: Boolean,
+    onRefreshClicked: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -495,6 +639,25 @@ private fun ReleasesHeader(onBackClicked: () -> Unit) {
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
+        Text(
+            text = if (isRefreshing) {
+                stringResource(R.string.releases_manual_refreshing)
+            } else {
+                stringResource(R.string.releases_manual_refresh)
+            },
+            style = boldTextStyle(
+                if (isRefreshing) HomeTextSecondary else HomeTealAccent,
+                11.sp
+            ),
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(if (isRefreshing) HomeDarkCard else Color.Transparent)
+                .border(1.dp, if (isRefreshing) HomeDarkCardBorder else HomeTealAccent, RoundedCornerShape(20.dp))
+                .clickWithNoRipple {
+                    if (!isRefreshing) onRefreshClicked()
+                }
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+        )
     }
 }
 

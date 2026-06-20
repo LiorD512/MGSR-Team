@@ -126,7 +126,7 @@ async function chatRoomSend(data) {
         notification: {
           title: notifTitle,
           body: notifBody,
-          icon: "/logo.svg",
+          icon: "/brit_circle_black_gold.svg?v=20260620",
           tag: `chat-${messageId}`,
         },
         fcmOptions: {

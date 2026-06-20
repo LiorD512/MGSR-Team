@@ -158,6 +158,22 @@ private val shortlistPositionCodes = mapOf(
     "SS"  to setOf("SS", "SECOND STRIKER")
 )
 
+private val MenShortlistBg = Color(0xFF0A121E)
+private val MenShortlistCard = Color(0xFF152131)
+private val MenShortlistCardAlt = Color(0xFF1A2A3D)
+private val MenShortlistBorder = Color(0x55C7A35A)
+private val MenShortlistGold = Color(0xFFC7A35A)
+private val MenShortlistGoldSoft = Color(0xFFDDC187)
+private val MenShortlistBronze = Color(0xFFAE8A4A)
+private val MenShortlistTextSubtle = Color(0xFFBDAE8C)
+
+private fun shortlistIsMen(): Boolean = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+private fun shortlistCardColor(): Color = if (shortlistIsMen()) MenShortlistCard else PlatformColors.palette.card
+private fun shortlistCardAltColor(): Color = if (shortlistIsMen()) MenShortlistCardAlt else PlatformColors.palette.card
+private fun shortlistBorderColor(): Color = if (shortlistIsMen()) MenShortlistBorder else PlatformColors.palette.cardBorder
+private fun shortlistAccentColor(): Color = if (shortlistIsMen()) MenShortlistGold else PlatformColors.palette.accent
+private fun shortlistMutedTextColor(): Color = if (shortlistIsMen()) MenShortlistTextSubtle else PlatformColors.palette.textSecondary
+
 private fun formatShortlistProfileDisplay(entry: ShortlistEntry): String {
     entry.playerName?.takeIf { it.isNotBlank() }?.let { return it }
     val id = extractPlayerIdFromUrl(entry.tmProfileUrl)
@@ -225,6 +241,7 @@ fun ShortlistScreen(
 ) {
     val state by viewModel.shortlistFlow.collectAsStateWithLifecycle()
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
+    val isMen = currentPlatform == Platform.MEN
     val isWomen = currentPlatform == Platform.WOMEN
     val context = LocalContext.current
     val oneWeekAgo = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000)
@@ -438,7 +455,7 @@ fun ShortlistScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = PlatformColors.palette.background,
+        containerColor = if (isMen) MenShortlistBg else PlatformColors.palette.background,
         snackbarHost = {
             SnackbarHost(
                 hostState = snackBarHostState,
@@ -485,24 +502,24 @@ fun ShortlistScreen(
                     placeholder = {
                         Text(
                             text = stringResource(R.string.shortlist_search_placeholder),
-                            style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 13.sp)
+                            style = regularTextStyle(shortlistMutedTextColor().copy(alpha = 0.6f), 13.sp)
                         )
                     },
-                    textStyle = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp),
+                    textStyle = regularTextStyle(if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary, 13.sp),
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PlatformColors.palette.accent,
-                        unfocusedBorderColor = PlatformColors.palette.cardBorder,
-                        cursorColor = PlatformColors.palette.accent,
-                        focusedContainerColor = PlatformColors.palette.card,
-                        unfocusedContainerColor = PlatformColors.palette.card
+                        focusedBorderColor = shortlistAccentColor(),
+                        unfocusedBorderColor = shortlistBorderColor(),
+                        cursorColor = shortlistAccentColor(),
+                        focusedContainerColor = shortlistCardColor(),
+                        unfocusedContainerColor = shortlistCardColor()
                     ),
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = null,
-                            tint = PlatformColors.palette.textSecondary,
+                            tint = shortlistMutedTextColor(),
                             modifier = Modifier.size(20.dp)
                         )
                     },
@@ -512,7 +529,7 @@ fun ShortlistScreen(
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = stringResource(R.string.filter_clear),
-                                    tint = PlatformColors.palette.textSecondary
+                                    tint = shortlistMutedTextColor()
                                 )
                             }
                         }
@@ -661,14 +678,14 @@ fun ShortlistScreen(
                 .align(Alignment.BottomEnd)
                 .padding(end = 20.dp, bottom = 56.dp),
             shape = RoundedCornerShape(18.dp),
-            containerColor = currentPlatform.accent,
-            contentColor = PlatformColors.palette.background
+            containerColor = if (isMen) MenShortlistGold else currentPlatform.accent,
+            contentColor = if (isMen) MenShortlistBg else PlatformColors.palette.background
         ) {
             Icon(
                 imageVector = Icons.Filled.PersonAdd,
                 contentDescription = stringResource(R.string.shortlist_add_player),
                 modifier = Modifier.size(24.dp),
-                tint = Color.White
+                tint = if (isMen) MenShortlistBg else Color.White
             )
         }
         } // end Box
@@ -776,7 +793,8 @@ private fun ShortlistHeader(
     onBackClicked: () -> Unit
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
-    val platformAccent = PlatformColors.palette.accent
+    val isMen = !isWomen && !isYouth
+    val platformAccent = if (isMen) MenShortlistGold else PlatformColors.palette.accent
 
     Row(
         modifier = Modifier
@@ -787,7 +805,7 @@ private fun ShortlistHeader(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = null,
-            tint = PlatformColors.palette.textSecondary,
+            tint = if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textSecondary,
             modifier = Modifier
                 .size(24.dp)
                 .clickWithNoRipple { onBackClicked() }
@@ -796,7 +814,7 @@ private fun ShortlistHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.shortlist_title),
-                style = boldTextStyle(PlatformColors.palette.textPrimary, 26.sp)
+                style = boldTextStyle(if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary, 26.sp)
             )
             Text(
                 text = stringResource(
@@ -806,7 +824,7 @@ private fun ShortlistHeader(
                         else -> R.string.shortlist_subtitle
                     }
                 ),
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
+                style = regularTextStyle(if (isMen) MenShortlistTextSubtle else PlatformColors.palette.textSecondary, 12.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -814,7 +832,12 @@ private fun ShortlistHeader(
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
-                .background(PlatformColors.palette.card.copy(alpha = 0.8f))
+                .background(if (isMen) MenShortlistCardAlt.copy(alpha = 0.95f) else PlatformColors.palette.card.copy(alpha = 0.8f))
+                .border(
+                    width = if (isMen) 1.dp else 0.dp,
+                    color = if (isMen) MenShortlistBorder else Color.Transparent,
+                    shape = RoundedCornerShape(8.dp)
+                )
                 .clickWithNoRipple { sortMenuExpanded = true }
                 .padding(12.dp)
         ) {
@@ -827,14 +850,14 @@ private fun ShortlistHeader(
             DropdownMenu(
                 expanded = sortMenuExpanded,
                 onDismissRequest = { sortMenuExpanded = false },
-                modifier = Modifier.background(PlatformColors.palette.card),
-                containerColor = PlatformColors.palette.card
+                modifier = Modifier.background(if (isMen) MenShortlistCard else PlatformColors.palette.card),
+                containerColor = if (isMen) MenShortlistCard else PlatformColors.palette.card
             ) {
                 DropdownMenuItem(
                     text = {
                         Text(
                             text = stringResource(R.string.players_reset),
-                            style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
+                            style = regularTextStyle(if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary, 13.sp)
                         )
                     },
                     onClick = {
@@ -847,7 +870,7 @@ private fun ShortlistHeader(
                         Text(
                             text = stringResource(R.string.players_sort_market_value),
                             style = regularTextStyle(
-                                if (sortOption == SortOption.MARKET_VALUE) platformAccent else PlatformColors.palette.textPrimary,
+                                if (sortOption == SortOption.MARKET_VALUE) platformAccent else if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary,
                                 13.sp
                             )
                         )
@@ -862,7 +885,7 @@ private fun ShortlistHeader(
                         Text(
                             text = stringResource(R.string.players_sort_name),
                             style = regularTextStyle(
-                                if (sortOption == SortOption.NAME) platformAccent else PlatformColors.palette.textPrimary,
+                                if (sortOption == SortOption.NAME) platformAccent else if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary,
                                 13.sp
                             )
                         )
@@ -877,7 +900,7 @@ private fun ShortlistHeader(
                         Text(
                             text = stringResource(R.string.players_sort_age),
                             style = regularTextStyle(
-                                if (sortOption == SortOption.AGE) platformAccent else PlatformColors.palette.textPrimary,
+                                if (sortOption == SortOption.AGE) platformAccent else if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary,
                                 13.sp
                             )
                         )
@@ -901,26 +924,27 @@ private fun ShortlistStatsStrip(
     total: Int,
     thisWeek: Int
 ) {
+    val isMen = shortlistIsMen()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(PlatformColors.palette.card)
-            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(16.dp)),
+            .background(if (isMen) MenShortlistCard else PlatformColors.palette.card)
+            .border(1.dp, if (isMen) MenShortlistBorder else PlatformColors.palette.cardBorder, RoundedCornerShape(16.dp)),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         ShortlistStatItem(
             value = total.toString(),
             label = stringResource(R.string.players_stat_total),
-            accentColor = PlatformColors.palette.accent,
+            accentColor = if (isMen) MenShortlistGold else PlatformColors.palette.accent,
             modifier = Modifier.weight(1f)
         )
         ShortlistStatsStripDivider()
         ShortlistStatItem(
             value = thisWeek.toString(),
             label = stringResource(R.string.shortlist_stat_this_week),
-            accentColor = PlatformColors.palette.orange,
+            accentColor = if (isMen) MenShortlistBronze else PlatformColors.palette.orange,
             modifier = Modifier.weight(1f)
         )
     }
@@ -937,6 +961,7 @@ private fun ShortlistStatItem(
         modifier = modifier.padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        val isMen = shortlistIsMen()
         Box(
             modifier = Modifier
                 .size(6.dp)
@@ -946,23 +971,24 @@ private fun ShortlistStatItem(
         Spacer(Modifier.height(4.dp))
         Text(
             text = value,
-            style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
+            style = boldTextStyle(if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary, 18.sp)
         )
         Text(
             text = label,
-            style = regularTextStyle(PlatformColors.palette.textSecondary, 9.sp)
+            style = regularTextStyle(if (isMen) MenShortlistTextSubtle else PlatformColors.palette.textSecondary, 9.sp)
         )
     }
 }
 
 @Composable
 private fun ShortlistStatsStripDivider() {
+    val isMen = shortlistIsMen()
     Box(
         modifier = Modifier
             .width(1.dp)
             .height(40.dp)
             .padding(vertical = 4.dp)
-            .background(PlatformColors.palette.cardBorder)
+            .background(if (isMen) MenShortlistBorder else PlatformColors.palette.cardBorder)
     )
 }
 
@@ -991,11 +1017,11 @@ private fun ShortlistPositionFilterChips(
             else position == selectedPosition
 
             val bgColor by animateColorAsState(
-                targetValue = if (isSelected) PlatformColors.palette.accent else Color.Transparent,
+                targetValue = if (isSelected) shortlistAccentColor() else Color.Transparent,
                 label = "chipBg"
             )
-            val textColor = if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary
-            val borderColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+            val textColor = if (isSelected) if (shortlistIsMen()) MenShortlistBg else PlatformColors.palette.background else shortlistMutedTextColor()
+            val borderColor = if (isSelected) shortlistAccentColor() else shortlistBorderColor()
 
             Text(
                 text = when (position) {
@@ -1036,11 +1062,11 @@ private fun ShortlistQuickFilterChip(
     onClick: () -> Unit
 ) {
     val bgColor by animateColorAsState(
-        targetValue = if (isSelected) PlatformColors.palette.accent else Color.Transparent,
+        targetValue = if (isSelected) shortlistAccentColor() else Color.Transparent,
         label = "quickChipBg"
     )
-    val textColor = if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary
-    val borderColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+    val textColor = if (isSelected) if (shortlistIsMen()) MenShortlistBg else PlatformColors.palette.background else shortlistMutedTextColor()
+    val borderColor = if (isSelected) shortlistAccentColor() else shortlistBorderColor()
 
     Text(
         text = label,
@@ -1098,6 +1124,12 @@ private fun ShortlistCard(
     onDismissIgConfirm: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val isMen = shortlistIsMen()
+    val cardColor = if (isMen) MenShortlistCard else PlatformColors.palette.card
+    val borderColor = if (isMen) MenShortlistBorder else PlatformColors.palette.cardBorder
+    val accent = if (isMen) MenShortlistGold else PlatformColors.palette.accent
+    val muted = if (isMen) MenShortlistTextSubtle else PlatformColors.palette.textSecondary
+    val titleColor = if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary
     val release = entry.toLatestTransferModel()
     Box(modifier = Modifier.fillMaxWidth()) {
         Card(
@@ -1110,15 +1142,15 @@ private fun ShortlistCard(
                     onLongClick = { showMenu = true }
                 ),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        border = BorderStroke(1.dp, borderColor)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .drawBehind {
                     drawRect(
-                        color = PlatformColors.palette.accent,
+                        color = accent,
                         topLeft = Offset.Zero,
                         size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)
                     )
@@ -1147,7 +1179,7 @@ private fun ShortlistCard(
                                 .size(52.dp)
                                 .clip(CircleShape)
                                 .background(Brush.linearGradient(gradientColors))
-                                .border(2.dp, PlatformColors.palette.cardBorder, CircleShape),
+                                .border(2.dp, borderColor, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -1162,7 +1194,7 @@ private fun ShortlistCard(
                             modifier = Modifier
                                 .size(52.dp)
                                 .clip(CircleShape)
-                                .border(2.dp, PlatformColors.palette.cardBorder, CircleShape),
+                                .border(2.dp, borderColor, CircleShape),
                             contentScale = ContentScale.Crop,
                             onError = { showFallback = true }
                         )
@@ -1175,7 +1207,7 @@ private fun ShortlistCard(
                         ?.take(2)
                         ?.joinToString("") ?: "?"
                     val gradientColors = if (isYouth) listOf(PlatformYouthAccent, PlatformYouthSecondary)
-                        else listOf(PlatformColors.palette.cardBorder, PlatformColors.palette.cardBorder)
+                        else listOf(borderColor, borderColor)
                     Box(
                         modifier = Modifier
                             .size(52.dp)
@@ -1192,7 +1224,7 @@ private fun ShortlistCard(
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = null,
-                                tint = PlatformColors.palette.textSecondary,
+                                tint = muted,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -1207,7 +1239,7 @@ private fun ShortlistCard(
                 ) {
                     Text(
                         text = formatShortlistProfileDisplay(entry),
-                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp),
+                        style = boldTextStyle(titleColor, 14.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1220,12 +1252,12 @@ private fun ShortlistCard(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(PlatformColors.palette.accent.copy(alpha = 0.15f))
+                                    .background(accent.copy(alpha = 0.15f))
                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = pos,
-                                    style = boldTextStyle(PlatformColors.palette.accent, 10.sp)
+                                    style = boldTextStyle(accent, 10.sp)
                                 )
                             }
                         }
@@ -1233,12 +1265,12 @@ private fun ShortlistCard(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(PlatformColors.palette.cardBorder.copy(alpha = 0.5f))
+                                    .background(borderColor.copy(alpha = 0.5f))
                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = "$age${stringResource(R.string.shortlist_years_suffix)}",
-                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp)
+                                    style = regularTextStyle(muted, 10.sp)
                                 )
                             }
                         }
@@ -1249,7 +1281,7 @@ private fun ShortlistCard(
                                     modifier = Modifier
                                         .widthIn(max = 140.dp)
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(PlatformColors.palette.cardBorder.copy(alpha = 0.5f))
+                                        .background(borderColor.copy(alpha = 0.5f))
                                         .padding(horizontal = 6.dp, vertical = 2.dp),
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -1265,7 +1297,7 @@ private fun ShortlistCard(
                                     if (nat.isNotBlank()) {
                                         Text(
                                             text = nat,
-                                            style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
+                                            style = regularTextStyle(muted, 10.sp),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -1294,18 +1326,18 @@ private fun ShortlistCard(
                     release.marketValue?.takeIf { it.isNotBlank() }?.let { value ->
                         Text(
                             text = value,
-                            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                            style = boldTextStyle(titleColor, 14.sp)
                         )
                     }
                     Text(
                         text = formatRelativeDate(entry.addedAt),
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
+                        style = regularTextStyle(muted, 10.sp),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                     entry.getAddedByDisplayName(context)?.let { agentName ->
                         Text(
                             text = stringResource(R.string.shortlist_added_by, agentName),
-                            style = regularTextStyle(PlatformColors.palette.textSecondary, 9.sp),
+                            style = regularTextStyle(muted, 9.sp),
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -1313,7 +1345,7 @@ private fun ShortlistCard(
             }
 
             HorizontalDivider(
-                color = PlatformColors.palette.cardBorder.copy(alpha = 0.5f),
+                color = borderColor.copy(alpha = 0.5f),
                 thickness = 1.dp,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
@@ -1325,7 +1357,7 @@ private fun ShortlistCard(
                     .padding(horizontal = 12.dp, vertical = 8.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(PlatformColors.palette.background)
-                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                    .border(1.dp, borderColor, RoundedCornerShape(12.dp))
                     .clickWithNoRipple {
                         if (entry.notes.isEmpty()) onAddNote() else onToggleNotesExpand()
                     }
@@ -1335,7 +1367,7 @@ private fun ShortlistCard(
                 Icon(
                     Icons.Default.EditNote,
                     contentDescription = null,
-                    tint = PlatformColors.palette.orange,
+                    tint = if (isMen) MenShortlistBronze else PlatformColors.palette.orange,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(8.dp))
@@ -1344,14 +1376,14 @@ private fun ShortlistCard(
                         stringResource(R.string.shortlist_notes_tap_to_add)
                     else
                         stringResource(R.string.shortlist_notes_count, entry.notes.size),
-                    style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
+                    style = regularTextStyle(titleColor, 13.sp)
                 )
                 Spacer(Modifier.weight(1f))
                 if (entry.notes.isNotEmpty()) {
                     Icon(
                         Icons.Default.ExpandMore,
                         contentDescription = if (isNotesExpanded) "Collapse" else "Expand",
-                        tint = PlatformColors.palette.textSecondary,
+                        tint = muted,
                         modifier = Modifier
                             .size(20.dp)
                             .graphicsLayer { rotationZ = if (isNotesExpanded) 180f else 0f }
@@ -1378,8 +1410,8 @@ private fun ShortlistCard(
                             .fillMaxWidth()
                             .padding(top = 4.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(PlatformColors.palette.orange.copy(alpha = 0.1f))
-                            .border(1.dp, PlatformColors.palette.orange.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                            .background((if (isMen) MenShortlistBronze else PlatformColors.palette.orange).copy(alpha = 0.1f))
+                            .border(1.dp, (if (isMen) MenShortlistBronze else PlatformColors.palette.orange).copy(alpha = 0.3f), RoundedCornerShape(10.dp))
                             .clickWithNoRipple { onAddNote() }
                             .padding(10.dp),
                         horizontalArrangement = Arrangement.Center,
@@ -1388,13 +1420,13 @@ private fun ShortlistCard(
                         Icon(
                             Icons.Rounded.Add,
                             contentDescription = null,
-                            tint = PlatformColors.palette.orange,
+                            tint = if (isMen) MenShortlistBronze else PlatformColors.palette.orange,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
                             text = stringResource(R.string.shortlist_notes_add),
-                            style = boldTextStyle(PlatformColors.palette.orange, 12.sp)
+                            style = boldTextStyle(if (isMen) MenShortlistBronze else PlatformColors.palette.orange, 12.sp)
                         )
                     }
                 }
@@ -1408,7 +1440,7 @@ private fun ShortlistCard(
                     .padding(horizontal = 12.dp, vertical = 8.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(PlatformColors.palette.background)
-                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                    .border(1.dp, borderColor, RoundedCornerShape(12.dp))
                     .clickWithNoRipple { onToggleTeammatesExpand() }
                     .padding(8.dp, 12.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1416,7 +1448,7 @@ private fun ShortlistCard(
                 Icon(
                     Icons.Default.People,
                     contentDescription = null,
-                    tint = PlatformColors.palette.accent,
+                    tint = accent,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(8.dp))
@@ -1426,13 +1458,13 @@ private fun ShortlistCard(
                         isTeammatesExpanded && rosterTeammates != null -> if (rosterTeammates.size == 1) stringResource(R.string.releases_roster_teammates_one, rosterTeammates.size) else stringResource(R.string.releases_roster_teammates, rosterTeammates.size)
                         else -> stringResource(R.string.releases_roster_teammates_tap)
                     },
-                    style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
+                    style = regularTextStyle(titleColor, 13.sp)
                 )
                 Spacer(Modifier.weight(1f))
                 Icon(
                     Icons.Default.ExpandMore,
                     contentDescription = if (isTeammatesExpanded) "Collapse" else "Expand",
-                    tint = PlatformColors.palette.textSecondary,
+                    tint = muted,
                     modifier = Modifier
                         .size(20.dp)
                         .graphicsLayer { rotationZ = if (isTeammatesExpanded) 180f else 0f }
@@ -1446,12 +1478,12 @@ private fun ShortlistCard(
                             .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(PlatformColors.palette.background)
-                            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
                             .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
-                            color = PlatformColors.palette.accent,
+                            color = accent,
                             modifier = Modifier.size(24.dp),
                             strokeWidth = 2.dp
                         )
@@ -1459,13 +1491,13 @@ private fun ShortlistCard(
                 } else if (rosterTeammates.isNullOrEmpty()) {
                     Text(
                         text = stringResource(R.string.releases_no_roster_teammates),
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
+                        style = regularTextStyle(muted, 12.sp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(PlatformColors.palette.background)
-                            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
                             .padding(12.dp)
                     )
                 } else {
@@ -1519,12 +1551,12 @@ private fun ShortlistCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(PlatformColors.palette.accent.copy(alpha = 0.15f))
+                        .background(accent.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.shortlist_badge),
-                        style = boldTextStyle(PlatformColors.palette.accent, 10.sp)
+                            style = boldTextStyle(accent, 10.sp)
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1552,7 +1584,7 @@ private fun ShortlistCard(
                         Icon(
                             imageVector = Icons.Default.PersonAdd,
                             contentDescription = stringResource(R.string.shortlist_add_to_agency),
-                            tint = PlatformColors.palette.accent
+                            tint = accent
                         )
                     }
                 }
@@ -1731,7 +1763,7 @@ private fun ShortlistRosterTeammateRow(
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
-            tint = PlatformColors.palette.textSecondary,
+            tint = shortlistMutedTextColor(),
             modifier = Modifier.size(20.dp)
         )
     }
@@ -1748,6 +1780,10 @@ private fun ShortlistNoteItem(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val isMen = shortlistIsMen()
+    val muted = shortlistMutedTextColor()
+    val border = shortlistBorderColor()
+    val titleColor = if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary
     val isHebrew = LocaleManager.isHebrew(context)
     val authorName = if (isHebrew)
         (note.createdByHebrewName ?: note.createdBy).orEmpty()
@@ -1769,12 +1805,12 @@ private fun ShortlistNoteItem(
             .padding(bottom = 6.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(PlatformColors.palette.background)
-            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(10.dp))
+            .border(1.dp, border, RoundedCornerShape(10.dp))
             .padding(10.dp)
     ) {
         Text(
             text = note.text,
-            style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp),
+            style = regularTextStyle(titleColor, 13.sp),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(6.dp))
@@ -1787,21 +1823,21 @@ private fun ShortlistNoteItem(
                     if (authorName.isNotBlank()) append("$authorName · ")
                     append(timeLabel)
                 },
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
+                style = regularTextStyle(muted, 10.sp),
                 modifier = Modifier.weight(1f)
             )
             Box(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(PlatformColors.palette.cardBorder.copy(alpha = 0.3f))
+                    .background(border.copy(alpha = 0.3f))
                     .clickWithNoRipple { onEdit() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Edit,
                     contentDescription = stringResource(R.string.shortlist_notes_edit),
-                    tint = PlatformColors.palette.textSecondary,
+                    tint = muted,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -2171,6 +2207,8 @@ private fun ShortlistEmptyState(
     onBrowseReleases: () -> Unit,
     onBrowseReturnees: () -> Unit
 ) {
+    val isMen = shortlistIsMen()
+    val accent = if (isMen) MenShortlistGold else PlatformColors.palette.accent
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -2181,19 +2219,19 @@ private fun ShortlistEmptyState(
         Icon(
             imageVector = Icons.Default.BookmarkBorder,
             contentDescription = null,
-            tint = PlatformColors.palette.textSecondary.copy(alpha = 0.5f),
+            tint = shortlistMutedTextColor().copy(alpha = 0.5f),
             modifier = Modifier.size(72.dp)
         )
         Spacer(Modifier.height(20.dp))
         Text(
             text = stringResource(R.string.shortlist_no_players),
-            style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp),
+            style = boldTextStyle(if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary, 18.sp),
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(10.dp))
         Text(
             text = stringResource(R.string.shortlist_empty_hint),
-            style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
+            style = regularTextStyle(shortlistMutedTextColor(), 13.sp),
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(28.dp))
@@ -2205,28 +2243,28 @@ private fun ShortlistEmptyState(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(PlatformColors.palette.accent)
+                    .background(accent)
                     .clickWithNoRipple(onClick = onBrowseReleases)
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = stringResource(R.string.shortlist_browse_releases),
-                    style = boldTextStyle(Color.White, 14.sp)
+                    style = boldTextStyle(if (isMen) MenShortlistBg else Color.White, 14.sp)
                 )
             }
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(14.dp))
-                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(14.dp))
+                    .border(1.dp, shortlistBorderColor(), RoundedCornerShape(14.dp))
                     .clickWithNoRipple(onClick = onBrowseReturnees)
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = stringResource(R.string.shortlist_browse_returnees),
-                    style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                    style = boldTextStyle(if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary, 14.sp)
                 )
             }
         }
@@ -2243,12 +2281,20 @@ private fun ShortlistAgentFilterChip(
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     val isSelected = selectedAgentFilter != null
+    val accent = shortlistAccentColor()
+    val muted = shortlistMutedTextColor()
+    val card = shortlistCardColor()
+    val defaultText = if (shortlistIsMen()) MenShortlistGoldSoft else PlatformColors.palette.textPrimary
     val bgColor by animateColorAsState(
-        targetValue = if (isSelected) PlatformColors.palette.accent else Color.Transparent,
+        targetValue = if (isSelected) accent else Color.Transparent,
         label = "agentChipBg"
     )
-    val textColor = if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary
-    val borderColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+    val textColor = if (isSelected) {
+        if (shortlistIsMen()) MenShortlistBg else PlatformColors.palette.background
+    } else {
+        muted
+    }
+    val borderColor = if (isSelected) accent else shortlistBorderColor()
 
     val filteredAccounts = allAccounts.filter { !it.name.equals(currentUserName, ignoreCase = true) }
 
@@ -2273,12 +2319,12 @@ private fun ShortlistAgentFilterChip(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.background(PlatformColors.palette.card),
-            containerColor = PlatformColors.palette.card
+            modifier = Modifier.background(card),
+            containerColor = card
         ) {
             if (isSelected) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.filter_clear), style = boldTextStyle(PlatformColors.palette.accent, 13.sp)) },
+                    text = { Text(stringResource(R.string.filter_clear), style = boldTextStyle(accent, 13.sp)) },
                     onClick = {
                         onAgentSelected(null)
                         expanded = false
@@ -2292,8 +2338,8 @@ private fun ShortlistAgentFilterChip(
                     text = {
                         Text(
                             text = displayName,
-                            style = if (isThisSelected) boldTextStyle(PlatformColors.palette.accent, 13.sp)
-                                    else regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
+                            style = if (isThisSelected) boldTextStyle(accent, 13.sp)
+                                    else regularTextStyle(defaultText, 13.sp)
                         )
                     },
                     onClick = {

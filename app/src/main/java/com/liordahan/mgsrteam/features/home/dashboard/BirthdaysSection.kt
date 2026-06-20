@@ -64,6 +64,12 @@ import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 
 private val WhatsAppGreen = Color(0xFF25D366)
+private val MenBirthdayBg = Color(0xFF152131)
+private val MenBirthdaySurface = Color(0xFF101A28)
+private val MenBirthdayBorder = Color(0x55C7A35A)
+private val MenBirthdayGold = Color(0xFFC7A35A)
+private val MenBirthdayGoldSoft = Color(0xFFDDC187)
+private val MenBirthdaySubtle = Color(0xFFBDAE8C)
 
 data class BirthdayPlayer(
     val id: String,
@@ -211,9 +217,12 @@ fun BirthdaysSection(
         onDispose { listener.remove() }
     }
 
-    val accent = platform.accent
-    val cardBg = HomeDarkCard
-    val borderColor = accent.copy(alpha = 0.15f)
+    val isMen = platform == Platform.MEN
+    val accent = if (isMen) MenBirthdayGold else platform.accent
+    val accentSecondary = if (isMen) MenBirthdaySubtle else HomeTextSecondary
+    val cardBg = if (isMen) MenBirthdayBg else HomeDarkCard
+    val rowBg = if (isMen) MenBirthdaySurface else Color(0xFF0A0E14).copy(alpha = 0.5f)
+    val borderColor = if (isMen) MenBirthdayBorder else accent.copy(alpha = 0.15f)
 
     Column(
         modifier = Modifier
@@ -243,7 +252,7 @@ fun BirthdaysSection(
             Spacer(Modifier.width(12.dp))
             Text(
                 text = stringResource(R.string.birthdays_title),
-                style = boldTextStyle(HomeTextPrimary, 15.sp)
+                style = boldTextStyle(if (isMen) MenBirthdayGoldSoft else HomeTextPrimary, 15.sp)
             )
             Spacer(Modifier.weight(1f))
             if (todayBirthdays.isNotEmpty()) {
@@ -266,6 +275,10 @@ fun BirthdaysSection(
                     player = player,
                     accent = accent,
                     isWomen = platform == Platform.WOMEN,
+                    isMen = isMen,
+                    rowBackground = rowBg,
+                    rowBorder = if (isMen) MenBirthdayBorder else HomeDarkCardBorder.copy(alpha = 0.4f),
+                    secondaryText = accentSecondary,
                     isSent = player.id in sentWishes.value,
                     onSendWishes = {
                         sendBirthdayWishes(context, player, senderName)
@@ -298,7 +311,7 @@ fun BirthdaysSection(
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = stringResource(R.string.birthdays_none_today),
-                        style = regularTextStyle(HomeTextSecondary, 13.sp)
+                        style = regularTextStyle(accentSecondary, 13.sp)
                     )
                 }
             }
@@ -313,7 +326,7 @@ fun BirthdaysSection(
                     .clip(RoundedCornerShape(8.dp))
                     .border(
                         1.dp,
-                        HomeDarkCardBorder.copy(alpha = 0.4f),
+                        if (isMen) MenBirthdayBorder else HomeDarkCardBorder.copy(alpha = 0.4f),
                         RoundedCornerShape(8.dp)
                     )
                     .clickable { showUpcoming = !showUpcoming }
@@ -323,13 +336,13 @@ fun BirthdaysSection(
             ) {
                 Text(
                     text = "📅 ${stringResource(R.string.birthdays_upcoming)} — ${upcomingBirthdays.size} ${stringResource(R.string.birthdays_players)}",
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    style = regularTextStyle(accentSecondary, 12.sp)
                 )
                 Spacer(Modifier.width(4.dp))
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = HomeTextSecondary,
+                    tint = accentSecondary,
                     modifier = Modifier
                         .size(16.dp)
                         .rotate(if (showUpcoming) 180f else 0f)
@@ -344,12 +357,19 @@ fun BirthdaysSection(
                 Column(modifier = Modifier.padding(top = 8.dp)) {
                     Text(
                         text = stringResource(R.string.birthdays_upcoming).uppercase(),
-                        style = boldTextStyle(HomeTextSecondary, 10.sp),
+                        style = boldTextStyle(accentSecondary, 10.sp),
                         letterSpacing = 1.sp,
                         modifier = Modifier.padding(bottom = 6.dp)
                     )
                     upcomingBirthdays.forEach { player ->
-                        UpcomingBirthdayRow(player = player, accent = accent)
+                        UpcomingBirthdayRow(
+                            player = player,
+                            accent = accent,
+                            isMen = isMen,
+                            rowBackground = if (isMen) MenBirthdaySurface else Color(0xFF0A0E14).copy(alpha = 0.3f),
+                            rowBorder = if (isMen) MenBirthdayBorder else HomeDarkCardBorder.copy(alpha = 0.3f),
+                            secondaryText = accentSecondary
+                        )
                         Spacer(Modifier.height(4.dp))
                     }
                 }
@@ -363,6 +383,10 @@ private fun BirthdayPlayerRow(
     player: BirthdayPlayer,
     accent: Color,
     isWomen: Boolean,
+    isMen: Boolean,
+    rowBackground: Color,
+    rowBorder: Color,
+    secondaryText: Color,
     isSent: Boolean,
     onSendWishes: () -> Unit
 ) {
@@ -370,10 +394,10 @@ private fun BirthdayPlayerRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                Color(0xFF0A0E14).copy(alpha = 0.5f),
+                rowBackground,
                 RoundedCornerShape(12.dp)
             )
-            .border(1.dp, HomeDarkCardBorder.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+            .border(1.dp, rowBorder, RoundedCornerShape(12.dp))
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -382,8 +406,8 @@ private fun BirthdayPlayerRow(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(HomeDarkCardBorder.copy(alpha = 0.2f), CircleShape)
-                .border(2.dp, HomeDarkCardBorder.copy(alpha = 0.6f), CircleShape),
+                .background(if (isMen) MenBirthdayBorder.copy(alpha = 0.2f) else HomeDarkCardBorder.copy(alpha = 0.2f), CircleShape)
+                .border(2.dp, if (isMen) MenBirthdayBorder.copy(alpha = 0.8f) else HomeDarkCardBorder.copy(alpha = 0.6f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             if (player.profileImage != null) {
@@ -397,7 +421,7 @@ private fun BirthdayPlayerRow(
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = null,
-                    tint = HomeTextSecondary,
+                    tint = secondaryText,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -409,7 +433,7 @@ private fun BirthdayPlayerRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = player.fullName,
-                style = boldTextStyle(HomeTextPrimary, 13.sp),
+                style = boldTextStyle(if (isMen) MenBirthdayGoldSoft else HomeTextPrimary, 13.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -421,12 +445,12 @@ private fun BirthdayPlayerRow(
                 if (metaParts.isNotEmpty()) {
                     Text(
                         text = metaParts.joinToString(" · "),
-                        style = regularTextStyle(HomeTextSecondary, 11.sp),
+                        style = regularTextStyle(secondaryText, 11.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    Text(" · ", style = regularTextStyle(HomeTextSecondary, 11.sp))
+                    Text(" · ", style = regularTextStyle(secondaryText, 11.sp))
                 }
                 Text(
                     text = "${stringResource(if (isWomen) R.string.birthdays_turns_female else R.string.birthdays_turns_male)} ${player.turnsAge}",
@@ -439,7 +463,7 @@ private fun BirthdayPlayerRow(
             if (!player.agentInChargeName.isNullOrBlank()) {
                 Text(
                     text = "${stringResource(R.string.birthdays_agent)}: ${player.agentInChargeName}",
-                    style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 10.sp),
+                    style = regularTextStyle(secondaryText.copy(alpha = 0.72f), 10.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -495,18 +519,22 @@ private fun BirthdayPlayerRow(
 @Composable
 private fun UpcomingBirthdayRow(
     player: BirthdayPlayer,
-    accent: Color
+    accent: Color,
+    isMen: Boolean,
+    rowBackground: Color,
+    rowBorder: Color,
+    secondaryText: Color
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                Color(0xFF0A0E14).copy(alpha = 0.3f),
+                rowBackground,
                 RoundedCornerShape(12.dp)
             )
             .border(
                 1.dp,
-                HomeDarkCardBorder.copy(alpha = 0.3f),
+                rowBorder,
                 RoundedCornerShape(12.dp)
             )
             .padding(10.dp),
@@ -517,8 +545,8 @@ private fun UpcomingBirthdayRow(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(HomeDarkCardBorder.copy(alpha = 0.2f), CircleShape)
-                .border(2.dp, HomeDarkCardBorder.copy(alpha = 0.6f), CircleShape),
+                .background(if (isMen) MenBirthdayBorder.copy(alpha = 0.2f) else HomeDarkCardBorder.copy(alpha = 0.2f), CircleShape)
+                .border(2.dp, if (isMen) MenBirthdayBorder.copy(alpha = 0.8f) else HomeDarkCardBorder.copy(alpha = 0.6f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             if (player.profileImage != null) {
@@ -532,7 +560,7 @@ private fun UpcomingBirthdayRow(
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = null,
-                    tint = HomeTextSecondary,
+                    tint = secondaryText,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -543,7 +571,7 @@ private fun UpcomingBirthdayRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = player.fullName,
-                style = boldTextStyle(HomeTextPrimary, 13.sp),
+                style = boldTextStyle(if (isMen) MenBirthdayGoldSoft else HomeTextPrimary, 13.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -551,22 +579,22 @@ private fun UpcomingBirthdayRow(
                 player.club?.let {
                     Text(
                         text = it,
-                        style = regularTextStyle(HomeTextSecondary, 11.sp),
+                        style = regularTextStyle(secondaryText, 11.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    Text(" · ", style = regularTextStyle(HomeTextSecondary, 11.sp))
+                    Text(" · ", style = regularTextStyle(secondaryText, 11.sp))
                 }
                 Text(
                     text = player.dateLabel,
-                    style = regularTextStyle(HomeTextSecondary, 11.sp)
+                    style = regularTextStyle(secondaryText, 11.sp)
                 )
             }
             if (!player.agentInChargeName.isNullOrBlank()) {
                 Text(
                     text = "${stringResource(R.string.birthdays_agent)}: ${player.agentInChargeName}",
-                    style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 10.sp),
+                    style = regularTextStyle(secondaryText.copy(alpha = 0.72f), 10.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -578,9 +606,9 @@ private fun UpcomingBirthdayRow(
         // Days badge
         Text(
             text = stringResource(R.string.birthdays_in_days, player.daysUntil),
-            style = boldTextStyle(Color(0xFFFFA500), 10.sp),
+            style = boldTextStyle(if (isMen) MenBirthdayGold else Color(0xFFFFA500), 10.sp),
             modifier = Modifier
-                .background(Color(0xFFFFA500).copy(alpha = 0.12f), RoundedCornerShape(6.dp))
+                .background((if (isMen) MenBirthdayGold else Color(0xFFFFA500)).copy(alpha = 0.12f), RoundedCornerShape(6.dp))
                 .padding(horizontal = 8.dp, vertical = 3.dp)
         )
     }

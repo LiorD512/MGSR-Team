@@ -290,7 +290,7 @@ async function playersAddNote(data) {
               notification: {
                 title: notifTitle,
                 body: notifBody,
-                icon: "/logo.svg",
+                icon: "/brit_circle_black_gold.svg?v=20260620",
                 tag: `note-tag-${playerId}-${Date.now()}`,
               },
               fcmOptions: { link: `/players/${playerRefId}` },

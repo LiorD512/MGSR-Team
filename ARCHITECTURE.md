@@ -1,7 +1,7 @@
 # MGSR Team — Complete Architecture Reference
 
 > **Every agent MUST read this file before writing a single line of code.**
-> Last updated: 2026-06-18
+> Last updated: 2026-06-20
 
 ---
 
@@ -261,7 +261,7 @@ Separate Gradle module for HTML scraping via JSoup:
 - Web login screen now presents BRIT Sport Group branding directly in the auth card and uses the shared black/gold visual palette instead of the older teal-accent treatment.
 - Web logo asset for user-visible surfaces is `mgsr-web/public/brit_circle_black_gold.svg` (used in app chrome, mobile header, shared pages, and share OG visuals).
 - Web mandate flows now use BRIT branding end-to-end: mandate PDF generator logo/source text and signing page metadata/footer labels.
-- The authenticated web app now uses a BRIT premium shell across desktop and mobile (`AppLayout`, `MobileHeader`, `MobileBottomTabBar`) with black/gold-glass surfaces; route hero/filter sections for dashboard, players, requests, tasks, shortlist, contacts, releases, contract-finisher, returnees, release-notifications, shadow-teams, and portfolio are aligned to that shared visual language.
+- The authenticated web app now uses a BRIT premium shell across desktop and mobile (`AppLayout`, `MobileHeader`, `MobileBottomTabBar`) with black/gold-glass surfaces; route hero/filter sections for dashboard, players, requests, tasks, shortlist, contacts, contract-finisher, returnees, release-notifications, shadow-teams, and portfolio are aligned to that shared visual language.
 - Tunnel (`/chat-room`) remains implemented, but is currently hidden from desktop and mobile navigation menus (commented nav entries) per management-web configuration request.
 - Desktop app-shell brand block now removes the eyebrow microcopy near the sidebar logo and renders a single gold BRIT Sport Group wordmark vertically centered with the logo, while preserving the original wordmark size.
 - Desktop app-shell sidebar brand link no longer renders the rounded white framed container behind the BRIT logo/wordmark; only the logo + text remain visible.
@@ -272,6 +272,7 @@ Separate Gradle module for HTML scraping via JSoup:
 - Players "With Mandate" accordion and internal list on web now use the BRIT gold palette (container, counter, labels, list rows, and expiry chips) instead of the previous blue accent treatment.
 - Contacts page (men platform) now uses BRIT gold accents across add CTA, filter chips, search focus, loading/empty states, contact avatar fallback, contact-type badges, and edit/phone actions; women and youth accent variants remain platform-specific.
 - Releases page now matches the new BRIT palette on web, including hero actions, value chips, search/filter/sort controls, loading and empty states, release cards, shortlist/bookmark states, and roster-teammates panels.
+- Release Notifications date sorting is now deterministic across Android + Web: sort by parsed `transferDate` (desc), then FeedEvents `timestamp` (desc), then market value (desc), so newest Transfermarkt releases stay at the top when users sort by date.
 - Returnees streaming endpoint (`mgsr-web/src/app/api/transfermarkt/returnees/stream/route.ts`) now emits periodic SSE heartbeats during long scrape batches to prevent proxy/browser idle disconnects that previously caused premature "Stream connection failed" in the Returnees UI.
 - Desktop app-shell desktop page chrome no longer renders the shared framed header card, status pills, or shared page-title headline; pages now begin directly with their own content.
 - Web Tasks page (men platform) now uses the BRIT gold/black treatment instead of the older teal/blue palette across the hero, toolbar actions, task cards, empty states, and create/edit task flows.
@@ -325,7 +326,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/shortlist` | Shortlist | Draft tracking from TM URLs |
 | `/contacts` | Contacts | Club/agency contact database |
 | `/requests` | Requests | Club player requests + matching workbench |
-| `/releases` | Releases | Recently released free agents |
+| `/releases` | Releases Redirect | Legacy route; redirects to `/release-notifications` |
 | `/contract-finisher` | Contract Finisher | Expiring contracts next window |
 | `/returnees` | Returnees | Players returning from loans |
 | `/war-room` | War Room | AI discovery candidates + scout agents |
@@ -866,10 +867,10 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 ### Releases
 | Aspect | Android | Web |
 |--------|---------|-----|
-| Screen | `ReleasesScreen` | `/releases/page.tsx` |
-| Data | Transfermarkt merged sources: newest transfers (`neuestetransfers`) filtered to destination club "Without club" + dedicated free-agents page (`vertragslosespieler`), collected across market-value buckets to avoid pagination truncation | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`); cache entries are post-enriched from player profile pages with citizenships, preferred foot, and club metadata; web Releases UI hard-caps visible players at €6M. `/release-notifications` manual "Fetch + Enrich now" triggers the real Cloud Run releases worker via callable (`triggerReleasesRefreshJob`) and now tracks both operation and execution IDs; completion requires Cloud Run execution success plus fresh `WorkerRuns/ReleasesRefreshWorker` success before enrichment starts, preventing premature 2-3s completion. |
+| Screen | `ReleasesScreen` | `/release-notifications/page.tsx` (primary). `/releases/page.tsx` redirects to it. |
+| Data | FeedEvents-driven notification releases (`NEW_RELEASE_FROM_CLUB` + `NOT_IN_DATABASE`) enriched from `releases-all` cache metadata; constrained to market value €150K-€4M and max age 33; manual Refresh button now triggers the same Cloud Run worker flow as web via callable (`triggerReleasesRefreshJob`) and polls callable status (`getReleasesRefreshJobStatus`) until operation+execution complete and `WorkerRuns/ReleasesRefreshWorker` has a fresh success run. | API route `/api/transfermarkt/releases` (Firestore cached key `releases-all`); notification releases are constrained to market value €150K-€4M and max age 33; `/release-notifications` manual "Fetch + Enrich now" triggers the real Cloud Run releases worker via callable (`triggerReleasesRefreshJob`) and tracks both operation and execution IDs; completion requires Cloud Run execution success plus fresh `WorkerRuns/ReleasesRefreshWorker` success before enrichment starts. |
 | UI/COPY | N/A | `/release-notifications/page.tsx` now uses the BRIT black/gold accent treatment on cards, filters, progress, and teammate badges; missing `release_notifications_*` keys plus the shared `releases_region` filter label were added to `LanguageContext` for complete EN/HE text rendering. |
-| Filters | Position, market value | Same; Web "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first |
+| Filters | Position + market value sort + date-added sort (date uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` descending) | Same; Web "date" sort uses `FeedEvents.NEW_RELEASE_FROM_CLUB.timestamp` so newly detected worker-added releases surface first |
 
 ### Contract Finishers
 | Aspect | Android | Web |
@@ -896,7 +897,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | `WarRoomScreen` + `WarRoomReportScreen` | `/war-room/page.tsx` |
 | Data | Vercel API → Render server (recruitment + scout reports) | Direct API route calls |
-| Features | AI-discovered candidates, scout agent profiles, per-position discovery | Same |
+| Features | AI-discovered candidates, scout agent profiles, **separate** `AI Scout` and `Find Next` tabs inside War Room command UI (UI-only split; same underlying `AiScoutViewModel` logic), command-shell presentation layer (active stage strip + framed stage workspace), and a new operations layer (tab-aware quick-action chips for refresh/filter/open-full-scout/switch-mode) for faster inner-screen workflow | Same |
 
 #### War Room Scout Agents List Behavior
 - Web Scout Agents tab now renders all profiles in one continuous list per country/agent (no pagination and no page indicator like `5/15`).
@@ -923,14 +924,14 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | `AiScoutScreen` | `/ai-scout/page.tsx` |
 | Data | Vercel API → Render server | API route `/api/scout/search` |
-| Features | Natural language search, rule-based query parsing (`parseFreeQuery.ts`) | Same + diversity modes (`strict`/`balanced`/`discovery`), seeded diversity re-ranking, novelty memory (seen-player penalties), and "search other" exclusion continuity |
+| Features | Natural language search, rule-based query parsing (`parseFreeQuery.ts`), and War Room embedded `warRoomMode` command strip (3-step workflow guidance: query → analyze → shortlist) when rendered inside `WarRoomScreen` | Same + diversity modes (`strict`/`balanced`/`discovery`), seeded diversity re-ranking, novelty memory (seen-player penalties), and "search other" exclusion continuity |
 
 ### Find Next
 | Aspect | Android | Web |
 |--------|---------|-----|
-| Screen | (inside AI Scout) | `/find-next/page.tsx` |
+| Screen | `Find Next` tab inside `WarRoomScreen` (and still available inside standalone `AiScoutScreen` tab switcher) | `/find-next/page.tsx` |
 | Data | Render server `/find_next` directly | Render server `/find_next` directly |
-| Features | "Find me the next Salah" — signature-based talent discovery | Same + expanded star examples, finer max market-value presets (€250K→€20M + no limit), age slider range 17-30, client-side diversity selection (league/club/nationality/value/age buckets), and per-query novelty memory to reduce repeated players across repeated searches |
+| Features | "Find me the next Salah" — signature-based talent discovery with web-aligned settings: min/max age, min/max market-value, expanded star examples, extended value presets (€100K→€20M + no limit), request normalization, client-side age/value post-filtering to guard against backend bound drift, and War Room embedded 3-step command strip (reference → range → hunt) for faster usage | Same + expanded star examples, finer max market-value presets (€250K→€20M + no limit), age slider range 17-30, client-side diversity selection (league/club/nationality/value/age buckets), and per-query novelty memory to reduce repeated players across repeated searches |
 
 ### Chat Room
 | Aspect | Android | Web |
@@ -1167,8 +1168,8 @@ Every write operation goes through this chain:
 | `mandateSigningCreate` | ✅ | ✅ | `phase6Misc.js` | Create mandate signing request |
 | `accountUpdate` | ✅ | ✅ | `phase7Account.js` | Update account (FCM tokens, language) |
 | `ifaFetchProfile` | ✅ | ✅ | `ifaFetch.js` | Fetch IFA player profile (NO AUTH) |
-| `triggerReleasesRefreshJob` | ❌ | ✅ | `index.js` | Manually execute Cloud Run `releases-refresh-job` |
-| `getReleasesRefreshJobStatus` | ❌ | ✅ | `index.js` | Poll latest releases worker status from `WorkerRuns` |
+| `triggerReleasesRefreshJob` | ✅ | ✅ | `index.js` | Manually execute Cloud Run `releases-refresh-job` |
+| `getReleasesRefreshJobStatus` | ✅ | ✅ | `index.js` | Poll latest releases worker status from `WorkerRuns` |
 
 ---
 

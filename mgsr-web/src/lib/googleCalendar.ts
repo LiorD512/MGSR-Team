@@ -1,13 +1,13 @@
 /**
- * Google Calendar sync for MGSR Tasks.
+ * Google Calendar sync for BRIT Sport Group Tasks.
  * Uses Google Identity Services (GIS) for OAuth and the Calendar REST API.
- * Creates all-day events on a dedicated "MGSR Tasks" calendar.
+ * Creates all-day events on a dedicated "BRIT Sport Group Tasks" calendar.
  */
 
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const CALENDAR_BASE = 'https://www.googleapis.com/calendar/v3';
-const MGSR_CALENDAR_SUMMARY = 'MGSR Tasks';
-const EVENT_PREFIX = '[MGSR]';
+const MGSR_CALENDAR_SUMMARY = 'BRIT Sport Group Tasks';
+const EVENT_PREFIX = '[BRIT Sport Group]';
 
 interface AgentTaskForSync {
   id: string;
@@ -89,7 +89,7 @@ async function calendarFetch(path: string, token: string, options: RequestInit =
 }
 
 /**
- * Find or create the dedicated MGSR Tasks calendar.
+ * Find or create the dedicated BRIT Sport Group Tasks calendar.
  */
 async function getOrCreateMGSRCalendar(token: string): Promise<string> {
   // List all calendars
@@ -104,7 +104,7 @@ async function getOrCreateMGSRCalendar(token: string): Promise<string> {
     method: 'POST',
     body: JSON.stringify({
       summary: MGSR_CALENDAR_SUMMARY,
-      description: 'Tasks synced from MGSR Team app',
+      description: 'Tasks synced from BRIT Sport Group app',
       timeZone: 'Asia/Jerusalem',
     }),
   });
@@ -112,7 +112,7 @@ async function getOrCreateMGSRCalendar(token: string): Promise<string> {
 }
 
 /**
- * Get existing MGSR events from the calendar to avoid duplicates.
+ * Get existing BRIT Sport Group events from the calendar to avoid duplicates.
  * Uses extendedProperties.private.mgsrTaskId for reliable matching.
  * Returns a Set of task IDs that already have calendar events.
  */

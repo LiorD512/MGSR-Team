@@ -169,6 +169,11 @@
     <string name="shortlist_filter_position_cf">CF</string>
     <string name="shortlist_filter_position_ss">SS</string>
 
+    <!-- Releases: Sort -->
+    <string name="releases_sort_options">Sort</string>
+    <string name="releases_sort_date_added">Date Added</string>
+    <string name="releases_sort_market_value">Market Value</string>
+
     <string name="contacts_screen_search_hint">Search by name, club or country</string>
     <string name="contacts_filter_all">All</string>
     <string name="add_player_screen_hint">Search</string>
@@ -659,6 +664,8 @@
     <!-- Releases Screen -->
     <string name="releases_title">Releases</string>
     <string name="releases_subtitle">Latest free agents from Transfermarkt</string>
+    <string name="releases_manual_refresh">Refresh</string>
+    <string name="releases_manual_refreshing">Refreshing…</string>
     <string name="releases_tm_down">Transfermarkt is down\nTry again later</string>
     <string name="releases_stat_shortlisted">Shortlisted</string>
     <string name="releases_stat_visible">Visible</string>
@@ -1396,11 +1403,26 @@
     <string name="ai_scout_real_stats">Real Stats</string>
     <string name="ai_scout_tab_scout">AI Scout</string>
     <string name="ai_scout_tab_find_next">Find The Next</string>
+    <string name="ai_scout_war_room_strip_title">Scout Command Workflow</string>
+    <string name="ai_scout_war_room_strip_subtitle">Build a query, run analysis, and move only high-value fits to shortlist.</string>
+    <string name="ai_scout_war_room_step_query">Query</string>
+    <string name="ai_scout_war_room_step_analyze">Analyze</string>
+    <string name="ai_scout_war_room_step_shortlist">Shortlist</string>
+    <string name="ai_scout_find_next_war_room_strip_title">Find Next Workflow</string>
+    <string name="ai_scout_find_next_war_room_strip_subtitle">Set your reference star and value/age range, then hunt affordable lookalikes.</string>
+    <string name="ai_scout_find_next_step_reference">Reference</string>
+    <string name="ai_scout_find_next_step_range">Range</string>
+    <string name="ai_scout_find_next_step_hunt">Hunt</string>
     <string name="ai_scout_find_next_hero_title">Find Me The Next…</string>
-    <string name="ai_scout_find_next_hero_subtitle">Find young, affordable players showing early statistical signs of star potential</string>
+    <string name="ai_scout_find_next_hero_subtitle">Find young, affordable players showing early statistical signs of next-superstar potential</string>
     <string name="ai_scout_find_next_player_label">Reference player name</string>
     <string name="ai_scout_find_next_placeholder">e.g. Mohamed Salah</string>
-    <string name="ai_scout_find_next_age_max">Max age: %d</string>
+    <string name="ai_scout_find_next_age_max">Age range: 17-%d</string>
+    <string name="ai_scout_find_next_age_range">Age range: %1$d-%2$d</string>
+    <string name="ai_scout_find_next_age_min">Minimum age</string>
+    <string name="ai_scout_find_next_age_max_label">Maximum age</string>
+    <string name="ai_scout_find_next_value_range_title">Market value range</string>
+    <string name="ai_scout_find_next_value_min">Minimum market value</string>
     <string name="ai_scout_find_next_value_max">Max market value</string>
     <string name="ai_scout_find_next_no_limit">No limit</string>
     <string name="ai_scout_find_next_search_button">Find The Next</string>
@@ -1409,9 +1431,21 @@
 
     <!-- War Room -->
     <string name="war_room_title">War Room</string>
+    <string name="war_room_subtitle">Elite Decision Command</string>
     <string name="war_room_tab_discovery">Discovery</string>
     <string name="war_room_tab_agents">Agents</string>
     <string name="war_room_tab_ai_scout">AI Scout</string>
+    <string name="war_room_tab_find_next">Find The Next</string>
+    <string name="war_room_stage_discovery_subtitle">Signal sweep across hidden gems and request matches</string>
+    <string name="war_room_stage_agents_subtitle">Agent network watchlist with real-time country intelligence</string>
+    <string name="war_room_stage_ai_scout_subtitle">Natural-language scouting engine for tactical market fit</string>
+    <string name="war_room_stage_find_next_subtitle">Star-clone hunt using age and value range targeting</string>
+    <string name="war_room_stage_metric_candidates">candidates</string>
+    <string name="war_room_stage_metric_profiles">profiles</string>
+    <string name="war_room_stage_metric_live_signals">signals</string>
+    <string name="war_room_stage_metric_targets">targets</string>
+    <string name="war_room_open_full_ai_scout">Open full AI Scout</string>
+    <string name="war_room_switch_ai_find_next">Switch AI Scout / Find Next</string>
     <string name="war_room_discovery_title">Player Discovery</string>
     <string name="war_room_discovery_subtitle">AI-discovered candidates from your requests, hidden gems, and agent picks.</string>
     <string name="war_room_refresh">Refresh</string>

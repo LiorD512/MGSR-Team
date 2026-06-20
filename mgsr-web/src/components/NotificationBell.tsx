@@ -506,7 +506,7 @@ export default function NotificationBell({ variant = 'sidebar' }: { variant?: 's
       {toast && (
         <div className="fixed top-4 right-4 z-50 max-w-sm bg-mgsr-card border border-mgsr-border rounded-xl shadow-2xl p-4 animate-in slide-in-from-top-2">
           <div className="flex items-start gap-3">
-            <img src="/logo.svg" alt="" className="w-8 h-8 shrink-0 mt-0.5" />
+            <img src="/brit_circle_black_gold.svg" alt="" className="w-8 h-8 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-mgsr-text">{toast.title}</p>
               <p className="text-xs text-mgsr-muted mt-0.5">{toast.body}</p>

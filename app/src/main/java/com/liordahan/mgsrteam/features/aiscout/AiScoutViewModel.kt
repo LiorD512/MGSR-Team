@@ -30,7 +30,9 @@ data class AiScoutUiState(
 
 data class FindNextUiState(
     val playerName: String = "",
+    val ageMin: Int = 17,
     val ageMax: Int = 23,
+    val valueMin: Int = 100_000,
     val valueMax: Int = 3_000_000,
     val isSearching: Boolean = false,
     val response: FindNextResponse? = null,
@@ -50,7 +52,9 @@ abstract class IAiScoutViewModel : ViewModel() {
     abstract fun clearSearch()
     abstract fun useExample(example: String)
     abstract fun updateFindNextPlayerName(name: String)
+    abstract fun updateFindNextAgeMin(age: Int)
     abstract fun updateFindNextAgeMax(age: Int)
+    abstract fun updateFindNextValueMin(value: Int)
     abstract fun updateFindNextValueMax(value: Int)
     abstract fun findNextSearch()
 }
@@ -195,20 +199,61 @@ class AiScoutViewModel(
         _findNextState.update { it.copy(playerName = name, errorMessage = null) }
     }
 
+    override fun updateFindNextAgeMin(age: Int) {
+        _findNextState.update {
+            val normalizedMin = age.coerceIn(17, 35)
+            val normalizedMax = it.ageMax.coerceAtLeast(normalizedMin)
+            it.copy(ageMin = normalizedMin, ageMax = normalizedMax)
+        }
+    }
+
     override fun updateFindNextAgeMax(age: Int) {
-        _findNextState.update { it.copy(ageMax = age) }
+        _findNextState.update {
+            val normalizedMax = age.coerceIn(17, 35)
+            val normalizedMin = it.ageMin.coerceAtMost(normalizedMax)
+            it.copy(ageMin = normalizedMin, ageMax = normalizedMax)
+        }
+    }
+
+    override fun updateFindNextValueMin(value: Int) {
+        _findNextState.update {
+            val normalizedMin = value.coerceAtLeast(0)
+            val normalizedMax = if (it.valueMax > 0 && it.valueMax < normalizedMin) {
+                normalizedMin
+            } else {
+                it.valueMax
+            }
+            it.copy(valueMin = normalizedMin, valueMax = normalizedMax)
+        }
     }
 
     override fun updateFindNextValueMax(value: Int) {
-        _findNextState.update { it.copy(valueMax = value) }
+        _findNextState.update {
+            val normalizedMax = value.coerceAtLeast(0)
+            val normalizedMin = if (normalizedMax > 0) {
+                it.valueMin.coerceAtMost(normalizedMax)
+            } else {
+                it.valueMin
+            }
+            it.copy(valueMin = normalizedMin, valueMax = normalizedMax)
+        }
     }
 
     override fun findNextSearch() {
         val name = _findNextState.value.playerName.trim()
         if (name.isBlank()) return
+        val current = _findNextState.value
+        val normalizedAgeMin = minOf(current.ageMin, current.ageMax)
+        val normalizedAgeMax = maxOf(current.ageMin, current.ageMax)
+        val normalizedValueMin = current.valueMin.coerceAtLeast(0)
+        val normalizedValueMax = if (current.valueMax > 0 && current.valueMax < normalizedValueMin) {
+            normalizedValueMin
+        } else {
+            current.valueMax
+        }
 
         // If search params changed, reset seen URLs for fresh results
-        val searchKey = "${name}|${_findNextState.value.ageMax}|${_findNextState.value.valueMax}"
+        val searchKey = "${name}|age:${normalizedAgeMin}-${normalizedAgeMax}|value:${normalizedValueMin}-${if (normalizedValueMax > 0) normalizedValueMax else "any"}"
         val currentSeenUrls = if (searchKey != _findNextState.value.lastSearchKey) {
             emptySet()
         } else {
@@ -227,20 +272,41 @@ class AiScoutViewModel(
                 withTimeout(120_000L) {
                     val request = FindNextRequest(
                         playerName = name,
-                        ageMax = _findNextState.value.ageMax,
-                        valueMax = _findNextState.value.valueMax,
+                        ageMin = normalizedAgeMin,
+                        ageMax = normalizedAgeMax,
+                        valueMin = normalizedValueMin,
+                        valueMax = normalizedValueMax,
                         lang = lang,
                         excludeUrls = currentSeenUrls.toList()
                     )
 
                     apiClient.findNext(request)
                         .onSuccess { response ->
-                            Log.d(TAG, "Find Next returned ${response.results.size} results")
-                            val newSeenUrls = currentSeenUrls + response.results.mapNotNull { it.url }
+                            val filteredResults = response.results.filter { player ->
+                                val playerAge = player.age.filter { it.isDigit() }.toIntOrNull()
+                                if (playerAge == null || playerAge < normalizedAgeMin || playerAge > normalizedAgeMax) {
+                                    return@filter false
+                                }
+
+                                val playerValue = parseMarketValueToEuro(player.marketValue)
+                                if (normalizedValueMin > 0 && (playerValue == null || playerValue < normalizedValueMin)) {
+                                    return@filter false
+                                }
+                                if (normalizedValueMax > 0 && playerValue != null && playerValue > normalizedValueMax) {
+                                    return@filter false
+                                }
+                                true
+                            }
+
+                            Log.d(TAG, "Find Next returned ${filteredResults.size} filtered results")
+                            val newSeenUrls = currentSeenUrls + filteredResults.mapNotNull { it.url }
                             _findNextState.update {
                                 it.copy(
                                     isSearching = false,
-                                    response = response,
+                                    response = response.copy(
+                                        results = filteredResults,
+                                        resultCount = filteredResults.size
+                                    ),
                                     errorMessage = response.error,
                                     seenUrls = newSeenUrls
                                 )
@@ -261,6 +327,17 @@ class AiScoutViewModel(
                     it.copy(isSearching = false, errorMessage = "Search timed out. Please try again.")
                 }
             }
+        }
+    }
+
+    private fun parseMarketValueToEuro(value: String?): Int? {
+        if (value.isNullOrBlank()) return null
+        val normalized = value.trim().replace(",", "").lowercase()
+        val number = normalized.filter { it.isDigit() || it == '.' }.toDoubleOrNull() ?: return null
+        return when {
+            normalized.contains("m") -> (number * 1_000_000).toInt()
+            normalized.contains("k") -> (number * 1_000).toInt()
+            else -> number.toInt()
         }
     }
 }
