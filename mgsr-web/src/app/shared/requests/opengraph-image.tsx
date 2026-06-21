@@ -13,7 +13,6 @@ const GOLD_DARK = '#916E46';
 const TEXT = '#F4F6F8';
 const MUTED = '#91A0AE';
 const BORDER = '#243445';
-const LOGO_URL = 'brit_circle_black_gold.svg';
 
 const POS_COLORS: Record<string, string> = {
   GK: '#F59E0B',
@@ -23,16 +22,6 @@ const POS_COLORS: Record<string, string> = {
   LW: '#EC4899', RW: '#EC4899',
   CF: '#EF4444', SS: '#F87171',
 };
-
-function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    const u = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-    return u.startsWith('http') ? u : `https://${u}`;
-  }
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return 'http://localhost:3000';
-}
 
 export default async function OpenGraphImage() {
   const data = await getRequestsData('men');
@@ -116,12 +105,18 @@ export default async function OpenGraphImage() {
                 width: 42,
                 height: 42,
                 borderRadius: 999,
-                overflow: 'hidden',
                 border: '1px solid rgba(229,203,165,0.2)',
                 boxShadow: '0 0 24px rgba(229,203,165,0.14)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: `linear-gradient(135deg, ${GOLD}, ${GOLD_DARK})`,
+                color: BG,
+                fontSize: 20,
+                fontWeight: 800,
               }}
             >
-              <img src={`${getBaseUrl()}/${LOGO_URL}`} alt="" width={42} height={42} />
+              B
             </div>
             <span
               style={{
