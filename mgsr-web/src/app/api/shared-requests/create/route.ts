@@ -25,18 +25,31 @@ export async function POST(request: NextRequest) {
     const uid = decoded.uid;
 
     const body = await request.json();
-    const { platform, showClubs, recipientLabel } = body as {
+    const { platform, showClubs, recipientLabel, allowedCountries } = body as {
       platform?: string;
       showClubs?: boolean;
       recipientLabel?: string;
+      allowedCountries?: string[];
     };
 
     const validPlatform = ['men', 'women', 'youth'].includes(platform || '') ? platform : 'men';
+
+    const normalizedCountries = Array.isArray(allowedCountries)
+      ? Array.from(
+          new Set(
+            allowedCountries
+              .map((country) => (typeof country === 'string' ? country.trim() : ''))
+              .filter((country) => country.length > 0)
+              .slice(0, 60),
+          ),
+        )
+      : [];
 
     const doc = {
       platform: validPlatform,
       showClubs: showClubs === true,
       recipientLabel: recipientLabel?.trim()?.slice(0, 100) || null,
+      allowedCountries: normalizedCountries,
       createdBy: uid,
       createdAt: Date.now(),
       revoked: false,

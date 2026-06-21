@@ -34,8 +34,13 @@ const POSITION_ORDER = [
   'GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LM', 'RM', 'LW', 'RW', 'CF', 'SS',
 ];
 
+function normalizeCountry(country: string): string {
+  return country.trim().toLowerCase();
+}
+
 export const getRequestsData = cache(async function getRequestsData(
-  platform: Platform = 'men'
+  platform: Platform = 'men',
+  options?: { allowedCountries?: string[] }
 ): Promise<RequestsPageData | null> {
   try {
     const { getFirebaseAdmin } = await import('@/lib/firebaseAdmin');
@@ -49,6 +54,12 @@ export const getRequestsData = cache(async function getRequestsData(
     const snapshot = await db
       .collection(collection)
       .get();
+
+    const allowedCountrySet = new Set(
+      (options?.allowedCountries ?? [])
+        .map((country) => normalizeCountry(country))
+        .filter((country) => country.length > 0),
+    );
 
     const requests: SharedRequest[] = snapshot.docs
       .map((doc) => {
@@ -73,6 +84,12 @@ export const getRequestsData = cache(async function getRequestsData(
       };
     })
     .filter((r) => !r.status || r.status === 'pending')
+    .filter((r) => {
+      if (allowedCountrySet.size === 0) return true;
+      const country = r.clubCountry?.trim();
+      if (!country) return false;
+      return allowedCountrySet.has(normalizeCountry(country));
+    })
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
     // Translate Hebrew notes to English via Gemini

@@ -3,6 +3,16 @@
 import { useState } from 'react';
 import type { RequestsPageData, SharedRequest } from './getRequestsData';
 
+const BRIT_LOGO = '/brit_circle_black_gold.svg';
+const BG = '#081018';
+const CARD = '#111A26';
+const PANEL = '#162230';
+const GOLD = '#E5CBA5';
+const GOLD_DARK = '#916E46';
+const TEXT = '#F4F6F8';
+const MUTED = '#91A0AE';
+const BORDER = '#243445';
+
 /* ─── Position Metadata ─── */
 
 const POSITION_NAMES: Record<string, string> = {
@@ -134,15 +144,15 @@ function RequestCard({
       className="req-card-reveal group relative rounded-2xl p-5 transition-all duration-300 hover:-translate-y-px"
       style={{
         animationDelay: `${delay}s`,
-        background: '#1A2736',
-        border: '1px solid #253545',
+        background: CARD,
+        border: `1px solid ${BORDER}`,
       }}
     >
       {/* Top accent line */}
       <div
         className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
         style={{
-          background: `linear-gradient(90deg, transparent, ${posColor}40, transparent)`,
+          background: `linear-gradient(90deg, transparent, ${GOLD}90, transparent)`,
         }}
       />
 
@@ -154,20 +164,20 @@ function RequestCard({
               src={req.clubLogo}
               alt=""
               className="w-7 h-7 rounded-lg object-contain shrink-0"
-              style={{ background: 'rgba(255,255,255,0.06)' }}
+              style={{ background: 'rgba(229,203,165,0.08)' }}
               onError={() => setImgError(true)}
             />
           ) : (
             <div
               className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.06)' }}
+              style={{ background: 'rgba(229,203,165,0.08)' }}
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="7" stroke="#6B7B8D" strokeWidth="1" opacity="0.3" />
+                <circle cx="8" cy="8" r="7" stroke={GOLD} strokeWidth="1" opacity="0.35" />
               </svg>
             </div>
           )}
-          <span className="font-display text-[15px] font-semibold text-[#E8EAED] truncate">
+          <span className="font-display text-[15px] font-semibold text-[#F4F6F8] truncate">
             {req.clubName}
           </span>
         </div>
@@ -176,11 +186,11 @@ function RequestCard({
         <div className="flex items-center gap-2.5 mb-4">
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center text-[#6B7B8D]"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ background: 'rgba(229,203,165,0.06)', border: '1px solid rgba(229,203,165,0.14)' }}
           >
             <LockIcon />
           </div>
-          <span className="font-premium text-xs text-[#6B7B8D] italic tracking-wide">
+          <span className="font-premium text-xs text-[#91A0AE] italic tracking-wide">
             Confidential
           </span>
         </div>
@@ -196,14 +206,14 @@ function RequestCard({
               style={
                 pill.accent
                   ? {
-                      background: 'rgba(77,182,172,0.08)',
-                      border: '1px solid rgba(77,182,172,0.2)',
-                      color: '#4DB6AC',
+                      background: 'rgba(229,203,165,0.08)',
+                      border: '1px solid rgba(229,203,165,0.2)',
+                      color: GOLD,
                     }
                   : {
-                      background: '#0F1923',
-                      border: '1px solid #253545',
-                      color: '#B0B8C1',
+                      background: PANEL,
+                      border: `1px solid ${BORDER}`,
+                      color: '#B9C3CC',
                     }
               }
             >
@@ -223,7 +233,7 @@ function RequestCard({
         <div
           className="mt-4 py-2.5 px-4 rounded-xl text-[13px] font-sans text-[#6B7B8D] leading-relaxed italic"
           style={{
-            background: 'rgba(255,255,255,0.02)',
+            background: 'rgba(229,203,165,0.04)',
             borderLeft: `3px solid ${posColor}50`,
           }}
           dir="ltr"
@@ -247,6 +257,8 @@ export default function SharedRequestsContent({
   platform: string;
 }) {
   const [expandedPositions, setExpandedPositions] = useState<Set<string>>(new Set());
+  const [selectedPosition, setSelectedPosition] = useState<string>('all');
+  const [selectedCountry, setSelectedCountry] = useState<string>('all');
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -256,25 +268,19 @@ export default function SharedRequestsContent({
       <div
         dir="ltr"
         className="min-h-screen flex items-center justify-center"
-        style={{ background: '#0A1018' }}
+        style={{ background: BG }}
       >
         <div className="text-center px-8">
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-            style={{ background: 'rgba(77,182,172,0.08)', border: '1px solid rgba(77,182,172,0.15)' }}
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden"
+            style={{ background: 'rgba(229,203,165,0.08)', border: '1px solid rgba(229,203,165,0.18)' }}
           >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4DB6AC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-              <polyline points="10 9 9 9 8 9" />
-            </svg>
+            <img src={BRIT_LOGO} alt="BRIT Sport Group" className="w-full h-full object-cover" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-[#E8EAED] mb-3">
+          <h1 className="font-display text-2xl font-bold text-[#F4F6F8] mb-3">
             No Active Requests
           </h1>
-          <p className="text-[#6B7B8D] font-premium text-sm tracking-wide">
+          <p className="text-[#91A0AE] font-premium text-sm tracking-wide">
             There are currently no open recruitment requests.
           </p>
         </div>
@@ -282,7 +288,34 @@ export default function SharedRequestsContent({
     );
   }
 
-  const positions = Object.keys(data.groupedByPosition);
+  const positionOptions = Object.keys(data.groupedByPosition);
+  const countryOptions = Array.from(
+    new Set(
+      data.requests
+        .map((req) => req.clubCountry?.trim())
+        .filter((country): country is string => !!country),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const filteredGroupedByPosition = Object.fromEntries(
+    Object.entries(data.groupedByPosition)
+      .filter(([pos]) => selectedPosition === 'all' || pos === selectedPosition)
+      .map(([pos, countries]) => {
+        const filteredCountries = Object.fromEntries(
+          Object.entries(countries).filter(([country]) => selectedCountry === 'all' || country === selectedCountry),
+        );
+        return [pos, filteredCountries];
+      })
+      .filter(([, countries]) => Object.keys(countries).length > 0),
+  ) as Record<string, Record<string, SharedRequest[]>>;
+
+  const visiblePositionKeys = Object.keys(filteredGroupedByPosition);
+  const visibleRequestsCount = Object.values(filteredGroupedByPosition)
+    .flatMap((countries) => Object.values(countries))
+    .reduce((sum, requests) => sum + requests.length, 0);
+  const visibleMarketsCount = new Set(
+    Object.values(filteredGroupedByPosition).flatMap((countries) => Object.keys(countries)),
+  ).size;
 
   let globalCardIdx = 0;
 
@@ -335,7 +368,7 @@ export default function SharedRequestsContent({
         .line-extend     { animation: lineExtend 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; transform-origin: left; }
 
         .teal-gradient-text {
-          background: linear-gradient(135deg, #4DB6AC, #39D164);
+          background: linear-gradient(135deg, #E5CBA5, #916E46);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -345,8 +378,8 @@ export default function SharedRequestsContent({
           position: absolute;
           inset: 0;
           background-image:
-            linear-gradient(rgba(77,182,172,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(77,182,172,0.03) 1px, transparent 1px);
+            linear-gradient(rgba(229,203,165,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(229,203,165,0.03) 1px, transparent 1px);
           background-size: 60px 60px;
           animation: gridPulse 8s ease-in-out infinite;
           pointer-events: none;
@@ -361,8 +394,8 @@ export default function SharedRequestsContent({
         }
 
         .stat-card-glow {
-          background: #1A2736;
-          border: 1px solid #253545;
+          background: #111A26;
+          border: 1px solid #243445;
           position: relative;
           overflow: hidden;
         }
@@ -371,7 +404,7 @@ export default function SharedRequestsContent({
           position: absolute;
           top: 0; left: 0; right: 0;
           height: 2px;
-          background: linear-gradient(90deg, transparent, #4DB6AC, transparent);
+          background: linear-gradient(90deg, transparent, #E5CBA5, transparent);
         }
 
         .country-flag-circle {
@@ -387,7 +420,7 @@ export default function SharedRequestsContent({
       <div
         dir="ltr"
         className="min-h-screen relative overflow-hidden"
-        style={{ background: '#0A1018' }}
+        style={{ background: BG }}
       >
         {/* ═══ Grid background (matches landing) ═══ */}
         <div className="grid-bg" />
@@ -400,7 +433,7 @@ export default function SharedRequestsContent({
             right: '-8%',
             width: 500,
             height: 500,
-            background: 'radial-gradient(circle, rgba(77,182,172,0.08), transparent)',
+            background: 'radial-gradient(circle, rgba(229,203,165,0.12), transparent)',
           }}
         />
         <div
@@ -410,7 +443,7 @@ export default function SharedRequestsContent({
             left: '-5%',
             width: 350,
             height: 350,
-            background: 'radial-gradient(circle, rgba(57,209,100,0.05), transparent)',
+            background: 'radial-gradient(circle, rgba(145,110,70,0.08), transparent)',
             animationDelay: '-4s',
           }}
         />
@@ -420,17 +453,14 @@ export default function SharedRequestsContent({
           <div className="max-w-[820px] mx-auto px-6 sm:px-8 pt-14 sm:pt-20 pb-10">
             {/* Brand mark — matching landing page gradient */}
             <div className="flex items-center gap-3.5 mb-12">
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center font-display font-extrabold text-lg select-none"
-                style={{ background: 'linear-gradient(135deg, #4DB6AC, #39D164)', color: '#0A1018' }}
-              >
-                M
+              <div className="relative w-12 h-12 shrink-0 overflow-hidden rounded-full shadow-[0_0_28px_rgba(229,203,165,0.18)]">
+                <img src={BRIT_LOGO} alt="BRIT Sport Group" className="w-full h-full object-cover" />
               </div>
               <div className="flex flex-col">
-                <span className="font-display font-bold text-[13px] tracking-[0.2em] teal-gradient-text leading-none">
+                <span className="font-display font-bold text-[13px] tracking-[0.22em] text-[#E5CBA5] leading-none">
                   BRIT SPORT GROUP
                 </span>
-                <span className="font-premium text-[11px] tracking-[0.12em] uppercase text-[#6B7B8D] mt-0.5">
+                <span className="font-premium text-[11px] tracking-[0.12em] uppercase text-[#91A0AE] mt-0.5">
                   {PLATFORM_LABELS[platform] || 'Football'}
                 </span>
               </div>
@@ -447,7 +477,7 @@ export default function SharedRequestsContent({
             </h1>
 
             {/* Subtitle */}
-            <p className="mt-4 text-base text-[#B0B8C1] font-light max-w-[500px] leading-relaxed">
+            <p className="mt-4 text-base text-[#C0C8D0] font-light max-w-[500px] leading-relaxed">
               Live overview of current player requirements across all markets. Updated in real-time.
             </p>
 
@@ -478,30 +508,69 @@ export default function SharedRequestsContent({
         >
           <div className="grid grid-cols-3 gap-3 sm:gap-4">
             {[
-              { value: data.totalCount, label: 'Active Requests' },
-              { value: Object.keys(data.positionCounts).length, label: 'Positions' },
-              { value: Object.keys(data.countryCounts).length, label: 'Markets' },
+              { value: visibleRequestsCount, label: 'Visible Requests' },
+              { value: visiblePositionKeys.length, label: 'Positions' },
+              { value: visibleMarketsCount, label: 'Markets' },
             ].map((stat, i) => (
               <div
                 key={i}
                 className="stat-card-glow rounded-2xl px-3 py-5 sm:py-6 text-center transition-all duration-300 hover:border-[#2E4358]"
               >
-                <div className="text-3xl sm:text-4xl font-display font-extrabold text-[#E8EAED]">
+                <div className="text-3xl sm:text-4xl font-display font-extrabold text-[#F4F6F8]">
                   {stat.value}
                 </div>
-                <div className="text-[10px] sm:text-[11px] font-premium uppercase tracking-[0.15em] text-[#6B7B8D] mt-1.5">
+                <div className="text-[10px] sm:text-[11px] font-premium uppercase tracking-[0.15em] text-[#91A0AE] mt-1.5">
                   {stat.label}
                 </div>
               </div>
             ))}
           </div>
+
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="rounded-xl border border-[#243445] bg-[#111A26] px-3 py-2.5 text-sm text-[#C0C8D0]">
+              <span className="block text-[10px] uppercase tracking-[0.12em] text-[#91A0AE] mb-1">Position filter</span>
+              <select
+                value={selectedPosition}
+                onChange={(e) => setSelectedPosition(e.target.value)}
+                className="w-full bg-transparent text-[#F4F6F8] focus:outline-none"
+              >
+                <option value="all" className="bg-[#0D141F]">All positions</option>
+                {positionOptions.map((pos) => (
+                  <option key={pos} value={pos} className="bg-[#0D141F]">
+                    {POSITION_NAMES[pos] || pos}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="rounded-xl border border-[#243445] bg-[#111A26] px-3 py-2.5 text-sm text-[#C0C8D0]">
+              <span className="block text-[10px] uppercase tracking-[0.12em] text-[#91A0AE] mb-1">Country filter</span>
+              <select
+                value={selectedCountry}
+                onChange={(e) => setSelectedCountry(e.target.value)}
+                className="w-full bg-transparent text-[#F4F6F8] focus:outline-none"
+              >
+                <option value="all" className="bg-[#0D141F]">All countries</option>
+                {countryOptions.map((country) => (
+                  <option key={country} value={country} className="bg-[#0D141F]">
+                    {country}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         {/* ═══ POSITION SECTIONS ═══ */}
         <div className="max-w-[820px] mx-auto px-6 sm:px-8 pb-24 relative z-10">
-          <div className="space-y-8">
-            {positions.map((pos, pi) => {
-              const countries = data.groupedByPosition[pos];
+          {visiblePositionKeys.length === 0 ? (
+            <div className="rounded-2xl border border-[#243445] bg-[#111A26] p-8 text-center text-[#91A0AE]">
+              No requests match the selected filters.
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {visiblePositionKeys.map((pos, pi) => {
+                const countries = filteredGroupedByPosition[pos];
               const count = data.positionCounts[pos] || 0;
               const color = POSITION_COLORS[pos] || '#6B7280';
               const name = POSITION_NAMES[pos] || pos;
@@ -524,8 +593,8 @@ export default function SharedRequestsContent({
                     <div
                       className="w-[52px] h-[52px] sm:w-14 sm:h-14 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 group-hover/hdr:scale-105 font-display font-extrabold text-base sm:text-lg"
                       style={{
-                        background: `color-mix(in srgb, ${color} 12%, transparent)`,
-                        border: `1.5px solid color-mix(in srgb, ${color} 25%, transparent)`,
+                        background: 'linear-gradient(135deg, rgba(229,203,165,0.14), rgba(145,110,70,0.08))',
+                        border: '1.5px solid rgba(229,203,165,0.22)',
                         color: color,
                       }}
                     >
@@ -537,7 +606,7 @@ export default function SharedRequestsContent({
                       <h2 className="font-display text-base sm:text-lg font-bold text-[#E8EAED] truncate">
                         {name}
                       </h2>
-                      <span className="text-xs font-premium text-[#6B7B8D] tracking-wide">
+                      <span className="text-xs font-premium text-[#91A0AE] tracking-wide">
                         {count} {count === 1 ? 'request' : 'requests'} · {category}
                       </span>
                     </div>
@@ -546,8 +615,8 @@ export default function SharedRequestsContent({
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300"
                       style={{
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.06)',
+                        background: 'rgba(229,203,165,0.04)',
+                        border: '1px solid rgba(229,203,165,0.08)',
                         transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
                       }}
                     >
@@ -587,13 +656,13 @@ export default function SharedRequestsContent({
                               ) : flag ? (
                                 <span className="text-base leading-none">{flag}</span>
                               ) : null}
-                              <span className="text-[13px] font-premium font-medium text-[#B0B8C1] tracking-wide">
+                              <span className="text-[13px] font-premium font-medium text-[#C0C8D0] tracking-wide">
                                 {country !== 'Other' ? country : 'Various'}
                               </span>
-                              <div className="flex-1 h-px ml-1" style={{ background: 'rgba(255,255,255,0.04)' }} />
+                              <div className="flex-1 h-px ml-1" style={{ background: 'rgba(229,203,165,0.08)' }} />
                               <span
                                 className="text-[11px] font-premium tracking-wider"
-                                style={{ color: `${color}90` }}
+                                style={{ color: GOLD }}
                               >
                                 {requests.length}
                               </span>
@@ -621,28 +690,26 @@ export default function SharedRequestsContent({
                   )}
                 </div>
               );
-            })}
-          </div>
+              })}
+            </div>
+          )}
         </div>
 
         {/* ═══ FOOTER ═══ */}
-        <div className="relative z-10 border-t" style={{ borderColor: '#253545' }}>
+        <div className="relative z-10 border-t" style={{ borderColor: BORDER }}>
           <div className="max-w-[820px] mx-auto px-6 sm:px-8 py-12 text-center">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center font-display font-extrabold text-sm select-none"
-                style={{ background: 'linear-gradient(135deg, #4DB6AC, #39D164)', color: '#0A1018' }}
-              >
-                M
+              <div className="w-9 h-9 rounded-full overflow-hidden shadow-[0_0_20px_rgba(229,203,165,0.12)]">
+                <img src={BRIT_LOGO} alt="BRIT Sport Group" className="w-full h-full object-cover" />
               </div>
-              <span className="font-display font-bold text-sm tracking-[0.2em] text-[#B0B8C1] select-none">
+              <span className="font-display font-bold text-sm tracking-[0.2em] text-[#C0C8D0] select-none">
                 BRIT SPORT GROUP
               </span>
             </div>
-            <p className="text-[11px] font-premium text-[#6B7B8D] tracking-[0.12em] uppercase">
+            <p className="text-[11px] font-premium text-[#91A0AE] tracking-[0.12em] uppercase">
               Professional Football Recruitment
             </p>
-            <p className="text-[10px] font-premium text-[#6B7B8D]/40 tracking-wide mt-2">
+            <p className="text-[10px] font-premium text-[#91A0AE]/50 tracking-wide mt-2">
               This document is confidential and intended only for the recipient.
             </p>
           </div>

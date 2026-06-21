@@ -41,13 +41,31 @@ async function getTokenPlatform(token: string): Promise<Platform> {
   }
 }
 
+async function getTokenAllowedCountries(token: string): Promise<string[]> {
+  try {
+    const { getFirebaseAdmin } = await import('@/lib/firebaseAdmin');
+    const app = getFirebaseAdmin();
+    if (!app) return [];
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const db = getFirestore(app);
+    const snap = await db.collection('SharedRequestLinks').doc(token).get();
+    if (!snap.exists) return [];
+    const data = snap.data()!;
+    if (!Array.isArray(data.allowedCountries)) return [];
+    return data.allowedCountries.filter((country: unknown): country is string => typeof country === 'string');
+  } catch {
+    return [];
+  }
+}
+
 export default async function OpenGraphImage({
   params,
 }: {
   params: { token: string };
 }) {
   const platform = await getTokenPlatform(params.token);
-  const data = await getRequestsData(platform);
+  const allowedCountries = await getTokenAllowedCountries(params.token);
+  const data = await getRequestsData(platform, { allowedCountries });
   const count = data?.totalCount || 0;
   const positions = Object.keys(data?.positionCounts || {}).length;
   const countries = Object.keys(data?.countryCounts || {}).length;

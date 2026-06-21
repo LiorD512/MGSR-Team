@@ -12,6 +12,7 @@ interface TokenLinkData {
   revoked: boolean;
   createdBy: string;
   recipientLabel?: string | null;
+  allowedCountries?: string[];
 }
 
 const getTokenData = cache(async function getTokenData(
@@ -45,6 +46,9 @@ const getTokenData = cache(async function getTokenData(
       revoked: data.revoked === true,
       createdBy: data.createdBy || '',
       recipientLabel: data.recipientLabel || null,
+      allowedCountries: Array.isArray(data.allowedCountries)
+        ? data.allowedCountries.filter((country: unknown): country is string => typeof country === 'string')
+        : [],
     };
   } catch {
     return null;
@@ -82,7 +86,7 @@ export async function generateMetadata({
   }
 
   const platform = linkData.platform as Platform;
-  const data = await getRequestsData(platform);
+  const data = await getRequestsData(platform, { allowedCountries: linkData.allowedCountries ?? [] });
   const count = data?.totalCount || 0;
   const positions = Object.keys(data?.positionCounts || {}).length;
   const countries = Object.keys(data?.countryCounts || {}).length;
@@ -126,23 +130,19 @@ export default async function SharedRequestsTokenPage({
       <div
         dir="ltr"
         className="min-h-screen flex items-center justify-center"
-        style={{ background: '#0A1018' }}
+        style={{ background: '#081018' }}
       >
         <div className="text-center px-8">
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden"
+            style={{ background: 'rgba(229,203,165,0.08)', border: '1px solid rgba(229,203,165,0.18)' }}
           >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="15" y1="9" x2="9" y2="15" />
-              <line x1="9" y1="9" x2="15" y2="15" />
-            </svg>
+            <img src="/brit_circle_black_gold.svg" alt="BRIT Sport Group" className="w-full h-full object-cover" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-[#E8EAED] mb-3">
+          <h1 className="font-display text-2xl font-bold text-[#F4F6F8] mb-3">
             Link Not Found
           </h1>
-          <p className="text-[#6B7B8D] text-sm">
+          <p className="text-[#91A0AE] text-sm">
             This recruitment brief link does not exist or has been removed.
           </p>
         </div>
@@ -156,22 +156,19 @@ export default async function SharedRequestsTokenPage({
       <div
         dir="ltr"
         className="min-h-screen flex items-center justify-center"
-        style={{ background: '#0A1018' }}
+        style={{ background: '#081018' }}
       >
         <div className="text-center px-8">
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-            style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden"
+            style={{ background: 'rgba(229,203,165,0.08)', border: '1px solid rgba(229,203,165,0.18)' }}
           >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
+            <img src="/brit_circle_black_gold.svg" alt="BRIT Sport Group" className="w-full h-full object-cover" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-[#E8EAED] mb-3">
+          <h1 className="font-display text-2xl font-bold text-[#F4F6F8] mb-3">
             Access Revoked
           </h1>
-          <p className="text-[#6B7B8D] text-sm max-w-xs mx-auto">
+          <p className="text-[#91A0AE] text-sm max-w-xs mx-auto">
             The agent who shared this recruitment brief has revoked access to this link.
           </p>
         </div>
@@ -181,7 +178,7 @@ export default async function SharedRequestsTokenPage({
 
   // Active token — render the requests
   const platform = linkData.platform as Platform;
-  const data = await getRequestsData(platform);
+  const data = await getRequestsData(platform, { allowedCountries: linkData.allowedCountries ?? [] });
 
   if (!linkData.showClubs && data) {
     for (const req of data.requests) {

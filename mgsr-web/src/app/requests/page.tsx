@@ -174,6 +174,9 @@ export default function RequestsPage() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showManageLinks, setShowManageLinks] = useState(false);
   const [shareCreating, setShareCreating] = useState(false);
+  const [shareRecipientLabel, setShareRecipientLabel] = useState('');
+  const [shareCountriesMode, setShareCountriesMode] = useState<'all' | 'selected'>('all');
+  const [shareSelectedCountries, setShareSelectedCountries] = useState<string[]>([]);
   const [editingRequest, setEditingRequest] = useState<Request | null>(null);
   const [players, setPlayers] = useState<RosterPlayer[]>(cached?.players ?? []);
   const [expandedMatchingPlayers, setExpandedMatchingPlayers] = useState<Set<string>>(new Set());
@@ -457,6 +460,13 @@ export default function RequestsPage() {
     return Array.from(countrySet).sort((a, b) => a.localeCompare(b));
   }, [pendingRequests]);
 
+  useEffect(() => {
+    if (!showShareDialog) return;
+    setShareRecipientLabel('');
+    setShareCountriesMode('all');
+    setShareSelectedCountries(activeCountries);
+  }, [showShareDialog, activeCountries]);
+
   /** Filtered requests based on search, position, and match status */
   const filteredRequests = useMemo(() => {
     let list = pendingRequests;
@@ -645,6 +655,39 @@ export default function RequestsPage() {
       console.error('Delete request failed:', err);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const createAndShareRequestLink = async (showClubs: boolean) => {
+    if (!user) return;
+    setShareCreating(true);
+    try {
+      const token = await user.getIdToken();
+      const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
+      const countriesPayload = shareCountriesMode === 'selected'
+        ? shareSelectedCountries.filter((country) => country.trim().length > 0)
+        : [];
+      const res = await fetch('/api/shared-requests/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          platform: platformParam,
+          showClubs,
+          recipientLabel: shareRecipientLabel.trim() || undefined,
+          allowedCountries: countriesPayload,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const { token: shareToken } = await res.json();
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const shareUrl = `${baseUrl}/shared/requests/${shareToken}`;
+      const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
+      setShowShareDialog(false);
+      window.open(`https://wa.me/?text=${text}`, '_blank');
+    } catch (e) {
+      console.error('Share create failed:', e);
+    } finally {
+      setShareCreating(false);
     }
   };
 
@@ -1374,36 +1417,95 @@ export default function RequestsPage() {
                 maxLength={100}
                 className="w-full mb-4 px-3.5 py-2.5 rounded-xl bg-white/5 border border-mgsr-border text-mgsr-text text-sm placeholder:text-mgsr-muted/50 focus:outline-none focus:border-mgsr-teal/40"
                 dir={isRtl ? 'rtl' : 'ltr'}
+                value={shareRecipientLabel}
+                onChange={(e) => setShareRecipientLabel(e.target.value)}
               />
+              {activeCountries.length > 0 && (
+                <div className="mb-4 rounded-xl border border-mgsr-border p-3 bg-white/[0.03]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-mgsr-muted mb-2">
+                    {isHebrew ? 'מדינות בקישור' : 'Countries in link'}
+                  </p>
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setShareCountriesMode('all')}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs border transition ${
+                        shareCountriesMode === 'all'
+                          ? 'border-mgsr-teal/50 text-mgsr-teal bg-mgsr-teal/10'
+                          : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                      }`}
+                    >
+                      {isHebrew ? 'כל המדינות' : 'All countries'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShareCountriesMode('selected');
+                        if (shareSelectedCountries.length === 0) {
+                          setShareSelectedCountries(activeCountries);
+                        }
+                      }}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs border transition ${
+                        shareCountriesMode === 'selected'
+                          ? 'border-mgsr-teal/50 text-mgsr-teal bg-mgsr-teal/10'
+                          : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                      }`}
+                    >
+                      {isHebrew ? 'בחירה ידנית' : 'Select countries'}
+                    </button>
+                  </div>
+                  {shareCountriesMode === 'selected' && (
+                    <>
+                      <div className="flex gap-2 mb-2">
+                        <button
+                          type="button"
+                          className="text-xs text-mgsr-muted hover:text-mgsr-text"
+                          onClick={() => setShareSelectedCountries(activeCountries)}
+                        >
+                          {isHebrew ? 'בחר הכל' : 'Select all'}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs text-mgsr-muted hover:text-mgsr-text"
+                          onClick={() => setShareSelectedCountries([])}
+                        >
+                          {isHebrew ? 'נקה הכל' : 'Clear all'}
+                        </button>
+                      </div>
+                      <div className="max-h-28 overflow-y-auto pr-1 flex flex-wrap gap-1.5">
+                        {activeCountries.map((country) => {
+                          const selected = shareSelectedCountries.includes(country);
+                          return (
+                            <button
+                              key={country}
+                              type="button"
+                              onClick={() => {
+                                setShareSelectedCountries((prev) =>
+                                  prev.includes(country)
+                                    ? prev.filter((c) => c !== country)
+                                    : [...prev, country],
+                                );
+                              }}
+                              className={`px-2 py-1 rounded-full text-[11px] border transition ${
+                                selected
+                                  ? 'border-mgsr-teal/60 bg-mgsr-teal/15 text-mgsr-teal'
+                                  : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                              }`}
+                            >
+                              {country}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               <div className="flex flex-col gap-3">
                 <button
                   type="button"
-                  disabled={shareCreating}
-                  onClick={async () => {
-                    if (!user) return;
-                    setShareCreating(true);
-                    try {
-                      const token = await user.getIdToken();
-                      const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
-                      const recipientLabel = (document.getElementById('share-recipient-label') as HTMLInputElement)?.value?.trim() || undefined;
-                      const res = await fetch('/api/shared-requests/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ platform: platformParam, showClubs: true, recipientLabel }),
-                      });
-                      if (!res.ok) throw new Error('Failed');
-                      const { token: shareToken } = await res.json();
-                      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-                      const shareUrl = `${baseUrl}/shared/requests/${shareToken}`;
-                      const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
-                      setShowShareDialog(false);
-                      window.open(`https://wa.me/?text=${text}`, '_blank');
-                    } catch (e) {
-                      console.error('Share create failed:', e);
-                    } finally {
-                      setShareCreating(false);
-                    }
-                  }}
+                  disabled={shareCreating || (shareCountriesMode === 'selected' && shareSelectedCountries.length === 0)}
+                  onClick={async () => createAndShareRequestLink(true)}
                   className={`w-full px-4 py-3 rounded-xl font-semibold transition text-sm ${
                     isYouth
                       ? 'bg-[var(--youth-cyan)]/10 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/20 border border-[var(--youth-cyan)]/20'
@@ -1418,32 +1520,8 @@ export default function RequestsPage() {
                 </button>
                 <button
                   type="button"
-                  disabled={shareCreating}
-                  onClick={async () => {
-                    if (!user) return;
-                    setShareCreating(true);
-                    try {
-                      const token = await user.getIdToken();
-                      const platformParam = isWomen ? 'women' : isYouth ? 'youth' : 'men';
-                      const recipientLabel = (document.getElementById('share-recipient-label') as HTMLInputElement)?.value?.trim() || undefined;
-                      const res = await fetch('/api/shared-requests/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ platform: platformParam, showClubs: false, recipientLabel }),
-                      });
-                      if (!res.ok) throw new Error('Failed');
-                      const { token: shareToken } = await res.json();
-                      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-                      const shareUrl = `${baseUrl}/shared/requests/${shareToken}`;
-                      const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
-                      setShowShareDialog(false);
-                      window.open(`https://wa.me/?text=${text}`, '_blank');
-                    } catch (e) {
-                      console.error('Share create failed:', e);
-                    } finally {
-                      setShareCreating(false);
-                    }
-                  }}
+                  disabled={shareCreating || (shareCountriesMode === 'selected' && shareSelectedCountries.length === 0)}
+                  onClick={async () => createAndShareRequestLink(false)}
                   className="w-full px-4 py-3 rounded-xl font-semibold transition text-sm bg-white/5 text-mgsr-muted hover:bg-white/10 border border-mgsr-border disabled:opacity-50"
                 >
                   {shareCreating

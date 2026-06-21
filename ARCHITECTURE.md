@@ -1011,7 +1011,7 @@ Android Client → sharePlayerCreate (Cloud Function callable)
 | Route | `/shared/requests` |
 | Auth | None required |
 | Data | ClubRequests collection (via Firebase Admin) |
-| Features | Public view of active requests, OG image generation |
+| Features | BRIT Sport Group-branded public view of active requests, shared request OG image generation, black/gold logo shell, country-scoped share tokens (`allowedCountries`) created from share dialog, in-page position/country filters for easier navigation |
 
 ### Mandate Signing (Public)
 | Aspect | Web Only |

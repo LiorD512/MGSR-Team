@@ -6,13 +6,14 @@ export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 export const maxDuration = 30;
 
-const BG = '#0A1018';
-const CARD = '#1A2736';
-const TEAL = '#4DB6AC';
-const GREEN = '#39D164';
-const TEXT = '#E8EAED';
-const MUTED = '#6B7B8D';
-const BORDER = '#253545';
+const BG = '#081018';
+const CARD = '#111A26';
+const GOLD = '#E5CBA5';
+const GOLD_DARK = '#916E46';
+const TEXT = '#F4F6F8';
+const MUTED = '#91A0AE';
+const BORDER = '#243445';
+const LOGO_URL = 'brit_circle_black_gold.svg';
 
 const POS_COLORS: Record<string, string> = {
   GK: '#F59E0B',
@@ -22,6 +23,16 @@ const POS_COLORS: Record<string, string> = {
   LW: '#EC4899', RW: '#EC4899',
   CF: '#EF4444', SS: '#F87171',
 };
+
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    const u = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    return u.startsWith('http') ? u : `https://${u}`;
+  }
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'http://localhost:3000';
+}
 
 export default async function OpenGraphImage() {
   const data = await getRequestsData('men');
@@ -57,12 +68,12 @@ export default async function OpenGraphImage() {
             left: 0,
             width: '100%',
             height: 3,
-            background: `linear-gradient(90deg, transparent, ${TEAL}, ${GREEN}, transparent)`,
-            opacity: 0.5,
+            background: `linear-gradient(90deg, transparent, ${GOLD}, ${GOLD_DARK}, transparent)`,
+            opacity: 0.75,
           }}
         />
 
-        {/* Teal glow orb */}
+        {/* Gold glow orb */}
         <div
           style={{
             position: 'absolute',
@@ -71,11 +82,11 @@ export default async function OpenGraphImage() {
             width: 450,
             height: 450,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(77,182,172,0.1) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(229,203,165,0.16) 0%, transparent 70%)',
           }}
         />
 
-        {/* Green glow orb */}
+        {/* Bronze glow orb */}
         <div
           style={{
             position: 'absolute',
@@ -84,7 +95,7 @@ export default async function OpenGraphImage() {
             width: 300,
             height: 300,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(57,209,100,0.06) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(145,110,70,0.12) 0%, transparent 70%)',
           }}
         />
 
@@ -104,24 +115,20 @@ export default async function OpenGraphImage() {
               style={{
                 width: 42,
                 height: 42,
-                borderRadius: 10,
-                background: `linear-gradient(135deg, ${TEAL}, ${GREEN})`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: BG,
-                fontSize: 22,
-                fontWeight: 800,
+                borderRadius: 999,
+                overflow: 'hidden',
+                border: '1px solid rgba(229,203,165,0.2)',
+                boxShadow: '0 0 24px rgba(229,203,165,0.14)',
               }}
             >
-              M
+              <img src={`${getBaseUrl()}/${LOGO_URL}`} alt="" width={42} height={42} />
             </div>
             <span
               style={{
                 fontSize: 14,
                 fontWeight: 700,
                 letterSpacing: '0.2em',
-                color: TEAL,
+                color: GOLD,
                 textTransform: 'uppercase',
               }}
             >
@@ -146,7 +153,7 @@ export default async function OpenGraphImage() {
               style={{
                 fontSize: 64,
                 fontWeight: 800,
-                color: TEAL,
+                color: GOLD,
                 lineHeight: 1.05,
                 letterSpacing: '-0.03em',
               }}
@@ -161,7 +168,7 @@ export default async function OpenGraphImage() {
               marginTop: 24,
               height: 2,
               width: 320,
-              background: `linear-gradient(90deg, ${TEAL}, rgba(77,182,172,0.3), transparent)`,
+              background: `linear-gradient(90deg, ${GOLD}, rgba(229,203,165,0.28), transparent)`,
             }}
           />
 
@@ -203,7 +210,7 @@ export default async function OpenGraphImage() {
                       left: 0,
                       right: 0,
                       height: 2,
-                      background: `linear-gradient(90deg, transparent, ${TEAL}, transparent)`,
+                      background: `linear-gradient(90deg, transparent, ${GOLD}, transparent)`,
                     }}
                   />
                   <span style={{ fontSize: 38, fontWeight: 800, color: TEXT }}>
@@ -224,7 +231,6 @@ export default async function OpenGraphImage() {
               ))}
             </div>
 
-            {/* Position badges — colored by position */}
             {topPositions.length > 0 && (
               <div
                 style={{
@@ -254,7 +260,7 @@ export default async function OpenGraphImage() {
                         style={{
                           fontSize: 14,
                           fontWeight: 800,
-                          color: color,
+                          color,
                           letterSpacing: '0.03em',
                         }}
                       >

@@ -12,6 +12,7 @@ export interface SharedRequestLinkItem {
   platform: string;
   showClubs: boolean;
   recipientLabel: string | null;
+  allowedCountries: string[];
   createdAt: number;
   revoked: boolean;
   revokedAt: number | null;
@@ -60,6 +61,9 @@ export async function GET(request: NextRequest) {
         platform: d.platform || 'men',
         showClubs: d.showClubs === true,
         recipientLabel: d.recipientLabel || null,
+        allowedCountries: Array.isArray(d.allowedCountries)
+          ? d.allowedCountries.filter((c: unknown): c is string => typeof c === 'string')
+          : [],
         createdAt: d.createdAt || 0,
         revoked: d.revoked === true,
         revokedAt: d.revokedAt || null,
