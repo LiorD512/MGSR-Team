@@ -15,6 +15,16 @@ interface SharedLinkItem {
   lastViewedAt: number | null;
 }
 
+function getShareBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL?.trim()) {
+    return process.env.NEXT_PUBLIC_APP_URL.trim().replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return '';
+}
+
 export default function ManageSharedLinksDialog({
   isHebrew,
   isRtl,
@@ -82,7 +92,7 @@ export default function ManageSharedLinksDialog({
   };
 
   const handleCopyLink = async (linkToken: string) => {
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const baseUrl = getShareBaseUrl();
     const url = `${baseUrl}/shared/requests/${linkToken}`;
     try {
       await navigator.clipboard.writeText(url);

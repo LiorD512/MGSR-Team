@@ -148,6 +148,16 @@ function parseMarketValueToEuros(value?: string): number {
   return num;
 }
 
+function getShareBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL?.trim()) {
+    return process.env.NEXT_PUBLIC_APP_URL.trim().replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return '';
+}
+
 export default function RequestsPage() {
   const { user, loading } = useAuth();
   const { t, isRtl, lang } = useLanguage();
@@ -679,7 +689,7 @@ export default function RequestsPage() {
       });
       if (!res.ok) throw new Error('Failed');
       const { token: shareToken } = await res.json();
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const baseUrl = getShareBaseUrl();
       const shareUrl = `${baseUrl}/shared/requests/${shareToken}`;
       const text = encodeURIComponent(`View full recruitment brief:\n\n${shareUrl}`);
       setShowShareDialog(false);
