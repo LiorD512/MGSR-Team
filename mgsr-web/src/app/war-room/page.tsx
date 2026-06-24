@@ -84,19 +84,47 @@ interface RosterTeammateMatch {
 
 function shortenPosition(pos: string | undefined): string {
   if (!pos?.trim()) return '—';
-  const p = pos.trim();
-  if (p.includes('Centre-Forward') || p.includes('Center-Forward')) return 'CF';
-  if (p.includes('Second Striker')) return 'SS';
-  if (p.includes('Centre-Back') || p.includes('Center-Back')) return 'CB';
-  if (p.includes('Left-Back')) return 'LB';
-  if (p.includes('Right-Back')) return 'RB';
-  if (p.includes('Defensive Midfield')) return 'DM';
-  if (p.includes('Central Midfield')) return 'CM';
-  if (p.includes('Attacking Midfield')) return 'AM';
-  if (p.includes('Left Wing') || p.includes('Left Winger')) return 'LW';
-  if (p.includes('Right Wing') || p.includes('Right Winger')) return 'RW';
-  if (p.includes('Goalkeeper')) return 'GK';
-  return p.split(' - ').pop() || p;
+  const raw = pos.trim();
+  const lower = raw.toLowerCase();
+
+  const directMap: Record<string, string> = {
+    goalkeeper: 'GK', gk: 'GK',
+    'centre-back': 'CB', 'center-back': 'CB', cb: 'CB',
+    'right-back': 'RB', rb: 'RB',
+    'left-back': 'LB', lb: 'LB',
+    'defensive midfield': 'DM', dm: 'DM', cdm: 'DM',
+    'central midfield': 'CM', cm: 'CM',
+    'attacking midfield': 'AM', am: 'AM',
+    'left midfield': 'LM', lm: 'LM',
+    'right midfield': 'RM', rm: 'RM',
+    'left winger': 'LW', 'left wing': 'LW', lw: 'LW',
+    'right winger': 'RW', 'right wing': 'RW', rw: 'RW',
+    'centre-forward': 'CF', 'center-forward': 'CF', cf: 'CF',
+    'second striker': 'SS', ss: 'SS',
+    striker: 'ST', st: 'ST',
+  };
+
+  if (directMap[lower]) return directMap[lower];
+
+  const specific = lower.includes(' - ') ? lower.split(' - ').pop()?.trim() || '' : '';
+  if (specific && directMap[specific]) return directMap[specific];
+
+  if (lower.includes('goalkeeper') || lower.includes('keeper')) return 'GK';
+  if (lower.includes('centre-back') || lower.includes('center-back')) return 'CB';
+  if (lower.includes('right-back') || lower.includes('right back')) return 'RB';
+  if (lower.includes('left-back') || lower.includes('left back')) return 'LB';
+  if (lower.includes('defensive mid')) return 'DM';
+  if (lower.includes('attacking mid')) return 'AM';
+  if (lower.includes('central mid') || lower.includes('midfield')) return 'CM';
+  if (lower.includes('left mid')) return 'LM';
+  if (lower.includes('right mid')) return 'RM';
+  if (lower.includes('left wing')) return 'LW';
+  if (lower.includes('right wing')) return 'RW';
+  if (lower.includes('centre-forward') || lower.includes('center-forward') || lower.includes('forward')) return 'CF';
+  if (lower.includes('second striker')) return 'SS';
+  if (lower.includes('striker')) return 'ST';
+
+  return raw.toUpperCase();
 }
 
 /* ── Structured explanation parser ──────────────────────────── */
@@ -627,14 +655,13 @@ export default function WarRoomPage() {
   );
 
   const availableScoutPositions = useMemo(() => {
-    const unique = new Map<string, string>();
+    const unique = new Set<string>();
     for (const profile of scoutProfilesAfterAgentFilter) {
-      const value = (profile.position || '').trim();
-      if (!value) continue;
-      const normalized = value.toLowerCase().replace(/\s+/g, ' ');
-      if (!unique.has(normalized)) unique.set(normalized, value);
+      const code = shortenPosition(profile.position);
+      if (!code || code === '—') continue;
+      unique.add(code);
     }
-    return Array.from(unique.values()).sort((a, b) => a.localeCompare(b));
+    return Array.from(unique).sort((a, b) => a.localeCompare(b));
   }, [scoutProfilesAfterAgentFilter]);
 
   useEffect(() => {
@@ -646,7 +673,7 @@ export default function WarRoomPage() {
   const visibleScoutProfiles = useMemo(
     () =>
       scoutProfilesAfterAgentFilter.filter((p) =>
-        scoutPositionFilter === 'all' ? true : p.position === scoutPositionFilter
+        scoutPositionFilter === 'all' ? true : shortenPosition(p.position) === scoutPositionFilter
       ),
     [scoutProfilesAfterAgentFilter, scoutPositionFilter]
   );

@@ -787,6 +787,8 @@ async function releaseLock(db) {
  */
 async function runScoutAgent() {
   const db = getFirestore();
+  const startTime = Date.now();
+  let runDocRef = null;
 
   // ── Idempotency: only one instance runs at a time ──
   const gotLock = await acquireLock(db);
@@ -802,7 +804,18 @@ async function runScoutAgent() {
   const runsRef = db.collection("ScoutAgentRuns");
   const skillsRef = db.collection("ScoutAgentSkills");
 
-  const startTime = Date.now();
+  runDocRef = runsRef.doc();
+  await runDocRef.set({
+    runAt: startTime,
+    startedAt: startTime,
+    status: "running",
+    profilesFound: 0,
+    profilesBeforeReview: 0,
+    profilesRejected: 0,
+    leaguesScanned: 0,
+    durationMs: 0,
+    error: null,
+  });
   const seen = new Map();
   const profilesToWrite = [];
   let leaguesScanned = 0;
@@ -2316,8 +2329,9 @@ ONLY valid JSON.`;
   // TM blocks both Vercel and Cloud Functions IPs anyway.
   // ═══════════════════════════════════════════════════════════════
 
-  const runDoc = await runsRef.add({
+  await runDocRef.set({
     runAt: startTime,
+    completedAt: Date.now(),
     status: "success",
     profilesFound: approvedProfiles.length,
     profilesBeforeReview: profilesToWrite.length,
@@ -2338,7 +2352,7 @@ ONLY valid JSON.`;
         .flatMap((p) => p.directorReasons || [])
         .reduce((acc, r) => { acc[r] = (acc[r] || 0) + 1; return acc; }, {}),
     },
-  });
+  }, { merge: true });
 
   const profilesByAgent = {};
   for (const { docId, data } of approvedProfiles) {
@@ -2360,9 +2374,22 @@ ONLY valid JSON.`;
     durationMs,
     profilesByAgent,
     agentReports,
-    runId: runDoc.id,
+    runId: runDocRef.id,
     crossLeagueDetections: crossLeague.length,
   };
+
+  } catch (err) {
+    const durationMs = Date.now() - startTime;
+    if (runDocRef) {
+      await runDocRef.set({
+        runAt: startTime,
+        failedAt: Date.now(),
+        status: "failed",
+        durationMs,
+        error: err?.message || String(err),
+      }, { merge: true });
+    }
+    throw err;
 
   } finally {
     // Always release lock — whether success or crash

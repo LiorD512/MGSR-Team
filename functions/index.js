@@ -711,15 +711,6 @@ exports.scoutAgentWorker = onMessagePublished(
       console.log("[scoutAgentWorker] Completed");
     } catch (err) {
       console.error("[scoutAgentWorker] Failed:", err);
-      const db = getFirestore();
-      await db.collection("ScoutAgentRuns").add({
-        runAt: Date.now(),
-        status: "failed",
-        profilesFound: 0,
-        leaguesScanned: 0,
-        durationMs: 0,
-        error: err?.message || String(err),
-      });
       throw err;
     }
   }

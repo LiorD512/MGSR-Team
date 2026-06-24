@@ -180,6 +180,53 @@ private fun normalizePositionFilterKey(position: String): String {
     return position.trim().lowercase().replace(Regex("\\s+"), " ")
 }
 
+private fun toShortPositionCode(rawPosition: String): String {
+    val lower = rawPosition.trim().lowercase()
+    if (lower.isBlank()) return ""
+
+    val directMap = mapOf(
+        "goalkeeper" to "GK", "gk" to "GK",
+        "centre-back" to "CB", "center-back" to "CB", "cb" to "CB",
+        "right-back" to "RB", "rb" to "RB",
+        "left-back" to "LB", "lb" to "LB",
+        "defensive midfield" to "DM", "dm" to "DM", "cdm" to "DM",
+        "central midfield" to "CM", "cm" to "CM",
+        "attacking midfield" to "AM", "am" to "AM",
+        "left midfield" to "LM", "lm" to "LM",
+        "right midfield" to "RM", "rm" to "RM",
+        "left winger" to "LW", "left wing" to "LW", "lw" to "LW",
+        "right winger" to "RW", "right wing" to "RW", "rw" to "RW",
+        "centre-forward" to "CF", "center-forward" to "CF", "cf" to "CF",
+        "second striker" to "SS", "ss" to "SS",
+        "striker" to "ST", "st" to "ST"
+    )
+
+    directMap[lower]?.let { return it }
+
+    val specific = lower.substringAfter(" - ", "").trim()
+    if (specific.isNotEmpty()) {
+        directMap[specific]?.let { return it }
+    }
+
+    return when {
+        "goalkeeper" in lower || "keeper" in lower -> "GK"
+        "centre-back" in lower || "center-back" in lower -> "CB"
+        "right-back" in lower || "right back" in lower -> "RB"
+        "left-back" in lower || "left back" in lower -> "LB"
+        "defensive mid" in lower -> "DM"
+        "attacking mid" in lower -> "AM"
+        "central mid" in lower || "midfield" in lower -> "CM"
+        "left mid" in lower -> "LM"
+        "right mid" in lower -> "RM"
+        "left wing" in lower -> "LW"
+        "right wing" in lower -> "RW"
+        "centre-forward" in lower || "center-forward" in lower || "forward" in lower -> "CF"
+        "second striker" in lower -> "SS"
+        "striker" in lower -> "ST"
+        else -> rawPosition.trim().uppercase()
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MAIN SCREEN
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1715,18 +1762,15 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
 
     val availablePositions = remember(positionFilterBaseProfiles) {
         positionFilterBaseProfiles
-            .map { it.position.trim() }
+            .map { toShortPositionCode(it.position) }
             .filter { it.isNotBlank() }
-            .distinctBy { normalizePositionFilterKey(it) }
+            .distinct()
             .sortedBy { it.lowercase() }
     }
 
     LaunchedEffect(availablePositions, state.selectedAgentPositionFilter) {
         val selected = state.selectedAgentPositionFilter
-        if (selected != null && availablePositions.none {
-                normalizePositionFilterKey(it) == normalizePositionFilterKey(selected)
-            }
-        ) {
+        if (selected != null && selected !in availablePositions) {
             viewModel.setAgentPositionFilter(null)
         }
     }
@@ -1739,7 +1783,7 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         filteredScoutProfiles.filter { profile ->
             val agentMatch = state.selectedAgentFilter == null || profile.agentId == state.selectedAgentFilter
             val positionMatch = state.selectedAgentPositionFilter == null ||
-                normalizePositionFilterKey(profile.position) == normalizePositionFilterKey(state.selectedAgentPositionFilter)
+                toShortPositionCode(profile.position) == state.selectedAgentPositionFilter
             agentMatch && positionMatch
         }
     }
@@ -2109,9 +2153,8 @@ private fun PositionFilterCarousel(
             )
         }
 
-        items(positions, key = { normalizePositionFilterKey(it) }) { position ->
-            val isSelected = selectedPosition != null &&
-                normalizePositionFilterKey(selectedPosition) == normalizePositionFilterKey(position)
+        items(positions, key = { it }) { position ->
+            val isSelected = selectedPosition == position
             WarRoomActionChip(
                 label = position,
                 accent = if (isSelected) WrAgent else WrSurfaceBorder,
