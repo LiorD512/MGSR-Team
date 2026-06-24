@@ -18,6 +18,7 @@ import { aiScoutSearch, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import FindNextTab from '@/components/FindNextTab';
 import { buildPlayerKey, type DiversityMode } from '@/lib/discoveryDiversity';
 import { appendSeenKeys, getSeenKeys } from '@/lib/searchNoveltyMemory';
+import { getPositionDisplayName } from '@/lib/appConfig';
 
 const WAR_ROOM_SCOUT_MEMORY_SCOPE = 'war-room-ai-scout';
 
@@ -688,6 +689,10 @@ export default function WarRoomPage() {
   );
 
   const isHe = lang === 'he';
+  const displayShortPosition = useCallback((pos: string | undefined) => {
+    const code = shortenPosition(pos);
+    return isHe ? getPositionDisplayName(code, true) : code;
+  }, [isHe]);
   const avgScoutMatch = scoutResults.length
     ? Math.round(scoutResults.reduce((sum, player) => sum + (player.matchPercent ?? 0), 0) / scoutResults.length)
     : null;
@@ -976,7 +981,7 @@ export default function WarRoomPage() {
                         <p className="text-xs sm:text-sm text-mgsr-muted mt-0.5">
                           {c.age}
                           <span className="mx-1 sm:mx-1.5">·</span>
-                          {shortenPosition(c.position)}
+                          {displayShortPosition(c.position)}
                           <span className="mx-1 sm:mx-1.5">·</span>
                           {c.marketValue}
                           {c.club && (
@@ -1289,7 +1294,7 @@ export default function WarRoomPage() {
                         : 'text-mgsr-muted hover:text-mgsr-text border border-transparent'
                     }`}
                   >
-                    {position}
+                    {isHe ? getPositionDisplayName(position, true) : position}
                   </button>
                 ))}
               </div>
@@ -1416,7 +1421,7 @@ export default function WarRoomPage() {
                                   </div>
                                   <p className="font-display font-bold text-sm sm:text-base text-mgsr-text truncate">{p.playerName}</p>
                                   <p className="text-xs text-mgsr-muted">
-                                    {p.age} · {shortenPosition(p.position)} · {p.marketValue}
+                                    {p.age} · {displayShortPosition(p.position)} · {p.marketValue}
                                     {p.club && <span className="hidden sm:inline"> · {p.club}</span>}
                                   </p>
                                   <p className="text-xs text-mgsr-text mt-1 line-clamp-2 sm:line-clamp-none">
@@ -1867,7 +1872,7 @@ export default function WarRoomPage() {
                                 <p className="text-xs text-mgsr-muted mt-0.5">
                                   {s.age ? `${s.age}` : '—'}
                                   <span className="mx-1.5">·</span>
-                                  {shortenPosition(s.position)}
+                                  {displayShortPosition(s.position)}
                                   <span className="mx-1.5">·</span>
                                   {s.marketValue || '—'}
                                   {s.club && (

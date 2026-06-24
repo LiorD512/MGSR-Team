@@ -2141,6 +2141,26 @@ private fun PositionFilterCarousel(
     selectedPosition: String?,
     onSelect: (String?) -> Unit
 ) {
+    val isHebrew = Locale.getDefault().language.let { it == "iw" || it == "he" }
+    val hebrewPositionLabels = remember {
+        mapOf(
+            "GK" to "שוער",
+            "CB" to "בלם",
+            "RB" to "מגן ימני",
+            "LB" to "מגן שמאלי",
+            "DM" to "קשר אחורי",
+            "CM" to "קשר מרכזי",
+            "AM" to "קשר התקפי",
+            "LM" to "קשר שמאלי",
+            "RM" to "קשר ימני",
+            "LW" to "כנף שמאל",
+            "RW" to "כנף ימין",
+            "CF" to "חלוץ מרכזי",
+            "ST" to "חלוץ",
+            "SS" to "חלוץ שני"
+        )
+    }
+
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2155,8 +2175,9 @@ private fun PositionFilterCarousel(
 
         items(positions, key = { it }) { position ->
             val isSelected = selectedPosition == position
+            val label = if (isHebrew) hebrewPositionLabels[position] ?: position else position
             WarRoomActionChip(
-                label = position,
+                label = label,
                 accent = if (isSelected) WrAgent else WrSurfaceBorder,
                 onClick = { onSelect(position) }
             )
