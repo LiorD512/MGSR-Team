@@ -903,6 +903,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 - Web Scout Agents tab now renders all profiles in one continuous list per country/agent (no pagination and no page indicator like `5/15`).
 - Country headers now show total players per country (e.g., `24 players`) while preserving existing roster/shortlist exclusion filtering.
 - The Scout Agents header refresh button was removed from this screen to keep the view as a single continuous list.
+- Android and Web Scout Agents tabs now include a position filter layer (`All positions` + dynamic position chips from current results) that composes with the existing agent filter and roster/shortlist exclusion logic.
 
 #### War Room Design Mock (Docs)
 - `docs/war-room-aggressive-redesign-mock.html` is an HTML redesign mock that now mirrors the existing War Room IA and flows (Discovery, Scout Agents, AI Search with expandable report, Find Next).

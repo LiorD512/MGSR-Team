@@ -176,6 +176,10 @@ private fun scoreColor(score: Int): Color = when {
     else -> WrScoreLow
 }
 
+private fun normalizePositionFilterKey(position: String): String {
+    return position.trim().lowercase().replace(Regex("\\s+"), " ")
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MAIN SCREEN
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1700,7 +1704,47 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
             id == null || (id !in rosterIds && id !in shortlistIds)
         }
     }
-    val groupedProfiles = filteredScoutProfiles.groupBy { it.agentId to it.agentName }
+
+    val positionFilterBaseProfiles = remember(filteredScoutProfiles, state.selectedAgentFilter) {
+        if (state.selectedAgentFilter == null) {
+            filteredScoutProfiles
+        } else {
+            filteredScoutProfiles.filter { it.agentId == state.selectedAgentFilter }
+        }
+    }
+
+    val availablePositions = remember(positionFilterBaseProfiles) {
+        positionFilterBaseProfiles
+            .map { it.position.trim() }
+            .filter { it.isNotBlank() }
+            .distinctBy { normalizePositionFilterKey(it) }
+            .sortedBy { it.lowercase() }
+    }
+
+    LaunchedEffect(availablePositions, state.selectedAgentPositionFilter) {
+        val selected = state.selectedAgentPositionFilter
+        if (selected != null && availablePositions.none {
+                normalizePositionFilterKey(it) == normalizePositionFilterKey(selected)
+            }
+        ) {
+            viewModel.setAgentPositionFilter(null)
+        }
+    }
+
+    val filteredByAgentAndPosition = remember(
+        filteredScoutProfiles,
+        state.selectedAgentFilter,
+        state.selectedAgentPositionFilter
+    ) {
+        filteredScoutProfiles.filter { profile ->
+            val agentMatch = state.selectedAgentFilter == null || profile.agentId == state.selectedAgentFilter
+            val positionMatch = state.selectedAgentPositionFilter == null ||
+                normalizePositionFilterKey(profile.position) == normalizePositionFilterKey(state.selectedAgentPositionFilter)
+            agentMatch && positionMatch
+        }
+    }
+
+    val groupedProfiles = filteredByAgentAndPosition.groupBy { it.agentId to it.agentName }
     val isHebrew = Locale.getDefault().language.let { it == "iw" || it == "he" }
     val sortLocale = if (isHebrew) Locale("he") else Locale.getDefault()
 
@@ -1730,12 +1774,7 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         })
     }
 
-    // Visible profiles based on agent filter (client-side)
-    val visibleGroupedProfiles = if (state.selectedAgentFilter == null) {
-        groupedProfiles
-    } else {
-        groupedProfiles.filter { (key, _) -> key.first == state.selectedAgentFilter }
-    }
+    val visibleGroupedProfiles = groupedProfiles
 
     // Show all profiles per agent (no limit)
 
@@ -1892,6 +1931,14 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
                 onSelect = { viewModel.setAgentFilter(it) }
             )
 
+            Spacer(Modifier.height(8.dp))
+
+            PositionFilterCarousel(
+                positions = availablePositions,
+                selectedPosition = state.selectedAgentPositionFilter,
+                onSelect = { viewModel.setAgentPositionFilter(it) }
+            )
+
             // Divider after filters
             Box(
                 modifier = Modifier
@@ -1920,6 +1967,25 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         // Error
         state.agentsError?.let { error ->
             item { ErrorBanner(message = error, onRetry = { viewModel.loadScoutProfiles(state.selectedAgentFilter) }) }
+        }
+
+        if (!state.agentsLoading && state.agentsError == null && state.scoutProfiles.isNotEmpty() && visibleGroupedProfiles.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(WrSurfaceElevated.copy(alpha = 0.6f))
+                        .border(1.dp, WrSurfaceBorder.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.war_room_no_profiles_for_position_filter),
+                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    )
+                }
+            }
         }
 
         // Agent sections (alphabetical)
@@ -2020,6 +2086,36 @@ private fun AgentFilterCarousel(
                 isSelected = selectedAgentId == agentId,
                 accentColor = WrAgent,
                 onClick = { onSelect(agentId) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun PositionFilterCarousel(
+    positions: List<String>,
+    selectedPosition: String?,
+    onSelect: (String?) -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            WarRoomActionChip(
+                label = stringResource(R.string.war_room_all_positions),
+                accent = if (selectedPosition == null) WrMatch else WrSurfaceBorder,
+                onClick = { onSelect(null) }
+            )
+        }
+
+        items(positions, key = { normalizePositionFilterKey(it) }) { position ->
+            val isSelected = selectedPosition != null &&
+                normalizePositionFilterKey(selectedPosition) == normalizePositionFilterKey(position)
+            WarRoomActionChip(
+                label = position,
+                accent = if (isSelected) WrAgent else WrSurfaceBorder,
+                onClick = { onSelect(position) }
             )
         }
     }

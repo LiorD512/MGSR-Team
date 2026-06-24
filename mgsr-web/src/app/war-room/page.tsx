@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -202,6 +202,7 @@ export default function WarRoomPage() {
   const [loadingScoutProfiles, setLoadingScoutProfiles] = useState(false);
   const [scoutLastRunAt, setScoutLastRunAt] = useState<number | null>(null);
   const [scoutAgentFilter, setScoutAgentFilter] = useState<AgentId | 'all'>('all');
+  const [scoutPositionFilter, setScoutPositionFilter] = useState<string>('all');
   const [scoutFeedback, setScoutFeedback] = useState<Record<string, 'up' | 'down'>>({});
 
   // AI Scout Search state
@@ -604,6 +605,60 @@ export default function WarRoomPage() {
     if (Array.from(shortlistUrls).some((s) => samePlayer(s, url))) return false;
     return true;
   });
+
+  const scoutProfilesExcludingRosterAndShortlist = useMemo(
+    () =>
+      scoutProfiles.filter((p) => {
+        const url = p.tmProfileUrl;
+        if (!url) return true;
+        if (Array.from(rosterTmProfiles).some((r) => samePlayer(r, url))) return false;
+        if (Array.from(shortlistUrls).some((s) => samePlayer(s, url))) return false;
+        return true;
+      }),
+    [scoutProfiles, rosterTmProfiles, shortlistUrls]
+  );
+
+  const scoutProfilesAfterAgentFilter = useMemo(
+    () =>
+      scoutProfilesExcludingRosterAndShortlist.filter((p) =>
+        scoutAgentFilter === 'all' ? true : p.agentId === scoutAgentFilter
+      ),
+    [scoutProfilesExcludingRosterAndShortlist, scoutAgentFilter]
+  );
+
+  const availableScoutPositions = useMemo(() => {
+    const unique = new Map<string, string>();
+    for (const profile of scoutProfilesAfterAgentFilter) {
+      const value = (profile.position || '').trim();
+      if (!value) continue;
+      const normalized = value.toLowerCase().replace(/\s+/g, ' ');
+      if (!unique.has(normalized)) unique.set(normalized, value);
+    }
+    return Array.from(unique.values()).sort((a, b) => a.localeCompare(b));
+  }, [scoutProfilesAfterAgentFilter]);
+
+  useEffect(() => {
+    if (scoutPositionFilter !== 'all' && !availableScoutPositions.includes(scoutPositionFilter)) {
+      setScoutPositionFilter('all');
+    }
+  }, [availableScoutPositions, scoutPositionFilter]);
+
+  const visibleScoutProfiles = useMemo(
+    () =>
+      scoutProfilesAfterAgentFilter.filter((p) =>
+        scoutPositionFilter === 'all' ? true : p.position === scoutPositionFilter
+      ),
+    [scoutProfilesAfterAgentFilter, scoutPositionFilter]
+  );
+
+  const groupedVisibleScoutProfiles = useMemo(
+    () =>
+      visibleScoutProfiles.reduce<Record<string, ScoutProfileResponse[]>>((acc, p) => {
+        (acc[p.agentId] = acc[p.agentId] || []).push(p);
+        return acc;
+      }, {}),
+    [visibleScoutProfiles]
+  );
 
   const isHe = lang === 'he';
   const avgScoutMatch = scoutResults.length
@@ -1186,6 +1241,32 @@ export default function WarRoomPage() {
                 ))}
               </div>
 
+              <div className="flex gap-1 p-1.5 rounded-2xl bg-mgsr-card/70 backdrop-blur-md border border-mgsr-border/70 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                <button
+                  onClick={() => setScoutPositionFilter('all')}
+                  className={`shrink-0 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap min-h-[40px] ${
+                    scoutPositionFilter === 'all'
+                      ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/15 text-cyan-300 border border-cyan-400/30 shadow-sm shadow-cyan-500/5'
+                      : 'text-mgsr-muted hover:text-mgsr-text border border-transparent'
+                  }`}
+                >
+                  {isHe ? 'כל העמדות' : 'All positions'}
+                </button>
+                {availableScoutPositions.map((position) => (
+                  <button
+                    key={position}
+                    onClick={() => setScoutPositionFilter(position)}
+                    className={`shrink-0 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap min-h-[40px] ${
+                      scoutPositionFilter === position
+                        ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/15 text-cyan-300 border border-cyan-400/30 shadow-sm shadow-cyan-500/5'
+                        : 'text-mgsr-muted hover:text-mgsr-text border border-transparent'
+                    }`}
+                  >
+                    {position}
+                  </button>
+                ))}
+              </div>
+
               {addError && (
                 <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
                   {addError}
@@ -1241,21 +1322,12 @@ export default function WarRoomPage() {
 
               {!loadingScoutProfiles && scoutProfiles.length > 0 && (
                 <div className="space-y-4">
-                  {Object.entries(
-                    scoutProfiles
-                      .filter((p) => {
-                        const url = p.tmProfileUrl;
-                        if (!url) return true;
-                        if (Array.from(rosterTmProfiles).some((r) => samePlayer(r, url))) return false;
-                        if (Array.from(shortlistUrls).some((s) => samePlayer(s, url))) return false;
-                        return true;
-                      })
-                      .reduce<Record<string, ScoutProfileResponse[]>>((acc, p) => {
-                      if (scoutAgentFilter !== 'all' && p.agentId !== scoutAgentFilter) return acc;
-                      (acc[p.agentId] = acc[p.agentId] || []).push(p);
-                      return acc;
-                    }, {})
-                  ).sort(([a], [b]) => {
+                  {Object.keys(groupedVisibleScoutProfiles).length === 0 && (
+                    <div className="p-4 rounded-xl bg-mgsr-dark/50 border border-mgsr-border/70 text-sm text-mgsr-muted">
+                      {isHe ? 'אין פרופילים שתואמים למסנן העמדה הנוכחי.' : 'No scout profiles match the selected position filter.'}
+                    </div>
+                  )}
+                  {Object.entries(groupedVisibleScoutProfiles).sort(([a], [b]) => {
                     const nameA = isHe ? AGENTS_CONFIG[a as AgentId]?.nameHe || a : AGENTS_CONFIG[a as AgentId]?.name || a;
                     const nameB = isHe ? AGENTS_CONFIG[b as AgentId]?.nameHe || b : AGENTS_CONFIG[b as AgentId]?.name || b;
                     return nameA.localeCompare(nameB, isHe ? 'he' : 'en');

@@ -1471,6 +1471,8 @@
     <string name="war_room_source_agent_pick">Agent Pick</string>
     <string name="war_room_source_discovery">Discovery</string>
     <string name="war_room_all_agents">All Agents</string>
+    <string name="war_room_all_positions">All Positions</string>
+    <string name="war_room_no_profiles_for_position_filter">No scout profiles match the selected position filter.</string>
     <string name="war_room_scouting_report">Scouting Report</string>
     <string name="war_room_generating_full_report">Generating Full Report…</string>
     <string name="war_room_agents_analyzing">AI agents are analyzing the player</string>

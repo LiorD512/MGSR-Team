@@ -1375,6 +1375,8 @@
     <string name="war_room_source_agent_pick">בחירת סוכן</string>
     <string name="war_room_source_discovery">גילוי</string>
     <string name="war_room_all_agents">כל הסוכנים</string>
+    <string name="war_room_all_positions">כל העמדות</string>
+    <string name="war_room_no_profiles_for_position_filter">אין פרופילי סקאוט שתואמים למסנן העמדה שנבחר.</string>
     <string name="war_room_scouting_report">דוח סקאוטינג</string>
     <string name="war_room_generating_full_report">מייצר דוח מלא…</string>
     <string name="war_room_agents_analyzing">סוכני AI מנתחים את השחקן</string>
