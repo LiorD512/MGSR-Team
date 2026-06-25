@@ -396,7 +396,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `aiQueryParser.ts` | Gemini AI query parser (DEAD CODE — removed from search route, never called) |
 | `parseFreeQuery.ts` | Free-text search query parser (868 lines, regex+keyword, Hebrew+English — primary parser for all scout searches) |
 | `translateQuery.ts` | Hebrew ↔ English query translation (MyMemory API, free) |
-| `requestMatcher.ts` | Client-side request ↔ player matching |
+| `requestMatcher.ts` | Client-side request ↔ player matching (used directly in shortlist flows and as web requests-page fallback merge with precomputed match docs) |
 | `noteParser.ts` | Parse structured data from agent notes |
 | `shortlistIntelligence.ts` | Shortlist analytics |
 | `playerIntel.ts` | Player intelligence aggregation |
@@ -474,7 +474,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `onNewFeedEvent` | FeedEvents* | onCreate | FCM push for player updates |
 | `onNewAgentTask` | AgentTasks* | onCreate | Notify assignee |
 | `onMandateSigningUpdated` | MandateSigningRequests | onUpdate | Notify on mandate signature |
-| Match Recalc (6×) | Players*/ClubRequests*/PlayerDocuments* | onWrite | Debounced match recalculation (10s cooldown) |
+| Match Recalc (6×) | Players*/ClubRequests*/PlayerDocuments* | onWrite | Matching-field-aware recalculation on every relevant write (no cooldown skip) |
 | `onGpsMatchDataWritten` | GpsMatchData | onWrite | Recompute GPS performance insights (3s debounce) |
 
 ### Scheduled Functions

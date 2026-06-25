@@ -182,16 +182,21 @@ export async function getPlayerPerformanceStats(
 /** Extract Transfermarkt player ID from profile URL for matching. */
 export function extractPlayerIdFromUrl(url: string | undefined): string | null {
   if (!url || typeof url !== 'string') return null;
-  const parts = url.trim().split('/');
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const p = parts[i]?.toLowerCase();
-    if (p === 'spieler' || p === 'player') {
-      const id = parts[i + 1];
-      return id && /^\d+$/.test(id) ? id : null;
-    }
-  }
+  const raw = url.trim();
+
+  // Covers: /profil/spieler/123, /profile/player/123, /spieler_123.html, and query/hash variants.
+  const directMatch = raw.match(/\/(?:spieler|player)\/(\d+)(?:\b|\/|\?|#)/i);
+  if (directMatch?.[1]) return directMatch[1];
+
+  const legacyMatch = raw.match(/spieler_(\d+)\.html/i);
+  if (legacyMatch?.[1]) return legacyMatch[1];
+
+  const cleaned = raw.split(/[?#]/)[0];
+  const parts = cleaned.split('/').filter(Boolean);
   const last = parts[parts.length - 1];
-  return last && /^\d+$/.test(last) ? last : null;
+  if (last && /^\d+$/.test(last)) return last;
+
+  return null;
 }
 
 export async function getReleases(min = 0, max = 5000000, page = 1): Promise<ReleasePlayer[]> {

@@ -12,7 +12,7 @@ import { callRequestsDelete, callShortlistAdd } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { getPositionDisplayName } from '@/lib/appConfig';
-import { type RosterPlayer } from '@/lib/requestMatcher';
+import { matchRequestToPlayers, type ClubRequest as MatcherRequest, type RosterPlayer } from '@/lib/requestMatcher';
 import { findPlayersForRequest, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { getPlayerDetails } from '@/lib/api';
 import { getCurrentAccountForShortlist, getAllAccounts } from '@/lib/accounts';
@@ -382,14 +382,24 @@ export default function RequestsPage() {
     const byId: Record<string, RosterPlayer[]> = {};
     for (const r of requests) {
       if (!r.id) continue;
-      const matchedIds = precomputedMatchResults[r.id] ?? [];
-      byId[r.id] = matchedIds
-        .map((id) => playerById[id])
-        .filter((p): p is RosterPlayer => !!p)
+      const precomputedIds = precomputedMatchResults[r.id] ?? [];
+      // Defensive fallback: compute locally and merge with precomputed IDs to avoid transient false-empty states.
+      const localMatches = matchRequestToPlayers(r as MatcherRequest, players, euCountries);
+      const mergedById = new Map<string, RosterPlayer>();
+
+      for (const p of localMatches) {
+        if (p.id) mergedById.set(p.id, p);
+      }
+      for (const id of precomputedIds) {
+        const p = playerById[id];
+        if (p?.id) mergedById.set(p.id, p);
+      }
+
+      byId[r.id] = Array.from(mergedById.values())
         .sort((a, b) => parseMarketValueToEuros(b.marketValue) - parseMarketValueToEuros(a.marketValue));
     }
     return byId;
-  }, [requests, players, precomputedMatchResults]);
+  }, [requests, players, precomputedMatchResults, euCountries]);
 
   /** Normalize text for fuzzy club name matching: strip diacritics, punctuation, collapse whitespace */
   const normalizeClub = (s: string) =>

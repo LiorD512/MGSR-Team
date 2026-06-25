@@ -1577,10 +1577,6 @@ const REQUEST_MATCHING_FIELDS = new Set([
   "dominateFoot", "salaryRange", "transferFee", "euOnly", "status",
 ]);
 
-/** Per-platform cooldown tracker — prevents rapid-fire recalculations. */
-const _lastRecalcTime = { men: 0, women: 0, youth: 0 };
-const RECALC_COOLDOWN_MS = 10_000; // 10 seconds
-
 /**
  * Check if any matching-relevant field changed between before/after snapshots.
  * Returns true if recalculation is needed.
@@ -1599,11 +1595,6 @@ function matchingFieldsChanged(beforeData, afterData, relevantFields) {
 async function triggerRecalcIfNeeded(platform, beforeData, afterData, relevantFields) {
   // Skip if no matching-relevant fields changed
   if (!matchingFieldsChanged(beforeData, afterData, relevantFields)) return;
-
-  // Debounce: skip if recalculated very recently
-  const now = Date.now();
-  if (now - _lastRecalcTime[platform] < RECALC_COOLDOWN_MS) return;
-  _lastRecalcTime[platform] = now;
 
   await recalculateAllMatches(platform);
 }
