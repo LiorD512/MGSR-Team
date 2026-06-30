@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { db } from '@/lib/firebase';
 import { FEED_EVENTS_COLLECTIONS, PLAYERS_COLLECTIONS } from '@/lib/platformCollections';
 import { extractPlayerIdFromUrl } from '@/lib/api';
+import { getPositionDisplayName } from '@/lib/appConfig';
 
 interface FeedEvent {
   id: string;
@@ -51,7 +52,6 @@ interface ClubChangeItem {
 }
 
 const POSITION_ORDER = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
-const POSITION_HEBREW: Record<string, string> = { SS: 'חלוץ שני' };
 
 function hasText(value?: string | null): value is string {
   if (!value) return false;
@@ -232,6 +232,11 @@ export default function ClubChangeNotificationsPage() {
     return !!search.trim() || !!positionFilter;
   }, [search, positionFilter]);
 
+  const renderPosition = (position?: string) => {
+    if (!position) return '—';
+    return getPositionDisplayName(position, isRtl) || position;
+  };
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
@@ -287,7 +292,7 @@ export default function ClubChangeNotificationsPage() {
               {t('releases_all')}
             </button>
             {positions.map((position) => {
-              const label = isRtl ? (POSITION_HEBREW[position] || position) : position;
+              const label = renderPosition(position);
               return (
                 <button
                   key={position}
@@ -321,13 +326,14 @@ export default function ClubChangeNotificationsPage() {
             {filteredItems.map((item) => (
               <div
                 key={item.playerUrl}
-                className="group relative overflow-hidden rounded-2xl bg-mgsr-card border border-mgsr-border hover:border-[var(--mgsr-accent)]/45 hover:shadow-[0_20px_50px_rgba(0,0,0,0.35)] transition-all duration-300"
+                className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#141414] via-[#101010] to-[#171717] border border-[#3a3324] hover:border-[var(--mgsr-accent)]/55 hover:shadow-[0_28px_70px_rgba(0,0,0,0.45)] transition-all duration-300"
               >
-                <div className="absolute inset-0 bg-gradient-to-b from-[var(--mgsr-accent)]/14 via-transparent to-mgsr-dark/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-[var(--mgsr-accent)]/12 blur-2xl group-hover:bg-[var(--mgsr-accent)]/20 transition-colors duration-300" />
+                <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_10%_0%,rgba(245,200,116,0.17)_0%,transparent_56%)] opacity-70" />
+                <div className="absolute inset-0 bg-gradient-to-b from-[var(--mgsr-accent)]/12 via-transparent to-black/45 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-[var(--mgsr-accent)]/18 blur-2xl group-hover:bg-[var(--mgsr-accent)]/26 transition-colors duration-300" />
                 <div className="relative p-5">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md bg-[var(--mgsr-accent)]/16 text-[var(--mgsr-accent)] border border-[var(--mgsr-accent)]/35">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] px-2.5 py-1 rounded-md bg-[var(--mgsr-accent)]/16 text-[var(--mgsr-accent)] border border-[var(--mgsr-accent)]/35 shadow-[0_0_0_1px_rgba(245,200,116,0.08)_inset]">
                       {t('club_change_notifications_badge')}
                     </span>
                     <span className="text-[11px] text-mgsr-muted">
@@ -339,40 +345,58 @@ export default function ClubChangeNotificationsPage() {
                       <img
                         src={item.displayImage || 'https://via.placeholder.com/72'}
                         alt=""
-                        className="w-16 h-16 rounded-2xl object-cover bg-mgsr-dark ring-2 ring-mgsr-border group-hover:ring-[var(--mgsr-accent)]/55 transition-all duration-300 group-hover:scale-105"
+                        className="w-16 h-16 rounded-2xl object-cover bg-mgsr-dark ring-2 ring-[#4d432e] group-hover:ring-[var(--mgsr-accent)]/55 transition-all duration-300 group-hover:scale-105"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-display font-semibold text-lg text-mgsr-text truncate group-hover:text-[var(--mgsr-accent)] transition-colors">
                         {item.displayName}
                       </p>
-                      <p className="text-sm text-mgsr-muted mt-1">{item.displayPosition || '—'}</p>
+                      <p className="text-sm text-mgsr-muted mt-1">{renderPosition(item.displayPosition)}</p>
                       <div className="flex items-center gap-2 mt-2">
                         {item.displayAge && (
-                          <span className="text-xs px-2 py-0.5 rounded-md bg-mgsr-card border border-mgsr-border text-mgsr-muted">
+                          <span className="text-xs px-2 py-0.5 rounded-md bg-black/25 border border-[#3c3c3c] text-mgsr-muted">
                             {t('players_age_display').replace('{age}', item.displayAge)}
                           </span>
                         )}
-                        <span className="text-xs px-2 py-0.5 rounded-md bg-mgsr-card border border-mgsr-border text-[var(--mgsr-accent)]">
+                        <span className="text-xs px-2 py-0.5 rounded-md bg-[var(--mgsr-accent)]/10 border border-[var(--mgsr-accent)]/35 text-[var(--mgsr-accent)]">
                           {t('club_change_notifications_market_value')}: {item.displayMarketValue || '—'}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-xl border border-mgsr-border/80 bg-mgsr-dark/35 p-3">
+                  <div className="mt-4 rounded-xl border border-[#3a3324] bg-black/25 p-3 backdrop-blur-sm">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[11px] uppercase tracking-wide text-mgsr-muted/90">{t('club_change_notifications_from')}</p>
-                        <p className="text-sm text-mgsr-text truncate">{item.oldClub}</p>
-                      </div>
-                      <svg className="w-4 h-4 text-[var(--mgsr-accent)] mt-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
-                      </svg>
-                      <div className="min-w-0 text-right rtl:text-left">
-                        <p className="text-[11px] uppercase tracking-wide text-mgsr-muted/90">{t('club_change_notifications_to')}</p>
-                        <p className="text-sm text-[var(--mgsr-accent)] font-semibold truncate">{item.newClub}</p>
-                      </div>
+                      {isRtl ? (
+                        <>
+                          <div className="min-w-0">
+                            <p className="text-[11px] uppercase tracking-wide text-mgsr-muted/90">{t('club_change_notifications_to')}</p>
+                            <p className="text-sm text-[var(--mgsr-accent)] font-semibold truncate">{item.newClub}</p>
+                          </div>
+                          <svg className="w-4 h-4 text-[var(--mgsr-accent)] mt-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5l-7 7 7 7M19 12H5" />
+                          </svg>
+                          <div className="min-w-0 text-left rtl:text-right">
+                            <p className="text-[11px] uppercase tracking-wide text-mgsr-muted/90">{t('club_change_notifications_from')}</p>
+                            <p className="text-sm text-mgsr-text truncate">{item.oldClub}</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="min-w-0">
+                            <p className="text-[11px] uppercase tracking-wide text-mgsr-muted/90">{t('club_change_notifications_from')}</p>
+                            <p className="text-sm text-mgsr-text truncate">{item.oldClub}</p>
+                          </div>
+                          <svg className="w-4 h-4 text-[var(--mgsr-accent)] mt-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
+                          </svg>
+                          <div className="min-w-0 text-right rtl:text-left">
+                            <p className="text-[11px] uppercase tracking-wide text-mgsr-muted/90">{t('club_change_notifications_to')}</p>
+                            <p className="text-sm text-[var(--mgsr-accent)] font-semibold truncate">{item.newClub}</p>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
