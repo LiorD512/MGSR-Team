@@ -884,8 +884,8 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | Feed card inside `DashboardScreen` activity list | `/club-change-notifications/page.tsx` |
 | Data | `FeedEvents` (`CLUB_CHANGE`) | Real-time Firestore listeners on `FeedEvents` + `Players` (Men collections via `platformCollections`) |
-| Logic | Club move events rendered in recent activity | Dedicated list filtered to `CLUB_CHANGE`, deduplicated by `playerTmProfile`, with roster fallback metadata (including market value) and links to player profile + TM profile |
-| UI/COPY | N/A | `/club-change-notifications/page.tsx` cards use enhanced BRIT styling (badge/timestamp header, stronger hover depth, accent glow), use shared position display mapping (`getPositionDisplayName`) so filter chips/position text are translated in Hebrew, and flip club move direction blocks in RTL (`To ← From`) while keeping LTR (`From → To`). Market value label/value remains localized in EN/HE via `LanguageContext`. |
+| Logic | Club move events rendered in recent activity | Dedicated list filtered to `CLUB_CHANGE` with no profile deduplication (every event is shown), default-sorted by newest `timestamp` so newly added notifications surface first, with roster fallback metadata (including market value) and links to player profile + TM profile |
+| UI/COPY | N/A | `/club-change-notifications/page.tsx` cards use enhanced BRIT styling (badge/timestamp header, stronger hover depth, accent glow), use shared position display mapping (`getPositionDisplayName`) so filter chips/position text are translated in Hebrew, and render opposite-direction move arrows per latest UI request while preserving RTL/LTR club label order. Market value label/value remains localized in EN/HE via `LanguageContext`. A sort-chip row supports Date Added (newest/oldest) and Market Value (high→low / low→high). |
 | Navigation | Dashboard activity + notification center | Added to Men desktop market menu and mobile More sheet directly below release notifications |
 
 ### Returnees

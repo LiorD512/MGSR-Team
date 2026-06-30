@@ -51,6 +51,8 @@ interface ClubChangeItem {
   newClub: string;
 }
 
+type SortMode = 'date_desc' | 'date_asc' | 'value_desc' | 'value_asc';
+
 const POSITION_ORDER = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 
 function hasText(value?: string | null): value is string {
@@ -75,35 +77,18 @@ function formatTimestamp(timestamp: number | undefined, isRtl: boolean): string 
   });
 }
 
-function deduplicateClubChangeEvents(events: FeedEvent[]): FeedEvent[] {
-  const seen = new Map<string, FeedEvent>();
-  for (const event of events) {
-    const profile = event.playerTmProfile?.trim();
-    if (!profile) continue;
-
-    const existing = seen.get(profile);
-    if (!existing) {
-      seen.set(profile, event);
-      continue;
-    }
-
-    const eventTs = event.timestamp ?? 0;
-    const existingTs = existing.timestamp ?? 0;
-    const newer = eventTs >= existingTs ? event : existing;
-    const older = eventTs >= existingTs ? existing : event;
-
-    seen.set(profile, {
-      ...newer,
-      playerName: firstText(newer.playerName, older.playerName),
-      playerImage: firstText(newer.playerImage, older.playerImage),
-      playerPosition: firstText(newer.playerPosition, older.playerPosition),
-      playerAge: firstText(newer.playerAge, older.playerAge),
-      oldValue: firstText(newer.oldValue, older.oldValue),
-      newValue: firstText(newer.newValue, older.newValue),
-    });
-  }
-
-  return Array.from(seen.values()).sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+function parseMarketValueToNumber(value?: string): number {
+  if (!value) return 0;
+  const normalized = value.toLowerCase().replace(/,/g, '').replace(/\s+/g, '');
+  const match = normalized.match(/(\d+(?:\.\d+)?)([kmb])?/);
+  if (!match) return 0;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount)) return 0;
+  const suffix = match[2];
+  if (suffix === 'k') return amount * 1_000;
+  if (suffix === 'm') return amount * 1_000_000;
+  if (suffix === 'b') return amount * 1_000_000_000;
+  return amount;
 }
 
 export default function ClubChangeNotificationsPage() {
@@ -115,6 +100,7 @@ export default function ClubChangeNotificationsPage() {
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
   const [search, setSearch] = useState('');
   const [positionFilter, setPositionFilter] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('date_desc');
   const [loadingList, setLoadingList] = useState(true);
 
   useEffect(() => {
@@ -159,9 +145,9 @@ export default function ClubChangeNotificationsPage() {
   }, [rosterPlayers]);
 
   const clubChangeItems = useMemo<ClubChangeItem[]>(() => {
-    const source = deduplicateClubChangeEvents(
-      events.filter((event) => event.type === 'CLUB_CHANGE' && !!event.playerTmProfile)
-    );
+    const source = events
+      .filter((event) => event.type === 'CLUB_CHANGE' && !!event.playerTmProfile)
+      .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
 
     return source
       .filter((event): event is FeedEvent & { playerTmProfile: string } => !!event.playerTmProfile)
@@ -225,8 +211,27 @@ export default function ClubChangeNotificationsPage() {
       });
     }
 
-    return result;
-  }, [clubChangeItems, search, positionFilter]);
+    const sorted = [...result];
+    sorted.sort((a, b) => {
+      if (sortMode === 'date_desc') {
+        return (b.event.timestamp ?? 0) - (a.event.timestamp ?? 0);
+      }
+      if (sortMode === 'date_asc') {
+        return (a.event.timestamp ?? 0) - (b.event.timestamp ?? 0);
+      }
+
+      const av = parseMarketValueToNumber(a.displayMarketValue);
+      const bv = parseMarketValueToNumber(b.displayMarketValue);
+      if (sortMode === 'value_desc') {
+        if (bv !== av) return bv - av;
+        return (b.event.timestamp ?? 0) - (a.event.timestamp ?? 0);
+      }
+      if (av !== bv) return av - bv;
+      return (b.event.timestamp ?? 0) - (a.event.timestamp ?? 0);
+    });
+
+    return sorted;
+  }, [clubChangeItems, search, positionFilter, sortMode]);
 
   const hasActiveFilters = useMemo(() => {
     return !!search.trim() || !!positionFilter;
@@ -308,6 +313,49 @@ export default function ClubChangeNotificationsPage() {
               );
             })}
           </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <span className="text-xs text-mgsr-muted self-center shrink-0">{t('club_change_notifications_sort')}:</span>
+            <button
+              onClick={() => setSortMode('date_desc')}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                sortMode === 'date_desc'
+                  ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+              }`}
+            >
+              {t('club_change_notifications_sort_date_newest')}
+            </button>
+            <button
+              onClick={() => setSortMode('date_asc')}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                sortMode === 'date_asc'
+                  ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+              }`}
+            >
+              {t('club_change_notifications_sort_date_oldest')}
+            </button>
+            <button
+              onClick={() => setSortMode('value_desc')}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                sortMode === 'value_desc'
+                  ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+              }`}
+            >
+              {t('club_change_notifications_sort_value_high')}
+            </button>
+            <button
+              onClick={() => setSortMode('value_asc')}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                sortMode === 'value_asc'
+                  ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+              }`}
+            >
+              {t('club_change_notifications_sort_value_low')}
+            </button>
+          </div>
         </div>
 
         {loadingList ? (
@@ -375,7 +423,7 @@ export default function ClubChangeNotificationsPage() {
                             <p className="text-sm text-[var(--mgsr-accent)] font-semibold truncate">{item.newClub}</p>
                           </div>
                           <svg className="w-4 h-4 text-[var(--mgsr-accent)] mt-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5l-7 7 7 7M19 12H5" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
                           </svg>
                           <div className="min-w-0 text-left rtl:text-right">
                             <p className="text-[11px] uppercase tracking-wide text-mgsr-muted/90">{t('club_change_notifications_from')}</p>
@@ -389,7 +437,7 @@ export default function ClubChangeNotificationsPage() {
                             <p className="text-sm text-mgsr-text truncate">{item.oldClub}</p>
                           </div>
                           <svg className="w-4 h-4 text-[var(--mgsr-accent)] mt-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5l-7 7 7 7M19 12H5" />
                           </svg>
                           <div className="min-w-0 text-right rtl:text-left">
                             <p className="text-[11px] uppercase tracking-wide text-mgsr-muted/90">{t('club_change_notifications_to')}</p>
