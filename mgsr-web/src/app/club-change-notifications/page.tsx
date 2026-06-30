@@ -31,6 +31,7 @@ interface RosterPlayer {
   tmProfile?: string;
   positions?: string[];
   age?: string;
+  marketValue?: string;
   currentClub?: {
     clubName?: string;
   };
@@ -44,6 +45,7 @@ interface ClubChangeItem {
   displayImage?: string;
   displayPosition?: string;
   displayAge?: string;
+  displayMarketValue?: string;
   oldClub: string;
   newClub: string;
 }
@@ -175,6 +177,7 @@ export default function ClubChangeNotificationsPage() {
           displayImage: firstText(event.playerImage, rosterPlayer?.profileImage),
           displayPosition,
           displayAge: firstText(event.playerAge, rosterPlayer?.age),
+          displayMarketValue: firstText(rosterPlayer?.marketValue),
           oldClub: firstText(event.oldValue) || '—',
           newClub: firstText(event.newValue, rosterPlayer?.currentClub?.clubName) || '—',
         };
@@ -318,10 +321,19 @@ export default function ClubChangeNotificationsPage() {
             {filteredItems.map((item) => (
               <div
                 key={item.playerUrl}
-                className="group relative overflow-hidden rounded-2xl bg-mgsr-card border border-mgsr-border hover:border-[var(--mgsr-accent)]/45 transition-all duration-300"
+                className="group relative overflow-hidden rounded-2xl bg-mgsr-card border border-mgsr-border hover:border-[var(--mgsr-accent)]/45 hover:shadow-[0_20px_50px_rgba(0,0,0,0.35)] transition-all duration-300"
               >
-                <div className="absolute inset-0 bg-gradient-to-b from-[var(--mgsr-accent)]/10 via-transparent to-mgsr-dark/35 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-gradient-to-b from-[var(--mgsr-accent)]/14 via-transparent to-mgsr-dark/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-[var(--mgsr-accent)]/12 blur-2xl group-hover:bg-[var(--mgsr-accent)]/20 transition-colors duration-300" />
                 <div className="relative p-5">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md bg-[var(--mgsr-accent)]/16 text-[var(--mgsr-accent)] border border-[var(--mgsr-accent)]/35">
+                      {t('club_change_notifications_badge')}
+                    </span>
+                    <span className="text-[11px] text-mgsr-muted">
+                      {formatTimestamp(item.event.timestamp, isRtl)}
+                    </span>
+                  </div>
                   <div className="flex gap-4">
                     <div className="relative shrink-0">
                       <img
@@ -341,10 +353,10 @@ export default function ClubChangeNotificationsPage() {
                             {t('players_age_display').replace('{age}', item.displayAge)}
                           </span>
                         )}
+                        <span className="text-xs px-2 py-0.5 rounded-md bg-mgsr-card border border-mgsr-border text-[var(--mgsr-accent)]">
+                          {t('club_change_notifications_market_value')}: {item.displayMarketValue || '—'}
+                        </span>
                       </div>
-                      <p className="text-xs text-mgsr-muted mt-2">
-                        {t('releases_sort_date')}: {formatTimestamp(item.event.timestamp, isRtl)}
-                      </p>
                     </div>
                   </div>
 

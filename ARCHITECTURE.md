@@ -884,7 +884,8 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | Feed card inside `DashboardScreen` activity list | `/club-change-notifications/page.tsx` |
 | Data | `FeedEvents` (`CLUB_CHANGE`) | Real-time Firestore listeners on `FeedEvents` + `Players` (Men collections via `platformCollections`) |
-| Logic | Club move events rendered in recent activity | Dedicated list filtered to `CLUB_CHANGE`, deduplicated by `playerTmProfile`, with roster fallback metadata and links to player profile + TM profile |
+| Logic | Club move events rendered in recent activity | Dedicated list filtered to `CLUB_CHANGE`, deduplicated by `playerTmProfile`, with roster fallback metadata (including market value) and links to player profile + TM profile |
+| UI/COPY | N/A | `/club-change-notifications/page.tsx` cards use enhanced BRIT styling (badge/timestamp header, stronger hover depth, accent glow) and show localized market value label/value in EN/HE via `LanguageContext`. |
 | Navigation | Dashboard activity + notification center | Added to Men desktop market menu and mobile More sheet directly below release notifications |
 
 ### Returnees
