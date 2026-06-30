@@ -1000,6 +1000,7 @@ export default function DashboardPage() {
                 { href: '/tasks', count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
                 { href: '/shortlist', count: shortlistCount, label: t('shortlist') },
                 { href: '/release-notifications', count: null, label: t('nav_release_notifications'), arrow: true },
+                { href: '/club-change-notifications', count: null, label: t('nav_club_change_notifications'), arrow: true },
                 { href: '/returnees', count: null, label: t('nav_returnee'), arrow: true },
                 { href: '/contract-finisher', count: null, label: t('nav_contract_finisher'), arrow: true },
               ]
@@ -2040,6 +2041,7 @@ export default function DashboardPage() {
             : [
                 { href: '/shortlist', label: t('shortlist') },
                 { href: '/release-notifications', label: t('nav_release_notifications') },
+              { href: '/club-change-notifications', label: t('nav_club_change_notifications') },
                 { href: '/returnees', label: t('nav_returnee') },
                 { href: '/contract-finisher', label: t('nav_contract_finisher') },
                 { href: '/tasks', label: t('tasks') },

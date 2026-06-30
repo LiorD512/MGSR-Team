@@ -261,7 +261,7 @@ Separate Gradle module for HTML scraping via JSoup:
 - Web login screen now presents BRIT Sport Group branding directly in the auth card and uses the shared black/gold visual palette instead of the older teal-accent treatment.
 - Web logo asset for user-visible surfaces is `mgsr-web/public/brit_circle_black_gold.svg` (used in app chrome, mobile header, shared pages, and share OG visuals).
 - Web mandate flows now use BRIT branding end-to-end: mandate PDF generator logo/source text and signing page metadata/footer labels.
-- The authenticated web app now uses a BRIT premium shell across desktop and mobile (`AppLayout`, `MobileHeader`, `MobileBottomTabBar`) with black/gold-glass surfaces; route hero/filter sections for dashboard, players, requests, tasks, shortlist, contacts, contract-finisher, returnees, release-notifications, shadow-teams, and portfolio are aligned to that shared visual language.
+- The authenticated web app now uses a BRIT premium shell across desktop and mobile (`AppLayout`, `MobileHeader`, `MobileBottomTabBar`) with black/gold-glass surfaces; route hero/filter sections for dashboard, players, requests, tasks, shortlist, contacts, contract-finisher, returnees, release-notifications, club-change-notifications, shadow-teams, and portfolio are aligned to that shared visual language.
 - Tunnel (`/chat-room`) remains implemented, but is currently hidden from desktop and mobile navigation menus (commented nav entries) per management-web configuration request.
 - Desktop app-shell brand block now removes the eyebrow microcopy near the sidebar logo and renders a single gold BRIT Sport Group wordmark vertically centered with the logo, while preserving the original wordmark size.
 - Desktop app-shell sidebar brand link no longer renders the rounded white framed container behind the BRIT logo/wordmark; only the logo + text remain visible.
@@ -768,7 +768,7 @@ Both Android and Web support switching between Men, Women, and Youth platforms a
 - `DirSync` component sets `dir="rtl"` on document element
 - Country names: `countryTranslations.ts` (delegates to remote config)
 - Position names: `appConfig.getPositionDisplayName(code, isHebrew)`
-- BRIT redesign UI copy (app shell + mobile header + redesigned dashboard/players/requests/tasks/shortlist/contacts/releases/contract-finisher/returnees/release-notifications hero and filter sections) is defined in `mgsr-web/src/contexts/LanguageContext.tsx` and consumed via `t()` to keep Hebrew parity.
+- BRIT redesign UI copy (app shell + mobile header + redesigned dashboard/players/requests/tasks/shortlist/contacts/releases/contract-finisher/returnees/release-notifications/club-change-notifications hero and filter sections) is defined in `mgsr-web/src/contexts/LanguageContext.tsx` and consumed via `t()` to keep Hebrew parity.
 
 ---
 
@@ -878,6 +878,14 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Screen | `ContractFinisherScreen` | `/contract-finisher/page.tsx` |
 | Data | Transfermarkt scraping | API route `/api/transfermarkt/contract-finishers` (cached by GitHub Actions weekly) |
 | Filters | Position, age, market value | Same |
+
+### Club Change Notifications (Men)
+| Aspect | Android | Web |
+|--------|---------|-----|
+| Screen | Feed card inside `DashboardScreen` activity list | `/club-change-notifications/page.tsx` |
+| Data | `FeedEvents` (`CLUB_CHANGE`) | Real-time Firestore listeners on `FeedEvents` + `Players` (Men collections via `platformCollections`) |
+| Logic | Club move events rendered in recent activity | Dedicated list filtered to `CLUB_CHANGE`, deduplicated by `playerTmProfile`, with roster fallback metadata and links to player profile + TM profile |
+| Navigation | Dashboard activity + notification center | Added to Men desktop market menu and mobile More sheet directly below release notifications |
 
 ### Returnees
 | Aspect | Android | Web |

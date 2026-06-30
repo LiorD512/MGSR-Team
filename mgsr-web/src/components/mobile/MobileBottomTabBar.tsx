@@ -82,6 +82,7 @@ export const menMoreItems = [
   { href: '/shortlist', labelKey: 'nav_shortlist' },
   // TEMP HIDDEN (user request): { href: '/shadow-teams', labelKey: 'nav_shadow_teams' },
   { href: '/release-notifications', labelKey: 'nav_release_notifications' },
+  { href: '/club-change-notifications', labelKey: 'nav_club_change_notifications' },
   { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
   { href: '/returnees', labelKey: 'nav_returnee' },
   // DISABLED — Vercel cost optimization (May 2026)
