@@ -598,6 +598,7 @@ export default function ReleaseNotificationsPage() {
   const [positionFilter, setPositionFilter] = useState<string | null>(null);
   const [ageFilter, setAgeFilter] = useState<AgeFilter>('all');
   const [regionFilter, setRegionFilter] = useState<Confederation | null>(null);
+  const [rosterOnly, setRosterOnly] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>('value');
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
@@ -1159,6 +1160,10 @@ export default function ReleaseNotificationsPage() {
       result = result.filter((player) => getConfederation(player.playerNationality) === regionFilter);
     }
 
+    if (rosterOnly) {
+      result = result.filter((player) => player.isRosterPlayer);
+    }
+
     if (sortBy === 'date') {
       // Use release date first, then feed timestamp and market value for deterministic ordering.
       return [...result].sort((a, b) => {
@@ -1189,11 +1194,11 @@ export default function ReleaseNotificationsPage() {
     );
     const sortedOrder = new Map(sortedReleasePlayers.map((player, index) => [player.playerUrl, index]));
     return [...result].sort((a, b) => (sortedOrder.get(a.playerUrl) ?? 0) - (sortedOrder.get(b.playerUrl) ?? 0));
-  }, [resolvedPlayers, preset, search, positionFilter, ageFilter, regionFilter, sortBy]);
+  }, [resolvedPlayers, preset, search, positionFilter, ageFilter, regionFilter, rosterOnly, sortBy]);
 
   const hasActiveFilters = useMemo(() => {
-    return search.trim() || positionFilter || ageFilter !== 'all' || regionFilter || preset !== 0;
-  }, [search, positionFilter, ageFilter, regionFilter, preset]);
+    return search.trim() || positionFilter || ageFilter !== 'all' || regionFilter || rosterOnly || preset !== 0;
+  }, [search, positionFilter, ageFilter, regionFilter, rosterOnly, preset]);
 
   const addToShortlist = useCallback(
     async (event: FeedEvent) => {
@@ -1483,6 +1488,29 @@ export default function ReleaseNotificationsPage() {
                 {t(region.key)}
               </button>
             ))}
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <span className="text-xs text-mgsr-muted self-center shrink-0">{t('release_notifications_source')}:</span>
+            <button
+              onClick={() => setRosterOnly(false)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                !rosterOnly
+                  ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+              }`}
+            >
+              {t('releases_all')}
+            </button>
+            <button
+              onClick={() => setRosterOnly((prev) => !prev)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                rosterOnly
+                  ? 'bg-[var(--mgsr-accent)] text-mgsr-dark'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+              }`}
+            >
+              {t('release_notifications_filter_roster')}
+            </button>
           </div>
         </div>
 
