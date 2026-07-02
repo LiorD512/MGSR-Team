@@ -72,6 +72,8 @@ interface ContractFinisherCache {
   positionFilter: string | null;
   ageFilter: string;
   regionFilter: Confederation | null;
+  search: string;
+  rosterOnly: boolean;
   rosterPlayers: RosterPlayer[];
   shortlistUrls: string[];
 }
@@ -334,6 +336,8 @@ export default function ContractFinisherPage() {
   const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
   const [ageFilter, setAgeFilter] = useState(cached?.ageFilter ?? 'all');
   const [regionFilter, setRegionFilter] = useState<Confederation | null>(cached?.regionFilter ?? null);
+  const [search, setSearch] = useState(cached?.search ?? '');
+  const [rosterOnly, setRosterOnly] = useState(cached?.rosterOnly ?? false);
   const [showFilters, setShowFilters] = useState(false);
   const [firestorePositions, setFirestorePositions] = useState<{ name?: string; hebrewName?: string }[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>(cached?.rosterPlayers ?? []);
@@ -403,12 +407,14 @@ export default function ContractFinisherPage() {
         positionFilter,
         ageFilter,
         regionFilter,
+        search,
+        rosterOnly,
         rosterPlayers,
         shortlistUrls: Array.from(shortlistUrls),
       },
       user?.uid ?? undefined
     );
-  }, [players, windowLabel, valueFilter, positionFilter, ageFilter, regionFilter, rosterPlayers, shortlistUrls, user?.uid]);
+  }, [players, windowLabel, valueFilter, positionFilter, ageFilter, regionFilter, search, rosterOnly, rosterPlayers, shortlistUrls, user?.uid]);
 
   const addToShortlist = useCallback(
     async (player: ContractFinisherPlayer) => {
@@ -493,6 +499,23 @@ export default function ContractFinisherPage() {
 
   const filteredPlayers = useMemo(() => {
     let result = players;
+    const queryText = search.trim().toLowerCase();
+
+    if (queryText) {
+      result = result.filter((p) => {
+        const name = p.playerName?.toLowerCase() ?? '';
+        const profile = p.playerUrl?.toLowerCase() ?? '';
+        const position = p.playerPosition?.toLowerCase() ?? '';
+        const nationality = p.playerNationality?.toLowerCase() ?? '';
+        return (
+          name.includes(queryText) ||
+          profile.includes(queryText) ||
+          position.includes(queryText) ||
+          nationality.includes(queryText)
+        );
+      });
+    }
+
     if (positionFilter) {
       result = result.filter(
         (p) => p.playerPosition?.toLowerCase() === positionFilter.toLowerCase()
@@ -524,8 +547,18 @@ export default function ContractFinisherPage() {
         return true;
       });
     }
-    // Exclude players already in roster or shortlist
+
     const rosterTmIds = new Set(rosterPlayers.map((p) => extractPlayerIdFromUrl(p.tmProfile)).filter(Boolean));
+
+    if (rosterOnly) {
+      result = result.filter((p) => {
+        const id = extractPlayerIdFromUrl(p.playerUrl);
+        return !!id && rosterTmIds.has(id);
+      });
+      return result;
+    }
+
+    // Exclude players already in roster or shortlist for non-roster mode
     result = result.filter((p) => {
       const id = extractPlayerIdFromUrl(p.playerUrl);
       if (id && rosterTmIds.has(id)) return false;
@@ -533,7 +566,7 @@ export default function ContractFinisherPage() {
       return true;
     });
     return result;
-  }, [players, positionFilter, ageFilter, regionFilter, valueFilter, rosterPlayers, shortlistUrls]);
+  }, [players, search, positionFilter, ageFilter, regionFilter, valueFilter, rosterOnly, rosterPlayers, shortlistUrls]);
 
   const shortlistedCount = useMemo(
     () => filteredPlayers.filter((p) => p.playerUrl && shortlistUrls.has(p.playerUrl)).length,
@@ -541,10 +574,12 @@ export default function ContractFinisherPage() {
   );
 
   const activeFilterCount = [
+    search.trim(),
     positionFilter,
     ageFilter !== 'all',
     regionFilter,
     valueFilter !== 'all',
+    rosterOnly,
   ].filter(Boolean).length;
 
   if (loading || !user) {
@@ -626,6 +661,132 @@ export default function ContractFinisherPage() {
               <span className="text-sm text-mgsr-muted">
                 {t('contract_finisher_stats_visible')}: <strong className="text-mgsr-teal">{filteredPlayers.length}</strong>
               </span>
+            </div>
+
+            <div className="brit-filter-tray rounded-2xl p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 mb-5">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t('contract_finisher_search')}
+                className="w-full max-w-md px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal/60"
+              />
+
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('contract_finisher_filter_label_value')}:</span>
+                {VALUE_FILTERS.map((v) => (
+                  <button
+                    key={v.key}
+                    onClick={() => setValueFilter(v.key)}
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      valueFilter === v.key
+                        ? 'bg-mgsr-teal text-mgsr-dark'
+                        : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    {t(`contract_finisher_filter_value_${v.key}`)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_position')}:</span>
+                <button
+                  onClick={() => setPositionFilter(null)}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    !positionFilter
+                      ? 'bg-mgsr-teal text-mgsr-dark'
+                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                  }`}
+                >
+                  {t('releases_all')}
+                </button>
+                {positions.map((pos) => {
+                  const fp = firestorePositions.find((p) => p.name?.toLowerCase() === pos.toLowerCase());
+                  const label = isRtl ? (fp?.hebrewName || POSITION_HEBREW[pos] || pos) : pos;
+                  return (
+                    <button
+                      key={pos}
+                      onClick={() => setPositionFilter(positionFilter === pos ? null : pos)}
+                      className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                        positionFilter === pos
+                          ? 'bg-mgsr-teal text-mgsr-dark'
+                          : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_age')}:</span>
+                {AGE_FILTERS.map((a) => (
+                  <button
+                    key={a.key}
+                    onClick={() => setAgeFilter(ageFilter === a.key ? 'all' : a.key)}
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      ageFilter === a.key
+                        ? 'bg-mgsr-teal text-mgsr-dark'
+                        : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    {t(`contract_finisher_filter_age_${a.key}`)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_region')}:</span>
+                <button
+                  onClick={() => setRegionFilter(null)}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    !regionFilter
+                      ? 'bg-mgsr-teal text-mgsr-dark'
+                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                  }`}
+                >
+                  {t('releases_all')}
+                </button>
+                {REGION_OPTIONS.map((r) => (
+                  <button
+                    key={r.value}
+                    onClick={() => setRegionFilter(regionFilter === r.value ? null : r.value)}
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      regionFilter === r.value
+                        ? 'bg-mgsr-teal text-mgsr-dark'
+                        : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    {t(r.key)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('release_notifications_source')}:</span>
+                <button
+                  onClick={() => setRosterOnly(false)}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    !rosterOnly
+                      ? 'bg-mgsr-teal text-mgsr-dark'
+                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                  }`}
+                >
+                  {t('releases_all')}
+                </button>
+                <button
+                  onClick={() => setRosterOnly((prev) => !prev)}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    rosterOnly
+                      ? 'bg-mgsr-teal text-mgsr-dark'
+                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                  }`}
+                >
+                  {t('release_notifications_filter_roster')}
+                </button>
+              </div>
             </div>
 
             {filteredPlayers.length === 0 ? (
@@ -771,9 +932,11 @@ export default function ContractFinisherPage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => {
+                  setSearch('');
                   setPositionFilter(null);
                   setAgeFilter('all');
                   setRegionFilter(null);
+                  setRosterOnly(false);
                   setValueFilter('all');
                 }}
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-mgsr-border text-mgsr-muted hover:text-mgsr-text"
