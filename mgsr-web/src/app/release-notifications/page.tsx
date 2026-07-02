@@ -99,6 +99,8 @@ interface ReleaseMeta {
 interface NotificationPlayer extends ReleaseMeta {
   event: FeedEvent;
   playerUrl: string;
+  rosterPlayer?: RosterPlayer;
+  isRosterPlayer: boolean;
 }
 
 interface RosterPlayer {
@@ -313,6 +315,8 @@ function ReleaseNotificationCard({
   event,
   t,
   isRtl,
+  isRosterPlayer,
+  rosterPlayerId,
   isInShortlist,
   isAdding,
   isEnriching,
@@ -327,10 +331,12 @@ function ReleaseNotificationCard({
   event: FeedEvent;
   t: (key: string) => string;
   isRtl: boolean;
+  isRosterPlayer: boolean;
+  rosterPlayerId?: string;
   isInShortlist: boolean;
   isAdding: boolean;
   isEnriching: boolean;
-  meta?: ReleaseMeta;
+  meta?: NotificationPlayer;
   onAddToShortlist: (event: FeedEvent) => void;
   teammatesCache: Record<string, RosterTeammateMatch[]>;
   loadingTeammatesUrl: string | null;
@@ -344,6 +350,8 @@ function ReleaseNotificationCard({
   const playerAge = event.playerAge || meta?.playerAge;
   const playerNationality = event.playerNationality || meta?.playerNationality;
   const playerNationalityFlag = event.playerNationalityFlag || meta?.playerNationalityFlag;
+  const displayName = firstMeaningful(event.playerName, meta?.rosterPlayer?.fullName) || 'Unknown';
+  const displayImage = firstMeaningful(event.playerImage, meta?.rosterPlayer?.profileImage);
   const rosterTeammates = playerUrl ? teammatesCache[playerUrl] : undefined;
   const isLoadingTeammates = loadingTeammatesUrl === playerUrl;
   const isExpanded = isTeammatesExpanded === playerUrl;
@@ -352,9 +360,13 @@ function ReleaseNotificationCard({
     (e: React.MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('a') || target.closest('button') || target.closest('[data-no-propagate]')) return;
+      if (rosterPlayerId) {
+        window.location.href = `/players/${rosterPlayerId}?from=/release-notifications`;
+        return;
+      }
       if (playerUrl) window.open(playerUrl, '_blank', 'noopener,noreferrer');
     },
-    [playerUrl]
+    [playerUrl, rosterPlayerId]
   );
 
   const handleTeammatesClick = useCallback(
@@ -384,8 +396,14 @@ function ReleaseNotificationCard({
     >
       <div className="absolute inset-0 bg-gradient-to-b from-[var(--mgsr-accent)]/10 via-transparent to-mgsr-dark/35 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       <div className="relative p-5">
-        <span className="absolute top-4 left-4 rtl:left-auto rtl:right-4 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md bg-[var(--mgsr-accent)]/20 text-[var(--mgsr-accent)] border border-[var(--mgsr-accent)]/35">
-          {t('release_notifications_badge')}
+        <span
+          className={`absolute top-4 left-4 rtl:left-auto rtl:right-4 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border ${
+            isRosterPlayer
+              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+              : 'bg-[var(--mgsr-accent)]/20 text-[var(--mgsr-accent)] border-[var(--mgsr-accent)]/35'
+          }`}
+        >
+          {isRosterPlayer ? t('release_notifications_roster_badge') : t('release_notifications_badge')}
         </span>
         {isEnriching && (
           <div className="absolute top-4 right-4 rtl:right-auto rtl:left-4 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-mgsr-dark/85 border border-[var(--mgsr-accent)]/35 backdrop-blur-sm shadow-lg">
@@ -396,7 +414,7 @@ function ReleaseNotificationCard({
         <div className="flex gap-4 mt-6">
           <div className="relative shrink-0">
             <img
-              src={event.playerImage || 'https://via.placeholder.com/72'}
+              src={displayImage || 'https://via.placeholder.com/72'}
               alt=""
               className="w-16 h-16 rounded-2xl object-cover bg-mgsr-dark ring-2 ring-mgsr-border group-hover:ring-[var(--mgsr-accent)]/55 transition-all duration-300 group-hover:scale-105"
             />
@@ -410,7 +428,7 @@ function ReleaseNotificationCard({
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-display font-semibold text-lg text-mgsr-text truncate group-hover:text-[var(--mgsr-accent)] transition-colors">
-              {event.playerName || 'Unknown'}
+              {displayName}
             </p>
             <p className="text-sm text-mgsr-muted mt-1">{playerPosition}</p>
             <div className="flex items-center gap-2 mt-2">
@@ -431,43 +449,54 @@ function ReleaseNotificationCard({
 
         <div className="mt-4 pt-4 border-t border-mgsr-border/80 flex items-center justify-between gap-3" data-no-propagate>
           <span className="text-base font-display font-bold text-[var(--mgsr-accent)] shrink-0">{marketValue}</span>
-          {isInShortlist ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30">
-              <svg className="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-              </svg>
-              <span className="text-xs font-semibold text-amber-400 uppercase tracking-wide">
-                {t('releases_saved')}
-              </span>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {rosterPlayerId && (
               <Link
-                href="/shortlist"
+                href={`/players/${rosterPlayerId}?from=/release-notifications`}
                 onClick={(e) => e.stopPropagation()}
-                className="text-xs font-medium text-amber-400/90 hover:text-amber-300 underline underline-offset-2 decoration-amber-400/50 hover:decoration-amber-300 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--mgsr-accent)]/35 bg-[var(--mgsr-accent)]/12 text-[var(--mgsr-accent)] text-xs font-semibold hover:bg-[var(--mgsr-accent)]/20 transition-colors"
               >
-                {t('releases_view_shortlist')} {isRtl ? '←' : '→'}
+                {t('release_notifications_open_player')}
               </Link>
-            </div>
-          ) : (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToShortlist(event);
-              }}
-              disabled={isAdding}
-              className="group/bookmark flex items-center gap-2 px-3 py-1.5 rounded-full border border-mgsr-border/80 bg-mgsr-dark/40 text-mgsr-muted hover:border-amber-500/40 hover:text-amber-400/90 hover:bg-amber-500/5 disabled:opacity-60 transition-all duration-200"
-            >
-              {isAdding ? (
-                <span className="w-4 h-4 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin shrink-0" />
-              ) : (
-                <svg className="w-4 h-4 shrink-0 opacity-70 group-hover/bookmark:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            )}
+            {isInShortlist ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30">
+                <svg className="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
                 </svg>
-              )}
-              <span className="text-xs font-medium">
-                {isAdding ? t('shortlist_adding') : t('releases_bookmark')}
-              </span>
-            </button>
-          )}
+                <span className="text-xs font-semibold text-amber-400 uppercase tracking-wide">
+                  {t('releases_saved')}
+                </span>
+                <Link
+                  href="/shortlist"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs font-medium text-amber-400/90 hover:text-amber-300 underline underline-offset-2 decoration-amber-400/50 hover:decoration-amber-300 transition-colors"
+                >
+                  {t('releases_view_shortlist')} {isRtl ? '←' : '→'}
+                </Link>
+              </div>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToShortlist(event);
+                }}
+                disabled={isAdding}
+                className="group/bookmark flex items-center gap-2 px-3 py-1.5 rounded-full border border-mgsr-border/80 bg-mgsr-dark/40 text-mgsr-muted hover:border-amber-500/40 hover:text-amber-400/90 hover:bg-amber-500/5 disabled:opacity-60 transition-all duration-200"
+              >
+                {isAdding ? (
+                  <span className="w-4 h-4 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin shrink-0" />
+                ) : (
+                  <svg className="w-4 h-4 shrink-0 opacity-70 group-hover/bookmark:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  </svg>
+                )}
+                <span className="text-xs font-medium">
+                  {isAdding ? t('shortlist_adding') : t('releases_bookmark')}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mt-4" data-no-propagate>
@@ -671,6 +700,15 @@ export default function ReleaseNotificationsPage() {
     };
   }, []);
 
+  const rosterByTmId = useMemo(() => {
+    const map = new Map<string, RosterPlayer>();
+    for (const player of rosterPlayers) {
+      const tmId = extractPlayerIdFromUrl(player.tmProfile);
+      if (tmId) map.set(tmId, player);
+    }
+    return map;
+  }, [rosterPlayers]);
+
   const notificationOnlyPlayers = useMemo<FeedEvent[]>(() => {
     const rosterProfiles = new Set(rosterPlayers.map((player) => player.tmProfile).filter(Boolean));
     const deduped = deduplicateReleaseEvents(
@@ -683,6 +721,16 @@ export default function ReleaseNotificationsPage() {
     );
     return deduped.filter((event) => !rosterProfiles.has(event.playerTmProfile));
   }, [events, rosterPlayers]);
+
+  const rosterFreeAgentPlayers = useMemo<FeedEvent[]>(() => {
+    const deduped = deduplicateReleaseEvents(
+      events.filter((event) => event.type === 'BECAME_FREE_AGENT' && !!event.playerTmProfile)
+    );
+    return deduped.filter((event) => {
+      const tmId = extractPlayerIdFromUrl(event.playerTmProfile);
+      return !!tmId && rosterByTmId.has(tmId);
+    });
+  }, [events, rosterByTmId]);
 
   useEffect(() => {
     const missingUrls = notificationOnlyPlayers
@@ -1010,9 +1058,12 @@ export default function ReleaseNotificationsPage() {
   }, [manualRefreshProgress, progressNow]);
 
   const resolvedPlayers = useMemo<NotificationPlayer[]>(() => {
-    return notificationOnlyPlayers
+    const combined = deduplicateReleaseEvents([...notificationOnlyPlayers, ...rosterFreeAgentPlayers]);
+    return combined
       .filter((event): event is FeedEvent & { playerTmProfile: string } => !!event.playerTmProfile)
       .map((event) => {
+        const tmId = extractPlayerIdFromUrl(event.playerTmProfile);
+        const rosterPlayer = tmId ? rosterByTmId.get(tmId) : undefined;
         const meta = {
           ...(releaseMetaByUrl[event.playerTmProfile] || {}),
           ...(profileMetaByUrl[event.playerTmProfile] || {}),
@@ -1020,15 +1071,17 @@ export default function ReleaseNotificationsPage() {
         return {
           event,
           playerUrl: event.playerTmProfile,
-          playerPosition: firstMeaningful(event.playerPosition, meta.playerPosition),
+          rosterPlayer,
+          isRosterPlayer: !!rosterPlayer,
+          playerPosition: firstMeaningful(event.playerPosition, meta.playerPosition, rosterPlayer?.positions?.find((p) => hasMeaningfulText(p))),
           marketValue: firstMeaningful(event.marketValue, meta.marketValue),
-          playerAge: firstMeaningful(event.playerAge, meta.playerAge),
+          playerAge: firstMeaningful(event.playerAge, meta.playerAge, rosterPlayer?.age),
           playerNationality: firstMeaningful(event.playerNationality, meta.playerNationality),
           playerNationalityFlag: firstMeaningful(event.playerNationalityFlag, meta.playerNationalityFlag),
           transferDate: firstMeaningful(event.transferDate, meta.transferDate) ?? timestampToDdMmYyyy(event.timestamp),
         };
       });
-  }, [notificationOnlyPlayers, releaseMetaByUrl, profileMetaByUrl]);
+  }, [notificationOnlyPlayers, rosterFreeAgentPlayers, rosterByTmId, releaseMetaByUrl, profileMetaByUrl]);
 
   const positions = useMemo(() => {
     const fromData = getUniquePositions(
@@ -1448,10 +1501,12 @@ export default function ReleaseNotificationsPage() {
           <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {filteredPlayers.map((player) => (
               <ReleaseNotificationCard
-                key={player.playerUrl}
+                key={`${player.playerUrl}-${player.event.id}`}
                 event={player.event}
                 t={t}
                 isRtl={isRtl}
+                isRosterPlayer={player.isRosterPlayer}
+                rosterPlayerId={player.rosterPlayer?.id}
                 isInShortlist={shortlistUrls.has(player.playerUrl)}
                 isAdding={addingUrl === player.playerUrl}
                 isEnriching={enrichingUrls.has(player.playerUrl)}
