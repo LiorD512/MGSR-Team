@@ -7,8 +7,9 @@ import { collection, getDocs, onSnapshot, orderBy, query, limit } from 'firebase
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePlatform } from '@/contexts/PlatformContext';
 import { db } from '@/lib/firebase';
-import { FEED_EVENTS_COLLECTIONS, PLAYERS_COLLECTIONS } from '@/lib/platformCollections';
+import { FEED_EVENTS_COLLECTIONS, PLAYERS_COLLECTIONS, SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
 import {
   callGetReleasesRefreshJobStatus,
   callShortlistAdd,
@@ -588,6 +589,7 @@ function ReleaseNotificationCard({
 export default function ReleaseNotificationsPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
+  const { platform } = usePlatform();
   const router = useRouter();
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
@@ -672,17 +674,17 @@ export default function ReleaseNotificationsPage() {
   }, []);
 
   useEffect(() => {
-    const playersQuery = query(collection(db, PLAYERS_COLLECTIONS.men), orderBy('createdAt', 'desc'));
+    const playersQuery = query(collection(db, PLAYERS_COLLECTIONS[platform]), orderBy('createdAt', 'desc'));
     const unsubscribePlayers = onSnapshot(playersQuery, (snapshot) => {
       setRosterPlayers(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as RosterPlayer)));
     });
 
-    const unsubscribeShortlist = onSnapshot(collection(db, 'Shortlists'), (snapshot) => {
+    const unsubscribeShortlist = onSnapshot(collection(db, SHORTLISTS_COLLECTIONS[platform]), (snapshot) => {
       setShortlistUrls(new Set(snapshot.docs.map((doc) => doc.data().tmProfileUrl as string).filter((url): url is string => !!url)));
     });
 
     const feedQuery = query(
-      collection(db, FEED_EVENTS_COLLECTIONS.men),
+      collection(db, FEED_EVENTS_COLLECTIONS[platform]),
       orderBy('timestamp', 'desc'),
       limit(1000)
     );
@@ -699,7 +701,7 @@ export default function ReleaseNotificationsPage() {
       unsubscribeShortlist();
       unsubscribeFeed();
     };
-  }, []);
+  }, [platform]);
 
   const rosterByTmId = useMemo(() => {
     const map = new Map<string, RosterPlayer>();
@@ -935,7 +937,7 @@ export default function ReleaseNotificationsPage() {
 
       const freshFeedSnapshot = await getDocs(
         query(
-          collection(db, FEED_EVENTS_COLLECTIONS.men),
+          collection(db, FEED_EVENTS_COLLECTIONS[platform]),
           orderBy('timestamp', 'desc'),
           limit(1200)
         )
@@ -1211,7 +1213,7 @@ export default function ReleaseNotificationsPage() {
         };
         const account = await getCurrentAccountForShortlist(user);
         const result = await callShortlistAdd({
-          platform: 'men',
+          platform,
           tmProfileUrl: event.playerTmProfile,
           playerImage: event.playerImage ?? null,
           playerName: event.playerName ?? null,
@@ -1233,7 +1235,7 @@ export default function ReleaseNotificationsPage() {
         setAddingUrl(null);
       }
     },
-    [user, releaseMetaByUrl, profileMetaByUrl]
+    [user, releaseMetaByUrl, profileMetaByUrl, platform]
   );
 
   const fetchTeammates = useCallback(async (playerUrl: string) => {
