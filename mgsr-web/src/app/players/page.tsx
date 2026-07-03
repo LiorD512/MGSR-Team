@@ -19,6 +19,8 @@ import { type ClubRequest, type RosterPlayer } from '@/lib/requestMatcher';
 import { useAllRequestMatchResults } from '@/hooks/useMatchResults';
 import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import { getTeammates, extractPlayerIdFromUrl } from '@/lib/api';
+import { getConfederation } from '@/lib/nationToConfederation';
+import type { Confederation } from '@/lib/api';
 import Link from 'next/link';
 
 interface Player {
@@ -70,6 +72,7 @@ interface PlayersCache {
   search: string;
   positionFilter: string | null;
   specificPositionFilter: string | null;
+  regionFilter: Confederation | null;
   freeAgents: boolean;
   contractExpiring: boolean;
   withMandate: boolean;
@@ -101,6 +104,15 @@ const SPECIFIC_POSITIONS_BY_GROUP: Record<string, string[]> = {
   FWD: ['LW', 'RW', 'CF', 'ST', 'SS'],
 };
 const ALL_SPECIFIC_POSITIONS = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'ST', 'SS'];
+
+const REGION_OPTIONS: { value: Confederation; key: string }[] = [
+  { value: 'UEFA', key: 'transfer_windows_group_uefa' },
+  { value: 'CONMEBOL', key: 'transfer_windows_group_conmebol' },
+  { value: 'CONCACAF', key: 'transfer_windows_group_concacaf' },
+  { value: 'AFC', key: 'transfer_windows_group_afc' },
+  { value: 'CAF', key: 'transfer_windows_group_caf' },
+  { value: 'OFC', key: 'transfer_windows_group_ofc' },
+];
 
 /** English display labels for specific positions. */
 const SPECIFIC_POSITION_LABELS_EN: Record<string, string> = {
@@ -180,6 +192,7 @@ export default function PlayersPage() {
   const [search, setSearch] = useState(cached?.search ?? '');
   const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
   const [specificPositionFilter, setSpecificPositionFilter] = useState<string | null>(cached?.specificPositionFilter ?? null);
+  const [regionFilter, setRegionFilter] = useState<Confederation | null>(cached?.regionFilter ?? null);
   const [freeAgents, setFreeAgents] = useState(cached?.freeAgents ?? false);
   const [contractExpiring, setContractExpiring] = useState(cached?.contractExpiring ?? false);
   const [withMandate, setWithMandate] = useState(cached?.withMandate ?? false);
@@ -349,6 +362,7 @@ export default function PlayersPage() {
       search,
       positionFilter,
       specificPositionFilter,
+      regionFilter,
       freeAgents,
       contractExpiring,
       withMandate,
@@ -363,7 +377,7 @@ export default function PlayersPage() {
       interestedInIsrael,
       taggedInNotes,
     });
-  }, [players, search, positionFilter, specificPositionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, agentFilter, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback, interestedInIsrael]);
+  }, [players, search, positionFilter, specificPositionFilter, regionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, agentFilter, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback, interestedInIsrael]);
 
   const filtered = useMemo(() => {
     if (platform === 'youth') {
@@ -434,6 +448,17 @@ export default function PlayersPage() {
       result = result.filter((p) =>
         p.positions?.some((pos) => pos && codes.has(pos.toUpperCase()))
       );
+    }
+
+    // Region (confederation)
+    if (regionFilter) {
+      result = result.filter((p) => {
+        if (p.nationality && getConfederation(p.nationality) === regionFilter) return true;
+        if (Array.isArray((p as any).nationalities)) {
+          return (p as any).nationalities.some((n: string) => getConfederation(n) === regionFilter);
+        }
+        return false;
+      });
     }
 
     // Free agents / Contract expiring (OR when both selected)
@@ -543,6 +568,7 @@ export default function PlayersPage() {
     offeredNoFeedbackProfiles,
     euCountries,
     currentAccountName,
+    regionFilter,
     interestedInIsrael,
     taggedInNotes,
     currentAccountId,
@@ -554,6 +580,7 @@ export default function PlayersPage() {
     (platform === 'youth' && withNotes) ||
     (platform === 'men' &&
       (freeAgents ||
+        !!regionFilter ||
         contractExpiring ||
         withMandate ||
         myPlayersOnly ||
@@ -570,6 +597,7 @@ export default function PlayersPage() {
   const clearFilters = useCallback(() => {
     setPositionFilter(null);
     setSpecificPositionFilter(null);
+    setRegionFilter(null);
     setFreeAgents(false);
     setContractExpiring(false);
     setWithMandate(false);
@@ -1043,6 +1071,32 @@ export default function PlayersPage() {
             >
               {t('players_filter_tagged_in_notes')}
             </button>
+            <div className="shrink-0 flex items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+              <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_region')}:</span>
+              <button
+                onClick={() => setRegionFilter(null)}
+                className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  !regionFilter
+                    ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                }`}
+              >
+                {t('releases_all')}
+              </button>
+              {REGION_OPTIONS.map((region) => (
+                <button
+                  key={region.value}
+                  onClick={() => setRegionFilter(regionFilter === region.value ? null : region.value)}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    regionFilter === region.value
+                      ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                  }`}
+                >
+                  {t(region.key)}
+                </button>
+              ))}
+            </div>
             <div className="relative shrink-0">
               <select
                 value={agentFilter ?? ''}
@@ -1120,6 +1174,30 @@ export default function PlayersPage() {
                 } ${f.disabled ? 'opacity-50' : ''}`}
               >
                 {f.label}
+              </button>
+            ))}
+            <div className="w-full" />
+            <button
+              onClick={() => setRegionFilter(null)}
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition min-h-[44px] ${
+                !regionFilter
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm'
+                  : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted'
+              }`}
+            >
+              {t('releases_region')}: {t('releases_all')}
+            </button>
+            {REGION_OPTIONS.map((region) => (
+              <button
+                key={`mobile-region-${region.value}`}
+                onClick={() => setRegionFilter(regionFilter === region.value ? null : region.value)}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition min-h-[44px] ${
+                  regionFilter === region.value
+                    ? 'bg-mgsr-teal text-mgsr-dark shadow-sm'
+                    : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted'
+                }`}
+              >
+                {t(region.key)}
               </button>
             ))}
             <select

@@ -829,7 +829,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Screen | `PlayersScreen` | `/players/page.tsx` |
 | ViewModel/State | `PlayersViewModel` | Client-side with Firestore listeners |
 | Data | Firestore Players (real-time listener) | Same |
-| Filters | Position, foot, contract status, agent, search text | Same filters |
+| Filters | Position, foot, contract status, agent, search text | Same filters + region/confederation chips (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC) on desktop and mobile filter sheet, reusing the same localized labels as release notifications |
 | Actions | Navigate to player detail, filter, sort | Same + per-player "played with him" accordion (Transfermarkt teammates matched against roster, games-together badges, WhatsApp outreach shortcut; matching pipeline aligned with Web Shortlist teammates logic) |
 
 ### Player Detail
