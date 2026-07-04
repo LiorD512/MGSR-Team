@@ -34,7 +34,7 @@ function writeScope(scope: string, value: StoredScopeMemory): void {
   }
 }
 
-export function getSeenKeys(scope: string, query: string, ttlMs = 14 * 24 * 60 * 60 * 1000): string[] {
+export function getSeenKeys(scope: string, query: string, ttlMs = 3 * 24 * 60 * 60 * 1000): string[] {
   const fingerprint = buildQueryFingerprint(query);
   if (!fingerprint) return [];
   const scopeData = readScope(scope);

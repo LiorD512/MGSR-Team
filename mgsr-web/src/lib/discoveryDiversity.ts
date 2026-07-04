@@ -182,20 +182,20 @@ export function diversifyCandidates<T>(options: DiversifyOptions<T>): T[] {
     mode === 'discovery'
       ? {
           overlapPenalty: 0.56,
-          seenPenalty: 0.8,
+          seenPenalty: 1.2,
           noise: 0.12,
           rarityBonus: 0.38,
-          poolFactor: 16,
+          poolFactor: 24,
           maxPerClub: 1,
           maxPerLeague: 3,
           maxPerNation: 3,
         }
       : {
           overlapPenalty: 0.36,
-          seenPenalty: 0.48,
+          seenPenalty: 0.72,
           noise: 0.08,
           rarityBonus: 0.24,
-          poolFactor: 10,
+          poolFactor: 14,
           maxPerClub: 1,
           maxPerLeague: 4,
           maxPerNation: 4,
@@ -256,7 +256,7 @@ export function diversifyCandidates<T>(options: DiversifyOptions<T>): T[] {
 
       const relevance = c.base / maxBase;
       const seenTimes = seenCount.get(c.key) ?? 0;
-      const noveltyPenalty = seenTimes > 0 ? params.seenPenalty * Math.min(1.9, 0.5 + seenTimes * 0.3) : 0;
+      const noveltyPenalty = seenTimes > 0 ? params.seenPenalty * Math.min(2.5, 0.3 + Math.pow(seenTimes, 1.5) * 0.18) : 0;
 
       let overlap = 0;
       if (selected.length > 0) {

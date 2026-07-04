@@ -467,6 +467,9 @@ export default function FindNextTab() {
       if (normalizedValueMax > 0) {
         params.set('value_max', String(normalizedValueMax));
       }
+      if (seenKeys.length > 0) {
+        params.set('seen_keys', seenKeys.join(','));
+      }
       const res = await fetch(`https://football-scout-server-l38w.onrender.com/find_next?${params.toString()}`, {
         headers: { Accept: 'application/json' },
         signal: controller.signal,
