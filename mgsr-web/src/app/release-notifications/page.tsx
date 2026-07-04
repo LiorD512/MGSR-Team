@@ -85,7 +85,7 @@ interface FeedEvent {
   playerNationalityFlag?: string;
   transferDate?: string;
   extraInfo?: string;
-  timestamp?: number;
+  timestamp?: unknown;
 }
 
 interface ReleaseMeta {
@@ -136,6 +136,45 @@ interface ManualRefreshProgress {
   fetchInfo?: string;
 }
 
+function toTimestampMillis(timestamp: unknown): number {
+  if (typeof timestamp === 'number') {
+    return Number.isFinite(timestamp) ? timestamp : 0;
+  }
+  if (timestamp instanceof Date) {
+    const ms = timestamp.getTime();
+    return Number.isFinite(ms) ? ms : 0;
+  }
+  if (timestamp && typeof timestamp === 'object') {
+    const candidate = timestamp as {
+      toMillis?: () => number;
+      seconds?: number;
+      nanoseconds?: number;
+      _seconds?: number;
+      _nanoseconds?: number;
+    };
+    if (typeof candidate.toMillis === 'function') {
+      const ms = candidate.toMillis();
+      return Number.isFinite(ms) ? ms : 0;
+    }
+    const seconds =
+      typeof candidate.seconds === 'number'
+        ? candidate.seconds
+        : typeof candidate._seconds === 'number'
+          ? candidate._seconds
+          : null;
+    const nanos =
+      typeof candidate.nanoseconds === 'number'
+        ? candidate.nanoseconds
+        : typeof candidate._nanoseconds === 'number'
+          ? candidate._nanoseconds
+          : 0;
+    if (seconds !== null) {
+      return Math.round(seconds * 1000 + nanos / 1_000_000);
+    }
+  }
+  return 0;
+}
+
 function deduplicateReleaseEvents(events: FeedEvent[]): FeedEvent[] {
   const isMeaningful = (value?: string | null): value is string => {
     if (!value) return false;
@@ -159,8 +198,8 @@ function deduplicateReleaseEvents(events: FeedEvent[]): FeedEvent[] {
       continue;
     }
 
-    const eventTs = event.timestamp ?? 0;
-    const existingTs = existing.timestamp ?? 0;
+    const eventTs = toTimestampMillis(event.timestamp);
+    const existingTs = toTimestampMillis(existing.timestamp);
     const newer = eventTs >= existingTs ? event : existing;
     const older = eventTs >= existingTs ? existing : event;
 
@@ -176,7 +215,9 @@ function deduplicateReleaseEvents(events: FeedEvent[]): FeedEvent[] {
       playerName: pickField(newer.playerName, older.playerName),
     });
   }
-  return Array.from(seen.values()).sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+  return Array.from(seen.values()).sort(
+    (a, b) => toTimestampMillis(b.timestamp) - toTimestampMillis(a.timestamp)
+  );
 }
 
 function hasMeaningfulText(value?: string | null): value is string {
@@ -278,23 +319,26 @@ function formatDurationMs(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function formatTimestamp(timestamp: number | undefined, isRtl: boolean): string {
-  if (!timestamp) return '—';
-  return new Date(timestamp).toLocaleDateString(isRtl ? 'he-IL' : 'en-GB', {
+function formatTimestamp(timestamp: unknown, isRtl: boolean): string {
+  const millis = toTimestampMillis(timestamp);
+  if (!millis) return '—';
+  return new Date(millis).toLocaleDateString(isRtl ? 'he-IL' : 'en-GB', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   });
 }
 
-function formatTransferDateForShortlist(timestamp: number | undefined): string | null {
-  if (!timestamp) return null;
-  return new Date(timestamp).toISOString().slice(0, 10);
+function formatTransferDateForShortlist(timestamp: unknown): string | null {
+  const millis = toTimestampMillis(timestamp);
+  if (!millis) return null;
+  return new Date(millis).toISOString().slice(0, 10);
 }
 
-function timestampToDdMmYyyy(timestamp: number | undefined): string | undefined {
-  if (!timestamp) return undefined;
-  const d = new Date(timestamp);
+function timestampToDdMmYyyy(timestamp: unknown): string | undefined {
+  const millis = toTimestampMillis(timestamp);
+  if (!millis) return undefined;
+  const d = new Date(millis);
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
@@ -718,7 +762,6 @@ export default function ReleaseNotificationsPage() {
       events.filter(
         (event) =>
           event.type === 'NEW_RELEASE_FROM_CLUB' &&
-          event.extraInfo === 'NOT_IN_DATABASE' &&
           !!event.playerTmProfile
       )
     );
@@ -943,16 +986,14 @@ export default function ReleaseNotificationsPage() {
         )
       );
 
-      const freshNotInDatabaseUrls = new Set<string>(
+      const freshReleaseUrls = new Set<string>(
         freshFeedSnapshot.docs
           .map((doc) => ({ id: doc.id, ...doc.data() } as FeedEvent))
           .filter(
             (event) =>
               event.type === 'NEW_RELEASE_FROM_CLUB' &&
-              event.extraInfo === 'NOT_IN_DATABASE' &&
               !!event.playerTmProfile &&
-              typeof event.timestamp === 'number' &&
-              event.timestamp >= requestedAt
+              toTimestampMillis(event.timestamp) >= requestedAt
           )
           .map((event) => event.playerTmProfile as string)
       );
@@ -960,12 +1001,12 @@ export default function ReleaseNotificationsPage() {
       setManualRefreshProgress((prev) => ({
         ...prev,
         stage: 'preparing',
-        fetchInfo: `jobStatus=success, freshNewEvents=${freshNotInDatabaseUrls.size}, cachePlayers=${releases.length}`,
+        fetchInfo: `jobStatus=success, freshNewEvents=${freshReleaseUrls.size}, cachePlayers=${releases.length}`,
       }));
 
       const targetUrlList: string[] =
-        freshNotInDatabaseUrls.size > 0
-          ? Array.from(freshNotInDatabaseUrls)
+        freshReleaseUrls.size > 0
+          ? Array.from(freshReleaseUrls)
           : notificationOnlyPlayers
               .map((event) => event.playerTmProfile)
               .filter((url): url is string => !!url);
@@ -1167,15 +1208,15 @@ export default function ReleaseNotificationsPage() {
     }
 
     if (sortBy === 'date') {
-      // Use release date first, then feed timestamp and market value for deterministic ordering.
+      // "Date added" should prioritize feed event timestamp, then release date as tie-breaker.
       return [...result].sort((a, b) => {
+        const tsA = toTimestampMillis(a.event.timestamp);
+        const tsB = toTimestampMillis(b.event.timestamp);
+        if (tsA !== tsB) return tsB - tsA;
+
         const dateA = parseReleaseDateToEpoch(a.transferDate ?? a.event.transferDate);
         const dateB = parseReleaseDateToEpoch(b.transferDate ?? b.event.transferDate);
         if (dateA !== dateB) return dateB - dateA;
-
-        const tsA = a.event.timestamp ?? 0;
-        const tsB = b.event.timestamp ?? 0;
-        if (tsA !== tsB) return tsB - tsA;
 
         const valueA = parseMarketValue(a.marketValue);
         const valueB = parseMarketValue(b.marketValue);
