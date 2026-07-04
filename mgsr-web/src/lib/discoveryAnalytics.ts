@@ -67,7 +67,9 @@ class DiscoveryAnalyticsCollector {
     let mostUsed: string | null = null;
     let maxCount = 0;
 
-    for (const [strategy, count] of strategyCounts.entries()) {
+    const entries = Array.from(strategyCounts.entries());
+    for (let i = 0; i < entries.length; i += 1) {
+      const [strategy, count] = entries[i];
       if (count > maxCount) {
         mostUsed = strategy;
         maxCount = count;

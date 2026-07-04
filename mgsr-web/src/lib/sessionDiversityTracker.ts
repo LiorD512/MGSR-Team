@@ -48,11 +48,12 @@ class SessionDiversityTracker {
     let totalUnique = 0;
     let totalDuplicate = 0;
 
-    for (let i = 0; i < recent.length; i++) {
+    for (let i = 0; i < recent.length; i += 1) {
       const current = recent[i];
-      for (let j = i + 1; j < recent.length; j++) {
+      const currentKeys = Array.from(current.resultKeys);
+      for (let j = i + 1; j < recent.length; j += 1) {
         const other = recent[j];
-        const overlap = Array.from(current.resultKeys).filter((k) => other.resultKeys.has(k)).length;
+        const overlap = currentKeys.filter((k) => other.resultKeys.has(k)).length;
         totalDuplicate += overlap;
         totalUnique += current.resultKeys.size - overlap;
       }
@@ -74,7 +75,9 @@ class SessionDiversityTracker {
     let repetitions = 0;
 
     for (const record of this.sessionSearches.slice(-10)) {
-      for (const key of keySet) {
+      const keyArray = Array.from(keySet);
+      for (let i = 0; i < keyArray.length; i += 1) {
+        const key = keyArray[i];
         if (record.resultKeys.has(key)) {
           repetitions += 1;
         }
@@ -129,4 +132,8 @@ export function shouldBoostExploration(): boolean {
 
 export function getSuggestedMode(): 'strict' | 'balanced' | 'discovery' {
   return sessionTracker.getSuggestedDiversityMode();
+}
+
+export function getSessionId(): string {
+  return sessionTracker.getSessionId();
 }
