@@ -17,10 +17,11 @@ import type { ScoutProfileResponse } from '@/types/scoutProfiles';
 import { aiScoutSearch, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import FindNextTab from '@/components/FindNextTab';
 import { buildPlayerKey, type DiversityMode } from '@/lib/discoveryDiversity';
-import { appendSeenKeys, getSeenKeys } from '@/lib/searchNoveltyMemory';
+import { appendSeenKeys, appendStoredKeys, getSeenKeys, getStoredKeys } from '@/lib/searchNoveltyMemory';
 import { getPositionDisplayName } from '@/lib/appConfig';
 
 const WAR_ROOM_SCOUT_MEMORY_SCOPE = 'war-room-ai-scout';
+const WAR_ROOM_SCOUT_FRESHNESS_SCOPE = 'war-room-ai-scout:freshness';
 
 interface DiscoveryCandidate {
   name: string;
@@ -506,8 +507,12 @@ export default function WarRoomPage() {
   const handleScoutSearch = useCallback(async () => {
     const q = scoutQuery.trim();
     if (!q) return;
-    const priorSeenKeys = getSeenKeys(WAR_ROOM_SCOUT_MEMORY_SCOPE, q);
-    const seed = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const freshnessScope = user?.uid ? `${WAR_ROOM_SCOUT_FRESHNESS_SCOPE}:${user.uid}` : WAR_ROOM_SCOUT_FRESHNESS_SCOPE;
+    const priorSeenKeys = Array.from(new Set([
+      ...getSeenKeys(WAR_ROOM_SCOUT_MEMORY_SCOPE, q),
+      ...getStoredKeys(freshnessScope),
+    ]));
+    const seed = `${new Date().toISOString().slice(0, 10)}-${user?.uid ?? 'anon'}-${q}`;
     setScoutSearching(true);
     setScoutError(null);
     setScoutResults([]);
@@ -521,20 +526,25 @@ export default function WarRoomPage() {
       setScoutSeenUrls(urls);
       const keys = data.players.map((p) => buildPlayerKey(p.transfermarktUrl, p.name)).filter(Boolean);
       appendSeenKeys(WAR_ROOM_SCOUT_MEMORY_SCOPE, q, keys);
+      appendStoredKeys(freshnessScope, keys);
     } catch (err) {
       setScoutError(err instanceof Error ? err.message : String(err));
       setScoutResults([]);
     } finally {
       setScoutSearching(false);
     }
-  }, [scoutQuery, lang, scoutDiversityMode]);
+  }, [scoutQuery, lang, scoutDiversityMode, user?.uid]);
 
   const handleScoutSearchOther = useCallback(async () => {
     const q = scoutQuery.trim();
     if (!q || scoutSearchingOther) return;
-    const memoryKeys = getSeenKeys(WAR_ROOM_SCOUT_MEMORY_SCOPE, q);
+    const freshnessScope = user?.uid ? `${WAR_ROOM_SCOUT_FRESHNESS_SCOPE}:${user.uid}` : WAR_ROOM_SCOUT_FRESHNESS_SCOPE;
+    const memoryKeys = Array.from(new Set([
+      ...getSeenKeys(WAR_ROOM_SCOUT_MEMORY_SCOPE, q),
+      ...getStoredKeys(freshnessScope),
+    ]));
     const currentKeys = scoutResults.map((p) => buildPlayerKey(p.transfermarktUrl, p.name)).filter(Boolean);
-    const seed = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const seed = `${new Date().toISOString().slice(0, 10)}-${user?.uid ?? 'anon'}-${q}`;
     setScoutSearchingOther(true);
     setScoutError(null);
     try {
@@ -555,6 +565,7 @@ export default function WarRoomPage() {
       setScoutSeenUrls((prev) => [...prev, ...newUrls.filter((u) => !prev.includes(u))]);
       const newKeys = data.players.map((p) => buildPlayerKey(p.transfermarktUrl, p.name)).filter(Boolean);
       appendSeenKeys(WAR_ROOM_SCOUT_MEMORY_SCOPE, q, newKeys);
+      appendStoredKeys(freshnessScope, newKeys);
     } catch (err) {
       setScoutError(err instanceof Error ? err.message : String(err));
     } finally {

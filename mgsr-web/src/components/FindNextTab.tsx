@@ -9,10 +9,11 @@ import { db } from '@/lib/firebase';
 import { getPlayerDetails, extractPlayerIdFromUrl, getTeammates } from '@/lib/api';
 import { callShortlistAdd } from '@/lib/callables';
 import Link from 'next/link';
-import { appendSeenKeys, getSeenKeys } from '@/lib/searchNoveltyMemory';
+import { appendSeenKeys, appendStoredKeys, getSeenKeys, getStoredKeys } from '@/lib/searchNoveltyMemory';
 import { buildPlayerKey, diversifyCandidates, type DiversityMode } from '@/lib/discoveryDiversity';
 
 const FIND_NEXT_MEMORY_SCOPE = 'find-next';
+const FIND_NEXT_FRESHNESS_SCOPE = 'find-next:freshness';
 
 const TM_DEFAULT_IMG = 'https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1';
 
@@ -444,8 +445,11 @@ export default function FindNextTab() {
     const normalizedValueMin = valueMin;
     const normalizedValueMax = valueMax > 0 && valueMax < normalizedValueMin ? normalizedValueMin : valueMax;
     const noveltyQuery = `${name}|age:${normalizedAgeMin}-${normalizedAgeMax}|value:${normalizedValueMin}-${normalizedValueMax || 'any'}`;
-    const seenKeys = getSeenKeys(FIND_NEXT_MEMORY_SCOPE, noveltyQuery);
-    const seed = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const freshnessScope = user?.uid ? `${FIND_NEXT_FRESHNESS_SCOPE}:${user.uid}` : FIND_NEXT_FRESHNESS_SCOPE;
+    const querySeenKeys = getSeenKeys(FIND_NEXT_MEMORY_SCOPE, noveltyQuery);
+    const freshnessSeenKeys = getStoredKeys(freshnessScope);
+    const seenKeys = Array.from(new Set([...querySeenKeys, ...freshnessSeenKeys]));
+    const seed = `${new Date().toISOString().slice(0, 10)}-${user?.uid ?? 'anon'}-${noveltyQuery}`;
     const controller = new AbortController();
     searchAbortRef.current = controller;
     const timeoutId = setTimeout(() => controller.abort(), 120000);
@@ -499,6 +503,7 @@ export default function FindNextTab() {
         setResponse({ ...data, results: sampled, result_count: sampled.length });
         const keys = sampled.map((p) => getFindNextKey(p)).filter(Boolean);
         appendSeenKeys(FIND_NEXT_MEMORY_SCOPE, noveltyQuery, keys);
+        appendStoredKeys(freshnessScope, keys);
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -513,7 +518,7 @@ export default function FindNextTab() {
       }
       setSearching(false);
     }
-  }, [playerName, ageMin, ageMax, valueMin, valueMax, lang, diversityMode]);
+  }, [playerName, ageMin, ageMax, valueMin, valueMax, lang, diversityMode, user?.uid]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {

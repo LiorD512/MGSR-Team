@@ -295,6 +295,11 @@ function buildPersistentMemoryScope(userId: string | null, queryFingerprint: str
   return `${userId.trim()}__${shortHash(queryFingerprint)}`;
 }
 
+function buildFreshnessMemoryScope(userId: string | null): string | null {
+  if (!userId?.trim()) return null;
+  return `${userId.trim()}__freshness`;
+}
+
 async function getPersistentSeenKeys(scope: string | null, maxRecent: number): Promise<string[]> {
   if (!scope || maxRecent <= 0) return [];
   const app = getFirebaseAdmin();
@@ -317,15 +322,19 @@ async function appendPersistentSeenKeys(scope: string | null, keys: string[]): P
   const app = getFirebaseAdmin();
   if (!app) return;
   try {
-    const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
+    const { getFirestore } = await import('firebase-admin/firestore');
     const db = getFirestore(app);
-    await db.collection('ScoutSearchDiversityMemory').doc(scope).set(
-      {
-        keys: FieldValue.arrayUnion(...keys.slice(0, 120)),
-        updatedAt: Date.now(),
-      },
-      { merge: true },
-    );
+    const ref = db.collection('ScoutSearchDiversityMemory').doc(scope);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const existing = snap.exists && Array.isArray(snap.data()?.keys) ? (snap.data()?.keys as string[]) : [];
+      const merged = [...existing];
+      for (const key of keys.slice(0, 240)) {
+        if (key && !merged.includes(key)) merged.push(key);
+      }
+      const trimmed = merged.slice(-1400);
+      tx.set(ref, { keys: trimmed, updatedAt: Date.now() }, { merge: true });
+    });
   } catch (err) {
     console.warn('[AI Scout] persistent memory write failed:', err);
   }
@@ -336,6 +345,7 @@ async function fetchFreesearch(
   query: string,
   queryFingerprint: string,
   persistentScope: string | null,
+  freshnessScope: string | null,
   lang: 'en' | 'he',
   initial: boolean,
   diversityMode: DiversityMode,
@@ -505,6 +515,7 @@ async function fetchFreesearch(
     if (servedKeysAfterTopUp.length > 0) {
       recordServedKeysForQuery(queryFingerprint, servedKeysAfterTopUp);
       await appendPersistentSeenKeys(persistentScope, servedKeysAfterTopUp);
+      await appendPersistentSeenKeys(freshnessScope, servedKeysAfterTopUp);
     }
 
     let interpretation =
@@ -579,21 +590,24 @@ export async function POST(request: NextRequest) {
     const excludeUrls: string[] = Array.isArray(body?.excludeUrls) ? body.excludeUrls.filter((u: unknown) => typeof u === 'string' && u.trim()) : [];
     const diversityMode = normalizeDiversityMode(body?.diversityMode);
     const useExposureGovernance = body?.useExposureGovernance === true;
-    const seed = typeof body?.seed === 'string' && body.seed.trim() ? body.seed.trim() : `${query}:${Date.now()}`;
     const userId = typeof body?.userId === 'string' && body.userId.trim() ? body.userId.trim() : null;
     const clientSeenKeys: string[] = Array.isArray(body?.seenKeys)
       ? body.seenKeys.filter((k: unknown) => typeof k === 'string' && k.trim()).map((k: string) => k.trim())
       : [];
     const queryFingerprint = buildQueryFingerprint(query);
     const persistentScope = buildPersistentMemoryScope(userId, queryFingerprint);
+    const freshnessScope = buildFreshnessMemoryScope(userId);
     const anonymousRecentWindow = diversityMode === 'discovery' ? 260 : 140;
     const userRecentWindow = diversityMode === 'discovery' ? 500 : 320;
     const serverRecentKeys = userId
       ? []
       : getRecentServedKeysForQuery(queryFingerprint, anonymousRecentWindow);
     const persistentSeenKeys = await getPersistentSeenKeys(persistentScope, userRecentWindow);
-    const hardSeenKeys: string[] = [...persistentSeenKeys, ...clientSeenKeys];
+    const freshnessSeenKeys = await getPersistentSeenKeys(freshnessScope, userRecentWindow);
+    const hardSeenKeys: string[] = [...freshnessSeenKeys, ...persistentSeenKeys, ...clientSeenKeys];
     const seenKeys: string[] = [...serverRecentKeys, ...hardSeenKeys];
+    const daySeed = new Date().toISOString().slice(0, 10);
+    const seed = typeof body?.seed === 'string' && body.seed.trim() ? body.seed.trim() : `${queryFingerprint}:${daySeed}:${userId || 'anon'}`;
 
     if (!query) {
       return NextResponse.json(
@@ -623,7 +637,7 @@ export async function POST(request: NextRequest) {
 
       // Use freesearch proxy (Python) when SCOUT_FREESEARCH_URL is set
       if (FREESEARCH_URL) {
-        const freesearchRes = await fetchFreesearch(query, queryFingerprint, persistentScope, lang, initial, diversityMode, seed, seenKeys, hardSeenKeys);
+        const freesearchRes = await fetchFreesearch(query, queryFingerprint, persistentScope, freshnessScope, lang, initial, diversityMode, seed, seenKeys, hardSeenKeys);
         if (freesearchRes) {
           return freesearchRes;
         }
@@ -967,6 +981,7 @@ export async function POST(request: NextRequest) {
       if (finalServedKeys.length > 0) {
         recordServedKeysForQuery(queryFingerprint, finalServedKeys);
         await appendPersistentSeenKeys(persistentScope, finalServedKeys);
+        await appendPersistentSeenKeys(freshnessScope, finalServedKeys);
         await updateExposureLedger(exposureClusterKey, finalServedKeys);
       }
 

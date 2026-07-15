@@ -272,6 +272,7 @@ Separate Gradle module for HTML scraping via JSoup:
 - Players "With Mandate" accordion and internal list on web now use the BRIT gold palette (container, counter, labels, list rows, and expiry chips) instead of the previous blue accent treatment.
 - Contacts page (men platform) now uses BRIT gold accents across add CTA, filter chips, search focus, loading/empty states, contact avatar fallback, contact-type badges, and edit/phone actions; women and youth accent variants remain platform-specific.
 - Releases page now matches the new BRIT palette on web, including hero actions, value chips, search/filter/sort controls, loading and empty states, release cards, shortlist/bookmark states, and roster-teammates panels.
+- Android shared Transfermarkt URL parsing now normalizes profile links with query/hash/legacy formats before extracting player IDs, so played-with (roster teammates) matching remains stable when URLs come from shared links.
 - Release Notifications date sorting is now deterministic across Android + Web: sort by parsed `transferDate` (desc), then FeedEvents `timestamp` (desc), then market value (desc), so newest Transfermarkt releases stay at the top when users sort by date.
 - Returnees streaming endpoint (`mgsr-web/src/app/api/transfermarkt/returnees/stream/route.ts`) now emits periodic SSE heartbeats during long scrape batches to prevent proxy/browser idle disconnects that previously caused premature "Stream connection failed" in the Returnees UI.
 - Desktop app-shell desktop page chrome no longer renders the shared framed header card, status pills, or shared page-title headline; pages now begin directly with their own content.
@@ -934,14 +935,14 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | `AiScoutScreen` | `/ai-scout/page.tsx` |
 | Data | Vercel API → Render server | API route `/api/scout/search` |
-| Features | Natural language search, rule-based query parsing (`parseFreeQuery.ts`), and War Room embedded `warRoomMode` command strip (3-step workflow guidance: query → analyze → shortlist) when rendered inside `WarRoomScreen` | Same + diversity modes (`strict`/`balanced`/`discovery`), seeded diversity re-ranking, novelty memory (seen-player penalties), and "search other" exclusion continuity |
+| Features | Natural language search, rule-based query parsing (`parseFreeQuery.ts`), and War Room embedded `warRoomMode` command strip (3-step workflow guidance: query → analyze → shortlist) when rendered inside `WarRoomScreen` | Same + diversity modes (`strict`/`balanced`/`discovery`), seeded diversity re-ranking, user-wide freshness memory layered on top of per-query seen-player penalties, daily seed rotation, and "search other" exclusion continuity |
 
 ### Find Next
 | Aspect | Android | Web |
 |--------|---------|-----|
 | Screen | `Find Next` tab inside `WarRoomScreen` (and still available inside standalone `AiScoutScreen` tab switcher) | `/find-next/page.tsx` |
 | Data | Render server `/find_next` directly | Render server `/find_next` directly |
-| Features | "Find me the next Salah" — signature-based talent discovery with web-aligned settings: min/max age, min/max market-value, expanded star examples, extended value presets (€100K→€20M + no limit), request normalization, client-side age/value post-filtering to guard against backend bound drift, and War Room embedded 3-step command strip (reference → range → hunt) for faster usage | Same + expanded star examples, finer max market-value presets (€250K→€20M + no limit), age slider range 17-30, client-side diversity selection (league/club/nationality/value/age buckets), and per-query novelty memory to reduce repeated players across repeated searches |
+| Features | "Find me the next Salah" — signature-based talent discovery with web-aligned settings: min/max age, min/max market-value, expanded star examples, extended value presets (€100K→€20M + no limit), request normalization, client-side age/value post-filtering to guard against backend bound drift, and War Room embedded 3-step command strip (reference → range → hunt) for faster usage | Same + expanded star examples, finer max market-value presets (€250K→€20M + no limit), age slider range 17-30, client-side diversity selection (league/club/nationality/value/age buckets), exact-query novelty memory, and a user-wide freshness ledger to keep results rotating across repeated searches and day-to-day sessions |
 
 ### Chat Room
 | Aspect | Android | Web |
@@ -1043,7 +1044,7 @@ All proxy to Render server (`football-scout-server-l38w.onrender.com`):
 | `/api/scout/recruitment` | `/recruitment` | Smart recruitment search |
 | `/api/scout/similar-players` | `/similar_players` | Find similar players |
 | `/api/scout/player-stats` | `/player_stats` | API-Football per-90 stats |
-| `/api/scout/search` | `/recruitment` (rule-based `parseFreeQuery.ts`) | Natural language search + diversity reranking + novelty penalties (`seenKeys`) + mode controls (`strict`/`balanced`/`discovery`) + server-side per-query recent-memory window (6h TTL) to reduce repeated names even when client does not send memory. Includes Firestore-backed per-user query memory (`ScoutSearchDiversityMemory`) with user-scoped hard novelty filtering, adaptive novelty-pressure overfetch/backfill as seen memory grows, optional exposure-governed slot allocation backed by `ScoutExposureLedger` (`relevance`, `underexposed`, `wildcard`, `fallback` slot mix) when `useExposureGovernance=true`, and a final relaxed top-up pass to avoid underfilled lists (e.g., 3-4 results when 10 requested) |
+| `/api/scout/search` | `/recruitment` (rule-based `parseFreeQuery.ts`) | Natural language search + diversity reranking + novelty penalties (`seenKeys`) + mode controls (`strict`/`balanced`/`discovery`) + server-side per-query recent-memory window (6h TTL) to reduce repeated names even when client does not send memory. Includes Firestore-backed per-user query memory (`ScoutSearchDiversityMemory`) plus a user-wide freshness ledger, both feeding hard novelty filtering; adaptive novelty-pressure overfetch/backfill as seen memory grows; daily seed rotation when the client does not supply one; optional exposure-governed slot allocation backed by `ScoutExposureLedger` (`relevance`, `underexposed`, `wildcard`, `fallback` slot mix) when `useExposureGovernance=true`; and a final relaxed top-up pass to avoid underfilled lists (e.g., 3-4 results when 10 requested) |
 | `/api/scout/fm-intelligence` | `/fm_intelligence` | FM attributes + position fit |
 | `/api/scout/warm` | `/` | Keep-alive ping for Render |
 

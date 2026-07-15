@@ -12,6 +12,8 @@ import { aiScoutSearch, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { db } from '@/lib/firebase';
 import { getPlayerDetails, extractPlayerIdFromUrl } from '@/lib/api';
+import { appendStoredKeys, getStoredKeys } from '@/lib/searchNoveltyMemory';
+import { buildPlayerKey } from '@/lib/discoveryDiversity';
 
 function samePlayer(url1: string, url2: string): boolean {
   const id1 = extractPlayerIdFromUrl(url1);
@@ -84,6 +86,7 @@ export default function AiScoutPage() {
   const [seenUrls, setSeenUrls] = useState<string[]>([]);
   const [searchingOther, setSearchingOther] = useState(false);
   const [lastSearchedQuery, setLastSearchedQuery] = useState<string | null>(null);
+  const freshnessScope = user?.uid ? `ai-scout:freshness:${user.uid}` : 'ai-scout:freshness';
   const [addingToShortlistUrl, setAddingToShortlistUrl] = useState<string | null>(null);
   const [shortlistError, setShortlistError] = useState<string | null>(null);
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
@@ -170,6 +173,7 @@ export default function AiScoutPage() {
   const handleSearch = async () => {
     const q = query.trim();
     if (!q) return;
+    const freshnessSeenKeys = getStoredKeys(freshnessScope);
     setSearching(true);
     setError(null);
     setResults([]);
@@ -179,7 +183,7 @@ export default function AiScoutPage() {
     setRequestedTotal(null);
     setSeenUrls([]);
     try {
-      const data = await aiScoutSearch(q, lang, true, false, [], 'balanced', undefined, [], user?.uid);
+      const data = await aiScoutSearch(q, lang, true, false, [], 'balanced', undefined, freshnessSeenKeys, user?.uid);
       setResults(data.players);
       setInterpretation(data.interpretation ?? null);
       setLeagueInfo(data.leagueInfo ?? null);
@@ -189,6 +193,7 @@ export default function AiScoutPage() {
         .map((p) => p.transfermarktUrl)
         .filter((u): u is string => !!u);
       setSeenUrls(urls);
+      appendStoredKeys(freshnessScope, data.players.map((p) => buildPlayerKey(p.transfermarktUrl, p.name)).filter(Boolean));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setResults([]);
@@ -201,10 +206,11 @@ export default function AiScoutPage() {
   const handleLoadMore = async () => {
     const q = query.trim();
     if (!q || loadingMore) return;
+    const freshnessSeenKeys = getStoredKeys(freshnessScope);
     setLoadingMore(true);
     setError(null);
     try {
-      const data = await aiScoutSearch(q, lang, false, false, [], 'balanced', undefined, [], user?.uid);
+      const data = await aiScoutSearch(q, lang, false, false, [], 'balanced', undefined, freshnessSeenKeys, user?.uid);
       setResults(data.players);
       setInterpretation(data.interpretation ?? null);
       setHasMore(false);
@@ -212,6 +218,7 @@ export default function AiScoutPage() {
         .map((p) => p.transfermarktUrl)
         .filter((u): u is string => !!u);
       setSeenUrls(urls);
+      appendStoredKeys(freshnessScope, data.players.map((p) => buildPlayerKey(p.transfermarktUrl, p.name)).filter(Boolean));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -229,10 +236,11 @@ export default function AiScoutPage() {
   const handleSearchOtherOptions = async () => {
     const q = query.trim();
     if (!q || searchingOther) return;
+    const freshnessSeenKeys = getStoredKeys(freshnessScope);
     setSearchingOther(true);
     setError(null);
     try {
-      const data = await aiScoutSearch(q, lang, false, false, seenUrls, 'balanced', undefined, [], user?.uid);
+      const data = await aiScoutSearch(q, lang, false, false, seenUrls, 'balanced', undefined, freshnessSeenKeys, user?.uid);
       setResults(data.players);
       setInterpretation(data.interpretation ?? null);
       setLeagueInfo(data.leagueInfo ?? null);
@@ -242,6 +250,7 @@ export default function AiScoutPage() {
         .map((p) => p.transfermarktUrl)
         .filter((u): u is string => !!u);
       setSeenUrls((prev) => [...prev, ...newUrls.filter((u) => !prev.includes(u))]);
+      appendStoredKeys(freshnessScope, data.players.map((p) => buildPlayerKey(p.transfermarktUrl, p.name)).filter(Boolean));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
