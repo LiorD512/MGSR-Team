@@ -50,6 +50,22 @@ function getRandomHeaders() {
   };
 }
 
+function looksLikeTransferRows(html) {
+  if (!html) return false;
+  return /<table[^>]*class=["'][^"']*items[^"']*["']/i.test(html) && /<tr[^>]*class=["'][^"']*(odd|even)[^"']*["']/i.test(html);
+}
+
+async function fetchWithNodeFetch(url) {
+  const res = await fetch(url, {
+    headers: getRandomHeaders(),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  return res.text();
+}
+
 // ── Circuit breaker ──
 let _consecutiveBlocks = 0;
 let _circuitOpenUntil = 0;
@@ -78,22 +94,47 @@ async function fetchDocument(url) {
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   _lastFetchTime = Date.now();
 
-  const impit = await getImpit();
-  const res = await impit.fetch(url, {
-    headers: getRandomHeaders(),
-    signal: AbortSignal.timeout(15000),
-  });
-  if (res.status === 429 || res.status === 403 || res.status === 503) {
-    _consecutiveBlocks++;
-    if (_consecutiveBlocks >= CIRCUIT_THRESHOLD) {
-      _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN;
-      console.warn(`[TM] Circuit breaker TRIPPED. Cooling down 5 min.`);
+  let html = "";
+  let impitError = null;
+
+  try {
+    const impit = await getImpit();
+    const res = await impit.fetch(url, {
+      headers: getRandomHeaders(),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.status === 429 || res.status === 403 || res.status === 503) {
+      _consecutiveBlocks++;
+      if (_consecutiveBlocks >= CIRCUIT_THRESHOLD) {
+        _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN;
+        console.warn("[TM] Circuit breaker TRIPPED. Cooling down 5 min.");
+      }
+      throw new Error(`HTTP ${res.status}`);
     }
-    throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    html = await res.text();
+  } catch (err) {
+    impitError = err;
   }
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  if (!looksLikeTransferRows(html)) {
+    try {
+      const fallbackHtml = await fetchWithNodeFetch(url);
+      if (looksLikeTransferRows(fallbackHtml)) {
+        html = fallbackHtml;
+      } else if (!html) {
+        html = fallbackHtml;
+      }
+    } catch {
+      // Keep impit response/error path as source of truth.
+    }
+  }
+
+  if (!html) {
+    throw impitError || new Error("Empty response body");
+  }
+
   _consecutiveBlocks = 0;
-  const html = await res.text();
   return cheerio.load(html);
 }
 

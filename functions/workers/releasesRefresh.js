@@ -8,6 +8,7 @@ const { getFirestore } = require("firebase-admin/firestore");
 const { getLatestReleasesForRange } = require("../lib/transfermarkt");
 const { recordSuccess, recordFailure } = require("../lib/workerRuns");
 const {
+  getWorkerState,
   getKnownReleaseUrls,
   saveKnownReleaseUrls,
   markRefreshSuccess,
@@ -135,9 +136,12 @@ async function runReleasesRefresh() {
     const feedRef = db.collection(FEED_EVENTS_TABLE);
 
     const knownUrls = await getKnownReleaseUrls(db);
+    const workerState = await getWorkerState(db, "ReleasesRefreshWorker");
+    const hasHistoricalRefresh = typeof workerState?.lastRefreshSuccess === "number";
     log(`Previously known releases: ${knownUrls.size}`);
 
     const allReleases = [];
+    let rangesFailed = 0;
     for (let i = 0; i < RELEASE_RANGES.length; i++) {
       const [minVal, maxVal] = RELEASE_RANGES[i];
       log(`Fetching range ${i + 1}/${RELEASE_RANGES.length}: ${minVal}-${maxVal}`);
@@ -146,11 +150,20 @@ async function runReleasesRefresh() {
         allReleases.push(...releases);
         log(`Fetched range ${i + 1}/${RELEASE_RANGES.length}: ${releases.length} releases`);
       } catch (err) {
+        rangesFailed++;
         log(`Failed range ${minVal}-${maxVal}: ${err.message}`);
       }
       if (i < RELEASE_RANGES.length - 1) {
         await sleep(DELAY_BETWEEN_RANGES_MS);
       }
+    }
+
+    if (rangesFailed === RELEASE_RANGES.length || allReleases.length === 0) {
+      throw new Error(
+        rangesFailed === RELEASE_RANGES.length
+          ? `All ${RELEASE_RANGES.length} ranges failed — Transfermarkt may be blocking`
+          : "All ranges returned 0 release rows — possible TM scrape degradation"
+      );
     }
 
     const distinctByUrl = new Map();
@@ -166,7 +179,7 @@ async function runReleasesRefresh() {
     log(`Total releases after constraints: ${constrainedReleases.length}, new: ${newReleases.length}`);
 
     // Bootstrap: first cloud run has empty knownUrls — avoid creating 100+ duplicate events
-    const isBootstrap = knownUrls.size === 0 && constrainedReleases.length > 50;
+    const isBootstrap = !hasHistoricalRefresh && knownUrls.size === 0 && constrainedReleases.length > 50;
     if (isBootstrap) {
       log("Bootstrap mode: saving known URLs without creating events (first run)");
       await saveKnownReleaseUrls(db, currentUrls);
@@ -259,19 +272,20 @@ async function runReleasesRefresh() {
       }
     }
 
-    await saveKnownReleaseUrls(db, currentUrls);
+    const mergedUrls = new Set([...knownUrls, ...currentUrls]);
+    await saveKnownReleaseUrls(db, mergedUrls);
     await markRefreshSuccess(db, "ReleasesRefreshWorker");
 
     const durationMs = Date.now() - startTime;
     await recordSuccess(
       db,
       "ReleasesRefreshWorker",
-      `${releasesToCreate.length} new events created, ${currentUrls.size} total known`,
+      `${releasesToCreate.length} new events created, ${mergedUrls.size} total known (${currentUrls.size} current)`,
       durationMs
     );
 
     log(
-      `Complete — ${releasesToCreate.length} new events created, ${currentUrls.size} total known in ${durationMs}ms`
+      `Complete — ${releasesToCreate.length} new events created, ${mergedUrls.size} total known (${currentUrls.size} current) in ${durationMs}ms`
     );
     return {
       success: true,

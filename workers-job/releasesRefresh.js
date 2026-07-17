@@ -37,9 +37,8 @@ const RELEASE_RANGES = [
   [3500001, 4000000],
 ];
 
-// Keep releases source aligned with the app's "latest releases" scope.
-// The dedicated free-agents endpoint returns historical free agents and can flood the feed.
-const INCLUDE_FREE_AGENTS_SOURCE = false;
+// Fallback to dedicated free-agents source when newest-transfers returns empty.
+const INCLUDE_FREE_AGENTS_SOURCE = true;
 
 const DELAY_BETWEEN_RANGES_MS = 6000;
 const RANGE_RETRY_ATTEMPTS = 3;
@@ -383,12 +382,14 @@ async function getReleasesForRange(minValue, maxValue) {
     return parseTransferList($p);
   };
 
-  all.push(...await parseNewestPage(1));
+  const firstNewest = await parseNewestPage(1);
+  all.push(...firstNewest);
   for (let page = 2; page <= pageCount; page++) {
     all.push(...await parseNewestPage(page));
   }
 
-  if (INCLUDE_FREE_AGENTS_SOURCE) {
+  const shouldUseFreeAgentsFallback = INCLUDE_FREE_AGENTS_SOURCE && all.length === 0;
+  if (shouldUseFreeAgentsFallback) {
     // Source 2: dedicated free agents list (vertragslosespieler)
     try {
       const freeUrl = buildFreeAgentsUrl(minValue, maxValue, 1);
@@ -468,6 +469,9 @@ async function runReleasesRefresh(db) {
     const playersRef = db.collection(PLAYERS_TABLE);
 
     const knownUrls = await getKnownReleaseUrls(db);
+    const stateSnap = await db.collection(WORKER_STATE_COLLECTION).doc("ReleasesRefreshWorker").get();
+    const stateData = stateSnap.exists ? stateSnap.data() : {};
+    const hasHistoricalRefresh = typeof stateData?.lastRefreshSuccess === "number";
     log(`Previously known releases: ${knownUrls.size}`);
 
     const allReleases = [];
@@ -497,9 +501,11 @@ async function runReleasesRefresh(db) {
       }
     }
 
-    if (rangesFailed === RELEASE_RANGES.length) {
+    if (rangesFailed === RELEASE_RANGES.length || allReleases.length === 0) {
       const durationMs = Date.now() - startTime;
-      const errMsg = `All ${RELEASE_RANGES.length} ranges failed — TM may be blocking`;
+      const errMsg = rangesFailed === RELEASE_RANGES.length
+        ? `All ${RELEASE_RANGES.length} ranges failed — TM may be blocking`
+        : "All ranges returned 0 release rows — possible TM scrape degradation";
       log(errMsg);
       await recordFailure(db, new Error(errMsg), durationMs);
       process.exit(1);
@@ -516,7 +522,7 @@ async function runReleasesRefresh(db) {
     log(`Total releases after constraints: ${constrainedReleases.length}, new: ${newReleases.length}`);
 
     // Bootstrap: first run with empty knownUrls — save URLs without creating events
-    const isBootstrap = knownUrls.size === 0 && constrainedReleases.length > 50;
+    const isBootstrap = !hasHistoricalRefresh && knownUrls.size === 0 && constrainedReleases.length > 50;
     if (isBootstrap) {
       log("Bootstrap mode: saving known URLs without creating events (first run)");
       await saveKnownReleaseUrls(db, currentUrls);
