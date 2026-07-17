@@ -8,6 +8,7 @@ REGION="us-central1"
 IMAGE_NAME="mgsr-workers-job"
 PLAYER_JOB="player-refresh-job"
 RELEASES_JOB="releases-refresh-job"
+TM_HTML_PROXY_URL="https://management.britsportgroup.com/api/transfermarkt/html-proxy"
 
 echo "=== Step 1: Getting project number ==="
 PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
@@ -30,7 +31,7 @@ if gcloud run jobs describe $PLAYER_JOB --region $REGION --project $PROJECT_ID 2
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \
-    --set-env-vars "JOB_MODE=player-refresh,SCOUT_TM_PROXY_URL=https://mgsr-backend.onrender.com/tm_proxy" \
+    --set-env-vars "JOB_MODE=player-refresh,SCOUT_TM_PROXY_URL=https://mgsr-backend.onrender.com/tm_proxy,TM_HTML_PROXY_URL=$TM_HTML_PROXY_URL" \
     --set-secrets "SCOUT_ENRICH_SECRET=SCOUT_ENRICH_SECRET:latest"
 else
   gcloud run jobs create $PLAYER_JOB \
@@ -41,7 +42,7 @@ else
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \
-    --set-env-vars "JOB_MODE=player-refresh,SCOUT_TM_PROXY_URL=https://mgsr-backend.onrender.com/tm_proxy" \
+    --set-env-vars "JOB_MODE=player-refresh,SCOUT_TM_PROXY_URL=https://mgsr-backend.onrender.com/tm_proxy,TM_HTML_PROXY_URL=$TM_HTML_PROXY_URL" \
     --set-secrets "SCOUT_ENRICH_SECRET=SCOUT_ENRICH_SECRET:latest"
 fi
 
@@ -79,7 +80,7 @@ if gcloud run jobs describe $RELEASES_JOB --region $REGION --project $PROJECT_ID
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \
-    --set-env-vars "JOB_MODE=releases-refresh"
+    --set-env-vars "JOB_MODE=releases-refresh,TM_HTML_PROXY_URL=$TM_HTML_PROXY_URL"
 else
   gcloud run jobs create $RELEASES_JOB \
     --image gcr.io/$PROJECT_ID/$IMAGE_NAME \
@@ -89,7 +90,7 @@ else
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \
-    --set-env-vars "JOB_MODE=releases-refresh"
+    --set-env-vars "JOB_MODE=releases-refresh,TM_HTML_PROXY_URL=$TM_HTML_PROXY_URL"
 fi
 
 echo ""

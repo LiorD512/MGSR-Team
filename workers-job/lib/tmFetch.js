@@ -8,6 +8,9 @@
 
 const cheerio = require("cheerio");
 
+const TM_HTML_PROXY_URL = process.env.TM_HTML_PROXY_URL ||
+  "https://management.britsportgroup.com/api/transfermarkt/html-proxy";
+
 // ── impit: browser impersonation (Rust-based TLS fingerprint matching) ──
 let _Impit = null;
 let _impit = null;
@@ -62,6 +65,20 @@ async function fetchWithNodeFetch(url) {
   });
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
+  }
+  return res.text();
+}
+
+async function fetchWithHtmlProxy(url) {
+  const proxyUrl = `${TM_HTML_PROXY_URL}?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxyUrl, {
+    headers: {
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) {
+    throw new Error(`HTML proxy HTTP ${res.status}`);
   }
   return res.text();
 }
@@ -127,6 +144,19 @@ async function fetchDocument(url) {
       }
     } catch {
       // Keep impit response/error path as source of truth.
+    }
+  }
+
+  if (!looksLikeTransferRows(html)) {
+    try {
+      const proxyHtml = await fetchWithHtmlProxy(url);
+      if (looksLikeTransferRows(proxyHtml)) {
+        html = proxyHtml;
+      } else if (!html) {
+        html = proxyHtml;
+      }
+    } catch {
+      // Keep previous response/error path as source of truth.
     }
   }
 

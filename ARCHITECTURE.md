@@ -1,7 +1,7 @@
 # MGSR Team — Complete Architecture Reference
 
 > **Every agent MUST read this file before writing a single line of code.**
-> Last updated: 2026-06-20
+> Last updated: 2026-07-17
 
 ---
 
@@ -81,8 +81,12 @@ MGSR Team is a **multi-platform football agent management system** for managing 
 │                                                                     │
 │  GOOGLE CLOUD PLATFORM (Workers)                                   │
 │  ├─ Cloud Run Job: player-refresh-job (hourly micro-batch)         │
-│  │   └─ Refreshes 200 stalest players/hour via TM proxy            │
+│  │   └─ Refreshes 200 stalest players/hour via TM proxy with       │
+│  │      Vercel HTML fallback when TM returns non-parseable HTML    │
 │  │       (4,800 players/day capacity; skips recently refreshed)    │
+│  ├─ Cloud Run Job: releases-refresh-job (daily + manual trigger)   │
+│  │   └─ Scrapes releases/free agents and falls back to the web     │
+│  │      HTML proxy when direct Cloud Run fetches return empty HTML │
 │  └─ Cloud Run Job: scout-db-build (Monday 4am)                    │
 │      └─ Rebuilds Render server database (12-14 hour job)           │
 │                                                                     │
