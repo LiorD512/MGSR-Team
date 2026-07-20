@@ -321,7 +321,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/` | Root | Redirect to dashboard |
 | `/login` | Login | Email/password authentication |
 | `/dashboard` | Dashboard | Stats, feed, tasks, birthdays, agents |
-| `/players` | Players | Full roster with filters (position, foot, contract, agent) |
+| `/players` | Players | Full roster with filters (position, specific+secondary position, foot, contract, agent) |
 | `/players/add` | Add Player | Search TM/SoccerDonna/IFA + create player |
 | `/players/[id]` | Player Detail (Men) | Full profile: notes, docs, offers, stats, GPS, FM, highlights |
 | `/players/[id]/generate-mandate` | Mandate Gen (Men) | Generate PDF mandate |
@@ -834,7 +834,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Screen | `PlayersScreen` | `/players/page.tsx` |
 | ViewModel/State | `PlayersViewModel` | Client-side with Firestore listeners |
 | Data | Firestore Players (real-time listener) | Same |
-| Filters | Position, foot, contract status, agent, search text | Same filters + region/confederation chips (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC) on desktop and mobile filter sheet, reusing the same localized labels as release notifications |
+| Filters | Position, foot, contract status, agent, search text | Same filters + men-specific specific-position and secondary-position selectors (secondary matches only non-primary entries in `positions[]`) + region/confederation chips (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC) on desktop and mobile filter sheet, reusing the same localized labels as release notifications |
 | Actions | Navigate to player detail, filter, sort | Same + per-player "played with him" accordion (Transfermarkt teammates matched against roster, games-together badges, WhatsApp outreach shortcut; matching pipeline aligned with Web Shortlist teammates logic) |
 
 ### Player Detail

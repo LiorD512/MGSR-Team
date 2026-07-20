@@ -72,6 +72,7 @@ interface PlayersCache {
   search: string;
   positionFilter: string | null;
   specificPositionFilter: string | null;
+  secondaryPositionFilter: string | null;
   regionFilter: Confederation | null;
   freeAgents: boolean;
   contractExpiring: boolean;
@@ -192,6 +193,7 @@ export default function PlayersPage() {
   const [search, setSearch] = useState(cached?.search ?? '');
   const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
   const [specificPositionFilter, setSpecificPositionFilter] = useState<string | null>(cached?.specificPositionFilter ?? null);
+  const [secondaryPositionFilter, setSecondaryPositionFilter] = useState<string | null>(cached?.secondaryPositionFilter ?? null);
   const [regionFilter, setRegionFilter] = useState<Confederation | null>(cached?.regionFilter ?? null);
   const [freeAgents, setFreeAgents] = useState(cached?.freeAgents ?? false);
   const [contractExpiring, setContractExpiring] = useState(cached?.contractExpiring ?? false);
@@ -362,6 +364,7 @@ export default function PlayersPage() {
       search,
       positionFilter,
       specificPositionFilter,
+      secondaryPositionFilter,
       regionFilter,
       freeAgents,
       contractExpiring,
@@ -377,7 +380,7 @@ export default function PlayersPage() {
       interestedInIsrael,
       taggedInNotes,
     });
-  }, [players, search, positionFilter, specificPositionFilter, regionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, agentFilter, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback, interestedInIsrael]);
+  }, [players, search, positionFilter, specificPositionFilter, secondaryPositionFilter, regionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, agentFilter, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback, interestedInIsrael]);
 
   const filtered = useMemo(() => {
     if (platform === 'youth') {
@@ -448,6 +451,15 @@ export default function PlayersPage() {
       result = result.filter((p) =>
         p.positions?.some((pos) => pos && codes.has(pos.toUpperCase()))
       );
+    }
+
+    // Secondary position (anything after primary/main position)
+    if (secondaryPositionFilter) {
+      const code = secondaryPositionFilter.toUpperCase();
+      result = result.filter((p) => {
+        const secondaryPositions = (p.positions ?? []).slice(1);
+        return secondaryPositions.some((pos) => pos?.toUpperCase() === code);
+      });
     }
 
     // Region (confederation)
@@ -554,6 +566,7 @@ export default function PlayersPage() {
     search,
     positionFilter,
     specificPositionFilter,
+    secondaryPositionFilter,
     freeAgents,
     contractExpiring,
     withMandate,
@@ -577,6 +590,7 @@ export default function PlayersPage() {
   const hasActiveFilters =
     !!positionFilter ||
     !!specificPositionFilter ||
+    !!secondaryPositionFilter ||
     (platform === 'youth' && withNotes) ||
     (platform === 'men' &&
       (freeAgents ||
@@ -597,6 +611,7 @@ export default function PlayersPage() {
   const clearFilters = useCallback(() => {
     setPositionFilter(null);
     setSpecificPositionFilter(null);
+    setSecondaryPositionFilter(null);
     setRegionFilter(null);
     setFreeAgents(false);
     setContractExpiring(false);
@@ -885,23 +900,43 @@ export default function PlayersPage() {
               const options = positionFilter ? (SPECIFIC_POSITIONS_BY_GROUP[positionFilter] ?? ALL_SPECIFIC_POSITIONS) : ALL_SPECIFIC_POSITIONS;
               const labels = lang === 'he' ? SPECIFIC_POSITION_LABELS_HE : SPECIFIC_POSITION_LABELS_EN;
               return (
-                <select
-                  value={specificPositionFilter ?? ''}
-                  onChange={(e) => setSpecificPositionFilter(e.target.value || null)}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 appearance-none cursor-pointer bg-mgsr-card border text-mgsr-muted hover:text-mgsr-text focus:outline-none ${
-                    specificPositionFilter
-                      ? 'border-[var(--mgsr-accent)]/60 text-[var(--mgsr-accent)] bg-[var(--mgsr-accent-dim)]'
-                      : 'border-mgsr-border hover:border-[var(--mgsr-accent)]/40'
-                  }`}
-                  style={{ paddingRight: '28px', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: `${isRtl ? 'left 8px center' : 'right 8px center'}` }}
-                >
-                  <option value="">{t('players_specific_position')}</option>
-                  {options.map((code) => (
-                    <option key={code} value={code}>
-                      {labels[code] ?? code} ({code})
-                    </option>
-                  ))}
-                </select>
+                <>
+                  <select
+                    value={specificPositionFilter ?? ''}
+                    onChange={(e) => setSpecificPositionFilter(e.target.value || null)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 appearance-none cursor-pointer bg-mgsr-card border text-mgsr-muted hover:text-mgsr-text focus:outline-none ${
+                      specificPositionFilter
+                        ? 'border-[var(--mgsr-accent)]/60 text-[var(--mgsr-accent)] bg-[var(--mgsr-accent-dim)]'
+                        : 'border-mgsr-border hover:border-[var(--mgsr-accent)]/40'
+                    }`}
+                    style={{ paddingRight: '28px', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: `${isRtl ? 'left 8px center' : 'right 8px center'}` }}
+                  >
+                    <option value="">{t('players_specific_position')}</option>
+                    {options.map((code) => (
+                      <option key={code} value={code}>
+                        {labels[code] ?? code} ({code})
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={secondaryPositionFilter ?? ''}
+                    onChange={(e) => setSecondaryPositionFilter(e.target.value || null)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 appearance-none cursor-pointer bg-mgsr-card border text-mgsr-muted hover:text-mgsr-text focus:outline-none ${
+                      secondaryPositionFilter
+                        ? 'border-[var(--mgsr-accent)]/60 text-[var(--mgsr-accent)] bg-[var(--mgsr-accent-dim)]'
+                        : 'border-mgsr-border hover:border-[var(--mgsr-accent)]/40'
+                    }`}
+                    style={{ paddingRight: '28px', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: `${isRtl ? 'left 8px center' : 'right 8px center'}` }}
+                  >
+                    <option value="">{t('players_secondary_position')}</option>
+                    {ALL_SPECIFIC_POSITIONS.map((code) => (
+                      <option key={`secondary-${code}`} value={code}>
+                        {labels[code] ?? code} ({code})
+                      </option>
+                    ))}
+                  </select>
+                </>
               );
             })()}
 
