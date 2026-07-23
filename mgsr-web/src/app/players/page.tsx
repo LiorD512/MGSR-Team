@@ -440,12 +440,10 @@ export default function PlayersPage() {
       );
     }
 
-    // Position — specific position takes precedence over group
+    // Position — specific/main position takes precedence over group and checks only the primary position (index 0)
     if (specificPositionFilter) {
       const code = specificPositionFilter.toUpperCase();
-      result = result.filter((p) =>
-        p.positions?.some((pos) => pos?.toUpperCase() === code)
-      );
+      result = result.filter((p) => p.positions?.[0]?.toUpperCase() === code);
     } else if (positionFilter && POSITION_CODES[positionFilter]) {
       const codes = POSITION_CODES[positionFilter];
       result = result.filter((p) =>
@@ -453,13 +451,12 @@ export default function PlayersPage() {
       );
     }
 
-    // Secondary position (anything after primary/main position)
+    // Secondary position selector: match if the selected position exists anywhere in positions[]
     if (secondaryPositionFilter) {
       const code = secondaryPositionFilter.toUpperCase();
-      result = result.filter((p) => {
-        const secondaryPositions = (p.positions ?? []).slice(1);
-        return secondaryPositions.some((pos) => pos?.toUpperCase() === code);
-      });
+      result = result.filter((p) =>
+        (p.positions ?? []).some((pos) => pos?.toUpperCase() === code)
+      );
     }
 
     // Region (confederation)
