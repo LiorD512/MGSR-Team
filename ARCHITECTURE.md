@@ -83,7 +83,8 @@ MGSR Team is a **multi-platform football agent management system** for managing 
 │  ├─ Cloud Run Job: player-refresh-job (hourly micro-batch)         │
 │  │   └─ Refreshes 200 stalest players/hour via TM proxy with       │
 │  │      Vercel HTML fallback when TM returns non-parseable HTML    │
-│  │       (4,800 players/day capacity; skips recently refreshed)    │
+│  │       (4,800 players/day capacity; accepts valid profiles even  │
+│  │        when the market-value box is absent)                     │
 │  ├─ Cloud Run Job: releases-refresh-job (daily + manual trigger)   │
 │  │   └─ Scrapes releases/free agents and falls back to the web     │
 │  │      HTML proxy when direct Cloud Run fetches return empty HTML │

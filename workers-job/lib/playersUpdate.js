@@ -118,12 +118,11 @@ async function updatePlayerByTmProfile(tmProfile) {
   try {
     const $ = await fetchDocument(url);
 
-    // Sentinel: a real profile has either the market-value box OR the main
-    // data-header section. Some valid profiles (market value "-") lack the box
-    // but still have the header with club/nationality/age info.
-    const hasMarketValueBox = $("div.data-header__box--small").length > 0;
+    // Sentinel: a real profile renders the data-header section. Some valid
+    // profiles no longer render the market-value box, so we must not reject
+    // them here or we would miss club/position updates.
     const hasDataHeader = $("header.data-header, div.data-header").length > 0;
-    if (!hasMarketValueBox && !hasDataHeader) {
+    if (!hasDataHeader) {
       return { success: false, error: "Profile page not rendered (no data-header)" };
     }
 
