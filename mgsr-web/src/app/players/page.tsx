@@ -246,10 +246,6 @@ export default function PlayersPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!menRosterAnalysisEnabled) {
-      setRosterPlayers([]);
-      return;
-    }
     const q = query(
       collection(db, 'Players'),
       orderBy('createdAt', 'desc')
@@ -267,7 +263,7 @@ export default function PlayersPage() {
       setPlayersLoading(false);
     });
     return () => unsub();
-  }, [menRosterAnalysisEnabled]);
+  }, []);
 
   useEffect(() => {
     const q = query(

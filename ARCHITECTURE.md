@@ -837,7 +837,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | ViewModel/State | `PlayersViewModel` | Client-side with Firestore listeners |
 | Data | Firestore Players (real-time listener) | Same |
 | Filters | Position, foot, contract status, agent, search text | Same filters + men-specific specific-position and secondary-position selectors (specific/main position matches only `positions[0]`; secondary selector matches if the code exists anywhere in `positions[]`) + region/confederation chips (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC) on desktop and mobile filter sheet, reusing the same localized labels as release notifications |
-| Actions | Navigate to player detail, filter, sort | Same + men roster-analysis panels exist in code but are currently hidden by `MEN_ROSTER_ANALYSIS_ENABLED` (matching requests/proposal context + "played with him" teammates panel) |
+| Actions | Navigate to player detail, filter, sort | Same + men roster-analysis panels exist in code but are currently hidden by `MEN_ROSTER_ANALYSIS_ENABLED` (matching requests/proposal context + "played with him" teammates panel). The core men players Firestore listener remains always active, so hiding analytics does not affect roster loading. |
 
 ### Player Detail
 | Aspect | Android | Web |
