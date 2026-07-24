@@ -50,7 +50,7 @@ import {
 } from '@/lib/platformCollections';
 import ForeignArrivalsPanel from '@/components/ForeignArrivalsPanel';
 import BirthdaysSection from '@/components/BirthdaysSection';
-import { WEB_TASKS_ENABLED } from '@/lib/featureFlags';
+import { MEN_ROSTER_ANALYSIS_ENABLED, WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 
 interface FeedEvent {
   id: string;
@@ -1287,8 +1287,8 @@ export default function DashboardPage() {
           </div>
         )} */}
 
-        {/* Roster Analytics (men only) */}
-        {platform === 'men' && rosterPlayers.length > 0 && (
+        {/* Roster Analytics (men only) — hidden when men roster-analysis feature is disabled */}
+        {platform === 'men' && MEN_ROSTER_ANALYSIS_ENABLED && rosterPlayers.length > 0 && (
           <div className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-mgsr-text font-display">
@@ -1614,7 +1614,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Staff, Top agents & Leading agencies (men only for top agents & agencies) */}
+        {/* Staff, Top agents & Leading agencies — hidden on men dashboard per user request */}
+        {platform !== 'men' && (
         <div className={`grid gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-10 ${isWomen || isYouth ? 'grid-cols-1 max-w-md' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
           <div className={`p-4 md:p-6 border rounded-2xl backdrop-blur-sm ${
             isYouth ? 'bg-mgsr-card/40 border-[var(--youth-cyan)]/20' : isWomen ? 'bg-mgsr-card/50 border-[var(--women-rose)]/20' : 'bg-mgsr-card/60 border border-mgsr-border'
@@ -1746,6 +1747,7 @@ export default function DashboardPage() {
           </div>
           )}
         </div>
+        )}
 
         {/*
           TEMP HIDDEN (user request): Open Transfer Windows dashboard section

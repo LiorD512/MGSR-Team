@@ -827,7 +827,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Screen | `DashboardScreen` | `/dashboard/page.tsx` |
 | ViewModel/State | `HomeScreenViewModel` | Client-side React state |
 | Data | Players + FeedEvents + Accounts (real-time) + Tasks (currently listener-gated off by feature flag) | Same Firestore collections (tasks listener currently gated off by feature flag) |
-| Features | Stats header, feed timeline, birthdays, agent overview (task UI hidden while flag is off) | Same features, responsive mobile layout (task UI hidden while flag is off) |
+| Features | Stats header, feed timeline, birthdays, agent overview (task UI hidden while flag is off) | Same features, responsive mobile layout (task UI hidden while flag is off); men dashboard roster-analytics cards are currently hidden by `MEN_ROSTER_ANALYSIS_ENABLED`, and the staff/top-agents/leading-agencies panel is currently hidden on men web per UI-disable request |
 | Actions | Navigate to features, birthday wishes (task actions hidden while flag is off) | Same |
 
 ### Players (Roster)
