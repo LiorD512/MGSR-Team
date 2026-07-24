@@ -32,6 +32,7 @@ import { type AgentTransferRequest, listenForPendingRequest, listenForResolvedTr
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import { appConfig, getPositionDisplayName } from '@/lib/appConfig';
 import NoteTextarea from '@/components/NoteTextarea';
+import { MEN_ROSTER_ANALYSIS_ENABLED, WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 import {
   LineChart,
   Line,
@@ -256,6 +257,8 @@ export default function PlayerInfoPage() {
   const id = params.id as string;
   const euCountries = useEuCountries();
   const precomputedMatchRequestIds = usePlayerMatchResults(id);
+  const tasksEnabled = WEB_TASKS_ENABLED;
+  const menRosterAnalysisEnabled = MEN_ROSTER_ANALYSIS_ENABLED;
   const fromPath = searchParams.get('from') || '/players';
   const scrollTo = searchParams.get('scrollTo');
   const isFromDashboard = fromPath === '/dashboard';
@@ -415,7 +418,7 @@ export default function PlayerInfoPage() {
   }, [player?.tmProfile, id]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!tasksEnabled || !id) return;
     const q = query(
       collection(db, 'AgentTasks'),
       where('playerId', '==', id)
@@ -427,7 +430,7 @@ export default function PlayerInfoPage() {
       setPlayerTasks(list);
     });
     return () => unsub();
-  }, [id]);
+  }, [id, tasksEnabled]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'ClubRequests'), (snap) => {
@@ -2179,7 +2182,7 @@ export default function PlayerInfoPage() {
             </div>
 
             {/* Matching Requests */}
-            {player?.tmProfile && (
+            {menRosterAnalysisEnabled && player?.tmProfile && (
               <MatchingRequestsSection
                 matchingRequests={matchingRequests}
                 playerProfileUrl={player.tmProfile}
@@ -2192,7 +2195,7 @@ export default function PlayerInfoPage() {
             )}
 
             {/* Proposal History (persists after request deletion) */}
-            {proposalHistory.length > 0 && (
+            {menRosterAnalysisEnabled && proposalHistory.length > 0 && (
               <ProposalHistorySection
                 offers={proposalHistory}
                 accounts={accounts}
@@ -2767,6 +2770,7 @@ export default function PlayerInfoPage() {
             )}
 
             {/* Player-related tasks */}
+            {tasksEnabled && (
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <h2 className="text-lg font-display font-semibold text-mgsr-text">
@@ -2873,6 +2877,7 @@ export default function PlayerInfoPage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Notes */}
             <div>
@@ -3367,6 +3372,7 @@ export default function PlayerInfoPage() {
       )}
 
       {/* Add Player Task Modal */}
+      {tasksEnabled && (
       <AddPlayerTaskModal
         open={showAddTaskModal}
         onClose={() => setShowAddTaskModal(false)}
@@ -3389,6 +3395,7 @@ export default function PlayerInfoPage() {
         currentUserEmail={user?.email || ''}
         getDisplayName={(a, rtl) => (rtl ? a.hebrewName || a.name || a.email || '—' : a.name || a.hebrewName || a.email || '—')}
       />
+      )}
 
       {/* Delete Note Confirmation */}
       {deleteConfirmNote && (

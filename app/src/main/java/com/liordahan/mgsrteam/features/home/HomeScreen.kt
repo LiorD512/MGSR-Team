@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.liordahan.mgsrteam.IMainViewModel
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.config.FeatureFlags
 import com.liordahan.mgsrteam.deeplink.PendingShareHolder
 import com.liordahan.mgsrteam.features.add.AddFromLinkBottomSheet
 import com.liordahan.mgsrteam.features.add.AddPlayerScreen
@@ -123,6 +124,10 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
+        if (!FeatureFlags.TASKS_ENABLED) {
+            mainViewModel.setPendingOpenTasksScreen(false)
+            return@LaunchedEffect
+        }
         mainViewModel.pendingOpenTasksScreen.collectLatest { shouldOpen ->
             if (shouldOpen) {
                 navController.navigate(Screens.TasksScreen.route)
@@ -212,16 +217,18 @@ fun HomeScreen(
                 DashboardScreen(navController = navController, viewModel = homeViewModel, onSignOut = { mainViewModel.signOut() })
             }
 
-            composable(route = Screens.TasksScreen.route) {
-                TasksScreen(navController = navController, viewModel = homeViewModel)
-            }
+            if (FeatureFlags.TASKS_ENABLED) {
+                composable(route = Screens.TasksScreen.route) {
+                    TasksScreen(navController = navController, viewModel = homeViewModel)
+                }
 
-            composable(
-                route = "${Screens.TaskDetailScreen.route}/{taskId}",
-                arguments = listOf(navArgument("taskId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val taskId = backStackEntry.arguments?.getString("taskId") ?: return@composable
-                TaskDetailScreen(taskId = taskId, navController = navController, viewModel = homeViewModel)
+                composable(
+                    route = "${Screens.TaskDetailScreen.route}/{taskId}",
+                    arguments = listOf(navArgument("taskId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val taskId = backStackEntry.arguments?.getString("taskId") ?: return@composable
+                    TaskDetailScreen(taskId = taskId, navController = navController, viewModel = homeViewModel)
+                }
             }
 
             composable(

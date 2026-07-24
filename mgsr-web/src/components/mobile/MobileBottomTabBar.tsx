@@ -6,6 +6,7 @@ import { usePlatform } from '@/contexts/PlatformContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useState } from 'react';
 import { MoreSheet } from './MoreSheet';
+import { WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 
 /* ── Icon SVGs (inline, no icon library) ── */
 function IconDashboard({ className }: { className?: string }) {
@@ -67,13 +68,13 @@ const menTabs: TabItem[] = [
   { href: '/dashboard', labelKey: 'nav_dashboard', icon: IconDashboard },
   { href: '/players', labelKey: 'nav_players', icon: IconPlayers, matchPrefixes: ['/players'] },
   { href: '/war-room', labelKey: 'nav_war_room', icon: IconAIScout },
-  { href: '/tasks', labelKey: 'nav_tasks', icon: IconTasks },
+  ...(WEB_TASKS_ENABLED ? [{ href: '/tasks', labelKey: 'nav_tasks', icon: IconTasks }] : []),
 ];
 
 const womenTabs: TabItem[] = [
   { href: '/dashboard', labelKey: 'nav_dashboard', icon: IconDashboard },
   { href: '/players', labelKey: 'nav_players_women', icon: IconPlayers, matchPrefixes: ['/players'] },
-  { href: '/tasks', labelKey: 'nav_tasks', icon: IconTasks },
+  ...(WEB_TASKS_ENABLED ? [{ href: '/tasks', labelKey: 'nav_tasks', icon: IconTasks }] : []),
   // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio', icon: IconPortfolio },
 ];
 
@@ -107,7 +108,7 @@ export const womenMoreItems = [
 const youthTabs: TabItem[] = [
   { href: '/dashboard', labelKey: 'nav_dashboard', icon: IconDashboard },
   { href: '/players', labelKey: 'nav_players', icon: IconPlayers, matchPrefixes: ['/players'] },
-  { href: '/tasks', labelKey: 'nav_tasks', icon: IconTasks },
+  ...(WEB_TASKS_ENABLED ? [{ href: '/tasks', labelKey: 'nav_tasks', icon: IconTasks }] : []),
   // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio', icon: IconPortfolio },
 ];
 

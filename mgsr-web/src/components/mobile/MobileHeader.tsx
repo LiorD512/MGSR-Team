@@ -6,6 +6,7 @@ import { usePlatform } from '@/contexts/PlatformContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { PlatformSwitcher } from '@/components/PlatformSwitcher';
 import NotificationBell from '@/components/NotificationBell';
+import { WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 
 /* ── Route → page title mapping ── */
 const pageTitleKeys: Record<string, string> = {
@@ -13,7 +14,7 @@ const pageTitleKeys: Record<string, string> = {
   '/players': 'nav_players',
   '/players/add': 'nav_players',
   '/ai-scout': 'nav_ai_scout',
-  '/tasks': 'nav_tasks',
+  ...(WEB_TASKS_ENABLED ? { '/tasks': 'nav_tasks' } : {}),
   '/shortlist': 'nav_shortlist',
   '/shadow-teams': 'nav_shadow_teams',
   '/release-notifications': 'nav_release_notifications',

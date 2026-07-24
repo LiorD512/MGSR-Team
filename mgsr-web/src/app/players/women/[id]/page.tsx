@@ -35,6 +35,7 @@ import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import NoteTextarea from '@/components/NoteTextarea';
 import Link from 'next/link';
+import { WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 
 const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 
@@ -67,6 +68,7 @@ export default function WomanPlayerPage() {
   const searchParams = useSearchParams();
   const id = params?.id as string | undefined;
   const precomputedMatchRequestIds = usePlayerMatchResults(id);
+  const tasksEnabled = WEB_TASKS_ENABLED;
   const fromPath = searchParams.get('from') || '/players';
   const scrollTo = searchParams.get('scrollTo');
   const isFromDashboard = fromPath === '/dashboard';
@@ -185,7 +187,7 @@ export default function WomanPlayerPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!tasksEnabled || !id) return;
     const q = query(
       collection(db, 'AgentTasksWomen'),
       where('playerId', '==', id)
@@ -197,7 +199,7 @@ export default function WomanPlayerPage() {
       setPlayerTasks(list);
     });
     return () => unsub();
-  }, [id]);
+  }, [id, tasksEnabled]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, CLUB_REQUESTS_COLLECTIONS.women), (snap) => {
@@ -1132,6 +1134,7 @@ export default function WomanPlayerPage() {
             )}
 
             {/* Player-related tasks */}
+            {tasksEnabled && (
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <h2 className="text-lg font-display font-semibold text-mgsr-text">
@@ -1229,6 +1232,7 @@ export default function WomanPlayerPage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Notes */}
             <div>
@@ -1780,6 +1784,7 @@ export default function WomanPlayerPage() {
         )}
 
         {/* Add Player Task Modal */}
+        {tasksEnabled && (
         <AddPlayerTaskModal
           open={showAddTaskModal}
           onClose={() => setShowAddTaskModal(false)}
@@ -1801,6 +1806,7 @@ export default function WomanPlayerPage() {
           getDisplayName={(a, rtl) => (rtl ? a.hebrewName || a.name || '—' : a.name || a.hebrewName || '—')}
           taskCollection="AgentTasksWomen"
         />
+        )}
       </div>
     </AppLayout>
   );

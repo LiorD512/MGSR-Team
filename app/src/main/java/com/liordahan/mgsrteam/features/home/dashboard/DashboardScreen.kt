@@ -127,6 +127,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.config.FeatureFlags
 import com.liordahan.mgsrteam.features.home.DocumentReminder
 import com.liordahan.mgsrteam.features.home.FeedFilter
 import com.liordahan.mgsrteam.features.home.HomeDashboardState
@@ -363,7 +364,9 @@ fun DashboardScreen(
                     val data = notif.data
                     when (notif.type) {
                         "TASK_ASSIGNED", "TASK_REMINDER" -> {
-                            navController.navigate(Screens.TasksScreen.route)
+                            if (FeatureFlags.TASKS_ENABLED) {
+                                navController.navigate(Screens.TasksScreen.route)
+                            }
                         }
                         "CHAT_ROOM_TAG" -> {
                             navController.navigate(Screens.ChatRoomScreen.route)
@@ -777,19 +780,21 @@ fun DashboardScreen(
                         }
                     }
 
-                    // ── Agent Tasks Summary Widget ──────────────────────────────
-                    item {
-                        TasksSummaryWidget(
-                            agentTasks = state.agentTasks,
-                            accounts = state.allAccounts,
-                            navController = navController,
-                            onViewAllClick = { navController.navigate(Screens.TasksScreen.route) },
-                            onAddTaskClick = { showAddTaskSheet = true },
-                            onTaskClick = { task ->
-                                navController.navigate(Screens.taskDetailRoute(task.id))
-                            },
-                            onToggleTask = { viewModel.toggleTaskCompleted(it) }
-                        )
+                    if (FeatureFlags.TASKS_ENABLED) {
+                        // ── Agent Tasks Summary Widget ──────────────────────────────
+                        item {
+                            TasksSummaryWidget(
+                                agentTasks = state.agentTasks,
+                                accounts = state.allAccounts,
+                                navController = navController,
+                                onViewAllClick = { navController.navigate(Screens.TasksScreen.route) },
+                                onAddTaskClick = { showAddTaskSheet = true },
+                                onTaskClick = { task ->
+                                    navController.navigate(Screens.taskDetailRoute(task.id))
+                                },
+                                onToggleTask = { viewModel.toggleTaskCompleted(it) }
+                            )
+                        }
                     }
 
                     // Transfer windows section removed from dashboard per updated product direction.
@@ -823,7 +828,7 @@ fun DashboardScreen(
         )
     }
 
-    if (showAddTaskSheet) {
+    if (FeatureFlags.TASKS_ENABLED && showAddTaskSheet) {
         com.liordahan.mgsrteam.features.home.tasks.AddTaskBottomSheet(
             accounts = state.allAccounts,
             onDismiss = { showAddTaskSheet = false },
@@ -1408,7 +1413,7 @@ private fun QuickActionsRow(navController: NavController, platform: Platform = P
                 useMenPalette = isMen
             )
         }
-        if (QuickActionKey.TASKS in actions) item {
+        if (FeatureFlags.TASKS_ENABLED && QuickActionKey.TASKS in actions) item {
             QuickActionChip(
                 icon = Icons.Default.CheckCircle,
                 label = stringResource(R.string.tasks_title),
@@ -1432,7 +1437,6 @@ private fun QuickActionsRow(navController: NavController, platform: Platform = P
         }
     }
 }
-
 @Composable
 private fun QuickActionChip(
     icon: ImageVector,
@@ -2258,84 +2262,86 @@ private fun MyAgentHubSection(
 
         Spacer(Modifier.height(12.dp))
 
-        // ── Upcoming Tasks ─────────────────────────────────────────────
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCard else HomeDarkCard),
-            border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Filled.CalendarToday,
-                            contentDescription = null,
-                            tint = if (isMen) MenDashboardCyan else HomeBlueAccent,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = stringResource(R.string.my_hub_upcoming_tasks),
-                            style = boldTextStyle(HomeTextPrimary, 14.sp)
-                        )
-                    }
+        if (FeatureFlags.TASKS_ENABLED) {
+            // ── Upcoming Tasks ─────────────────────────────────────────────
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = if (isMen) MenDashboardCard else HomeDarkCard),
+                border = if (isMen) androidx.compose.foundation.BorderStroke(1.dp, MenDashboardBorder) else null
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.CalendarToday,
+                                contentDescription = null,
+                                tint = if (isMen) MenDashboardCyan else HomeBlueAccent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.my_hub_upcoming_tasks),
+                                style = boldTextStyle(HomeTextPrimary, 14.sp)
+                            )
+                        }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (overview.overdueTaskCount > 0) {
-                            Box(
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (overview.overdueTaskCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background((if (isMen) MenDashboardDanger else HomeRedAccent).copy(alpha = 0.15f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.my_hub_overdue_tasks, overview.overdueTaskCount),
+                                        style = boldTextStyle(if (isMen) MenDashboardDanger else HomeRedAccent, 10.sp)
+                                    )
+                                }
+                                Spacer(Modifier.width(6.dp))
+                            }
+                            Text(
+                                text = stringResource(R.string.my_hub_view_all_tasks),
+                                style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 12.sp),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background((if (isMen) MenDashboardDanger else HomeRedAccent).copy(alpha = 0.15f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.my_hub_overdue_tasks, overview.overdueTaskCount),
-                                    style = boldTextStyle(if (isMen) MenDashboardDanger else HomeRedAccent, 10.sp)
-                                )
-                            }
-                            Spacer(Modifier.width(6.dp))
+                                    .clickable { navController.navigate(Screens.TasksScreen.route) }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
                         }
-                        Text(
-                            text = stringResource(R.string.my_hub_view_all_tasks),
-                            style = boldTextStyle(if (isMen) MenDashboardGold else HomeTealAccent, 12.sp),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { navController.navigate(Screens.TasksScreen.route) }
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
-                        )
                     }
-                }
 
-                Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(10.dp))
 
-                if (overview.upcomingTasks.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.my_hub_no_tasks),
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                } else {
-                    overview.upcomingTasks.forEach { task ->
-                        HubTaskRow(
-                            task = task,
-                            navController = navController,
-                            onToggle = { onTaskToggle(task) },
-                            onClick = { navController.navigate(Screens.taskDetailRoute(task.id)) }
-                        )
-                    }
-                    if (overview.pendingTaskCount > overview.upcomingTasks.size) {
+                    if (overview.upcomingTasks.isEmpty()) {
                         Text(
-                            text = stringResource(R.string.my_hub_pending_tasks, overview.pendingTaskCount),
-                            style = regularTextStyle(HomeTextSecondary, 11.sp),
-                            modifier = Modifier.padding(top = 6.dp)
+                            text = stringResource(R.string.my_hub_no_tasks),
+                            style = regularTextStyle(HomeTextSecondary, 12.sp),
+                            modifier = Modifier.padding(vertical = 8.dp)
                         )
+                    } else {
+                        overview.upcomingTasks.forEach { task ->
+                            HubTaskRow(
+                                task = task,
+                                navController = navController,
+                                onToggle = { onTaskToggle(task) },
+                                onClick = { navController.navigate(Screens.taskDetailRoute(task.id)) }
+                            )
+                        }
+                        if (overview.pendingTaskCount > overview.upcomingTasks.size) {
+                            Text(
+                                text = stringResource(R.string.my_hub_pending_tasks, overview.pendingTaskCount),
+                                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
+                        }
                     }
                 }
             }

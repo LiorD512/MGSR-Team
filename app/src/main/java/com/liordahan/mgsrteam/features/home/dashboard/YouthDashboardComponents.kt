@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.config.FeatureFlags
 import com.liordahan.mgsrteam.features.home.FeedFilter
 import com.liordahan.mgsrteam.features.home.HomeDashboardState
 import com.liordahan.mgsrteam.features.home.models.AgentTask
@@ -267,17 +268,19 @@ fun YouthQuickActionsRow(navController: NavController, modifier: Modifier = Modi
                 }
             )
         }
-        item {
-            YouthQuickChip(
-                icon = Icons.Default.CheckCircle,
-                label = stringResource(R.string.youth_quick_goals),
-                color = YouthColors.LimeLight,
-                onClick = {
-                    navController.navigate(Screens.TasksScreen.route) {
-                        launchSingleTop = true
+        if (FeatureFlags.TASKS_ENABLED) {
+            item {
+                YouthQuickChip(
+                    icon = Icons.Default.CheckCircle,
+                    label = stringResource(R.string.youth_quick_goals),
+                    color = YouthColors.LimeLight,
+                    onClick = {
+                        navController.navigate(Screens.TasksScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     }
 }

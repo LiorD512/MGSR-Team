@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.config.FeatureFlags
 import com.liordahan.mgsrteam.features.home.models.AgentAlert
 import com.liordahan.mgsrteam.features.home.models.AgentSummary
 import com.liordahan.mgsrteam.features.home.models.AgentTask
@@ -195,7 +196,9 @@ class HomeScreenViewModel(
         listenToRequests()
         listenToShortlist()
         loadFeedEvents()
-        listenToAgentTasks()
+        if (FeatureFlags.TASKS_ENABLED) {
+            listenToAgentTasks()
+        }
         listenToPendingTransfers()
         loadTransferWindowsDeferred()
         listenToChatUnread()
@@ -233,7 +236,9 @@ class HomeScreenViewModel(
         listenToRequests()
         listenToShortlist()
         loadFeedEvents()
-        listenToAgentTasks()
+        if (FeatureFlags.TASKS_ENABLED) {
+            listenToAgentTasks()
+        }
         listenToPendingTransfers()
         listenToChatUnread()
         ensureLoadingClearedWithinTimeout()
@@ -709,6 +714,7 @@ class HomeScreenViewModel(
     }
 
     override fun toggleTaskCompleted(task: AgentTask) {
+        if (!FeatureFlags.TASKS_ENABLED) return
         if (task.id.isBlank()) return
         val nowCompleted = !task.isCompleted
         // Optimistic update: flip state and sync widget immediately
@@ -728,6 +734,7 @@ class HomeScreenViewModel(
     }
 
     override fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String) {
+        if (!FeatureFlags.TASKS_ENABLED) return
         viewModelScope.launch {
             val currentAccount = _state.value.currentUserAccount
             val createdByAgentId = currentAccount?.id ?: ""
@@ -778,6 +785,7 @@ class HomeScreenViewModel(
     }
 
     override fun updateTask(task: AgentTask) {
+        if (!FeatureFlags.TASKS_ENABLED) return
         if (task.id.isBlank()) return
         // Optimistic update: apply changes and sync widget immediately
         _state.update { state ->
@@ -805,6 +813,7 @@ class HomeScreenViewModel(
     }
 
     override fun deleteTask(task: AgentTask) {
+        if (!FeatureFlags.TASKS_ENABLED) return
         // Optimistic update: remove from state and sync widget immediately
         _state.update { state ->
             val list = state.agentTasks[task.agentId].orEmpty().filter { it.id != task.id }

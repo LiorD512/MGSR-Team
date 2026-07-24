@@ -12,6 +12,7 @@ import { useChatUnread } from '@/hooks/useChatUnread';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import MobileBottomTabBar from '@/components/mobile/MobileBottomTabBar';
 import NotificationPrompt from '@/components/NotificationPrompt';
+import { WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 
 type NavItem = { href: string; labelKey: string; badge?: 'chat' | 'new' };
 type NavSection = { id: string; titleKey: string; items: NavItem[] };
@@ -22,7 +23,7 @@ const navSections: NavSection[] = [
     titleKey: 'app_shell_section_core_ops',
     items: [
       { href: '/dashboard', labelKey: 'nav_dashboard' },
-      { href: '/tasks', labelKey: 'nav_tasks' },
+      ...(WEB_TASKS_ENABLED ? [{ href: '/tasks', labelKey: 'nav_tasks' }] : []),
       { href: '/players', labelKey: 'nav_players' },
       { href: '/shortlist', labelKey: 'nav_shortlist' },
       { href: '/requests', labelKey: 'nav_requests' },
@@ -57,7 +58,7 @@ const womenNavSections: NavSection[] = [
     titleKey: 'app_shell_section_core_ops',
     items: [
       { href: '/dashboard', labelKey: 'nav_dashboard' },
-      { href: '/tasks', labelKey: 'nav_tasks' },
+      ...(WEB_TASKS_ENABLED ? [{ href: '/tasks', labelKey: 'nav_tasks' }] : []),
       { href: '/players', labelKey: 'nav_players_women' },
       { href: '/shortlist', labelKey: 'nav_shortlist' },
       { href: '/requests', labelKey: 'nav_requests' },
@@ -73,7 +74,7 @@ const youthNavSections: NavSection[] = [
     titleKey: 'app_shell_section_core_ops',
     items: [
       { href: '/dashboard', labelKey: 'nav_dashboard' },
-      { href: '/tasks', labelKey: 'nav_tasks' },
+      ...(WEB_TASKS_ENABLED ? [{ href: '/tasks', labelKey: 'nav_tasks' }] : []),
       { href: '/players', labelKey: 'nav_players_youth' },
       { href: '/shortlist', labelKey: 'nav_shortlist' },
       { href: '/requests', labelKey: 'nav_requests' },
@@ -219,10 +220,10 @@ function NavContent({
   );
 }
 
-const WOMEN_ALLOWED_PATHS = ['/dashboard', '/tasks', '/players', '/players/add', '/portfolio', '/shortlist', '/contacts', '/requests' /* , '/jewish-finder' — DISABLED */];
+const WOMEN_ALLOWED_PATHS = ['/dashboard', ...(WEB_TASKS_ENABLED ? ['/tasks'] : []), '/players', '/players/add', '/portfolio', '/shortlist', '/contacts', '/requests' /* , '/jewish-finder' — DISABLED */];
 function isWomenAllowedPath(pathname: string | null): boolean {
   if (!pathname) return false;
-  if (pathname === '/dashboard' || pathname === '/tasks') return true;
+  if (pathname === '/dashboard' || (WEB_TASKS_ENABLED && pathname === '/tasks')) return true;
   if (pathname === '/players' || pathname === '/players/add') return true;
   if (pathname === '/portfolio') return true;
   if (pathname === '/shortlist' || pathname === '/contacts' || pathname === '/requests') return true;
@@ -232,10 +233,10 @@ function isWomenAllowedPath(pathname: string | null): boolean {
   return false;
 }
 
-const YOUTH_ALLOWED_PATHS = ['/dashboard', '/tasks', '/players', '/players/add', '/portfolio', '/shortlist', '/contacts', '/requests'];
+const YOUTH_ALLOWED_PATHS = ['/dashboard', ...(WEB_TASKS_ENABLED ? ['/tasks'] : []), '/players', '/players/add', '/portfolio', '/shortlist', '/contacts', '/requests'];
 function isYouthAllowedPath(pathname: string | null): boolean {
   if (!pathname) return false;
-  if (pathname === '/dashboard' || pathname === '/tasks') return true;
+  if (pathname === '/dashboard' || (WEB_TASKS_ENABLED && pathname === '/tasks')) return true;
   if (pathname === '/players' || pathname === '/players/add') return true;
   if (pathname === '/portfolio') return true;
   if (pathname === '/shortlist' || pathname === '/contacts' || pathname === '/requests') return true;

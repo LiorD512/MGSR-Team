@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.config.FeatureFlags
 import com.liordahan.mgsrteam.features.home.FeedFilter
 import com.liordahan.mgsrteam.features.home.HomeDashboardState
 import com.liordahan.mgsrteam.features.home.models.AgentTask
@@ -288,17 +289,19 @@ fun WomenQuickActionsRow(navController: NavController, modifier: Modifier = Modi
                 }
             )
         }
-        item {
-            WomenQuickChip(
-                icon = Icons.Default.CheckCircle,
-                label = stringResource(R.string.women_quick_goals),
-                color = WomenColors.Success,
-                onClick = {
-                    navController.navigate(Screens.TasksScreen.route) {
-                        launchSingleTop = true
+        if (FeatureFlags.TASKS_ENABLED) {
+            item {
+                WomenQuickChip(
+                    icon = Icons.Default.CheckCircle,
+                    label = stringResource(R.string.women_quick_goals),
+                    color = WomenColors.Success,
+                    onClick = {
+                        navController.navigate(Screens.TasksScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     }
 }

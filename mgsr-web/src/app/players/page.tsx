@@ -22,6 +22,7 @@ import { getTeammates, extractPlayerIdFromUrl } from '@/lib/api';
 import { getConfederation } from '@/lib/nationToConfederation';
 import type { Confederation } from '@/lib/api';
 import Link from 'next/link';
+import { MEN_ROSTER_ANALYSIS_ENABLED } from '@/lib/featureFlags';
 
 interface Player {
   id: string;
@@ -182,6 +183,7 @@ export default function PlayersPage() {
   const isMobileOrTablet = useIsMobileOrTablet();
   const euCountries = useEuCountries();
   const precomputedRequestMatchResults = useAllRequestMatchResults();
+  const menRosterAnalysisEnabled = MEN_ROSTER_ANALYSIS_ENABLED;
   const cached = getScreenCache<PlayersCache>('players');
   const [players, setPlayers] = useState<Player[]>(cached?.players ?? []);
   const [rosterPlayers, setRosterPlayers] = useState<TeammatesRosterPlayer[]>([]);
@@ -244,6 +246,10 @@ export default function PlayersPage() {
   }, [user]);
 
   useEffect(() => {
+    if (!menRosterAnalysisEnabled) {
+      setRosterPlayers([]);
+      return;
+    }
     const q = query(
       collection(db, 'Players'),
       orderBy('createdAt', 'desc')
@@ -261,7 +267,7 @@ export default function PlayersPage() {
       setPlayersLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [menRosterAnalysisEnabled]);
 
   useEffect(() => {
     const q = query(
@@ -348,7 +354,7 @@ export default function PlayersPage() {
 
   // Load ClubRequests for matching (men only)
   useEffect(() => {
-    if (platform !== 'men') return;
+    if (platform !== 'men' || !menRosterAnalysisEnabled) return;
     const reqCol = CLUB_REQUESTS_COLLECTIONS[platform];
     const q2 = query(collection(db, reqCol), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q2, (snap) => {
@@ -356,7 +362,7 @@ export default function PlayersPage() {
       setClubRequests(reqs.filter((r) => (r as { status?: string }).status !== 'closed'));
     });
     return () => unsub();
-  }, [platform]);
+  }, [platform, menRosterAnalysisEnabled]);
 
   useEffect(() => {
     setScreenCache<PlayersCache>('players', {
@@ -638,7 +644,7 @@ export default function PlayersPage() {
 
   // Compute matching requests per player using pre-computed results
   const matchingRequestsByPlayerId = useMemo(() => {
-    if (platform !== 'men' || clubRequests.length === 0) return new Map<string, typeof clubRequests>();
+    if (platform !== 'men' || !menRosterAnalysisEnabled || clubRequests.length === 0) return new Map<string, typeof clubRequests>();
     const map = new Map<string, typeof clubRequests>();
     // Invert pre-computed results: requestId→playerIds[] → playerId→requests[]
     const requestById = Object.fromEntries(clubRequests.map((r) => [r.id, r]));
@@ -651,9 +657,10 @@ export default function PlayersPage() {
       }
     }
     return map;
-  }, [platform, clubRequests, precomputedRequestMatchResults]);
+  }, [platform, clubRequests, precomputedRequestMatchResults, menRosterAnalysisEnabled]);
 
   const fetchTeammates = useCallback(async (playerUrl: string) => {
+    if (!menRosterAnalysisEnabled) return;
     setLoadingTeammatesUrl(playerUrl);
     try {
       const teammates = await getTeammates(playerUrl);
@@ -674,7 +681,7 @@ export default function PlayersPage() {
     } finally {
       setLoadingTeammatesUrl(null);
     }
-  }, [rosterPlayers]);
+  }, [rosterPlayers, menRosterAnalysisEnabled]);
 
   const toggleTeammates = useCallback((url: string) => {
     setExpandedTeammatesUrl((prev) => (prev === url ? null : url));
@@ -1670,7 +1677,7 @@ export default function PlayersPage() {
               })()}
 
               {/* Played with him — men only */}
-              {platform === 'men' && playerUrl && (
+              {menRosterAnalysisEnabled && platform === 'men' && playerUrl && (
                 <div className="border-t border-mgsr-border/20 px-3 sm:px-4 py-2">
                   <button
                     type="button"
@@ -1742,7 +1749,7 @@ export default function PlayersPage() {
               )}
 
               {/* Matching Requests — expandable accordion, men only */}
-              {matchCount > 0 && (
+              {menRosterAnalysisEnabled && matchCount > 0 && (
                 <div className="border-t border-mgsr-border/20 px-3 sm:px-4 py-2">
                   <button
                     type="button"

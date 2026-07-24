@@ -15,6 +15,7 @@ import { callTasksCreate, callTasksUpdate, callTasksToggleComplete, callTasksDel
 import { usePlatform } from '@/contexts/PlatformContext';
 import AppLayout from '@/components/AppLayout';
 import { requestCalendarAccess, syncTasksToCalendar, type SyncResult } from '@/lib/googleCalendar';
+import { WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 
 interface AgentTask {
   id: string;
@@ -138,6 +139,19 @@ export default function TasksPage() {
   const [addAgentId, setAddAgentId] = useState('');
   const [addSaving, setAddSaving] = useState(false);
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
+
+  if (!WEB_TASKS_ENABLED) {
+    return (
+      <AppLayout>
+        <div className="max-w-3xl mx-auto p-6 sm:p-8">
+          <div className="rounded-2xl border border-mgsr-border bg-mgsr-card/60 p-8 text-center">
+            <h1 className="text-xl font-semibold text-mgsr-text mb-2">{t('nav_tasks')}</h1>
+            <p className="text-mgsr-muted">{isRtl ? 'פיצ\'ר המשימות כבוי כרגע.' : 'Tasks feature is currently disabled.'}</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
   const [editTitle, setEditTitle] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editDueDate, setEditDueDate] = useState('');

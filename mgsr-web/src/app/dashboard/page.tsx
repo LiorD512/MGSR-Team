@@ -50,6 +50,7 @@ import {
 } from '@/lib/platformCollections';
 import ForeignArrivalsPanel from '@/components/ForeignArrivalsPanel';
 import BirthdaysSection from '@/components/BirthdaysSection';
+import { WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 
 interface FeedEvent {
   id: string;
@@ -301,6 +302,7 @@ export default function DashboardPage() {
     cached?.requests ?? []
   );
   const [tasks, setTasks] = useState<AgentTask[]>(cached?.tasks ?? []);
+  const tasksRoute = WEB_TASKS_ENABLED ? '/tasks' : '/dashboard';
   const [shortlistCount, setShortlistCount] = useState(cached?.shortlistCount ?? 0);
   const [accounts, setAccounts] = useState<Account[]>(cached?.accounts ?? []);
   const [currentAccount, setCurrentAccount] = useState<Account | null>(cached?.currentAccount ?? null);
@@ -459,6 +461,10 @@ export default function DashboardPage() {
   }, [platform]);
 
   useEffect(() => {
+    if (!WEB_TASKS_ENABLED) {
+      setTasks([]);
+      return;
+    }
     const coll = AGENT_TASKS_COLLECTIONS[platform];
     const unsub = onSnapshot(collection(db, coll), (snap) => {
       setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() } as AgentTask)));
@@ -983,7 +989,7 @@ export default function DashboardPage() {
           {(platform === 'youth'
             ? [
                 { href: '/players', count: youthPlayers.length, label: t('nav_players_youth') },
-                { href: '/tasks', count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
+                { href: tasksRoute, count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
                 { href: '/shortlist', count: shortlistCount, label: t('shortlist') },
                 { href: '/contacts', count: contacts.length, label: t('contacts') },
                 { href: '/requests', count: requests.length, label: t('requests') },
@@ -991,13 +997,13 @@ export default function DashboardPage() {
             : platform === 'women'
             ? [
                 { href: '/players', count: womenPlayers.length, label: t('players_women') },
-                { href: '/tasks', count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
+                { href: tasksRoute, count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
               ]
             : [
                 { href: '/players', count: players.length, label: t('players') },
                 { href: '/contacts', count: contacts.length, label: t('contacts') },
                 { href: '/requests', count: requests.length, label: t('requests') },
-                { href: '/tasks', count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
+                { href: tasksRoute, count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
                 { href: '/shortlist', count: shortlistCount, label: t('shortlist') },
                 { href: '/release-notifications', count: null, label: t('nav_release_notifications'), arrow: true },
                 { href: '/club-change-notifications', count: null, label: t('nav_club_change_notifications'), arrow: true },
@@ -1625,7 +1631,7 @@ export default function DashboardPage() {
                   >
                     <span className="text-mgsr-text">{s.name}</span>
                     <Link
-                      href="/tasks"
+                      href={tasksRoute}
                       className={`text-sm hover:underline font-medium ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
                     >
                       {s.pending} {t('pending')}
@@ -2028,7 +2034,7 @@ export default function DashboardPage() {
           {(platform === 'youth'
             ? [
                 { href: '/players', label: t('nav_players_youth') },
-                { href: '/tasks', label: t('tasks') },
+                { href: tasksRoute, label: t('tasks') },
                 { href: '/shortlist', label: t('shortlist') },
                 { href: '/contacts', label: t('contacts') },
                 // TEMP HIDDEN (user request): { href: '/portfolio', label: t('nav_portfolio') },
@@ -2036,7 +2042,7 @@ export default function DashboardPage() {
             : platform === 'women'
             ? [
                 { href: '/players', label: t('players_women') },
-                { href: '/tasks', label: t('tasks') },
+                { href: tasksRoute, label: t('tasks') },
               ]
             : [
                 { href: '/shortlist', label: t('shortlist') },
@@ -2044,7 +2050,7 @@ export default function DashboardPage() {
               { href: '/club-change-notifications', label: t('nav_club_change_notifications') },
                 { href: '/returnees', label: t('nav_returnee') },
                 { href: '/contract-finisher', label: t('nav_contract_finisher') },
-                { href: '/tasks', label: t('tasks') },
+                { href: tasksRoute, label: t('tasks') },
                 { href: '/requests', label: t('requests') },
                 { href: '/contacts', label: t('contacts') },
               ]

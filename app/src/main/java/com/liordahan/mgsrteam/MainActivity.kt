@@ -23,6 +23,7 @@ import androidx.core.content.PermissionChecker
 import androidx.core.graphics.toColorInt
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.liordahan.mgsrteam.deeplink.PendingShareHolder
+import com.liordahan.mgsrteam.config.FeatureFlags
 import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.NavGraph
 import com.liordahan.mgsrteam.ui.theme.MGSRTeamTheme
@@ -130,7 +131,9 @@ class MainActivity : AppCompatActivity() {
         val screen = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
         when (screen) {
             "tasks" -> {
-                viewModel.setPendingOpenTasksScreen(true)
+                if (FeatureFlags.TASKS_ENABLED) {
+                    viewModel.setPendingOpenTasksScreen(true)
+                }
                 intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
                 return
             }

@@ -285,6 +285,8 @@ Separate Gradle module for HTML scraping via JSoup:
 - BRIT redesign copy in shell/hero surfaces is now routed through `LanguageProvider` translation keys (EN/HE) instead of hardcoded English text, including route meta labels, navigation section headers, workspace badges, and redesigned hero/filter labels across the upgraded feature pages.
 - Web theme tokens were upgraded in `mgsr-web/src/app/globals.css` + `mgsr-web/tailwind.config.ts` to a richer cinematic palette (deep navy, luminous teal, premium gold) with shared aurora and sheen effects so all screens inherit the updated wow-style surfaces consistently.
 - Temporary feature visibility toggle (commented, not deleted): `Shadow Teams`, `Portfolio`, dashboard `Open Transfer Windows`, and dashboard `Ligat Ha'al analytics` are hidden from primary navigation/dashboard UI via commented entries/sections in app shell and dashboard files.
+- Temporary feature disable (commented/guarded, not deleted): Tasks UI/entry points are disabled in both Android and Web through feature flags (`app/.../config/FeatureFlags.kt` and `mgsr-web/src/lib/featureFlags.ts`), including navigation entries, dashboard task sections, player-task sections, and tasks deep-link routing.
+- Temporary men-web roster-analysis disable (commented/guarded, not deleted): men roster matching-analysis UI blocks (matching requests, proposal history, and roster teammates/"played with" panels) are hidden behind `MEN_ROSTER_ANALYSIS_ENABLED` in `mgsr-web/src/lib/featureFlags.ts`.
 
 ### Key Dependencies
 
@@ -320,7 +322,7 @@ Separate Gradle module for HTML scraping via JSoup:
 |-------|------|---------|
 | `/` | Root | Redirect to dashboard |
 | `/login` | Login | Email/password authentication |
-| `/dashboard` | Dashboard | Stats, feed, tasks, birthdays, agents |
+| `/dashboard` | Dashboard | Stats, feed, birthdays, agents (tasks widgets/actions hidden while feature flag is off) |
 | `/players` | Players | Full roster with filters (position, specific+secondary position, foot, contract, agent) |
 | `/players/add` | Add Player | Search TM/SoccerDonna/IFA + create player |
 | `/players/[id]` | Player Detail (Men) | Full profile: notes, docs, offers, stats, GPS, FM, highlights |
@@ -339,7 +341,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/find-next` | Find Next | "Find me the next Salah" signature-based discovery |
 | `/chat-room` | Chat Room | Team messaging with @mentions + replies |
 | `/shadow-teams` | Shadow Teams | Fantasy formation builder |
-| `/tasks` | Tasks | Agent task management |
+| `/tasks` | Tasks | Agent task management (route currently shows disabled state while tasks feature flag is off) |
 | `/portfolio` | Portfolio | Player portfolio management |
 | `/news` | News | Google News + transfer rumours |
 | `/jewish-finder` | Jewish Finder | Discover Jewish/Israeli heritage players |
@@ -824,9 +826,9 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | `DashboardScreen` | `/dashboard/page.tsx` |
 | ViewModel/State | `HomeScreenViewModel` | Client-side React state |
-| Data | Players + Tasks + FeedEvents + Accounts (real-time) | Same Firestore collections |
-| Features | Stats header, feed timeline, task list, birthdays, agent overview | Same features, responsive mobile layout |
-| Actions | Complete tasks, navigate to features, birthday wishes | Same |
+| Data | Players + FeedEvents + Accounts (real-time) + Tasks (currently listener-gated off by feature flag) | Same Firestore collections (tasks listener currently gated off by feature flag) |
+| Features | Stats header, feed timeline, birthdays, agent overview (task UI hidden while flag is off) | Same features, responsive mobile layout (task UI hidden while flag is off) |
+| Actions | Navigate to features, birthday wishes (task actions hidden while flag is off) | Same |
 
 ### Players (Roster)
 | Aspect | Android | Web |
@@ -835,7 +837,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | ViewModel/State | `PlayersViewModel` | Client-side with Firestore listeners |
 | Data | Firestore Players (real-time listener) | Same |
 | Filters | Position, foot, contract status, agent, search text | Same filters + men-specific specific-position and secondary-position selectors (specific/main position matches only `positions[0]`; secondary selector matches if the code exists anywhere in `positions[]`) + region/confederation chips (UEFA/CONMEBOL/CONCACAF/AFC/CAF/OFC) on desktop and mobile filter sheet, reusing the same localized labels as release notifications |
-| Actions | Navigate to player detail, filter, sort | Same + per-player "played with him" accordion (Transfermarkt teammates matched against roster, games-together badges, WhatsApp outreach shortcut; matching pipeline aligned with Web Shortlist teammates logic) |
+| Actions | Navigate to player detail, filter, sort | Same + men roster-analysis panels exist in code but are currently hidden by `MEN_ROSTER_ANALYSIS_ENABLED` (matching requests/proposal context + "played with him" teammates panel) |
 
 ### Player Detail
 | Aspect | Android | Web |
@@ -966,9 +968,9 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 ### Tasks
 | Aspect | Android | Web |
 |--------|---------|-----|
-| Screen | `TasksScreen` + `TaskDetailScreen` | `/tasks/page.tsx` |
-| Data | Firestore AgentTasks | Same |
-| Features | Create, assign, complete, reminders, linked players/contacts | Same |
+| Screen | `TasksScreen` + `TaskDetailScreen` (implemented, currently not reachable from UI while flag is off) | `/tasks/page.tsx` (implemented, currently renders disabled-state shell while flag is off) |
+| Data | Firestore AgentTasks (listeners/mutations gated by `FeatureFlags.TASKS_ENABLED` in primary screens) | Same collections (primary UI/listeners gated by `WEB_TASKS_ENABLED`) |
+| Features | Create, assign, complete, reminders, linked players/contacts (temporarily hidden from navigation/dashboard/player surfaces) | Same |
 
 ### Portfolio
 | Aspect | Android | Web |

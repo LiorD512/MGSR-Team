@@ -15,6 +15,7 @@ import {
   NotificationStatus,
 } from '@/lib/notifications';
 import { callNotificationMarkRead, callNotificationMarkAllRead } from '@/lib/callables';
+import { WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 
 interface StoredNotification {
   id: string;
@@ -158,7 +159,7 @@ function getNotificationUrl(notif: StoredNotification): string {
   switch (notif.type) {
     case 'TASK_ASSIGNED':
     case 'TASK_REMINDER':
-      return '/tasks';
+      return WEB_TASKS_ENABLED ? '/tasks' : '/dashboard';
     case 'CHAT_ROOM_TAG':
       return data.messageId ? `/chat-room?highlight=${data.messageId}` : '/chat-room';
     case 'NOTE_TAGGED':

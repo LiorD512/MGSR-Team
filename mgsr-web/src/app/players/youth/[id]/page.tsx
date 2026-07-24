@@ -37,6 +37,7 @@ import type { HighlightVideo } from '@/lib/highlightsApi';
 import { getPositionDisplayName } from '@/lib/appConfig';
 import NoteTextarea from '@/components/NoteTextarea';
 import Link from 'next/link';
+import { WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 
 const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 const AGE_GROUPS = ['U-14', 'U-15', 'U-16', 'U-17', 'U-18', 'U-19', 'U-21'];
@@ -70,6 +71,7 @@ export default function YouthPlayerPage() {
   const searchParams = useSearchParams();
   const id = params?.id as string | undefined;
   const precomputedMatchRequestIds = usePlayerMatchResults(id);
+  const tasksEnabled = WEB_TASKS_ENABLED;
   const fromPath = searchParams.get('from') || '/players';
   const scrollTo = searchParams.get('scrollTo');
   const isFromDashboard = fromPath === '/dashboard';
@@ -205,7 +207,7 @@ export default function YouthPlayerPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!tasksEnabled || !id) return;
     const q = query(collection(db, 'AgentTasksYouth'), where('playerId', '==', id));
     const unsub = onSnapshot(q, (snap) => {
       const list = snap.docs
@@ -214,7 +216,7 @@ export default function YouthPlayerPage() {
       setPlayerTasks(list);
     });
     return () => unsub();
-  }, [id]);
+  }, [id, tasksEnabled]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, CLUB_REQUESTS_COLLECTIONS.youth), (snap) => {
@@ -1097,6 +1099,7 @@ export default function YouthPlayerPage() {
             )}
 
             {/* Tasks */}
+            {tasksEnabled && (
             <div className={`${glassCard} p-4 sm:p-5`}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-[var(--youth-violet)]/60 uppercase tracking-wider">{t('youth_detail_tasks')}</h3>
@@ -1160,6 +1163,7 @@ export default function YouthPlayerPage() {
                 </ul>
               )}
             </div>
+            )}
 
             {/* Notes */}
             <div className={`${glassCard} p-5`}>
@@ -1657,7 +1661,7 @@ export default function YouthPlayerPage() {
         )}
 
         {/* Add Task Modal */}
-        {showAddTaskModal && player && id && (
+        {tasksEnabled && showAddTaskModal && player && id && (
           <AddPlayerTaskModal
             open={showAddTaskModal}
             onClose={() => setShowAddTaskModal(false)}

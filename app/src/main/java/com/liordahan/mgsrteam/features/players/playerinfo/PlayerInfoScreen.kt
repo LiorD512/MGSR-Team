@@ -134,6 +134,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.config.FeatureFlags
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.EnglishLevel
 import com.liordahan.mgsrteam.features.players.models.NotesModel
@@ -488,7 +489,7 @@ fun PlayerInfoScreen(
             )
             return@Scaffold
         }
-        if (showAddPlayerTaskSheet && playerToPresent != null && playerDocumentId != null) {
+        if (FeatureFlags.TASKS_ENABLED && showAddPlayerTaskSheet && playerToPresent != null && playerDocumentId != null) {
             val player = playerToPresent!!
             val docId = playerDocumentId!!
             val playerName = player.fullName ?: ""
@@ -1036,13 +1037,15 @@ fun PlayerInfoScreen(
                 )
             }
 
-            PlayerInfoSectionHeader(stringResource(R.string.player_tasks_section))
-            PlayerTasksSection(
-                tasks = playerTasksList,
-                onAddTaskClick = { showAddPlayerTaskSheet = true },
-                onToggleComplete = { viewModel.togglePlayerTaskCompleted(it) },
-                onTaskClick = { navController.navigate(Screens.TasksScreen.route) }
-            )
+            if (FeatureFlags.TASKS_ENABLED) {
+                PlayerInfoSectionHeader(stringResource(R.string.player_tasks_section))
+                PlayerTasksSection(
+                    tasks = playerTasksList,
+                    onAddTaskClick = { showAddPlayerTaskSheet = true },
+                    onToggleComplete = { viewModel.togglePlayerTaskCompleted(it) },
+                    onTaskClick = { navController.navigate(Screens.TasksScreen.route) }
+                )
+            }
 
             PlayerInfoSectionHeader(stringResource(R.string.player_info_notes))
             NotesSection(
