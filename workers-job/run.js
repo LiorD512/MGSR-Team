@@ -343,11 +343,8 @@ async function runPlayerRefresh() {
             await sleep(backoff);
           } else {
             failCount++;
-            // Update lastRefreshedAt on non-rate-limit failures so the player
-            // cycles out of the "stalest" queue and doesn't block every batch.
             const consecutiveFailures = (player.refreshFailCount || 0) + 1;
             const updateData = {
-              lastRefreshedAt: Date.now(),
               lastRefreshError: cause,
               refreshFailCount: consecutiveFailures,
             };
