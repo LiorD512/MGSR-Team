@@ -8,6 +8,7 @@
 
 const cheerio = require("cheerio");
 
+const SCOUT_TM_PROXY_URL = process.env.SCOUT_TM_PROXY_URL || "";
 const TM_HTML_PROXY_URL = process.env.TM_HTML_PROXY_URL ||
   "https://management.britsportgroup.com/api/transfermarkt/html-proxy";
 
@@ -83,6 +84,21 @@ async function fetchWithHtmlProxy(url) {
   return res.text();
 }
 
+async function fetchWithScoutProxy(url) {
+  if (!SCOUT_TM_PROXY_URL) return "";
+  const proxyUrl = `${SCOUT_TM_PROXY_URL}?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxyUrl, {
+    headers: {
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!res.ok) {
+    throw new Error(`Scout proxy HTTP ${res.status}`);
+  }
+  return res.text();
+}
+
 // ── Circuit breaker ──
 let _consecutiveBlocks = 0;
 let _circuitOpenUntil = 0;
@@ -113,6 +129,7 @@ async function fetchDocument(url) {
 
   let html = "";
   let impitError = null;
+  const isPlayerProfileUrl = /\/profil\//i.test(url) || /\/player\//i.test(url);
 
   try {
     const impit = await getImpit();
@@ -144,6 +161,19 @@ async function fetchDocument(url) {
       }
     } catch {
       // Keep impit response/error path as source of truth.
+    }
+  }
+
+  if (isPlayerProfileUrl && !/data-header/i.test(html)) {
+    try {
+      const scoutHtml = await fetchWithScoutProxy(url);
+      if (scoutHtml && /data-header/i.test(scoutHtml)) {
+        html = scoutHtml;
+      } else if (!html && scoutHtml) {
+        html = scoutHtml;
+      }
+    } catch {
+      // Keep previous response/error path as source of truth.
     }
   }
 
