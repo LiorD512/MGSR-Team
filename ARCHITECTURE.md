@@ -81,12 +81,20 @@ MGSR Team is a **multi-platform football agent management system** for managing 
 │                                                                     │
 │  GOOGLE CLOUD PLATFORM (Workers)                                   │
 │  ├─ Cloud Run Job: player-refresh-job (hourly micro-batch)         │
-│  │   └─ Refreshes 200 stalest players/hour via TM proxy with       │
+│  │   └─ Refreshes stale players via TM proxy with                  │
 │  │      Vercel HTML fallback when TM returns non-parseable HTML    │
 │  │      plus Render scout proxy fallback for player profile pages │
 │  │       (4,800 players/day capacity; accepts valid profiles even  │
-│  │        when the market-value box is absent; failures stay in    │
-│  │        the retry queue until they succeed or are marked bad     │
+│  │        when the market-value box is absent; transient TM/proxy  │
+│  │        failures (5xx/timeouts/no-data-header) stay retryable;   │
+│  │        only clear permanent profile failures can be marked bad;   │
+│  │        tmProfileUnfetchable is hard-skipped only when paired      │
+│  │        with permanent-failure evidence and threshold count)       │
+│  │        and local/runtime overrides support controlled catch-up   │
+│  │        runs (batch size/delay/jitter/anti-pattern pause toggles,│
+│  │        a Firestore active-run lease prevents overlapping hourly │
+│  │        executions, and `JOB_MODE=player-refresh-status` reports │
+│  │        backlog from the authoritative `lastRefreshedAt` field)  │
 │  ├─ Cloud Run Job: releases-refresh-job (daily + manual trigger)   │
 │  │   └─ Scrapes releases/free agents and falls back to the web     │
 │  │      HTML proxy when direct Cloud Run fetches return empty HTML │

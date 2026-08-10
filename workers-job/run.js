@@ -14,8 +14,10 @@
 
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
+const crypto = require("crypto");
 
 const JOB_MODE = process.env.JOB_MODE || "player-refresh";
+const RUN_ID = crypto.randomUUID();
 
 initializeApp();
 const db = getFirestore();
@@ -35,26 +37,29 @@ const PLAYERS_TABLE = "Players";
 const FEED_EVENTS_TABLE = "FeedEvents";
 const WORKER_STATE_COLLECTION = "WorkerState";
 const WORKER_RUNS_COLLECTION = "WorkerRuns";
+const PLAYER_REFRESH_WORKER_DOC = "PlayerRefreshWorker";
 
 const RECENT_REFRESH_THRESHOLD_MS = 20 * 60 * 60 * 1000;
 const MAX_HISTORY_ENTRIES = 24;
+const ACTIVE_RUN_LEASE_MS = Number(process.env.PLAYER_REFRESH_ACTIVE_LEASE_MS || 2 * 60 * 60 * 1000);
 
 // ── Hourly micro-batch settings ──────────────────────────────────────
 // Each hourly run processes at most MAX_PER_RUN players (stalest first).
 // At ~10s/player, 200 players ≈ 33 min — well within the 2h job timeout.
 // 200 × 24 runs/day = 4,800 players/day capacity.
-const MAX_PER_RUN = 200;
+const MAX_PER_RUN = Number(process.env.MAX_PER_RUN || 200);
 
 // ── TM anti-detection delays ────────────────────────────────────────
 // Vary delays to avoid a detectable pattern. The proxy handles actual
 // TM rate limits, so we can use shorter intervals than before (was 12-18s).
-const SINGLE_NET_DELAY_MIN_MS = 8000;
-const SINGLE_NET_DELAY_VARIANCE_MS = 6000;
+const SINGLE_NET_DELAY_MIN_MS = Number(process.env.SINGLE_NET_DELAY_MIN_MS || 8000);
+const SINGLE_NET_DELAY_VARIANCE_MS = Number(process.env.SINGLE_NET_DELAY_VARIANCE_MS || 6000);
 const BLOCK_BACKOFF_MIN_MS = 90000;
 const MAX_BLOCK_BACKOFF_MS = 300000;
 const MAX_RETRIES = 3;
 // Jitter at start so we don't always hit TM at :00 sharp every hour
-const START_JITTER_MAX_MS = 60000;
+const START_JITTER_MAX_MS = Number(process.env.START_JITTER_MAX_MS || 60000);
+const DISABLE_ANTI_PATTERN_PAUSE = process.env.DISABLE_ANTI_PATTERN_PAUSE === "1";
 
 const TYPE_BECAME_FREE_AGENT = "BECAME_FREE_AGENT";
 const TYPE_CLUB_CHANGE = "CLUB_CHANGE";
@@ -72,6 +77,106 @@ function randomDelay(min, variance) {
   return min + Math.floor(Math.random() * variance);
 }
 
+function toMs(v) {
+  return typeof v === "number" ? v : (v?.toMillis?.() || 0);
+}
+
+function buildPlayerRefreshSummary(snapshot) {
+  const recentThreshold = Date.now() - RECENT_REFRESH_THRESHOLD_MS;
+
+  const playersWithDocs = snapshot.docs
+    .map((doc) => {
+      const player = doc.data();
+      if (!player.tmProfile?.trim()) return null;
+      if (shouldSkipUnfetchablePlayer(player)) return null;
+      return { player, docRef: doc.ref };
+    })
+    .filter(Boolean)
+    .sort((a, b) => toMs(a.player.lastRefreshedAt) - toMs(b.player.lastRefreshedAt));
+
+  const stale = playersWithDocs.filter(
+    ({ player }) => toMs(player.lastRefreshedAt) < recentThreshold
+  );
+
+  return {
+    playersWithDocs,
+    stale,
+    totalPlayers: playersWithDocs.length,
+    skipped: playersWithDocs.length - stale.length,
+  };
+}
+
+function formatLeaseAge(ms) {
+  return `${Math.max(1, Math.round(ms / 60000))}m`;
+}
+
+async function acquirePlayerRefreshLease() {
+  const docRef = db.collection(WORKER_STATE_COLLECTION).doc(PLAYER_REFRESH_WORKER_DOC);
+  const now = Date.now();
+  const leaseExpiresAt = now + ACTIVE_RUN_LEASE_MS;
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
+    const data = snap.data() || {};
+    const activeRunId = data.activeRunId || null;
+    const activeLeaseExpiresAt = Number(data.activeLeaseExpiresAt || 0);
+
+    if (activeRunId && activeLeaseExpiresAt > now) {
+      return {
+        acquired: false,
+        activeRunId,
+        activeLeaseExpiresAt,
+      };
+    }
+
+    tx.set(
+      docRef,
+      {
+        activeRunId: RUN_ID,
+        activeRunStartedAt: now,
+        activeLeaseExpiresAt: leaseExpiresAt,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+
+    return {
+      acquired: true,
+      leaseExpiresAt,
+    };
+  });
+}
+
+async function releasePlayerRefreshLease() {
+  const docRef = db.collection(WORKER_STATE_COLLECTION).doc(PLAYER_REFRESH_WORKER_DOC);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
+    const data = snap.data() || {};
+    if (data.activeRunId !== RUN_ID) return;
+
+    tx.set(
+      docRef,
+      {
+        activeRunId: null,
+        activeRunStartedAt: null,
+        activeLeaseExpiresAt: null,
+        updatedAt: Date.now(),
+      },
+      { merge: true }
+    );
+  });
+}
+
+async function printPlayerRefreshStatus() {
+  const snapshot = await db.collection(PLAYERS_TABLE).get();
+  const { totalPlayers, stale } = buildPlayerRefreshSummary(snapshot);
+  const unfetchable = snapshot.docs.reduce((count, doc) => count + (doc.data()?.tmProfileUnfetchable ? 1 : 0), 0);
+  console.log(`[player-refresh-status] total=${totalPlayers} stale=${stale.length} unfetchable=${unfetchable}`);
+  if (stale.length <= 0) {
+    process.exit(10);
+  }
+}
+
 function isRateLimited(errMsg) {
   const lower = String(errMsg || "").toLowerCase();
   return (
@@ -83,6 +188,45 @@ function isRateLimited(errMsg) {
     lower.includes("forbidden") ||
     lower.includes("too many requests")
   );
+}
+
+function isRetryableTmFailure(errMsg) {
+  const lower = String(errMsg || "").toLowerCase();
+  return (
+    isRateLimited(lower) ||
+    lower.includes("http 500") ||
+    lower.includes("http 502") ||
+    lower.includes("http 504") ||
+    lower.includes("http 522") ||
+    lower.includes("timeout") ||
+    lower.includes("timed out") ||
+    lower.includes("socket hang up") ||
+    lower.includes("econnreset") ||
+    lower.includes("etimedout") ||
+    lower.includes("fetch failed") ||
+    lower.includes("no data-header")
+  );
+}
+
+function isPermanentProfileFailure(errMsg) {
+  const lower = String(errMsg || "").toLowerCase();
+  return (
+    lower.includes("http 404") ||
+    lower.includes("http 410") ||
+    lower.includes("profile url is null or blank")
+  );
+}
+
+function shouldSkipUnfetchablePlayer(player) {
+  if (!player?.tmProfileUnfetchable) return false;
+
+  const failCount = Number(player.refreshFailCount || 0);
+  const lastError = String(player.lastRefreshError || "");
+
+  // Only hard-skip records that reached the permanent-failure threshold.
+  // Historical transient errors (for example no-data-header rendering issues)
+  // must stay retryable so the worker can self-heal poisoned records.
+  return failCount >= 5 && isPermanentProfileFailure(lastError);
 }
 
 async function recordSuccess(summary, durationMs) {
@@ -102,6 +246,14 @@ async function recordSuccess(summary, durationMs) {
   log(`[WorkerRuns] SUCCESS — ${summary} (${durationMs}ms)`);
 }
 
+async function tryRecordSuccess(summary, durationMs) {
+  try {
+    await recordSuccess(summary, durationMs);
+  } catch (err) {
+    log(`[WorkerRuns] FAILED TO WRITE SUCCESS DOC — ${err?.message || err}`);
+  }
+}
+
 async function recordFailure(error, durationMs) {
   const docRef = db.collection(WORKER_RUNS_COLLECTION).doc("PlayerRefreshWorker");
   await docRef.set(
@@ -119,8 +271,17 @@ async function recordFailure(error, durationMs) {
   log(`[WorkerRuns] FAILED — ${error?.message || error}`);
 }
 
+async function tryRecordFailure(error, durationMs) {
+  try {
+    await recordFailure(error, durationMs);
+  } catch (err) {
+    log(`[WorkerRuns] FAILED TO WRITE FAILURE DOC — ${err?.message || err}`);
+    log(`[WorkerRuns] ORIGINAL FAILURE — ${error?.message || error}`);
+  }
+}
+
 async function markRefreshSuccess() {
-  const docRef = db.collection(WORKER_STATE_COLLECTION).doc("PlayerRefreshWorker");
+  const docRef = db.collection(WORKER_STATE_COLLECTION).doc(PLAYER_REFRESH_WORKER_DOC);
   await docRef.set(
     { lastRefreshSuccess: Date.now(), updatedAt: Date.now() },
     { merge: true }
@@ -228,6 +389,15 @@ async function runPlayerRefresh() {
   const startTime = Date.now();
 
   try {
+    const lease = await acquirePlayerRefreshLease();
+    if (!lease.acquired) {
+      const remainingMs = Math.max(0, lease.activeLeaseExpiresAt - Date.now());
+      const summary = `Skipped: execution ${lease.activeRunId} still holds lease for ~${formatLeaseAge(remainingMs)}`;
+      log(summary);
+      await tryRecordSuccess(summary, Date.now() - startTime);
+      return;
+    }
+
     // Jitter: wait 0-60s before starting so TM doesn't see a pattern
     const jitter = Math.floor(Math.random() * START_JITTER_MAX_MS);
     log(`Waiting ${(jitter / 1000).toFixed(0)}s jitter before starting...`);
@@ -240,19 +410,7 @@ async function runPlayerRefresh() {
     const snapshot = await playersRef.get();
     log(`Fetched ${snapshot.size} players from Firestore`);
 
-    const toMs = (v) =>
-      typeof v === "number" ? v : (v?.toMillis?.() || 0);
-
-    const playersWithDocs = snapshot.docs
-      .map((doc) => {
-        const player = doc.data();
-        if (!player.tmProfile?.trim()) return null;
-        // Skip players marked as unfetchable (TM profile retired/broken)
-        if (player.tmProfileUnfetchable) return null;
-        return { player, docRef: doc.ref };
-      })
-      .filter(Boolean)
-      .sort((a, b) => toMs(a.player.lastRefreshedAt) - toMs(b.player.lastRefreshedAt));
+    const { playersWithDocs, stale, totalPlayers, skipped } = buildPlayerRefreshSummary(snapshot);
 
     if (playersWithDocs.length === 0) {
       log("No players with TM profiles — nothing to refresh");
@@ -260,13 +418,6 @@ async function runPlayerRefresh() {
       return;
     }
 
-    const recentThreshold = Date.now() - RECENT_REFRESH_THRESHOLD_MS;
-    const stale = playersWithDocs.filter(
-      ({ player }) => toMs(player.lastRefreshedAt) < recentThreshold
-    );
-
-    const totalPlayers = playersWithDocs.length;
-    const skipped = totalPlayers - stale.length;
     log(
       `Starting refresh: ${totalPlayers} total, ${skipped} recently refreshed (skipped), ${stale.length} to update`
     );
@@ -327,7 +478,7 @@ async function runPlayerRefresh() {
           }
         } else {
           const cause = result.error || "Unknown error";
-          if (isRateLimited(cause)) {
+          if (isRetryableTmFailure(cause)) {
             consecutiveBlocks++;
             retries++;
             if (retries > MAX_RETRIES) break;
@@ -343,17 +494,20 @@ async function runPlayerRefresh() {
             await sleep(backoff);
           } else {
             failCount++;
-            const consecutiveFailures = (player.refreshFailCount || 0) + 1;
-            const updateData = {
-              lastRefreshError: cause,
-              refreshFailCount: consecutiveFailures,
-            };
-            // After 5 consecutive failures, mark as unfetchable so we skip it
-            if (consecutiveFailures >= 5) {
-              updateData.tmProfileUnfetchable = true;
+            const updateData = { lastRefreshError: cause };
+            // Only clearly permanent profile failures should move toward
+            // unfetchable. Transient TM/proxy/network failures should stay retryable.
+            if (isPermanentProfileFailure(cause)) {
+              const consecutiveFailures = (player.refreshFailCount || 0) + 1;
+              updateData.refreshFailCount = consecutiveFailures;
+              if (consecutiveFailures >= 5) {
+                updateData.tmProfileUnfetchable = true;
+              }
+              log(`Failed ${index + 1}/${total}: ${player.fullName} — ${cause} (fails: ${consecutiveFailures})`);
+            } else {
+              log(`Failed ${index + 1}/${total}: ${player.fullName} — ${cause} (transient/non-permanent)`);
             }
             try { await docRef.update(updateData); } catch (_) {}
-            log(`Failed ${index + 1}/${total}: ${player.fullName} — ${cause} (fails: ${consecutiveFailures})`);
             break;
           }
         }
@@ -364,12 +518,12 @@ async function runPlayerRefresh() {
         log(`Giving up on ${index + 1}/${total}: ${player.fullName}`);
       }
 
-      // Randomized delay: 8-14s base, with occasional longer pauses to look human
+      // Randomized delay with optional local override.
       let baseDelay =
         SINGLE_NET_DELAY_MIN_MS +
         Math.floor(Math.random() * SINGLE_NET_DELAY_VARIANCE_MS);
-      // Every 20-40 players, take a longer break (30-60s) to avoid pattern detection
-      if ((index + 1) % (20 + Math.floor(Math.random() * 20)) === 0) {
+      // Every 20-40 players, take a longer break (30-60s) to avoid pattern detection.
+      if (!DISABLE_ANTI_PATTERN_PAUSE && (index + 1) % (20 + Math.floor(Math.random() * 20)) === 0) {
         baseDelay += 30000 + Math.floor(Math.random() * 30000);
         log(`Anti-pattern pause: ${(baseDelay / 1000).toFixed(0)}s`);
       }
@@ -384,19 +538,30 @@ async function runPlayerRefresh() {
     const durationMs = Date.now() - startTime;
     const remaining = stale.length - batch.length;
     const summary = `${successCount} succeeded, ${failCount} failed out of ${batch.length} batch (${skipped} fresh, ${remaining} queued for next run)`;
-    await recordSuccess(summary, durationMs);
+    await tryRecordSuccess(summary, durationMs);
 
     log(`Batch complete — ${summary} in ${durationMs}ms`);
   } catch (err) {
     const durationMs = Date.now() - startTime;
-    await recordFailure(err, durationMs);
+    await tryRecordFailure(err, durationMs);
     log(`FATAL: ${err.message}`);
     console.error(err);
     process.exit(1);
+  } finally {
+    await releasePlayerRefreshLease().catch((err) => {
+      log(`Failed to release active run lease — ${err?.message || err}`);
+    });
   }
 }
 
+if (JOB_MODE === "player-refresh-status") {
+  printPlayerRefreshStatus().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+
 // runPlayerRefresh is dispatched here — after all const declarations are initialized
-if (JOB_MODE !== "releases-refresh") {
+if (JOB_MODE === "player-refresh") {
   runPlayerRefresh();
 }
