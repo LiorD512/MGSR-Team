@@ -71,6 +71,7 @@ interface ContractFinisherCache {
   valueFilter: string;
   positionFilter: string | null;
   ageFilter: string;
+  footFilter?: 'all' | 'left' | 'right';
   regionFilter: Confederation | null;
   search: string;
   rosterOnly: boolean;
@@ -335,6 +336,7 @@ export default function ContractFinisherPage() {
   const [valueFilter, setValueFilter] = useState(cached?.valueFilter ?? 'all');
   const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
   const [ageFilter, setAgeFilter] = useState(cached?.ageFilter ?? 'all');
+  const [footFilter, setFootFilter] = useState<'all' | 'left' | 'right'>(cached?.footFilter ?? 'all');
   const [regionFilter, setRegionFilter] = useState<Confederation | null>(cached?.regionFilter ?? null);
   const [search, setSearch] = useState(cached?.search ?? '');
   const [rosterOnly, setRosterOnly] = useState(cached?.rosterOnly ?? false);
@@ -406,6 +408,7 @@ export default function ContractFinisherPage() {
         valueFilter,
         positionFilter,
         ageFilter,
+        footFilter,
         regionFilter,
         search,
         rosterOnly,
@@ -414,7 +417,7 @@ export default function ContractFinisherPage() {
       },
       user?.uid ?? undefined
     );
-  }, [players, windowLabel, valueFilter, positionFilter, ageFilter, regionFilter, search, rosterOnly, rosterPlayers, shortlistUrls, user?.uid]);
+  }, [players, windowLabel, valueFilter, positionFilter, ageFilter, footFilter, regionFilter, search, rosterOnly, rosterPlayers, shortlistUrls, user?.uid]);
 
   const addToShortlist = useCallback(
     async (player: ContractFinisherPlayer) => {
@@ -501,6 +504,15 @@ export default function ContractFinisherPage() {
     let result = players;
     const queryText = search.trim().toLowerCase();
 
+    const normalizeFoot = (raw: string | null | undefined): 'left' | 'right' | 'both' | null => {
+      if (!raw) return null;
+      const val = raw.toLowerCase();
+      if (val.includes('left') || val.includes('שמאל')) return 'left';
+      if (val.includes('right') || val.includes('ימין')) return 'right';
+      if (val.includes('both') || val.includes('ambi') || val.includes('דו') || val.includes('שתיהן')) return 'both';
+      return null;
+    };
+
     if (queryText) {
       result = result.filter((p) => {
         const name = p.playerName?.toLowerCase() ?? '';
@@ -530,6 +542,9 @@ export default function ContractFinisherPage() {
         if (ageF.max != null && age > ageF.max) return false;
         return true;
       });
+    }
+    if (footFilter !== 'all') {
+      result = result.filter((p) => normalizeFoot(p.playerFoot) === footFilter);
     }
     if (regionFilter) {
       result = result.filter((p) => {
@@ -566,7 +581,7 @@ export default function ContractFinisherPage() {
       return true;
     });
     return result;
-  }, [players, search, positionFilter, ageFilter, regionFilter, valueFilter, rosterOnly, rosterPlayers, shortlistUrls]);
+  }, [players, search, positionFilter, ageFilter, footFilter, regionFilter, valueFilter, rosterOnly, rosterPlayers, shortlistUrls]);
 
   const shortlistedCount = useMemo(
     () => filteredPlayers.filter((p) => p.playerUrl && shortlistUrls.has(p.playerUrl)).length,
@@ -577,6 +592,7 @@ export default function ContractFinisherPage() {
     search.trim(),
     positionFilter,
     ageFilter !== 'all',
+    footFilter !== 'all',
     regionFilter,
     valueFilter !== 'all',
     rosterOnly,
@@ -735,6 +751,40 @@ export default function ContractFinisherPage() {
                     {t(`contract_finisher_filter_age_${a.key}`)}
                   </button>
                 ))}
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('player_info_foot')}:</span>
+                <button
+                  onClick={() => setFootFilter('all')}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    footFilter === 'all'
+                      ? 'bg-mgsr-teal text-mgsr-dark'
+                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                  }`}
+                >
+                  {t('releases_all')}
+                </button>
+                <button
+                  onClick={() => setFootFilter(footFilter === 'left' ? 'all' : 'left')}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    footFilter === 'left'
+                      ? 'bg-mgsr-teal text-mgsr-dark'
+                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                  }`}
+                >
+                  {t('players_filter_foot_left')}
+                </button>
+                <button
+                  onClick={() => setFootFilter(footFilter === 'right' ? 'all' : 'right')}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    footFilter === 'right'
+                      ? 'bg-mgsr-teal text-mgsr-dark'
+                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                  }`}
+                >
+                  {t('players_filter_foot_right')}
+                </button>
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
@@ -901,6 +951,41 @@ export default function ContractFinisherPage() {
                 </div>
               </div>
               <div>
+                <p className="text-xs text-mgsr-muted mb-2">{t('player_info_foot')}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setFootFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      footFilter === 'all'
+                        ? 'bg-mgsr-teal text-mgsr-dark'
+                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    {t('releases_all')}
+                  </button>
+                  <button
+                    onClick={() => setFootFilter(footFilter === 'left' ? 'all' : 'left')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      footFilter === 'left'
+                        ? 'bg-mgsr-teal text-mgsr-dark'
+                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    {t('players_filter_foot_left')}
+                  </button>
+                  <button
+                    onClick={() => setFootFilter(footFilter === 'right' ? 'all' : 'right')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      footFilter === 'right'
+                        ? 'bg-mgsr-teal text-mgsr-dark'
+                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    {t('players_filter_foot_right')}
+                  </button>
+                </div>
+              </div>
+              <div>
                 <p className="text-xs text-mgsr-muted mb-2">{t('contract_finisher_filter_label_region')}</p>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -935,6 +1020,7 @@ export default function ContractFinisherPage() {
                   setSearch('');
                   setPositionFilter(null);
                   setAgeFilter('all');
+                  setFootFilter('all');
                   setRegionFilter(null);
                   setRosterOnly(false);
                   setValueFilter('all');
