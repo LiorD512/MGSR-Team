@@ -865,7 +865,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Screen | `ShortlistScreen` | `/shortlist/page.tsx` |
 | Data | Firestore Shortlists | Same |
 | Filters | Position, agent, with notes, outreach status | Same |
-| Actions | Add/remove by TM URL, add notes, track outreach | Same |
+| Actions | Add/remove by TM URL, add notes, track outreach | Same + men action bar includes one-tap BRIT SPORT Team WhatsApp action that opens a prefilled Hebrew outreach message (with player Transfermarkt URL) in WhatsApp composer |
 
 ### Contacts
 | Aspect | Android | Web |
