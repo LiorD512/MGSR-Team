@@ -47,7 +47,8 @@ const REGION_OPTIONS: { value: Confederation; key: string }[] = [
 const POSITION_ORDER = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 const POSITION_EXCLUDED = new Set(['LM', 'RM']);
 const POSITION_HEBREW: Record<string, string> = { SS: 'חלוץ שני' };
-const FOOT_ENRICH_BATCH_SIZE = 6;
+const FOOT_ENRICH_BATCH_SIZE = 12;
+const FOOT_PREFETCH_LIMIT = 120;
 
 type FootSide = 'left' | 'right' | 'both' | null;
 
@@ -84,6 +85,7 @@ interface ContractFinisherCache {
   positionFilter: string | null;
   ageFilter: string;
   footFilter?: 'all' | 'left' | 'right';
+  footByUrl?: Record<string, FootSide>;
   regionFilter: Confederation | null;
   search: string;
   rosterOnly: boolean;
@@ -350,7 +352,8 @@ export default function ContractFinisherPage() {
   const [ageFilter, setAgeFilter] = useState(cached?.ageFilter ?? 'all');
   const [footFilter, setFootFilter] = useState<'all' | 'left' | 'right'>(cached?.footFilter ?? 'all');
   const [regionFilter, setRegionFilter] = useState<Confederation | null>(cached?.regionFilter ?? null);
-  const [footByUrl, setFootByUrl] = useState<Record<string, FootSide>>({});
+  const [footByUrl, setFootByUrl] = useState<Record<string, FootSide>>(cached?.footByUrl ?? {});
+  const footEnrichingRef = useRef<Set<string>>(new Set());
   const [search, setSearch] = useState(cached?.search ?? '');
   const [rosterOnly, setRosterOnly] = useState(cached?.rosterOnly ?? false);
   const [showFilters, setShowFilters] = useState(false);
@@ -422,6 +425,7 @@ export default function ContractFinisherPage() {
         positionFilter,
         ageFilter,
         footFilter,
+        footByUrl,
         regionFilter,
         search,
         rosterOnly,
@@ -430,7 +434,7 @@ export default function ContractFinisherPage() {
       },
       user?.uid ?? undefined
     );
-  }, [players, windowLabel, valueFilter, positionFilter, ageFilter, footFilter, regionFilter, search, rosterOnly, rosterPlayers, shortlistUrls, user?.uid]);
+  }, [players, windowLabel, valueFilter, positionFilter, ageFilter, footFilter, footByUrl, regionFilter, search, rosterOnly, rosterPlayers, shortlistUrls, user?.uid]);
 
   const addToShortlist = useCallback(
     async (player: ContractFinisherPlayer) => {
@@ -584,6 +588,63 @@ export default function ContractFinisherPage() {
     return result;
   }, [players, search, positionFilter, ageFilter, regionFilter, valueFilter, rosterOnly, rosterPlayers, shortlistUrls]);
 
+  const enrichFootForCandidates = useCallback(async (candidates: ContractFinisherPlayer[]) => {
+    const uniqueUrls = candidates
+      .map((p) => p.playerUrl)
+      .filter((url): url is string => !!url)
+      .filter((url) => !(url in footByUrl))
+      .filter((url) => !footEnrichingRef.current.has(url));
+    if (uniqueUrls.length === 0) return;
+
+    uniqueUrls.forEach((url) => footEnrichingRef.current.add(url));
+
+    try {
+      for (let i = 0; i < uniqueUrls.length; i += FOOT_ENRICH_BATCH_SIZE) {
+        const batch = uniqueUrls.slice(i, i + FOOT_ENRICH_BATCH_SIZE);
+        const enriched = await Promise.all(
+          batch.map(async (url) => {
+            try {
+              const details = await getPlayerDetails(url);
+              return { url, foot: normalizeFootValue(details.foot) };
+            } catch {
+              return { url, foot: null as FootSide };
+            }
+          })
+        );
+
+        setFootByUrl((prev) => {
+          const next = { ...prev };
+          for (const item of enriched) {
+            next[item.url] = item.foot;
+          }
+          return next;
+        });
+      }
+    } finally {
+      uniqueUrls.forEach((url) => footEnrichingRef.current.delete(url));
+    }
+  }, [footByUrl]);
+
+  // Background prefetch: warm a foot cache for top candidates so filters feel instant.
+  useEffect(() => {
+    if (players.length === 0) return;
+    const candidates = players
+      .filter((p) => !!p.playerUrl)
+      .filter((p) => !normalizeFootValue(p.playerFoot))
+      .filter((p) => {
+        const url = p.playerUrl || '';
+        return !!url && !(url in footByUrl);
+      })
+      .slice(0, FOOT_PREFETCH_LIMIT);
+    if (candidates.length === 0) return;
+
+    const timer = setTimeout(() => {
+      void enrichFootForCandidates(candidates);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [players, footByUrl, enrichFootForCandidates]);
+
   // Enrich missing foot data on-demand so left/right filter can work reliably.
   useEffect(() => {
     if (footFilter === 'all') return;
@@ -594,46 +655,8 @@ export default function ContractFinisherPage() {
       return footByUrl[url] === undefined;
     });
     if (candidates.length === 0) return;
-
-    let cancelled = false;
-
-    const run = async () => {
-      for (let i = 0; i < candidates.length; i += FOOT_ENRICH_BATCH_SIZE) {
-        const batch = candidates.slice(i, i + FOOT_ENRICH_BATCH_SIZE);
-        const enriched = await Promise.all(
-          batch.map(async (player) => {
-            try {
-              if (!player.playerUrl) return null;
-              const details = await getPlayerDetails(player.playerUrl);
-              return {
-                url: player.playerUrl,
-                foot: normalizeFootValue(details.foot),
-              };
-            } catch {
-              return player.playerUrl ? { url: player.playerUrl, foot: null as FootSide } : null;
-            }
-          })
-        );
-
-        if (cancelled) return;
-
-        setFootByUrl((prev) => {
-          const next = { ...prev };
-          for (const item of enriched) {
-            if (!item) continue;
-            next[item.url] = item.foot;
-          }
-          return next;
-        });
-      }
-    };
-
-    void run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [footFilter, preFootFilteredPlayers, footByUrl]);
+    void enrichFootForCandidates(candidates);
+  }, [footFilter, preFootFilteredPlayers, footByUrl, enrichFootForCandidates]);
 
   const filteredPlayers = useMemo(() => {
     if (footFilter === 'all') return preFootFilteredPlayers;
