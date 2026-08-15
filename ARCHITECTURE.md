@@ -895,7 +895,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 |--------|---------|-----|
 | Screen | `ContractFinisherScreen` | `/contract-finisher/page.tsx` |
 | Data | Transfermarkt scraping | API route `/api/transfermarkt/contract-finishers` (cached by GitHub Actions weekly) |
-| Filters | Position, age, market value | Web now mirrors release-notifications chip UX: inline search + value + position + age + foot (left/right) + region chips, plus localized source chips (`release_notifications_source`, `release_notifications_filter_roster`) to toggle roster-only results. Non-roster mode still excludes players already in roster/shortlist; roster-only mode shows roster-matched entries. Hebrew/English copy includes `contract_finisher_search`. |
+| Filters | Position, age, market value | Web now mirrors release-notifications chip UX: inline search + value + position + age + foot (left/right) + region chips, plus localized source chips (`release_notifications_source`, `release_notifications_filter_roster`) to toggle roster-only results. Foot filtering uses on-demand profile enrichment (`getPlayerDetails`) because Transfermarkt contract-finishers rows do not include preferred-foot data directly. Non-roster mode still excludes players already in roster/shortlist; roster-only mode shows roster-matched entries. Hebrew/English copy includes `contract_finisher_search`. |
 
 ### Club Change Notifications (Men)
 | Aspect | Android | Web |

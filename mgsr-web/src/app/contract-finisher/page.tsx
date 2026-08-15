@@ -7,7 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { collection, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { callShortlistAdd } from '@/lib/callables';
-import { getTeammates, extractPlayerIdFromUrl, type ContractFinisherPlayer } from '@/lib/api';
+import { getTeammates, extractPlayerIdFromUrl, getPlayerDetails, type ContractFinisherPlayer } from '@/lib/api';
 import { subscribe, loadContractFinishers, getContractFinisherState } from '@/lib/contractFinisherStore';
 import { parseMarketValue } from '@/lib/releases';
 import { getConfederation } from '@/lib/nationToConfederation';
@@ -47,6 +47,18 @@ const REGION_OPTIONS: { value: Confederation; key: string }[] = [
 const POSITION_ORDER = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 const POSITION_EXCLUDED = new Set(['LM', 'RM']);
 const POSITION_HEBREW: Record<string, string> = { SS: 'חלוץ שני' };
+const FOOT_ENRICH_BATCH_SIZE = 6;
+
+type FootSide = 'left' | 'right' | 'both' | null;
+
+function normalizeFootValue(raw: string | null | undefined): FootSide {
+  if (!raw) return null;
+  const val = raw.toLowerCase();
+  if (val.includes('left') || val.includes('שמאל')) return 'left';
+  if (val.includes('right') || val.includes('ימין')) return 'right';
+  if (val.includes('both') || val.includes('ambi') || val.includes('דו') || val.includes('שתיהן')) return 'both';
+  return null;
+}
 
 interface RosterPlayer {
   id: string;
@@ -338,6 +350,7 @@ export default function ContractFinisherPage() {
   const [ageFilter, setAgeFilter] = useState(cached?.ageFilter ?? 'all');
   const [footFilter, setFootFilter] = useState<'all' | 'left' | 'right'>(cached?.footFilter ?? 'all');
   const [regionFilter, setRegionFilter] = useState<Confederation | null>(cached?.regionFilter ?? null);
+  const [footByUrl, setFootByUrl] = useState<Record<string, FootSide>>({});
   const [search, setSearch] = useState(cached?.search ?? '');
   const [rosterOnly, setRosterOnly] = useState(cached?.rosterOnly ?? false);
   const [showFilters, setShowFilters] = useState(false);
@@ -500,18 +513,9 @@ export default function ContractFinisherPage() {
       });
   }, [players, firestorePositions]);
 
-  const filteredPlayers = useMemo(() => {
+  const preFootFilteredPlayers = useMemo(() => {
     let result = players;
     const queryText = search.trim().toLowerCase();
-
-    const normalizeFoot = (raw: string | null | undefined): 'left' | 'right' | 'both' | null => {
-      if (!raw) return null;
-      const val = raw.toLowerCase();
-      if (val.includes('left') || val.includes('שמאל')) return 'left';
-      if (val.includes('right') || val.includes('ימין')) return 'right';
-      if (val.includes('both') || val.includes('ambi') || val.includes('דו') || val.includes('שתיהן')) return 'both';
-      return null;
-    };
 
     if (queryText) {
       result = result.filter((p) => {
@@ -542,9 +546,6 @@ export default function ContractFinisherPage() {
         if (ageF.max != null && age > ageF.max) return false;
         return true;
       });
-    }
-    if (footFilter !== 'all') {
-      result = result.filter((p) => normalizeFoot(p.playerFoot) === footFilter);
     }
     if (regionFilter) {
       result = result.filter((p) => {
@@ -581,7 +582,67 @@ export default function ContractFinisherPage() {
       return true;
     });
     return result;
-  }, [players, search, positionFilter, ageFilter, footFilter, regionFilter, valueFilter, rosterOnly, rosterPlayers, shortlistUrls]);
+  }, [players, search, positionFilter, ageFilter, regionFilter, valueFilter, rosterOnly, rosterPlayers, shortlistUrls]);
+
+  // Enrich missing foot data on-demand so left/right filter can work reliably.
+  useEffect(() => {
+    if (footFilter === 'all') return;
+    const candidates = preFootFilteredPlayers.filter((p) => {
+      const url = p.playerUrl || '';
+      if (!url) return false;
+      if (normalizeFootValue(p.playerFoot)) return false;
+      return footByUrl[url] === undefined;
+    });
+    if (candidates.length === 0) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      for (let i = 0; i < candidates.length; i += FOOT_ENRICH_BATCH_SIZE) {
+        const batch = candidates.slice(i, i + FOOT_ENRICH_BATCH_SIZE);
+        const enriched = await Promise.all(
+          batch.map(async (player) => {
+            try {
+              if (!player.playerUrl) return null;
+              const details = await getPlayerDetails(player.playerUrl);
+              return {
+                url: player.playerUrl,
+                foot: normalizeFootValue(details.foot),
+              };
+            } catch {
+              return player.playerUrl ? { url: player.playerUrl, foot: null as FootSide } : null;
+            }
+          })
+        );
+
+        if (cancelled) return;
+
+        setFootByUrl((prev) => {
+          const next = { ...prev };
+          for (const item of enriched) {
+            if (!item) continue;
+            next[item.url] = item.foot;
+          }
+          return next;
+        });
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [footFilter, preFootFilteredPlayers, footByUrl]);
+
+  const filteredPlayers = useMemo(() => {
+    if (footFilter === 'all') return preFootFilteredPlayers;
+
+    return preFootFilteredPlayers.filter((p) => {
+      const resolved = normalizeFootValue(p.playerFoot) ?? (p.playerUrl ? footByUrl[p.playerUrl] ?? null : null);
+      return resolved === footFilter;
+    });
+  }, [preFootFilteredPlayers, footFilter, footByUrl]);
 
   const shortlistedCount = useMemo(
     () => filteredPlayers.filter((p) => p.playerUrl && shortlistUrls.has(p.playerUrl)).length,
