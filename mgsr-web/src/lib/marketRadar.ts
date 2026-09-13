@@ -616,7 +616,13 @@ Return a JSON array conforming strictly to:
   }
 ]`;
 
-    const result = await model.generateContent(prompt);
+    // 6 second timeout race so Gemini never blocks Vercel responses
+    const geminiPromise = model.generateContent(prompt);
+    const timeoutPromise = new Promise<{ response: { text: () => string } }>((_, reject) =>
+      setTimeout(() => reject(new Error('Gemini timeout')), 6500)
+    );
+
+    const result = await Promise.race([geminiPromise, timeoutPromise]);
     const jsonStr = result.response.text()?.trim();
     if (!jsonStr) return outMap;
 
@@ -635,13 +641,13 @@ Return a JSON array conforming strictly to:
   return outMap;
 }
 
-/** Fetch Google News RSS target with strict 14 days filter */
+/** Fetch Google News RSS target with strict 14 days filter (fast 4.5s timeout) */
 export async function fetchMarketRadarRss(q: MarketRadarQueryConfig): Promise<MarketRadarItem[]> {
   const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(q.query + ' when:14d')}&hl=${q.hl}&gl=${q.gl}&ceid=${q.ceid}`;
 
   const res = await fetch(rssUrl, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MGSR-MarketRadar/3.0)' },
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(4500),
   });
 
   if (!res.ok) return [];
@@ -735,11 +741,11 @@ export async function fetchMarketRadarRss(q: MarketRadarQueryConfig): Promise<Ma
 
 const RADAR_L1_CACHE = new Map<string, { items: MarketRadarItem[]; ts: number }>();
 const RADAR_L1_TTL = 15 * 60 * 1000; // 15 min
-const RADAR_L2_KEY = 'market_radar_men_v5';
+const RADAR_L2_KEY = 'market_radar_men_v6';
 const RADAR_L2_TTL = 30 * 60 * 1000; // 30 min
 
 /**
- * Main Orchestrator: Fetches news & social feeds, dedupes, synthesizes with Gemini 2.5 Flash,
+ * Main Orchestrator: Fetches news & social feeds in full parallel, dedupes, synthesizes with Gemini 2.5 Flash,
  * and caches results.
  */
 export async function getMarketRadarFeed(options?: {
@@ -773,16 +779,13 @@ export async function getMarketRadarFeed(options?: {
     ? MARKET_RADAR_QUERIES
     : MARKET_RADAR_QUERIES.filter(q => q.region === region);
 
-  const BATCH_SIZE = 6;
+  // Full parallel RSS fetching (each has 4.5s timeout, all execute concurrently)
+  const results = await Promise.allSettled(targetQueries.map(q => fetchMarketRadarRss(q)));
   const rawItems: MarketRadarItem[] = [];
 
-  for (let i = 0; i < targetQueries.length; i += BATCH_SIZE) {
-    const chunk = targetQueries.slice(i, i + BATCH_SIZE);
-    const results = await Promise.allSettled(chunk.map(q => fetchMarketRadarRss(q)));
-    for (const r of results) {
-      if (r.status === 'fulfilled' && r.value.length) {
-        rawItems.push(...r.value);
-      }
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value.length) {
+      rawItems.push(...r.value);
     }
   }
 
@@ -801,8 +804,8 @@ export async function getMarketRadarFeed(options?: {
 
   deduped.sort((a, b) => b.publishedAt - a.publishedAt);
 
-  // Take top 40 freshest items to enrich with Gemini 2.5 Flash in chunks of 10
-  const topItems = deduped.slice(0, 40);
+  // Take top 25 freshest items to enrich with Gemini in parallel chunks
+  const topItems = deduped.slice(0, 25);
   const geminiPayloads: { index: number; rawHeadline: string; source: string; league: string; country: string }[] = [];
 
   topItems.forEach((it, idx) => {
@@ -815,14 +818,20 @@ export async function getMarketRadarFeed(options?: {
     });
   });
 
-  // Batch Gemini Calls (chunks of 10 for fast parallel processing)
-  const GEMINI_CHUNK = 10;
-  const geminiResults = new Map<number, GeminiEnrichedOutput>();
-
+  // Parallel Gemini Calls (2 chunks of ~12)
+  const GEMINI_CHUNK = 13;
+  const geminiChunks: (typeof geminiPayloads)[] = [];
   for (let i = 0; i < geminiPayloads.length; i += GEMINI_CHUNK) {
-    const chunk = geminiPayloads.slice(i, i + GEMINI_CHUNK);
-    const resMap = await enrichBatchWithGemini(chunk);
-    resMap.forEach((val, k) => geminiResults.set(k, val));
+    geminiChunks.push(geminiPayloads.slice(i, i + GEMINI_CHUNK));
+  }
+
+  const geminiResults = new Map<number, GeminiEnrichedOutput>();
+  const aiChunkResults = await Promise.allSettled(geminiChunks.map(c => enrichBatchWithGemini(c)));
+
+  for (const r of aiChunkResults) {
+    if (r.status === 'fulfilled') {
+      r.value.forEach((val, k) => geminiResults.set(k, val));
+    }
   }
 
   // Apply AI enrichment back to items (with reliable fallback)
@@ -844,7 +853,7 @@ export async function getMarketRadarFeed(options?: {
         };
       }
     } else {
-      // Fallback translation if Gemini unavailable
+      // Fallback fast translation
       if (item.originalLang !== 'en') {
         const trans = await translateSingleToEnglish(item.headline);
         if (trans && trans !== item.headline) {

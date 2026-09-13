@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getMarketRadarFeed, type MarketRegion, type MarketSignalType } from '@/lib/marketRadar';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Allow full duration for parallel RSS + AI enrichment on cold start
 
 export async function GET(request: NextRequest) {
   try {
