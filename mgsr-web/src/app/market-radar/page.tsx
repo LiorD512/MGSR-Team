@@ -8,8 +8,7 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { callShortlistAdd } from '@/lib/callables';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
-import { SHORTLISTS_COLLECTIONS, CLUB_REQUESTS_COLLECTIONS, PLAYERS_COLLECTIONS } from '@/lib/platformCollections';
-import { extractPlayerIdFromUrl } from '@/lib/api';
+import { SHORTLISTS_COLLECTIONS, CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import AppLayout from '@/components/AppLayout';
 import { getMarketRadar } from '@/lib/api';
 import { type MarketRadarItem, type MarketRegion, type MarketSignalType } from '@/lib/marketRadar';
@@ -24,12 +23,14 @@ interface ClubRequestData {
 
 const REGION_OPTIONS: { id: MarketRegion; labelKey: string; flag: string }[] = [
   { id: 'all', labelKey: 'radar_region_all', flag: '🌍' },
-  { id: 'top5', labelKey: 'radar_region_top5', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-  { id: 'mid-tier', labelKey: 'radar_region_mid_tier', flag: '🇳🇱' },
+  { id: 'israel_greece', labelKey: 'radar_region_israel_greece', flag: '🇮🇱' },
+  { id: 'turkey_balkans', labelKey: 'radar_region_turkey_balkans', flag: '🇹🇷' },
+  { id: 'eastern_eu', labelKey: 'radar_region_eastern_eu', flag: '🇵🇱' },
   { id: 'nordics', labelKey: 'radar_region_nordics', flag: '🇸🇪' },
-  { id: 'eastern', labelKey: 'radar_region_eastern', flag: '🇵🇱' },
-  { id: 'mideast', labelKey: 'radar_region_mideast', flag: '🇮🇱' },
-  { id: 'americas', labelKey: 'radar_region_americas', flag: '🇧🇷' },
+  { id: 'mid_tier_west', labelKey: 'radar_region_mid_tier_west', flag: '🇧🇪' },
+  { id: 'south_america_gulf', labelKey: 'radar_region_south_america_gulf', flag: '🇧🇷' },
+  { id: 'social', labelKey: 'radar_region_social', flag: '📱' },
+  { id: 'top5', labelKey: 'radar_region_top5', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
 ];
 
 const SIGNAL_TABS: { id: MarketSignalType | 'all'; labelKey: string; icon: string; color: string }[] = [
@@ -43,7 +44,7 @@ const SIGNAL_TABS: { id: MarketSignalType | 'all'; labelKey: string; icon: strin
 
 export default function MarketRadarPage() {
   const { user } = useAuth();
-  const { t, isRtl, lang } = useLanguage();
+  const { t, isRtl } = useLanguage();
   const { platform } = usePlatform();
 
   const [items, setItems] = useState<MarketRadarItem[]>([]);
@@ -164,10 +165,12 @@ export default function MarketRadarPage() {
       result = result.filter(it =>
         it.headline.toLowerCase().includes(q) ||
         (it.originalHeadline && it.originalHeadline.toLowerCase().includes(q)) ||
+        (it.summary && it.summary.toLowerCase().includes(q)) ||
         it.leagueName.toLowerCase().includes(q) ||
         it.country.toLowerCase().includes(q) ||
         it.sourceName.toLowerCase().includes(q) ||
         (it.detectedPlayer?.name && it.detectedPlayer.name.toLowerCase().includes(q)) ||
+        (it.detectedPlayer?.club && it.detectedPlayer.club.toLowerCase().includes(q)) ||
         it.matchedKeywords.some(k => k.toLowerCase().includes(q))
       );
     }
@@ -190,7 +193,7 @@ export default function MarketRadarPage() {
         platform,
         playerName: item.detectedPlayer.name,
         tmProfileUrl: item.detectedPlayer.tmSearchUrl || `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(item.detectedPlayer.name)}`,
-        notes: `Market Radar: ${item.signalReason} (${item.sourceName} · ${item.leagueName})`,
+        notes: `Market Radar: ${item.summary || item.signalReason} (${item.sourceName} · ${item.leagueName})`,
         addedByAgentId: account.id,
         addedByAgentName: account.name ?? null,
         addedByAgentHebrewName: account.hebrewName ?? null,
@@ -209,8 +212,7 @@ export default function MarketRadarPage() {
 
   // Match check for a card against active club requests
   const getMatchingRequests = (item: MarketRadarItem) => {
-    if (!item.detectedPlayer?.name && !item.headline) return [];
-    const text = `${item.headline} ${item.detectedPlayer?.name || ''}`.toLowerCase();
+    const text = `${item.headline} ${item.summary || ''} ${item.detectedPlayer?.name || ''} ${item.detectedPlayer?.position || ''}`.toLowerCase();
     return clubRequests.filter(req => {
       if (req.position && text.includes(req.position.toLowerCase())) return true;
       if (req.clubName && text.includes(req.clubName.toLowerCase())) return true;
@@ -221,26 +223,27 @@ export default function MarketRadarPage() {
   // Draft Pitch Template
   const generatePitchText = (item: MarketRadarItem, targetClub = '') => {
     const playerName = item.detectedPlayer?.name || 'the player';
+    const playerClub = item.detectedPlayer?.club ? ` (${item.detectedPlayer.club})` : '';
     const league = item.leagueName;
     const club = targetClub || (isRtl ? 'המועדון' : 'the club');
 
     if (isRtl) {
       if (item.signalType === 'OUT_OF_PLANS') {
-        return `שלום, רציתי לעדכן שקיבלנו מודיעין לפיו ${playerName} (${league}) אינו נמצא בתוכניות המקצועיות של קבוצתו הנוכחית ומתאמן בנפרד. הוא פתוח למעבר מיידי / השאלה בתנאים מצוינים. האם זה רלוונטי לחיזוק ${club}? נוכל להעביר פרופיל מלא ודרישות.`;
+        return `שלום, רציתי לעדכן שקיבלנו מודיעין לפיו ${playerName}${playerClub} מ-${league} אינו נמצא בתוכניות המקצועיות ומתאמן בנפרד. הוא פתוח למעבר מיידי / השאלה בתנאים מצוינים. האם זה רלוונטי לחיזוק ${club}? נוכל להעביר פרופיל מלא ודרישות.`;
       }
       if (item.signalType === 'COLLAPSED_DEAL') {
-        return `שלום, מעדכן שהמעבר של ${playerName} (${league}) נפל ברגע האחרון עקב תנאי תשלום בין המועדונים. השחקן בכושר משחק מלא ומוכן לסגור יעד חדש. מתאים מאוד לסגל של ${club}. נשמח לשוחח.`;
+        return `שלום, מעדכן שהמעבר של ${playerName}${playerClub} מ-${league} נפל ברגע האחרון עקב תנאי תשלום בין המועדונים. השחקן בכושר משחק מלא ומוכן לסגור יעד חדש מיידית. מתאים מאוד לסגל של ${club}. נשמח לשוחח.`;
       }
-      return `שלום, לגבי ${playerName} (${league}) - בעקבות שינוי במעמדו בקבוצה הוא פנוי וזמין להצטרפות בתנאים מעולים. מתאים מאוד לפרופיל של ${club}. מעוניינים בפרטים נוספים?`;
+      return `שלום, לגבי ${playerName}${playerClub} מ-${league} - בעקבות שינוי במעמדו בקבוצה הוא פנוי וזמין להצטרפות בתנאים מעולים. מתאים מאוד לפרופיל של ${club}. מעוניינים בפרטים נוספים?`;
     }
 
     if (item.signalType === 'OUT_OF_PLANS') {
-      return `Hi, I wanted to reach out regarding ${playerName} (${league}). According to our market intelligence, he is currently out of the manager's plans and available for an immediate loan/transfer. He would be an exceptional fit for ${club}. Let me know if you would like his full file and mandate terms.`;
+      return `Hi, I wanted to reach out regarding ${playerName}${playerClub} from ${league}. According to our direct market intelligence, he is currently out of the manager's plans and available for an immediate loan/transfer. He would be an exceptional fit for ${club}. Let me know if you would like his full file and mandate terms.`;
     }
     if (item.signalType === 'COLLAPSED_DEAL') {
-      return `Hi, quick update on ${playerName} (${league}) - his recent move collapsed at the final stage due to club payment terms. The player is fit, motivated, and actively looking for the right project. Would ${club} be interested in exploring this profile?`;
+      return `Hi, quick update on ${playerName}${playerClub} from ${league} - his recent move collapsed at the final stage due to club payment terms. The player is fit, motivated, and actively looking for the right project. Would ${club} be interested in exploring this profile?`;
     }
-    return `Hi, following recent status changes for ${playerName} (${league}), he is currently available on the market under favourable conditions. He matches the exact profile for ${club}. Let me know if you want his mandate overview.`;
+    return `Hi, following recent status changes for ${playerName}${playerClub} from ${league}, he is currently available on the market under favourable conditions. He matches the exact profile for ${club}. Let me know if you want his mandate overview.`;
   };
 
   return (
@@ -310,7 +313,7 @@ export default function MarketRadarPage() {
           </div>
         </div>
 
-        {/* ── Region Filter Bar ─────────────────────────────────────── */}
+        {/* ── Target Market Regions Filter Bar ──────────────────────── */}
         <div className="mb-4">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none" style={{ WebkitOverflowScrolling: 'touch' }}>
             {REGION_OPTIONS.map(reg => (
@@ -452,7 +455,7 @@ export default function MarketRadarPage() {
                 <div
                   key={item.id}
                   onClick={() => window.open(item.url, '_blank')}
-                  className="bg-mgsr-card border border-mgsr-border hover:border-mgsr-gold/70 hover:shadow-xl hover:shadow-mgsr-gold/5 rounded-2xl p-4 sm:p-5 transition-all shadow-md group relative overflow-hidden cursor-pointer"
+                  className="bg-mgsr-card border border-mgsr-border hover:border-mgsr-gold/80 hover:shadow-xl hover:shadow-mgsr-gold/5 rounded-2xl p-4 sm:p-5 transition-all shadow-md group relative overflow-hidden cursor-pointer"
                   role="link"
                   tabIndex={0}
                   onKeyDown={(e) => {
@@ -469,6 +472,13 @@ export default function MarketRadarPage() {
                         <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
                         {signalLabel}
                       </span>
+
+                      {item.isSocial && (
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-500/15 text-pink-400 border border-pink-500/30 flex items-center gap-1">
+                          <span>📷</span>
+                          <span>{t('radar_source_social')}</span>
+                        </span>
+                      )}
 
                       <span className="text-xs text-white/50 flex items-center gap-1 font-medium">
                         <span>{item.countryFlag}</span>
@@ -494,37 +504,29 @@ export default function MarketRadarPage() {
                     </div>
                   </div>
 
-                  {/* Headline (Clickable Link) */}
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="block text-base sm:text-lg font-bold text-white mb-2 leading-snug group-hover:text-mgsr-gold transition hover:underline"
-                  >
-                    {displayHeadline}
-                  </a>
-
-                  {/* Reason & Keywords */}
-                  <div className="mb-3.5 text-xs text-white/60 flex items-center gap-2 flex-wrap">
-                    <span className="bg-white/5 px-2 py-0.5 rounded text-white/70 border border-white/5">
-                      💡 {item.signalReason}
-                    </span>
-                    {item.matchedKeywords.length > 0 && (
-                      <span className="text-[11px] text-white/40">
-                        ({item.matchedKeywords.slice(0, 2).join(', ')})
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Detected Player Bar */}
+                  {/* Prominent Player Profile Row */}
                   {item.detectedPlayer?.name && (
-                    <div className="mb-3.5 p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">👤</span>
+                    <div className="mb-3 p-3 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-mgsr-gold/15 border border-mgsr-gold/30 flex items-center justify-center text-base font-bold text-mgsr-gold">
+                          👤
+                        </div>
                         <div>
-                          <span className="text-xs text-white/40 block leading-tight">{t('radar_detected_player')}</span>
-                          <span className="text-sm font-bold text-white">{item.detectedPlayer.name}</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-base sm:text-lg font-black text-white group-hover:text-mgsr-gold transition">
+                              {item.detectedPlayer.name}
+                            </span>
+                            {item.detectedPlayer.position && (
+                              <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold text-[11px] border border-blue-500/30">
+                                {item.detectedPlayer.position}
+                              </span>
+                            )}
+                          </div>
+                          {item.detectedPlayer.club && (
+                            <span className="text-xs text-white/60 block mt-0.5">
+                              {item.countryFlag} {item.detectedPlayer.club}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -534,12 +536,34 @@ export default function MarketRadarPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="text-xs font-semibold text-mgsr-gold hover:underline flex items-center gap-1 z-10"
+                          className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-white/5 hover:bg-mgsr-gold/20 text-mgsr-gold border border-mgsr-gold/30 transition flex items-center gap-1 z-10"
                         >
                           <span>🌐 {t('radar_btn_tm')}</span>
                           <span className="text-[10px]">↗</span>
                         </a>
                       )}
+                    </div>
+                  )}
+
+                  {/* Headline (Crystal Clear English) */}
+                  <h3 className="text-base sm:text-lg font-bold text-white mb-2 leading-snug group-hover:text-mgsr-gold transition">
+                    {displayHeadline}
+                  </h3>
+
+                  {/* Summary (Situation Breakdown) */}
+                  {item.summary && (
+                    <p className="text-sm text-white/80 leading-relaxed mb-3 bg-white/[0.02] p-2.5 rounded-lg border border-white/5">
+                      {item.summary}
+                    </p>
+                  )}
+
+                  {/* Agent Opportunity Takeaway Pill */}
+                  {item.agentTakeaway && (
+                    <div className="mb-3.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium flex items-center gap-2">
+                      <span className="text-sm">🎯</span>
+                      <span>
+                        <strong>{t('radar_agent_takeaway')}:</strong> {item.agentTakeaway}
+                      </span>
                     </div>
                   )}
 
