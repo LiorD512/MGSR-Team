@@ -93,7 +93,14 @@ MGSR Team is a **multi-platform football agent management system** for managing 
 │  │        and local/runtime overrides support controlled catch-up   │
 │  │        runs (batch size/delay/jitter/anti-pattern pause toggles,│
 │  │        a Firestore active-run lease prevents overlapping hourly │
-│  │        executions, and `JOB_MODE=player-refresh-status` reports │
+│  │        executions and expires after 50 minutes if a run is      │
+│  │        cancelled; upstream failures get one short retry, then   │
+│  │        a three-block circuit breaker with a 45-minute task cap; │
+│  │        retryable failures defer for six hours so a blocked       │
+│  │        player cannot starve later players in the refresh queue;  │
+│  │        profile IDs are validated against the returned page, and  │
+│  │        mismatches defer for seven days without modifying data.   │
+│  │        `JOB_MODE=player-refresh-status` reports                │
 │  │        backlog from the authoritative `lastRefreshedAt` field)  │
 │  ├─ Cloud Run Job: releases-refresh-job (daily + manual trigger)   │
 │  │   └─ Scrapes releases/free agents and falls back to the web     │
@@ -354,7 +361,8 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/shadow-teams` | Shadow Teams | Fantasy formation builder |
 | `/tasks` | Tasks | Agent task management (route currently shows disabled state while tasks feature flag is off) |
 | `/portfolio` | Portfolio | Player portfolio management |
-| `/news` | News | Google News + transfer rumours |
+| `/market-radar` | Early Market Radar | Real-time market disruption intelligence (out-of-plans, collapsed deals, contract standoffs across 35+ leagues, max 14 days) |
+| `/news` | News | Redirects to `/market-radar` |
 | `/jewish-finder` | Jewish Finder | Discover Jewish/Israeli heritage players |
 | `/p/[token]` | Shared Player | Public share page (no auth required) |
 | `/shared/requests` | Shared Requests | Public requests page (no auth required) |
@@ -441,6 +449,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `playersWomen.ts` | Women player data utilities |
 | `playersYouth.ts` | Youth player data utilities |
 | `api.ts` | Generic API helpers |
+| `marketRadar.ts` | Early Market Radar engine: 35+ league disruption scanner, multilingual classification, 14-day cutoff, auto-translation |
 | `releases.ts` | Release data processing |
 | `contractFinisherStore.ts` | Contract finisher data store |
 | `returneesStore.ts` | Returnees data store |

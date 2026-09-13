@@ -81,6 +81,7 @@ const womenTabs: TabItem[] = [
 /* ── The remaining nav items that go to the "More" sheet ── */
 export const menMoreItems = [
   { href: '/shortlist', labelKey: 'nav_shortlist' },
+  { href: '/market-radar', labelKey: 'nav_market_radar' },
   // TEMP HIDDEN (user request): { href: '/shadow-teams', labelKey: 'nav_shadow_teams' },
   { href: '/release-notifications', labelKey: 'nav_release_notifications' },
   { href: '/club-change-notifications', labelKey: 'nav_club_change_notifications' },

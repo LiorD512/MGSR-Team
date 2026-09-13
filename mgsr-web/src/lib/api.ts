@@ -509,6 +509,21 @@ export async function getGoogleNews(leagues?: string[], lang?: string): Promise<
   return res.json();
 }
 
+export async function getMarketRadar(params?: {
+  region?: string;
+  signal?: string;
+  refresh?: boolean;
+}): Promise<import('./marketRadar').MarketRadarItem[]> {
+  const p = new URLSearchParams();
+  if (params?.region && params.region !== 'all') p.set('region', params.region);
+  if (params?.signal && params.signal !== 'all') p.set('signal', params.signal);
+  if (params?.refresh) p.set('refresh', 'true');
+  const q = p.toString() ? `?${p}` : '';
+  const res = await fetch(`/api/market-radar${q}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 // ─── Ligat Ha'al Foreign Arrivals Analysis ──────────────────────────────────
 
 export interface LigatHaalTransferPlayer {

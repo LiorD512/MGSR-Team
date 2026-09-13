@@ -35,6 +35,7 @@ const navSections: NavSection[] = [
     id: 'market',
     titleKey: 'app_shell_section_market_radar',
     items: [
+      { href: '/market-radar', labelKey: 'nav_market_radar', badge: 'new' },
       { href: '/release-notifications', labelKey: 'nav_release_notifications', badge: 'new' },
       { href: '/club-change-notifications', labelKey: 'nav_club_change_notifications' },
       { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
