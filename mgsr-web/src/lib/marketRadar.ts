@@ -594,84 +594,160 @@ export function classifyMarketSignal(
   return null;
 }
 
-/** Extract probable player name from news headline */
+/* ── Comprehensive Non-Player False Positives Blacklist ── */
+const NON_PLAYER_WORDS = new Set([
+  'transfer news', 'first team', 'sporting director', 'technical director', 'head coach', 'press conference',
+  'done deal', 'breaking news', 'free agent', 'summer transfer', 'winter transfer', 'transfer market',
+  'real madrid', 'manchester city', 'manchester united', 'bayern munich', 'paris saint', 'aston villa',
+  'maccabi tel', 'hapoel beer', 'beitar jerusalem', 'maccabi haifa', 'hapoel tel', 'super league',
+  'premier league', 'la liga', 'serie a', 'bundesliga', 'ligue 1', 'europa league', 'champions league',
+  'disciplinary action', 'mutual consent', 'major crisis', 'club statement', 'training session',
+  'squad list', 'medical check', 'contract extension', 'loan deal', 'board member', 'club president',
+  'sporting cp', 'boca juniors', 'river plate', 'red card', 'match day', 'var decision', 'world cup',
+  'national team', 'football club', 'full back', 'centre back', 'defensive midfielder', 'attacking midfielder',
+  'second team', 'reserve team', 'youth team', 'ac milan', 'inter milan', 'juventus fc', 'fc barcelona',
+  'atletico madrid', 'borussia dortmund', 'rb leipzig', 'bayer leverkusen', 'tottenham hotspur',
+  'arsenal fc', 'chelsea fc', 'liverpool fc', 'everton fc', 'west ham', 'newcastle united',
+  'nottingham forest', 'crystal palace', 'wolverhampton wanderers', 'besiktas jk', 'galatasaray sk',
+  'fenerbahce sk', 'trabzonspor', 'panathinaikos fc', 'olympiacos fc', 'aek athens', 'paok fc',
+  'ajax amsterdam', 'psv eindhoven', 'feyenoord rotterdam', 'sl benfica', 'fc porto', 'sporting braga',
+  'dinamo zagreb', 'hajduk split', 'crvena zvezda', 'partizan belgrade', 'legia warsaw', 'lech poznan',
+  'slavia prague', 'sparta prague', 'fcsb bucuresti', 'cfr cluj', 'ferencvaros tc', 'apoel nicosia',
+]);
+
+/** Extract probable player name with strict pattern recognition & false-positive filters */
 export function extractPlayerCandidate(headline: string): { name: string; tmSearchUrl: string } | null {
-  // Strip common noisy prefixes / suffixes
+  if (!headline) return null;
+
+  // Clean media and headline prefixes
   const cleaned = headline
-    .replace(/^(exclusive|breaking|report|official|done deal|update|alert|news|urgent)\s*[:\-–]\s*/i, '')
-    .replace(/\s*[:\-–]\s*(report|sources|details|official|marca|as|lequipe|bild).*$/i, '')
+    .replace(/^(exclusive|breaking|report|official|done deal|update|alert|news|urgent|sources|marca|as|lequipe|bild|di marzio|sky sports?)\s*[:\-–|]\s*/i, '')
+    .replace(/\s*[:\-–|]\s*(report|sources|details|official|marca|as|lequipe|bild|sky|live|daily mail).*$/i, '')
     .trim();
 
-  // Pattern 1: Look for "Player Name (Club)" or "Club's Player Name"
-  // Capitalized names (2-3 words, e.g., "Kylian Mbappé", "Mohamed Salah", "Dolev Haziza")
-  const latinNameMatch = cleaned.match(/\b([A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,}\s+[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,}(?:\s+[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,})?)\b/);
-  
-  // Hebrew name match (2 words in Hebrew letters)
-  const hebrewNameMatch = cleaned.match(/([\u0590-\u05FF]{2,}\s+[\u0590-\u05FF]{2,})/);
+  // Strategy 1: Look for action patterns like "[Name] left out", "[Name] excluded", "deal for [Name]", "aparta a [Name]"
+  const actionRegexes = [
+    /(?:regarding|for|about|on|aparta a|pour|su|sur)\s+([A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,}\s+[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,}(?:\s+[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,})?)/i,
+    /([A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,}\s+[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,}(?:\s+[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,})?)\s*(?:left out|excluded|frozen out|banished|dropped|refuses|rejects|move collapsed|transfer collapsed|fails medical|demoted|told to find|given permission)/i,
+    /([A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,}\s+[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,})\s*:\s*(?:deal|transfer|crisis|medical|standoff|contract)/i,
+  ];
 
-  const matchedName = latinNameMatch ? latinNameMatch[1] : (hebrewNameMatch ? hebrewNameMatch[1] : null);
+  for (const rx of actionRegexes) {
+    const match = cleaned.match(rx);
+    if (match && match[1]) {
+      const candidate = match[1].trim();
+      const candLower = candidate.toLowerCase();
+      if (!NON_PLAYER_WORDS.has(candLower) && !candLower.includes('league') && !candLower.includes('club') && !candLower.includes('team')) {
+        return {
+          name: candidate,
+          tmSearchUrl: `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(candidate)}`,
+        };
+      }
+    }
+  }
 
-  if (!matchedName) return null;
+  // Strategy 2: Look for Hebrew player names in Israeli headlines ("דן איינבינדר", "דולב חזיזה")
+  const hebrewPattern = /(?:לגבי|בעניין|סביב|שחרורו של|עסקת|מעברו של|הקשר|הבלם|החלוץ|המגן|השוער)?\s*([\u0590-\u05FF]{2,}\s+[\u0590-\u05FF]{2,})/i;
+  const hebMatch = cleaned.match(hebrewPattern);
+  if (hebMatch && hebMatch[1]) {
+    const hebCand = hebMatch[1].trim();
+    const hebrewFalsePositives = ['ליגת העל', 'ליגה לאומית', 'מכבי תל', 'הפועל תל', 'בית"ר ירושלים', 'מכבי חיפה', 'הפועל באר', 'נבחרת ישראל', 'אימון הקבוצה', 'חלון ההעברות', 'סרט הקפטן', 'הודעת מועדון', 'ועדת משמעת', 'שחקן זר'];
+    if (!hebrewFalsePositives.some(fp => hebCand.includes(fp))) {
+      return {
+        name: hebCand,
+        tmSearchUrl: `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(hebCand)}`,
+      };
+    }
+  }
 
-  // Filter out well-known non-player false positives (managers / clubs)
-  const falsePositives = /^(Real Madrid|Manchester City|Manchester United|Bayern Munich|Paris Saint|Aston Villa|Premier League|La Liga|Serie A|Bundesliga|Ligue 1|Sporting CP|Boca Juniors|River Plate|Maccabi Tel|Hapoel Beer|Beitar Jerusalem|Super League|Europa League|Champions League|Transfer News)$/i;
-  if (falsePositives.test(matchedName)) return null;
+  // Strategy 3: General Latin capitalized name (strictly 2-3 words) with blacklist validation
+  const latinMatch = cleaned.match(/\b([A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,}\s+[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,}(?:\s+[A-ZÀ-ÖØ-öø-ÿ][a-zà-öø-ÿ']{2,})?)\b/);
+  if (latinMatch && latinMatch[1]) {
+    const candidate = latinMatch[1].trim();
+    const candLower = candidate.toLowerCase();
+    
+    // Strict filters to reject sentence starters or generic titles
+    const isFalsePositive =
+      NON_PLAYER_WORDS.has(candLower) ||
+      candLower.startsWith('the ') ||
+      candLower.startsWith('after ') ||
+      candLower.startsWith('why ') ||
+      candLower.startsWith('how ') ||
+      candLower.includes('league') ||
+      candLower.includes('club') ||
+      candLower.includes('fc') ||
+      candLower.includes('united') ||
+      candLower.includes('city') ||
+      candLower.includes('news') ||
+      candLower.includes('coach') ||
+      candLower.includes('manager') ||
+      candLower.includes('president') ||
+      candLower.includes('medical') ||
+      candLower.includes('deal') ||
+      candLower.includes('transfer') ||
+      candLower.includes('contract');
 
-  return {
-    name: matchedName,
-    tmSearchUrl: `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(matchedName)}`,
-  };
+    if (!isFalsePositive) {
+      return {
+        name: candidate,
+        tmSearchUrl: `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(candidate)}`,
+      };
+    }
+  }
+
+  // If no high-confidence player is found, return null (avoid false positives)
+  return null;
 }
 
-/** Translate headlines to English using batched Google Translate endpoint */
+/** Translate a single headline to English using Google Translate endpoint */
+export async function translateSingleToEnglish(text: string): Promise<string> {
+  if (!text || !text.trim()) return text;
+
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return text;
+    const data = await res.json();
+    if (Array.isArray(data) && Array.isArray(data[0])) {
+      const translated = data[0]
+        .map((seg: unknown[]) => (Array.isArray(seg) && seg[0] ? String(seg[0]) : ''))
+        .join('')
+        .trim();
+      return translated || text;
+    }
+    return text;
+  } catch {
+    return text;
+  }
+}
+
+/** Batch translate list of texts to English concurrently with safe individual requests */
 export async function translateToEnglish(texts: string[]): Promise<string[]> {
   if (!texts.length) return [];
-  const BATCH_SIZE = 15;
-  const CONCURRENCY = 4;
-  const batches: string[][] = [];
-  for (let i = 0; i < texts.length; i += BATCH_SIZE) {
-    batches.push(texts.slice(i, i + BATCH_SIZE));
-  }
+  const CONCURRENCY = 8;
+  const results: string[] = new Array(texts.length);
 
-  const translateBatch = async (batch: string[]): Promise<string[]> => {
-    const joined = batch.join('\n');
-    try {
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(joined)}`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) return batch;
-      const data = await res.json();
-      if (Array.isArray(data) && Array.isArray(data[0])) {
-        const translated = data[0].map((seg: unknown[]) => seg[0]).join('');
-        return translated.split('\n');
-      }
-      return batch;
-    } catch {
-      return batch;
-    }
-  };
-
-  const results: string[][] = new Array(batches.length);
-  for (let i = 0; i < batches.length; i += CONCURRENCY) {
-    const chunk = batches.slice(i, i + CONCURRENCY);
-    const res = await Promise.allSettled(chunk.map(b => translateBatch(b)));
-    for (let j = 0; j < res.length; j++) {
-      const r = res[j];
-      results[i + j] = r.status === 'fulfilled' ? r.value : chunk[j];
+  for (let i = 0; i < texts.length; i += CONCURRENCY) {
+    const slice = texts.slice(i, i + CONCURRENCY);
+    const settled = await Promise.allSettled(slice.map(t => translateSingleToEnglish(t)));
+    for (let j = 0; j < settled.length; j++) {
+      const s = settled[j];
+      results[i + j] = s.status === 'fulfilled' ? s.value : slice[j];
     }
   }
 
-  const flat = results.flat();
-  while (flat.length < texts.length) flat.push(texts[flat.length]);
-  return flat.slice(0, texts.length);
+  return results;
 }
 
 /** Fetch a single Google News RSS target with strict 14 days (2 weeks) filter */
 export async function fetchMarketRadarRss(q: MarketRadarQueryConfig): Promise<MarketRadarItem[]> {
-  // Query with when:14d to strictly enforce max 2 weeks
   const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(q.query + ' when:14d')}&hl=${q.hl}&gl=${q.gl}&ceid=${q.ceid}`;
   
   const res = await fetch(rssUrl, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MGSR-MarketRadar/2.0)' },
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MGSR-MarketRadar/2.5)' },
     signal: AbortSignal.timeout(12000),
   });
 
@@ -702,7 +778,7 @@ export async function fetchMarketRadarRss(q: MarketRadarQueryConfig): Promise<Ma
         const d = new Date(pubDate);
         publishedAt = d.getTime();
         const ageMs = now - publishedAt;
-        if (ageMs > TWO_WEEKS_MS || ageMs < 0) return; // Strict max 2 weeks filter
+        if (ageMs > TWO_WEEKS_MS || ageMs < 0) return; // Strict max 14 days
 
         const hoursAgo = Math.floor(ageMs / (1000 * 60 * 60));
         const daysAgo = Math.floor(hoursAgo / 24);
@@ -723,7 +799,7 @@ export async function fetchMarketRadarRss(q: MarketRadarQueryConfig): Promise<Ma
         return;
       }
     } else {
-      return; // Skip if no publication date
+      return;
     }
 
     // Classify disruption signal
@@ -742,7 +818,7 @@ export async function fetchMarketRadarRss(q: MarketRadarQueryConfig): Promise<Ma
 
     items.push({
       id,
-      headline: rawHeadline, // will be translated later
+      headline: rawHeadline,
       originalHeadline: rawHeadline,
       url,
       sourceName,
@@ -768,7 +844,7 @@ export async function fetchMarketRadarRss(q: MarketRadarQueryConfig): Promise<Ma
 
 const RADAR_L1_CACHE = new Map<string, { items: MarketRadarItem[]; ts: number }>();
 const RADAR_L1_TTL = 15 * 60 * 1000; // 15 minutes
-const RADAR_L2_KEY = 'market_radar_men_v2';
+const RADAR_L2_KEY = 'market_radar_men_v4';
 const RADAR_L2_TTL = 30 * 60 * 1000; // 30 minutes
 
 /**
@@ -809,7 +885,7 @@ export async function getMarketRadarFeed(options?: {
     : MARKET_RADAR_QUERIES.filter(q => q.region === region);
 
   // Parallel batch fetching with concurrency limit
-  const BATCH_SIZE = 6;
+  const BATCH_SIZE = 8;
   const rawItems: MarketRadarItem[] = [];
 
   for (let i = 0; i < targetQueries.length; i += BATCH_SIZE) {
@@ -838,8 +914,12 @@ export async function getMarketRadarFeed(options?: {
   // Sort descending by publication date
   deduped.sort((a, b) => b.publishedAt - a.publishedAt);
 
-  // Translate non-English headlines to English
-  const needTranslation = deduped.filter(it => it.originalLang !== 'en');
+  // Translate non-English headlines to English with high accuracy individual requests
+  const needTranslation = deduped.filter(it => {
+    if (it.originalLang !== 'en') return true;
+    return /[\u0590-\u05FF\u0400-\u04FF\u0370-\u03FF\u0600-\u06FF\u00C0-\u024F]/.test(it.headline);
+  });
+
   if (needTranslation.length > 0) {
     try {
       const translated = await translateToEnglish(needTranslation.map(it => it.headline));
@@ -848,8 +928,8 @@ export async function getMarketRadarFeed(options?: {
           needTranslation[i].headline = translated[i];
         }
       }
-    } catch {
-      // Keep original headlines if translation API fails
+    } catch (err) {
+      console.error('Batch translation error:', err);
     }
   }
 

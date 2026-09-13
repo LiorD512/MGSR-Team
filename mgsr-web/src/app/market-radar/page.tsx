@@ -451,7 +451,16 @@ export default function MarketRadarPage() {
               return (
                 <div
                   key={item.id}
-                  className="bg-mgsr-card border border-mgsr-border hover:border-mgsr-gold/60 rounded-2xl p-4 sm:p-5 transition-all shadow-md group relative overflow-hidden"
+                  onClick={() => window.open(item.url, '_blank')}
+                  className="bg-mgsr-card border border-mgsr-border hover:border-mgsr-gold/70 hover:shadow-xl hover:shadow-mgsr-gold/5 rounded-2xl p-4 sm:p-5 transition-all shadow-md group relative overflow-hidden cursor-pointer"
+                  role="link"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      window.open(item.url, '_blank');
+                    }
+                  }}
                 >
                   {/* Top Bar: Signal Badge + Source + League + Time */}
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -473,8 +482,11 @@ export default function MarketRadarPage() {
                       <span>{item.timeAgo || item.dateFormatted}</span>
                       {item.originalLang !== 'en' && (
                         <button
-                          onClick={() => toggleOriginal(item.id)}
-                          className="px-2 py-0.5 rounded border border-white/10 text-[10px] text-white/60 hover:text-mgsr-gold hover:border-mgsr-gold/40 transition"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleOriginal(item.id);
+                          }}
+                          className="px-2 py-0.5 rounded border border-white/10 text-[10px] text-white/60 hover:text-mgsr-gold hover:border-mgsr-gold/40 transition z-10"
                         >
                           {showOriginal ? `🇺🇸 ${t('radar_toggle_translated')}` : `🌐 ${t('radar_toggle_original')} (${item.originalLang.toUpperCase()})`}
                         </button>
@@ -482,10 +494,16 @@ export default function MarketRadarPage() {
                     </div>
                   </div>
 
-                  {/* Headline */}
-                  <h3 className="text-base sm:text-lg font-bold text-white mb-2 leading-snug group-hover:text-mgsr-gold transition">
+                  {/* Headline (Clickable Link) */}
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="block text-base sm:text-lg font-bold text-white mb-2 leading-snug group-hover:text-mgsr-gold transition hover:underline"
+                  >
                     {displayHeadline}
-                  </h3>
+                  </a>
 
                   {/* Reason & Keywords */}
                   <div className="mb-3.5 text-xs text-white/60 flex items-center gap-2 flex-wrap">
@@ -515,7 +533,8 @@ export default function MarketRadarPage() {
                           href={item.detectedPlayer.tmSearchUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs font-semibold text-mgsr-gold hover:underline flex items-center gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs font-semibold text-mgsr-gold hover:underline flex items-center gap-1 z-10"
                         >
                           <span>🌐 {t('radar_btn_tm')}</span>
                           <span className="text-[10px]">↗</span>
@@ -540,9 +559,12 @@ export default function MarketRadarPage() {
                       {/* Shortlist Action */}
                       {item.detectedPlayer?.name && (
                         <button
-                          onClick={() => handleAddToShortlist(item)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToShortlist(item);
+                          }}
                           disabled={isAddedToShortlist || addingId === item.id}
-                          className={`text-xs px-3 py-1.5 rounded-lg border transition font-semibold min-h-[36px] flex items-center gap-1.5 ${
+                          className={`text-xs px-3 py-1.5 rounded-lg border transition font-semibold min-h-[36px] flex items-center gap-1.5 z-10 ${
                             isAddedToShortlist
                               ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 cursor-default'
                               : 'border-mgsr-gold/50 text-mgsr-gold hover:bg-mgsr-gold/15 active:scale-95'
@@ -555,28 +577,24 @@ export default function MarketRadarPage() {
 
                       {/* Pitch Button */}
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setPitchItem(item);
                           setPitchClubName(matchingReqs[0]?.clubName || '');
                           setPitchCopied(false);
                         }}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-blue-400/40 text-blue-400 hover:bg-blue-400/15 transition font-semibold min-h-[36px] flex items-center gap-1.5 active:scale-95"
+                        className="text-xs px-3 py-1.5 rounded-lg border border-blue-400/40 text-blue-400 hover:bg-blue-400/15 transition font-semibold min-h-[36px] flex items-center gap-1.5 active:scale-95 z-10"
                       >
                         <span>📋</span>
                         <span>{t('radar_btn_pitch')}</span>
                       </button>
                     </div>
 
-                    {/* Source Article Link */}
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-white/50 hover:text-white flex items-center gap-1 hover:underline min-h-[36px] px-2 py-1"
-                    >
+                    {/* Source Article Link Indicator */}
+                    <span className="text-xs text-white/50 group-hover:text-mgsr-gold flex items-center gap-1 transition min-h-[36px] px-2 py-1 font-medium">
                       <span>{t('radar_btn_source')}</span>
                       <span>↗</span>
-                    </a>
+                    </span>
                   </div>
                 </div>
               );
