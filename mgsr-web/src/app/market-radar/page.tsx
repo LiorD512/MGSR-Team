@@ -24,22 +24,22 @@ interface ClubRequestData {
 const REGION_OPTIONS: { id: MarketRegion; labelKey: string; flag: string }[] = [
   { id: 'all', labelKey: 'radar_region_all', flag: '🌍' },
   { id: 'israel_greece', labelKey: 'radar_region_israel_greece', flag: '🇮🇱' },
+  { id: 'eastern_eu', labelKey: 'radar_region_eastern_eu', flag: '🇷🇴' },
   { id: 'turkey_balkans', labelKey: 'radar_region_turkey_balkans', flag: '🇹🇷' },
-  { id: 'eastern_eu', labelKey: 'radar_region_eastern_eu', flag: '🇵🇱' },
   { id: 'nordics', labelKey: 'radar_region_nordics', flag: '🇸🇪' },
   { id: 'mid_tier_west', labelKey: 'radar_region_mid_tier_west', flag: '🇧🇪' },
   { id: 'south_america_gulf', labelKey: 'radar_region_south_america_gulf', flag: '🇧🇷' },
   { id: 'social', labelKey: 'radar_region_social', flag: '📱' },
-  { id: 'top5', labelKey: 'radar_region_top5', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
 ];
 
-const SIGNAL_TABS: { id: MarketSignalType | 'all'; labelKey: string; icon: string; color: string }[] = [
-  { id: 'all', labelKey: 'radar_signal_all', icon: '⚡', color: 'text-mgsr-gold' },
-  { id: 'OUT_OF_PLANS', labelKey: 'radar_signal_out_of_plans', icon: '🔴', color: 'text-red-400' },
-  { id: 'COLLAPSED_DEAL', labelKey: 'radar_signal_collapsed', icon: '⚠️', color: 'text-amber-400' },
-  { id: 'STATUS_DEMOTION', labelKey: 'radar_signal_status', icon: '⚡', color: 'text-orange-400' },
-  { id: 'CONTRACT_STANDOFF', labelKey: 'radar_signal_contract', icon: '⏳', color: 'text-purple-400' },
-  { id: 'TRANSFER_LISTED', labelKey: 'radar_signal_listed', icon: '🟢', color: 'text-emerald-400' },
+const SIGNAL_TABS: { id: MarketSignalType | 'all'; labelKey: string; icon: string; badgeClass: string }[] = [
+  { id: 'all', labelKey: 'radar_signal_all', icon: '⚡', badgeClass: 'bg-mgsr-gold/15 text-mgsr-gold border-mgsr-gold/30' },
+  { id: 'DISPUTE_CLAIM', labelKey: 'radar_signal_dispute', icon: '⚖️', badgeClass: 'bg-red-500/15 text-red-400 border-red-500/30' },
+  { id: 'OUT_OF_PLANS', labelKey: 'radar_signal_out_of_plans', icon: '🔴', badgeClass: 'bg-rose-500/15 text-rose-400 border-rose-500/30' },
+  { id: 'FOREIGN_QUOTA', labelKey: 'radar_signal_quota', icon: '🚫', badgeClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' },
+  { id: 'COLLAPSED_DEAL', labelKey: 'radar_signal_collapsed', icon: '⚠️', badgeClass: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
+  { id: 'CONTRACT_STANDOFF', labelKey: 'radar_signal_contract', icon: '⏳', badgeClass: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
+  { id: 'TRANSFER_LISTED', labelKey: 'radar_signal_listed', icon: '🟢', badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
 ];
 
 export default function MarketRadarPage() {
@@ -56,7 +56,6 @@ export default function MarketRadarPage() {
   const [selectedSignal, setSelectedSignal] = useState<MarketSignalType | 'all'>('all');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Toggle for showing original headline vs translated headline per item
   const [showOriginalMap, setShowOriginalMap] = useState<Record<string, boolean>>({});
 
   // Shortlist tracking
@@ -125,7 +124,7 @@ export default function MarketRadarPage() {
       setLastUpdated(new Date());
     } catch (err) {
       console.error('Failed to load Market Radar:', err);
-      setError(err instanceof Error ? err.message : 'Error loading Market Radar feed');
+      setError(err instanceof Error ? err.message : 'Error loading secret market feed');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -139,7 +138,6 @@ export default function MarketRadarPage() {
     fetchFeed();
   }, [fetchFeed]);
 
-  // Refetch when region changes
   const handleRegionChange = (reg: MarketRegion) => {
     setSelectedRegion(reg);
     setLoading(true);
@@ -152,7 +150,6 @@ export default function MarketRadarPage() {
     }).catch(() => setLoading(false));
   };
 
-  // Filtered items
   const filteredItems = useMemo(() => {
     let result = items;
 
@@ -166,11 +163,13 @@ export default function MarketRadarPage() {
         it.headline.toLowerCase().includes(q) ||
         (it.originalHeadline && it.originalHeadline.toLowerCase().includes(q)) ||
         (it.summary && it.summary.toLowerCase().includes(q)) ||
+        (it.agentTakeaway && it.agentTakeaway.toLowerCase().includes(q)) ||
         it.leagueName.toLowerCase().includes(q) ||
         it.country.toLowerCase().includes(q) ||
         it.sourceName.toLowerCase().includes(q) ||
         (it.detectedPlayer?.name && it.detectedPlayer.name.toLowerCase().includes(q)) ||
         (it.detectedPlayer?.club && it.detectedPlayer.club.toLowerCase().includes(q)) ||
+        (it.detectedPlayer?.position && it.detectedPlayer.position.toLowerCase().includes(q)) ||
         it.matchedKeywords.some(k => k.toLowerCase().includes(q))
       );
     }
@@ -178,12 +177,10 @@ export default function MarketRadarPage() {
     return result;
   }, [items, selectedSignal, search]);
 
-  // Stats
-  const urgentCount = useMemo(() => {
-    return items.filter(it => it.signalType === 'OUT_OF_PLANS' || it.signalType === 'COLLAPSED_DEAL').length;
+  const immediateCount = useMemo(() => {
+    return items.filter(it => it.signalType === 'DISPUTE_CLAIM' || it.signalType === 'OUT_OF_PLANS' || it.signalType === 'FOREIGN_QUOTA').length;
   }, [items]);
 
-  // Add to Shortlist
   const handleAddToShortlist = async (item: MarketRadarItem) => {
     if (!user || !item.detectedPlayer?.name) return;
     setAddingId(item.id);
@@ -192,8 +189,13 @@ export default function MarketRadarPage() {
       await callShortlistAdd({
         platform,
         playerName: item.detectedPlayer.name,
+        playerPosition: item.detectedPlayer.position || null,
+        playerAge: item.detectedPlayer.age ? Number(item.detectedPlayer.age) : null,
+        clubJoinedName: item.detectedPlayer.club || null,
+        marketValue: item.detectedPlayer.marketValue || null,
+        playerNationality: item.detectedPlayer.nationality || null,
         tmProfileUrl: item.detectedPlayer.tmSearchUrl || `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(item.detectedPlayer.name)}`,
-        notes: `Market Radar: ${item.summary || item.signalReason} (${item.sourceName} · ${item.leagueName})`,
+        notes: `Secret Radar: ${item.summary || item.signalReason} (${item.sourceName} · ${item.leagueName})`,
         addedByAgentId: account.id,
         addedByAgentName: account.name ?? null,
         addedByAgentHebrewName: account.hebrewName ?? null,
@@ -205,12 +207,10 @@ export default function MarketRadarPage() {
     }
   };
 
-  // Toggle translation
   const toggleOriginal = (id: string) => {
     setShowOriginalMap(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Match check for a card against active club requests
   const getMatchingRequests = (item: MarketRadarItem) => {
     const text = `${item.headline} ${item.summary || ''} ${item.detectedPlayer?.name || ''} ${item.detectedPlayer?.position || ''}`.toLowerCase();
     return clubRequests.filter(req => {
@@ -220,35 +220,47 @@ export default function MarketRadarPage() {
     });
   };
 
-  // Draft Pitch Template
   const generatePitchText = (item: MarketRadarItem, targetClub = '') => {
     const playerName = item.detectedPlayer?.name || 'the player';
     const playerClub = item.detectedPlayer?.club ? ` (${item.detectedPlayer.club})` : '';
+    const pos = item.detectedPlayer?.position ? ` [${item.detectedPlayer.position}]` : '';
     const league = item.leagueName;
     const club = targetClub || (isRtl ? 'המועדון' : 'the club');
 
     if (isRtl) {
+      if (item.signalType === 'DISPUTE_CLAIM') {
+        return `שלום, מעדכן במידע סודי: ${playerName}${pos}${playerClub} מ-${league} הגיש תביעת בוררות רשמית להתרת חוזה מיידית עקב הלנת שכר ויהיה שחקן חופשי ללא דמי העברה בימים הקרובים. פרופיל מעולה לחיזוק ${club}. תרצו שנפתח מולו במגעים ראשוניים?`;
+      }
       if (item.signalType === 'OUT_OF_PLANS') {
-        return `שלום, רציתי לעדכן שקיבלנו מודיעין לפיו ${playerName}${playerClub} מ-${league} אינו נמצא בתוכניות המקצועיות ומתאמן בנפרד. הוא פתוח למעבר מיידי / השאלה בתנאים מצוינים. האם זה רלוונטי לחיזוק ${club}? נוכל להעביר פרופיל מלא ודרישות.`;
+        return `שלום, רציתי לעדכן שקיבלנו מודיעין לפיו ${playerName}${pos}${playerClub} מ-${league} נודה מהסגל ומתאמן בנפרד (B-Kern / Kadro Dışı). המועדון פתוח להשאלה מיידית עם השתתפות משמעותית בשכר. האם רלוונטי לחיזוק ${club}?`;
+      }
+      if (item.signalType === 'FOREIGN_QUOTA') {
+        return `שלום, ${playerName}${pos}${playerClub} מ-${league} הוקפא/נגרע מרישום הליגה עקב חריגת מכסת זרים. השחקן בכושר מלא וחייב לצאת בהשאלה מיידית. מתאים מאוד לסגל של ${club}.`;
       }
       if (item.signalType === 'COLLAPSED_DEAL') {
-        return `שלום, מעדכן שהמעבר של ${playerName}${playerClub} מ-${league} נפל ברגע האחרון עקב תנאי תשלום בין המועדונים. השחקן בכושר משחק מלא ומוכן לסגור יעד חדש מיידית. מתאים מאוד לסגל של ${club}. נשמח לשוחח.`;
+        return `שלום, מעדכן שהמעבר של ${playerName}${pos}${playerClub} מ-${league} נפל ברגע האחרון עקב תנאי תשלום בין המועדונים. השחקן בכושר משחק מלא ומוכן לסגור יעד חדש מיידית. מתאים מאוד לסגל של ${club}.`;
       }
-      return `שלום, לגבי ${playerName}${playerClub} מ-${league} - בעקבות שינוי במעמדו בקבוצה הוא פנוי וזמין להצטרפות בתנאים מעולים. מתאים מאוד לפרופיל של ${club}. מעוניינים בפרטים נוספים?`;
+      return `שלום, לגבי ${playerName}${pos}${playerClub} מ-${league} - בעקבות שינוי במעמדו בקבוצה הוא פנוי וזמין להצטרפות בתנאים מעולים. מתאים מאוד לפרופיל של ${club}. מעוניינים בפרטים נוספים?`;
     }
 
+    if (item.signalType === 'DISPUTE_CLAIM') {
+      return `Hi, confidential market alert: ${playerName}${pos}${playerClub} from ${league} has officially filed an arbitration dispute for contract dissolution and is becoming a direct free agent with zero transfer fee. High-value profile for ${club}. Would you like us to initiate terms with his representation?`;
+    }
     if (item.signalType === 'OUT_OF_PLANS') {
-      return `Hi, I wanted to reach out regarding ${playerName}${playerClub} from ${league}. According to our direct market intelligence, he is currently out of the manager's plans and available for an immediate loan/transfer. He would be an exceptional fit for ${club}. Let me know if you would like his full file and mandate terms.`;
+      return `Hi, I wanted to reach out regarding ${playerName}${pos}${playerClub} from ${league}. He has been formally demoted to train separately and the club is actively seeking an immediate loan with wage subsidy. Exceptional fit for ${club}.`;
+    }
+    if (item.signalType === 'FOREIGN_QUOTA') {
+      return `Hi, ${playerName}${pos}${playerClub} from ${league} has been deregistered from his club roster due to foreign quota limits. He is match-fit and available immediately. Would ${club} be open to exploring his mandate?`;
     }
     if (item.signalType === 'COLLAPSED_DEAL') {
-      return `Hi, quick update on ${playerName}${playerClub} from ${league} - his recent move collapsed at the final stage due to club payment terms. The player is fit, motivated, and actively looking for the right project. Would ${club} be interested in exploring this profile?`;
+      return `Hi, quick update on ${playerName}${pos}${playerClub} from ${league} - his recent transfer collapsed on deadline day over club payment structure. The player is fully fit and looking for an immediate move. Would ${club} be interested?`;
     }
-    return `Hi, following recent status changes for ${playerName}${playerClub} from ${league}, he is currently available on the market under favourable conditions. He matches the exact profile for ${club}. Let me know if you want his mandate overview.`;
+    return `Hi, regarding ${playerName}${pos}${playerClub} from ${league}, he is currently available under favourable terms due to recent club changes. He matches the exact requirements for ${club}. Let me know if you want his dossier.`;
   };
 
   return (
     <AppLayout>
-      <div className={`min-h-screen pb-12 ${isRtl ? 'text-right' : 'text-left'}`} dir={isRtl ? 'rtl' : 'ltr'}>
+      <div className={`min-h-screen pb-16 ${isRtl ? 'text-right' : 'text-left'}`} dir={isRtl ? 'rtl' : 'ltr'}>
         
         {/* ── Top Header ────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -257,11 +269,11 @@ export default function MarketRadarPage() {
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-mgsr-gold/15 text-mgsr-gold border border-mgsr-gold/30 uppercase tracking-widest animate-pulse">
                 ⚡ {t('radar_under_2_weeks')}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/10 text-white/70 border border-white/10">
-                MEN PLATFORM
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 uppercase tracking-widest">
+                SECRET WIRES & ARBITRATION
               </span>
             </div>
-            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2">
+            <h1 className="font-display text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
               📡 {t('radar_title')}
             </h1>
             <p className="text-sm text-white/60 mt-1 max-w-2xl">
@@ -271,7 +283,7 @@ export default function MarketRadarPage() {
 
           <div className="flex items-center gap-3">
             {lastUpdated && (
-              <span className="text-xs text-white/40 hidden md:inline">
+              <span className="text-xs text-white/40 hidden md:inline font-mono">
                 {t('news_updated_ago')} {Math.round((Date.now() - lastUpdated.getTime()) / 60000)}m
               </span>
             )}
@@ -288,26 +300,26 @@ export default function MarketRadarPage() {
 
         {/* ── Stats Overview ────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <div className="bg-mgsr-card/80 backdrop-blur-md border border-mgsr-border rounded-2xl p-3.5 sm:p-4 text-center shadow-lg relative overflow-hidden">
+          <div className="bg-gradient-to-br from-mgsr-card to-mgsr-card/60 backdrop-blur-md border border-mgsr-border rounded-2xl p-4 text-center shadow-lg relative overflow-hidden">
             <div className="text-2xl sm:text-3xl font-black text-mgsr-gold">
               {loading ? <span className="inline-block w-4 h-4 border-2 border-mgsr-gold border-t-transparent rounded-full animate-spin" /> : items.length}
             </div>
             <div className="text-[11px] text-white/60 font-medium uppercase tracking-wider mt-1">{t('radar_stat_total')}</div>
           </div>
 
-          <div className="bg-mgsr-card/80 backdrop-blur-md border border-mgsr-border rounded-2xl p-3.5 sm:p-4 text-center shadow-lg relative overflow-hidden">
+          <div className="bg-gradient-to-br from-mgsr-card to-mgsr-card/60 backdrop-blur-md border border-mgsr-border rounded-2xl p-4 text-center shadow-lg relative overflow-hidden">
             <div className="text-2xl sm:text-3xl font-black text-red-400">
-              {loading ? <span className="inline-block w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" /> : urgentCount}
+              {loading ? <span className="inline-block w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" /> : immediateCount}
             </div>
             <div className="text-[11px] text-white/60 font-medium uppercase tracking-wider mt-1">{t('radar_stat_critical')}</div>
           </div>
 
-          <div className="bg-mgsr-card/80 backdrop-blur-md border border-mgsr-border rounded-2xl p-3.5 sm:p-4 text-center shadow-lg relative overflow-hidden">
-            <div className="text-2xl sm:text-3xl font-black text-blue-400">35+</div>
+          <div className="bg-gradient-to-br from-mgsr-card to-mgsr-card/60 backdrop-blur-md border border-mgsr-border rounded-2xl p-4 text-center shadow-lg relative overflow-hidden">
+            <div className="text-2xl sm:text-3xl font-black text-blue-400">25+</div>
             <div className="text-[11px] text-white/60 font-medium uppercase tracking-wider mt-1">{t('radar_stat_regions')}</div>
           </div>
 
-          <div className="bg-mgsr-card/80 backdrop-blur-md border border-mgsr-border rounded-2xl p-3.5 sm:p-4 text-center shadow-lg relative overflow-hidden">
+          <div className="bg-gradient-to-br from-mgsr-card to-mgsr-card/60 backdrop-blur-md border border-mgsr-border rounded-2xl p-4 text-center shadow-lg relative overflow-hidden">
             <div className="text-2xl sm:text-3xl font-black text-emerald-400">14d</div>
             <div className="text-[11px] text-white/60 font-medium uppercase tracking-wider mt-1">{t('radar_stat_timeframe')}</div>
           </div>
@@ -352,7 +364,7 @@ export default function MarketRadarPage() {
                 >
                   <span>{tab.icon}</span>
                   <span>{t(tab.labelKey)}</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
                     selectedSignal === tab.id ? 'bg-black/40 text-white' : 'bg-white/5 text-white/50'
                   }`}>
                     {count}
@@ -392,17 +404,18 @@ export default function MarketRadarPage() {
         {/* ── Loading Skeleton ──────────────────────────────────────── */}
         {loading && (
           <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="bg-mgsr-card border border-mgsr-border rounded-2xl p-5 animate-pulse space-y-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-mgsr-card border border-mgsr-border rounded-2xl p-5 animate-pulse space-y-4">
                 <div className="flex justify-between items-center">
-                  <div className="h-5 bg-white/10 rounded-full w-44" />
-                  <div className="h-4 bg-white/10 rounded w-20" />
+                  <div className="h-6 bg-white/10 rounded-full w-48" />
+                  <div className="h-4 bg-white/10 rounded w-24" />
                 </div>
-                <div className="h-6 bg-white/10 rounded w-4/5" />
-                <div className="h-4 bg-white/5 rounded w-3/5" />
+                <div className="h-16 bg-white/5 rounded-xl w-full" />
+                <div className="h-5 bg-white/10 rounded w-3/4" />
+                <div className="h-4 bg-white/5 rounded w-5/6" />
                 <div className="flex gap-2 pt-2">
-                  <div className="h-8 bg-white/10 rounded-lg w-28" />
-                  <div className="h-8 bg-white/10 rounded-lg w-28" />
+                  <div className="h-9 bg-white/10 rounded-xl w-32" />
+                  <div className="h-9 bg-white/10 rounded-xl w-32" />
                 </div>
               </div>
             ))}
@@ -425,7 +438,7 @@ export default function MarketRadarPage() {
           </div>
         )}
 
-        {/* ── Disruption Cards Feed ─────────────────────────────────── */}
+        {/* ── Opportunity Dossier Cards Feed ────────────────────────── */}
         {!loading && filteredItems.length > 0 && (
           <div className="space-y-4">
             {filteredItems.map(item => {
@@ -436,26 +449,14 @@ export default function MarketRadarPage() {
                 ? shortlistNames.has(item.detectedPlayer.name.toLowerCase().trim())
                 : false;
 
-              // Color scheme according to signal type
-              const badgeStyle =
-                item.signalType === 'OUT_OF_PLANS' ? 'bg-red-500/15 text-red-400 border-red-500/30' :
-                item.signalType === 'COLLAPSED_DEAL' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' :
-                item.signalType === 'STATUS_DEMOTION' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' :
-                item.signalType === 'CONTRACT_STANDOFF' ? 'bg-purple-500/15 text-purple-400 border-purple-500/30' :
-                'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
-
-              const signalLabel =
-                item.signalType === 'OUT_OF_PLANS' ? t('radar_signal_out_of_plans') :
-                item.signalType === 'COLLAPSED_DEAL' ? t('radar_signal_collapsed') :
-                item.signalType === 'STATUS_DEMOTION' ? t('radar_signal_status') :
-                item.signalType === 'CONTRACT_STANDOFF' ? t('radar_signal_contract') :
-                t('radar_signal_listed');
+              const badgeConfig = SIGNAL_TABS.find(t => t.id === item.signalType) || SIGNAL_TABS[0];
+              const signalLabel = t(badgeConfig.labelKey);
 
               return (
                 <div
                   key={item.id}
                   onClick={() => window.open(item.url, '_blank')}
-                  className="bg-mgsr-card border border-mgsr-border hover:border-mgsr-gold/80 hover:shadow-xl hover:shadow-mgsr-gold/5 rounded-2xl p-4 sm:p-5 transition-all shadow-md group relative overflow-hidden cursor-pointer"
+                  className="bg-gradient-to-br from-mgsr-card via-mgsr-card/95 to-mgsr-card/80 border border-mgsr-border hover:border-mgsr-gold/70 hover:shadow-2xl hover:shadow-mgsr-gold/5 rounded-2xl p-5 sm:p-6 transition-all shadow-md group relative overflow-hidden cursor-pointer"
                   role="link"
                   tabIndex={0}
                   onKeyDown={(e) => {
@@ -465,12 +466,13 @@ export default function MarketRadarPage() {
                     }
                   }}
                 >
-                  {/* Top Bar: Signal Badge + Source + League + Time */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  {/* Top Metadata Header */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5 pb-3 border-b border-white/5">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 ${badgeStyle}`}>
+                      <span className={`px-3 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 ${badgeConfig.badgeClass}`}>
                         <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
-                        {signalLabel}
+                        <span>{badgeConfig.icon}</span>
+                        <span>{signalLabel}</span>
                       </span>
 
                       {item.isSocial && (
@@ -480,7 +482,7 @@ export default function MarketRadarPage() {
                         </span>
                       )}
 
-                      <span className="text-xs text-white/50 flex items-center gap-1 font-medium">
+                      <span className="text-xs text-white/50 flex items-center gap-1.5 font-medium">
                         <span>{item.countryFlag}</span>
                         <span>{item.leagueName}</span>
                         <span>·</span>
@@ -489,14 +491,14 @@ export default function MarketRadarPage() {
                     </div>
 
                     <div className="flex items-center gap-2 text-xs text-white/40">
-                      <span>{item.timeAgo || item.dateFormatted}</span>
+                      <span className="font-mono">{item.timeAgo || item.dateFormatted}</span>
                       {item.originalLang !== 'en' && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleOriginal(item.id);
                           }}
-                          className="px-2 py-0.5 rounded border border-white/10 text-[10px] text-white/60 hover:text-mgsr-gold hover:border-mgsr-gold/40 transition z-10"
+                          className="px-2.5 py-0.5 rounded border border-white/10 text-[10px] text-white/60 hover:text-mgsr-gold hover:border-mgsr-gold/40 transition z-10"
                         >
                           {showOriginal ? `🇺🇸 ${t('radar_toggle_translated')}` : `🌐 ${t('radar_toggle_original')} (${item.originalLang.toUpperCase()})`}
                         </button>
@@ -504,11 +506,11 @@ export default function MarketRadarPage() {
                     </div>
                   </div>
 
-                  {/* Prominent Player Profile Row */}
+                  {/* ── Player Opportunity Dossier Banner ── */}
                   {item.detectedPlayer?.name && (
-                    <div className="mb-3 p-3 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-mgsr-gold/15 border border-mgsr-gold/30 flex items-center justify-center text-base font-bold text-mgsr-gold">
+                    <div className="mb-4 p-3.5 sm:p-4 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-between flex-wrap gap-3">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-mgsr-gold/20 to-mgsr-gold/5 border border-mgsr-gold/40 flex items-center justify-center text-lg font-black text-mgsr-gold shadow-inner flex-shrink-0">
                           👤
                         </div>
                         <div>
@@ -521,12 +523,30 @@ export default function MarketRadarPage() {
                                 {item.detectedPlayer.position}
                               </span>
                             )}
+                            {item.detectedPlayer.age && (
+                              <span className="text-xs text-white/50 bg-white/5 px-2 py-0.5 rounded border border-white/5 font-mono">
+                                {item.detectedPlayer.age}y
+                              </span>
+                            )}
                           </div>
-                          {item.detectedPlayer.club && (
-                            <span className="text-xs text-white/60 block mt-0.5">
-                              {item.countryFlag} {item.detectedPlayer.club}
-                            </span>
-                          )}
+
+                          <div className="flex items-center gap-3 text-xs text-white/60 mt-1 flex-wrap">
+                            {item.detectedPlayer.club && (
+                              <span className="font-medium text-white/80">
+                                {item.countryFlag} {item.detectedPlayer.club}
+                              </span>
+                            )}
+                            {item.detectedPlayer.marketValue && (
+                              <span className="font-semibold text-emerald-400">
+                                💰 {item.detectedPlayer.marketValue}
+                              </span>
+                            )}
+                            {item.detectedPlayer.nationality && (
+                              <span className="text-white/50">
+                                🌍 {item.detectedPlayer.nationality}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -536,7 +556,7 @@ export default function MarketRadarPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-white/5 hover:bg-mgsr-gold/20 text-mgsr-gold border border-mgsr-gold/30 transition flex items-center gap-1 z-10"
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-mgsr-gold/20 text-mgsr-gold border border-mgsr-gold/30 transition flex items-center gap-1 z-10 shadow-sm"
                         >
                           <span>🌐 {t('radar_btn_tm')}</span>
                           <span className="text-[10px]">↗</span>
@@ -546,31 +566,37 @@ export default function MarketRadarPage() {
                   )}
 
                   {/* Headline (Crystal Clear English) */}
-                  <h3 className="text-base sm:text-lg font-bold text-white mb-2 leading-snug group-hover:text-mgsr-gold transition">
+                  <h3 className="text-base sm:text-lg font-bold text-white mb-2.5 leading-snug group-hover:text-mgsr-gold transition">
                     {displayHeadline}
                   </h3>
 
-                  {/* Summary (Situation Breakdown) */}
+                  {/* Situation Brief */}
                   {item.summary && (
-                    <p className="text-sm text-white/80 leading-relaxed mb-3 bg-white/[0.02] p-2.5 rounded-lg border border-white/5">
+                    <div className="text-sm text-white/80 leading-relaxed mb-3.5 bg-black/20 p-3 rounded-xl border border-white/5">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-white/40 block mb-1 font-mono">
+                        📋 {t('radar_summary')}
+                      </span>
                       {item.summary}
-                    </p>
+                    </div>
                   )}
 
-                  {/* Agent Opportunity Takeaway Pill */}
+                  {/* Agent Opportunity Takeaway Callout */}
                   {item.agentTakeaway && (
-                    <div className="mb-3.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium flex items-center gap-2">
-                      <span className="text-sm">🎯</span>
-                      <span>
-                        <strong>{t('radar_agent_takeaway')}:</strong> {item.agentTakeaway}
-                      </span>
+                    <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium flex items-start gap-2.5 shadow-sm">
+                      <span className="text-base leading-none">💡</span>
+                      <div>
+                        <strong className="font-bold text-amber-200 uppercase tracking-wide block text-[11px] mb-0.5">
+                          {t('radar_agent_takeaway')}:
+                        </strong>
+                        <span className="leading-relaxed text-amber-100">{item.agentTakeaway}</span>
+                      </div>
                     </div>
                   )}
 
                   {/* Matching Club Request Notification */}
                   {matchingReqs.length > 0 && (
-                    <div className="mb-3.5 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2">
-                      <span>🎯</span>
+                    <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2 shadow-sm">
+                      <span className="text-base">🎯</span>
                       <span>
                         {t('radar_match_request')}: {matchingReqs.map(r => r.clubName).filter(Boolean).join(', ')}
                       </span>
@@ -578,7 +604,7 @@ export default function MarketRadarPage() {
                   )}
 
                   {/* Action Bar */}
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5 flex-wrap">
+                  <div className="flex items-center justify-between gap-2 pt-3 border-t border-white/5 flex-wrap">
                     <div className="flex items-center gap-2">
                       {/* Shortlist Action */}
                       {item.detectedPlayer?.name && (
@@ -588,7 +614,7 @@ export default function MarketRadarPage() {
                             handleAddToShortlist(item);
                           }}
                           disabled={isAddedToShortlist || addingId === item.id}
-                          className={`text-xs px-3 py-1.5 rounded-lg border transition font-semibold min-h-[36px] flex items-center gap-1.5 z-10 ${
+                          className={`text-xs px-3.5 py-1.5 rounded-lg border transition font-semibold min-h-[36px] flex items-center gap-1.5 z-10 shadow-sm ${
                             isAddedToShortlist
                               ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 cursor-default'
                               : 'border-mgsr-gold/50 text-mgsr-gold hover:bg-mgsr-gold/15 active:scale-95'
@@ -607,7 +633,7 @@ export default function MarketRadarPage() {
                           setPitchClubName(matchingReqs[0]?.clubName || '');
                           setPitchCopied(false);
                         }}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-blue-400/40 text-blue-400 hover:bg-blue-400/15 transition font-semibold min-h-[36px] flex items-center gap-1.5 active:scale-95 z-10"
+                        className="text-xs px-3.5 py-1.5 rounded-lg border border-blue-400/40 text-blue-400 hover:bg-blue-400/15 transition font-semibold min-h-[36px] flex items-center gap-1.5 active:scale-95 z-10 shadow-sm"
                       >
                         <span>📋</span>
                         <span>{t('radar_btn_pitch')}</span>
@@ -628,7 +654,7 @@ export default function MarketRadarPage() {
 
         {/* ── Draft Pitch Modal / Drawer ────────────────────────────── */}
         {pitchItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
             <div className="bg-mgsr-card border border-mgsr-border rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-white/10">
                 <div>
@@ -652,7 +678,7 @@ export default function MarketRadarPage() {
                   type="text"
                   value={pitchClubName}
                   onChange={e => setPitchClubName(e.target.value)}
-                  placeholder="e.g. Maccabi Tel Aviv, Panathinaikos, Genk..."
+                  placeholder="e.g. Maccabi Tel Aviv, Panathinaikos, Genk, CFR Cluj..."
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-mgsr-gold outline-none"
                 />
               </div>
