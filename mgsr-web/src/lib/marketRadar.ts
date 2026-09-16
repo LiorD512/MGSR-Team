@@ -3,8 +3,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getCached, setCache } from './scrapingCache';
 
 export type MarketSignalType =
-  | 'OUT_OF_PLANS'       // 🔴 Exiled, reserve team, bomb squad, left out of pre-season/squad
-  | 'DISPUTE_CLAIM'      // ⚖️ Unpaid salary arbitration claim, contract termination filing
+  | 'OUT_OF_PLANS'       // 🔴 Exiled, reserve team (B-Kern/Kadro Dışı), left out of pre-season/squad
+  | 'DISPUTE_CLAIM'      // ⚖️ Unpaid salary arbitration claim, contract termination filing (FRF/UÇK/EPO)
   | 'COLLAPSED_DEAL'     // ⚠️ Failed medical, terms collapsed, deal fell through
   | 'FOREIGN_QUOTA'      // 🚫 Foreign player quota casualty / deregistered from squad
   | 'CONTRACT_STANDOFF'  // ⏳ Refusing renewal, contract dispute, frozen until sign, last 6-12 months
@@ -24,8 +24,8 @@ export interface MarketRadarItem {
   id: string;
   headline: string;
   originalHeadline?: string;
-  summary?: string;
-  agentTakeaway?: string;
+  summary: string;
+  agentTakeaway: string;
   url: string;
   sourceName: string;
   isSocial?: boolean;
@@ -40,7 +40,7 @@ export interface MarketRadarItem {
   signalType: MarketSignalType;
   signalConfidence: number; // 0-100
   signalReason: string;
-  detectedPlayer?: {
+  detectedPlayer: {
     name: string;
     club?: string;
     position?: string;
@@ -69,9 +69,9 @@ export interface MarketRadarQueryConfig {
 }
 
 /**
- * Hyper-Focused Secret Market Queries:
- * Targeting arbitration dockets, exile reports (B-Kern, Kadro Disi, Memoriu FRF),
- * contract terminations, and insider social scoops across realistic agent markets.
+ * 100% Football-Scoped Secret Market Queries:
+ * Every single query strictly requires football/soccer terminology, club context,
+ * and targeted dispute/exile keywords in the native language.
  */
 export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
   // ─── 🇮🇱 🇨🇾 🇬🇷 ZONE 1: ISRAEL, CYPRUS & GREECE ──────────────────────────────
@@ -81,7 +81,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Israel',
     flag: '🇮🇱',
     region: 'israel_greece',
-    query: '(site:sport5.co.il OR site:one.co.il OR site:sport1.maariv.co.il OR site:sports.walla.co.il OR site:ynet.co.il/sport) כדורגל ("לא בתוכניות" OR "מתאמן בנפרד" OR "הודח מהסגל" OR "הורד לנוער" OR "נשלח ליציע" OR "עסקה פוצצה" OR "פוצץ המו\\"מ" OR "נפל ברגע האחרון" OR "בוררות" OR "תביעת בוררות" OR "מבוי סתום במו\\"מ" OR "מסרב להאריך חוזה" OR "רשאי לחפש קבוצה" OR "הוצב ברשימת ההעברות" OR "מועמד לעזיבה" OR "בדרך החוצה" OR "התרת חוזה" OR "הקפאת שחקן זר")',
+    query: 'כדורגל (שחקן OR קשר OR חלוץ OR בלם OR מגן OR שוער) ("לא בתוכניות" OR "מתאמן בנפרד" OR "הודח מהסגל" OR "הורד לנוער" OR "נשלח ליציע" OR "עסקה פוצצה" OR "בוררות" OR "תביעת בוררות" OR "מבוי סתום במו\"מ" OR "מסרב להאריך חוזה" OR "רשאי לחפש קבוצה" OR "הוצב ברשימת ההעברות" OR "מועמד לעזיבה" OR "התרת חוזה" OR "הקפאת שחקן זר")',
     hl: 'he',
     gl: 'IL',
     ceid: 'IL:he',
@@ -93,7 +93,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Cyprus',
     flag: '🇨🇾',
     region: 'israel_greece',
-    query: '(site:kerkida.net OR site:protathlima.com OR site:sport-fm.com.cy OR site:24sports.com.cy OR site:shootandgoal.cyprustimes.com) ("εκτός ομάδας" OR "εκτός πλάνων" OR "ναυάγιο" OR "χάλασε η μεταγραφή" OR "προσφυγή" OR "λύση συμβολαίου" OR "κοινή συναινέσει" OR "διαγραφή από το ρόστερ" OR "ξένος εκτός λίστας" OR "δεν υπολογίζεται")',
+    query: '(ποδόσφαιρο OR ποδοσφαιριστής OR μεταγραφή) (site:kerkida.net OR site:protathlima.com OR site:sport-fm.com.cy OR site:24sports.com.cy OR site:shootandgoal.cyprustimes.com) ("εκτός ομάδας" OR "εκτός πλάνων" OR "χάλασε η μεταγραφή" OR "προσφυγή" OR "λύση συμβολαίου" OR "κοινή συναινέσει" OR "διαγραφή από το ρόστερ" OR "ξένος εκτός λίστας" OR "δεν υπολογίζεται")',
     hl: 'el',
     gl: 'CY',
     ceid: 'CY:el',
@@ -105,7 +105,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Greece',
     flag: '🇬🇷',
     region: 'israel_greece',
-    query: '(site:gazzetta.gr OR site:sport24.gr OR site:sdna.gr OR site:sport-fm.gr OR site:novasports.gr OR site:monobala.gr) ("εκτός πλάνων" OR "στη δεύτερη ομάδα" OR "κόπηκε από την προετοιμασία" OR "ναυάγιο" OR "χάλασε η μεταγραφή" OR "προσφυγή στην ΕΠΟ" OR "απλήρωτος" OR "αδιέξοδο στις συζητήσεις" OR "αρνείται να ανανεώσει" OR "προς αποχώρηση" OR "λύση συνεργασίας")',
+    query: '(ποδόσφαιρο OR ποδοσφαιριστής OR μεταγραφή) (site:gazzetta.gr OR site:sport24.gr OR site:sdna.gr OR site:sport-fm.gr OR site:novasports.gr OR site:monobala.gr) ("εκτός πλάνων" OR "στη δεύτερη ομάδα" OR "κόπηκε από την προετοιμασία" OR "χάλασε η μεταγραφή" OR "προσφυγή στην ΕΠΟ" OR "απλήρωτος" OR "αδιέξοδο στις συζητήσεις" OR "αρνείται να ανανεώσει" OR "προς αποχώρηση" OR "λύση συνεργασίας")',
     hl: 'el',
     gl: 'GR',
     ceid: 'GR:el',
@@ -117,7 +117,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Israel/Cyprus',
     flag: '📱',
     region: 'social',
-    query: 'site:instagram.com ("ליגת העל" OR "הליגה הלאומית" OR "Cyta Championship" OR "Maccabi" OR "Hapoel" OR "APOEL" OR "Omonia" OR "Anorthosis" OR "Paphos") ("לא בתוכניות" OR "שחרור" OR "מתאמן בנפרד" OR "בוררות" OR "עוזב" OR "מועמד לעזיבה" OR "out of plans" OR "contract terminated")',
+    query: 'site:instagram.com (כדורגל OR football) ("ליגת העל" OR "Maccabi" OR "Hapoel" OR "Beitar" OR "APOEL" OR "Omonia" OR "Anorthosis" OR "Paphos") ("לא בתוכניות" OR "מתאמן בנפרד" OR "בוררות" OR "עוזב" OR "מועמד לעזיבה" OR "out of plans" OR "contract terminated")',
     hl: 'he',
     gl: 'IL',
     ceid: 'IL:he',
@@ -133,7 +133,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Romania',
     flag: '🇷🇴',
     region: 'eastern_eu',
-    query: '(site:gsp.ro OR site:prosport.ro OR site:digisport.ro OR site:fanatik.ro/sport OR site:frf.ro) ("memoriu depus" OR "camera de solutionare a litigiilor" OR "exclus din lot" OR "trimis la echipa a doua" OR "nu mai intra in vederile" OR "declarat jucator liber" OR "neplatit" OR "reziliere pe cale amiabila" OR "transfer picat" OR "salarii restante")',
+    query: '(fotbal OR fotbalist OR transfer) (site:gsp.ro OR site:prosport.ro OR site:digisport.ro OR site:fanatik.ro/sport) ("memoriu depus" OR "camera de solutionare a litigiilor" OR "exclus din lot" OR "trimis la echipa a doua" OR "nu mai intra in vederile" OR "declarat jucator liber" OR "neplatit" OR "reziliere pe cale amiabila" OR "salarii restante")',
     hl: 'ro',
     gl: 'RO',
     ceid: 'RO:ro',
@@ -146,7 +146,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Poland',
     flag: '🇵🇱',
     region: 'eastern_eu',
-    query: '(site:meczyki.pl OR site:weszlo.com OR site:przegladsportowy.onet.pl OR site:sportowefakty.wp.pl OR site:90minut.pl) ("odsunięty od składu" OR "zesłany do rezerw" OR "Klub Kokosa" OR "rozwiązanie kontraktu z winy klubu" OR "nie ma przyszłości" OR "transfer upadł" OR "odrzucił ofertę przedłużenia" OR "na wylocie" OR "lista transferowa" OR "wolna ręka w poszukiwaniu klubu")',
+    query: '(piłka nożna OR piłkarz OR transfer) (site:meczyki.pl OR site:weszlo.com OR site:przegladsportowy.onet.pl OR site:sportowefakty.wp.pl OR site:90minut.pl) ("odsunięty od składu" OR "zesłany do rezerw" OR "Klub Kokosa" OR "rozwiązanie kontraktu z winy klubu" OR "nie ma przyszłości" OR "transfer upadł" OR "odrzucił ofertę przedłużenia" OR "na wylocie" OR "lista transferowa" OR "wolna ręka w poszukiwaniu klubu")',
     hl: 'pl',
     gl: 'PL',
     ceid: 'PL:pl',
@@ -159,7 +159,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Czech Republic',
     flag: '🇨🇿',
     region: 'eastern_eu',
-    query: '(site:isport.blesk.cz OR site:sport.cz OR site:efotbal.cz OR site:sport.aktuality.sk) ("přeřazen do béčka" OR "nepočítá s ním" OR "vyřazen z kádru" OR "arbitráž" OR "přestup padl" OR "neprošel zdravotní prohlídkou" OR "odmítl novou smlouvu" OR "ukončení smlouvy" OR "může si hledat angažmá")',
+    query: '(fotbal OR fotbalista OR přestup) (site:isport.blesk.cz OR site:sport.cz OR site:efotbal.cz OR site:sport.aktuality.sk) ("přeřazen do béčka" OR "nepočítá s ním" OR "vyřazen z kádru" OR "arbitráž" OR "přestup padl" OR "neprošel zdravotní prohlídkou" OR "odmítl novou smlouvu" OR "ukončení smlouvy" OR "může si hledat angažmá")',
     hl: 'cs',
     gl: 'CZ',
     ceid: 'CZ:cs',
@@ -172,7 +172,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Hungary/Bulgaria',
     flag: '🇭🇺',
     region: 'eastern_eu',
-    query: '(site:nemzetisport.hu OR site:csakfoci.hu OR site:m4sport.hu OR site:sportal.bg OR site:gong.bg) ("kikerült a keretből" OR "a második csapathoz irányították" OR "szerződésbontás" OR "nem lép pályára" OR "meghiúsult az átigazolás" OR "átadólistára került" OR "távozhat" OR "разтрогване на договор" OR "извън групата")',
+    query: '(labdarúgás OR futball OR játékos OR футбол) (site:nemzetisport.hu OR site:csakfoci.hu OR site:m4sport.hu OR site:sportal.bg OR site:gong.bg) ("kikerült a keretből" OR "a második csapathoz irányították" OR "szerződésbontás" OR "meghiúsult az átigazolás" OR "átadólistára került" OR "távozhat" OR "разтрогване на договор" OR "извън групата")',
     hl: 'hu',
     gl: 'HU',
     ceid: 'HU:hu',
@@ -187,7 +187,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Turkey',
     flag: '🇹🇷',
     region: 'turkey_balkans',
-    query: '(site:sportsdigitale.com OR site:fanatik.com.tr OR site:fotomac.com.tr OR site:ajansspor.com OR site:ntvspor.net OR site:aspor.com.tr OR site:tff.org) ("kadro dışı" OR "kadro dışı bırakıldı" OR "A takımdan uzaklaştırıldı" OR "UÇK başvuru" OR "Uyuşmazlık Çözüm Kurulu" OR "tek taraflı fesih" OR "karşılıklı fesih" OR "yabancı kontenjanı dışı" OR "lisansı askıya alındı" OR "transferi yattı")',
+    query: '(futbol OR futbolcu OR transfer) (site:sportsdigitale.com OR site:fanatik.com.tr OR site:fotomac.com.tr OR site:ajansspor.com OR site:ntvspor.net OR site:aspor.com.tr) ("kadro dışı" OR "kadro dışı bırakıldı" OR "A takımdan uzaklaştırıldı" OR "UÇK başvuru" OR "Uyuşmazlık Çözüm Kurulu" OR "tek taraflı fesih" OR "karşılıklı fesih" OR "yabancı kontenjanı dışı" OR "lisansı askıya alındı" OR "transferi yattı")',
     hl: 'tr',
     gl: 'TR',
     ceid: 'TR:tr',
@@ -200,7 +200,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Croatia',
     flag: '🇭🇷',
     region: 'turkey_balkans',
-    query: '(site:germanijak.hr OR site:sportske.jutarnji.hr OR site:index.hr/sport OR site:dalmatinskiportal.hr/sport) ("prebačen u drugu momčad" OR "otpisan" OR "nije u planovima" OR "raskid ugovora" OR "propao transfer" OR "pao liječnički" OR "odbio novi ugovor" OR "na izlaznim vratima" OR "slobodan igrač")',
+    query: '(nogomet OR nogometaš OR transfer) (site:germanijak.hr OR site:sportske.jutarnji.hr OR site:index.hr/sport OR site:dalmatinskiportal.hr/sport) ("prebačen u drugu momčad" OR "otpisan" OR "nije u planovima" OR "raskid ugovora" OR "propao transfer" OR "pao liječnički" OR "odbio novi ugovor" OR "na izlaznim vratima" OR "slobodan igrač")',
     hl: 'hr',
     gl: 'HR',
     ceid: 'HR:hr',
@@ -213,7 +213,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Serbia',
     flag: '🇷🇸',
     region: 'turkey_balkans',
-    query: '(site:mozzartsport.com OR site:zurnal.rs OR site:telegraf.rs/sport OR site:butasport.rs) ("precrtan" OR "prekomandovan u rezerve" OR "raskid ugovora" OR "arbitražna komisija" OR "ne računa na njega" OR "propao transfer" OR "odbio produžetak" OR "na transfer listi")',
+    query: '(fudbal OR fudbaler OR transfer) (site:mozzartsport.com OR site:zurnal.rs OR site:telegraf.rs/sport OR site:butasport.rs) ("precrtan" OR "prekomandovan u rezerve" OR "raskid ugovora" OR "arbitražna komisija" OR "ne računa na njega" OR "propao transfer" OR "odbio produžetak" OR "na transfer listi")',
     hl: 'sr',
     gl: 'RS',
     ceid: 'RS:sr',
@@ -225,7 +225,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Turkey/Balkans',
     flag: '📱',
     region: 'social',
-    query: 'site:instagram.com ("Süper Lig" OR "HNL" OR "Besiktas" OR "Galatasaray" OR "Fenerbahce" OR "Trabzonspor" OR "Dinamo Zagreb" OR "Hajduk Split" OR "Crvena Zvezda" OR "Partizan") ("kadro dışı" OR "fesih" OR "raskid" OR "out of plans" OR "free agent" OR "contract terminated")',
+    query: 'site:instagram.com (football OR futbol) ("Süper Lig" OR "HNL" OR "Besiktas" OR "Galatasaray" OR "Fenerbahce" OR "Trabzonspor" OR "Dinamo Zagreb" OR "Hajduk Split" OR "Crvena Zvezda" OR "Partizan") ("kadro dışı" OR "fesih" OR "raskid" OR "out of plans" OR "free agent" OR "contract terminated")',
     hl: 'tr',
     gl: 'TR',
     ceid: 'TR:tr',
@@ -240,7 +240,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Sweden',
     flag: '🇸🇪',
     region: 'nordics',
-    query: '(site:fotbolltransfers.com OR site:fotbollskanalen.se OR site:expressen.se/kvallsposten OR site:aftonbladet.se/sportbladet OR site:fotbolldirekt.se) ("utfryst" OR "petad" OR "inte i planerna" OR "tränar med u21" OR "bryter kontraktet" OR "övergången sprack" OR "nobbar förlängning" OR "vägrar skriva på" OR "får lämna" OR "på transferlistan")',
+    query: '(fotboll OR fotbollsspelare OR värvning) (site:fotbolltransfers.com OR site:fotbollskanalen.se OR site:expressen.se/kvallsposten OR site:aftonbladet.se/sportbladet OR site:fotbolldirekt.se) ("utfryst" OR "petad" OR "inte i planerna" OR "tränar med u21" OR "bryter kontraktet" OR "övergången sprack" OR "nobbar förlängning" OR "vägrar skriva på" OR "får lämna" OR "på transferlistan")',
     hl: 'sv',
     gl: 'SE',
     ceid: 'SE:sv',
@@ -252,7 +252,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Denmark/Norway',
     flag: '🇩🇰',
     region: 'nordics',
-    query: '(site:bold.dk OR site:tipsbladet.dk OR site:bt.dk/fodbold OR site:nettavisen.no/sport OR site:vg.no/sport OR site:tv2.no/sport) ("vraget" OR "sendt ned på andetholdet" OR "ikke i planerne" OR "ophæver kontrakten" OR "strandet skifte" OR "afviser forlængelse" OR "fritstillet" OR "vraket" OR "får forlate klubben")',
+    query: '(fodbold OR fotball OR spiller) (site:bold.dk OR site:tipsbladet.dk OR site:bt.dk/fodbold OR site:nettavisen.no/sport OR site:vg.no/sport OR site:tv2.no/sport) ("vraget" OR "sendt ned på andetholdet" OR "ikke i planerne" OR "ophæver kontrakten" OR "strandet skifte" OR "afviser forlængelse" OR "fritstillet" OR "vraket" OR "får forlate klubben")',
     hl: 'da',
     gl: 'DK',
     ceid: 'DK:da',
@@ -266,7 +266,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Belgium',
     flag: '🇧🇪',
     region: 'mid_tier_west',
-    query: '(site:walfoot.be OR site:voetbalkrant.com OR site:hln.be OR site:nieuwsblad.be OR site:voetbalbelgie.be OR site:sporza.be) ("naar de B-kern verwezen" OR "B-kern" OR "noyau B" OR "mis a lecart" OR "overbodig" OR "geen toekomst meer" OR "contract ontbonden" OR "transfer afgeketst" OR "mag beschikken" OR "op zoek naar een nieuwe club")',
+    query: '(voetbal OR speler OR transfer) (site:walfoot.be OR site:voetbalkrant.com OR site:hln.be OR site:nieuwsblad.be OR site:voetbalbelgie.be OR site:sporza.be) ("naar de B-kern verwezen" OR "B-kern" OR "noyau B" OR "mis a lecart" OR "overbodig" OR "geen toekomst meer" OR "contract ontbonden" OR "transfer afgeketst" OR "mag beschikken" OR "op zoek naar een nieuwe club")',
     hl: 'nl',
     gl: 'BE',
     ceid: 'BE:nl',
@@ -278,7 +278,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Netherlands/Portugal/Swiss',
     flag: '🇳🇱',
     region: 'mid_tier_west',
-    query: '(site:vi.nl OR site:voetbalzone.nl OR site:maisfutebol.iol.pt OR site:zerozero.pt OR site:4-4-2.ch OR site:blick.ch) ("buiten de selectie" OR "op een zijspoor" OR "naar de beloften" OR "ontbinding contract" OR "fora dos planos" OR "riscado" OR "a treinar a parte" OR "rescisao amigavel" OR "aussortiert" OR "freigestellt")',
+    query: '(voetbal OR futebol OR fussball) (site:vi.nl OR site:voetbalzone.nl OR site:maisfutebol.iol.pt OR site:zerozero.pt OR site:4-4-2.ch OR site:blick.ch) ("buiten de selectie" OR "op een zijspoor" OR "naar de beloften" OR "ontbinding contract" OR "fora dos planos" OR "riscado" OR "a treinar a parte" OR "rescisao amigavel" OR "aussortiert" OR "freigestellt")',
     hl: 'nl',
     gl: 'NL',
     ceid: 'NL:nl',
@@ -292,7 +292,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'South America / Gulf',
     flag: '🇧🇷',
     region: 'south_america_gulf',
-    query: '(site:ge.globo.com OR site:lance.com.br OR site:uol.com.br/esporte OR site:ole.com.ar OR site:tycsports.com OR site:arriyadiyah.com) ("afastado do elenco" OR "treinando separado" OR "fora dos planos" OR "rescisao de contrato" OR "colgado" OR "separado del plantel" OR "no sera tenido en cuenta" OR "rescision" OR "استبعاد من قائمة الفريق" OR "فسخ عقد")',
+    query: '(futebol OR futbol OR كرة القدم) (site:ge.globo.com OR site:lance.com.br OR site:uol.com.br/esporte OR site:ole.com.ar OR site:tycsports.com OR site:arriyadiyah.com) ("afastado do elenco" OR "treinando separado" OR "fora dos planos" OR "rescisao de contrato" OR "colgado" OR "separado del plantel" OR "no sera tenido en cuenta" OR "rescision" OR "استبعاد من قائمة الفريق" OR "فسخ عقد")',
     hl: 'pt-BR',
     gl: 'BR',
     ceid: 'BR:pt-419',
@@ -306,7 +306,7 @@ export const MARKET_RADAR_QUERIES: MarketRadarQueryConfig[] = [
     country: 'Social Media',
     flag: '📱',
     region: 'social',
-    query: 'site:instagram.com ("transfer market" OR "football transfer" OR "calciomercato" OR "mercato" OR "transfer news") ("frozen out" OR "out of plans" OR "contract terminated" OR "failed medical" OR "banned from training" OR "b-kern" OR "kadro disi")',
+    query: 'site:instagram.com ("football player" OR "soccer player" OR "calciomercato" OR "mercato" OR "transfer news") ("frozen out" OR "out of plans" OR "contract terminated" OR "failed medical" OR "banned from training" OR "b-kern" OR "kadro disi")',
     hl: 'en',
     gl: 'US',
     ceid: 'US:en',
@@ -352,7 +352,7 @@ const COLLAPSED_DEAL_KEYWORDS = [
   "wechsel geplatzt", "medizincheck nicht bestanden", "verhandlungen abgebrochen", "transfer gescheitert",
   "transfert avorte", "visite medicale ratee", "negocio abortado", "transferencia abortada", "negociacao melou",
   "transferencia travou", "transfer afgeketst", "transfer geklapt", "medische keuring niet doorstaan",
-  "transferi yattı", "transferi yatti", "transfer iptal", "saglik kontrolunden gecemedi", "ναυάγιο",
+  "transferi yattı", "transferi yatti", "transfer iptal", "saglik kontrolunden gecemedi",
   "χάλασε η μεταγραφή", "κόπηκε στα ιατρικά", "transfer upadł", "fiasko transferu", "propao transfer",
   "pao liječnički", "přestup padl", "transfer picat", "meghisult az atigazolas", "עסקה פוצצה", "פוצץ המו\"מ",
   "נפל ברגע האחרון", "נכשל בבדיקות הרפואיות", "המו\"מ תקוע", "פוצצה העסקה", "فشل المفاوضات", "فشل الصفقة"
@@ -387,7 +387,7 @@ const TRANSFER_LISTED_KEYWORDS = [
   "מועמד לעזיבה", "קיבל אור ירוק לעזוב", "התרת חוזה", "רשאי לנהל מו\"מ", "על המדף", "فسخ عقد"
 ];
 
-const NOISE_FILTER = /\b(ted lasso|video game|fifa (2[0-9]|mobile)|ea fc|esports?|fantasy football|betting|odds|podcast|recap|highlight|goal of the week|table standing|fixture|schedule|results? round|preview round|matchday|rankings?|nba|nfl|mlb|euroleague|tennis|formula 1|f1|swimming)\b/i;
+const NOISE_FILTER = /\b(ted lasso|video game|fifa (2[0-9]|mobile)|ea fc|esports?|fantasy football|betting|odds|podcast|recap|highlight|goal of the week|table standing|fixture|schedule|results? round|preview round|matchday|rankings?|nba|nfl|mlb|euroleague|tennis|formula 1|f1|swimming|shipwreck|boat|drowned|sink|migrant|ferry|indonesia|accident|police|crime|weather|storm|minister|president|election|court ruling|murder)\b/i;
 
 /** Rule-based signal classification */
 export function classifyMarketSignal(
@@ -476,8 +476,8 @@ export function extractPlayerCandidate(headline: string): { name: string; tmSear
   if (match && match[1]) {
     const cand = match[1].trim();
     const candLower = cand.toLowerCase();
-    const falsePositives = ['transfer news', 'first team', 'real madrid', 'manchester united', 'fc barcelona', 'premier league', 'super league', 'maccabi tel', 'hapoel tel', 'beitar jerusalem'];
-    if (!falsePositives.includes(candLower) && !candLower.includes('league') && !candLower.includes('club')) {
+    const falsePositives = ['transfer news', 'first team', 'real madrid', 'manchester united', 'fc barcelona', 'premier league', 'super league', 'maccabi tel', 'hapoel tel', 'beitar jerusalem', 'indonesia ferry', 'ship wreck'];
+    if (!falsePositives.includes(candLower) && !candLower.includes('league') && !candLower.includes('club') && !candLower.includes('boat')) {
       return {
         name: cand,
         tmSearchUrl: `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(cand)}`,
@@ -488,7 +488,7 @@ export function extractPlayerCandidate(headline: string): { name: string; tmSear
   const hebMatch = cleaned.match(/([\u0590-\u05FF]{2,}\s+[\u0590-\u05FF]{2,})/);
   if (hebMatch && hebMatch[1]) {
     const hebCand = hebMatch[1].trim();
-    if (!['ליגת העל', 'ליגה לאומית', 'מכבי תל', 'הפועל תל', 'בית"ר ירושלים', 'מכבי חיפה'].includes(hebCand)) {
+    if (!['ליגת העל', 'ליגה לאומית', 'מכבי תל', 'הפועל תל', 'בית"ר ירושלים', 'מכבי חיפה', 'ספינה שטבעה', 'תאונת דרכים'].includes(hebCand)) {
       return {
         name: hebCand,
         tmSearchUrl: `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(hebCand)}`,
@@ -499,34 +499,14 @@ export function extractPlayerCandidate(headline: string): { name: string; tmSear
   return null;
 }
 
-/** Single fast Google Translate fallback */
-export async function translateSingleToEnglish(text: string): Promise<string> {
-  if (!text || !text.trim()) return text;
-  try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
-    if (!res.ok) return text;
-    const data = await res.json();
-    if (Array.isArray(data) && Array.isArray(data[0])) {
-      const translated = data[0]
-        .map((seg: unknown[]) => (Array.isArray(seg) && seg[0] ? String(seg[0]) : ''))
-        .join('')
-        .trim();
-      return translated || text;
-    }
-    return text;
-  } catch {
-    return text;
-  }
-}
-
 /**
  * AI-Powered Secret Opportunity Dossier Generator (Gemini 2.5 Flash).
- * Extracts: Verified Player Name, Position, Club, Age, Market Value, Clean English Headline,
- * Situation Summary, and Actionable Agent Opportunity takeaway.
+ * STRICT VALIDATION: If the headline is NOT about an identifiable professional football player
+ * in an active dispute, exile, termination, quota cut, or transfer failure, it is marked isValid: false.
  */
 interface GeminiEnrichedOutput {
   index: number;
+  isValid: boolean;
   playerName?: string;
   playerClub?: string;
   playerPosition?: string;
@@ -557,24 +537,26 @@ async function enrichBatchWithGemini(
       },
     });
 
-    const prompt = `You are an elite football transfer agent and scouting director operating in Israel, Cyprus, Greece, Romania, Poland, Turkey, and Scandinavia.
+    const prompt = `You are an elite football transfer agent and scouting director operating in Israel, Cyprus, Greece, Romania, Poland, Turkey, Balkans, and Scandinavia.
 Analyze these ${items.length} raw news/social reports covering player disputes, exile to reserves (B-Kern, Kadro Disi), tribunal claims (FRF, UCK), quota casualties, and collapsed moves.
 
-For each item:
-1. Extract the EXACT PLAYER NAME (leave empty string if none).
-2. Extract the CURRENT CLUB, POSITION (GK, CB, LB, RB, DM, CM, AM, RW, LW, CF), approximate AGE (e.g. 25), estimated MARKET VALUE (e.g. "€800K", "€1.2M"), CONTRACT EXPIRE (e.g. "June 2026"), and NATIONALITY.
-3. Write a CRYSTAL-CLEAR, professional English headline.
-4. Write a 1-2 sentence SITUATION BRIEF explaining the exact conflict (e.g. "Player filed arbitration claim for 3 months unpaid salary", "Demoted to B-Kern after coach dispute", "Deregistered to make room for foreign signing").
-5. Classify the signal type: OUT_OF_PLANS, DISPUTE_CLAIM, COLLAPSED_DEAL, FOREIGN_QUOTA, CONTRACT_STANDOFF, TRANSFER_LISTED.
-6. Provide an "agentTakeaway" explaining EXACTLY how an agent can exploit this opportunity (e.g. "Target for immediate free transfer via tribunal ruling", "Loan target with 50% wage subsidy from parent club", "Fast signing for clubs needing a non-EU striker").
+CRITICAL RULES:
+1. ONLY include reports about a SPECIFIC, NAMED PROFESSIONAL FOOTBALL PLAYER currently at a club who is in dispute, exiled to reserves, facing contract termination, had a collapsed deal, was deregistered, or is leaving their club.
+2. If an item is about accidents, shipwrecks, boats, general world news, non-football sports, politics, or general match reports with no specific distressed player, YOU MUST SET "isValid": false and leave playerName empty!
+3. If valid, extract: EXACT PLAYER NAME, CURRENT CLUB, POSITION (GK, CB, LB, RB, DM, CM, AM, RW, LW, CF), approximate AGE, estimated MARKET VALUE (e.g. "€600K", "€1.2M"), CONTRACT EXPIRE (e.g. "June 2026"), and NATIONALITY.
+4. Write a CRYSTAL-CLEAR, professional English headline.
+5. Write a 1-2 sentence SITUATION BRIEF explaining the exact conflict.
+6. Classify signalType: OUT_OF_PLANS, DISPUTE_CLAIM, COLLAPSED_DEAL, FOREIGN_QUOTA, CONTRACT_STANDOFF, TRANSFER_LISTED.
+7. Provide an "agentTakeaway" explaining EXACTLY how an agent can exploit this opportunity (e.g. "Target for immediate free transfer via tribunal ruling", "Loan target with 50% wage subsidy").
 
 Raw items:
 ${JSON.stringify(items, null, 2)}
 
-Return a JSON array of objects matching:
+Return a JSON array conforming to:
 [
   {
     "index": 0,
+    "isValid": true,
     "playerName": "Alexandru Tudorie",
     "playerClub": "Petrolul Ploiești",
     "playerPosition": "CF",
@@ -618,7 +600,7 @@ export async function fetchMarketRadarRss(q: MarketRadarQueryConfig): Promise<Ma
   const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(q.query + ' when:14d')}&hl=${q.hl}&gl=${q.gl}&ceid=${q.ceid}`;
 
   const res = await fetch(rssUrl, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MGSR-SecretRadar/4.0)' },
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MGSR-SecretRadar/5.0)' },
     signal: AbortSignal.timeout(4500),
   });
 
@@ -675,7 +657,8 @@ export async function fetchMarketRadarRss(q: MarketRadarQueryConfig): Promise<Ma
     const classification = classifyMarketSignal(rawHeadline);
     if (!classification) return;
 
-    const fallbackCandidate = extractPlayerCandidate(rawHeadline) || undefined;
+    const fallbackCandidate = extractPlayerCandidate(rawHeadline);
+    if (!fallbackCandidate) return; // Discard raw noise immediately if no player detected
 
     let hash = 0;
     for (let j = 0; j < url.length; j++) {
@@ -688,6 +671,8 @@ export async function fetchMarketRadarRss(q: MarketRadarQueryConfig): Promise<Ma
       id,
       headline: rawHeadline,
       originalHeadline: rawHeadline,
+      summary: '',
+      agentTakeaway: '',
       url,
       sourceName,
       isSocial: !!q.isSocial,
@@ -713,12 +698,13 @@ export async function fetchMarketRadarRss(q: MarketRadarQueryConfig): Promise<Ma
 
 const RADAR_L1_CACHE = new Map<string, { items: MarketRadarItem[]; ts: number }>();
 const RADAR_L1_TTL = 15 * 60 * 1000;
-const RADAR_L2_KEY = 'secret_market_radar_v8';
+const RADAR_L2_KEY = 'secret_market_radar_v10';
 const RADAR_L2_TTL = 30 * 60 * 1000;
 
 /**
- * Main Orchestrator: Fetches secret news & social feeds in full parallel, dedupes,
- * synthesizes with Gemini 2.5 Flash, and caches results.
+ * Main Orchestrator:
+ * Fetches 100% football-scoped secret feeds, enriches strictly verified player profiles with Gemini 2.5 Flash,
+ * discards all non-football/unverified entries, and caches results.
  */
 export async function getMarketRadarFeed(options?: {
   region?: MarketRegion;
@@ -766,7 +752,7 @@ export async function getMarketRadarFeed(options?: {
   const deduped: MarketRadarItem[] = [];
 
   for (const item of rawItems) {
-    const normalizedHl = item.headline.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 45);
+    const normalizedHl = item.headline.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 40);
     if (seenUrls.has(item.url) || seenHeadlines.has(normalizedHl)) continue;
     seenUrls.add(item.url);
     seenHeadlines.add(normalizedHl);
@@ -804,45 +790,51 @@ export async function getMarketRadarFeed(options?: {
     }
   }
 
-  // Apply AI enrichment back to items
+  // Strictly filter and build verified items
+  const validEnrichedItems: MarketRadarItem[] = [];
+
   for (let idx = 0; idx < topItems.length; idx++) {
     const item = topItems[idx];
     const ai = geminiResults.get(idx);
 
     if (ai) {
-      item.headline = ai.headlineEn || item.headline;
-      item.summary = ai.summaryEn;
-      item.agentTakeaway = ai.agentTakeaway;
-      if (ai.signalType) item.signalType = ai.signalType;
-      if (ai.playerName && ai.playerName.trim()) {
-        item.detectedPlayer = {
-          name: ai.playerName.trim(),
-          club: ai.playerClub?.trim() || undefined,
-          position: ai.playerPosition?.trim() || item.detectedPlayer?.position || undefined,
-          age: ai.playerAge || undefined,
-          marketValue: ai.marketValue || undefined,
-          contractExpires: ai.contractExpires || undefined,
-          nationality: ai.nationality || undefined,
-          tmSearchUrl: `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(ai.playerName.trim())}`,
-        };
+      // If AI flagged as not valid or no player name, DROP IT IMMEDIATELY
+      if (ai.isValid === false || !ai.playerName || ai.playerName.trim().length < 3) {
+        continue;
       }
+
+      item.headline = ai.headlineEn || item.headline;
+      item.summary = ai.summaryEn || item.signalReason;
+      item.agentTakeaway = ai.agentTakeaway || '';
+      if (ai.signalType) item.signalType = ai.signalType;
+      
+      item.detectedPlayer = {
+        name: ai.playerName.trim(),
+        club: ai.playerClub?.trim() || item.detectedPlayer?.club || undefined,
+        position: ai.playerPosition?.trim() || item.detectedPlayer?.position || undefined,
+        age: ai.playerAge || undefined,
+        marketValue: ai.marketValue || undefined,
+        contractExpires: ai.contractExpires || undefined,
+        nationality: ai.nationality || undefined,
+        tmSearchUrl: `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(ai.playerName.trim())}`,
+      };
+
+      validEnrichedItems.push(item);
     } else {
-      if (item.originalLang !== 'en') {
-        const trans = await translateSingleToEnglish(item.headline);
-        if (trans && trans !== item.headline) {
-          item.headline = trans;
-        }
+      // Fallback only if we already had a high-confidence player name from rule extraction
+      if (item.detectedPlayer?.name && item.detectedPlayer.name.trim().length >= 3) {
+        item.summary = item.signalReason;
+        item.agentTakeaway = 'Target for agent inquiry following recent club status change.';
+        validEnrichedItems.push(item);
       }
     }
   }
 
-  const finalDeduped = topItems;
-
-  if (region === 'all' && finalDeduped.length > 0) {
-    await setCache(RADAR_L2_KEY, finalDeduped);
+  if (region === 'all' && validEnrichedItems.length > 0) {
+    await setCache(RADAR_L2_KEY, validEnrichedItems);
   }
 
-  let finalItems = finalDeduped;
+  let finalItems = validEnrichedItems;
   if (region !== 'all') finalItems = finalItems.filter(it => it.region === region);
   if (signal !== 'all') finalItems = finalItems.filter(it => it.signalType === signal);
 
