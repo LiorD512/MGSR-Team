@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 :root {
+  /* Heebo is loaded via a stylesheet <link> in layout.tsx (not next/font/google,
+     whose build-time loader crashes on Heebo in some environments). Define the
+     variable here so all --font-heebo references keep working. */
+  --font-heebo: 'Heebo', 'Segoe UI', sans-serif;
   --mgsr-dark: #07080d;
   --mgsr-card: #141823;
   --mgsr-card-border: #2d3448;
