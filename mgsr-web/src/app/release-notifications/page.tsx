@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, getDocs, onSnapshot, orderBy, query, limit } from 'firebase/firestore';
 import AppLayout from '@/components/AppLayout';
+import MenReleaseAlerts from '@/components/MenReleaseAlerts';
+import MenLoading from '@/components/MenLoading';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
@@ -645,7 +647,7 @@ export default function ReleaseNotificationsPage() {
   const [ageFilter, setAgeFilter] = useState<AgeFilter>('all');
   const [regionFilter, setRegionFilter] = useState<Confederation | null>(null);
   const [rosterOnly, setRosterOnly] = useState(false);
-  const [sortBy, setSortBy] = useState<SortBy>('value');
+  const [sortBy, setSortBy] = useState<SortBy>('date');
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
   const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
@@ -1306,10 +1308,58 @@ export default function ReleaseNotificationsPage() {
   }, []);
 
   if (loading || !user) {
+    return <MenLoading />;
+  }
+
+  // ── Men platform: new "Light Management Room" full-bleed release wire ──
+  if (platform === 'men') {
+    const rosterCount = resolvedPlayers.filter((p) => p.isRosterPlayer).length;
+    const dayCutoff = Date.now() - 86400000;
+    const newTodayCount = resolvedPlayers.filter((p) => {
+      const ms = toTimestampMillis(p.event.timestamp);
+      return ms > 0 && ms >= dayCutoff;
+    }).length;
     return (
-      <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className="animate-pulse text-[var(--mgsr-accent)] font-display">{t('loading')}</div>
-      </div>
+      <MenReleaseAlerts
+        resolvedCount={resolvedPlayers.length}
+        filteredCount={filteredPlayers.length}
+        rosterCount={rosterCount}
+        newTodayCount={newTodayCount}
+        search={search}
+        setSearch={setSearch}
+        positions={positions}
+        positionFilter={positionFilter}
+        setPositionFilter={setPositionFilter}
+        ageFilter={ageFilter}
+        setAgeFilter={setAgeFilter}
+        regionFilter={regionFilter}
+        setRegionFilter={setRegionFilter}
+        rosterOnly={rosterOnly}
+        setRosterOnly={setRosterOnly}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        preset={preset}
+        setPreset={setPreset}
+        firestorePositions={firestorePositions}
+        isManualRefreshing={isManualRefreshing}
+        manualRefreshProgress={manualRefreshProgress}
+        manualRefreshUi={manualRefreshUi}
+        onManualRefresh={runManualFetchAndEnrichment}
+        loadingList={loadingList}
+        hasActiveFilters={!!hasActiveFilters}
+        players={filteredPlayers}
+        shortlistUrls={shortlistUrls}
+        addingUrl={addingUrl}
+        enrichingUrls={enrichingUrls}
+        onAddToShortlist={addToShortlist}
+        teammatesCache={teammatesCache}
+        loadingTeammatesUrl={loadingTeammatesUrl}
+        expandedTeammatesUrl={expandedTeammatesUrl}
+        onToggleTeammates={toggleTeammates}
+        onFetchTeammates={fetchTeammates}
+        formatTimestamp={formatTimestamp}
+        formatDurationMs={formatDurationMs}
+      />
     );
   }
 

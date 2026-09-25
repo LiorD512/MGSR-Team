@@ -51,6 +51,8 @@ import {
 import ForeignArrivalsPanel from '@/components/ForeignArrivalsPanel';
 import BirthdaysSection from '@/components/BirthdaysSection';
 import { MEN_ROSTER_ANALYSIS_ENABLED, WEB_TASKS_ENABLED } from '@/lib/featureFlags';
+import MenDashboard from '@/components/MenDashboard';
+import MenLoading from '@/components/MenLoading';
 
 interface FeedEvent {
   id: string;
@@ -98,6 +100,18 @@ interface AgentTask {
   isCompleted?: boolean;
 }
 
+interface DashboardRequest {
+  id: string;
+  status?: string;
+  clubName?: string;
+  position?: string;
+  minAge?: number;
+  maxAge?: number;
+  ageDoesntMatter?: boolean;
+  euOnly?: boolean;
+  createdAt?: number;
+}
+
 interface RosteredPlayer {
   id: string;
   fullName?: string;
@@ -116,6 +130,8 @@ interface RosteredPlayer {
   agency?: string;
   agencyUrl?: string;
   linkedContactId?: string;
+  nationality?: string;
+  nationalities?: string[];
 }
 
 interface ContactFull {
@@ -279,7 +295,7 @@ interface DashboardCache {
   players: { id: string }[];
   rosterPlayers: RosteredPlayer[];
   contacts: ContactFull[];
-  requests: { id: string; status?: string }[];
+  requests: DashboardRequest[];
   tasks: AgentTask[];
   shortlistCount: number;
   accounts: Account[];
@@ -298,7 +314,7 @@ export default function DashboardPage() {
   const [players, setPlayers] = useState<{ id: string }[]>(cached?.players ?? []);
   const [rosterPlayers, setRosterPlayers] = useState<RosteredPlayer[]>(cached?.rosterPlayers ?? []);
   const [contacts, setContacts] = useState<ContactFull[]>(cached?.contacts ?? []);
-  const [requests, setRequests] = useState<{ id: string; status?: string }[]>(
+  const [requests, setRequests] = useState<DashboardRequest[]>(
     cached?.requests ?? []
   );
   const [tasks, setTasks] = useState<AgentTask[]>(cached?.tasks ?? []);
@@ -454,7 +470,7 @@ export default function DashboardPage() {
         snap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
-        } as { id: string; status?: string }))
+        } as DashboardRequest))
       );
     });
     return () => unsub();
@@ -904,6 +920,9 @@ export default function DashboardPage() {
   }, [user, currentAccount, pendingTransfers]);
 
   if (loading || !user) {
+    // Men (and platform-not-yet-resolved) get the light room loader so we never
+    // flash the old dark design. Women/youth keep their themed loader.
+    if (!isWomen && !isYouth) return <MenLoading />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
         <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
@@ -919,6 +938,28 @@ export default function DashboardPage() {
     month: 'long',
     day: 'numeric',
   });
+
+  // ── Men platform: new "Light Management Room" full-bleed redesign ──
+  // Renders standalone (outside AppLayout) with its own light-themed shell.
+  // Women & youth keep the standard AppLayout dashboard below.
+  if (platform === 'men') {
+    return (
+      <MenDashboard
+        userName={userName}
+        greeting={greeting}
+        rosterPlayers={rosterPlayers}
+        events={events}
+        requests={requests}
+        expiringMandates={expiringMandates}
+      />
+    );
+  }
+
+  // From here on the platform is narrowed to 'women' | 'youth'. A few residual
+  // men-only branches remain in the markup below (harmless dead branches for
+  // women/youth); this widened alias keeps those comparisons well-typed without
+  // changing runtime behavior.
+  const platformStr: string = platform;
 
   return (
     <AppLayout>
@@ -1104,7 +1145,7 @@ export default function DashboardPage() {
         )}
 
         {/* Mandate Expiring Soon (men only) */}
-        {platform === 'men' && expiringMandates.length > 0 && (
+        {platformStr === 'men' && expiringMandates.length > 0 && (
           <div className="mb-6 sm:mb-10 p-5 sm:p-6 bg-mgsr-card/60 border border-orange-500/20 rounded-2xl backdrop-blur-sm animate-fade-in">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 rounded-xl bg-orange-500/15 flex items-center justify-center">
@@ -1163,7 +1204,7 @@ export default function DashboardPage() {
         />
 
         {/* Charts row (men only; women & youth have simplified dashboards) */}
-        {platform === 'men' && (
+        {platformStr === 'men' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-10">
           <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
             <h3 className="text-sm font-semibold text-mgsr-text mb-5 font-display">
@@ -1288,7 +1329,7 @@ export default function DashboardPage() {
         )} */}
 
         {/* Roster Analytics (men only) — hidden when men roster-analysis feature is disabled */}
-        {platform === 'men' && MEN_ROSTER_ANALYSIS_ENABLED && rosterPlayers.length > 0 && (
+        {platformStr === 'men' && MEN_ROSTER_ANALYSIS_ENABLED && rosterPlayers.length > 0 && (
           <div className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-mgsr-text font-display">
@@ -1615,7 +1656,7 @@ export default function DashboardPage() {
         )}
 
         {/* Staff, Top agents & Leading agencies — hidden on men dashboard per user request */}
-        {platform !== 'men' && (
+        {platformStr !== 'men' && (
         <div className={`grid gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-10 ${isWomen || isYouth ? 'grid-cols-1 max-w-md' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
           <div className={`p-4 md:p-6 border rounded-2xl backdrop-blur-sm ${
             isYouth ? 'bg-mgsr-card/40 border-[var(--youth-cyan)]/20' : isWomen ? 'bg-mgsr-card/50 border-[var(--women-rose)]/20' : 'bg-mgsr-card/60 border border-mgsr-border'
@@ -2032,7 +2073,7 @@ export default function DashboardPage() {
         {/* Quick actions — scrollable on mobile */}
         <div className={`mb-6 sm:mb-10 ${platform === 'women' || platform === 'youth' ? '' : ''}`}>
           <div className={`${platform === 'women' || platform === 'youth' ? 'grid grid-cols-2 md:grid-cols-3 gap-4' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0'}`}
-               style={platform === 'men' ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
+               style={platformStr === 'men' ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
           {(platform === 'youth'
             ? [
                 { href: '/players', label: t('nav_players_youth') },
@@ -2061,7 +2102,7 @@ export default function DashboardPage() {
               key={item.href}
               href={item.href}
               className={`p-4 border rounded-xl transition text-center font-medium shrink-0 ${
-                platform === 'men' ? 'min-w-[120px] lg:min-w-0' : ''
+                platformStr === 'men' ? 'min-w-[120px] lg:min-w-0' : ''
               } ${
                 isYouth
                   ? 'bg-mgsr-card/40 border-[var(--youth-cyan)]/20 hover:border-[var(--youth-cyan)]/50 hover:bg-mgsr-card/60 backdrop-blur-sm'

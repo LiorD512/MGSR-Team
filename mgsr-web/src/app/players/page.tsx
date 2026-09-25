@@ -23,6 +23,8 @@ import { getConfederation } from '@/lib/nationToConfederation';
 import type { Confederation } from '@/lib/api';
 import Link from 'next/link';
 import { MEN_ROSTER_ANALYSIS_ENABLED } from '@/lib/featureFlags';
+import MenPlayers from '@/components/MenPlayers';
+import MenLoading from '@/components/MenLoading';
 
 interface Player {
   id: string;
@@ -751,12 +753,25 @@ export default function PlayersPage() {
   const isYouth = platform === 'youth';
 
   if (loading || !user) {
+    if (!isWomen && !isYouth) return <MenLoading />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
         <div className={`animate-pulse font-display ${isYouth ? 'youth-gradient-text' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
       </div>
     );
   }
+
+  // ── Men platform: new "Light Management Room" full-bleed redesign ──
+  // Renders standalone (outside AppLayout) with its own light-themed shell and
+  // its own Firestore subscriptions. Women & youth keep the standard screen below.
+  if (platform === 'men') {
+    return <MenPlayers />;
+  }
+
+  // From here on the platform is narrowed to 'women' | 'youth'. A few residual
+  // men-only branches remain in the markup below (harmless dead branches for
+  // women/youth); this widened alias keeps those comparisons well-typed.
+  const platformStr: string = platform;
 
   return (
     <AppLayout>
@@ -841,7 +856,7 @@ export default function PlayersPage() {
             }`}
           />
           {/* Mobile: filter button */}
-          {platform === 'men' && isMobileOrTablet && (
+          {platformStr === 'men' && isMobileOrTablet && (
             <button
               onClick={() => setFilterSheetOpen(true)}
               className={`relative shrink-0 flex items-center gap-1.5 px-4 py-3 rounded-xl border transition text-sm font-medium ${
@@ -896,7 +911,7 @@ export default function PlayersPage() {
             ))}
 
             {/* Specific position dropdown — men only */}
-            {platform === 'men' && (() => {
+            {platformStr === 'men' && (() => {
               const options = positionFilter ? (SPECIFIC_POSITIONS_BY_GROUP[positionFilter] ?? ALL_SPECIFIC_POSITIONS) : ALL_SPECIFIC_POSITIONS;
               const labels = lang === 'he' ? SPECIFIC_POSITION_LABELS_HE : SPECIFIC_POSITION_LABELS_EN;
               return (
@@ -971,7 +986,7 @@ export default function PlayersPage() {
         )}
 
         {/* Advanced filters — desktop only (inline) */}
-        {platform === 'men' && !isMobileOrTablet && (
+        {platformStr === 'men' && !isMobileOrTablet && (
         <div className="mb-6">
           <div className="flex flex-wrap gap-2 pb-1">
             <button
@@ -1155,7 +1170,7 @@ export default function PlayersPage() {
         )}
 
         {/* Sort options — men only */}
-        {platform === 'men' && (
+        {platformStr === 'men' && (
           <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             <span className="shrink-0 text-xs font-medium text-mgsr-muted uppercase tracking-wider">{t('players_sort_label')}</span>
             {([
@@ -1180,7 +1195,7 @@ export default function PlayersPage() {
         )}
 
         {/* Mobile filter bottom sheet */}
-        {platform === 'men' && (
+        {platformStr === 'men' && (
         <FilterBottomSheet open={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} title={t('filters') || 'Filters'}>
           <div className="flex flex-wrap gap-2">
             {[
@@ -1264,7 +1279,7 @@ export default function PlayersPage() {
         )}
 
         {/* Mandate section — men only */}
-        {platform === 'men' && playersWithMandate.length > 0 && (
+        {platformStr === 'men' && playersWithMandate.length > 0 && (
           <div className="mb-6">
             <button
               onClick={() => setMandateExpanded((v) => !v)}
@@ -1375,9 +1390,9 @@ export default function PlayersPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {displayList.map((p, i) => {
-              const playerMatchingReqs = platform === 'men' ? matchingRequestsByPlayerId.get(p.id) : undefined;
+              const playerMatchingReqs = platformStr === 'men' ? matchingRequestsByPlayerId.get(p.id) : undefined;
               const matchCount = playerMatchingReqs?.length ?? 0;
-              const playerUrl = platform === 'men' ? ((p as Player).tmProfile || '') : '';
+              const playerUrl = platformStr === 'men' ? ((p as Player).tmProfile || '') : '';
               const rosterTeammates = playerUrl ? teammatesCache[playerUrl] : undefined;
               const isLoadingTeammates = loadingTeammatesUrl === playerUrl;
               const isTeammatesExpanded = expandedTeammatesUrl === playerUrl;
@@ -1458,7 +1473,7 @@ export default function PlayersPage() {
                     })()}{' '}
                     {p.age && `• ${t(isWomen ? 'players_age_display_women' : 'players_age_display').replace('{age}', p.age)}`}
                   </p>
-                  {platform === 'men' && p.createdAt && (
+                  {platformStr === 'men' && p.createdAt && (
                     <p className="text-[11px] text-mgsr-muted/60 mt-0.5">
                       {isRtl ? 'נוסף' : 'Added'} {new Date(p.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
@@ -1472,7 +1487,7 @@ export default function PlayersPage() {
                   ) : (
                     <div className="flex flex-col items-end gap-1">
                       <p className={`font-semibold ${isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{p.marketValue || '—'}</p>
-                      {platform === 'men' && isEuNational(p.nationality, euCountries, (p as any).nationalities) && (
+                      {platformStr === 'men' && isEuNational(p.nationality, euCountries, (p as any).nationalities) && (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 leading-tight">
                           🇪🇺 {t('eu_nat_tag')}
                         </span>
@@ -1483,7 +1498,7 @@ export default function PlayersPage() {
               </Link>
 
               {/* ── Status Badges Row — men only ── */}
-              {platform === 'men' && (() => {
+              {platformStr === 'men' && (() => {
                 const mp = p as Player;
                 const clubName = mp.currentClub?.clubName;
                 const isFree = clubName?.toLowerCase() === 'without club' || clubName?.toLowerCase() === 'vereinslos';
@@ -1673,7 +1688,7 @@ export default function PlayersPage() {
               })()}
 
               {/* Played with him — men only */}
-              {menRosterAnalysisEnabled && platform === 'men' && playerUrl && (
+              {menRosterAnalysisEnabled && platformStr === 'men' && playerUrl && (
                 <div className="border-t border-mgsr-border/20 px-3 sm:px-4 py-2">
                   <button
                     type="button"

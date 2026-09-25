@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Players / Light Management Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    /* ── Shell (identical language to dashboard) ── */
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .rail-label{margin:31px 0 13px;color:#969188;font:9px/1 var(--mono);letter-spacing:.13em;text-transform:uppercase}
+    .nav{display:grid;gap:3px}
+    .nav a{display:flex;justify-content:space-between;align-items:center;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s}
+    .nav a:hover,.nav a.active{color:var(--gold-soft)}
+    .nav a.active:before{content:'';width:20px;height:1px;margin-right:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:43px}
+
+    /* ── Masthead ── */
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:34px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(52px,6.4vw,96px)/.8 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    .masthead h1 span{color:var(--gold)}
+    .view-toggle{display:flex;border:1px solid var(--line)}
+    .view-toggle button{padding:11px 16px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-right:1px solid var(--line)}
+    .view-toggle button:last-child{border-right:0}
+    .view-toggle button.active{background:var(--black);color:var(--gold-soft)}
+
+    /* ── Signals ── */
+    .signals{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:34px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .signal{min-height:104px;padding:18px 20px 20px 0;border-right:1px solid var(--line)}
+    .signal:not(:first-child){padding-left:20px}
+    .signal:last-child{border-right:0}
+    .signal label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .signal strong{display:block;margin-top:14px;font:500 clamp(30px,3.4vw,46px)/.8 var(--display);text-transform:uppercase}
+    .signal small{display:block;margin-top:10px;color:var(--muted);font:9px/1 var(--mono)}
+    .signal .gold{color:var(--gold)}
+
+    /* ── Filter tray ── */
+    .tray{border:1px solid var(--line);margin-bottom:16px}
+    .tray-top{display:grid;grid-template-columns:1fr auto;gap:0;border-bottom:1px solid var(--line)}
+    .search{display:flex;align-items:center;gap:14px;padding:0 20px}
+    .search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
+    .search input{width:100%;border:0;background:transparent;padding:20px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .segment{display:flex;border-left:1px solid var(--line)}
+    .segment button{padding:0 20px;font:10px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-left:1px solid var(--line)}
+    .segment button:first-child{border-left:0}
+    .segment button.active{background:var(--gold-soft);color:var(--ink)}
+    .chips{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--line)}
+    .chip{padding:13px 16px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-right:1px solid var(--line);transition:.15s}
+    .chip:hover{color:var(--ink)}
+    .chip.on{background:var(--black);color:var(--gold-soft)}
+    .chip .dot{display:inline-block;width:5px;height:5px;margin-right:6px;background:var(--gold-soft);border-radius:50%;vertical-align:middle;opacity:0}
+    .chip.on .dot{opacity:1}
+    .tray-bottom{display:flex;align-items:center;justify-content:space-between;padding:12px 20px}
+    .sort{display:flex;align-items:center;gap:14px}
+    .sort span{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .sort button{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .sort button.active{color:var(--gold)}
+    .clear{color:var(--red);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count{margin:0 2px 20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    /* ── Table view ── */
+    .roster{width:100%;border-collapse:collapse}
+    .roster thead th{padding:12px 14px;color:var(--muted);text-align:left;font:9px/1 var(--mono);font-weight:400;text-transform:uppercase;border-bottom:1px solid var(--line)}
+    .roster thead th:last-child{text-align:right}
+    .roster tbody tr{border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
+    .roster tbody tr:hover{background:rgba(17,17,15,.035)}
+    .roster td{padding:13px 14px;font:11px/1.2 var(--mono);vertical-align:middle}
+    .cell-player{display:flex;align-items:center;gap:13px}
+    .thumb{width:42px;height:42px;object-fit:cover;filter:grayscale(1);background:linear-gradient(160deg,#23231f,#11110f);flex:none}
+    .thumb.ph{display:grid;place-items:center;color:var(--paper);font:500 15px/1 var(--display);filter:none}
+    .cell-player .pname{font-family:var(--body);font-weight:700;font-size:13px;text-transform:none;letter-spacing:0}
+    .cell-player .pmeta{margin-top:3px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .pos-tags{display:flex;gap:5px}
+    .pos-tags b{font:500 9px/1 var(--mono);padding:5px 7px;border:1px solid var(--line);text-transform:uppercase;font-weight:400}
+    .val{font-weight:500;color:var(--ink)}
+    .flags{display:flex;gap:6px;justify-content:flex-end}
+    .tag{font:9px/1 var(--mono);text-transform:uppercase;padding:5px 7px;border:1px solid var(--line)}
+    .tag.eu{color:var(--gold);border-color:var(--gold-soft)}
+    .tag.mandate{color:var(--green);border-color:var(--green)}
+    .tag.free{color:var(--red);border-color:var(--red)}
+    .tag.exp{color:var(--red);border-color:var(--red)}
+
+    /* ── Gallery view ── */
+    .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px}
+    .card{position:relative;overflow:hidden;background:var(--black);cursor:pointer;min-height:290px}
+    .card img{width:100%;height:100%;min-height:290px;object-fit:cover;filter:grayscale(1);opacity:.62;transition:.3s}
+    .card .ph{width:100%;height:100%;min-height:290px;background:linear-gradient(160deg,#26261f,#101010)}
+    .card:hover img{opacity:.78;transform:scale(1.03)}
+    .card:after{content:'';position:absolute;inset:44% 0 0;background:linear-gradient(180deg,transparent,rgba(17,17,15,.9))}
+    .card-top{position:absolute;top:14px;left:14px;right:14px;z-index:1;display:flex;justify-content:space-between}
+    .card-top .num{color:var(--gold-soft);font:9px/1 var(--mono)}
+    .card-top .ct-flags{display:flex;gap:5px}
+    .card-top .ct-flags b{font:9px/1 var(--mono);color:var(--paper);border:1px solid var(--dark-line);padding:4px 6px;text-transform:uppercase}
+    .card-copy{position:absolute;left:14px;right:14px;bottom:14px;z-index:1;color:var(--paper)}
+    .card-copy small{color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}
+    .card-copy h3{margin:8px 0 4px;font:500 26px/.9 var(--display);text-transform:uppercase}
+    .card-copy .cval{color:#c9c3b6;font:9px/1.4 var(--mono);text-transform:uppercase}
+    .hidden{display:none}
+
+    /* ── Quick-view drawer ── */
+    .scrim{position:fixed;inset:0;z-index:30;background:rgba(17,17,15,.55);opacity:0;pointer-events:none;transition:.25s}
+    .scrim.open{opacity:1;pointer-events:auto}
+    .drawer{position:fixed;top:0;right:0;bottom:0;z-index:31;width:min(440px,94vw);background:var(--paper);border-left:4px solid var(--gold);transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);overflow-y:auto}
+    .drawer.open{transform:none}
+    .drawer-hero{position:relative;height:230px;background:var(--black)}
+    .drawer-hero img{width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.68}
+    .drawer-hero:after{content:'';position:absolute;inset:40% 0 0;background:linear-gradient(180deg,transparent,rgba(17,17,15,.92))}
+    .drawer-hero .close{position:absolute;top:14px;right:16px;z-index:2;color:var(--paper);font:22px/1 var(--display)}
+    .drawer-hero .hero-copy{position:absolute;left:22px;right:22px;bottom:18px;z-index:1;color:var(--paper)}
+    .drawer-hero .hero-copy small{color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}
+    .drawer-hero .hero-copy h2{margin:8px 0 0;font:500 40px/.85 var(--display);text-transform:uppercase}
+    .drawer-body{padding:24px 22px 30px}
+    .facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
+    .facts div{padding:13px 0;border-bottom:1px solid var(--line)}
+    .facts div:nth-child(even){padding-left:14px;border-left:1px solid var(--line)}
+    .facts label{display:block;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .facts strong{display:block;margin-top:6px;font:500 20px/.9 var(--display);text-transform:uppercase}
+    .drawer-note{margin:22px 0 0;padding:16px;background:rgba(17,17,15,.04);border-left:2px solid var(--gold-soft)}
+    .drawer-note label{display:block;margin-bottom:8px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .drawer-note p{margin:0;color:var(--ink);font:11px/1.5 var(--body)}
+    .drawer-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+    .drawer-actions a{padding:13px;text-align:center;font:9px/1 var(--mono);text-transform:uppercase}
+    .drawer-actions .primary{background:var(--black);color:var(--gold-soft)}
+    .drawer-actions .ghost{border:1px solid var(--ink);color:var(--ink)}
+
+    @media(max-width:900px){
+      .app{display:block}
+      .rail{position:static;height:auto;flex-direction:row;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-label,.rail-footer{display:none}
+      .nav{display:flex;flex-wrap:wrap;gap:14px}.nav a{padding:6px 0}.nav em,.nav a.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}
+      .canvas{padding:28px 18px 60px}
+      .masthead{display:block}.masthead h1{font-size:58px}.view-toggle{margin-top:20px;display:inline-flex}
+      .signals{grid-template-columns:1fr 1fr}.signal:nth-child(2){border-right:0}.signal:nth-child(n+3){border-top:1px solid var(--line)}.signal:nth-child(3){padding-left:0}
+      .tray-top{grid-template-columns:1fr}.segment{border-left:0;border-top:1px solid var(--line);overflow-x:auto}
+      .roster thead{display:none}
+      .roster tbody tr{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:12px 4px}
+      .roster td{padding:0;border:0}
+      .roster td[data-h]:before{content:attr(data-h) ' — ';color:var(--muted)}
+      .cell-player{grid-column:1/-1}
+      .flags{justify-content:flex-start}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Rail -->
+    <aside class="rail">
+      <a class="lockup" href="#" aria-label="BRIT Sport Group home">
+        <span class="mark">B</span>
+        <div><strong>BRIT SPORT GROUP</strong><small>Management room</small></div>
+      </a>
+      <p class="rail-label">Workspace</p>
+      <nav class="nav" aria-label="Navigation">
+        <a href="#"><span>Dashboard</span><em>01</em></a>
+        <a class="active" href="#"><span>Players</span><em>02</em></a>
+        <a href="#"><span>Requests</span><em>03</em></a>
+        <a href="#"><span>Shortlist</span><em>04</em></a>
+        <a href="#"><span>Contacts</span><em>05</em></a>
+      </nav>
+      <div class="rail-footer">Active platform<strong>Men / Europe</strong>Roster<strong>42 assets</strong></div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong>Players</strong> / 24 September 2026</div>
+        <div class="actions">
+          <button id="lang">HE / EN</button>
+          <button>Add player /</button>
+          <span>TLV 14:45</span>
+          <span class="avatar">LD</span>
+        </div>
+      </header>
+
+      <main class="canvas">
+        <!-- Masthead -->
+        <header class="masthead">
+          <div>
+            <p class="kicker">Private client office / Men platform</p>
+            <h1>The <span>roster.</span></h1>
+          </div>
+          <div class="view-toggle" role="tablist" aria-label="View mode">
+            <button class="active" id="btn-table" onclick="setView('table')">Ledger</button>
+            <button id="btn-gallery" onclick="setView('gallery')">Gallery</button>
+          </div>
+        </header>
+
+        <!-- Signals -->
+        <section class="signals" aria-label="Roster signals">
+          <div class="signal"><label>Roster assets</label><strong>42</strong><small>26 EU passports</small></div>
+          <div class="signal"><label>Managed value</label><strong class="gold">€48.55M</strong><small>Across 38 valued</small></div>
+          <div class="signal"><label>Under mandate</label><strong>29</strong><small>13 without</small></div>
+          <div class="signal"><label>Free agents</label><strong class="gold">04</strong><small>Available now</small></div>
+        </section>
+
+        <!-- Filter tray -->
+        <section class="tray" aria-label="Filters">
+          <div class="tray-top">
+            <label class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input placeholder="Search player, club or agent" aria-label="Search">
+            </label>
+            <div class="segment" role="group" aria-label="Position group">
+              <button onclick="tog(this)" class="active">All</button>
+              <button onclick="tog(this)">GK</button>
+              <button onclick="tog(this)">DEF</button>
+              <button onclick="tog(this)">MID</button>
+              <button onclick="tog(this)">FWD</button>
+            </div>
+          </div>
+          <div class="chips">
+            <button class="chip on" onclick="this.classList.toggle('on')"><span class="dot"></span>My players</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>EU national</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>With mandate</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>Free agents</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>Contract expiring</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>On loan</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>With notes</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>Left foot</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>Right foot</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>Offered / no reply</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>Interested in Israel</button>
+          </div>
+          <div class="tray-bottom">
+            <div class="sort">
+              <span>Sort</span>
+              <button class="active" onclick="sortSel(this)">Newest</button>
+              <button onclick="sortSel(this)">Age</button>
+              <button onclick="sortSel(this)">Market value</button>
+              <button onclick="sortSel(this)">Name</button>
+            </div>
+            <button class="clear">Clear filters ×</button>
+          </div>
+        </section>
+
+        <p class="result-count">Showing <b>42</b> of 42 assets / <b>1</b> filter active</p>
+
+        <!-- Table view -->
+        <div id="view-table">
+          <table class="roster">
+            <thead>
+              <tr><th>Player</th><th>Club</th><th>Pos</th><th>Age</th><th>Value</th><th>Signals</th></tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Gallery view -->
+        <div id="view-gallery" class="gallery hidden"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Quick-view drawer -->
+  <div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+  <aside class="drawer" id="drawer" aria-label="Player quick view">
+    <div class="drawer-hero">
+      <img id="d-img" src="" alt="">
+      <button class="close" onclick="closeDrawer()" aria-label="Close">×</button>
+      <div class="hero-copy"><small id="d-sub">Club / Position</small><h2 id="d-name">Player</h2></div>
+    </div>
+    <div class="drawer-body">
+      <div class="facts">
+        <div><label>Market value</label><strong id="d-val">€0</strong></div>
+        <div><label>Age</label><strong id="d-age">—</strong></div>
+        <div><label>Position</label><strong id="d-pos">—</strong></div>
+        <div><label>Mandate</label><strong id="d-mandate">—</strong></div>
+        <div><label>Nationality</label><strong id="d-nat">—</strong></div>
+        <div><label>Agent</label><strong id="d-agent">—</strong></div>
+      </div>
+      <div class="drawer-note">
+        <label>Latest note</label>
+        <p id="d-note">No notes recorded.</p>
+      </div>
+      <div class="drawer-actions">
+        <a class="primary" href="#">Open full profile</a>
+        <a class="ghost" href="#">Message on WhatsApp</a>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    // Sample roster (mirrors the real player fields the screen uses).
+    const players=[
+      {name:'Liel Abada',club:'Charlotte FC',pos:['RW','LW'],age:24,val:'€7.00M',nat:'Israel',eu:true,mandate:true,agent:'Lior Dahan',note:'Coach happy with minutes; agent to revisit clause in winter.',img:'https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=600&q=80'},
+      {name:'Anan Khalaili',club:'Royale Union SG',pos:['RW'],age:22,val:'€6.50M',nat:'Israel',eu:true,mandate:true,agent:'Lior Dahan',note:'Two UEFA scouts tracking. Hold.',img:'https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=600&q=80'},
+      {name:'Roy Revivo',club:'Maccabi Tel Aviv',pos:['LB'],age:26,val:'€1.80M',nat:'Israel',eu:false,mandate:true,agent:'D. Cohen',note:'',img:'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=600&q=80'},
+      {name:'Dean David',club:'Maccabi Haifa',pos:['CF'],age:30,val:'€1.50M',nat:'Israel',eu:true,mandate:true,exp:true,agent:'Lior Dahan',note:'Mandate renewal window opens in 6 days.',img:''},
+      {name:'Guy Melamed',club:'Free agent',pos:['ST'],age:29,val:'€650K',nat:'Israel',eu:true,mandate:false,free:true,agent:'D. Cohen',note:'Weighing two offers from AFC.',img:''},
+      {name:'Ofri Arad',club:'Kairat Almaty',pos:['CB'],age:25,val:'€800K',nat:'Israel',eu:false,mandate:true,agent:'Lior Dahan',note:'',img:'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=600&q=80'},
+      {name:'Idan Toklomati',club:'Charlotte FC',pos:['CF'],age:20,val:'€2.20M',nat:'Nigeria',eu:false,mandate:false,agent:'S. Levi',note:'Breakout season; monitor value.',img:''},
+      {name:'Stav Lemkin',club:'Shakhtar (loan)',pos:['CB'],age:22,val:'€1.20M',nat:'Israel',eu:true,mandate:true,loan:true,agent:'Lior Dahan',note:'Loan review with sporting director scheduled.',img:''}
+    ];
+
+    const initials=n=>n.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+    const tbody=document.getElementById('tbody');
+    const gallery=document.getElementById('view-gallery');
+
+    function flagsHtml(p){
+      let h='';
+      if(p.eu)h+='<span class="tag eu">EU</span>';
+      if(p.mandate)h+='<span class="tag mandate">Mandate</span>';
+      if(p.free)h+='<span class="tag free">Free</span>';
+      if(p.exp)h+='<span class="tag exp">Exp</span>';
+      return h||'<span style="color:var(--muted);font:9px/1 var(--mono)">—</span>';
+    }
+
+    players.forEach((p,i)=>{
+      // Table row
+      const tr=document.createElement('tr');
+      tr.onclick=()=>openDrawer(p);
+      const thumb=p.img?`<img class="thumb" src="${p.img}" alt="">`:`<div class="thumb ph">${initials(p.name)}</div>`;
+      tr.innerHTML=`
+        <td class="cell-player">${thumb}<div><div class="pname">${p.name}</div><div class="pmeta">${p.nat}</div></div></td>
+        <td data-h="Club">${p.club}</td>
+        <td data-h="Pos"><div class="pos-tags">${p.pos.map(x=>`<b>${x}</b>`).join('')}</div></td>
+        <td data-h="Age">${p.age}</td>
+        <td data-h="Value" class="val">${p.val}</td>
+        <td class="flags">${flagsHtml(p)}</td>`;
+      tbody.appendChild(tr);
+
+      // Gallery card
+      const card=document.createElement('article');
+      card.className='card';
+      card.onclick=()=>openDrawer(p);
+      const media=p.img?`<img src="${p.img}" alt="">`:`<div class="ph"></div>`;
+      let ct='';if(p.eu)ct+='<b>EU</b>';if(p.free)ct+='<b>Free</b>';if(p.exp)ct+='<b>Exp</b>';
+      card.innerHTML=`
+        ${media}
+        <div class="card-top"><span class="num">${String(i+1).padStart(2,'0')}</span><span class="ct-flags">${ct}</span></div>
+        <div class="card-copy"><small>${p.club} / ${p.pos.join(' ')}</small><h3>${p.name}</h3><div class="cval">${p.val} · ${p.age} yrs</div></div>`;
+      gallery.appendChild(card);
+    });
+
+    // View switch
+    function setView(v){
+      const table=document.getElementById('view-table'),gal=document.getElementById('view-gallery');
+      document.getElementById('btn-table').classList.toggle('active',v==='table');
+      document.getElementById('btn-gallery').classList.toggle('active',v==='gallery');
+      table.classList.toggle('hidden',v!=='table');
+      gal.classList.toggle('hidden',v!=='gallery');
+    }
+    function tog(btn){[...btn.parentNode.children].forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
+    function sortSel(btn){[...btn.parentNode.querySelectorAll('button')].forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
+
+    // Drawer
+    function openDrawer(p){
+      document.getElementById('d-name').textContent=p.name;
+      document.getElementById('d-sub').textContent=`${p.club} / ${p.pos.join(' ')}`;
+      document.getElementById('d-val').textContent=p.val;
+      document.getElementById('d-age').textContent=p.age;
+      document.getElementById('d-pos').textContent=p.pos.join(' / ');
+      document.getElementById('d-mandate').textContent=p.mandate?'Active':(p.free?'Free agent':'None');
+      document.getElementById('d-nat').textContent=p.nat;
+      document.getElementById('d-agent').textContent=p.agent||'—';
+      document.getElementById('d-note').textContent=p.note||'No notes recorded.';
+      const img=document.getElementById('d-img');
+      if(p.img){img.src=p.img;img.style.display='block';}else{img.style.display='none';}
+      document.getElementById('drawer').classList.add('open');
+      document.getElementById('scrim').classList.add('open');
+    }
+    function closeDrawer(){
+      document.getElementById('drawer').classList.remove('open');
+      document.getElementById('scrim').classList.remove('open');
+    }
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+
+    // Language toggle demo (RTL)
+    document.getElementById('lang').onclick=function(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';
+      document.documentElement.lang=rtl?'he':'en';
+      this.textContent=rtl?'EN / HE':'HE / EN';
+    };
+  </script>
+</body>
+</html>

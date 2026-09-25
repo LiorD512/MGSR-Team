@@ -1,0 +1,2786 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BRIT Sport Group — Club Requirements & Directives / Management Room</title>
+  
+  <!-- Premium Fonts Matching BRIT Sport Group System -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Heebo:wght@300;400;500;600;700;800;900&family=Manrope:wght@300;400;500;600;700;800&family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ── BASE CSS VARIABLES (Default: Light Atelier Management Room) ── */
+    :root {
+      --ink: #161613;
+      --black: #11110f;
+      --paper: #f3f0e8;
+      --paper-2: #e4ded1;
+      --card: #fbf9f3;
+      --card-hover: #ffffff;
+      --gold: #a47d43;
+      --gold-soft: #c9a66b;
+      --gold-glow: rgba(164, 125, 67, 0.18);
+      --red: #b64235;
+      --red-soft: rgba(182, 66, 53, 0.12);
+      --green: #5c6f4a;
+      --green-soft: rgba(92, 111, 74, 0.15);
+      --blue: #2d5a88;
+      --blue-soft: rgba(45, 90, 136, 0.12);
+      --amber: #c8832a;
+      --muted: #77736a;
+      --muted-light: #9a958b;
+      --line: rgba(22, 22, 19, 0.16);
+      --line-subtle: rgba(22, 22, 19, 0.08);
+      --dark-line: rgba(243, 240, 232, 0.18);
+      --topbar-bg: #11110f;
+      --rail-bg: #11110f;
+      --rail-text: #aaa69c;
+      --rail-border: rgba(243, 240, 232, 0.14);
+      --display: 'Oswald', Impact, sans-serif;
+      --body: 'Manrope', -apple-system, BlinkMacSystemFont, Helvetica, sans-serif;
+      --mono: 'DM Mono', 'JetBrains Mono', monospace;
+      --shadow-soft: 0 4px 20px -2px rgba(22, 22, 19, 0.06);
+      --shadow-card: 0 10px 30px -5px rgba(22, 22, 19, 0.08);
+      --shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+    }
+
+    /* ── DARK EXECUTIVE OBSIDIAN THEME ── */
+    html.dark {
+      --ink: #f1f3f7;
+      --black: #06080b;
+      --paper: #090c10;
+      --paper-2: #121720;
+      --card: #0e1219;
+      --card-hover: #151b24;
+      --gold: #d4af37;
+      --gold-soft: #e5c365;
+      --gold-glow: rgba(212, 175, 55, 0.22);
+      --red: #e05244;
+      --red-soft: rgba(224, 82, 68, 0.18);
+      --green: #4efa8b;
+      --green-soft: rgba(78, 250, 139, 0.14);
+      --blue: #38bdf8;
+      --blue-soft: rgba(56, 189, 248, 0.14);
+      --amber: #f59e0b;
+      --muted: #8b949e;
+      --muted-light: #5b6574;
+      --line: rgba(255, 255, 255, 0.1);
+      --line-subtle: rgba(255, 255, 255, 0.05);
+      --dark-line: rgba(255, 255, 255, 0.12);
+      --topbar-bg: #05070a;
+      --rail-bg: #05070a;
+      --rail-text: #8e96a4;
+      --rail-border: rgba(255, 255, 255, 0.08);
+      --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+      --shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      --shadow-modal: 0 25px 60px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    /* ── RTL HEBREW OVERRIDES ── */
+    [dir="rtl"] {
+      --display: 'Heebo', sans-serif;
+      --body: 'Heebo', sans-serif;
+      --mono: 'Heebo', 'DM Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: var(--paper); color: var(--ink); }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font: 14px/1.5 var(--body);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    /* Noise Texture Overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { border: 0; color: inherit; font: inherit; cursor: pointer; background: transparent; }
+    input, select, textarea { font: inherit; color: inherit; }
+    img { display: block; max-width: 100%; }
+    ::selection { background: var(--gold-soft); color: var(--black); }
+
+    /* ── SHELL LAYOUT ── */
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 256px minmax(0, 1fr);
+    }
+    @media (max-width: 1024px) {
+      .app { grid-template-columns: 1fr; }
+      .rail { display: none !important; }
+    }
+
+    /* ── SIDE RAIL NAVIGATION ── */
+    .rail {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 20px;
+      background: var(--rail-bg);
+      color: var(--paper);
+      border-inline-end: 1px solid var(--rail-border);
+      z-index: 40;
+      overflow-y: auto;
+    }
+    .lockup {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--dark-line);
+    }
+    .lockup .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold));
+      color: #11110f;
+      font: 700 15px/1 var(--display);
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px var(--gold-glow);
+    }
+    .lockup strong {
+      display: block;
+      font: 700 15px/1.1 var(--display);
+      letter-spacing: 0.06em;
+      color: #ffffff;
+      text-transform: uppercase;
+    }
+    .lockup small {
+      display: block;
+      margin-top: 5px;
+      color: var(--rail-text);
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .rail-platform {
+      margin-top: 18px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--dark-line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font: 10px/1 var(--mono);
+      text-transform: uppercase;
+    }
+    .rail-platform span { color: var(--gold-soft); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .rail-platform span::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--gold-soft); }
+
+    .rail-label {
+      margin: 26px 0 10px;
+      color: var(--muted-light);
+      font: 9px/1 var(--mono);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .nav { display: grid; gap: 2px; }
+    .nav a, .nav button.nav-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 11px 10px;
+      color: var(--rail-text);
+      font: 10px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+      text-align: start;
+    }
+    .nav a:hover, .nav button.nav-item:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .nav a.active, .nav button.nav-item.active {
+      color: var(--gold-soft);
+      background: rgba(164, 125, 67, 0.12);
+      border-inline-start: 2px solid var(--gold-soft);
+      font-weight: 600;
+    }
+    .nav em {
+      color: var(--gold-soft);
+      font-style: normal;
+      font-size: 10px;
+      padding: 2px 6px;
+      background: rgba(164, 125, 67, 0.15);
+      border-radius: 2px;
+    }
+    .nav-badge {
+      background: var(--red);
+      color: #ffffff;
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+
+    .rail-footer {
+      margin-top: auto;
+      padding-top: 18px;
+      border-top: 1px solid var(--dark-line);
+      color: var(--rail-text);
+      font: 9px/1.6 var(--mono);
+      text-transform: uppercase;
+    }
+    .rail-footer strong {
+      display: block;
+      color: #ffffff;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    /* ── MAIN CONTENT & TOPBAR ── */
+    .main { min-width: 0; display: flex; flex-direction: column; }
+    .topbar {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      background: var(--topbar-bg);
+      color: var(--rail-text);
+      font: 10px/1 var(--mono);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--dark-line);
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    @media (max-width: 768px) {
+      .topbar { padding: 0 16px; height: 60px; }
+    }
+    .topbar-left { display: flex; align-items: center; gap: 16px; }
+    .topbar-crumb { color: #ffffff; font-weight: 500; letter-spacing: 0.08em; display: flex; align-items: center; gap: 8px; }
+    .topbar-crumb span { color: var(--gold-soft); }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #4efa8b;
+      box-shadow: 0 0 10px #4efa8b;
+      display: inline-block;
+    }
+    .topbar-right { display: flex; align-items: center; gap: 14px; }
+    .topbar-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--dark-line);
+      color: var(--rail-text);
+      transition: all 0.15s;
+      border-radius: 2px;
+      font: 9px/1 var(--mono);
+    }
+    .topbar-btn:hover { color: var(--gold-soft); border-color: var(--gold-soft); }
+    .topbar-btn.primary {
+      background: var(--gold-soft);
+      color: #11110f;
+      font-weight: 600;
+      border-color: var(--gold-soft);
+    }
+    .topbar-btn.primary:hover {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #ffffff;
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold));
+      color: #11110f;
+      font: 600 12px/1 var(--display);
+      border: 1px solid var(--gold-soft);
+    }
+
+    /* ── CANVAS / PAGE WRAPPER ── */
+    .canvas {
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 36px 40px 90px;
+    }
+    @media (max-width: 768px) {
+      .canvas { padding: 20px 16px 60px; }
+    }
+
+    /* ── MASTHEAD ── */
+    .masthead {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 24px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    .kicker {
+      margin: 0 0 12px;
+      color: var(--gold);
+      font: 10px/1 var(--mono);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .kicker::before {
+      content: '';
+      width: 12px;
+      height: 1px;
+      background: var(--gold);
+    }
+    .masthead h1 {
+      margin: 0;
+      font: 500 clamp(38px, 5.2vw, 82px)/0.85 var(--display);
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+    }
+    [dir="rtl"] .masthead h1 {
+      font-family: 'Heebo', sans-serif;
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: normal;
+    }
+    .masthead h1 span { color: var(--gold); }
+    .masthead-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .view-toggle {
+      display: flex;
+      border: 1px solid var(--line);
+      background: var(--card);
+    }
+    .view-toggle button {
+      padding: 10px 14px;
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      border-inline-end: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .view-toggle button:last-child { border-inline-end: 0; }
+    .view-toggle button:hover { color: var(--ink); }
+    .view-toggle button.active {
+      background: var(--black);
+      color: var(--gold-soft);
+      font-weight: 600;
+    }
+    html.dark .view-toggle button.active {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--gold);
+    }
+
+    /* ── SIGNALS / METRIC KPI STRIP ── */
+    .signals {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      margin-bottom: 30px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: var(--card);
+    }
+    @media (max-width: 900px) {
+      .signals { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 520px) {
+      .signals { grid-template-columns: 1fr; }
+    }
+    .sig {
+      min-height: 108px;
+      padding: 18px 22px;
+      border-inline-end: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: background 0.15s;
+    }
+    .sig:hover { background: var(--card-hover); }
+    .sig:last-child { border-inline-end: 0; }
+    @media (max-width: 900px) {
+      .sig:nth-child(2) { border-inline-end: 0; }
+      .sig:nth-child(3) { border-top: 1px solid var(--line); }
+      .sig:nth-child(4) { border-top: 1px solid var(--line); }
+    }
+    .sig-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted);
+      font: 9px/1 var(--mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .sig-num {
+      font: 600 clamp(28px, 3.2vw, 44px)/0.9 var(--display);
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+      margin: 8px 0 4px;
+    }
+    [dir="rtl"] .sig-num { font-family: 'Heebo', sans-serif; font-weight: 800; }
+    .sig-num.gold { color: var(--gold); }
+    .sig-num.green { color: var(--green); }
+    .sig-num.red { color: var(--red); }
+    .sig-sub {
+      color: var(--muted);
+      font: 9px/1.3 var(--mono);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sig-badge {
+      display: inline-block;
+      padding: 2px 5px;
+      font-size: 8px;
+      font-weight: 600;
+      border-radius: 2px;
+    }
+    .sig-badge.gold { background: var(--gold-glow); color: var(--gold); }
+    .sig-badge.green { background: var(--green-soft); color: var(--green); }
+
+    /* ── FILTER & COMMAND TRAY ── */
+    .tray {
+      border: 1px solid var(--line);
+      background: var(--card);
+      margin-bottom: 22px;
+      box-shadow: var(--shadow-soft);
+    }
+    .tray-top {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      border-bottom: 1px solid var(--line);
+    }
+    @media (max-width: 860px) {
+      .tray-top { grid-template-columns: 1fr; }
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+    }
+    .search-box svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--muted);
+      flex-shrink: 0;
+    }
+    .search-box input {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      padding: 18px 0;
+      color: var(--ink);
+      font: 11px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      outline: none;
+    }
+    .search-box input::placeholder { color: var(--muted-light); }
+
+    .segment-group {
+      display: flex;
+      border-inline-start: 1px solid var(--line);
+    }
+    @media (max-width: 860px) {
+      .segment-group { border-inline-start: 0; border-top: 1px solid var(--line); }
+    }
+    .segment-btn {
+      padding: 0 18px;
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+      color: var(--muted);
+      border-inline-end: 1px solid var(--line);
+      letter-spacing: 0.06em;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .segment-btn:last-child { border-inline-end: 0; }
+    .segment-btn:hover { color: var(--ink); }
+    .segment-btn.active {
+      background: var(--gold-soft);
+      color: #11110f;
+      font-weight: 600;
+    }
+
+    .pos-chips-bar {
+      display: flex;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--line);
+      background: rgba(22, 22, 19, 0.02);
+    }
+    html.dark .pos-chips-bar { background: rgba(255, 255, 255, 0.02); }
+    .pos-chip {
+      padding: 12px 16px;
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+      color: var(--muted);
+      border-inline-end: 1px solid var(--line);
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.05em;
+    }
+    .pos-chip:hover { color: var(--ink); background: var(--card-hover); }
+    .pos-chip.active {
+      background: var(--black);
+      color: var(--gold-soft);
+      font-weight: 600;
+    }
+    html.dark .pos-chip.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--gold);
+    }
+    .pos-chip .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--gold-soft);
+      display: none;
+    }
+    .pos-chip.active .dot { display: inline-block; }
+    .pos-chip .cnt {
+      font-size: 8px;
+      color: var(--muted-light);
+      background: rgba(22, 22, 19, 0.06);
+      padding: 1px 4px;
+      border-radius: 2px;
+    }
+    html.dark .pos-chip .cnt { background: rgba(255, 255, 255, 0.08); }
+
+    .tray-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 20px;
+      flex-wrap: wrap;
+    }
+    .filter-pills-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .filter-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .filter-select {
+      background: transparent;
+      border: 1px solid var(--line);
+      padding: 6px 10px;
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+      color: var(--ink);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    .filter-select option { background: var(--card); color: var(--ink); }
+
+    .sort-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+    }
+    .sort-group span { color: var(--muted); letter-spacing: 0.1em; }
+    .sort-btn {
+      color: var(--muted);
+      transition: color 0.15s;
+    }
+    .sort-btn:hover { color: var(--ink); }
+    .sort-btn.active { color: var(--gold); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+
+    .clear-btn {
+      color: var(--red);
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: opacity 0.15s;
+    }
+    .clear-btn:hover { opacity: 0.7; }
+
+    .result-summary {
+      margin: 0 2px 20px;
+      color: var(--muted);
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .result-summary b { color: var(--ink); font-weight: 600; }
+
+    /* ── VIEW 1: EXECUTIVE LEDGER TABLE (DEFAULT) ── */
+    .ledger-table-wrap {
+      border: 1px solid var(--line);
+      background: var(--card);
+      overflow-x: auto;
+      box-shadow: var(--shadow-card);
+    }
+    .ledger-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: start;
+    }
+    .ledger-table thead th {
+      padding: 14px 16px;
+      color: var(--muted);
+      text-align: start;
+      font: 9px/1 var(--mono);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-bottom: 1px solid var(--line);
+      background: rgba(22, 22, 19, 0.02);
+      white-space: nowrap;
+    }
+    html.dark .ledger-table thead th { background: rgba(255, 255, 255, 0.02); }
+    .ledger-table thead th:last-child { text-align: end; }
+    .ledger-table tbody tr.req-row {
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .ledger-table tbody tr.req-row:hover {
+      background: rgba(164, 125, 67, 0.05);
+    }
+    .ledger-table tbody tr.req-row.expanded {
+      background: rgba(164, 125, 67, 0.08);
+      border-bottom: 1px dashed var(--gold-soft);
+    }
+    .ledger-table td {
+      padding: 16px;
+      font: 11px/1.3 var(--mono);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    /* Club cell */
+    .cell-club {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .club-crest {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #11110f;
+      border: 1px solid var(--line);
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      font: 700 13px/1 var(--display);
+      color: var(--gold-soft);
+    }
+    .club-crest img { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; }
+    .club-details strong {
+      font-family: var(--body);
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ink);
+    }
+    .club-meta {
+      margin-top: 4px;
+      color: var(--muted);
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .flag-icon { width: 14px; height: 10px; object-fit: cover; border-radius: 1px; display: inline-block; }
+
+    /* Position badge */
+    .pos-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      font: 600 10px/1 var(--mono);
+      text-transform: uppercase;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      letter-spacing: 0.05em;
+    }
+    .pos-badge.att { background: rgba(182, 66, 53, 0.1); color: var(--red); border-color: rgba(182, 66, 53, 0.3); }
+    .pos-badge.mid { background: rgba(92, 111, 74, 0.1); color: var(--green); border-color: rgba(92, 111, 74, 0.3); }
+    .pos-badge.def { background: rgba(45, 90, 136, 0.1); color: var(--blue); border-color: rgba(45, 90, 136, 0.3); }
+    .pos-badge.gk { background: rgba(200, 131, 42, 0.1); color: var(--amber); border-color: rgba(200, 131, 42, 0.3); }
+
+    /* Specs & Criteria Badges */
+    .specs-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-width: 280px;
+    }
+    .spec-tag {
+      padding: 4px 7px;
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--muted);
+      border-radius: 2px;
+    }
+    html.dark .spec-tag { background: var(--paper-2); }
+    .spec-tag.eu { color: var(--gold); border-color: var(--gold-soft); font-weight: 600; }
+    .spec-tag.foot { color: var(--ink); }
+    .spec-tag.age { color: var(--ink); }
+
+    /* Financials */
+    .fin-box { display: flex; flex-direction: column; gap: 3px; }
+    .fin-fee { font-weight: 600; color: var(--ink); font-size: 12px; }
+    .fin-salary { font-size: 9px; color: var(--muted); }
+
+    /* Matches summary cell */
+    .match-pill-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .match-badge {
+      padding: 5px 9px;
+      border-radius: 2px;
+      font: 600 10px/1 var(--mono);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .match-badge.has-matches {
+      background: var(--green-soft);
+      color: var(--green);
+      border: 1px solid rgba(92, 111, 74, 0.3);
+    }
+    .match-badge.has-mandate {
+      background: var(--gold-glow);
+      color: var(--gold);
+      border: 1px solid var(--gold-soft);
+    }
+    .match-badge.zero {
+      background: rgba(22, 22, 19, 0.05);
+      color: var(--muted);
+      border: 1px solid var(--line);
+    }
+    html.dark .match-badge.zero { background: rgba(255, 255, 255, 0.05); }
+
+    /* Row actions */
+    .actions-cell {
+      text-align: end;
+    }
+    .btn-row-action {
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      font: 9px/1 var(--mono);
+      text-transform: uppercase;
+      color: var(--muted);
+      border-radius: 2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+    .btn-row-action:hover {
+      color: var(--gold);
+      border-color: var(--gold-soft);
+      background: var(--card-hover);
+    }
+    .btn-expand-icon {
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+    tr.expanded .btn-expand-icon {
+      transform: rotate(180deg);
+    }
+
+    /* ── EXPANDABLE ACCORDION DOSSIER ── */
+    .dossier-row {
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+    }
+    .dossier-wrap {
+      padding: 24px 28px;
+      display: grid;
+      grid-template-columns: 340px 1fr 340px;
+      gap: 24px;
+      background: linear-gradient(180deg, rgba(164, 125, 67, 0.03) 0%, transparent 100%);
+    }
+    @media (max-width: 1200px) {
+      .dossier-wrap { grid-template-columns: 1fr; }
+    }
+    .dossier-col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .dossier-title {
+      font: 600 10px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+    .dossier-notes-box {
+      padding: 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      font: 11px/1.6 var(--body);
+      color: var(--ink);
+      border-radius: 2px;
+    }
+    html.dark .dossier-notes-box { background: var(--paper-2); }
+    .dossier-notes-box p { margin-bottom: 8px; }
+    .dossier-notes-box p:last-child { margin-bottom: 0; }
+
+    /* Matched candidate cards */
+    .candidate-list {
+      display: grid;
+      gap: 10px;
+    }
+    .candidate-card {
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      transition: all 0.15s;
+    }
+    html.dark .candidate-card { background: var(--paper-2); }
+    .candidate-card:hover {
+      border-color: var(--gold-soft);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-soft);
+    }
+    .cand-thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: 4px;
+      object-fit: cover;
+      background: #11110f;
+      flex-shrink: 0;
+    }
+    .cand-info strong {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .cand-info span {
+      font: 9px/1 var(--mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 3px;
+    }
+    .cand-score {
+      font: 700 13px/1 var(--display);
+      color: var(--green);
+      text-align: end;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+    }
+    .cand-score small { font: 8px/1 var(--mono); color: var(--muted); text-transform: uppercase; }
+    .cand-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .cand-btn {
+      padding: 5px 8px;
+      font: 8px/1 var(--mono);
+      text-transform: uppercase;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      transition: all 0.15s;
+      background: var(--card);
+    }
+    .cand-btn:hover { background: var(--gold-soft); color: #11110f; border-color: var(--gold-soft); }
+    .cand-btn.whatsapp { background: rgba(37, 211, 102, 0.1); color: #25d366; border-color: rgba(37, 211, 102, 0.3); }
+    .cand-btn.whatsapp:hover { background: #25d366; color: #ffffff; }
+
+    /* ── VIEW 2: TACTICAL PITCH CARDS (GALLERY) ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+    .req-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+    .req-card:hover {
+      border-color: var(--gold-soft);
+      transform: translateY(-2px);
+    }
+    .req-card-priority-strip {
+      height: 3px;
+      width: 100%;
+      background: var(--line);
+    }
+    .req-card-priority-strip.urgent { background: var(--red); }
+    .req-card-priority-strip.high { background: var(--amber); }
+    .req-card-priority-strip.active { background: var(--gold-soft); }
+
+    .req-card-header {
+      padding: 18px 20px 14px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--line-subtle);
+    }
+    .req-card-club {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .req-card-crest {
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #11110f;
+      border: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      font: 700 14px/1 var(--display);
+      color: var(--gold-soft);
+    }
+    .req-card-club-name {
+      font-family: var(--body);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .req-card-club-loc {
+      font: 9px/1 var(--mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+
+    .req-card-body {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+    }
+    .req-card-role {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .req-card-pos-name {
+      font: 600 18px/1 var(--display);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+    [dir="rtl"] .req-card-pos-name { font-family: 'Heebo', sans-serif; font-weight: 800; font-size: 16px; }
+
+    .req-card-criteria {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .req-card-budget {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      padding: 10px 12px;
+      background: var(--paper);
+      border: 1px solid var(--line-subtle);
+      border-radius: 2px;
+    }
+    html.dark .req-card-budget { background: var(--paper-2); }
+    .budget-item label {
+      display: block;
+      font: 8px/1 var(--mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .budget-item strong {
+      font: 600 11px/1 var(--mono);
+      color: var(--ink);
+    }
+
+    .req-card-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--line);
+      background: rgba(22, 22, 19, 0.02);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    html.dark .req-card-footer { background: rgba(255, 255, 255, 0.02); }
+
+    /* ── VIEW 3: POSITION RADAR / KANBAN ── */
+    .kanban-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+      overflow-x: auto;
+      padding-bottom: 20px;
+    }
+    .kanban-col {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      display: flex;
+      flex-direction: column;
+      max-height: 800px;
+    }
+    .kanban-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(22, 22, 19, 0.02);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    html.dark .kanban-header { background: rgba(255, 255, 255, 0.02); }
+    .kanban-header strong {
+      font: 600 12px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .kanban-count {
+      padding: 2px 7px;
+      border-radius: 10px;
+      font: 700 9px/1 var(--mono);
+      background: var(--paper-2);
+      color: var(--ink);
+    }
+    .kanban-items {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .kanban-card {
+      padding: 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    html.dark .kanban-card { background: var(--paper-2); }
+    .kanban-card:hover {
+      border-color: var(--gold-soft);
+      transform: translateY(-1px);
+    }
+
+    /* ── VIEW 4: CLUB MATRIX ── */
+    .matrix-grid {
+      display: grid;
+      gap: 20px;
+    }
+    .club-matrix-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      box-shadow: var(--shadow-card);
+    }
+    .club-matrix-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(22, 22, 19, 0.02);
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    html.dark .club-matrix-header { background: rgba(255, 255, 255, 0.02); }
+    .club-matrix-positions {
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    /* ── MODALS & FLYOUT SLIDE-OVERS ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 7, 10, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-modal);
+      max-width: 680px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      border-radius: 4px;
+      position: relative;
+    }
+    .modal-panel-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--paper-2);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .modal-panel-header h3 {
+      font: 600 16px/1 var(--display);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink);
+    }
+    [dir="rtl"] .modal-panel-header h3 { font-family: 'Heebo', sans-serif; font-weight: 800; }
+    .modal-panel-body { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+    .modal-panel-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      background: var(--paper-2);
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+    }
+
+    /* Form Fields */
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label {
+      font: 600 9px/1 var(--mono);
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      font: 11px/1.4 var(--mono);
+      color: var(--ink);
+      border-radius: 2px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    html.dark .form-input, html.dark .form-textarea, html.dark .form-select { background: var(--paper-2); }
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      border-color: var(--gold-soft);
+      box-shadow: 0 0 0 1px var(--gold-soft);
+    }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 600px) { .form-row-2 { grid-template-columns: 1fr; } }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .form-row-3 { grid-template-columns: 1fr; } }
+
+    /* Bulk Multi-Position Selector Grid */
+    .bulk-pos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .bulk-pos-btn {
+      padding: 10px 6px;
+      border: 1px solid var(--line);
+      font: 600 10px/1 var(--mono);
+      text-transform: uppercase;
+      text-align: center;
+      background: var(--paper);
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    html.dark .bulk-pos-btn { background: var(--paper-2); }
+    .bulk-pos-btn:hover { border-color: var(--gold-soft); }
+    .bulk-pos-btn.selected {
+      background: var(--gold-soft);
+      color: #11110f;
+      border-color: var(--gold-soft);
+      font-weight: 700;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--black);
+      color: var(--paper);
+      padding: 14px 20px;
+      border: 1px solid var(--gold-soft);
+      font: 10px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      z-index: 200;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border-radius: 3px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+    [dir="rtl"] .toast { right: auto; left: 24px; }
+    .toast.show { display: flex; animation: slideIn 0.3s ease; }
+    @keyframes slideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Utility */
+    .hidden { display: none !important; }
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <!-- ==========================================
+         SIDE RAIL NAVIGATION
+         ========================================== -->
+    <aside class="rail">
+      <div class="lockup">
+        <div class="mark">BSG</div>
+        <div>
+          <strong>BRIT SPORT GROUP</strong>
+          <small data-t="rail_sub">Management Room · Men</small>
+        </div>
+      </div>
+
+      <div class="rail-platform">
+        <span data-t="platform_name">Men · 1st Tier</span>
+        <small data-t="platform_status">LIVE SYNC</small>
+      </div>
+
+      <div class="rail-label" data-t="rail_nav_label">WORKSPACE</div>
+      <nav class="nav">
+        <a href="#dashboard" class="nav-item"><span data-t="nav_dash">Executive Dashboard</span></a>
+        <a href="#players" class="nav-item"><span data-t="nav_roster">Roster & Mandates</span> <em>34</em></a>
+        <a href="#shortlist" class="nav-item"><span data-t="nav_shortlist">Target Shortlist</span> <em>18</em></a>
+        <a href="#requests" class="nav-item active"><span data-t="nav_requests">Club Requirements</span> <span class="nav-badge" id="rail-badge-count">28</span></a>
+        <a href="#contacts" class="nav-item"><span data-t="nav_contacts">Sporting Directors</span></a>
+        <a href="#pipeline" class="nav-item"><span data-t="nav_pipeline">Deal Pipeline</span> <em>€32M</em></a>
+      </nav>
+
+      <div class="rail-label" data-t="rail_intel_label">INTELLIGENCE SUITE</div>
+      <nav class="nav">
+        <a href="#scout-ai" class="nav-item"><span data-t="nav_scout_ai">AI Matcher Radar</span> <em style="color:#4efa8b;background:rgba(78,250,139,0.15)">94%</em></a>
+        <a href="#shared-portal" class="nav-item" onclick="openShareModal(event)"><span data-t="nav_share_portal">Club Guest Portals</span></a>
+        <a href="#settings" class="nav-item"><span data-t="nav_config">Remote Config</span></a>
+      </nav>
+
+      <div class="rail-footer">
+        <strong data-t="rail_operator">LIOR DAHAN (MANAGING PARTNER)</strong>
+        <span data-t="rail_system_status">PROD CONNECTED · LATENCY 18ms</span>
+      </div>
+    </aside>
+
+    <!-- ==========================================
+         MAIN AREA
+         ========================================== -->
+    <div class="main">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-crumb">
+            <span class="status-dot"></span>
+            <span data-t="topbar_title">CLUB DIRECTIVES</span> / <b id="crumb-platform" data-t="crumb_sub">EUROPEAN & MID-EAST MANDATES</b>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Live Market Ticker -->
+          <button class="topbar-btn" onclick="openShareModal()" title="Share Link for Clubs">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            <span data-t="btn_share_portal">Share Portal</span>
+          </button>
+
+          <!-- Add Request Button -->
+          <button class="topbar-btn primary" onclick="openAddRequestModal()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span data-t="btn_new_demand">+ New Directive</span>
+          </button>
+
+          <!-- Theme Switcher -->
+          <button class="topbar-btn" onclick="toggleTheme()" id="btn-theme" title="Switch Light Atelier / Dark Obsidian">
+            <span id="theme-label">🌙 OBSIDIAN</span>
+          </button>
+
+          <!-- Language Switcher -->
+          <button class="topbar-btn" onclick="toggleLanguage()" id="btn-lang" title="Toggle English / Hebrew">
+            <span id="lang-label">עברית (HE)</span>
+          </button>
+
+          <div class="avatar" title="Lior Dahan">LD</div>
+        </div>
+      </header>
+
+      <!-- PAGE CANVAS -->
+      <main class="canvas">
+        
+        <!-- MASTHEAD -->
+        <section class="masthead">
+          <div>
+            <div class="kicker" data-t="kicker_text">STRATEGIC RECRUITMENT & CLUB INQUIRIES</div>
+            <h1><span data-t="head_main">CLUB REQUIREMENTS</span> <span data-t="head_sub">& DEMANDS</span></h1>
+          </div>
+
+          <div class="masthead-actions">
+            <!-- View Mode Switcher -->
+            <div class="view-toggle">
+              <button id="vt-ledger" class="active" onclick="setView('ledger')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                <span data-t="view_ledger">Ledger Dossier</span>
+              </button>
+              <button id="vt-cards" onclick="setView('cards')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                <span data-t="view_cards">Pitch Cards</span>
+              </button>
+              <button id="vt-kanban" onclick="setView('kanban')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="4" height="18"/><rect x="10" y="3" width="4" height="12"/><rect x="16" y="3" width="4" height="15"/></svg>
+                <span data-t="view_kanban">Tactical Radar</span>
+              </button>
+              <button id="vt-matrix" onclick="setView('matrix')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span data-t="view_matrix">By Club Matrix</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- SIGNALS STRIP (4 EXECUTIVE KPIS) -->
+        <section class="signals">
+          <div class="sig">
+            <div class="sig-label">
+              <span data-t="sig_total_req">Active Directives</span>
+              <span class="sig-badge gold" data-t="sig_badge_live">14 CLUBS</span>
+            </div>
+            <div class="sig-num gold" id="sig-active-count">28</div>
+            <div class="sig-sub" data-t="sig_active_sub">Across 8 Premier Leagues</div>
+          </div>
+
+          <div class="sig">
+            <div class="sig-label">
+              <span data-t="sig_matched_rate">Roster Fit Rate</span>
+              <span class="sig-badge green" data-t="sig_badge_match">78% FILLED</span>
+            </div>
+            <div class="sig-num green">22 <small style="font-size:16px;color:var(--muted)">/ 28</small></div>
+            <div class="sig-sub" data-t="sig_matched_sub">Instant Proposal Ready</div>
+          </div>
+
+          <div class="sig">
+            <div class="sig-label">
+              <span data-t="sig_budget">Managed Budget</span>
+              <span class="sig-badge gold">TRANSFER+WAGES</span>
+            </div>
+            <div class="sig-num">€42.5M</div>
+            <div class="sig-sub" data-t="sig_budget_sub">€14.8M Available in Fees</div>
+          </div>
+
+          <div class="sig">
+            <div class="sig-label">
+              <span data-t="sig_urgent">Urgent Priority</span>
+              <span class="sig-badge" style="background:var(--red-soft);color:var(--red)" data-t="sig_badge_window">WINDOW CLOSING</span>
+            </div>
+            <div class="sig-num red">05</div>
+            <div class="sig-sub" data-t="sig_urgent_sub">Direct Contact Action Req.</div>
+          </div>
+        </section>
+
+        <!-- COMMAND & FILTER TRAY -->
+        <section class="tray">
+          <div class="tray-top">
+            <!-- Search bar -->
+            <label class="search-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" id="filter-search" placeholder="SEARCH CLUB, POSITION, AGENT, DIRECTIVE CRITERIA, OR NOTES..." oninput="handleSearch(this.value)">
+            </label>
+
+            <!-- Status Segments -->
+            <div class="segment-group">
+              <button class="segment-btn active" onclick="setSegment('all')" id="seg-all"><span data-t="seg_all">All Demands</span></button>
+              <button class="segment-btn" onclick="setSegment('matched')" id="seg-matched"><span data-t="seg_matched">Matched (22)</span></button>
+              <button class="segment-btn" onclick="setSegment('unmatched')" id="seg-unmatched"><span data-t="seg_unmatched">Unmatched (6)</span></button>
+              <button class="segment-btn" onclick="setSegment('urgent')" id="seg-urgent"><span data-t="seg_urgent">Urgent (5)</span></button>
+            </div>
+          </div>
+
+          <!-- Position Filter Pills -->
+          <div class="pos-chips-bar" id="pos-chips-container">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Tray Bottom Row: Secondary Filters + Sort -->
+          <div class="tray-bottom">
+            <div class="filter-pills-row">
+              <!-- Country Filter -->
+              <div class="filter-select-wrap">
+                <span data-t="lbl_country">League Country:</span>
+                <select class="filter-select" id="filter-country" onchange="handleCountryFilter(this.value)">
+                  <option value="all" data-t="opt_all_countries">All Countries (8)</option>
+                  <option value="Belgium">🇧🇪 Belgium (Jupiler Pro)</option>
+                  <option value="Israel">🇮🇱 Israel (Premier League)</option>
+                  <option value="Greece">🇬🇷 Greece (Super League)</option>
+                  <option value="England">🏴󠁧󠁢󠁥󠁮󠁧󠁿 England (Championship)</option>
+                  <option value="United States">🇺🇸 USA (MLS)</option>
+                  <option value="United Arab Emirates">🇦🇪 UAE (Pro League)</option>
+                  <option value="Portugal">🇵🇹 Portugal (Liga Portugal)</option>
+                  <option value="Netherlands">🇳🇱 Netherlands (Eredivisie)</option>
+                </select>
+              </div>
+
+              <!-- Foot preference -->
+              <div class="filter-select-wrap">
+                <span data-t="lbl_foot">Foot:</span>
+                <select class="filter-select" id="filter-foot" onchange="handleFootFilter(this.value)">
+                  <option value="all" data-t="opt_any_foot">Any Foot</option>
+                  <option value="left" data-t="opt_left_foot">Left Foot Only</option>
+                  <option value="right" data-t="opt_right_foot">Right Foot Only</option>
+                </select>
+              </div>
+
+              <!-- EU Passport Only -->
+              <label style="display:flex;align-items:center;gap:6px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);cursor:pointer">
+                <input type="checkbox" id="filter-eu" onchange="handleEuFilter(this.checked)">
+                <span data-t="chk_eu_only">🇪🇺 EU Passport Only</span>
+              </label>
+            </div>
+
+            <div class="sort-group">
+              <span data-t="lbl_sort">Sort:</span>
+              <button class="sort-btn active" onclick="setSort('recent')" id="sort-recent" data-t="sort_recent">Recent</button>
+              <button class="sort-btn" onclick="setSort('fee')" id="sort-fee" data-t="sort_fee">Fee Budget</button>
+              <button class="sort-btn" onclick="setSort('matches')" id="sort-matches" data-t="sort_matches">Match Score</button>
+              <button class="sort-btn" onclick="setSort('club')" id="sort-club" data-t="sort_club">Club Name</button>
+              <button class="clear-btn" onclick="resetFilters()" data-t="btn_clear_filters">Reset Filters ×</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- RESULTS SUMMARY BAR -->
+        <div class="result-summary">
+          <div>
+            <span data-t="sum_showing">SHOWING</span> <b id="sum-count">28</b> <span data-t="sum_of">OF 28 ACTIVE REQUIREMENTS</span>
+            <span id="sum-filter-tag" style="color:var(--gold);margin-inline-start:8px;display:none;">(FILTER APPLIED)</span>
+          </div>
+          <div>
+            <span data-t="sum_last_synced">LAST SYNCHRONIZED:</span> <b id="clock-live">TODAY, 14:32</b>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             VIEW 1: EXECUTIVE LEDGER DOSSIER (TABLE)
+             ========================================== -->
+        <div id="view-ledger-container" class="ledger-table-wrap">
+          <table class="ledger-table">
+            <thead>
+              <tr>
+                <th data-t="th_club">Club & League</th>
+                <th data-t="th_pos">Target Role</th>
+                <th data-t="th_specs">Profile Criteria</th>
+                <th data-t="th_financials">Transfer / Salary Budget</th>
+                <th data-t="th_matches">Roster & Scout Match</th>
+                <th data-t="th_agent">Responsible Agent</th>
+                <th data-t="th_actions">Action</th>
+              </tr>
+            </thead>
+            <tbody id="ledger-tbody">
+              <!-- Dynamically populated by JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ==========================================
+             VIEW 2: TACTICAL PITCH CARDS (GRID)
+             ========================================== -->
+        <div id="view-cards-container" class="cards-grid hidden">
+          <!-- Dynamically populated by JS -->
+        </div>
+
+        <!-- ==========================================
+             VIEW 3: POSITION RADAR / KANBAN
+             ========================================== -->
+        <div id="view-kanban-container" class="kanban-board hidden">
+          <!-- Dynamically populated by JS -->
+        </div>
+
+        <!-- ==========================================
+             VIEW 4: BY CLUB MATRIX
+             ========================================== -->
+        <div id="view-matrix-container" class="matrix-grid hidden">
+          <!-- Dynamically populated by JS -->
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: CREATE NEW DEMAND / BULK MANDATE
+       ========================================== -->
+  <div id="modal-add-request" class="modal-backdrop" onclick="handleBackdropClick(event, 'modal-add-request')">
+    <div class="modal-panel">
+      <div class="modal-panel-header">
+        <h3 data-t="modal_add_title">+ Create New Club Directive / Mandate</h3>
+        <button onclick="closeModal('modal-add-request')" style="font-size:18px;color:var(--muted);padding:4px">✕</button>
+      </div>
+      
+      <div class="modal-panel-body">
+        <!-- Step 1: Club Selection -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" data-t="lbl_club_name">Club Name *</label>
+            <input type="text" class="form-input" id="new-req-club" placeholder="e.g. Standard Liège, KAA Gent, Panathinaikos">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-t="lbl_club_country">League Country *</label>
+            <select class="form-select" id="new-req-country">
+              <option value="Belgium">Belgium (Jupiler Pro)</option>
+              <option value="Israel">Israel (Premier League)</option>
+              <option value="Greece">Greece (Super League)</option>
+              <option value="England">England (Championship)</option>
+              <option value="United States">United States (MLS)</option>
+              <option value="United Arab Emirates">UAE (Pro League)</option>
+              <option value="Portugal">Portugal (Liga Portugal)</option>
+              <option value="Netherlands">Netherlands (Eredivisie)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" data-t="lbl_contact_name">Club Contact / Sporting Director</label>
+            <input type="text" class="form-input" id="new-req-contact" placeholder="e.g. Fergal Harkin (Sporting Director)">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-t="lbl_contact_phone">Contact Phone / WhatsApp</label>
+            <input type="text" class="form-input" id="new-req-phone" placeholder="+32 470 123 456">
+          </div>
+        </div>
+
+        <!-- Position Mode Toggle -->
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <label class="form-label" data-t="lbl_select_pos">Target Tactical Positions *</label>
+            <label style="font:9px/1 var(--mono);color:var(--gold);cursor:pointer;display:flex;align-items:center;gap:4px">
+              <input type="checkbox" id="toggle-bulk-mode" onchange="toggleBulkPosMode(this.checked)">
+              <span data-t="lbl_bulk_mode">⚡ Multi-Position Bulk Mode</span>
+            </label>
+          </div>
+          <div class="bulk-pos-grid" id="bulk-pos-selector">
+            <button type="button" class="bulk-pos-btn selected" data-pos="CF" onclick="togglePosBtn(this)">CF</button>
+            <button type="button" class="bulk-pos-btn" data-pos="LW" onclick="togglePosBtn(this)">LW</button>
+            <button type="button" class="bulk-pos-btn" data-pos="RW" onclick="togglePosBtn(this)">RW</button>
+            <button type="button" class="bulk-pos-btn" data-pos="AM" onclick="togglePosBtn(this)">AM</button>
+            <button type="button" class="bulk-pos-btn" data-pos="CM" onclick="togglePosBtn(this)">CM</button>
+            <button type="button" class="bulk-pos-btn" data-pos="DM" onclick="togglePosBtn(this)">DM</button>
+            <button type="button" class="bulk-pos-btn" data-pos="LB" onclick="togglePosBtn(this)">LB</button>
+            <button type="button" class="bulk-pos-btn" data-pos="RB" onclick="togglePosBtn(this)">RB</button>
+            <button type="button" class="bulk-pos-btn" data-pos="CB" onclick="togglePosBtn(this)">CB</button>
+            <button type="button" class="bulk-pos-btn" data-pos="GK" onclick="togglePosBtn(this)">GK</button>
+          </div>
+        </div>
+
+        <!-- Profile Constraints -->
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label" data-t="lbl_min_age">Min Age</label>
+            <input type="number" class="form-input" id="new-req-minage" placeholder="20" value="21">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-t="lbl_max_age">Max Age</label>
+            <input type="number" class="form-input" id="new-req-maxage" placeholder="28" value="26">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-t="lbl_foot_pref">Preferred Foot</label>
+            <select class="form-select" id="new-req-foot">
+              <option value="any">Any Foot</option>
+              <option value="left">Left Footed</option>
+              <option value="right">Right Footed</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Budgets -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" data-t="lbl_fee_budget">Transfer Fee Budget</label>
+            <select class="form-select" id="new-req-fee">
+              <option value="Free/Free loan">Free Transfer / Free Loan</option>
+              <option value="Under €500k">Under €500k</option>
+              <option value="€500k-€1m" selected>€500k – €1.0M</option>
+              <option value="€1m-€2.5m">€1.0M – €2.5M</option>
+              <option value="€2.5m+">€2.5M+ (High Tier)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-t="lbl_salary_budget">Net Salary Range (Annual)</label>
+            <select class="form-select" id="new-req-salary">
+              <option value="Under €150k">Under €150k net</option>
+              <option value="€150k-€300k">€150k – €300k net</option>
+              <option value="€300k-€600k" selected>€300k – €600k net</option>
+              <option value="€600k-€1m">€600k – €1.0M net</option>
+              <option value="€1m+">€1.0M+ net</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="new-req-eu" checked>
+            <span class="form-label" style="color:var(--gold);font-weight:700" data-t="lbl_require_eu">🇪🇺 Strictly Require EU Passport</span>
+          </label>
+        </div>
+
+        <!-- Tactical Notes & Briefing -->
+        <div class="form-group">
+          <label class="form-label" data-t="lbl_notes_brief">Tactical Briefing & Key Attributes</label>
+          <textarea class="form-textarea" id="new-req-notes" rows="3" placeholder="e.g. Modern dynamic profile, strong in 1v1 duels, high pressing intensity, capable of transition play. Club prefers immediate impact over development project."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-panel-footer">
+        <button class="topbar-btn" onclick="closeModal('modal-add-request')" data-t="btn_cancel">Cancel</button>
+        <button class="topbar-btn primary" onclick="submitNewRequest()" data-t="btn_save_directive">Create Directive & Match Roster</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: INSTANT PROPOSAL & WHATSAPP PITCH
+       ========================================== -->
+  <div id="modal-pitch-generator" class="modal-backdrop" onclick="handleBackdropClick(event, 'modal-pitch-generator')">
+    <div class="modal-panel">
+      <div class="modal-panel-header">
+        <h3 data-t="modal_pitch_title">⚡ Instant Player Pitch & Dossier Generator</h3>
+        <button onclick="closeModal('modal-pitch-generator')" style="font-size:18px;color:var(--muted);padding:4px">✕</button>
+      </div>
+      
+      <div class="modal-panel-body">
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--paper-2);border-radius:3px">
+          <div class="avatar" id="pitch-player-avatar">YS</div>
+          <div>
+            <strong style="font-size:14px;display:block" id="pitch-player-name">Youssef Amrani</strong>
+            <span style="font:9px/1 var(--mono);color:var(--muted);text-transform:uppercase" id="pitch-club-target">Target: Standard Liège · LW Directive</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" data-t="lbl_pitch_preview">Generated Executive WhatsApp Brief (Bilingual)</label>
+          <textarea class="form-textarea" id="pitch-text-content" rows="8" style="font-family:var(--mono);font-size:11px;line-height:1.5"></textarea>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="topbar-btn" onclick="copyPitchText()" id="btn-copy-pitch">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span data-t="btn_copy_text">Copy Pitch Text</span>
+          </button>
+          <button class="topbar-btn" style="background:rgba(37,211,102,0.15);color:#25d366;border-color:#25d366" onclick="openWhatsAppPitch()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.664-.699c.971.53 1.77.813 2.796.813h.005c3.179 0 5.767-2.587 5.768-5.766 0-3.18-2.588-5.767-5.773-5.767zm0 10.457c-.896 0-1.745-.251-2.482-.707l-.178-.106-1.844.484.493-1.798-.117-.186c-.504-.8-1.144-1.603-1.144-2.883 0-2.457 1.999-4.457 4.458-4.457 2.458 0 4.459 2 4.46 4.458 0 2.458-2.001 4.458-4.461 4.458z"/></svg>
+            <span data-t="btn_send_whatsapp">Open in WhatsApp</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-panel-footer">
+        <button class="topbar-btn primary" onclick="closeModal('modal-pitch-generator')" data-t="btn_done">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: SHARE GUEST PORTAL
+       ========================================== -->
+  <div id="modal-share-portal" class="modal-backdrop" onclick="handleBackdropClick(event, 'modal-share-portal')">
+    <div class="modal-panel">
+      <div class="modal-panel-header">
+        <h3 data-t="modal_share_title">🔗 Encrypted Club Guest Portal</h3>
+        <button onclick="closeModal('modal-share-portal')" style="font-size:18px;color:var(--muted);padding:4px">✕</button>
+      </div>
+      
+      <div class="modal-panel-body">
+        <p style="font:11px/1.5 var(--body);color:var(--muted)" data-t="share_desc">
+          Generate an encrypted, read-only recruitment link to share with sporting directors, scout heads, or partner agencies.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label" data-t="lbl_recipient_name">Recipient Label (e.g. Sporting Director / Club Name)</label>
+          <input type="text" class="form-input" id="share-recipient" value="Fergal Harkin — Standard Liège">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" data-t="lbl_expiry">Link Expiration</label>
+          <select class="form-select">
+            <option value="7">7 Days (Active Window)</option>
+            <option value="14" selected>14 Days (Standard)</option>
+            <option value="30">30 Days (Full Month)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" data-t="lbl_portal_url">Generated Encrypted URL</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" class="form-input" readonly value="https://mgsr-team.web.app/shared/requests/req_sec_84f92bc7a10" style="background:var(--paper-2);color:var(--gold-soft)">
+            <button class="topbar-btn primary" onclick="showToast('PORTAL LINK COPIED TO CLIPBOARD')">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-panel-footer">
+        <button class="topbar-btn primary" onclick="closeModal('modal-share-portal')" data-t="btn_done">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="toast">
+    <span class="status-dot"></span>
+    <span id="toast-msg">DIRECTIVE CREATED SUCCESSFULLY</span>
+  </div>
+
+  <!-- ==========================================
+       SCRIPT: MOCK DATA & INTERACTIVITY ENGINE
+       ========================================== -->
+  <script>
+    // ── 1. REALISTIC MOCK DATA (MATCHING CODEBASE DATA MODEL) ──
+    const requestsData = [
+      {
+        id: 'req-01',
+        clubName: 'Standard Liège',
+        clubCountry: 'Belgium',
+        clubCountryFlag: '🇧🇪',
+        clubLogo: 'https://tmssl.akamaized.net/images/wappen/head/3057.png',
+        contactName: 'Fergal Harkin (Sporting Director)',
+        contactPhone: '+32470123456',
+        position: 'LW',
+        minAge: 20,
+        maxAge: 25,
+        dominateFoot: 'right',
+        euOnly: true,
+        transferFee: '€500k-€1m',
+        salaryRange: '€300k-€450k',
+        priority: 'urgent',
+        notes: 'Inverted winger who cuts inside on right foot. High transition acceleration, 1v1 dribble efficiency above 65%. Crucial for 4-3-3 counter-pressing system.',
+        createdByAgent: 'Lior Dahan',
+        createdByAgentHebrew: 'ליאור דהן',
+        createdAt: Date.now() - 3600000 * 4,
+        matchedRoster: [
+          { name: 'Youssef Amrani', age: 21, pos: 'LW', foot: 'right', eu: true, val: '€9.50M', score: 96, club: 'RC Lens', img: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=600&q=80', mandate: true },
+          { name: 'Mateo Silva', age: 19, pos: 'CF/LW', foot: 'right', eu: true, val: '€12.0M', score: 88, club: 'Boca Juniors', img: 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=600&q=80', mandate: true }
+        ],
+        matchedScout: [
+          { name: 'Arnaud Bodart', age: 23, pos: 'LW', val: '€850k', club: 'Westerlo', score: 84 }
+        ]
+      },
+      {
+        id: 'req-02',
+        clubName: 'Panathinaikos',
+        clubCountry: 'Greece',
+        clubCountryFlag: '🇬🇷',
+        clubLogo: 'https://tmssl.akamaized.net/images/wappen/head/265.png',
+        contactName: 'Giannis Papadimitriou (Technical Director)',
+        contactPhone: '+306941234567',
+        position: 'CF',
+        minAge: 23,
+        maxAge: 29,
+        dominateFoot: 'any',
+        euOnly: false,
+        transferFee: '€1.5m-€2.5m',
+        salaryRange: '€600k-€850k',
+        priority: 'urgent',
+        notes: 'Physical striker (186cm+), box presence, link-up play under pressure. European competition pedigree required. Target man for title race.',
+        createdByAgent: 'Lior Dahan',
+        createdByAgentHebrew: 'ליאור דהן',
+        createdAt: Date.now() - 3600000 * 12,
+        matchedRoster: [
+          { name: 'Nikola Petrov', age: 27, pos: 'CF', foot: 'right', eu: true, val: '€2.10M', score: 94, club: 'Free Agent', img: '', mandate: true },
+          { name: 'Andres Mora', age: 29, pos: 'CF', foot: 'left', eu: false, val: '€1.20M', score: 86, club: 'Free Agent', img: '', mandate: true }
+        ],
+        matchedScout: [
+          { name: 'Marko Lazetic', age: 24, pos: 'CF', val: '€1.8M', club: 'Fortuna Sittard', score: 82 }
+        ]
+      },
+      {
+        id: 'req-03',
+        clubName: 'Maccabi Tel Aviv',
+        clubCountry: 'Israel',
+        clubCountryFlag: '🇮🇱',
+        clubLogo: 'https://tmssl.akamaized.net/images/wappen/head/119.png',
+        contactName: 'Ben Mansford (CEO)',
+        contactPhone: '+972541234567',
+        position: 'CB',
+        minAge: 22,
+        maxAge: 28,
+        dominateFoot: 'left',
+        euOnly: true,
+        transferFee: '€800k-€1.2m',
+        salaryRange: '€350k-€500k',
+        priority: 'high',
+        notes: 'Left-footed central defender capable of progressive line-breaking passes. Aerial dominance in set pieces. High line recovery speed.',
+        createdByAgent: 'Lior Dahan',
+        createdByAgentHebrew: 'ליאור דהן',
+        createdAt: Date.now() - 3600000 * 24,
+        matchedRoster: [
+          { name: 'Nikola Petrov', age: 27, pos: 'CB', foot: 'left', eu: true, val: '€2.10M', score: 91, club: 'Free Agent', img: '', mandate: true }
+        ],
+        matchedScout: [
+          { name: 'Stipe Radic', age: 24, pos: 'CB', val: '€900k', club: 'Viborg FF', score: 88 }
+        ]
+      },
+      {
+        id: 'req-04',
+        clubName: 'KAA Gent',
+        clubCountry: 'Belgium',
+        clubCountryFlag: '🇧🇪',
+        clubLogo: 'https://tmssl.akamaized.net/images/wappen/head/157.png',
+        contactName: 'Michel Louwagie (Managing Director)',
+        contactPhone: '+3292101234',
+        position: 'DM',
+        minAge: 20,
+        maxAge: 24,
+        dominateFoot: 'any',
+        euOnly: false,
+        transferFee: '€1.0m-€1.8m',
+        salaryRange: '€250k-€400k',
+        priority: 'active',
+        notes: 'Ball-winning #6 with high tackle success and progressive carries. Excellent tactical discipline. Resale value is a priority.',
+        createdByAgent: 'Lior Dahan',
+        createdByAgentHebrew: 'ליאור דהן',
+        createdAt: Date.now() - 3600000 * 30,
+        matchedRoster: [
+          { name: 'Ibrahim Diallo', age: 20, pos: 'DM', foot: 'right', eu: false, val: '€4.40M', score: 95, club: 'FC Metz', img: '', mandate: true }
+        ],
+        matchedScout: []
+      },
+      {
+        id: 'req-05',
+        clubName: 'Watford FC',
+        clubCountry: 'England',
+        clubCountryFlag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+        clubLogo: 'https://tmssl.akamaized.net/images/wappen/head/340.png',
+        contactName: 'Gianluca Nani (Sporting Director)',
+        contactPhone: '+441923123456',
+        position: 'RB',
+        minAge: 21,
+        maxAge: 25,
+        dominateFoot: 'right',
+        euOnly: false,
+        transferFee: '€2.0m-€3.5m',
+        salaryRange: '€500k-€800k',
+        priority: 'high',
+        notes: 'Athletic right-back suited for Championship physical demands. High sprint volume, overlapping deliveries, GBE points qualification required.',
+        createdByAgent: 'Lior Dahan',
+        createdByAgentHebrew: 'ליאור דהן',
+        createdAt: Date.now() - 3600000 * 48,
+        matchedRoster: [
+          { name: 'Dylan Roberts', age: 22, pos: 'RB', foot: 'right', eu: false, val: '€6.00M', score: 92, club: 'Brentford', img: 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=600&q=80', mandate: true }
+        ],
+        matchedScout: []
+      },
+      {
+        id: 'req-06',
+        clubName: 'Charlotte FC',
+        clubCountry: 'United States',
+        clubCountryFlag: '🇺🇸',
+        clubLogo: 'https://tmssl.akamaized.net/images/wappen/head/86386.png',
+        contactName: 'Zoran Krneta (Sporting Director)',
+        contactPhone: '+17041234567',
+        position: 'AM',
+        minAge: 22,
+        maxAge: 27,
+        dominateFoot: 'right',
+        euOnly: false,
+        transferFee: '€2.5m-€4.0m',
+        salaryRange: '€750k-€1.1m',
+        priority: 'urgent',
+        notes: 'Targeting Designated Player (DP) / TAM attacking playmaker. Decisive key passes in final third, set piece specialist.',
+        createdByAgent: 'Lior Dahan',
+        createdByAgentHebrew: 'ליאור דהן',
+        createdAt: Date.now() - 3600000 * 52,
+        matchedRoster: [
+          { name: 'Tomas Novak', age: 24, pos: 'AM', foot: 'right', eu: true, val: '€5.20M', score: 89, club: 'Sparta Praha', img: 'https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=600&q=80', mandate: true }
+        ],
+        matchedScout: []
+      },
+      {
+        id: 'req-07',
+        clubName: 'Maccabi Haifa',
+        clubCountry: 'Israel',
+        clubCountryFlag: '🇮🇱',
+        clubLogo: 'https://tmssl.akamaized.net/images/wappen/head/120.png',
+        contactName: 'Gal Alberman (Sporting Director)',
+        contactPhone: '+972521234567',
+        position: 'GK',
+        minAge: 22,
+        maxAge: 29,
+        dominateFoot: 'right',
+        euOnly: true,
+        transferFee: '€500k-€900k',
+        salaryRange: '€250k-€380k',
+        priority: 'active',
+        notes: 'Modern sweeper-keeper, composed with feet under high press, strong 1v1 shot stopping and command of box on crosses.',
+        createdByAgent: 'Lior Dahan',
+        createdByAgentHebrew: 'ליאור דהן',
+        createdAt: Date.now() - 3600000 * 60,
+        matchedRoster: [
+          { name: 'Lukas Berg', age: 23, pos: 'GK', foot: 'right', eu: true, val: '€3.00M', score: 93, club: 'Malmö FF', img: '', mandate: true }
+        ],
+        matchedScout: []
+      },
+      {
+        id: 'req-08',
+        clubName: 'Al-Ain FC',
+        clubCountry: 'United Arab Emirates',
+        clubCountryFlag: '🇦🇪',
+        clubLogo: 'https://tmssl.akamaized.net/images/wappen/head/3455.png',
+        contactName: 'Rashid Al Ameri (Technical Director)',
+        contactPhone: '+971501234567',
+        position: 'RW',
+        minAge: 23,
+        maxAge: 29,
+        dominateFoot: 'left',
+        euOnly: false,
+        transferFee: '€3.0m-€5.0m',
+        salaryRange: '€1.2m-€1.8m',
+        priority: 'active',
+        notes: 'High profile inverted right winger. Match winner with direct goal threat, elite top speed, explosive acceleration.',
+        createdByAgent: 'Lior Dahan',
+        createdByAgentHebrew: 'ליאור דהן',
+        createdAt: Date.now() - 3600000 * 72,
+        matchedRoster: [],
+        matchedScout: [
+          { name: 'Gustavo Santos', age: 25, pos: 'RW', val: '€3.5M', club: 'Vitoria SC', score: 85 }
+        ]
+      }
+    ];
+
+    // ── 2. STATE MANAGEMENT ──
+    let currentView = 'ledger';
+    let currentSegment = 'all';
+    let currentPosFilter = 'all';
+    let currentCountryFilter = 'all';
+    let currentFootFilter = 'all';
+    let currentEuFilter = false;
+    let currentSort = 'recent';
+    let searchQuery = '';
+    let expandedRowId = null;
+
+    // ── 3. POSITIONS LIST FOR FILTER CHIPS ──
+    const positionsList = ['ALL', 'CF', 'LW', 'RW', 'AM', 'CM', 'DM', 'LB', 'RB', 'CB', 'GK'];
+
+    function renderPosChips() {
+      const container = document.getElementById('pos-chips-container');
+      container.innerHTML = '';
+      positionsList.forEach(pos => {
+        const btn = document.createElement('button');
+        const isActive = (pos.toLowerCase() === currentPosFilter.toLowerCase()) || (pos === 'ALL' && currentPosFilter === 'all');
+        btn.className = `pos-chip ${isActive ? 'active' : ''}`;
+        
+        let count = 0;
+        if (pos === 'ALL') count = requestsData.length;
+        else count = requestsData.filter(r => r.position === pos).length;
+
+        btn.innerHTML = `<span class="dot"></span><span>${pos}</span><span class="cnt">${count}</span>`;
+        btn.onclick = () => {
+          currentPosFilter = pos === 'ALL' ? 'all' : pos;
+          renderPosChips();
+          applyFiltersAndRender();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    // ── 4. FILTERING & SORTING LOGIC ──
+    function getFilteredData() {
+      return requestsData.filter(r => {
+        // Search query
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const matchStr = `${r.clubName} ${r.clubCountry} ${r.position} ${r.notes} ${r.contactName} ${r.createdByAgent}`.toLowerCase();
+          if (!matchStr.includes(q)) return false;
+        }
+        // Segment
+        if (currentSegment === 'matched' && r.matchedRoster.length === 0) return false;
+        if (currentSegment === 'unmatched' && r.matchedRoster.length > 0) return false;
+        if (currentSegment === 'urgent' && r.priority !== 'urgent') return false;
+        // Position
+        if (currentPosFilter !== 'all' && r.position !== currentPosFilter) return false;
+        // Country
+        if (currentCountryFilter !== 'all' && r.clubCountry !== currentCountryFilter) return false;
+        // Foot
+        if (currentFootFilter !== 'all' && r.dominateFoot !== currentFootFilter && r.dominateFoot !== 'any') return false;
+        // EU
+        if (currentEuFilter && !r.euOnly) return false;
+
+        return true;
+      }).sort((a, b) => {
+        if (currentSort === 'recent') return b.createdAt - a.createdAt;
+        if (currentSort === 'fee') return b.transferFee.localeCompare(a.transferFee);
+        if (currentSort === 'matches') return b.matchedRoster.length - a.matchedRoster.length;
+        if (currentSort === 'club') return a.clubName.localeCompare(b.clubName);
+        return 0;
+      });
+    }
+
+    function applyFiltersAndRender() {
+      const data = getFilteredData();
+      document.getElementById('sum-count').textContent = data.length;
+      document.getElementById('sum-filter-tag').style.display = (currentPosFilter !== 'all' || currentCountryFilter !== 'all' || currentSegment !== 'all' || searchQuery.trim() || currentEuFilter) ? 'inline' : 'none';
+
+      if (currentView === 'ledger') renderLedger(data);
+      else if (currentView === 'cards') renderCards(data);
+      else if (currentView === 'kanban') renderKanban(data);
+      else if (currentView === 'matrix') renderMatrix(data);
+    }
+
+    // ── 5. RENDER VIEW 1: EXECUTIVE LEDGER ──
+    function renderLedger(data) {
+      const tbody = document.getElementById('ledger-tbody');
+      tbody.innerHTML = '';
+      const rtl = document.documentElement.dir === 'rtl';
+
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:48px;color:var(--muted)">${rtl ? 'לא נמצאו בקשות מועדון תואמות לסינון' : 'No club requirements match the active filter criteria.'}</td></tr>`;
+        return;
+      }
+
+      data.forEach(r => {
+        const isExp = expandedRowId === r.id;
+        const posClass = ['CF', 'LW', 'RW'].includes(r.position) ? 'att' : ['AM', 'CM', 'DM'].includes(r.position) ? 'mid' : ['LB', 'RB', 'CB'].includes(r.position) ? 'def' : 'gk';
+        
+        // Main row
+        const tr = document.createElement('tr');
+        tr.className = `req-row ${isExp ? 'expanded' : ''}`;
+        tr.onclick = (e) => {
+          if (e.target.closest('button')) return;
+          toggleRowExpand(r.id);
+        };
+
+        const hasMatches = r.matchedRoster.length > 0;
+        const bestScore = hasMatches ? Math.max(...r.matchedRoster.map(m => m.score)) : 0;
+
+        tr.innerHTML = `
+          <td>
+            <div class="cell-club">
+              <div class="club-crest">
+                ${r.clubLogo ? `<img src="${r.clubLogo}" alt="${r.clubName}">` : r.clubName.substring(0,2).toUpperCase()}
+              </div>
+              <div class="club-details">
+                <strong>${r.clubName} ${r.priority === 'urgent' ? `<span style="font-size:8px;padding:2px 5px;background:var(--red);color:#fff;border-radius:2px;letter-spacing:0.05em">URGENT</span>` : ''}</strong>
+                <div class="club-meta">
+                  <span>${r.clubCountryFlag} ${r.clubCountry}</span>
+                  <span>·</span>
+                  <span>${r.contactName.split(' ')[0]}</span>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="pos-badge ${posClass}">
+              <b>${r.position}</b>
+              <small style="opacity:0.8">${r.minAge}-${r.maxAge} YRS</small>
+            </span>
+          </td>
+          <td>
+            <div class="specs-grid">
+              ${r.euOnly ? `<span class="spec-tag eu">🇪🇺 EU ONLY</span>` : `<span class="spec-tag">🌍 GLOBAL</span>`}
+              <span class="spec-tag foot">${r.dominateFoot.toUpperCase()} FOOT</span>
+              <span class="spec-tag age">${r.minAge}-${r.maxAge} Y/O</span>
+            </div>
+          </td>
+          <td>
+            <div class="fin-box">
+              <span class="fin-fee">${r.transferFee}</span>
+              <span class="fin-salary">${r.salaryRange} net/yr</span>
+            </div>
+          </td>
+          <td>
+            <div class="match-pill-group">
+              ${hasMatches ? `
+                <span class="match-badge has-matches" onclick="toggleRowExpand('${r.id}')">
+                  <span class="status-dot"></span>
+                  <b>${r.matchedRoster.length} ROSTER</b>
+                  <small style="color:var(--gold)">(${bestScore}%)</small>
+                </span>
+              ` : `
+                <span class="match-badge zero">
+                  <span>0 ROSTER</span>
+                </span>
+              `}
+              ${r.matchedScout && r.matchedScout.length > 0 ? `
+                <span class="match-badge" style="background:var(--blue-soft);color:var(--blue);border:1px solid rgba(45,90,136,0.3)">
+                  <b>+${r.matchedScout.length} SCOUT</b>
+                </span>
+              ` : ''}
+            </div>
+          </td>
+          <td>
+            <div style="font-size:11px;color:var(--ink);font-weight:600">${rtl ? r.createdByAgentHebrew : r.createdByAgent}</div>
+            <div style="font-size:9px;color:var(--muted)">MANAGING PARTNER</div>
+          </td>
+          <td class="actions-cell">
+            <button class="btn-row-action" onclick="toggleRowExpand('${r.id}')">
+              <span>${isExp ? (rtl ? 'סגור' : 'Close') : (rtl ? 'פרטים' : 'Dossier')}</span>
+              <span class="btn-expand-icon">▾</span>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        // Expandable Dossier Row
+        if (isExp) {
+          const expTr = document.createElement('tr');
+          expTr.className = 'dossier-row';
+          expTr.innerHTML = `
+            <td colspan="7" style="padding:0">
+              <div class="dossier-wrap">
+                <!-- Col 1: Tactical Brief & Club Contact -->
+                <div class="dossier-col">
+                  <div class="dossier-title">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>${rtl ? 'תדריך טקטי והערות' : 'Tactical Briefing & Mandate Notes'}</span>
+                  </div>
+                  <div class="dossier-notes-box">
+                    <p><b>${rtl ? 'פרופיל מבוקש:' : 'Requested Profile:'}</b> ${r.notes}</p>
+                    <p style="margin-top:10px;font-size:10px;color:var(--muted)"><b>${rtl ? 'איש קשר ישיר:' : 'Direct Contact:'}</b> ${r.contactName} (${r.contactPhone})</p>
+                  </div>
+                  <div style="display:flex;gap:8px">
+                    <button class="topbar-btn" style="width:100%;justify-content:center" onclick="openPitchModal('${r.id}', '${r.matchedRoster[0]?.name || 'Candidate'}')">
+                      <span>⚡ ${rtl ? 'צור פנייה ב-WhatsApp' : 'Generate WhatsApp Pitch'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Col 2: Matched Roster Candidates -->
+                <div class="dossier-col">
+                  <div class="dossier-title">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    <span>${rtl ? 'שחקנים מתאימים בסגל שלנו' : 'Matched In-House Roster Players'} (${r.matchedRoster.length})</span>
+                  </div>
+                  <div class="candidate-list">
+                    ${r.matchedRoster.map(p => `
+                      <div class="candidate-card">
+                        <img src="${p.img || 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=150&q=80'}" class="cand-thumb" alt="${p.name}">
+                        <div class="cand-info">
+                          <strong>${p.name}</strong>
+                          <span>${p.club} · ${p.pos} · ${p.val} · ${p.foot}</span>
+                          <div class="cand-actions">
+                            <button class="cand-btn whatsapp" onclick="openPitchModal('${r.id}', '${p.name}')">⚡ ${rtl ? 'הצע למועדון' : 'Propose Player'}</button>
+                            <button class="cand-btn" onclick="showToast('PROFILE DOSSIER OPENED')">Profile ↗</button>
+                          </div>
+                        </div>
+                        <div class="cand-score">
+                          <span>${p.score}%</span>
+                          <small>${rtl ? 'התאמה' : 'FIT MATCH'}</small>
+                        </div>
+                      </div>
+                    `).join('')}
+                    ${r.matchedRoster.length === 0 ? `<div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">${rtl ? 'אין שחקני סגל תואמים כרגע' : 'No in-house roster players currently match this mandate.'}</div>` : ''}
+                  </div>
+                </div>
+
+                <!-- Col 3: AI Scout Radar Suggestions -->
+                <div class="dossier-col">
+                  <div class="dossier-title">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                    <span>${rtl ? 'המלצות סקאוטינג חיצוני' : 'Scout Server DB Targets'}</span>
+                  </div>
+                  <div class="candidate-list">
+                    ${(r.matchedScout || []).map(s => `
+                      <div class="candidate-card">
+                        <div class="cand-thumb" style="display:grid;place-items:center;background:#1a202c;color:var(--gold-soft);font-weight:700">SC</div>
+                        <div class="cand-info">
+                          <strong>${s.name}</strong>
+                          <span>${s.club} · ${s.pos} · ${s.val}</span>
+                          <div class="cand-actions">
+                            <button class="cand-btn" onclick="showToast('ADDED TO TARGET SHORTLIST')">+ ${rtl ? 'הוסף לרשימת מעקב' : 'Add to Shortlist'}</button>
+                          </div>
+                        </div>
+                        <div class="cand-score" style="color:var(--blue)">
+                          <span>${s.score}%</span>
+                          <small>SCOUT</small>
+                        </div>
+                      </div>
+                    `).join('')}
+                    ${(!r.matchedScout || r.matchedScout.length === 0) ? `<div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">${rtl ? 'אין יעדי סקאוטינג חיצוניים נוספים' : 'No external scout targets queued.'}</div>` : ''}
+                  </div>
+                </div>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(expTr);
+        }
+      });
+    }
+
+    // ── 6. RENDER VIEW 2: TACTICAL PITCH CARDS ──
+    function renderCards(data) {
+      const container = document.getElementById('view-cards-container');
+      container.innerHTML = '';
+      const rtl = document.documentElement.dir === 'rtl';
+
+      data.forEach(r => {
+        const card = document.createElement('div');
+        card.className = 'req-card';
+        const hasMatches = r.matchedRoster.length > 0;
+        const bestScore = hasMatches ? Math.max(...r.matchedRoster.map(m => m.score)) : 0;
+
+        card.innerHTML = `
+          <div class="req-card-priority-strip ${r.priority}"></div>
+          <div class="req-card-header">
+            <div class="req-card-club">
+              <div class="req-card-crest">
+                ${r.clubLogo ? `<img src="${r.clubLogo}" alt="${r.clubName}">` : r.clubName.substring(0,2).toUpperCase()}
+              </div>
+              <div>
+                <div class="req-card-club-name">${r.clubName}</div>
+                <div class="req-card-club-loc">${r.clubCountryFlag} ${r.clubCountry}</div>
+              </div>
+            </div>
+            <span class="pos-badge att" style="font-size:12px;padding:6px 12px"><b>${r.position}</b></span>
+          </div>
+
+          <div class="req-card-body">
+            <div class="req-card-criteria">
+              ${r.euOnly ? `<span class="spec-tag eu">🇪🇺 EU PASSPORT</span>` : `<span class="spec-tag">🌍 GLOBAL</span>`}
+              <span class="spec-tag foot">${r.dominateFoot.toUpperCase()} FOOT</span>
+              <span class="spec-tag age">${r.minAge}–${r.maxAge} Y/O</span>
+            </div>
+
+            <p style="font-size:11px;color:var(--ink);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+              ${r.notes}
+            </p>
+
+            <div class="req-card-budget">
+              <div class="budget-item">
+                <label>${rtl ? 'תקציב דמי העברה' : 'Transfer Fee'}</label>
+                <strong>${r.transferFee}</strong>
+              </div>
+              <div class="budget-item">
+                <label>${rtl ? 'שכר נטו שנתי' : 'Net Salary'}</label>
+                <strong>${r.salaryRange}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="req-card-footer">
+            <div style="display:flex;align-items:center;gap:6px">
+              ${hasMatches ? `
+                <span class="match-badge has-matches" onclick="openPitchModal('${r.id}', '${r.matchedRoster[0].name}')">
+                  <span class="status-dot"></span>
+                  <b>${r.matchedRoster.length} MATCHES (${bestScore}%)</b>
+                </span>
+              ` : `
+                <span class="match-badge zero">0 MATCHES</span>
+              `}
+            </div>
+            <button class="topbar-btn primary" style="padding:6px 10px;font-size:8px" onclick="openPitchModal('${r.id}', '${r.matchedRoster[0]?.name || 'Candidate'}')">
+              ⚡ ${rtl ? 'הצע שחקן' : 'Pitch'}
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // ── 7. RENDER VIEW 3: POSITION RADAR / KANBAN ──
+    function renderKanban(data) {
+      const container = document.getElementById('view-kanban-container');
+      container.innerHTML = '';
+      const positions = ['CF', 'LW', 'RW', 'AM', 'CM', 'DM', 'LB', 'RB', 'CB', 'GK'];
+
+      positions.forEach(pos => {
+        const colReqs = data.filter(r => r.position === pos);
+        const col = document.createElement('div');
+        col.className = 'kanban-col';
+        col.innerHTML = `
+          <div class="kanban-header">
+            <strong><span>${pos}</span> DIRECTIVES</strong>
+            <span class="kanban-count">${colReqs.length}</span>
+          </div>
+          <div class="kanban-items">
+            ${colReqs.map(r => `
+              <div class="kanban-card" onclick="openPitchModal('${r.id}', '${r.matchedRoster[0]?.name || 'Candidate'}')">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <strong style="font-size:12px;color:var(--ink)">${r.clubName}</strong>
+                  <span style="font-size:9px;color:var(--gold)">${r.transferFee}</span>
+                </div>
+                <p style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">${r.minAge}-${r.maxAge} Y/O · ${r.dominateFoot} · ${r.euOnly ? 'EU Only' : 'Global'}</p>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span class="match-badge ${r.matchedRoster.length > 0 ? 'has-matches' : 'zero'}" style="font-size:8px">
+                    ${r.matchedRoster.length} MATCHED
+                  </span>
+                  <span style="font-size:9px;color:var(--muted)">${r.clubCountryFlag}</span>
+                </div>
+              </div>
+            `).join('')}
+            ${colReqs.length === 0 ? `<div style="padding:24px;text-align:center;color:var(--muted);font-size:10px">No open directives</div>` : ''}
+          </div>
+        `;
+        container.appendChild(col);
+      });
+    }
+
+    // ── 8. RENDER VIEW 4: BY CLUB MATRIX ──
+    function renderMatrix(data) {
+      const container = document.getElementById('view-matrix-container');
+      container.innerHTML = '';
+      const rtl = document.documentElement.dir === 'rtl';
+
+      // Group by club
+      const clubsMap = {};
+      data.forEach(r => {
+        if (!clubsMap[r.clubName]) clubsMap[r.clubName] = [];
+        clubsMap[r.clubName].push(r);
+      });
+
+      Object.keys(clubsMap).forEach(clubName => {
+        const reqs = clubsMap[clubName];
+        const first = reqs[0];
+        const card = document.createElement('div');
+        card.className = 'club-matrix-card';
+        card.innerHTML = `
+          <div class="club-matrix-header">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div class="club-crest">
+                ${first.clubLogo ? `<img src="${first.clubLogo}" alt="${first.clubName}">` : first.clubName.substring(0,2).toUpperCase()}
+              </div>
+              <div>
+                <strong style="font-size:16px;font-family:var(--body);font-weight:700;display:block">${first.clubName}</strong>
+                <span style="font:9px/1 var(--mono);color:var(--muted);text-transform:uppercase">${first.clubCountryFlag} ${first.clubCountry} · Direct: ${first.contactName} (${first.contactPhone})</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <span class="sig-badge gold" style="font-size:10px;padding:5px 10px">${reqs.length} OPEN DIRECTIVES</span>
+            </div>
+          </div>
+          <div class="club-matrix-positions">
+            ${reqs.map(r => `
+              <div style="padding:14px;background:var(--paper);border:1px solid var(--line);border-radius:2px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <span class="pos-badge att"><b>${r.position}</b></span>
+                  <span style="font-size:11px;font-weight:700;color:var(--ink)">${r.transferFee}</span>
+                </div>
+                <p style="font-size:10px;color:var(--muted);line-height:1.4;margin-bottom:10px">${r.notes}</p>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span style="font-size:9px;color:var(--green);font-weight:600">${r.matchedRoster.length} Candidates</span>
+                  <button class="cand-btn" onclick="openPitchModal('${r.id}', '${r.matchedRoster[0]?.name || 'Candidate'}')">⚡ Pitch</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // ── 9. INTERACTION HANDLERS ──
+    function setView(viewName) {
+      currentView = viewName;
+      ['ledger', 'cards', 'kanban', 'matrix'].forEach(v => {
+        document.getElementById(`vt-${v}`).classList.toggle('active', v === viewName);
+        document.getElementById(`view-${v}-container`).classList.toggle('hidden', v !== viewName);
+      });
+      applyFiltersAndRender();
+    }
+
+    function setSegment(seg) {
+      currentSegment = seg;
+      ['all', 'matched', 'unmatched', 'urgent'].forEach(s => {
+        document.getElementById(`seg-${s}`).classList.toggle('active', s === seg);
+      });
+      applyFiltersAndRender();
+    }
+
+    function handleSearch(val) {
+      searchQuery = val;
+      applyFiltersAndRender();
+    }
+
+    function handleCountryFilter(val) {
+      currentCountryFilter = val;
+      applyFiltersAndRender();
+    }
+
+    function handleFootFilter(val) {
+      currentFootFilter = val;
+      applyFiltersAndRender();
+    }
+
+    function handleEuFilter(checked) {
+      currentEuFilter = checked;
+      applyFiltersAndRender();
+    }
+
+    function setSort(sortKey) {
+      currentSort = sortKey;
+      ['recent', 'fee', 'matches', 'club'].forEach(k => {
+        document.getElementById(`sort-${k}`).classList.toggle('active', k === sortKey);
+      });
+      applyFiltersAndRender();
+    }
+
+    function resetFilters() {
+      currentSegment = 'all';
+      currentPosFilter = 'all';
+      currentCountryFilter = 'all';
+      currentFootFilter = 'all';
+      currentEuFilter = false;
+      searchQuery = '';
+      document.getElementById('filter-search').value = '';
+      document.getElementById('filter-country').value = 'all';
+      document.getElementById('filter-foot').value = 'all';
+      document.getElementById('filter-eu').checked = false;
+      setSegment('all');
+      renderPosChips();
+      applyFiltersAndRender();
+      showToast('FILTERS RESET');
+    }
+
+    function toggleRowExpand(id) {
+      expandedRowId = expandedRowId === id ? null : id;
+      renderLedger(getFilteredData());
+    }
+
+    // ── 10. MODAL DIALOG CONTROLLERS ──
+    function openAddRequestModal() {
+      document.getElementById('modal-add-request').classList.add('open');
+    }
+    function openShareModal(e) {
+      if (e) e.preventDefault();
+      document.getElementById('modal-share-portal').classList.add('open');
+    }
+    function openPitchModal(reqId, playerName) {
+      const req = requestsData.find(r => r.id === reqId) || requestsData[0];
+      const rtl = document.documentElement.dir === 'rtl';
+      document.getElementById('pitch-player-name').textContent = playerName;
+      document.getElementById('pitch-club-target').textContent = `Target: ${req.clubName} · ${req.position} Directive (${req.transferFee})`;
+      document.getElementById('pitch-player-avatar').textContent = playerName.split(' ').map(s=>s[0]).join('').toUpperCase();
+      
+      const pitchEn = `Hello ${req.contactName.split(' ')[0]},\n\nRegarding your directive for a ${req.position} at ${req.clubName} (${req.transferFee} bracket / ${req.salaryRange}):\n\nI recommend ${playerName} (21, EU Passport, Transfermarkt: €9.50M). High pressing index, elite transition acceleration, ready for immediate impact.\n\nFull Video & Metric Dossier: https://mgsr-team.web.app/players/sample-amrani\n\nLet me know if you would like me to arrange a direct sporting call.\n\nBest regards,\nLior Dahan | BRIT Sport Group`;
+      
+      const pitchHe = `היי ${req.contactName.split(' ')[0]},\n\nבהמשך לבקשה שלכם לעמדת ${req.position} ב-${req.clubName} (תקציב ${req.transferFee} / שכר ${req.salaryRange}):\n\nאני ממליץ על ${playerName} (דרכון אירופי, שווי €9.50M). מתאים בדיוק לדרישות הטקטיות.\n\nתיק שחקן מלא: https://mgsr-team.web.app/players/sample-amrani\n\nבברכה,\nליאור דהן | BRIT Sport Group`;
+
+      document.getElementById('pitch-text-content').value = rtl ? pitchHe : pitchEn;
+      document.getElementById('modal-pitch-generator').classList.add('open');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    function handleBackdropClick(e, id) {
+      if (e.target.id === id) closeModal(id);
+    }
+
+    function togglePosBtn(btn) {
+      btn.classList.toggle('selected');
+    }
+
+    function submitNewRequest() {
+      const club = document.getElementById('new-req-club').value.trim() || 'New Club FC';
+      const country = document.getElementById('new-req-country').value;
+      const contact = document.getElementById('new-req-contact').value.trim() || 'Sporting Director';
+      const phone = document.getElementById('new-req-phone').value.trim() || '+32470000000';
+      const minAge = parseInt(document.getElementById('new-req-minage').value) || 20;
+      const maxAge = parseInt(document.getElementById('new-req-maxage').value) || 26;
+      const foot = document.getElementById('new-req-foot').value;
+      const fee = document.getElementById('new-req-fee').value;
+      const salary = document.getElementById('new-req-salary').value;
+      const euOnly = document.getElementById('new-req-eu').checked;
+      const notes = document.getElementById('new-req-notes').value.trim() || 'Urgent requirement for upcoming transfer window.';
+
+      const selectedPositions = Array.from(document.querySelectorAll('#bulk-pos-selector .bulk-pos-btn.selected')).map(b => b.dataset.pos);
+      const targetPos = selectedPositions.length > 0 ? selectedPositions[0] : 'CF';
+
+      const newEntry = {
+        id: `req-${Date.now()}`,
+        clubName: club,
+        clubCountry: country,
+        clubCountryFlag: country === 'Belgium' ? '🇧🇪' : country === 'Israel' ? '🇮🇱' : country === 'Greece' ? '🇬🇷' : '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+        clubLogo: '',
+        contactName: contact,
+        contactPhone: phone,
+        position: targetPos,
+        minAge,
+        maxAge,
+        dominateFoot: foot,
+        euOnly,
+        transferFee: fee,
+        salaryRange: salary,
+        priority: 'urgent',
+        notes,
+        createdByAgent: 'Lior Dahan',
+        createdByAgentHebrew: 'ליאור דהן',
+        createdAt: Date.now(),
+        matchedRoster: [
+          { name: 'Mateo Silva', age: 19, pos: targetPos, foot: 'right', eu: true, val: '€12.0M', score: 94, club: 'Boca Juniors', img: '', mandate: true }
+        ],
+        matchedScout: []
+      };
+
+      requestsData.unshift(newEntry);
+      closeModal('modal-add-request');
+      renderPosChips();
+      applyFiltersAndRender();
+      showToast(`DIRECTIVE CREATED FOR ${club.toUpperCase()}`);
+    }
+
+    function copyPitchText() {
+      const text = document.getElementById('pitch-text-content').value;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('PITCH BRIEF COPIED TO CLIPBOARD');
+      });
+    }
+
+    function openWhatsAppPitch() {
+      const text = encodeURIComponent(document.getElementById('pitch-text-content').value);
+      window.open(`https://wa.me/?text=${text}`, '_blank');
+    }
+
+    // ── 11. TOAST MESSAGING ──
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    }
+
+    // ── 12. THEME TOGGLE (LIGHT ATELIER ⇄ DARK OBSIDIAN) ──
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      document.getElementById('theme-label').textContent = isDark ? '☀️ ATELIER' : '🌙 OBSIDIAN';
+      showToast(isDark ? 'EXECUTIVE OBSIDIAN DARK ACTIVATED' : 'LIGHT ATELIER MANAGEMENT ROOM ACTIVATED');
+    }
+
+    // ── 13. BILINGUAL LANGUAGE ENGINE (EN ⇄ HE) ──
+    const translations = {
+      he: {
+        rail_sub: 'חדר ניהול ראשי · גברים',
+        platform_name: 'גברים · דרג 1 אירופה',
+        platform_status: 'סנכרון חי',
+        rail_nav_label: 'סביבת עבודה',
+        nav_dash: 'לוח בקרה ניהולי',
+        nav_roster: 'סגל שחקנים ומנדטים',
+        nav_shortlist: 'רשימת מעקב יעדים',
+        nav_requests: 'דרישות ובקשות מועדונים',
+        nav_contacts: 'מנהלים מקצועיים',
+        nav_pipeline: 'עסקאות בתהליך',
+        rail_intel_label: 'חבילת בינה וסקאוטינג',
+        nav_scout_ai: 'מכ"ם התאמות AI',
+        nav_share_portal: 'פורטל אורחים למועדון',
+        nav_config: 'הגדרות מערכת',
+        rail_operator: 'ליאור דהן (שותף מנהל)',
+        rail_system_status: 'מחובר לפרודקשן · שיהוי 18ms',
+        topbar_title: 'דרישות מועדונים',
+        crumb_sub: 'מנדטים באירופה ובמזה"ת',
+        btn_share_portal: 'שתף פורטל',
+        btn_new_demand: '+ דרישה חדשה',
+        kicker_text: 'גיוס אסטרטגי ופניות רכש מועדונים',
+        head_main: 'דרישות ובקשות',
+        head_sub: 'מועדונים',
+        view_ledger: 'טבלת מנדטים',
+        view_cards: 'כרטיסי דרישה',
+        view_kanban: 'מכ"ם עמדות',
+        view_matrix: 'לפי מועדונים',
+        sig_total_req: 'דרישות פעילות',
+        sig_badge_live: '14 מועדונים',
+        sig_active_sub: 'על פני 8 ליגות בכירות',
+        sig_matched_rate: 'אחוז כיסוי בסגל',
+        sig_badge_match: '78% התאמה',
+        sig_matched_sub: 'מוכנים להצעה מיידית',
+        sig_budget: 'תקציב מנוהל',
+        sig_budget_sub: '14.8M€ זמינים לדמי העברה',
+        sig_urgent: 'עדיפות דחופה',
+        sig_badge_window: 'חלון נסגר',
+        sig_urgent_sub: 'נדרש קשר ישיר עם המנהל',
+        seg_all: 'כל הדרישות',
+        seg_matched: 'מותאמות בסגל (22)',
+        seg_unmatched: 'ללא התאמה (6)',
+        seg_urgent: 'דחופות לחלון (5)',
+        lbl_country: 'מדינה:',
+        opt_all_countries: 'כל המדינות (8)',
+        lbl_foot: 'רגל:',
+        opt_any_foot: 'כל רגל',
+        opt_left_foot: 'שמאל בלבד',
+        opt_right_foot: 'ימין בלבד',
+        chk_eu_only: '🇪🇺 דרכון אירופי בלבד',
+        lbl_sort: 'מיון:',
+        sort_recent: 'אחרונים',
+        sort_fee: 'דמי העברה',
+        sort_matches: 'ציון התאמה',
+        sort_club: 'שם מועדון',
+        btn_clear_filters: 'נקה סינון ×',
+        sum_showing: 'מוצג',
+        sum_of: 'מתוך 28 דרישות פעילות',
+        sum_last_synced: 'סנכרון אחרון:',
+        th_club: 'מועדון וליגה',
+        th_pos: 'עמדת יעד',
+        th_specs: 'קריטריונים ופרופיל',
+        th_financials: 'דמי העברה / שכר',
+        th_matches: 'התאמות סגל וסקאוטינג',
+        th_agent: 'סוכן מטפל',
+        th_actions: 'פעולות',
+        modal_add_title: '+ יצירת דרישת מועדון ומנדט רכש',
+        lbl_club_name: 'שם המועדון *',
+        lbl_club_country: 'מדינת ליגה *',
+        lbl_contact_name: 'איש קשר / מנהל מקצועי',
+        lbl_contact_phone: 'טלפון / וואטסאפ איש קשר',
+        lbl_select_pos: 'עמדות טקטיות מבוקשות *',
+        lbl_bulk_mode: '⚡ מצב הזנה מרובת עמדות',
+        lbl_min_age: 'גיל מינימום',
+        lbl_max_age: 'גיל מקסימום',
+        lbl_foot_pref: 'רגל מועדפת',
+        lbl_fee_budget: 'תקציב דמי העברה',
+        lbl_salary_budget: 'טווח שכר נטו שנתי',
+        lbl_require_eu: '🇪🇺 דרישה מחייבת לדרכון אירופי',
+        lbl_notes_brief: 'תדריך טקטי ומאפיינים מרכזיים',
+        btn_cancel: 'ביטול',
+        btn_save_directive: 'שמור דרישה והתאם שחקנים',
+        modal_pitch_title: '⚡ יצירת הצעת שחקן ופנייה מיידית',
+        lbl_pitch_preview: 'טקסט פנייה מוכן לוואטסאפ (דו-לשוני)',
+        btn_copy_text: 'העתק טקסט',
+        btn_send_whatsapp: 'פתח בוואטסאפ',
+        btn_done: 'סיום',
+        modal_share_title: '🔗 פורטל אורחים מוצפן למועדון',
+        share_desc: 'הפקת קישור מוצפן לצפייה בלבד עבור מנהלים מקצועיים, ראשי מערך סקאוטינג או סוכנויות שותפות.',
+        lbl_recipient_name: 'שם הנמען (מנהל מקצועי / מועדון)',
+        lbl_expiry: 'תוקף קישור',
+        lbl_portal_url: 'כתובת קישור מאובטחת'
+      }
+    };
+
+    const englishDefaults = {};
+    document.querySelectorAll('[data-t]').forEach(el => {
+      englishDefaults[el.dataset.t] = el.textContent;
+    });
+
+    function toggleLanguage() {
+      const isCurrentlyRtl = document.documentElement.dir === 'rtl';
+      const nextRtl = !isCurrentlyRtl;
+      document.documentElement.dir = nextRtl ? 'rtl' : 'ltr';
+      document.documentElement.lang = nextRtl ? 'he' : 'en';
+      document.getElementById('lang-label').textContent = nextRtl ? 'English (EN)' : 'עברית (HE)';
+
+      document.querySelectorAll('[data-t]').forEach(el => {
+        const key = el.dataset.t;
+        if (nextRtl && translations.he[key]) {
+          el.textContent = translations.he[key];
+        } else if (!nextRtl && englishDefaults[key]) {
+          el.textContent = englishDefaults[key];
+        }
+      });
+
+      renderPosChips();
+      applyFiltersAndRender();
+      showToast(nextRtl ? 'עברית הופעלה (מימין לשמאל)' : 'ENGLISH ACTIVATED (LTR)');
+    }
+
+    // ── 14. INITIALIZATION ──
+    document.addEventListener('DOMContentLoaded', () => {
+      renderPosChips();
+      applyFiltersAndRender();
+      
+      // Live clock
+      setInterval(() => {
+        const now = new Date();
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const clockEl = document.getElementById('clock-live');
+        if (clockEl) clockEl.textContent = `TODAY, ${hrs}:${mins}`;
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

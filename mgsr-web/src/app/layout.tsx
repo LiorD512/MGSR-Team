@@ -9,7 +9,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
 };
-import { Syne, Outfit, Instrument_Serif, Sora } from 'next/font/google';
+import { Syne, Outfit, Instrument_Serif, Sora, Oswald, Manrope, DM_Mono, Heebo } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
@@ -43,6 +43,37 @@ const sora = Sora({
   display: 'swap',
 });
 
+// Men dashboard "light management room" redesign fonts
+const oswald = Oswald({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-oswald',
+  display: 'swap',
+});
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-manrope',
+  display: 'swap',
+});
+
+const dmMono = DM_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-dm-mono',
+  display: 'swap',
+});
+
+// Hebrew companion for the men dashboard redesign — covers display/body/mono
+// roles in RTL so Hebrew text no longer falls back to a plain system font.
+const heebo = Heebo({
+  subsets: ['hebrew', 'latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-heebo',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'BRIT Sport Group',
   description: 'Football Agent CRM',
@@ -63,7 +94,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${syne.variable} ${outfit.variable} ${instrumentSerif.variable} ${sora.variable}`}>
+    <html lang="en" className={`${syne.variable} ${outfit.variable} ${instrumentSerif.variable} ${sora.variable} ${oswald.variable} ${manrope.variable} ${dmMono.variable} ${heebo.variable}`}>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <script src="https://accounts.google.com/gsi/client" async defer></script>

@@ -12,6 +12,8 @@ import { db } from '@/lib/firebase';
 import { CONTACTS_COLLECTIONS } from '@/lib/platformCollections';
 import { callContactsDelete } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
+import MenContacts from '@/components/MenContacts';
+import MenLoading from '@/components/MenLoading';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 
@@ -182,11 +184,17 @@ export default function ContactsPage() {
   };
 
   if (loading || !user) {
+    if (!isWomen && !isYouth) return <MenLoading />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
         <div className={`animate-pulse font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{t('loading')}</div>
       </div>
     );
+  }
+
+  // ── Men platform: new "Light Management Room" full-bleed directory ──
+  if (platform === 'men') {
+    return <MenContacts />;
   }
 
   return (

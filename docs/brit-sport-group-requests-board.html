@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Club Requirements (Board) / Light Management Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a,.nav-group{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav-group:hover,.nav>a.active,.nav-group.active{color:var(--gold-soft)}
+    .nav>a.active:before,.nav-group.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 80px}
+
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:34px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(52px,6.4vw,96px)/.8 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .mast-right{display:flex;flex-direction:column;align-items:flex-end;gap:14px}
+    .view-toggle{display:flex;border:1px solid var(--line)}
+    .view-toggle button{padding:11px 16px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line)}
+    .view-toggle button:last-child{border-inline-end:0}
+    .view-toggle button.active{background:var(--black);color:var(--gold-soft)}
+    .mast-actions{display:flex;gap:10px}
+    .mast-actions button{padding:11px 15px;border:1px solid var(--line);font:9px/1 var(--mono);text-transform:uppercase;color:var(--ink)}
+    .mast-actions button:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .mast-actions button.primary{background:var(--gold-soft);border-color:var(--gold-soft)}
+
+    /* Signals — 3 tiles (removed matched/unmatched) */
+    .signals{display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:34px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .sig{min-height:100px;padding:16px 18px 18px 0;border-inline-end:1px solid var(--line)}
+    .sig:not(:first-child){padding-inline-start:18px}
+    .sig:last-child{border-inline-end:0}
+    .sig label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .sig strong{display:block;margin-top:12px;font:500 clamp(28px,3vw,40px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .sig strong{font-weight:800}
+    .sig small{display:block;margin-top:9px;color:var(--muted);font:9px/1 var(--mono)}
+
+    .tray{border:1px solid var(--line);margin-bottom:16px}
+    .search{display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--line)}
+    .search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
+    .search input{width:100%;border:0;background:transparent;padding:20px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .filter-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+    .filter-row:last-child{border-bottom:0}
+    .filter-label{display:flex;align-items:center;padding:0 18px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;border-inline-end:1px solid var(--line);white-space:nowrap}
+    .chipset{display:flex;flex-wrap:wrap;flex:1}
+    .chipset button{padding:13px 15px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line);transition:.15s}
+    .chipset button:hover{color:var(--ink)}
+    .chipset button.on{background:var(--gold-soft);color:var(--ink)}
+    .result-count{margin:0 2px 20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    /* Board */
+    .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px}
+    .card{border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;transition:border-color .15s}
+    .card:hover{border-color:var(--gold-soft)}
+    .card-hero{position:relative;height:130px;background:var(--black);overflow:hidden}
+    .card-hero img{width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.5}
+    .card-hero:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(17,17,15,.3),rgba(17,17,15,.86))}
+    .card-hero .pos{position:absolute;top:12px;inset-inline-start:12px;z-index:1;padding:5px 9px;background:var(--gold-soft);color:var(--ink);font:600 11px/1 var(--display);text-transform:uppercase}
+    .card-hero .flags{position:absolute;top:12px;inset-inline-end:12px;z-index:1;display:flex;gap:5px}
+    .card-hero .flags b{font:8px/1 var(--mono);color:var(--paper);border:1px solid var(--dark-line);padding:4px 6px;text-transform:uppercase}
+    .card-clubline{position:absolute;inset-inline:14px;bottom:12px;z-index:1;display:flex;align-items:center;gap:10px;color:var(--paper)}
+    .card-clubline .logo{width:34px;height:34px;object-fit:contain;background:#fff;border-radius:2px;padding:2px;flex:none}
+    .card-clubline .cn{font:500 20px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .card-clubline .cn{font-weight:800}
+    .card-clubline .cc{color:#c9c3b6;font:8px/1 var(--mono);text-transform:uppercase;margin-top:4px}
+
+    .card-body{padding:14px}
+    .spec{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);margin-bottom:12px}
+    .spec div{padding:9px 8px;text-align:center;border-inline-end:1px solid var(--line)}
+    .spec div:last-child{border-inline-end:0}
+    .spec label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .spec b{display:block;margin-top:6px;font:500 13px/1 var(--mono)}
+    .spec .money{color:var(--ink)}
+    .card-note{margin:0 0 12px;color:var(--muted);font:10px/1.5 var(--body);border-inline-start:2px solid var(--gold-soft);padding-inline-start:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .match-strip{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-top:1px solid var(--line)}
+    .match-strip .mleft{display:flex;align-items:center;gap:9px}
+    .avatars{display:flex}
+    .avatars img,.avatars .ph{width:26px;height:26px;object-fit:cover;filter:grayscale(1);border:1px solid var(--card);margin-inline-start:-7px;background:linear-gradient(160deg,#26261f,#101010)}
+    .avatars img:first-child,.avatars .ph:first-child{margin-inline-start:0}
+    .avatars .ph{display:grid;place-items:center;color:var(--paper);font:600 8px/1 var(--display)}
+    .match-strip .mcount{font:9px/1.3 var(--mono);text-transform:uppercase;color:var(--muted)}
+    .match-strip .mcount b{color:var(--green);font-weight:500}
+    .match-strip .mcount b.none{color:var(--red)}
+    .match-strip .mand{font:8px/1 var(--mono);text-transform:uppercase;color:var(--green);border:1px solid var(--green);padding:4px 6px}
+    .card-foot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:11px;margin-top:2px}
+    .card-foot .by{color:var(--muted);font:8px/1.3 var(--mono);text-transform:uppercase}
+    .card-foot .by b{color:var(--ink);font-weight:500}
+    .card-foot .ops{display:flex;gap:4px}
+    .card-foot .ops a,.card-foot .ops button{width:26px;height:26px;display:grid;place-items:center;color:var(--muted)}
+    .card-foot .ops a:hover,.card-foot .ops button:hover{color:var(--gold)}
+    .card-foot .ops button.del:hover{color:var(--red)}
+    .contact-chip{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .contact-chip .wa{color:var(--green)}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav>a,.nav-group{padding:6px 0}.nav em,.nav>a.active:before,.nav-group.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.mast-right{align-items:flex-start;margin-top:18px}
+      .signals{grid-template-columns:1fr}
+      .filter-row{flex-direction:column;align-items:stretch}.filter-label{border-inline-end:0;border-bottom:1px solid var(--line);padding:12px 16px}
+      .board{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <button class="nav-group"><span data-t="nav_players">Players</span><em>+</em></button>
+        <a class="active" href="#"><span data-t="nav_req">Club Requirements</span><em>03</em></a>
+        <a href="#"><span data-t="nav_cont">Contacts</span><em>04</em></a>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Men / Europe</strong><span data-t="open_lab">Open briefs</span><strong>12</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_req">Club Requirements</strong> / 24 September 2026</div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div>
+            <p class="kicker" data-t="kicker">Private client office / Club briefs</p>
+            <h1><span data-t="head_a">Club</span> <span class="gold" data-t="head_b">requirements.</span></h1>
+          </div>
+          <div class="mast-right">
+            <div class="view-toggle"><button class="active" data-t="v_board">Board</button><button data-t="v_ledger">Ledger</button></div>
+            <div class="mast-actions"><button data-t="share">↗ Share briefs</button><button class="primary" data-t="add">+ New requirement</button></div>
+          </div>
+        </header>
+
+        <!-- Signals: 3 tiles (matched/unmatched removed) -->
+        <section class="signals">
+          <div class="sig"><label data-t="s_open">Open briefs</label><strong>12</strong><small data-t="s_open_n">4 new today</small></div>
+          <div class="sig"><label data-t="s_pos">Positions</label><strong>07</strong><small data-t="s_pos_n">Across the board</small></div>
+          <div class="sig"><label data-t="s_countries">Countries</label><strong>06</strong><small data-t="s_countries_n">Live markets</small></div>
+        </section>
+
+        <section class="tray">
+          <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input data-ph="search" placeholder="Search club, country, contact or note"></label>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_position">Position</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)">GK</button><button onclick="segOne(this)">CB</button><button onclick="segOne(this)">LB</button>
+              <button onclick="segOne(this)">DM</button><button onclick="segOne(this)">CM</button><button onclick="segOne(this)">AM</button>
+              <button onclick="segOne(this)">LW</button><button onclick="segOne(this)">RW</button><button onclick="segOne(this)">CF</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_country">Country</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all_c">All</button>
+              <button onclick="segOne(this)" data-t="c_israel">Israel</button>
+              <button onclick="segOne(this)" data-t="c_ksa">Saudi Arabia</button>
+              <button onclick="segOne(this)" data-t="c_ned">Netherlands</button>
+              <button onclick="segOne(this)" data-t="c_uae">UAE</button>
+              <button onclick="segOne(this)" data-t="c_bel">Belgium</button>
+            </div>
+          </div>
+        </section>
+
+        <p class="result-count"><span data-t="showing_a">Showing</span> <b>12</b> <span data-t="showing_b">of 12 briefs</span></p>
+
+        <div id="board" class="board"></div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const stadium=[
+      'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1459865264687-595d652de67e?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1540379708242-14a809bef941?auto=format&fit=crop&w=800&q=80'
+    ];
+    const reqs=[
+      {club:'Hapoel Beer Sheva',country:'Israel',pos:'CF',salary:'40–60',fee:'700-900',age:'22–28',eu:false,newc:true,contact:'Roni Levy',by:'Lior Dahan',date:'24 Sep',note:'Target man, strong in the air, ready for immediate impact in the title race.',matches:['DD','GM'],mandate:1},
+      {club:'FC Utrecht',country:'Netherlands',pos:'LB',salary:'30–50',fee:'300-600',age:'≤26',eu:true,newc:true,contact:'',by:'D. Cohen',date:'24 Sep',note:'Modern attacking full-back, EU passport required.',matches:['RR'],mandate:0},
+      {club:'Al Ain FC',country:'UAE',pos:'RW',salary:'80–120',fee:'1m+',age:'—',eu:false,newc:false,contact:'Omar S.',by:'Lior Dahan',date:'21 Sep',note:'Explosive wide player for the AFC Champions League push.',matches:['LA','AK','OA'],mandate:1},
+      {club:'Al Nassr',country:'Saudi Arabia',pos:'DM',salary:'150+',fee:'1m+',age:'24–30',eu:false,newc:false,contact:'',by:'Lior Dahan',date:'19 Sep',note:'Ball-winning midfielder to anchor the midfield.',matches:[],mandate:0},
+      {club:'Royale Union SG',country:'Belgium',pos:'CB',salary:'40–70',fee:'700-900',age:'21–27',eu:true,newc:false,contact:'Marc D.',by:'S. Levi',date:'16 Sep',note:'Left-footed centre-back, comfortable building from the back.',matches:['OA'],mandate:0},
+      {club:'Maccabi Tel Aviv',country:'Israel',pos:'AM',salary:'50–80',fee:'300-600',age:'≤25',eu:true,newc:false,contact:'',by:'Lior Dahan',date:'12 Sep',note:'Creative number 10 to unlock defences.',matches:['LA'],mandate:1}
+    ];
+    const posClass=p=>p;
+
+    const board=document.getElementById('board');
+    function render(){
+      const rtl=document.documentElement.dir==='rtl';
+      board.innerHTML='';
+      reqs.forEach((r,i)=>{
+        const card=document.createElement('article');card.className='card';
+        let flags='';if(r.eu)flags+='<b>🇪🇺 EU</b>';if(r.newc)flags+=`<b>${rtl?'חדש':'New'}</b>`;
+        const avatars=r.matches.length
+          ? `<div class="avatars">${r.matches.slice(0,4).map(a=>`<span class="ph">${a}</span>`).join('')}</div>`
+          : '';
+        const mcount=r.matches.length
+          ? `<span class="mcount"><b>${r.matches.length}</b> ${rtl?'התאמות מהסגל':'roster matches'}</span>`
+          : `<span class="mcount"><b class="none">0</b> ${rtl?'אין התאמה':'no match yet'}</span>`;
+        const mand=r.mandate?`<span class="mand">✍ ${r.mandate} ${rtl?'מנדט':'mandate'}</span>`:'';
+        const fee=r.fee==='1m+'?'€1M+':(r.fee==='Free/Free loan'?(rtl?'חינם':'Free'):'€'+r.fee+'K');
+        const contact=r.contact
+          ? `<span class="contact-chip">${r.contact} <span class="wa">✆</span></span>`
+          : `<span class="contact-chip">${rtl?'קשר ישיר':'Direct contact'}</span>`;
+        card.innerHTML=`
+          <div class="card-hero">
+            <img src="${stadium[i%stadium.length]}" alt="">
+            <span class="pos">${r.pos}</span>
+            <span class="flags">${flags}</span>
+            <div class="card-clubline">
+              <div class="logo" style="display:grid;place-items:center;font:600 12px/1 var(--display);color:var(--ink)">${r.club.slice(0,2).toUpperCase()}</div>
+              <div><div class="cn">${r.club}</div><div class="cc">${r.country} · ${r.date}</div></div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="spec">
+              <div><label>${rtl?'שכר':'Salary'}</label><b class="money">${r.salary!=='—'?'€'+r.salary+(rtl?'':'K'):'—'}</b></div>
+              <div><label>${rtl?'דמי העברה':'Fee'}</label><b>${fee}</b></div>
+              <div><label>${rtl?'גיל':'Age'}</label><b>${r.age}</b></div>
+            </div>
+            <p class="card-note">${r.note}</p>
+            <div class="match-strip">
+              <div class="mleft">${avatars}${mcount}</div>
+              ${mand}
+            </div>
+            <div class="card-foot">
+              <span class="by">${contact}<br>${rtl?'נפתח ע"י':'Opened by'} <b>${r.by}</b></span>
+              <span class="ops"><button title="Edit">✎</button><button class="del" title="Delete">🗑</button></span>
+            </div>
+          </div>`;
+        board.appendChild(card);
+      });
+    }
+    function segOne(btn){[...btn.parentNode.children].forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקנים',nav_req:'דרישות מועדונים',nav_cont:'אנשי קשר',
+      platform:'פלטפורמה פעילה',platform_v:'גברים / אירופה',open_lab:'בקשות פתוחות',
+      kicker:'משרד לקוחות פרטי / בקשות מועדונים',head_a:'דרישות',head_b:'מועדונים.',v_board:'לוח',v_ledger:'טבלה',share:'↗ שתף בקשות',add:'+ בקשה חדשה',
+      s_open:'בקשות פתוחות',s_open_n:'4 חדשות היום',s_pos:'עמדות',s_pos_n:'על כל המגרש',s_countries:'מדינות',s_countries_n:'שווקים פעילים',
+      f_position:'עמדה',all:'הכל',f_country:'מדינה',all_c:'הכל',
+      c_israel:'ישראל',c_ksa:'סעודיה',c_ned:'הולנד',c_uae:'איחוד האמירויות',c_bel:'בלגיה',
+      showing_a:'מוצג',showing_b:'מתוך 12 בקשות'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.textContent);
+    document.querySelectorAll('[data-ph]').forEach(el=>EN['ph_'+el.dataset.ph]=el.getAttribute('placeholder'));
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.textContent=(rtl?(T.he[k]??EN[k]):EN[k])||el.textContent;});
+      document.querySelectorAll('[data-ph]').forEach(el=>el.setAttribute('placeholder',(rtl?(T.he.search??EN['ph_'+el.dataset.ph]):EN['ph_'+el.dataset.ph])||''));
+      render();
+    }
+    render();
+  </script>
+</body>
+</html>

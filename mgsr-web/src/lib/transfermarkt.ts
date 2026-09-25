@@ -1072,10 +1072,21 @@ function getContractFinisherWindow(): { window: string; yearsToQuery: number[] }
   const now = new Date();
   const month = now.getMonth() + 1;
   const year = Math.max(now.getFullYear(), 2026);
-  if (month >= 2 && month <= 9) {
+  // Bucket by the NEXT transfer window relative to today:
+  //  • Feb–Aug  → next window is Summer; contracts expiring 30 Jun of this year.
+  //  • Sep–Jan  → next window is Winter; contracts expiring 31 Dec (this year)
+  //               / 31 Jan (next year). September onward already points at winter,
+  //               so it must NOT be bucketed as summer (contracts ending Nov/Dec
+  //               belong to the winter window, matching Transfermarkt's data).
+  if (month >= 2 && month <= 8) {
     return { window: 'Summer', yearsToQuery: [year] };
   }
   return { window: 'Winter', yearsToQuery: [year, year + 1] };
+}
+
+/** Current contract-finisher window label ('Summer' | 'Winter'), for cache responses. */
+export function getContractFinisherWindowLabel(): string {
+  return getContractFinisherWindow().window;
 }
 
 function parseMarketValueCF(val: string | null): number {
@@ -1089,6 +1100,31 @@ function parseMarketValueCF(val: string | null): number {
 function formatContractExpiryDate(window: string, year: number, isFirstYear: boolean): string {
   if (window === 'Summer') return `30.06.${year}`;
   return isFirstYear ? `31.12.${year}` : `31.01.${year}`;
+}
+
+/**
+ * Extract the real contract-end date (dd.mm.yyyy) from an "expiring contracts"
+ * table row so the card matches Transfermarkt exactly. Returns null when no
+ * date cell is present (caller falls back to the synthesized window date).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractContractEndDateCF($: any, row: any): string | null {
+  let found: string | null = null;
+  $(row)
+    .find('td')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .each((_: number, td: any) => {
+      if (found) return;
+      const text = $(td).text().trim();
+      // Match a standalone dd.mm.yyyy (allow d.m.yyyy); ignore cells with extra text.
+      const m = text.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+      if (m) {
+        const mm = parseInt(m[2], 10);
+        const dd = parseInt(m[1], 10);
+        if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) found = text;
+      }
+    });
+  return found;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1231,11 +1267,10 @@ export async function handleContractFinishers() {
               ? makeAbsoluteUrl(playerImageRaw.replace('medium', 'big'))
               : null;
 
-            const contractExpiry = formatContractExpiryDate(
-              config.window,
-              jahr,
-              config.yearsToQuery[0] === jahr
-            );
+            const scrapedExpiry = extractContractEndDateCF($, row);
+            const contractExpiry =
+              scrapedExpiry ||
+              formatContractExpiryDate(config.window, jahr, config.yearsToQuery[0] === jahr);
             all.push({
               playerImage,
               playerName,
@@ -1395,11 +1430,13 @@ export async function* handleContractFinishersStream(): AsyncGenerator<
               ? makeAbsoluteUrl(playerImageRaw.replace('medium', 'big'))
               : null;
 
-            const contractExpiry = formatContractExpiryDate(
-              config.window,
-              jahr,
-              config.yearsToQuery[0] === jahr
-            );
+            // Prefer the REAL contract-end date from the row (Transfermarkt's
+            // "expiring contracts" table carries a dd.mm.yyyy cell) so each card
+            // matches TM exactly; fall back to the synthesized window date.
+            const scrapedExpiry = extractContractEndDateCF($, row);
+            const contractExpiry =
+              scrapedExpiry ||
+              formatContractExpiryDate(config.window, jahr, config.yearsToQuery[0] === jahr);
             const p = {
               playerImage,
               playerName,

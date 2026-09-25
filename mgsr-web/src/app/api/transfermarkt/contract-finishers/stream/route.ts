@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { handleContractFinishersStream } from '@/lib/transfermarkt';
+import { handleContractFinishersStream, getContractFinisherWindowLabel } from '@/lib/transfermarkt';
 import { getCachedChunked, setCacheChunked } from '@/lib/scrapingCache';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const cached = await getCachedChunked<Record<string, unknown>>(CACHE_KEY, CACHE_TTL);
     if (cached) {
       const body = encoder.encode(
-        `data: ${JSON.stringify({ players: cached, windowLabel: '', isLoading: false })}\n\n`
+        `data: ${JSON.stringify({ players: cached, windowLabel: getContractFinisherWindowLabel(), isLoading: false })}\n\n`
       );
       return new NextResponse(body, {
         headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Cache': 'HIT' },

@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Add Player (Drawer) / Light Management Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    input{font:inherit}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a,.nav-group{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav-group:hover,.nav>a.active,.nav-group.active{color:var(--gold-soft)}
+    .nav>a.active:before,.nav-group.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .nav-sub{display:grid;gap:2px;margin:0 0 6px;padding-inline-start:2px}
+    .nav-sub a{display:flex;align-items:center;padding:8px 0;color:#8f8b81;font:9px/1 var(--mono);text-transform:uppercase;transition:color .15s}
+    .nav-sub a:hover,.nav-sub a.active{color:var(--gold-soft)}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 80px}
+
+    /* Roster backdrop (context behind drawer) */
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:30px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(52px,6.4vw,96px)/.8 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .addbtn{padding:13px 18px;background:var(--gold-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s}
+    .addbtn:hover{background:var(--gold);color:var(--paper)}
+    .roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+    .ghost-card{height:250px;border:1px solid var(--line);background:var(--card)}
+    .ghost-card.dashed{border-style:dashed;display:grid;place-items:center;color:var(--muted);font:9px/1.5 var(--mono);text-transform:uppercase;text-align:center;cursor:pointer;gap:8px}
+    .ghost-card.dashed:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .ghost-card.dashed .plus{font:300 32px/1 var(--display)}
+
+    /* Drawer (matches roster quick-view drawer) */
+    .scrim{position:fixed;inset:0;z-index:55;background:rgba(17,17,15,.55);opacity:0;pointer-events:none;transition:.25s}
+    .scrim.open{opacity:1;pointer-events:auto}
+    .drawer{position:fixed;top:0;bottom:0;inset-inline-end:0;z-index:56;width:min(460px,96vw);background:var(--paper);border-inline-start:4px solid var(--gold);transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column}
+    [dir=rtl] .drawer{transform:translateX(-100%)}
+    .drawer.open{transform:none}
+
+    .drawer-head{position:sticky;top:0;z-index:3;background:var(--black);color:var(--paper);padding:22px 22px 18px}
+    .drawer-head .eyebrow{color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .drawer-head h2{margin:10px 0 0;font:500 30px/.9 var(--display);text-transform:uppercase;letter-spacing:-.02em}
+    [dir=rtl] .drawer-head h2{font-weight:800;letter-spacing:normal}
+    .drawer-head .close{position:absolute;top:16px;inset-inline-end:18px;color:var(--paper);font:22px/1 var(--display)}
+    .drawer-head .close:hover{color:var(--gold-soft)}
+    /* progress dots */
+    .prog{display:flex;gap:6px;margin-top:16px}
+    .prog i{flex:1;height:3px;background:var(--dark-line);transition:.3s}
+    .prog i.on{background:var(--gold-soft)}
+
+    .drawer-body{flex:1;padding:16px}
+
+    /* Accordion step */
+    .astep{border:1px solid var(--line);background:var(--card);margin-bottom:12px;overflow:hidden}
+    .astep:last-child{margin-bottom:0}
+    .astep-head{display:flex;align-items:center;gap:12px;width:100%;padding:15px 16px;text-align:start;transition:.15s}
+    .astep.done .astep-head{cursor:pointer}
+    .astep.locked .astep-head{opacity:.5}
+    .astep-head .n{width:26px;height:26px;flex:none;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;font:600 11px/1 var(--mono);color:var(--muted);transition:.2s}
+    .astep.open .astep-head .n{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+    .astep.done .astep-head .n{background:var(--ink);border-color:var(--ink);color:var(--paper);font-size:0}
+    .astep.done .astep-head .n:after{content:'✓';font-size:12px}
+    .astep-head .t{flex:1;min-width:0}
+    .astep-head .t b{display:block;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--ink)}
+    .astep-head .t small{display:block;margin-top:5px;color:var(--muted);font:11px/1.3 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .astep.done .astep-head .t small{color:var(--gold)}
+    .astep-head .edit{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;flex:none}
+    .astep.done .astep-head:hover .edit{color:var(--gold)}
+    .astep-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+    .astep.open .astep-body{max-height:800px}
+    .astep-inner{padding:2px 16px 18px}
+
+    /* Find controls */
+    .seclabel{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;margin:0 0 9px}
+    .urlrow{display:flex;gap:8px;margin-bottom:8px}
+    .urlrow input{flex:1;border:1px solid var(--line);background:var(--paper);padding:12px 13px;color:var(--ink);font:11px/1 var(--mono);outline:none;transition:.15s;min-width:0}
+    .urlrow input:focus{border-color:var(--gold-soft)}
+    .urlrow input::placeholder{color:var(--muted);font-family:var(--body);font-size:12px}
+    .mini-btn{padding:12px 14px;background:var(--gold-soft);color:var(--ink);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;transition:.15s;white-space:nowrap}
+    .mini-btn:hover{background:var(--gold);color:var(--paper)}
+    .mini-btn:disabled{opacity:.5;cursor:default}
+    .divider{display:flex;align-items:center;gap:12px;margin:14px 0}
+    .divider .ln{flex:1;height:1px;background:var(--line)}
+    .divider span{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.2em}
+    .search{display:flex;align-items:center;gap:11px;border:1px solid var(--line);background:var(--paper);padding:0 14px;transition:.15s}
+    .search.focus{border-color:var(--gold-soft)}
+    .search svg{width:15px;height:15px;stroke:var(--muted);flex:none}
+    .search input{flex:1;border:0;background:transparent;padding:13px 0;color:var(--ink);font:12px/1 var(--body);outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .search .sp{width:15px;height:15px;border:2px solid rgba(201,166,107,.35);border-top-color:var(--gold-soft);border-radius:50%;animation:spin .9s linear infinite;flex:none}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .results{margin-top:12px;border:1px solid var(--line);background:var(--paper);max-height:280px;overflow-y:auto}
+    .result{display:flex;align-items:center;gap:12px;padding:11px 13px;border-bottom:1px solid var(--line);cursor:pointer;transition:.12s;text-align:start;width:100%}
+    .result:last-child{border-bottom:0}
+    .result:hover{background:var(--card)}
+    .result img{width:42px;height:42px;object-fit:cover;filter:grayscale(.3);background:var(--black);border:1px solid var(--line);flex:none}
+    .result .ri{flex:1;min-width:0}
+    .result .ri b{display:block;font:500 13px/1.1 var(--body);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .result .ri span{display:block;margin-top:3px;color:var(--muted);font:10px/1.2 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .result .ri .v{color:var(--gold)}
+
+    /* Confirm hero inside step */
+    .phero{position:relative;display:flex;gap:14px;padding:16px;background:var(--black);overflow:hidden;margin-bottom:2px}
+    .phero .flagbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.55;z-index:0}
+    .phero:after{content:'';position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(17,17,15,.35),rgba(17,17,15,.9))}
+    .phero .pimg{position:relative;z-index:1;width:66px;height:66px;flex:none}
+    .phero .pimg img{width:100%;height:100%;object-fit:cover;filter:grayscale(.15);border:1px solid var(--dark-line);background:var(--black)}
+    .phero .pi{position:relative;z-index:1;min-width:0;flex:1;color:var(--paper);align-self:center}
+    .phero .pi .nm{font:500 22px/.9 var(--display);text-transform:uppercase;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .phero .pi .nm{font-weight:800;letter-spacing:normal}
+    .phero .pi .sub{margin-top:6px;color:#c9c3b6;font:10px/1.2 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .phero .pi .mv{margin-top:6px;color:var(--gold-soft);font:500 13px/1 var(--mono)}
+    .attrs{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid var(--line);border-top:0}
+    .attrs div{padding:10px 13px;border-inline-end:1px solid var(--line);border-top:1px solid var(--line)}
+    .attrs div:nth-child(2n){border-inline-end:0}
+    .attrs label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .attrs b{display:block;margin-top:6px;font:500 12px/1 var(--mono);color:var(--ink)}
+    .loanline{display:flex;align-items:center;gap:8px;padding:11px 13px;border:1px solid var(--line);border-top:0;color:var(--gold);font:9px/1.2 var(--mono);text-transform:uppercase}
+    .loanline svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;flex:none}
+
+    /* Contacts */
+    .field{margin-bottom:12px}
+    .field label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+    .field input{width:100%;border:1px solid var(--line);background:var(--paper);padding:12px 13px;color:var(--ink);font:12px/1 var(--body);outline:none;transition:.15s;direction:ltr}
+    .field input:focus{border-color:var(--gold-soft)}
+    .field input::placeholder{color:var(--muted)}
+    .step-cta{display:flex;gap:8px;margin-top:14px}
+    .step-cta .btn{flex:1;padding:13px;text-align:center;background:var(--gold-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s}
+    .step-cta .btn:hover{background:var(--gold);color:var(--paper)}
+    .step-cta .btn:disabled{opacity:.5;cursor:default}
+    .step-cta .btn.ghost{flex:0 0 auto;background:transparent;border:1px solid var(--line);color:var(--ink)}
+    .step-cta .btn.ghost:hover{border-color:var(--gold-soft);color:var(--gold);background:transparent}
+
+    /* Success footer inside drawer */
+    .done-foot{padding:20px 16px;border-top:1px solid var(--line);text-align:center}
+    .done-foot .seal{width:52px;height:52px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black)}
+    .done-foot .seal svg{width:26px;height:26px;stroke:var(--black);fill:none;stroke-width:2.4}
+    .done-foot h3{margin:0;font:500 24px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .done-foot h3{font-weight:800}
+    .done-foot p{margin:9px 0 0;color:var(--muted);font:11px/1.4 var(--body)}
+    .done-foot .cta{margin-top:18px;display:flex;gap:8px}
+    .done-foot .cta .btn{flex:1;padding:12px;text-align:center;font:9px/1 var(--mono);text-transform:uppercase}
+    .done-foot .cta .btn.p{background:var(--black);color:var(--gold-soft)}
+    .done-foot .cta .btn.g{border:1px solid var(--ink);color:var(--ink)}
+    .hint{margin:9px 2px 0;color:var(--muted);font:8px/1.4 var(--mono);text-transform:uppercase}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav em,.nav>a.active:before,.nav-group.active:before,.nav-sub{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.addbtn{margin-top:14px}
+      .drawer{width:100vw;border-inline-start:0;border-top:4px solid var(--gold)}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <button class="nav-group active"><span data-t="nav_players">Players</span><em>−</em></button>
+        <div class="nav-sub">
+          <a class="active" href="#" data-t="nav_roster">Roster</a>
+          <a href="#" data-t="nav_shortlist">Shortlist</a>
+        </div>
+        <a href="#"><span data-t="nav_req">Club Requirements</span><em>03</em></a>
+        <a href="#"><span data-t="nav_cont">Contacts</span><em>04</em></a>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Men / Europe</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_roster">Roster</strong> / 24 September 2026</div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div>
+            <p class="kicker" data-t="kicker">Private client office / Squad</p>
+            <h1><span data-t="head_a">The</span> <span class="gold" data-t="head_b">roster.</span></h1>
+          </div>
+          <button class="addbtn" onclick="openDrawer()" data-t="add_player">+ Add player</button>
+        </header>
+
+        <div class="roster-grid">
+          <div class="ghost-card dashed" onclick="openDrawer()"><span class="plus">+</span><span data-t="add_player_card">Add player<br>to roster</span></div>
+          <div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div>
+          <div class="ghost-card"></div><div class="ghost-card"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Drawer -->
+  <div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+  <aside class="drawer" id="drawer" aria-label="Add player">
+    <div class="drawer-head">
+      <button class="close" onclick="closeDrawer()">×</button>
+      <div class="eyebrow" data-t="eyebrow">Recruitment / Sign to roster</div>
+      <h2 data-t="drawer_title">Add a player</h2>
+      <div class="prog"><i class="on"></i><i></i><i></i></div>
+    </div>
+
+    <div class="drawer-body">
+      <!-- STEP 1: FIND -->
+      <div class="astep open" id="s1">
+        <button class="astep-head" onclick="reopen(1)">
+          <span class="n"><span>1</span></span>
+          <div class="t"><b data-t="s1_title">Find the player</b><small id="s1sum" data-t="s1_sum">Search Transfermarkt or paste a profile URL</small></div>
+          <span class="edit" data-t="edit">Edit</span>
+        </button>
+        <div class="astep-body"><div class="astep-inner">
+          <p class="seclabel" data-t="paste_lbl">Paste Transfermarkt URL</p>
+          <div class="urlrow">
+            <input id="urlInput" data-ph="url" placeholder="transfermarkt.com/.../profil/spieler/000000">
+            <button class="mini-btn" onclick="loadByUrl()" data-t="load">Load</button>
+          </div>
+          <div class="divider"><span class="ln"></span><span data-t="or">or</span><span class="ln"></span></div>
+          <p class="seclabel" data-t="search_lbl">Search by name</p>
+          <label class="search" id="searchBox">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="searchInput" data-ph="search" placeholder="Start typing a name…" oninput="onSearch()" onfocus="searchBox.classList.add('focus')" onblur="searchBox.classList.remove('focus')">
+            <span class="sp" id="searchSpin" style="display:none"></span>
+          </label>
+          <div class="results" id="results" style="display:none"></div>
+        </div></div>
+      </div>
+
+      <!-- STEP 2: CONFIRM & CONTACTS -->
+      <div class="astep locked" id="s2">
+        <button class="astep-head" onclick="reopen(2)">
+          <span class="n"><span>2</span></span>
+          <div class="t"><b data-t="s2_title">Confirm &amp; contacts</b><small id="s2sum" data-t="s2_sum">Review details, add phones</small></div>
+          <span class="edit" data-t="edit">Edit</span>
+        </button>
+        <div class="astep-body"><div class="astep-inner">
+          <div class="phero">
+            <img class="flagbg" id="cFlag" src="" alt="" aria-hidden="true">
+            <div class="pimg"><img id="cImg" src="" alt=""></div>
+            <div class="pi"><div class="nm" id="cName">—</div><div class="sub" id="cSub">—</div><div class="mv" id="cMv">—</div></div>
+          </div>
+          <div class="attrs" id="cAttrs"></div>
+          <div id="cLoan"></div>
+
+          <div style="margin-top:16px"></div>
+          <div class="field"><label data-t="player_phone">Player phone (optional)</label><input type="tel" placeholder="+972 50 123 4567"></div>
+          <div class="field"><label data-t="agent_phone">Agent phone (optional)</label><input type="tel" placeholder="+972 50 987 6543"></div>
+
+          <div class="step-cta">
+            <button class="btn ghost" onclick="reopen(1)" data-t="change">Change</button>
+            <button class="btn" id="saveBtn" onclick="doSave()" data-t="add_to_roster">Add to roster</button>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- STEP 3: DONE -->
+      <div class="astep locked" id="s3">
+        <button class="astep-head">
+          <span class="n"><span>3</span></span>
+          <div class="t"><b data-t="s3_title">Added to roster</b><small data-t="s3_sum">Ready for matching</small></div>
+        </button>
+        <div class="astep-body"><div class="astep-inner" style="padding:0">
+          <div class="done-foot" style="border-top:0">
+            <div class="seal"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
+            <h3 data-t="done_h">Signed.</h3>
+            <p data-t="done_p">Now part of your squad and ready to be matched against club requirements.</p>
+            <div class="cta">
+              <button class="btn g" onclick="reset()" data-t="add_another">+ Add another</button>
+              <button class="btn p" data-t="open_profile">Open profile ↗</button>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    const DB=[
+      {name:'Manor Solomon',pos:['LW','AM'],club:'Tottenham',nat:'il',age:26,height:'1,70 m',foot:'Right',mv:'€15.00m',contract:'30.06.2026',loan:'',img:'https://img.a.transfermarkt.technology/portrait/big/401578-x.jpg'},
+      {name:'Oscar Gloukh',pos:['AM'],club:'RB Salzburg',nat:'il',age:21,height:'1,74 m',foot:'Left',mv:'€22.00m',contract:'30.06.2027',loan:'Sturm Graz',img:'https://img.a.transfermarkt.technology/portrait/big/745123-x.jpg'},
+      {name:'Dor Turgeman',pos:['CF'],club:'Maccabi Tel Aviv',nat:'il',age:22,height:'1,80 m',foot:'Right',mv:'€3.50m',contract:'30.06.2028',loan:'',img:'https://img.a.transfermarkt.technology/portrait/big/689123-x.jpg'},
+      {name:'Anssumane Fati',pos:['LW','CF'],club:'AS Monaco',nat:'es',age:22,height:'1,78 m',foot:'Right',mv:'€8.00m',contract:'30.06.2027',loan:'',img:'https://img.a.transfermarkt.technology/portrait/big/640123-x.jpg'}
+    ];
+    let selected=null;
+
+    const scrim=document.getElementById('scrim');
+    const drawer=document.getElementById('drawer');
+    function openDrawer(){scrim.classList.add('open');drawer.classList.add('open');}
+    function closeDrawer(){scrim.classList.remove('open');drawer.classList.remove('open');}
+
+    function setState(step){
+      // step: which step is 'open'; earlier steps 'done', later steps 'locked'
+      [1,2,3].forEach(i=>{
+        const el=document.getElementById('s'+i);
+        el.classList.remove('open','done','locked');
+        if(i<step) el.classList.add('done');
+        else if(i===step) el.classList.add('open');
+        else el.classList.add('locked');
+      });
+      document.querySelectorAll('.prog i').forEach((d,idx)=>d.classList.toggle('on',idx<step));
+    }
+    function reopen(step){
+      // allow going back to a completed/current step
+      const el=document.getElementById('s'+step);
+      if(el.classList.contains('locked'))return;
+      setState(step);
+    }
+
+    let searchTimer=null;
+    function onSearch(){
+      const q=document.getElementById('searchInput').value.trim().toLowerCase();
+      const res=document.getElementById('results');
+      const spin=document.getElementById('searchSpin');
+      if(q.length<2){res.style.display='none';res.innerHTML='';spin.style.display='none';return;}
+      spin.style.display='block';
+      clearTimeout(searchTimer);
+      searchTimer=setTimeout(()=>{
+        spin.style.display='none';
+        const rtl=document.documentElement.dir==='rtl';
+        const matches=DB.filter(p=>p.name.toLowerCase().includes(q));
+        if(matches.length===0){res.style.display='block';res.innerHTML=`<div style="padding:18px;text-align:center;color:var(--muted);font:11px/1 var(--body)">${rtl?'לא נמצאו שחקנים':'No players found'}</div>`;return;}
+        res.style.display='block';
+        res.innerHTML=matches.map(p=>`
+          <button class="result" onclick='select(${JSON.stringify(p.name)})'>
+            <img src="${p.img}" alt="" onerror="this.src='https://via.placeholder.com/56'">
+            <div class="ri"><b>${p.name}</b><span>${p.pos.join(', ')} · ${p.club} · <span class="v">${p.mv}</span></span></div>
+          </button>`).join('');
+      },420);
+    }
+
+    function loadByUrl(){
+      if(!document.getElementById('urlInput').value.trim())return;
+      select(DB[0].name);
+    }
+
+    function select(name){
+      selected=DB.find(p=>p.name===name);
+      if(!selected)return;
+      const rtl=document.documentElement.dir==='rtl';
+      // fill step-1 summary
+      document.getElementById('s1sum').textContent=`${selected.name} · ${selected.club}`;
+      // fill confirm
+      document.getElementById('cImg').src=selected.img;
+      document.getElementById('cImg').onerror=function(){this.src='https://via.placeholder.com/120';};
+      document.getElementById('cFlag').src=`https://flagcdn.com/w640/${selected.nat}.png`;
+      document.getElementById('cName').textContent=selected.name;
+      document.getElementById('cSub').textContent=`${selected.pos.join(' · ')} · ${selected.club}`;
+      document.getElementById('cMv').textContent=selected.mv;
+      const attrs=[
+        [rtl?'גיל':'Age',selected.age],[rtl?'גובה':'Height',selected.height],
+        [rtl?'רגל':'Foot',rtl?(selected.foot==='Left'?'שמאל':'ימין'):selected.foot],[rtl?'סיום חוזה':'Contract',selected.contract]
+      ];
+      document.getElementById('cAttrs').innerHTML=attrs.map(([l,v])=>`<div><label>${l}</label><b>${v}</b></div>`).join('');
+      document.getElementById('cLoan').innerHTML=selected.loan
+        ?`<div class="loanline"><svg viewBox="0 0 24 24"><path d="M3 12h18M3 12l4-4M3 12l4 4"/></svg>${rtl?'בהשאלה מ־ '+selected.loan:'On loan from '+selected.loan}</div>`:'';
+      setState(2);
+    }
+
+    function doSave(){
+      const btn=document.getElementById('saveBtn');
+      const rtl=document.documentElement.dir==='rtl';
+      btn.disabled=true;btn.textContent=rtl?'שומר…':'Saving…';
+      setTimeout(()=>{
+        btn.disabled=false;btn.textContent=rtl?'הוסף לסגל':'Add to roster';
+        document.getElementById('s2sum').textContent=`${selected.name} · ${rtl?'נשמר':'saved'}`;
+        setState(3);
+      },800);
+    }
+
+    function reset(){
+      selected=null;
+      document.getElementById('urlInput').value='';
+      document.getElementById('searchInput').value='';
+      document.getElementById('results').style.display='none';
+      document.getElementById('results').innerHTML='';
+      document.getElementById('s1sum').textContent=(document.documentElement.dir==='rtl')?T.he.s1_sum:'Search Transfermarkt or paste a profile URL';
+      document.getElementById('s2sum').textContent=(document.documentElement.dir==='rtl')?T.he.s2_sum:'Review details, add phones';
+      setState(1);
+    }
+
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקנים',nav_roster:'סגל',nav_shortlist:'רשימת מעקב',nav_req:'דרישות מועדונים',nav_cont:'אנשי קשר',
+      platform:'פלטפורמה פעילה',platform_v:'גברים / אירופה',kicker:'משרד לקוחות פרטי / סגל',head_a:'ה',head_b:'סגל.',add_player:'+ הוסף שחקן',add_player_card:'הוסף שחקן<br>לסגל',
+      eyebrow:'גיוס / החתמה לסגל',drawer_title:'הוספת שחקן',
+      s1_title:'איתור השחקן',s1_sum:'חיפוש בטרנספרמרקט או הדבקת קישור',s2_title:'אישור ואנשי קשר',s2_sum:'בדיקת פרטים והוספת טלפונים',s3_title:'נוסף לסגל',s3_sum:'מוכן להתאמה',
+      edit:'עריכה',paste_lbl:'הדביקו קישור טרנספרמרקט',load:'טען',or:'או',search_lbl:'חיפוש לפי שם',
+      player_phone:'טלפון שחקן (אופציונלי)',agent_phone:'טלפון סוכן (אופציונלי)',change:'שינוי',add_to_roster:'הוסף לסגל',
+      done_h:'הוחתם.',done_p:'כעת חלק מהסגל שלך ומוכן להיות מותאם לדרישות מועדונים.',add_another:'+ הוסף עוד',open_profile:'פתח פרופיל ↗'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.innerHTML);
+    document.querySelectorAll('[data-ph]').forEach(el=>EN['ph_'+el.dataset.ph]=el.getAttribute('placeholder'));
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.innerHTML=(rtl?(T.he[k]??EN[k]):EN[k])||el.innerHTML;});
+      document.querySelectorAll('[data-ph]').forEach(el=>{const k='ph_'+el.dataset.ph;el.setAttribute('placeholder',(rtl?(T.he[k]??EN[k]):EN[k])||el.getAttribute('placeholder'));});
+      if(selected)select(selected.name);
+    }
+  </script>
+</body>
+</html>

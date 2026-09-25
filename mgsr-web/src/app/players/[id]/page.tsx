@@ -10,7 +10,9 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '@/lib/firebase';
 import { callOffersCreate, callOffersUpdateFeedback, callTasksToggleComplete, callPlayersUpdate, callPlayersToggleMandate, callPlayersAddNote, callPlayersDeleteNote, callPlayersDelete, callPlayerDocumentsCreate, callPlayerDocumentsDelete, callPlayerDocumentsMarkExpired, callPortfolioUpsert } from '@/lib/callables';
 import { getPlayerDetails, PlayerDetails } from '@/lib/api';
-import AppLayout from '@/components/AppLayout';
+import MenPlayerProfile from '@/components/MenPlayerProfile';
+import MenLoading from '@/components/MenLoading';
+import BritRail from '@/components/BritRail';
 import Link from 'next/link';
 import { toWhatsAppUrl, openWhatsAppShare } from '@/lib/whatsapp';
 import { createShare } from '@/lib/shareApi';
@@ -1601,1436 +1603,288 @@ export default function PlayerInfoPage() {
   }, [valueChartData]);
 
   if (loading || !user) {
-    return (
-      <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className="animate-pulse text-mgsr-teal font-display">{t('loading')}</div>
-      </div>
-    );
+    return <MenLoading />;
   }
 
   if (playerLoading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-pulse text-mgsr-muted">{t('players_loading')}</div>
-        </div>
-      </AppLayout>
-    );
+    return <MenLoading label={t('players_loading')} />;
   }
 
   if (!player) {
     return (
-      <AppLayout>
-        <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-3xl mx-auto text-center py-20">
-          <p className="text-mgsr-muted text-lg mb-6">{t('player_info_not_found')}</p>
-          <Link
-            href={backHref}
-            scroll={false}
-            className="inline-flex items-center gap-2 text-mgsr-teal hover:underline"
-          >
-            <span className={isRtl ? 'rotate-180' : ''}>←</span>
-            {t(backLabelKey)}
-          </Link>
+      <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
+        <div className="brit-app">
+          <BritRail active="players" />
+          <div className="brit-main">
+            <main className="brit-canvas">
+              <div className="brit-empty" style={{ padding: '80px 20px', textAlign: 'center' }}>
+                <p style={{ margin: '0 0 18px' }}>{t('player_info_not_found')}</p>
+                <Link href={backHref} scroll={false} style={{ color: 'var(--gold)' }}>
+                  <span className={isRtl ? 'rotate-180' : ''}>←</span> {t(backLabelKey)}
+                </Link>
+              </div>
+            </main>
+          </div>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   const notes = player.noteList || [];
   const sortedNotes = [...notes].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-  return (
-    <AppLayout>
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-5xl mx-auto">
-        {/* Back + actions */}
-        <div className="flex items-center justify-between mb-6">
-          <Link
-            href={backHref}
-            scroll={false}
-            className="hidden lg:inline-flex items-center gap-2 text-mgsr-teal hover:underline"
-          >
-            <span className={isRtl ? 'rotate-180' : ''}>←</span>
-            {t(backLabelKey)}
-          </Link>
-          <div className="flex items-center gap-2 lg:gap-3 flex-wrap">
-            {player.tmProfile && (
-              <>
-                <button
-                  onClick={refreshFromTransfermarkt}
-                  disabled={refreshing}
-                  className="text-sm text-mgsr-muted hover:text-mgsr-teal transition disabled:opacity-50"
-                >
-                  {refreshing ? '...' : t('player_info_refresh')}
-                </button>
-                <a
-                  href={player.tmProfile}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm px-3 py-1.5 rounded-lg bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 transition"
-                >
-                  {t('player_info_view_on_tm')}
-                </a>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-sm px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 hover:text-red-300 transition flex items-center gap-1.5"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              {isRtl ? 'מחק' : 'Delete'}
-            </button>
-          </div>
-        </div>
+  // ── Derived mandate summary for the redesigned profile ──
+  const validMandateDocs = documents.filter(
+    (d) => (d.type ?? '').toUpperCase() === 'MANDATE' && !d.expired && (d.expiresAt == null || d.expiresAt >= Date.now())
+  );
+  const hasValidMandate = validMandateDocs.length > 0;
+  const mandateMaxExp = Math.max(0, ...validMandateDocs.map((d) => d.expiresAt ?? 0));
+  const mandateExpiryLabel =
+    mandateMaxExp > 0
+      ? (() => {
+          const d = new Date(mandateMaxExp);
+          return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        })()
+      : null;
+  const mandateLeagues = Array.from(new Set(validMandateDocs.flatMap((d) => d.validLeagues ?? []).filter(Boolean)));
 
-        {/* Hero - full width dramatic */}
-        <div className="relative overflow-hidden rounded-2xl mb-8">
-          <div className="absolute inset-0 bg-gradient-to-br from-mgsr-card via-mgsr-card to-mgsr-dark" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(77,182,172,0.15)_0%,transparent_50%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_80%,rgba(77,182,172,0.08)_0%,transparent_40%)]" />
-          <div className="relative flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-8 p-5 sm:p-10">
-            <div className="relative shrink-0">
-              <img
-                src={merged.profileImage || 'https://via.placeholder.com/160'}
-                alt=""
-                className="w-24 h-24 sm:w-40 sm:h-40 rounded-2xl object-cover bg-mgsr-dark ring-4 ring-mgsr-border shadow-2xl"
-              />
-              {/* Nationality flags — overlapping flag-in-flag for dual citizenship */}
-              {(() => {
-                const flags = merged.nationalityFlags?.filter(Boolean);
-                const primaryFlag = merged.nationalityFlag;
-                if (flags && flags.length > 1) {
-                  return (
-                    <div className="absolute -bottom-3 -right-4 w-9 h-8 sm:w-10 sm:h-9">
-                      {/* Two overlapping rectangle flags */}
-                      <img src={flags[1]} alt="" className="absolute bottom-0 right-0 w-7 h-5 sm:w-8 sm:h-6 rounded object-cover border-2 border-mgsr-dark shadow" />
-                      <img src={flags[0]} alt="" className="absolute top-0 left-0 w-7 h-5 sm:w-8 sm:h-6 rounded object-cover border-2 border-mgsr-dark shadow-lg" />
-                    </div>
-                  );
-                }
-                if (primaryFlag) {
-                  return <img src={primaryFlag} alt="" className="absolute -bottom-2 -right-2 w-8 h-6 rounded object-cover border-2 border-mgsr-dark shadow" />;
-                }
-                return null;
-              })()}
-            </div>
-            <div className="flex-1 text-center sm:text-left min-w-0">
-              <h1 className="text-2xl sm:text-4xl font-display font-bold text-mgsr-text tracking-tight">
-                {displayName}
-              </h1>
-              <p className="text-mgsr-muted mt-1 sm:mt-2 text-base sm:text-lg">
-                {merged.positions?.filter(Boolean).join(' • ') || '—'}
-              </p>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4">
-                {merged.currentClub?.clubName && (
-                  <div className="flex items-center gap-2">
-                    {merged.currentClub.clubLogo && (
-                      <img
-                        src={merged.currentClub.clubLogo}
-                        alt=""
-                        className="w-6 h-6 rounded object-cover"
-                      />
-                    )}
-                    <span className="text-mgsr-text font-medium">
-                      {merged.currentClub.clubName}
-                    </span>
-                    {merged.currentClub.clubCountry && (
-                      <span className="text-mgsr-muted text-sm">
-                        • {merged.currentClub.clubCountry}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {merged.isOnLoan && merged.onLoanFromClub && (
-                  <span className="text-amber-400 text-sm">
-                    {t('player_info_on_loan')}: {merged.onLoanFromClub}
-                  </span>
-                )}
-                {isEuPlayer && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                    🇪🇺 {t('eu_nat_tag')}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="shrink-0">
-              <p className="text-2xl sm:text-3xl font-display font-bold text-mgsr-teal">
-                {merged.marketValue || '—'}
-              </p>
-              <p className="text-xs text-mgsr-muted mt-0.5">{t('players_value')}</p>
-            </div>
-          </div>
-        </div>
+  // ── Hidden file input (kept identical; rendered by the new profile) ──
+  const fileInputNode = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*,application/pdf"
+      className="hidden"
+      onChange={handleUploadDocument}
+    />
+  );
 
-        {/* Stats grid — horizontal scroll on phone, grid on larger */}
-        <div className="mb-8 -mx-4 px-4 lg:mx-0 lg:px-0">
-          <div className="flex lg:grid lg:grid-cols-6 gap-3 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-          <StatCard label={t('player_info_age')} value={merged.age} />
-          <StatCard label={t('player_info_height')} value={merged.height} />
-          {/* Nationality card — show all citizenships with flags */}
-          {(() => {
-            const allNat = merged.nationalities?.filter(Boolean) || [];
-            const allFlags = merged.nationalityFlags?.filter(Boolean) || [];
-            const primary = merged.nationality;
-            if (allNat.length > 1) {
-              return (
-                <div className="shrink-0 min-w-[110px] lg:min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border">
-                  <p className="text-[11px] text-mgsr-muted uppercase tracking-wider whitespace-nowrap">{t('player_info_nationality')}</p>
-                  <div className="mt-1.5 flex items-center gap-3">
-                    {/* Overlapping rectangle flags */}
-                    <div className="relative w-9 h-7 shrink-0">
-                      <img src={allFlags[1]} alt="" className="absolute bottom-0 right-0 w-7 h-5 rounded object-cover border border-mgsr-border shadow" />
-                      <img src={allFlags[0]} alt="" className="absolute top-0 left-0 w-7 h-5 rounded object-cover border border-mgsr-border shadow-lg" />
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      {allNat.map((nat: string, i: number) => (
-                        <span key={i} className="font-semibold text-mgsr-text text-sm leading-tight whitespace-nowrap">{nat}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            }
-            return <StatCard label={t('player_info_nationality')} value={primary} />;
-          })()}
-          <StatCard label={t('player_info_foot')} value={translateFoot(merged.foot)} />
-          <StatCard label={t('player_info_contract')} value={merged.contractExpired} />
-          {player.createdAt && (
-            <StatCard label={isRtl ? 'נוסף בתאריך' : 'Added in'} value={new Date(player.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })} />
-          )}
-          {/* Salary & Transfer Fee — clickable card */}
-          <button
-            type="button"
-            onClick={() => setShowSalaryFeeModal(true)}
-            className="shrink-0 min-w-[110px] lg:min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border hover:border-mgsr-teal/50 transition-colors text-start group cursor-pointer"
-          >
-            <p className="text-[11px] text-mgsr-muted uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
-              {t('player_info_salary')}
-              <svg className="w-3 h-3 text-mgsr-muted opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-            </p>
-            <p className={`font-semibold mt-0.5 whitespace-nowrap ${player.salaryRange ? 'text-mgsr-text' : 'text-mgsr-muted/40'}`}>
-              {player.salaryRange || '—'}
-            </p>
+  // ── Contact block (agent + player phone, editable) ──
+  const contactBlockNode = (
+    <div className="bp-kv">
+      <h3>
+        {t('player_info_contact')}
+        {!getAgentPhone() && !getPhone() && !editingPhoneType && (
+          <button className="add" onClick={() => { setEditingPhoneType('player'); setEditingPhoneValue(''); }}>
+            + {t('contact_add_phone')}
           </button>
-          <button
-            type="button"
-            onClick={() => setShowSalaryFeeModal(true)}
-            className="shrink-0 min-w-[110px] lg:min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border hover:border-mgsr-teal/50 transition-colors text-start group cursor-pointer"
-          >
-            <p className="text-[11px] text-mgsr-muted uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
-              {t('player_info_transfer_fee')}
-              <svg className="w-3 h-3 text-mgsr-muted opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-            </p>
-            <p className={`font-semibold mt-0.5 whitespace-nowrap ${player.transferFee ? 'text-mgsr-text' : 'text-mgsr-muted/40'}`}>
-              {player.transferFee?.toLowerCase() === 'free/free loan' ? t('requests_fee_free_loan') : player.transferFee || '—'}
-            </p>
-          </button>
-          </div>
-        </div>
-
-        {/* Two-column content */}
-        <div className="grid lg:grid-cols-3 gap-5 sm:gap-8">
-          {/* Left column - Club, Contact, Mandate, Agency */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Club card */}
-            {merged.currentClub && (
-              <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-                <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
-                  {t('player_info_club')}
-                </h3>
-                <div className="flex items-center gap-3">
-                  {merged.currentClub.clubLogo && (
-                    <img
-                      src={merged.currentClub.clubLogo}
-                      alt=""
-                      className="w-12 h-12 rounded-lg object-cover bg-mgsr-dark"
-                    />
-                  )}
-                  <div>
-                    <p className="font-semibold text-mgsr-text">{merged.currentClub.clubName}</p>
-                    {merged.currentClub.clubCountry && (
-                      <p className="text-sm text-mgsr-muted">{merged.currentClub.clubCountry}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Added by / Assigned to */}
-            {(player.originalAgentName || player.agentInChargeName) && (
-              <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-                <h3 className="text-[0.65rem] font-bold text-mgsr-muted/60 uppercase tracking-[0.14em] mb-3">
-                  {t('player_info_added_by')}
-                </h3>
-                {player.agentTransferredAt && player.originalAgentName ? (
-                  <>
-                    {/* Original agent (dimmed) */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-2.5 h-2.5 rounded-full border-2 border-mgsr-muted/30 shrink-0" />
-                      <p className="text-mgsr-muted text-sm">
-                        {resolveAgentName(player.originalAgentName, player.originalAgentId)}
-                      </p>
-                    </div>
-                    <div className="h-px bg-mgsr-border my-3" />
-                    {/* Assigned to (active) */}
-                    <h3 className="text-[0.65rem] font-bold text-mgsr-muted/60 uppercase tracking-[0.14em] mb-3">
-                      {t('player_info_assigned_to')}
-                    </h3>
-                    <div className="flex items-center gap-3">
-                      <div className="w-2.5 h-2.5 rounded-full border-2 border-[var(--mgsr-accent)] bg-[var(--mgsr-accent)] shrink-0 shadow-[0_0_8px_rgba(56,232,198,0.3)]" />
-                      <div>
-                        <p className="text-mgsr-text text-sm font-semibold">
-                          {resolveAgentName(player.agentInChargeName, player.agentInChargeId)}
-                        </p>
-                        <p className="text-[0.7rem] text-mgsr-muted/60 font-mono mt-0.5">
-                          {new Date(player.agentTransferredAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <div className="w-2.5 h-2.5 rounded-full border-2 border-[var(--mgsr-accent)] bg-[var(--mgsr-accent)] shrink-0 shadow-[0_0_8px_rgba(56,232,198,0.3)]" />
-                    <p className="text-mgsr-text text-sm font-semibold">
-                      {resolveAgentName(
-                        player.originalAgentName || player.agentInChargeName,
-                        player.originalAgentId || player.agentInChargeId
-                      )}
-                    </p>
-                  </div>
-                )}
-                <AgentTransferSection
-                  player={player}
-                  pendingTransfer={pendingTransfer}
-                  currentUserAccountId={currentUserAccountId}
-                  currentUserAuthUid={user?.uid}
-                  currentUserAccountName={currentUserAccountName}
-                  onRequestTransfer={handleRequestTransfer}
-                  onApproveTransfer={handleApproveTransfer}
-                  onRejectTransfer={handleRejectTransfer}
-                  onCancelTransfer={handleCancelTransfer}
-                  resolveAgentName={resolveAgentName}
-                  t={t}
-                />
-              </div>
-            )}
-
-            {/* Resolved transfer indication — always visible */}
-            {resolvedTransfer && !resolvedDismissed && (
-                  <div className={`mt-3 p-3 rounded-xl border flex items-start gap-3 ${
-                    resolvedTransfer.status === 'approved'
-                      ? 'bg-emerald-500/10 border-emerald-500/25'
-                      : 'bg-red-500/10 border-red-500/25'
-                  }`}>
-                    <div className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center mt-0.5 ${
-                      resolvedTransfer.status === 'approved'
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : 'bg-red-500/20 text-red-400'
-                    }`}>
-                      {resolvedTransfer.status === 'approved' ? (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold ${
-                        resolvedTransfer.status === 'approved' ? 'text-emerald-400' : 'text-red-400'
-                      }`}>
-                        {resolvedTransfer.status === 'approved'
-                          ? (isRtl ? 'השיוך אושר בהצלחה' : 'Player successfully assigned')
-                          : (isRtl ? 'בקשת השיוך נדחתה' : 'Assignment request declined')}
-                      </p>
-                      <p className="text-xs text-mgsr-muted/70 mt-0.5">
-                        {resolvedTransfer.status === 'approved'
-                          ? (isRtl
-                              ? `${resolvedTransfer.fromAgentName || ''} אישר ל${resolvedTransfer.toAgentName || ''}`
-                              : `${resolvedTransfer.fromAgentName || ''} approved transfer to ${resolvedTransfer.toAgentName || ''}`)
-                          : (isRtl
-                              ? `${resolvedTransfer.fromAgentName || ''} דחה את הבקשה של ${resolvedTransfer.toAgentName || ''}`
-                              : `${resolvedTransfer.fromAgentName || ''} declined request from ${resolvedTransfer.toAgentName || ''}`)}
-                      </p>
-                      {resolvedTransfer.resolvedAt && (
-                        <p className="text-[0.65rem] text-mgsr-muted/50 font-mono mt-1">
-                          {new Date(resolvedTransfer.resolvedAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setResolvedDismissed(true)}
-                      className="text-mgsr-muted/40 hover:text-mgsr-muted transition-colors shrink-0 mt-0.5"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  </div>
-                )}
-
-            {/* Contact - agent phone + player phone — editable */}
-            <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider">
-                  {t('player_info_contact')}
-                </h3>
-                {!getAgentPhone() && !getPhone() && !editingPhoneType && (
-                  <button
-                    type="button"
-                    onClick={() => { setEditingPhoneType('agent'); setEditingPhoneValue(''); }}
-                    className="text-xs text-mgsr-teal hover:underline"
-                  >
-                    + {t('contact_add_phone')}
-                  </button>
-                )}
-              </div>
-              <div className="space-y-3">
-                {/* Agent phone */}
-                {editingPhoneType === 'agent' ? (
-                  <div>
-                    <p className="text-xs text-mgsr-muted mb-1">{t('player_info_agent_phone')}</p>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="tel"
-                        dir="ltr"
-                        value={editingPhoneValue}
-                        onChange={(e) => setEditingPhoneValue(e.target.value)}
-                        placeholder="+972..."
-                        className="flex-1 px-3 py-2 rounded-lg bg-mgsr-dark border border-mgsr-border text-mgsr-text text-sm focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50"
-                        autoFocus
-                        onKeyDown={(e) => { if (e.key === 'Enter') savePhone('agent', editingPhoneValue); if (e.key === 'Escape') { setEditingPhoneType(null); setEditingPhoneValue(''); } }}
-                      />
-                      <button
-                        type="button"
-                        disabled={savingPhone}
-                        onClick={() => savePhone('agent', editingPhoneValue)}
-                        className="px-3 py-2 rounded-lg bg-mgsr-teal text-mgsr-dark text-sm font-semibold hover:bg-mgsr-teal/90 disabled:opacity-50 transition"
-                      >
-                        {t('save')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setEditingPhoneType(null); setEditingPhoneValue(''); }}
-                        className="px-3 py-2 rounded-lg border border-mgsr-border text-mgsr-muted text-sm hover:text-mgsr-text transition"
-                      >
-                        {t('cancel')}
-                      </button>
-                    </div>
-                  </div>
-                ) : getAgentPhone() ? (
-                  <div>
-                    <p className="text-xs text-mgsr-muted mb-1">{t('player_info_agent_phone')}</p>
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={toWhatsAppUrl(getAgentPhone()) ?? `tel:${getAgentPhone()}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center h-8 text-mgsr-teal hover:underline text-base"
-                        dir="ltr"
-                      >
-                        {getAgentPhone()}
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => { setEditingPhoneType('agent'); setEditingPhoneValue(getAgentPhone() || ''); }}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-mgsr-border/40 text-mgsr-muted hover:text-mgsr-teal transition"
-                        title={t('contact_edit_phone')}
-                      >
-                        <svg style={{width: '18px', height: '18px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                      </button>
-                      {confirmDeletePhone === 'agent' ? (
-                        <span className="flex items-center gap-1 text-xs">
-                          <button
-                            type="button"
-                            disabled={savingPhone}
-                            onClick={() => deletePhone('agent')}
-                            className="px-2 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-50 transition font-medium"
-                          >
-                            {t('contact_confirm_delete')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeletePhone(null)}
-                            className="px-2 py-1 rounded text-mgsr-muted hover:text-mgsr-text transition"
-                          >
-                            {t('cancel')}
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeletePhone('agent')}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-500/15 text-mgsr-muted hover:text-red-400 transition"
-                          title={t('contact_delete_phone')}
-                        >
-                          <svg style={{width: '18px', height: '18px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* Player phone */}
-                {editingPhoneType === 'player' ? (
-                  <div>
-                    <p className="text-xs text-mgsr-muted mb-1">{t('player_info_player_phone')}</p>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="tel"
-                        dir="ltr"
-                        value={editingPhoneValue}
-                        onChange={(e) => setEditingPhoneValue(e.target.value)}
-                        placeholder="+972..."
-                        className="flex-1 px-3 py-2 rounded-lg bg-mgsr-dark border border-mgsr-border text-mgsr-text text-sm focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50"
-                        autoFocus
-                        onKeyDown={(e) => { if (e.key === 'Enter') savePhone('player', editingPhoneValue); if (e.key === 'Escape') { setEditingPhoneType(null); setEditingPhoneValue(''); } }}
-                      />
-                      <button
-                        type="button"
-                        disabled={savingPhone}
-                        onClick={() => savePhone('player', editingPhoneValue)}
-                        className="px-3 py-2 rounded-lg bg-mgsr-teal text-mgsr-dark text-sm font-semibold hover:bg-mgsr-teal/90 disabled:opacity-50 transition"
-                      >
-                        {t('save')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setEditingPhoneType(null); setEditingPhoneValue(''); }}
-                        className="px-3 py-2 rounded-lg border border-mgsr-border text-mgsr-muted text-sm hover:text-mgsr-text transition"
-                      >
-                        {t('cancel')}
-                      </button>
-                    </div>
-                  </div>
-                ) : getPhone() ? (
-                  <div>
-                    <p className="text-xs text-mgsr-muted mb-1">{t('player_info_player_phone')}</p>
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={toWhatsAppUrl(getPhone()) ?? `tel:${getPhone()}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center h-8 text-mgsr-teal hover:underline text-base"
-                        dir="ltr"
-                      >
-                        {getPhone()}
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => { setEditingPhoneType('player'); setEditingPhoneValue(getPhone() || ''); }}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-mgsr-border/40 text-mgsr-muted hover:text-mgsr-teal transition"
-                        title={t('contact_edit_phone')}
-                      >
-                        <svg style={{width: '18px', height: '18px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                      </button>
-                      {confirmDeletePhone === 'player' ? (
-                        <span className="flex items-center gap-1 text-xs">
-                          <button
-                            type="button"
-                            disabled={savingPhone}
-                            onClick={() => deletePhone('player')}
-                            className="px-2 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-50 transition font-medium"
-                          >
-                            {t('contact_confirm_delete')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeletePhone(null)}
-                            className="px-2 py-1 rounded text-mgsr-muted hover:text-mgsr-text transition"
-                          >
-                            {t('cancel')}
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeletePhone('player')}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-500/15 text-mgsr-muted hover:text-red-400 transition"
-                          title={t('contact_delete_phone')}
-                        >
-                          <svg style={{width: '18px', height: '18px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* Add phone buttons — show for each missing phone when not editing */}
-                {!editingPhoneType && (!getAgentPhone() || !getPhone()) && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {!getAgentPhone() && (
-                      <button
-                        type="button"
-                        onClick={() => { setEditingPhoneType('agent'); setEditingPhoneValue(''); }}
-                        className="text-xs text-mgsr-teal/70 hover:text-mgsr-teal transition"
-                      >
-                        + {t('contact_add_agent_phone')}
-                      </button>
-                    )}
-                    {!getPhone() && (
-                      <button
-                        type="button"
-                        onClick={() => { setEditingPhoneType('player'); setEditingPhoneValue(''); }}
-                        className="text-xs text-mgsr-teal/70 hover:text-mgsr-teal transition"
-                      >
-                        + {t('contact_add_player_phone')}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Matching Requests */}
-            {menRosterAnalysisEnabled && player?.tmProfile && (
-              <MatchingRequestsSection
-                matchingRequests={matchingRequests}
-                playerProfileUrl={player.tmProfile}
-                accounts={accounts}
-                currentUserEmail={user?.email}
-                onMarkAsOffered={handleMarkAsOffered}
-                onUpdateFeedback={handleUpdateOfferFeedback}
-                isWomen={false}
-              />
-            )}
-
-            {/* Proposal History (persists after request deletion) */}
-            {menRosterAnalysisEnabled && proposalHistory.length > 0 && (
-              <ProposalHistorySection
-                offers={proposalHistory}
-                accounts={accounts}
-              />
-            )}
-
-            {/* Mandate switch (like Android) */}
-            <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-1">
-                    {t('player_info_mandate')}
-                  </h3>
-                  {player.haveMandate && (() => {
-                    const valid = documents.filter(
-                      (d) =>
-                        (d.type ?? '').toUpperCase() === 'MANDATE' &&
-                        !d.expired &&
-                        (d.expiresAt == null || d.expiresAt >= Date.now())
-                    );
-                    const maxExp = Math.max(0, ...valid.map((d) => d.expiresAt ?? 0));
-                    const leagues = Array.from(new Set(valid.flatMap((d) => d.validLeagues ?? [])));
-                    if (maxExp <= 0 && leagues.length === 0) return null;
-                    const d = maxExp > 0 ? new Date(maxExp) : null;
-                    const str = d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : '';
-                    return (
-                      <>
-                        {str && (
-                          <p className="text-xs text-mgsr-muted mt-0.5" dir="ltr">
-                            {t('player_info_mandate_expires').replace('%s', str)}
-                          </p>
-                        )}
-                        {leagues.length > 0 && (
-                          <p className="text-xs text-mgsr-teal/70 mt-0.5" dir="ltr">
-                            {leagues.join(', ')}
-                          </p>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-                  <label className="mgsr-switch">
-                    <input
-                      type="checkbox"
-                      checked={player.haveMandate ?? false}
-                      disabled={mandateToggling}
-                      onChange={() => handleMandateToggle(!(player.haveMandate ?? false))}
-                    />
-                    <span className="mgsr-slider" />
-                  </label>
-              </div>
-            </div>
-
-            {/* Interested in Israel switch */}
-            <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-1">
-                    🇮🇱 {t('player_info_interested_in_israel')}
-                  </h3>
-                </div>
-                <label className="mgsr-switch">
-                  <input
-                    type="checkbox"
-                    checked={player.interestedInIsrael ?? false}
-                    disabled={interestedInIsraelToggling}
-                    onChange={() => handleInterestedInIsraelToggle(!(player.interestedInIsrael ?? false))}
-                  />
-                  <span className="mgsr-slider" />
-                </label>
-              </div>
-            </div>
-
-            {/* Family Status */}
-            <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border space-y-3">
-              <h3 className="text-xs font-semibold text-mgsr-muted uppercase tracking-wider">
-                {t('player_info_family_status')}
-              </h3>
-
-              {/* Married toggle */}
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <span>💍</span>
-                  <span className={`text-sm font-medium ${(player.isMarried ?? false) ? 'text-mgsr-teal' : 'text-mgsr-muted'}`}>
-                    {t('player_info_married')}
-                  </span>
-                  {marriedToggling && (
-                    <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
-                  )}
-                </div>
-                <label className="mgsr-switch">
-                  <input
-                    type="checkbox"
-                    checked={player.isMarried ?? false}
-                    disabled={marriedToggling}
-                    onChange={() => handleMarriedToggle(!(player.isMarried ?? false))}
-                  />
-                  <span className="mgsr-slider" />
-                </label>
-              </div>
-
-              <div className="border-t border-mgsr-border" />
-
-              {/* Kids counter */}
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <span>👶</span>
-                  <span className={`text-sm font-medium ${(player.kidsCount ?? 0) > 0 ? 'text-mgsr-teal' : 'text-mgsr-muted'}`}>
-                    {t('player_info_kids')}
-                  </span>
-                  {kidsCountSaving && (
-                    <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={kidsCountSaving || (player.kidsCount ?? 0) <= 0}
-                    onClick={() => handleKidsCountUpdate(Math.max(0, (player.kidsCount ?? 0) - 1))}
-                    className="w-8 h-8 rounded-lg bg-mgsr-bg border border-mgsr-border flex items-center justify-center text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal transition disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    −
-                  </button>
-                  <span className={`text-lg font-bold min-w-[2ch] text-center ${(player.kidsCount ?? 0) > 0 ? 'text-mgsr-teal' : 'text-mgsr-muted'}`}>
-                    {player.kidsCount ?? 0}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={kidsCountSaving}
-                    onClick={() => handleKidsCountUpdate((player.kidsCount ?? 0) + 1)}
-                    className="w-8 h-8 rounded-lg bg-mgsr-bg border border-mgsr-border flex items-center justify-center text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal transition disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* English Level */}
-            <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border space-y-3">
-              <div className="flex items-center gap-2">
-                <h3 className="text-xs font-semibold text-mgsr-muted uppercase tracking-wider">
-                  {t('player_info_english_level')}
-                </h3>
-                {englishLevelSaving && (
-                  <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
-                )}
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {(['none', 'medium', 'good', 'native'] as const).map((level) => {
-                  const isSelected = player.englishLevel === level;
-                  const labelMap: Record<string, { en: string; he: string }> = {
-                    none: { en: 'No English', he: 'ללא' },
-                    medium: { en: 'Medium', he: 'בינוני' },
-                    good: { en: 'Good', he: 'טוב' },
-                    native: { en: 'Native', he: 'שפת אם' },
-                  };
-                  return (
-                    <button
-                      key={level}
-                      type="button"
-                      disabled={englishLevelSaving}
-                      onClick={() => handleEnglishLevelUpdate(isSelected ? null : level)}
-                      className={`py-1.5 rounded-lg text-xs font-semibold transition ${
-                        isSelected
-                          ? 'bg-mgsr-teal text-white'
-                          : 'bg-mgsr-bg border border-mgsr-border text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal'
-                      } disabled:opacity-30 disabled:cursor-not-allowed`}
-                    >
-                      {labelMap[level][isRtl ? 'he' : 'en']}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Agency */}
-            {(player.agency || player.agencyUrl) && (
-              <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-                <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
-                  {t('player_info_agency')}
-                </h3>
-                {player.agencyUrl ? (
-                  <a
-                    href={player.agencyUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-mgsr-teal hover:underline"
-                  >
-                    {player.agency || player.agencyUrl}
-                  </a>
-                ) : (
-                  <p className="text-mgsr-text">{player.agency}</p>
-                )}
-              </div>
-            )}
-
-            {/* Documents */}
-            <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-              <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
-                {t('player_info_documents')}
-              </h3>
-              {uploadError && (
-                <div className="py-2 px-3 rounded-lg bg-mgsr-red/20 text-mgsr-red text-sm mb-2">
-                  {uploadError === 'passport_already_exists' ? t('passport_already_exists') : uploadError === 'upload_failed' ? t('upload_failed') : uploadError}
-                </div>
-              )}
-              {uploadingDocument && (
-                <div className="flex items-center gap-3 py-3 text-sm text-mgsr-muted">
-                  <div className="w-5 h-5 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
-                  {t('player_info_uploading')}
-                </div>
-              )}
-              {(() => {
-                const nonGpsDocs = documents.filter(d => d.type !== 'GPS_DATA');
-                const gpsDocs = documents.filter(d => d.type === 'GPS_DATA');
-                return (<>
-              {nonGpsDocs.length === 0 && !uploadingDocument ? (
-                <div className="py-6 text-center">
-                  <svg className="w-12 h-12 mx-auto text-mgsr-muted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <p className="text-mgsr-text font-medium mb-1">{t('player_info_no_documents')}</p>
-                  <p className="text-sm text-mgsr-muted mb-4">{t('player_info_documents_empty_subtitle')}</p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*,application/pdf"
-                    className="hidden"
-                    onChange={handleUploadDocument}
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-mgsr-teal text-white font-medium text-sm hover:bg-mgsr-teal/90 transition"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    {t('player_info_add_document')}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {nonGpsDocs.map((d) => (
-                    <div
-                      key={d.id}
-                      className={`flex items-center justify-between py-2 border-b border-mgsr-border last:border-0 text-sm text-mgsr-text ${deletingDocId === d.id ? 'opacity-40 pointer-events-none' : ''}`}
-                    >
-                      <a
-                        href={d.storageUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 min-w-0 truncate text-mgsr-teal hover:underline"
-                      >
-                        {d.name || d.type || 'Document'}
-                      </a>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {d.expired && (
-                          <span className="text-mgsr-red text-xs">{t('player_info_doc_expired')}</span>
-                        )}
-                        <a
-                          href={d.storageUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 text-mgsr-teal hover:bg-mgsr-teal/10 rounded-lg transition"
-                          title={t('player_info_cd_open_link')}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
-                        {deletingDocId === d.id ? (
-                          <span className="p-2"><svg className="w-4 h-4 animate-spin text-mgsr-muted" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg></span>
-                        ) : (
-                        <button
-                          onClick={() => setDocToDelete(d)}
-                          className="p-2 text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10 rounded-lg transition"
-                          title={t('player_info_cd_delete_document')}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*,application/pdf"
-                    className="hidden"
-                    onChange={handleUploadDocument}
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingDocument}
-                    className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 transition font-medium text-sm disabled:opacity-50"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    {t('player_info_add_document')}
-                  </button>
-                </div>
-              )}
-
-              {/* GPS Documents Expandable */}
-              {gpsDocs.length > 0 && (
-                <details className="mt-3 rounded-xl border border-mgsr-border overflow-hidden">
-                  <summary className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-mgsr-bg/50 transition">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-teal-500 to-blue-500 flex items-center justify-center">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                      </div>
-                      <span className="text-sm font-medium text-mgsr-text">{t('gps_data')}</span>
-                      <span className="text-xs text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-md font-medium">{gpsDocs.length}</span>
-                    </div>
-                    <svg className="w-4 h-4 text-mgsr-muted transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </summary>
-                  <div className="px-4 pb-3 space-y-1">
-                    {gpsDocs.map((d) => (
-                      <div key={d.id} className={`flex items-center justify-between py-1.5 text-sm ${deletingDocId === d.id ? 'opacity-40 pointer-events-none' : ''}`}>
-                        <a href={d.storageUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 truncate text-teal-400 hover:underline text-xs">
-                          {d.name || t('gps_report')}
-                        </a>
-                        {deletingDocId === d.id ? (
-                          <svg className="animate-spin w-3.5 h-3.5 text-mgsr-muted" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                        ) : (
-                        <button onClick={() => setDocToDelete(d)} className="p-1 text-mgsr-muted hover:text-mgsr-red rounded transition">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
-              </>); })()}
-            </div>
-
-            {/* Delete document confirmation */}
-            {docToDelete && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => !deletingDocId && setDocToDelete(null)}>
-                <div
-                  className="bg-mgsr-card border border-mgsr-border rounded-xl p-6 max-w-sm w-full shadow-xl"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <p className="text-mgsr-text font-medium mb-4">
-                    {t('player_info_delete_doc_confirm')} &quot;{docToDelete.name || docToDelete.type || 'document'}&quot;?
-                  </p>
-                  <div className="flex gap-3 justify-end">
-                    <button
-                      onClick={() => setDocToDelete(null)}
-                      disabled={!!deletingDocId}
-                      className="px-4 py-2 rounded-lg text-mgsr-muted hover:bg-mgsr-muted/20 transition disabled:opacity-50"
-                    >
-                      {t('player_info_note_cancel')}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteDocument(docToDelete)}
-                      disabled={!!deletingDocId}
-                      className="px-4 py-2 rounded-lg bg-mgsr-red/20 text-mgsr-red hover:bg-mgsr-red/30 transition font-medium disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {deletingDocId && <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
-                      {t('tasks_delete')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right column - Value history + Notes */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Performance Stats Panel */}
-            {(merged.tmProfile || player?.tmProfile) && (
-              <PlayerStatsPanel
-                playerUrl={merged.tmProfile || player?.tmProfile}
-                playerName={merged.fullName || player?.fullName}
-                playerClub={merged.currentClub?.clubName || player?.currentClub?.clubName}
-                playerPosition={(merged.positions ?? player?.positions ?? [])[0]}
-              />
-            )}
-
-            {/* FM Intelligence Panel */}
-            {(merged.fullName || player?.fullName) && (
-              <FmIntelligencePanel
-                playerName={merged.fullName || player?.fullName || ''}
-                club={merged.currentClub?.clubName || player?.currentClub?.clubName || ''}
-                age={String(merged.age || player?.age || '')}
-                isRtl={isRtl}
-              />
-            )}
-
-            {/* GPS Performance Panel */}
-            {(merged.tmProfile || player?.tmProfile || id) && (
-              <GpsPerformancePanel
-                playerRefId={merged.tmProfile || player?.tmProfile || id}
-                playerPosition={(merged.positions ?? player?.positions ?? [])[0] || ''}
-                isRtl={isRtl}
-                parsingGps={parsingGps}
-              />
-            )}
-
-            {/* Similar Players Panel */}
-            {(merged.tmProfile || player?.tmProfile) && (
-              <SimilarPlayersPanel
-                playerUrl={merged.tmProfile || player?.tmProfile || ''}
-                isRtl={isRtl}
-                playerName={merged.fullName || player?.fullName}
-                playerClub={merged.currentClub?.clubName || player?.currentClub?.clubName}
-                playerPosition={merged.positions?.[0] || player?.positions?.[0]}
-                playerAge={merged.age || player?.age}
-                playerFoot={merged.foot || player?.foot}
-                playerHeight={merged.height || player?.height}
-                playerNationality={merged.nationality || player?.nationality}
-                playerMarketValue={merged.marketValue || player?.marketValue}
-              />
-            )}
-
-            {/* Player Highlights Panel */}
-            {(merged.fullName || player?.fullName) && (
-              <YouthHighlightsPanel
-                playerId={id}
-                pinnedHighlights={(player?.pinnedHighlights ?? []) as HighlightVideo[]}
-                isRtl={isRtl}
-                playerCollection="Players"
-              />
-            )}
-
-            {/* Market value trend */}
-            {valueChartData.length > 0 && valueChartStats && (
-              <div className="rounded-2xl bg-gradient-to-br from-mgsr-card via-mgsr-card to-[#1E3040] border border-mgsr-border/60 overflow-hidden shadow-lg shadow-black/20">
-                {/* --- Header with current value + trend --- */}
-                <div className="px-6 pt-5 pb-3 flex items-start justify-between">
-                  <div>
-                    <h2 className="text-[11px] font-medium uppercase tracking-[0.15em] text-mgsr-muted mb-1.5">
-                      {t('player_info_value_history')}
-                    </h2>
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-3xl font-display font-bold text-mgsr-text">
-                        {valueChartStats.current.value}
-                      </span>
-                      {valueChartData.length > 1 && (
-                        <span className={`inline-flex items-center gap-1 text-sm font-semibold px-2 py-0.5 rounded-full ${valueChartStats.isUp ? 'text-emerald-400 bg-emerald-400/10' : 'text-rose-400 bg-rose-400/10'}`}>
-                          <svg className="w-3 h-3" viewBox="0 0 12 12" fill="currentColor">
-                            {valueChartStats.isUp
-                              ? <path d="M6 2L10 7H2L6 2Z" />
-                              : <path d="M6 10L2 5H10L6 10Z" />
-                            }
-                          </svg>
-                          {Math.abs(valueChartStats.changePct).toFixed(1)}%
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {/* Peak badge */}
-                  <div className="text-right">
-                    <div className="text-[10px] uppercase tracking-[0.15em] text-mgsr-muted/70 mb-0.5">{t('player_info_value_peak')}</div>
-                    <div className="text-sm font-semibold text-amber-400/90">{valueChartStats.peak.value}</div>
-                    <div className="text-[10px] text-mgsr-muted">{valueChartStats.peak.dateLabel}</div>
-                  </div>
-                </div>
-
-                {/* --- Chart --- */}
-                <div className="h-56 md:h-64 px-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={valueChartData} margin={{ left: 4, right: 4, top: 12, bottom: 20 }}>
-                      <defs>
-                        <linearGradient id="mvGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={valueChartStats.isUp ? '#34D399' : '#FB7185'} stopOpacity={0.35} />
-                          <stop offset="50%" stopColor={valueChartStats.isUp ? '#34D399' : '#FB7185'} stopOpacity={0.1} />
-                          <stop offset="100%" stopColor={valueChartStats.isUp ? '#34D399' : '#FB7185'} stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#253545" strokeOpacity={0.5} vertical={false} />
-                      {valueChartData.length > 1 && (
-                        <ReferenceLine
-                          y={valueChartStats.peak.valueNum}
-                          stroke="#FBBF24"
-                          strokeDasharray="6 4"
-                          strokeOpacity={0.35}
-                        />
-                      )}
-                      <XAxis
-                        dataKey="dateLabel"
-                        stroke="#8C999B"
-                        fontSize={10}
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: '#8C999B' }}
-                        dy={8}
-                      />
-                      <YAxis
-                        stroke="#8C999B"
-                        fontSize={10}
-                        tickLine={false}
-                        axisLine={false}
-                        width={52}
-                        tick={{ fill: '#8C999B' }}
-                        tickFormatter={(v) => {
-                          if (v >= 1_000_000) return `€${(v / 1_000_000).toFixed(1)}m`;
-                          if (v >= 1_000) return `€${(v / 1_000).toFixed(0)}k`;
-                          return `€${v}`;
-                        }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'rgba(15, 25, 35, 0.95)',
-                          border: '1px solid rgba(77, 182, 172, 0.3)',
-                          borderRadius: '14px',
-                          padding: '10px 16px',
-                          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                          backdropFilter: 'blur(12px)',
-                        }}
-                        formatter={(value: number | undefined, _name: unknown, props: unknown) => {
-                          const payload = (props as { payload?: { value?: string } })?.payload;
-                          const display = payload?.value ?? (value != null ? formatMarketValue(value) : '—');
-                          return [display, t('players_value')];
-                        }}
-                        labelFormatter={(label) => label}
-                        cursor={{ stroke: 'rgba(77, 182, 172, 0.25)', strokeWidth: 1 }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="valueNum"
-                        stroke={valueChartStats.isUp ? '#34D399' : '#FB7185'}
-                        strokeWidth={2.5}
-                        fill="url(#mvGrad)"
-                        activeDot={{
-                          r: 6,
-                          stroke: valueChartStats.isUp ? '#34D399' : '#FB7185',
-                          strokeWidth: 2,
-                          fill: '#0F1923',
-                          filter: 'drop-shadow(0 0 6px rgba(52, 211, 153, 0.5))',
-                        }}
-                        dot={false}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* --- Bottom stats strip --- */}
-                {valueChartData.length > 1 && (
-                  <div className="px-6 py-3 border-t border-mgsr-border/30 flex items-center justify-around bg-mgsr-dark/30">
-                    <div className="text-center">
-                      <div className="text-[10px] uppercase tracking-[0.12em] text-mgsr-muted/60 mb-0.5">{t('player_info_value_low')}</div>
-                      <div className="text-xs font-medium text-mgsr-text">{valueChartStats.low.value}</div>
-                    </div>
-                    <div className="w-px h-6 bg-mgsr-border/30" />
-                    <div className="text-center">
-                      <div className="text-[10px] uppercase tracking-[0.12em] text-mgsr-muted/60 mb-0.5">{t('player_info_value_points')}</div>
-                      <div className="text-xs font-medium text-mgsr-text">{valueChartData.length}</div>
-                    </div>
-                    <div className="w-px h-6 bg-mgsr-border/30" />
-                    <div className="text-center">
-                      <div className="text-[10px] uppercase tracking-[0.12em] text-mgsr-muted/60 mb-0.5">{t('player_info_value_change')}</div>
-                      <div className={`text-xs font-medium ${valueChartStats.isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {valueChartStats.isUp ? '+' : '-'}{formatMarketValue(Math.abs(valueChartStats.change))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Player-related tasks */}
-            {tasksEnabled && (
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                <h2 className="text-lg font-display font-semibold text-mgsr-text">
-                  {t('player_tasks_section')}
-                </h2>
-                <button
-                  onClick={() => setShowAddTaskModal(true)}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 transition font-medium text-sm shrink-0"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  {t('player_tasks_add')}
-                </button>
-              </div>
-              {playerTasks.length === 0 ? (
-                <div
-                  onClick={() => setShowAddTaskModal(true)}
-                  className="p-8 bg-mgsr-card/50 border border-mgsr-border rounded-xl text-center text-mgsr-muted cursor-pointer hover:border-mgsr-teal/30 hover:bg-mgsr-card/70 transition"
-                >
-                  {t('player_tasks_empty')}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {playerTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="flex items-center gap-4 p-4 bg-mgsr-card border border-mgsr-border rounded-xl hover:border-mgsr-teal/30 transition group"
-                    >
-                      <button
-                        type="button"
-                        disabled={togglingTaskId === task.id}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (togglingTaskId) return;
-                          setTogglingTaskId(task.id);
-                          try {
-                            await callTasksToggleComplete({ platform: 'men', taskId: task.id, isCompleted: !task.isCompleted });
-                          } catch {
-                            // ignore
-                          } finally {
-                            setTogglingTaskId(null);
-                          }
-                        }}
-                        className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition disabled:opacity-50 ${
-                          task.isCompleted ? 'border-mgsr-teal bg-mgsr-teal' : 'border-mgsr-muted group-hover:border-mgsr-teal cursor-pointer'
-                        }`}
-                      >
-                        {togglingTaskId === task.id ? (
-                          <span className="inline-block w-3.5 h-3.5 border-2 border-mgsr-muted/30 border-t-mgsr-teal rounded-full animate-spin" />
-                        ) : task.isCompleted ? (
-                          <span className="text-mgsr-dark text-xs font-bold">✓</span>
-                        ) : null}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-medium ${task.isCompleted ? 'line-through text-mgsr-muted' : 'text-mgsr-text'}`}>
-                          {task.title || '—'}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
-                          {task.createdByAgentName && (
-                            <p className="text-xs text-mgsr-muted">
-                              {t('tasks_opened_by')} <span className="text-mgsr-teal">{task.createdByAgentName}</span>
-                            </p>
-                          )}
-                          {task.agentName && (
-                            <p className="text-xs text-mgsr-muted">
-                              {t('tasks_assigned_to_label')} <span className="text-mgsr-text">{task.agentName}</span>
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                          {task.createdAt && (
-                            <span className="text-xs text-mgsr-muted">
-                              {t('tasks_created_on')} {new Date(task.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}
-                            </span>
-                          )}
-                          {task.createdAt && task.dueDate && task.dueDate > 0 ? <span className="text-xs text-mgsr-muted">·</span> : null}
-                          {!!(task.dueDate && task.dueDate > 0) && (
-                            <span className={`text-xs ${task.dueDate < Date.now() && !task.isCompleted ? 'text-red-400 font-medium' : 'text-mgsr-muted'}`}>
-                              {t('tasks_due_label')} {new Date(task.dueDate).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </span>
-                          )}
-                        </div>
-                        {task.linkedAgentContactName && (
-                          <p className="text-xs text-mgsr-muted mt-0.5">
-                            {t('tasks_linked_agent')}: <span className="text-mgsr-text">{task.linkedAgentContactName}</span>
-                            {task.linkedAgentContactPhone && (
-                              <a href={`tel:${task.linkedAgentContactPhone}`} className="ms-1.5 text-mgsr-teal hover:underline">{task.linkedAgentContactPhone}</a>
-                            )}
-                          </p>
-                        )}
-                      </div>
-                      <Link
-                        href="/tasks"
-                        className="shrink-0 p-2 rounded-lg text-mgsr-muted hover:text-mgsr-teal hover:bg-mgsr-teal/10 transition"
-                        title={t('tasks_title')}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            )}
-
-            {/* Notes */}
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                <h2 className="text-lg font-display font-semibold text-mgsr-text">
-                  {t('player_info_notes')}
-                </h2>
-                <button
-                  onClick={() => {
-                    setEditingNote(null);
-                    setNoteDraft('');
-                    setNoteModalOpen('add');
-                  }}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 transition font-medium text-sm shrink-0"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  {t('player_info_add_note')}
-                </button>
-              </div>
-              {sortedNotes.length === 0 && !player.notes ? (
-                <div
-                  onClick={() => {
-                    setEditingNote(null);
-                    setNoteDraft('');
-                    setNoteModalOpen('add');
-                  }}
-                  className="p-8 bg-mgsr-card/50 border border-mgsr-border rounded-xl text-center text-mgsr-muted cursor-pointer hover:border-mgsr-teal/30 hover:bg-mgsr-card/70 transition"
-                >
-                  {t('player_info_no_notes')}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {player.notes && (
-                    <div className="p-5 bg-mgsr-card border border-mgsr-border rounded-xl">
-                      <p className="text-mgsr-text whitespace-pre-wrap">{player.notes}</p>
-                    </div>
-                  )}
-                  {sortedNotes.map((n, i) => (
-                    <div
-                      key={i}
-                      className="group flex flex-col sm:flex-row sm:items-start gap-3 p-5 bg-mgsr-card border border-mgsr-border rounded-xl animate-fade-in"
-                      style={{ animationDelay: `${i * 40}ms` }}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-mgsr-text whitespace-pre-wrap">{n.notes}</p>
-                        <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-mgsr-muted">
-                          {n.createBy && (
-                            <span>{t('note_written_by')}: {isRtl ? (n.createByHe ?? resolveAgentName(n.createBy)) : n.createBy}</span>
-                          )}
-                          {n.createdAt && (
-                            <span>{new Date(n.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => {
-                            setEditingNote(n);
-                            setNoteDraft(n.notes ?? '');
-                            setNoteModalOpen('edit');
-                          }}
-                          className="p-2 rounded-lg text-mgsr-muted hover:text-mgsr-teal hover:bg-mgsr-teal/10 transition"
-                          title={t('player_info_edit_note')}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirmNote(n)}
-                          className="p-2 rounded-lg text-mgsr-muted hover:text-red-400 hover:bg-red-400/10 transition"
-                          title={t('player_info_delete_note')}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom bar - Generate mandate + Share */}
-        {(() => {
-          const hasPassportDetails = !!player?.passportDetails;
-          const hasValidMandate = documents.some(
-            (d) =>
-              (d.type ?? '').toUpperCase() === 'MANDATE' &&
-              !d.expired &&
-              (d.expiresAt == null || d.expiresAt >= Date.now())
-          );
+        )}
+      </h3>
+      {(['player', 'agent'] as const).map((type) => {
+        const val = type === 'player' ? getPhone() : getAgentPhone();
+        const label = type === 'player' ? t('player_info_player_phone') : t('player_info_agent_phone');
+        if (editingPhoneType === type) {
           return (
-            <div className="sticky bottom-0 left-0 right-0 mt-8 rounded-t-2xl border border-t border-mgsr-border bg-mgsr-card p-4">
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center justify-center gap-8">
-                  {hasPassportDetails && (
-                    <Link
-                      href={hasValidMandate ? '#' : `/players/${id}/generate-mandate`}
-                      className={`flex items-center gap-2 ${hasValidMandate ? 'cursor-default opacity-50' : 'text-mgsr-teal hover:underline'}`}
-                      onClick={(e) => hasValidMandate && e.preventDefault()}
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                      </svg>
-                      <span className="font-medium text-sm">{t('player_info_generate_mandate')}</span>
-                    </Link>
-                  )}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setIncludePlayerContact(false);
-                      setIncludeAgencyContact(false);
-                      setShowShareLanguageModal(true);
-                    }}
-                    disabled={sharing}
-                    className="flex items-center gap-2 text-mgsr-teal hover:underline disabled:opacity-50"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
-                    <span className="font-medium text-sm">{t('player_info_share')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setShowPortfolioLanguageModal(true);
-                    }}
-                    disabled={addingToPortfolio}
-                    className="flex items-center gap-2 text-mgsr-teal hover:underline disabled:opacity-50"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    <span className="font-medium text-sm">{t('player_info_prepare_portfolio')}</span>
-                  </button>
-
-                </div>
-                {(shareError || portfolioError) && (
-                  <p className="text-sm text-red-400 text-center">{shareError || portfolioError}</p>
-                )}
-              </div>
+            <div className="bp-contact" key={type}>
+              <span className="who">{label}</span>
+              <span style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="tel"
+                  dir="ltr"
+                  autoFocus
+                  value={editingPhoneValue}
+                  onChange={(e) => setEditingPhoneValue(e.target.value)}
+                  placeholder="+972..."
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') savePhone(type, editingPhoneValue);
+                    if (e.key === 'Escape') { setEditingPhoneType(null); setEditingPhoneValue(''); }
+                  }}
+                />
+                <button className="bp-toolbtn" disabled={savingPhone} onClick={() => savePhone(type, editingPhoneValue)}>{t('save')}</button>
+                <button className="bp-toolbtn" onClick={() => { setEditingPhoneType(null); setEditingPhoneValue(''); }}>{t('cancel')}</button>
+              </span>
             </div>
           );
-        })()}
+        }
+        if (!val) return null;
+        return (
+          <div className="bp-contact" key={type}>
+            <span className="who">{label}</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <a href={toWhatsAppUrl(val) ?? `tel:${val}`} target="_blank" rel="noopener noreferrer" className="num" dir="ltr">{val}</a>
+              <button className="add" title={t('contact_edit_phone')} onClick={() => { setEditingPhoneType(type); setEditingPhoneValue(val || ''); }}>✎</button>
+              {confirmDeletePhone === type ? (
+                <>
+                  <button className="add" style={{ color: 'var(--red)' }} disabled={savingPhone} onClick={() => deletePhone(type)}>{t('contact_confirm_delete')}</button>
+                  <button className="add" onClick={() => setConfirmDeletePhone(null)}>{t('cancel')}</button>
+                </>
+              ) : (
+                <button className="add" style={{ color: 'var(--muted)' }} title={t('contact_delete_phone')} onClick={() => setConfirmDeletePhone(type)}>🗑</button>
+              )}
+            </span>
+          </div>
+        );
+      })}
+      {!editingPhoneType && (!getAgentPhone() || !getPhone()) && (getAgentPhone() || getPhone()) && (
+        <div style={{ display: 'flex', gap: 12, paddingTop: 8 }}>
+          {!getPhone() && (
+            <button className="add" onClick={() => { setEditingPhoneType('player'); setEditingPhoneValue(''); }}>+ {t('contact_add_player_phone')}</button>
+          )}
+          {!getAgentPhone() && (
+            <button className="add" onClick={() => { setEditingPhoneType('agent'); setEditingPhoneValue(''); }}>+ {t('contact_add_agent_phone')}</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Agent transfer block (unchanged component) ──
+  const agentTransferBlockNode = (
+    <AgentTransferSection
+      player={player}
+      pendingTransfer={pendingTransfer}
+      currentUserAccountId={currentUserAccountId}
+      currentUserAuthUid={user?.uid}
+      currentUserAccountName={currentUserAccountName}
+      onRequestTransfer={handleRequestTransfer}
+      onApproveTransfer={handleApproveTransfer}
+      onRejectTransfer={handleRejectTransfer}
+      onCancelTransfer={handleCancelTransfer}
+      resolveAgentName={resolveAgentName}
+      t={t}
+    />
+  );
+
+  const resolvedTransferBannerNode = resolvedTransfer && !resolvedDismissed ? (
+    <div style={{ marginTop: 12, padding: 12, border: `1px solid ${resolvedTransfer.status === 'approved' ? 'var(--green)' : 'var(--red)'}`, display: 'flex', gap: 10 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontFamily: 'var(--p-mono)', fontSize: 10, textTransform: 'uppercase', color: resolvedTransfer.status === 'approved' ? 'var(--green)' : 'var(--red)' }}>
+          {resolvedTransfer.status === 'approved'
+            ? (isRtl ? 'השיוך אושר' : 'Player assigned')
+            : (isRtl ? 'הבקשה נדחתה' : 'Request declined')}
+        </p>
       </div>
+      <button onClick={() => setResolvedDismissed(true)} style={{ color: 'var(--muted)' }}>×</button>
+    </div>
+  ) : null;
+
+  const matchingRequestsBlockNode = menRosterAnalysisEnabled && player?.tmProfile ? (
+    <MatchingRequestsSection
+      matchingRequests={matchingRequests}
+      playerProfileUrl={player.tmProfile}
+      accounts={accounts}
+      currentUserEmail={user?.email}
+      onMarkAsOffered={handleMarkAsOffered}
+      onUpdateFeedback={handleUpdateOfferFeedback}
+      isWomen={false}
+    />
+  ) : null;
+
+  const proposalHistoryBlockNode = menRosterAnalysisEnabled && proposalHistory.length > 0 ? (
+    <ProposalHistorySection offers={proposalHistory} accounts={accounts} />
+  ) : null;
+
+  const statsPanelNode = (merged.tmProfile || player?.tmProfile) ? (
+    <PlayerStatsPanel
+      playerUrl={merged.tmProfile || player?.tmProfile}
+      playerName={merged.fullName || player?.fullName}
+      playerClub={merged.currentClub?.clubName || player?.currentClub?.clubName}
+      playerPosition={(merged.positions ?? player?.positions ?? [])[0]}
+    />
+  ) : null;
+
+  const fmPanelNode = (merged.fullName || player?.fullName) ? (
+    <FmIntelligencePanel
+      playerName={merged.fullName || player?.fullName || ''}
+      club={merged.currentClub?.clubName || player?.currentClub?.clubName || ''}
+      age={String(merged.age || player?.age || '')}
+      isRtl={isRtl}
+    />
+  ) : null;
+
+  const gpsPanelNode = (merged.tmProfile || player?.tmProfile || id) ? (
+    <GpsPerformancePanel
+      playerRefId={merged.tmProfile || player?.tmProfile || id}
+      playerPosition={(merged.positions ?? player?.positions ?? [])[0] || ''}
+      isRtl={isRtl}
+      parsingGps={parsingGps}
+    />
+  ) : null;
+
+  const similarPanelNode = (merged.tmProfile || player?.tmProfile) ? (
+    <SimilarPlayersPanel
+      playerUrl={merged.tmProfile || player?.tmProfile || ''}
+      isRtl={isRtl}
+      playerName={merged.fullName || player?.fullName}
+      playerClub={merged.currentClub?.clubName || player?.currentClub?.clubName}
+      playerPosition={merged.positions?.[0] || player?.positions?.[0]}
+      playerAge={merged.age || player?.age}
+      playerFoot={merged.foot || player?.foot}
+      playerHeight={merged.height || player?.height}
+      playerNationality={merged.nationality || player?.nationality}
+      playerMarketValue={merged.marketValue || player?.marketValue}
+    />
+  ) : null;
+
+  const highlightsPanelNode = (merged.fullName || player?.fullName) ? (
+    <YouthHighlightsPanel
+      playerId={id}
+      pinnedHighlights={(player?.pinnedHighlights ?? []) as HighlightVideo[]}
+      isRtl={isRtl}
+      playerCollection="Players"
+    />
+  ) : null;
+
+  return (
+    <>
+      <MenPlayerProfile
+        t={t}
+        isRtl={isRtl}
+        player={player}
+        merged={merged}
+        displayName={displayName}
+        isEuPlayer={isEuPlayer}
+        documents={documents}
+        sortedNotes={sortedNotes}
+        valueChartData={valueChartData}
+        valueChartStats={valueChartStats}
+        backHref={backHref}
+        backLabelKey={backLabelKey}
+        translateFoot={translateFoot}
+        resolveAgentName={resolveAgentName}
+        refreshing={refreshing}
+        mandateToggling={mandateToggling}
+        interestedInIsraelToggling={interestedInIsraelToggling}
+        marriedToggling={marriedToggling}
+        kidsCountSaving={kidsCountSaving}
+        englishLevelSaving={englishLevelSaving}
+        uploadingDocument={uploadingDocument}
+        uploadError={uploadError}
+        deletingDocId={deletingDocId}
+        sharing={sharing}
+        addingToPortfolio={addingToPortfolio}
+        shareError={shareError}
+        portfolioError={portfolioError}
+        onRefresh={refreshFromTransfermarkt}
+        onDelete={() => setShowDeleteConfirm(true)}
+        onMandateToggle={handleMandateToggle}
+        onIsraelToggle={handleInterestedInIsraelToggle}
+        onMarriedToggle={handleMarriedToggle}
+        onKidsUpdate={handleKidsCountUpdate}
+        onEnglishUpdate={handleEnglishLevelUpdate}
+        onEditSalaryFee={() => setShowSalaryFeeModal(true)}
+        onUploadClick={() => fileInputRef.current?.click()}
+        onDeleteDoc={(d) => setDocToDelete(d as PlayerDocument)}
+        onAddNote={() => { setEditingNote(null); setNoteDraft(''); setNoteModalOpen('add'); }}
+        onEditNote={(n) => { setEditingNote(n); setNoteDraft(n.notes ?? ''); setNoteModalOpen('edit'); }}
+        onDeleteNote={(n) => setDeleteConfirmNote(n)}
+        onShare={() => { setIncludePlayerContact(false); setIncludeAgencyContact(false); setShowShareLanguageModal(true); }}
+        onPreparePortfolio={() => setShowPortfolioLanguageModal(true)}
+        fileInput={fileInputNode}
+        contactBlock={contactBlockNode}
+        agentTransferBlock={agentTransferBlockNode}
+        resolvedTransferBanner={resolvedTransferBannerNode}
+        matchingRequestsBlock={matchingRequestsBlockNode}
+        proposalHistoryBlock={proposalHistoryBlockNode}
+        statsPanel={statsPanelNode}
+        fmPanel={fmPanelNode}
+        gpsPanel={gpsPanelNode}
+        similarPanel={similarPanelNode}
+        highlightsPanel={highlightsPanelNode}
+        mandateExpiryLabel={mandateExpiryLabel}
+        mandateLeagues={mandateLeagues}
+        hasValidMandate={hasValidMandate}
+      />
 
       {/* Delete confirmation dialog */}
       {showDeleteConfirm && (
@@ -3441,6 +2295,6 @@ export default function PlayerInfoPage() {
           t={t}
         />
       )}
-    </AppLayout>
+    </>
   );
 }

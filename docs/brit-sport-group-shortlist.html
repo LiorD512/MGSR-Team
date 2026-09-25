@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Shortlist / Light Management Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .rail-label{margin:31px 0 13px;color:#969188;font:9px/1 var(--mono);letter-spacing:.13em;text-transform:uppercase}
+    .nav{display:grid;gap:3px}
+    .nav>a,.nav-group{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav-group:hover,.nav>a.active,.nav-group.active{color:var(--gold-soft)}
+    .nav>a.active:before,.nav-group.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .nav-toggle{color:var(--gold-soft);font-size:13px}
+    .nav-sub{display:grid;gap:2px;padding:2px 0 6px;margin-inline-start:14px;border-inline-start:1px solid var(--dark-line)}
+    .nav-sub a{display:flex;align-items:center;padding:9px 0 9px 14px;color:#8f8a80;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;position:relative;transition:color .15s}
+    [dir=rtl] .nav-sub a{padding:9px 14px 9px 0}
+    .nav-sub a:hover,.nav-sub a.active{color:var(--gold-soft)}
+    .nav-sub a.active:before{content:'';position:absolute;inset-inline-start:-1px;top:50%;width:2px;height:14px;margin-top:-7px;background:var(--gold-soft)}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 80px}
+
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:34px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(52px,6.4vw,96px)/.8 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .view-toggle{display:flex;border:1px solid var(--line)}
+    .view-toggle button{padding:11px 16px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line)}
+    .view-toggle button:last-child{border-inline-end:0}
+    .view-toggle button.active{background:var(--black);color:var(--gold-soft)}
+
+    .signals{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:34px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .sig{min-height:104px;padding:18px 20px 20px 0;border-inline-end:1px solid var(--line)}
+    .sig:not(:first-child){padding-inline-start:20px}
+    .sig:last-child{border-inline-end:0}
+    .sig label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .sig strong{display:block;margin-top:14px;font:500 clamp(30px,3.4vw,46px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .sig strong{font-weight:800}
+    .sig small{display:block;margin-top:10px;color:var(--muted);font:9px/1 var(--mono)}
+    .sig .gold{color:var(--gold)}.sig .up{color:var(--green)}
+
+    .tray{border:1px solid var(--line);margin-bottom:16px}
+    .tray-top{display:grid;grid-template-columns:1fr auto;border-bottom:1px solid var(--line)}
+    .search{display:flex;align-items:center;gap:14px;padding:0 20px}
+    .search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
+    .search input{width:100%;border:0;background:transparent;padding:20px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .segment{display:flex;border-inline-start:1px solid var(--line)}
+    .segment button{padding:0 18px;font:10px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-start:1px solid var(--line)}
+    .segment button:first-child{border-inline-start:0}
+    .segment button.active{background:var(--gold-soft);color:var(--ink)}
+    .chips{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+    .chip{padding:13px 16px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line);transition:.15s}
+    .chip:hover{color:var(--ink)}
+    .chip.on{background:var(--black);color:var(--gold-soft)}
+    .chip .dot{display:inline-block;width:5px;height:5px;margin-inline-end:6px;background:var(--gold-soft);border-radius:50%;vertical-align:middle;opacity:0}
+    .chip.on .dot{opacity:1}
+    .tray-bottom{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px;flex-wrap:wrap}
+    .sort{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .sort span{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .sort button{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .sort button.active{color:var(--gold)}
+    .clear{color:var(--red);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count{margin:0 2px 20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    /* Ledger */
+    .roster{width:100%;border-collapse:collapse}
+    .roster thead th{padding:12px 14px;color:var(--muted);text-align:start;font:9px/1 var(--mono);font-weight:400;text-transform:uppercase;border-bottom:1px solid var(--line)}
+    .roster thead th:last-child{text-align:end}
+    .roster tbody tr{border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
+    .roster tbody tr:hover{background:rgba(17,17,15,.035)}
+    .roster td{padding:13px 14px;font:11px/1.2 var(--mono);vertical-align:middle}
+    .cell-player{display:flex;align-items:center;gap:13px}
+    .thumb{width:42px;height:42px;object-fit:cover;filter:grayscale(1);background:linear-gradient(160deg,#23231f,#11110f);flex:none}
+    .thumb.ph{display:grid;place-items:center;color:var(--paper);font:500 15px/1 var(--display);filter:none}
+    .cell-player .pname{font-family:var(--body);font-weight:700;font-size:13px;text-transform:none;letter-spacing:0}
+    .cell-player .pmeta{margin-top:3px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .val{font-weight:500;color:var(--ink)}
+    .chg{font:9px/1 var(--mono)}.chg.up{color:var(--green)}.chg.down{color:var(--red)}
+    .flags{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
+    .tag{font:9px/1 var(--mono);text-transform:uppercase;padding:5px 7px;border:1px solid var(--line)}
+    .tag.eu{color:var(--gold);border-color:var(--gold-soft)}
+    .tag.free{color:var(--red);border-color:var(--red)}
+    .rowops button{width:26px;height:26px;color:var(--muted)}
+    .rowops button:hover{color:var(--red)}
+
+    /* Gallery */
+    .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+    .card{position:relative;border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;transition:.15s}
+    .card:hover{border-color:var(--gold-soft)}
+    .card-media{position:relative;height:170px;background:var(--black);overflow:hidden;cursor:pointer}
+    .card-media img{width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.6;transition:.3s}
+    .card-media .ph{width:100%;height:100%;background:linear-gradient(160deg,#26261f,#101010)}
+    .card:hover .card-media img{opacity:.75}
+    .card-media:after{content:'';position:absolute;inset:46% 0 0;background:linear-gradient(180deg,transparent,rgba(17,17,15,.88))}
+    .card-num{position:absolute;top:12px;inset-inline-start:12px;z-index:1;color:var(--gold-soft);font:9px/1 var(--mono)}
+    .card-flags{position:absolute;top:12px;inset-inline-end:12px;z-index:1;display:flex;gap:5px}
+    .card-flags b{font:9px/1 var(--mono);color:var(--paper);border:1px solid var(--dark-line);padding:4px 6px;text-transform:uppercase}
+    .card-copy{position:absolute;inset-inline:12px;bottom:12px;z-index:1;color:var(--paper)}
+    .card-copy small{color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}
+    .card-copy h3{margin:6px 0 3px;font:500 22px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .card-copy h3{font-weight:800}
+    .card-body{padding:12px 14px;display:flex;flex-direction:column;gap:9px}
+    .card-vrow{display:flex;align-items:baseline;justify-content:space-between}
+    .card-vrow .v{font:500 18px/.9 var(--display)}
+    [dir=rtl] .card-vrow .v{font-weight:800}
+    .card-vrow .c{font:9px/1 var(--mono)}.card-vrow .c.up{color:var(--green)}.card-vrow .c.down{color:var(--red)}
+    /* mini sparkline */
+    .spark{height:26px}
+    .spark svg{width:100%;height:26px;display:block}
+    .card-foot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:9px}
+    .watcher{display:inline-flex;align-items:center;gap:7px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .watcher .wd{width:16px;height:16px;border-radius:50%;background:var(--gold-soft);color:var(--ink);display:grid;place-items:center;font:700 8px/1 var(--body)}
+    .card-foot .rm{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .card-foot .rm:hover{color:var(--red)}
+    .hidden{display:none}
+    .empty{padding:60px 0;text-align:center;color:var(--muted);font:9px/1.6 var(--mono);text-transform:uppercase}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-label,.rail-footer,.nav-sub{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px}.nav>a,.nav-group{padding:6px 0}.nav em,.nav>a.active:before,.nav-group.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.view-toggle{margin-top:18px;display:inline-flex}
+      .signals{grid-template-columns:1fr 1fr}.sig:nth-child(2n){border-inline-end:0}.sig:nth-child(n+3){border-top:1px solid var(--line)}
+      .tray-top{grid-template-columns:1fr}.segment{border-inline-start:0;border-top:1px solid var(--line);overflow-x:auto}
+      .roster thead{display:none}.roster tbody tr{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:12px 4px}.roster td{padding:0;border:0}.cell-player{grid-column:1/-1}.flags{justify-content:flex-start}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <p class="rail-label" data-t="workspace">Workspace</p>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <button class="nav-group active" onclick="this.classList.toggle('open')"><span data-t="nav_players">Players</span><em class="nav-toggle">−</em></button>
+        <div class="nav-sub">
+          <a href="#"><span data-t="nav_roster">Roster</span></a>
+          <a class="active" href="#"><span data-t="nav_short">Shortlist</span></a>
+        </div>
+        <a href="#"><span data-t="nav_req">Requests</span><em>03</em></a>
+        <a href="#"><span data-t="nav_cont">Contacts</span><em>04</em></a>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Men / Europe</strong><span data-t="watching">Watching</span><strong>18</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_short">Shortlist</strong> / 24 September 2026</div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div>
+            <p class="kicker" data-t="kicker">Private client office / Scouting board</p>
+            <h1><span data-t="head_a">The</span> <span class="gold" data-t="head_b">shortlist.</span></h1>
+          </div>
+          <div class="view-toggle">
+            <button id="vt-gallery" class="active" onclick="setView('gallery')" data-t="gallery">Board</button>
+            <button id="vt-table" onclick="setView('table')" data-t="ledger">Ledger</button>
+          </div>
+        </header>
+
+        <section class="signals">
+          <div class="sig"><label data-t="s_targets">Targets watched</label><strong>18</strong><small data-t="s_targets_n">6 added this month</small></div>
+          <div class="sig"><label data-t="s_value">Combined value</label><strong class="gold">€82.4M</strong><small data-t="s_value_n">Across 15 valued</small></div>
+          <div class="sig"><label data-t="s_rising">Rising value</label><strong class="up">07</strong><small data-t="s_rising_n">Up in last window</small></div>
+          <div class="sig"><label data-t="s_free">Free agents</label><strong class="gold">03</strong><small data-t="s_free_n">Available now</small></div>
+        </section>
+
+        <section class="tray">
+          <div class="tray-top">
+            <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input data-ph="search" placeholder="Search target, club or scout"></label>
+            <div class="segment"><button class="active">All</button><button>GK</button><button>DEF</button><button>MID</button><button>FWD</button></div>
+          </div>
+          <div class="chips">
+            <button class="chip on"><span class="dot"></span><span data-t="f_mine">Added by me</span></button>
+            <button class="chip"><span class="dot"></span>🇪🇺 <span data-t="f_eu">EU national</span></button>
+            <button class="chip"><span class="dot"></span><span data-t="f_free">Free agents</span></button>
+            <button class="chip"><span class="dot"></span><span data-t="f_rising">Rising value</span></button>
+            <button class="chip"><span class="dot"></span><span data-t="f_notes">With notes</span></button>
+          </div>
+          <div class="tray-bottom">
+            <div class="sort"><span data-t="sort">Sort</span><button class="active" data-t="sort_added">Recently added</button><button data-t="sort_val">Value</button><button data-t="sort_change">Value change</button><button data-t="sort_name">Name</button></div>
+            <button class="clear" data-t="clear">Clear filters ×</button>
+          </div>
+        </section>
+
+        <p class="result-count"><span data-t="showing_a">Showing</span> <b>18</b> <span data-t="showing_b">of 18 targets</span> / <b>1</b> <span data-t="showing_c">filter active</span></p>
+
+        <div id="view-gallery" class="gallery"></div>
+        <div id="view-table" class="hidden"><table class="roster"><thead><tr><th data-t="th_player">Target</th><th data-t="th_club">Club</th><th data-t="th_pos">Pos</th><th data-t="th_val">Value</th><th data-t="th_chg">Δ</th><th data-t="th_scout">Scout</th><th></th></tr></thead><tbody id="tbody"></tbody></table></div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const players=[
+      {name:'Mateo Silva',club:'Boca Juniors',pos:['CF'],age:19,val:'€12.0M',chg:34,nat:'Argentina',eu:false,scout:'LD',added:'2d',rising:true,img:'https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=600&q=80',spark:[10,14,18,22,30]},
+      {name:'Youssef Amrani',club:'RC Lens',pos:['LW'],age:21,val:'€9.50M',chg:12,nat:'Morocco',eu:true,scout:'LD',added:'5d',rising:true,img:'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=600&q=80',spark:[6,7,8,8,9]},
+      {name:'Nikola Petrov',club:'Free agent',pos:['CB'],age:27,val:'€2.10M',chg:-8,nat:'Serbia',eu:true,scout:'DC',added:'1w',free:true,img:'',spark:[4,3,3,2,2]},
+      {name:'Dylan Roberts',club:'Brentford',pos:['RB'],age:22,val:'€6.00M',chg:5,nat:'England',eu:false,scout:'LD',added:'1w',img:'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=600&q=80',spark:[5,5,6,6,6]},
+      {name:'Ibrahim Diallo',club:'FC Metz',pos:['DM'],age:20,val:'€4.40M',chg:22,nat:'Senegal',eu:false,scout:'SL',added:'2w',rising:true,img:'',spark:[3,3,4,4,4.4]},
+      {name:'Tomas Novak',club:'Sparta Praha',pos:['AM'],age:24,val:'€5.20M',chg:-4,nat:'Czechia',eu:true,scout:'LD',added:'3w',img:'https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=600&q=80',spark:[6,5.5,5.4,5.3,5.2]},
+      {name:'Andres Mora',club:'Free agent',pos:['ST'],age:29,val:'€1.20M',chg:0,nat:'Colombia',eu:false,scout:'DC',added:'1mo',free:true,img:'',spark:[1.4,1.3,1.2,1.2,1.2]},
+      {name:'Lukas Berg',club:'Malmö FF',pos:['GK'],age:23,val:'€3.00M',chg:9,nat:'Sweden',eu:true,scout:'LD',added:'1mo',img:'',spark:[2.6,2.7,2.8,2.9,3]}
+    ];
+
+    const initials=n=>n.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+    const gallery=document.getElementById('view-gallery');
+    const tbody=document.getElementById('tbody');
+
+    function sparkSVG(vals){
+      const max=Math.max(...vals),min=Math.min(...vals),rng=(max-min)||1;
+      const pts=vals.map((v,i)=>`${(i/(vals.length-1))*100},${26-((v-min)/rng)*22-2}`).join(' ');
+      const up=vals[vals.length-1]>=vals[0];
+      const col=up?'#5c6f4a':'#b64235';
+      return `<svg viewBox="0 0 100 26" preserveAspectRatio="none"><polyline fill="none" stroke="${col}" stroke-width="1.5" points="${pts}"/></svg>`;
+    }
+
+    function chgTxt(c){return (c>0?'▲ +':c<0?'▼ ':'– ')+Math.abs(c)+'%';}
+
+    function render(){
+      gallery.innerHTML='';tbody.innerHTML='';
+      const rtl=document.documentElement.dir==='rtl';
+      players.forEach((p,i)=>{
+        // Card
+        const card=document.createElement('article');card.className='card';
+        const media=p.img?`<img src="${p.img}" alt="">`:`<div class="ph"></div>`;
+        let fl='';if(p.eu)fl+='<b>EU</b>';if(p.free)fl+='<b>'+(rtl?'חופשי':'Free')+'</b>';
+        card.innerHTML=`
+          <div class="card-media">${media}
+            <span class="card-num">${String(i+1).padStart(2,'0')}</span>
+            <span class="card-flags">${fl}</span>
+            <div class="card-copy"><small>${p.club} / ${p.pos.join(' ')}</small><h3>${p.name}</h3></div>
+          </div>
+          <div class="card-body">
+            <div class="card-vrow"><span class="v">${p.val}</span><span class="c ${p.chg>=0?'up':'down'}">${chgTxt(p.chg)}</span></div>
+            <div class="spark">${sparkSVG(p.spark)}</div>
+            <div class="card-foot">
+              <span class="watcher"><span class="wd">${p.scout}</span>${(rtl?'צופה':'Watching')} · ${p.added}</span>
+              <button class="rm">${rtl?'הסר ✕':'Remove ✕'}</button>
+            </div>
+          </div>`;
+        gallery.appendChild(card);
+
+        // Row
+        const tr=document.createElement('tr');
+        const thumb=p.img?`<img class="thumb" src="${p.img}" alt="">`:`<div class="thumb ph">${initials(p.name)}</div>`;
+        let tags='';if(p.eu)tags+='<span class="tag eu">EU</span>';if(p.free)tags+='<span class="tag free">'+(rtl?'חופשי':'Free')+'</span>';
+        tr.innerHTML=`
+          <td class="cell-player">${thumb}<div><div class="pname">${p.name}</div><div class="pmeta">${p.nat} · ${p.age}</div></div></td>
+          <td>${p.club}</td><td>${p.pos.join(' / ')}</td>
+          <td class="val">${p.val}</td>
+          <td class="chg ${p.chg>=0?'up':'down'}">${chgTxt(p.chg)}</td>
+          <td>${p.scout} · ${p.added}</td>
+          <td class="flags"><span class="rowops"><button title="Remove">✕</button></span>${tags}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function setView(v){
+      document.getElementById('vt-gallery').classList.toggle('active',v==='gallery');
+      document.getElementById('vt-table').classList.toggle('active',v==='table');
+      document.getElementById('view-gallery').classList.toggle('hidden',v!=='gallery');
+      document.getElementById('view-table').classList.toggle('hidden',v!=='table');
+    }
+
+    const T={he:{
+      sub:'חדר ניהול',workspace:'סביבת עבודה',nav_dash:'לוח בקרה',nav_players:'שחקנים',nav_roster:'סגל',nav_short:'רשימת מעקב',nav_req:'בקשות',nav_cont:'אנשי קשר',
+      platform:'פלטפורמה פעילה',platform_v:'גברים / אירופה',watching:'במעקב',
+      kicker:'משרד לקוחות פרטי / לוח סקאוטינג',head_a:'רשימת',head_b:'המעקב.',gallery:'לוח',ledger:'טבלה',
+      s_targets:'יעדים במעקב',s_targets_n:'6 נוספו החודש',s_value:'שווי מצטבר',s_value_n:'על פני 15 מוערכים',s_rising:'שווי עולה',s_rising_n:'עלו בחלון האחרון',s_free:'שחקנים חופשיים',s_free_n:'זמינים כעת',
+      f_mine:'נוספו על ידי',f_eu:'דרכון אירופי',f_free:'שחקנים חופשיים',f_rising:'שווי עולה',f_notes:'עם הערות',
+      sort:'מיון',sort_added:'נוספו לאחרונה',sort_val:'שווי',sort_change:'שינוי שווי',sort_name:'שם',clear:'נקה סינון ×',
+      showing_a:'מוצג',showing_b:'מתוך 18 יעדים',showing_c:'סינון פעיל',
+      th_player:'יעד',th_club:'מועדון',th_pos:'עמדה',th_val:'שווי',th_chg:'Δ',th_scout:'סקאוט'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.textContent);
+    document.querySelectorAll('[data-ph]').forEach(el=>EN['ph_'+el.dataset.ph]=el.getAttribute('placeholder'));
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.textContent=(rtl?(T.he[k]??EN[k]):EN[k])||el.textContent;});
+      document.querySelectorAll('[data-ph]').forEach(el=>el.setAttribute('placeholder',(rtl?(T.he.search??EN['ph_'+el.dataset.ph]):EN['ph_'+el.dataset.ph])||''));
+      render();
+    }
+    render();
+  </script>
+</body>
+</html>

@@ -12,8 +12,8 @@ import { subscribe, loadContractFinishers, getContractFinisherState } from '@/li
 import { parseMarketValue } from '@/lib/releases';
 import { getConfederation } from '@/lib/nationToConfederation';
 import type { Confederation } from '@/lib/api';
-import AppLayout from '@/components/AppLayout';
-import Link from 'next/link';
+import MenContractFinisher from '@/components/MenContractFinisher';
+import MenLoading from '@/components/MenLoading';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
@@ -93,249 +93,6 @@ interface ContractFinisherCache {
   shortlistUrls: string[];
 }
 
-function ContractFinisherCard({
-  player,
-  onAddToShortlist,
-  isAdding,
-  isInShortlist,
-  t,
-  isRtl,
-  rosterPlayers,
-  teammatesCache,
-  loadingTeammatesUrl,
-  onToggleTeammates,
-  onFetchTeammates,
-  isTeammatesExpanded,
-  badgeText,
-}: {
-  player: ContractFinisherPlayer;
-  onAddToShortlist: (p: ContractFinisherPlayer) => void;
-  isAdding: boolean;
-  isInShortlist: boolean;
-  t: (k: string) => string;
-  isRtl: boolean;
-  rosterPlayers: RosterPlayer[];
-  teammatesCache: Record<string, RosterTeammateMatch[]>;
-  loadingTeammatesUrl: string | null;
-  onToggleTeammates: (url: string) => void;
-  onFetchTeammates: (url: string) => void;
-  isTeammatesExpanded: string | null;
-  badgeText: string;
-}) {
-  const playerUrl = player.playerUrl || '';
-  const rosterTeammates = playerUrl ? teammatesCache[playerUrl] : undefined;
-  const isLoadingTeammates = loadingTeammatesUrl === playerUrl;
-  const isExpanded = isTeammatesExpanded === playerUrl;
-
-  const handleCardClick = useCallback(
-    (e: React.MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('a') || target.closest('button') || target.closest('[data-no-propagate]')) return;
-      if (playerUrl) window.open(playerUrl, '_blank', 'noopener,noreferrer');
-    },
-    [playerUrl]
-  );
-
-  const handleTeammatesClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (!playerUrl) return;
-      onToggleTeammates(playerUrl);
-      if (!(playerUrl in teammatesCache) && !loadingTeammatesUrl) {
-        onFetchTeammates(playerUrl);
-      }
-    },
-    [playerUrl, onToggleTeammates, onFetchTeammates, teammatesCache, loadingTeammatesUrl]
-  );
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={handleCardClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleCardClick(e as unknown as React.MouseEvent);
-        }
-      }}
-      className="group relative overflow-hidden rounded-2xl bg-mgsr-card border border-mgsr-border hover:border-mgsr-teal/40 transition-all duration-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 focus:ring-offset-2 focus:ring-offset-mgsr-dark"
-    >
-      <div className="absolute inset-0 bg-gradient-to-b from-mgsr-teal/5 via-transparent to-mgsr-dark/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      <div className="absolute top-0 right-0 w-32 h-32 bg-mgsr-teal/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500" />
-      <div className="relative p-5">
-        <span className="absolute top-4 left-4 rtl:left-auto rtl:right-4 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30">
-          {badgeText}
-        </span>
-        <div className="flex gap-4 mt-6">
-          <div className="relative shrink-0">
-            <img
-              src={player.playerImage || 'https://via.placeholder.com/72'}
-              alt=""
-              className="w-16 h-16 rounded-2xl object-cover bg-mgsr-dark ring-2 ring-mgsr-border group-hover:ring-mgsr-teal/50 transition-all duration-300 group-hover:scale-105"
-            />
-            {player.playerNationalityFlag && (
-              <img
-                src={player.playerNationalityFlag}
-                alt=""
-                className="absolute -bottom-1 -right-1 w-6 h-4 rounded object-cover border border-mgsr-dark shadow"
-              />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-display font-semibold text-lg text-mgsr-text truncate group-hover:text-mgsr-teal transition-colors">
-              {player.playerName || 'Unknown'}
-            </p>
-            <p className="text-sm text-mgsr-muted mt-0.5">{player.playerPosition || '—'}</p>
-            <div className="flex items-center gap-2 mt-2">
-              {player.playerAge && (
-                <span className="text-xs px-2 py-0.5 rounded-md bg-mgsr-card border border-mgsr-border text-mgsr-muted">
-                  {t('players_age_display').replace('{age}', player.playerAge)}
-                </span>
-              )}
-              {player.playerNationality && (
-                <span className="text-xs text-mgsr-muted truncate">{player.playerNationality}</span>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-mgsr-border/80">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-display font-bold text-mgsr-teal">
-              {player.marketValue || '—'}
-            </span>
-            {player.clubJoinedName && (
-              <span className="text-xs text-mgsr-muted truncate max-w-[100px]">
-                {player.clubJoinedName}
-              </span>
-            )}
-          </div>
-          <div data-no-propagate className="flex items-center gap-2">
-            {isInShortlist ? (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30">
-                <svg className="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-                </svg>
-                <span className="text-xs font-semibold text-amber-400 uppercase tracking-wide">
-                  {t('releases_saved')}
-                </span>
-                <Link
-                  href="/shortlist"
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-xs font-medium text-amber-400/90 hover:text-amber-300 underline underline-offset-2 decoration-amber-400/50 hover:decoration-amber-300 transition-colors"
-                >
-                  {t('releases_view_shortlist')} {isRtl ? '←' : '→'}
-                </Link>
-              </div>
-            ) : (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddToShortlist(player);
-                }}
-                disabled={isAdding}
-                className="group/bookmark flex items-center gap-2 px-3 py-1.5 rounded-full border border-mgsr-border/80 bg-mgsr-dark/40 text-mgsr-muted hover:border-amber-500/40 hover:text-amber-400/90 hover:bg-amber-500/5 disabled:opacity-60 transition-all duration-200"
-              >
-                {isAdding ? (
-                  <span className="w-4 h-4 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin shrink-0" />
-                ) : (
-                  <svg className="w-4 h-4 shrink-0 opacity-70 group-hover/bookmark:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
-                )}
-                <span className="text-xs font-medium">
-                  {isAdding ? t('shortlist_adding') : t('releases_bookmark')}
-                </span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-4" data-no-propagate>
-          <button
-            type="button"
-            onClick={handleTeammatesClick}
-            className="w-full flex items-center gap-2 py-2.5 px-3 rounded-xl bg-mgsr-dark/60 border border-mgsr-border hover:border-mgsr-teal/30 transition-all text-left rtl:text-right"
-          >
-            <svg className="w-4 h-4 text-mgsr-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            <span className="text-sm text-mgsr-text flex-1">
-              {isLoadingTeammates
-                ? t('releases_roster_teammates_loading')
-                : rosterTeammates != null
-                  ? t('releases_roster_teammates').replace('{count}', String(rosterTeammates.length))
-                  : t('releases_roster_teammates_tap')}
-            </span>
-            <svg
-              className={`w-4 h-4 text-mgsr-muted shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {isExpanded && (
-            <div className="mt-2 space-y-2">
-              {isLoadingTeammates ? (
-                <div className="py-6 flex justify-center">
-                  <div className="w-5 h-5 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" />
-                </div>
-              ) : rosterTeammates?.length === 0 ? (
-                <p className="text-xs text-mgsr-muted py-3 px-3 rounded-lg bg-mgsr-dark/40 border border-mgsr-border/60">
-                  {t('releases_no_roster_teammates')}
-                </p>
-              ) : (
-                rosterTeammates?.map((match) => (
-                  <div key={match.player.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-mgsr-dark/50 border border-mgsr-border/80 hover:border-mgsr-teal/40 hover:bg-mgsr-dark/70 transition-all">
-                    <Link
-                      href={`/players/${match.player.id}?from=/contract-finisher`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-3 flex-1 min-w-0"
-                    >
-                      <img
-                        src={match.player.profileImage || 'https://via.placeholder.com/40'}
-                        alt=""
-                        className="w-9 h-9 rounded-full object-cover bg-mgsr-card ring-1 ring-mgsr-border"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-mgsr-text truncate">
-                          {match.player.fullName || 'Unknown'}
-                        </p>
-                        <p className="text-xs text-mgsr-muted truncate">
-                          {match.player.positions?.filter(Boolean).join(', ') || '—'} • {(match.player.age ? t('players_age_display').replace('{age}', match.player.age) : '—')} • {match.player.marketValue || '—'}
-                        </p>
-                      </div>
-                    </Link>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {match.player.playerPhoneNumber && (
-                        <a
-                          href={`https://wa.me/${match.player.playerPhoneNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hey ${(match.player.fullName || '').split(' ')[0]},\nHope everything is well at your side.\nI need your help with something.\nAny chance you have ${player.playerName || ''} contact number?\nThank you!`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          title={`WhatsApp ${match.player.fullName || ''}`}
-                          className="p-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/25 transition-colors"
-                        >
-                          <svg className="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                        </a>
-                      )}
-                      <span className="text-xs font-medium text-mgsr-teal px-2 py-0.5 rounded-md bg-mgsr-teal/15">
-                        {t('releases_games_together').replace('{n}', String(match.matchesPlayedTogether))}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function ContractFinisherPage() {
   const { user, loading } = useAuth();
@@ -356,7 +113,6 @@ export default function ContractFinisherPage() {
   const footEnrichingRef = useRef<Set<string>>(new Set());
   const [search, setSearch] = useState(cached?.search ?? '');
   const [rosterOnly, setRosterOnly] = useState(cached?.rosterOnly ?? false);
-  const [showFilters, setShowFilters] = useState(false);
   const [firestorePositions, setFirestorePositions] = useState<{ name?: string; hebrewName?: string }[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>(cached?.rosterPlayers ?? []);
   const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
@@ -397,8 +153,8 @@ export default function ContractFinisherPage() {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
-  const startLoad = useCallback(() => {
-    loadContractFinishers();
+  const startLoad = useCallback((refresh = false) => {
+    loadContractFinishers(refresh ? { refresh: true } : undefined);
   }, []);
 
   useEffect(() => {
@@ -672,457 +428,77 @@ export default function ContractFinisherPage() {
     [filteredPlayers, shortlistUrls]
   );
 
-  const activeFilterCount = [
-    search.trim(),
-    positionFilter,
-    ageFilter !== 'all',
-    footFilter !== 'all',
-    regionFilter,
-    valueFilter !== 'all',
-    rosterOnly,
-  ].filter(Boolean).length;
+  const freeCount = useMemo(() => {
+    return filteredPlayers.filter((p) => {
+      const club = (p.clubJoinedName || '').toLowerCase();
+      return !club || club.includes('without club') || club.includes('free');
+    }).length;
+  }, [filteredPlayers]);
+
+  const positionLabel = useCallback((pos: string) => {
+    const fp = firestorePositions.find((p) => p.name?.toLowerCase() === pos.toLowerCase());
+    return isRtl ? (fp?.hebrewName || POSITION_HEBREW[pos] || pos) : pos;
+  }, [firestorePositions, isRtl]);
 
   if (loading || !user) {
-    return (
-      <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className="animate-pulse text-mgsr-teal font-display">{t('loading')}</div>
-      </div>
-    );
+    return <MenLoading />;
   }
 
+  // Men platform only — full-bleed "Light Management Room" contract clock.
   return (
-    <AppLayout>
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
-        <div className="brit-hero-panel rounded-[28px] p-5 sm:p-6 lg:p-7 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
-                {t('contract_finisher_title')}
-              </h1>
-              <p className="text-mgsr-muted mt-1 text-sm">
-                {windowLabel === 'Summer'
-                  ? t('contract_finisher_subtitle_summer')
-                  : t('contract_finisher_subtitle_winter')}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-            {(players.length > 0 || error) && (
-              <button
-                onClick={() => startLoad()}
-                disabled={loadingList}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 disabled:opacity-50 transition"
-              >
-                {t('contract_finisher_retry')}
-              </button>
-            )}
-            <button
-              onClick={() => setShowFilters(true)}
-              className="relative px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/30 transition"
-            >
-              {t('contract_finisher_filters')}
-              {activeFilterCount > 0 && (
-                <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 w-5 h-5 rounded-full bg-mgsr-teal text-mgsr-dark text-xs font-bold flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-            </div>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 rounded-xl bg-mgsr-red/20 border border-mgsr-red/30 text-mgsr-red">
-            {error}
-          </div>
-        )}
-
-        {loadingList && players.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="animate-pulse text-mgsr-muted">{t('contract_finisher_loading')}</div>
-          </div>
-        ) : players.length === 0 ? (
-          <div className="relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]" />
-            <p className="text-mgsr-muted text-lg mb-2 relative">{t('contract_finisher_no_found')}</p>
-            <p className="text-mgsr-muted/80 text-sm relative">{t('contract_finisher_retry')}</p>
-          </div>
-        ) : (
-          <>
-            <div className="brit-filter-tray flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl">
-              {loadingList && (
-                <span className="text-sm text-mgsr-teal animate-pulse">{t('contract_finisher_loading_more')}</span>
-              )}
-              <span className="text-sm text-mgsr-muted">
-                {t('contract_finisher_stats_total')}: <strong className="text-mgsr-text">{players.length}</strong>
-              </span>
-              <span className="text-sm text-mgsr-muted">
-                {t('contract_finisher_stats_shortlisted')}: <strong className="text-amber-400">{shortlistedCount}</strong>
-              </span>
-              <span className="text-sm text-mgsr-muted">
-                {t('contract_finisher_stats_visible')}: <strong className="text-mgsr-teal">{filteredPlayers.length}</strong>
-              </span>
-            </div>
-
-            <div className="brit-filter-tray rounded-2xl p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 mb-5">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t('contract_finisher_search')}
-                className="w-full max-w-md px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal/60"
-              />
-
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('contract_finisher_filter_label_value')}:</span>
-                {VALUE_FILTERS.map((v) => (
-                  <button
-                    key={v.key}
-                    onClick={() => setValueFilter(v.key)}
-                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                      valueFilter === v.key
-                        ? 'bg-mgsr-teal text-mgsr-dark'
-                        : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                    }`}
-                  >
-                    {t(`contract_finisher_filter_value_${v.key}`)}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_position')}:</span>
-                <button
-                  onClick={() => setPositionFilter(null)}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    !positionFilter
-                      ? 'bg-mgsr-teal text-mgsr-dark'
-                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                  }`}
-                >
-                  {t('releases_all')}
-                </button>
-                {positions.map((pos) => {
-                  const fp = firestorePositions.find((p) => p.name?.toLowerCase() === pos.toLowerCase());
-                  const label = isRtl ? (fp?.hebrewName || POSITION_HEBREW[pos] || pos) : pos;
-                  return (
-                    <button
-                      key={pos}
-                      onClick={() => setPositionFilter(positionFilter === pos ? null : pos)}
-                      className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                        positionFilter === pos
-                          ? 'bg-mgsr-teal text-mgsr-dark'
-                          : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_age')}:</span>
-                {AGE_FILTERS.map((a) => (
-                  <button
-                    key={a.key}
-                    onClick={() => setAgeFilter(ageFilter === a.key ? 'all' : a.key)}
-                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                      ageFilter === a.key
-                        ? 'bg-mgsr-teal text-mgsr-dark'
-                        : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                    }`}
-                  >
-                    {t(`contract_finisher_filter_age_${a.key}`)}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('player_info_foot')}:</span>
-                <button
-                  onClick={() => setFootFilter('all')}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    footFilter === 'all'
-                      ? 'bg-mgsr-teal text-mgsr-dark'
-                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                  }`}
-                >
-                  {t('releases_all')}
-                </button>
-                <button
-                  onClick={() => setFootFilter(footFilter === 'left' ? 'all' : 'left')}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    footFilter === 'left'
-                      ? 'bg-mgsr-teal text-mgsr-dark'
-                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                  }`}
-                >
-                  {t('players_filter_foot_left')}
-                </button>
-                <button
-                  onClick={() => setFootFilter(footFilter === 'right' ? 'all' : 'right')}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    footFilter === 'right'
-                      ? 'bg-mgsr-teal text-mgsr-dark'
-                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                  }`}
-                >
-                  {t('players_filter_foot_right')}
-                </button>
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_region')}:</span>
-                <button
-                  onClick={() => setRegionFilter(null)}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    !regionFilter
-                      ? 'bg-mgsr-teal text-mgsr-dark'
-                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                  }`}
-                >
-                  {t('releases_all')}
-                </button>
-                {REGION_OPTIONS.map((r) => (
-                  <button
-                    key={r.value}
-                    onClick={() => setRegionFilter(regionFilter === r.value ? null : r.value)}
-                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                      regionFilter === r.value
-                        ? 'bg-mgsr-teal text-mgsr-dark'
-                        : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                    }`}
-                  >
-                    {t(r.key)}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('release_notifications_source')}:</span>
-                <button
-                  onClick={() => setRosterOnly(false)}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    !rosterOnly
-                      ? 'bg-mgsr-teal text-mgsr-dark'
-                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                  }`}
-                >
-                  {t('releases_all')}
-                </button>
-                <button
-                  onClick={() => setRosterOnly((prev) => !prev)}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    rosterOnly
-                      ? 'bg-mgsr-teal text-mgsr-dark'
-                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                  }`}
-                >
-                  {t('release_notifications_filter_roster')}
-                </button>
-              </div>
-            </div>
-
-            {filteredPlayers.length === 0 ? (
-              <div className="p-12 bg-mgsr-card/50 border border-mgsr-border rounded-xl text-center text-mgsr-muted">
-                {activeFilterCount > 0 ? t('contract_finisher_no_match_filters') : t('contract_finisher_no_found')}
-              </div>
-            ) : (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {filteredPlayers.map((p) => (
-                  <ContractFinisherCard
-                    key={p.playerUrl}
-                    player={p}
-                    onAddToShortlist={addToShortlist}
-                    isAdding={addingUrl === p.playerUrl}
-                    isInShortlist={!!p.playerUrl && shortlistUrls.has(p.playerUrl)}
-                    t={t}
-                    isRtl={isRtl}
-                    rosterPlayers={rosterPlayers}
-                    teammatesCache={teammatesCache}
-                    loadingTeammatesUrl={loadingTeammatesUrl}
-                    onToggleTeammates={toggleTeammates}
-                    onFetchTeammates={fetchTeammates}
-                    isTeammatesExpanded={expandedTeammatesUrl}
-                    badgeText={`${t('contract_finisher_badge')} – ${p.transferDate || ''}`}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {showFilters && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60"
-          onClick={() => setShowFilters(false)}
-        >
-          <div
-            className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-mgsr-card border-t sm:border border-mgsr-border rounded-t-2xl sm:rounded-2xl p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-semibold text-mgsr-text mb-4 font-display">
-              {t('contract_finisher_filters')}
-            </h3>
-            <div className="space-y-6">
-              <div>
-                <p className="text-xs text-mgsr-muted mb-2">{t('contract_finisher_filter_label_value')}</p>
-                <div className="flex flex-wrap gap-2">
-                  {VALUE_FILTERS.map((v) => (
-                    <button
-                      key={v.key}
-                      onClick={() => setValueFilter(v.key)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                        valueFilter === v.key
-                          ? 'bg-mgsr-teal text-mgsr-dark'
-                          : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                      }`}
-                    >
-                      {t(`contract_finisher_filter_value_${v.key}`)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-mgsr-muted mb-2">{t('contract_finisher_filter_label_position')}</p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setPositionFilter(null)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                      !positionFilter
-                        ? 'bg-mgsr-teal text-mgsr-dark'
-                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                    }`}
-                  >
-                    {t('contract_finisher_filter_age_all')}
-                  </button>
-                  {positions.map((pos) => {
-                    const fp = firestorePositions.find((p) => p.name?.toLowerCase() === pos.toLowerCase());
-                    const label = isRtl ? (fp?.hebrewName || POSITION_HEBREW[pos] || pos) : pos;
-                    return (
-                      <button
-                        key={pos}
-                        onClick={() => setPositionFilter(positionFilter === pos ? null : pos)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                          positionFilter === pos
-                            ? 'bg-mgsr-teal text-mgsr-dark'
-                            : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-mgsr-muted mb-2">{t('contract_finisher_filter_label_age')}</p>
-                <div className="flex flex-wrap gap-2">
-                  {AGE_FILTERS.map((a) => (
-                    <button
-                      key={a.key}
-                      onClick={() => setAgeFilter(a.key)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                        ageFilter === a.key
-                          ? 'bg-mgsr-teal text-mgsr-dark'
-                          : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                      }`}
-                    >
-                      {t(`contract_finisher_filter_age_${a.key}`)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-mgsr-muted mb-2">{t('player_info_foot')}</p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setFootFilter('all')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                      footFilter === 'all'
-                        ? 'bg-mgsr-teal text-mgsr-dark'
-                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                    }`}
-                  >
-                    {t('releases_all')}
-                  </button>
-                  <button
-                    onClick={() => setFootFilter(footFilter === 'left' ? 'all' : 'left')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                      footFilter === 'left'
-                        ? 'bg-mgsr-teal text-mgsr-dark'
-                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                    }`}
-                  >
-                    {t('players_filter_foot_left')}
-                  </button>
-                  <button
-                    onClick={() => setFootFilter(footFilter === 'right' ? 'all' : 'right')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                      footFilter === 'right'
-                        ? 'bg-mgsr-teal text-mgsr-dark'
-                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                    }`}
-                  >
-                    {t('players_filter_foot_right')}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-mgsr-muted mb-2">{t('contract_finisher_filter_label_region')}</p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setRegionFilter(null)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                      !regionFilter
-                        ? 'bg-mgsr-teal text-mgsr-dark'
-                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                    }`}
-                  >
-                    {t('contract_finisher_filter_age_all')}
-                  </button>
-                  {REGION_OPTIONS.map((r) => (
-                    <button
-                      key={r.value}
-                      onClick={() => setRegionFilter(regionFilter === r.value ? null : r.value)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                        regionFilter === r.value
-                          ? 'bg-mgsr-teal text-mgsr-dark'
-                          : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                      }`}
-                    >
-                      {t(r.key)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setSearch('');
-                  setPositionFilter(null);
-                  setAgeFilter('all');
-                  setFootFilter('all');
-                  setRegionFilter(null);
-                  setRosterOnly(false);
-                  setValueFilter('all');
-                }}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-mgsr-border text-mgsr-muted hover:text-mgsr-text"
-              >
-                {t('contract_finisher_clear_filters')}
-              </button>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-teal text-mgsr-dark"
-              >
-                {t('contract_finisher_apply_filters')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </AppLayout>
+    <MenContractFinisher
+      totalCount={players.length}
+      filteredCount={filteredPlayers.length}
+      shortlistedCount={shortlistedCount}
+      freeCount={freeCount}
+      windowLabel={windowLabel}
+      positions={positions}
+      positionLabel={positionLabel}
+      search={search}
+      setSearch={setSearch}
+      positionFilter={positionFilter}
+      setPositionFilter={setPositionFilter}
+      ageFilters={AGE_FILTERS.map((a) => ({ key: a.key, labelKey: `contract_finisher_filter_age_${a.key}` }))}
+      ageFilter={ageFilter}
+      setAgeFilter={setAgeFilter}
+      regionOptions={REGION_OPTIONS}
+      regionFilter={regionFilter}
+      setRegionFilter={setRegionFilter}
+      footFilter={footFilter}
+      setFootFilter={setFootFilter}
+      valueFilters={VALUE_FILTERS.map((v) => ({ key: v.key, labelKey: `contract_finisher_filter_value_${v.key}` }))}
+      valueFilter={valueFilter}
+      setValueFilter={setValueFilter}
+      rosterOnly={rosterOnly}
+      setRosterOnly={setRosterOnly}
+      loadingList={loadingList}
+      error={error}
+      players={filteredPlayers.map((p) => ({
+        playerUrl: p.playerUrl || '',
+        playerName: p.playerName ?? undefined,
+        playerImage: p.playerImage ?? undefined,
+        playerPosition: p.playerPosition ?? undefined,
+        playerAge: p.playerAge ?? undefined,
+        playerNationality: p.playerNationality ?? undefined,
+        playerNationalityFlag: p.playerNationalityFlag ?? undefined,
+        marketValue: p.marketValue ?? undefined,
+        clubJoinedName: p.clubJoinedName ?? undefined,
+        transferDate: p.transferDate ?? undefined,
+        foot: normalizeFootValue(p.playerFoot) ?? (p.playerUrl ? footByUrl[p.playerUrl] ?? null : null),
+      }))}
+      shortlistUrls={shortlistUrls}
+      addingUrl={addingUrl}
+      onAddToShortlist={(mp) => {
+        const original = filteredPlayers.find((p) => (p.playerUrl || '') === mp.playerUrl);
+        if (original) addToShortlist(original);
+      }}
+      onReload={() => startLoad(true)}
+      teammatesCache={teammatesCache}
+      loadingTeammatesUrl={loadingTeammatesUrl}
+      expandedTeammatesUrl={expandedTeammatesUrl}
+      onToggleTeammates={toggleTeammates}
+      onFetchTeammates={fetchTeammates}
+    />
   );
+
 }
