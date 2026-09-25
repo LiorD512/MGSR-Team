@@ -28,6 +28,8 @@ import type { Confederation } from '@/lib/api';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import BritRail from '@/components/BritRail';
 import MenAddPlayerDrawer from '@/components/MenAddPlayerDrawer';
+import { isPlayerOurAsset } from '@/lib/transfermarkt-utils';
+import { callPlayersUpdate } from '@/lib/callables';
 
 // ── Player shape (matches the men 'Players' Firestore docs used by the screen) ──
 interface Player {
@@ -43,6 +45,7 @@ interface Player {
   contractExpired?: string;
   haveMandate?: boolean;
   interestedInIsrael?: boolean;
+  isOurAsset?: boolean;
   agentInChargeName?: string;
   agentInChargeId?: string;
   isOnLoan?: boolean;
@@ -56,6 +59,7 @@ interface Player {
   notes?: string;
   noteList?: { notes?: string; createBy?: string; createdAt?: number; taggedAgentIds?: string[] }[];
   agency?: string;
+  agencyUrl?: string;
 }
 
 type SortOption = 'default' | 'age' | 'marketValue' | 'name';
@@ -207,6 +211,32 @@ export default function MenPlayers() {
 
   const [drawer, setDrawer] = useState<Player | null>(null);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
+  const [assetToggling, setAssetToggling] = useState(false);
+
+  const handleToggleOurAsset = async (targetPlayer: Player) => {
+    const currentStatus = isPlayerOurAsset(targetPlayer);
+    const nextStatus = !currentStatus;
+
+    setDrawer((prev) => (prev && prev.id === targetPlayer.id ? { ...prev, isOurAsset: nextStatus } : prev));
+    setPlayers((prev) =>
+      prev.map((p) => (p.id === targetPlayer.id ? { ...p, isOurAsset: nextStatus } : p))
+    );
+
+    setAssetToggling(true);
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'Players', targetPlayer.id), { isOurAsset: nextStatus });
+      await callPlayersUpdate({ platform: 'men', playerId: targetPlayer.id, isOurAsset: nextStatus }).catch(() => {});
+    } catch (err) {
+      console.error('Failed to toggle asset status:', err);
+      setDrawer((prev) => (prev && prev.id === targetPlayer.id ? { ...prev, isOurAsset: currentStatus } : prev));
+      setPlayers((prev) =>
+        prev.map((p) => (p.id === targetPlayer.id ? { ...p, isOurAsset: currentStatus } : p))
+      );
+    } finally {
+      setAssetToggling(false);
+    }
+  };
 
   // ── Subscriptions ──
   useEffect(() => {
@@ -905,6 +935,18 @@ export default function MenPlayers() {
                   <label>{t('room_birthdays_agent').replace(' /', '')}</label>
                   <strong>{drawer.agentInChargeName || '—'}</strong>
                 </div>
+              </div>
+              <div className="brit-drawer-switchrow">
+                <div className="lbl">{t('players_drawer_mark_as_asset')}</div>
+                <label className="bp-sw">
+                  <input
+                    type="checkbox"
+                    checked={isPlayerOurAsset(drawer)}
+                    disabled={assetToggling}
+                    onChange={() => handleToggleOurAsset(drawer)}
+                  />
+                  <span className="track" />
+                </label>
               </div>
               {latestNote(drawer) && (
                 <div className="brit-drawer-note">

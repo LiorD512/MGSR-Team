@@ -116,7 +116,7 @@ interface RosteredPlayer {
   id: string;
   fullName?: string;
   profileImage?: string;
-  currentClub?: { clubName?: string };
+  currentClub?: { clubName?: string; clubCountry?: string };
   playerPhoneNumber?: string;
   agentInChargeName?: string;
   dateOfBirth?: string;
@@ -127,6 +127,7 @@ interface RosteredPlayer {
   marketValue?: string;
   contractExpired?: string;
   haveMandate?: boolean;
+  isOurAsset?: boolean;
   agency?: string;
   agencyUrl?: string;
   linkedContactId?: string;

@@ -10,13 +10,22 @@ fun extractPlayerIdFromUrl(url: String?): String? {
     val input = url?.trim() ?: return null
     if (input.isBlank()) return null
     return try {
-        val parts = input.split("/")
-        val spielerIndex = parts.indexOfLast { it.equals("spieler", ignoreCase = true) }
-        if (spielerIndex >= 0 && spielerIndex < parts.lastIndex) {
-            parts[spielerIndex + 1].takeIf { it.all(Char::isDigit) }
-        } else {
-            parts.lastOrNull()?.takeIf { it.all(Char::isDigit) }
-        }
+        // Covers /profil/spieler/123, /profile/player/123, /spieler_123.html and query/hash variants.
+        Regex("""/(?:spieler|player)/(\d+)(?:\b|/|\?|#)""", RegexOption.IGNORE_CASE)
+            .find(input)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.takeIf { it.isNotBlank() }
+            ?: Regex("""spieler_(\d+)\.html""", RegexOption.IGNORE_CASE)
+                .find(input)
+                ?.groupValues
+                ?.getOrNull(1)
+                ?.takeIf { it.isNotBlank() }
+            ?: run {
+                val cleaned = input.substringBefore('#').substringBefore('?')
+                val parts = cleaned.split("/").filter { it.isNotBlank() }
+                parts.lastOrNull()?.takeIf { it.all(Char::isDigit) }
+            }
     } catch (_: Exception) {
         null
     }

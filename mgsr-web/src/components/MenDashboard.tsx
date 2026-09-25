@@ -13,7 +13,7 @@
  * derived data in as props. Buttons/links point to real routes.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLanguage, translateType } from '@/contexts/LanguageContext';
@@ -22,6 +22,15 @@ import { extractPlayerIdFromUrl } from '@/lib/api';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import { openWhatsAppWithMessage } from '@/lib/whatsapp';
 import BritRail from '@/components/BritRail';
+import { db } from '@/lib/firebase';
+import { callPlayersUpdate } from '@/lib/callables';
+import {
+  BRIT_SPORT_GROUP_AGENCY_URL,
+  normalizeAgencyUrl,
+  isPlayerOurAsset,
+} from '@/lib/transfermarkt-utils';
+
+export { BRIT_SPORT_GROUP_AGENCY_URL, normalizeAgencyUrl, isPlayerOurAsset };
 
 // ── Shared shapes (kept structurally compatible with dashboard/page.tsx) ──
 export interface MenFeedEvent {
@@ -38,11 +47,12 @@ export interface MenRosterPlayer {
   id: string;
   fullName?: string;
   profileImage?: string;
-  currentClub?: { clubName?: string };
+  currentClub?: { clubName?: string; clubCountry?: string };
   tmProfile?: string;
   positions?: string[];
   marketValue?: string;
   agencyUrl?: string;
+  isOurAsset?: boolean;
   haveMandate?: boolean;
   nationality?: string;
   nationalities?: string[];
@@ -77,11 +87,111 @@ interface MenDashboardProps {
   expiringMandates: MenExpiringMandate[];
 }
 
+interface DossierNextMatch {
+  date: string;
+  time: string | null;
+  opponent: string;
+  opponentLogo?: string | null;
+  venue: string | null;
+  homeAway: 'home' | 'away' | null;
+  competition: string | null;
+  round: string | null;
+  sourceUrl: string;
+}
+
+interface NextMatchIdentity {
+  tmProfile?: string;
+  club: string;
+  clubCountry?: string;
+}
+
+interface CachedNextMatch {
+  match: DossierNextMatch | null;
+  error: boolean;
+}
+
+const nextMatchCache = new Map<string, CachedNextMatch>();
+const nextMatchRequests = new Map<string, Promise<CachedNextMatch>>();
+const NEXT_MATCH_SESSION_CACHE = 'brit-next-match-cache-v2';
+
+function nextMatchCacheKey(identity: NextMatchIdentity): string {
+  return [identity.club, identity.clubCountry || '']
+    .join('|')
+    .toLowerCase();
+}
+
+function readNextMatchSessionCache(key: string): CachedNextMatch | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(NEXT_MATCH_SESSION_CACHE);
+    if (!raw) return null;
+    const cache = JSON.parse(raw) as Record<string, CachedNextMatch>;
+    const result = cache[key];
+    if (result && typeof result.error === 'boolean') return result;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function writeNextMatchSessionCache(key: string, result: CachedNextMatch): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = sessionStorage.getItem(NEXT_MATCH_SESSION_CACHE);
+    const cache = raw ? (JSON.parse(raw) as Record<string, CachedNextMatch>) : {};
+    cache[key] = result;
+    sessionStorage.setItem(NEXT_MATCH_SESSION_CACHE, JSON.stringify(cache));
+  } catch {
+  }
+}
+
+function loadNextMatch(identity: NextMatchIdentity): Promise<CachedNextMatch> {
+  const key = nextMatchCacheKey(identity);
+  const cached = nextMatchCache.get(key);
+  if (cached) return Promise.resolve(cached);
+  const sessionCached = readNextMatchSessionCache(key);
+  if (sessionCached) {
+    nextMatchCache.set(key, sessionCached);
+    return Promise.resolve(sessionCached);
+  }
+
+  const pending = nextMatchRequests.get(key);
+  if (pending) return pending;
+
+  const params = new URLSearchParams();
+  if (identity.tmProfile) params.set('url', identity.tmProfile);
+  if (identity.club && identity.club !== '—') params.set('club', identity.club);
+  if (identity.clubCountry?.trim()) params.set('country', identity.clubCountry);
+
+  const request = fetch(`/api/flashscore/next-match?${params.toString()}`, {
+    cache: 'no-store',
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Next match request failed: ${response.status}`);
+      const data = (await response.json()) as { match?: DossierNextMatch | null };
+      return { match: data.match ?? null, error: false };
+    })
+    .catch(() => ({ match: null, error: true }))
+    .then((result) => {
+      nextMatchCache.set(key, result);
+      writeNextMatchSessionCache(key, result);
+      nextMatchRequests.delete(key);
+      return result;
+    });
+
+  nextMatchRequests.set(key, request);
+  return request;
+}
+
 // (rail navigation now lives in the shared BritRail component)
 
 function positionLabel(positions: string[] | undefined): string {
   const list = (positions ?? []).filter(Boolean);
   return list.length ? list.slice(0, 2).join(' / ') : '—';
+}
+
+function isUnder19Club(clubName: string | undefined): boolean {
+  return /\bU[-\s]?19\b/i.test(clubName || '');
 }
 
 function ageRangeLabel(r: MenClubRequest): string {
@@ -90,18 +200,6 @@ function ageRangeLabel(r: MenClubRequest): string {
   if (r.minAge) return ` / ${r.minAge}+`;
   if (r.maxAge) return ` / ≤${r.maxAge}`;
   return '';
-}
-
-const BRIT_SPORT_GROUP_AGENCY_URL = 'https://www.transfermarkt.com/brit-sport-group/beraterfirma/berater/6448';
-
-function normalizeAgencyUrl(value: string | undefined): string {
-  if (!value) return '';
-  try {
-    const parsed = new URL(value);
-    return `${parsed.hostname.toLowerCase()}${parsed.pathname.replace(/\/$/, '')}`;
-  } catch {
-    return value.trim().toLowerCase().replace(/\/$/, '');
-  }
 }
 
 /** Parse dateOfBirth strings in common formats → { month (0-based), day, year }. */
@@ -149,12 +247,105 @@ export default function MenDashboard({
   const [dossier, setDossier] = useState<{
     name: string;
     club: string;
+    clubCountry?: string;
     value: string;
     position: string;
     playerId?: string;
+    tmProfile?: string;
+    agencyUrl?: string;
+    isOurAsset?: boolean;
   } | null>(null);
+  const [nextMatch, setNextMatch] = useState<DossierNextMatch | null>(null);
+  const [nextMatchState, setNextMatchState] = useState<'idle' | 'loading' | 'ready' | 'unavailable' | 'error'>('idle');
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [marqueeStart, setMarqueeStart] = useState(0);
+  const [assetToggling, setAssetToggling] = useState(false);
+  const isUnder19Dossier = isUnder19Club(dossier?.club);
+
+  const handleToggleOurAsset = async (targetPlayerId: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus;
+
+    setDossier((prev) => (prev && prev.playerId === targetPlayerId ? { ...prev, isOurAsset: nextStatus } : prev));
+
+    setAssetToggling(true);
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'Players', targetPlayerId), { isOurAsset: nextStatus });
+      await callPlayersUpdate({ platform: 'men', playerId: targetPlayerId, isOurAsset: nextStatus }).catch(() => {});
+    } catch (err) {
+      console.error('Failed to toggle asset status:', err);
+      setDossier((prev) => (prev && prev.playerId === targetPlayerId ? { ...prev, isOurAsset: currentStatus } : prev));
+    } finally {
+      setAssetToggling(false);
+    }
+  };
+
+  const marquee = useMemo(
+    () =>
+      rosterPlayers
+        .filter((player) => isPlayerOurAsset(player))
+        .sort((a, b) => parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue)),
+    [rosterPlayers]
+  );
+
+  // Preload next match for OUR ASSETS while dashboard is loading
+  useEffect(() => {
+    if (!marquee || marquee.length === 0) return;
+    for (const player of marquee) {
+      const club = player.currentClub?.clubName || '—';
+      if (isUnder19Club(club) || (!player.tmProfile && club === '—')) continue;
+      void loadNextMatch({
+        tmProfile: player.tmProfile,
+        club,
+        clubCountry: player.currentClub?.clubCountry,
+      });
+    }
+  }, [marquee]);
+
+  useEffect(() => {
+    if (!dossier) {
+      setNextMatch(null);
+      setNextMatchState('idle');
+      return;
+    }
+    if (isUnder19Dossier) {
+      setNextMatch(null);
+      setNextMatchState('idle');
+      return;
+    }
+    if (!dossier.tmProfile && (!dossier.club || dossier.club === '—')) {
+      setNextMatch(null);
+      setNextMatchState('unavailable');
+      return;
+    }
+
+    const identity: NextMatchIdentity = {
+      tmProfile: dossier.tmProfile,
+      club: dossier.club,
+      clubCountry: dossier.clubCountry,
+    };
+    const key = nextMatchCacheKey(identity);
+    const cached = nextMatchCache.get(key) || readNextMatchSessionCache(key);
+    if (cached) {
+      nextMatchCache.set(key, cached);
+      setNextMatch(cached.match);
+      setNextMatchState(cached.error ? 'error' : cached.match ? 'ready' : 'unavailable');
+      return;
+    }
+
+    setNextMatch(null);
+    setNextMatchState('loading');
+    let active = true;
+    void loadNextMatch(identity).then((result) => {
+      if (!active) return;
+      setNextMatch(result.match);
+      setNextMatchState(result.error ? 'error' : result.match ? 'ready' : 'unavailable');
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [dossier, isUnder19Dossier]);
 
   // ── Derived signals ──
   const valuedPlayers = useMemo(
@@ -210,17 +401,6 @@ export default function MenDashboard({
       [...rosterPlayers]
         .sort((a, b) => parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue))
         .slice(0, 6),
-    [rosterPlayers]
-  );
-
-  const marquee = useMemo(
-    () =>
-      rosterPlayers
-        .filter(
-          (player) =>
-            normalizeAgencyUrl(player.agencyUrl) === normalizeAgencyUrl(BRIT_SPORT_GROUP_AGENCY_URL)
-        )
-        .sort((a, b) => parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue)),
     [rosterPlayers]
   );
 
@@ -291,10 +471,26 @@ export default function MenDashboard({
     setDossier({
       name: p.fullName || '—',
       club: p.currentClub?.clubName || '—',
+      clubCountry: p.currentClub?.clubCountry,
       value: rosterPlayerValue(p),
       position: positionLabel(p.positions),
       playerId: p.id,
+      tmProfile: p.tmProfile,
+      agencyUrl: p.agencyUrl,
+      isOurAsset: p.isOurAsset,
     });
+
+  const formatMatchDate = (value: string) => {
+    const match = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (!match) return value;
+    return new Intl.DateTimeFormat(isRtl ? 'he-IL' : 'en-GB', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date(Date.UTC(Number(match[3]), Number(match[2]) - 1, Number(match[1]))));
+  };
 
   return (
     <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
@@ -602,7 +798,6 @@ export default function MenDashboard({
                       <span className="brit-heading-gold">{t('room_assets')}</span>
                     </h2>
                     <div className="brit-focus-controls">
-                      <span>{withToken('room_marquee_sub', marquee.length)}</span>
                       {marqueeSlideIndex > 0 && (
                         <button
                           type="button"
@@ -618,6 +813,7 @@ export default function MenDashboard({
                           ←
                         </button>
                       )}
+                      <span>{withToken('room_marquee_sub', marquee.length)}</span>
                       {marqueeSlideIndex < marqueeLastStart && (
                         <button
                           type="button"
@@ -773,7 +969,6 @@ export default function MenDashboard({
             <button className="brit-close" onClick={() => setDossier(null)} aria-label={t('room_close')}>
               ×
             </button>
-            <div className="brit-modal-kicker">{t('room_confidential_dossier')}</div>
             <h2>{dossier.name}</h2>
             <p>
               {dossier.club} / {dossier.position}
@@ -787,20 +982,99 @@ export default function MenDashboard({
                 <label>{t('room_th_position')}</label>
                 <strong>{dossier.position}</strong>
               </div>
-              <div>
-                <label>{t('room_mandate_status')}</label>
-                <strong>{t('room_mandate_active')}</strong>
-              </div>
-              <div>
-                <label>{t('room_next_action')}</label>
-                <strong>{t('room_review')}</strong>
-              </div>
             </div>
             {dossier.playerId && (
-              <Link className="brit-modal-action" href={`/players/${dossier.playerId}?from=/dashboard`}>
-                {t('room_open_full_profile')}
-              </Link>
+              <div className="brit-modal-switchrow">
+                <div className="lbl">{t('room_mark_as_asset')}</div>
+                <label className="bp-sw">
+                  <input
+                    type="checkbox"
+                    checked={isPlayerOurAsset(dossier)}
+                    disabled={assetToggling}
+                    onChange={() => handleToggleOurAsset(dossier.playerId!, isPlayerOurAsset(dossier))}
+                  />
+                  <span className="track" />
+                </label>
+              </div>
             )}
+            {!isUnder19Dossier && <section className="brit-next-match" aria-live="polite">
+              <div className="brit-next-match-head">
+                <span>{t('room_next_match')}</span>
+                {nextMatch?.homeAway && (
+                  <strong>{t(nextMatch.homeAway === 'home' ? 'room_home' : 'room_away')}</strong>
+                )}
+              </div>
+              {nextMatchState === 'loading' && (
+                <div className="brit-next-match-loading">{t('room_next_match_loading')}</div>
+              )}
+              {nextMatchState === 'ready' && nextMatch && (
+                <div className="brit-next-match-body">
+                  <div className="brit-next-match-main">
+                    <div className="brit-next-match-team">
+                      <strong>{nextMatch.opponent}</strong>
+                      {nextMatch.opponentLogo && (
+                        <img
+                          src={nextMatch.opponentLogo}
+                          alt={nextMatch.opponent}
+                          className="brit-next-match-logo"
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                    </div>
+                    {nextMatch.competition && <span>{nextMatch.competition}</span>}
+                  </div>
+                  <div className="brit-next-match-details">
+                    <div>
+                      <label>{t('room_match_date')}</label>
+                      <strong>{formatMatchDate(nextMatch.date)}</strong>
+                    </div>
+                    <div>
+                      <label>{t('room_match_kickoff')}</label>
+                      <strong>{nextMatch.time || t('room_time_tbc')}</strong>
+                    </div>
+                    <div>
+                      <label>{t('room_match_stadium')}</label>
+                      <strong>{nextMatch.venue || t('room_venue_tbc')}</strong>
+                    </div>
+                    {nextMatch.round && (
+                      <div>
+                        <label>{t('room_match_round')}</label>
+                        <strong>{nextMatch.round}</strong>
+                      </div>
+                    )}
+                  </div>
+                  <a href={nextMatch.sourceUrl} target="_blank" rel="noreferrer" className="brit-next-match-source">
+                    {t('room_match_source')}
+                  </a>
+                </div>
+              )}
+              {nextMatchState === 'unavailable' && (
+                <div className="brit-next-match-empty">{t('room_next_match_unavailable')}</div>
+              )}
+              {nextMatchState === 'error' && (
+                <div className="brit-next-match-empty">{t('room_next_match_error')}</div>
+              )}
+            </section>}
+            <div className="brit-modal-actions">
+              {dossier.playerId && (
+                <Link className="brit-modal-action" href={`/players/${dossier.playerId}?from=/dashboard`}>
+                  {t('room_open_full_profile')}
+                </Link>
+              )}
+              {dossier.tmProfile && (
+                <a
+                  className="brit-modal-action brit-modal-action-secondary"
+                  href={dossier.tmProfile}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t('room_open_tm')}
+                </a>
+              )}
+            </div>
           </div>
         )}
       </div>

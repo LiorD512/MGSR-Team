@@ -516,6 +516,133 @@ export async function handlePlayer(urlParam: string) {
   };
 }
 
+export interface NextMatch {
+  date: string;
+  time: string | null;
+  opponent: string;
+  venue: string | null;
+  homeAway: 'home' | 'away' | null;
+  competition: string | null;
+  sourceUrl: string;
+}
+
+function currentSeasonYearForFixtures(): number {
+  const now = new Date();
+  return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+}
+
+function clubIdFromUrl(url: string | undefined): string | null {
+  const match = url?.match(/\/verein\/(\d+)/i);
+  return match?.[1] || null;
+}
+
+function fixtureScheduleUrl(clubUrl: string, seasonYear: number): string | null {
+  try {
+    const parsed = new URL(clubUrl);
+    if (!parsed.hostname.toLowerCase().endsWith('transfermarkt.com')) return null;
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    const vereinIndex = segments.findIndex((segment) => segment.toLowerCase() === 'verein');
+    const clubId = vereinIndex >= 0 ? segments[vereinIndex + 1] : null;
+    const slug = segments[0];
+    if (!slug || !clubId || !/^\d+$/.test(clubId)) return null;
+    return `${TRANSFERMARKT_BASE}/${slug}/spielplan/verein/${clubId}/saison_id/${seasonYear}/plus/1`;
+  } catch {
+    return null;
+  }
+}
+
+function parseFixtureDate(text: string): { label: string; timestamp: number } | null {
+  const match = text.match(
+    /\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\b/i
+  );
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const timestamp = Date.UTC(year, month - 1, day);
+  if (!Number.isFinite(timestamp)) return null;
+  return { label: match[0].replace(/\s+/g, ' ').trim(), timestamp };
+}
+
+function parseFixtureTime(text: string): string | null {
+  const match = text.match(/\b(?:[01]?\d|2[0-3]):[0-5]\d\s*(?:AM|PM)?\b/i);
+  return match?.[0]?.replace(/\s+/g, ' ').trim() || null;
+}
+
+function normalizeFixtureTeamName(name: string): string {
+  return name.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * Reads the club schedule and stadium separately because Transfermarkt's
+ * schedule table contains the fixture but not the venue name.
+ */
+export async function handleNextMatch(playerUrl: string): Promise<{ match: NextMatch | null }> {
+  const player = await handlePlayer(playerUrl);
+  const clubUrl = player.currentClub?.clubTmProfile;
+  const scheduleUrl = clubUrl ? fixtureScheduleUrl(clubUrl, currentSeasonYearForFixtures()) : null;
+  if (!clubUrl || !scheduleUrl) return { match: null };
+
+  const [scheduleHtml, clubHtml] = await Promise.all([
+    fetchHtmlWithRetry(scheduleUrl),
+    fetchHtmlWithRetry(clubUrl),
+  ]);
+  const $schedule = cheerio.load(scheduleHtml);
+  const clubId = clubIdFromUrl(clubUrl);
+  const currentClubName = normalizeFixtureTeamName(player.currentClub?.clubName || '');
+  const now = Date.now();
+  const candidates: NextMatch[] = [];
+
+  $schedule('table tr').each((_, row) => {
+    const $row = $schedule(row);
+    const rowText = $row.text().replace(/\s+/g, ' ').trim();
+    const date = parseFixtureDate(rowText);
+    if (!date || date.timestamp < Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())) return;
+
+    const teamLinks: { id: string | null; name: string }[] = [];
+    $row.find('a[href*="/verein/"]').each((__, anchor) => {
+      const $anchor = $schedule(anchor);
+      const name = ($anchor.attr('title') || $anchor.text()).replace(/\s+/g, ' ').trim();
+      const id = clubIdFromUrl($anchor.attr('href'));
+      if (name && !teamLinks.some((team) => team.id === id && team.name === name)) teamLinks.push({ id, name });
+    });
+    if (teamLinks.length < 2) return;
+
+    const home = teamLinks[0];
+    const away = teamLinks[1];
+    const isHome = clubId ? home.id === clubId : normalizeFixtureTeamName(home.name) === currentClubName;
+    const isAway = clubId ? away.id === clubId : normalizeFixtureTeamName(away.name) === currentClubName;
+    if (!isHome && !isAway) return;
+
+    const $box = $row.closest('.box');
+    const competition = $box.find('h2.content-box-headline').first().text().replace(/\s+/g, ' ').trim() || null;
+    candidates.push({
+      date: date.label,
+      time: parseFixtureTime(rowText),
+      opponent: isHome ? away.name : home.name,
+      venue: null,
+      homeAway: isHome ? 'home' : 'away',
+      competition,
+      sourceUrl: scheduleUrl,
+    });
+  });
+
+  candidates.sort((a, b) => {
+    const aTime = parseFixtureDate(a.date)?.timestamp ?? now;
+    const bTime = parseFixtureDate(b.date)?.timestamp ?? now;
+    return aTime - bTime;
+  });
+  const next = candidates[0];
+  if (!next) return { match: null };
+
+  const $club = cheerio.load(clubHtml);
+  const stadiumLink = $club('a[href*="/stadion/"]').first();
+  next.venue = stadiumLink.length
+    ? (stadiumLink.text() || stadiumLink.attr('title') || '').replace(/\s+/g, ' ').trim() || null
+    : null;
+  return { match: next };
+}
+
 /**
  * Get the most recent transfer fee (in euros) for a player.
  * Used to filter out players bought for big money (e.g. >€2.5M) who are not realistic for Ligat Ha'Al.
