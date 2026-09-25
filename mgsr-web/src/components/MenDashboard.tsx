@@ -42,6 +42,7 @@ export interface MenRosterPlayer {
   tmProfile?: string;
   positions?: string[];
   marketValue?: string;
+  agencyUrl?: string;
   haveMandate?: boolean;
   nationality?: string;
   nationalities?: string[];
@@ -89,6 +90,18 @@ function ageRangeLabel(r: MenClubRequest): string {
   if (r.minAge) return ` / ${r.minAge}+`;
   if (r.maxAge) return ` / ≤${r.maxAge}`;
   return '';
+}
+
+const BRIT_SPORT_GROUP_AGENCY_URL = 'https://www.transfermarkt.com/brit-sport-group/beraterfirma/berater/6448';
+
+function normalizeAgencyUrl(value: string | undefined): string {
+  if (!value) return '';
+  try {
+    const parsed = new URL(value);
+    return `${parsed.hostname.toLowerCase()}${parsed.pathname.replace(/\/$/, '')}`;
+  } catch {
+    return value.trim().toLowerCase().replace(/\/$/, '');
+  }
 }
 
 /** Parse dateOfBirth strings in common formats → { month (0-based), day, year }. */
@@ -141,6 +154,7 @@ export default function MenDashboard({
     playerId?: string;
   } | null>(null);
   const [showAllActivity, setShowAllActivity] = useState(false);
+  const [marqueeStart, setMarqueeStart] = useState(0);
 
   // ── Derived signals ──
   const valuedPlayers = useMemo(
@@ -201,11 +215,17 @@ export default function MenDashboard({
 
   const marquee = useMemo(
     () =>
-      [...valuedPlayers]
-        .sort((a, b) => parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue))
-        .slice(0, 2),
-    [valuedPlayers]
+      rosterPlayers
+        .filter(
+          (player) =>
+            normalizeAgencyUrl(player.agencyUrl) === normalizeAgencyUrl(BRIT_SPORT_GROUP_AGENCY_URL)
+        )
+        .sort((a, b) => parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue)),
+    [rosterPlayers]
   );
+
+  const marqueeLastStart = Math.max(marquee.length - 2, 0);
+  const marqueeSlideIndex = Math.min(marqueeStart, marqueeLastStart);
 
   const openRequests = useMemo(
     () =>
@@ -577,27 +597,82 @@ export default function MenDashboard({
                 {/* Marquee assets */}
                 <section className="brit-module">
                   <div className="brit-module-head">
-                    <h2>{t('room_marquee')}</h2>
-                    <span>{withToken('room_marquee_sub', marquee.length)}</span>
+                    <h2>
+                      <span className="brit-heading-black">{t('room_our')}</span>{' '}
+                      <span className="brit-heading-gold">{t('room_assets')}</span>
+                    </h2>
+                    <div className="brit-focus-controls">
+                      <span>{withToken('room_marquee_sub', marquee.length)}</span>
+                      {marqueeSlideIndex > 0 && (
+                        <button
+                          type="button"
+                          className="brit-focus-arrow brit-focus-arrow-previous"
+                          onClick={() =>
+                            setMarqueeStart((current) =>
+                              Math.max(current - (current === marqueeLastStart && marqueeLastStart % 2 === 1 ? 1 : 2), 0)
+                            )
+                          }
+                          aria-label={t('room_assets_previous')}
+                          title={t('room_assets_previous')}
+                        >
+                          ←
+                        </button>
+                      )}
+                      {marqueeSlideIndex < marqueeLastStart && (
+                        <button
+                          type="button"
+                          className="brit-focus-arrow"
+                          onClick={() =>
+                            setMarqueeStart((current) =>
+                              Math.min(current + 2, marqueeLastStart)
+                            )
+                          }
+                          aria-label={t('room_assets_next')}
+                          title={t('room_assets_next')}
+                        >
+                          →
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {marquee.length > 0 ? (
-                    <div className="brit-focus">
-                      {marquee.map((p) => (
-                        <article key={p.id} onClick={() => openDossier(p)}>
-                          {p.profileImage ? (
-                            <img src={p.profileImage} alt={p.fullName || ''} />
-                          ) : (
-                            <div className="brit-focus-fallback" />
-                          )}
-                          <div className="brit-focus-copy">
-                            <small>
-                              {(p.currentClub?.clubName || '—')} / {positionLabel(p.positions)}
-                            </small>
-                            <h3>{p.fullName || '—'}</h3>
-                            <p>{rosterPlayerValue(p)}</p>
+                    <div className="brit-focus-carousel">
+                      <div
+                        className="brit-focus-track"
+                        style={{
+                          width: `${Math.max(marquee.length - 1, 1) * 100}%`,
+                          transform: `translateX(-${marqueeSlideIndex * (100 / Math.max(marquee.length - 1, 1))}%)`,
+                        }}
+                      >
+                        {Array.from({ length: Math.max(marquee.length - 1, 1) }, (_, slideIndex) => (
+                          <div
+                            className="brit-focus-slide"
+                            key={`marquee-slide-${slideIndex}`}
+                            style={{ flexBasis: `${100 / Math.max(marquee.length - 1, 1)}%` }}
+                          >
+                            <div className="brit-focus">
+                              {[marquee[slideIndex], marquee[slideIndex + 1]]
+                                .filter((player): player is MenRosterPlayer => Boolean(player))
+                                .map((p) => (
+                                  <article key={p.id} onClick={() => openDossier(p)}>
+                                    {p.profileImage ? (
+                                      <img src={p.profileImage} alt={p.fullName || ''} />
+                                    ) : (
+                                      <div className="brit-focus-fallback" />
+                                    )}
+                                    <div className="brit-focus-copy">
+                                      <small>
+                                        {(p.currentClub?.clubName || '—')} / {positionLabel(p.positions)}
+                                      </small>
+                                      <h3>{p.fullName || '—'}</h3>
+                                      <p>{rosterPlayerValue(p)}</p>
+                                    </div>
+                                  </article>
+                                ))}
+                            </div>
                           </div>
-                        </article>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="brit-empty">{t('room_marquee_empty')}</div>

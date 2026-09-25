@@ -58,7 +58,6 @@ export default function BritRail({ active, footer }: BritRailProps) {
       <nav className="brit-nav" aria-label="Navigation">
         <Link href="/dashboard" className={active === 'dashboard' ? 'active' : ''}>
           <span>{t('nav_dashboard')}</span>
-          <em>01</em>
         </Link>
 
         {/* Players group — expandable */}
@@ -84,11 +83,9 @@ export default function BritRail({ active, footer }: BritRailProps) {
 
         <Link href="/requests" className={active === 'requests' ? 'active' : ''}>
           <span>{t('nav_requests')}</span>
-          <em>03</em>
         </Link>
         <Link href="/contacts" className={active === 'contacts' ? 'active' : ''}>
           <span>{t('nav_contacts')}</span>
-          <em>04</em>
         </Link>
 
         {/* Signals group — expandable */}

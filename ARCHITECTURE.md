@@ -287,6 +287,9 @@ Separate Gradle module for HTML scraping via JSoup:
 - Tunnel (`/chat-room`) remains implemented, but is currently hidden from desktop and mobile navigation menus (commented nav entries) per management-web configuration request.
 - Desktop app-shell brand block now removes the eyebrow microcopy near the sidebar logo and renders a single gold BRIT Sport Group wordmark vertically centered with the logo, while preserving the original wordmark size.
 - Desktop app-shell sidebar brand link no longer renders the rounded white framed container behind the BRIT logo/wordmark; only the logo + text remain visible.
+- Desktop app-shell sidebar navigation no longer displays numeric labels beside Dashboard, Club Requirements, or Contacts.
+- Dashboard OUR ASSETS cards now select roster players whose normalized agency URL matches the BRIT Sport Group Transfermarkt agency profile (`berater/6448`), while retaining the existing two-card presentation.
+- Dashboard OUR ASSETS now includes every matching roster player and advances through animated two-player windows using bounded gold back and forward arrows; the final odd player is paired with the preceding player.
 - Web browser/tab branding now forces BRIT icon assets via `mgsr-web/src/app/layout.tsx` metadata icons and `mgsr-web/public/manifest.json` icon source, both pointed to `brit_circle_black_gold.svg` with a version query to bypass stale favicon cache.
 - Dashboard hero no longer renders the "Agency Pulse / דופק הסוכנות" eyebrow badge; only greeting, user name, and date remain in the hero header.
 - Players hero no longer renders the "Squad Intelligence / מודיעין סגל" eyebrow badge and now starts directly with the page headline and stats subtitle.
