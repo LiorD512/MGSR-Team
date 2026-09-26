@@ -1528,7 +1528,7 @@ body {
 /* ── Deadlines ── */
 .brit-deadline {
   display: grid;
-  grid-template-columns: 57px 1fr 78px;
+  grid-template-columns: 57px 1fr auto;
   gap: 18px;
   align-items: center;
   padding: 19px 0;
@@ -1574,28 +1574,26 @@ body {
   color: var(--gold);
   font-style: normal;
 }
-.brit-deadline .brit-birthday-btn {
+.brit-deadline .brit-birthday-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   justify-self: end;
+}
+.brit-deadline .brit-birthday-btn {
   padding: 8px 10px;
   background: var(--gold-soft);
   color: var(--ink);
+  border: none;
   font: 9px/1 var(--mono);
   text-transform: uppercase;
   white-space: nowrap;
-  transition: background 0.15s;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
 .brit-deadline .brit-birthday-btn:hover {
   background: var(--gold);
   color: var(--paper);
-}
-/* Today's wish stands out in WhatsApp green; upcoming stay gold. */
-.brit-deadline .brit-birthday-btn-today {
-  background: rgba(37, 211, 102, 0.16);
-  color: #1c8b47;
-}
-.brit-deadline .brit-birthday-btn-today:hover {
-  background: #25d366;
-  color: #fff;
 }
 
 /* ── Black module (pending decisions) ── */
@@ -2192,7 +2190,7 @@ body {
     margin-bottom: 42px;
   }
   .brit-deadline {
-    grid-template-columns: 37px 1fr 63px;
+    grid-template-columns: 37px 1fr auto;
     gap: 11px;
   }
   .brit-deadline h3 {

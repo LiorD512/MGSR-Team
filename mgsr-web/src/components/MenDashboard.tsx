@@ -597,22 +597,23 @@ export default function MenDashboard({
                               </p>
                             )}
                           </div>
-                          {b.phone ? (
-                            <button
-                              className={`brit-birthday-btn${isToday ? ' brit-birthday-btn-today' : ''}`}
-                              onClick={() => sendBirthdayWish(b)}
-                              aria-label={t('room_birthdays_wish')}
-                              title={isToday ? undefined : withToken('room_window_days', b.daysUntil)}
-                            >
-                              {t('room_birthdays_wish')}
-                            </button>
-                          ) : (
+                          <div className="brit-birthday-action">
+                            {isToday && b.phone && (
+                              <button
+                                type="button"
+                                className="brit-birthday-btn"
+                                onClick={() => sendBirthdayWish(b)}
+                                aria-label={t('room_birthdays_wish')}
+                              >
+                                {t('room_birthdays_wish')}
+                              </button>
+                            )}
                             <time className={isToday ? 'brit-red' : ''}>
                               {isToday
                                 ? t('room_birthdays_today')
                                 : withToken('room_window_days', b.daysUntil)}
                             </time>
-                          )}
+                          </div>
                         </div>
                       );
                     })
