@@ -2361,6 +2361,43 @@ body {
 .brit-room .brit-drawer-actions .primary{background:var(--black);color:var(--gold-soft)}
 .brit-room .brit-drawer-actions .ghost{border:1px solid var(--ink);color:var(--ink)}
 
+/* Target intelligence drawer elements */
+.brit-room .brit-drawer-flagbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.55;z-index:0}
+.brit-room .brit-drawer-flagbg-ph{position:absolute;inset:0;background:linear-gradient(160deg,#26261f,#101010);z-index:0}
+.brit-room .brit-drawer-sec{margin-top:18px;padding:16px;background:rgba(17,17,15,.03);border:1px solid var(--line)}
+.brit-room .brit-drawer-sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.brit-room .brit-drawer-sec-head label{color:var(--muted);font:9px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.brit-room .brit-drawer-sec-head .badge{font:9px/1 var(--mono);color:var(--gold);background:var(--gold-soft);padding:3px 6px;border-radius:2px;text-transform:uppercase}
+.brit-room .brit-drawer-sec-empty{font:10px/1.3 var(--mono);color:var(--muted);text-transform:uppercase;margin:0}
+.brit-room .brit-drawer-mate{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px dashed var(--line)}
+.brit-room .brit-drawer-mate:first-of-type{border-top:none;padding-top:0}
+.brit-room .brit-drawer-mate img{width:36px;height:44px;object-fit:cover;filter:grayscale(1);border:1px solid var(--dark-line)}
+.brit-room .brit-drawer-mate .mi{flex:1;min-width:0}
+.brit-room .brit-drawer-mate .mi b{display:block;font:500 13px/1.2 var(--display);text-transform:uppercase;color:var(--ink)}
+.brit-room .brit-drawer-mate .mi span{display:block;font:9px/1.3 var(--mono);color:var(--muted);text-transform:uppercase}
+.brit-room .brit-drawer-wa-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;background:rgba(37,211,102,.12);color:#1c8b47;font:9px/1 var(--mono);text-transform:uppercase;border:none;border-radius:2px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+.brit-room .brit-drawer-wa-btn:hover{background:#25d366;color:#fff}
+.brit-room .brit-drawer-req-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px dashed var(--line)}
+.brit-room .brit-drawer-req-item:first-of-type{border-top:none;padding-top:0}
+.brit-room .brit-drawer-req-club{display:flex;align-items:center;gap:8px}
+.brit-room .brit-drawer-req-club img{width:20px;height:20px;object-fit:contain}
+.brit-room .brit-drawer-req-club b{font:500 13px/1.2 var(--display);text-transform:uppercase;color:var(--ink)}
+.brit-room .brit-drawer-req-info{font:9px/1.3 var(--mono);color:var(--muted);text-transform:uppercase}
+.brit-room .brit-drawer-req-badge{font:9px/1 var(--mono);color:#1c8b47;background:rgba(37,211,102,.12);padding:3px 6px;border-radius:2px;text-transform:uppercase;white-space:nowrap}
+.brit-room .brit-drawer-outreach-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.brit-room .brit-drawer-outreach-handle{font:11px/1 var(--mono);color:var(--gold)}
+.brit-room .brit-drawer-outreach-btns{display:flex;align-items:center;gap:8px}
+.brit-room .brit-drawer-sm-btn{padding:6px 9px;border:1px solid var(--line);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;background:var(--paper);cursor:pointer;transition:.15s}
+.brit-room .brit-drawer-sm-btn:hover{border-color:var(--gold-soft);color:var(--gold)}
+.brit-room .brit-drawer-actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px}
+.brit-room .brit-drawer-actions-grid button,.brit-room .brit-drawer-actions-grid a{padding:12px 10px;text-align:center;font:9px/1 var(--mono);text-transform:uppercase;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.brit-room .brit-drawer-actions-grid .primary{background:var(--black);color:var(--gold-soft);border:none}
+.brit-room .brit-drawer-actions-grid .primary:hover{filter:brightness(1.1)}
+.brit-room .brit-drawer-actions-grid .ghost{border:1px solid var(--ink);color:var(--ink);background:transparent}
+.brit-room .brit-drawer-actions-grid .ghost:hover{background:var(--gold-soft)}
+.brit-room .brit-drawer-actions-grid .danger{border:1px solid rgba(182,66,53,.4);color:var(--red);background:transparent}
+.brit-room .brit-drawer-actions-grid .danger:hover{background:rgba(182,66,53,.08)}
+
 @media(max-width:900px){
   .brit-room .brit-tray-top{grid-template-columns:1fr}
   .brit-room .brit-segment{border-inline-start:0;border-top:1px solid var(--line);overflow-x:auto}

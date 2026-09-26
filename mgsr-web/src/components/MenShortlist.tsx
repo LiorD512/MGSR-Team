@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -36,6 +36,8 @@ import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import NoteTextarea, { type NoteAccount } from '@/components/NoteTextarea';
 import BritRail from '@/components/BritRail';
 import MenAddPlayerDrawer from '@/components/MenAddPlayerDrawer';
+import MenShortlistDrawer, { type ShortlistDrawerEntry } from '@/components/MenShortlistDrawer';
+import type { RosterPlayer, ClubRequest } from '@/lib/requestMatcher';
 
 interface ShortlistNote {
   text: string;
@@ -63,6 +65,8 @@ interface ShortlistEntry {
   addedByAgentHebrewName?: string;
   notes?: ShortlistNote[];
   currentClub?: { clubName?: string; clubLogo?: string };
+  instagramHandle?: string;
+  instagramUrl?: string;
 }
 
 type SortOption = 'added' | 'market_value' | 'name' | 'age';
@@ -124,6 +128,13 @@ export default function MenShortlist() {
   const [highlightedUrl, setHighlightedUrl] = useState<string | null>(null);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
 
+  // Target intelligence drawer & roster conversion
+  const [drawerEntry, setDrawerEntry] = useState<ShortlistDrawerEntry | null>(null);
+  const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
+  const [clubRequests, setClubRequests] = useState<ClubRequest[]>([]);
+  const [showAddRosterDrawer, setShowAddRosterDrawer] = useState(false);
+  const [addRosterInitialUrl, setAddRosterInitialUrl] = useState<string | null>(null);
+
   // Note modal
   const [noteEntry, setNoteEntry] = useState<ShortlistEntry | null>(null);
   const [noteText, setNoteText] = useState('');
@@ -138,6 +149,30 @@ export default function MenShortlist() {
     getCurrentAccountForShortlist(user).then((acc) => setCurrentAccountId(acc.id));
     getAllAccounts().then(setAllAccounts);
   }, [user]);
+
+  // Load roster players and active club requests for network & demand matching
+  useEffect(() => {
+    if (!user) return;
+    const unsubP = onSnapshot(query(collection(db, 'Players'), orderBy('createdAt', 'desc')), (snap) => {
+      setRosterPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() } as RosterPlayer)));
+    });
+    const unsubR = onSnapshot(query(collection(db, 'ClubRequests'), orderBy('createdAt', 'desc')), (snap) => {
+      const reqs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ClubRequest & { clubName?: string; clubLogo?: string }));
+      setClubRequests(reqs.filter((r) => (r as { status?: string }).status !== 'closed'));
+    });
+    return () => {
+      unsubP();
+      unsubR();
+    };
+  }, [user]);
+
+  // Sync drawer entry with real-time updates to notes and details
+  useEffect(() => {
+    if (drawerEntry) {
+      const updated = entries.find((e) => e.tmProfileUrl === drawerEntry.tmProfileUrl);
+      if (updated) setDrawerEntry(updated);
+    }
+  }, [entries]);
 
   useEffect(() => {
     if (!user) return;
@@ -167,6 +202,8 @@ export default function MenShortlist() {
             addedByAgentId: (e.addedByAgentId as string) ?? undefined,
             addedByAgentName: (e.addedByAgentName as string) ?? undefined,
             addedByAgentHebrewName: (e.addedByAgentHebrewName as string) ?? undefined,
+            instagramHandle: (e.instagramHandle as string) ?? undefined,
+            instagramUrl: (e.instagramUrl as string) ?? undefined,
             notes: Array.isArray(e.notes)
               ? (e.notes as Record<string, unknown>[]).map((n) => ({
                   text: (n.text as string) ?? '',
@@ -262,6 +299,12 @@ export default function MenShortlist() {
   const agentName = (e: ShortlistEntry) => isRtl ? (e.addedByAgentHebrewName || e.addedByAgentName || '—') : (e.addedByAgentName || e.addedByAgentHebrewName || '—');
   const addPlayerHref = (e: ShortlistEntry) =>
     `/players/add?url=${encodeURIComponent(e.tmProfileUrl)}&from=shortlist${e.playerName ? `&name=${encodeURIComponent(e.playerName)}` : ''}`;
+
+  const handleSignToRoster = (targetEntry: ShortlistDrawerEntry) => {
+    setDrawerEntry(null);
+    setAddRosterInitialUrl(targetEntry.tmProfileUrl);
+    setShowAddRosterDrawer(true);
+  };
 
   const valueChange = (e: ShortlistEntry): number | null => {
     const hist = e.marketValueHistory;
@@ -492,7 +535,11 @@ export default function MenShortlist() {
                       id={`brit-sl-${encodeURIComponent(e.tmProfileUrl)}`}
                       className={`brit-sl-card${highlightedUrl === e.tmProfileUrl ? ' hl' : ''}`}
                     >
-                      <Link href={addPlayerHref(e)} className="brit-sl-media">
+                      <div
+                        className="brit-sl-media"
+                        onClick={() => setDrawerEntry(e)}
+                        style={{ cursor: 'pointer' }}
+                      >
                         {e.playerImage ? <img src={e.playerImage} alt="" /> : <div className="ph" />}
                         <span className="brit-sl-num">{String(i + 1).padStart(2, '0')}</span>
                         <span className="brit-sl-cardflags">
@@ -502,8 +549,12 @@ export default function MenShortlist() {
                           <small>{clubDisplay(e, t)} / {positionsLabel(e)}</small>
                           <h3>{e.playerName || '—'}</h3>
                         </div>
-                      </Link>
-                      <div className="brit-sl-body">
+                      </div>
+                      <div
+                        className="brit-sl-body"
+                        onClick={() => setDrawerEntry(e)}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <div className="brit-sl-vrow">
                           <span className="v">{e.marketValue || '—'}</span>
                           {chgBadge(pct)}
@@ -511,7 +562,7 @@ export default function MenShortlist() {
                         <div className="brit-sl-foot">
                           <span className="watcher"><span className="wd">{(agentName(e) || '?').charAt(0).toUpperCase()}</span>{agentName(e)} · {addedAgo(e.addedAt)}</span>
                         </div>
-                        <div className="brit-sl-actions">
+                        <div className="brit-sl-actions" onClick={(ev) => ev.stopPropagation()}>
                           <button onClick={() => openAddNote(e)}>+ {t('shortlist_notes_add')}{(e.notes?.length ?? 0) > 0 ? ` (${e.notes!.length})` : ''}</button>
                           {e.tmProfileUrl.includes('transfermarkt') && (
                             <>
@@ -549,15 +600,20 @@ export default function MenShortlist() {
                       const pct = valueChange(e);
                       const tags = entryTags(e);
                       return (
-                        <tr key={e.tmProfileUrl} id={`brit-sl-${encodeURIComponent(e.tmProfileUrl)}`}>
+                        <tr
+                          key={e.tmProfileUrl}
+                          id={`brit-sl-${encodeURIComponent(e.tmProfileUrl)}`}
+                          onClick={() => setDrawerEntry(e)}
+                          style={{ cursor: 'pointer' }}
+                        >
                           <td>
-                            <Link href={addPlayerHref(e)} className="brit-cell-player">
+                            <div className="brit-cell-player">
                               {e.playerImage ? <img className="brit-p-thumb" src={e.playerImage} alt="" /> : <div className="brit-p-thumb brit-p-thumb-ph">{initials(e.playerName)}</div>}
                               <div>
                                 <div className="brit-p-name">{e.playerName || '—'}</div>
                                 <div className="brit-p-meta">{e.playerNationality || '—'}{e.playerAge ? ` · ${e.playerAge}` : ''}</div>
                               </div>
-                            </Link>
+                            </div>
                           </td>
                           <td>{clubDisplay(e, t)}</td>
                           <td>{positionsLabel(e)}</td>
@@ -565,7 +621,7 @@ export default function MenShortlist() {
                           <td>{chgBadge(pct) || <span className="brit-p-meta">—</span>}</td>
                           <td className="brit-p-agent-cell">{agentName(e)} · {addedAgo(e.addedAt)}</td>
                           <td>
-                            <div className="brit-flags">
+                            <div className="brit-flags" onClick={(ev) => ev.stopPropagation()}>
                               {tags.map((tg, idx) => <span key={idx} className={`brit-tag ${tg.cls}`}>{tg.label}</span>)}
                               <button className="brit-sl-rm" onClick={() => removeEntry(e)} disabled={removingUrl === e.tmProfileUrl} title={t('shortlist_remove')}>✕</button>
                             </div>
@@ -635,8 +691,36 @@ export default function MenShortlist() {
         </div>
       )}
 
+      {/* Target Intelligence Drawer */}
+      <MenShortlistDrawer
+        entry={drawerEntry}
+        onClose={() => setDrawerEntry(null)}
+        onSignToRoster={handleSignToRoster}
+        onRemove={removeEntry}
+        onOpenAddNote={(entry) => openAddNote(entry as ShortlistEntry)}
+        rosterPlayers={rosterPlayers}
+        clubRequests={clubRequests}
+      />
+
       {/* Add-to-shortlist guided drawer */}
       <MenAddPlayerDrawer mode="shortlist" open={showAddDrawer} onClose={() => setShowAddDrawer(false)} />
+
+      {/* Sign-to-roster prefilled guided drawer */}
+      <MenAddPlayerDrawer
+        mode="roster"
+        open={showAddRosterDrawer}
+        initialUrl={addRosterInitialUrl ?? undefined}
+        onClose={() => {
+          setShowAddRosterDrawer(false);
+          setAddRosterInitialUrl(null);
+        }}
+        onSaved={() => {
+          if (addRosterInitialUrl) {
+            const entryToRemove = entries.find((x) => x.tmProfileUrl === addRosterInitialUrl);
+            if (entryToRemove) removeEntry(entryToRemove);
+          }
+        }}
+      />
     </div>
   );
 }

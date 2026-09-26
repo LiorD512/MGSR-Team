@@ -56,11 +56,19 @@ interface MenAddPlayerDrawerProps {
   onClose: () => void;
   /** 'roster' (default) adds to the squad with contacts; 'shortlist' adds to the shortlist (no contacts). */
   mode?: 'roster' | 'shortlist';
+  /** Preloaded Transfermarkt URL to automatically start in step 2 */
+  initialUrl?: string;
   /** Called after a successful save (e.g. to surface a toast); optional. */
   onSaved?: (playerId?: string) => void;
 }
 
-export default function MenAddPlayerDrawer({ open, onClose, mode = 'roster', onSaved }: MenAddPlayerDrawerProps) {
+export default function MenAddPlayerDrawer({
+  open,
+  onClose,
+  mode = 'roster',
+  initialUrl,
+  onSaved,
+}: MenAddPlayerDrawerProps) {
   const isShortlist = mode === 'shortlist';
   const { user } = useAuth();
   const { t, isRtl } = useLanguage();
@@ -95,35 +103,6 @@ export default function MenAddPlayerDrawer({ open, onClose, mode = 'roster', onS
     setAgentPhone('');
   }, []);
 
-  // Reset whenever the drawer is (re)opened.
-  useEffect(() => {
-    if (open) resetAll();
-  }, [open, resetAll]);
-
-  // Debounced auto-search.
-  useEffect(() => {
-    if (!open) return;
-    const q = searchQuery.trim();
-    if (q.length < MIN_SEARCH_LEN) {
-      setSearchResults([]);
-      setLoadingSearch(false);
-      return;
-    }
-    setLoadingSearch(true);
-    const timer = setTimeout(async () => {
-      try {
-        const players = await searchPlayers(q);
-        setSearchResults(players);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Search failed');
-        setSearchResults([]);
-      } finally {
-        setLoadingSearch(false);
-      }
-    }, DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [searchQuery, open]);
-
   const loadDetails = useCallback(async (url: string) => {
     setError('');
     setLoadingDetails(true);
@@ -139,6 +118,20 @@ export default function MenAddPlayerDrawer({ open, onClose, mode = 'roster', onS
       setLoadingDetails(false);
     }
   }, []);
+
+  // Reset or load initialUrl whenever the drawer is (re)opened.
+  useEffect(() => {
+    if (open) {
+      if (initialUrl) {
+        setUrlInput(initialUrl);
+        loadDetails(initialUrl);
+      } else {
+        resetAll();
+      }
+    }
+  }, [open, initialUrl, loadDetails, resetAll]);
+
+  // Debounced auto-search.
 
   const handleSelectFromSearch = (p: SearchPlayer) => {
     setSearchResults([]);
