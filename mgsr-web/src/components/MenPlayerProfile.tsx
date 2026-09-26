@@ -13,7 +13,7 @@
  * in as ready-rendered React nodes so their internals stay untouched.
  */
 
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   ResponsiveContainer,
@@ -28,6 +28,7 @@ import {
 import { formatMarketValue } from '@/lib/releases';
 import type { NoteModel } from '@/lib/noteParser';
 import BritRail from '@/components/BritRail';
+import { getCountryDisplayName } from '@/lib/countryTranslations';
 
 interface MergedPlayer {
   fullName?: string;
@@ -69,6 +70,8 @@ interface ProfilePlayer {
   agentInChargeId?: string;
   agentTransferredAt?: number;
   passportDetails?: unknown;
+  nationality?: string;
+  nationalities?: string[];
 }
 
 interface ProfileDocument {
@@ -96,6 +99,41 @@ interface ChartStats {
   isUp: boolean;
   current: ChartPoint;
 }
+
+/** Nationality name → ISO 3166-1 alpha-2 code (flagcdn). */
+const NATIONALITY_TO_ISO: Record<string, string> = {
+  israel: 'il', germany: 'de', brazil: 'br', argentina: 'ar', france: 'fr',
+  spain: 'es', italy: 'it', portugal: 'pt', netherlands: 'nl', belgium: 'be',
+  england: 'gb-eng', scotland: 'gb-sct', wales: 'gb-wls', 'northern ireland': 'gb-nir',
+  'great britain': 'gb', 'united kingdom': 'gb', ireland: 'ie',
+  croatia: 'hr', serbia: 'rs', slovenia: 'si', 'bosnia-herzegovina': 'ba',
+  'bosnia and herzegovina': 'ba', montenegro: 'me', 'north macedonia': 'mk', macedonia: 'mk',
+  albania: 'al', kosovo: 'xk', greece: 'gr', turkey: 'tr', türkiye: 'tr',
+  switzerland: 'ch', austria: 'at', poland: 'pl', ukraine: 'ua', russia: 'ru',
+  'czech republic': 'cz', czechia: 'cz', slovakia: 'sk', hungary: 'hu', romania: 'ro',
+  bulgaria: 'bg', sweden: 'se', norway: 'no', denmark: 'dk', finland: 'fi', iceland: 'is',
+  cyprus: 'cy', 'faroe islands': 'fo', luxembourg: 'lu', malta: 'mt', georgia: 'ge',
+  armenia: 'am', azerbaijan: 'az', kazakhstan: 'kz', 'saudi arabia': 'sa',
+  'united arab emirates': 'ae', qatar: 'qa', kuwait: 'kw', bahrain: 'bh', oman: 'om',
+  jordan: 'jo', lebanon: 'lb', syria: 'sy', iraq: 'iq', iran: 'ir', egypt: 'eg',
+  morocco: 'ma', algeria: 'dz', tunisia: 'tn', libya: 'ly', nigeria: 'ng', ghana: 'gh',
+  senegal: 'sn', 'ivory coast': 'ci', "cote d'ivoire": 'ci', cameroon: 'cm', mali: 'ml',
+  'burkina faso': 'bf', guinea: 'gn', 'dr congo': 'cd', 'congo dr': 'cd', congo: 'cg',
+  'democratic republic of the congo': 'cd', 'democratic republic of congo': 'cd',
+  'congo, democratic republic of the': 'cd', 'congo, dr': 'cd',
+  'south africa': 'za', angola: 'ao', gabon: 'ga', zambia: 'zm', 'cape verde': 'cv',
+  'united states': 'us', usa: 'us', canada: 'ca', mexico: 'mx', 'costa rica': 'cr',
+  honduras: 'hn', panama: 'pa', jamaica: 'jm', colombia: 'co', uruguay: 'uy',
+  chile: 'cl', peru: 'pe', ecuador: 'ec', paraguay: 'py', venezuela: 've', bolivia: 'bo',
+  japan: 'jp', 'south korea': 'kr', 'korea, south': 'kr', china: 'cn', australia: 'au',
+  'new zealand': 'nz', india: 'in', thailand: 'th', indonesia: 'id',
+};
+
+const flagUrlFromNationality = (nationality?: string): string | null => {
+  if (!nationality) return null;
+  const code = NATIONALITY_TO_ISO[nationality.trim().toLowerCase()];
+  return code ? `https://flagcdn.com/w640/${code}.png` : null;
+};
 
 export interface MenPlayerProfileProps {
   t: (k: string) => string;
@@ -192,7 +230,42 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
   const clubName = merged.currentClub?.clubName;
   const nonGpsDocs = documents.filter((d) => d.type !== 'GPS_DATA');
   const gpsDocs = documents.filter((d) => d.type === 'GPS_DATA');
-  const heroFlag = merged.nationalityFlags?.filter(Boolean)?.[0] || merged.nationalityFlag;
+
+  const primaryNationality = merged.nationality || player.nationality;
+  const allNationalities = (
+    merged.nationalities?.filter(Boolean)?.length
+      ? merged.nationalities.filter(Boolean)
+      : player.nationalities?.filter(Boolean)?.length
+      ? player.nationalities.filter(Boolean)
+      : primaryNationality ? [primaryNationality] : []
+  ) as string[];
+
+  const flagCandidates = [
+    flagUrlFromNationality(primaryNationality),
+    ...allNationalities.map(flagUrlFromNationality),
+    merged.nationalityFlags?.filter(Boolean)?.[0],
+    merged.nationalityFlag,
+  ].filter((u): u is string => !!u);
+
+  const [flagIdx, setFlagIdx] = useState(0);
+
+  useEffect(() => {
+    setFlagIdx(0);
+  }, [player.id, primaryNationality]);
+
+  const flagBg = flagCandidates[flagIdx] ?? null;
+
+  const heroFlag =
+    merged.nationalityFlags?.filter(Boolean)?.[0] ||
+    merged.nationalityFlag ||
+    flagUrlFromNationality(primaryNationality);
+
+  const nationalityDisplay = (
+    allNationalities.length
+      ? allNationalities.map((n) => getCountryDisplayName(n, isRtl)).join(' / ')
+      : getCountryDisplayName(primaryNationality, isRtl)
+  ) || (isRtl ? 'לא ידוע' : 'Unknown');
+
   const engLabel: Record<string, { en: string; he: string }> = {
     none: { en: 'None', he: 'ללא' },
     medium: { en: 'Medium', he: 'בינוני' },
@@ -237,6 +310,9 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
               </a>
             </>
           )}
+          <button className="bp-toolbtn primary" onClick={onShare} disabled={sharing}>
+            {sharing ? '…' : `↗ ${t('player_info_share')}`}
+          </button>
           <button className="bp-toolbtn danger" onClick={onDelete}>
             {isRtl ? 'מחק' : 'Delete'}
           </button>
@@ -245,10 +321,16 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
 
       {/* Hero */}
       <section className="bp-hero">
-        {merged.profileImage && (
-          <div className="bp-hero-media">
-            <img src={merged.profileImage} alt="" />
-          </div>
+        {flagBg ? (
+          <img
+            className="bp-hero-flagbg"
+            src={flagBg}
+            alt=""
+            aria-hidden="true"
+            onError={() => setFlagIdx((i) => i + 1)}
+          />
+        ) : (
+          <div className="bp-hero-flagbg-ph" aria-hidden="true" />
         )}
         <div className="bp-hero-inner">
           {merged.profileImage ? (
@@ -259,7 +341,7 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
           <div className="bp-hero-copy">
             <p className="bp-hero-kicker">
               {heroFlag && <img className="flag" src={heroFlag} alt="" />}
-              {t('room_confidential_dossier')}
+              {nationalityDisplay}
             </p>
             <h1>{displayName}</h1>
             <div className="bp-hero-sub">
@@ -690,8 +772,8 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
       </div>
 
       {/* Sticky actions */}
-      <div className="bp-sticky">
-        {!!player.passportDetails && (
+      {!!player.passportDetails && (
+        <div className="bp-sticky">
           <Link
             href={hasValidMandate ? '#' : `/players/${player.id}/generate-mandate`}
             onClick={(e) => hasValidMandate && e.preventDefault()}
@@ -699,11 +781,9 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
           >
             <button style={{ width: '100%' }}>◈ {t('player_info_generate_mandate')}</button>
           </Link>
-        )}
-        <button className="primary" onClick={onShare} disabled={sharing}>↗ {t('player_info_share')}</button>
-        <button onClick={onPreparePortfolio} disabled={addingToPortfolio}>▤ {t('player_info_prepare_portfolio')}</button>
-      </div>
-      {(shareError || portfolioError) && <p className="bp-err">{shareError || portfolioError}</p>}
+        </div>
+      )}
+      {shareError && <p className="bp-err">{shareError}</p>}
           </div>
         </div>
       </div>

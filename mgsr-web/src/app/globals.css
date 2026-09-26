@@ -2407,16 +2407,17 @@ body {
 .brit-profile .bp-tools{display:flex;gap:10px;flex-wrap:wrap}
 .brit-profile .bp-toolbtn{padding:9px 13px;border:1px solid var(--line);color:var(--ink);font:9px/1 var(--p-mono);text-transform:uppercase;transition:.15s}
 .brit-profile .bp-toolbtn:hover{border-color:var(--gold-soft);color:var(--gold)}
+.brit-profile .bp-toolbtn.primary{background:var(--gold-soft);color:var(--ink);border-color:var(--gold)}
+.brit-profile .bp-toolbtn.primary:hover{background:var(--gold);color:var(--paper)}
 .brit-profile .bp-toolbtn.danger{color:var(--red);border-color:rgba(182,66,53,.4)}
 .brit-profile .bp-toolbtn.danger:hover{background:rgba(182,66,53,.08)}
 .brit-profile .bp-toolbtn:disabled{opacity:.5;cursor:default}
 
 /* Hero */
 .brit-profile .bp-hero{position:relative;overflow:hidden;background:var(--black);color:var(--paper);margin-bottom:2px}
-.brit-profile .bp-hero-media{position:absolute;inset:0}
-.brit-profile .bp-hero-media img{width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.4}
-.brit-profile .bp-hero-media:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(17,17,15,.94) 32%,rgba(17,17,15,.5) 72%,transparent),radial-gradient(circle at 88% 12%,rgba(201,166,107,.26),transparent 46%)}
-[dir=rtl] .brit-profile .bp-hero-media:after{background:linear-gradient(270deg,rgba(17,17,15,.94) 32%,rgba(17,17,15,.5) 72%,transparent),radial-gradient(circle at 12% 12%,rgba(201,166,107,.26),transparent 46%)}
+.brit-profile .bp-hero-flagbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.6;transition:.3s;z-index:0}
+.brit-profile .bp-hero-flagbg-ph{position:absolute;inset:0;background:linear-gradient(160deg,#26261f,#101010);z-index:0}
+.brit-profile .bp-hero:after{content:'';position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(17,17,15,.35),rgba(17,17,15,.9));pointer-events:none}
 .brit-profile .bp-hero-inner{position:relative;z-index:1;display:flex;gap:28px;align-items:flex-end;padding:32px 34px}
 .brit-profile .bp-hero-portrait{width:132px;height:160px;flex:none;object-fit:cover;filter:grayscale(1);border:1px solid var(--dark-line);background:linear-gradient(160deg,#26261f,#101010)}
 .brit-profile .bp-hero-portrait.ph{display:grid;place-items:center;color:var(--paper);font:500 40px/1 var(--p-display)}
