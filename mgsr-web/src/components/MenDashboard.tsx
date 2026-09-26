@@ -22,6 +22,7 @@ import { extractPlayerIdFromUrl } from '@/lib/api';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import { openWhatsAppWithMessage } from '@/lib/whatsapp';
 import BritRail from '@/components/BritRail';
+import MatchdayGeneratorModal, { type MatchdaySeed } from '@/components/MatchdayGeneratorModal';
 import { db } from '@/lib/firebase';
 import { callPlayersUpdate } from '@/lib/callables';
 import {
@@ -47,7 +48,7 @@ export interface MenRosterPlayer {
   id: string;
   fullName?: string;
   profileImage?: string;
-  currentClub?: { clubName?: string; clubCountry?: string };
+  currentClub?: { clubName?: string; clubCountry?: string; clubLogo?: string };
   tmProfile?: string;
   positions?: string[];
   marketValue?: string;
@@ -60,6 +61,7 @@ export interface MenRosterPlayer {
   passportDetails?: { dateOfBirth?: string };
   playerPhoneNumber?: string;
   agentInChargeName?: string;
+  instagramHandle?: string;
 }
 
 export interface MenExpiringMandate extends MenRosterPlayer {
@@ -254,7 +256,11 @@ export default function MenDashboard({
     tmProfile?: string;
     agencyUrl?: string;
     isOurAsset?: boolean;
+    profileImage?: string;
+    clubLogo?: string;
+    instagramHandle?: string;
   } | null>(null);
+  const [matchdaySeed, setMatchdaySeed] = useState<MatchdaySeed | null>(null);
   const [nextMatch, setNextMatch] = useState<DossierNextMatch | null>(null);
   const [nextMatchState, setNextMatchState] = useState<'idle' | 'loading' | 'ready' | 'unavailable' | 'error'>('idle');
   const [showAllActivity, setShowAllActivity] = useState(false);
@@ -478,6 +484,9 @@ export default function MenDashboard({
       tmProfile: p.tmProfile,
       agencyUrl: p.agencyUrl,
       isOurAsset: p.isOurAsset,
+      profileImage: p.profileImage,
+      clubLogo: p.currentClub?.clubLogo,
+      instagramHandle: p.instagramHandle,
     });
 
   const formatMatchDate = (value: string) => {
@@ -588,11 +597,12 @@ export default function MenDashboard({
                               </p>
                             )}
                           </div>
-                          {isToday && b.phone ? (
+                          {b.phone ? (
                             <button
-                              className="brit-birthday-btn"
+                              className={`brit-birthday-btn${isToday ? ' brit-birthday-btn-today' : ''}`}
                               onClick={() => sendBirthdayWish(b)}
                               aria-label={t('room_birthdays_wish')}
+                              title={isToday ? undefined : withToken('room_window_days', b.daysUntil)}
                             >
                               {t('room_birthdays_wish')}
                             </button>
@@ -997,6 +1007,26 @@ export default function MenDashboard({
                 </label>
               </div>
             )}
+            {!isUnder19Dossier && dossier.playerId && (
+              <button
+                type="button"
+                className="brit-matchday-btn"
+                onClick={() =>
+                  setMatchdaySeed({
+                    playerId: dossier.playerId,
+                    playerName: dossier.name,
+                    playerImage: dossier.profileImage,
+                    tmProfile: dossier.tmProfile,
+                    club: dossier.club,
+                    clubCountry: dossier.clubCountry,
+                    clubLogo: dossier.clubLogo,
+                    instagramHandle: dossier.instagramHandle,
+                  })
+                }
+              >
+                {t('matchday_generate_button')}
+              </button>
+            )}
             {!isUnder19Dossier && <section className="brit-next-match" aria-live="polite">
               <div className="brit-next-match-head">
                 <span>{t('room_next_match')}</span>
@@ -1078,6 +1108,9 @@ export default function MenDashboard({
           </div>
         )}
       </div>
+      {matchdaySeed && (
+        <MatchdayGeneratorModal seed={matchdaySeed} onClose={() => setMatchdaySeed(null)} />
+      )}
     </div>
   );
 }
