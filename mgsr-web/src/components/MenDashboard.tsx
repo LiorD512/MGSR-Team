@@ -62,6 +62,9 @@ export interface MenRosterPlayer {
   playerPhoneNumber?: string;
   agentInChargeName?: string;
   instagramHandle?: string;
+  age?: string;
+  notes?: string;
+  noteList?: { notes?: string; createBy?: string; createdAt?: number; taggedAgentIds?: string[] }[];
 }
 
 export interface MenExpiringMandate extends MenRosterPlayer {
@@ -225,6 +228,7 @@ function daysUntilBirthday(parsed: { month: number; day: number }): number {
 
 interface BirthdayEntry {
   id: string;
+  player: MenRosterPlayer;
   fullName: string;
   club?: string;
   phone?: string;
@@ -232,6 +236,35 @@ interface BirthdayEntry {
   turnsAge: number;
   daysUntil: number;
   dateLabel: string;
+}
+
+const clubDisplay = (p: MenRosterPlayer, t: (k: string) => string) => {
+  const c = p.currentClub?.clubName;
+  if (!c) return t('no_club');
+  if (c.toLowerCase() === 'vereinslos' || c === 'Without Club') return t('without_club');
+  return c;
+};
+
+const isFreeAgent = (p: MenRosterPlayer) => {
+  const c = p.currentClub?.clubName?.toLowerCase();
+  return c === 'without club' || c === 'vereinslos';
+};
+
+const latestNote = (p: MenRosterPlayer) => {
+  const list = p.noteList?.filter((n) => n.notes?.trim()) ?? [];
+  if (list.length) return list[list.length - 1]!.notes!;
+  return p.notes?.trim() || '';
+};
+
+function computePlayerAge(p: MenRosterPlayer): string {
+  if (p.age) return p.age;
+  const parsed = parseDob(p.dateOfBirth || p.passportDetails?.dateOfBirth);
+  if (!parsed) return '—';
+  const today = new Date();
+  let age = today.getFullYear() - parsed.year;
+  const m = today.getMonth() - parsed.month;
+  if (m < 0 || (m === 0 && today.getDate() < parsed.day)) age--;
+  return age > 0 ? String(age) : '—';
 }
 
 export default function MenDashboard({
@@ -266,12 +299,21 @@ export default function MenDashboard({
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [marqueeStart, setMarqueeStart] = useState(0);
   const [assetToggling, setAssetToggling] = useState(false);
+  const [drawer, setDrawer] = useState<MenRosterPlayer | null>(null);
   const isUnder19Dossier = isUnder19Club(dossier?.club);
+
+  const goToPlayer = (id: string) => router.push(`/players/${id}?from=/dashboard`);
+
+  const messageOnWhatsApp = (p: MenRosterPlayer) => {
+    if (!p.playerPhoneNumber) return;
+    openWhatsAppWithMessage(p.playerPhoneNumber, `${p.fullName || ''}`.trim());
+  };
 
   const handleToggleOurAsset = async (targetPlayerId: string, currentStatus: boolean) => {
     const nextStatus = !currentStatus;
 
     setDossier((prev) => (prev && prev.playerId === targetPlayerId ? { ...prev, isOurAsset: nextStatus } : prev));
+    setDrawer((prev) => (prev && prev.id === targetPlayerId ? { ...prev, isOurAsset: nextStatus } : prev));
 
     setAssetToggling(true);
     try {
@@ -281,6 +323,7 @@ export default function MenDashboard({
     } catch (err) {
       console.error('Failed to toggle asset status:', err);
       setDossier((prev) => (prev && prev.playerId === targetPlayerId ? { ...prev, isOurAsset: currentStatus } : prev));
+      setDrawer((prev) => (prev && prev.id === targetPlayerId ? { ...prev, isOurAsset: currentStatus } : prev));
     } finally {
       setAssetToggling(false);
     }
@@ -387,6 +430,7 @@ export default function MenDashboard({
         thisYearBday < todayMidnight ? todayMidnight.getFullYear() + 1 : todayMidnight.getFullYear();
       list.push({
         id: p.id,
+        player: p,
         fullName: p.fullName || '—',
         club: p.currentClub?.clubName,
         phone: p.playerPhoneNumber,
@@ -584,7 +628,12 @@ export default function MenDashboard({
                     birthdays.map((b) => {
                       const isToday = b.daysUntil === 0;
                       return (
-                        <div className="brit-deadline" key={b.id}>
+                        <div
+                          className="brit-deadline"
+                          key={b.id}
+                          onClick={() => setDrawer(b.player)}
+                          style={{ cursor: 'pointer' }}
+                        >
                           <div className="brit-code">{isToday ? t('room_birthdays_today_code') : b.dateLabel}</div>
                           <div>
                             <h3>{b.fullName}</h3>
@@ -597,7 +646,7 @@ export default function MenDashboard({
                               </p>
                             )}
                           </div>
-                          <div className="brit-birthday-action">
+                          <div className="brit-birthday-action" onClick={(e) => e.stopPropagation()}>
                             {isToday && b.phone && (
                               <button
                                 type="button"
@@ -1109,6 +1158,101 @@ export default function MenDashboard({
           </div>
         )}
       </div>
+
+      {/* Quick-view drawer (identical to roster page) */}
+      <div
+        className={`brit-scrim${drawer ? ' open' : ''}`}
+        onClick={() => setDrawer(null)}
+        aria-hidden={!drawer}
+      />
+      <aside className={`brit-drawer${drawer ? ' open' : ''}`} aria-label="Player quick view">
+        {drawer && (
+          <>
+            <div className="brit-drawer-hero">
+              {drawer.profileImage ? (
+                <img src={drawer.profileImage} alt="" />
+              ) : (
+                <div className="brit-player-card-ph" style={{ position: 'absolute', inset: 0 }} />
+              )}
+              <button className="brit-drawer-close" onClick={() => setDrawer(null)} aria-label={t('room_close')}>
+                ×
+              </button>
+              <div className="brit-drawer-hero-copy">
+                <small>
+                  {clubDisplay(drawer, t)} / {positionLabel(drawer.positions)}
+                </small>
+                <h2>{drawer.fullName || '—'}</h2>
+              </div>
+            </div>
+            <div className="brit-drawer-body">
+              <div className="brit-facts">
+                <div>
+                  <label>{t('room_market_value')}</label>
+                  <strong>{drawer.marketValue || '—'}</strong>
+                </div>
+                <div>
+                  <label>{t('players_th_age')}</label>
+                  <strong>{computePlayerAge(drawer)}</strong>
+                </div>
+                <div>
+                  <label>{t('room_th_position')}</label>
+                  <strong>{positionLabel(drawer.positions)}</strong>
+                </div>
+                <div>
+                  <label>{t('room_mandate_status')}</label>
+                  <strong>
+                    {drawer.haveMandate
+                      ? t('room_mandate_active')
+                      : isFreeAgent(drawer)
+                      ? t('players_filter_free_agents')
+                      : t('room_mandate_none')}
+                  </strong>
+                </div>
+                <div>
+                  <label>{t('players_drawer_nationality')}</label>
+                  <strong>{drawer.nationality || '—'}</strong>
+                </div>
+                <div>
+                  <label>{t('room_birthdays_agent').replace(' /', '')}</label>
+                  <strong>{drawer.agentInChargeName || '—'}</strong>
+                </div>
+              </div>
+              <div className="brit-drawer-switchrow">
+                <div className="lbl">{t('players_drawer_mark_as_asset')}</div>
+                <label className="bp-sw">
+                  <input
+                    type="checkbox"
+                    checked={isPlayerOurAsset(drawer)}
+                    disabled={assetToggling}
+                    onChange={() => handleToggleOurAsset(drawer.id, isPlayerOurAsset(drawer))}
+                  />
+                  <span className="track" />
+                </label>
+              </div>
+              {latestNote(drawer) && (
+                <div className="brit-drawer-note">
+                  <label>{t('players_drawer_latest_note')}</label>
+                  <p>{latestNote(drawer)}</p>
+                </div>
+              )}
+              <div className="brit-drawer-actions">
+                <button className="primary" onClick={() => goToPlayer(drawer.id)}>
+                  {t('players_drawer_open_profile')}
+                </button>
+                <button
+                  className="ghost"
+                  onClick={() => messageOnWhatsApp(drawer)}
+                  disabled={!drawer.playerPhoneNumber}
+                  style={!drawer.playerPhoneNumber ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                >
+                  {t('players_drawer_whatsapp')}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </aside>
+
       {matchdaySeed && (
         <MatchdayGeneratorModal seed={matchdaySeed} onClose={() => setMatchdaySeed(null)} />
       )}
