@@ -265,9 +265,9 @@ export default function MenShortlistDrawer({
         {/* Drawer body */}
         <div className="brit-drawer-body">
           {/* Key facts grid */}
-          <div className="brit-facts" style={{ margin: '0 0 16px' }}>
+          <div className="brit-facts">
             <div>
-              <label>{t('shortlist_drawer_market_value')}</label>
+              <label>{t('room_market_value')}</label>
               <strong>
                 {entry.marketValue || '—'}
                 {valueChangePct !== null && (
@@ -284,40 +284,40 @@ export default function MenShortlistDrawer({
               </strong>
             </div>
             <div>
-              <label>{t('shortlist_drawer_age')}</label>
+              <label>{t('players_th_age')}</label>
               <strong>{entry.playerAge || '—'}</strong>
             </div>
             <div>
-              <label>{t('shortlist_drawer_position')}</label>
+              <label>{t('room_th_position')}</label>
               <strong>{positionsStr}</strong>
             </div>
             <div>
-              <label>{t('shortlist_drawer_contract')}</label>
-              <strong>{entry.contractExpires || (isFreeAgent(clubStr) ? t('shortlist_filter_free_agent') : '—')}</strong>
+              <label>{t('player_info_contract')}</label>
+              <strong>{entry.contractExpires || (isFreeAgent(clubStr) ? t('players_filter_free_agents') : '—')}</strong>
             </div>
             <div>
-              <label>{t('shortlist_drawer_nationality')}</label>
+              <label>{t('players_drawer_nationality')}</label>
               <strong>{nationalityDisplay}</strong>
             </div>
             <div>
               <label>{t('shortlist_th_scout')}</label>
               <strong>
                 {agentName}
-                {addedAgo && <small style={{ fontSize: '10px', display: 'block', color: 'var(--muted)', fontWeight: 400 }}>{addedAgo}</small>}
+                {addedAgo && <small style={{ fontSize: '10px', display: 'block', color: 'var(--muted)', fontWeight: 400, marginTop: '2px' }}>{addedAgo}</small>}
               </strong>
             </div>
           </div>
 
-          {/* ⚡ Locker Room Connection ("Who Knows Him?") */}
-          <section className="brit-drawer-sec">
-            <div className="brit-drawer-sec-head">
-              <label>⚡ {t('shortlist_drawer_locker_room')}</label>
+          {/* Locker Room Connection ("Who Knows Him?") */}
+          <section className="brit-drawer-box">
+            <div className="brit-drawer-box-head">
+              <label>{t('shortlist_drawer_locker_room')}</label>
               {teammates.length > 0 && <span className="badge">{teammates.length}</span>}
             </div>
             {loadingTeammates ? (
-              <p className="brit-drawer-sec-empty">{t('shortlist_drawer_searching_network')}</p>
+              <p className="brit-drawer-box-empty">{t('shortlist_drawer_searching_network')}</p>
             ) : teammates.length === 0 ? (
-              <p className="brit-drawer-sec-empty">{t('shortlist_drawer_no_network')}</p>
+              <p className="brit-drawer-box-empty">{t('shortlist_drawer_no_network')}</p>
             ) : (
               teammates.map((m) => {
                 const firstName = (m.player.fullName || '').split(' ')[0] || '';
@@ -351,14 +351,14 @@ export default function MenShortlistDrawer({
             )}
           </section>
 
-          {/* 🎯 Matches Live Requests */}
-          <section className="brit-drawer-sec">
-            <div className="brit-drawer-sec-head">
-              <label>🎯 {t('shortlist_drawer_live_requests')}</label>
+          {/* Matches Live Requests */}
+          <section className="brit-drawer-box">
+            <div className="brit-drawer-box-head">
+              <label>{t('shortlist_drawer_live_requests')}</label>
               {matchedRequests.length > 0 && <span className="badge">{matchedRequests.length}</span>}
             </div>
             {matchedRequests.length === 0 ? (
-              <p className="brit-drawer-sec-empty">{t('shortlist_drawer_no_requests')}</p>
+              <p className="brit-drawer-box-empty">{t('shortlist_drawer_no_requests')}</p>
             ) : (
               matchedRequests.slice(0, 3).map((req) => (
                 <div className="brit-drawer-req-item" key={req.id}>
@@ -377,11 +377,11 @@ export default function MenShortlistDrawer({
             )}
           </section>
 
-          {/* 📱 Outreach & Social */}
+          {/* Outreach & Social */}
           {entry.instagramHandle && (
-            <section className="brit-drawer-sec">
-              <div className="brit-drawer-sec-head">
-                <label>📱 {t('shortlist_drawer_social_outreach')}</label>
+            <section className="brit-drawer-box">
+              <div className="brit-drawer-box-head">
+                <label>{t('shortlist_drawer_social_outreach')}</label>
               </div>
               <div className="brit-drawer-outreach-row">
                 <a
@@ -409,10 +409,10 @@ export default function MenShortlistDrawer({
             </section>
           )}
 
-          {/* 💬 Agency Notes Timeline */}
-          <section className="brit-drawer-sec">
-            <div className="brit-drawer-sec-head">
-              <label>💬 {t('shortlist_notes_title')}</label>
+          {/* Agency Notes Timeline */}
+          <section className="brit-drawer-box">
+            <div className="brit-drawer-box-head">
+              <label>{t('shortlist_notes_title')}</label>
               <button
                 type="button"
                 className="brit-drawer-sm-btn"
@@ -423,28 +423,21 @@ export default function MenShortlistDrawer({
             </div>
             {entry.notes && entry.notes.length > 0 ? (
               entry.notes.map((n, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: '8px 0',
-                    borderTop: idx > 0 ? '1px dashed var(--line)' : 'none',
-                    fontSize: '11px',
-                  }}
-                >
-                  <p style={{ margin: '0 0 4px', color: 'var(--ink)' }}>{n.text}</p>
-                  <span style={{ fontSize: '9px', color: 'var(--muted)', textTransform: 'uppercase' }}>
+                <div className="brit-drawer-note-item" key={idx}>
+                  <p>{n.text}</p>
+                  <span>
                     {isRtl ? (n.createdByHebrewName || n.createdBy || '—') : (n.createdBy || n.createdByHebrewName || '—')}
                     {n.createdAt && ` · ${new Date(n.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US')}`}
                   </span>
                 </div>
               ))
             ) : (
-              <p className="brit-drawer-sec-empty">{t('room_empty_notes') || 'No agency notes recorded yet'}</p>
+              <p className="brit-drawer-box-empty">{t('room_empty_notes') || 'No agency notes recorded yet'}</p>
             )}
           </section>
 
-          {/* ── Action Grid ── */}
-          <div className="brit-drawer-actions-grid">
+          {/* Action Grid (aligned to roster quick-view drawer action style) */}
+          <div className="brit-drawer-actions">
             <button
               type="button"
               className="primary"
@@ -471,7 +464,7 @@ export default function MenShortlistDrawer({
             )}
             <button
               type="button"
-              className="danger"
+              className="ghost danger"
               onClick={() => onRemove(entry)}
             >
               {t('shortlist_drawer_remove_target')}
