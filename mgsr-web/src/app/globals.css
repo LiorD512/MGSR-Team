@@ -2339,6 +2339,7 @@ body {
 .brit-room .brit-drawer-close{position:absolute;top:14px;inset-inline-end:16px;z-index:2;color:var(--paper);font:22px/1 var(--display)}
 .brit-room .brit-drawer-hero-copy{position:absolute;inset-inline:22px;bottom:18px;z-index:1;color:var(--paper)}
 .brit-room .brit-drawer-hero-copy small{color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}
+.brit-room .brit-drawer-hero-copy img{width:14px;height:10px;object-fit:cover;filter:none;opacity:1;border-radius:1px;display:inline-block}
 .brit-room .brit-drawer-hero-copy h2{margin:8px 0 0;font:500 40px/.85 var(--display);text-transform:uppercase}
 .brit-room .brit-drawer-body{padding:24px 22px 30px}
 .brit-room .brit-drawer-switchrow,

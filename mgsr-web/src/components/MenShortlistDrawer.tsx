@@ -5,7 +5,7 @@
  *
  * Smooth-sliding drawer that opens when clicking a player on the shortlist.
  * Unifies target evaluation:
- * 1. Visual continuity hero with monochrome nationality flag background
+ * 1. Visual continuity hero with player image background
  * 2. Key market and contract metrics
  * 3. Locker room connection (roster teammates who played with this target) + WhatsApp
  * 4. Active club requests matching
@@ -181,7 +181,6 @@ export default function MenShortlistDrawer({
 
   if (!entry) return null;
 
-  const flagBg = flagUrlFromNationality(entry.playerNationality);
   const flagSmall = flagUrlFromNationality(entry.playerNationality);
 
   const nationalityDisplay = entry.playerNationality
@@ -239,8 +238,13 @@ export default function MenShortlistDrawer({
       <aside className="brit-drawer open" aria-label={t('shortlist_drawer_title')}>
         {/* Hero header */}
         <div className="brit-drawer-hero">
-          {flagBg ? (
-            <img className="brit-drawer-flagbg" src={flagBg} alt="" aria-hidden="true" />
+          {entry.playerImage ? (
+            <img
+              src={entry.playerImage}
+              alt={entry.playerName || ''}
+              aria-hidden="true"
+              style={{ objectPosition: 'center 20%' }}
+            />
           ) : (
             <div className="brit-drawer-flagbg-ph" aria-hidden="true" />
           )}
@@ -253,7 +257,7 @@ export default function MenShortlistDrawer({
                 <img
                   src={flagSmall}
                   alt=""
-                  style={{ width: '14px', height: '10px', objectFit: 'cover' }}
+                  style={{ width: '14px', height: '10px', objectFit: 'cover', filter: 'none', opacity: 1, borderRadius: '1px' }}
                 />
               )}
               {nationalityDisplay} · {clubStr} / {positionsStr}
@@ -432,7 +436,7 @@ export default function MenShortlistDrawer({
                 </div>
               ))
             ) : (
-              <p className="brit-drawer-box-empty">{t('room_empty_notes') || 'No agency notes recorded yet'}</p>
+              <p className="brit-drawer-box-empty">{t('shortlist_drawer_no_notes')}</p>
             )}
           </section>
 

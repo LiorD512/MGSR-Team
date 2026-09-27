@@ -134,6 +134,7 @@ export default function MenShortlist() {
   const [clubRequests, setClubRequests] = useState<ClubRequest[]>([]);
   const [showAddRosterDrawer, setShowAddRosterDrawer] = useState(false);
   const [addRosterInitialUrl, setAddRosterInitialUrl] = useState<string | null>(null);
+  const [addRosterInitialPlayer, setAddRosterInitialPlayer] = useState<ShortlistDrawerEntry | null>(null);
 
   // Note modal
   const [noteEntry, setNoteEntry] = useState<ShortlistEntry | null>(null);
@@ -302,6 +303,7 @@ export default function MenShortlist() {
 
   const handleSignToRoster = (targetEntry: ShortlistDrawerEntry) => {
     setDrawerEntry(null);
+    setAddRosterInitialPlayer(targetEntry);
     setAddRosterInitialUrl(targetEntry.tmProfileUrl);
     setShowAddRosterDrawer(true);
   };
@@ -710,13 +712,16 @@ export default function MenShortlist() {
         mode="roster"
         open={showAddRosterDrawer}
         initialUrl={addRosterInitialUrl ?? undefined}
+        initialPlayer={addRosterInitialPlayer}
         onClose={() => {
           setShowAddRosterDrawer(false);
           setAddRosterInitialUrl(null);
+          setAddRosterInitialPlayer(null);
         }}
         onSaved={() => {
-          if (addRosterInitialUrl) {
-            const entryToRemove = entries.find((x) => x.tmProfileUrl === addRosterInitialUrl);
+          const urlToRemove = addRosterInitialUrl || addRosterInitialPlayer?.tmProfileUrl;
+          if (urlToRemove) {
+            const entryToRemove = entries.find((x) => x.tmProfileUrl === urlToRemove);
             if (entryToRemove) removeEntry(entryToRemove);
           }
         }}

@@ -51,6 +51,34 @@ const flagUrlFromNationality = (nationality?: string): string | null => {
   return code ? `https://flagcdn.com/w640/${code}.png` : null;
 };
 
+export interface AddPlayerInitialData {
+  tmProfileUrl?: string;
+  tmProfile?: string;
+  playerName?: string;
+  fullName?: string;
+  playerImage?: string;
+  profileImage?: string;
+  playerPosition?: string;
+  positions?: string[];
+  playerAge?: string;
+  age?: string;
+  playerNationality?: string;
+  nationality?: string;
+  playerNationalities?: string[];
+  nationalities?: string[];
+  nationalityFlag?: string;
+  clubJoinedName?: string;
+  currentClub?: { clubName?: string; clubLogo?: string };
+  marketValue?: string;
+  contractExpires?: string;
+  height?: string;
+  foot?: string;
+  isOnLoan?: boolean;
+  onLoanFromClub?: string;
+  instagramHandle?: string;
+  instagramUrl?: string;
+}
+
 interface MenAddPlayerDrawerProps {
   open: boolean;
   onClose: () => void;
@@ -58,6 +86,8 @@ interface MenAddPlayerDrawerProps {
   mode?: 'roster' | 'shortlist';
   /** Preloaded Transfermarkt URL to automatically start in step 2 */
   initialUrl?: string;
+  /** Preloaded player data (e.g. from shortlist) to immediately populate step 2 without waiting */
+  initialPlayer?: AddPlayerInitialData | null;
   /** Called after a successful save (e.g. to surface a toast); optional. */
   onSaved?: (playerId?: string) => void;
 }
@@ -67,6 +97,7 @@ export default function MenAddPlayerDrawer({
   onClose,
   mode = 'roster',
   initialUrl,
+  initialPlayer,
   onSaved,
 }: MenAddPlayerDrawerProps) {
   const isShortlist = mode === 'shortlist';
@@ -119,17 +150,74 @@ export default function MenAddPlayerDrawer({
     }
   }, []);
 
-  // Reset or load initialUrl whenever the drawer is (re)opened.
+  // Reset or load initialPlayer / initialUrl whenever the drawer is (re)opened.
   useEffect(() => {
     if (open) {
-      if (initialUrl) {
+      if (initialPlayer) {
+        const tmUrl = initialPlayer.tmProfile || initialPlayer.tmProfileUrl || initialUrl || '';
+        const pos = initialPlayer.positions ?? (initialPlayer.playerPosition ? [initialPlayer.playerPosition] : []);
+        const nat = initialPlayer.nationality || initialPlayer.playerNationality;
+        const club = initialPlayer.currentClub ?? (initialPlayer.clubJoinedName ? { clubName: initialPlayer.clubJoinedName } : undefined);
+        const natFlag = initialPlayer.nationalityFlag || flagUrlFromNationality(nat) || undefined;
+
+        const baseDetails: PlayerDetails = {
+          tmProfile: tmUrl,
+          fullName: initialPlayer.fullName || initialPlayer.playerName,
+          profileImage: initialPlayer.profileImage || initialPlayer.playerImage,
+          positions: pos,
+          age: initialPlayer.age || initialPlayer.playerAge,
+          nationality: nat,
+          nationalities: initialPlayer.nationalities || initialPlayer.playerNationalities,
+          nationalityFlag: natFlag,
+          contractExpires: initialPlayer.contractExpires,
+          marketValue: initialPlayer.marketValue,
+          currentClub: club,
+          height: initialPlayer.height,
+          foot: initialPlayer.foot,
+          isOnLoan: initialPlayer.isOnLoan,
+          onLoanFromClub: initialPlayer.onLoanFromClub,
+          instagramHandle: initialPlayer.instagramHandle,
+          instagramUrl: initialPlayer.instagramUrl,
+        };
+
+        setUrlInput(tmUrl);
+        setSelected(baseDetails);
+        setStep(2);
+        setLoadingDetails(false);
+        setError('');
+        setPlayerPhone('');
+        setAgentPhone('');
+
+        // Silently enrich details in background without resetting to step 1 on error
+        if (tmUrl) {
+          getPlayerDetails(tmUrl)
+            .then((enriched) => {
+              if (enriched) {
+                setSelected((prev) => {
+                  if (!prev) return enriched;
+                  return {
+                    ...prev,
+                    ...enriched,
+                    fullName: prev.fullName || enriched.fullName,
+                    profileImage: prev.profileImage || enriched.profileImage,
+                    positions: prev.positions?.length ? prev.positions : enriched.positions,
+                    currentClub: prev.currentClub || enriched.currentClub,
+                  };
+                });
+              }
+            })
+            .catch(() => {
+              // Silently ignore background enrichment failure — shortlist data is already loaded
+            });
+        }
+      } else if (initialUrl) {
         setUrlInput(initialUrl);
         loadDetails(initialUrl);
       } else {
         resetAll();
       }
     }
-  }, [open, initialUrl, loadDetails, resetAll]);
+  }, [open, initialUrl, initialPlayer, loadDetails, resetAll]);
 
   // Debounced auto-search.
 
@@ -403,9 +491,11 @@ export default function MenAddPlayerDrawer({
                 ) : selected ? (
                   <>
                     <div className="brit-add-phero">
-                      {flagBg
-                        ? <img className="flagbg" src={flagBg} alt="" aria-hidden="true" />
-                        : null}
+                      {selected.profileImage ? (
+                        <img className="flagbg" src={selected.profileImage} alt="" aria-hidden="true" style={{ objectPosition: 'center 20%' }} />
+                      ) : flagBg ? (
+                        <img className="flagbg" src={flagBg} alt="" aria-hidden="true" />
+                      ) : null}
                       <div className="pimg"><img src={selected.profileImage || 'https://via.placeholder.com/120'} alt="" /></div>
                       <div className="pi">
                         <div className="nm" title={displayName}>{displayName}</div>
