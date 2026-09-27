@@ -115,50 +115,95 @@ interface CachedNextMatch {
   error: boolean;
 }
 
-const nextMatchCache = new Map<string, CachedNextMatch>();
+interface UpcomingFixture {
+  kickoffMs: number;
+  opponent: string;
+  homeAway?: 'home' | 'away' | null;
+  time: string | null;
+}
+
+/* ── Next-match store ───────────────────────────────────────────────────────
+   Fixtures are fetched once on the first app entry of each Israeli calendar
+   day and then served from localStorage for the rest of that day, so the
+   dashboard does not re-scrape on every visit. */
+const NEXT_MATCH_STORE = 'brit-next-match-store-v2';
+
+/** Flashscore reports kickoff as Asia/Jerusalem wall-clock, so resolve it there
+    rather than in the viewer's zone — otherwise the countdown drifts abroad. */
+const MATCH_TIME_ZONE = 'Asia/Jerusalem';
+
+interface NextMatchStore {
+  day: string;
+  entries: Record<string, CachedNextMatch>;
+}
+
+let nextMatchCache = new Map<string, CachedNextMatch>();
+let nextMatchCacheDay = '';
 const nextMatchRequests = new Map<string, Promise<CachedNextMatch>>();
-const NEXT_MATCH_SESSION_CACHE = 'brit-next-match-cache-v2';
+
+/** Israeli calendar day (YYYY-MM-DD) — matches the zone fixtures are dated in. */
+function matchDayStamp(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: MATCH_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
 
 function nextMatchCacheKey(identity: NextMatchIdentity): string {
-  return [identity.club, identity.clubCountry || '']
-    .join('|')
-    .toLowerCase();
+  return [identity.club, identity.clubCountry || ''].join('|').toLowerCase();
 }
 
-function readNextMatchSessionCache(key: string): CachedNextMatch | null {
-  if (typeof window === 'undefined') return null;
+function readNextMatchStore(): NextMatchStore {
+  const day = matchDayStamp();
+  if (typeof window === 'undefined') return { day, entries: {} };
   try {
-    const raw = sessionStorage.getItem(NEXT_MATCH_SESSION_CACHE);
-    if (!raw) return null;
-    const cache = JSON.parse(raw) as Record<string, CachedNextMatch>;
-    const result = cache[key];
-    if (result && typeof result.error === 'boolean') return result;
+    const raw = localStorage.getItem(NEXT_MATCH_STORE);
+    if (raw) {
+      const store = JSON.parse(raw) as NextMatchStore;
+      if (store?.day === day && store.entries) return store;
+    }
   } catch {
-    return null;
+    /* unreadable or foreign shape — fall through to a fresh store */
   }
-  return null;
+  return { day, entries: {} };
 }
 
-function writeNextMatchSessionCache(key: string, result: CachedNextMatch): void {
-  if (typeof window === 'undefined') return;
+/** Drop the in-memory layer when the day rolls over under a long-lived tab. */
+function liveNextMatchCache(): Map<string, CachedNextMatch> {
+  const day = matchDayStamp();
+  if (nextMatchCacheDay !== day) {
+    nextMatchCache = new Map(Object.entries(readNextMatchStore().entries));
+    nextMatchCacheDay = day;
+  }
+  return nextMatchCache;
+}
+
+function readCachedNextMatch(key: string): CachedNextMatch | null {
+  const cached = liveNextMatchCache().get(key);
+  return cached && typeof cached.error === 'boolean' ? cached : null;
+}
+
+/** Only resolved fixtures are persisted for the day. A miss or an error stays
+    in the in-memory layer, so it is not re-requested during this session but is
+    retried on the next app entry instead of being cached until midnight. */
+function writeCachedNextMatch(key: string, result: CachedNextMatch): void {
+  liveNextMatchCache().set(key, result);
+  if (typeof window === 'undefined' || !result.match) return;
   try {
-    const raw = sessionStorage.getItem(NEXT_MATCH_SESSION_CACHE);
-    const cache = raw ? (JSON.parse(raw) as Record<string, CachedNextMatch>) : {};
-    cache[key] = result;
-    sessionStorage.setItem(NEXT_MATCH_SESSION_CACHE, JSON.stringify(cache));
+    const store = readNextMatchStore();
+    store.entries[key] = result;
+    localStorage.setItem(NEXT_MATCH_STORE, JSON.stringify(store));
   } catch {
+    /* quota or private-mode write failure — the in-memory layer still serves */
   }
 }
 
 function loadNextMatch(identity: NextMatchIdentity): Promise<CachedNextMatch> {
   const key = nextMatchCacheKey(identity);
-  const cached = nextMatchCache.get(key);
+  const cached = readCachedNextMatch(key);
   if (cached) return Promise.resolve(cached);
-  const sessionCached = readNextMatchSessionCache(key);
-  if (sessionCached) {
-    nextMatchCache.set(key, sessionCached);
-    return Promise.resolve(sessionCached);
-  }
 
   const pending = nextMatchRequests.get(key);
   if (pending) return pending;
@@ -178,8 +223,7 @@ function loadNextMatch(identity: NextMatchIdentity): Promise<CachedNextMatch> {
     })
     .catch(() => ({ match: null, error: true }))
     .then((result) => {
-      nextMatchCache.set(key, result);
-      writeNextMatchSessionCache(key, result);
+      writeCachedNextMatch(key, result);
       nextMatchRequests.delete(key);
       return result;
     });
@@ -267,6 +311,84 @@ function computePlayerAge(p: MenRosterPlayer): string {
   return age > 0 ? String(age) : '—';
 }
 
+/** Minutes `timeZone` runs ahead of UTC at the given instant. */
+function zoneOffsetMinutes(utcMs: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(new Date(utcMs));
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const wallAsUtc = Date.UTC(
+    part('year'),
+    part('month') - 1,
+    part('day'),
+    part('hour') % 24,
+    part('minute')
+  );
+  return (wallAsUtc - utcMs) / 60_000;
+}
+
+/** Whole days since the epoch on the Israeli calendar — used for today/tomorrow. */
+function matchZoneDayIndex(utcMs: number): number {
+  return Math.floor((utcMs + zoneOffsetMinutes(utcMs, MATCH_TIME_ZONE) * 60_000) / 86_400_000);
+}
+
+function parseKickoffMs(dateStr: string, timeStr: string | null | undefined): number | null {
+  const dm = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!dm) return null;
+
+  // Kickoff time is occasionally still TBC; midday keeps the day bucket right.
+  let hours = 12;
+  let minutes = 0;
+  const tm = timeStr?.match(/(\d{1,2}):(\d{2})/);
+  if (tm) {
+    hours = Number(tm[1]);
+    minutes = Number(tm[2]);
+  }
+
+  const wallAsUtc = Date.UTC(Number(dm[3]), Number(dm[2]) - 1, Number(dm[1]), hours, minutes);
+  return wallAsUtc - zoneOffsetMinutes(wallAsUtc, MATCH_TIME_ZONE) * 60_000;
+}
+
+function buildUpcomingFixture(match: DossierNextMatch): UpcomingFixture | null {
+  const kickoffMs = parseKickoffMs(match.date, match.time);
+  if (kickoffMs === null) return null;
+  const hoursUntil = (kickoffMs - Date.now()) / 3_600_000;
+  if (hoursUntil > 48 || hoursUntil < -2) return null;
+  return { kickoffMs, opponent: match.opponent, homeAway: match.homeAway, time: match.time };
+}
+
+/** Live countdown to kickoff. `urgent` drives the red treatment (< 6 h or live). */
+function formatCountdown(kickoffMs: number): { text: string; urgent: boolean } {
+  const ms = kickoffMs - Date.now();
+  if (ms <= 0) return { text: 'Kicked off', urgent: true };
+  const totalMin = Math.floor(ms / 60_000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  const text = h === 0 ? `${m}m` : `${h}h ${String(m).padStart(2, '0')}m`;
+  return { text, urgent: h < 6 };
+}
+
+/** Absolute kickoff, so the countdown is never the only reference: "Tomorrow 19:00". */
+function kickoffLabel(fixture: UpcomingFixture, locale: string): string {
+  const dayOffset = matchZoneDayIndex(fixture.kickoffMs) - matchZoneDayIndex(Date.now());
+  const day =
+    dayOffset === 0
+      ? 'Today'
+      : dayOffset === 1
+      ? 'Tomorrow'
+      : new Date(fixture.kickoffMs).toLocaleDateString(locale, {
+          weekday: 'short',
+          timeZone: MATCH_TIME_ZONE,
+        });
+  return fixture.time ? `${day} ${fixture.time}` : day;
+}
+
 export default function MenDashboard({
   userName,
   greeting,
@@ -300,6 +422,9 @@ export default function MenDashboard({
   const [marqueeStart, setMarqueeStart] = useState(0);
   const [assetToggling, setAssetToggling] = useState(false);
   const [drawer, setDrawer] = useState<MenRosterPlayer | null>(null);
+  const [nextMatchVersion, setNextMatchVersion] = useState(0);
+  const [countdownTick, setCountdownTick] = useState(0);
+  const [fixturesReady, setFixturesReady] = useState(false);
   const isUnder19Dossier = isUnder19Club(dossier?.club);
 
   const goToPlayer = (id: string) => router.push(`/players/${id}?from=/dashboard`);
@@ -329,27 +454,95 @@ export default function MenDashboard({
     }
   };
 
-  const marquee = useMemo(
-    () =>
-      rosterPlayers
-        .filter((player) => isPlayerOurAsset(player))
-        .sort((a, b) => parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue)),
+  const assetPlayers = useMemo(
+    () => rosterPlayers.filter((player) => isPlayerOurAsset(player)),
     [rosterPlayers]
   );
 
-  // Preload next match for OUR ASSETS while dashboard is loading
+  /** Asset players whose club can actually be looked up, with their cache key. */
+  const fixtureTargets = useMemo(
+    () =>
+      assetPlayers
+        .map((player) => ({
+          player,
+          identity: {
+            tmProfile: player.tmProfile,
+            club: player.currentClub?.clubName || '—',
+            clubCountry: player.currentClub?.clubCountry,
+          } satisfies NextMatchIdentity,
+        }))
+        .filter(
+          ({ identity }) =>
+            !isUnder19Club(identity.club) && (Boolean(identity.tmProfile) || identity.club !== '—')
+        ),
+    [assetPlayers]
+  );
+
+  // Fetch the day's fixtures on first entry; subsequent visits read the store
+  // and skip straight to ready so the shimmer never flashes needlessly.
   useEffect(() => {
-    if (!marquee || marquee.length === 0) return;
-    for (const player of marquee) {
-      const club = player.currentClub?.clubName || '—';
-      if (isUnder19Club(club) || (!player.tmProfile && club === '—')) continue;
-      void loadNextMatch({
-        tmProfile: player.tmProfile,
-        club,
-        clubCountry: player.currentClub?.clubCountry,
-      });
+    if (fixtureTargets.length === 0) {
+      setFixturesReady(true);
+      return;
     }
-  }, [marquee]);
+    if (fixtureTargets.every(({ identity }) => readCachedNextMatch(nextMatchCacheKey(identity)))) {
+      setFixturesReady(true);
+      return;
+    }
+
+    let active = true;
+    setFixturesReady(false);
+    void Promise.all(fixtureTargets.map(({ identity }) => loadNextMatch(identity))).then(() => {
+      if (!active) return;
+      setNextMatchVersion((n) => n + 1);
+      setFixturesReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [fixtureTargets]);
+
+  const playerFixtures = useMemo(() => {
+    const fixtures = new Map<string, UpcomingFixture>();
+    for (const { player, identity } of fixtureTargets) {
+      const cached = readCachedNextMatch(nextMatchCacheKey(identity));
+      if (cached?.match) {
+        const fixture = buildUpcomingFixture(cached.match);
+        if (fixture) fixtures.set(player.id, fixture);
+      }
+    }
+    return fixtures;
+  }, [fixtureTargets, nextMatchVersion]);
+
+  const marquee = useMemo(
+    () =>
+      [...assetPlayers].sort((a, b) => {
+        const af = playerFixtures.get(a.id);
+        const bf = playerFixtures.get(b.id);
+
+        if (af && !bf) return -1;
+        if (!af && bf) return 1;
+        if (af && bf) return af.kickoffMs - bf.kickoffMs;
+
+        return parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue);
+      }),
+    [assetPlayers, playerFixtures]
+  );
+
+  // Live countdown ticker — recomputes the plaque clocks every 30s
+  useEffect(() => {
+    if (playerFixtures.size === 0) return;
+    const id = setInterval(() => setCountdownTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, [playerFixtures.size]);
+
+  const fixtureCountdowns = useMemo(() => {
+    const clocks = new Map<string, { text: string; urgent: boolean }>();
+    playerFixtures.forEach((fixture, playerId) => {
+      clocks.set(playerId, formatCountdown(fixture.kickoffMs));
+    });
+    return clocks;
+  }, [playerFixtures, countdownTick]);
 
   useEffect(() => {
     if (!dossier) {
@@ -373,10 +566,8 @@ export default function MenDashboard({
       club: dossier.club,
       clubCountry: dossier.clubCountry,
     };
-    const key = nextMatchCacheKey(identity);
-    const cached = nextMatchCache.get(key) || readNextMatchSessionCache(key);
+    const cached = readCachedNextMatch(nextMatchCacheKey(identity));
     if (cached) {
-      nextMatchCache.set(key, cached);
       setNextMatch(cached.match);
       setNextMatchState(cached.error ? 'error' : cached.match ? 'ready' : 'unavailable');
       return;
@@ -858,7 +1049,7 @@ export default function MenDashboard({
                       <span className="brit-heading-gold">{t('room_assets')}</span>
                     </h2>
                     <div className="brit-focus-controls">
-                      {marqueeSlideIndex > 0 && (
+                      {fixturesReady && marqueeSlideIndex > 0 && (
                         <button
                           type="button"
                           className="brit-focus-arrow brit-focus-arrow-previous"
@@ -873,8 +1064,12 @@ export default function MenDashboard({
                           ←
                         </button>
                       )}
-                      <span>{withToken('room_marquee_sub', marquee.length)}</span>
-                      {marqueeSlideIndex < marqueeLastStart && (
+                      <span>
+                        {fixturesReady
+                          ? withToken('room_marquee_sub', marquee.length)
+                          : t('room_marquee_syncing')}
+                      </span>
+                      {fixturesReady && marqueeSlideIndex < marqueeLastStart && (
                         <button
                           type="button"
                           className="brit-focus-arrow"
@@ -891,7 +1086,20 @@ export default function MenDashboard({
                       )}
                     </div>
                   </div>
-                  {marquee.length > 0 ? (
+                  {!fixturesReady && assetPlayers.length > 0 ? (
+                    <div className="brit-focus" aria-busy="true">
+                      {[0, 1].map((slot) => (
+                        <article className="brit-focus-skeleton" key={`asset-skeleton-${slot}`} aria-hidden>
+                          <span className="brit-skeleton-plaque" />
+                          <span className="brit-skeleton-copy">
+                            <span className="brit-skeleton-line xs" />
+                            <span className="brit-skeleton-line lg" />
+                            <span className="brit-skeleton-line sm" />
+                          </span>
+                        </article>
+                      ))}
+                    </div>
+                  ) : marquee.length > 0 ? (
                     <div className="brit-focus-carousel">
                       <div
                         className="brit-focus-track"
@@ -909,22 +1117,38 @@ export default function MenDashboard({
                             <div className="brit-focus">
                               {[marquee[slideIndex], marquee[slideIndex + 1]]
                                 .filter((player): player is MenRosterPlayer => Boolean(player))
-                                .map((p) => (
-                                  <article key={p.id} onClick={() => openDossier(p)}>
-                                    {p.profileImage ? (
-                                      <img src={p.profileImage} alt={p.fullName || ''} />
-                                    ) : (
-                                      <div className="brit-focus-fallback" />
-                                    )}
-                                    <div className="brit-focus-copy">
-                                      <small>
-                                        {(p.currentClub?.clubName || '—')} / {positionLabel(p.positions)}
-                                      </small>
-                                      <h3>{p.fullName || '—'}</h3>
-                                      <p>{rosterPlayerValue(p)}</p>
-                                    </div>
-                                  </article>
-                                ))}
+                                .map((p) => {
+                                  const fixture = playerFixtures.get(p.id);
+                                  const countdown = fixtureCountdowns.get(p.id);
+                                  return (
+                                    <article key={p.id} onClick={() => openDossier(p)}>
+                                      {p.profileImage ? (
+                                        <img src={p.profileImage} alt={p.fullName || ''} />
+                                      ) : (
+                                        <div className="brit-focus-fallback" />
+                                      )}
+                                      {fixture && countdown && (
+                                        <div className={`brit-fixture-plaque${countdown.urgent ? ' urgent' : ''}`}>
+                                          <span className="brit-fixture-when">
+                                            {kickoffLabel(fixture, isRtl ? 'he-IL' : 'en-GB')}
+                                          </span>
+                                          <strong className="brit-fixture-clock">{countdown.text}</strong>
+                                          <span className="brit-fixture-opponent">
+                                            {fixture.homeAway === 'away' ? '@ ' : 'vs '}
+                                            {fixture.opponent}
+                                          </span>
+                                        </div>
+                                      )}
+                                      <div className="brit-focus-copy">
+                                        <small>
+                                          {(p.currentClub?.clubName || '—')} / {positionLabel(p.positions)}
+                                        </small>
+                                        <h3>{p.fullName || '—'}</h3>
+                                        <p>{rosterPlayerValue(p)}</p>
+                                      </div>
+                                    </article>
+                                  );
+                                })}
                             </div>
                           </div>
                         ))}

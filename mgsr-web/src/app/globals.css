@@ -1786,6 +1786,108 @@ body {
   text-transform: uppercase;
 }
 
+/* ── Asset skeletons while the day's fixtures resolve ── */
+@keyframes brit-skeleton-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+.brit-focus-skeleton {
+  position: relative;
+  min-height: 250px;
+  overflow: hidden;
+  background: linear-gradient(160deg, #23231f, #11110f);
+}
+.brit-focus-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(243, 240, 232, 0.05) 50%,
+    transparent 80%
+  );
+  animation: brit-skeleton-sweep 1.6s linear infinite;
+}
+.brit-skeleton-plaque {
+  position: absolute;
+  top: 14px;
+  inset-inline-start: 14px;
+  width: 104px;
+  height: 58px;
+  background: rgba(17, 17, 15, 0.72);
+  border: 1px solid var(--dark-line);
+  border-inline-start: 2px solid rgba(164, 125, 67, 0.45);
+}
+.brit-skeleton-copy {
+  position: absolute;
+  inset-inline: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.brit-skeleton-line {
+  display: block;
+  background: rgba(243, 240, 232, 0.14);
+}
+.brit-skeleton-line.xs { width: 45%; height: 7px; }
+.brit-skeleton-line.lg { width: 82%; height: 20px; background: rgba(243, 240, 232, 0.2); }
+.brit-skeleton-line.sm { width: 32%; height: 7px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .brit-focus-skeleton::after { animation: none; }
+}
+
+/* ── Next-match plaque on marquee cards (kickoff ≤ 48 h) ──
+   A flat dossier-style plaque stamped on the card, marked on its leading edge
+   with a gold rule (red once kickoff is imminent or the match is live). */
+.brit-fixture-plaque {
+  position: absolute;
+  top: 14px;
+  inset-inline-start: 14px;
+  z-index: 2;
+  max-width: calc(100% - 28px);
+  padding: 8px 10px;
+  background: var(--black);
+  border: 1px solid var(--dark-line);
+  border-inline-start: 2px solid var(--gold);
+}
+.brit-fixture-plaque.urgent {
+  border-inline-start-color: var(--red);
+}
+.brit-fixture-when {
+  display: block;
+  color: var(--gold-soft);
+  font: 9px/1 var(--mono);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.brit-fixture-plaque.urgent .brit-fixture-when {
+  color: var(--red);
+}
+.brit-fixture-clock {
+  display: block;
+  margin: 6px 0 4px;
+  color: var(--paper);
+  font: 500 20px/0.9 var(--display);
+  text-transform: uppercase;
+}
+.brit-fixture-plaque.urgent .brit-fixture-clock {
+  color: var(--red);
+}
+.brit-fixture-opponent {
+  display: block;
+  color: #c9c3b6;
+  font: 9px/1.3 var(--mono);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Feed rows ── */
 .brit-feed-row {
   display: grid;
