@@ -118,8 +118,11 @@ interface CachedNextMatch {
 interface UpcomingFixture {
   kickoffMs: number;
   opponent: string;
+  opponentLogo?: string | null;
   homeAway?: 'home' | 'away' | null;
   time: string | null;
+  competition: string | null;
+  round: string | null;
 }
 
 /* ── Next-match store ───────────────────────────────────────────────────────
@@ -237,6 +240,14 @@ function loadNextMatch(identity: NextMatchIdentity): Promise<CachedNextMatch> {
 function positionLabel(positions: string[] | undefined): string {
   const list = (positions ?? []).filter(Boolean);
   return list.length ? list.slice(0, 2).join(' / ') : '—';
+}
+
+/** Player surname — the last whitespace-separated token of the full name. */
+function lastNameOf(fullName: string | undefined): string {
+  const clean = (fullName || '').trim();
+  if (!clean) return '—';
+  const parts = clean.split(/\s+/);
+  return parts[parts.length - 1] || clean;
 }
 
 function isUnder19Club(clubName: string | undefined): boolean {
@@ -359,8 +370,18 @@ function buildUpcomingFixture(match: DossierNextMatch): UpcomingFixture | null {
   const kickoffMs = parseKickoffMs(match.date, match.time);
   if (kickoffMs === null) return null;
   const hoursUntil = (kickoffMs - Date.now()) / 3_600_000;
-  if (hoursUntil > 48 || hoursUntil < -2) return null;
-  return { kickoffMs, opponent: match.opponent, homeAway: match.homeAway, time: match.time };
+  // Matchweek window: keep anything from ~2h ago (a match in progress) out to
+  // 8 days ahead, so the timeline rail can show the whole week of fixtures.
+  if (hoursUntil > 24 * 8 || hoursUntil < -2) return null;
+  return {
+    kickoffMs,
+    opponent: match.opponent,
+    opponentLogo: match.opponentLogo ?? null,
+    homeAway: match.homeAway,
+    time: match.time,
+    competition: match.competition ?? null,
+    round: match.round ?? null,
+  };
 }
 
 /** Live countdown to kickoff. `urgent` drives the red treatment (< 6 h or live). */
@@ -372,6 +393,57 @@ function formatCountdown(kickoffMs: number): { text: string; urgent: boolean } {
   const m = totalMin % 60;
   const text = h === 0 ? `${m}m` : `${h}h ${String(m).padStart(2, '0')}m`;
   return { text, urgent: h < 6 };
+}
+
+/**
+ * Competition line for a fixture, e.g. "Liga Leumit · Round 8". Friendlies show
+ * just the competition (no round). Any "Country: Competition" prefix from the
+ * fixture source is stripped so only the competition name remains.
+ */
+function competitionLabel(competition: string | null, round: string | null): string | null {
+  const raw = (competition || '').trim();
+  if (!raw) return null;
+  const comp = raw.includes(':') ? raw.slice(raw.indexOf(':') + 1).trim() : raw;
+  const isFriendly = /friendl/i.test(comp);
+  const r = (round || '').trim();
+  if (isFriendly || !r) return comp;
+  const roundLabel = /^\d+$/.test(r) ? `Round ${r}` : r;
+  return `${comp} · ${roundLabel}`;
+}
+
+/** Compact countdown for the timeline dots: "48M", "3H", "2D". */
+function compactCountdown(kickoffMs: number): string {
+  const ms = kickoffMs - Date.now();
+  if (ms <= 0) return 'LIVE';
+  const totalMin = Math.floor(ms / 60_000);
+  const h = Math.floor(totalMin / 60);
+  if (h < 1) return `${totalMin}M`;
+  if (h < 24) return `${h}H`;
+  return `${Math.floor(h / 24)}D`;
+}
+
+/**
+ * Colour for a compact countdown label. It is a pure function of the LABEL, so
+ * two fixtures showing the same value (e.g. two "1D") always get the identical
+ * colour, while different values get different ones. Palette runs warm→cool as
+ * the match gets further away, staying within the dark/gold brit look.
+ */
+const COUNTDOWN_DAY_PALETTE = [
+  '#e7c079', // today / <24h  — bright gold
+  '#d98a4e', // 1D — amber
+  '#c96f6f', // 2D — clay rose
+  '#9c8bc0', // 3D — muted violet
+  '#6f9bb8', // 4D — steel blue
+  '#5f9e86', // 5D — sage
+  '#8a8f9c', // 6D+ — slate
+];
+function countdownAccent(short: string): string {
+  if (short === 'LIVE') return '#b64235';
+  // Minutes or hours → treat as "today" bucket (bright gold).
+  if (short.endsWith('M') || short.endsWith('H')) return COUNTDOWN_DAY_PALETTE[0];
+  const days = parseInt(short, 10);
+  if (!Number.isFinite(days)) return COUNTDOWN_DAY_PALETTE[0];
+  return COUNTDOWN_DAY_PALETTE[Math.min(days, COUNTDOWN_DAY_PALETTE.length - 1)];
 }
 
 /** Absolute kickoff, so the countdown is never the only reference: "Tomorrow 19:00". */
@@ -536,13 +608,38 @@ export default function MenDashboard({
     return () => clearInterval(id);
   }, [playerFixtures.size]);
 
-  const fixtureCountdowns = useMemo(() => {
-    const clocks = new Map<string, { text: string; urgent: boolean }>();
-    playerFixtures.forEach((fixture, playerId) => {
-      clocks.set(playerId, formatCountdown(fixture.kickoffMs));
-    });
-    return clocks;
-  }, [playerFixtures, countdownTick]);
+  /* ── Matchweek timeline rail ──────────────────────────────────────────────
+     Every asset with an upcoming fixture, laid out on one horizontal timeline
+     ordered by kickoff. The soonest is the glowing "next" stop. */
+  const matchweek = useMemo(() => {
+    const locale = isRtl ? 'he-IL' : 'en-GB';
+    const stops = marquee
+      .map((p) => {
+        const fixture = playerFixtures.get(p.id);
+        if (!fixture) return null;
+        return {
+          id: p.id,
+          player: p,
+          lastName: lastNameOf(p.fullName),
+          opponent: fixture.opponent,
+          opponentLogo: fixture.opponentLogo ?? null,
+          homeAway: fixture.homeAway,
+          kickoffMs: fixture.kickoffMs,
+          short: compactCountdown(fixture.kickoffMs),
+          when: kickoffLabel(fixture, locale),
+          countdown: formatCountdown(fixture.kickoffMs),
+          competitionLabel: competitionLabel(fixture.competition, fixture.round),
+          // Colour is keyed to the compact label, so fixtures with the same
+          // countdown (e.g. two "1D") share exactly one colour.
+          accent: countdownAccent(compactCountdown(fixture.kickoffMs)),
+        };
+      })
+      .filter((s): s is NonNullable<typeof s> => Boolean(s))
+      .sort((a, b) => a.kickoffMs - b.kickoffMs);
+    return stops;
+    // countdownTick keeps the short/countdown labels live.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marquee, playerFixtures, countdownTick, isRtl]);
 
   useEffect(() => {
     if (!dossier) {
@@ -635,11 +732,11 @@ export default function MenDashboard({
       });
     }
     const sorted = list.sort((a, b) => a.daysUntil - b.daysUntil);
-    // Always show ALL of today's birthdays; cap only the upcoming ones so the
-    // module stays compact. This guarantees no one celebrating today is hidden.
+    // Cap the list at 5 in general. The only exception: if MORE than 5 players
+    // have a birthday today, show all of today's (and nothing else) so none of
+    // them are hidden. Otherwise, take the soonest 5 (today + upcoming).
     const today = sorted.filter((b) => b.daysUntil === 0);
-    const upcoming = sorted.filter((b) => b.daysUntil > 0).slice(0, 5);
-    return [...today, ...upcoming];
+    return today.length > 5 ? today : sorted.slice(0, 5);
   }, [rosterPlayers, isRtl]);
 
   const topRoster = useMemo(
@@ -1123,26 +1220,12 @@ export default function MenDashboard({
                               {[marquee[slideIndex], marquee[slideIndex + 1]]
                                 .filter((player): player is MenRosterPlayer => Boolean(player))
                                 .map((p) => {
-                                  const fixture = playerFixtures.get(p.id);
-                                  const countdown = fixtureCountdowns.get(p.id);
                                   return (
                                     <article key={p.id} onClick={() => openDossier(p)}>
                                       {p.profileImage ? (
                                         <img src={p.profileImage} alt={p.fullName || ''} />
                                       ) : (
                                         <div className="brit-focus-fallback" />
-                                      )}
-                                      {fixture && countdown && (
-                                        <div className={`brit-fixture-plaque${countdown.urgent ? ' urgent' : ''}`}>
-                                          <span className="brit-fixture-when">
-                                            {kickoffLabel(fixture, isRtl ? 'he-IL' : 'en-GB')}
-                                          </span>
-                                          <strong className="brit-fixture-clock">{countdown.text}</strong>
-                                          <span className="brit-fixture-opponent">
-                                            {fixture.homeAway === 'away' ? '@ ' : 'vs '}
-                                            {fixture.opponent}
-                                          </span>
-                                        </div>
                                       )}
                                       <div className="brit-focus-copy">
                                         <small>
@@ -1161,6 +1244,68 @@ export default function MenDashboard({
                     </div>
                   ) : (
                     <div className="brit-empty">{t('room_marquee_empty')}</div>
+                  )}
+
+                  {/* ── Matchweek timeline rail (below the asset cards) ── */}
+                  {fixturesReady && matchweek.length > 0 && (
+                    <div className="brit-matchweek" aria-label={t('room_matchweek')}>
+                      <div className="brit-matchweek-head">
+                        <span className="brit-matchweek-title">{t('room_matchweek')}</span>
+                        <span className="brit-matchweek-count">
+                          {withToken('room_matchweek_count', matchweek.length)}
+                        </span>
+                      </div>
+                      <div className="brit-matchweek-rail">
+                        <div className="brit-matchweek-line" />
+                        <div
+                          className="brit-matchweek-line-fill"
+                          style={{ width: matchweek.length > 1 ? `${(1 / matchweek.length) * 100}%` : '18%' }}
+                        />
+                        <div className={`brit-matchweek-stops${matchweek.length > 5 ? ' is-scrollable' : ''}`}>
+                          {matchweek.map((s, i) => (
+                            <button
+                              type="button"
+                              key={s.id}
+                              className={`brit-matchweek-stop${i === 0 ? ' next' : ''}${
+                                s.countdown.urgent ? ' urgent' : ''
+                              }`}
+                              style={{ ['--mw-accent' as string]: s.accent }}
+                              onClick={() => openDossier(s.player)}
+                              title={`${s.lastName} ${s.homeAway === 'away' ? '@' : 'vs'} ${s.opponent} — ${s.when}`}
+                            >
+                              <span className="brit-matchweek-crest">
+                                {s.opponentLogo ? (
+                                  <img
+                                    src={s.opponentLogo}
+                                    alt={s.opponent}
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLElement).style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <span className="brit-matchweek-crest-fallback">
+                                    {s.opponent.slice(0, 2).toUpperCase()}
+                                  </span>
+                                )}
+                                <span className="brit-matchweek-ha">
+                                  {s.homeAway === 'away' ? 'A' : 'H'}
+                                </span>
+                              </span>
+                              <span className="brit-matchweek-who">{s.lastName}</span>
+                              <span className="brit-matchweek-opp">
+                                {(s.homeAway === 'away' ? '@ ' : 'vs ') + s.opponent}
+                              </span>
+                              {s.competitionLabel && (
+                                <span className="brit-matchweek-comp">{s.competitionLabel}</span>
+                              )}
+                              <span className="brit-matchweek-cd">{s.short}</span>
+                              <span className="brit-matchweek-when">{s.when}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </section>
 

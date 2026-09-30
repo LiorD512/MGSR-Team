@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Upcoming Match Indicator — Concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #161613;
+    --black: #11110f;
+    --paper: #f3f0e8;
+    --paper-2: #e4ded1;
+    --gold: #a47d43;
+    --gold-soft: #c9a66b;
+    --gold-bright: #e7c079;
+    --red: #b64235;
+    --green: #5c6f4a;
+    --muted: #77736a;
+    --line: rgba(22, 22, 19, 0.18);
+    --display: 'Oswald', Impact, sans-serif;
+    --body: 'Manrope', Helvetica, sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0d0c;
+    color: var(--paper);
+    font-family: var(--body);
+    padding: 48px 24px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .page-head { margin-bottom: 8px; }
+  .page-head h1 {
+    font-family: var(--display); font-weight: 700; font-size: 32px;
+    letter-spacing: 0.02em; text-transform: uppercase;
+  }
+  .page-head h1 span { color: var(--gold-soft); }
+  .page-head p { color: var(--muted); font-size: 13px; margin-top: 6px; max-width: 640px; line-height: 1.5; }
+
+  .options { display: grid; gap: 44px; margin-top: 44px; }
+  .option-head {
+    display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px;
+    border-bottom: 1px solid rgba(243,240,232,0.12); padding-bottom: 10px;
+  }
+  .option-head .num {
+    font-family: var(--mono); font-size: 11px; color: var(--gold-soft);
+    letter-spacing: 0.14em;
+  }
+  .option-head h2 {
+    font-family: var(--display); font-weight: 600; font-size: 20px;
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .option-head .desc { color: var(--muted); font-size: 12px; margin-left: auto; max-width: 380px; text-align: right; line-height: 1.4; }
+
+  .cards { display: flex; flex-wrap: wrap; gap: 18px; }
+  .cards .asset-card { width: 264px; flex: 0 0 264px; }
+
+  /* ── Shared asset-card shell (mirrors the real OUR ASSETS card) ── */
+  .asset-card {
+    position: relative; height: 400px; border-radius: 4px; overflow: hidden;
+    background: #1a1916; isolation: isolate;
+  }
+  .asset-card .photo {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center top;
+    filter: grayscale(0.25) contrast(1.02);
+  }
+  .asset-card .photo::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(17,17,15,0.15) 0%, rgba(17,17,15,0.05) 40%, rgba(17,17,15,0.85) 100%);
+  }
+  .asset-card .info { position: absolute; left: 18px; right: 18px; bottom: 16px; z-index: 3; }
+  .asset-card .info .pos {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    color: var(--gold-soft); text-transform: uppercase; margin-bottom: 6px;
+  }
+  .asset-card .info .name {
+    font-family: var(--display); font-weight: 700; font-size: 27px; line-height: 0.98;
+    text-transform: uppercase; letter-spacing: 0.005em;
+  }
+  .asset-card .info .val { font-family: var(--mono); font-size: 12px; color: var(--paper-2); margin-top: 8px; opacity: 0.8; }
+
+  /* photo fills — tone + a soft head silhouette so cards read as portraits */
+  .p1 {
+    background:
+      radial-gradient(38% 30% at 52% 30%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 70%),
+      radial-gradient(26% 20% at 52% 22%, #7a6749 0%, rgba(122,103,73,0) 72%),
+      radial-gradient(120% 80% at 60% 20%, #6b5a44 0%, #2a2620 55%, #161512 100%);
+  }
+  .p2 {
+    background:
+      radial-gradient(38% 30% at 48% 28%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 70%),
+      radial-gradient(24% 18% at 48% 20%, #6f6653 0%, rgba(111,102,83,0) 72%),
+      radial-gradient(120% 80% at 40% 15%, #5a5348 0%, #2b2823 55%, #16150f 100%);
+  }
+  /* "imminent / today" tint — a warmer, redder urgency wash */
+  .imminent .photo { filter: grayscale(0.15) contrast(1.05) saturate(1.05); }
+  .badge-live {
+    color: var(--red) !important;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     OPTION 1 — "Countdown Ticket" : a torn-ticket stub, top-left,
+     with segmented flip-style time blocks. Editorial + tactile.
+     ════════════════════════════════════════════════════════════ */
+  .o1-ticket {
+    position: absolute; top: 14px; left: 14px; z-index: 4;
+    background: rgba(17,17,15,0.72); backdrop-filter: blur(6px);
+    border: 1px solid rgba(201,166,107,0.4);
+    border-radius: 3px; padding: 9px 11px 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .o1-ticket .when {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em;
+    color: var(--gold-bright); text-transform: uppercase; display: flex; align-items: center; gap: 6px;
+  }
+  .o1-ticket .when::before {
+    content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--gold-bright);
+    box-shadow: 0 0 0 0 rgba(231,192,121,0.7); animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(231,192,121,0.6); }
+    70% { box-shadow: 0 0 0 7px rgba(231,192,121,0); }
+    100% { box-shadow: 0 0 0 0 rgba(231,192,121,0); }
+  }
+  .o1-ticket .clock { display: flex; gap: 4px; margin-top: 7px; }
+  .o1-ticket .seg { text-align: center; }
+  .o1-ticket .seg b {
+    display: block; font-family: var(--display); font-weight: 700; font-size: 22px; line-height: 1;
+    color: var(--paper); background: rgba(255,255,255,0.06); border-radius: 2px; padding: 4px 7px; min-width: 34px;
+  }
+  .o1-ticket .seg span { font-family: var(--mono); font-size: 7px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+  .o1-ticket .vs { font-family: var(--mono); font-size: 9px; color: var(--paper-2); margin-top: 8px; letter-spacing: 0.06em; }
+
+  /* ════════════════════════════════════════════════════════════
+     OPTION 2 — "Progress Ring" : circular countdown dial, top-right.
+     A conic gold ring depletes as kickoff nears. Premium + glanceable.
+     ════════════════════════════════════════════════════════════ */
+  .o2-ring {
+    position: absolute; top: 14px; right: 14px; z-index: 4;
+    width: 76px; height: 76px; border-radius: 50%;
+    background:
+      radial-gradient(closest-side, rgba(17,17,15,0.82) 78%, transparent 79% 100%),
+      conic-gradient(var(--gold-bright) 0% 62%, rgba(255,255,255,0.12) 62% 100%);
+    display: grid; place-items: center;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.45);
+  }
+  .o2-ring .inner { text-align: center; }
+  .o2-ring .inner b { display: block; font-family: var(--display); font-weight: 700; font-size: 20px; line-height: 0.9; color: var(--paper); }
+  .o2-ring .inner span { font-family: var(--mono); font-size: 7px; letter-spacing: 0.12em; color: var(--gold-bright); text-transform: uppercase; }
+  .o2-badge {
+    position: absolute; top: 100px; right: 14px; z-index: 4;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gold-bright); background: rgba(17,17,15,0.7); border: 1px solid rgba(201,166,107,0.35);
+    padding: 5px 8px; border-radius: 2px; text-align: right; line-height: 1.5;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     OPTION 3 — "Kickoff Bar" : a bold bottom fixture bar that sits
+     above the name — home/away, live countdown pill, thin progress line.
+     Broadcast lower-third energy.
+     ════════════════════════════════════════════════════════════ */
+  .o3 .info { bottom: 74px; }
+  .o3-bar {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+    background: linear-gradient(180deg, rgba(17,17,15,0) 0%, rgba(17,17,15,0.9) 30%, #100f0d 100%);
+    padding: 20px 16px 14px;
+  }
+  .o3-bar .track { height: 2px; background: rgba(255,255,255,0.14); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+  .o3-bar .track i { display: block; height: 100%; width: 62%; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); }
+  .o3-bar .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .o3-bar .side { display: flex; align-items: center; gap: 7px; }
+  .o3-bar .crest { width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 1px solid rgba(201,166,107,0.4); display: grid; place-items: center; font-size: 10px; }
+  .o3-bar .side b { font-family: var(--display); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .o3-bar .count {
+    font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--black);
+    background: linear-gradient(180deg, var(--gold-bright), var(--gold)); border-radius: 3px;
+    padding: 5px 9px; letter-spacing: 0.04em; white-space: nowrap;
+  }
+  .o3-bar .when { text-align: center; font-family: var(--mono); font-size: 8px; letter-spacing: 0.16em; color: var(--gold-bright); text-transform: uppercase; margin-top: 9px; }
+
+  /* ════════════════════════════════════════════════════════════
+     OPTION 4 — "Live Corner Fold" : a diagonal gold corner banner +
+     a floating glass countdown chip. Distinct, minimal, unmistakable.
+     ════════════════════════════════════════════════════════════ */
+  .o4-fold {
+    position: absolute; top: 0; left: 0; z-index: 4;
+    width: 0; height: 0; border-style: solid; border-width: 96px 96px 0 0;
+    border-color: var(--gold) transparent transparent transparent;
+    opacity: 0.95;
+  }
+  .o4-fold-txt {
+    position: absolute; top: 22px; left: 8px; z-index: 5;
+    transform: rotate(-45deg); transform-origin: left center;
+    font-family: var(--mono); font-size: 8px; letter-spacing: 0.18em; color: var(--black); font-weight: 500; text-transform: uppercase;
+  }
+  .o4-chip {
+    position: absolute; top: 16px; right: 16px; z-index: 5;
+    background: rgba(17,17,15,0.66); backdrop-filter: blur(8px);
+    border: 1px solid rgba(231,192,121,0.5); border-radius: 999px;
+    padding: 7px 14px 7px 11px; display: flex; align-items: center; gap: 9px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  }
+  .o4-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold-bright); box-shadow: 0 0 8px var(--gold-bright); animation: pulse 2s infinite; }
+  .o4-chip b { font-family: var(--display); font-weight: 700; font-size: 17px; letter-spacing: 0.02em; }
+  .o4-chip span { font-family: var(--mono); font-size: 8px; color: var(--gold-bright); letter-spacing: 0.1em; text-transform: uppercase; display: block; }
+  .o4 .info .opp {
+    display: inline-block; margin-bottom: 8px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em;
+    color: var(--paper); background: rgba(164,125,67,0.35); border-left: 2px solid var(--gold-bright);
+    padding: 4px 8px; text-transform: uppercase;
+  }
+
+  .foot { margin-top: 56px; color: var(--muted); font-size: 12px; text-align: center; line-height: 1.6; }
+  .foot b { color: var(--gold-soft); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-head">
+    <h1>Upcoming Match Indicator — <span>Concepts</span></h1>
+    <p>Four takes on the fixture indicator for the OUR ASSETS cards, all in the brit-room system (Oswald / DM Mono, gold on dark). Same data each time: tomorrow, 19:00, ~33h 44m to kickoff, vs Hapoel Kfar Shalem.</p>
+  </div>
+
+  <div class="options">
+
+    <!-- OPTION 1 -->
+    <section>
+      <div class="option-head">
+        <span class="num">01</span>
+        <h2>Countdown Ticket</h2>
+        <span class="desc">A tactile ticket-stub, top-left. Segmented flip-style time blocks feel like a matchday pass. Pulsing dot signals it's imminent.</span>
+      </div>
+      <div class="cards">
+        <div class="asset-card">
+          <div class="photo p1"></div>
+          <div class="o1-ticket">
+            <div class="when">Tomorrow · 19:00</div>
+            <div class="clock">
+              <div class="seg"><b>33</b><span>hrs</span></div>
+              <div class="seg"><b>44</b><span>min</span></div>
+            </div>
+            <div class="vs">VS Hapoel Kfar Shalem</div>
+          </div>
+          <div class="info">
+            <div class="pos">Maccabi Bnei Reineh / AM / LW</div>
+            <div class="name">Gontie Junior Diomande</div>
+            <div class="val">€275K</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- OPTION 2 -->
+    <section>
+      <div class="option-head">
+        <span class="num">02</span>
+        <h2>Progress Ring</h2>
+        <span class="desc">A circular gold dial, top-right, that depletes as kickoff nears — instantly glanceable urgency. The hours sit dead-center; opponent + time float beneath.</span>
+      </div>
+      <div class="cards">
+        <div class="asset-card">
+          <div class="photo p2"></div>
+          <div class="o2-ring">
+            <div class="inner"><b>33h</b><span>44m</span></div>
+          </div>
+          <div class="o2-badge">Tomorrow 19:00<br>VS Kfar Shalem</div>
+          <div class="info">
+            <div class="pos">Maccabi Bnei Reineh / AM / LW</div>
+            <div class="name">Gontie Junior Diomande</div>
+            <div class="val">€275K</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- OPTION 3 -->
+    <section>
+      <div class="option-head">
+        <span class="num">03</span>
+        <h2>Kickoff Bar</h2>
+        <span class="desc">A broadcast-style lower band: home vs away crests, a live countdown pill, and a thin progress line that fills toward kickoff. Reads like a TV fixture graphic.</span>
+      </div>
+      <div class="cards">
+        <div class="asset-card o3">
+          <div class="photo p1"></div>
+          <div class="info">
+            <div class="pos">Maccabi Bnei Reineh / AM / LW</div>
+            <div class="name">Gontie Junior Diomande</div>
+          </div>
+          <div class="o3-bar">
+            <div class="track"><i></i></div>
+            <div class="row">
+              <div class="side"><span class="crest">◈</span><b>Bnei Reineh</b></div>
+              <div class="count">33H 44M</div>
+              <div class="side"><b>Kfar Shalem</b><span class="crest">◇</span></div>
+            </div>
+            <div class="when">Tomorrow · Kickoff 19:00</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- OPTION 4 -->
+    <section>
+      <div class="option-head">
+        <span class="num">04</span>
+        <h2>Corner Fold + Glass Chip</h2>
+        <span class="desc">A folded gold corner flags "MATCHDAY SOON" while a frosted glass chip carries the live countdown. Minimal footprint, maximum signal — the photo stays the hero.</span>
+      </div>
+      <div class="cards">
+        <div class="asset-card o4">
+          <div class="photo p2"></div>
+          <div class="o4-fold"></div>
+          <div class="o4-fold-txt">Matchday</div>
+          <div class="o4-chip">
+            <span class="dot"></span>
+            <div><b>33H 44M</b><span>Tomorrow 19:00</span></div>
+          </div>
+          <div class="info">
+            <span class="opp">VS Hapoel Kfar Shalem</span>
+            <div class="pos">Maccabi Bnei Reineh / AM / LW</div>
+            <div class="name">Gontie Junior Diomande</div>
+            <div class="val">€275K</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <p class="foot">
+    All four use your live data: <b>day + kickoff time</b>, <b>hours/minutes to kickoff</b>, and <b>opponent</b>.<br>
+    Tell me which direction you like (or a mix) and I'll build it into the real OUR ASSETS card.
+  </p>
+</div>
+</body>
+</html>
