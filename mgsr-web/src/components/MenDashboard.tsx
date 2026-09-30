@@ -634,7 +634,12 @@ export default function MenDashboard({
         ),
       });
     }
-    return list.sort((a, b) => a.daysUntil - b.daysUntil).slice(0, 5);
+    const sorted = list.sort((a, b) => a.daysUntil - b.daysUntil);
+    // Always show ALL of today's birthdays; cap only the upcoming ones so the
+    // module stays compact. This guarantees no one celebrating today is hidden.
+    const today = sorted.filter((b) => b.daysUntil === 0);
+    const upcoming = sorted.filter((b) => b.daysUntil > 0).slice(0, 5);
+    return [...today, ...upcoming];
   }, [rosterPlayers, isRtl]);
 
   const topRoster = useMemo(
