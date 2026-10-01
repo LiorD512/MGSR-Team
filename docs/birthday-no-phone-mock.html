@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Birthday — "no player number" states</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#161613; --black:#11110f; --paper:#f3f0e8; --paper-2:#e4ded1;
+    --gold:#a47d43; --gold-soft:#c9a66b; --red:#b64235; --muted:#77736a;
+    --line:rgba(22,22,19,.18);
+    --display:'Oswald',Impact,sans-serif; --body:'Manrope',sans-serif; --mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0c0c0b;padding:40px;font-family:var(--body)}
+  .wrap{max-width:640px;margin:0 auto}
+  .intro{color:#cfc8b8;font:12px/1.6 var(--mono);margin-bottom:24px;letter-spacing:.02em}
+  .intro b{color:var(--gold-soft)}
+
+  .panel{background:var(--paper);border-radius:8px;padding:22px 26px 10px;margin-bottom:22px;color:var(--ink)}
+  .vlabel{font:9px/1 var(--mono);color:var(--gold);text-transform:uppercase;letter-spacing:.14em;margin-bottom:4px}
+  .vnote{font:11px/1.4 var(--body);color:var(--muted);margin-bottom:12px}
+
+  .brit-deadline{display:grid;grid-template-columns:57px 1fr auto;gap:14px;align-items:center;padding:15px 0;border-top:1px solid var(--line)}
+  .brit-code{font:600 11px/1.2 var(--display);letter-spacing:.08em;color:var(--gold);text-transform:uppercase}
+  .brit-deadline h3{font:600 16px/1 var(--display);text-transform:uppercase;letter-spacing:.01em}
+  .brit-deadline p{font:12px/1.3 var(--body);color:var(--muted);margin-top:4px}
+  .agent{font:9px/1.3 var(--mono)!important;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-top:5px}
+  .agent em{color:var(--gold);font-style:normal}
+  .action{display:flex;align-items:center;gap:12px;justify-self:end}
+  .action > time{color:var(--red);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+
+  /* REAL golden WISH button */
+  .wish{padding:8px 10px;background:var(--gold-soft);color:var(--ink);border:none;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;cursor:pointer}
+  .wish:hover{background:var(--gold);color:var(--paper)}
+
+  /* ─────────────────────────────────────────────────────────────
+     The "no number" state — same footprint & rhythm as the gold
+     button, but dormant. Four art-directed takes.
+     ───────────────────────────────────────────────────────────── */
+
+  /* 1 — GHOST OUTLINE: hollow gold-outlined slot, slashed-phone glyph.
+     Reads as "the button exists but is inactive here." */
+  .nn-ghost{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid rgba(164,125,67,.4);background:transparent;color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;opacity:.9}
+  .nn-ghost svg{width:12px;height:12px;stroke:var(--gold);flex:none;opacity:.85}
+
+  /* 2 — ENGRAVED PLATE: a recessed, debossed chip on the paper —
+     feels like an empty nameplate waiting to be filled. */
+  .nn-plate{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:2px;background:linear-gradient(180deg, rgba(22,22,19,.05), rgba(22,22,19,.02));box-shadow:inset 0 1px 2px rgba(22,22,19,.14), inset 0 -1px 0 rgba(255,255,255,.5);color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+  .nn-plate svg{width:12px;height:12px;stroke:var(--muted);flex:none}
+
+  /* 3 — HAIRLINE TAG: no box at all. A tiny gold tick + two-line
+     micro-label. The most editorial / least button-like. */
+  .nn-tag{display:inline-flex;align-items:center;gap:9px;white-space:nowrap}
+  .nn-tag .bar{width:2px;height:26px;background:linear-gradient(180deg,var(--gold-soft),transparent)}
+  .nn-tag .txt{display:flex;flex-direction:column;gap:3px;text-align:right}
+  .nn-tag .txt b{font:600 9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+  .nn-tag .txt span{font:8px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+  /* 4 — DOTTED PILL: soft dotted ring, pill shape, muted dot +
+     label. Quiet but intentional, mirrors button size. */
+  .nn-pill{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:999px;border:1px dashed rgba(22,22,19,.28);background:rgba(22,22,19,.03);color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+  .nn-pill .dot{width:6px;height:6px;border-radius:50%;border:1.5px solid var(--muted);flex:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="intro">Correction noted — the WISH button is <b>golden</b> (gold-soft → gold on hover), not green. Here are four art-directed "no player number" states, each the dormant counterpart to the gold button. Top row of every panel = a player WITH a number (real gold WISH) for contrast.</p>
+
+  <!-- 1 GHOST OUTLINE -->
+  <div class="panel">
+    <div class="vlabel">01 · Ghost outline</div>
+    <div class="vnote">Hollow gold-outlined slot with a slashed-phone glyph — same shape as the button, visibly inactive.</div>
+    <div class="brit-deadline">
+      <div class="brit-code">Today</div>
+      <div><h3>Gontie Diomande</h3><p>Maccabi Bnei Reineh / turns 24</p></div>
+      <div class="action"><button class="wish">Send wishes</button><time>Today</time></div>
+    </div>
+    <div class="brit-deadline">
+      <div class="brit-code">Today</div>
+      <div><h3>Ofoeke Emmanuel</h3><p>Bnei Yehuda / turns 27</p><p class="agent">Agent / <em>David Cohen</em></p></div>
+      <div class="action">
+        <span class="nn-ghost">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18"/><path d="M5 4h3l2 5-2 1a11 11 0 005 5l1-2 5 2v3a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2"/></svg>
+          No number
+        </span>
+        <time>Today</time>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 ENGRAVED PLATE -->
+  <div class="panel">
+    <div class="vlabel">02 · Engraved plate</div>
+    <div class="vnote">A recessed, debossed chip pressed into the paper — like an empty nameplate. Tactile, premium, clearly not clickable.</div>
+    <div class="brit-deadline">
+      <div class="brit-code">Today</div>
+      <div><h3>Gontie Diomande</h3><p>Maccabi Bnei Reineh / turns 24</p></div>
+      <div class="action"><button class="wish">Send wishes</button><time>Today</time></div>
+    </div>
+    <div class="brit-deadline">
+      <div class="brit-code">Today</div>
+      <div><h3>Ofoeke Emmanuel</h3><p>Bnei Yehuda / turns 27</p><p class="agent">Agent / <em>David Cohen</em></p></div>
+      <div class="action">
+        <span class="nn-plate">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18"/><path d="M5 4h3l2 5-2 1a11 11 0 005 5l1-2 5 2v3a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2"/></svg>
+          No number on file
+        </span>
+        <time>Today</time>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 HAIRLINE TAG -->
+  <div class="panel">
+    <div class="vlabel">03 · Hairline tag</div>
+    <div class="vnote">No box at all — a thin gold rule + a two-line micro-label. The most editorial, lets the button rows breathe.</div>
+    <div class="brit-deadline">
+      <div class="brit-code">Today</div>
+      <div><h3>Gontie Diomande</h3><p>Maccabi Bnei Reineh / turns 24</p></div>
+      <div class="action"><button class="wish">Send wishes</button><time>Today</time></div>
+    </div>
+    <div class="brit-deadline">
+      <div class="brit-code">Today</div>
+      <div><h3>Ofoeke Emmanuel</h3><p>Bnei Yehuda / turns 27</p><p class="agent">Agent / <em>David Cohen</em></p></div>
+      <div class="action">
+        <span class="nn-tag"><span class="bar"></span><span class="txt"><b>No number</b><span>on file</span></span></span>
+        <time>Today</time>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 DOTTED PILL -->
+  <div class="panel">
+    <div class="vlabel">04 · Dotted pill</div>
+    <div class="vnote">A soft dashed pill with a hollow dot — quiet but intentional, echoing the button's footprint.</div>
+    <div class="brit-deadline">
+      <div class="brit-code">Today</div>
+      <div><h3>Gontie Diomande</h3><p>Maccabi Bnei Reineh / turns 24</p></div>
+      <div class="action"><button class="wish">Send wishes</button><time>Today</time></div>
+    </div>
+    <div class="brit-deadline">
+      <div class="brit-code">Today</div>
+      <div><h3>Ofoeke Emmanuel</h3><p>Bnei Yehuda / turns 27</p><p class="agent">Agent / <em>David Cohen</em></p></div>
+      <div class="action">
+        <span class="nn-pill"><span class="dot"></span>No number</span>
+        <time>Today</time>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

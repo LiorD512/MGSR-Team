@@ -1005,6 +1005,15 @@ export default function MenDashboard({
                                 {t('room_birthdays_wish')}
                               </button>
                             )}
+                            {isToday && !b.phone && (
+                              <span className="brit-birthday-nonum" aria-label={t('room_birthdays_no_number')}>
+                                <span className="brit-birthday-nonum-bar" aria-hidden />
+                                <span className="brit-birthday-nonum-txt">
+                                  <b>{t('room_birthdays_no_number')}</b>
+                                  <span>{t('room_birthdays_no_number_sub')}</span>
+                                </span>
+                              </span>
+                            )}
                             <time className={isToday ? 'brit-red' : ''}>
                               {isToday
                                 ? t('room_birthdays_today')

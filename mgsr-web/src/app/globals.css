@@ -1667,6 +1667,38 @@ body {
   background: var(--gold);
   color: var(--paper);
 }
+/* "No player number" indicator — hairline tag shown for a today birthday when
+   we don't hold the player's own phone number (dormant counterpart to WISH). */
+.brit-deadline .brit-birthday-nonum {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  white-space: nowrap;
+}
+.brit-deadline .brit-birthday-nonum-bar {
+  width: 2px;
+  height: 26px;
+  flex: none;
+  background: linear-gradient(180deg, var(--gold-soft), transparent);
+}
+.brit-deadline .brit-birthday-nonum-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: end;
+}
+.brit-deadline .brit-birthday-nonum-txt b {
+  font: 600 9px/1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.brit-deadline .brit-birthday-nonum-txt span {
+  font: 8px/1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 
 /* ── Black module (pending decisions) ── */
 .brit-black-module {
