@@ -8,6 +8,7 @@
     "dev": "next dev",
     "test:scout": "node scripts/test-scout-direct.js",
     "test:diversity": "node scripts/test-scout-diversity.js",
+    "test:fsign": "node scripts/test-flashscore-sign.mjs",
     "freesearch": "python3 scripts/freesearch-proxy.py",
     "build": "next build",
     "start": "next start",

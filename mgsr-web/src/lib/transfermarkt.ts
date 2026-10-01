@@ -583,10 +583,7 @@ export async function handleNextMatch(playerUrl: string): Promise<{ match: NextM
   const scheduleUrl = clubUrl ? fixtureScheduleUrl(clubUrl, currentSeasonYearForFixtures()) : null;
   if (!clubUrl || !scheduleUrl) return { match: null };
 
-  const [scheduleHtml, clubHtml] = await Promise.all([
-    fetchHtmlWithRetry(scheduleUrl),
-    fetchHtmlWithRetry(clubUrl),
-  ]);
+  const scheduleHtml = await fetchHtmlWithRetry(scheduleUrl);
   const $schedule = cheerio.load(scheduleHtml);
   const clubId = clubIdFromUrl(clubUrl);
   const currentClubName = normalizeFixtureTeamName(player.currentClub?.clubName || '');
@@ -635,11 +632,10 @@ export async function handleNextMatch(playerUrl: string): Promise<{ match: NextM
   const next = candidates[0];
   if (!next) return { match: null };
 
-  const $club = cheerio.load(clubHtml);
-  const stadiumLink = $club('a[href*="/stadion/"]').first();
-  next.venue = stadiumLink.length
-    ? (stadiumLink.text() || stadiumLink.attr('title') || '').replace(/\s+/g, ' ').trim() || null
-    : null;
+  // `venue` stays null deliberately. The club page only lists the club's own
+  // stadium, which is the wrong ground whenever the fixture is away or played
+  // at a neutral venue — and a plausible-looking wrong stadium is worse than
+  // none. Per-match venue comes from Flashscore's signed feed instead.
   return { match: next };
 }
 

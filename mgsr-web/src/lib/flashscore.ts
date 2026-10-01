@@ -1,11 +1,15 @@
-import * as cheerio from 'cheerio';
 import { handlePlayer } from '@/lib/transfermarkt';
+import {
+  getFlashscoreSign,
+  refreshFlashscoreSign,
+  observeSignFromHtml,
+} from '@/lib/flashscoreSign';
 
 const FLASHSCORE_BASE = 'https://www.flashscore.com';
 const FLASHSCORE_SEARCH = 'https://s.livesport.services/api/v2/search/';
 const FLASHSCORE_FEED = 'https://local-global.flashscore.ninja/2/x/feed';
-const FLASHSCORE_FSIGN = 'SW9D1eZo';
 const FLASHSCORE_TIME_ZONE = 'Asia/Jerusalem';
+const FSIGN_LOG = '[flashscore:fsign]';
 
 interface FlashscoreSearchResult {
   id: string;
@@ -230,6 +234,27 @@ function field(chunk: string, key: string): string {
   return match?.[1]?.trim() || '';
 }
 
+/**
+ * Any current match id, for the signature health probe. Discovered rather than
+ * hardcoded because a fixture id ages out, and a dead id would otherwise look
+ * like a rejected signature.
+ */
+export async function findProbeMatchId(): Promise<string | null> {
+  try {
+    const html = await fetchFlashscore(`${FLASHSCORE_BASE}/team/maccabi-tel-aviv/req5XE5Q/`);
+    observeSignFromHtml(html, 'team-page');
+    const feed = extractSummaryFixtures(html);
+    if (!feed) return null;
+    for (const chunk of feed.split('¬~')) {
+      const matchId = field(chunk, 'AA');
+      if (matchId) return matchId;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function extractSummaryFixtures(html: string): string | null {
   const feedMatch = html.match(
     /initialFeeds\[\s*["']summary-fixtures["']\s*\]\s*=\s*\{\s*data\s*:\s*`([\s\S]*?)`/
@@ -260,15 +285,6 @@ function formatFlashscoreDate(timestamp: number): { date: string; time: string }
   };
 }
 
-/** The home club's default stadium — a fallback only; it is wrong for neutral
-    venues, so the per-match feed is consulted first. */
-function extractDefaultVenue(html: string): string | null {
-  const $ = cheerio.load(html);
-  const text = $.root().text().replace(/\s+/g, ' ');
-  const match = text.match(/Stadium:\s*(.+?)\s+Capacity:/i);
-  return match?.[1]?.trim() || null;
-}
-
 function parseVenueFeed(payload: string): string | null {
   const info = new Map<string, string>();
   let key = '';
@@ -289,18 +305,64 @@ function parseVenueFeed(payload: string): string | null {
   return town && !stadium.includes(town) ? `${stadium}, ${town}` : stadium;
 }
 
-/** Per-match venue — correct for away and neutral fixtures. */
-async function fetchMatchVenue(matchId: string): Promise<string | null> {
+type VenueAttempt =
+  | { kind: 'ok'; venue: string | null }
+  | { kind: 'rejected'; status: number }
+  | { kind: 'error'; detail: string };
+
+async function requestVenue(matchId: string, sign: string): Promise<VenueAttempt> {
   try {
     const response = await fetch(`${FLASHSCORE_FEED}/df_sui_1_${matchId}`, {
-      headers: { ...flashscoreHeaders(), 'x-fsign': FLASHSCORE_FSIGN },
+      headers: { ...flashscoreHeaders(), 'x-fsign': sign },
       signal: AbortSignal.timeout(15000),
     });
-    if (!response.ok) return null;
-    return parseVenueFeed(await response.text());
-  } catch {
+    if (response.status === 401 || response.status === 403) {
+      return { kind: 'rejected', status: response.status };
+    }
+    if (!response.ok) return { kind: 'error', detail: `HTTP ${response.status}` };
+    return { kind: 'ok', venue: parseVenueFeed(await response.text()) };
+  } catch (error) {
+    return { kind: 'error', detail: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Per-match venue — correct for away and neutral fixtures.
+ *
+ * A null return is normal: plenty of fixtures simply have no venue on record.
+ * Only an outright rejection means the signature has rotated, so that is the
+ * one case that triggers a refresh — and at most once, enforced by this being
+ * a straight line rather than a loop.
+ */
+async function fetchMatchVenue(matchId: string): Promise<string | null> {
+  const held = await getFlashscoreSign();
+  const first = await requestVenue(matchId, held.sign);
+
+  if (first.kind === 'ok') return first.venue;
+  if (first.kind === 'error') {
+    console.warn(`${FSIGN_LOG} venue feed unavailable (match ${matchId}): ${first.detail}`);
     return null;
   }
+
+  // Rejected. refreshFlashscoreSign has already logged why it could not help.
+  const refreshed = await refreshFlashscoreSign(held.sign);
+  if (!refreshed) return null;
+
+  const retry = await requestVenue(matchId, refreshed.sign);
+  if (retry.kind === 'ok') {
+    console.warn(
+      `${FSIGN_LOG} rotated and recovered: ${held.sign} -> ${refreshed.sign} (match ${matchId})`
+    );
+    return retry.venue;
+  }
+  if (retry.kind === 'rejected') {
+    console.error(
+      `${FSIGN_LOG} UNRECOVERABLE: freshly derived signature ${refreshed.sign} also rejected (${retry.status}) for match ${matchId}`
+    );
+    return null;
+  }
+  console.warn(`${FSIGN_LOG} venue feed unavailable after refresh (match ${matchId}): ${retry.detail}`);
+  return null;
 }
 
 interface ScoredTeam {
@@ -393,13 +455,17 @@ export async function handleFlashscoreNextMatch(
 
   const teamUrl = `${FLASHSCORE_BASE}/team/${team.url}/${team.id}/`;
   const teamHtml = await fetchFlashscore(teamUrl);
+  // The team page publishes the feed signature, and we are holding its HTML
+  // anyway — so a rotation is usually caught here, before it can reject the
+  // venue request further down.
+  observeSignFromHtml(teamHtml, 'team-page');
   const fixtureFeed = extractSummaryFixtures(teamHtml);
   if (!fixtureFeed) return { match: null };
 
   const today = Math.floor(Date.now() / 1000);
   let competition: string | null = null;
   const candidates: Array<
-    FlashscoreNextMatch & { timestamp: number; matchId: string; homeTeamUrl: string }
+    FlashscoreNextMatch & { timestamp: number; matchId: string }
   > = [];
 
   for (const chunk of fixtureFeed.split('¬~')) {
@@ -442,7 +508,6 @@ export async function handleFlashscoreNextMatch(
       sourceUrl: matchUrl,
       teamUrl,
       matchId,
-      homeTeamUrl: `${FLASHSCORE_BASE}/team/${homeSlug}/${homeId}/`,
     });
   }
 
@@ -450,19 +515,16 @@ export async function handleFlashscoreNextMatch(
   const next = candidates[0];
   if (!next) return { match: null };
 
-  // Venue comes from the per-match feed so away and neutral games are right;
-  // the home club's default stadium is only a fallback.
+  // Venue is authoritative-only: the per-match feed, or nothing. Substituting
+  // the home club's default ground would be wrong for neutral venues and
+  // groundshares, and a plausible-looking wrong stadium is worse than none.
   const [feedVenue, matchHtml] = await Promise.all([
     fetchMatchVenue(next.matchId),
     fetchFlashscore(next.sourceUrl).catch(() => ''),
   ]);
-  next.round = matchHtml ? extractStage(matchHtml) : null;
   next.venue = feedVenue;
-  if (!next.venue) {
-    const homeTeamHtml = await fetchFlashscore(next.homeTeamUrl).catch(() => '');
-    next.venue = homeTeamHtml ? extractDefaultVenue(homeTeamHtml) : null;
-  }
+  next.round = matchHtml ? extractStage(matchHtml) : null;
 
-  const { timestamp: _timestamp, matchId: _matchId, homeTeamUrl: _homeTeamUrl, ...match } = next;
+  const { timestamp: _timestamp, matchId: _matchId, ...match } = next;
   return { match };
 }

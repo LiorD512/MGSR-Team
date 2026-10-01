@@ -47,9 +47,9 @@ export async function gatherMatchFacts(input: FactsInput): Promise<MatchdayMatch
   ]);
 
   // Prefer Flashscore; fall back to Transfermarkt when Flashscore is absent.
-  const primary = fs ? toView(fs) : tm ? toView(tm) : null;
+  const primary = fs ? toView(fs, 'flashscore') : tm ? toView(tm, 'transfermarkt') : null;
   if (!primary) return null;
-  const secondary = fs && tm ? toView(tm) : null;
+  const secondary = fs && tm ? toView(tm, 'transfermarkt') : null;
 
   // Merge: primary wins, secondary backfills nulls (esp. venue/round/time).
   const merged: FixtureView = {
@@ -125,7 +125,14 @@ function parseCompetition(
   return { country: clubCountry?.trim() || null, competition: value };
 }
 
-function toView(m: FlashscoreNextMatch | NextMatch): FixtureView {
+/**
+ * Transfermarkt reports kickoff in Europe/Berlin with no marker to convert
+ * from, so its time is wrong for any other league, and it has no per-match
+ * venue. Both are dropped here rather than at the merge below, because when
+ * Flashscore finds nothing the Transfermarkt view becomes the *primary* one and
+ * would otherwise feed those values straight through.
+ */
+function toView(m: FlashscoreNextMatch | NextMatch, source: 'flashscore' | 'transfermarkt'): FixtureView {
   const x = m as Partial<FlashscoreNextMatch> & NextMatch;
   return {
     opponent: x.opponent,
@@ -134,8 +141,8 @@ function toView(m: FlashscoreNextMatch | NextMatch): FixtureView {
     competition: x.competition ?? null,
     round: x.round ?? null,
     date: x.date,
-    time: x.time ?? null,
-    venue: x.venue ?? null,
+    time: source === 'flashscore' ? x.time ?? null : null,
+    venue: source === 'flashscore' ? x.venue ?? null : null,
   };
 }
 

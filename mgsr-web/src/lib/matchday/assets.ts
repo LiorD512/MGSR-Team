@@ -234,8 +234,9 @@ async function gatherStadium(
 
   if (!venue) return null;
 
-  // Prefer the exact venue name; fall back to the hosting club's stadium.
-  const hostClub = input.facts.playerSide === 'home' ? input.facts.homeTeam : input.facts.awayTeam;
+  // Prefer the exact venue name; fall back to the hosting club's stadium. The
+  // host is always the home side, regardless of which side the player is on.
+  const hostClub = input.facts.homeTeam;
   const queries = [
     `${venue} stadium football`,
     `${hostClub} stadium ${venue}`.trim(),
