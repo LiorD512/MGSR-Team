@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MGSR — Platform Switcher Concepts (Men / Youth)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#171715; --paper:#e9e6df; --paper-deep:#d8d4ca;
+      --black:#20201d; --black-2:#2b2b26;
+      --white:#f4f1e9; --muted:#817e76; --line:rgba(23,23,21,.22); --dark-line:rgba(244,241,233,.2);
+      --red:#c6382f;               /* MEN accent */
+      --gold:#a47d43;              /* YOUTH accent */
+      --gold-soft:#c9a66b; --gold-bright:#e7c079;
+      --display:'Oswald',Impact,sans-serif; --body:'Manrope',Helvetica,sans-serif; --mono:'DM Mono',monospace;
+    }
+    *{box-sizing:border-box;}
+    html{background:var(--paper);}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased;}
+    body::before{content:'';position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.05;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent;}
+    ::selection{background:var(--red);color:var(--white);}
+
+    .page{max-width:1240px;margin:0 auto;padding:48px 30px 110px;}
+    .masthead{margin-bottom:10px;}
+    .masthead .kick{color:var(--red);font:10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;}
+    .masthead .kick::before{content:'';display:inline-block;width:26px;height:1px;vertical-align:middle;margin-right:11px;background:var(--red);}
+    .masthead h1{margin:16px 0 0;font:600 clamp(38px,5vw,60px)/.9 var(--display);letter-spacing:-.02em;text-transform:uppercase;}
+    .masthead h1 span{color:var(--red);}
+    .masthead p{margin:14px 0 0;max-width:760px;color:var(--muted);font:14px/1.65 var(--body);}
+    .masthead p b{color:var(--ink);}
+
+    /* concept block */
+    .concept{margin-top:64px;}
+    .chead{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:26px;}
+    .chead .num{font:11px/1 var(--mono);color:var(--red);letter-spacing:.14em;}
+    .chead h2{font:600 22px/1 var(--display);text-transform:uppercase;letter-spacing:.02em;}
+    .chead .desc{margin-left:auto;max-width:460px;text-align:right;color:var(--muted);font:11px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.02em;}
+
+    .stage{display:grid;grid-template-columns:280px 1fr;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--paper);box-shadow:0 20px 50px -32px rgba(23,23,21,.5);}
+    .rail{background:var(--black);color:var(--white);padding:22px 20px;display:flex;flex-direction:column;min-height:340px;}
+    .brand{display:flex;gap:9px;align-items:center;padding-bottom:20px;border-bottom:1px solid var(--dark-line);font:600 14px/1 var(--display);letter-spacing:.08em;}
+    .brand b{color:var(--accent,var(--red));}
+    .rail-cap{margin:22px 0 10px;color:#8e8b82;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em;}
+    .rnav{display:grid;gap:2px;}
+    .rnav a{display:flex;justify-content:space-between;padding:9px 0;color:#b9b5aa;font:11px/1 var(--mono);text-transform:uppercase;}
+    .rnav a.on{color:var(--white);}
+    .rnav a em{color:var(--accent,var(--red));font-style:normal;}
+    .stage-body{padding:26px 28px;}
+    .sb-kick{color:var(--accent,var(--red));font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;transition:color .5s;}
+    .sb-title{margin:12px 0 0;font:500 clamp(30px,3.6vw,50px)/.85 var(--display);text-transform:uppercase;letter-spacing:-.02em;}
+    .sb-title span{color:var(--accent,var(--red));transition:color .5s;}
+    .sb-sig{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:22px;}
+    .sb-sig div{padding:14px 16px 16px 0;border-right:1px solid var(--line);}
+    .sb-sig div:last-child{border-right:0;padding-left:16px;}
+    .sb-sig div:nth-child(2){padding-left:16px;}
+    .sb-sig label{display:block;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;}
+    .sb-sig strong{display:block;margin-top:10px;font:500 30px/.8 var(--display);text-transform:uppercase;}
+    .sb-sig strong.a{color:var(--accent,var(--red));transition:color .5s;}
+    .stage-note{margin-top:12px;color:var(--muted);font:11px/1.6 var(--body);}
+
+    /* generic transition for accent-driven bits */
+    .accw{transition:background .5s ease,color .5s ease,border-color .5s ease;}
+
+    /* ══════════════════ 01 — EDITORIAL SEGMENTED TAB (in masthead) ══════════════════ */
+    /* two words separated by a slash; active word inked, the rest ghosted. Feels like a headline, not a control. */
+    .c1-switch{display:inline-flex;align-items:baseline;gap:14px;margin-top:4px;}
+    .c1-switch button{font:500 clamp(30px,3.6vw,50px)/.85 var(--display);text-transform:uppercase;letter-spacing:-.02em;color:rgba(23,23,21,.22);transition:color .35s;padding:0;}
+    .c1-switch button.on{color:var(--ink);}
+    .c1-switch button.on.men{color:var(--red);}
+    .c1-switch button.on.youth{color:var(--gold);}
+    .c1-switch .sl{font:300 clamp(28px,3.4vw,46px)/.85 var(--display);color:rgba(23,23,21,.2);}
+    .c1-switch .ul{position:relative;}
+    .c1-switch .ul::after{content:'';position:absolute;left:0;right:0;bottom:-6px;height:2px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .35s;}
+    .c1-switch button.on .u,.c1-switch button.on.men,.c1-switch button.on.youth{}
+    .c1-mark{display:block;height:2px;margin-top:8px;background:var(--accent,var(--red));width:74px;transition:transform .4s cubic-bezier(.2,.7,.2,1),background .5s;}
+
+    /* ══════════════════ 02 — RAIL SLIDING PILL ══════════════════ */
+    .c2-wrap{margin-top:auto;padding-top:18px;}
+    .c2-cap{color:#8e8b82;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em;margin-bottom:9px;}
+    .c2-track{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;background:var(--black-2);border:1px solid var(--dark-line);border-radius:999px;}
+    .c2-thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--red);transition:transform .42s cubic-bezier(.2,.7,.2,1),background .5s;}
+    .c2-track.youth .c2-thumb{transform:translateX(100%);background:var(--gold);}
+    .c2-track button{position:relative;z-index:1;padding:9px 0;font:600 11px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;color:#b9b5aa;transition:color .3s;}
+    .c2-track button.on{color:var(--white);}
+
+    /* ══════════════════ 03 — CREST FLIP CARD ══════════════════ */
+    .c3-wrap{margin-top:auto;padding-top:18px;}
+    .c3-cap{color:#8e8b82;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;}
+    .c3-card{position:relative;display:flex;align-items:center;gap:13px;padding:13px 14px;border:1px solid var(--dark-line);border-radius:8px;background:var(--black-2);overflow:hidden;transition:border-color .3s;}
+    .c3-card:hover{border-color:rgba(244,241,233,.42);}
+    .c3-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red);transition:background .5s;}
+    .c3-card.youth::before{background:var(--gold);}
+    .c3-crest{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:8px;background:var(--red);color:var(--white);font:600 17px/1 var(--display);transition:background .5s,transform .5s;}
+    .c3-card.youth .c3-crest{background:var(--gold);transform:rotateY(360deg);}
+    .c3-meta{flex:1;min-width:0;}
+    .c3-meta .k{color:#8e8b82;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;}
+    .c3-meta .v{margin-top:5px;color:var(--white);font:600 15px/1 var(--display);text-transform:uppercase;letter-spacing:.03em;}
+    .c3-cyc{width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--dark-line);color:#b9b5aa;font-size:13px;transition:transform .5s,color .3s;}
+    .c3-card:hover .c3-cyc{color:var(--white);}
+    .c3-card:active .c3-cyc{transform:rotate(180deg);}
+
+    /* ══════════════════ 04 — LADDER (age spectrum) ══════════════════ */
+    /* a vertical spectrum: Youth at the base, Men at the top — one marker slides. reads like an age ladder. */
+    .c4-wrap{margin-top:auto;padding-top:18px;}
+    .c4-cap{color:#8e8b82;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em;margin-bottom:12px;}
+    .c4-ladder{position:relative;display:flex;flex-direction:column;gap:0;border-left:2px solid var(--dark-line);margin-left:6px;padding-left:0;}
+    .c4-step{position:relative;padding:12px 0 12px 20px;}
+    .c4-step::before{content:'';position:absolute;left:-6px;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;background:var(--black);border:2px solid var(--dark-line);transition:.35s;}
+    .c4-step.on::before{background:var(--accent,var(--red));border-color:var(--accent,var(--red));box-shadow:0 0 0 4px rgba(198,56,47,.18);}
+    .c4-step .lab{font:600 15px/1 var(--display);text-transform:uppercase;letter-spacing:.03em;color:#7d7a72;transition:color .3s;}
+    .c4-step.on .lab{color:var(--white);}
+    .c4-step .sub{margin-top:4px;color:#8e8b82;font:8px/1.2 var(--mono);text-transform:uppercase;}
+    .c4-glow{position:absolute;left:-2px;width:2px;background:var(--accent,var(--red));transition:top .4s cubic-bezier(.2,.7,.2,1),background .5s;border-radius:2px;}
+
+    /* ══════════════════ 05 — TOPBAR CHIP CYCLE ══════════════════ */
+    .c5-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:-26px -28px 24px;padding:16px 28px;background:var(--black);}
+    .c5-crumb{color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;}
+    .c5-crumb strong{color:var(--white);font-weight:400;}
+    .c5-chip{display:inline-flex;align-items:center;gap:10px;padding:7px 8px 7px 14px;border:1px solid var(--dark-line);border-radius:999px;transition:border-color .3s;}
+    .c5-chip:hover{border-color:rgba(244,241,233,.45);}
+    .c5-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .5s;}
+    .c5-chip.youth .dot{background:var(--gold);}
+    .c5-chip .lbl{color:var(--white);font:600 11px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;}
+    .c5-chip .cyc{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:rgba(244,241,233,.08);color:#cbc6b9;font-size:11px;}
+
+    /* ══════════════════ 06 — SPLIT MONOGRAM (two crests, tap to raise) ══════════════════ */
+    .c6-wrap{margin-top:auto;padding-top:18px;}
+    .c6-cap{color:#8e8b82;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;}
+    .c6-split{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .c6-tile{position:relative;padding:16px 14px;border:1px solid var(--dark-line);border-radius:8px;text-align:left;overflow:hidden;transition:.35s;filter:grayscale(.4);opacity:.6;}
+    .c6-tile .mg{font:600 26px/1 var(--display);}
+    .c6-tile .nm{margin-top:8px;color:#b9b5aa;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;}
+    .c6-tile .ct{margin-top:5px;color:#8e8b82;font:8px/1 var(--mono);text-transform:uppercase;}
+    .c6-tile.men .mg{color:var(--red);}
+    .c6-tile.youth .mg{color:var(--gold);}
+    .c6-tile.on{opacity:1;filter:none;transform:translateY(-3px);border-color:currentColor;background:linear-gradient(180deg,rgba(255,255,255,.05),transparent);}
+    .c6-tile.men.on{border-color:rgba(198,56,47,.6);}
+    .c6-tile.youth.on{border-color:rgba(164,125,67,.6);}
+    .c6-tile .rule{position:absolute;left:0;right:0;bottom:0;height:3px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .35s;}
+    .c6-tile.men.on .rule{color:var(--red);transform:scaleX(1);}
+    .c6-tile.youth.on .rule{color:var(--gold);transform:scaleX(1);}
+
+    .foot{margin-top:70px;padding-top:22px;border-top:1px solid var(--line);color:var(--muted);font:12px/1.7 var(--body);}
+    .foot b{color:var(--ink);}
+    .rec{display:inline-block;margin-top:6px;padding:6px 12px;border:1px solid var(--red);border-radius:999px;color:var(--red);font:9px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;}
+
+    @media(max-width:820px){
+      .stage{grid-template-columns:1fr;}
+      .rail{min-height:0;}
+      .chead .desc{display:none;}
+      .c5-topbar{margin:-26px -28px 22px;}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="masthead">
+      <p class="kick">Design study · Men ⇄ Youth</p>
+      <h1>Six ways to <span>switch platform.</span></h1>
+      <p>Every concept lives inside the real management-room chrome and speaks our language — Oswald display, DM Mono labels, paper + ink + a single accent that flips <b>red for Men</b>, <b>warm gold for Youth</b>. No women platform yet; each one leaves room to add a third later. <b>All six are live — click them.</b></p>
+    </div>
+
+    <!-- 01 -->
+    <section class="concept">
+      <div class="chead"><span class="num">01</span><h2>Editorial Word Switch</h2><span class="desc">The platform name IS the headline. Tap the ghosted word to bring it forward — a moving underline rules under the active one. Feels like typography, not a toggle.</span></div>
+      <div class="stage">
+        <aside class="rail" id="rail-1">
+          <div class="brand"><b>MGSR</b>&nbsp;/ SPORT GROUP</div>
+          <div class="rail-cap">Management room</div>
+          <nav class="rnav"><a class="on">Overview<em>01</em></a><a>Players<em id="np1">42</em></a><a>Requests<em>07</em></a><a>Mandates<em>03</em></a></nav>
+        </aside>
+        <div class="stage-body">
+          <div class="sb-kick" id="k1">Men platform · Live window</div>
+          <div class="c1-switch">
+            <button class="on men" data-p="men" onclick="c1('men')">Men</button>
+            <span class="sl">/</span>
+            <button class="youth" data-p="youth" onclick="c1('youth')">Youth</button>
+          </div>
+          <span class="c1-mark" id="mark1"></span>
+          <div class="sb-sig">
+            <div><label>Portfolio</label><strong id="p1">€48.55M</strong></div>
+            <div><label>Assets</label><strong id="a1">42</strong></div>
+            <div><label>Window</label><strong class="a" id="w1">06d</strong></div>
+          </div>
+          <p class="stage-note">Gentle and confident — the switch reads as part of the page title, so there is zero extra chrome.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 -->
+    <section class="concept">
+      <div class="chead"><span class="num">02</span><h2>Rail Sliding Pill</h2><span class="desc">A rounded two-stop segment pinned to the base of the rail. One thumb glides between Men and Youth and re-tints to the platform accent. Calm, tactile, always in view.</span></div>
+      <div class="stage">
+        <aside class="rail" id="rail-2">
+          <div class="brand"><b>MGSR</b>&nbsp;/ SPORT GROUP</div>
+          <div class="rail-cap">Management room</div>
+          <nav class="rnav"><a class="on">Overview<em>01</em></a><a>Players<em id="np2">42</em></a><a>Requests<em>07</em></a><a>Mandates<em>03</em></a></nav>
+          <div class="c2-wrap">
+            <div class="c2-cap">Active platform</div>
+            <div class="c2-track" id="track2">
+              <div class="c2-thumb"></div>
+              <button class="on" data-p="men" onclick="c2('men')">Men</button>
+              <button data-p="youth" onclick="c2('youth')">Youth</button>
+            </div>
+          </div>
+        </aside>
+        <div class="stage-body">
+          <div class="sb-kick" id="k2">Men platform · Live window</div>
+          <h3 class="sb-title" id="t2">Men <span>roster.</span></h3>
+          <div class="sb-sig">
+            <div><label>Portfolio</label><strong id="p2">€48.55M</strong></div>
+            <div><label>Assets</label><strong id="a2">42</strong></div>
+            <div><label>Window</label><strong class="a" id="w2">06d</strong></div>
+          </div>
+          <p class="stage-note">Reuses the exact segmented-control grammar from the Ledger/Gallery toggle — instantly familiar.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 -->
+    <section class="concept">
+      <div class="chead"><span class="num">03</span><h2>Crest Tile · Tap to Flip</h2><span class="desc">The pinned platform card carries a monogram crest and a spin-cycle glyph. One tap flips the crest (M→Y), swaps the accent bar and cycles the workspace. One control, no menu.</span></div>
+      <div class="stage">
+        <aside class="rail" id="rail-3">
+          <div class="brand"><b>MGSR</b>&nbsp;/ SPORT GROUP</div>
+          <div class="rail-cap">Management room</div>
+          <nav class="rnav"><a class="on">Overview<em>01</em></a><a>Players<em id="np3">42</em></a><a>Requests<em>07</em></a><a>Mandates<em>03</em></a></nav>
+          <div class="c3-wrap">
+            <div class="c3-cap">Active platform · tap to switch</div>
+            <button class="c3-card" id="card3" onclick="c3()">
+              <span class="c3-crest" id="crest3">M</span>
+              <span class="c3-meta"><span class="k">Platform</span><span class="v" id="v3">Men</span></span>
+              <span class="c3-cyc">⟳</span>
+            </button>
+          </div>
+        </aside>
+        <div class="stage-body">
+          <div class="sb-kick" id="k3">Men platform · Live window</div>
+          <h3 class="sb-title" id="t3">Men <span>roster.</span></h3>
+          <div class="sb-sig">
+            <div><label>Portfolio</label><strong id="p3">€48.55M</strong></div>
+            <div><label>Assets</label><strong id="a3">42</strong></div>
+            <div><label>Window</label><strong class="a" id="w3">06d</strong></div>
+          </div>
+          <p class="stage-note">Playful but restrained — the crest flip gives a moment of delight without a heavy dropdown.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 -->
+    <section class="concept">
+      <div class="chead"><span class="num">04</span><h2>Age Ladder</h2><span class="desc">A vertical spectrum that mirrors reality — Youth at the foot, Men at the top. A single accent marker climbs the rail. Conceptually the truest to what the platforms mean.</span></div>
+      <div class="stage">
+        <aside class="rail" id="rail-4">
+          <div class="brand"><b>MGSR</b>&nbsp;/ SPORT GROUP</div>
+          <div class="rail-cap">Management room</div>
+          <nav class="rnav"><a class="on">Overview<em>01</em></a><a>Players<em id="np4">42</em></a><a>Requests<em>07</em></a></nav>
+          <div class="c4-wrap">
+            <div class="c4-cap">Platform ladder</div>
+            <div class="c4-ladder" id="ladder4">
+              <span class="c4-glow" id="glow4"></span>
+              <button class="c4-step on" data-p="men" onclick="c4('men')"><span class="lab">Men</span><span class="sub">Senior · EU & IL</span></button>
+              <button class="c4-step" data-p="youth" onclick="c4('youth')"><span class="lab">Youth</span><span class="sub">Academy · U15–U21</span></button>
+            </div>
+          </div>
+        </aside>
+        <div class="stage-body">
+          <div class="sb-kick" id="k4">Men platform · Live window</div>
+          <h3 class="sb-title" id="t4">Men <span>roster.</span></h3>
+          <div class="sb-sig">
+            <div><label>Portfolio</label><strong id="p4">€48.55M</strong></div>
+            <div><label>Assets</label><strong id="a4">42</strong></div>
+            <div><label>Window</label><strong class="a" id="w4">06d</strong></div>
+          </div>
+          <p class="stage-note">Add a third rung (Women) later and the metaphor still holds perfectly.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section class="concept">
+      <div class="chead"><span class="num">05</span><h2>Topbar Context Chip</h2><span class="desc">A quiet pill living in the breadcrumb bar beside the crumb. It states the platform and cycles on click — mirrors the MEN PLATFORM pill we already ship, made interactive.</span></div>
+      <div class="stage">
+        <aside class="rail" id="rail-5">
+          <div class="brand"><b>MGSR</b>&nbsp;/ SPORT GROUP</div>
+          <div class="rail-cap">Management room</div>
+          <nav class="rnav"><a class="on">Overview<em>01</em></a><a>Players<em id="np5">42</em></a><a>Requests<em>07</em></a><a>Mandates<em>03</em></a></nav>
+        </aside>
+        <div class="stage-body">
+          <div class="c5-topbar">
+            <div class="c5-crumb">MGSR / <strong>Overview</strong> / 30 Sep 2026</div>
+            <button class="c5-chip" id="chip5" onclick="c5()">
+              <span class="dot"></span>
+              <span class="lbl" id="lbl5">Men platform</span>
+              <span class="cyc">⇄</span>
+            </button>
+          </div>
+          <div class="sb-kick" id="k5">Live window</div>
+          <h3 class="sb-title" id="t5">Men <span>roster.</span></h3>
+          <div class="sb-sig">
+            <div><label>Portfolio</label><strong id="p5">€48.55M</strong></div>
+            <div><label>Assets</label><strong id="a5">42</strong></div>
+            <div><label>Window</label><strong class="a" id="w5">06d</strong></div>
+          </div>
+          <p class="stage-note">Best when the rail is busy — the switch rides in the chrome you already look at most.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section class="concept">
+      <div class="chead"><span class="num">06</span><h2>Split Monogram</h2><span class="desc">Two side-by-side crest tiles. The inactive one dims to greyscale; the active one lifts, colours in and draws its accent rule. Both platforms are always visible at a glance.</span></div>
+      <div class="stage">
+        <aside class="rail" id="rail-6">
+          <div class="brand"><b>MGSR</b>&nbsp;/ SPORT GROUP</div>
+          <div class="rail-cap">Management room</div>
+          <nav class="rnav"><a class="on">Overview<em>01</em></a><a>Players<em id="np6">42</em></a><a>Requests<em>07</em></a></nav>
+          <div class="c6-wrap">
+            <div class="c6-cap">Active platform</div>
+            <div class="c6-split">
+              <button class="c6-tile men on" data-p="men" onclick="c6('men')"><div class="mg">M</div><div class="nm">Men</div><div class="ct">Senior</div><span class="rule"></span></button>
+              <button class="c6-tile youth" data-p="youth" onclick="c6('youth')"><div class="mg">Y</div><div class="nm">Youth</div><div class="ct">Academy</div><span class="rule"></span></button>
+            </div>
+          </div>
+        </aside>
+        <div class="stage-body">
+          <div class="sb-kick" id="k6">Men platform · Live window</div>
+          <h3 class="sb-title" id="t6">Men <span>roster.</span></h3>
+          <div class="sb-sig">
+            <div><label>Portfolio</label><strong id="p6">€48.55M</strong></div>
+            <div><label>Assets</label><strong id="a6">42</strong></div>
+            <div><label>Window</label><strong class="a" id="w6">06d</strong></div>
+          </div>
+          <p class="stage-note">Most explicit of the six — nothing is hidden, and a third tile drops straight in.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="foot">
+      <b>My steer:</b> Concept <b>02 (Rail Sliding Pill)</b> for everyday calm and familiarity, or <b>01 (Editorial Word Switch)</b> if you want the switch to feel like a signature MGSR moment. Concept <b>04 (Age Ladder)</b> is the most conceptually honest and scales cleanly to a third platform.
+      <br><span class="rec">Tell me your pick — I'll wire it into the real dashboard</span>
+    </div>
+  </div>
+
+  <script>
+    // shared data per platform
+    const D = {
+      men:   { accent:'#c6382f', kick:'Men platform · Live window', title:'Men <span>roster.</span>',
+               portfolio:'€48.55M', assets:'42', window:'06d', players:'42' },
+      youth: { accent:'#a47d43', kick:'Youth platform · U15–U21', title:'Youth <span>academy.</span>',
+               portfolio:'€6.20M', assets:'28', window:'19d', players:'28' },
+    };
+
+    function paint(n, p){
+      const d = D[p];
+      const rail = document.getElementById('rail-'+n);
+      rail.style.setProperty('--accent', d.accent);
+      const set = (id,val,html)=>{const el=document.getElementById(id);if(el){html?el.innerHTML=val:el.textContent=val;}};
+      set('k'+n, d.kick);
+      set('t'+n, d.title, true);
+      set('p'+n, d.portfolio);
+      set('a'+n, d.assets);
+      set('w'+n, d.window);
+      set('np'+n, d.players);
+    }
+
+    /* 01 — word switch */
+    function c1(p){
+      const wrap = document.querySelectorAll('.c1-switch')[0];
+      wrap.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.p===p));
+      const mark = document.getElementById('mark1');
+      // move the underline mark under the active word
+      mark.style.transform = p==='youth' ? 'translateX(110px)' : 'translateX(0)';
+      mark.style.width = p==='youth' ? '96px' : '74px';
+      mark.style.background = D[p].accent;
+      paint(1,p);
+    }
+
+    /* 02 — sliding pill */
+    function c2(p){
+      const t = document.getElementById('track2');
+      t.classList.toggle('youth', p==='youth');
+      t.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.p===p));
+      paint(2,p);
+    }
+
+    /* 03 — crest flip */
+    let s3='men';
+    function c3(){
+      s3 = s3==='men' ? 'youth' : 'men';
+      const card=document.getElementById('card3');
+      card.classList.toggle('youth', s3==='youth');
+      document.getElementById('crest3').textContent = s3==='men'?'M':'Y';
+      document.getElementById('v3').textContent = s3==='men'?'Men':'Youth';
+      paint(3,s3);
+    }
+
+    /* 04 — age ladder */
+    function c4(p){
+      const l=document.getElementById('ladder4');
+      l.querySelectorAll('.c4-step').forEach(s=>s.classList.toggle('on', s.dataset.p===p));
+      const glow=document.getElementById('glow4');
+      // glow height covers one step; move to youth (2nd step) when selected
+      const step = l.querySelector('.c4-step');
+      const h = step.offsetHeight;
+      glow.style.height = h+'px';
+      glow.style.top = (p==='youth'? h : 0)+'px';
+      glow.style.background = D[p].accent;
+      paint(4,p);
+    }
+
+    /* 05 — topbar chip */
+    let s5='men';
+    function c5(){
+      s5 = s5==='men' ? 'youth' : 'men';
+      const chip=document.getElementById('chip5');
+      chip.classList.toggle('youth', s5==='youth');
+      document.getElementById('lbl5').textContent = s5==='men'?'Men platform':'Youth platform';
+      paint(5,s5);
+    }
+
+    /* 06 — split monogram */
+    function c6(p){
+      document.querySelectorAll('.c6-tile').forEach(t=>t.classList.toggle('on', t.dataset.p===p));
+      paint(6,p);
+    }
+
+    // init the ladder glow after layout
+    window.addEventListener('load', ()=>{ c4('men'); });
+  </script>
+</body>
+</html>

@@ -1361,6 +1361,78 @@ body {
   color: var(--ink);
   font: 11px/1 var(--display);
 }
+
+/* ═══ Platform switch — editorial sliding pill (Men / Youth) ═══
+   Lives in the dark .brit-topbar. Men = gold, Youth = cyan.
+   The thumb glides between the two stops and re-tints. */
+.brit-platform-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid var(--dark-line);
+  border-radius: 999px;
+  background: rgba(17, 17, 15, 0.6);
+  user-select: none;
+}
+.brit-platform-switch:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 3px;
+}
+.brit-platform-switch .brit-ps-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  inset-inline-start: 3px;
+  width: calc(50% - 3px);
+  border-radius: 999px;
+  background: var(--gold-soft);
+  box-shadow: 0 3px 12px -4px rgba(201, 166, 107, 0.7);
+  transition: transform 0.42s cubic-bezier(0.2, 0.75, 0.2, 1), background 0.45s ease,
+    box-shadow 0.45s ease;
+}
+.brit-platform-switch.is-youth .brit-ps-thumb {
+  transform: translateX(100%);
+  background: var(--youth-cyan);
+  box-shadow: 0 3px 12px -4px rgba(0, 212, 255, 0.75);
+}
+[dir='rtl'] .brit-platform-switch.is-youth .brit-ps-thumb {
+  transform: translateX(-100%);
+}
+.brit-platform-switch button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: transparent;
+  color: #8e8b82;
+  font: 600 11px/1 var(--display);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+.brit-platform-switch button .brit-ps-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+.brit-platform-switch button.is-on {
+  color: var(--ink);
+}
+.brit-platform-switch button.is-on .brit-ps-dot {
+  opacity: 1;
+}
+.brit-platform-switch:hover button:not(.is-on) {
+  color: #c4c0b6;
+}
+
 .brit-canvas {
   max-width: 1540px;
   padding: 43px;
@@ -4075,3 +4147,173 @@ body {
 
 .matchday-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .matchday-actions .brit-modal-action { flex: 1; text-align: center; min-width: 100px; }
+
+/* ══ Global player search overlay (dashboard header) ═════════════════════════ */
+.brit-gsearch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+  background: rgba(8, 8, 7, 0.66);
+  backdrop-filter: blur(5px);
+}
+.brit-gsearch {
+  width: min(560px, 100%);
+  background: var(--black);
+  border: 1px solid var(--dark-line);
+  border-top: 3px solid var(--gold);
+  border-radius: 6px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.brit-gsearch-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px;
+  border-bottom: 1px solid var(--dark-line);
+}
+.brit-gsearch-field svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--gold-soft);
+  flex: none;
+}
+.brit-gsearch-field input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--paper);
+  font: 400 16px/1.2 var(--body);
+}
+.brit-gsearch-field input::placeholder {
+  color: var(--muted);
+}
+.brit-gsearch-esc {
+  flex: none;
+  padding: 4px 8px;
+  border: 1px solid var(--dark-line);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  font: 9px/1 var(--mono);
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.brit-gsearch-esc:hover {
+  color: var(--paper);
+  border-color: var(--gold-soft);
+}
+.brit-gsearch-results {
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 6px;
+}
+.brit-gsearch-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: start;
+  transition: background 0.12s ease;
+}
+.brit-gsearch-row.active,
+.brit-gsearch-row:hover {
+  background: rgba(201, 166, 107, 0.12);
+}
+.brit-gsearch-avatar {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(243, 240, 232, 0.08);
+  border: 1px solid var(--dark-line);
+  display: grid;
+  place-items: center;
+}
+.brit-gsearch-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.brit-gsearch-initials {
+  font: 700 12px/1 var(--display);
+  color: var(--gold-soft);
+}
+.brit-gsearch-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.brit-gsearch-info strong {
+  font: 600 14px/1.1 var(--display);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.brit-gsearch-info small {
+  font: 400 11px/1.2 var(--mono);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.brit-gsearch-badge {
+  flex: none;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font: 700 8px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.brit-gsearch-badge.roster {
+  color: #cbe0c8;
+  background: rgba(92, 111, 74, 0.22);
+  border: 1px solid rgba(92, 111, 74, 0.5);
+}
+.brit-gsearch-badge.shortlist {
+  color: var(--gold-bright);
+  background: rgba(201, 166, 107, 0.16);
+  border: 1px solid rgba(201, 166, 107, 0.45);
+}
+.brit-gsearch-empty,
+.brit-gsearch-hint {
+  padding: 22px 16px;
+  text-align: center;
+  color: var(--muted);
+  font: 12px/1.5 var(--mono);
+  letter-spacing: 0.04em;
+}
+
+/* Roster row/card highlight when arrived via global search. */
+@keyframes brit-row-highlight-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(201, 166, 107, 0.5); }
+  60% { box-shadow: 0 0 0 6px rgba(201, 166, 107, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(201, 166, 107, 0); }
+}
+.brit-room tr.brit-row-highlight > td {
+  background: rgba(201, 166, 107, 0.14) !important;
+}
+.brit-room tr.brit-row-highlight > td:first-child {
+  box-shadow: inset 3px 0 0 0 var(--gold);
+}
+.brit-room .brit-player-card.brit-row-highlight {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+  animation: brit-row-highlight-pulse 0.9s ease-out 2;
+}

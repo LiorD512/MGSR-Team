@@ -21,6 +21,7 @@ import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import BritRail from '@/components/BritRail';
+import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import AddContactSheet, { type Contact as AddContactSheetContact } from '@/app/contacts/AddContactSheet';
 import MenAddContactDrawer from '@/components/MenAddContactDrawer';
 
@@ -353,6 +354,7 @@ export default function MenContacts() {
               BRIT / <strong>{t('nav_contacts')}</strong> / {dateStr}
             </div>
             <div className="brit-actions">
+              <BritPlatformSwitch />
               <button onClick={() => setLang(lang === 'en' ? 'he' : 'en')}>{lang === 'en' ? 'HE / EN' : 'EN / HE'}</button>
               <span>TLV {timeStr}</span>
             </div>

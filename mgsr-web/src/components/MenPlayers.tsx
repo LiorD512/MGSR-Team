@@ -15,7 +15,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +27,7 @@ import { openWhatsAppWithMessage } from '@/lib/whatsapp';
 import type { Confederation } from '@/lib/api';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import BritRail from '@/components/BritRail';
+import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import MenAddPlayerDrawer from '@/components/MenAddPlayerDrawer';
 import { isPlayerOurAsset } from '@/lib/transfermarkt-utils';
 import { callPlayersUpdate } from '@/lib/callables';
@@ -184,6 +185,8 @@ export default function MenPlayers() {
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [ready, setReady] = useState(false);
+  const searchParams = useSearchParams();
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [offeredNoFeedbackProfiles, setOfferedNoFeedbackProfiles] = useState<Set<string>>(new Set());
   const [currentAccountName, setCurrentAccountName] = useState<string | null>(null);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
@@ -206,6 +209,24 @@ export default function MenPlayers() {
   const [euNationalOnly, setEuNationalOnly] = useState(cached?.euNationalOnly ?? false);
   const [offeredNoFeedback, setOfferedNoFeedback] = useState(cached?.offeredNoFeedback ?? false);
   const [interestedInIsrael, setInterestedInIsrael] = useState(cached?.interestedInIsrael ?? false);
+
+  // Highlight-on-navigate: /players?highlight=<id> scrolls to that player's row
+  // and glows it briefly (used by the dashboard global search).
+  const highlightParam = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightParam || !ready || players.length === 0) return;
+    const id = decodeURIComponent(highlightParam);
+    if (!players.some((p) => p.id === id)) return;
+    setHighlightedId(id);
+    const el = document.getElementById(`brit-pl-${id}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const clearUrl = setTimeout(() => router.replace('/players', { scroll: false }), 500);
+    const clearHl = setTimeout(() => setHighlightedId(null), 2600);
+    return () => {
+      clearTimeout(clearUrl);
+      clearTimeout(clearHl);
+    };
+  }, [highlightParam, ready, players, router]);
   const [taggedInNotes, setTaggedInNotes] = useState(cached?.taggedInNotes ?? false);
   const [view, setView] = useState<'table' | 'gallery'>(cached?.view ?? 'gallery');
 
@@ -568,6 +589,7 @@ export default function MenPlayers() {
               BRIT / <strong>{t('nav_players')}</strong> / {dateStr}
             </div>
             <div className="brit-actions">
+              <BritPlatformSwitch />
               <button onClick={() => setLang(lang === 'en' ? 'he' : 'en')}>
                 {lang === 'en' ? 'HE / EN' : 'EN / HE'}
               </button>
@@ -785,7 +807,13 @@ export default function MenPlayers() {
                   </thead>
                   <tbody>
                     {displayList.map((p) => (
-                      <tr key={p.id} onClick={() => setDrawer(p)} style={{ cursor: 'pointer' }}>
+                      <tr
+                        key={p.id}
+                        id={`brit-pl-${p.id}`}
+                        className={highlightedId === p.id ? 'brit-row-highlight' : ''}
+                        onClick={() => setDrawer(p)}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <td>
                           <div className="brit-cell-player">
                             {p.profileImage ? (
@@ -838,7 +866,12 @@ export default function MenPlayers() {
                 {displayList.map((p, i) => {
                   const flags = playerFlags(p).filter((f) => f.cls !== 'mandate');
                   return (
-                    <article key={p.id} className="brit-player-card" onClick={() => setDrawer(p)}>
+                    <article
+                      key={p.id}
+                      id={`brit-pl-${p.id}`}
+                      className={`brit-player-card${highlightedId === p.id ? ' brit-row-highlight' : ''}`}
+                      onClick={() => setDrawer(p)}
+                    >
                       {p.profileImage ? (
                         <img src={p.profileImage} alt={p.fullName || ''} />
                       ) : (

@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MGSR — Platform Switch (Topbar, refined)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#171715; --paper:#e9e6df; --paper-deep:#d8d4ca;
+      --black:#20201d; --black-2:#2b2b26;
+      --white:#f4f1e9; --muted:#817e76; --line:rgba(23,23,21,.22); --dark-line:rgba(244,241,233,.2);
+      --red:#c6382f; --gold:#a47d43; --gold-bright:#e7c079;
+      --display:'Oswald',Impact,sans-serif; --body:'Manrope','Heebo',Helvetica,sans-serif; --mono:'DM Mono',monospace;
+      --accent:#c6382f;
+    }
+    *{box-sizing:border-box;}
+    html{background:var(--paper);}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased;}
+    body::before{content:'';position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.05;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent;}
+    ::selection{background:var(--accent);color:var(--white);}
+
+    .intro{max-width:1500px;margin:0 auto;padding:34px 34px 0;}
+    .intro .kick{color:var(--accent);font:10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;transition:color .5s;}
+    .intro .kick::before{content:'';display:inline-block;width:26px;height:1px;vertical-align:middle;margin-right:11px;background:var(--accent);transition:background .5s;}
+    .intro h1{margin:14px 0 0;font:600 30px/1 var(--display);letter-spacing:.01em;text-transform:uppercase;}
+    .intro p{margin:12px 0 0;max-width:820px;color:var(--muted);font:13px/1.65 var(--body);}
+    .intro kbd{font:11px/1 var(--mono);background:var(--black);color:var(--white);padding:3px 7px;border-radius:4px;}
+
+    /* frame */
+    .frame{max-width:1500px;margin:26px auto 0;border:1px solid var(--line);border-radius:9px;overflow:hidden;box-shadow:0 26px 66px -34px rgba(23,23,21,.55);background:var(--paper);}
+    .shell{min-height:660px;display:grid;grid-template-columns:250px minmax(0,1fr);}
+
+    /* rail */
+    .rail{background:var(--black);color:var(--white);padding:24px 20px;display:flex;flex-direction:column;}
+    .brand{display:flex;align-items:center;gap:9px;padding-bottom:22px;border-bottom:1px solid var(--dark-line);font:600 15px/1 var(--display);letter-spacing:.08em;}
+    .brand b{color:var(--accent);transition:color .5s;}
+    .rail-cap{margin:24px 0 12px;color:#8e8b82;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em;}
+    .rnav{display:grid;gap:2px;}
+    .rnav a{display:flex;justify-content:space-between;align-items:center;padding:11px 0;color:#b9b5aa;font:11px/1 var(--mono);text-transform:uppercase;transition:color .2s;}
+    .rnav a:hover{color:var(--white);}
+    .rnav a.on{color:var(--white);}
+    .rnav a.on::before{content:'';width:16px;height:1px;margin-right:-16px;background:var(--accent);transform:translateX(-1px);transition:background .5s;}
+    .rnav a em{color:var(--accent);font-style:normal;transition:color .5s;}
+    .rail-foot{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#aaa69b;font:10px/1.5 var(--mono);}
+    .rail-foot strong{display:block;margin-top:5px;color:var(--white);font-weight:400;}
+
+    /* content */
+    .content{min-width:0;display:flex;flex-direction:column;}
+
+    /* ─────────── THE SWITCH (topbar) ─────────── */
+    .topbar{min-height:70px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:0 30px;background:var(--black);color:#aaa69c;}
+    .crumb{font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;}
+    .crumb strong{color:var(--white);font-weight:400;}
+
+    .switch{position:relative;display:inline-flex;align-items:center;gap:0;padding:4px;border:1px solid var(--dark-line);border-radius:999px;background:#171613;user-select:none;}
+    .switch:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+    .switch .thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--red);
+      box-shadow:0 4px 14px -4px rgba(198,56,47,.7);
+      transition:transform .44s cubic-bezier(.2,.75,.2,1),background .5s,box-shadow .5s;}
+    .switch.youth .thumb{transform:translateX(100%);background:var(--gold);box-shadow:0 4px 14px -4px rgba(164,125,67,.75);}
+    .switch button{position:relative;z-index:1;display:flex;align-items:center;gap:8px;padding:9px 20px;border-radius:999px;
+      font:600 12px/1 var(--display);letter-spacing:.07em;text-transform:uppercase;color:#8e8b82;transition:color .32s;white-space:nowrap;}
+    .switch button .g{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.5;transition:opacity .3s;}
+    .switch button.on{color:var(--white);}
+    .switch button.on .g{opacity:1;}
+    .switch:hover button:not(.on){color:#c4c0b6;}
+
+    .top-actions{display:flex;align-items:center;gap:16px;font:10px/1 var(--mono);text-transform:uppercase;}
+    .top-actions button:hover{color:var(--white);}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--accent);color:var(--white);font:11px/1 var(--display);transition:background .5s;}
+
+    /* board */
+    .board{padding:34px 34px 46px;position:relative;}
+    .swapzone{transition:opacity .28s ease;}
+    .swapzone.out{opacity:0;}
+    .kicker{color:var(--accent);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;transition:color .5s;}
+    .headline{margin:14px 0 0;font:500 clamp(46px,6vw,84px)/.82 var(--display);letter-spacing:-.03em;text-transform:uppercase;}
+    .headline span{color:var(--accent);transition:color .5s;}
+
+    .sig{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:28px;}
+    .sig div{min-height:104px;padding:16px 18px 18px 0;border-right:1px solid var(--line);}
+    .sig div:last-child{border-right:0;}
+    .sig div:not(:first-child){padding-left:18px;}
+    .sig label{display:block;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;}
+    .sig strong{display:block;margin-top:11px;font:500 clamp(28px,3.2vw,44px)/.8 var(--display);text-transform:uppercase;}
+    .sig strong.a{color:var(--accent);transition:color .5s;}
+    .sig small{display:block;margin-top:9px;color:var(--muted);font:9px/1 var(--mono);}
+
+    .rhead{display:flex;align-items:baseline;justify-content:space-between;margin:34px 0 4px;padding-bottom:12px;border-bottom:1px solid var(--line);}
+    .rhead h3{margin:0;font:500 22px/.9 var(--display);text-transform:uppercase;}
+    .rhead span{color:var(--muted);font:10px/1 var(--mono);text-transform:uppercase;}
+    table.roster{width:100%;border-collapse:collapse;}
+    table.roster th{padding:14px 0 9px;color:var(--muted);text-align:left;font:9px/1 var(--mono);font-weight:400;text-transform:uppercase;}
+    table.roster td{padding:14px 0;border-top:1px solid var(--line);font:11px/1.2 var(--mono);}
+    table.roster td:first-child{font-family:var(--body);font-weight:700;}
+    table.roster td:nth-child(2){color:var(--muted);}
+    table.roster td:last-child{text-align:right;}
+
+    /* toast confirmation */
+    .toast{position:fixed;right:24px;bottom:24px;z-index:80;display:flex;align-items:center;gap:10px;padding:13px 16px;background:var(--black);color:var(--white);border-left:3px solid var(--accent);border-radius:5px;font:11px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.04em;opacity:0;transform:translateY(14px);pointer-events:none;transition:opacity .25s,transform .25s;}
+    .toast.show{opacity:1;transform:none;}
+    .toast .d{width:8px;height:8px;border-radius:50%;background:var(--accent);transition:background .5s;}
+
+    /* RTL */
+    [dir="rtl"] .rnav a.on::before{margin-right:0;margin-left:-16px;}
+    [dir="rtl"] .switch .thumb{left:auto;right:4px;}
+    [dir="rtl"] .switch.youth .thumb{transform:translateX(-100%);}
+    [dir="rtl"] .toast{right:auto;left:24px;border-left:0;border-right:3px solid var(--accent);}
+    [dir="rtl"] .sig div{border-right:0;border-left:1px solid var(--line);}
+    [dir="rtl"] .sig div:last-child{border-left:0;}
+    [dir="rtl"] table.roster th,[dir="rtl"] table.roster td{text-align:right;}
+    [dir="rtl"] table.roster td:last-child{text-align:left;}
+
+    @media(max-width:860px){
+      .shell{grid-template-columns:1fr;}
+      .sig{grid-template-columns:1fr 1fr;}
+      .sig div:nth-child(2){border-right:0;}
+      .sig div:nth-child(n+3){border-top:1px solid var(--line);}
+      .topbar{flex-wrap:wrap;min-height:0;padding:12px 18px;gap:12px;}
+      .crumb{order:2;width:100%;}
+    }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <p class="kick" id="kick-line">Refined · built for many switches a day</p>
+    <h1>Platform switch — topbar</h1>
+    <p>Persistent, always in the same corner, one tap to flip. Borrowed the clarity of the editorial concept but kept it in chrome. Click the pill, use <kbd>←</kbd>/<kbd>→</kbd> when it's focused, or press <kbd>P</kbd> anywhere to toggle. The whole room re-skins — red for Men, gold for Youth — and a quiet toast confirms the switch. Try the <b>HE / EN</b> button to see the Hebrew/RTL state.</p>
+  </div>
+
+  <div class="frame">
+    <div class="shell">
+      <!-- rail -->
+      <aside class="rail">
+        <div class="brand"><b>MGSR</b>&nbsp;/ SPORT GROUP</div>
+        <div class="rail-cap" data-t="cap">Management room</div>
+        <nav class="rnav">
+          <a class="on"><span data-t="nav_over">Overview</span><em>01</em></a>
+          <a><span data-t="nav_players">Players</span><em id="nav-players">42</em></a>
+          <a><span data-t="nav_req">Requests</span><em id="nav-req">07</em></a>
+          <a><span data-t="nav_man">Mandates</span><em id="nav-man">03</em></a>
+          <a><span data-t="nav_net">Network</span><em>14</em></a>
+        </nav>
+        <div class="rail-foot"><span data-t="foot_lbl">Active platform</span><strong id="foot-val">Men / Senior</strong></div>
+      </aside>
+
+      <!-- content -->
+      <div class="content">
+        <header class="topbar">
+          <div class="crumb">MGSR / <strong data-t="crumb_over">Overview</strong> / 30 Sep 2026</div>
+
+          <!-- THE SWITCH -->
+          <div class="switch" id="switch" role="tablist" aria-label="Active platform" tabindex="0">
+            <span class="thumb"></span>
+            <button class="on" role="tab" aria-selected="true" data-p="men" onclick="setPlatform('men')"><span class="g"></span><span class="lbl-men">Men</span></button>
+            <button role="tab" aria-selected="false" data-p="youth" onclick="setPlatform('youth')"><span class="g"></span><span class="lbl-youth">Youth</span></button>
+          </div>
+
+          <div class="top-actions">
+            <button onclick="toggleLang()" id="lang">HE / EN</button>
+            <span>TLV 14:45</span>
+            <span class="avatar">LD</span>
+          </div>
+        </header>
+
+        <main class="board">
+          <div class="swapzone" id="swap">
+            <div class="kicker" id="kicker">Men platform · Live window</div>
+            <h2 class="headline" id="headline">Men <span>roster.</span></h2>
+
+            <section class="sig">
+              <div><label data-t="s1">Managed portfolio</label><strong id="s-portfolio">€48.55M</strong><small id="s-portfolio-sub" data-t="s1sub">+€3.40M since January</small></div>
+              <div><label data-t="s2">Roster assets</label><strong id="s-roster">42</strong><small id="s-roster-sub" data-t="s2sub">26 EU passports</small></div>
+              <div><label data-t="s3">Mandates under 30d</label><strong class="a" id="s-man">03</strong><small data-t="s3sub">Action required</small></div>
+              <div><label id="s-win-lbl" data-t="s4">Israel window</label><strong class="a" id="s-win">06d 14h</strong><small id="s-win-sub" data-t="s4sub">Closes 01 October</small></div>
+            </section>
+
+            <div class="rhead"><h3 id="rhead-h" data-t="rhead">Roster intelligence</h3><span id="rhead-sub">Top assets / Men</span></div>
+            <table class="roster">
+              <thead><tr><th data-t="c1">Player</th><th data-t="c2">Club</th><th data-t="c3">Position</th><th id="col4" data-t="c4">Market value</th></tr></thead>
+              <tbody id="rbody"></tbody>
+            </table>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><span class="d"></span><span id="toast-msg">Men platform</span></div>
+
+  <script>
+    // platform data, keyed by language so the switch works in HE and EN alike
+    const D = {
+      en: {
+        men: {
+          accent:'#c6382f', foot:'Men / Senior', kicker:'Men platform · Live window',
+          headline:['Men','roster.'], portfolio:'€48.55M', portfolioSub:'+€3.40M since January',
+          roster:'42', rosterSub:'26 EU passports', man:'03',
+          winLbl:'Israel window', win:'06d 14h', winSub:'Closes 01 October',
+          players:'42', req:'07', navMan:'03',
+          rhead:'Roster intelligence', rheadSub:'Top assets / Men', col4:'Market value',
+          rows:[
+            ['Liel Abada','Charlotte FC','RW / LW','€7.00M'],
+            ['Anan Khalaili','Royale Union SG','RW','€6.50M'],
+            ['Roy Revivo','Maccabi Tel Aviv','LB','€1.80M'],
+            ['Dean David','Maccabi Haifa','CF','€1.50M'],
+            ['Ofri Arad','Kairat Almaty','CB','€800K'],
+          ],
+          toast:'Men platform', swLabel:'Men',
+        },
+        youth: {
+          accent:'#a47d43', foot:'Youth / Academy', kicker:'Youth platform · U15–U21',
+          headline:['Youth','academy.'], portfolio:'€6.20M', portfolioSub:'Projected ceiling €30M+',
+          roster:'28', rosterSub:'9 national-team callups', man:'02',
+          winLbl:'Trial window', win:'19d 06h', winSub:'Winter showcase',
+          players:'28', req:'04', navMan:'02',
+          rhead:'Prospect intelligence', rheadSub:'Top prospects / Youth', col4:'Potential',
+          rows:[
+            ['Ilay Madmon','Maccabi Netanya U19','CM','★★★★★'],
+            ['Adam Gabai','Beitar Jerusalem U18','ST','★★★★☆'],
+            ['Noam Peretz','Hapoel Tel Aviv U17','GK','★★★★☆'],
+            ['Eden Kartsev','Maccabi Haifa U19','AM','★★★★★'],
+            ['Yarin Levi','Ashdod U16','RB','★★★☆☆'],
+          ],
+          toast:'Youth platform', swLabel:'Youth',
+        },
+      },
+      he: {
+        men: {
+          accent:'#c6382f', foot:'בוגרים / בכיר', kicker:'פלטפורמת בוגרים · חלון פעיל',
+          headline:['בוגרים','סגל.'], portfolio:'€48.55M', portfolioSub:'+€3.40M מינואר',
+          roster:'42', rosterSub:'26 דרכונים אירופיים', man:'03',
+          winLbl:'חלון ישראל', win:'06 ימים', winSub:'נסגר ב-1 באוק׳',
+          players:'42', req:'07', navMan:'03',
+          rhead:'מודיעין סגל', rheadSub:'נכסים מובילים / בוגרים', col4:'שווי שוק',
+          rows:[
+            ['ליאל עבדה','שרלוט FC','RW / LW','€7.00M'],
+            ['ענאן ח׳לאילי','יוניון SG','RW','€6.50M'],
+            ['רועי רביבו','מכבי תל אביב','LB','€1.80M'],
+            ['דין דוד','מכבי חיפה','CF','€1.50M'],
+            ['אופרי ארד','קיראט','CB','€800K'],
+          ],
+          toast:'פלטפורמת בוגרים', swLabel:'בוגרים',
+        },
+        youth: {
+          accent:'#a47d43', foot:'נוער / אקדמיה', kicker:'פלטפורמת נוער · U15–U21',
+          headline:['נוער','אקדמיה.'], portfolio:'€6.20M', portfolioSub:'תקרה חזויה €30M+',
+          roster:'28', rosterSub:'9 נבחרת לאומית', man:'02',
+          winLbl:'חלון מבחנים', win:'19 יום', winSub:'ראווה חורף',
+          players:'28', req:'04', navMan:'02',
+          rhead:'מודיעין כישרונות', rheadSub:'כישרונות מובילים / נוער', col4:'פוטנציאל',
+          rows:[
+            ['עילי מדמון','מכבי נתניה U19','CM','★★★★★'],
+            ['אדם גבאי','ביתר ירושלים U18','ST','★★★★☆'],
+            ['נועם פרץ','הפועל ת"א U17','GK','★★★★☆'],
+            ['עדן קרצב','מכבי חיפה U19','AM','★★★★★'],
+            ['ירין לוי','אשדוד U16','RB','★★★☆☆'],
+          ],
+          toast:'פלטפורמת נוער', swLabel:'נוער',
+        },
+      },
+    };
+
+    // static chrome strings per language (things NOT tied to platform)
+    const CHROME = {
+      he:{ cap:'חדר ניהול', nav_over:'סקירה', nav_players:'שחקנים', nav_req:'בקשות', nav_man:'מנדטים', nav_net:'רשת',
+           foot_lbl:'פלטפורמה פעילה', crumb_over:'סקירה',
+           s1:'תיק מנוהל', s1sub:'', s2:'נכסי סגל', s2sub:'', s3:'מנדטים מתחת ל-30 יום', s3sub:'נדרשת פעולה',
+           s4:'', s4sub:'', c1:'שחקן', c2:'מועדון', c3:'עמדה' },
+    };
+
+    let current = 'men';
+    let lang = 'en';
+    const $ = id => document.getElementById(id);
+
+    function renderRows(rows){
+      $('rbody').innerHTML = rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('');
+    }
+
+    // paint everything platform-related, in the current language
+    function applyPlatform(animated){
+      const d = D[lang][current];
+      document.documentElement.style.setProperty('--accent', d.accent);
+
+      // the switch
+      const sw = $('switch');
+      sw.classList.toggle('youth', current==='youth');
+      sw.querySelectorAll('button').forEach(b=>{
+        const on = b.dataset.p===current;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-selected', on?'true':'false');
+      });
+      document.querySelector('.lbl-men').textContent = D[lang].men.swLabel;
+      document.querySelector('.lbl-youth').textContent = D[lang].youth.swLabel;
+
+      const write = ()=>{
+        $('foot-val').textContent = d.foot;
+        $('kicker').textContent = d.kicker;
+        $('headline').innerHTML = `${d.headline[0]} <span>${d.headline[1]}</span>`;
+        $('s-portfolio').textContent = d.portfolio;
+        $('s-portfolio-sub').textContent = d.portfolioSub;
+        $('s-roster').textContent = d.roster;
+        $('s-roster-sub').textContent = d.rosterSub;
+        $('s-man').textContent = d.man;
+        $('s-win-lbl').textContent = d.winLbl;
+        $('s-win').textContent = d.win;
+        $('s-win-sub').textContent = d.winSub;
+        $('nav-players').textContent = d.players;
+        $('nav-req').textContent = d.req;
+        $('nav-man').textContent = d.navMan;
+        $('rhead-h').textContent = d.rhead;
+        $('rhead-sub').textContent = d.rheadSub;
+        $('col4').textContent = d.col4;
+        renderRows(d.rows);
+      };
+
+      if(animated){
+        const zone = $('swap');
+        zone.classList.add('out');
+        setTimeout(()=>{ write(); zone.classList.remove('out'); }, 180);
+      } else {
+        write();
+      }
+    }
+
+    function setPlatform(p, silent){
+      if(p===current && !silent) return;
+      current = p;
+      applyPlatform(!silent);
+      if(!silent){
+        const d = D[lang][current];
+        $('toast-msg').textContent = d.toast;
+        const t = $('toast'); t.classList.add('show');
+        clearTimeout(window._tt);
+        window._tt = setTimeout(()=>t.classList.remove('show'), 1600);
+      }
+    }
+
+    // keyboard: arrows when focused, P anywhere
+    $('switch').addEventListener('keydown', e=>{
+      if(e.key==='ArrowRight'||e.key==='ArrowLeft'){ e.preventDefault(); setPlatform((document.documentElement.dir==='rtl'? (e.key==='ArrowLeft'):(e.key==='ArrowRight'))?'youth':'men'); }
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setPlatform(current==='men'?'youth':'men'); }
+    });
+    document.addEventListener('keydown', e=>{
+      if((e.key==='p'||e.key==='P') && !/input|textarea/i.test(e.target.tagName)) setPlatform(current==='men'?'youth':'men');
+    });
+
+    // language / RTL
+    let ENcache = {};
+    function toggleLang(){
+      const goingHe = lang==='en';
+      if(goingHe){ // cache English chrome once
+        document.querySelectorAll('[data-t]').forEach(el=>{ if(!(el.dataset.t in ENcache)) ENcache[el.dataset.t]=el.textContent; });
+      }
+      lang = goingHe ? 'he' : 'en';
+      const root=document.documentElement;
+      root.dir = goingHe?'rtl':'ltr'; root.lang = goingHe?'he':'en';
+      $('lang').textContent = goingHe?'EN / HE':'HE / EN';
+      // static chrome labels
+      document.querySelectorAll('[data-t]').forEach(el=>{
+        const k=el.dataset.t;
+        el.textContent = goingHe ? (CHROME.he[k]??ENcache[k]??el.textContent) : (ENcache[k]??el.textContent);
+      });
+      // re-render platform strings in the new language (no animation)
+      applyPlatform(false);
+    }
+
+    // init
+    applyPlatform(false);
+  </script>
+</body>
+</html>

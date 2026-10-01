@@ -14,6 +14,7 @@ import { useCallback, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import BritRail from '@/components/BritRail';
+import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import type { Confederation } from '@/lib/api';
 
 type FootSide = 'left' | 'right' | 'both' | null;
@@ -167,6 +168,7 @@ export default function MenContractFinisher(props: MenContractFinisherProps) {
               BRIT / <strong>{t('nav_contract_finisher')}</strong> / {dateStr}
             </div>
             <div className="brit-actions">
+              <BritPlatformSwitch />
               <button onClick={() => setLang(lang === 'en' ? 'he' : 'en')}>{lang === 'en' ? 'HE / EN' : 'EN / HE'}</button>
               <span>TLV {timeStr}</span>
             </div>

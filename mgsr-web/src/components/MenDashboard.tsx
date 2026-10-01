@@ -13,7 +13,7 @@
  * derived data in as props. Buttons/links point to real routes.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLanguage, translateType } from '@/contexts/LanguageContext';
@@ -22,7 +22,9 @@ import { extractPlayerIdFromUrl } from '@/lib/api';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import { openWhatsAppWithMessage } from '@/lib/whatsapp';
 import BritRail from '@/components/BritRail';
+import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import MatchdayGeneratorModal, { type MatchdaySeed } from '@/components/MatchdayGeneratorModal';
+import GlobalPlayerSearch, { type ShortlistSearchItem } from '@/components/GlobalPlayerSearch';
 import { db } from '@/lib/firebase';
 import { callPlayersUpdate } from '@/lib/callables';
 import {
@@ -488,6 +490,8 @@ export default function MenDashboard({
     instagramHandle?: string;
   } | null>(null);
   const [matchdaySeed, setMatchdaySeed] = useState<MatchdaySeed | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [shortlistItems, setShortlistItems] = useState<ShortlistSearchItem[]>([]);
   const [nextMatch, setNextMatch] = useState<DossierNextMatch | null>(null);
   const [nextMatchState, setNextMatchState] = useState<'idle' | 'loading' | 'ready' | 'unavailable' | 'error'>('idle');
   const [showAllActivity, setShowAllActivity] = useState(false);
@@ -505,6 +509,56 @@ export default function MenDashboard({
     if (!p.playerPhoneNumber) return;
     openWhatsAppWithMessage(p.playerPhoneNumber, `${p.fullName || ''}`.trim());
   };
+
+  // Load shortlist entries for global search — subscribe once, the first time
+  // the search is opened, so the dashboard doesn't pay for it up front. A ref
+  // guard (not a state dep) ensures the effect isn't torn down/re-run when the
+  // "opened" flag flips, which would cancel the async subscription mid-flight.
+  const shortlistUnsubRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    // Subscribe once, the first time search opens. Persist for the session so
+    // reopening is instant; clean up only on unmount (separate effect below).
+    if (!searchOpen || shortlistUnsubRef.current) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { collection, onSnapshot } = await import('firebase/firestore');
+        if (cancelled) return;
+        shortlistUnsubRef.current = onSnapshot(collection(db, 'Shortlists'), (snap) => {
+          const seen = new Set<string>();
+          const items: ShortlistSearchItem[] = [];
+          snap.docs.forEach((d) => {
+            const e = d.data() as Record<string, unknown>;
+            const url = (e.tmProfileUrl as string) || '';
+            if (!url || seen.has(url)) return;
+            seen.add(url);
+            const club = e.currentClub && typeof e.currentClub === 'object'
+              ? (e.currentClub as { clubName?: string }).clubName
+              : undefined;
+            items.push({
+              tmProfileUrl: url,
+              playerName: (e.playerName as string) || (e.fullName as string) || undefined,
+              playerImage: (e.playerImage as string) || undefined,
+              clubName: (e.clubJoinedName as string) || club || undefined,
+              positions: Array.isArray(e.positions)
+                ? (e.positions as string[])
+                : e.playerPosition
+                  ? [e.playerPosition as string]
+                  : undefined,
+            });
+          });
+          setShortlistItems(items);
+        });
+      } catch (err) {
+        console.error('[dashboard] shortlist search load failed:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchOpen]);
+  // Tear the shortlist listener down when the dashboard unmounts.
+  useEffect(() => () => shortlistUnsubRef.current?.(), []);
 
   const handleToggleOurAsset = async (targetPlayerId: string, currentStatus: boolean) => {
     const nextStatus = !currentStatus;
@@ -861,10 +915,11 @@ export default function MenDashboard({
               BRIT / <strong>{t('nav_dashboard')}</strong> / {dateStr}
             </div>
             <div className="brit-actions">
+              <BritPlatformSwitch />
               <button onClick={() => setLang(lang === 'en' ? 'he' : 'en')}>
                 {lang === 'en' ? 'HE / EN' : 'EN / HE'}
               </button>
-              <button onClick={() => router.push('/players')}>{t('room_search')}</button>
+              <button onClick={() => setSearchOpen(true)}>{t('room_search')}</button>
               <span>TLV {timeStr}</span>
               <span className="brit-avatar">{initials}</span>
             </div>
@@ -1629,6 +1684,13 @@ export default function MenDashboard({
 
       {matchdaySeed && (
         <MatchdayGeneratorModal seed={matchdaySeed} onClose={() => setMatchdaySeed(null)} />
+      )}
+      {searchOpen && (
+        <GlobalPlayerSearch
+          roster={rosterPlayers}
+          shortlist={shortlistItems}
+          onClose={() => setSearchOpen(false)}
+        />
       )}
     </div>
   );

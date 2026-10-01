@@ -12,6 +12,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import BritRail from '@/components/BritRail';
+import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 
 type SortMode = 'date_desc' | 'date_asc' | 'value_desc' | 'value_asc';
 
@@ -131,6 +132,7 @@ export default function MenClubChanges(props: MenClubChangesProps) {
               BRIT / <strong>{t('nav_club_change_notifications')}</strong> / {dateStr}
             </div>
             <div className="brit-actions">
+              <BritPlatformSwitch />
               <button onClick={() => setLang(lang === 'en' ? 'he' : 'en')}>{lang === 'en' ? 'HE / EN' : 'EN / HE'}</button>
               <span>TLV {timeStr}</span>
             </div>

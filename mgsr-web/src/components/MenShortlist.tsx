@@ -35,6 +35,7 @@ import {
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import NoteTextarea, { type NoteAccount } from '@/components/NoteTextarea';
 import BritRail from '@/components/BritRail';
+import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import MenAddPlayerDrawer from '@/components/MenAddPlayerDrawer';
 import MenShortlistDrawer, { type ShortlistDrawerEntry } from '@/components/MenShortlistDrawer';
 import type { RosterPlayer, ClubRequest } from '@/lib/requestMatcher';
@@ -435,6 +436,7 @@ export default function MenShortlist() {
               BRIT / <strong>{t('nav_shortlist')}</strong> / {dateStr}
             </div>
             <div className="brit-actions">
+              <BritPlatformSwitch />
               <button onClick={() => setLang(lang === 'en' ? 'he' : 'en')}>{lang === 'en' ? 'HE / EN' : 'EN / HE'}</button>
               <span>TLV {timeStr}</span>
             </div>

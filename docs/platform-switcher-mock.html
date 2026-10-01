@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MGSR — Platform Switcher (Men / Youth)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink:#171715; --paper:#e9e6df; --paper-deep:#d8d4ca; --black:#20201d; --black-2:#2b2b26;
+      --white:#f4f1e9; --red:#c6382f; --green:#6b876d; --gold:#a47d43; --gold-bright:#e7c079;
+      --muted:#817e76; --line:rgba(23,23,21,.22); --dark-line:rgba(244,241,233,.2);
+      --display:'Oswald',Impact,sans-serif; --body:'Manrope',Helvetica,sans-serif; --mono:'DM Mono',monospace;
+      /* platform accent — swapped when platform changes */
+      --accent:#c6382f;
+    }
+    * { box-sizing:border-box; }
+    html { background:var(--paper); }
+    body { margin:0; background:var(--paper); color:var(--ink); font:14px/1.5 var(--body); -webkit-font-smoothing:antialiased; }
+    body::before { content:''; position:fixed; inset:0; z-index:20; pointer-events:none; opacity:.05;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E"); }
+    button { border:0; color:inherit; font:inherit; cursor:pointer; }
+    a { color:inherit; text-decoration:none; }
+    ::selection { background:var(--accent); color:var(--white); }
+
+    /* ─── page scaffold ─────────────────────────────────────────── */
+    .page { max-width:1500px; margin:0 auto; padding:40px 34px 90px; }
+    .page-head h1 { margin:0; font:600 30px/1 var(--display); letter-spacing:.02em; text-transform:uppercase; }
+    .page-head h1 span { color:var(--accent); }
+    .page-head p { margin:8px 0 0; max-width:760px; color:var(--muted); font:13px/1.6 var(--body); }
+
+    /* ─── the live app frame ────────────────────────────────────── */
+    .frame-label { margin:44px 0 12px; display:flex; align-items:center; gap:12px; color:var(--muted); font:10px/1 var(--mono); text-transform:uppercase; letter-spacing:.14em; }
+    .frame-label::after { content:''; flex:1; height:1px; background:var(--line); }
+    .frame { border:1px solid var(--line); border-radius:8px; overflow:hidden; box-shadow:0 24px 60px -30px rgba(23,23,21,.5); background:var(--paper); }
+    .shell { min-height:640px; display:grid; grid-template-columns:248px minmax(0,1fr); }
+
+    /* ─── left rail ─────────────────────────────────────────────── */
+    .rail { position:relative; display:flex; flex-direction:column; padding:24px 20px; background:var(--black); color:var(--white); }
+    .brand { display:flex; gap:10px; align-items:center; padding-bottom:24px; border-bottom:1px solid var(--dark-line); font:600 15px/1 var(--display); letter-spacing:.08em; }
+    .brand b { color:var(--accent); font-weight:600; transition:color .5s ease; }
+
+    .rail-caption { margin:26px 0 12px; color:#8e8b82; font:9px/1 var(--mono); text-transform:uppercase; letter-spacing:.12em; }
+    .rail-nav { display:grid; gap:2px; }
+    .rail-nav button { display:flex; justify-content:space-between; align-items:center; padding:11px 0; background:transparent; color:#b9b5aa; text-align:left; font:11px/1 var(--mono); text-transform:uppercase; transition:color .2s; }
+    .rail-nav button:hover, .rail-nav button.active { color:var(--white); }
+    .rail-nav button.active::before { content:''; width:16px; height:1px; margin-right:-16px; background:var(--accent); transform:translateX(-1px); transition:background .5s ease; }
+    .rail-nav small { color:var(--accent); font:10px/1 var(--mono); transition:color .5s ease; }
+
+    /* ─── the platform switcher (the star of the mock) ─────────── */
+    .switcher { margin-top:auto; padding-top:20px; }
+    .switch-label { color:#8e8b82; font:9px/1 var(--mono); text-transform:uppercase; letter-spacing:.12em; margin-bottom:10px; }
+
+    .switch-current { position:relative; width:100%; display:flex; align-items:center; gap:12px; padding:12px 12px; background:var(--black-2); border:1px solid var(--dark-line); border-radius:6px; text-align:left; transition:border-color .3s; }
+    .switch-current:hover { border-color:rgba(244,241,233,.4); }
+    .switch-current .badge { width:38px; height:38px; flex:0 0 38px; display:grid; place-items:center; border-radius:6px; background:var(--accent); color:var(--white); font:600 15px/1 var(--display); letter-spacing:.02em; transition:background .5s ease; }
+    .switch-current .meta { min-width:0; flex:1; }
+    .switch-current .meta .k { color:#8e8b82; font:8px/1 var(--mono); text-transform:uppercase; letter-spacing:.12em; }
+    .switch-current .meta .v { margin-top:4px; color:var(--white); font:600 14px/1 var(--display); text-transform:uppercase; letter-spacing:.03em; }
+    .switch-current .chev { color:#8e8b82; font-size:12px; transition:transform .3s; }
+    .switcher.open .switch-current .chev { transform:rotate(180deg); }
+
+    /* dropdown */
+    .switch-menu { position:absolute; left:20px; right:20px; bottom:100%; margin-bottom:10px; background:#25251f; border:1px solid var(--dark-line); border-radius:8px; padding:6px; box-shadow:0 -18px 50px -20px rgba(0,0,0,.7); opacity:0; transform:translateY(8px); pointer-events:none; transition:opacity .22s ease, transform .22s ease; z-index:5; }
+    .switcher.open .switch-menu { opacity:1; transform:none; pointer-events:auto; }
+    .switch-menu .m-cap { padding:8px 10px 10px; color:#8e8b82; font:8px/1 var(--mono); text-transform:uppercase; letter-spacing:.12em; }
+    .switch-opt { width:100%; display:flex; align-items:center; gap:12px; padding:11px 10px; border-radius:6px; background:transparent; text-align:left; transition:background .18s; }
+    .switch-opt:hover { background:rgba(244,241,233,.06); }
+    .switch-opt .badge { width:34px; height:34px; flex:0 0 34px; display:grid; place-items:center; border-radius:6px; font:600 14px/1 var(--display); color:var(--white); }
+    .switch-opt .badge.men { background:var(--red); }
+    .switch-opt .badge.youth { background:var(--gold); }
+    .switch-opt .txt { flex:1; min-width:0; }
+    .switch-opt .txt .n { color:var(--white); font:600 13px/1 var(--display); text-transform:uppercase; letter-spacing:.03em; }
+    .switch-opt .txt .d { margin-top:4px; color:#9a968c; font:9px/1.3 var(--mono); text-transform:uppercase; }
+    .switch-opt .tick { color:var(--gold-bright); font-size:13px; opacity:0; }
+    .switch-opt.selected .tick { opacity:1; }
+    .switch-opt.selected { background:rgba(244,241,233,.05); }
+
+    /* ─── content ───────────────────────────────────────────────── */
+    .content { min-width:0; display:flex; flex-direction:column; }
+    .topbar { min-height:66px; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:0 34px; border-bottom:1px solid var(--line); }
+    .crumb { color:var(--muted); font:10px/1 var(--mono); text-transform:uppercase; letter-spacing:.08em; }
+    .crumb strong { color:var(--ink); font-weight:500; }
+    .crumb .pill { display:inline-block; margin-left:8px; padding:4px 9px; border-radius:999px; background:var(--accent); color:var(--white); font-size:8px; letter-spacing:.12em; vertical-align:middle; transition:background .5s ease; }
+    .top-actions { display:flex; align-items:center; gap:16px; font:10px/1 var(--mono); text-transform:uppercase; }
+    .top-actions .avatar { width:28px; height:28px; display:grid; place-items:center; background:var(--accent); color:var(--white); font:11px/1 var(--display); transition:background .5s ease; }
+
+    .board { padding:34px 34px 46px; }
+    .board-head { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:30px; }
+    .board-head h2 { margin:0; font:500 clamp(44px,5vw,70px)/.82 var(--display); letter-spacing:-.03em; text-transform:uppercase; }
+    .board-head h2 span { color:var(--accent); transition:color .5s ease; }
+    .board-head .ctx { max-width:230px; color:var(--muted); font:10px/1.5 var(--mono); text-transform:uppercase; text-align:right; }
+    .board-head .ctx strong { display:block; margin-top:5px; color:var(--ink); font-weight:500; }
+
+    .signal-grid { display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+    .signal { min-height:104px; padding:16px 18px 18px 0; border-right:1px solid var(--line); }
+    .signal:not(:first-child) { padding-left:18px; }
+    .signal:last-child { border-right:0; }
+    .signal label { display:block; color:var(--muted); font:9px/1 var(--mono); text-transform:uppercase; letter-spacing:.06em; }
+    .signal strong { display:block; margin-top:11px; font:500 clamp(30px,3.4vw,46px)/.8 var(--display); text-transform:uppercase; }
+    .signal strong.accent { color:var(--accent); transition:color .5s ease; }
+    .signal small { display:block; margin-top:9px; color:var(--muted); font:9px/1 var(--mono); }
+
+    .roster-head { display:flex; align-items:baseline; justify-content:space-between; margin:34px 0 4px; padding-bottom:12px; border-bottom:1px solid var(--line); }
+    .roster-head h3 { margin:0; font:500 22px/.9 var(--display); text-transform:uppercase; }
+    .roster-head span { color:var(--muted); font:10px/1 var(--mono); text-transform:uppercase; }
+    .roster-table { width:100%; border-collapse:collapse; }
+    .roster-table th { padding:14px 0 9px; color:var(--muted); text-align:left; font:9px/1 var(--mono); font-weight:400; text-transform:uppercase; }
+    .roster-table td { padding:14px 0; border-top:1px solid var(--line); font:11px/1.2 var(--mono); }
+    .roster-table td:first-child { font-family:var(--body); font-weight:700; }
+    .roster-table td:nth-child(2) { color:var(--muted); }
+
+    /* platform-swap animation on the content */
+    .swap-fade { animation:swapFade .5s ease; }
+    @keyframes swapFade { 0% { opacity:0; transform:translateY(8px); } 100% { opacity:1; transform:none; } }
+
+    .note { margin-top:40px; padding:20px 22px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+    .note h4 { margin:0 0 8px; font:600 12px/1 var(--mono); text-transform:uppercase; letter-spacing:.08em; color:var(--accent); }
+    .note ul { margin:0; padding-left:18px; color:var(--muted); font:12px/1.7 var(--body); }
+    .note b { color:var(--ink); }
+
+    @media (max-width:820px){
+      .shell { grid-template-columns:1fr; }
+      .rail { flex-direction:column; }
+      .signal-grid { grid-template-columns:1fr 1fr; }
+      .signal:nth-child(2){ border-right:0; }
+      .signal:nth-child(n+3){ border-top:1px solid var(--line); }
+      .board-head { display:block; }
+      .board-head .ctx { text-align:left; margin-top:16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-head">
+      <h1>MGSR — <span>Platform Switcher</span></h1>
+      <p>Two workspaces, one login. Switch the entire management room between the <b>Men</b> platform and the <b>Youth</b> platform from the rail. The accent colour, roster, signals and breadcrumb all re-skin instantly so the agent always knows which world they are in. Try the switch below — click the platform tile at the bottom of the rail.</p>
+    </div>
+
+    <div class="frame-label">Live interactive mock — click the platform tile in the sidebar</div>
+    <div class="frame">
+      <div class="shell">
+        <!-- LEFT RAIL -->
+        <aside class="rail">
+          <a class="brand" href="#"><b>MGSR</b><span>/ SPORT GROUP</span></a>
+          <p class="rail-caption">Management room</p>
+          <nav class="rail-nav">
+            <button class="active"><span>Overview</span><small>01</small></button>
+            <button><span>Players</span><small id="nav-players">42</small></button>
+            <button><span>Requests</span><small id="nav-req">07</small></button>
+            <button><span>Mandates</span><small id="nav-man">03</small></button>
+            <button><span>Network</span><small>14</small></button>
+          </nav>
+
+          <!-- PLATFORM SWITCHER -->
+          <div class="switcher" id="switcher">
+            <div class="switch-label">Active platform</div>
+            <button class="switch-current" onclick="toggleMenu(event)" aria-haspopup="true">
+              <span class="badge" id="cur-badge">M</span>
+              <span class="meta">
+                <span class="k">Platform</span>
+                <span class="v" id="cur-name">Men</span>
+              </span>
+              <span class="chev">▲</span>
+            </button>
+
+            <div class="switch-menu" role="menu">
+              <div class="m-cap">Switch workspace</div>
+              <button class="switch-opt selected" data-platform="men" onclick="selectPlatform('men')" role="menuitem">
+                <span class="badge men">M</span>
+                <span class="txt"><span class="n">Men</span><span class="d">Senior · Europe & Israel</span></span>
+                <span class="tick">✓</span>
+              </button>
+              <button class="switch-opt" data-platform="youth" onclick="selectPlatform('youth')" role="menuitem">
+                <span class="badge youth">Y</span>
+                <span class="txt"><span class="n">Youth</span><span class="d">Academy · U15–U21</span></span>
+                <span class="tick">✓</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <!-- CONTENT -->
+        <div class="content">
+          <header class="topbar">
+            <div class="crumb">MGSR / <strong>Overview</strong><span class="pill" id="crumb-pill">MEN</span></div>
+            <div class="top-actions"><span>TLV 14:45</span><span class="avatar">LD</span></div>
+          </header>
+
+          <main class="board">
+            <div id="swap-zone">
+              <div class="board-head">
+                <h2 id="board-title">Men <span>roster.</span></h2>
+                <p class="ctx">Active workspace<strong id="ctx-scope">Men platform / Live window</strong>Next review<strong>01 October 2026</strong></p>
+              </div>
+
+              <section class="signal-grid">
+                <div class="signal"><label>Managed portfolio</label><strong id="s-portfolio">€48.55M</strong><small id="s-portfolio-sub">+€3.40M since January</small></div>
+                <div class="signal"><label>Roster assets</label><strong id="s-roster">42</strong><small id="s-roster-sub">26 EU passports</small></div>
+                <div class="signal"><label>Mandates under 30d</label><strong class="accent" id="s-mandates">03</strong><small>Action required</small></div>
+                <div class="signal"><label id="s-window-lbl">Israel window</label><strong class="accent" id="s-window">06d 14h</strong><small id="s-window-sub">Closes 01 October</small></div>
+              </section>
+
+              <div class="roster-head"><h3 id="roster-h">Roster intelligence</h3><span id="roster-sub">Top assets / Men</span></div>
+              <table class="roster-table">
+                <thead><tr><th>Player</th><th>Club</th><th>Position</th><th id="col-4">Market value</th></tr></thead>
+                <tbody id="roster-body">
+                  <!-- filled by JS -->
+                </tbody>
+              </table>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <h4>How the switch behaves</h4>
+      <ul>
+        <li><b>One tap re-skins the room.</b> Accent colour goes red for Men, warm gold for Youth — every accent (badge, nav counts, breadcrumb pill, avatar, headline) follows.</li>
+        <li><b>Data scope swaps, chrome stays.</b> Same navigation, same layout — the roster, portfolio value, counts and the active window change to match the selected platform.</li>
+        <li><b>Always-visible context.</b> The current platform sits pinned at the bottom of the rail and as a pill in the breadcrumb, so there is never doubt which platform is live.</li>
+        <li><b>Women platform intentionally omitted</b> for now — the menu is built to add it later as a third tile without any layout change.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const DATA = {
+      men: {
+        accent: '#c6382f',
+        title: 'Men <span>roster.</span>',
+        scope: 'Men platform / Live window',
+        pill: 'MEN',
+        portfolio: '€48.55M', portfolioSub: '+€3.40M since January',
+        roster: '42', rosterSub: '26 EU passports',
+        mandates: '03',
+        windowLbl: 'Israel window', window: '06d 14h', windowSub: 'Closes 01 October',
+        navPlayers: '42', navReq: '07', navMan: '03',
+        rosterHead: 'Roster intelligence', rosterHeadSub: 'Top assets / Men',
+        col4: 'Market value',
+        rows: [
+          ['Liel Abada', 'Charlotte FC', 'RW / LW', '€7.00M'],
+          ['Anan Khalaili', 'Royale Union SG', 'RW', '€6.50M'],
+          ['Roy Revivo', 'Maccabi Tel Aviv', 'LB', '€1.80M'],
+          ['Dean David', 'Maccabi Haifa', 'CF', '€1.50M'],
+          ['Ofri Arad', 'Kairat Almaty', 'CB', '€800K'],
+        ],
+      },
+      youth: {
+        accent: '#a47d43',
+        title: 'Youth <span>academy.</span>',
+        scope: 'Youth platform / U15–U21',
+        pill: 'YOUTH',
+        portfolio: '€6.20M', portfolioSub: 'Projected ceiling €30M+',
+        roster: '28', rosterSub: '9 national-team callups',
+        mandates: '02',
+        windowLbl: 'Trial window', window: '19d 06h', windowSub: 'Winter showcase',
+        navPlayers: '28', navReq: '04', navMan: '02',
+        rosterHead: 'Prospect intelligence', rosterHeadSub: 'Top prospects / Youth',
+        col4: 'Potential',
+        rows: [
+          ['Ilay Madmon', 'Maccabi Netanya U19', 'CM', '★★★★★'],
+          ['Adam Gabai', 'Beitar Jerusalem U18', 'ST', '★★★★☆'],
+          ['Noam Peretz', 'Hapoel Tel Aviv U17', 'GK', '★★★★☆'],
+          ['Eden Kartsev', 'Maccabi Haifa U19', 'AM', '★★★★★'],
+          ['Yarin Levi', 'Ashdod U16', 'RB', '★★★☆☆'],
+        ],
+      },
+    };
+
+    let current = 'men';
+
+    function toggleMenu(e){
+      e.stopPropagation();
+      document.getElementById('switcher').classList.toggle('open');
+    }
+    document.addEventListener('click', () => document.getElementById('switcher').classList.remove('open'));
+
+    function selectPlatform(key){
+      document.getElementById('switcher').classList.remove('open');
+      if (key === current) return;
+      current = key;
+      const d = DATA[key];
+
+      // re-skin accent
+      document.documentElement.style.setProperty('--accent', d.accent);
+
+      // rail current tile
+      document.getElementById('cur-badge').textContent = key === 'men' ? 'M' : 'Y';
+      document.getElementById('cur-badge').style.background = d.accent;
+      document.getElementById('cur-name').textContent = key === 'men' ? 'Men' : 'Youth';
+
+      // menu selected state
+      document.querySelectorAll('.switch-opt').forEach(o => o.classList.toggle('selected', o.dataset.platform === key));
+
+      // breadcrumb pill
+      document.getElementById('crumb-pill').textContent = d.pill;
+
+      // board
+      document.getElementById('board-title').innerHTML = d.title;
+      document.getElementById('ctx-scope').textContent = d.scope;
+      document.getElementById('s-portfolio').textContent = d.portfolio;
+      document.getElementById('s-portfolio-sub').textContent = d.portfolioSub;
+      document.getElementById('s-roster').textContent = d.roster;
+      document.getElementById('s-roster-sub').textContent = d.rosterSub;
+      document.getElementById('s-mandates').textContent = d.mandates;
+      document.getElementById('s-window-lbl').textContent = d.windowLbl;
+      document.getElementById('s-window').textContent = d.window;
+      document.getElementById('s-window-sub').textContent = d.windowSub;
+      document.getElementById('nav-players').textContent = d.navPlayers;
+      document.getElementById('nav-req').textContent = d.navReq;
+      document.getElementById('nav-man').textContent = d.navMan;
+      document.getElementById('roster-h').textContent = d.rosterHead;
+      document.getElementById('roster-sub').textContent = d.rosterHeadSub;
+      document.getElementById('col-4').textContent = d.col4;
+
+      renderRows(d.rows);
+
+      // fade the swap zone
+      const zone = document.getElementById('swap-zone');
+      zone.classList.remove('swap-fade'); void zone.offsetWidth; zone.classList.add('swap-fade');
+    }
+
+    function renderRows(rows){
+      document.getElementById('roster-body').innerHTML = rows.map(r =>
+        `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`
+      ).join('');
+    }
+
+    // init
+    renderRows(DATA.men.rows);
+  </script>
+</body>
+</html>

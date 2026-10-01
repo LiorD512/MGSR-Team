@@ -25,6 +25,7 @@ import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { matchRequestToPlayers, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import BritRail from '@/components/BritRail';
+import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import AddRequestSheet from '@/app/requests/AddRequestSheet';
 import MenAddRequestDrawer from '@/components/MenAddRequestDrawer';
 
@@ -332,6 +333,7 @@ export default function MenRequests() {
               BRIT / <strong>{t('nav_requests')}</strong> / {dateStr}
             </div>
             <div className="brit-actions">
+              <BritPlatformSwitch />
               <button onClick={() => setLang(lang === 'en' ? 'he' : 'en')}>{lang === 'en' ? 'HE / EN' : 'EN / HE'}</button>
               <span>TLV {timeStr}</span>
             </div>
