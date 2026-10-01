@@ -1,30 +1,48 @@
 /**
- * MATCHDAY generation pipeline (section 11).
+ * MATCHDAY generation pipeline.
  *
- *   match facts → assets (player + stadium) → composition → AI background →
- *   composite (player cutouts + stadium) → deterministic text/logos →
- *   quality checks → save + design memory
+ *   match facts → curated photographs → high-resolution crests →
+ *   deterministic render → quality checks → design memory
  *
- * This orchestrator is intentionally phase-seamed: each stage is a separate
- * module so phases can be built and tested independently. Stages that are not
- * yet implemented degrade gracefully rather than failing the whole run, so the
- * UI always gets back the factual data it can already show.
+ * There is deliberately no generative step. The previous version asked an image
+ * model to return the finished artwork, which meant it repainted the player —
+ * producing a convincing picture of somebody who does not exist. A likeness
+ * cannot be guaranteed by asking nicely, so the player's face is now always a
+ * photograph a human chose, placed by us, and generation is refused outright
+ * when no such photograph exists.
  */
 
 import { randomUUID } from 'crypto';
+import path from 'path';
+import fs from 'fs/promises';
 import type {
+  MatchdayAssets,
   MatchdayGenerateInput,
   MatchdayGenerateResult,
   MatchdayGenerationRecord,
+  MatchdayMatchFacts,
   MatchdayQualityCheck,
 } from './types';
 import { gatherMatchFacts } from './facts';
-import { planComposition } from './composition';
 import { buildMatchKey, recordDesign } from './designMemory';
-import { createDefaultImageProvider } from './providers/gemini';
+import { fetchAndValidate } from './assets';
+import { resolveCrest, type ResolvedCrest } from './crests';
+import {
+  renderMatchdayImage,
+  CANVAS_W,
+  CANVAS_H,
+  PLAYER_PANEL,
+  STADIUM_BAND,
+} from './render';
+
+/** Transfermarkt's placeholder silhouette — never a real likeness. */
+const TM_SILHOUETTE = /\/default\.(jpg|png)(\?|$)/i;
 
 export class MatchdayError extends Error {
-  constructor(message: string, readonly code: 'NO_MATCH' | 'PROVIDER_UNCONFIGURED' | 'GENERATION_FAILED') {
+  constructor(
+    message: string,
+    readonly code: 'NO_MATCH' | 'NO_PLAYER_PHOTO' | 'GENERATION_FAILED'
+  ) {
     super(message);
     this.name = 'MatchdayError';
   }
@@ -45,285 +63,131 @@ export async function generateMatchday(input: MatchdayGenerateInput): Promise<Ma
     throw new MatchdayError('No upcoming fixture found for this player.', 'NO_MATCH');
   }
 
-  // ── Stage 2: creative concept (varies vs. design memory) ──
-  const composition = await planComposition(input.playerId, input.playerName, {
-    mood: input.overrides?.mood,
-    layout: input.overrides?.layout,
+  // ── Stage 2: the curated player photograph (required) ──
+  if (!input.playerPhotoUrl?.trim() || TM_SILHOUETTE.test(input.playerPhotoUrl)) {
+    throw new MatchdayError(
+      'This player has no MATCHDAY photo yet. Upload one to generate the graphic.',
+      'NO_PLAYER_PHOTO'
+    );
+  }
+  const playerPhoto = await fetchAndValidate({ url: input.playerPhotoUrl, source: 'curated' }, {
+    minWidth: PLAYER_PANEL.width,
+    minHeight: PLAYER_PANEL.height,
   });
+  if (!playerPhoto) {
+    throw new MatchdayError(
+      `The MATCHDAY photo could not be used. It needs to be a reachable image of at least ${PLAYER_PANEL.width}×${PLAYER_PANEL.height}, so it fills the player panel without being enlarged.`,
+      'NO_PLAYER_PHOTO'
+    );
+  }
 
-  // ── Stage 3–6: assets, AI background, compositing, overlay ──
-  // Implemented across phases 2–4. `renderMatchday` is the single entry point
-  // the later phases fill in. Until then it produces a factual placeholder so
-  // the UI flow, progress steps, and data plumbing are all exercised.
-  const provider = createDefaultImageProvider();
-  const { imageDataUrl, assets, qualityChecks } = await renderMatchday({
-    generationId,
-    input,
+  // ── Stage 3: optional curated stadium photograph ──
+  const stadiumPhoto = input.stadiumPhotoUrl?.trim()
+    ? await fetchAndValidate({ url: input.stadiumPhotoUrl, source: 'curated' }, {
+        minWidth: STADIUM_BAND.width,
+        minHeight: STADIUM_BAND.height,
+      })
+    : null;
+
+  // ── Stage 4: crests, upgraded to a resolution worth drawing ──
+  const [homeCrest, awayCrest] = await Promise.all([
+    resolveCrest(facts.homeTeam, facts.homeLogo),
+    resolveCrest(facts.awayTeam, facts.awayLogo),
+  ]);
+
+  // ── Stage 5: render ──
+  const brandMark = await loadBrandMark();
+  const rendered = await renderMatchdayImage({
     facts,
-    composition,
-    provider,
+    playerPhoto: { bytes: playerPhoto.bytes, mimeType: playerPhoto.mimeType },
+    stadiumPhoto: stadiumPhoto ? { bytes: stadiumPhoto.bytes, mimeType: stadiumPhoto.mimeType } : null,
+    homeCrest,
+    awayCrest,
+    brandMark,
   });
 
-  // ── Stage 7: design memory ──
+  const assets: MatchdayAssets = {
+    playerImages: [
+      {
+        url: playerPhoto.url,
+        role: 'hero',
+        source: 'curated',
+        width: playerPhoto.width,
+        height: playerPhoto.height,
+      },
+    ],
+    stadium: stadiumPhoto
+      ? { url: stadiumPhoto.url, venue: facts.venue ?? 'curated', source: 'curated' }
+      : null,
+  };
+
+  const qualityChecks = buildQualityChecks({
+    facts,
+    playerPhoto: { width: playerPhoto.width, height: playerPhoto.height },
+    stadiumPresent: Boolean(stadiumPhoto),
+    homeCrest,
+    awayCrest,
+    rendered,
+  });
+
   const record: MatchdayGenerationRecord = {
     generationId,
     playerId: input.playerId,
     playerName: input.playerName,
     matchKey: buildMatchKey(facts.playerName, facts.homeTeam, facts.awayTeam, facts.date),
-    compositionStyle: composition.layout,
-    mood: composition.mood,
-    colorMood: composition.colorMood,
-    lightingStyle: composition.lightingStyle,
-    playerImagesUsed: assets.playerImages.map((p) => p.url),
-    stadiumImageUsed: assets.stadium?.url ?? null,
+    playerImagesUsed: [playerPhoto.url],
+    stadiumImageUsed: stadiumPhoto?.url ?? null,
     savedImagePath: null,
     createdAt: Date.now(),
-    providerId: provider.id,
   };
   await recordDesign(record);
 
   return {
     generationId,
-    imageDataUrl,
+    imageDataUrl: `data:image/png;base64,${rendered.bytes.toString('base64')}`,
     facts,
-    composition,
     assets,
     qualityChecks,
-    providerId: provider.id,
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// renderMatchday — the visual pipeline (phases 2–4 land here).
-// For Phase 1 it returns a lightweight placeholder + baseline quality checks so
-// the end-to-end flow works before the AI/compositing stages exist.
-// ─────────────────────────────────────────────────────────────────────────────
+/** The BRIT wordmark, emitted as SVG by scripts/convert-logo.js at build time. */
+async function loadBrandMark(): Promise<Buffer | null> {
+  for (const file of ['logo.svg', 'logo_black.svg']) {
+    try {
+      return await fs.readFile(path.join(process.cwd(), 'public', file));
+    } catch {
+      /* try the next candidate */
+    }
+  }
+  return null;
+}
 
-import type {
-  MatchdayAssets,
-  MatchdayComposition,
-  MatchdayMatchFacts,
-  ImageGenerationProvider,
-} from './types';
-import { gatherAssets } from './assets';
-import { imageSearchConfigured } from './imageSearch';
-import sharp from 'sharp';
-import { buildBackgroundPrompt, buildScenePrompt } from './composition';
-import { composite } from './compositor';
-import { applyOverlay } from './overlay';
-import { CANVAS_W, CANVAS_H } from './layout';
-import type { GeneratedImage } from './types';
+interface CheckInput {
+  facts: MatchdayMatchFacts;
+  playerPhoto: { width: number; height: number };
+  stadiumPresent: boolean;
+  homeCrest: ResolvedCrest | null;
+  awayCrest: ResolvedCrest | null;
+  rendered: { width: number; height: number };
+}
 
 /**
- * Fetch the authoritative portrait from the player's Transfermarkt profile.
- * This is tied to the exact player page, so it is the correct person even when
- * their name is shared by other footballers. Best-effort — returns null on
- * failure and the pipeline falls back to search with a low-confidence flag.
+ * Quality checks that mean something. The previous set was entirely
+ * informational — one entry was even hardcoded to `pass` — so a visibly broken
+ * poster still reported clean. Anything that genuinely invalidates the output
+ * now throws before we get here; what remains are real observations.
  */
-async function fetchTmPortrait(tmProfile: string): Promise<string | null> {
-  try {
-    const { handlePlayer } = await import('@/lib/transfermarkt');
-    const player = await handlePlayer(tmProfile);
-    return player.profileImage || null;
-  } catch (err) {
-    console.error('[matchday] TM portrait fetch failed:', err);
-    return null;
-  }
-}
+function buildQualityChecks(input: CheckInput): MatchdayQualityCheck[] {
+  const { facts, playerPhoto, homeCrest, awayCrest, rendered } = input;
+  const checks: MatchdayQualityCheck[] = [];
 
-/** Normalise any AI output to the exact 9:16 canvas (cover-fit). */
-async function fitToCanvas(bytes: Buffer): Promise<Buffer> {
-  return sharp(bytes)
-    .resize(CANVAS_W, CANVAS_H, { fit: 'cover', position: 'attention' })
-    .png()
-    .toBuffer();
-}
-
-interface RenderArgs {
-  generationId: string;
-  input: MatchdayGenerateInput;
-  facts: MatchdayMatchFacts;
-  composition: MatchdayComposition;
-  provider: ImageGenerationProvider;
-}
-
-async function renderMatchday(args: RenderArgs): Promise<{
-  imageDataUrl: string;
-  assets: MatchdayAssets;
-  qualityChecks: MatchdayQualityCheck[];
-}> {
-  const { facts, input, composition, provider } = args;
-
-  // The authoritative identity anchor is the Transfermarkt profile portrait
-  // (tied to the exact player page). If the DB value is missing, re-fetch it
-  // from the player's TM profile so the likeness is never guessed by search.
-  let profileImage = input.playerImage ?? null;
-  if (!profileImage && input.tmProfile) {
-    profileImage = await fetchTmPortrait(input.tmProfile);
-  }
-
-  // ── Stage 3: gather real player + stadium images ──
-  const gathered = await gatherAssets({
-    playerName: input.playerName,
-    club: input.club,
-    profileImage,
-    instagramHandle: input.instagramHandle,
-    facts,
-    overrides: {
-      playerImageUrls: input.overrides?.playerImageUrls,
-      stadiumImageUrl: input.overrides?.stadiumImageUrl,
-    },
-  });
-
-  const qualityChecks = [
-    ...baselineFactChecks(facts),
-    ...assetChecks(gathered.summary),
-  ];
-
-  // Identity confidence: PASS only when the authoritative DB/TM portrait
-  // anchors the likeness. A name-search-only hero can be the wrong same-named
-  // player, so it is a WARN the operator should review/override.
-  qualityChecks.push({
+  checks.push({
     id: 'identity',
-    label: 'Correct player identity anchored',
-    status: gathered.identityAnchored ? 'pass' : gathered.playerImages.length ? 'warn' : 'fail',
-    detail: gathered.identityAnchored
-      ? 'anchored on verified profile portrait'
-      : gathered.playerImages.length
-        ? 'no verified portrait — using search photo; verify or override images'
-        : 'no player photo available',
-  });
-
-  // ── Stage 4+5: produce the cinematic artwork ──
-  // PRIMARY path: single image-to-image scene composition — the model builds
-  // the whole scene around the REAL player photos so nothing looks pasted.
-  // FALLBACK path: AI background + sharp cutout compositing, then graded
-  // stadium, then a solid canvas — each degrading gracefully.
-  const providerConfigured = provider.isConfigured();
-  let baseBytes: Buffer | null = null;
-  let renderMode: 'scene' | 'composited' | 'graded' | 'none' = 'none';
-
-  if (providerConfigured && provider.composeScene && gathered.playerImages.length > 0) {
-    try {
-      const prompt = buildScenePrompt(
-        composition,
-        facts.playerName,
-        facts.venue,
-        gathered.playerImages.length,
-        Boolean(gathered.stadium)
-      );
-      const scene = await provider.composeScene({
-        prompt,
-        playerImages: gathered.playerImages.map((p) => ({ bytes: p.bytes, mimeType: p.mimeType })),
-        stadium: gathered.stadium
-          ? { bytes: gathered.stadium.bytes, mimeType: gathered.stadium.mimeType }
-          : undefined,
-        aspectRatio: '9:16',
-      });
-      baseBytes = await fitToCanvas(scene.bytes);
-      renderMode = 'scene';
-    } catch (err) {
-      console.error('[matchday] scene composition failed, falling back to compositor:', err);
-    }
-  }
-
-  if (!baseBytes) {
-    // Fallback: generate a background, then composite cutouts with sharp.
-    let background: GeneratedImage | null = null;
-    if (providerConfigured) {
-      try {
-        const prompt = buildBackgroundPrompt(composition, facts.venue, Boolean(gathered.stadium));
-        background = await provider.generateBackground({
-          prompt,
-          referenceImages: gathered.stadium
-            ? [{ bytes: gathered.stadium.bytes, mimeType: gathered.stadium.mimeType }]
-            : undefined,
-          aspectRatio: '9:16',
-        });
-      } catch (err) {
-        console.error('[matchday] background generation failed, using graded stadium:', err);
-      }
-    }
-    const composited = await composite({
-      composition,
-      background,
-      stadium: gathered.stadium,
-      players: gathered.playerImages,
-      provider,
-    });
-    baseBytes = composited.bytes;
-    renderMode = background ? 'composited' : gathered.stadium ? 'graded' : 'none';
-  }
-
-  qualityChecks.push({
-    id: 'artwork',
-    label: 'Cinematic artwork (identity preserved)',
-    status: renderMode === 'scene' ? 'pass' : renderMode === 'none' ? 'fail' : 'warn',
-    detail:
-      renderMode === 'scene'
-        ? `AI scene composition · ${composition.mood} · ${composition.layout}`
-        : renderMode === 'composited'
-          ? 'AI background + composited real player'
-          : renderMode === 'graded'
-            ? providerConfigured
-              ? 'AI unavailable — graded real stadium + real player'
-              : 'GEMINI_API_KEY not set — graded real stadium + real player'
-            : 'no artwork sources available',
-  });
-
-  // ── Stage 6: deterministic factual text + real club logos on top ──
-  // baseBytes is always assigned by the fallback chain above.
-  const overlayResult = await applyOverlay({ base: baseBytes as Buffer, facts });
-  qualityChecks.push({
-    id: 'logos_placed',
-    label: 'Original club logos placed',
-    status:
-      overlayResult.homeLogoPlaced && overlayResult.awayLogoPlaced
-        ? 'pass'
-        : overlayResult.homeLogoPlaced || overlayResult.awayLogoPlaced
-          ? 'warn'
-          : 'warn',
-    detail: `${overlayResult.homeLogoPlaced ? 'home ✓' : 'home ✗'} · ${
-      overlayResult.awayLogoPlaced ? 'away ✓' : 'away ✗'
-    }`,
-  });
-  qualityChecks.push({
-    id: 'factual_text',
-    label: 'Factual text rendered (not AI)',
+    label: 'Player likeness is a curated photograph',
     status: 'pass',
-    detail: `${facts.homeTeam} vs ${facts.awayTeam} • ${facts.date}`,
+    detail: `${playerPhoto.width}×${playerPhoto.height} · nothing generated`,
   });
-
-  const imageDataUrl = `data:image/png;base64,${overlayResult.bytes.toString('base64')}`;
-
-  return { imageDataUrl, assets: gathered.summary, qualityChecks };
-}
-
-function assetChecks(assets: MatchdayAssets): MatchdayQualityCheck[] {
-  const checks: MatchdayQualityCheck[] = [];
-  const configured = imageSearchConfigured();
-  const playerCount = assets.playerImages.length;
-  const hasHero = assets.playerImages.some((p) => p.role === 'hero');
-
-  checks.push({
-    id: 'player_images',
-    label: 'Player images found',
-    status: playerCount >= 2 && hasHero ? 'pass' : playerCount >= 1 ? 'warn' : 'fail',
-    detail: configured
-      ? `${playerCount} image(s)${hasHero ? ', hero ✓' : ''}`
-      : 'image search not configured (set SERPER_API_KEY)',
-  });
-  checks.push({
-    id: 'stadium_image',
-    label: 'Real stadium image',
-    status: assets.stadium ? 'pass' : 'warn',
-    detail: assets.stadium ? assets.stadium.venue : 'no stadium image sourced',
-  });
-  return checks;
-}
-
-function baselineFactChecks(facts: MatchdayMatchFacts): MatchdayQualityCheck[] {
-  const checks: MatchdayQualityCheck[] = [];
   checks.push({
     id: 'teams',
     label: 'Home & away teams resolved',
@@ -334,13 +198,13 @@ function baselineFactChecks(facts: MatchdayMatchFacts): MatchdayQualityCheck[] {
     id: 'datetime',
     label: 'Date & kickoff resolved',
     status: facts.date ? (facts.time ? 'pass' : 'warn') : 'fail',
-    detail: `${facts.date}${facts.time ? ` • ${facts.time}` : ' • time TBC'}`,
+    detail: `${facts.date}${facts.time ? ` • ${facts.time}` : ' • kickoff TBC'}`,
   });
   checks.push({
     id: 'competition',
-    label: 'Competition / round',
+    label: 'Competition / stage',
     status: facts.competition ? 'pass' : 'warn',
-    detail: [facts.competition, facts.round].filter(Boolean).join(' • ') || 'not listed',
+    detail: [facts.country, facts.competition, facts.round].filter(Boolean).join(' • ') || 'not listed',
   });
   checks.push({
     id: 'venue',
@@ -348,11 +212,27 @@ function baselineFactChecks(facts: MatchdayMatchFacts): MatchdayQualityCheck[] {
     status: facts.venue ? 'pass' : 'warn',
     detail: facts.venue || 'venue TBC',
   });
+
+  const crestDetail = (crest: ResolvedCrest | null) =>
+    crest ? `${crest.width}×${crest.height} (${crest.source})` : 'not found';
   checks.push({
-    id: 'logos',
-    label: 'Club logos available',
-    status: facts.homeLogo && facts.awayLogo ? 'pass' : 'warn',
-    detail: `${facts.homeLogo ? 'home ✓' : 'home ✗'} · ${facts.awayLogo ? 'away ✓' : 'away ✗'}`,
+    id: 'crests',
+    label: 'Club crests at poster resolution',
+    status: homeCrest && awayCrest ? 'pass' : homeCrest || awayCrest ? 'warn' : 'fail',
+    detail: `home ${crestDetail(homeCrest)} · away ${crestDetail(awayCrest)}`,
   });
+  checks.push({
+    id: 'stadium',
+    label: 'Stadium band',
+    status: input.stadiumPresent ? 'pass' : 'warn',
+    detail: input.stadiumPresent ? 'curated photograph' : 'no stadium photo — flat band',
+  });
+  checks.push({
+    id: 'canvas',
+    label: 'Rendered at full resolution',
+    status: rendered.width === CANVAS_W && rendered.height === CANVAS_H ? 'pass' : 'fail',
+    detail: `${rendered.width}×${rendered.height} · no upscale`,
+  });
+
   return checks;
 }

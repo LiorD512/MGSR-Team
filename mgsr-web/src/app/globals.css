@@ -4104,20 +4104,79 @@ body {
   color: var(--muted);
 }
 .matchday-config-row > span { font-size: 12px; color: var(--ink); }
-.matchday-moods { display: flex; flex-wrap: wrap; gap: 6px; }
-.matchday-mood-chip {
-  padding: 6px 10px;
+.matchday-generate { width: 100%; text-align: center; }
+.matchday-generate:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Curated photograph rows ── */
+.matchday-asset-row {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.matchday-asset-row.missing {
+  border-inline-start: 2px solid var(--red);
+  padding-inline-start: 12px;
+}
+.matchday-asset-thumb {
+  width: 56px;
+  height: 56px;
+  background: var(--paper-2);
   border: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
+  overflow: hidden;
+}
+.matchday-asset-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.matchday-asset-empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent 0 5px,
+    rgba(22, 22, 19, 0.08) 5px 10px
+  );
+}
+.matchday-asset-copy label {
+  display: block;
   font: 9px/1 var(--mono);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  border-radius: 2px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
 }
-.matchday-mood-chip.active { border-color: var(--gold); color: var(--gold); background: var(--gold-soft); }
-.matchday-generate { width: 100%; text-align: center; }
+.matchday-asset-copy p { margin: 6px 0 0; font-size: 12px; color: var(--ink); }
+.matchday-asset-row.missing .matchday-asset-copy p { color: var(--red); }
+.matchday-asset-action {
+  font: 9px/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  border: 1px solid var(--gold-soft);
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: 0.15s;
+}
+.matchday-asset-action:hover { background: var(--gold-soft); color: var(--ink); }
+.matchday-asset-row input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.matchday-upload-error,
+.matchday-blocked {
+  margin: 12px 0 0;
+  font: 11px/1.5 var(--body);
+  color: var(--red);
+}
+.matchday-blocked {
+  border-inline-start: 2px solid var(--red);
+  padding-inline-start: 12px;
+  color: var(--ink);
+}
 
 .matchday-progress { list-style: none; margin: 18px 0; padding: 0; }
 .matchday-progress li {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirebaseAdmin, adminDb } from '@/lib/firebaseAdmin';
+import { getFirebaseAdmin, adminDb, adminBucket } from '@/lib/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -47,8 +47,7 @@ export async function POST(request: NextRequest) {
     const ext = mimeType.split('/')[1] || 'png';
     const path = `matchday/${body.playerId || 'unassigned'}/${body.generationId}.${ext}`;
 
-    const { getStorage } = await import('firebase-admin/storage');
-    const bucket = getStorage(admin).bucket();
+    const bucket = await adminBucket();
     const file = bucket.file(path);
     await file.save(buffer, { contentType: mimeType, resumable: false });
 

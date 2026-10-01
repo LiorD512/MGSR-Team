@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "src/lib/matchday/crests.ts"
+        ],
+        "createdAt": "2026-10-01T03:54:20.878Z",
+        "reason": "regex matches <img> in scraped Wikipedia HTML for crest URL extraction; server-side parser, authors no markup"
+      }
+    ]
+  }
+}

@@ -116,12 +116,15 @@ function parseCompetition(
   if (colon > 0) {
     const prefix = value.slice(0, colon).trim();
     const rest = value.slice(colon + 1).trim();
-    // Prefix looks like a country/region label (short, no digits).
+    // The competition's own prefix is authoritative and must WIN over the
+    // club's country: a player at an Israeli club can be on loan in Uzbekistan,
+    // and taking the country from the club produced the contradictory
+    // "ISRAEL · UZBEKISTAN: SUPER LEAGUE" that shipped on real posters.
     if (prefix && !/\d/.test(prefix)) {
       return { country: prefix, competition: rest || null };
     }
   }
-  // No country prefix — competition stands alone; country from club.
+  // No prefix to take a country from — fall back to the club's.
   return { country: clubCountry?.trim() || null, competition: value };
 }
 

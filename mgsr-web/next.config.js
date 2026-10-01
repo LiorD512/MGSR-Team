@@ -2,7 +2,14 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ['header-generator', 'generative-bayesian-network'],
+    // satori ships HarfBuzz as hb.wasm and loads it relative to its own
+    // package; bundling it leaves the .wasm behind and text shaping fails at
+    // runtime. Keeping it external makes it resolve from node_modules.
+    serverComponentsExternalPackages: [
+      'header-generator',
+      'generative-bayesian-network',
+      'satori',
+    ],
   },
   async headers() {
     return [

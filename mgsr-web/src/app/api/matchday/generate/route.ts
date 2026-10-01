@@ -3,7 +3,7 @@ import { generateMatchday, MatchdayError } from '@/lib/matchday/pipeline';
 import type { MatchdayGenerateInput } from '@/lib/matchday/types';
 
 export const dynamic = 'force-dynamic';
-// Image generation + scraping can take a while; give it room.
+// Fixture scraping plus crest resolution can take a while; give it room.
 export const maxDuration = 120;
 
 export async function POST(request: NextRequest) {
@@ -23,7 +23,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof MatchdayError) {
-      const status = err.code === 'NO_MATCH' ? 404 : 502;
+      // A missing curated photo is a precondition the operator can fix, not a
+      // server fault — 422 so the UI can prompt for an upload.
+      const status =
+        err.code === 'NO_MATCH' ? 404 : err.code === 'NO_PLAYER_PHOTO' ? 422 : 502;
       return NextResponse.json({ error: err.message, code: err.code }, { status });
     }
     console.error('[matchday] generate error:', err);
