@@ -27,6 +27,7 @@ import {
 } from '@/lib/shortlistIntelligence';
 import AppLayout from '@/components/AppLayout';
 import MenShortlist from '@/components/MenShortlist';
+import YouthShortlist from '@/components/YouthShortlist';
 import MenLoading from '@/components/MenLoading';
 import Link from 'next/link';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
@@ -825,17 +826,20 @@ export default function ShortlistPage() {
       : entry.addedByAgentName || entry.addedByAgentHebrewName || '—';
 
   if (loading || !user) {
-    if (!isWomen && !isYouth) return <MenLoading />;
+    if (!isWomen) return <MenLoading />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className={`animate-pulse font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{t('loading')}</div>
+        <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{t('loading')}</div>
       </div>
     );
   }
 
-  // ── Men platform: new "Light Management Room" full-bleed shortlist ──
+  // ── Men & Youth platforms: "Light Management Room" full-bleed shortlist ──
   if (platform === 'men') {
     return <MenShortlist />;
+  }
+  if (platform === 'youth') {
+    return <YouthShortlist />;
   }
 
   // From here on the platform is narrowed to 'women' | 'youth'; alias keeps the
@@ -844,7 +848,7 @@ export default function ShortlistPage() {
 
   const showingCount = sorted.length;
   const totalCount = entries.length;
-  const isFiltered = (platformStr === 'men' || platform === 'youth') && (filterBy !== 'all' || positionFilter !== null || specificPositionFilter !== null || withNotesOnly || agentFilter !== null || searchQuery.trim() !== '') && showingCount < totalCount;
+  const isFiltered = (platformStr === 'men' || platformStr === 'youth') && (filterBy !== 'all' || positionFilter !== null || specificPositionFilter !== null || withNotesOnly || agentFilter !== null || searchQuery.trim() !== '') && showingCount < totalCount;
 
   return (
     <AppLayout>
@@ -906,7 +910,7 @@ export default function ShortlistPage() {
         ) : (
           <>
             {/* Sort & Filter bar — youth, search + with-notes filter */}
-            {platform === 'youth' && entries.length > 0 && (
+            {platformStr === 'youth' && entries.length > 0 && (
               <div className="flex flex-col gap-3 mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl youth-glass-card">
                 {/* Search bar */}
                 <div className="relative">
@@ -1102,7 +1106,7 @@ export default function ShortlistPage() {
             )}
 
             {sorted.length === 0 ? (
-              entries.length > 0 && (platformStr === 'men' || platform === 'youth') && (filterBy !== 'all' || agentFilter || positionFilter || specificPositionFilter || withNotesOnly || searchQuery.trim()) ? (
+              entries.length > 0 && (platformStr === 'men' || platformStr === 'youth') && (filterBy !== 'all' || agentFilter || positionFilter || specificPositionFilter || withNotesOnly || searchQuery.trim()) ? (
             <div className={`py-20 px-6 rounded-2xl bg-mgsr-card/50 border border-mgsr-border text-center ${isYouth ? 'youth-glass-card' : ''}`}>
               <p className="text-mgsr-text text-lg font-medium mb-2">{t('shortlist_filter_empty')}</p>
               <p className="text-mgsr-muted text-sm mb-6 max-w-sm mx-auto">{t('shortlist_filter_empty_hint').replace('{n}', String(entries.length))}</p>

@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group Youth — Prospect Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --teal:#2f7d6e;--teal-soft:#5fa391;--teal-bright:#8fc9b8;
+      --red:#b64235;--green:#5c6f4a;--amber:#9a7b2e;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    ::selection{background:var(--teal-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--teal-soft),var(--teal));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#9fb8b0;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav>a.active{color:var(--teal-bright)}
+    .nav>a.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--teal-soft)}
+    .nav em{color:var(--teal-soft);font-style:normal}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .topbar a{color:#aaa69c}
+    .actions{display:flex;align-items:center;gap:16px}
+    .actions button{font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:#aaa69c}
+    .actions button:hover{color:var(--teal-bright)}
+    .actions .edit{border:1px solid var(--teal-soft);color:var(--teal-bright);padding:8px 12px}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--teal-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1280px;padding:28px 43px 80px}
+
+    .back{display:inline-block;margin-bottom:20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .back:hover{color:var(--teal)}
+
+    /* Hero */
+    .hero{position:relative;background:var(--black);color:var(--paper);min-height:230px;display:flex;align-items:flex-end;overflow:hidden}
+    .hero .bg{position:absolute;inset:0;background:linear-gradient(135deg,#1c2b27,#101614);opacity:.92}
+    .hero:after{content:'';position:absolute;inset:38% 0 0;background:linear-gradient(180deg,transparent,rgba(17,17,15,.94))}
+    .hero .mono{position:absolute;top:14px;inset-inline-end:34px;font:500 150px/1 var(--display);color:rgba(143,201,184,.13);z-index:0;letter-spacing:-.04em}
+    .hero .inner{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;width:100%;padding:30px 34px}
+    .hero .portrait{width:92px;height:92px;flex:none;border-radius:50%;border:2px solid var(--teal-soft);display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#24413a,#15211d);color:var(--teal-bright);font:500 30px/1 var(--display);margin-inline-end:22px}
+    .hero .lead{display:flex;align-items:flex-end}
+    .hero .eyebrow{color:var(--teal-bright);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .hero h1{margin:12px 0 0;font:500 clamp(42px,5vw,70px)/.85 var(--display);text-transform:uppercase;letter-spacing:-.02em}
+    [dir=rtl] .hero h1{font-weight:800;letter-spacing:normal}
+    .hero .he{margin-top:6px;color:#c9c3b6;font:14px/1 var(--body);direction:rtl}
+    .hero .chips{display:flex;gap:7px;margin-top:14px;flex-wrap:wrap}
+    .hero .chips b{font:9px/1 var(--mono);text-transform:uppercase;color:var(--paper);border:1px solid var(--dark-line);padding:5px 8px;font-weight:400}
+    .hero .chips b.ag{color:var(--teal-bright);border-color:rgba(143,201,184,.45);font-weight:500}
+    .hero .meta{color:#c9c3b6;font:10px/1.6 var(--mono);text-transform:uppercase;text-align:end;white-space:nowrap}
+    .hero .meta a{color:var(--teal-bright)}
+
+    /* Facts strip */
+    .facts{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid var(--line);background:var(--card)}
+    .facts div{padding:16px 18px;border-inline-end:1px solid var(--line)}
+    .facts div:last-child{border-inline-end:0}
+    .facts label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .facts strong{display:block;margin-top:9px;font:500 26px/.85 var(--display);text-transform:uppercase}
+    [dir=rtl] .facts strong{font-weight:800}
+    .facts strong.teal{color:var(--teal)}
+    .facts strong.sm{font-size:17px;line-height:1.1}
+
+    .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(310px,.92fr);gap:40px;margin-top:34px}
+    .module{margin-bottom:40px}
+    .module h2{display:flex;align-items:center;justify-content:space-between;margin:0 0 14px;padding-bottom:12px;border-bottom:1px solid var(--line);font:500 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+    .module h2 b{color:var(--teal);font-weight:400}
+    .module h2 .act{color:var(--teal);font:8px/1 var(--mono);letter-spacing:.08em}
+    .module h2 .act:hover{color:var(--ink)}
+
+    /* IFA season detail */
+    .ifa-detail{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);background:var(--card)}
+    .ifa-detail div{padding:18px 0;text-align:center;border-inline-end:1px solid var(--line)}
+    .ifa-detail div:last-child{border-inline-end:0}
+    .ifa-detail .v{font:500 30px/.8 var(--display);text-transform:uppercase}
+    .ifa-detail .v.teal{color:var(--teal)}
+    .ifa-detail .l{margin-top:9px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .ifa-src{margin-top:10px;color:var(--muted);font:8px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+    .ifa-src a{color:var(--teal)}
+
+    /* Highlights */
+    .reels{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .reel{position:relative;aspect-ratio:16/9;overflow:hidden;border:1px solid var(--line);background:linear-gradient(135deg,#1c2b27,#101614)}
+    .reel .play{position:absolute;inset:0;display:grid;place-items:center}
+    .reel .play span{width:46px;height:46px;border-radius:50%;background:rgba(243,240,232,.92);color:var(--black);display:grid;place-items:center;font-size:16px;padding-inline-start:3px}
+    .reel .cap{position:absolute;left:0;right:0;bottom:0;padding:10px 12px;background:linear-gradient(0deg,rgba(17,17,15,.9),transparent);color:var(--paper)}
+    .reel .cap b{display:block;font:500 12px/1.3 var(--body);font-weight:600}
+    .reel .cap small{color:#c9c3b6;font:8px/1 var(--mono);text-transform:uppercase}
+    .reel .dur{position:absolute;top:9px;inset-inline-end:9px;background:rgba(17,17,15,.8);color:var(--teal-bright);font:8px/1 var(--mono);padding:4px 6px}
+    .reel-empty{aspect-ratio:16/9;border:1px dashed var(--line);display:grid;place-items:center;color:var(--teal);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .reel-empty:hover{border-color:var(--teal-soft)}
+
+    /* Notes */
+    .note{padding:14px 0;border-bottom:1px solid var(--line)}
+    .note:last-child{border-bottom:0}
+    .note .meta{display:flex;align-items:center;gap:8px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+    .note .meta .tag{color:var(--teal);border:1px solid var(--teal-soft);padding:3px 6px}
+    .note p{margin:0;font:13px/1.55 var(--body)}
+    .noteadd{width:100%;margin-top:14px;padding:12px;border:1px dashed var(--line);color:var(--teal);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;text-align:center}
+    .noteadd:hover{border-color:var(--teal-soft)}
+
+    /* Documents */
+    .doc{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+    .doc:last-child{border-bottom:0}
+    .doc .ic{width:28px;height:28px;flex:none;display:grid;place-items:center;border:1px solid var(--line);color:var(--teal);font-size:12px}
+    .doc a{color:var(--ink);font:12px/1 var(--mono)}
+    .doc a:hover{color:var(--teal)}
+    .doc .st{margin-inline-start:auto;font:8px/1 var(--mono);text-transform:uppercase;color:var(--green);border:1px solid var(--green);padding:5px 7px}
+    .doc .st.muted{color:var(--muted);border-color:var(--line)}
+    .addbtn{width:100%;margin-top:12px;padding:12px;border:1px dashed var(--line);color:var(--teal);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;text-align:center}
+    .addbtn:hover{border-color:var(--teal-soft)}
+
+    /* Mandate */
+    .mandate{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border:1px solid var(--line);background:var(--card)}
+    .mandate .st{font:500 18px/1 var(--display);text-transform:uppercase}
+    [dir=rtl] .mandate .st{font-weight:800}
+    .mandate .st.teal{color:var(--teal)}
+    .mandate p{margin:4px 0 0;color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+    .sw{width:46px;height:24px;background:var(--teal-soft);position:relative;flex:none;cursor:pointer;transition:background .15s}
+    .sw:after{content:'';position:absolute;top:3px;inset-inline-end:3px;width:18px;height:18px;background:var(--paper);transition:all .15s}
+    .sw.off{background:var(--paper-2)}
+    .sw.off:after{inset-inline-end:auto;inset-inline-start:3px}
+
+    /* Contacts */
+    .crow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);font:13px/1 var(--body)}
+    .crow:last-child{border-bottom:0}
+    .crow .ic{width:30px;height:30px;flex:none;display:grid;place-items:center;border:1px solid var(--line);color:var(--teal)}
+    .crow a{color:var(--ink)}
+    .crow a:hover{color:var(--teal)}
+    .crow .lab{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-inline-start:auto}
+
+    .guardian{border:1px solid var(--teal-soft);background:rgba(47,125,110,.05);padding:16px 18px;margin-top:14px}
+    .guardian .gh{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .guardian .gh .gi{width:34px;height:34px;flex:none;display:grid;place-items:center;background:var(--teal-soft);color:var(--ink);font:12px/1 var(--display)}
+    .guardian .gh b{font:500 16px/1 var(--display);text-transform:uppercase}
+    [dir=rtl] .guardian .gh b{font-weight:800}
+    .guardian .gh span{color:var(--teal);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-top:3px;display:block}
+    .guardian a{color:var(--teal)}
+
+    /* Matching requests */
+    .match{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+    .match:last-child{border-bottom:0}
+    .match .info{flex:1}
+    .match .info b{font:500 14px/1.1 var(--body);font-weight:600}
+    .match .info .spec{color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase;margin-top:5px}
+    .fit{font:9px/1 var(--mono);text-transform:uppercase;padding:6px 8px;border:1px solid var(--teal-soft);color:var(--teal);white-space:nowrap}
+
+    @media(max-width:1080px){.facts{grid-template-columns:repeat(3,1fr)}.facts div:nth-child(3){border-inline-end:0}.ifa-detail{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:980px){.cols{grid-template-columns:1fr;gap:0}}
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav em,.nav>a.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:22px 18px 60px}
+      .hero .inner{display:block}.hero .portrait{margin-bottom:16px}.hero .meta{text-align:start;margin-top:14px}
+      .facts{grid-template-columns:repeat(2,1fr)}.facts div:nth-child(2){border-inline-end:0}
+      .reels{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="youth-dashboard.html"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <a class="active" href="youth-players.html"><span data-t="nav_players">Youth Players</span><em>28</em></a>
+        <a href="youth-shortlist.html"><span data-t="nav_short">Shortlist</span><em>12</em></a>
+        <a href="youth-requests.html"><span data-t="nav_req">Requests</span><em>04</em></a>
+        <a href="youth-contacts.html"><span data-t="nav_cont">Contacts</span><em>17</em></a>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Youth / Academy</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <a href="youth-players.html" data-t="nav_players">Youth Players</a> / <strong>Ilay Madmon</strong></div>
+        <div class="actions">
+          <button id="lang" onclick="toggleLang()">HE / EN</button>
+          <button data-t="share_a">Share</button>
+          <button class="edit" data-t="edit_a">Edit profile</button>
+          <span class="avatar">LD</span>
+        </div>
+      </header>
+
+      <main class="canvas">
+        <a class="back" href="youth-players.html" data-t="back">← Back to prospects</a>
+
+        <!-- HERO -->
+        <section class="hero">
+          <div class="bg"></div>
+          <div class="mono">IM</div>
+          <div class="inner">
+            <div class="lead">
+              <div class="portrait">IM</div>
+              <div>
+                <p class="eyebrow" data-t="eyebrow">Confidential prospect file · IFA</p>
+                <h1 data-t="name">Ilay Madmon</h1>
+                <div class="he">עילי מדמון</div>
+                <div class="chips"><b>CM</b><b>AM</b><b class="ag">U-19</b><b data-t="nat">Israel</b></div>
+              </div>
+            </div>
+            <div class="meta">
+              <span data-t="club">Maccabi Netanya</span><br>
+              <span data-t="academy">נערים א׳ ליגת על</span><br>
+              <span data-t="born">Born 12 Mar 2008 · 17y</span><br>
+              <a href="#" data-t="ifa_link">IFA profile ↗</a>
+            </div>
+          </div>
+        </section>
+
+        <!-- FACTS -->
+        <section class="facts">
+          <div><label data-t="f_ag">Age group</label><strong class="teal">U-19</strong></div>
+          <div><label data-t="f_pos">Position</label><strong class="sm" data-t="f_pos_v">CM · AM</strong></div>
+          <div><label data-t="f_foot">Foot</label><strong class="sm" data-t="f_foot_v">Both</strong></div>
+          <div><label data-t="f_apps">IFA apps</label><strong>12</strong></div>
+          <div><label data-t="f_ga">G / A</label><strong>4 / 6</strong></div>
+          <div><label data-t="f_mandate">Mandate</label><strong class="teal" data-t="f_active">Active</strong></div>
+        </section>
+
+        <div class="cols">
+          <!-- LEFT -->
+          <div>
+            <section class="module">
+              <h2><span data-t="m_form">Season form</span> <b data-t="m_form_s">IFA 24/25</b></h2>
+              <div class="ifa-detail">
+                <div><div class="v teal">12</div><div class="l" data-t="l_matches">Matches</div></div>
+                <div><div class="v">04</div><div class="l" data-t="l_goals">Goals</div></div>
+                <div><div class="v">06</div><div class="l" data-t="l_assists">Assists</div></div>
+                <div><div class="v">02</div><div class="l" data-t="l_yellow">Yellow</div></div>
+                <div><div class="v">00</div><div class="l" data-t="l_red">Red</div></div>
+              </div>
+              <div class="ifa-src" data-t="ifa_src">Source · IFA football.org.il · synced 29 Sep 2026 · <a href="#">View on IFA ↗</a></div>
+            </section>
+
+            <section class="module">
+              <h2><span data-t="m_reels">Highlights</span> <a class="act" href="#" data-t="reels_a">Manage</a></h2>
+              <div class="reels">
+                <div class="reel">
+                  <span class="dur">1:42</span>
+                  <div class="play"><span>▶</span></div>
+                  <div class="cap"><b data-t="reel1">U-19 derby · assist + 2 chances created</b><small>YouTube · 24 Sep 2026</small></div>
+                </div>
+                <div class="reel">
+                  <span class="dur">0:58</span>
+                  <div class="play"><span>▶</span></div>
+                  <div class="cap"><b data-t="reel2">National camp · passing range reel</b><small>YouTube · 11 Sep 2026</small></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="module">
+              <h2><span data-t="m_notes">Scouting notes</span> <a class="act" href="#" data-t="notes_a">+ Add note</a></h2>
+              <div class="note">
+                <div class="meta"><span data-t="n1m">Lior Dahan · 24 Sep 2026</span><span class="tag" data-t="n1t">Priority</span></div>
+                <p data-t="n1">Two-footed, reads the game beyond his age. Best as an 8 who arrives late in the box. Family grounded — father very involved in decisions.</p>
+              </div>
+              <div class="note">
+                <div class="meta"><span data-t="n2m">Scout desk · 18 Sep 2026</span></div>
+                <p data-t="n2">Called up to national U-19 camp. Worth a Category-A club trial this window.</p>
+              </div>
+              <button class="noteadd" data-t="notes_add">+ Add scouting note</button>
+            </section>
+          </div>
+
+          <!-- RIGHT -->
+          <aside>
+            <section class="module">
+              <h2 data-t="m_mandate">Mandate</h2>
+              <div class="mandate">
+                <div><div class="st teal" data-t="f_active">Active</div><p data-t="expires">Signed · expires 30 Jun 2027</p></div>
+                <div class="sw" onclick="this.classList.toggle('off')"></div>
+              </div>
+            </section>
+
+            <section class="module">
+              <h2 data-t="m_contact">Player contact</h2>
+              <div class="crow"><span class="ic">☎</span><a href="#" dir="ltr">+972 54 123 4567</a><span class="lab" data-t="player_l">Player</span></div>
+              <div class="crow"><span class="ic">✉</span><a href="#">ilay.madmon@example.com</a><span class="lab" data-t="player_l">Player</span></div>
+
+              <div class="guardian">
+                <div class="gh"><div class="gi">DM</div><div><b>David Madmon</b><span data-t="guardian_r">Father · Guardian</span></div></div>
+                <div class="crow" style="border:0;padding:7px 0"><span class="ic">☎</span><a href="#" dir="ltr">+972 52 987 6543</a></div>
+                <div class="crow" style="border:0;padding:7px 0"><span class="ic">✉</span><a href="#">david.madmon@example.com</a></div>
+              </div>
+            </section>
+
+            <section class="module">
+              <h2 data-t="m_docs">Documents</h2>
+              <div class="doc"><span class="ic">▦</span><a href="#">Mandate_Madmon.pdf</a><span class="st" data-t="valid">Valid</span></div>
+              <div class="doc"><span class="ic">▦</span><a href="#">Passport_Madmon.pdf</a><span class="st muted">Aug 2024</span></div>
+              <button class="addbtn" data-t="upload">+ Upload document</button>
+            </section>
+
+            <section class="module">
+              <h2 data-t="m_match">Matching requests</h2>
+              <div class="match">
+                <div class="info"><b>Maccabi Haifa · U-19</b><div class="spec" data-t="match_spec1">AM · left-footed · 2007–2008</div></div>
+                <span class="fit">92% <span data-t="fit_l">fit</span></span>
+              </div>
+              <div class="match">
+                <div class="info"><b>Hapoel Be'er Sheva · U-19</b><div class="spec" data-t="match_spec2">CM · playmaker profile</div></div>
+                <span class="fit">78% <span data-t="fit_l">fit</span></span>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקני נוער',nav_short:'רשימת מעקב',nav_req:'דרישות',nav_cont:'אנשי קשר',
+      platform:'פלטפורמה פעילה',platform_v:'נוער / אקדמיה',
+      share_a:'שיתוף',edit_a:'עריכת פרופיל',back:'← חזרה לכישרונות',
+      eyebrow:'תיק כישרון חסוי · IFA',name:'עילי מדמון',nat:'ישראל',club:'מכבי נתניה',academy:'נערים א׳ ליגת על',born:'נולד 12 במרץ 2008 · בן 17',ifa_link:'פרופיל IFA ↗',
+      f_ag:'קבוצת גיל',f_pos:'עמדה',f_pos_v:'קשר · קשר התקפי',f_foot:'רגל',f_foot_v:'שתיים',f_apps:'הופעות IFA',f_ga:'שערים / בישולים',f_mandate:'מנדט',f_active:'פעיל',
+      m_form:'כושר העונה',m_form_s:'IFA 24/25',l_matches:'משחקים',l_goals:'שערים',l_assists:'בישולים',l_yellow:'צהובים',l_red:'אדומים',
+      ifa_src:'מקור · IFA football.org.il · סונכרן 29 בספט׳ 2026 · <a href="#">צפייה ב-IFA ↗</a>',
+      m_reels:'תקצירים',reels_a:'ניהול',reel1:'דרבי U-19 · בישול + 2 הזדמנויות',reel2:'מחנה נבחרת · טווח מסירה',
+      m_notes:'הערות סקאוטינג',notes_a:'+ הוסף הערה',notes_add:'+ הוסף הערת סקאוטינג',
+      n1m:'ליאור דהן · 24 בספט׳ 2026',n1t:'עדיפות',n1:'דו-רגלי, קורא את המשחק מעבר לגילו. מיטבי כקשר מתפרץ לרחבה. משפחה יציבה — האב מעורב מאוד בהחלטות.',
+      n2m:'מערך סקאוטינג · 18 בספט׳ 2026',n2:'זומן למחנה נבחרת U-19. שווה מבחן במועדון דרג א׳ בחלון הזה.',
+      m_mandate:'מנדט',expires:'חתום · בתוקף עד 30 ביוני 2027',
+      m_contact:'איש קשר שחקן',player_l:'שחקן',guardian_r:'אב · אפוטרופוס',
+      m_docs:'מסמכים',valid:'תקף',upload:'+ העלה מסמך',
+      m_match:'דרישות תואמות',match_spec1:'קשר התקפי · רגל שמאל · 2007–2008',match_spec2:'קשר · פרופיל יוצר משחק',fit_l:'התאמה'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.innerHTML);
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.innerHTML=(rtl?(T.he[k]??EN[k]):EN[k])||el.innerHTML;});
+    }
+  </script>
+</body>
+</html>

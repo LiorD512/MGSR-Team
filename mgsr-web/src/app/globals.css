@@ -1212,6 +1212,134 @@ body {
   line-height: 0.95;
 }
 
+/* ═══════════════════════════════════════════════════════
+   YOUTH editorial variant — same Light Management Room,
+   re-tuned from gold to pitch-teal. Every gold reference in
+   .brit-room flows through --gold / --gold-soft, so overriding
+   those two (plus a few literal gold tints) re-skins the whole
+   room without duplicating the stylesheet.
+   ═══════════════════════════════════════════════════════ */
+body[data-platform='youth'] .brit-room {
+  --gold: #2f7d6e;        /* pitch teal */
+  --gold-soft: #5fa391;   /* soft teal */
+  --gold-bright: #8fc9b8; /* bright teal */
+}
+/* Retint the handful of literal gold rgba tints used in-room */
+body[data-platform='youth'] .brit-room .brit-platform-switch .brit-ps-thumb {
+  box-shadow: 0 3px 12px -4px rgba(95, 163, 145, 0.7);
+}
+body[data-platform='youth'] .brit-gsearch-row.active,
+body[data-platform='youth'] .brit-gsearch-row:hover,
+body[data-platform='youth'] .brit-room .brit-areq-euchip.on {
+  background: rgba(95, 163, 145, 0.12);
+}
+body[data-platform='youth'] .brit-gsearch-badge.shortlist {
+  background: rgba(95, 163, 145, 0.16);
+  border-color: rgba(95, 163, 145, 0.45);
+}
+body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
+  background: rgba(95, 163, 145, 0.14) !important;
+}
+
+/* ── Youth-only editorial helpers (age group, IFA stats, guardian) ── */
+.brit-room .brit-agtag {
+  display: inline-block;
+  font: 9px/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 5px 8px;
+  border: 1px solid var(--gold-soft);
+  color: var(--gold);
+}
+.brit-room .brit-ifa-form {
+  display: flex;
+  gap: 14px;
+}
+.brit-room .brit-ifa-form span {
+  color: var(--muted);
+  font: 11px/1 var(--mono);
+}
+.brit-room .brit-ifa-form b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.brit-room .brit-ladder {
+  display: flex;
+  flex-direction: column;
+}
+.brit-room .brit-rung {
+  display: grid;
+  grid-template-columns: 50px 1fr 34px;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.brit-room .brit-rung:last-child {
+  border-bottom: 0;
+}
+.brit-room .brit-rung .ag {
+  font: 500 18px/1 var(--display);
+  text-transform: uppercase;
+}
+.brit-room .brit-rung.peak .ag {
+  color: var(--gold);
+}
+.brit-room .brit-rung .track {
+  height: 8px;
+  background: var(--paper-2);
+  position: relative;
+}
+.brit-room .brit-rung .fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--gold-soft);
+}
+.brit-room[dir='rtl'] .brit-rung .fill {
+  inset: 0 0 0 auto;
+}
+.brit-room .brit-rung.peak .fill {
+  background: var(--gold);
+}
+.brit-room .brit-rung .c {
+  color: var(--muted);
+  font: 11px/1 var(--mono);
+  text-align: end;
+}
+.brit-room .brit-guardian {
+  border: 1px solid var(--gold-soft);
+  background: color-mix(in srgb, var(--gold-soft) 7%, transparent);
+  padding: 16px 18px;
+  margin-top: 12px;
+}
+.brit-room .brit-guardian .gh {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.brit-room .brit-guardian .gi {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: var(--gold-soft);
+  color: var(--ink);
+  font: 12px/1 var(--display);
+}
+.brit-room .brit-guardian .gh b {
+  font: 500 16px/1 var(--display);
+  text-transform: uppercase;
+}
+.brit-room .brit-guardian .gh span {
+  display: block;
+  margin-top: 3px;
+  color: var(--gold);
+  font: 8px/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 /* ── Shell ── */
 .brit-app {
   min-height: 100vh;
@@ -2995,6 +3123,16 @@ body {
 .brit-profile .bp-pane.show{display:block}
 .brit-profile .bp-err{margin-top:10px;color:var(--red);font:10px/1.4 var(--p-mono);text-align:center}
 
+/* Youth profile additions */
+.brit-profile .bp-hero-he{margin:6px 0 0;color:#c9c3b6;font:14px/1 var(--p-body);direction:rtl}
+.brit-profile .bp-contactrow{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font:13px/1 var(--p-body)}
+.brit-profile .bp-contactrow:last-child{border-bottom:0}
+.brit-profile .bp-contactrow .ic{width:28px;height:28px;flex:none;display:grid;place-items:center;border:1px solid var(--line);color:var(--gold)}
+.brit-profile .bp-contactrow a{color:var(--ink);word-break:break-all}
+.brit-profile .bp-contactrow a:hover{color:var(--gold)}
+.brit-profile .brit-guardian{margin-bottom:22px}
+.brit-profile .brit-guardian .bp-contactrow{border-bottom:0;padding:7px 0}
+
 @media(max-width:900px){
   .brit-profile{padding:16px}
   .brit-profile .bp-hero-inner{flex-direction:column;align-items:flex-start;gap:18px;padding:22px 18px}
@@ -3883,6 +4021,26 @@ body {
 .brit-room .brit-add-done .cta .btn{flex:1;padding:12px;text-align:center;font:9px/1 var(--mono);text-transform:uppercase}
 .brit-room .brit-add-done .cta .btn.p{background:var(--black);color:var(--gold-soft)}
 .brit-room .brit-add-done .cta .btn.g{border:1px solid var(--ink);color:var(--ink)}
+
+/* Youth add-prospect drawer — extra primitives */
+.brit-room .brit-add-result-ph{width:42px;height:42px;flex:none;display:grid;place-items:center;background:var(--black);color:var(--gold-soft);font:500 15px/1 var(--p-display)}
+.brit-room .brit-add-result .ri .he{display:block;margin-top:2px;color:var(--muted);font:10px/1 var(--p-body);direction:rtl}
+.brit-room .brit-add-sub{margin:18px 0 10px;color:var(--gold);font:8px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px}
+.brit-room .brit-add-sub:before{content:'';width:14px;height:1px;background:var(--gold-soft)}
+.brit-room .brit-add-sub.g{color:var(--muted)}
+.brit-room .brit-add-sub.g:before{background:var(--line)}
+.brit-room .brit-add-select{width:100%;border:1px solid var(--line);background:var(--paper);padding:12px 13px;color:var(--ink);font:12px/1 var(--p-body);outline:none}
+.brit-room .brit-add-select:focus{border-color:var(--gold-soft)}
+.brit-room .brit-agent-list{display:flex;flex-direction:column;border:1px solid var(--line);background:var(--paper);max-height:280px;overflow-y:auto}
+.brit-room .brit-agent-opt{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border-bottom:1px solid var(--line);text-align:start;transition:.12s}
+.brit-room .brit-agent-opt:last-child{border-bottom:0}
+.brit-room .brit-agent-opt:hover{background:var(--card)}
+.brit-room .brit-agent-opt.on{background:rgba(47,125,110,.08)}
+.brit-room .brit-agent-opt .ava{width:34px;height:34px;flex:none;display:grid;place-items:center;background:var(--black);color:var(--gold-soft);font:500 12px/1 var(--p-display)}
+.brit-room .brit-agent-opt.on .ava{background:var(--gold-soft);color:var(--ink)}
+.brit-room .brit-agent-opt .nm{flex:1;min-width:0;font:500 13px/1.2 var(--p-body);color:var(--ink);display:flex;align-items:center;gap:8px}
+.brit-room .brit-agent-opt .nm em{font-style:normal;color:var(--gold);font:8px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--gold-soft);padding:3px 6px}
+.brit-room .brit-agent-opt .rc{flex:none;color:var(--gold);font:12px/1 var(--p-mono)}
 
 @media(max-width:900px){
   .brit-room .brit-add-drawer{width:100vw;border-inline-start:0;border-top:4px solid var(--gold)}

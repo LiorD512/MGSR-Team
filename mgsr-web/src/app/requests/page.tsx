@@ -11,6 +11,7 @@ import { db } from '@/lib/firebase';
 import { callRequestsDelete, callShortlistAdd } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
 import MenRequests from '@/components/MenRequests';
+import YouthRequests from '@/components/YouthRequests';
 import MenLoading from '@/components/MenLoading';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { getPositionDisplayName } from '@/lib/appConfig';
@@ -732,17 +733,20 @@ export default function RequestsPage() {
   };
 
   if (loading || !user) {
-    if (!isWomen && !isYouth) return <MenLoading />;
+    if (!isWomen) return <MenLoading />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className={`animate-pulse font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
+        <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
       </div>
     );
   }
 
-  // ── Men platform: new "Light Management Room" full-bleed board ──
+  // ── Men & Youth platforms: "Light Management Room" full-bleed board ──
   if (platform === 'men') {
     return <MenRequests />;
+  }
+  if (platform === 'youth') {
+    return <YouthRequests />;
   }
 
   // Narrowed to 'women' | 'youth' below; alias keeps residual men branches typed.

@@ -52,6 +52,7 @@ import ForeignArrivalsPanel from '@/components/ForeignArrivalsPanel';
 import BirthdaysSection from '@/components/BirthdaysSection';
 import { MEN_ROSTER_ANALYSIS_ENABLED, WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 import MenDashboard from '@/components/MenDashboard';
+import YouthDashboard from '@/components/YouthDashboard';
 import MenLoading from '@/components/MenLoading';
 
 interface FeedEvent {
@@ -921,9 +922,9 @@ export default function DashboardPage() {
   }, [user, currentAccount, pendingTransfers]);
 
   if (loading || !user) {
-    // Men (and platform-not-yet-resolved) get the light room loader so we never
-    // flash the old dark design. Women/youth keep their themed loader.
-    if (!isWomen && !isYouth) return <MenLoading />;
+    // Men & Youth get the light room loader so we never flash the old dark
+    // design. Women keeps its themed loader.
+    if (!isWomen) return <MenLoading />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
         <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
@@ -952,6 +953,19 @@ export default function DashboardPage() {
         events={events}
         requests={requests}
         expiringMandates={expiringMandates}
+      />
+    );
+  }
+  if (platform === 'youth') {
+    return (
+      <YouthDashboard
+        userName={userName}
+        greeting={greeting}
+        youthPlayers={youthPlayers}
+        events={events}
+        requests={requests}
+        contactsCount={contacts.length}
+        shortlistCount={shortlistCount}
       />
     );
   }
@@ -1028,7 +1042,7 @@ export default function DashboardPage() {
           <div className={`relative z-[1] mt-6 ${isWomen ? '' : ''}`}>
             <div className={`${isWomen || isYouth ? 'grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-2 px-2 lg:mx-0 lg:px-0'}`}
                style={!isWomen && !isYouth ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
-          {(platform === 'youth'
+          {(platformStr === 'youth'
             ? [
                 { href: '/players', count: youthPlayers.length, label: t('nav_players_youth') },
                 { href: tasksRoute, count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
@@ -2075,7 +2089,7 @@ export default function DashboardPage() {
         <div className={`mb-6 sm:mb-10 ${platform === 'women' || platform === 'youth' ? '' : ''}`}>
           <div className={`${platform === 'women' || platform === 'youth' ? 'grid grid-cols-2 md:grid-cols-3 gap-4' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0'}`}
                style={platformStr === 'men' ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
-          {(platform === 'youth'
+          {(platformStr === 'youth'
             ? [
                 { href: '/players', label: t('nav_players_youth') },
                 { href: tasksRoute, label: t('tasks') },
@@ -2134,7 +2148,7 @@ export default function DashboardPage() {
               isYouth ? 'border-[var(--youth-cyan)]/20' : isWomen ? 'border-[var(--women-rose)]/20' : 'border border-mgsr-border'
             }`}>
               <div className={`absolute inset-0 ${isYouth ? 'bg-gradient-to-b from-[var(--youth-cyan)]/8 to-transparent' : isWomen ? 'bg-gradient-to-b from-[var(--women-rose)]/8 to-transparent' : 'bg-gradient-to-b from-mgsr-teal/5 to-transparent'}`} />
-              <p className="relative text-mgsr-muted">{t(platform === 'youth' ? 'no_recent_activity' : platform === 'women' ? 'no_recent_activity_women' : 'no_recent_activity')}</p>
+              <p className="relative text-mgsr-muted">{t(platformStr === 'youth' ? 'no_recent_activity' : platform === 'women' ? 'no_recent_activity_women' : 'no_recent_activity')}</p>
             </div>
           ) : isWomen ? (
             /* Women: timeline with rose styling */

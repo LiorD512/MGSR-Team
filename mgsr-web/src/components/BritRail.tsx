@@ -11,6 +11,7 @@ import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePlatform } from '@/contexts/PlatformContext';
 
 export type BritRailActive =
   | 'dashboard'
@@ -30,6 +31,8 @@ interface BritRailProps {
 
 export default function BritRail({ active, footer }: BritRailProps) {
   const { t } = useLanguage();
+  const { platform } = usePlatform();
+  const isYouth = platform === 'youth';
   const pathname = usePathname();
   const playersActive = active === 'players' || active === 'shortlist';
   const [playersOpen, setPlayersOpen] = useState(playersActive);
@@ -67,7 +70,7 @@ export default function BritRail({ active, footer }: BritRailProps) {
           aria-expanded={playersOpen}
           onClick={() => setPlayersOpen((v) => !v)}
         >
-          <span>{t('nav_players')}</span>
+          <span>{isYouth ? t('nav_players_youth') : t('nav_players')}</span>
           <em>{playersOpen ? '−' : '+'}</em>
         </button>
         {playersOpen && (
@@ -88,31 +91,35 @@ export default function BritRail({ active, footer }: BritRailProps) {
           <span>{t('nav_contacts')}</span>
         </Link>
 
-        {/* Signals group — expandable */}
-        <button
-          type="button"
-          className={`brit-nav-group${signalsActive ? ' active' : ''}`}
-          aria-expanded={signalsOpen}
-          onClick={() => setSignalsOpen((v) => !v)}
-        >
-          <span>{t('nav_signals')}</span>
-          <em>{signalsOpen ? '−' : '+'}</em>
-        </button>
-        {signalsOpen && (
-          <div className="brit-nav-sub">
-            <Link href="/release-notifications" className={active === 'release' || isRelease ? 'active' : ''}>
-              <span>{t('nav_release_notifications')}</span>
-            </Link>
-            <Link href="/club-change-notifications" className={active === 'club-change' || isClubChange ? 'active' : ''}>
-              <span>{t('nav_club_change_notifications')}</span>
-            </Link>
-            <Link href="/returnees" className={active === 'returnees' || isReturnees ? 'active' : ''}>
-              <span>{t('nav_returnee')}</span>
-            </Link>
-            <Link href="/contract-finisher" className={active === 'contract-finisher' || isContractFinisher ? 'active' : ''}>
-              <span>{t('nav_contract_finisher')}</span>
-            </Link>
-          </div>
+        {/* Signals group — expandable (men-only; youth has no market signals) */}
+        {!isYouth && (
+          <>
+            <button
+              type="button"
+              className={`brit-nav-group${signalsActive ? ' active' : ''}`}
+              aria-expanded={signalsOpen}
+              onClick={() => setSignalsOpen((v) => !v)}
+            >
+              <span>{t('nav_signals')}</span>
+              <em>{signalsOpen ? '−' : '+'}</em>
+            </button>
+            {signalsOpen && (
+              <div className="brit-nav-sub">
+                <Link href="/release-notifications" className={active === 'release' || isRelease ? 'active' : ''}>
+                  <span>{t('nav_release_notifications')}</span>
+                </Link>
+                <Link href="/club-change-notifications" className={active === 'club-change' || isClubChange ? 'active' : ''}>
+                  <span>{t('nav_club_change_notifications')}</span>
+                </Link>
+                <Link href="/returnees" className={active === 'returnees' || isReturnees ? 'active' : ''}>
+                  <span>{t('nav_returnee')}</span>
+                </Link>
+                <Link href="/contract-finisher" className={active === 'contract-finisher' || isContractFinisher ? 'active' : ''}>
+                  <span>{t('nav_contract_finisher')}</span>
+                </Link>
+              </div>
+            )}
+          </>
         )}
       </nav>
 
@@ -121,7 +128,7 @@ export default function BritRail({ active, footer }: BritRailProps) {
       ) : (
         <div className="brit-rail-footer">
           {t('room_footer_platform_label')}
-          <strong>{t('room_footer_platform_value')}</strong>
+          <strong>{isYouth ? t('room_footer_platform_value_youth') : t('room_footer_platform_value')}</strong>
         </div>
       )}
     </aside>

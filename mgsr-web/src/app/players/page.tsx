@@ -24,6 +24,7 @@ import type { Confederation } from '@/lib/api';
 import Link from 'next/link';
 import { MEN_ROSTER_ANALYSIS_ENABLED } from '@/lib/featureFlags';
 import MenPlayers from '@/components/MenPlayers';
+import YouthPlayers from '@/components/YouthPlayers';
 import MenLoading from '@/components/MenLoading';
 
 interface Player {
@@ -753,19 +754,23 @@ export default function PlayersPage() {
   const isYouth = platform === 'youth';
 
   if (loading || !user) {
-    if (!isWomen && !isYouth) return <MenLoading />;
+    if (!isWomen) return <MenLoading />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className={`animate-pulse font-display ${isYouth ? 'youth-gradient-text' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
+        <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
       </div>
     );
   }
 
-  // ── Men platform: new "Light Management Room" full-bleed redesign ──
-  // Renders standalone (outside AppLayout) with its own light-themed shell and
-  // its own Firestore subscriptions. Women & youth keep the standard screen below.
+  // ── Men & Youth platforms: "Light Management Room" full-bleed redesign ──
+  // Each renders standalone (outside AppLayout) with its own editorial shell and
+  // Firestore subscriptions (gold for men, pitch-teal for youth). Women keeps
+  // the standard AppLayout screen below.
   if (platform === 'men') {
     return <MenPlayers />;
+  }
+  if (platform === 'youth') {
+    return <YouthPlayers />;
   }
 
   // From here on the platform is narrowed to 'women' | 'youth'. A few residual
@@ -817,8 +822,8 @@ export default function PlayersPage() {
                 {isYouth ? <span className="youth-gradient-text">{t('players_title_youth')}</span> : t(isWomen ? 'players_title_women' : 'players_title')}
               </h1>
               <p className="text-mgsr-muted mt-2 text-sm">
-                {platform === 'youth' ? youthPlayers.length : platform === 'women' ? womenPlayers.length : players.length} {isYouth ? t('players_subtitle_youth') : t(isWomen ? 'players_women' : 'players')}
-                {filtered.length !== (platform === 'youth' ? youthPlayers.length : platform === 'women' ? womenPlayers.length : players.length) && (
+                {platformStr === 'youth' ? youthPlayers.length : platform === 'women' ? womenPlayers.length : players.length} {isYouth ? t('players_subtitle_youth') : t(isWomen ? 'players_women' : 'players')}
+                {filtered.length !== (platformStr === 'youth' ? youthPlayers.length : platform === 'women' ? womenPlayers.length : players.length) && (
                   <span className={isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}>{` → ${filtered.length}`}</span>
                 )}
                 <span className="block text-xs text-mgsr-muted/80 mt-1">{dataSourceLabel}</span>
@@ -968,7 +973,7 @@ export default function PlayersPage() {
         </div>
 
         {/* Advanced filters — youth */}
-        {platform === 'youth' && (
+        {platformStr === 'youth' && (
           <div className="mb-6">
             <div className="flex flex-wrap gap-2 pb-1">
               <button
@@ -1411,7 +1416,7 @@ export default function PlayersPage() {
               <Link
                 onClick={saveScrollPosition}
                 href={
-                  platform === 'youth'
+                  platformStr === 'youth'
                     ? `/players/youth/${p.id}?from=/players`
                     : platform === 'women'
                       ? `/players/women/${p.id}?from=/players`
@@ -1627,7 +1632,7 @@ export default function PlayersPage() {
               })()}
 
               {/* ── Notes Badge — youth only ── */}
-              {platform === 'youth' && (() => {
+              {platformStr === 'youth' && (() => {
                 const yp = p as YouthPlayer;
                 const noteCount = yp.noteList?.length ?? 0;
                 if (noteCount === 0) return null;
