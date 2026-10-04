@@ -609,16 +609,16 @@ export default function MenPlayers() {
               <div className="brit-mast-actions">
                 <div className="brit-view-toggle" role="tablist" aria-label="View mode">
                   <button
+                    className={view === 'gallery' ? 'active' : ''}
+                    onClick={() => setView('gallery')}
+                  >
+                    {t('shortlist_view_board')}
+                  </button>
+                  <button
                     className={view === 'table' ? 'active' : ''}
                     onClick={() => setView('table')}
                   >
                     {t('players_view_ledger')}
-                  </button>
-                  <button
-                    className={view === 'gallery' ? 'active' : ''}
-                    onClick={() => setView('gallery')}
-                  >
-                    {t('players_view_gallery')}
                   </button>
                 </div>
                 <button className="brit-mast-add" onClick={() => setShowAddDrawer(true)}>+ {t('players_add')}</button>

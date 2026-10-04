@@ -453,7 +453,7 @@ export default function MenShortlist() {
                   <button className={view === 'board' ? 'active' : ''} onClick={() => setView('board')}>{t('shortlist_view_board')}</button>
                   <button className={view === 'ledger' ? 'active' : ''} onClick={() => setView('ledger')}>{t('players_view_ledger')}</button>
                 </div>
-                <button className="brit-mast-add" onClick={() => setShowAddDrawer(true)}>+ {t('shortlist_add_from_tm')}</button>
+                <button className="brit-mast-add" onClick={() => setShowAddDrawer(true)}>+ {t('players_add')}</button>
               </div>
             </header>
 

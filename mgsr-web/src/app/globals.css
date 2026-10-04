@@ -1635,10 +1635,6 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   font: 500 clamp(30px, 3.6vw, 50px)/0.8 var(--display);
   text-transform: uppercase;
 }
-.brit-signal:first-child strong {
-  font: 500 32px/0.8 var(--mono);
-  letter-spacing: -0.06em;
-}
 .brit-signal .brit-red {
   color: var(--red);
 }

@@ -219,7 +219,32 @@ export default function MenAddPlayerDrawer({
     }
   }, [open, initialUrl, initialPlayer, loadDetails, resetAll]);
 
-  // Debounced auto-search.
+  // Debounced auto-search — fires searchPlayers as the user types a name and
+  // drops stale responses so only the latest query populates the results.
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < MIN_SEARCH_LEN) {
+      setSearchResults([]);
+      setLoadingSearch(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingSearch(true);
+    const handle = setTimeout(async () => {
+      try {
+        const results = await searchPlayers(q);
+        if (!cancelled) setSearchResults(results);
+      } catch {
+        if (!cancelled) setSearchResults([]);
+      } finally {
+        if (!cancelled) setLoadingSearch(false);
+      }
+    }, DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [searchQuery]);
 
   const handleSelectFromSearch = (p: SearchPlayer) => {
     setSearchResults([]);
