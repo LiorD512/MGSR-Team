@@ -53,7 +53,7 @@ import BirthdaysSection from '@/components/BirthdaysSection';
 import { MEN_ROSTER_ANALYSIS_ENABLED, WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 import MenDashboard from '@/components/MenDashboard';
 import YouthDashboard from '@/components/YouthDashboard';
-import MenLoading from '@/components/MenLoading';
+import BritLoader from '@/components/BritLoader';
 
 interface FeedEvent {
   id: string;
@@ -922,9 +922,7 @@ export default function DashboardPage() {
   }, [user, currentAccount, pendingTransfers]);
 
   if (loading || !user) {
-    // Men & Youth get the light room loader so we never flash the old dark
-    // design. Women keeps its themed loader.
-    if (!isWomen) return <MenLoading />;
+    if (!isWomen) return <BritLoader fullPage={true} />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
         <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>

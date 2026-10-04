@@ -28,7 +28,7 @@ import {
 import AppLayout from '@/components/AppLayout';
 import MenShortlist from '@/components/MenShortlist';
 import YouthShortlist from '@/components/YouthShortlist';
-import MenLoading from '@/components/MenLoading';
+import BritLoader from '@/components/BritLoader';
 import Link from 'next/link';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 
@@ -826,7 +826,7 @@ export default function ShortlistPage() {
       : entry.addedByAgentName || entry.addedByAgentHebrewName || '—';
 
   if (loading || !user) {
-    if (!isWomen) return <MenLoading />;
+    if (!isWomen) return <BritLoader fullPage={true} />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
         <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{t('loading')}</div>

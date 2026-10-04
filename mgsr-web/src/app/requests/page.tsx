@@ -11,7 +11,7 @@ import { db } from '@/lib/firebase';
 import { callRequestsDelete, callShortlistAdd } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
 import MenRequests from '@/components/MenRequests';
-import MenLoading from '@/components/MenLoading';
+import BritLoader from '@/components/BritLoader';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { getPositionDisplayName } from '@/lib/appConfig';
 import { matchRequestToPlayers, type ClubRequest as MatcherRequest, type RosterPlayer } from '@/lib/requestMatcher';
@@ -738,7 +738,7 @@ export default function RequestsPage() {
   };
 
   if (loading || !user) {
-    if (!isWomen) return <MenLoading />;
+    if (!isWomen) return <BritLoader fullPage={true} />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
         <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
@@ -749,7 +749,7 @@ export default function RequestsPage() {
   // Youth has no club-requests screen — render nothing while the effect above
   // redirects to the dashboard.
   if (platform === 'youth') {
-    return <MenLoading />;
+    return <BritLoader fullPage={true} />;
   }
 
   // ── Men platform: "Light Management Room" full-bleed board ──

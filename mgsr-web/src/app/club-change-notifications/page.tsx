@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 import MenClubChanges from '@/components/MenClubChanges';
-import MenLoading from '@/components/MenLoading';
+import BritLoader from '@/components/BritLoader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { db } from '@/lib/firebase';
@@ -263,7 +263,7 @@ export default function ClubChangeNotificationsPage() {
   }, [clubChangeItems]);
 
   if (loading || !user) {
-    return <MenLoading />;
+    return <BritLoader fullPage={true} />;
   }
 
   // Men platform only — full-bleed "Light Management Room" movement wire.

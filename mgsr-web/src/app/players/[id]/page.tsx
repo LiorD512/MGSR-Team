@@ -11,7 +11,7 @@ import { auth, db, storage } from '@/lib/firebase';
 import { callOffersCreate, callOffersUpdateFeedback, callTasksToggleComplete, callPlayersUpdate, callPlayersToggleMandate, callPlayersAddNote, callPlayersDeleteNote, callPlayersDelete, callPlayerDocumentsCreate, callPlayerDocumentsDelete, callPlayerDocumentsMarkExpired, callPortfolioUpsert } from '@/lib/callables';
 import { getPlayerDetails, PlayerDetails } from '@/lib/api';
 import MenPlayerProfile from '@/components/MenPlayerProfile';
-import MenLoading from '@/components/MenLoading';
+import BritLoader from '@/components/BritLoader';
 import BritRail from '@/components/BritRail';
 import Link from 'next/link';
 import { toWhatsAppUrl, openWhatsAppShare } from '@/lib/whatsapp';
@@ -1584,11 +1584,11 @@ export default function PlayerInfoPage() {
   }, [valueChartData]);
 
   if (loading || !user) {
-    return <MenLoading />;
+    return <BritLoader fullPage={true} />;
   }
 
   if (playerLoading) {
-    return <MenLoading label={t('players_loading')} />;
+    return <BritLoader fullPage={true} text="LOADING PLAYER" subtitle="Fetching profile details" />;
   }
 
   if (!player) {

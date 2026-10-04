@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { collection, getDocs, onSnapshot, orderBy, query, limit } from 'firebase/firestore';
 import AppLayout from '@/components/AppLayout';
 import MenReleaseAlerts from '@/components/MenReleaseAlerts';
-import MenLoading from '@/components/MenLoading';
+import BritLoader from '@/components/BritLoader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
@@ -1308,7 +1308,7 @@ export default function ReleaseNotificationsPage() {
   }, []);
 
   if (loading || !user) {
-    return <MenLoading />;
+    return <BritLoader fullPage={true} />;
   }
 
   // ── Men platform: new "Light Management Room" full-bleed release wire ──

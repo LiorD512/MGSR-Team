@@ -2719,14 +2719,15 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 
 /* ═══ Asset dossier dialog — redesigned (crest vs crest + countdown) ═══ */
 .brit-asset-modal{padding:0 !important;border-top:0 !important;overflow:hidden;max-height:92vh;overflow-y:auto}
+.brit-asset-modal{position:relative}
+.brit-asset-modal > .brit-close{position:absolute;top:12px;inset-inline-end:14px;z-index:5;float:none;color:var(--paper)}
 /* Hero — diagonal split: player photo (left) | club crest (right) */
 .brit-asset-modal .bam-hero{position:relative;height:250px;background:linear-gradient(160deg,#201d15,#0e0d09);color:var(--paper);overflow:hidden}
 /* Diagonal seam shaped like "\" — top point at 38%, bottom point at 52%
    (player region narrow at top, wider at bottom). */
 .brit-asset-modal .bam-shot{position:absolute;inset:0;width:100%;overflow:hidden;clip-path:polygon(0 0, 38% 0, 52% 100%, 0 100%)}
-/* Whole player shown (contain, no crop), anchored to the slant edge so he sits
-   right against the diagonal — any slack falls on the far-left/top (dark). */
-.brit-asset-modal .bam-shot img{position:absolute;top:0;bottom:0;inset-inline-start:0;width:52%;height:100%;object-fit:contain;object-position:right bottom;filter:grayscale(1);opacity:.9}
+/* Photo fills the whole player region; anchored near the top so head and torso stay visible. */
+.brit-asset-modal .bam-shot img{position:absolute;top:0;bottom:0;inset-inline-start:0;width:52%;height:100%;object-fit:cover;object-position:center 15%;filter:grayscale(1);opacity:.9}
 .brit-asset-modal .bam-shot:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,13,9,0) 0%,rgba(14,13,9,.25) 58%,rgba(14,13,9,.92) 100%)}
 /* The white slant line — same diagonal edge as both clips */
 .brit-asset-modal .bam-slant{position:absolute;inset:0;z-index:3;pointer-events:none;

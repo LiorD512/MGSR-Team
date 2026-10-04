@@ -14,7 +14,7 @@ import { callContactsDelete } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
 import MenContacts from '@/components/MenContacts';
 import YouthContacts from '@/components/YouthContacts';
-import MenLoading from '@/components/MenLoading';
+import BritLoader from '@/components/BritLoader';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 
@@ -185,7 +185,7 @@ export default function ContactsPage() {
   };
 
   if (loading || !user) {
-    if (!isWomen) return <MenLoading />;
+    if (!isWomen) return <BritLoader fullPage={true} />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
         <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{t('loading')}</div>

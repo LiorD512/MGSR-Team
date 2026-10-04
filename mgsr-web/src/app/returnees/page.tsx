@@ -10,7 +10,7 @@ import { callShortlistAdd } from '@/lib/callables';
 import { getTeammates, extractPlayerIdFromUrl, type ReturneePlayer } from '@/lib/api';
 import { parseMarketValue } from '@/lib/releases';
 import MenReturnees from '@/components/MenReturnees';
-import MenLoading from '@/components/MenLoading';
+import BritLoader from '@/components/BritLoader';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
 import {
@@ -248,7 +248,7 @@ export default function ReturneesPage() {
   );
 
   if (loading || !user) {
-    return <MenLoading />;
+    return <BritLoader fullPage={true} />;
   }
 
   // Men platform only — full-bleed "Light Management Room" on-loan wire.

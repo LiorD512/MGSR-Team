@@ -25,7 +25,7 @@ import Link from 'next/link';
 import { MEN_ROSTER_ANALYSIS_ENABLED } from '@/lib/featureFlags';
 import MenPlayers from '@/components/MenPlayers';
 import YouthPlayers from '@/components/YouthPlayers';
-import MenLoading from '@/components/MenLoading';
+import BritLoader from '@/components/BritLoader';
 
 interface Player {
   id: string;
@@ -754,7 +754,7 @@ export default function PlayersPage() {
   const isYouth = platform === 'youth';
 
   if (loading || !user) {
-    if (!isWomen) return <MenLoading />;
+    if (!isWomen) return <BritLoader fullPage={true} />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
         <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>

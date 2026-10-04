@@ -13,7 +13,7 @@ import { parseMarketValue } from '@/lib/releases';
 import { getConfederation } from '@/lib/nationToConfederation';
 import type { Confederation } from '@/lib/api';
 import MenContractFinisher from '@/components/MenContractFinisher';
-import MenLoading from '@/components/MenLoading';
+import BritLoader from '@/components/BritLoader';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
@@ -460,7 +460,7 @@ export default function ContractFinisherPage() {
   );
 
   if (loading || !user) {
-    return <MenLoading />;
+    return <BritLoader fullPage={true} />;
   }
 
   // Men platform only — full-bleed "Light Management Room" contract clock.
