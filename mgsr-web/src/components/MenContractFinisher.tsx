@@ -10,7 +10,7 @@
  * handlers/setters passed in.
  */
 
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, memo, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import BritRail from '@/components/BritRail';
@@ -288,22 +288,17 @@ export default function MenContractFinisher(props: MenContractFinisherProps) {
             ) : players.length === 0 ? (
               <div className="brit-empty">{totalCount === 0 ? t('contract_finisher_no_found') : t('contract_finisher_no_match_filters')}</div>
             ) : (
-              <div className="brit-cf-feed">
-                {players.map((p) => (
-                  <MenContractCard
-                    key={p.playerUrl}
-                    player={p}
-                    isInShortlist={!!p.playerUrl && shortlistUrls.has(p.playerUrl)}
-                    isAdding={addingUrl === p.playerUrl}
-                    onAddToShortlist={onAddToShortlist}
-                    teammates={teammatesCache[p.playerUrl]}
-                    isLoadingTeammates={loadingTeammatesUrl === p.playerUrl}
-                    isExpanded={expandedTeammatesUrl === p.playerUrl}
-                    onToggleTeammates={onToggleTeammates}
-                    onFetchTeammates={onFetchTeammates}
-                  />
-                ))}
-              </div>
+              <ContractFeed
+                players={players}
+                shortlistUrls={shortlistUrls}
+                addingUrl={addingUrl}
+                onAddToShortlist={onAddToShortlist}
+                teammatesCache={teammatesCache}
+                loadingTeammatesUrl={loadingTeammatesUrl}
+                expandedTeammatesUrl={expandedTeammatesUrl}
+                onToggleTeammates={onToggleTeammates}
+                onFetchTeammates={onFetchTeammates}
+              />
             )}
           </main>
         </div>
@@ -313,7 +308,97 @@ export default function MenContractFinisher(props: MenContractFinisherProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-function MenContractCard({
+/**
+ * Progressive-render feed. The contract-finisher list can hold hundreds–low
+ * thousands of players; mounting every image-heavy card at once froze the page.
+ * We keep ALL players in state (so filtering/counting is lossless) but only
+ * MOUNT a growing window of cards, extending it as the user scrolls via an
+ * IntersectionObserver sentinel. Filtering resets the window to the top.
+ */
+const FEED_PAGE = 24;
+
+interface ContractFeedProps {
+  players: MenContractPlayer[];
+  shortlistUrls: Set<string>;
+  addingUrl: string | null;
+  onAddToShortlist: (player: MenContractPlayer) => void;
+  teammatesCache: Record<string, RosterTeammateMatchLike[]>;
+  loadingTeammatesUrl: string | null;
+  expandedTeammatesUrl: string | null;
+  onToggleTeammates: (url: string) => void;
+  onFetchTeammates: (url: string) => void;
+}
+
+function ContractFeed({
+  players,
+  shortlistUrls,
+  addingUrl,
+  onAddToShortlist,
+  teammatesCache,
+  loadingTeammatesUrl,
+  expandedTeammatesUrl,
+  onToggleTeammates,
+  onFetchTeammates,
+}: ContractFeedProps) {
+  const [visibleCount, setVisibleCount] = useState(FEED_PAGE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // A compact signature of the current (filtered) list — when it changes we
+  // reset the window so results always start from the top.
+  const listSignature = useMemo(
+    () => `${players.length}:${players[0]?.playerUrl ?? ''}:${players[players.length - 1]?.playerUrl ?? ''}`,
+    [players]
+  );
+  useEffect(() => {
+    setVisibleCount(FEED_PAGE);
+  }, [listSignature]);
+
+  const hasMore = visibleCount < players.length;
+
+  // Grow the window when the sentinel scrolls into view.
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisibleCount((c) => Math.min(c + FEED_PAGE, players.length));
+        }
+      },
+      { rootMargin: '600px 0px' } // prefetch next page before it's visible
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, players.length]);
+
+  const visible = useMemo(() => players.slice(0, visibleCount), [players, visibleCount]);
+
+  return (
+    <>
+      <div className="brit-cf-feed">
+        {visible.map((p) => (
+          <MenContractCard
+            key={p.playerUrl}
+            player={p}
+            isInShortlist={!!p.playerUrl && shortlistUrls.has(p.playerUrl)}
+            isAdding={addingUrl === p.playerUrl}
+            onAddToShortlist={onAddToShortlist}
+            teammates={teammatesCache[p.playerUrl]}
+            isLoadingTeammates={loadingTeammatesUrl === p.playerUrl}
+            isExpanded={expandedTeammatesUrl === p.playerUrl}
+            onToggleTeammates={onToggleTeammates}
+            onFetchTeammates={onFetchTeammates}
+          />
+        ))}
+      </div>
+      {hasMore && <div ref={sentinelRef} aria-hidden style={{ height: 1 }} />}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+function MenContractCardBase({
   player,
   isInShortlist,
   isAdding,
@@ -376,10 +461,10 @@ function MenContractCard({
       <div className="brit-cf-top" role="button" tabIndex={0} onClick={handleCardClick}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick(e as unknown as React.MouseEvent); } }}>
         {flagBg
-          ? <img className="brit-cf-flagbg" src={flagBg} alt="" aria-hidden="true" onError={() => setFlagIdx((i) => i + 1)} />
+          ? <img className="brit-cf-flagbg" src={flagBg} alt="" aria-hidden="true" loading="lazy" decoding="async" onError={() => setFlagIdx((i) => i + 1)} />
           : <div className="brit-cf-flagbg-ph" aria-hidden="true" />}
         <div className="brit-cf-portrait">
-          <img src={player.playerImage || 'https://via.placeholder.com/72'} alt="" />
+          <img src={player.playerImage || 'https://via.placeholder.com/72'} alt="" loading="lazy" decoding="async" />
         </div>
         <div className="brit-cf-who">
           <div className="nm" title={player.playerName || ''}>{player.playerName || (isRtl ? 'לא ידוע' : 'Unknown')}</div>
@@ -442,7 +527,7 @@ function MenContractCard({
                 return (
                   <div className="brit-cf-mate" key={m.player.id}>
                     <Link href={`/players/${m.player.id}?from=/contract-finisher`} onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 11, flex: 1, minWidth: 0 }}>
-                      <img src={m.player.profileImage || 'https://via.placeholder.com/40'} alt="" />
+                      <img src={m.player.profileImage || 'https://via.placeholder.com/40'} alt="" loading="lazy" decoding="async" />
                       <div className="mi">
                         <b>{m.player.fullName || (isRtl ? 'לא ידוע' : 'Unknown')}</b>
                         <span>{(m.player.positions?.filter(Boolean).join(', ') || '—')} · {m.player.age ? t('players_age_display').replace('{age}', m.player.age) : '—'} · {m.player.marketValue || '—'}</span>
@@ -464,3 +549,7 @@ function MenContractCard({
     </article>
   );
 }
+
+/** Memoised card — prevents re-rendering every mounted card when unrelated
+    parent state (filters, counts, another row's teammates) changes. */
+const MenContractCard = memo(MenContractCardBase);

@@ -61,6 +61,17 @@ function normalizeFootValue(raw: string | null | undefined): FootSide {
   return null;
 }
 
+/** Debounce a value so the heavy O(n) filter chain reruns after typing settles,
+    not on every keystroke. The input stays instant; only filtering is deferred. */
+function useDebounced<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
 interface RosterPlayer {
   id: string;
   fullName?: string;
@@ -112,6 +123,7 @@ export default function ContractFinisherPage() {
   const [footByUrl, setFootByUrl] = useState<Record<string, FootSide>>(cached?.footByUrl ?? {});
   const footEnrichingRef = useRef<Set<string>>(new Set());
   const [search, setSearch] = useState(cached?.search ?? '');
+  const debouncedSearch = useDebounced(search, 250);
   const [rosterOnly, setRosterOnly] = useState(cached?.rosterOnly ?? false);
   const [firestorePositions, setFirestorePositions] = useState<{ name?: string; hebrewName?: string }[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>(cached?.rosterPlayers ?? []);
@@ -275,7 +287,7 @@ export default function ContractFinisherPage() {
 
   const preFootFilteredPlayers = useMemo(() => {
     let result = players;
-    const queryText = search.trim().toLowerCase();
+    const queryText = debouncedSearch.trim().toLowerCase();
 
     if (queryText) {
       result = result.filter((p) => {
@@ -342,7 +354,7 @@ export default function ContractFinisherPage() {
       return true;
     });
     return result;
-  }, [players, search, positionFilter, ageFilter, regionFilter, valueFilter, rosterOnly, rosterPlayers, shortlistUrls]);
+  }, [players, debouncedSearch, positionFilter, ageFilter, regionFilter, valueFilter, rosterOnly, rosterPlayers, shortlistUrls]);
 
   const enrichFootForCandidates = useCallback(async (candidates: ContractFinisherPlayer[]) => {
     const uniqueUrls = candidates
@@ -382,34 +394,21 @@ export default function ContractFinisherPage() {
   }, [footByUrl]);
 
   // Background prefetch: warm a foot cache for top candidates so filters feel instant.
-  useEffect(() => {
-    if (players.length === 0) return;
-    const candidates = players
-      .filter((p) => !!p.playerUrl)
-      .filter((p) => !normalizeFootValue(p.playerFoot))
-      .filter((p) => {
-        const url = p.playerUrl || '';
-        return !!url && !(url in footByUrl);
-      })
-      .slice(0, FOOT_PREFETCH_LIMIT);
-    if (candidates.length === 0) return;
-
-    const timer = setTimeout(() => {
-      void enrichFootForCandidates(candidates);
-    }, 700);
-
-    return () => clearTimeout(timer);
-  }, [players, footByUrl, enrichFootForCandidates]);
-
-  // Enrich missing foot data on-demand so left/right filter can work reliably.
+  // Foot data is enriched ONLY on demand — when the user actually turns on the
+  // left/right filter — and only for the players still missing it, capped per
+  // pass. The previous eager background prefetch fired ~120 getPlayerDetails
+  // calls right after load, each causing a full re-render and freezing the
+  // page; that prefetch is intentionally removed.
   useEffect(() => {
     if (footFilter === 'all') return;
-    const candidates = preFootFilteredPlayers.filter((p) => {
-      const url = p.playerUrl || '';
-      if (!url) return false;
-      if (normalizeFootValue(p.playerFoot)) return false;
-      return footByUrl[url] === undefined;
-    });
+    const candidates = preFootFilteredPlayers
+      .filter((p) => {
+        const url = p.playerUrl || '';
+        if (!url) return false;
+        if (normalizeFootValue(p.playerFoot)) return false;
+        return footByUrl[url] === undefined;
+      })
+      .slice(0, FOOT_PREFETCH_LIMIT);
     if (candidates.length === 0) return;
     void enrichFootForCandidates(candidates);
   }, [footFilter, preFootFilteredPlayers, footByUrl, enrichFootForCandidates]);
@@ -439,6 +438,26 @@ export default function ContractFinisherPage() {
     const fp = firestorePositions.find((p) => p.name?.toLowerCase() === pos.toLowerCase());
     return isRtl ? (fp?.hebrewName || POSITION_HEBREW[pos] || pos) : pos;
   }, [firestorePositions, isRtl]);
+
+  // Shape the filtered list into the presentational MenContractPlayer rows once
+  // per change (was allocated inline in JSX on every render over the full list).
+  const menPlayers = useMemo(
+    () =>
+      filteredPlayers.map((p) => ({
+        playerUrl: p.playerUrl || '',
+        playerName: p.playerName ?? undefined,
+        playerImage: p.playerImage ?? undefined,
+        playerPosition: p.playerPosition ?? undefined,
+        playerAge: p.playerAge ?? undefined,
+        playerNationality: p.playerNationality ?? undefined,
+        playerNationalityFlag: p.playerNationalityFlag ?? undefined,
+        marketValue: p.marketValue ?? undefined,
+        clubJoinedName: p.clubJoinedName ?? undefined,
+        transferDate: p.transferDate ?? undefined,
+        foot: normalizeFootValue(p.playerFoot) ?? (p.playerUrl ? footByUrl[p.playerUrl] ?? null : null),
+      })),
+    [filteredPlayers, footByUrl]
+  );
 
   if (loading || !user) {
     return <MenLoading />;
@@ -473,19 +492,7 @@ export default function ContractFinisherPage() {
       setRosterOnly={setRosterOnly}
       loadingList={loadingList}
       error={error}
-      players={filteredPlayers.map((p) => ({
-        playerUrl: p.playerUrl || '',
-        playerName: p.playerName ?? undefined,
-        playerImage: p.playerImage ?? undefined,
-        playerPosition: p.playerPosition ?? undefined,
-        playerAge: p.playerAge ?? undefined,
-        playerNationality: p.playerNationality ?? undefined,
-        playerNationalityFlag: p.playerNationalityFlag ?? undefined,
-        marketValue: p.marketValue ?? undefined,
-        clubJoinedName: p.clubJoinedName ?? undefined,
-        transferDate: p.transferDate ?? undefined,
-        foot: normalizeFootValue(p.playerFoot) ?? (p.playerUrl ? footByUrl[p.playerUrl] ?? null : null),
-      }))}
+      players={menPlayers}
       shortlistUrls={shortlistUrls}
       addingUrl={addingUrl}
       onAddToShortlist={(mp) => {
