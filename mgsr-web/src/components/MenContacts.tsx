@@ -5,8 +5,8 @@
  *
  * Self-contained full-bleed light layout (shared BritRail + .brit-room), men only.
  * Owns its Firestore subscription and reproduces the real filters / actions.
- * Women & youth keep the standard contacts screen. Add/Edit reuse the existing
- * platform-aware AddContactSheet; Delete uses callContactsDelete.
+ * Women & youth keep the standard contacts screen. Add AND Edit both use the
+ * guided MenAddContactDrawer (edit opens it prefilled); Delete uses callContactsDelete.
  *
  * Two views: Directory (cards grouped by country) and Ledger (compact table).
  */
@@ -22,7 +22,6 @@ import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
-import AddContactSheet, { type Contact as AddContactSheetContact } from '@/app/contacts/AddContactSheet';
 import MenAddContactDrawer from '@/components/MenAddContactDrawer';
 
 interface Contact {
@@ -209,7 +208,6 @@ export default function MenContacts() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'club' | 'agency'>(cached?.typeFilter ?? 'all');
   const [view, setView] = useState<'cards' | 'table'>(cached?.view ?? 'cards');
 
-  const [showAddSheet, setShowAddSheet] = useState(false);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [editContact, setEditContact] = useState<Contact | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Contact | null>(null);
@@ -493,7 +491,7 @@ export default function MenContacts() {
                                 </div>
                               )}
                               <div className="brit-ct-ops">
-                                <button title={t('contacts_edit')} onClick={() => { setEditContact(c); setShowAddSheet(false); }}><EditIcon /></button>
+                                <button title={t('contacts_edit')} onClick={() => { setShowAddDrawer(false); setEditContact(c); }}><EditIcon /></button>
                                 <button className="del" title={t('contacts_delete')} onClick={() => setDeleteConfirm(c)}><DeleteIcon /></button>
                               </div>
                             </div>
@@ -544,7 +542,7 @@ export default function MenContacts() {
                         <div className="brit-ct-tp-phone empty">—</div>
                       )}
                       <div className="brit-ct-tp-ops">
-                        <button title={t('contacts_edit')} onClick={() => { setEditContact(c); setShowAddSheet(false); }}><EditIcon /></button>
+                        <button title={t('contacts_edit')} onClick={() => { setShowAddDrawer(false); setEditContact(c); }}><EditIcon /></button>
                         <button className="del" title={t('contacts_delete')} onClick={() => setDeleteConfirm(c)}><DeleteIcon /></button>
                       </div>
                     </div>
@@ -556,18 +554,12 @@ export default function MenContacts() {
         </div>
       </div>
 
-      {/* Add: guided drawer. Edit: existing sheet (prefilled). */}
-      <MenAddContactDrawer open={showAddDrawer} onClose={() => setShowAddDrawer(false)} />
-      {/* Edit sheet (reuses the existing platform-aware sheet) */}
-      <AddContactSheet
-        open={showAddSheet || !!editContact}
-        onClose={() => { setShowAddSheet(false); setEditContact(null); }}
-        onSaved={() => { setShowAddSheet(false); setEditContact(null); }}
-        contactsCollection={contactsCollection}
-        platform={platform}
-        isWomen={false}
-        isYouth={false}
-        initialContact={editContact as AddContactSheetContact | null}
+      {/* Add + Edit both use the guided drawer. Edit opens it prefilled. */}
+      <MenAddContactDrawer
+        open={showAddDrawer || !!editContact}
+        onClose={() => { setShowAddDrawer(false); setEditContact(null); }}
+        onSaved={() => { setShowAddDrawer(false); }}
+        editContact={editContact}
       />
 
       {/* Delete confirm */}

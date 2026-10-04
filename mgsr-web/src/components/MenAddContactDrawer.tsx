@@ -11,7 +11,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { callContactsCreate } from '@/lib/callables';
+import { callContactsCreate, callContactsUpdate } from '@/lib/callables';
+import type { Contact } from '@/app/contacts/AddContactSheet';
 
 type Step = 1 | 2 | 3 | 4;
 type ContactType = 'CLUB' | 'AGENCY';
@@ -34,10 +35,17 @@ interface MenAddContactDrawerProps {
   open: boolean;
   onClose: () => void;
   onSaved?: () => void;
+  /**
+   * When provided, the drawer runs in EDIT mode: every step is pre-filled from
+   * this existing contact and the save writes an update (callContactsUpdate)
+   * instead of creating a new record. Opens on the Organisation step.
+   */
+  editContact?: Contact | null;
 }
 
-export default function MenAddContactDrawer({ open, onClose, onSaved }: MenAddContactDrawerProps) {
+export default function MenAddContactDrawer({ open, onClose, onSaved, editContact = null }: MenAddContactDrawerProps) {
   const { t, isRtl } = useLanguage();
+  const isEdit = !!editContact?.id;
 
   const [step, setStep] = useState<Step>(1);
   const [contactType, setContactType] = useState<ContactType>('CLUB');
@@ -61,7 +69,25 @@ export default function MenAddContactDrawer({ open, onClose, onSaved }: MenAddCo
     setError('');
   }, []);
 
-  useEffect(() => { if (open) resetAll(); }, [open, resetAll]);
+  useEffect(() => {
+    if (!open) return;
+    if (editContact) {
+      // EDIT mode — prefill from the existing contact and jump past Type so the
+      // user lands on the editable Organisation step.
+      const type: ContactType = (editContact.contactType as ContactType) === 'AGENCY' ? 'AGENCY' : 'CLUB';
+      setStep(2);
+      setContactType(type);
+      setOrgName((type === 'AGENCY' ? editContact.agencyName : editContact.clubName) ?? '');
+      setOrgCountry((type === 'AGENCY' ? editContact.agencyCountry : editContact.clubCountry) ?? '');
+      setRole(editContact.role ?? 'UNKNOWN');
+      setName(editContact.name ?? '');
+      setPhone(editContact.phoneNumber ?? '');
+      setSaving(false);
+      setError('');
+    } else {
+      resetAll();
+    }
+  }, [open, editContact, resetAll]);
 
   const handleSave = async () => {
     const trimmedName = name.trim();
@@ -69,7 +95,7 @@ export default function MenAddContactDrawer({ open, onClose, onSaved }: MenAddCo
     setSaving(true);
     setError('');
     try {
-      await callContactsCreate({
+      const payload = {
         platform: 'men',
         name: trimmedName,
         phoneNumber: phone.trim() || '',
@@ -77,13 +103,19 @@ export default function MenAddContactDrawer({ open, onClose, onSaved }: MenAddCo
         contactType,
         clubName: contactType === 'CLUB' ? orgName.trim() : '',
         clubCountry: contactType === 'CLUB' ? orgCountry.trim() : '',
-        clubLogo: '',
-        clubCountryFlag: '',
-        clubTmProfile: '',
+        // Preserve enrichment fields that have no inputs so an update doesn't blank them.
+        clubLogo: editContact?.clubLogo ?? '',
+        clubCountryFlag: editContact?.clubCountryFlag ?? '',
+        clubTmProfile: editContact?.clubTmProfile ?? '',
         agencyName: contactType === 'AGENCY' ? orgName.trim() : '',
         agencyCountry: contactType === 'AGENCY' ? orgCountry.trim() : '',
-        agencyUrl: '',
-      });
+        agencyUrl: editContact?.agencyUrl ?? '',
+      };
+      if (isEdit && editContact?.id) {
+        await callContactsUpdate({ ...payload, contactId: editContact.id });
+      } else {
+        await callContactsCreate(payload);
+      }
       onSaved?.();
       setStep(4);
     } catch (err) {
@@ -115,7 +147,7 @@ export default function MenAddContactDrawer({ open, onClose, onSaved }: MenAddCo
         <div className="brit-add-head">
           <button className="close" onClick={onClose} aria-label={t('room_close')}>×</button>
           <div className="eyebrow">{t('add_contact_room_eyebrow')}</div>
-          <h2>{t('add_contact_room_title')}</h2>
+          <h2>{isEdit ? t('contacts_edit_title') : t('add_contact_room_title')}</h2>
           <div className="brit-add-prog">
             <i className={step >= 1 ? 'on' : ''} />
             <i className={step >= 2 ? 'on' : ''} />
@@ -201,7 +233,7 @@ export default function MenAddContactDrawer({ open, onClose, onSaved }: MenAddCo
               <div className="brit-add-stepcta" style={{ marginTop: 14 }}>
                 <button className="btn ghost" type="button" onClick={() => setStep(2)}>{t('add_player_room_change')}</button>
                 <button className="btn" type="button" disabled={saving || !name.trim()} onClick={handleSave}>
-                  {saving ? t('add_player_saving') : t('contacts_add_save')}
+                  {saving ? t('add_player_saving') : isEdit ? t('contacts_edit_save') : t('contacts_add_save')}
                 </button>
               </div>
             </div></div>
@@ -219,7 +251,7 @@ export default function MenAddContactDrawer({ open, onClose, onSaved }: MenAddCo
                 <h3>{t('add_contact_room_done_head')}</h3>
                 <p>{t('add_contact_room_done_body').replace('{name}', name.trim())}</p>
                 <div className="cta">
-                  <button className="btn g" type="button" onClick={resetAll}>{t('add_contact_room_add_another')}</button>
+                  {!isEdit && <button className="btn g" type="button" onClick={resetAll}>{t('add_contact_room_add_another')}</button>}
                   <button className="btn p" type="button" onClick={onClose}>{t('add_contact_room_view_directory')}</button>
                 </div>
               </div>
