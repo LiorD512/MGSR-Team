@@ -317,14 +317,6 @@ export default function MenRequests() {
       <div className="brit-app">
         <BritRail
           active="requests"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value')}</strong>
-              {t('requests_room_open')}
-              <strong>{pending.length}</strong>
-            </div>
-          }
         />
 
         <div className="brit-main">

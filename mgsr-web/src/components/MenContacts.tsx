@@ -336,14 +336,6 @@ export default function MenContacts() {
       <div className="brit-app">
         <BritRail
           active="contacts"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value')}</strong>
-              {t('contacts_room_network')}
-              <strong>{contacts.length}</strong>
-            </div>
-          }
         />
 
         <div className="brit-main">

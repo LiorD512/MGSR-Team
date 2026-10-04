@@ -333,14 +333,6 @@ export default function YouthContacts() {
       <div className="brit-app">
         <BritRail
           active="contacts"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value_youth')}</strong>
-              {t('contacts_room_network')}
-              <strong>{clubsCount}</strong>
-            </div>
-          }
         />
 
         <div className="brit-main">

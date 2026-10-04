@@ -106,14 +106,6 @@ export default function YouthDashboard({
       <div className="brit-app">
         <BritRail
           active="dashboard"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value_youth')}</strong>
-              {t('youth_sig_prospects')}
-              <strong>{youthPlayers.length}</strong>
-            </div>
-          }
         />
 
         <div className="brit-main">

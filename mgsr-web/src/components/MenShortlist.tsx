@@ -420,14 +420,6 @@ export default function MenShortlist() {
       <div className="brit-app">
         <BritRail
           active="shortlist"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value')}</strong>
-              {t('shortlist_watching')}
-              <strong>{entries.length}</strong>
-            </div>
-          }
         />
 
         <div className="brit-main">

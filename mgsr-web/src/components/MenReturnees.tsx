@@ -149,14 +149,6 @@ export default function MenReturnees(props: MenReturneesProps) {
       <div className="brit-app">
         <BritRail
           active="returnees"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value')}</strong>
-              {t('returnee_room_on_loan')}
-              <strong>{totalCount}</strong>
-            </div>
-          }
         />
 
         <div className="brit-main">

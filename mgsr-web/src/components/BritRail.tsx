@@ -7,7 +7,7 @@
  * The Players entry is an expandable group revealing Roster + Shortlist.
  */
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -26,10 +26,9 @@ export type BritRailActive =
 
 interface BritRailProps {
   active: BritRailActive;
-  footer?: ReactNode;
 }
 
-export default function BritRail({ active, footer }: BritRailProps) {
+export default function BritRail({ active }: BritRailProps) {
   const { t } = useLanguage();
   const { platform } = usePlatform();
   const isYouth = platform === 'youth';
@@ -125,15 +124,6 @@ export default function BritRail({ active, footer }: BritRailProps) {
           </>
         )}
       </nav>
-
-      {footer !== undefined ? (
-        footer
-      ) : (
-        <div className="brit-rail-footer">
-          {t('room_footer_platform_label')}
-          <strong>{isYouth ? t('room_footer_platform_value_youth') : t('room_footer_platform_value')}</strong>
-        </div>
-      )}
     </aside>
   );
 }

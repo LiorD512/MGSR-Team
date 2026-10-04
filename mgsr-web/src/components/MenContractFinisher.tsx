@@ -152,14 +152,6 @@ export default function MenContractFinisher(props: MenContractFinisherProps) {
       <div className="brit-app">
         <BritRail
           active="contract-finisher"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value')}</strong>
-              {t('contract_finisher_room_expiring')}
-              <strong>{totalCount}</strong>
-            </div>
-          }
         />
 
         <div className="brit-main">

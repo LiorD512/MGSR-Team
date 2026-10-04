@@ -138,14 +138,6 @@ export default function YouthShortlist() {
       <div className="brit-app">
         <BritRail
           active="shortlist"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value_youth')}</strong>
-              {t('shortlist_signal_targets')}
-              <strong>{entries.length}</strong>
-            </div>
-          }
         />
 
         <div className="brit-main">

@@ -891,17 +891,7 @@ export default function MenDashboard({
     <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
       <div className="brit-app">
         {/* ── Rail ── */}
-        <BritRail
-          active="dashboard"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value')}</strong>
-              {t('room_footer_view_label')}
-              <strong>{t('room_footer_view_value')}</strong>
-            </div>
-          }
-        />
+        <BritRail active="dashboard" />
 
         {/* ── Main ── */}
         <div className="brit-main">

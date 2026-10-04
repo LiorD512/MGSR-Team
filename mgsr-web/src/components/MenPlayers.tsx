@@ -572,14 +572,6 @@ export default function MenPlayers() {
         {/* Rail */}
         <BritRail
           active="players"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value')}</strong>
-              {t('room_signal_roster')}
-              <strong>{players.length}</strong>
-            </div>
-          }
         />
 
         {/* Main */}

@@ -242,14 +242,6 @@ export default function MenReleaseAlerts(props: MenReleaseAlertsProps) {
       <div className="brit-app">
         <BritRail
           active="release"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value')}</strong>
-              {t('release_notifications_visible')}
-              <strong>{filteredCount}</strong>
-            </div>
-          }
         />
 
         <div className="brit-main">

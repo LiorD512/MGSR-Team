@@ -116,14 +116,6 @@ export default function MenClubChanges(props: MenClubChangesProps) {
       <div className="brit-app">
         <BritRail
           active="club-change"
-          footer={
-            <div className="brit-rail-footer">
-              {t('room_footer_platform_label')}
-              <strong>{t('room_footer_platform_value')}</strong>
-              {t('club_change_notifications_room_moves')}
-              <strong>{totalCount}</strong>
-            </div>
-          }
         />
 
         <div className="brit-main">
