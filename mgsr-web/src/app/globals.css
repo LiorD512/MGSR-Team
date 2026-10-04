@@ -2523,6 +2523,25 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   color: var(--ink);
   font: 12px/1.5 var(--body);
 }
+/* ── Costs editor modal ── */
+.brit-costmodal{max-width:470px}
+.brit-costmodal .brit-cost-sec{margin-top:20px}
+.brit-costmodal .brit-cost-seclabel{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 11px}
+.brit-costmodal .brit-cost-seclabel .l{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+.brit-costmodal .brit-cost-seclabel .u{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+.brit-costmodal .brit-cost-chips{display:flex;flex-wrap:wrap;gap:8px}
+.brit-costmodal .brit-cost-chips button{padding:10px 13px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:11px/1 var(--mono);transition:.12s}
+.brit-costmodal .brit-cost-chips button:hover{border-color:var(--gold-soft)}
+.brit-costmodal .brit-cost-chips button.on{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink);font-weight:500}
+.brit-costmodal .brit-cost-chips button.free{text-transform:uppercase;font-size:9px;letter-spacing:.05em}
+.brit-costmodal .brit-cost-foot{display:flex;align-items:center;gap:10px;margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}
+.brit-costmodal .brit-cost-foot .spacer{flex:1}
+.brit-costmodal .brit-cost-foot .clear{color:var(--red);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:12px 14px;border:1px solid rgba(182,66,53,.4)}
+.brit-costmodal .brit-cost-foot .clear:hover{background:rgba(182,66,53,.08)}
+.brit-costmodal .brit-cost-foot .cancel{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:12px 14px}
+.brit-costmodal .brit-cost-foot .cancel:hover{color:var(--ink)}
+.brit-costmodal .brit-cost-foot .save{background:var(--gold-soft);border:1px solid var(--gold);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:12px 20px}
+.brit-costmodal .brit-cost-foot .save:hover{background:var(--gold);color:var(--paper)}
 /* Note composer (editorial) */
 .brit-note-label {
   display: block;
@@ -3088,6 +3107,18 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-profile .bp-sig .pen{float:inline-end;opacity:0;color:var(--muted);font-size:10px}
 .brit-profile .bp-sig.edit:hover .pen{opacity:1}
 .brit-profile .bp-sig .empty{color:rgba(22,22,19,.32)}
+/* Merged, centered Costs signal (replaces separate Salary + Transfer fee) */
+.brit-profile .bp-sig-costs{grid-column:span 2;text-align:center;position:relative}
+.brit-profile .bp-sig-costs > label{text-align:center;letter-spacing:.1em}
+.brit-profile .bp-sig-costs .pen{position:absolute;top:15px;inset-inline-end:14px;float:none}
+.brit-profile .bp-costline{display:flex;align-items:flex-start;justify-content:center;gap:16px;margin-top:10px}
+.brit-profile .bp-costline .c{display:flex;flex-direction:column;align-items:center}
+.brit-profile .bp-costline .c .v{font:500 20px/.9 var(--p-display);text-transform:uppercase}
+[dir=rtl] .brit-profile .bp-costline .c .v{font-weight:800}
+.brit-profile .bp-costline .c small{margin-top:6px;color:var(--muted);font:7px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em}
+.brit-profile .bp-costline .sep{width:1px;align-self:stretch;background:var(--line)}
+.brit-profile .bp-costline .empty{color:rgba(22,22,19,.32)}
+@media(max-width:860px){.brit-profile .bp-sig-costs{grid-column:span 1}}
 
 /* Tabs */
 .brit-profile .bp-tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:24px;overflow-x:auto}
@@ -3312,6 +3343,17 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
    ═══════════════════════════════════════════════════════ */
 .brit-profile .bp-panel{display:contents}
 
+/* Two independent Performance columns (left: FM + Similar, right: GPS + Highlights).
+   Each column flows its own panels tightly, so a shorter column never reserves
+   dead space beside a taller one. Panels become real blocks, not display:contents. */
+.brit-profile .bp-perf-cols{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+.brit-profile .bp-perf-col{min-width:0;display:flex;flex-direction:column;gap:36px}
+.brit-profile .bp-perf-cols .bp-panel{display:block;min-width:0}
+.brit-profile .bp-perf-cols .bp-panel > .bp-module{margin-bottom:0}
+@media(max-width:1080px){
+  .brit-profile .bp-perf-cols{grid-template-columns:1fr;gap:36px}
+}
+
 /* Shared helpers */
 .brit-profile .bp-sublabel{margin:14px 0 8px;color:var(--muted);font:9px/1 var(--p-mono);letter-spacing:.1em;text-transform:uppercase}
 .brit-profile .bp-caution{margin:0 0 16px;padding:11px 13px;background:rgba(164,125,67,.08);border:1px solid var(--gold-soft);color:var(--gold);font:10px/1.5 var(--p-mono);text-transform:uppercase}
@@ -3319,9 +3361,10 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-profile .bp-skeleton{opacity:.6}
 .brit-profile .bp-retry{display:block;margin:12px auto 0;color:var(--gold);font:9px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em;text-decoration:underline}
 
-/* Expand/collapse (secondary stats, GPS matches) */
-.brit-profile .bp-expand{margin-top:16px;border-top:1px solid var(--line)}
-.brit-profile .bp-expand summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:13px 0 0;color:var(--muted);font:9px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em}
+/* Expand/collapse (secondary stats, GPS matches) — compact toggle, not a gap */
+.brit-profile .bp-expand{margin-top:14px;border-top:1px solid var(--line)}
+.brit-profile .bp-expand summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:11px 0 0;color:var(--muted);font:9px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em}
+.brit-profile .bp-expand summary:hover{color:var(--gold)}
 .brit-profile .bp-expand summary::-webkit-details-marker{display:none}
 .brit-profile .bp-expand summary:hover{color:var(--ink)}
 .brit-profile .bp-expand .chev{transition:transform .2s;color:var(--gold)}
@@ -3354,12 +3397,12 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 
 /* ── FM header facts strip + top/weak attrs ── */
 .brit-profile .bp-fmhead{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);background:var(--card);margin-bottom:4px}
-.brit-profile .bp-fmhead .cell{padding:16px 10px;text-align:center;border-inline-end:1px solid var(--line)}
+.brit-profile .bp-fmhead .cell{padding:16px 10px;text-align:center;border-inline-end:1px solid var(--line);display:flex;flex-direction:column;align-items:center}
 .brit-profile .bp-fmhead .cell:last-child{border-inline-end:0}
-.brit-profile .bp-fmhead .v{font:500 28px/.8 var(--p-display);color:var(--ink)}
+.brit-profile .bp-fmhead .v{display:flex;align-items:center;justify-content:center;min-height:28px;font:500 28px/.8 var(--p-display);color:var(--ink)}
 [dir=rtl] .brit-profile .bp-fmhead .v{font-weight:800}
 .brit-profile .bp-fmhead .v.gold{color:var(--gold)}
-.brit-profile .bp-fmhead .v.tier{font:500 13px/1.1 var(--p-mono);color:var(--gold);text-transform:uppercase}
+.brit-profile .bp-fmhead .v.tier{font:500 13px/1.2 var(--p-mono);color:var(--gold);text-transform:uppercase}
 .brit-profile .bp-fmhead .l{margin-top:8px;color:var(--muted);font:8px/1.2 var(--p-mono);text-transform:uppercase}
 .brit-profile .bp-fmfoot{margin:10px 0 0;color:var(--muted);font:9px/1.4 var(--p-mono);text-transform:uppercase}
 .brit-profile .bp-fmattr{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;margin-top:14px}

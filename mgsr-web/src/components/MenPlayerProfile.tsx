@@ -405,19 +405,24 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
           <label>{t('player_info_contract')}</label>
           <strong>{merged.contractExpired || <span className="empty">—</span>}</strong>
         </div>
-        <button className="bp-sig edit" onClick={onEditSalaryFee}>
+        <button className="bp-sig edit bp-sig-costs" onClick={onEditSalaryFee}>
           <span className="pen">✎</span>
-          <label>{t('player_info_salary')}</label>
-          <strong>{player.salaryRange || <span className="empty">—</span>}</strong>
-        </button>
-        <button className="bp-sig edit" onClick={onEditSalaryFee}>
-          <span className="pen">✎</span>
-          <label>{t('player_info_transfer_fee')}</label>
-          <strong>
-            {player.transferFee
-              ? (player.transferFee.toLowerCase() === 'free/free loan' ? t('requests_fee_free_loan') : player.transferFee)
-              : <span className="empty">—</span>}
-          </strong>
+          <label>{t('player_info_costs')}</label>
+          <div className="bp-costline">
+            <div className="c">
+              <span className="v">{player.salaryRange || <span className="empty">—</span>}</span>
+              <small>{t('player_info_salary')}</small>
+            </div>
+            <span className="sep" />
+            <div className="c">
+              <span className="v">
+                {player.transferFee
+                  ? (player.transferFee.toLowerCase() === 'free/free loan' ? t('requests_fee_free_loan') : player.transferFee)
+                  : <span className="empty">—</span>}
+              </span>
+              <small>{t('player_info_transfer_fee')}</small>
+            </div>
+          </div>
         </button>
       </section>
 
@@ -671,11 +676,23 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
 
       {/* ═══ PERFORMANCE ═══ */}
       <div className={`bp-pane${tab === 'performance' ? ' show' : ''}`}>
+        {/* Season stats + key metrics run full width (the panel owns both modules) */}
         {statsPanel && <div className="bp-panel">{statsPanel}</div>}
-        {fmPanel && <div className="bp-panel">{fmPanel}</div>}
-        {gpsPanel && <div className="bp-panel">{gpsPanel}</div>}
-        {similarPanel && <div className="bp-panel">{similarPanel}</div>}
-        {highlightsPanel && <div className="bp-panel">{highlightsPanel}</div>}
+        {/* Two independent columns so each panel flows tight to the one above it
+            (no dead space when one column is shorter than the other):
+            left = FM attributes + Similar players, right = GPS data + Highlights. */}
+        {(fmPanel || gpsPanel || similarPanel || highlightsPanel) && (
+          <div className="bp-perf-cols">
+            <div className="bp-perf-col">
+              {fmPanel && <div className="bp-panel">{fmPanel}</div>}
+              {similarPanel && <div className="bp-panel">{similarPanel}</div>}
+            </div>
+            <div className="bp-perf-col">
+              {gpsPanel && <div className="bp-panel">{gpsPanel}</div>}
+              {highlightsPanel && <div className="bp-panel">{highlightsPanel}</div>}
+            </div>
+          </div>
+        )}
         {!statsPanel && !fmPanel && !gpsPanel && !similarPanel && !highlightsPanel && (
           <div className="bp-empty">{t('player_info_no_documents') /* generic empty */}</div>
         )}

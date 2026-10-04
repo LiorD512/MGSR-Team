@@ -240,12 +240,12 @@ const COUNTRY_NAMES_DOC = {
 // ─── Salary & Transfer Fee Options ──────────────────────────────────────
 
 const SALARY_RANGES_DOC = {
-  options: [">5", "6-10", "11-15", "16-20", "20-25", "26-30", "30+"],
+  options: [">5", "6-10", "11-15", "16-20", "20-25", "26-30", "30-35", "35-40", "40-50", "50-60", "60-80", "80-100", "100+"],
   updatedAt: Date.now(),
 };
 
 const TRANSFER_FEES_DOC = {
-  options: ["Free/Free loan", "<200", "300-600", "700-900", "1m+"],
+  options: ["Free/Free loan", "<200", "200-300", "300-600", "600-900", "900k-1m", "1-1.5m", "1.5-2m", "2-3m", "3-5m", "5-10m", "10m+"],
   updatedAt: Date.now(),
 };
 

@@ -150,6 +150,7 @@ function SalaryTransferFeeModal({
   onSave,
   onClear,
   t,
+  isRtl,
 }: {
   currentSalaryRange: string | null;
   currentTransferFee: string | null;
@@ -157,6 +158,7 @@ function SalaryTransferFeeModal({
   onSave: (salary: string | null, fee: string | null) => void;
   onClear: () => void;
   t: (key: string) => string;
+  isRtl: boolean;
 }) {
   const [selectedSalary, setSelectedSalary] = useState(currentSalaryRange);
   const [selectedFee, setSelectedFee] = useState(currentTransferFee);
@@ -164,86 +166,65 @@ function SalaryTransferFeeModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-      onClick={onDismiss}
+      className="brit-room"
+      dir={isRtl ? 'rtl' : 'ltr'}
+      lang={isRtl ? 'he' : 'en'}
+      style={{ position: 'static', inset: 'auto', background: 'transparent', zIndex: 'auto', overflow: 'visible' }}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden />
-      <div
-        className="relative w-full sm:max-w-md bg-mgsr-card border border-mgsr-border rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-semibold text-mgsr-text">{t('player_info_salary_fee_title')}</h3>
-          <button
-            onClick={onDismiss}
-            className="text-mgsr-muted hover:text-mgsr-text transition p-1"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
+      <div className="brit-backdrop open" onClick={onDismiss}>
+        <div className="brit-modal brit-costmodal" dir={isRtl ? 'rtl' : 'ltr'} onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="brit-close" onClick={onDismiss} aria-label={isRtl ? 'סגור' : 'Close'}>×</button>
+          <p className="brit-modal-kicker">{isRtl ? 'עריכת עלויות' : 'Edit costs'}</p>
+          <h2>{t('player_info_salary_fee_title')}</h2>
 
-        <div className="h-px bg-mgsr-border mb-5" />
+          <div className="brit-cost-sec">
+            <div className="brit-cost-seclabel">
+              <span className="l">{t('player_info_salary')}</span>
+              <span className="u">{t('player_info_costs_salary_unit')}</span>
+            </div>
+            <div className="brit-cost-chips">
+              {SALARY_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  className={selectedSalary === opt ? 'on' : ''}
+                  onClick={() => setSelectedSalary(selectedSalary === opt ? null : opt)}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        {/* Salary range */}
-        <p className="text-sm text-mgsr-muted mb-2.5">{t('player_info_salary')}</p>
-        <div className="flex flex-wrap gap-2 mb-5">
-          {SALARY_OPTIONS.map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => setSelectedSalary(selectedSalary === opt ? null : opt)}
-              className={`px-3.5 py-2 rounded-full text-sm border transition-all ${
-                selectedSalary === opt
-                  ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal font-medium'
-                  : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted hover:border-mgsr-muted/50'
-              }`}
-            >
-              {opt}
+          <div className="brit-cost-sec">
+            <div className="brit-cost-seclabel">
+              <span className="l">{t('player_info_transfer_fee')}</span>
+              <span className="u">{t('player_info_costs_fee_unit')}</span>
+            </div>
+            <div className="brit-cost-chips">
+              {FEE_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  className={`${selectedFee === opt ? 'on' : ''}${opt === 'Free/Free loan' ? ' free' : ''}`}
+                  onClick={() => setSelectedFee(selectedFee === opt ? null : opt)}
+                >
+                  {opt === 'Free/Free loan' ? t('requests_fee_free_loan') : opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="brit-cost-foot">
+            {hasCurrent && (
+              <button type="button" className="clear" onClick={onClear}>{t('player_info_salary_fee_clear')}</button>
+            )}
+            <span className="spacer" />
+            <button type="button" className="cancel" onClick={onDismiss}>{t('common_cancel')}</button>
+            <button type="button" className="save" onClick={() => onSave(selectedSalary ?? null, selectedFee ?? null)}>
+              {t('player_info_salary_fee_save')}
             </button>
-          ))}
-        </div>
-
-        {/* Transfer fee */}
-        <p className="text-sm text-mgsr-muted mb-2.5">{t('player_info_transfer_fee')}</p>
-        <div className="flex flex-wrap gap-2 mb-6">
-          {FEE_OPTIONS.map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => setSelectedFee(selectedFee === opt ? null : opt)}
-              className={`px-3.5 py-2 rounded-full text-sm border transition-all ${
-                selectedFee === opt
-                  ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal font-medium'
-                  : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted hover:border-mgsr-muted/50'
-              }`}
-            >
-              {opt === 'Free/Free loan' ? t('requests_fee_free_loan') : opt}
-            </button>
-          ))}
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-3">
-          {hasCurrent && (
-            <button
-              onClick={onClear}
-              className="px-4 py-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition text-sm"
-            >
-              {t('player_info_salary_fee_clear')}
-            </button>
-          )}
-          <button
-            onClick={onDismiss}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-mgsr-border text-mgsr-muted hover:bg-mgsr-card/80 transition text-sm"
-          >
-            {t('common_cancel')}
-          </button>
-          <button
-            onClick={() => onSave(selectedSalary ?? null, selectedFee ?? null)}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-mgsr-teal text-white font-medium hover:bg-mgsr-teal/90 transition text-sm"
-          >
-            {t('player_info_salary_fee_save')}
-          </button>
+          </div>
         </div>
       </div>
     </div>
@@ -2331,6 +2312,7 @@ export default function PlayerInfoPage() {
           onSave={saveSalaryFee}
           onClear={clearSalaryFee}
           t={t}
+          isRtl={isRtl}
         />
       )}
     </>

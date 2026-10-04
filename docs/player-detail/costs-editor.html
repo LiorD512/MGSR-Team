@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Costs editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--gold-bright:#e4c98b;
+      --red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    input{font:inherit}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:30px 34px 90px}
+    .crumb{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:22px}
+    .crumb b{color:var(--ink);font-weight:400}
+
+    /* ── Signals strip (hero) — Costs replaces Salary + Transfer fee ── */
+    .signals{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);border-bottom:0;background:var(--card)}
+    .signals > div{padding:15px 16px;border-inline-end:1px solid var(--line)}
+    .signals > div:last-child{border-inline-end:0}
+    .signals label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .signals strong{display:block;margin-top:9px;font:500 23px/.85 var(--display);text-transform:uppercase}
+    .signals strong.empty{color:rgba(22,22,19,.32)}
+    /* The merged, centered Costs cell */
+    .sig-costs{position:relative;cursor:pointer;text-align:center;transition:background .12s;grid-column:span 2}
+    .sig-costs:hover{background:rgba(164,125,67,.07)}
+    .sig-costs .pen{position:absolute;top:12px;inset-inline-end:14px;color:var(--muted);font-size:10px}
+    .sig-costs label{letter-spacing:.1em}
+    .sig-costs .costline{display:flex;align-items:baseline;justify-content:center;gap:14px;margin-top:9px}
+    .sig-costs .costline .c{font:500 23px/.85 var(--display);text-transform:uppercase}
+    .sig-costs .costline .c small{display:block;margin-top:5px;color:var(--muted);font:7px/1 var(--mono);letter-spacing:.08em}
+    .sig-costs .costline .sep{width:1px;height:26px;background:var(--line);align-self:center}
+
+    .note{margin-top:16px;color:var(--muted);font:10px/1.6 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+    .note b{color:var(--gold)}
+    .btn-demo{margin-top:18px;border:1px solid var(--gold-soft);background:var(--gold-soft);color:var(--ink);padding:12px 18px;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .btn-demo:hover{background:var(--gold);color:var(--paper)}
+
+    /* ── Editor modal ── */
+    .scrim{position:fixed;inset:0;z-index:30;background:rgba(17,17,15,.55);display:none;align-items:center;justify-content:center;padding:20px}
+    .scrim.open{display:flex;animation:fade .18s ease}
+    @keyframes fade{from{opacity:0}to{opacity:1}}
+    .modal{width:100%;max-width:460px;background:var(--paper);border:1px solid var(--line);box-shadow:0 24px 60px rgba(17,17,15,.3);position:relative}
+    .modal .mhead{padding:22px 24px 16px;border-bottom:1px solid var(--line)}
+    .modal .eyebrow{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.14em;margin:0 0 10px}
+    .modal h2{margin:0;font:500 30px/.9 var(--display);text-transform:uppercase;letter-spacing:-.01em}
+    .modal .close{position:absolute;top:16px;inset-inline-end:18px;color:var(--muted);font-size:20px;line-height:1}
+    .modal .close:hover{color:var(--ink)}
+    .mbody{padding:20px 24px 4px;max-height:66vh;overflow:auto}
+
+    .seclabel{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 11px}
+    .seclabel .l{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .seclabel .u{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .sec{margin-bottom:22px}
+    .chips{display:flex;flex-wrap:wrap;gap:8px}
+    .chips button{padding:10px 13px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:11px/1 var(--mono);transition:.12s}
+    .chips button:hover{border-color:var(--gold-soft)}
+    .chips button.on{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink);font-weight:500}
+    .chips button.free{text-transform:uppercase;font-size:9px;letter-spacing:.05em}
+
+    /* Optional free-cost rows (relevant costs data) */
+    .costrow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
+    .costrow:last-child{border-bottom:0}
+    .costrow label{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+    .costrow .inp{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--card);padding:0 11px}
+    .costrow .inp:focus-within{border-color:var(--gold-soft)}
+    .costrow .inp span{color:var(--muted);font:11px/1 var(--mono)}
+    .costrow .inp input{width:120px;border:0;background:transparent;padding:11px 0;color:var(--ink);font:12px/1 var(--mono);outline:none;text-align:end}
+    .costrow .inp input::placeholder{color:rgba(22,22,19,.3)}
+
+    .divider{height:1px;background:var(--line);margin:4px 0 20px}
+    .hint{color:var(--muted);font:9px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px}
+
+    .mfoot{display:flex;align-items:center;gap:10px;padding:16px 24px 22px;border-top:1px solid var(--line)}
+    .mfoot .clear{color:var(--red);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:12px 14px;border:1px solid rgba(182,66,53,.4)}
+    .mfoot .clear:hover{background:rgba(182,66,53,.08)}
+    .mfoot .spacer{flex:1}
+    .mfoot .cancel{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:12px 14px}
+    .mfoot .cancel:hover{color:var(--ink)}
+    .mfoot .save{background:var(--gold-soft);border:1px solid var(--gold);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:12px 20px}
+    .mfoot .save:hover{background:var(--gold);color:var(--paper)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="crumb">BRIT / Players / <b>Sidney Lima</b> / Costs</div>
+
+    <!-- Hero signals strip with the merged, centered Costs cell -->
+    <section class="signals">
+      <div><label>Age</label><strong>28</strong></div>
+      <div><label>Height</label><strong>1.75m</strong></div>
+      <div><label>Foot</label><strong>Right</strong></div>
+      <!-- One centered Costs cell replaces Salary + Transfer fee -->
+      <div class="sig-costs" id="openBtn">
+        <span class="pen">✎</span>
+        <label>Costs</label>
+        <div class="costline" id="costline">
+          <div class="c" id="salaryDisp">€16–20k<small>Salary / mo</small></div>
+          <div class="sep"></div>
+          <div class="c" id="feeDisp">€300–600k<small>Transfer fee</small></div>
+        </div>
+      </div>
+    </section>
+
+    <p class="note">The two separate <b>Salary</b> and <b>Transfer fee</b> signals are merged into one centered, editable <b>Costs</b> cell. Click it to open the editor.</p>
+    <button class="btn-demo" id="openBtn2">◈ Open costs editor</button>
+  </div>
+
+  <!-- ═══ COSTS EDITOR MODAL ═══ -->
+  <div class="scrim" id="scrim">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Edit costs">
+      <button class="close" id="close">×</button>
+      <div class="mhead">
+        <p class="eyebrow">Sidney Lima</p>
+        <h2>Costs</h2>
+      </div>
+
+      <div class="mbody">
+        <!-- Monthly salary range (real option set) -->
+        <div class="sec">
+          <div class="seclabel"><span class="l">Monthly salary</span><span class="u">€ thousands</span></div>
+          <div class="chips" data-group="salary">
+            <button>&gt;5</button>
+            <button>6–10</button>
+            <button>11–15</button>
+            <button class="on">16–20</button>
+            <button>20–25</button>
+            <button>26–30</button>
+            <button>30+</button>
+          </div>
+        </div>
+
+        <!-- Transfer fee range (real option set, incl. Free) -->
+        <div class="sec">
+          <div class="seclabel"><span class="l">Transfer fee</span><span class="u">€ thousands</span></div>
+          <div class="chips" data-group="fee">
+            <button class="free">Free / Free loan</button>
+            <button>&lt;200</button>
+            <button class="on">300–600</button>
+            <button>700–900</button>
+            <button>1m+</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <p class="hint">Optional — exact figures when known</p>
+
+        <!-- Relevant free-form cost data (optional, editable) -->
+        <div class="sec" style="margin-bottom:8px">
+          <div class="costrow">
+            <label>Signing bonus</label>
+            <div class="inp"><span>€</span><input type="text" inputmode="numeric" placeholder="—" value="50,000"></div>
+          </div>
+          <div class="costrow">
+            <label>Agent commission</label>
+            <div class="inp"><input type="text" inputmode="numeric" placeholder="—" value="10"><span>%</span></div>
+          </div>
+          <div class="costrow">
+            <label>Release clause</label>
+            <div class="inp"><span>€</span><input type="text" inputmode="numeric" placeholder="—"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mfoot">
+        <button class="clear" id="clear">Clear all</button>
+        <span class="spacer"></span>
+        <button class="cancel" id="cancel">Cancel</button>
+        <button class="save" id="save">Save costs</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const scrim = document.getElementById('scrim');
+    const open = () => scrim.classList.add('open');
+    const close = () => scrim.classList.remove('open');
+    document.getElementById('openBtn').addEventListener('click', open);
+    document.getElementById('openBtn2').addEventListener('click', open);
+    document.getElementById('close').addEventListener('click', close);
+    document.getElementById('cancel').addEventListener('click', close);
+    scrim.addEventListener('click', (e) => { if (e.target === scrim) close(); });
+
+    // Single-select chips per group
+    document.querySelectorAll('.chips').forEach((group) => {
+      group.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        group.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+      });
+    });
+
+    // Save → reflect selections into the hero Costs cell
+    document.getElementById('save').addEventListener('click', () => {
+      const sal = document.querySelector('[data-group=salary] .on')?.textContent.trim();
+      const fee = document.querySelector('[data-group=fee] .on')?.textContent.trim();
+      const salDisp = document.getElementById('salaryDisp');
+      const feeDisp = document.getElementById('feeDisp');
+      salDisp.innerHTML = (sal ? '€' + sal.replace('–','–') + 'k' : '—') + '<small>Salary / mo</small>';
+      feeDisp.innerHTML = (fee ? (/free/i.test(fee) ? 'Free' : '€' + fee + (/m\+/.test(fee)?'':'k')) : '—') + '<small>Transfer fee</small>';
+      close();
+    });
+
+    // Clear all
+    document.getElementById('clear').addEventListener('click', () => {
+      document.querySelectorAll('.chips .on').forEach((x) => x.classList.remove('on'));
+      document.querySelectorAll('.costrow input').forEach((i) => i.value = '');
+      document.getElementById('salaryDisp').innerHTML = '—<small>Salary / mo</small>';
+      document.getElementById('feeDisp').innerHTML = '—<small>Transfer fee</small>';
+      close();
+    });
+  </script>
+</body>
+</html>
