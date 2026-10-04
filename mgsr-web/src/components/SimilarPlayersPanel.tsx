@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { findSimilarPlayers, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,6 +8,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { getPlayerDetails } from '@/lib/api';
 import { callShortlistAdd } from '@/lib/callables';
+import { getScreenCache, setScreenCache } from '@/lib/screenCache';
+
+/** How many to prefetch automatically on first view. */
+const PREFETCH_COUNT = 3;
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -481,37 +485,64 @@ export default function SimilarPlayersPanel({
 }: SimilarPlayersPanelProps) {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const [players, setPlayers] = useState<ScoutPlayerSuggestion[]>([]);
+  const cacheKey = `similar_players_${playerUrl}`;
+  const cached = getScreenCache<ScoutPlayerSuggestion[]>(cacheKey);
+  const [players, setPlayers] = useState<ScoutPlayerSuggestion[]>(cached ?? []);
+  // `loading` = the initial auto-prefetch is in flight (shows shimmer).
   const [loading, setLoading] = useState(false);
+  // `expanding` = a "find more" fetch is in flight (keeps existing rows + thin shimmer).
+  const [expanding, setExpanding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState(!!cached && cached.length > 0);
   const [addingToShortlistUrl, setAddingToShortlistUrl] = useState<string | null>(null);
   const [shortlistSuccessUrls, setShortlistSuccessUrls] = useState<Set<string>>(new Set());
   const [shortlistError, setShortlistError] = useState<string | null>(null);
+  const prefetchedRef = useRef(false);
 
-  const handleSearch = useCallback(async (excludeNames: string[] = []) => {
-    setLoading(true);
+  const runSearch = useCallback(async (
+    { excludeNames = [], limit, mode }: { excludeNames?: string[]; limit?: number; mode: 'initial' | 'expand' },
+  ) => {
+    if (mode === 'initial') setLoading(true); else setExpanding(true);
     setError(null);
     try {
       const lang = isRtl ? 'he' : 'en';
       const results = await findSimilarPlayers(playerUrl, lang, excludeNames, {
         playerName, playerClub, playerPosition,
         playerAge, playerFoot, playerHeight, playerNationality, playerMarketValue,
+      }, limit);
+      setPlayers((prev) => {
+        const next = [...prev, ...results];
+        setScreenCache(cacheKey, next);
+        return next;
       });
-      setPlayers((prev) => [...prev, ...results]);
       setHasSearched(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to find similar players';
       setError(msg);
     } finally {
-      setLoading(false);
+      if (mode === 'initial') setLoading(false); else setExpanding(false);
     }
-  }, [playerUrl, isRtl, playerName, playerClub, playerPosition, playerAge, playerFoot, playerHeight, playerNationality, playerMarketValue]);
+  }, [playerUrl, cacheKey, isRtl, playerName, playerClub, playerPosition, playerAge, playerFoot, playerHeight, playerNationality, playerMarketValue]);
 
-  const handleRefresh = useCallback(() => {
+  // Auto-prefetch the first few similar players once, in the background.
+  // Non-blocking: the rest of the Performance tab stays usable; only this
+  // panel shows a shimmer. Skipped entirely when results are already cached.
+  useEffect(() => {
+    if (prefetchedRef.current) return;
+    if (!playerUrl) return;
+    if (players.length > 0) { prefetchedRef.current = true; return; }
+    prefetchedRef.current = true;
+    runSearch({ limit: PREFETCH_COUNT, mode: 'initial' });
+  }, [playerUrl, players.length, runSearch]);
+
+  const handleExpand = useCallback(() => {
     const currentNames = players.map((p) => p.name);
-    handleSearch(currentNames);
-  }, [players, handleSearch]);
+    runSearch({ excludeNames: currentNames, mode: 'expand' });
+  }, [players, runSearch]);
+
+  const handleRetry = useCallback(() => {
+    runSearch({ limit: PREFETCH_COUNT, mode: 'initial' });
+  }, [runSearch]);
 
   const handleAddToShortlist = useCallback(async (player: ScoutPlayerSuggestion) => {
     const url = player.transfermarktUrl;
@@ -567,36 +598,20 @@ export default function SimilarPlayersPanel({
     <section className="bp-module" dir={isRtl ? 'rtl' : 'ltr'}>
       <div className="bp-mod-head">
         <h2>{t('similar_players_title')}</h2>
-        {hasSearched && !loading ? (
-          <button className="act" onClick={handleRefresh}>↻ {t('similar_players_load_more')}</button>
+        {players.length > 0 && !loading ? (
+          <button className="act" onClick={handleExpand} disabled={expanding}>
+            {expanding ? `… ${t('similar_players_searching')}` : `+ ${t('similar_players_load_more')}`}
+          </button>
         ) : (
           <span className="act">AI scout</span>
         )}
       </div>
 
-      {/* Initial state — Find button */}
-      {!hasSearched && !loading && (
-        <button className="bp-addbtn" onClick={() => handleSearch()}>
-          ⌕ {t('similar_players_find')}
-        </button>
-      )}
-
-      {/* Loading */}
-      {loading && <div className="bp-empty">{t('similar_players_searching')}</div>}
-
       {/* Shortlist error */}
       {shortlistError && <div className="bp-err">{shortlistError}</div>}
 
-      {/* Error */}
-      {error && !loading && (
-        <div className="bp-empty">
-          {error}
-          <button className="bp-retry" onClick={() => handleSearch()}>{t('similar_players_retry')}</button>
-        </div>
-      )}
-
       {/* Results */}
-      {hasSearched && !loading && !error && players.length > 0 && (
+      {players.length > 0 && (
         <div className="bp-simlist">
           {players.map((p, i) => (
             <SimilarPlayerCard
@@ -611,8 +626,32 @@ export default function SimilarPlayersPanel({
         </div>
       )}
 
-      {/* Empty state */}
-      {hasSearched && !loading && !error && players.length === 0 && (
+      {/* Shimmer — initial prefetch (3 placeholder rows) or expanding (1 row) */}
+      {(loading || expanding) && (
+        <div className="bp-simskel-list" aria-hidden>
+          {Array.from({ length: loading ? PREFETCH_COUNT : 1 }).map((_, i) => (
+            <div className="bp-simskel" key={i}>
+              <span className="av" />
+              <div className="info">
+                <span className="l1" />
+                <span className="l2" />
+              </div>
+              <span className="tag" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Error — only when nothing is shown yet */}
+      {error && !loading && players.length === 0 && (
+        <div className="bp-empty">
+          {error}
+          <button className="bp-retry" onClick={handleRetry}>{t('similar_players_retry')}</button>
+        </div>
+      )}
+
+      {/* Empty state — searched, no error, no results */}
+      {hasSearched && !loading && !expanding && !error && players.length === 0 && (
         <div className="bp-empty">{t('similar_players_empty')}</div>
       )}
     </section>

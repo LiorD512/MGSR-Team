@@ -296,10 +296,14 @@ export async function findSimilarPlayers(
   lang: string = 'en',
   excludeNames: string[] = [],
   ctx?: SimilarPlayersContext,
+  limit?: number,
 ): Promise<ScoutPlayerSuggestion[]> {
   const search = new URLSearchParams();
   search.set('player_url', playerUrl);
   search.set('lang', lang);
+  if (limit != null && limit > 0) {
+    search.set('limit', String(limit));
+  }
   if (excludeNames.length > 0) {
     search.set('exclude', excludeNames.join(','));
   }
