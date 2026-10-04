@@ -641,18 +641,13 @@ export default function MenDashboard({
   }, [fixtureTargets, nextMatchVersion]);
 
   const marquee = useMemo(
+    // The matchweek rail now surfaces upcoming fixtures, so the asset list no
+    // longer prioritises players by their closest game — just sort by value.
     () =>
-      [...assetPlayers].sort((a, b) => {
-        const af = playerFixtures.get(a.id);
-        const bf = playerFixtures.get(b.id);
-
-        if (af && !bf) return -1;
-        if (!af && bf) return 1;
-        if (af && bf) return af.kickoffMs - bf.kickoffMs;
-
-        return parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue);
-      }),
-    [assetPlayers, playerFixtures]
+      [...assetPlayers].sort(
+        (a, b) => parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue)
+      ),
+    [assetPlayers]
   );
 
   // Live countdown ticker — recomputes the plaque clocks every 30s

@@ -663,6 +663,16 @@ export default function MenPlayers() {
                     placeholder={t('search_placeholder')}
                     aria-label={t('search_placeholder')}
                   />
+                  {search && (
+                    <button
+                      type="button"
+                      className="brit-search-clear"
+                      onClick={() => setSearch('')}
+                      aria-label={t('players_clear_filters')}
+                    >
+                      ×
+                    </button>
+                  )}
                 </label>
                 <div className="brit-segment" role="group" aria-label="Position group">
                   <button
