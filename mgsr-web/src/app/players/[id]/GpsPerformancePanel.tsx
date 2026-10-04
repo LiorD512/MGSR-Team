@@ -85,7 +85,6 @@ export default function GpsPerformancePanel({
   const [storedInsights, setStoredInsights] = useState<StoredInsight[]>([]);
   const [storedPosGroup, setStoredPosGroup] = useState<string>('default');
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState(false);
   const recomputeTriggered = useRef(false);
   const { t, lang } = useLanguage();
   const isHebrew = lang === 'he';
@@ -221,37 +220,6 @@ export default function GpsPerformancePanel({
         </div>
       )}
 
-      {/* Match-by-Match expandable */}
-      {matches.length > 0 && (
-        <details className="bp-expand">
-          <summary onClick={(e) => { e.preventDefault(); setExpanded(!expanded); }}>
-            <span>{t('gps_match_details')}</span>
-            <span className={`chev${expanded ? ' open' : ''}`}>▾</span>
-          </summary>
-          {expanded && (
-            <div className="bp-gps-matches">
-              {matches.map(m => (
-                <div key={m.id} className="bp-gps-match">
-                  <div className="hd">
-                    <div>
-                      <b>{m.matchTitle || t('gps_match_label')}</b>
-                      <span>{m.matchDate ? new Date(m.matchDate).toLocaleDateString() : m.matchDateStr} · {m.totalDuration ?? 0} {t('gps_min')}</span>
-                    </div>
-                    {countStars(m) > 0 && <em className="stars">★ {countStars(m)}</em>}
-                  </div>
-                  <div className="mini">
-                    <MiniStat label={t('gps_dist')} value={formatDist(m.totalDistance ?? 0)} />
-                    <MiniStat label="m/min" value={`${m.meteragePerMinute ?? 0}`} />
-                    <MiniStat label={t('gps_hi_runs')} value={`${m.highIntensityRuns ?? 0}`} />
-                    <MiniStat label={t('gps_sprint')} value={`${m.sprints ?? 0}`} />
-                    <MiniStat label={t('gps_max')} value={`${(m.maxVelocity ?? 0).toFixed(1)}`} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </details>
-      )}
     </section>
   );
 }
@@ -267,15 +235,6 @@ function InsightRow({ insight }: { insight: GpsInsight }) {
         <b>{insight.value}</b>
         {insight.benchmark && <span>{insight.benchmark}</span>}
       </div>
-    </div>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bp-gps-ministat">
-      <b>{value}</b>
-      <span>{label}</span>
     </div>
   );
 }

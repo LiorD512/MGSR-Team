@@ -117,7 +117,7 @@ export default function FmIntelligencePanel({ playerName, club, age }: FmIntelli
       <div className="bp-fmhead">
         <div className="cell"><div className="v gold">{data.ca}</div><div className="l">{t('fm_current_ability')}</div></div>
         <div className="cell"><div className="v">{data.pa}</div><div className="l">{t('fm_pa_label')}</div></div>
-        <div className="cell"><div className="v tier">{data.tier === 'world_class' ? '★ ' : ''}{tl}</div><div className="l">{t('fm_tier_label') || 'Tier'}</div></div>
+        <div className="cell"><div className="v tier">{data.tier === 'world_class' ? '★ ' : ''}{tl}</div><div className="l">{t('fm_tier_label')}</div></div>
         <div className="cell">
           <div className="v">{data.potential_gap > 0 ? `+${data.potential_gap}` : '—'}</div>
           <div className="l">{data.potential_gap > 0 ? t('fm_potential') : t('fm_at_peak')}</div>
