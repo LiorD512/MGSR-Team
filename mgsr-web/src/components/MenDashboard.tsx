@@ -887,6 +887,26 @@ export default function MenDashboard({
     }).format(new Date(Date.UTC(Number(match[3]), Number(match[2]) - 1, Number(match[1]))));
   };
 
+  // Countdown to the dossier's next fixture (days/hrs/min), live via countdownTick.
+  const dossierCountdown = useMemo(() => {
+    if (!nextMatch) return null;
+    const kickoffMs = parseKickoffMs(nextMatch.date, nextMatch.time);
+    if (kickoffMs == null) return null;
+    const diff = kickoffMs - Date.now();
+    if (diff <= 0) return null;
+    const totalMin = Math.floor(diff / 60_000);
+    return {
+      days: Math.floor(totalMin / 1440),
+      hrs: Math.floor((totalMin % 1440) / 60),
+      min: totalMin % 60,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextMatch, countdownTick]);
+
+  // Crest initials fallback when a club logo is missing.
+  const crestInitials = (name?: string | null) =>
+    (name || '?').split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 3).join('').toUpperCase();
+
   return (
     <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
       <div className="brit-app">
@@ -1448,26 +1468,62 @@ export default function MenDashboard({
         }}
       >
         {dossier && (
-          <div className="brit-modal">
+          <div className="brit-modal brit-asset-modal">
             <button className="brit-close" onClick={() => setDossier(null)} aria-label={t('room_close')}>
               ×
             </button>
-            <h2>{dossier.name}</h2>
-            <p>
-              {dossier.club} / {dossier.position}
-            </p>
-            <div className="brit-facts">
-              <div>
-                <label>{t('room_market_value')}</label>
-                <strong>{dossier.value}</strong>
+
+            {/* ── Hero ── */}
+            {/* ── Hero — diagonal split: player photo | club crest ── */}
+            <section className="bam-hero">
+              <div className="bam-shot">
+                {dossier.profileImage ? (
+                  <img src={dossier.profileImage} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
+                ) : null}
               </div>
-              <div>
-                <label>{t('room_th_position')}</label>
-                <strong>{dossier.position}</strong>
+              <span className="bam-slant" aria-hidden />
+              <div className="bam-clubside">
+                <div className="bam-stadium" aria-hidden />
+                <div className="bam-crestwrap">
+                  <div className="crest">
+                    {dossier.clubLogo ? (
+                      <img src={dossier.clubLogo} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
+                    ) : (
+                      <span className="ph">{crestInitials(dossier.club)}</span>
+                    )}
+                  </div>
+                </div>
+                <span className="clubname">{dossier.club}</span>
               </div>
-            </div>
-            {dossier.playerId && (
-              <div className="brit-modal-switchrow">
+              <div className="bam-valtab">
+                <div className="v">{dossier.value}</div>
+                <div className="l">{t('room_market_value')}</div>
+              </div>
+              <div className="bam-hero-inner">
+                <p className="bam-eyebrow">{dossier.club}</p>
+                <h2>{dossier.name}</h2>
+                <div className="bam-tags">
+                  <span className="tag">{dossier.position}</span>
+                  {isPlayerOurAsset(dossier) && <span className="tag">◈ {t('room_mark_as_asset')}</span>}
+                </div>
+              </div>
+            </section>
+
+            <div className="bam-body">
+              {/* ── Fact strip ── */}
+              <div className="brit-facts bam-facts">
+                <div>
+                  <label>{t('room_th_position')}</label>
+                  <strong>{dossier.position}</strong>
+                </div>
+                <div>
+                  <label>{t('room_market_value')}</label>
+                  <strong>{dossier.value}</strong>
+                </div>
+              </div>
+
+              {dossier.playerId && (
+              <div className="brit-modal-switchrow bam-switchrow">
                 <div className="lbl">{t('room_mark_as_asset')}</div>
                 <label className="bp-sw">
                   <input
@@ -1480,6 +1536,7 @@ export default function MenDashboard({
                 </label>
               </div>
             )}
+            {/* Generate matchday image — temporarily hidden (kept for future use).
             {!isUnder19Dossier && dossier.playerId && (
               <button
                 type="button"
@@ -1500,68 +1557,89 @@ export default function MenDashboard({
                 {t('matchday_generate_button')}
               </button>
             )}
-            {!isUnder19Dossier && <section className="brit-next-match" aria-live="polite">
-              <div className="brit-next-match-head">
-                <span>{t('room_next_match')}</span>
-                {nextMatch?.homeAway && (
-                  <strong>{t(nextMatch.homeAway === 'home' ? 'room_home' : 'room_away')}</strong>
+            */}
+            {!isUnder19Dossier && <section className="bam-nm" aria-live="polite">
+              <div className="bam-nm-top">
+                <span className="lbl"><span className="pulse" />{t('room_next_match')}</span>
+                {nextMatchState === 'ready' && nextMatch?.homeAway && (
+                  <span className="ha">{t(nextMatch.homeAway === 'home' ? 'room_home' : 'room_away')}</span>
                 )}
               </div>
+
               {nextMatchState === 'loading' && (
-                <div className="brit-next-match-loading">{t('room_next_match_loading')}</div>
+                <div className="bam-nm-msg">{t('room_next_match_loading')}</div>
               )}
-              {nextMatchState === 'ready' && nextMatch && (
-                <div className="brit-next-match-body">
-                  <div className="brit-next-match-main">
-                    <div className="brit-next-match-team">
-                      <strong>{nextMatch.opponent}</strong>
-                      {nextMatch.opponentLogo && (
-                        <img
-                          src={nextMatch.opponentLogo}
-                          alt={nextMatch.opponent}
-                          className="brit-next-match-logo"
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      )}
-                    </div>
-                    {nextMatch.competition && <span>{nextMatch.competition}</span>}
+
+              {nextMatchState === 'ready' && nextMatch && (() => {
+                const away = nextMatch.homeAway === 'away';
+                const ourSide = (
+                  <div className="side me">
+                    {dossier.clubLogo ? (
+                      <span className="crest"><img src={dossier.clubLogo} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} /></span>
+                    ) : (
+                      <span className="crest">{crestInitials(dossier.club)}</span>
+                    )}
+                    <b>{dossier.club}</b>
+                    <small>{isRtl ? 'השחקן שלנו' : 'Our player'}</small>
                   </div>
-                  <div className="brit-next-match-details">
-                    <div>
-                      <label>{t('room_match_date')}</label>
-                      <strong>{formatMatchDate(nextMatch.date)}</strong>
+                );
+                const oppSide = (
+                  <div className="side">
+                    {nextMatch.opponentLogo ? (
+                      <span className="crest"><img src={nextMatch.opponentLogo} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} /></span>
+                    ) : (
+                      <span className="crest">{crestInitials(nextMatch.opponent)}</span>
+                    )}
+                    <b>{nextMatch.opponent}</b>
+                    <small>{isRtl ? 'יריבה' : 'Opponent'}</small>
+                  </div>
+                );
+                return (
+                  <>
+                    <div className="bam-fixture">
+                      {away ? oppSide : ourSide}
+                      <div className="vs">
+                        <span className="v">{isRtl ? 'נגד' : 'VS'}</span>
+                        {(nextMatch.competition || nextMatch.round) && (
+                          <span className="comp">{[nextMatch.competition, nextMatch.round].filter(Boolean).join(' · ')}</span>
+                        )}
+                      </div>
+                      {away ? ourSide : oppSide}
                     </div>
-                    <div>
-                      <label>{t('room_match_kickoff')}</label>
-                      <strong>{nextMatch.time || t('room_time_tbc')}</strong>
-                    </div>
-                    <div>
-                      <label>{t('room_match_stadium')}</label>
-                      <strong>{nextMatch.venue || t('room_venue_tbc')}</strong>
-                    </div>
-                    {nextMatch.round && (
-                      <div>
-                        <label>{t('room_match_round')}</label>
-                        <strong>{nextMatch.round}</strong>
+
+                    {dossierCountdown && (
+                      <div className="bam-countdown">
+                        <div className="unit"><b>{String(dossierCountdown.days).padStart(2, '0')}</b><small>{isRtl ? 'ימים' : 'Days'}</small></div>
+                        <span className="sepc">:</span>
+                        <div className="unit"><b>{String(dossierCountdown.hrs).padStart(2, '0')}</b><small>{isRtl ? 'שעות' : 'Hrs'}</small></div>
+                        <span className="sepc">:</span>
+                        <div className="unit"><b>{String(dossierCountdown.min).padStart(2, '0')}</b><small>{isRtl ? 'דק׳' : 'Min'}</small></div>
                       </div>
                     )}
-                  </div>
-                  <a href={nextMatch.sourceUrl} target="_blank" rel="noreferrer" className="brit-next-match-source">
-                    {t('room_match_source')}
-                  </a>
-                </div>
-              )}
+
+                    <div className="bam-nm-grid">
+                      <div><label>{t('room_match_date')}</label><strong>{formatMatchDate(nextMatch.date)}</strong></div>
+                      <div><label>{t('room_match_kickoff')}</label><strong>{nextMatch.time || t('room_time_tbc')}</strong></div>
+                      <div className="wide"><label>{t('room_match_stadium')}</label><strong>{nextMatch.venue || t('room_venue_tbc')}</strong></div>
+                    </div>
+
+                    <div className="bam-nm-src">
+                      <span>{nextMatch.competition || t('room_next_match')}</span>
+                      <a href={nextMatch.sourceUrl} target="_blank" rel="noreferrer">{t('room_match_source')} ↗</a>
+                    </div>
+                  </>
+                );
+              })()}
+
               {nextMatchState === 'unavailable' && (
-                <div className="brit-next-match-empty">{t('room_next_match_unavailable')}</div>
+                <div className="bam-nm-msg">{t('room_next_match_unavailable')}</div>
               )}
               {nextMatchState === 'error' && (
-                <div className="brit-next-match-empty">{t('room_next_match_error')}</div>
+                <div className="bam-nm-msg">{t('room_next_match_error')}</div>
               )}
             </section>}
-            <div className="brit-modal-actions">
+
+            <div className="brit-modal-actions bam-actions">
               {dossier.playerId && (
                 <Link className="brit-modal-action" href={`/players/${dossier.playerId}?from=/dashboard`}>
                   {t('room_open_full_profile')}
@@ -1577,6 +1655,7 @@ export default function MenDashboard({
                   {t('room_open_tm')}
                 </a>
               )}
+            </div>
             </div>
           </div>
         )}

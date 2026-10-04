@@ -2717,6 +2717,85 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   to { transform: translateX(100%); }
 }
 
+/* ═══ Asset dossier dialog — redesigned (crest vs crest + countdown) ═══ */
+.brit-asset-modal{padding:0 !important;border-top:0 !important;overflow:hidden;max-height:92vh;overflow-y:auto}
+/* Hero — diagonal split: player photo (left) | club crest (right) */
+.brit-asset-modal .bam-hero{position:relative;height:250px;background:linear-gradient(160deg,#201d15,#0e0d09);color:var(--paper);overflow:hidden}
+/* Diagonal seam shaped like "\" — top point at 38%, bottom point at 52%
+   (player region narrow at top, wider at bottom). */
+.brit-asset-modal .bam-shot{position:absolute;inset:0;width:100%;overflow:hidden;clip-path:polygon(0 0, 38% 0, 52% 100%, 0 100%)}
+/* Whole player shown (contain, no crop), anchored to the slant edge so he sits
+   right against the diagonal — any slack falls on the far-left/top (dark). */
+.brit-asset-modal .bam-shot img{position:absolute;top:0;bottom:0;inset-inline-start:0;width:52%;height:100%;object-fit:contain;object-position:right bottom;filter:grayscale(1);opacity:.9}
+.brit-asset-modal .bam-shot:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,13,9,0) 0%,rgba(14,13,9,.25) 58%,rgba(14,13,9,.92) 100%)}
+/* The white slant line — same diagonal edge as both clips */
+.brit-asset-modal .bam-slant{position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:rgba(243,240,232,.95);
+  clip-path:polygon(38% 0, calc(38% + 2px) 0, calc(52% + 2px) 100%, 52% 100%);
+  filter:drop-shadow(0 0 7px rgba(243,240,232,.45))}
+[dir=rtl] .brit-asset-modal .bam-slant{clip-path:polygon(62% 0, calc(62% - 2px) 0, calc(48% - 2px) 100%, 48% 100%)}
+/* RIGHT: club crest side — pitch backdrop + centered dark crest, same diagonal edge */
+.brit-asset-modal .bam-clubside{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;z-index:1;clip-path:polygon(38% 0, 100% 0, 100% 100%, 52% 100%)}
+/* Club-side backdrop = the pitch (grass/boot) image used in the mock, darkened. */
+.brit-asset-modal .bam-stadium{position:absolute;inset:0;background:url('/pitch-bg.jpg') center/cover;filter:grayscale(1) brightness(.42) contrast(1.05)}
+.brit-asset-modal .bam-stadium:after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,rgba(14,13,9,.92) 0%,rgba(14,13,9,.45) 52%,rgba(14,13,9,.7) 100%)}
+.brit-asset-modal .bam-crestwrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-inline-start:38%;z-index:1}
+.brit-asset-modal .bam-clubside .crest{width:92px;height:92px;margin-top:18px;display:grid;place-items:center;overflow:hidden}
+.brit-asset-modal .bam-clubside .crest img{width:100%;height:100%;object-fit:contain;filter:grayscale(1) brightness(.7) contrast(1.1);opacity:.9}
+.brit-asset-modal .bam-clubside .crest .ph{width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(160deg,#2a2419,#15120b);border:1px solid var(--dark-line);color:var(--gold-soft);font:500 26px/1 var(--display)}
+.brit-asset-modal .bam-clubside .clubname{position:absolute;bottom:14px;inset-inline-end:20px;z-index:2;text-align:end;color:var(--gold-soft);font:8px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.1em;max-width:140px}
+/* Bottom fade for the name copy */
+.brit-asset-modal .bam-hero:after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,transparent 46%,rgba(14,13,9,.9) 100%)}
+.brit-asset-modal .bam-valtab{position:absolute;top:18px;inset-inline-start:22px;z-index:3;text-align:start}
+.brit-asset-modal .bam-valtab .v{font:500 26px/.8 var(--display);color:var(--gold-bright)}
+.brit-asset-modal .bam-valtab .l{margin-top:6px;color:#aaa69c;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.brit-asset-modal .bam-hero-inner{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:20px 24px}
+.brit-asset-modal .bam-eyebrow{margin:0 0 8px;color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em}
+.brit-asset-modal .bam-hero-inner h2{margin:0;font:500 clamp(32px,5vw,46px)/.84 var(--display);text-transform:uppercase;letter-spacing:-.02em;color:var(--paper);text-shadow:0 2px 16px rgba(0,0,0,.6)}
+.brit-asset-modal .bam-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.brit-asset-modal .bam-tags .tag{font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:5px 8px;border:1px solid var(--dark-line);color:var(--gold-soft);background:rgba(14,13,9,.4)}
+/* Body */
+.brit-asset-modal .bam-body{padding:20px 24px 24px}
+.brit-asset-modal .bam-facts{grid-template-columns:1fr 1fr;margin-bottom:16px}
+.brit-asset-modal .bam-switchrow{margin-bottom:16px}
+/* Next match */
+.brit-asset-modal .bam-nm{margin-top:16px;border:1px solid var(--dark-line);background:var(--black);color:var(--paper);overflow:hidden;position:relative}
+.brit-asset-modal .bam-nm:after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% -10%,rgba(201,166,107,.14),transparent 60%)}
+.brit-asset-modal .bam-nm > *{position:relative;z-index:1}
+.brit-asset-modal .bam-nm-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--dark-line)}
+.brit-asset-modal .bam-nm-top .lbl{display:flex;align-items:center;gap:8px;color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em}
+.brit-asset-modal .bam-nm-top .pulse{width:7px;height:7px;border-radius:50%;background:var(--gold-bright);box-shadow:0 0 0 0 rgba(228,201,139,.6);animation:bam-pulse 2s infinite}
+@keyframes bam-pulse{0%{box-shadow:0 0 0 0 rgba(228,201,139,.5)}70%{box-shadow:0 0 0 7px rgba(228,201,139,0)}100%{box-shadow:0 0 0 0 rgba(228,201,139,0)}}
+.brit-asset-modal .bam-nm-top .ha{font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:5px 9px;border:1px solid var(--gold-soft);color:var(--gold-bright)}
+/* Fixture crests */
+.brit-asset-modal .bam-fixture{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:20px 16px 14px}
+.brit-asset-modal .bam-fixture .side{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.brit-asset-modal .bam-fixture .crest{width:52px;height:52px;flex:none;display:grid;place-items:center;background:linear-gradient(160deg,#2a2419,#15120b);border:1px solid var(--dark-line);color:var(--gold-bright);font:500 18px/1 var(--display);overflow:hidden}
+.brit-asset-modal .bam-fixture .crest img{width:100%;height:100%;object-fit:contain;padding:8px}
+.brit-asset-modal .bam-fixture .side b{font:600 12px/1.1 var(--body);max-width:140px;color:var(--paper)}
+.brit-asset-modal .bam-fixture .side.me b{color:var(--gold-bright)}
+.brit-asset-modal .bam-fixture .side small{color:#8c877c;font:8px/1 var(--mono);text-transform:uppercase}
+.brit-asset-modal .bam-fixture .vs{display:flex;flex-direction:column;align-items:center;gap:6px}
+.brit-asset-modal .bam-fixture .vs .v{font:500 18px/1 var(--display);color:var(--muted)}
+.brit-asset-modal .bam-fixture .vs .comp{font:7px/1.2 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--gold-soft);max-width:88px;text-align:center}
+/* Countdown */
+.brit-asset-modal .bam-countdown{display:flex;align-items:center;justify-content:center;gap:14px;padding:11px;margin:0 16px;border-top:1px dashed var(--dark-line);border-bottom:1px dashed var(--dark-line)}
+.brit-asset-modal .bam-countdown .unit{text-align:center;min-width:38px}
+.brit-asset-modal .bam-countdown .unit b{display:block;font:500 22px/.85 var(--display);color:var(--paper)}
+.brit-asset-modal .bam-countdown .unit small{display:block;margin-top:5px;color:#8c877c;font:7px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+.brit-asset-modal .bam-countdown .sepc{color:var(--gold-soft);font:500 18px/1 var(--display);align-self:flex-start;margin-top:1px}
+/* Detail grid */
+.brit-asset-modal .bam-nm-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--dark-line);margin:14px 0 0}
+.brit-asset-modal .bam-nm-grid > div{background:var(--black);padding:12px 16px}
+.brit-asset-modal .bam-nm-grid .wide{grid-column:1 / -1}
+.brit-asset-modal .bam-nm-grid label{display:block;color:#8c877c;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.brit-asset-modal .bam-nm-grid strong{display:block;margin-top:6px;font:600 12px/1.2 var(--body);color:var(--paper)}
+.brit-asset-modal .bam-nm-src{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-top:1px solid var(--dark-line);color:#8c877c;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.brit-asset-modal .bam-nm-src a{color:var(--gold-bright);text-decoration:none}
+.brit-asset-modal .bam-nm-msg{padding:36px 16px;text-align:center;color:#8c877c;font:9px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+/* Actions */
+.brit-asset-modal .bam-actions{margin-top:20px}
+
 /* ── Mobile ── */
 @media (max-width: 900px) {
   .brit-app {
