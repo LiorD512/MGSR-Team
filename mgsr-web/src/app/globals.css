@@ -2494,6 +2494,103 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   border-color: var(--gold-soft);
   color: var(--gold);
 }
+/* Destructive variant — red top rule + red primary action (editorial) */
+.brit-modal.brit-modal-danger {
+  border-top-color: var(--red);
+}
+.brit-modal.brit-modal-danger .brit-modal-kicker {
+  color: var(--red);
+}
+.brit-modal-action.brit-modal-action-danger {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--paper);
+}
+.brit-modal-action.brit-modal-action-danger:hover {
+  background: #9a3529;
+  border-color: #9a3529;
+  color: var(--paper);
+}
+.brit-modal-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.brit-modal-warn {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font: 12px/1.5 var(--body);
+}
+/* Note composer (editorial) */
+.brit-note-label {
+  display: block;
+  margin: 22px 0 8px;
+  color: var(--muted);
+  font: 9px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.brit-note-field {
+  width: 100%;
+  padding: 14px 15px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font: 14px/1.6 var(--body);
+  outline: none;
+  resize: vertical;
+  min-height: 130px;
+  transition: border-color 0.15s;
+}
+.brit-note-field:focus {
+  border-color: var(--gold-soft);
+}
+.brit-note-field::placeholder {
+  color: var(--muted);
+}
+.brit-note-hint {
+  margin-top: 9px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font: 9px/1.4 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.brit-note-hint b {
+  color: var(--gold);
+  font-weight: 400;
+}
+/* @-mention dropdown — editorial look inside a brit-room (overrides the
+   component's default dark/glass Tailwind styling without touching other
+   platforms that render it outside a brit-room). */
+.brit-room .brit-mention {
+  margin-top: 4px;
+  max-height: 220px;
+  border-radius: 0 !important;
+  background: var(--paper) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: 0 18px 40px rgba(17, 17, 15, 0.18) !important;
+}
+.brit-room .brit-mention-opt {
+  padding: 11px 14px;
+  color: var(--ink);
+  font: 13px/1.2 var(--body);
+  border-bottom: 1px solid var(--line);
+  transition: background 0.12s;
+}
+.brit-room .brit-mention-opt:last-child {
+  border-bottom: 0;
+}
+.brit-room .brit-mention-opt:hover {
+  background: var(--card);
+}
+.brit-room .brit-mention-ic {
+  color: var(--gold);
+}
 .brit-next-match {
   margin: 24px 0 26px;
   border-top: 1px solid var(--line);
@@ -2748,6 +2845,8 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
 .brit-room .brit-search input{width:100%;border:0;background:transparent;padding:20px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
 .brit-room .brit-search input::placeholder{color:var(--muted)}
+.brit-room .brit-search-clear{flex:none;width:22px;height:22px;display:grid;place-items:center;border:1px solid var(--line);color:var(--muted);font:16px/1 var(--display);background:transparent;cursor:pointer;transition:.15s}
+.brit-room .brit-search-clear:hover{border-color:var(--gold-soft);color:var(--gold)}
 .brit-room .brit-segment{display:flex;border-inline-start:1px solid var(--line)}
 .brit-room .brit-segment button{padding:0 18px;font:10px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-start:1px solid var(--line)}
 .brit-room .brit-segment button:first-child{border-inline-start:0}
@@ -3076,31 +3175,47 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-profile .bp-chips4 button.on{background:var(--black);color:var(--gold-soft)}
 
 /* Documents */
-.brit-profile .bp-doc{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
-.brit-profile .bp-doc .nm{display:flex;align-items:center;gap:10px;min-width:0}
-.brit-profile .bp-doc .ic{width:26px;height:26px;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);flex:none;font-size:12px}
-.brit-profile .bp-doc .t{font:500 12px/1.3 var(--p-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brit-profile .bp-doc{display:flex;align-items:center;justify-content:space-between;gap:13px;padding:14px 0;border-bottom:1px solid var(--line)}
+.brit-profile .bp-doc .nm{display:flex;align-items:center;gap:13px;min-width:0;flex:1}
+.brit-profile .bp-doc .ic{width:34px;height:34px;border:1px solid var(--line);display:grid;place-items:center;color:var(--gold);flex:none;font-size:14px}
+.brit-profile .bp-doc .t{font:500 13px/1.2 var(--p-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .brit-profile .bp-doc .meta{color:var(--muted);font:8px/1 var(--p-mono);text-transform:uppercase;margin-top:4px}
-.brit-profile .bp-doc .ops{display:flex;align-items:center;gap:6px;flex:none}
-.brit-profile .bp-doc .ops a,.brit-profile .bp-doc .ops button{width:28px;height:28px;display:grid;place-items:center;color:var(--muted)}
-.brit-profile .bp-doc .ops a:hover{color:var(--gold)}
-.brit-profile .bp-doc .ops button.del:hover{color:var(--red)}
+.brit-profile .bp-doc .ops{display:flex;align-items:center;gap:5px;flex:none}
+.brit-profile .bp-doc .ops a,.brit-profile .bp-doc .ops button{width:28px;height:28px;display:grid;place-items:center;color:var(--muted);border:1px solid var(--line)}
+.brit-profile .bp-doc .ops a:hover{color:var(--gold);border-color:var(--gold-soft)}
+.brit-profile .bp-doc .ops button.del:hover{color:var(--red);border-color:var(--red)}
 .brit-profile .bp-doc-badge{font:8px/1 var(--p-mono);text-transform:uppercase;padding:4px 6px;border:1px solid var(--green);color:var(--green)}
 .brit-profile .bp-doc-badge.exp{border-color:var(--red);color:var(--red)}
+.brit-profile .bp-doc-badge.muted{border-color:var(--line);color:var(--muted)}
 .brit-profile .bp-addbtn{width:100%;margin-top:14px;padding:12px 0;border:1px dashed var(--line);color:var(--gold);font:9px/1 var(--p-mono);text-transform:uppercase}
 .brit-profile .bp-addbtn:hover{border-color:var(--gold-soft);background:rgba(164,125,67,.04)}
 .brit-profile .bp-addbtn:disabled{opacity:.5}
+/* Generate-mandate CTA — editorial black block (Documents tab) */
+.brit-profile .bp-mandate-cta{margin-top:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;background:var(--black);color:var(--paper)}
+.brit-profile .bp-mandate-cta .mi h4{margin:0;font:500 18px/1 var(--p-display);text-transform:uppercase}
+[dir=rtl] .brit-profile .bp-mandate-cta .mi h4{font-weight:800}
+.brit-profile .bp-mandate-cta .mi p{margin:7px 0 0;color:#c9c3b6;font:10px/1.4 var(--p-mono);text-transform:uppercase}
+.brit-profile .bp-mandate-cta a{flex:none;background:var(--gold-soft);color:var(--ink);padding:13px 18px;font:9px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;transition:.15s}
+.brit-profile .bp-mandate-cta a:hover{background:var(--gold);color:var(--paper)}
+.brit-profile .bp-mandate-cta.done{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.brit-profile .bp-mandate-cta.done .mi p{color:var(--muted)}
+.brit-profile .bp-mandate-cta .cta-done{flex:none;color:var(--green);font:9px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--green);padding:11px 14px}
 
 /* Offers / notes */
 .brit-profile .bp-offer{border:1px solid var(--line);background:var(--card);padding:14px 16px;margin-bottom:12px}
-.brit-profile .bp-note{border:1px solid var(--line);background:var(--card);padding:15px 16px;margin-bottom:12px}
-.brit-profile .bp-note p{margin:0;font:13px/1.55 var(--p-body);white-space:pre-wrap}
-.brit-profile .bp-note .nm{margin-top:11px;display:flex;gap:12px;color:var(--muted);font:8px/1 var(--p-mono);text-transform:uppercase}
+.brit-profile .bp-note{position:relative;border:1px solid var(--line);background:var(--card);padding:16px 17px;margin-bottom:13px}
+.brit-profile .bp-note p{margin:0;font:14px/1.6 var(--p-body);white-space:pre-wrap}
+.brit-profile .bp-note .bp-mention{color:var(--gold);font-weight:600}
+.brit-profile .bp-note .nm{margin-top:12px;display:flex;gap:12px;color:var(--muted);font:8px/1 var(--p-mono);text-transform:uppercase}
 .brit-profile .bp-note .nm .by{color:var(--gold)}
-.brit-profile .bp-note .ops{float:inline-end;display:flex;gap:4px}
-.brit-profile .bp-note .ops button{width:26px;height:26px;display:grid;place-items:center;color:var(--muted)}
-.brit-profile .bp-note .ops button:hover{color:var(--gold)}
-.brit-profile .bp-note .ops button.del:hover{color:var(--red)}
+.brit-profile .bp-note .ops{position:absolute;top:12px;inset-inline-end:14px;display:flex;gap:5px;opacity:0;transition:opacity .15s}
+.brit-profile .bp-note:hover .ops{opacity:1}
+.brit-profile .bp-note .ops button{width:26px;height:26px;display:grid;place-items:center;color:var(--muted);border:1px solid transparent}
+.brit-profile .bp-note .ops button:hover{color:var(--gold);border-color:var(--line)}
+.brit-profile .bp-note .ops button.del:hover{color:var(--red);border-color:var(--line)}
+/* Dashed "write a new note" button at the top of the notes list (mock) */
+.brit-profile .bp-noteadd{width:100%;margin-bottom:16px;padding:16px;border:1px dashed var(--line);color:var(--gold);font:9px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em;text-align:center}
+.brit-profile .bp-noteadd:hover{border-color:var(--gold-soft);background:rgba(164,125,67,.04)}
 
 /* Panels wrapper (existing sub-panels keep their own internals) */
 .brit-profile .bp-panel{margin-bottom:0}
@@ -3128,6 +3243,13 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-profile .bp-contactrow a:hover{color:var(--gold)}
 .brit-profile .brit-guardian{margin-bottom:22px}
 .brit-profile .brit-guardian .bp-contactrow{border-bottom:0;padding:7px 0}
+/* Latest status box (replaces the mandate switch on youth) */
+.brit-profile .bp-kv h3 .bp-kv-add{margin-inline-start:auto;color:var(--gold);font:8px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--gold-soft);padding:5px 7px;cursor:pointer;transition:.15s}
+.brit-profile .bp-kv h3 .bp-kv-add:hover{background:var(--gold-soft);color:var(--ink)}
+.brit-profile .bp-status{border:1px solid var(--line);background:var(--card);padding:14px 15px}
+.brit-profile .bp-status p{margin:0;font:13px/1.55 var(--p-body);white-space:pre-wrap;color:var(--ink)}
+.brit-profile .bp-status .meta{margin-top:11px;display:flex;gap:12px;color:var(--muted);font:8px/1 var(--p-mono);text-transform:uppercase}
+.brit-profile .bp-status .meta .by{color:var(--gold)}
 
 @media(max-width:900px){
   .brit-profile{padding:16px}
@@ -3182,66 +3304,137 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-profile .bp-panel textarea{color:var(--ink)}
 .brit-profile .bp-panel .placeholder-mgsr-muted::placeholder{color:var(--muted) !important}
 
-/* ── Performance panels: EDITORIAL restyle (shape + type, not just color) so
-   the shared panels truly speak the Light Management Room language. Scoped to
-   .brit-profile .bp-panel. ── */
+/* ═══════════════════════════════════════════════════════
+   PERFORMANCE PANELS — rebuilt to the mock's flat editorial
+   language. Each panel renders its own .bp-module, so the
+   .bp-panel wrapper is a transparent passthrough (NO frame).
+   All classes scoped to .brit-profile and match the mock 1:1.
+   ═══════════════════════════════════════════════════════ */
+.brit-profile .bp-panel{display:contents}
 
-/* The wrapper each panel sits in becomes a framed editorial module */
-.brit-profile .bp-panel{border:1px solid var(--line);background:var(--card)}
-.brit-profile .bp-panel + .bp-panel{border-top:0}
+/* Shared helpers */
+.brit-profile .bp-sublabel{margin:14px 0 8px;color:var(--muted);font:9px/1 var(--p-mono);letter-spacing:.1em;text-transform:uppercase}
+.brit-profile .bp-caution{margin:0 0 16px;padding:11px 13px;background:rgba(164,125,67,.08);border:1px solid var(--gold-soft);color:var(--gold);font:10px/1.5 var(--p-mono);text-transform:uppercase}
+.brit-profile .bp-muted-note{color:var(--muted);font:10px/1.5 var(--p-mono);text-transform:uppercase;padding:6px 0}
+.brit-profile .bp-skeleton{opacity:.6}
+.brit-profile .bp-retry{display:block;margin:12px auto 0;color:var(--gold);font:9px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em;text-decoration:underline}
 
-/* Kill rounded corners + shadows inside panels → sharp paper edges */
-.brit-profile .bp-panel [class*='rounded']{border-radius:0 !important}
-.brit-profile .bp-panel [class*='shadow']{box-shadow:none !important}
-/* keep genuinely-circular things round (avatars, rating ring, dots) */
-.brit-profile .bp-panel img[class*='rounded-full'],
-.brit-profile .bp-panel .rounded-full.w-6,
-.brit-profile .bp-panel svg,
-.brit-profile .bp-panel [class*='w-1.5'][class*='rounded'],
-.brit-profile .bp-panel [class*='w-2'][class*='rounded']{border-radius:9999px !important}
+/* Expand/collapse (secondary stats, GPS matches) */
+.brit-profile .bp-expand{margin-top:16px;border-top:1px solid var(--line)}
+.brit-profile .bp-expand summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:13px 0 0;color:var(--muted);font:9px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em}
+.brit-profile .bp-expand summary::-webkit-details-marker{display:none}
+.brit-profile .bp-expand summary:hover{color:var(--ink)}
+.brit-profile .bp-expand .chev{transition:transform .2s;color:var(--gold)}
+.brit-profile .bp-expand .chev.open{transform:rotate(180deg)}
 
-/* The panel itself shouldn't double-frame (inner card already framed) */
-.brit-profile .bp-panel > .bg-mgsr-card,
-.brit-profile .bp-panel > [class*='bg-mgsr-card']{border:0 !important}
+/* Two-column facts (secondary stats) */
+.brit-profile .bp-facts.twocol{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;margin-top:14px}
+.brit-profile .bp-facts.twocol .row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid var(--line)}
+.brit-profile .bp-facts.twocol .row label{color:var(--muted);font:9px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.05em}
+.brit-profile .bp-facts.twocol .row .v.mono{font:500 12px/1 var(--p-mono);color:var(--ink)}
+@media(max-width:560px){.brit-profile .bp-facts.twocol{grid-template-columns:1fr}}
 
-/* Section headings → Oswald, uppercase, tight */
-.brit-profile .bp-panel h2,
-.brit-profile .bp-panel h3{font-family:var(--p-display) !important;text-transform:uppercase;letter-spacing:.01em;font-weight:600}
-[dir=rtl] .brit-profile .bp-panel h2,
-[dir=rtl] .brit-profile .bp-panel h3{font-weight:800;letter-spacing:normal}
+/* ── Season stat grid (PlayerStatsPanel) — mock .statgrid ── */
+.brit-profile .bp-statgrid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);background:var(--card)}
+.brit-profile .bp-statgrid > div{padding:18px 6px;text-align:center;border-inline-end:1px solid var(--line);border-bottom:1px solid var(--line)}
+.brit-profile .bp-statgrid > div:nth-child(4n){border-inline-end:0}
+.brit-profile .bp-statgrid > div:nth-last-child(-n+4){border-bottom:0}
+.brit-profile .bp-statgrid .v{font:500 30px/.8 var(--p-display);color:var(--ink)}
+[dir=rtl] .brit-profile .bp-statgrid .v{font-weight:800}
+.brit-profile .bp-statgrid .v.gold{color:var(--gold)}
+.brit-profile .bp-statgrid .l{margin-top:8px;color:var(--muted);font:8px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.04em}
 
-/* Small labels → mono uppercase */
-.brit-profile .bp-panel .uppercase{font-family:var(--p-mono) !important;letter-spacing:.08em}
+/* ── Labeled attribute bars (FM dimensions + stats key metrics) — mock .attr ── */
+.brit-profile .bp-attr{display:flex;align-items:center;gap:12px;padding:9px 0}
+.brit-profile .bp-attr label{width:150px;flex:none;color:var(--ink);font:11px/1.2 var(--p-body);text-transform:capitalize}
+.brit-profile .bp-attr .bar{flex:1;height:7px;background:var(--paper-2);position:relative}
+.brit-profile .bp-attr .bar i{position:absolute;inset-inline-start:0;top:0;bottom:0;background:linear-gradient(90deg,var(--gold),var(--gold-soft))}
+.brit-profile .bp-attr .n{width:34px;flex:none;text-align:end;font:500 13px/1 var(--p-mono);color:var(--ink)}
+@media(max-width:560px){.brit-profile .bp-attr label{width:110px}}
 
-/* Overview chips → bordered mono blocks (was rounded pills) */
-.brit-profile .bp-panel .bg-mgsr-dark\/60{background:transparent !important;border:1px solid var(--line)}
+/* ── FM header facts strip + top/weak attrs ── */
+.brit-profile .bp-fmhead{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);background:var(--card);margin-bottom:4px}
+.brit-profile .bp-fmhead .cell{padding:16px 10px;text-align:center;border-inline-end:1px solid var(--line)}
+.brit-profile .bp-fmhead .cell:last-child{border-inline-end:0}
+.brit-profile .bp-fmhead .v{font:500 28px/.8 var(--p-display);color:var(--ink)}
+[dir=rtl] .brit-profile .bp-fmhead .v{font-weight:800}
+.brit-profile .bp-fmhead .v.gold{color:var(--gold)}
+.brit-profile .bp-fmhead .v.tier{font:500 13px/1.1 var(--p-mono);color:var(--gold);text-transform:uppercase}
+.brit-profile .bp-fmhead .l{margin-top:8px;color:var(--muted);font:8px/1.2 var(--p-mono);text-transform:uppercase}
+.brit-profile .bp-fmfoot{margin:10px 0 0;color:var(--muted);font:9px/1.4 var(--p-mono);text-transform:uppercase}
+.brit-profile .bp-fmattr{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;margin-top:14px}
+.brit-profile .bp-fmattr .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}
+.brit-profile .bp-fmattr .row label{color:var(--ink);font:11px/1.2 var(--p-body);text-transform:capitalize}
+.brit-profile .bp-fmattr .row .n{font:500 13px/1 var(--p-mono);color:var(--gold)}
+@media(max-width:560px){.brit-profile .bp-fmattr{grid-template-columns:1fr}}
 
-/* Stat progress bars → thin gold bar on a hairline track */
-.brit-profile .bp-panel .h-2{height:4px !important}
-.brit-profile .bp-panel .bg-mgsr-dark.rounded-full,
-.brit-profile .bp-panel .h-2.bg-mgsr-dark{background:rgba(22,22,19,.10) !important}
-.brit-profile .bp-panel [class*='bg-gradient-to-r']{background-image:none !important;background:var(--gold) !important}
+/* ── GPS metric cards — mock .gps ── */
+.brit-profile .bp-gps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(min-width:640px){.brit-profile .bp-gps{grid-template-columns:repeat(6,1fr)}}
+.brit-profile .bp-gps > div{border:1px solid var(--line);background:var(--card);padding:16px 10px;text-align:center}
+.brit-profile .bp-gps .v{font:500 26px/.8 var(--p-display);color:var(--gold)}
+[dir=rtl] .brit-profile .bp-gps .v{font-weight:800}
+.brit-profile .bp-gps .v small{font:400 10px/1 var(--p-mono);color:var(--muted)}
+.brit-profile .bp-gps .l{margin-top:8px;color:var(--muted);font:8px/1.3 var(--p-mono);text-transform:uppercase}
 
-/* Rating ring: recolor the dark track hex to a paper hairline (inline stroke) */
-.brit-profile .bp-panel circle[stroke='#253545']{stroke:rgba(22,22,19,.14) !important}
+/* GPS insights (strengths/weaknesses) as plain rows */
+.brit-profile .bp-gps-insights{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;margin-top:4px}
+@media(max-width:640px){.brit-profile .bp-gps-insights{grid-template-columns:1fr}}
+.brit-profile .bp-gps-insight{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);border-inline-start:2px solid var(--green);padding-inline-start:12px}
+.brit-profile .bp-gps-insight.weak{border-inline-start-color:var(--red)}
+.brit-profile .bp-gps-insight .tx b{display:block;font:600 12px/1.3 var(--p-body);color:var(--ink)}
+.brit-profile .bp-gps-insight .tx span{display:block;margin-top:3px;color:var(--muted);font:10px/1.4 var(--p-body)}
+.brit-profile .bp-gps-insight .vl{flex:none;text-align:end}
+.brit-profile .bp-gps-insight .vl b{font:500 13px/1 var(--p-mono);color:var(--gold)}
+.brit-profile .bp-gps-insight .vl span{display:block;margin-top:3px;color:var(--muted);font:8px/1 var(--p-mono)}
 
-/* Amber disclaimer band → paper-toned caution */
-.brit-profile .bp-panel [class*='bg-amber-950']{background:rgba(164,125,67,.08) !important}
-.brit-profile .bp-panel [class*='text-amber-400']{color:var(--gold) !important}
-.brit-profile .bp-panel [class*='border-amber-700']{border-color:var(--gold-soft) !important}
+/* GPS per-match detail cards */
+.brit-profile .bp-gps-matches{margin-top:12px;display:flex;flex-direction:column;gap:10px}
+.brit-profile .bp-gps-match{border:1px solid var(--line);background:var(--card);padding:12px 14px}
+.brit-profile .bp-gps-match .hd{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.brit-profile .bp-gps-match .hd b{display:block;font:600 12px/1.2 var(--p-body);color:var(--ink)}
+.brit-profile .bp-gps-match .hd span{display:block;margin-top:3px;color:var(--muted);font:9px/1 var(--p-mono);text-transform:uppercase}
+.brit-profile .bp-gps-match .hd .stars{font:500 10px/1 var(--p-mono);color:var(--gold);font-style:normal}
+.brit-profile .bp-gps-match .mini{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center}
+.brit-profile .bp-gps-ministat b{display:block;font:500 14px/1 var(--p-display);color:var(--ink)}
+[dir=rtl] .brit-profile .bp-gps-ministat b{font-weight:800}
+.brit-profile .bp-gps-ministat span{display:block;margin-top:5px;color:var(--muted);font:7px/1.1 var(--p-mono);text-transform:uppercase}
 
-/* Section header bottom borders / dividers use the ink hairline */
-.brit-profile .bp-panel [class*='border-b'],
-.brit-profile .bp-panel [class*='border-t']{border-color:var(--line) !important}
+/* ── Similar player clean rows — mock .sim ── */
+.brit-profile .bp-simlist{margin-top:4px}
+.brit-profile .bp-sim{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line);width:100%;background:transparent}
+.brit-profile .bp-sim .av{width:38px;height:38px;flex:none;background:var(--black);color:var(--gold-soft);display:grid;place-items:center;font:500 13px/1 var(--p-display)}
+.brit-profile .bp-sim .info{flex:1;min-width:0;text-align:start}
+.brit-profile .bp-sim .info b{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font:600 13px/1.1 var(--p-body);color:var(--ink)}
+.brit-profile .bp-sim .info b .fmtag{font:600 8px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.04em;border:1px solid;padding:3px 5px;font-style:normal}
+.brit-profile .bp-sim .info span{display:block;margin-top:4px;color:var(--muted);font:9px/1.3 var(--p-mono);text-transform:uppercase}
+.brit-profile .bp-sim .match{flex:none;font:9px/1 var(--p-mono);color:var(--gold);border:1px solid var(--gold-soft);padding:5px 7px;white-space:nowrap;text-transform:uppercase}
+.brit-profile .bp-sim-chev{color:var(--muted);transition:transform .2s;flex:none}
+.brit-profile .bp-sim-chev.rotate-180{transform:rotate(180deg)}
 
-/* Values / numbers pick up display face for a data-room feel */
-.brit-profile .bp-panel .font-bold,
-.brit-profile .bp-panel .font-extrabold,
-.brit-profile .bp-panel .font-semibold{font-weight:600}
-
-/* Buttons / expanders inside panels */
-.brit-profile .bp-panel button{color:inherit}
-.brit-profile .bp-panel [class*='hover\:bg-']:hover{background:rgba(17,17,15,.04) !important}
+/* ── Highlights reel grid — mock .reels ── */
+.brit-profile .bp-reels{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.brit-profile .bp-reels{grid-template-columns:1fr}}
+.brit-profile .bp-reel{position:relative;aspect-ratio:16/9;overflow:hidden;border:1px solid var(--line);background:linear-gradient(135deg,#2a2419,#121009)}
+.brit-profile .bp-reel-thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(.3)}
+.brit-profile .bp-reel-ph{position:absolute;inset:0}
+.brit-profile .bp-reel-frame{position:absolute;inset:0;width:100%;height:100%;border:0}
+.brit-profile .bp-reel-play{position:absolute;inset:0;display:grid;place-items:center;z-index:2}
+.brit-profile .bp-reel-play span{width:44px;height:44px;border-radius:50%;background:rgba(243,240,232,.92);color:var(--black);display:grid;place-items:center;padding-inline-start:3px;font-size:16px}
+.brit-profile .bp-reel-cap{position:absolute;left:0;right:0;bottom:0;padding:10px 12px;background:linear-gradient(0deg,rgba(17,17,15,.9),transparent);color:var(--paper);z-index:1}
+.brit-profile .bp-reel-cap b{display:block;font:600 12px/1.3 var(--p-body);color:var(--paper)}
+.brit-profile .bp-reel-cap small{color:#c9c3b6;font:8px/1.3 var(--p-mono);text-transform:uppercase}
+.brit-profile .bp-reel-dur{position:absolute;top:9px;inset-inline-end:9px;background:rgba(17,17,15,.8);color:var(--gold-soft);font:8px/1 var(--p-mono);padding:4px 6px;z-index:3}
+.brit-profile .bp-reel-rm{position:absolute;top:9px;inset-inline-start:9px;z-index:3;width:24px;height:24px;background:rgba(17,17,15,.8);color:var(--paper);display:grid;place-items:center;font:11px/1 var(--p-mono);opacity:0;transition:opacity .15s}
+.brit-profile .bp-reel:hover .bp-reel-rm{opacity:1}
+.brit-profile .bp-reel-rm:hover{color:var(--red)}
+.brit-profile .bp-reel-empty{padding:34px;text-align:center;color:var(--muted);font:10px/1.5 var(--p-mono);text-transform:uppercase;border:1px dashed var(--line)}
+.brit-profile .bp-reel-add{display:flex;gap:8px;margin-top:14px}
+.brit-profile .bp-reel-add input{flex:1;min-width:0;border:1px solid var(--line);background:var(--paper);padding:11px 12px;font:11px/1 var(--p-mono);color:var(--ink);outline:none}
+.brit-profile .bp-reel-add input:focus{border-color:var(--gold-soft)}
+.brit-profile .bp-reel-add button{flex:none;border:1px solid var(--gold-soft);background:var(--gold-soft);color:var(--ink);padding:11px 15px;font:9px/1 var(--p-mono);text-transform:uppercase;letter-spacing:.06em}
+.brit-profile .bp-reel-add button:disabled{opacity:.5}
+.brit-profile .bp-reel-err{margin-top:8px;color:var(--red);font:10px/1.3 var(--p-mono)}
 
 /* ═══════════════════════════════════════════════════════
    MEN SHORTLIST — extends the .brit-room language
@@ -4562,3 +4755,111 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   outline-offset: 1px;
   animation: brit-row-highlight-pulse 0.9s ease-out 2;
 }
+
+
+/* ═══════════════════════════════════════════════════════
+   Generate-mandate wizard — editorial "Light Management Room"
+   (scoped under .brit-room; mirrors docs/.../generate-mandate-flow.html)
+   ═══════════════════════════════════════════════════════ */
+.brit-room .brit-mandate{max-width:720px;margin:0 auto;padding:34px 28px 90px}
+.brit-room .brit-md-back{display:inline-block;margin-bottom:22px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.brit-room .brit-md-back:hover{color:var(--gold)}
+.brit-room .brit-md-empty{padding:40px;text-align:center;color:var(--muted);font:10px/1.5 var(--mono);text-transform:uppercase}
+
+.brit-room .brit-md-mast{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:26px}
+.brit-room .brit-md-kicker{margin:0 0 12px;color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em}
+.brit-room .brit-md-mast h1{margin:0;font:500 clamp(40px,6vw,60px)/.85 var(--display);text-transform:uppercase;letter-spacing:-.02em}
+[dir=rtl] .brit-room .brit-md-mast h1{letter-spacing:normal;font-weight:800}
+.brit-room .brit-md-who{margin-top:12px;display:flex;align-items:center;gap:12px;color:var(--muted);font:10px/1 var(--mono);text-transform:uppercase}
+.brit-room .brit-md-who .av{width:30px;height:30px;background:var(--black);color:var(--gold-soft);display:grid;place-items:center;font:500 11px/1 var(--display)}
+
+.brit-room .brit-md-stepper{display:flex;margin-bottom:30px;border:1px solid var(--line)}
+.brit-room .brit-md-stepper .st{flex:1;padding:14px 16px;border-inline-end:1px solid var(--line);display:flex;align-items:center;gap:11px;opacity:.5;transition:.2s}
+.brit-room .brit-md-stepper .st:last-child{border-inline-end:0}
+.brit-room .brit-md-stepper .st.active,.brit-room .brit-md-stepper .st.done{opacity:1}
+.brit-room .brit-md-stepper .st .n{width:24px;height:24px;flex:none;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;font:500 11px/1 var(--mono);color:var(--muted)}
+.brit-room .brit-md-stepper .st.active .n{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+.brit-room .brit-md-stepper .st.done .n{background:var(--ink);border-color:var(--ink);color:var(--paper);font-size:0}
+.brit-room .brit-md-stepper .st.done .n:after{content:'✓';font-size:11px}
+.brit-room .brit-md-stepper .st .t b{display:block;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.brit-room .brit-md-stepper .st .t small{display:block;margin-top:4px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+
+.brit-room .brit-md-err{margin-bottom:18px;padding:12px 14px;border:1px solid var(--red);color:var(--red);font:11px/1.4 var(--body)}
+.brit-room .brit-md-seclabel{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;margin:0 0 12px}
+
+.brit-room .brit-md-agent{display:flex;align-items:center;gap:13px;width:100%;padding:16px;border:1px solid var(--line);background:var(--card);text-align:start;margin-bottom:10px;transition:.15s}
+.brit-room .brit-md-agent:hover{border-color:var(--gold-soft)}
+.brit-room .brit-md-agent.on{border-color:var(--gold);background:rgba(164,125,67,.07)}
+.brit-room .brit-md-agent .av{width:40px;height:40px;flex:none;background:var(--black);color:var(--gold-soft);display:grid;place-items:center;font:500 14px/1 var(--display)}
+.brit-room .brit-md-agent.on .av{background:var(--gold-soft);color:var(--ink)}
+.brit-room .brit-md-agent .info{flex:1;min-width:0}
+.brit-room .brit-md-agent .info b{display:block;font:500 15px/1.1 var(--body);font-weight:600}
+.brit-room .brit-md-agent .info span{display:block;margin-top:4px;color:var(--muted);font:9px/1.2 var(--mono);text-transform:uppercase}
+.brit-room .brit-md-agent .rc{color:var(--gold);font:13px/1 var(--mono)}
+
+.brit-room .brit-md-divider{border-top:1px solid var(--line);margin:24px 0}
+.brit-room .brit-md-togglecard{display:flex;align-items:center;gap:13px;padding:16px;border:1px solid var(--line);background:var(--card);cursor:pointer;transition:.15s}
+.brit-room .brit-md-togglecard.on{border-color:var(--gold);background:rgba(164,125,67,.07)}
+.brit-room .brit-md-togglecard .sw{width:42px;height:22px;flex:none;position:relative}
+.brit-room .brit-md-togglecard .sw i{position:absolute;inset:0;background:#cfc7b5;transition:.2s}
+.brit-room .brit-md-togglecard .sw i:before{content:'';position:absolute;width:16px;height:16px;top:3px;inset-inline-start:3px;background:#fff;transition:.2s}
+.brit-room .brit-md-togglecard.on .sw i{background:var(--gold-soft)}
+.brit-room .brit-md-togglecard.on .sw i:before{transform:translateX(20px)}
+[dir=rtl] .brit-room .brit-md-togglecard.on .sw i:before{transform:translateX(-20px)}
+.brit-room .brit-md-togglecard .tc b{display:block;font:500 13px/1.1 var(--body);font-weight:600}
+.brit-room .brit-md-togglecard .tc span{display:block;margin-top:4px;color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+
+.brit-room .brit-md-originfields{margin-top:16px}
+.brit-room .brit-md-field{margin-top:16px}
+.brit-room .brit-md-field label{display:block;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.brit-room .brit-md-field input{width:100%;border:1px solid var(--line);background:var(--card);padding:13px 14px;color:var(--ink);font:13px/1 var(--body);outline:none}
+.brit-room .brit-md-field input:focus{border-color:var(--gold-soft)}
+.brit-room .brit-md-field input.mono{font-family:var(--mono)}
+.brit-room .brit-md-seg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.brit-room .brit-md-seg button{padding:12px;border:1px solid var(--line);font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
+.brit-room .brit-md-seg button.on{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+
+.brit-room .brit-md-datefield{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--card);padding:0 14px}
+.brit-room .brit-md-datefield svg{width:17px;height:17px;stroke:var(--muted);flex:none}
+.brit-room .brit-md-datefield input{flex:1;border:0;background:transparent;padding:14px 0;color:var(--ink);font:13px/1 var(--mono);outline:none}
+.brit-room .brit-md-addrow{width:100%;padding:14px;border:1px dashed var(--gold-soft);color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;text-align:center}
+.brit-room .brit-md-addrow:hover{background:rgba(164,125,67,.07)}
+.brit-room .brit-md-leaguetag{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--line);background:var(--card);margin-top:10px}
+.brit-room .brit-md-leaguetag .lt-nm{font:12px/1.2 var(--body)}
+.brit-room .brit-md-leaguetag .lt-nm small{display:block;margin-top:3px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .brit-md-leaguetag button{width:26px;height:26px;display:grid;place-items:center;color:var(--muted);border:1px solid transparent}
+.brit-room .brit-md-leaguetag button:hover{color:var(--red);border-color:var(--line)}
+
+.brit-room .brit-md-review{border:1px solid var(--line);background:var(--card)}
+.brit-room .brit-md-review .r{display:flex;justify-content:space-between;gap:16px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.brit-room .brit-md-review .r:last-child{border-bottom:0}
+.brit-room .brit-md-review .r label{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;flex:none}
+.brit-room .brit-md-review .r .v{text-align:end;font:500 14px/1.4 var(--body)}
+.brit-room .brit-md-review .r .v small{display:block;color:var(--muted);font:9px/1.3 var(--mono);font-weight:400;margin-top:4px}
+
+.brit-room .brit-md-actions{display:flex;gap:10px;margin-top:28px;justify-content:flex-end;flex-wrap:wrap}
+.brit-room .brit-md-btn{padding:14px 20px;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s}
+.brit-room .brit-md-btn.ghost{border:1px solid var(--line);color:var(--muted)}
+.brit-room .brit-md-btn.ghost:hover{border-color:var(--gold-soft);color:var(--gold)}
+.brit-room .brit-md-btn.primary{background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold-soft)}
+.brit-room .brit-md-btn.primary:hover{background:var(--gold);color:var(--paper)}
+.brit-room .brit-md-btn.outline{border:1px solid var(--gold-soft);color:var(--gold)}
+.brit-room .brit-md-btn.outline:hover{background:rgba(164,125,67,.08)}
+.brit-room .brit-md-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.brit-room .brit-md-signbox{margin-top:20px;border:1px solid var(--gold-soft);background:rgba(164,125,67,.07);padding:18px}
+.brit-room .brit-md-signbox h4{margin:0;font:500 15px/1 var(--display);text-transform:uppercase}
+.brit-room .brit-md-signbox p{margin:8px 0 12px;color:var(--muted);font:10px/1.4 var(--mono);text-transform:uppercase}
+.brit-room .brit-md-signbox .copy{display:flex;gap:8px}
+.brit-room .brit-md-signbox .copy input{flex:1;border:1px solid var(--line);background:var(--paper);padding:11px 12px;color:var(--ink);font:11px/1 var(--mono);outline:none}
+.brit-room .brit-md-signbox .copy button{flex:none;background:var(--black);color:var(--gold-soft);padding:0 16px;font:9px/1 var(--mono);text-transform:uppercase}
+.brit-room .brit-md-signbox .openlink{display:inline-block;margin-top:12px;color:var(--gold);font:10px/1 var(--mono);text-transform:uppercase}
+
+/* Territory modal internals */
+.brit-room .brit-md-countrylist{margin-top:10px;max-height:220px;overflow-y:auto;border:1px solid var(--line)}
+.brit-room .brit-md-countryopt{display:block;width:100%;text-align:start;padding:12px 14px;border-bottom:1px solid var(--line);color:var(--ink);font:12px/1.2 var(--body);transition:.12s}
+.brit-room .brit-md-countryopt:last-child{border-bottom:0}
+.brit-room .brit-md-countryopt:hover{background:var(--card)}
+.brit-room .brit-md-selcountry{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--gold-soft);background:rgba(164,125,67,.07)}
+.brit-room .brit-md-selcountry span{font:500 13px/1 var(--body);font-weight:600}
+.brit-room .brit-md-selcountry button{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase}

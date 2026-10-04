@@ -29,6 +29,13 @@ interface ParsedExplanation {
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
 
+function initialsOf(name: string): string {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '—';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 function matchColor(pct: number): string {
   if (pct >= 80) return 'text-yellow-400';
   if (pct >= 65) return 'text-green-400';
@@ -41,13 +48,6 @@ function matchBgColor(pct: number): string {
   if (pct >= 65) return 'bg-green-400';
   if (pct >= 50) return 'bg-teal-400';
   return 'bg-gray-500';
-}
-
-function matchRingStroke(pct: number): string {
-  if (pct >= 80) return '#FBBF24';
-  if (pct >= 65) return '#4ADE80';
-  if (pct >= 50) return '#4DB6AC';
-  return '#6B7280';
 }
 
 function fmTierBadge(tier: string | undefined): { label: string; color: string } | null {
@@ -199,66 +199,36 @@ function SimilarPlayerCard({
   const hasProfile = parsed.profile.length > 0;
 
   return (
-    <div
-      className="rounded-lg bg-mgsr-dark border border-mgsr-border/60 overflow-hidden transition-all duration-200 hover:border-mgsr-teal/40"
-      dir={isRtl ? 'rtl' : 'ltr'}
-    >
-      {/* Main row */}
+    <div className="bp-simrow" dir={isRtl ? 'rtl' : 'ltr'}>
+      {/* Main row — editorial clean row */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-3 p-3 text-left hover:bg-mgsr-teal/5 transition-colors"
+        className="bp-sim w-full text-left"
       >
-        {/* Match % ring */}
-        {player.matchPercent != null && (
-          <div className="relative shrink-0 w-11 h-11 flex items-center justify-center">
-            <svg className="absolute inset-0" viewBox="0 0 44 44">
-              <circle cx="22" cy="22" r="18" fill="none" stroke="#253545" strokeWidth="3" />
-              <circle
-                cx="22" cy="22" r="18" fill="none"
-                stroke={matchRingStroke(player.matchPercent)}
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 18}`}
-                strokeDashoffset={`${2 * Math.PI * 18 * (1 - player.matchPercent / 100)}`}
-                transform="rotate(-90 22 22)"
-              />
-            </svg>
-            <span className={`text-xs font-bold ${matchColor(player.matchPercent)}`}>
-              {player.matchPercent}%
-            </span>
-          </div>
-        )}
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-mgsr-text text-sm truncate">
-              {player.name}
-            </span>
+        <span className="av">{initialsOf(player.name)}</span>
+        <div className="info">
+          <b>
+            {player.name}
             {fmBadge && (
-              <span
-                className="text-[0.7rem] font-bold uppercase px-1.5 py-0.5 rounded-full"
-                style={{ color: fmBadge.color, background: `${fmBadge.color}20`, border: `1px solid ${fmBadge.color}30` }}
-              >
+              <em className="fmtag" style={{ color: fmBadge.color, borderColor: `${fmBadge.color}80` }}>
                 {fmBadge.label}
-              </span>
+              </em>
             )}
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-mgsr-muted mt-0.5 flex-wrap">
-            {player.position && <span>{player.position}</span>}
-            {player.age && <><span>·</span><span>{player.age}</span></>}
-            {player.club && <><span>·</span><span className="truncate">{player.club}</span></>}
-          </div>
-          {player.marketValue && (
-            <span className="text-xs text-mgsr-teal font-medium">
-              {player.marketValue}
-            </span>
-          )}
+          </b>
+          <span>
+            {[
+              player.position,
+              player.age,
+              player.club,
+              player.marketValue,
+            ].filter(Boolean).join(' · ')}
+          </span>
         </div>
-
-        {/* Expand chevron */}
+        {player.matchPercent != null && (
+          <span className="match">{player.matchPercent}% {t('similar_players_match')}</span>
+        )}
         <svg
-          className={`w-4 h-4 text-mgsr-muted transition-transform duration-200 shrink-0 ${expanded ? 'rotate-180' : ''}`}
+          className={`bp-sim-chev w-4 h-4 shrink-0 ${expanded ? 'rotate-180' : ''}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -594,118 +564,57 @@ export default function SimilarPlayersPanel({
   }, [user]);
 
   return (
-    <div className="rounded-xl bg-mgsr-card border border-mgsr-border overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
-      {/* Gradient top bar */}
-      <div className="h-1 bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-400" />
-
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-mgsr-border">
-        <div className="flex items-center gap-2">
-          <svg className="w-5 h-5 text-mgsr-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-          </svg>
-          <h3 className="font-display font-semibold text-mgsr-text">
-            {t('similar_players_title')}
-          </h3>
-          {players.length > 0 && (
-            <span className="text-xs text-mgsr-muted bg-mgsr-dark px-2 py-0.5 rounded-full">
-              {players.length}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {hasSearched && !loading && (
-            <button
-              onClick={handleRefresh}
-              className="p-1.5 rounded-lg text-mgsr-muted hover:text-mgsr-teal hover:bg-mgsr-teal/10 transition-colors"
-              title={t('similar_players_load_more')}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-4">
-        {/* Initial state — Search button */}
-        {!hasSearched && !loading && (
-          <div className="space-y-3">
-            <button
-              onClick={() => handleSearch()}
-              className="w-full py-3 rounded-lg bg-mgsr-teal/10 border border-mgsr-teal/30 text-mgsr-teal font-medium text-sm hover:bg-mgsr-teal/20 transition-colors flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              {t('similar_players_find')}
-            </button>
-            {/* Data source legend */}
-            <div className="flex flex-wrap justify-center gap-2">
-              <SourceBadge source="transfermarkt" />
-              <SourceBadge source="stats" />
-              <SourceBadge source="fm" />
-            </div>
-            <p className="text-center text-xs text-mgsr-muted/60">
-              {t('similar_players_sources_hint')}
-            </p>
-          </div>
-        )}
-
-        {/* Loading */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-8 gap-3">
-            <div className="w-8 h-8 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-mgsr-muted">{t('similar_players_searching')}</span>
-          </div>
-        )}
-
-        {/* Shortlist error */}
-        {shortlistError && (
-          <div className="mb-3 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-center">
-            {shortlistError}
-          </div>
-        )}
-
-        {/* Error */}
-        {error && !loading && (
-          <div className="text-center py-4">
-            <p className="text-sm text-red-400 mb-3">{error}</p>
-            <button
-              onClick={() => handleSearch()}
-              className="text-xs text-mgsr-teal hover:text-mgsr-teal/80 underline transition-colors"
-            >
-              {t('similar_players_retry')}
-            </button>
-          </div>
-        )}
-
-        {/* Results */}
-        {hasSearched && !loading && !error && players.length > 0 && (
-          <div className="space-y-2">
-            {players.map((p, i) => (
-              <SimilarPlayerCard
-                key={`${p.name}-${i}`}
-                player={p}
-                isRtl={isRtl}
-                onAddToShortlist={handleAddToShortlist}
-                isAddingToShortlist={addingToShortlistUrl === p.transfermarktUrl}
-                shortlistSuccess={shortlistSuccessUrls.has(p.transfermarktUrl ?? '')}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {hasSearched && !loading && !error && players.length === 0 && (
-          <div className="text-center py-6">
-            <p className="text-sm text-mgsr-muted">{t('similar_players_empty')}</p>
-          </div>
+    <section className="bp-module" dir={isRtl ? 'rtl' : 'ltr'}>
+      <div className="bp-mod-head">
+        <h2>{t('similar_players_title')}</h2>
+        {hasSearched && !loading ? (
+          <button className="act" onClick={handleRefresh}>↻ {t('similar_players_load_more')}</button>
+        ) : (
+          <span className="act">AI scout</span>
         )}
       </div>
-    </div>
+
+      {/* Initial state — Find button */}
+      {!hasSearched && !loading && (
+        <button className="bp-addbtn" onClick={() => handleSearch()}>
+          ⌕ {t('similar_players_find')}
+        </button>
+      )}
+
+      {/* Loading */}
+      {loading && <div className="bp-empty">{t('similar_players_searching')}</div>}
+
+      {/* Shortlist error */}
+      {shortlistError && <div className="bp-err">{shortlistError}</div>}
+
+      {/* Error */}
+      {error && !loading && (
+        <div className="bp-empty">
+          {error}
+          <button className="bp-retry" onClick={() => handleSearch()}>{t('similar_players_retry')}</button>
+        </div>
+      )}
+
+      {/* Results */}
+      {hasSearched && !loading && !error && players.length > 0 && (
+        <div className="bp-simlist">
+          {players.map((p, i) => (
+            <SimilarPlayerCard
+              key={`${p.name}-${i}`}
+              player={p}
+              isRtl={isRtl}
+              onAddToShortlist={handleAddToShortlist}
+              isAddingToShortlist={addingToShortlistUrl === p.transfermarktUrl}
+              shortlistSuccess={shortlistSuccessUrls.has(p.transfermarktUrl ?? '')}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {hasSearched && !loading && !error && players.length === 0 && (
+        <div className="bp-empty">{t('similar_players_empty')}</div>
+      )}
+    </section>
   );
 }

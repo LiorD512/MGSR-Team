@@ -166,17 +166,17 @@ export default function NoteTextarea({
       {showDropdown && filteredAccounts.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-xl bg-mgsr-card border border-mgsr-border shadow-xl"
+          className="brit-mention absolute left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-xl bg-mgsr-card border border-mgsr-border shadow-xl"
         >
           {filteredAccounts.map((account) => (
             <button
               key={account.id}
               type="button"
-              className="w-full px-4 py-2.5 text-start text-sm text-mgsr-text hover:bg-mgsr-teal/10 transition flex items-center gap-2"
+              className="brit-mention-opt w-full px-4 py-2.5 text-start text-sm text-mgsr-text hover:bg-mgsr-teal/10 transition flex items-center gap-2"
               onClick={() => selectAgent(account)}
             >
               <svg
-                className="w-4 h-4 text-mgsr-teal shrink-0"
+                className="brit-mention-ic w-4 h-4 text-mgsr-teal shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"

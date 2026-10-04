@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Generate Mandate</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--gold-bright:#e4c98b;
+      --red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:40;pointer-events:none;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    input{font:inherit}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    .wrap{max-width:720px;margin:0 auto;padding:34px 28px 90px}
+    .back{display:inline-block;margin-bottom:22px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .back:hover{color:var(--gold)}
+
+    .masthead{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:26px}
+    .masthead .kicker{margin:0 0 12px;color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em}
+    .masthead h1{margin:0;font:500 clamp(40px,6vw,60px)/.85 var(--display);text-transform:uppercase;letter-spacing:-.02em}
+    .masthead .who{margin-top:12px;display:flex;align-items:center;gap:12px;color:var(--muted);font:10px/1 var(--mono);text-transform:uppercase}
+    .masthead .who .av{width:30px;height:30px;background:var(--black);color:var(--gold-soft);display:grid;place-items:center;font:500 11px/1 var(--display)}
+
+    /* Stepper */
+    .stepper{display:flex;gap:0;margin-bottom:30px;border:1px solid var(--line)}
+    .stepper .st{flex:1;padding:14px 16px;border-inline-end:1px solid var(--line);display:flex;align-items:center;gap:11px;opacity:.5;transition:.2s}
+    .stepper .st:last-child{border-inline-end:0}
+    .stepper .st.active,.stepper .st.done{opacity:1}
+    .stepper .st .n{width:24px;height:24px;flex:none;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;font:500 11px/1 var(--mono);color:var(--muted)}
+    .stepper .st.active .n{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+    .stepper .st.done .n{background:var(--ink);border-color:var(--ink);color:var(--paper);font-size:0}
+    .stepper .st.done .n:after{content:'✓';font-size:11px}
+    .stepper .st .t b{display:block;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .stepper .st .t small{display:block;margin-top:4px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+
+    .seclabel{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;margin:0 0 12px}
+
+    /* Agent cards */
+    .agent{display:flex;align-items:center;gap:13px;width:100%;padding:16px;border:1px solid var(--line);background:var(--card);text-align:start;margin-bottom:10px;transition:.15s}
+    .agent:hover{border-color:var(--gold-soft)}
+    .agent.on{border-color:var(--gold);background:rgba(164,125,67,.07)}
+    .agent .av{width:40px;height:40px;flex:none;background:var(--black);color:var(--gold-soft);display:grid;place-items:center;font:500 14px/1 var(--display)}
+    .agent.on .av{background:var(--gold-soft);color:var(--ink)}
+    .agent .info{flex:1;min-width:0}
+    .agent .info b{font:500 15px/1.1 var(--body);font-weight:600}
+    .agent .info span{display:block;margin-top:4px;color:var(--muted);font:9px/1.2 var(--mono);text-transform:uppercase}
+    .agent .rc{color:var(--gold);font:13px/1 var(--mono)}
+
+    .divider{border-top:1px solid var(--line);margin:24px 0}
+
+    .toggle-card{display:flex;align-items:center;gap:13px;padding:16px;border:1px solid var(--line);background:var(--card);cursor:pointer;transition:.15s}
+    .toggle-card.on{border-color:var(--gold);background:rgba(164,125,67,.07)}
+    .toggle-card .sw{width:42px;height:22px;flex:none;position:relative}
+    .toggle-card .sw i{position:absolute;inset:0;background:#cfc7b5;transition:.2s}
+    .toggle-card .sw i:before{content:'';position:absolute;width:16px;height:16px;top:3px;inset-inline-start:3px;background:#fff;transition:.2s}
+    .toggle-card.on .sw i{background:var(--gold-soft)}
+    .toggle-card.on .sw i:before{transform:translateX(20px)}
+    .toggle-card .tc b{display:block;font:500 13px/1.1 var(--body);font-weight:600}
+    .toggle-card .tc span{display:block;margin-top:4px;color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+
+    .field{margin-top:16px}
+    .field label{display:block;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+    .field input{width:100%;border:1px solid var(--line);background:var(--card);padding:13px 14px;color:var(--ink);font:13px/1 var(--body);outline:none}
+    .field input:focus{border-color:var(--gold-soft)}
+    .field input.mono{font-family:var(--mono)}
+    .seg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .seg button{padding:12px;border:1px solid var(--line);font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
+    .seg button.on{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+
+    .origin-fields{margin-top:16px;padding-top:4px;display:none}
+    .origin-fields.show{display:block;animation:fade .2s ease}
+    @keyframes fade{from{opacity:0}to{opacity:1}}
+
+    /* Validity */
+    .datefield{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--card);padding:0 14px}
+    .datefield svg{width:17px;height:17px;stroke:var(--muted);flex:none}
+    .datefield input{flex:1;border:0;background:transparent;padding:14px 0;color:var(--ink);font:13px/1 var(--mono);outline:none}
+    .addrow{width:100%;margin-top:4px;padding:14px;border:1px dashed var(--gold-soft);color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;text-align:center}
+    .addrow:hover{background:rgba(164,125,67,.07)}
+    .leaguetag{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--line);background:var(--card);margin-top:10px}
+    .leaguetag .lt-nm{font:12px/1.2 var(--body)}
+    .leaguetag .lt-nm small{display:block;margin-top:3px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .leaguetag button{width:26px;height:26px;display:grid;place-items:center;color:var(--muted);border:1px solid transparent}
+    .leaguetag button:hover{color:var(--red);border-color:var(--line)}
+
+    /* Review */
+    .review{border:1px solid var(--line);background:var(--card)}
+    .review .r{display:flex;justify-content:space-between;gap:16px;padding:16px 18px;border-bottom:1px solid var(--line)}
+    .review .r:last-child{border-bottom:0}
+    .review .r label{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;flex:none}
+    .review .r .v{text-align:end;font:500 14px/1.4 var(--body)}
+    .review .r .v small{display:block;color:var(--muted);font:9px/1.3 var(--mono);font-weight:400;margin-top:4px}
+
+    /* Actions */
+    .actions{display:flex;gap:10px;margin-top:28px;justify-content:flex-end;flex-wrap:wrap}
+    .btn{padding:14px 20px;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s}
+    .btn.ghost{border:1px solid var(--line);color:var(--muted)}
+    .btn.ghost:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .btn.primary{background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold-soft)}
+    .btn.primary:hover{background:var(--gold);color:var(--paper)}
+    .btn.outline{border:1px solid var(--gold-soft);color:var(--gold)}
+    .btn.outline:hover{background:rgba(164,125,67,.08)}
+
+    /* Signing link box */
+    .signbox{margin-top:20px;border:1px solid var(--gold-soft);background:rgba(164,125,67,.07);padding:18px}
+    .signbox h4{margin:0;font:500 15px/1 var(--display);text-transform:uppercase}
+    .signbox p{margin:8px 0 12px;color:var(--muted);font:10px/1.4 var(--mono);text-transform:uppercase}
+    .signbox .copy{display:flex;gap:8px}
+    .signbox .copy input{flex:1;border:1px solid var(--line);background:var(--paper);padding:11px 12px;color:var(--ink);font:11px/1 var(--mono);outline:none}
+    .signbox .copy button{flex:none;background:var(--black);color:var(--gold-soft);padding:0 16px;font:9px/1 var(--mono);text-transform:uppercase}
+
+    .lang{position:fixed;top:16px;inset-inline-end:18px;z-index:5;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;border:1px solid var(--line);padding:8px 11px;background:var(--paper)}
+    .pane{display:none}.pane.show{display:block;animation:fade .25s ease}
+  </style>
+</head>
+<body>
+  <button class="lang" id="lang" onclick="toggleLang()">HE / EN</button>
+  <div class="wrap">
+    <a class="back" href="player-detail-tabs.html" data-t="back">← Back to player</a>
+
+    <header class="masthead">
+      <p class="kicker" data-t="kicker">Representation / FIFA mandate</p>
+      <h1 data-t="title">Generate mandate</h1>
+      <div class="who"><span class="av">FC</span><span data-t="who">Francis Cann · passport on file</span></div>
+    </header>
+
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="st done" id="st0"><span class="n">1</span><div class="t"><b data-t="s0">Agent</b><small data-t="s0s">In charge</small></div></div>
+      <div class="st active" id="st1"><span class="n">2</span><div class="t"><b data-t="s1">Validity</b><small data-t="s1s">Dates &amp; leagues</small></div></div>
+      <div class="st" id="st2"><span class="n">3</span><div class="t"><b data-t="s2">Review</b><small data-t="s2s">Generate &amp; sign</small></div></div>
+    </div>
+
+    <!-- STEP 0 — AGENT -->
+    <section class="pane" id="p0">
+      <p class="seclabel" data-t="agent_l">Agent in charge (FIFA-licensed)</p>
+      <button class="agent on" onclick="pick(this)"><span class="av">LD</span><div class="info"><b>Lior Dahan</b><span data-t="fifa">FIFA license · 22412-9595</span></div><span class="rc">✓</span></button>
+      <button class="agent" onclick="pick(this)"><span class="av">RE</span><div class="info"><b>Roi Elgarbely</b><span data-t="fifa2">FIFA license · 31188-2043</span></div><span class="rc"></span></button>
+
+      <div class="divider"></div>
+
+      <div class="toggle-card" id="originToggle" onclick="toggleOrigin()">
+        <span class="sw"><i></i></span>
+        <div class="tc"><b data-t="origin">Co-represent with an origin agent</b><span data-t="origin_d">Add a second agent credited on the mandate</span></div>
+      </div>
+      <div class="origin-fields" id="originFields">
+        <div class="field"><label data-t="origin_name">Origin agent name</label><input placeholder="Full name"></div>
+        <div class="field"><label data-t="origin_idtype">ID type</label>
+          <div class="seg"><button class="on" onclick="segPick(this)" data-t="idt_fifa">FIFA license</button><button onclick="segPick(this)" data-t="idt_pass">Passport</button></div>
+        </div>
+        <div class="field"><label data-t="origin_id">License number</label><input class="mono" placeholder="XXXXXX-XXXX"></div>
+      </div>
+
+      <div class="actions"><button class="btn primary" onclick="go(1)" data-t="next">Next →</button></div>
+    </section>
+
+    <!-- STEP 1 — VALIDITY -->
+    <section class="pane show" id="p1">
+      <p class="seclabel" data-t="exp_l">Expiry date</p>
+      <div class="datefield">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <input type="date" value="2027-03-30">
+      </div>
+
+      <p class="seclabel" style="margin-top:24px" data-t="leagues_l">Valid leagues</p>
+      <div class="toggle-card" id="wwToggle" onclick="this.classList.toggle('on')">
+        <span class="sw"><i></i></span>
+        <div class="tc"><b data-t="ww">Worldwide</b><span data-t="ww_d">Valid in every market — no territory limit</span></div>
+      </div>
+
+      <div style="margin-top:14px">
+        <button class="addrow" onclick="document.getElementById('leagueModal').classList.add('open')">+ <span data-t="add_league">Add country / club</span></button>
+        <div class="leaguetag"><div class="lt-nm">England</div><button>×</button></div>
+        <div class="leaguetag"><div class="lt-nm">Israel</div><button>×</button></div>
+        <div class="leaguetag"><div class="lt-nm">Maccabi Haifa <small data-t="club_in">club · Israel</small></div><button>×</button></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn ghost" onclick="go(0)" data-t="back_b">Back</button>
+        <button class="btn primary" onclick="go(2)" data-t="next">Next →</button>
+      </div>
+    </section>
+
+    <!-- STEP 2 — REVIEW -->
+    <section class="pane" id="p2">
+      <p class="seclabel" data-t="review_l">Review &amp; issue</p>
+      <div class="review">
+        <div class="r"><label data-t="rv_player">Player</label><div class="v">Francis Cann</div></div>
+        <div class="r"><label data-t="rv_agent">Agent</label><div class="v">Lior Dahan<small>FIFA 22412-9595</small></div></div>
+        <div class="r"><label data-t="rv_exp">Expires</label><div class="v">30/06/2027</div></div>
+        <div class="r"><label data-t="rv_leagues">Valid leagues</label><div class="v">England, Israel, Maccabi Haifa — Israel</div></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn ghost" onclick="go(1)" data-t="back_b">Back</button>
+        <button class="btn outline" onclick="sign()" data-t="send_sign">↗ Send for signing</button>
+        <button class="btn primary" onclick="sign()" data-t="gen_pdf">◈ Generate PDF</button>
+      </div>
+
+      <div class="signbox" id="signbox" style="display:none">
+        <h4 data-t="link_created">Signing link created</h4>
+        <p data-t="link_desc">Send this link to the player to sign on their device. You'll be notified when complete.</p>
+        <div class="copy"><input readonly value="https://brit.app/sign-mandate/8f2a-c91d-44be"><button data-t="copy">Copy</button></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Add country/club modal -->
+  <div class="pane" id="leagueModal" style="display:none;position:fixed;inset:0;z-index:60;background:rgba(17,17,15,.6);place-items:center;padding:24px" onclick="if(event.target===this)this.classList.remove('open')">
+    <div style="width:min(460px,100%);background:var(--paper);border-top:4px solid var(--gold);padding:26px">
+      <p class="seclabel" data-t="m_title">Add territory</p>
+      <div class="field"><label data-t="m_country">Country</label><input value="Israel" placeholder="Search country…"></div>
+      <div class="seg" style="margin-top:14px"><button class="on" onclick="segPick(this)" data-t="m_entire">Entire country</button><button onclick="segPick(this)" data-t="m_clubs">Specific clubs</button></div>
+      <div class="actions">
+        <button class="btn ghost" onclick="document.getElementById('leagueModal').classList.remove('open')" data-t="cancel">Cancel</button>
+        <button class="btn primary" onclick="document.getElementById('leagueModal').classList.remove('open')" data-t="m_add">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <style>#leagueModal.open{display:grid !important}</style>
+
+  <script>
+    function go(step){
+      [0,1,2].forEach(i=>{
+        document.getElementById('p'+i).classList.toggle('show',i===step);
+        const st=document.getElementById('st'+i);
+        st.classList.remove('active','done');
+        if(i<step)st.classList.add('done');else if(i===step)st.classList.add('active');
+      });
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+    function pick(el){document.querySelectorAll('.agent').forEach(a=>{a.classList.remove('on');a.querySelector('.rc').textContent='';});el.classList.add('on');el.querySelector('.rc').textContent='✓';}
+    function toggleOrigin(){const t=document.getElementById('originToggle');t.classList.toggle('on');document.getElementById('originFields').classList.toggle('show',t.classList.contains('on'));}
+    function segPick(el){el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));el.classList.add('on');}
+    function sign(){document.getElementById('signbox').style.display='block';document.getElementById('signbox').scrollIntoView({behavior:'smooth'});}
+
+    const T={he:{
+      back:'← חזרה לשחקן',kicker:'ייצוג / מנדט FIFA',title:'הפקת מנדט',who:'פרנסיס כאן · דרכון בתיק',
+      s0:'סוכן',s0s:'אחראי',s1:'תוקף',s1s:'תאריכים וליגות',s2:'סיכום',s2s:'הפקה וחתימה',
+      agent_l:'סוכן אחראי (בעל רישיון FIFA)',fifa:'רישיון FIFA · 22412-9595',fifa2:'רישיון FIFA · 31188-2043',
+      origin:'ייצוג משותף עם סוכן מקור',origin_d:'הוסיפו סוכן שני שיופיע במנדט',origin_name:'שם סוכן המקור',origin_idtype:'סוג מזהה',idt_fifa:'רישיון FIFA',idt_pass:'דרכון',origin_id:'מספר רישיון',
+      exp_l:'תאריך תפוגה',leagues_l:'ליגות בתוקף',ww:'כל העולם',ww_d:'בתוקף בכל שוק — ללא הגבלת טריטוריה',add_league:'הוסף מדינה / מועדון',club_in:'מועדון · ישראל',
+      back_b:'חזרה',next:'הבא →',
+      review_l:'סקירה והפקה',rv_player:'שחקן',rv_agent:'סוכן',rv_exp:'בתוקף עד',rv_leagues:'ליגות בתוקף',
+      send_sign:'↗ שליחה לחתימה',gen_pdf:'◈ הפק PDF',link_created:'נוצר קישור חתימה',link_desc:'שלחו את הקישור לשחקן לחתימה במכשירו. תקבלו התראה בסיום.',copy:'העתק',
+      m_title:'הוסף טריטוריה',m_country:'מדינה',m_entire:'מדינה שלמה',m_clubs:'מועדונים ספציפיים',cancel:'ביטול',m_add:'הוסף'
+    }};
+    const EN={};document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.innerHTML);
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.innerHTML=(rtl?(T.he[k]??EN[k]):EN[k])||el.innerHTML;});
+    }
+  </script>
+</body>
+</html>

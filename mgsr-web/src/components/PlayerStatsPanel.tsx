@@ -167,48 +167,6 @@ const CORE_STATS: Record<PosGroup, StatDef[]> = {
 /*  Colour helpers                                                    */
 /* ------------------------------------------------------------------ */
 
-function getStatColor(value: number, thresholds: [number, number, number], isLowerBetter = false): string {
-  const [good, great, elite] = thresholds;
-  if (isLowerBetter) {
-    if (value <= elite) return 'text-yellow-400';
-    if (value <= great) return 'text-green-400';
-    if (value <= good) return 'text-teal-400';
-    return 'text-mgsr-muted';
-  }
-  if (value >= elite) return 'text-yellow-400';
-  if (value >= great) return 'text-green-400';
-  if (value >= good) return 'text-teal-400';
-  return 'text-mgsr-muted';
-}
-
-function getBarGradient(value: number, thresholds: [number, number, number], isLowerBetter = false): string {
-  const [good, great, elite] = thresholds;
-  if (isLowerBetter) {
-    if (value <= elite) return 'from-yellow-400 to-amber-500';
-    if (value <= great) return 'from-green-400 to-emerald-500';
-    if (value <= good) return 'from-teal-400 to-teal-500';
-    return 'from-gray-500 to-gray-600';
-  }
-  if (value >= elite) return 'from-yellow-400 to-amber-500';
-  if (value >= great) return 'from-green-400 to-emerald-500';
-  if (value >= good) return 'from-teal-400 to-teal-500';
-  return 'from-gray-500 to-gray-600';
-}
-
-function ratingColor(rating: number): string {
-  if (rating >= 7.5) return 'text-yellow-400';
-  if (rating >= 7.0) return 'text-green-400';
-  if (rating >= 6.5) return 'text-teal-400';
-  return 'text-mgsr-muted';
-}
-
-function ratingBg(rating: number): string {
-  if (rating >= 7.5) return 'from-yellow-400/20 to-amber-500/10 border-yellow-400/30';
-  if (rating >= 7.0) return 'from-green-400/20 to-emerald-500/10 border-green-400/30';
-  if (rating >= 6.5) return 'from-teal-400/20 to-teal-500/10 border-teal-400/30';
-  return 'from-gray-500/20 to-gray-600/10 border-gray-500/30';
-}
-
 /* ------------------------------------------------------------------ */
 /*  Format helpers                                                    */
 /* ------------------------------------------------------------------ */
@@ -227,106 +185,6 @@ function formatStat(value: number | undefined | null, format: string): string {
 function barWidth(value: number | undefined, max: number): number {
   if (!value || max <= 0) return 0;
   return Math.min(100, Math.max(3, (value / max) * 100));
-}
-
-/* ------------------------------------------------------------------ */
-/*  Sub-components                                                    */
-/* ------------------------------------------------------------------ */
-
-function ApiBadge() {
-  return (
-    <svg width={28} height={28} viewBox="0 0 32 32" fill="none" style={{ flexShrink: 0 }}>
-      <defs>
-        <linearGradient id="apiBadgeGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#4DB6AC" />
-          <stop offset="1" stopColor="#26A69A" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="8" fill="url(#apiBadgeGrad)" />
-      <rect x="1.5" y="1.5" width="29" height="29" rx="6" fill="rgba(0,0,0,0.18)" />
-      <text
-        x="16" y="17" textAnchor="middle" dominantBaseline="central"
-        fill="white" fontSize="10" fontWeight="800" letterSpacing="0.3"
-      >
-        API
-      </text>
-    </svg>
-  );
-}
-
-function OverviewChip({ label, value, icon }: { label: string; value: string | number; icon: string }) {
-  return (
-    <div className="flex items-center gap-1.5 bg-mgsr-dark/60 rounded-lg px-2.5 py-1.5">
-      <span className="text-xs">{icon}</span>
-      <span className="text-[10px] text-mgsr-muted uppercase tracking-wider">{label}</span>
-      <span className="text-xs font-bold text-mgsr-text ml-auto">{value}</span>
-    </div>
-  );
-}
-
-function StatRow({
-  stat,
-  value,
-  isRtl,
-  isLowerBetter,
-}: {
-  stat: StatDef;
-  value: number | undefined;
-  isRtl: boolean;
-  isLowerBetter: boolean;
-}) {
-  const displayVal = formatStat(value, stat.format);
-  const numVal = value ?? 0;
-  const width = stat.format === 'pct' && stat.max === 100
-    ? (numVal <= 1 ? numVal * 100 : numVal)
-    : barWidth(numVal, stat.max);
-  const gradient = getBarGradient(numVal, stat.thresholds, isLowerBetter);
-  const valColor = getStatColor(numVal, stat.thresholds, isLowerBetter);
-
-  return (
-    <div className="group flex items-center gap-3 py-1.5 transition-colors hover:bg-mgsr-dark/30 rounded-lg px-1">
-      <span className="text-sm w-5 text-center shrink-0">{stat.icon}</span>
-      <span className={`w-[130px] text-xs text-mgsr-muted shrink-0 truncate ${isRtl ? 'text-right' : 'text-left'}`}>
-        {isRtl ? stat.labelHe : stat.label}
-      </span>
-      <div className="flex-1 h-2 bg-mgsr-dark rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-all duration-700 ease-out`}
-          style={{ width: `${width}%` }}
-        />
-      </div>
-      <span className={`w-12 text-right text-xs font-bold ${valColor} shrink-0 tabular-nums`}>
-        {displayVal}
-      </span>
-    </div>
-  );
-}
-
-function RatingRing({ rating }: { rating: number }) {
-  const pct = Math.min((rating / 10) * 100, 100);
-  const color = rating >= 7.5 ? '#FBBF24' : rating >= 7.0 ? '#4ADE80' : rating >= 6.5 ? '#4DB6AC' : '#6B7280';
-  const circumference = 2 * Math.PI * 36;
-  const dashOffset = circumference - (pct / 100) * circumference;
-
-  return (
-    <div className="relative w-[80px] h-[80px] flex items-center justify-center">
-      <svg className="absolute inset-0" viewBox="0 0 80 80">
-        <circle cx="40" cy="40" r="36" fill="none" stroke="#253545" strokeWidth="4" />
-        <circle
-          cx="40" cy="40" r="36" fill="none"
-          stroke={color} strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          transform="rotate(-90 40 40)"
-          className="transition-all duration-1000 ease-out"
-        />
-      </svg>
-      <span className="font-display font-extrabold text-xl z-10" style={{ color }}>
-        {rating.toFixed(1)}
-      </span>
-    </div>
-  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -415,46 +273,37 @@ export default function PlayerStatsPanel({
   /* ── Loading state ── */
   if (loading) {
     return (
-      <div className="bg-mgsr-card border border-mgsr-border rounded-2xl p-5 animate-pulse">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-7 h-7 rounded-lg bg-mgsr-dark" />
-          <div className="h-4 w-36 bg-mgsr-dark rounded" />
+      <section className="bp-module">
+        <div className="bp-mod-head">
+          <h2>{isRtl ? 'סטטיסטיקות עונה' : 'Season stats'}</h2>
         </div>
-        <div className="space-y-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="w-5 h-3 bg-mgsr-dark rounded" />
-              <div className="w-28 h-3 bg-mgsr-dark rounded" />
-              <div className="flex-1 h-2 bg-mgsr-dark rounded-full" />
-              <div className="w-8 h-3 bg-mgsr-dark rounded" />
-            </div>
-          ))}
+        <div className="bp-skeleton">
+          <div className="bp-statgrid">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i}><div className="v" style={{ opacity: 0.25 }}>··</div><div className="l" style={{ opacity: 0.4 }}>····</div></div>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
     );
   }
 
   /* ── Error / empty states ── */
   if (error || !data) {
     return (
-      <div className="bg-mgsr-card border border-mgsr-border rounded-2xl p-5">
-        <div className="flex items-center gap-3 mb-3">
-          <ApiBadge />
-          <h3 className="text-sm font-display font-bold text-mgsr-text">
-            {isRtl ? 'סטטיסטיקות ביצועים' : 'Performance Stats'}
-          </h3>
+      <section className="bp-module">
+        <div className="bp-mod-head">
+          <h2>{isRtl ? 'סטטיסטיקות עונה' : 'Season stats'}</h2>
+          <span className="act">Transfermarkt</span>
         </div>
-        <div className="text-center py-6">
-          <div className="text-2xl mb-2">📊</div>
-          <p className="text-sm text-mgsr-muted">
-            {error === 'not_found'
-              ? (isRtl ? 'השחקן לא נמצא במאגר' : 'Player not found in database')
-              : error === 'not_enriched'
-              ? (isRtl ? 'אין נתוני ביצועים עדיין' : 'No performance data available yet')
-              : (isRtl ? 'טעינת הנתונים נכשלה' : 'Failed to load stats')}
-          </p>
+        <div className="bp-empty">
+          {error === 'not_found'
+            ? (isRtl ? 'השחקן לא נמצא במאגר' : 'Player not found in database')
+            : error === 'not_enriched'
+            ? (isRtl ? 'אין נתוני ביצועים עדיין' : 'No performance data available yet')
+            : (isRtl ? 'טעינת הנתונים נכשלה' : 'Failed to load stats')}
         </div>
-      </div>
+      </section>
     );
   }
 
@@ -465,7 +314,6 @@ export default function PlayerStatsPanel({
   const assists = data.api_assists ?? 0;
   const season = data.api_season ?? 2025;
   const seasonLabel = `${season}/${String(season + 1).slice(-2)}`;
-  const isLowerBetterKeys = new Set(['api_fouls_per90', 'api_conceded']);
 
   const INACCURATE_DB_LEAGUES = new Set([
     'Liga Portugal 2', 'A Division Cyprus', 'Veikkausliiga',
@@ -484,81 +332,61 @@ export default function PlayerStatsPanel({
     (apiLeague === 'Premier League' && apiCountry === 'ukraine');
 
   return (
-    <div className="bg-mgsr-card border border-mgsr-border rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className="px-5 pt-4 pb-3 border-b border-mgsr-border/50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <ApiBadge />
-            <div>
-              <h3 className="text-sm font-display font-bold text-mgsr-text">
-                {isRtl ? 'סטטיסטיקות ביצועים' : 'Performance Stats'}
-              </h3>
-              <p className="text-[10px] text-mgsr-muted mt-0.5">
-                {data.api_league || data.league} · {seasonLabel}
-              </p>
-            </div>
-          </div>
-          {rating != null && rating > 0 && <RatingRing rating={rating} />}
+    <>
+      {/* ── Season stats ── */}
+      <section className="bp-module">
+        <div className="bp-mod-head">
+          <h2>{isRtl ? 'סטטיסטיקות עונה' : 'Season stats'}</h2>
+          <span className="act">{(data.api_league || data.league) ?? 'Transfermarkt'} · {seasonLabel}</span>
         </div>
-      </div>
 
-      {/* Inaccurate league disclaimer */}
-      {isInaccurateLeague && (
-        <div className="px-5 py-2 bg-amber-950/30 border-b border-amber-700/30">
-          <p className="text-[11px] text-amber-400/90 leading-relaxed">
+        {isInaccurateLeague && (
+          <div className="bp-caution">
             ⚠️ {isRtl
               ? 'הנתונים לליגה זו עשויים להיות לא מדויקים. שערים, בישולים ודקות עלולים לא לשקף את המציאות.'
               : 'Data for this league may be inaccurate. Goals, assists and minutes may not reflect actual figures.'}
-          </p>
-        </div>
-      )}
-
-      {/* Overview chips */}
-      <div className="px-5 py-3 border-b border-mgsr-border/30">
-        <div className="grid grid-cols-4 gap-2">
-          <OverviewChip label={isRtl ? 'הופעות' : 'Apps'} value={appearances} icon="🏟️" />
-          <OverviewChip label={isRtl ? 'דקות' : 'Mins'} value={minutes.toLocaleString()} icon="⏱️" />
-          <OverviewChip label={isRtl ? 'שערים' : 'Goals'} value={goals} icon="⚽" />
-          <OverviewChip label={isRtl ? 'בישולים' : 'Assists'} value={assists} icon="👟" />
-        </div>
-      </div>
-
-      {/* Position-specific core stats */}
-      <div className="px-4 py-4 space-y-0.5">
-        <p className="text-[10px] text-mgsr-muted uppercase tracking-wider mb-2 px-1">
-          {isRtl ? 'מדדי מפתח לפי עמדה' : 'Key Metrics by Position'}
-        </p>
-        {coreStats.map((stat) => {
-          const raw = data[stat.key as keyof PlayerStatsData];
-          const val = typeof raw === 'number' ? raw : undefined;
-          // Skip rating from bars since we show it as a ring
-          if (stat.key === 'api_rating') return null;
-          return (
-            <StatRow
-              key={stat.key}
-              stat={stat}
-              value={val}
-              isRtl={isRtl}
-              isLowerBetter={isLowerBetterKeys.has(stat.key)}
-            />
-          );
-        })}
-      </div>
-
-      {/* Secondary Stats — expandable */}
-      <SecondaryStats data={data} posGroup={posGroup} isRtl={isRtl} />
-
-      {/* Footer */}
-      <div className="px-5 py-2.5 border-t border-mgsr-border/30 flex items-center justify-between">
-        <span className="text-[10px] text-mgsr-muted/60">
-          {data.api_team && `${data.api_team} · `}API-Football
-        </span>
-        {data.api_photo && (
-          <img src={data.api_photo} alt="" className="w-6 h-6 rounded-full opacity-50" />
+          </div>
         )}
-      </div>
-    </div>
+
+        <div className="bp-statgrid">
+          <div><div className="v gold">{appearances}</div><div className="l">{isRtl ? 'הופעות' : 'Apps'}</div></div>
+          <div><div className="v">{goals}</div><div className="l">{isRtl ? 'שערים' : 'Goals'}</div></div>
+          <div><div className="v">{assists}</div><div className="l">{isRtl ? 'בישולים' : 'Assists'}</div></div>
+          <div><div className="v">{minutes.toLocaleString()}</div><div className="l">{isRtl ? 'דקות' : 'Minutes'}</div></div>
+          <div><div className="v">{data.api_cards_yellow ?? 0}</div><div className="l">{isRtl ? 'צהוב' : 'Yellow'}</div></div>
+          <div><div className="v">{data.api_cards_red ?? 0}</div><div className="l">{isRtl ? 'אדום' : 'Red'}</div></div>
+          <div><div className="v">{data.api_tackles_per90 != null && data.api_tackles_per90 > 0 ? data.api_tackles_per90.toFixed(1) : '—'}</div><div className="l">{isRtl ? 'תיקולים/90' : 'Tackles/90'}</div></div>
+          <div><div className="v gold">{rating != null && rating > 0 ? rating.toFixed(1) : '—'}</div><div className="l">{isRtl ? 'דירוג' : 'Rating'}</div></div>
+        </div>
+      </section>
+
+      {/* ── Key metrics by position (mock .attr labeled bars) ── */}
+      {coreStats.some((s) => s.key !== 'api_rating' && typeof data[s.key as keyof PlayerStatsData] === 'number') && (
+        <section className="bp-module">
+          <div className="bp-mod-head">
+            <h2>{isRtl ? 'מדדי מפתח' : 'Key metrics'}</h2>
+            <span className="act">API-Football</span>
+          </div>
+          {coreStats.map((stat) => {
+            if (stat.key === 'api_rating') return null;
+            const raw = data[stat.key as keyof PlayerStatsData];
+            const val = typeof raw === 'number' ? raw : undefined;
+            if (val == null) return null;
+            const width = stat.format === 'pct'
+              ? (val <= 1 ? val * 100 : val)
+              : barWidth(val, stat.max);
+            return (
+              <div className="bp-attr" key={stat.key}>
+                <label>{isRtl ? stat.labelHe : stat.label}</label>
+                <div className="bar"><i style={{ width: `${Math.min(100, Math.max(3, width))}%` }} /></div>
+                <span className="n">{formatStat(val, stat.format)}</span>
+              </div>
+            );
+          })}
+          <SecondaryStats data={data} posGroup={posGroup} isRtl={isRtl} />
+        </section>
+      )}
+    </>
   );
 }
 
@@ -624,33 +452,21 @@ function SecondaryStats({
   if (secondaryDefs.length === 0) return null;
 
   return (
-    <div className="border-t border-mgsr-border/30">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full px-5 py-2.5 flex items-center justify-between text-xs text-mgsr-muted hover:text-mgsr-text transition-colors"
-      >
-        <span>{isRtl ? 'כל הסטטיסטיקות' : 'All Statistics'}</span>
-        <svg
-          className={`w-4 h-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+    <details className="bp-expand">
+      <summary onClick={(e) => { e.preventDefault(); setExpanded(!expanded); }}>
+        <span>{isRtl ? 'כל הסטטיסטיקות' : 'All statistics'}</span>
+        <span className={`chev${expanded ? ' open' : ''}`}>▾</span>
+      </summary>
       {expanded && (
-        <div className="px-5 pb-4 grid grid-cols-2 gap-x-4 gap-y-1.5 animate-[fadeIn_0.2s_ease-out]">
+        <div className="bp-facts twocol">
           {secondaryDefs.map((s, i) => (
-            <div key={i} className="flex items-center justify-between py-1">
-              <span className="text-[11px] text-mgsr-muted truncate">
-                {isRtl ? s.labelHe : s.label}
-              </span>
-              <span className="text-[11px] font-semibold text-mgsr-text tabular-nums ml-2">
-                {s.value}
-              </span>
+            <div className="row" key={i}>
+              <label>{isRtl ? s.labelHe : s.label}</label>
+              <span className="v mono">{s.value}</span>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </details>
   );
 }

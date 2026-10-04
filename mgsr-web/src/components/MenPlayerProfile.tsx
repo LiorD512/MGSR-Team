@@ -191,8 +191,10 @@ export interface MenPlayerProfileProps {
   contactBlock: ReactNode;
   agentTransferBlock: ReactNode;
   resolvedTransferBanner: ReactNode;
-  matchingRequestsBlock: ReactNode;
-  proposalHistoryBlock: ReactNode;
+  /** Market tab removed (barely used); these remain optional so the page can
+      still pass them harmlessly without a type error. */
+  matchingRequestsBlock?: ReactNode;
+  proposalHistoryBlock?: ReactNode;
   statsPanel: ReactNode;
   fmPanel: ReactNode;
   gpsPanel: ReactNode;
@@ -219,12 +221,12 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
     onMarriedToggle, onKidsUpdate, onEnglishUpdate, onEditSalaryFee, onEditAgency,
     onUploadClick, onDeleteDoc, onAddNote, onEditNote, onDeleteNote, onShare,
     onPreparePortfolio, fileInput, contactBlock, agentTransferBlock,
-    resolvedTransferBanner, matchingRequestsBlock, proposalHistoryBlock, statsPanel,
+    resolvedTransferBanner, statsPanel,
     fmPanel, gpsPanel, similarPanel, highlightsPanel, mandateExpiryLabel, mandateLeagues,
     hasValidMandate,
   } = props;
 
-  const [tab, setTab] = useState<'overview' | 'performance' | 'documents' | 'market' | 'notes'>('overview');
+  const [tab, setTab] = useState<'overview' | 'performance' | 'documents' | 'notes'>('overview');
 
   const positionsLabel = merged.positions?.filter(Boolean).join(' · ') || '—';
   const clubName = merged.currentClub?.clubName;
@@ -275,6 +277,19 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
 
   const localDate = (ts?: number) =>
     ts ? new Date(ts).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+
+  // Render note text with @mentions highlighted (gold), per the mock. A mention
+  // is "@" followed by name tokens; we stop at common punctuation so the rest
+  // of the sentence stays normal.
+  const renderNoteText = (text: string | undefined): ReactNode => {
+    if (!text) return null;
+    const parts = text.split(/(@[^\s@]+(?:\s[^\s@.,;:!?]+)*)/g);
+    return parts.map((part, i) =>
+      part.startsWith('@')
+        ? <span key={i} className="bp-mention">{part}</span>
+        : <span key={i}>{part}</span>
+    );
+  };
 
   return (
     <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
@@ -417,9 +432,6 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
         <button className={tab === 'documents' ? 'active' : ''} onClick={() => setTab('documents')}>
           {t('player_info_documents')}
           {nonGpsDocs.length > 0 && <span className="c">{nonGpsDocs.length}</span>}
-        </button>
-        <button className={tab === 'market' ? 'active' : ''} onClick={() => setTab('market')}>
-          {t('player_tab_market')}
         </button>
         <button className={tab === 'notes' ? 'active' : ''} onClick={() => setTab('notes')}>
           {t('player_info_notes')}
@@ -686,7 +698,7 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
             nonGpsDocs.map((d) => (
               <div className="bp-doc" key={d.id} style={deletingDocId === d.id ? { opacity: 0.4, pointerEvents: 'none' } : undefined}>
                 <div className="nm">
-                  <span className="ic">📄</span>
+                  <span className="ic">▦</span>
                   <div>
                     <div className="t">{d.name || d.type || 'Document'}</div>
                     <div className="meta">
@@ -695,10 +707,13 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
                   </div>
                 </div>
                 <div className="ops">
-                  {(d.type ?? '').toUpperCase() === 'MANDATE' && !d.expired && (
+                  {(d.type ?? '').toUpperCase() === 'MANDATE' && !d.expired ? (
                     <span className="bp-doc-badge">{isRtl ? 'תקף' : 'Valid'}</span>
+                  ) : d.expired ? (
+                    <span className="bp-doc-badge exp">{t('player_info_doc_expired')}</span>
+                  ) : (
+                    <span className="bp-doc-badge muted">{isRtl ? 'שמור' : 'Stored'}</span>
                   )}
-                  {d.expired && <span className="bp-doc-badge exp">{t('player_info_doc_expired')}</span>}
                   <a href={d.storageUrl} target="_blank" rel="noopener noreferrer" title={t('player_info_cd_open_link')}>↗</a>
                   <button className="del" title={t('player_info_cd_delete_document')} onClick={() => onDeleteDoc(d)}>🗑</button>
                 </div>
@@ -727,16 +742,31 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
               </div>
             </details>
           )}
-        </section>
-      </div>
 
-      {/* ═══ REQUESTS & OFFERS ═══ */}
-      <div className={`bp-pane${tab === 'market' ? ' show' : ''}`}>
-        {matchingRequestsBlock}
-        {proposalHistoryBlock}
-        {!matchingRequestsBlock && !proposalHistoryBlock && (
-          <div className="bp-empty">{t('room_requests_empty')}</div>
-        )}
+          {/* Generate-mandate CTA — editorial black block (per mock). Shown only
+              when a passport is on file; disabled when a valid mandate exists. */}
+          {!!player.passportDetails && (
+            <div className={`bp-mandate-cta${hasValidMandate ? ' done' : ''}`}>
+              <div className="mi">
+                <h4>{t('player_info_generate_mandate')}</h4>
+                <p>
+                  {hasValidMandate
+                    ? (mandateExpiryLabel
+                        ? t('player_info_mandate_expires').replace('%s', mandateExpiryLabel)
+                        : (isRtl ? 'מנדט בתוקף קיים' : 'Valid mandate on file'))
+                    : (isRtl ? 'דרכון בתיק · מוכן להפקה' : 'Passport on file · ready to prepare')}
+                </p>
+              </div>
+              {hasValidMandate ? (
+                <span className="cta-done">{isRtl ? '✓ בתוקף' : '✓ Valid'}</span>
+              ) : (
+                <Link href={`/players/${player.id}/generate-mandate`}>
+                  ◈ {t('player_info_generate_mandate')} ↗
+                </Link>
+              )}
+            </div>
+          )}
+        </section>
       </div>
 
       {/* ═══ NOTES ═══ */}
@@ -746,12 +776,13 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
             <h2>{t('player_info_notes')}</h2>
             <button className="act" onClick={onAddNote}>+ {t('player_info_add_note')}</button>
           </div>
+          <button className="bp-noteadd" onClick={onAddNote}>+ {t('player_info_add_note')}</button>
           {sortedNotes.length === 0 && !player.notes ? (
             <div className="bp-empty">{t('player_info_no_notes')}</div>
           ) : (
             <>
               {player.notes && (
-                <div className="bp-note"><p>{player.notes}</p></div>
+                <div className="bp-note"><p>{renderNoteText(player.notes)}</p></div>
               )}
               {sortedNotes.map((n, i) => (
                 <div className="bp-note" key={i}>
@@ -759,7 +790,7 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
                     <button title={t('player_info_edit_note')} onClick={() => onEditNote(n)}>✎</button>
                     <button className="del" title={t('player_info_delete_note')} onClick={() => onDeleteNote(n)}>🗑</button>
                   </div>
-                  <p>{n.notes}</p>
+                  <p>{renderNoteText(n.notes)}</p>
                   <div className="nm">
                     {n.createBy && <span className="by">{isRtl ? (n.createByHe ?? resolveAgentName(n.createBy)) : n.createBy}</span>}
                     {n.createdAt && <span>{new Date(n.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>}
@@ -771,18 +802,6 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
         </section>
       </div>
 
-      {/* Sticky actions */}
-      {!!player.passportDetails && (
-        <div className="bp-sticky">
-          <Link
-            href={hasValidMandate ? '#' : `/players/${player.id}/generate-mandate`}
-            onClick={(e) => hasValidMandate && e.preventDefault()}
-            style={hasValidMandate ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
-          >
-            <button style={{ width: '100%' }}>◈ {t('player_info_generate_mandate')}</button>
-          </Link>
-        </div>
-      )}
       {shareError && <p className="bp-err">{shareError}</p>}
           </div>
         </div>

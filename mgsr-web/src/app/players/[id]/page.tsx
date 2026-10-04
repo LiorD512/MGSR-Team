@@ -1822,6 +1822,7 @@ export default function PlayerInfoPage() {
       pinnedHighlights={(player?.pinnedHighlights ?? []) as HighlightVideo[]}
       isRtl={isRtl}
       playerCollection="Players"
+      variant="editorial"
     />
   ) : null;
 
@@ -1886,51 +1887,59 @@ export default function PlayerInfoPage() {
         hasValidMandate={hasValidMandate}
       />
 
-      {/* Delete confirmation dialog */}
+      {/* Delete confirmation — editorial "Light Management Room" dialog.
+          Wrapped in a scope-only .brit-room (position neutralised) so the
+          brit-modal/brit-backdrop styles apply without a full-screen layer. */}
       {showDeleteConfirm && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          onClick={() => !deleting && setShowDeleteConfirm(false)}
+          className="brit-room"
+          dir={isRtl ? 'rtl' : 'ltr'}
+          lang={isRtl ? 'he' : 'en'}
+          style={{ position: 'static', inset: 'auto', background: 'transparent', zIndex: 'auto', overflow: 'visible' }}
         >
-          <div className="absolute inset-0 bg-black/60" aria-hidden />
           <div
-            dir={isRtl ? 'rtl' : 'ltr'}
-            className="relative w-full max-w-sm bg-mgsr-card border border-mgsr-border rounded-2xl shadow-2xl p-6"
-            onClick={(e) => e.stopPropagation()}
+            className="brit-backdrop open"
+            onClick={() => !deleting && setShowDeleteConfirm(false)}
           >
-            <div className="flex flex-col items-center gap-3 mb-5">
-              <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-display font-semibold text-mgsr-text">
-                {isRtl ? 'מחיקת שחקן' : 'Delete Player'}
-              </h3>
-              <p className="text-sm text-mgsr-muted text-center">
+            <div
+              className="brit-modal brit-modal-danger"
+              dir={isRtl ? 'rtl' : 'ltr'}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="brit-close"
+                onClick={() => !deleting && setShowDeleteConfirm(false)}
+                aria-label={isRtl ? 'סגור' : 'Close'}
+              >
+                ×
+              </button>
+              <p className="brit-modal-kicker">{isRtl ? 'פעולה בלתי הפיכה' : 'Irreversible action'}</p>
+              <h2>{isRtl ? 'מחיקת שחקן' : 'Delete player'}</h2>
+              <p>{displayName}</p>
+              <div className="brit-modal-warn">
                 {isRtl
-                  ? `האם אתה בטוח שברצונך למחוק את ${player?.fullName || 'השחקן'}? פעולה זו לא ניתנת לביטול.`
-                  : `Are you sure you want to delete ${player?.fullName || 'this player'}? This action cannot be undone.`}
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={deleting}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text text-sm font-medium hover:bg-mgsr-border/30 transition-colors disabled:opacity-50"
-              >
-                {isRtl ? 'ביטול' : 'Cancel'}
-              </button>
-              <button
-                type="button"
-                onClick={handleDeletePlayer}
-                disabled={deleting}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-red-500/90 hover:bg-red-500 text-white text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {deleting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                {isRtl ? 'מחק' : 'Delete'}
-              </button>
+                  ? `האם למחוק את ${player?.fullName || 'השחקן'} מהסגל? הפעולה אינה ניתנת לביטול.`
+                  : `Remove ${player?.fullName || 'this player'} from the roster? This cannot be undone.`}
+              </div>
+              <div className="brit-modal-actions" style={{ marginTop: 22 }}>
+                <button
+                  type="button"
+                  className="brit-modal-action brit-modal-action-danger"
+                  onClick={handleDeletePlayer}
+                  disabled={deleting}
+                >
+                  {deleting ? (isRtl ? 'מוחק…' : 'Deleting…') : (isRtl ? 'מחק שחקן' : 'Delete player')}
+                </button>
+                <button
+                  type="button"
+                  className="brit-modal-action brit-modal-action-secondary"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting}
+                >
+                  {isRtl ? 'ביטול' : 'Cancel'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2170,56 +2179,85 @@ export default function PlayerInfoPage() {
         </div>
       )}
 
-      {/* Note Add/Edit Modal */}
+      {/* Note Add/Edit — editorial "Light Management Room" composer.
+          Wrapped in a scope-only .brit-room so the brit-modal styles apply. */}
       {noteModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-          onClick={() => !noteSaving && setNoteModalOpen(null)}
+          className="brit-room"
+          dir={isRtl ? 'rtl' : 'ltr'}
+          lang={isRtl ? 'he' : 'en'}
+          style={{ position: 'static', inset: 'auto', background: 'transparent', zIndex: 'auto', overflow: 'visible' }}
         >
-          <div className="absolute inset-0 bg-black/60" aria-hidden />
           <div
-            dir={isRtl ? 'rtl' : 'ltr'}
-            className="relative w-full sm:max-w-lg bg-mgsr-card border border-mgsr-border rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 max-h-[85vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+            className="brit-backdrop open"
+            onClick={() => !noteSaving && setNoteModalOpen(null)}
           >
-            <h3 className="text-lg font-display font-semibold text-mgsr-text mb-4">
-              {noteModalOpen === 'add' ? t('player_info_add_note') : t('player_info_edit_note')}
-            </h3>
-            <NoteTextarea
-              value={noteDraft}
-              onChange={setNoteDraft}
-              accounts={accounts}
-              isRtl={isRtl}
-              placeholder={t('player_info_note_placeholder')}
-              rows={5}
-              className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal/60 resize-none"
-              autoFocus
-              onTaggedAgentsChange={setNoteTaggedAgentIds}
-            />
-            <div className="flex gap-3 mt-4">
+            <div
+              className="brit-modal"
+              dir={isRtl ? 'rtl' : 'ltr'}
+              onClick={(e) => e.stopPropagation()}
+              style={{ display: 'flex', flexDirection: 'column', maxHeight: '88vh' }}
+            >
               <button
-                onClick={() => {
-                  setNoteModalOpen(null);
-                  setEditingNote(null);
-                  setNoteDraft('');
-                  setNoteTaggedAgentIds([]);
-                }}
-                disabled={noteSaving}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-mgsr-border text-mgsr-muted hover:bg-mgsr-card/80 transition disabled:opacity-50"
+                type="button"
+                className="brit-close"
+                onClick={() => !noteSaving && setNoteModalOpen(null)}
+                aria-label={t('player_info_note_cancel')}
               >
-                {t('player_info_note_cancel')}
+                ×
               </button>
-              <button
-                onClick={() =>
-                  noteModalOpen === 'add'
-                    ? handleAddNote(noteDraft)
-                    : handleEditNote(noteDraft)
-                }
-                disabled={noteSaving || !noteDraft.trim()}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-mgsr-teal text-mgsr-dark font-medium hover:bg-mgsr-teal/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {noteSaving ? '...' : t('player_info_note_save')}
-              </button>
+              <p className="brit-modal-kicker">
+                {noteModalOpen === 'add' ? (isRtl ? 'רישום חדש' : 'New entry') : (isRtl ? 'עריכת רישום' : 'Edit entry')}
+              </p>
+              <h2>{noteModalOpen === 'add' ? t('player_info_add_note') : t('player_info_edit_note')}</h2>
+              <p>{displayName}</p>
+
+              <label className="brit-note-label">{t('player_info_notes')}</label>
+              <NoteTextarea
+                value={noteDraft}
+                onChange={setNoteDraft}
+                accounts={accounts}
+                isRtl={isRtl}
+                placeholder={t('player_info_note_placeholder')}
+                rows={6}
+                className="brit-note-field"
+                autoFocus
+                onTaggedAgentsChange={setNoteTaggedAgentIds}
+              />
+              <div className="brit-note-hint">
+                <span>@</span>
+                {isRtl ? (
+                  <span>הקלידו <b>@</b> כדי לתייג סוכן</span>
+                ) : (
+                  <span>Type <b>@</b> to tag a teammate</span>
+                )}
+              </div>
+
+              <div className="brit-modal-actions" style={{ marginTop: 22 }}>
+                <button
+                  type="button"
+                  className="brit-modal-action"
+                  onClick={() =>
+                    noteModalOpen === 'add' ? handleAddNote(noteDraft) : handleEditNote(noteDraft)
+                  }
+                  disabled={noteSaving || !noteDraft.trim()}
+                >
+                  {noteSaving ? (isRtl ? 'שומר…' : 'Saving…') : t('player_info_note_save')}
+                </button>
+                <button
+                  type="button"
+                  className="brit-modal-action brit-modal-action-secondary"
+                  onClick={() => {
+                    setNoteModalOpen(null);
+                    setEditingNote(null);
+                    setNoteDraft('');
+                    setNoteTaggedAgentIds([]);
+                  }}
+                  disabled={noteSaving}
+                >
+                  {t('player_info_note_cancel')}
+                </button>
+              </div>
             </div>
           </div>
         </div>
