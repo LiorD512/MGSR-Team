@@ -24,6 +24,7 @@ import { openWhatsAppWithMessage } from '@/lib/whatsapp';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import MatchdayGeneratorModal, { type MatchdaySeed } from '@/components/MatchdayGeneratorModal';
+import NotificationPrompt from '@/components/NotificationPrompt';
 import GlobalPlayerSearch, { type ShortlistSearchItem } from '@/components/GlobalPlayerSearch';
 import { db } from '@/lib/firebase';
 import { callPlayersUpdate } from '@/lib/callables';
@@ -1765,6 +1766,10 @@ export default function MenDashboard({
           onClose={() => setSearchOpen(false)}
         />
       )}
+
+      {/* Notification permission prompt — the men dashboard renders outside
+          AppLayout, so mount it here too (gated internally). */}
+      <NotificationPrompt />
     </div>
   );
 }
