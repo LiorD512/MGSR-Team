@@ -2523,6 +2523,16 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   color: var(--ink);
   font: 12px/1.5 var(--body);
 }
+/* ── Notification permission modal (editorial) ── */
+.brit-notif-modal{max-width:440px;text-align:center}
+.brit-notif-modal .brit-close{float:none;position:absolute;top:16px;inset-inline-end:18px}
+.brit-notif-seal{width:60px;height:60px;margin:4px auto 18px;display:grid;place-items:center;border:1px solid var(--gold-soft);background:rgba(164,125,67,.08);color:var(--gold)}
+.brit-notif-seal svg{width:28px;height:28px}
+.brit-notif-modal .brit-modal-kicker{text-align:center}
+.brit-notif-modal h2{margin:12px 0 0;text-align:center}
+.brit-notif-desc{margin:14px auto 0;max-width:340px;color:var(--muted);font:12px/1.65 var(--body)}
+.brit-notif-actions{display:flex;flex-direction:column;gap:10px;margin-top:24px}
+.brit-notif-actions .brit-modal-action{width:100%;text-align:center;padding:13px 16px}
 /* ── Costs editor modal ── */
 .brit-costmodal{max-width:470px}
 .brit-costmodal .brit-cost-sec{margin-top:20px}

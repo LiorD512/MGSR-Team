@@ -22,7 +22,7 @@ async function findAccountId(email: string): Promise<string | null> {
 
 export default function NotificationPrompt() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, isRtl } = useLanguage();
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -70,48 +70,53 @@ export default function NotificationPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={handleDismiss}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-md bg-mgsr-card border border-mgsr-border rounded-2xl shadow-2xl p-8 space-y-5 animate-in fade-in zoom-in-95 duration-300"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Icon */}
-        <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-full bg-mgsr-teal/20 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 text-mgsr-teal">
+    <div
+      className="brit-room"
+      dir={isRtl ? 'rtl' : 'ltr'}
+      lang={isRtl ? 'he' : 'en'}
+      style={{ position: 'static', inset: 'auto', background: 'transparent', zIndex: 'auto', overflow: 'visible' }}
+    >
+      <div className="brit-backdrop open" onClick={handleDismiss}>
+        <div className="brit-modal brit-notif-modal" dir={isRtl ? 'rtl' : 'ltr'} onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            className="brit-close"
+            onClick={handleDismiss}
+            disabled={loading}
+            aria-label={isRtl ? 'סגור' : 'Close'}
+          >
+            ×
+          </button>
+
+          <div className="brit-notif-seal" aria-hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
           </div>
-        </div>
 
-        {/* Title */}
-        <h2 className="text-xl font-bold text-mgsr-text text-center">
-          {t('notif_prompt_title')}
-        </h2>
+          <p className="brit-modal-kicker">{isRtl ? 'מרכז התראות' : 'Notification centre'}</p>
+          <h2>{t('notif_prompt_title')}</h2>
+          <p className="brit-notif-desc">{t('notif_prompt_desc')}</p>
 
-        {/* Description */}
-        <p className="text-sm text-mgsr-muted text-center leading-relaxed">
-          {t('notif_prompt_desc')}
-        </p>
-
-        {/* Buttons */}
-        <div className="flex flex-col gap-3 pt-2">
-          <button
-            onClick={handleEnable}
-            disabled={loading}
-            className="w-full px-4 py-3 text-sm font-semibold bg-mgsr-teal text-mgsr-dark rounded-xl hover:bg-mgsr-teal/80 transition disabled:opacity-50"
-          >
-            {loading ? '...' : t('notif_prompt_enable')}
-          </button>
-          <button
-            onClick={handleDismiss}
-            disabled={loading}
-            className="w-full px-4 py-2.5 text-sm text-mgsr-muted hover:text-mgsr-text transition rounded-xl"
-          >
-            {t('notif_prompt_later')}
-          </button>
+          <div className="brit-notif-actions">
+            <button
+              type="button"
+              className="brit-modal-action"
+              onClick={handleEnable}
+              disabled={loading}
+            >
+              {loading ? (isRtl ? 'מפעיל…' : 'Enabling…') : t('notif_prompt_enable')}
+            </button>
+            <button
+              type="button"
+              className="brit-modal-action brit-modal-action-secondary"
+              onClick={handleDismiss}
+              disabled={loading}
+            >
+              {t('notif_prompt_later')}
+            </button>
+          </div>
         </div>
       </div>
     </div>
