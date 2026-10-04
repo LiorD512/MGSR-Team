@@ -78,6 +78,9 @@ export interface YouthPlayerProfileProps {
   highlightsPanel: ReactNode;
   matchingRequestsBlock: ReactNode;
   tasksBlock: ReactNode;
+  /** The edit drawer, rendered inside this component's .brit-room so its
+      scoped brit-* styles apply without a second full-screen room. */
+  editDrawer?: ReactNode;
 
   mandateExpiryLabel: string | null;
   hasValidMandate: boolean;
@@ -90,15 +93,16 @@ const initials = (name: string | undefined) =>
 export default function YouthPlayerProfile(props: YouthPlayerProfileProps) {
   const {
     t, isRtl, lang, setLang, player, displayName, documents, sortedNotes,
-    backHref, backLabel, resolveAgentName, mandateToggling, uploadingDocument,
-    uploadError, sharing, addingToPortfolio, shareError, portfolioError,
-    onEdit, onDelete, onAddTask, onMandateToggle, onUploadClick, onDeleteDoc,
-    onAddNote, onEditNote, onDeleteNote, onShare, onPreparePortfolio, fileInput,
-    highlightsPanel, matchingRequestsBlock, tasksBlock, mandateExpiryLabel,
-    hasValidMandate, tasksEnabled,
+    backHref, backLabel, resolveAgentName, uploadingDocument, uploadError,
+    onEdit, onDelete, onAddTask, onUploadClick, onDeleteDoc,
+    onAddNote, onEditNote, onDeleteNote, fileInput,
+    highlightsPanel, tasksBlock, tasksEnabled, editDrawer,
   } = props;
 
   const [tab, setTab] = useState<'overview' | 'documents' | 'notes'>('overview');
+
+  // The latest status is simply the newest note (sortedNotes is newest-first).
+  const latestStatus = sortedNotes[0];
 
   const positionsLabel = player.positions?.filter(Boolean).join(' · ') || '—';
   const clubName = player.currentClub?.clubName;
@@ -158,11 +162,8 @@ export default function YouthPlayerProfile(props: YouthPlayerProfileProps) {
                     {t('youth_detail_task_btn')}
                   </button>
                 )}
-                <button className="bp-toolbtn" onClick={onEdit}>
+                <button className="bp-toolbtn primary" onClick={onEdit}>
                   {t('youth_detail_edit')}
-                </button>
-                <button className="bp-toolbtn primary" onClick={onShare} disabled={sharing}>
-                  {sharing ? '…' : `↗ ${t('player_info_share')}`}
                 </button>
                 <button className="bp-toolbtn danger" onClick={onDelete}>
                   {t('youth_detail_delete')}
@@ -180,7 +181,6 @@ export default function YouthPlayerProfile(props: YouthPlayerProfileProps) {
                   <div className="bp-hero-portrait ph">{initials(displayName)}</div>
                 )}
                 <div className="bp-hero-copy">
-                  <p className="bp-hero-kicker">{t('youth_detail_kicker')}</p>
                   <h1>{displayName}</h1>
                   {player.fullNameHe && displayName !== player.fullNameHe && (
                     <p className="bp-hero-he" dir="rtl">{player.fullNameHe}</p>
@@ -294,26 +294,26 @@ export default function YouthPlayerProfile(props: YouthPlayerProfileProps) {
 
                 {/* Right column */}
                 <aside>
-                  {/* Mandate */}
+                  {/* Latest status — surfaces the most recent note; the button
+                      adds a new status that becomes the current (latest) one. */}
                   <div className="bp-kv">
-                    <h3>{t('youth_detail_mandate')}</h3>
-                    <div className="bp-switchrow">
-                      <div>
-                        <div className="lbl">{player.haveMandate ? t('youth_detail_active') : t('youth_detail_inactive')}</div>
-                        {player.haveMandate && mandateExpiryLabel && (
-                          <div className="sub" dir="ltr">{t('youth_detail_expires')} {mandateExpiryLabel}</div>
-                        )}
+                    <h3>
+                      {t('youth_detail_latest_status')}
+                      <button className="bp-kv-add" onClick={onAddNote}>+ {t('youth_detail_add_status')}</button>
+                    </h3>
+                    {latestStatus ? (
+                      <div className="bp-status">
+                        <p>{latestStatus.notes}</p>
+                        <div className="meta">
+                          {latestStatus.createBy && <span className="by">{resolveAgentName(latestStatus.createBy)}</span>}
+                          {latestStatus.createdAt && (
+                            <span>{new Date(latestStatus.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                          )}
+                        </div>
                       </div>
-                      <label className="bp-sw">
-                        <input
-                          type="checkbox"
-                          checked={player.haveMandate ?? false}
-                          disabled={mandateToggling}
-                          onChange={() => onMandateToggle(!(player.haveMandate ?? false))}
-                        />
-                        <span className="track" />
-                      </label>
-                    </div>
+                    ) : (
+                      <div className="bp-empty">{t('youth_detail_no_status')}</div>
+                    )}
                   </div>
 
                   {/* Player contact */}
@@ -403,13 +403,6 @@ export default function YouthPlayerProfile(props: YouthPlayerProfileProps) {
                     </div>
                   </div>
 
-                  {/* Matching requests (passed-in block) */}
-                  {matchingRequestsBlock && (
-                    <div className="bp-kv">
-                      <h3>{t('youth_matching_requests')}</h3>
-                      {matchingRequestsBlock}
-                    </div>
-                  )}
                 </aside>
               </div>
             </div>
@@ -479,15 +472,11 @@ export default function YouthPlayerProfile(props: YouthPlayerProfileProps) {
               </section>
             </div>
 
-            {/* Sticky actions — share + portfolio */}
-            <div className="bp-sticky">
-              <button style={{ width: '100%' }} onClick={onPreparePortfolio} disabled={addingToPortfolio}>
-                {addingToPortfolio ? '…' : `◈ ${t('player_info_prepare_portfolio')}`}
-              </button>
-            </div>
-            {(shareError || portfolioError) && <p className="bp-err">{shareError || portfolioError}</p>}
           </div>
         </div>
+
+        {/* Edit drawer — inside .brit-room so its scoped brit-* styles apply */}
+        {editDrawer}
       </div>
     </div>
   );

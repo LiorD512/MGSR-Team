@@ -84,9 +84,12 @@ export default function BritRail({ active, footer }: BritRailProps) {
           </div>
         )}
 
-        <Link href="/requests" className={active === 'requests' ? 'active' : ''}>
-          <span>{t('nav_requests')}</span>
-        </Link>
+        {/* Club requests — not used on the youth platform */}
+        {!isYouth && (
+          <Link href="/requests" className={active === 'requests' ? 'active' : ''}>
+            <span>{t('nav_requests')}</span>
+          </Link>
+        )}
         <Link href="/contacts" className={active === 'contacts' ? 'active' : ''}>
           <span>{t('nav_contacts')}</span>
         </Link>

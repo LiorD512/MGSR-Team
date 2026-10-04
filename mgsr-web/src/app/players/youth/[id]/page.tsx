@@ -29,6 +29,7 @@ import BritRail from '@/components/BritRail';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import YouthHighlightsPanel from '@/components/YouthHighlightsPanel';
 import YouthPlayerProfile from '@/components/YouthPlayerProfile';
+import YouthAddProspectDrawer from '@/components/YouthAddProspectDrawer';
 import { type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import { usePlayerMatchResults } from '@/hooks/useMatchResults';
 import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
@@ -86,6 +87,7 @@ export default function YouthPlayerPage() {
   const [documents, setDocuments] = useState<PlayerDocument[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [editOpen, setEditOpen] = useState(false);
+  const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -887,7 +889,7 @@ export default function YouthPlayerPage() {
           const maxExp = Math.max(0, ...valid.map((d) => d.expiresAt ?? 0));
           return maxExp > 0 ? new Date(maxExp).toLocaleDateString() : null;
         })()}
-        onEdit={openEdit}
+        onEdit={() => setShowEditDrawer(true)}
         onDelete={() => setDeleteOpen(true)}
         onAddTask={() => setShowAddTaskModal(true)}
         onMandateToggle={handleMandateToggle}
@@ -900,6 +902,14 @@ export default function YouthPlayerPage() {
         onPreparePortfolio={() => setShowPortfolioLanguageModal(true)}
         fileInput={
           <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*,application/pdf" className="hidden" onChange={handleUploadDocument} />
+        }
+        editDrawer={
+          <YouthAddProspectDrawer
+            open={showEditDrawer}
+            onClose={() => setShowEditDrawer(false)}
+            editPlayer={player}
+            onSaved={() => setShowEditDrawer(false)}
+          />
         }
         highlightsPanel={
           player && id ? (

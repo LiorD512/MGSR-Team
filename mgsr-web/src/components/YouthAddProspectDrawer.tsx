@@ -22,8 +22,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { checkYouthPlayerExists, computeAgeGroup } from '@/lib/playersYouth';
-import { callPlayersCreate } from '@/lib/callables';
+import { checkYouthPlayerExists, computeAgeGroup, type YouthPlayer } from '@/lib/playersYouth';
+import { callPlayersCreate, callPlayersUpdate } from '@/lib/callables';
 import { getAllAccounts, getCurrentAccountForShortlist, type AccountForShortlist } from '@/lib/accounts';
 
 const DEBOUNCE_MS = 400;
@@ -64,15 +64,22 @@ export interface YouthAddProspectDrawerProps {
   open: boolean;
   onClose: () => void;
   onSaved?: (playerId?: string) => void;
+  /**
+   * When provided, the drawer runs in EDIT mode: every step is pre-filled from
+   * this existing prospect and the save writes an update (callPlayersUpdate)
+   * instead of creating a new record. Opens on the Confirm step.
+   */
+  editPlayer?: YouthPlayer | null;
 }
 
 const initials = (name: string | undefined) =>
   (name || '?').split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
-export default function YouthAddProspectDrawer({ open, onClose, onSaved }: YouthAddProspectDrawerProps) {
+export default function YouthAddProspectDrawer({ open, onClose, onSaved, editPlayer }: YouthAddProspectDrawerProps) {
   const { user } = useAuth();
   const { t, isRtl } = useLanguage();
   const router = useRouter();
+  const isEdit = !!editPlayer;
 
   const [step, setStep] = useState<Step>(1);
 
@@ -139,9 +146,44 @@ export default function YouthAddProspectDrawer({ open, onClose, onSaved }: Youth
   }, [open, user]);
 
   useEffect(() => {
-    if (open) resetAll();
+    if (!open) return;
+    if (editPlayer) {
+      // EDIT mode — prefill every step from the existing prospect and jump to Confirm.
+      setStep(2);
+      setUrlInput(editPlayer.ifaUrl ?? '');
+      setSearchQuery('');
+      setSearchResults([]);
+      setLoadingProfile(false);
+      setProfile({
+        fullName: editPlayer.fullName ?? '',
+        fullNameHe: editPlayer.fullNameHe,
+        currentClub: editPlayer.currentClub?.clubName,
+        academy: editPlayer.academy,
+        dateOfBirth: editPlayer.dateOfBirth,
+        ageGroup: editPlayer.ageGroup || (editPlayer.dateOfBirth ? (computeAgeGroup(editPlayer.dateOfBirth) ?? undefined) : undefined),
+        nationality: editPlayer.nationality,
+        profileImage: editPlayer.profileImage,
+        ifaUrl: editPlayer.ifaUrl ?? '',
+        ifaPlayerId: editPlayer.ifaPlayerId,
+        positions: editPlayer.positions,
+        ifaStats: editPlayer.ifaStats,
+      });
+      setPlayerPhone(editPlayer.playerPhoneNumber ?? '');
+      setPlayerEmail(editPlayer.playerEmail ?? '');
+      setParentName(editPlayer.parentContact?.parentName ?? '');
+      setParentRelationship(editPlayer.parentContact?.parentRelationship ?? '');
+      setParentPhone(editPlayer.parentContact?.parentPhoneNumber ?? '');
+      setParentEmail(editPlayer.parentContact?.parentEmail ?? '');
+      setAgentId(editPlayer.agentInChargeId ?? currentAccount?.id ?? null);
+      setAgentQuery('');
+      setSaving(false);
+      setSavedId(undefined);
+      setError('');
+    } else {
+      resetAll();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, editPlayer]);
 
   // Debounced IFA name search.
   useEffect(() => {
@@ -188,6 +230,17 @@ export default function YouthAddProspectDrawer({ open, onClose, onSaved }: Youth
       ifaStats: stats,
     };
   };
+
+  // Patch a single field on the selected profile (used by the editable
+  // Confirm-step inputs). Age group recomputes when the DOB changes.
+  const patchProfile = (patch: Partial<YouthProfile>) =>
+    setProfile((prev) => {
+      const next = { ...(prev ?? { fullName: '', ifaUrl: '' }), ...patch } as YouthProfile;
+      if (patch.dateOfBirth !== undefined) {
+        next.ageGroup = patch.dateOfBirth ? (computeAgeGroup(patch.dateOfBirth) ?? undefined) : undefined;
+      }
+      return next;
+    });
 
   const loadProfile = useCallback(async (url: string, fallback?: YouthSearchResult) => {
     setError('');
@@ -262,7 +315,8 @@ export default function YouthAddProspectDrawer({ open, onClose, onSaved }: Youth
     setError('');
     setSaving(true);
     try {
-      if (profile.ifaUrl?.trim()) {
+      // Dedup check only when creating a brand-new prospect.
+      if (!isEdit && profile.ifaUrl?.trim()) {
         const exists = await checkYouthPlayerExists(profile.ifaUrl.trim());
         if (exists) {
           setError(t('youth_add_room_dupe'));
@@ -277,6 +331,46 @@ export default function YouthAddProspectDrawer({ open, onClose, onSaved }: Youth
       const agentInChargeName = chosen?.name || currentAccount?.name || user.displayName || user.email || '';
 
       const computedAgeGroup = profile.ageGroup || (profile.dateOfBirth ? computeAgeGroup(profile.dateOfBirth) : '');
+
+      const parentContact = (parentName.trim() || parentPhone.trim() || parentRelationship.trim() || parentEmail.trim())
+        ? {
+            ...(parentName.trim() && { parentName: parentName.trim() }),
+            ...(parentRelationship.trim() && { parentRelationship: parentRelationship.trim() }),
+            ...(parentPhone.trim() && { parentPhoneNumber: parentPhone.trim() }),
+            ...(parentEmail.trim() && { parentEmail: parentEmail.trim() }),
+          }
+        : undefined;
+
+      // ── EDIT: update the existing record (no new doc, no dedup) ──
+      if (isEdit && editPlayer) {
+        const deleteFields: string[] = [];
+        const update: Record<string, unknown> = {
+          platform: 'youth',
+          playerId: editPlayer.id,
+          fullName: (profile.fullName || '').trim(),
+          agentInChargeId,
+          agentInChargeName,
+        };
+        if (profile.fullNameHe?.trim()) update.fullNameHe = profile.fullNameHe.trim(); else deleteFields.push('fullNameHe');
+        if (profile.positions && profile.positions.length > 0) update.positions = profile.positions; else deleteFields.push('positions');
+        if (profile.currentClub?.trim()) update.currentClub = { clubName: profile.currentClub.trim() }; else deleteFields.push('currentClub');
+        if (profile.academy?.trim()) update.academy = profile.academy.trim(); else deleteFields.push('academy');
+        if (profile.dateOfBirth?.trim()) update.dateOfBirth = profile.dateOfBirth.trim(); else deleteFields.push('dateOfBirth');
+        if (computedAgeGroup) update.ageGroup = computedAgeGroup; else deleteFields.push('ageGroup');
+        if (profile.nationality?.trim()) update.nationality = profile.nationality.trim(); else deleteFields.push('nationality');
+        if (profile.profileImage?.trim()) update.profileImage = profile.profileImage.trim(); else deleteFields.push('profileImage');
+        if (profile.ifaUrl?.trim()) update.ifaUrl = profile.ifaUrl.trim(); else deleteFields.push('ifaUrl');
+        if (playerPhone.trim()) update.playerPhoneNumber = playerPhone.trim(); else deleteFields.push('playerPhoneNumber');
+        if (playerEmail.trim()) update.playerEmail = playerEmail.trim(); else deleteFields.push('playerEmail');
+        if (parentContact) update.parentContact = parentContact; else deleteFields.push('parentContact');
+        if (deleteFields.length > 0) update._deleteFields = deleteFields;
+
+        await callPlayersUpdate(update as Parameters<typeof callPlayersUpdate>[0]);
+        setSavedId(editPlayer.id);
+        setStep(4);
+        onSaved?.(editPlayer.id);
+        return;
+      }
 
       const result = await callPlayersCreate({
         platform: 'youth',
@@ -294,14 +388,7 @@ export default function YouthAddProspectDrawer({ open, onClose, onSaved }: Youth
         ifaStats: profile.ifaStats || undefined,
         playerPhoneNumber: playerPhone.trim() || undefined,
         playerEmail: playerEmail.trim() || undefined,
-        parentContact: (parentName.trim() || parentPhone.trim() || parentRelationship.trim() || parentEmail.trim())
-          ? {
-              ...(parentName.trim() && { parentName: parentName.trim() }),
-              ...(parentRelationship.trim() && { parentRelationship: parentRelationship.trim() }),
-              ...(parentPhone.trim() && { parentPhoneNumber: parentPhone.trim() }),
-              ...(parentEmail.trim() && { parentEmail: parentEmail.trim() }),
-            }
-          : undefined,
+        parentContact,
         agentInChargeId,
         agentInChargeName,
       } as Parameters<typeof callPlayersCreate>[0]);
@@ -364,8 +451,8 @@ export default function YouthAddProspectDrawer({ open, onClose, onSaved }: Youth
       <aside className={`brit-drawer brit-add-drawer${open ? ' open' : ''}`} dir={isRtl ? 'rtl' : 'ltr'} aria-label={t('youth_add_room_title')}>
         <div className="brit-add-head">
           <button className="close" onClick={onClose} aria-label={t('room_close')}>×</button>
-          <div className="eyebrow">{t('youth_add_room_eyebrow')}</div>
-          <h2>{t('youth_add_room_title')}</h2>
+          <div className="eyebrow">{isEdit ? t('youth_edit_room_eyebrow') : t('youth_add_room_eyebrow')}</div>
+          <h2>{isEdit ? t('youth_edit_room_title') : t('youth_add_room_title')}</h2>
           <div className="brit-add-prog">
             <i className={step >= 1 ? 'on' : ''} />
             <i className={step >= 2 ? 'on' : ''} />
@@ -458,12 +545,19 @@ export default function YouthAddProspectDrawer({ open, onClose, onSaved }: Youth
                         )}
                       </div>
                     </div>
-                    <div className="brit-add-attrs">
-                      <div><label>{t('youth_add_dob')}</label><b>{profile.dateOfBirth || '—'}</b></div>
-                      <div><label>{t('youth_add_age_group')}</label><b>{profile.ageGroup || '—'}</b></div>
-                      <div><label>{t('youth_add_club')}</label><b>{profile.currentClub || '—'}</b></div>
-                      <div><label>{t('youth_add_nationality')}</label><b>{profile.nationality || '—'}</b></div>
-                    </div>
+                    {/* Editable prospect fields (prefilled from IFA / existing record) */}
+                    <div className="brit-add-field"><label>{t('youth_add_name')}</label>
+                      <input value={profile.fullName ?? ''} onChange={(e) => patchProfile({ fullName: e.target.value })} placeholder={t('youth_add_name')} /></div>
+                    <div className="brit-add-field"><label>{t('youth_add_positions')}</label>
+                      <input value={(profile.positions ?? []).join(', ')} onChange={(e) => patchProfile({ positions: e.target.value.split(',').map((p) => p.trim()).filter(Boolean) })} placeholder="CM, AM" /></div>
+                    <div className="brit-add-field"><label>{t('youth_add_club')}</label>
+                      <input value={profile.currentClub ?? ''} onChange={(e) => patchProfile({ currentClub: e.target.value })} placeholder={t('youth_add_club')} /></div>
+                    <div className="brit-add-field"><label>{t('youth_add_dob')}</label>
+                      <input value={profile.dateOfBirth ?? ''} onChange={(e) => patchProfile({ dateOfBirth: e.target.value })} placeholder="DD/MM/YYYY" /></div>
+                    <div className="brit-add-field"><label>{t('youth_add_age_group')} <span style={{ color: 'var(--muted)' }}>({profile.ageGroup || '—'})</span></label>
+                      <input value={profile.ageGroup ?? ''} onChange={(e) => patchProfile({ ageGroup: e.target.value })} placeholder="U-19" /></div>
+                    <div className="brit-add-field"><label>{t('youth_add_nationality')}</label>
+                      <input value={profile.nationality ?? ''} onChange={(e) => patchProfile({ nationality: e.target.value })} placeholder={t('youth_add_nationality')} /></div>
 
                     {hasForm && (
                       <div className="brit-add-attrs" style={{ borderTop: 0 }}>
@@ -540,7 +634,7 @@ export default function YouthAddProspectDrawer({ open, onClose, onSaved }: Youth
                 <div className="brit-add-stepcta">
                   <button className="btn ghost" onClick={() => goStep(2)} type="button">{t('add_player_room_change')}</button>
                   <button className="btn" onClick={handleSave} disabled={saving || !agentId} type="button">
-                    {saving ? t('youth_add_saving') : t('youth_add_room_add_to_academy')}
+                    {saving ? t('youth_add_saving') : isEdit ? t('youth_edit_room_save') : t('youth_add_room_add_to_academy')}
                   </button>
                 </div>
               </div>
@@ -551,14 +645,14 @@ export default function YouthAddProspectDrawer({ open, onClose, onSaved }: Youth
           <div className={`brit-add-step ${stepClass(4)}`}>
             <button className="brit-add-stephead" type="button" style={{ cursor: 'default' }}>
               <span className="n">4</span>
-              <div className="t"><b>{t('youth_add_room_done_title')}</b><small>{t('youth_add_room_done_sum')}</small></div>
+              <div className="t"><b>{isEdit ? t('youth_edit_room_done_title') : t('youth_add_room_done_title')}</b><small>{t('youth_add_room_done_sum')}</small></div>
             </button>
             <div className="brit-add-stepbody">
               <div className="brit-add-stepinner">
                 <div className="brit-add-done">
                   <div className="seal"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg></div>
-                  <h3>{t('youth_add_room_done_head')}</h3>
-                  <p>{t('youth_add_room_done_body')}</p>
+                  <h3>{isEdit ? t('youth_edit_room_done_head') : t('youth_add_room_done_head')}</h3>
+                  <p>{isEdit ? t('youth_edit_room_done_body') : t('youth_add_room_done_body')}</p>
                   <div className="cta">
                     <button className="btn g" onClick={resetAll} type="button">{t('add_player_room_add_another')}</button>
                     <button className="btn p" type="button" onClick={() => { if (savedId) router.push(`/players/youth/${savedId}?from=/players`); }}>

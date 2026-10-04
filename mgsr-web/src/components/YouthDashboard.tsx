@@ -9,9 +9,10 @@
  * review, and a recent-activity feed.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage, translateType } from '@/contexts/LanguageContext';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import type { YouthPlayer } from '@/lib/playersYouth';
@@ -20,7 +21,11 @@ export interface YouthDashboardFeedEvent {
   id: string;
   type?: string;
   playerName?: string;
+  playerImage?: string;
+  playerYouthId?: string;
+  timestamp?: number;
   createdAt?: number;
+  agentName?: string;
 }
 export interface YouthDashboardRequest {
   id: string;
@@ -78,10 +83,23 @@ export default function YouthDashboard({
     [youthPlayers]
   );
 
-  const recent = useMemo(
-    () => [...events].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, 5),
+  const [showAllActivity, setShowAllActivity] = useState(false);
+
+  const withToken = (key: string, value: string | number) => t(key).replace('{n}', String(value));
+
+  // Newest first; same 4-then-reveal behaviour as the men dashboard.
+  const sortedEvents = useMemo(
+    () => [...events].sort((a, b) => ((b.timestamp ?? b.createdAt ?? 0) - (a.timestamp ?? a.createdAt ?? 0))),
     [events]
   );
+  const recentActivity = useMemo(
+    () => (showAllActivity ? sortedEvents : sortedEvents.slice(0, 4)),
+    [sortedEvents, showAllActivity]
+  );
+
+  // Resolve a feed event to the youth prospect route when we have an id.
+  const feedLink = (ev: YouthDashboardFeedEvent): string | null =>
+    ev.playerYouthId ? `/players/youth/${ev.playerYouthId}?from=/dashboard` : null;
 
   return (
     <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
@@ -190,24 +208,76 @@ export default function YouthDashboard({
               </div>
 
               <aside>
-                {/* Recent activity feed */}
+                {/* Recent activity — same feed as the men dashboard, youth-scoped */}
                 <section className="brit-module">
                   <div className="brit-module-head">
-                    <h2>{t('youth_ifa_form')}</h2>
-                    <span>{youthPlayers.length} {t('youth_sig_prospects')}</span>
+                    <h2>{t('room_recent_activity')}</h2>
+                    <span>
+                      {withToken('room_activity_showing', recentActivity.length).replace('{total}', String(events.length))}
+                    </span>
                   </div>
-                  <div>
-                    {recent.map((ev) => (
-                      <div className="brit-feed-row" key={ev.id}>
-                        <time>{ev.createdAt ? new Date(ev.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' }) : ''}</time>
-                        <p><strong>{ev.playerName || '—'}</strong></p>
-                        <span>IFA</span>
-                      </div>
-                    ))}
-                    {recent.length === 0 && (
-                      <div className="brit-feed-row"><time /><p><strong>—</strong></p><span /></div>
-                    )}
-                  </div>
+                  {recentActivity.length > 0 ? (
+                    recentActivity.map((ev) => {
+                      const href = feedLink(ev);
+                      const ts = ev.timestamp ?? ev.createdAt;
+                      const body = (
+                        <>
+                          {ev.playerImage ? (
+                            <img className="brit-feed-thumb" src={ev.playerImage} alt={ev.playerName || ''} />
+                          ) : (
+                            <div className="brit-feed-thumb brit-feed-thumb-fallback">
+                              {(ev.playerName || '?').charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <p>
+                            {translateType(ev.type || '', t, 'youth')}
+                            {ev.playerName ? <strong>{ev.playerName}</strong> : null}
+                          </p>
+                          <span>
+                            <time className="brit-feed-time">
+                              {ts ? (
+                                <>
+                                  <span className="brit-feed-date">
+                                    {new Date(ts).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: '2-digit', month: 'short' })}
+                                  </span>
+                                  <span className="brit-feed-hour">
+                                    {new Date(ts).toLocaleTimeString(isRtl ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </>
+                              ) : (
+                                '—'
+                              )}
+                            </time>
+                          </span>
+                        </>
+                      );
+                      return href ? (
+                        <Link key={ev.id} href={href} className="brit-feed-row brit-feed-activity">
+                          {body}
+                        </Link>
+                      ) : (
+                        <div key={ev.id} className="brit-feed-row brit-feed-activity">
+                          {body}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="brit-empty">{t('room_activity_empty')}</div>
+                  )}
+                  {events.length > 4 && (
+                    <button
+                      className="brit-reveal"
+                      onClick={() => setShowAllActivity((v) => !v)}
+                      aria-expanded={showAllActivity}
+                    >
+                      <span className="brit-reveal-line" aria-hidden />
+                      <span className="brit-reveal-label">
+                        {showAllActivity ? t('room_activity_collapse') : withToken('room_activity_reveal', events.length)}
+                        <em className={`brit-reveal-caret${showAllActivity ? ' up' : ''}`} aria-hidden>↓</em>
+                      </span>
+                      <span className="brit-reveal-line" aria-hidden />
+                    </button>
+                  )}
                 </section>
               </aside>
             </div>

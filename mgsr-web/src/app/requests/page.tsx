@@ -11,7 +11,6 @@ import { db } from '@/lib/firebase';
 import { callRequestsDelete, callShortlistAdd } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
 import MenRequests from '@/components/MenRequests';
-import YouthRequests from '@/components/YouthRequests';
 import MenLoading from '@/components/MenLoading';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { getPositionDisplayName } from '@/lib/appConfig';
@@ -222,6 +221,12 @@ export default function RequestsPage() {
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  // Club requests screen is not used on the youth platform — bounce to the
+  // dashboard if someone lands on /requests while on youth (direct URL / back).
+  useEffect(() => {
+    if (platform === 'youth') router.replace('/dashboard');
+  }, [platform, router]);
 
   // Load agent English→Hebrew name map from Accounts
   useEffect(() => {
@@ -741,12 +746,15 @@ export default function RequestsPage() {
     );
   }
 
-  // ── Men & Youth platforms: "Light Management Room" full-bleed board ──
+  // Youth has no club-requests screen — render nothing while the effect above
+  // redirects to the dashboard.
+  if (platform === 'youth') {
+    return <MenLoading />;
+  }
+
+  // ── Men platform: "Light Management Room" full-bleed board ──
   if (platform === 'men') {
     return <MenRequests />;
-  }
-  if (platform === 'youth') {
-    return <YouthRequests />;
   }
 
   // Narrowed to 'women' | 'youth' below; alias keeps residual men branches typed.
