@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--gold-bright:#e4c98b;
+      --red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;min-height:100vh;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:40;pointer-events:none;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    input{font:inherit}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    .screen{min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr}
+    @media(max-width:900px){.screen{grid-template-columns:1fr}}
+
+    /* ── Left: editorial brand panel ── */
+    .brand{position:relative;background:var(--black);color:var(--paper);overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:46px 52px}
+    @media(max-width:900px){.brand{display:none}}
+    .brand .bg{position:absolute;inset:0;background:
+      radial-gradient(ellipse at 24% 18%,rgba(228,201,139,.16) 0%,transparent 48%),
+      radial-gradient(ellipse at 78% 82%,rgba(228,201,139,.08) 0%,transparent 46%),
+      linear-gradient(135deg,#2a2419,#121009)}
+    .brand .ghost{position:absolute;top:-30px;inset-inline-end:-10px;font:500 300px/.8 var(--display);color:rgba(201,166,107,.07);letter-spacing:-.05em;user-select:none}
+    .brand .top,.brand .mid,.brand .bot{position:relative;z-index:1}
+    .brand .crest{display:flex;align-items:center;gap:14px}
+    .brand .crest .mark{width:52px;height:52px;flex:none;border-radius:50%;border:1.5px solid var(--gold-soft);display:grid;place-items:center;color:var(--gold-bright);font:500 20px/1 var(--display);background:radial-gradient(circle at 35% 30%,#3a3220,#191610)}
+    .brand .crest .wordmark{font:500 15px/1 var(--display);letter-spacing:.14em;text-transform:uppercase}
+    .brand .crest .wordmark small{display:block;margin-top:6px;color:var(--gold-soft);font:8px/1 var(--mono);letter-spacing:.18em}
+    .brand .mid{max-width:420px}
+    .brand .eyebrow{color:var(--gold-bright);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.22em;margin:0 0 20px}
+    .brand h1{margin:0;font:500 clamp(46px,5.4vw,78px)/.86 var(--display);text-transform:uppercase;letter-spacing:-.02em}
+    .brand .tagline{margin:20px 0 0;color:#c9c3b6;font:13px/1.7 var(--body);max-width:360px}
+    .brand .stats{display:flex;gap:34px;margin-top:34px}
+    .brand .stats div .v{font:500 26px/.9 var(--display);color:var(--gold-bright)}
+    .brand .stats div .l{margin-top:7px;color:#aaa69c;font:8px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .brand .bot{display:flex;align-items:center;justify-content:space-between;color:#8c877c;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .brand .bot .dot{width:5px;height:5px;border-radius:50%;background:var(--gold-soft);display:inline-block;margin-inline-end:8px}
+
+    /* ── Right: sign-in form on paper ── */
+    .pane{position:relative;display:flex;align-items:center;justify-content:center;padding:48px 32px}
+    .langtoggle{position:absolute;top:26px;inset-inline-end:30px;border:1px solid var(--line);padding:8px 12px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;transition:.15s}
+    .langtoggle:hover{border-color:var(--gold-soft);color:var(--gold)}
+
+    .form{width:100%;max-width:376px}
+    .form .mobile-crest{display:none}
+    @media(max-width:900px){
+      .form .mobile-crest{display:flex;align-items:center;gap:12px;margin-bottom:30px}
+      .form .mobile-crest .mark{width:44px;height:44px;flex:none;border-radius:50%;border:1.5px solid var(--gold-soft);display:grid;place-items:center;color:var(--gold);font:500 17px/1 var(--display);background:var(--card)}
+      .form .mobile-crest b{font:500 14px/1 var(--display);letter-spacing:.12em;text-transform:uppercase}
+    }
+    .form .kicker{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.18em;margin:0 0 16px}
+    .form h2{margin:0;font:500 42px/.9 var(--display);text-transform:uppercase;letter-spacing:-.01em}
+    .form .sub{margin:14px 0 0;color:var(--muted);font:12px/1.6 var(--body)}
+    .form .rule{height:1px;background:linear-gradient(90deg,transparent,var(--gold-soft),transparent);margin:30px 0}
+
+    .field{margin-bottom:20px}
+    .field label{display:block;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+    .field .inputwrap{position:relative;display:flex;align-items:center}
+    .field input{width:100%;border:1px solid var(--line);background:var(--card);padding:14px 15px;color:var(--ink);font:14px/1.2 var(--body);outline:none;transition:border-color .15s}
+    .field input::placeholder{color:rgba(22,22,19,.34);font-family:var(--mono);font-size:12px}
+    .field input:focus{border-color:var(--gold-soft)}
+    .field .peek{position:absolute;inset-inline-end:12px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:6px}
+    .field .peek:hover{color:var(--gold)}
+
+    .meta-row{display:flex;align-items:center;justify-content:space-between;margin:-4px 0 22px}
+    .remember{display:inline-flex;align-items:center;gap:9px;cursor:pointer;color:var(--ink);font:9px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+    .remember .box{width:15px;height:15px;flex:none;border:1px solid var(--line);display:grid;place-items:center;color:transparent;font-size:10px;transition:.15s}
+    .remember.on .box{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+    .forgot{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+    .forgot:hover{color:var(--ink)}
+
+    .err{display:flex;align-items:center;gap:9px;border:1px solid var(--red);background:rgba(182,66,53,.07);color:var(--red);padding:11px 13px;font:10px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.03em;margin-bottom:18px}
+
+    .submit{width:100%;background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold);padding:15px;font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.14em;transition:.15s;display:flex;align-items:center;justify-content:center;gap:10px}
+    .submit:hover{background:var(--gold);color:var(--paper)}
+    .submit .arrow{font-family:var(--body);font-size:14px;line-height:1}
+    .submit.loading{pointer-events:none;opacity:.7}
+    .submit .spin{width:13px;height:13px;border:2px solid rgba(22,22,19,.3);border-top-color:var(--ink);border-radius:50%;animation:sp .7s linear infinite;display:none}
+    .submit.loading .spin{display:inline-block}
+    .submit.loading .arrow{display:none}
+    @keyframes sp{to{transform:rotate(360deg)}}
+
+    .hint{margin:26px 0 0;text-align:center;color:var(--muted);font:9px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .hint a{color:var(--gold)}
+
+    /* Demo controls */
+    .demo{position:fixed;bottom:14px;inset-inline-start:14px;z-index:50;display:flex;gap:8px;background:var(--card);border:1px solid var(--line);padding:8px}
+    .demo button{font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 8px;border:1px solid var(--line)}
+    .demo button:hover{border-color:var(--gold-soft);color:var(--gold)}
+  </style>
+</head>
+<body>
+  <div class="screen" id="screen">
+
+    <!-- ═══ BRAND PANEL ═══ -->
+    <section class="brand">
+      <div class="bg"></div>
+      <div class="ghost">B</div>
+
+      <div class="top">
+        <div class="crest">
+          <span class="mark">B</span>
+          <span class="wordmark">BRIT Sport Group<small>Management Room</small></span>
+        </div>
+      </div>
+
+      <div class="mid">
+        <p class="eyebrow">Football agency · Private access</p>
+        <h1>The<br>Management<br>Room</h1>
+        <p class="tagline">Roster, scouting, mandates and club relationships — one editorial desk for the whole agency.</p>
+        <div class="stats">
+          <div><div class="v">142</div><div class="l">Players tracked</div></div>
+          <div><div class="v">38</div><div class="l">Active mandates</div></div>
+          <div><div class="v">3</div><div class="l">Platforms</div></div>
+        </div>
+      </div>
+
+      <div class="bot">
+        <span><span class="dot"></span>Secure sign-in</span>
+        <span>© BRIT Sport Group</span>
+      </div>
+    </section>
+
+    <!-- ═══ SIGN-IN PANE ═══ -->
+    <section class="pane">
+      <button class="langtoggle" id="lang" type="button">עברית</button>
+
+      <form class="form" id="form" onsubmit="return fakeSubmit(event)">
+        <div class="mobile-crest"><span class="mark">B</span><b>BRIT Sport Group</b></div>
+
+        <p class="kicker">Welcome back</p>
+        <h2>Sign in</h2>
+        <p class="sub">Enter your agency credentials to open the management room.</p>
+        <div class="rule"></div>
+
+        <div class="field">
+          <label for="email">Email</label>
+          <div class="inputwrap">
+            <input id="email" type="email" placeholder="you@britsport.com" autocomplete="username" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="pw">Password</label>
+          <div class="inputwrap">
+            <input id="pw" type="password" placeholder="••••••••" autocomplete="current-password" required>
+            <button type="button" class="peek" id="peek">Show</button>
+          </div>
+        </div>
+
+        <div class="meta-row">
+          <button type="button" class="remember" id="remember"><span class="box">✓</span>Keep me signed in</button>
+          <a class="forgot" href="#">Forgot?</a>
+        </div>
+
+        <div class="err" id="err" style="display:none"><span>⚠</span><span id="errtxt">Invalid email or password.</span></div>
+
+        <button class="submit" id="submit" type="submit">
+          <span class="spin"></span>
+          <span class="label">Sign in</span>
+          <span class="arrow">→</span>
+        </button>
+
+        <p class="hint">Access is granted by an agency administrator. <a href="#">Need an account?</a></p>
+      </form>
+    </section>
+  </div>
+
+  <!-- Demo controls (mock only) -->
+  <div class="demo">
+    <button onclick="demoLoading()">Loading state</button>
+    <button onclick="demoError()">Error state</button>
+    <button onclick="demoReset()">Reset</button>
+  </div>
+
+  <script>
+    // Password show/hide
+    const pw = document.getElementById('pw');
+    document.getElementById('peek').addEventListener('click', (e) => {
+      const show = pw.type === 'password';
+      pw.type = show ? 'text' : 'password';
+      e.target.textContent = show ? 'Hide' : 'Show';
+    });
+
+    // Remember-me toggle
+    document.getElementById('remember').addEventListener('click', (e) => {
+      e.currentTarget.classList.toggle('on');
+    });
+
+    // Language toggle (EN ⇄ HE) — flips dir + labels, mirrors the real screen's toggle
+    let he = false;
+    const L = {
+      en: { dir:'ltr', lang:'עברית', kicker:'Welcome back', h2:'Sign in', sub:'Enter your agency credentials to open the management room.',
+            email:'Email', pw:'Password', remember:'Keep me signed in', forgot:'Forgot?', submit:'Sign in',
+            hint:'Access is granted by an agency administrator.', need:'Need an account?',
+            eyebrow:'Football agency · Private access', tagline:'Roster, scouting, mandates and club relationships — one editorial desk for the whole agency.',
+            s1:'Players tracked', s2:'Active mandates', s3:'Platforms', welcome:'Welcome back', secure:'Secure sign-in', err:'Invalid email or password.' },
+      he: { dir:'rtl', lang:'English', kicker:'ברוך שובך', h2:'כניסה', sub:'הזן את פרטי הסוכנות כדי לפתוח את חדר הניהול.',
+            email:'אימייל', pw:'סיסמה', remember:'השאר אותי מחובר', forgot:'שכחת?', submit:'כניסה',
+            hint:'הגישה ניתנת על ידי מנהל הסוכנות.', need:'צריך חשבון?',
+            eyebrow:'סוכנות כדורגל · גישה פרטית', tagline:'סגל, סקאוטינג, מנדטים וקשרי מועדונים — שולחן עריכה אחד לכל הסוכנות.',
+            s1:'שחקנים במעקב', s2:'מנדטים פעילים', s3:'פלטפורמות', secure:'כניסה מאובטחת', err:'אימייל או סיסמה שגויים.' }
+    };
+    document.getElementById('lang').addEventListener('click', () => {
+      he = !he; const t = he ? L.he : L.en;
+      document.documentElement.dir = t.dir;
+      document.getElementById('lang').textContent = t.lang;
+      document.querySelector('.form .kicker').textContent = t.kicker;
+      document.querySelector('.form h2').textContent = t.h2;
+      document.querySelector('.form .sub').textContent = t.sub;
+      document.querySelector('label[for=email]').textContent = t.email;
+      document.querySelector('label[for=pw]').textContent = t.pw;
+      document.querySelector('#remember').lastChild.textContent = t.remember;
+      document.querySelector('.forgot').textContent = t.forgot;
+      document.querySelector('#submit .label').textContent = t.submit;
+      document.querySelector('.hint').innerHTML = t.hint + ' <a href="#">' + t.need + '</a>';
+      document.querySelector('.brand .eyebrow').textContent = t.eyebrow;
+      document.querySelector('.brand .tagline').textContent = t.tagline;
+      const sl = document.querySelectorAll('.brand .stats .l');
+      sl[0].textContent = t.s1; sl[1].textContent = t.s2; sl[2].textContent = t.s3;
+      document.querySelector('.brand .bot span:first-child').innerHTML = '<span class="dot"></span>' + t.secure;
+      document.getElementById('errtxt').textContent = t.err;
+    });
+
+    // Demo state helpers (mock only — the real screen drives these from auth)
+    const submit = document.getElementById('submit');
+    const err = document.getElementById('err');
+    function demoLoading(){ err.style.display='none'; submit.classList.add('loading'); }
+    function demoError(){ submit.classList.remove('loading'); err.style.display='flex'; }
+    function demoReset(){ submit.classList.remove('loading'); err.style.display='none'; }
+    function fakeSubmit(e){ e.preventDefault(); demoLoading(); setTimeout(demoReset,1400); return false; }
+  </script>
+</body>
+</html>

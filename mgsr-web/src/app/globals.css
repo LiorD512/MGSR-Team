@@ -4863,3 +4863,95 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-md-selcountry{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--gold-soft);background:rgba(164,125,67,.07)}
 .brit-room .brit-md-selcountry span{font:500 13px/1 var(--body);font-weight:600}
 .brit-room .brit-md-selcountry button{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase}
+
+
+/* ═══════════════════════════════════════════════════════
+   LOGIN — "Light Management Room" editorial sign-in.
+   Fully self-scoped under .brit-login so nothing leaks.
+   ═══════════════════════════════════════════════════════ */
+.brit-login{
+  --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+  --gold:#a47d43;--gold-soft:#c9a66b;--gold-bright:#e4c98b;
+  --red:#b64235;--green:#5c6f4a;--muted:#77736a;
+  --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+  --l-display:var(--font-oswald),Impact,sans-serif;
+  --l-body:var(--font-manrope),Helvetica,sans-serif;
+  --l-mono:var(--font-dm-mono),monospace;
+  position:relative;min-height:100vh;min-height:100dvh;
+  display:grid;grid-template-columns:1.05fr .95fr;
+  background:var(--paper);color:var(--ink);font:14px/1.5 var(--l-body);
+  -webkit-font-smoothing:antialiased;
+}
+.brit-login[dir=rtl]{
+  --l-display:var(--font-heebo),'Segoe UI',sans-serif;
+  --l-body:var(--font-heebo),'Segoe UI',sans-serif;
+  --l-mono:var(--font-heebo),'Segoe UI',sans-serif;
+}
+.brit-login::before{content:'';position:fixed;inset:0;z-index:40;pointer-events:none;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+.brit-login ::selection{background:var(--gold-soft);color:var(--ink)}
+.brit-login button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+.brit-login input{font:inherit}
+@media(max-width:900px){.brit-login{grid-template-columns:1fr}}
+
+/* ── Brand panel ── */
+.brit-login .bl-brand{position:relative;background:var(--black);color:var(--paper);overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:46px 52px}
+@media(max-width:900px){.brit-login .bl-brand{display:none}}
+.brit-login .bl-bg{position:absolute;inset:0;background:
+  radial-gradient(ellipse at 24% 18%,rgba(228,201,139,.16) 0%,transparent 48%),
+  radial-gradient(ellipse at 78% 82%,rgba(228,201,139,.08) 0%,transparent 46%),
+  linear-gradient(135deg,#2a2419,#121009)}
+.brit-login .bl-ghost{position:absolute;top:-30px;inset-inline-end:-10px;font:500 300px/.8 var(--l-display);color:rgba(201,166,107,.07);letter-spacing:-.05em;user-select:none}
+.brit-login .bl-top,.brit-login .bl-mid,.brit-login .bl-bot{position:relative;z-index:1}
+.brit-login .bl-crest{display:flex;align-items:center;gap:14px}
+.brit-login .bl-crest .mark{width:52px;height:52px;flex:none;object-fit:contain}
+.brit-login .bl-crest .wordmark{font:500 15px/1 var(--l-display);letter-spacing:.14em;text-transform:uppercase}
+.brit-login[dir=rtl] .bl-crest .wordmark{font-weight:800;letter-spacing:normal}
+.brit-login .bl-crest .wordmark small{display:block;margin-top:6px;color:var(--gold-soft);font:8px/1 var(--l-mono);letter-spacing:.18em}
+.brit-login .bl-mid{max-width:440px}
+.brit-login .bl-eyebrow{color:var(--gold-bright);font:9px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.22em;margin:0 0 20px}
+.brit-login .bl-mid h1{margin:0;font:500 clamp(46px,5.4vw,78px)/.86 var(--l-display);text-transform:uppercase;letter-spacing:-.02em}
+.brit-login[dir=rtl] .bl-mid h1{font-weight:800;letter-spacing:normal;line-height:.95}
+.brit-login .bl-tagline{margin:20px 0 0;color:#c9c3b6;font:13px/1.7 var(--l-body);max-width:360px}
+.brit-login .bl-bot{display:flex;align-items:center;justify-content:space-between;color:#8c877c;font:8px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.1em}
+.brit-login .bl-bot .dot{width:5px;height:5px;border-radius:50%;background:var(--gold-soft);display:inline-block;margin-inline-end:8px}
+
+/* ── Sign-in pane ── */
+.brit-login .bl-pane{position:relative;display:flex;align-items:center;justify-content:center;padding:48px 32px}
+.brit-login .bl-lang{position:absolute;top:26px;inset-inline-end:30px;border:1px solid var(--line);padding:8px 12px;color:var(--muted);font:8px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.08em;transition:.15s}
+.brit-login .bl-lang:hover{border-color:var(--gold-soft);color:var(--gold)}
+
+.brit-login .bl-form{width:100%;max-width:376px}
+.brit-login .bl-mobile-crest{display:none}
+@media(max-width:900px){
+  .brit-login .bl-mobile-crest{display:flex;align-items:center;gap:12px;margin-bottom:30px}
+  .brit-login .bl-mobile-crest .mark{width:44px;height:44px;flex:none;object-fit:contain}
+  .brit-login .bl-mobile-crest b{font:500 14px/1 var(--l-display);letter-spacing:.12em;text-transform:uppercase}
+}
+.brit-login .bl-kicker{color:var(--gold);font:9px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.18em;margin:0 0 16px}
+.brit-login .bl-form h2{margin:0;font:500 42px/.9 var(--l-display);text-transform:uppercase;letter-spacing:-.01em}
+.brit-login[dir=rtl] .bl-form h2{font-weight:800;letter-spacing:normal}
+.brit-login .bl-sub{margin:14px 0 0;color:var(--muted);font:12px/1.6 var(--l-body)}
+.brit-login .bl-rule{height:1px;background:linear-gradient(90deg,transparent,var(--gold-soft),transparent);margin:30px 0}
+
+.brit-login .bl-field{margin-bottom:20px}
+.brit-login .bl-field label{display:block;color:var(--muted);font:9px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.brit-login .bl-inputwrap{position:relative;display:flex;align-items:center}
+.brit-login .bl-inputwrap input{width:100%;border:1px solid var(--line);background:var(--card);padding:14px 15px;color:var(--ink);font:14px/1.2 var(--l-body);outline:none;transition:border-color .15s}
+.brit-login .bl-inputwrap input::placeholder{color:rgba(22,22,19,.34);font-family:var(--l-mono);font-size:12px}
+.brit-login .bl-inputwrap input:focus{border-color:var(--gold-soft)}
+.brit-login .bl-peek{position:absolute;inset-inline-end:12px;color:var(--muted);font:8px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.06em;padding:6px}
+.brit-login .bl-peek:hover{color:var(--gold)}
+
+.brit-login .bl-err{display:flex;align-items:center;gap:9px;border:1px solid var(--red);background:rgba(182,66,53,.07);color:var(--red);padding:11px 13px;font:10px/1.4 var(--l-mono);margin-bottom:18px}
+
+.brit-login .bl-submit{width:100%;background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold);padding:15px;font:10px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.14em;transition:.15s;display:flex;align-items:center;justify-content:center;gap:10px}
+.brit-login[dir=rtl] .bl-submit{letter-spacing:.04em}
+.brit-login .bl-submit:hover{background:var(--gold);color:var(--paper)}
+.brit-login .bl-submit:disabled{cursor:not-allowed}
+.brit-login .bl-submit .arrow{font-family:var(--l-body);font-size:14px;line-height:1}
+.brit-login[dir=rtl] .bl-submit .arrow{transform:scaleX(-1)}
+.brit-login .bl-submit .spin{width:13px;height:13px;border:2px solid rgba(22,22,19,.3);border-top-color:var(--ink);border-radius:50%;animation:bl-sp .7s linear infinite;display:none}
+.brit-login .bl-submit.loading .spin{display:inline-block}
+@keyframes bl-sp{to{transform:rotate(360deg)}}
+
+.brit-login .bl-hint{margin:26px 0 0;text-align:center;color:var(--muted);font:9px/1.5 var(--l-mono);text-transform:uppercase;letter-spacing:.06em}
