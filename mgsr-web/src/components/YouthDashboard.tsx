@@ -121,9 +121,6 @@ export default function YouthDashboard({
                   <span>{userName}.</span>
                 </h1>
               </div>
-              <button className="brit-mast-add" onClick={() => router.push('/players/add')}>
-                + {t('youth_add_prospect')}
-              </button>
             </header>
 
             {/* Signals */}

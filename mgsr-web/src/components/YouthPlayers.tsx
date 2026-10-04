@@ -216,7 +216,6 @@ export default function YouthPlayers() {
                 <h1>
                   {t('youth_room_prospects_a')} <span>{t('youth_room_prospects_b')}</span>
                 </h1>
-                <p className="brit-mast-note">{t('youth_room_source')}</p>
               </div>
               <div className="brit-mast-actions">
                 <div className="brit-view-toggle" role="tablist" aria-label="View mode">
