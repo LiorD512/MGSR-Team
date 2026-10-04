@@ -7,7 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { doc, collection, onSnapshot } from 'firebase/firestore';
 import { callMandateSigningCreate } from '@/lib/callables';
 import { db } from '@/lib/firebase';
-import AppLayout from '@/components/AppLayout';
+import BritRail from '@/components/BritRail';
 import Link from 'next/link';
 import { COUNTRIES, matchCountry } from '@/lib/countries';
 import { searchClubs, ClubSearchResult } from '@/lib/api';
@@ -287,551 +287,322 @@ export default function GenerateMandatePage() {
     .filter(Boolean)
     .join(' ') || '—';
 
+  // ── Editorial shell helper for guard states ──
+  const Shell = ({ children }: { children: React.ReactNode }) => (
+    <div className="brit-room" dir={dir} lang={isRtl ? 'he' : 'en'}>
+      <div className="brit-app">
+        <BritRail active="players" />
+        <div className="brit-main">
+          <div className="brit-mandate">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading || !user) {
     return (
-      <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className="animate-pulse text-mgsr-teal font-display">{t('loading')}</div>
+      <div className="brit-room" dir={dir} lang={isRtl ? 'he' : 'en'}>
+        <div className="brit-app">
+          <BritRail active="players" />
+          <div className="brit-main"><div className="brit-mandate"><div className="brit-md-empty">{t('loading')}</div></div></div>
+        </div>
       </div>
     );
   }
 
   if (!player) {
     return (
-      <AppLayout>
-        <div className="max-w-2xl mx-auto py-12 text-center">
-          <p className="text-mgsr-muted mb-4">{t('player_info_not_found')}</p>
-          <Link href={`/players/${id}`} className="text-mgsr-teal hover:underline">
-            {t('player_info_back_players')}
-          </Link>
-        </div>
-      </AppLayout>
+      <Shell>
+        <Link href={`/players/${id}`} className="brit-md-back">
+          <span style={{ transform: isRtl ? 'scaleX(-1)' : undefined }}>←</span> {t('player_info_back_players')}
+        </Link>
+        <div className="brit-md-empty">{t('player_info_not_found')}</div>
+      </Shell>
     );
   }
 
   if (!player.passportDetails) {
     return (
-      <AppLayout>
-        <div className="max-w-2xl mx-auto py-12 text-center">
-          <p className="text-mgsr-muted mb-4">{t('mandate_no_passport')}</p>
-          <Link href={`/players/${id}`} className="text-mgsr-teal hover:underline">
-            {t('player_info_back_players')}
-          </Link>
-        </div>
-      </AppLayout>
+      <Shell>
+        <Link href={`/players/${id}`} className="brit-md-back">
+          <span style={{ transform: isRtl ? 'scaleX(-1)' : undefined }}>←</span> {t('player_info_back_players')}
+        </Link>
+        <div className="brit-md-empty">{t('mandate_no_passport')}</div>
+      </Shell>
     );
   }
 
+
+  const agentDisplay = (a: Account | null) =>
+    a ? (isRtl ? (a.hebrewName ?? a.name) : (a.name ?? a.hebrewName)) ?? '—' : '—';
+  const agentInitials = (a: Account | null) =>
+    (agentDisplay(a) || '?').split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+
   return (
-    <AppLayout>
-      <div dir={dir} className="max-w-2xl mx-auto py-4 sm:py-8 px-4">
-        <Link
-          href={`/players/${id}`}
-          className={`inline-flex items-center gap-2 text-mgsr-teal hover:underline mb-8 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
-        >
-          <span className={isRtl ? 'rotate-180' : ''}>←</span>
-          {t('player_info_back_players')}
-        </Link>
+    <div className="brit-room" dir={dir} lang={isRtl ? 'he' : 'en'}>
+      <div className="brit-app">
+        <BritRail active="players" />
+        <div className="brit-main">
+          <header className="brit-topbar">
+            <div>
+              BRIT / <Link href="/players">{t('nav_players')}</Link> / <Link href={`/players/${id}`}>{playerName}</Link> / <strong>{t('player_info_generate_mandate')}</strong>
+            </div>
+          </header>
 
-        <h1 className="text-2xl font-display font-bold text-mgsr-text mb-1">
-          {t('player_info_generate_mandate')}
-        </h1>
-        <p className="text-mgsr-muted text-sm mb-8">{playerName}</p>
+          <div className="brit-mandate">
+            <Link href={`/players/${id}`} className="brit-md-back">
+              <span style={{ transform: isRtl ? 'scaleX(-1)' : undefined }}>←</span> {t('player_info_back_players')}
+            </Link>
 
-        {/* Step indicator - dir=rtl puts step 0 on right (start), fills correctly */}
-        <div dir={dir} className="flex gap-2 mb-8">
-          {[0, 1, 2].map((s) => (
-            <div
-              key={s}
-              className={`h-1.5 flex-1 rounded-full transition-colors ${s <= step ? 'bg-mgsr-teal' : 'bg-mgsr-border'}`}
-            />
-          ))}
-        </div>
-
-        {error && (
-          <div className="mb-4 p-4 rounded-xl bg-mgsr-red/15 border border-mgsr-red/30 text-mgsr-red text-sm">
-            {error}
-          </div>
-        )}
-
-        {step === 0 && (
-          <div className="space-y-5">
-            <h2 className="text-lg font-semibold text-mgsr-text">{t('mandate_step_agent')}</h2>
-            {agentsWithFifa.length === 0 ? (
-              <p className="text-mgsr-muted text-sm">{t('mandate_no_agents_fifa')}</p>
-            ) : (
-              <div className="space-y-3">
-                {agentsWithFifa.map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => setSelectedAgent(a)}
-                    className={`w-full p-4 rounded-xl border-2 text-start transition-all ${
-                      selectedAgent?.id === a.id
-                        ? 'border-mgsr-teal bg-mgsr-teal/15 shadow-sm'
-                        : 'border-mgsr-border hover:border-mgsr-teal/40 hover:bg-mgsr-card/50'
-                    } ${isRtl ? 'text-right' : 'text-left'}`}
-                  >
-                    <p className="font-medium text-mgsr-text">
-                      {isRtl ? a.hebrewName ?? a.name : a.name ?? a.hebrewName}
-                    </p>
-                    {a.fifaLicenseId && (
-                      <p className="text-sm text-mgsr-muted mt-1">
-                        {t('mandate_fifa_license')}: {a.fifaLicenseId}
-                      </p>
-                    )}
-                  </button>
-                ))}
+            {/* Masthead */}
+            <header className="brit-md-mast">
+              <p className="brit-md-kicker">{isRtl ? 'ייצוג / מנדט FIFA' : 'Representation / FIFA mandate'}</p>
+              <h1>{t('player_info_generate_mandate')}</h1>
+              <div className="brit-md-who">
+                <span className="av">{(playerName || '?').split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}</span>
+                {playerName} · {isRtl ? 'דרכון בתיק' : 'passport on file'}
               </div>
+            </header>
+
+            {/* Stepper */}
+            <div className="brit-md-stepper">
+              {[
+                { n: 0, b: t('mandate_step_agent'), s: isRtl ? 'אחראי' : 'In charge' },
+                { n: 1, b: t('mandate_step_validity'), s: isRtl ? 'תאריכים וליגות' : 'Dates & leagues' },
+                { n: 2, b: t('mandate_step_review'), s: isRtl ? 'הפקה וחתימה' : 'Generate & sign' },
+              ].map((st) => (
+                <div key={st.n} className={`st${step === st.n ? ' active' : step > st.n ? ' done' : ''}`}>
+                  <span className="n">{st.n + 1}</span>
+                  <div className="t"><b>{st.b}</b><small>{st.s}</small></div>
+                </div>
+              ))}
+            </div>
+
+            {error && <div className="brit-md-err">{error}</div>}
+
+            {/* STEP 0 — AGENT */}
+            {step === 0 && (
+              <section>
+                <p className="brit-md-seclabel">{t('mandate_step_agent')}</p>
+                {agentsWithFifa.length === 0 ? (
+                  <div className="brit-md-empty">{t('mandate_no_agents_fifa')}</div>
+                ) : (
+                  agentsWithFifa.map((a) => (
+                    <button
+                      key={a.id}
+                      className={`brit-md-agent${selectedAgent?.id === a.id ? ' on' : ''}`}
+                      onClick={() => setSelectedAgent(a)}
+                    >
+                      <span className="av">{agentInitials(a)}</span>
+                      <div className="info">
+                        <b>{agentDisplay(a)}</b>
+                        {a.fifaLicenseId && <span>{t('mandate_fifa_license')} · {a.fifaLicenseId}</span>}
+                      </div>
+                      <span className="rc">{selectedAgent?.id === a.id ? '✓' : ''}</span>
+                    </button>
+                  ))
+                )}
+
+                <div className="brit-md-divider" />
+
+                <div
+                  className={`brit-md-togglecard${withOriginAgent ? ' on' : ''}`}
+                  onClick={() => {
+                    const next = !withOriginAgent;
+                    setWithOriginAgent(next);
+                    if (!next) { setOriginAgentName(''); setOriginAgentUseLicense(true); setOriginAgentId(''); }
+                  }}
+                >
+                  <span className="sw"><i /></span>
+                  <div className="tc">
+                    <b>{t('mandate_with_origin_agent')}</b>
+                    <span>{t('mandate_with_origin_agent_desc')}</span>
+                  </div>
+                </div>
+
+                {withOriginAgent && (
+                  <div className="brit-md-originfields">
+                    <div className="brit-md-field">
+                      <label>{t('mandate_origin_agent_name')}</label>
+                      <input value={originAgentName} onChange={(e) => setOriginAgentName(e.target.value)} placeholder={t('mandate_origin_agent_name_hint')} />
+                    </div>
+                    <div className="brit-md-field">
+                      <label>{t('mandate_origin_agent_id_type')}</label>
+                      <div className="brit-md-seg">
+                        <button className={originAgentUseLicense ? 'on' : ''} onClick={() => { setOriginAgentUseLicense(true); setOriginAgentId(''); }}>{t('mandate_origin_fifa_license')}</button>
+                        <button className={!originAgentUseLicense ? 'on' : ''} onClick={() => { setOriginAgentUseLicense(false); setOriginAgentId(''); }}>{t('mandate_origin_passport')}</button>
+                      </div>
+                    </div>
+                    <div className="brit-md-field">
+                      <label>{originAgentUseLicense ? t('mandate_origin_license_number') : t('mandate_origin_passport_number')}</label>
+                      <input className="mono" value={originAgentId} onChange={(e) => setOriginAgentId(e.target.value)} placeholder={originAgentUseLicense ? 'XXXXXX-XXXX' : t('mandate_origin_passport_hint')} />
+                    </div>
+                  </div>
+                )}
+
+                <div className="brit-md-actions">
+                  <button
+                    className="brit-md-btn primary"
+                    disabled={(agentsWithFifa.length > 0 && !selectedAgent) || (withOriginAgent && (!originAgentName.trim() || !originAgentId.trim()))}
+                    onClick={() => setStep(1)}
+                  >
+                    {t('mandate_next')} →
+                  </button>
+                </div>
+              </section>
             )}
 
-            {/* Origin Agent Section */}
-            <div className="border-t border-mgsr-border pt-5 mt-2">
-              <label
-                className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  withOriginAgent
-                    ? 'border-mgsr-teal bg-mgsr-teal/10'
-                    : 'border-mgsr-border hover:border-mgsr-teal/40'
-                }`}
-              >
-                <div className="relative inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={withOriginAgent}
-                    onChange={(e) => {
-                      setWithOriginAgent(e.target.checked);
-                      if (!e.target.checked) {
-                        setOriginAgentName('');
-                        setOriginAgentUseLicense(true);
-                        setOriginAgentId('');
-                      }
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-mgsr-border rounded-full peer peer-checked:bg-mgsr-teal transition-colors" />
-                  <div className="absolute left-[2px] top-[2px] w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5" />
+            {/* STEP 1 — VALIDITY */}
+            {step === 1 && (
+              <section>
+                <p className="brit-md-seclabel">{t('mandate_expiry_date')}</p>
+                <div className="brit-md-datefield">
+                  <svg viewBox="0 0 24 24" fill="none" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                  <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
                 </div>
-                <div>
-                  <p className={`font-semibold text-sm ${withOriginAgent ? 'text-mgsr-teal' : 'text-mgsr-text'}`}>{t('mandate_with_origin_agent')}</p>
-                  <p className="text-xs text-mgsr-muted">{t('mandate_with_origin_agent_desc')}</p>
-                </div>
-              </label>
 
-              {withOriginAgent && (
-                <div className="mt-4 space-y-4">
-                  {/* Agent name */}
-                  <div>
-                    <label className="block text-sm font-medium text-mgsr-muted mb-2">{t('mandate_origin_agent_name')}</label>
-                    <input
-                      type="text"
-                      value={originAgentName}
-                      onChange={(e) => setOriginAgentName(e.target.value)}
-                      placeholder={t('mandate_origin_agent_name_hint')}
-                      className="w-full px-4 py-3 rounded-xl bg-mgsr-card border-2 border-mgsr-border text-mgsr-text focus:border-mgsr-teal focus:outline-none transition-colors"
-                    />
+                <p className="brit-md-seclabel" style={{ marginTop: 24 }}>{t('mandate_valid_leagues')}</p>
+                <div className={`brit-md-togglecard${isWorldWide ? ' on' : ''}`} onClick={() => setIsWorldWide((v) => !v)}>
+                  <span className="sw"><i /></span>
+                  <div className="tc"><b>{t('mandate_worldwide')}</b><span>{t('mandate_worldwide_desc')}</span></div>
+                </div>
+
+                {!isWorldWide && (
+                  <div style={{ marginTop: 14 }}>
+                    <button className="brit-md-addrow" onClick={openModal}>+ {t('mandate_add_country_league')}</button>
+                    {countryOnly.map((c) => (
+                      <div className="brit-md-leaguetag" key={`country-${c}`}>
+                        <div className="lt-nm">{c}</div>
+                        <button onClick={() => removeCountry(c)} aria-label="Remove">×</button>
+                      </div>
+                    ))}
+                    {selectedClubs.map((club) => (
+                      <div className="brit-md-leaguetag" key={`club-${club.clubName}-${club.clubCountry}`}>
+                        <div className="lt-nm">{club.clubName} <small>{isRtl ? 'מועדון' : 'club'} · {club.clubCountry}</small></div>
+                        <button onClick={() => removeClub(club)} aria-label="Remove">×</button>
+                      </div>
+                    ))}
                   </div>
+                )}
 
-                  {/* ID type toggle */}
-                  <div>
-                    <label className="block text-sm font-medium text-mgsr-muted mb-2">{t('mandate_origin_agent_id_type')}</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {[true, false].map((isLicense) => (
-                        <button
-                          key={isLicense ? 'license' : 'passport'}
-                          type="button"
-                          onClick={() => {
-                            setOriginAgentUseLicense(isLicense);
-                            setOriginAgentId('');
-                          }}
-                          className={`p-3 rounded-xl border-2 text-center text-sm font-semibold transition-all ${
-                            originAgentUseLicense === isLicense
-                              ? 'border-mgsr-teal bg-mgsr-teal/15 text-mgsr-teal'
-                              : 'border-mgsr-border text-mgsr-text hover:border-mgsr-teal/40'
-                          }`}
-                        >
-                          {isLicense ? t('mandate_origin_fifa_license') : t('mandate_origin_passport')}
-                        </button>
-                      ))}
+                <div className="brit-md-actions">
+                  <button className="brit-md-btn ghost" onClick={() => setStep(0)}>{t('mandate_back')}</button>
+                  <button className="brit-md-btn primary" disabled={!expiryDate} onClick={() => setStep(2)}>{t('mandate_next')} →</button>
+                </div>
+              </section>
+            )}
+
+            {/* STEP 2 — REVIEW */}
+            {step === 2 && (
+              <section>
+                <p className="brit-md-seclabel">{t('mandate_step_review')}</p>
+                <div className="brit-md-review">
+                  <div className="r"><label>{t('mandate_review_player')}</label><div className="v">{playerName}</div></div>
+                  <div className="r">
+                    <label>{t('mandate_review_agent')}</label>
+                    <div className="v">{agentDisplay(selectedAgent)}{selectedAgent?.fifaLicenseId && <small>FIFA {selectedAgent.fifaLicenseId}</small>}</div>
+                  </div>
+                  {withOriginAgent && originAgentName.trim() && (
+                    <div className="r">
+                      <label>{t('mandate_origin_agent_title')}</label>
+                      <div className="v">{originAgentName}<small>{originAgentUseLicense ? t('mandate_review_fifa_id') : t('mandate_origin_passport')}: {originAgentId}</small></div>
                     </div>
-                  </div>
-
-                  {/* ID number */}
-                  <div>
-                    <label className="block text-sm font-medium text-mgsr-muted mb-2">
-                      {originAgentUseLicense ? t('mandate_origin_license_number') : t('mandate_origin_passport_number')}
-                    </label>
-                    <input
-                      type="text"
-                      value={originAgentId}
-                      onChange={(e) => setOriginAgentId(e.target.value)}
-                      placeholder={originAgentUseLicense ? 'XXXXXX-XXXX' : t('mandate_origin_passport_hint')}
-                      className="w-full px-4 py-3 rounded-xl bg-mgsr-card border-2 border-mgsr-border text-mgsr-text focus:border-mgsr-teal focus:outline-none transition-colors font-mono"
-                    />
-                  </div>
+                  )}
+                  <div className="r"><label>{t('mandate_expiry_date')}</label><div className="v">{new Date(expiryDate).toLocaleDateString('en-GB')}</div></div>
+                  {validLeagues.length > 0 && (
+                    <div className="r"><label>{t('mandate_valid_leagues')}</label><div className="v">{validLeagues.join(', ')}</div></div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {step === 1 && (
-          <div className="space-y-6">
-            <h2 className="text-lg font-semibold text-mgsr-text">{t('mandate_step_validity')}</h2>
-
-            <div>
-              <label className="block text-sm font-medium text-mgsr-muted mb-2">{t('mandate_expiry_date')}</label>
-              <div className="relative rounded-xl bg-mgsr-card border-2 border-mgsr-border focus-within:border-mgsr-teal transition-colors overflow-hidden">
-                <div
-                  className={`absolute inset-y-0 flex items-center pointer-events-none z-10 ${isRtl ? 'right-4 left-auto' : 'left-4 right-auto'}`}
-                  aria-hidden
-                >
-                  <svg className="w-5 h-5 text-mgsr-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+                <div className="brit-md-actions">
+                  <button className="brit-md-btn ghost" onClick={() => setStep(1)}>{t('mandate_back')}</button>
+                  <button className="brit-md-btn outline" disabled={generating || creatingSigning} onClick={handleCreateSigning}>
+                    {creatingSigning ? '…' : `↗ ${t('mandate_send_for_signing')}`}
+                  </button>
+                  <button className="brit-md-btn primary" disabled={generating || creatingSigning} onClick={handleGenerate}>
+                    {generating ? '…' : `◈ ${t('mandate_generate_pdf')}`}
+                  </button>
                 </div>
-                <input
-                  type="date"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  className={`w-full py-3.5 bg-transparent text-mgsr-text focus:outline-none ${isRtl ? 'pl-4 pr-12 text-right' : 'pl-12 pr-4'}`}
-                />
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-mgsr-muted mb-2">{t('mandate_valid_leagues')}</label>
-
-              {/* WorldWide checkbox */}
-              <label
-                className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all mb-3 ${
-                  isWorldWide
-                    ? 'border-mgsr-teal bg-mgsr-teal/10'
-                    : 'border-mgsr-border hover:border-mgsr-teal/40'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={isWorldWide}
-                  onChange={(e) => setIsWorldWide(e.target.checked)}
-                  className="w-5 h-5 accent-[#39d2c0] rounded"
-                />
-                <div>
-                  <p className={`font-semibold text-sm ${isWorldWide ? 'text-mgsr-teal' : 'text-mgsr-text'}`}>{t('mandate_worldwide')}</p>
-                  <p className="text-xs text-mgsr-muted">{t('mandate_worldwide_desc')}</p>
-                </div>
-              </label>
-
-              {!isWorldWide && (
-                <>
-              <button
-                type="button"
-                onClick={openModal}
-                className={`w-full py-3 px-4 rounded-xl border-2 border-dashed border-mgsr-teal/50 text-mgsr-teal hover:border-mgsr-teal hover:bg-mgsr-teal/10 transition-all flex items-center justify-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
-              >
-                <span className="text-lg">+</span>
-                {t('mandate_add_country_league')}
-              </button>
-
-              {(countryOnly.length > 0 || selectedClubs.length > 0) && (
-                <div className="mt-4 space-y-2">
-                  {countryOnly.map((c) => (
-                    <div
-                      key={`country-${c}`}
-                      className="flex items-center justify-between gap-2 p-3 rounded-xl bg-mgsr-card border border-mgsr-border"
-                    >
-                      <span className="text-mgsr-text text-sm font-medium">{c}</span>
+                {signingUrl && (
+                  <div className="brit-md-signbox">
+                    <h4>{t('mandate_signing_link_created')}</h4>
+                    <p>{t('mandate_signing_link_desc')}</p>
+                    <div className="copy">
+                      <input readOnly value={signingUrl} />
                       <button
-                        type="button"
-                        onClick={() => removeCountry(c)}
-                        className="p-1.5 rounded-lg text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10 transition-colors"
-                        aria-label="Remove"
+                        onClick={() => { navigator.clipboard.writeText(signingUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
                       >
-                        ×
+                        {copied ? `✓ ${t('mandate_link_copied')}` : t('mandate_copy_link')}
                       </button>
                     </div>
-                  ))}
-                  {selectedClubs.map((club) => (
-                    <div
-                      key={`club-${club.clubName}-${club.clubCountry}`}
-                      className="flex items-center justify-between gap-2 p-3 rounded-xl bg-mgsr-card border border-mgsr-border"
-                    >
-                      <span className="text-mgsr-text text-sm">{club.clubName} — {club.clubCountry}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeClub(club)}
-                        className="p-1.5 rounded-lg text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10 transition-colors"
-                        aria-label="Remove"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-                </>
-              )}
-            </div>
+                    <a href={signingUrl} target="_blank" rel="noopener noreferrer" className="openlink">{t('mandate_open_signing_page')} ↗</a>
+                  </div>
+                )}
+              </section>
+            )}
           </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-5">
-            <h2 className="text-lg font-semibold text-mgsr-text">{t('mandate_step_review')}</h2>
-            <div className="p-6 rounded-2xl bg-mgsr-card border-2 border-mgsr-border space-y-5">
-              <div>
-                <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_review_player')}</p>
-                <p className="text-mgsr-text font-medium">{playerName}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_review_agent')}</p>
-                <p className="text-mgsr-text font-medium">
-                  {isRtl ? selectedAgent?.hebrewName ?? selectedAgent?.name : selectedAgent?.name ?? selectedAgent?.hebrewName ?? '—'}
-                </p>
-                {selectedAgent?.fifaLicenseId && (
-                  <p className="text-sm text-mgsr-muted mt-0.5">{t('mandate_review_fifa_id')}: {selectedAgent.fifaLicenseId}</p>
-                )}
-              </div>
-              {withOriginAgent && originAgentName.trim() && (
-                <div>
-                  <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_origin_agent_title')}</p>
-                  <p className="text-mgsr-text font-medium">{originAgentName}</p>
-                  <p className="text-sm text-mgsr-muted mt-0.5">
-                    {originAgentUseLicense ? t('mandate_review_fifa_id') : t('mandate_origin_passport')}: {originAgentId}
-                  </p>
-                </div>
-              )}
-              <div>
-                <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_expiry_date')}</p>
-                <p className="text-mgsr-text font-medium">{new Date(expiryDate).toLocaleDateString('en-GB')}</p>
-              </div>
-              {validLeagues.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_valid_leagues')}</p>
-                  <p className="text-mgsr-text text-sm leading-relaxed">{validLeagues.join(', ')}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Action buttons: primary on "end" (right in LTR, right in RTL via logical props) */}
-        <div dir={dir} className={`flex gap-3 mt-8 ${isRtl ? 'justify-start flex-row-reverse' : 'justify-end'}`}>
-          {step > 0 && (
-            <button
-              onClick={() => setStep(step - 1)}
-              className="px-6 py-3 rounded-xl border-2 border-mgsr-border text-mgsr-muted hover:bg-mgsr-card hover:text-mgsr-text transition-colors"
-            >
-              {t('mandate_back')}
-            </button>
-          )}
-          {step < 2 ? (
-            <button
-              onClick={() => {
-                if (step === 0 && agentsWithFifa.length > 0 && !selectedAgent) return;
-                if (step === 0 && withOriginAgent && (!originAgentName.trim() || !originAgentId.trim())) return;
-                if (step === 1 && !expiryDate) return;
-                setStep(step + 1);
-              }}
-              disabled={
-                (step === 0 && agentsWithFifa.length > 0 && !selectedAgent) ||
-                (step === 0 && withOriginAgent && (!originAgentName.trim() || !originAgentId.trim())) ||
-                (step === 1 && !expiryDate)
-              }
-              className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {t('mandate_next')}
-            </button>
-          ) : (
-            <div className="flex gap-3 flex-wrap">
-              <button
-                onClick={handleGenerate}
-                disabled={generating || creatingSigning}
-                className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 flex items-center gap-2"
-              >
-                {generating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-mgsr-dark border-t-transparent rounded-full animate-spin" />
-                    {t('mandate_generating')}
-                  </>
-                ) : (
-                  t('mandate_generate_pdf')
-                )}
-              </button>
-              <button
-                onClick={handleCreateSigning}
-                disabled={generating || creatingSigning}
-                className="px-6 py-3 rounded-xl border-2 border-mgsr-teal text-mgsr-teal font-semibold hover:bg-mgsr-teal/10 transition disabled:opacity-50 flex items-center gap-2"
-              >
-                {creatingSigning ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
-                    {t('mandate_creating_signing')}
-                  </>
-                ) : (
-                  t('mandate_send_for_signing')
-                )}
-              </button>
-            </div>
-          )}
         </div>
-
-        {/* Signing URL */}
-        {signingUrl && (
-          <div className="mt-4 p-4 rounded-xl bg-mgsr-teal/10 border border-mgsr-teal/30">
-            <p className="text-mgsr-text text-sm font-medium mb-2">{t('mandate_signing_link_created')}</p>
-            <p className="text-mgsr-muted text-xs mb-3">
-              {t('mandate_signing_link_desc')}
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={signingUrl}
-                className="flex-1 px-3 py-2 rounded-lg bg-mgsr-card border border-mgsr-border text-mgsr-text text-sm font-mono truncate"
-              />
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(signingUrl);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap ${copied ? 'bg-green-500 text-white' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
-              >
-                {copied ? '✓ ' + t('mandate_link_copied') : t('mandate_copy_link')}
-              </button>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <a
-                href={signingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-mgsr-teal text-sm hover:underline"
-              >
-                {t('mandate_open_signing_page')}
-              </a>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Add country/league modal */}
+      {/* Add country/club territory modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={closeModal}>
-          <div
-            dir={dir}
-            className="bg-mgsr-dark border-2 border-mgsr-border rounded-2xl max-w-md w-full max-h-[90vh] overflow-hidden shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-5 border-b border-mgsr-border">
-              <h3 className="text-lg font-semibold text-mgsr-text">{t('mandate_add_country_league')}</h3>
-            </div>
-            <div className="p-5 overflow-y-auto max-h-[calc(90vh-140px)] space-y-4">
+        <div className="brit-backdrop open" onClick={closeModal}>
+          <div className="brit-modal" dir={dir} onClick={(e) => e.stopPropagation()} style={{ width: 'min(480px,100%)', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <button type="button" className="brit-close" onClick={closeModal} aria-label={t('cancel')}>×</button>
+            <p className="brit-modal-kicker">{isRtl ? 'הוסף טריטוריה' : 'Add territory'}</p>
+            <h2 style={{ fontSize: 30 }}>{t('mandate_add_country_league')}</h2>
+
+            <div style={{ overflowY: 'auto', marginTop: 18 }}>
               {!modalSelectedCountry ? (
                 <>
-                  <input
-                    type="text"
-                    placeholder={t('mandate_search_country')}
-                    value={modalCountryQuery}
-                    onChange={(e) => setModalCountryQuery(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-mgsr-card border-2 border-mgsr-border text-mgsr-text placeholder:text-mgsr-muted focus:border-mgsr-teal focus:outline-none"
-                    autoFocus
-                  />
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="brit-md-field">
+                    <label>{t('mandate_search_country')}</label>
+                    <input autoFocus value={modalCountryQuery} onChange={(e) => setModalCountryQuery(e.target.value)} placeholder={t('mandate_search_country')} />
+                  </div>
+                  <div className="brit-md-countrylist">
                     {filteredCountries.slice(0, 50).map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => {
-                          setModalSelectedCountry(c);
-                          setModalCountryQuery('');
-                        }}
-                        className={`w-full p-3 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text text-start hover:border-mgsr-teal/50 transition-colors ${isRtl ? 'text-right' : 'text-left'}`}
-                      >
-                        {c}
-                      </button>
+                      <button key={c} className="brit-md-countryopt" onClick={() => { setModalSelectedCountry(c); setModalCountryQuery(''); }}>{c}</button>
                     ))}
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="p-3 rounded-xl bg-mgsr-teal/10 border border-mgsr-teal/30 flex items-center justify-between gap-2">
-                    <span className="font-medium text-mgsr-text">{modalSelectedCountry}</span>
-                    <button
-                      type="button"
-                      onClick={() => setModalSelectedCountry(null)}
-                      className="text-sm text-mgsr-teal hover:underline"
-                    >
-                      {t('mandate_change_country')}
-                    </button>
+                  <div className="brit-md-selcountry">
+                    <span>{modalSelectedCountry}</span>
+                    <button onClick={() => setModalSelectedCountry(null)}>{t('mandate_change_country')}</button>
                   </div>
-
-                  <label className={`flex items-center justify-between gap-3 cursor-pointer p-3 rounded-xl border-2 transition-colors ${
-                    modalEntireCountry ? 'border-mgsr-teal bg-mgsr-teal/10' : 'border-mgsr-border'
-                  }`}>
-                    <span className="text-mgsr-text text-sm">{t('mandate_entire_country')}</span>
-                    <input
-                      type="checkbox"
-                      checked={modalEntireCountry}
-                      onChange={(e) => setModalEntireCountry(e.target.checked)}
-                      className="rounded border-mgsr-border text-mgsr-teal focus:ring-mgsr-teal"
-                    />
-                  </label>
+                  <div className={`brit-md-togglecard${modalEntireCountry ? ' on' : ''}`} onClick={() => setModalEntireCountry((v) => !v)} style={{ marginTop: 14 }}>
+                    <span className="sw"><i /></span>
+                    <div className="tc"><b>{t('mandate_entire_country')}</b></div>
+                  </div>
 
                   {!modalEntireCountry && (
                     <>
-                      <input
-                        type="text"
-                        placeholder={t('mandate_sheet_search_clubs').replace('%s', modalSelectedCountry)}
-                        value={modalClubQuery}
-                        onChange={(e) => setModalClubQuery(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl bg-mgsr-card border-2 border-mgsr-border text-mgsr-text placeholder:text-mgsr-muted focus:border-mgsr-teal focus:outline-none"
-                      />
-                      {modalSearchingClubs && (
-                        <div className="flex justify-center py-2">
-                          <div className="w-6 h-6 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
-                        </div>
-                      )}
+                      <div className="brit-md-field" style={{ marginTop: 14 }}>
+                        <label>{t('mandate_valid_leagues')}</label>
+                        <input value={modalClubQuery} onChange={(e) => setModalClubQuery(e.target.value)} placeholder={t('mandate_sheet_search_clubs').replace('%s', modalSelectedCountry)} />
+                      </div>
+                      {modalSearchingClubs && <div className="brit-md-empty">…</div>}
                       {modalClubResults.length > 0 && (
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                        <div className="brit-md-countrylist">
                           {modalClubResults.map((club) => (
-                            <button
-                              key={`${club.clubName}-${club.clubCountry}`}
-                              type="button"
-                              onClick={() => addClubToPending(club)}
-                              className={`w-full p-3 rounded-xl bg-mgsr-card border border-mgsr-border flex items-center gap-3 hover:border-mgsr-teal/50 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
-                            >
-                              {club.clubLogo && (
-                                <img src={club.clubLogo} alt="" className="w-8 h-8 object-contain rounded" />
-                              )}
-                              <span className="text-mgsr-text text-sm flex-1 text-start">{club.clubName}</span>
+                            <button key={`${club.clubName}-${club.clubCountry}`} className="brit-md-countryopt" onClick={() => addClubToPending(club)}>
+                              {club.clubLogo && <img src={club.clubLogo} alt="" style={{ width: 22, height: 22, objectFit: 'contain', marginInlineEnd: 10, verticalAlign: 'middle' }} />}
+                              {club.clubName}
                             </button>
                           ))}
                         </div>
                       )}
                       {modalPendingClubs.length > 0 && (
-                        <div>
-                          <p className="text-xs text-mgsr-muted mb-2">
-                            {t('mandate_selected_clubs').replace('%d', String(modalPendingClubs.length))}
-                          </p>
-                          <div className="space-y-2">
-                            {modalPendingClubs.map((club) => (
-                              <div
-                                key={`${club.clubName}-${club.clubCountry}`}
-                                className={`flex items-center justify-between gap-2 p-3 rounded-xl bg-mgsr-card border border-mgsr-border ${isRtl ? 'flex-row-reverse' : ''}`}
-                              >
-                                {club.clubLogo && (
-                                  <img src={club.clubLogo} alt="" className="w-6 h-6 object-contain rounded" />
-                                )}
-                                <span className="text-mgsr-text text-sm flex-1 text-start">{club.clubName}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => removeClubFromPending(club)}
-                                  className="p-1.5 rounded-lg text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10"
-                                  aria-label="Remove"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
+                        <div style={{ marginTop: 12 }}>
+                          <p className="brit-md-seclabel">{t('mandate_selected_clubs').replace('%d', String(modalPendingClubs.length))}</p>
+                          {modalPendingClubs.map((club) => (
+                            <div className="brit-md-leaguetag" key={`${club.clubName}-${club.clubCountry}`}>
+                              <div className="lt-nm">{club.clubName}</div>
+                              <button onClick={() => removeClubFromPending(club)} aria-label="Remove">×</button>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </>
@@ -839,19 +610,14 @@ export default function GenerateMandatePage() {
                 </>
               )}
             </div>
-            <div className="p-5 border-t border-mgsr-border">
-              <button
-                type="button"
-                onClick={confirmModalSelection}
-                disabled={!canAddInModal}
-                className="w-full py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('mandate_sheet_add_button')}
-              </button>
+
+            <div className="brit-modal-actions" style={{ marginTop: 20 }}>
+              <button className="brit-modal-action" disabled={!canAddInModal} onClick={confirmModalSelection}>{t('mandate_sheet_add_button')}</button>
+              <button className="brit-modal-action brit-modal-action-secondary" onClick={closeModal}>{t('cancel')}</button>
             </div>
           </div>
         </div>
       )}
-    </AppLayout>
+    </div>
   );
 }

@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BRIT SPORT GROUP — The Executive Suite</title>
+  
+  <!-- Premium High-End Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Heebo:wght@300;400;500;700;800;900&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@500;700;800&display=swap" rel="stylesheet" />
+  
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            syne: ['Syne', 'sans-serif'],
+            display: ['"Space Grotesk"', 'Heebo', 'sans-serif'],
+            sans: ['"Plus Jakarta Sans"', 'Heebo', 'sans-serif'],
+            serif: ['Cinzel', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+            hebrew: ['Heebo', 'sans-serif']
+          },
+          colors: {
+            gold: {
+              300: '#F5E2B3',
+              400: '#E5C478',
+              500: '#D4AF37',
+              600: '#B8860B',
+              700: '#8A6508'
+            },
+            pitch: {
+              400: '#00FF88',
+              500: '#00E575',
+              glow: 'rgba(0, 255, 136, 0.25)'
+            },
+            cyber: {
+              cyan: '#00F0FF',
+              purple: '#8A2BE2',
+              blue: '#1E40AF'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Global Resets & Theme Tokens */
+    :root {
+      --bg-dark: #050608;
+      --gold-primary: #D4AF37;
+      --gold-gradient: linear-gradient(135deg, #FFF0C2 0%, #D4AF37 50%, #8A6508 100%);
+      --pitch-neon: #00FF88;
+      --panel-glass: rgba(14, 18, 25, 0.7);
+      --panel-border: rgba(212, 175, 55, 0.15);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background-color: var(--bg-dark);
+      color: #E2E8F0;
+      font-family: 'Plus Jakarta Sans', 'Heebo', sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* Film Grain Noise Overlay */
+    .grain-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 99;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    /* Metallic Gold Text */
+    .text-gold-metallic {
+      background: linear-gradient(135deg, #FFF5D6 0%, #E2BE66 35%, #C2952E 70%, #F5DE94 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .text-pitch-metallic {
+      background: linear-gradient(135deg, #A7FFD8 0%, #00FF88 50%, #00B359 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Luxury Glass Panel */
+    .luxury-panel {
+      background: linear-gradient(145deg, rgba(19, 24, 34, 0.75) 0%, rgba(9, 12, 18, 0.85) 100%);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+
+    .luxury-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.4), transparent);
+    }
+
+    .luxury-panel-kinetic {
+      background: linear-gradient(145deg, rgba(8, 18, 30, 0.8) 0%, rgba(4, 9, 16, 0.9) 100%);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(0, 255, 136, 0.18);
+      box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(0, 255, 136, 0.2);
+    }
+
+    .luxury-panel-kinetic::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.6), transparent);
+    }
+
+    .luxury-panel-editorial {
+      background: #0C0D11;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+
+    /* Radar Pulse & Sweep Animation */
+    @keyframes radar-sweep {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .radar-beam {
+      transform-origin: center center;
+      animation: radar-sweep 4s linear infinite;
+    }
+
+    /* Ambient Pulsing Glow */
+    @keyframes glow-pulse {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.08); }
+    }
+    .ambient-glow {
+      animation: glow-pulse 6s ease-in-out infinite;
+    }
+
+    /* Tactical 3D Field Coordinates */
+    .tactical-pitch {
+      background: 
+        radial-gradient(ellipse at center, rgba(0, 255, 136, 0.08) 0%, transparent 70%),
+        linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 100% 100%, 36px 36px, 36px 36px;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #050608; }
+    ::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.25); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(212, 175, 55, 0.6); }
+
+    /* RTL Typography Override */
+    [dir="rtl"] { font-family: 'Heebo', sans-serif; }
+    [dir="rtl"] .font-syne, [dir="rtl"] .font-serif, [dir="rtl"] .font-display { font-family: 'Heebo', sans-serif; font-weight: 800; }
+  </style>
+</head>
+<body class="selection:bg-gold-500/30 selection:text-gold-300">
+
+  <!-- Grain Overlay -->
+  <div class="grain-overlay"></div>
+
+  <!-- Ambient Dynamic Lighting Canvas -->
+  <div id="ambient-lights" class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+    <div class="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-gold-500/15 via-amber-600/5 to-transparent blur-[140px] ambient-glow"></div>
+    <div class="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full bg-gradient-to-bl from-pitch-400/10 via-emerald-600/5 to-transparent blur-[130px] ambient-glow" style="animation-delay: -3s;"></div>
+    <div class="absolute -bottom-40 left-1/3 w-[700px] h-[500px] rounded-full bg-gradient-to-tr from-cyan-500/10 via-blue-700/5 to-transparent blur-[150px] ambient-glow" style="animation-delay: -1.5s;"></div>
+  </div>
+
+  <!-- =========================================================
+       MASTHEAD / EXECUTIVE FLIGHT BAR
+       ========================================================= -->
+  <header class="relative z-50 border-b border-white/10 bg-[#050608]/85 backdrop-blur-2xl px-4 lg:px-8 py-3.5">
+    <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      
+      <!-- Brand & Platform Pill -->
+      <div class="flex items-center gap-3.5 w-full md:w-auto justify-between md:justify-start">
+        <div class="flex items-center gap-3">
+          <!-- Monogram Crest -->
+          <div class="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-gold-600 via-gold-400 to-amber-200 p-[1.5px] shadow-[0_0_20px_rgba(212,175,55,0.3)]">
+            <div class="w-full h-full bg-[#080A0E] rounded-[10px] flex items-center justify-center">
+              <span class="font-serif font-black text-gold-400 text-sm tracking-wider">BSG</span>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-syne font-extrabold text-white text-base tracking-tight">BRIT SPORT GROUP</span>
+              <span class="px-2 py-0.5 text-[9px] font-mono font-bold tracking-widest uppercase rounded bg-gold-500/15 text-gold-300 border border-gold-500/30">
+                MEN PLATFORM
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400 font-mono flex items-center gap-2">
+              <span>FIFA MATCH AGENT LICENSED</span>
+              <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+              <span class="text-pitch-400">MARKET NODE 01 ACTIVE</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: 3 REVOLUTIONARY DESIGN THEMES -->
+      <div class="flex items-center p-1 bg-[#0E131C] border border-white/10 rounded-2xl w-full md:w-auto justify-center overflow-x-auto shadow-inner">
+        
+        <button id="theme-btn-1" onclick="switchWorld(1)" class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 bg-gradient-to-r from-gold-500/20 via-gold-500/30 to-amber-500/20 text-gold-300 border border-gold-500/40 shadow-lg">
+          <span class="w-2 h-2 rounded-full bg-gold-400 animate-pulse"></span>
+          <span>1. MONOLITH GOLD</span>
+          <span class="text-[9px] uppercase px-1.5 py-0.2 rounded bg-gold-500/30 font-mono">Mayfair Desk</span>
+        </button>
+
+        <button id="theme-btn-2" onclick="switchWorld(2)" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition-all duration-300 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+          <span>2. NEO-PITCH KINETIC</span>
+          <span class="text-[9px] uppercase px-1.5 py-0.2 rounded bg-white/10 font-mono">Telemetry</span>
+        </button>
+
+        <button id="theme-btn-3" onclick="switchWorld(3)" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition-all duration-300 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+          <span>3. AVANT-GARDE EDITORIAL</span>
+          <span class="text-[9px] uppercase px-1.5 py-0.2 rounded bg-white/10 font-mono">Bespoke</span>
+        </button>
+
+      </div>
+
+      <!-- Right: Global Timezones + Language Toggle -->
+      <div class="flex items-center gap-3">
+        <!-- Live Clocks -->
+        <div class="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-[#0E131C] border border-white/10 font-mono text-[11px] text-slate-300">
+          <div><span class="text-slate-500">TLV</span> <strong id="clock-tlv" class="text-white">14:45</strong></div>
+          <span class="text-slate-700">|</span>
+          <div><span class="text-slate-500">LON</span> <strong id="clock-lon" class="text-white">12:45</strong></div>
+          <span class="text-slate-700">|</span>
+          <div><span class="text-slate-500">NYC</span> <strong id="clock-nyc" class="text-white">07:45</strong></div>
+        </div>
+
+        <!-- Language Switcher -->
+        <button onclick="toggleLang()" id="lang-btn" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-200 transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gold-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span id="lang-label">עברית (RTL)</span>
+        </button>
+
+        <!-- Command Palette Trigger -->
+        <button onclick="triggerCmd()" class="px-3 py-1.5 rounded-xl bg-gold-500/10 hover:bg-gold-500/20 border border-gold-500/30 text-gold-300 text-xs font-mono font-bold flex items-center gap-1.5 shadow-sm">
+          <span>⌘K Instant Radar</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- =========================================================
+       MAIN STAGE CONTAINER
+       ========================================================= -->
+  <main class="relative z-10 max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+
+    <!-- =======================================================
+         WORLD 1: MONOLITH GOLD (MAYFAIR PRIVATE CLIENT SUITE)
+         ======================================================= -->
+    <div id="world-1" class="space-y-8 transition-all duration-500">
+      
+      <!-- HERO MASTER SUITE: ULTRA-LUXURY EXECUTIVE PODIUM -->
+      <div class="luxury-panel rounded-3xl p-6 sm:p-8 lg:p-10 relative overflow-hidden">
+        
+        <!-- Background Architectural Line Art -->
+        <div class="absolute right-0 top-0 bottom-0 w-1/2 opacity-10 pointer-events-none tactical-pitch"></div>
+
+        <div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          
+          <!-- Left 7 Cols: Greeting & Financial Sovereign Numbers -->
+          <div class="lg:col-span-7 space-y-4">
+            
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold-500/10 border border-gold-500/30 text-gold-300 text-xs font-mono">
+              <span class="w-2 h-2 rounded-full bg-pitch-400 animate-ping"></span>
+              <span class="i18n-market-open">TRANSFERMARKT VERIFIED LIVE VALUATION ENGINE</span>
+            </div>
+
+            <div>
+              <h1 class="text-3xl sm:text-5xl lg:text-6xl font-syne font-extrabold tracking-tight text-white leading-none">
+                <span class="i18n-salute">Good afternoon</span>, <br />
+                <span class="text-gold-metallic">Lior Dahan</span>
+              </h1>
+              <p class="text-slate-400 text-sm sm:text-base mt-3 max-w-xl leading-relaxed i18n-hero-desc">
+                Brit Sport Group Private Suite. Total active squad capitalization, 30-day mandate expiry surveillance, and immediate deal sign-offs.
+              </p>
+            </div>
+
+            <!-- Big Currency Pillar -->
+            <div class="pt-4 flex flex-wrap items-baseline gap-4 sm:gap-8">
+              <div>
+                <span class="text-xs font-mono uppercase tracking-widest text-slate-500 block i18n-gross-val">Gross Squad Portfolio</span>
+                <div class="text-4xl sm:text-6xl font-extrabold font-syne text-white tracking-tight flex items-baseline gap-2 mt-1">
+                  <span class="text-gold-400 font-serif">€</span>48,550,000
+                </div>
+                <span class="text-xs text-pitch-400 font-mono mt-1 inline-flex items-center gap-1 font-semibold">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                  +€3.40M (+7.5%) YTD Capitalization
+                </span>
+              </div>
+
+              <div class="h-12 w-px bg-white/10 hidden sm:block"></div>
+
+              <div>
+                <span class="text-xs font-mono uppercase tracking-widest text-slate-500 block i18n-mandate-health">Mandate Protection</span>
+                <div class="text-3xl sm:text-4xl font-extrabold font-mono text-white mt-1">
+                  88.1%
+                </div>
+                <span class="text-xs text-amber-400 font-mono mt-1 inline-flex items-center gap-1">
+                  ⚠️ 3 Expiring in &lt;30d
+                </span>
+              </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="pt-4 flex flex-wrap gap-3">
+              <button onclick="triggerToast('Opening New Club Mandate Form...')" class="px-5 py-3 rounded-2xl bg-gradient-to-r from-gold-400 via-gold-500 to-amber-600 text-black font-bold text-xs uppercase tracking-wider hover:brightness-110 shadow-[0_0_30px_rgba(212,175,55,0.4)] transition transform active:scale-95 flex items-center gap-2">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span class="i18n-create-req">New Club Request</span>
+              </button>
+
+              <button onclick="triggerToast('Generating Executive PDF Briefing...')" class="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-xs transition flex items-center gap-2">
+                <svg class="w-4 h-4 text-gold-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                <span>Export Dossier</span>
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Right 5 Cols: Live Circular Transfer Radar Sweep & Window Countdown -->
+          <div class="lg:col-span-5 flex flex-col items-center justify-center p-6 rounded-2xl bg-[#090D14]/80 border border-gold-500/20 relative shadow-2xl">
+            
+            <!-- Radar Title -->
+            <div class="w-full flex items-center justify-between pb-3 border-b border-white/10">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+                <span class="text-xs font-mono font-bold uppercase tracking-wider text-white">Israel Transfer Deadline</span>
+              </div>
+              <span class="text-xs font-mono font-bold text-red-400 bg-red-500/15 px-2 py-0.5 rounded border border-red-500/30">CLOSING SOON</span>
+            </div>
+
+            <!-- Radar Dial Graphic with SVG Animation -->
+            <div class="relative w-48 h-48 my-4 flex items-center justify-center">
+              
+              <!-- Radar Circles -->
+              <svg class="w-full h-full" viewBox="0 0 200 200">
+                <circle cx="100" cy="100" r="90" fill="none" stroke="rgba(212,175,55,0.15)" stroke-width="1" />
+                <circle cx="100" cy="100" r="60" fill="none" stroke="rgba(212,175,55,0.25)" stroke-dasharray="3 3" />
+                <circle cx="100" cy="100" r="30" fill="none" stroke="rgba(212,175,55,0.35)" />
+                <line x1="10" y1="100" x2="190" y2="100" stroke="rgba(255,255,255,0.08)" />
+                <line x1="100" y1="10" x2="100" y2="190" stroke="rgba(255,255,255,0.08)" />
+
+                <!-- Rotating Radar Beam -->
+                <g class="radar-beam">
+                  <path d="M 100 100 L 190 100 A 90 90 0 0 0 100 10 Z" fill="url(#radar-grad)" opacity="0.4" />
+                </g>
+
+                <defs>
+                  <radialGradient id="radar-grad" cx="100" cy="100" r="90" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#D4AF37" stop-opacity="0" />
+                    <stop offset="100%" stop-color="#D4AF37" stop-opacity="0.8" />
+                  </radialGradient>
+                </defs>
+
+                <!-- Ping Dots representing active negotiations -->
+                <circle cx="145" cy="75" r="4" fill="#00FF88" class="animate-pulse" />
+                <circle cx="65" cy="130" r="3" fill="#D4AF37" />
+                <circle cx="130" cy="140" r="4" fill="#EF4444" class="animate-ping" />
+              </svg>
+
+              <!-- Center Big Days Left -->
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                <span class="text-4xl font-extrabold font-mono text-white tracking-tight">6<span class="text-xl text-red-400">d</span></span>
+                <span class="text-[10px] font-mono uppercase tracking-widest text-slate-400">14h Remaining</span>
+              </div>
+
+            </div>
+
+            <!-- Urgent Dialogue Strip -->
+            <div class="w-full grid grid-cols-2 gap-2 text-center text-xs">
+              <div class="p-2 rounded-xl bg-black/40 border border-white/5">
+                <span class="text-[10px] text-slate-400 font-mono">Ligat Ha'al Contacts</span>
+                <p class="font-bold text-white font-mono mt-0.5">14 Directors</p>
+              </div>
+              <div class="p-2 rounded-xl bg-black/40 border border-white/5">
+                <span class="text-[10px] text-slate-400 font-mono">Active Matches</span>
+                <p class="font-bold text-pitch-400 font-mono mt-0.5">6 Open Dialogues</p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- =======================================================
+           ROW 2: THE DEAL COMMAND MATRIX & TOP TIER SQUAD SPOTLIGHT
+           ======================================================= -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- LEFT 7 COLS: URGENT ACTION DESK (TRANSFERS + MANDATE ALERTS) -->
+        <div class="lg:col-span-7 space-y-6">
+          
+          <!-- Box A: Pending Agent Transfers & Countersigns -->
+          <div class="luxury-panel rounded-3xl p-6">
+            <div class="flex items-center justify-between mb-5">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold">
+                  ⚡
+                </div>
+                <div>
+                  <h3 class="text-base font-bold font-syne text-white i18n-deal-pipe">Deal Pipeline & Transfer Sign-Offs</h3>
+                  <p class="text-xs text-slate-400">Delegated representation requests awaiting your authorization</p>
+                </div>
+              </div>
+              <span class="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                2 PENDING
+              </span>
+            </div>
+
+            <div class="space-y-3">
+              
+              <!-- Deal 1 -->
+              <div class="p-4 rounded-2xl bg-[#090D14] border border-white/10 hover:border-gold-500/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
+                <div class="flex items-center gap-3.5">
+                  <div class="relative w-12 h-12 rounded-xl overflow-hidden border border-gold-500/30 shadow-md shrink-0">
+                    <img src="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=120&auto=format&fit=crop&q=80" class="w-full h-full object-cover group-hover:scale-110 transition duration-500" alt="Player" />
+                    <span class="absolute bottom-0 right-0 bg-gold-500 text-black text-[9px] font-bold px-1 font-mono">RW</span>
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <h4 class="text-sm font-bold text-white group-hover:text-gold-300 transition">Omer Atzili</h4>
+                      <span class="text-xs text-slate-400">• 31y</span>
+                      <span class="text-xs font-bold font-mono text-pitch-400">€1.80M</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                      Assignee: <span class="text-slate-200">Lior Dahan</span> → <span class="text-gold-400 font-semibold">Avi Nimni</span> (Al Ain Transfer)
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 self-end sm:self-auto">
+                  <button onclick="authorizeDeal('Omer Atzili')" class="px-3.5 py-2 rounded-xl bg-pitch-500/20 hover:bg-pitch-500/30 text-pitch-400 border border-pitch-500/40 text-xs font-bold font-mono transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Authorize</span>
+                  </button>
+                  <button onclick="previewPlayer('Omer Atzili', 'Al Ain / Target', '€1.80M', 'RW', '31')" class="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition">
+                    Details
+                  </button>
+                </div>
+              </div>
+
+              <!-- Deal 2 -->
+              <div class="p-4 rounded-2xl bg-[#090D14] border border-white/10 hover:border-gold-500/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
+                <div class="flex items-center gap-3.5">
+                  <div class="relative w-12 h-12 rounded-xl overflow-hidden border border-cyber-cyan/30 shadow-md shrink-0">
+                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80" class="w-full h-full object-cover group-hover:scale-110 transition duration-500" alt="Player" />
+                    <span class="absolute bottom-0 right-0 bg-cyber-cyan text-black text-[9px] font-bold px-1 font-mono">CB</span>
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <h4 class="text-sm font-bold text-white group-hover:text-gold-300 transition">Stav Lemkin</h4>
+                      <span class="text-xs text-slate-400">• 22y</span>
+                      <span class="text-xs font-bold font-mono text-pitch-400">€1.20M</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                      Shakhtar loan mandate • <span class="text-cyber-cyan font-semibold">Awaiting your countersignature</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 self-end sm:self-auto">
+                  <button onclick="authorizeDeal('Stav Lemkin')" class="px-3.5 py-2 rounded-xl bg-pitch-500/20 hover:bg-pitch-500/30 text-pitch-400 border border-pitch-500/40 text-xs font-bold font-mono transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Sign Mandate</span>
+                  </button>
+                  <button onclick="previewPlayer('Stav Lemkin', 'Maccabi Tel Aviv / Shakhtar', '€1.20M', 'CB', '22')" class="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition">
+                    Details
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Box B: Mandates Expiring in <30 Days (Critical Risk Shield) -->
+          <div class="luxury-panel rounded-3xl p-6 border-orange-500/20">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                </div>
+                <div>
+                  <h3 class="text-base font-bold font-syne text-white i18n-mandate-exp-title">Mandates Expiring &lt;30 Days</h3>
+                  <p class="text-xs text-slate-400">Immediate renewal prevents client poaching & free agent loss</p>
+                </div>
+              </div>
+              <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-400">3 PLAYERS AT RISK</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              
+              <!-- Risk 1 -->
+              <div class="p-3.5 rounded-2xl bg-black/60 border border-red-500/30 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white">Dean David</span>
+                    <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-red-500/20 text-red-400">6 DAYS LEFT</span>
+                  </div>
+                  <p class="text-[11px] text-slate-400 mt-1">Maccabi Haifa • CF • €1.50M</p>
+                </div>
+                <button onclick="triggerToast('Renewing Mandate for Dean David...')" class="mt-3 text-xs text-gold-400 hover:text-gold-300 font-bold font-mono text-left">Renew Contract →</button>
+              </div>
+
+              <!-- Risk 2 -->
+              <div class="p-3.5 rounded-2xl bg-black/60 border border-amber-500/30 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white">Guy Melamed</span>
+                    <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400">14 DAYS</span>
+                  </div>
+                  <p class="text-[11px] text-slate-400 mt-1">Hapoel Haifa • ST • €650K</p>
+                </div>
+                <button onclick="triggerToast('Renewing Mandate for Guy Melamed...')" class="mt-3 text-xs text-gold-400 hover:text-gold-300 font-bold font-mono text-left">Renew Contract →</button>
+              </div>
+
+              <!-- Risk 3 -->
+              <div class="p-3.5 rounded-2xl bg-black/60 border border-amber-500/30 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white">Ofri Arad</span>
+                    <span class="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400">22 DAYS</span>
+                  </div>
+                  <p class="text-[11px] text-slate-400 mt-1">Kairat Almaty • CB • €800K</p>
+                </div>
+                <button onclick="triggerToast('Renewing Mandate for Ofri Arad...')" class="mt-3 text-xs text-gold-400 hover:text-gold-300 font-bold font-mono text-left">Renew Contract →</button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Box C: Player CRM & Retention (Birthdays) -->
+          <div class="luxury-panel rounded-3xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                  🎁
+                </div>
+                <div>
+                  <h3 class="text-base font-bold font-syne text-white i18n-bday-title">Upcoming Client Birthdays</h3>
+                  <p class="text-xs text-slate-400">Relationship nurturing & instant WhatsApp wishes</p>
+                </div>
+              </div>
+              <span class="text-xs font-mono text-purple-400 font-bold">2 THIS WEEK</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="p-3.5 rounded-2xl bg-[#090D14] border border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-xl object-cover border border-purple-500/40" />
+                  <div>
+                    <h5 class="text-sm font-bold text-white">Liel Abada</h5>
+                    <p class="text-xs text-slate-400">Turning 25 in <span class="text-purple-300 font-bold">2 days</span></p>
+                  </div>
+                </div>
+                <button onclick="openWA('Liel Abada')" class="px-3 py-1.5 rounded-xl bg-pitch-500/20 hover:bg-pitch-500/30 text-pitch-400 text-xs font-bold font-mono flex items-center gap-1 transition">
+                  WhatsApp
+                </button>
+              </div>
+
+              <div class="p-3.5 rounded-2xl bg-[#090D14] border border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-xl object-cover border border-purple-500/40" />
+                  <div>
+                    <h5 class="text-sm font-bold text-white">Roy Revivo</h5>
+                    <p class="text-xs text-slate-400">Turning 23 in <span class="text-purple-300 font-bold">5 days</span></p>
+                  </div>
+                </div>
+                <button onclick="openWA('Roy Revivo')" class="px-3 py-1.5 rounded-xl bg-pitch-500/20 hover:bg-pitch-500/30 text-pitch-400 text-xs font-bold font-mono flex items-center gap-1 transition">
+                  WhatsApp
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT 5 COLS: ELITE ASSET SPOTLIGHT & SQUAD LEVERAGE -->
+        <div class="lg:col-span-5 space-y-6">
+          
+          <!-- Elite Player Card Spotlight -->
+          <div class="luxury-panel rounded-3xl p-6 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-mono uppercase tracking-widest text-gold-400 font-bold">TOP VALUATION ASSET</span>
+              <span class="px-2 py-0.5 rounded bg-pitch-500/20 text-pitch-400 text-[10px] font-mono font-bold">MLS MARQUEE</span>
+            </div>
+
+            <!-- Spotlight Card Content -->
+            <div class="flex items-center gap-5 my-2">
+              <div class="relative w-24 h-28 rounded-2xl overflow-hidden border-2 border-gold-500/40 shadow-2xl shrink-0">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80" class="w-full h-full object-cover" alt="Liel Abada" />
+                <span class="absolute bottom-1 left-1 bg-black/80 px-1.5 py-0.2 rounded text-[10px] font-mono font-bold text-gold-300">#11</span>
+              </div>
+
+              <div>
+                <span class="text-xs font-mono text-slate-400">Charlotte FC (MLS)</span>
+                <h3 class="text-2xl font-extrabold font-syne text-white mt-0.5">Liel Abada</h3>
+                <div class="flex items-center gap-3 mt-2">
+                  <div>
+                    <span class="text-[10px] text-slate-500 uppercase font-mono block">Valuation</span>
+                    <span class="text-xl font-extrabold font-mono text-gold-400">€7.00M</span>
+                  </div>
+                  <div class="h-8 w-px bg-white/10"></div>
+                  <div>
+                    <span class="text-[10px] text-slate-500 uppercase font-mono block">EU Passport</span>
+                    <span class="text-xs font-bold text-pitch-400 font-mono">🇪🇺 Verified</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
+              <span class="text-slate-400 font-mono">Contract Protected: 31.12.2028</span>
+              <button onclick="previewPlayer('Liel Abada', 'Charlotte FC (MLS)', '€7.00M', 'RW / LW', '24')" class="text-gold-400 hover:text-gold-300 font-bold">Full Dossier →</button>
+            </div>
+          </div>
+
+          <!-- Squad Positional Depth Gauge -->
+          <div class="luxury-panel rounded-3xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="text-sm font-bold font-syne text-white uppercase tracking-wider i18n-squad-depth">Squad Positional Depth</h4>
+              <span class="text-xs font-mono text-gold-400">42 Players</span>
+            </div>
+
+            <div class="space-y-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-white font-medium">Forwards & Wingers</span>
+                  <span class="text-gold-400 font-mono font-bold">14 (33%)</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-black/60 overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-gold-500 to-amber-300 rounded-full" style="width: 33%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-white font-medium">Central Midfielders</span>
+                  <span class="text-pitch-400 font-mono font-bold">13 (31%)</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-black/60 overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-pitch-400 to-emerald-300 rounded-full" style="width: 31%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-white font-medium">Defenders (CB / Fullbacks)</span>
+                  <span class="text-cyber-cyan font-mono font-bold">11 (26%)</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-black/60 overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-cyber-cyan to-blue-400 rounded-full" style="width: 26%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-white font-medium">Goalkeepers</span>
+                  <span class="text-purple-400 font-mono font-bold">4 (10%)</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-black/60 overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-purple-500 to-pink-400 rounded-full" style="width: 10%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- EU Citizenship Transfer Advantage -->
+          <div class="luxury-panel rounded-3xl p-6 bg-gradient-to-br from-blue-950/20 to-black/60">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-mono font-bold text-cyber-cyan uppercase tracking-wider">EU PASSPORT LEVERAGE</span>
+              <span class="text-sm font-mono font-bold text-white">61.9%</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong class="text-white">26 players</strong> hold full European passports, completely bypassing non-EU quota limits in Serie A, La Liga, and Jupiler Pro.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- =======================================================
+         WORLD 2: NEO-PITCH KINETIC (WYSCOUT NEXT-GEN / F1 TELEMETRY)
+         ======================================================= -->
+    <div id="world-2" class="space-y-8 hidden transition-all duration-500">
+      
+      <!-- Telemetry Horizon Banner -->
+      <div class="luxury-panel-kinetic rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 text-pitch-400 font-mono text-xs">
+              <span class="w-2.5 h-2.5 rounded-full bg-pitch-400 animate-ping"></span>
+              <span>NEURAL FOOTBALL TELEMETRY STREAM // NODE #01</span>
+            </div>
+            <h2 class="text-3xl sm:text-5xl font-syne font-extrabold text-white">
+              Tactical Operations <span class="text-pitch-metallic">Matrix</span>
+            </h2>
+            <p class="text-slate-300 text-xs sm:text-sm max-w-xl font-mono">
+              High-velocity spatial tracking, player value-to-contract runway scatter models, and automated club matching.
+            </p>
+          </div>
+
+          <!-- Dial Index -->
+          <div class="flex items-center gap-6 bg-black/60 p-4 rounded-2xl border border-pitch-500/30">
+            <div>
+              <span class="text-[10px] font-mono uppercase text-slate-400">Portfolio Index</span>
+              <p class="text-3xl font-extrabold font-mono text-pitch-400">€48.5M</p>
+              <span class="text-[10px] text-cyber-cyan font-mono">+7.8% YTD</span>
+            </div>
+            <div class="h-10 w-px bg-white/10"></div>
+            <div>
+              <span class="text-[10px] font-mono uppercase text-slate-400">Form Readiness</span>
+              <p class="text-3xl font-extrabold font-mono text-white">96.4</p>
+              <span class="text-[10px] text-pitch-400 font-mono">Peak Athletic State</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tactical 4-3-3 Spatial Formation Board -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Pitch Board -->
+        <div class="lg:col-span-8 luxury-panel-kinetic rounded-3xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold font-syne text-white uppercase tracking-wider">
+              Represented Squad Depth (4-3-3 Spatial System)
+            </h3>
+            <span class="text-xs font-mono text-pitch-400">Click node for dossier</span>
+          </div>
+
+          <div class="relative h-[440px] bg-[#040912] border border-pitch-500/30 rounded-2xl p-6 tactical-pitch flex flex-col justify-between overflow-hidden shadow-2xl">
+            
+            <!-- Pitch lines -->
+            <div class="absolute inset-x-1/4 top-0 h-16 border-b border-x border-pitch-500/20 pointer-events-none"></div>
+            <div class="absolute inset-x-1/4 bottom-0 h-16 border-t border-x border-pitch-500/20 pointer-events-none"></div>
+            <div class="absolute top-1/2 left-0 right-0 h-px bg-pitch-500/20 pointer-events-none"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border border-pitch-500/20 pointer-events-none"></div>
+
+            <!-- Attackers -->
+            <div class="flex justify-around items-center z-10">
+              <div onclick="previewPlayer('Liel Abada', 'Charlotte FC', '€7.00M', 'LW', '24')" class="text-center cursor-pointer group">
+                <div class="w-12 h-12 rounded-2xl bg-black/80 border-2 border-gold-400 flex items-center justify-center font-bold font-mono text-gold-300 text-sm group-hover:scale-125 transition shadow-[0_0_20px_rgba(212,175,55,0.4)]">
+                  LA
+                </div>
+                <span class="text-xs font-bold text-white block mt-1">Abada</span>
+                <span class="text-[10px] font-mono text-gold-400">€7.0M</span>
+              </div>
+
+              <div onclick="previewPlayer('Dean David', 'Maccabi Haifa', '€1.50M', 'CF', '29')" class="text-center cursor-pointer group">
+                <div class="w-12 h-12 rounded-2xl bg-black/80 border-2 border-red-500 flex items-center justify-center font-bold font-mono text-red-400 text-sm group-hover:scale-125 transition animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.4)]">
+                  DD
+                </div>
+                <span class="text-xs font-bold text-white block mt-1">David</span>
+                <span class="text-[10px] font-mono text-red-400">6d Exp</span>
+              </div>
+
+              <div onclick="previewPlayer('Anan Khalaili', 'Royale Union SG', '€6.50M', 'RW', '21')" class="text-center cursor-pointer group">
+                <div class="w-12 h-12 rounded-2xl bg-black/80 border-2 border-pitch-400 flex items-center justify-center font-bold font-mono text-pitch-300 text-sm group-hover:scale-125 transition shadow-[0_0_20px_rgba(0,255,136,0.4)]">
+                  AK
+                </div>
+                <span class="text-xs font-bold text-white block mt-1">Khalaili</span>
+                <span class="text-[10px] font-mono text-pitch-400">€6.5M</span>
+              </div>
+            </div>
+
+            <!-- Midfielders -->
+            <div class="flex justify-around items-center z-10">
+              <div class="text-center">
+                <div class="w-11 h-11 rounded-2xl bg-black/80 border border-pitch-400/50 flex items-center justify-center font-mono text-white text-xs">
+                  CM
+                </div>
+                <span class="text-[11px] text-slate-300 block mt-1">Glazer</span>
+                <span class="text-[9px] font-mono text-slate-400">€1.0M</span>
+              </div>
+
+              <div class="text-center">
+                <div class="w-11 h-11 rounded-2xl bg-black/80 border border-pitch-400/50 flex items-center justify-center font-mono text-white text-xs">
+                  DM
+                </div>
+                <span class="text-[11px] text-slate-300 block mt-1">Shua</span>
+                <span class="text-[9px] font-mono text-slate-400">€1.4M</span>
+              </div>
+
+              <div class="text-center">
+                <div class="w-11 h-11 rounded-2xl bg-black/80 border border-gold-400/60 flex items-center justify-center font-mono text-gold-300 text-xs">
+                  AM
+                </div>
+                <span class="text-[11px] text-slate-300 block mt-1">Atzili</span>
+                <span class="text-[9px] font-mono text-gold-400">€1.8M</span>
+              </div>
+            </div>
+
+            <!-- Defenders & GK -->
+            <div class="flex justify-around items-center z-10">
+              <div onclick="previewPlayer('Roy Revivo', 'Maccabi Tel Aviv', '€1.80M', 'LB', '22')" class="text-center cursor-pointer group">
+                <div class="w-11 h-11 rounded-2xl bg-black/80 border border-cyber-cyan flex items-center justify-center font-mono text-cyber-cyan text-xs group-hover:scale-125 transition">
+                  RR
+                </div>
+                <span class="text-[11px] font-bold text-white block mt-1">Revivo</span>
+                <span class="text-[9px] font-mono text-cyber-cyan">LB</span>
+              </div>
+
+              <div onclick="previewPlayer('Stav Lemkin', 'Maccabi Tel Aviv', '€1.20M', 'CB', '22')" class="text-center cursor-pointer group">
+                <div class="w-11 h-11 rounded-2xl bg-black/80 border border-cyber-cyan flex items-center justify-center font-mono text-cyber-cyan text-xs group-hover:scale-125 transition">
+                  SL
+                </div>
+                <span class="text-[11px] font-bold text-white block mt-1">Lemkin</span>
+                <span class="text-[9px] font-mono text-cyber-cyan">CB</span>
+              </div>
+
+              <div class="text-center">
+                <div class="w-11 h-11 rounded-2xl bg-black/80 border border-cyber-cyan/50 flex items-center justify-center font-mono text-slate-300 text-xs">
+                  CB
+                </div>
+                <span class="text-[11px] text-slate-300 block mt-1">Arad</span>
+                <span class="text-[9px] font-mono text-slate-400">CB</span>
+              </div>
+
+              <div class="text-center">
+                <div class="w-11 h-11 rounded-2xl bg-black/80 border border-purple-500/50 flex items-center justify-center font-mono text-purple-300 text-xs">
+                  GK
+                </div>
+                <span class="text-[11px] text-slate-300 block mt-1">Peretz</span>
+                <span class="text-[9px] font-mono text-purple-400">GK</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Automated Club Request Matcher -->
+        <div class="lg:col-span-4 luxury-panel-kinetic rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-bold font-syne text-white uppercase tracking-wider">
+                Direct Club Matcher
+              </h3>
+              <span class="text-xs font-mono text-pitch-400">AI MATCH 94%</span>
+            </div>
+
+            <div class="space-y-3">
+              <div class="p-3.5 rounded-2xl bg-black/60 border border-pitch-500/30">
+                <div class="flex justify-between items-center text-xs">
+                  <strong class="text-white">KAA Gent 🇧🇪</strong>
+                  <span class="text-pitch-400 font-mono font-bold">94% Match</span>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1">Target: Left Back U23 • Budget €1.5M–€2.5M</p>
+                <div class="mt-2 pt-2 border-t border-white/10 flex justify-between items-center">
+                  <span class="text-[10px] font-mono text-gold-400">Match: Roy Revivo</span>
+                  <button onclick="triggerToast('Pitch Package Prepared for KAA Gent!')" class="px-2 py-1 rounded bg-pitch-500 text-black font-bold text-[10px] font-mono">Pitch →</button>
+                </div>
+              </div>
+
+              <div class="p-3.5 rounded-2xl bg-black/60 border border-cyber-cyan/30">
+                <div class="flex justify-between items-center text-xs">
+                  <strong class="text-white">FC Utrecht 🇳🇱</strong>
+                  <span class="text-cyber-cyan font-mono font-bold">89% Match</span>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1">Target: Winger / Inverted Inside Forward</p>
+                <div class="mt-2 pt-2 border-t border-white/10 flex justify-between items-center">
+                  <span class="text-[10px] font-mono text-gold-400">Match: Omer Atzili</span>
+                  <button onclick="triggerToast('Pitch Package Prepared for FC Utrecht!')" class="px-2 py-1 rounded bg-cyber-cyan text-black font-bold text-[10px] font-mono">Pitch →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button onclick="triggerToast('Launching Neural Scout FreeSearch...')" class="w-full mt-4 py-3 rounded-2xl bg-gradient-to-r from-pitch-500 to-cyber-cyan text-black font-extrabold text-xs uppercase tracking-wider font-mono">
+            Launch Neural Scout Scanner
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- =======================================================
+         WORLD 3: AVANT-GARDE EDITORIAL (HIGH-FASHION FOOTBALL DOSSIER)
+         ======================================================= -->
+    <div id="world-3" class="space-y-8 hidden transition-all duration-500">
+      
+      <!-- Architectural Editorial Masthead -->
+      <div class="luxury-panel-editorial rounded-3xl p-8 sm:p-12 relative">
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-white/15 pb-8">
+          <div>
+            <span class="text-xs font-mono uppercase tracking-widest text-amber-500">BRIT SPORT GROUP • PRIVATE OFFICE</span>
+            <h1 class="text-4xl sm:text-7xl font-serif text-white mt-3 tracking-tight">
+              Executive Dossier
+            </h1>
+            <p class="text-slate-400 text-sm mt-3 max-w-lg leading-relaxed">
+              Curated strategic overview of agency portfolio, high-value assets, and European market leverage.
+            </p>
+          </div>
+          <div class="text-left lg:text-right">
+            <span class="text-xs font-mono text-slate-500 uppercase tracking-widest">Total Managed Assets</span>
+            <p class="text-4xl sm:text-6xl font-serif text-amber-400 mt-1">€48,550,000</p>
+          </div>
+        </div>
+
+        <!-- 3 Editorial Focus Columns -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+          <div>
+            <span class="text-xs font-mono text-slate-500 uppercase tracking-widest">01 / Priority Mandate</span>
+            <h3 class="text-xl font-serif text-white mt-2">Atzili & David Negotiations</h3>
+            <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+              Two premier offensive profiles entering decisive window phases. Extension docs prepared for agency sign-off.
+            </p>
+          </div>
+
+          <div>
+            <span class="text-xs font-mono text-slate-500 uppercase tracking-widest">02 / European Leverage</span>
+            <h3 class="text-xl font-serif text-white mt-2">61.9% EU Passport Advantage</h3>
+            <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+              Unrestricted European Community status removes non-EU quota barriers in Belgium, Netherlands, and Scottish Premiership.
+            </p>
+          </div>
+
+          <div>
+            <span class="text-xs font-mono text-slate-500 uppercase tracking-widest">03 / Window Timing</span>
+            <h3 class="text-xl font-serif text-white mt-2">October Surge Markets</h3>
+            <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+              Israel closes in 6 days. Saudi Pro League and MLS remain active with high liquidity windows.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- =========================================================
+       INTERACTIVE PLAYER PREVIEW MODAL
+       ========================================================= -->
+  <div id="player-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="luxury-panel rounded-3xl max-w-lg w-full p-6 sm:p-8 relative shadow-2xl">
+      <button onclick="closeModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-lg">✕</button>
+
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-gold-500 to-amber-300 p-[1.5px]">
+          <div class="w-full h-full bg-[#080A0E] rounded-[14px] flex items-center justify-center text-2xl font-bold text-gold-400">
+            ⚽
+          </div>
+        </div>
+        <div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-gold-500/20 text-gold-300 border border-gold-500/30 uppercase">VERIFIED ASSET</span>
+          <h3 id="modal-name" class="text-xl font-extrabold text-white font-syne mt-0.5">Player Name</h3>
+          <p id="modal-club" class="text-xs text-slate-400">Club Name</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2.5 p-3 rounded-2xl bg-black/60 border border-white/10 my-4 text-center font-mono">
+        <div>
+          <span class="text-[10px] text-slate-500 uppercase">Valuation</span>
+          <p id="modal-val" class="text-sm font-bold text-gold-400 mt-0.5">€0.0M</p>
+        </div>
+        <div>
+          <span class="text-[10px] text-slate-500 uppercase">Position</span>
+          <p id="modal-pos" class="text-sm font-bold text-white mt-0.5">POS</p>
+        </div>
+        <div>
+          <span class="text-[10px] text-slate-500 uppercase">Age</span>
+          <p id="modal-age" class="text-sm font-bold text-white mt-0.5">00</p>
+        </div>
+      </div>
+
+      <div class="space-y-2 text-xs text-slate-300 font-mono">
+        <div class="flex justify-between py-1.5 border-b border-white/5">
+          <span class="text-slate-500">EU Passport:</span>
+          <span class="text-pitch-400 font-bold">🇪🇺 Verified (Eligible)</span>
+        </div>
+        <div class="flex justify-between py-1.5 border-b border-white/5">
+          <span class="text-slate-500">Agent in Charge:</span>
+          <span class="text-white">Lior Dahan</span>
+        </div>
+        <div class="flex justify-between py-1.5">
+          <span class="text-slate-500">Mandate Health:</span>
+          <span class="text-pitch-400">Active (Protected)</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 mt-6">
+        <button onclick="triggerToast('Opening WhatsApp conversation...')" class="flex-1 py-3 rounded-xl bg-pitch-500 text-black font-extrabold text-xs font-mono uppercase tracking-wider hover:brightness-110 transition">
+          Direct WhatsApp
+        </button>
+        <button onclick="closeModal()" class="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-mono text-xs transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 bg-[#090D14] border border-gold-500/40 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transform translate-y-24 opacity-0 transition-all duration-300">
+    <span class="w-2.5 h-2.5 rounded-full bg-pitch-400 animate-ping"></span>
+    <span id="toast-msg" class="text-xs font-mono font-semibold">Action Executed</span>
+  </div>
+
+  <!-- =========================================================
+       INTERACTION SCRIPTS
+       ========================================================= -->
+  <script>
+    let activeWorld = 1;
+    let isRtl = false;
+
+    // Bilingual Dictionary
+    const dict = {
+      en: {
+        marketOpen: 'TRANSFERMARKT VERIFIED LIVE VALUATION ENGINE',
+        salute: 'Good afternoon',
+        heroDesc: 'Brit Sport Group Private Suite. Total active squad capitalization, 30-day mandate expiry surveillance, and immediate deal sign-offs.',
+        grossVal: 'Gross Squad Portfolio',
+        mandateHealth: 'Mandate Protection',
+        createReq: 'New Club Request',
+        dealPipe: 'Deal Pipeline & Transfer Sign-Offs',
+        mandateExpTitle: 'Mandates Expiring <30 Days',
+        bdayTitle: 'Upcoming Client Birthdays',
+        squadDepth: 'Squad Positional Depth',
+        langBtn: 'עברית (RTL)'
+      },
+      he: {
+        marketOpen: 'מנוע שווי שוק חי מאומת Transfermarkt',
+        salute: 'צהריים טובים',
+        heroDesc: 'סוויטת הניהול הבכירה של בריט ספורט גרופ. שווי שוק כולל של הסגל, ניטור תוקף מנדטים ואישורי עסקאות בצנרת.',
+        grossVal: 'שווי פורטפוליו מנוהל',
+        mandateHealth: 'בריאות מנדטים',
+        createReq: 'דרישת מועדון חדשה',
+        dealPipe: 'אישורי העברות ועסקאות בצנרת',
+        mandateExpTitle: 'מנדטים לפקיעה בתוך 30 יום',
+        bdayTitle: 'ימי הולדת קרובים של שחקנים',
+        squadDepth: 'עומק עמדות בסגל',
+        langBtn: 'English (LTR)'
+      }
+    };
+
+    function switchWorld(num) {
+      activeWorld = num;
+
+      // Update Buttons
+      for (let i = 1; i <= 3; i++) {
+        const btn = document.getElementById(`theme-btn-${i}`);
+        if (i === num) {
+          btn.className = num === 1 ? 'px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 bg-gradient-to-r from-gold-500/20 via-gold-500/30 to-amber-500/20 text-gold-300 border border-gold-500/40 shadow-lg' :
+                          num === 2 ? 'px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 bg-gradient-to-r from-pitch-500/20 to-cyber-cyan/20 text-pitch-300 border border-pitch-500/40 shadow-lg' :
+                                      'px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2 bg-white/15 text-white border border-white/30 shadow-lg';
+        } else {
+          btn.className = 'px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition-all duration-300 flex items-center gap-2';
+        }
+      }
+
+      // Toggle World Views
+      document.getElementById('world-1').classList.toggle('hidden', num !== 1);
+      document.getElementById('world-2').classList.toggle('hidden', num !== 2);
+      document.getElementById('world-3').classList.toggle('hidden', num !== 3);
+
+      triggerToast(`Loaded: Option ${num} (${num === 1 ? 'Monolith Gold' : num === 2 ? 'Neo-Pitch Kinetic' : 'Avant-Garde Editorial'})`);
+    }
+
+    function toggleLang() {
+      isRtl = !isRtl;
+      document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+      document.documentElement.lang = isRtl ? 'he' : 'en';
+
+      const d = isRtl ? dict.he : dict.en;
+      document.getElementById('lang-label').innerText = d.langBtn;
+
+      update('.i18n-market-open', d.marketOpen);
+      update('.i18n-salute', d.salute);
+      update('.i18n-hero-desc', d.heroDesc);
+      update('.i18n-gross-val', d.grossVal);
+      update('.i18n-mandate-health', d.mandateHealth);
+      update('.i18n-create-req', d.createReq);
+      update('.i18n-deal-pipe', d.dealPipe);
+      update('.i18n-mandate-exp-title', d.mandateExpTitle);
+      update('.i18n-bday-title', d.bdayTitle);
+      update('.i18n-squad-depth', d.squadDepth);
+
+      triggerToast(isRtl ? 'השפה הוחלפה לעברית (RTL)' : 'Language set to English (LTR)');
+    }
+
+    function update(sel, val) {
+      document.querySelectorAll(sel).forEach(el => el.innerText = val);
+    }
+
+    function triggerToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-msg').innerText = msg;
+      t.classList.remove('translate-y-24', 'opacity-0');
+      setTimeout(() => {
+        t.classList.add('translate-y-24', 'opacity-0');
+      }, 2600);
+    }
+
+    function authorizeDeal(name) {
+      triggerToast(`✓ Authorized & countersigned deal for ${name}`);
+    }
+
+    function openWA(name) {
+      triggerToast(`💬 Opening WhatsApp wish draft for ${name}...`);
+    }
+
+    function previewPlayer(name, club, val, pos, age) {
+      document.getElementById('modal-name').innerText = name;
+      document.getElementById('modal-club').innerText = club;
+      document.getElementById('modal-val').innerText = val;
+      document.getElementById('modal-pos').innerText = pos;
+      document.getElementById('modal-age').innerText = age;
+
+      document.getElementById('player-modal').classList.remove('hidden');
+      document.getElementById('player-modal').classList.add('flex');
+    }
+
+    function closeModal() {
+      document.getElementById('player-modal').classList.add('hidden');
+      document.getElementById('player-modal').classList.remove('flex');
+    }
+
+    function triggerCmd() {
+      triggerToast('Instant Radar Activated (Press ⌘K anytime)');
+    }
+
+    // Keyboard shortcut (⌘K / Ctrl+K)
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        triggerCmd();
+      }
+    });
+
+    // Real-time clock ticks
+    function updateClocks() {
+      const now = new Date();
+      const fmt = (tz) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' }).format(now);
+      document.getElementById('clock-tlv').innerText = fmt('Asia/Jerusalem');
+      document.getElementById('clock-lon').innerText = fmt('Europe/London');
+      document.getElementById('clock-nyc').innerText = fmt('America/New_York');
+    }
+    setInterval(updateClocks, 1000);
+    updateClocks();
+  </script>
+</body>
+</html>

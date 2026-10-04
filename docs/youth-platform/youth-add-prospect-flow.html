@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group Youth — Add Prospect Flow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --teal:#2f7d6e;--teal-soft:#5fa391;--teal-bright:#8fc9b8;
+      --red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    input,select{font:inherit}
+    ::selection{background:var(--teal-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--teal-soft),var(--teal));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#9fb8b0;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav>a.active{color:var(--teal-bright)}
+    .nav>a.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--teal-soft)}
+    .nav em{color:var(--teal-soft);font-style:normal}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--teal-bright)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--teal-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 80px}
+
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:30px}
+    .kicker{margin:0 0 16px;color:var(--teal);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(48px,6vw,86px)/.82 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--teal)}
+    .addbtn{padding:13px 18px;background:var(--teal-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .addbtn:hover{background:var(--teal);color:var(--paper)}
+    .roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+    .ghost-card{height:250px;border:1px solid var(--line);background:var(--card)}
+    .ghost-card.dashed{border-style:dashed;display:grid;place-items:center;color:var(--muted);font:9px/1.5 var(--mono);text-transform:uppercase;text-align:center;cursor:pointer;gap:8px}
+    .ghost-card.dashed:hover{border-color:var(--teal-soft);color:var(--teal)}
+    .ghost-card.dashed .plus{font:300 32px/1 var(--display)}
+
+    /* Drawer */
+    .scrim{position:fixed;inset:0;z-index:30;background:rgba(17,17,15,.55);opacity:0;pointer-events:none;transition:.25s}
+    .scrim.open{opacity:1;pointer-events:auto}
+    .drawer{position:fixed;top:0;bottom:0;inset-inline-end:0;z-index:31;width:min(480px,96vw);background:var(--paper);border-inline-start:4px solid var(--teal);transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column}
+    [dir=rtl] .drawer{transform:translateX(-100%)}
+    .drawer.open{transform:none}
+    .drawer-head{position:sticky;top:0;z-index:3;background:var(--black);color:var(--paper);padding:22px 22px 18px}
+    .drawer-head .eyebrow{color:var(--teal-bright);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .drawer-head h2{margin:10px 0 0;font:500 30px/.9 var(--display);text-transform:uppercase;letter-spacing:-.02em}
+    [dir=rtl] .drawer-head h2{font-weight:800;letter-spacing:normal}
+    .drawer-head .close{position:absolute;top:16px;inset-inline-end:18px;color:var(--paper);font:22px/1 var(--display)}
+    .steps-label{display:flex;justify-content:space-between;margin-top:16px;color:#9fb8b0;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .steps-label span.on{color:var(--teal-bright)}
+    .prog{display:flex;gap:6px;margin-top:8px}
+    .prog i{flex:1;height:3px;background:var(--dark-line);transition:.3s}
+    .prog i.on{background:var(--teal-soft)}
+    .drawer-body{flex:1;padding:16px}
+
+    .astep{border:1px solid var(--line);background:var(--card);margin-bottom:12px;overflow:hidden}
+    .astep:last-child{margin-bottom:0}
+    .astep-head{display:flex;align-items:center;gap:12px;width:100%;padding:15px 16px;text-align:start}
+    .astep.done .astep-head{cursor:pointer}
+    .astep.locked .astep-head{opacity:.5}
+    .astep-head .n{width:26px;height:26px;flex:none;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;font:600 11px/1 var(--mono);color:var(--muted);transition:.2s}
+    .astep.open .astep-head .n{background:var(--teal-soft);border-color:var(--teal-soft);color:var(--ink)}
+    .astep.done .astep-head .n{background:var(--ink);border-color:var(--ink);color:var(--paper);font-size:0}
+    .astep.done .astep-head .n:after{content:'✓';font-size:12px}
+    .astep-head .t{flex:1;min-width:0}
+    .astep-head .t b{display:block;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--ink)}
+    .astep-head .t small{display:block;margin-top:5px;color:var(--muted);font:11px/1.3 var(--body)}
+    .astep.done .astep-head .t small{color:var(--teal)}
+    .astep-head .edit{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;flex:none}
+    .astep-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+    .astep.open .astep-body{max-height:1400px}
+    .astep-inner{padding:2px 16px 18px}
+
+    .seclabel{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;margin:0 0 9px}
+    .urlrow{display:flex;gap:8px;margin-bottom:8px}
+    .urlrow input{flex:1;border:1px solid var(--line);background:var(--paper);padding:12px 13px;color:var(--ink);font:11px/1 var(--mono);outline:none;min-width:0}
+    .urlrow input:focus{border-color:var(--teal-soft)}
+    .urlrow input::placeholder{color:var(--muted);font-family:var(--body);font-size:12px}
+    .mini-btn{padding:12px 14px;background:var(--teal-soft);color:var(--ink);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+    .mini-btn:hover{background:var(--teal);color:var(--paper)}
+    .divider{display:flex;align-items:center;gap:12px;margin:14px 0}
+    .divider .ln{flex:1;height:1px;background:var(--line)}
+    .divider span{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.2em}
+    .search{display:flex;align-items:center;gap:11px;border:1px solid var(--line);background:var(--paper);padding:0 14px}
+    .search.focus{border-color:var(--teal-soft)}
+    .search svg{width:15px;height:15px;stroke:var(--muted);flex:none}
+    .search input{flex:1;border:0;background:transparent;padding:13px 0;color:var(--ink);font:12px/1 var(--body);outline:none}
+    .srcnote{margin-top:9px;color:var(--muted);font:8px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+    .srcnote b{color:var(--teal)}
+    .results{margin-top:12px;border:1px solid var(--line);background:var(--paper)}
+    .result{display:flex;align-items:center;gap:12px;padding:11px 13px;border-bottom:1px solid var(--line);cursor:pointer;text-align:start;width:100%}
+    .result:last-child{border-bottom:0}
+    .result:hover{background:var(--card)}
+    .result .ri{width:42px;height:42px;flex:none;display:grid;place-items:center;background:var(--black);color:var(--teal-bright);font:500 15px/1 var(--display)}
+    .result .info{flex:1;min-width:0}
+    .result .info b{display:block;font:500 13px/1.1 var(--body);color:var(--ink)}
+    .result .info .he{display:block;margin-top:2px;color:var(--muted);font:10px/1 var(--body);direction:rtl}
+    .result .info span.sub{display:block;margin-top:3px;color:var(--muted);font:10px/1.2 var(--body)}
+    .result .src{color:var(--teal);font:8px/1 var(--mono);flex:none}
+
+    /* Confirm hero */
+    .phero{position:relative;display:flex;gap:14px;padding:16px;background:var(--black);overflow:hidden;margin-bottom:2px}
+    .phero:after{content:'';position:absolute;inset:0;z-index:0;background:linear-gradient(135deg,rgba(47,125,110,.3),rgba(17,17,15,.9))}
+    .phero .pimg{position:relative;z-index:1;width:62px;height:62px;flex:none;display:grid;place-items:center;background:rgba(143,201,184,.12);border:1px solid rgba(143,201,184,.3);color:var(--teal-bright);font:500 22px/1 var(--display)}
+    .phero .pi{position:relative;z-index:1;min-width:0;flex:1;color:var(--paper);align-self:center}
+    .phero .pi .nm{font:500 23px/.9 var(--display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .phero .pi .nm{font-weight:800}
+    .phero .pi .sub{margin-top:6px;color:#c9c3b6;font:10px/1.2 var(--body)}
+    .phero .pi .ag{display:inline-block;margin-top:8px;color:var(--teal-bright);border:1px solid rgba(143,201,184,.4);padding:4px 8px;font:500 10px/1 var(--mono)}
+
+    .attrs{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid var(--line);border-top:0}
+    .attrs div{padding:11px 13px;border-inline-end:1px solid var(--line);border-top:1px solid var(--line)}
+    .attrs div:nth-child(2n){border-inline-end:0}
+    .attrs label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .attrs b{display:block;margin-top:6px;font:500 12px/1 var(--mono);color:var(--ink)}
+    .attrs b.teal{color:var(--teal)}
+
+    /* IFA season form preview */
+    .formrow{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-top:0;background:var(--card)}
+    .formrow div{padding:13px 0;text-align:center;border-inline-end:1px solid var(--line)}
+    .formrow div:last-child{border-inline-end:0}
+    .formrow .v{font:500 24px/.8 var(--display);color:var(--teal)}
+    .formrow .l{margin-top:7px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+
+    .subhead{margin:18px 0 10px;color:var(--teal);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px}
+    .subhead:before{content:'';width:14px;height:1px;background:var(--teal-soft)}
+    .subhead.g{color:var(--muted)}
+    .subhead.g:before{background:var(--line)}
+    .frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .field{margin-bottom:12px}
+    .field.full{grid-column:1/-1}
+    .field label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+    .field input,.field select{width:100%;border:1px solid var(--line);background:var(--paper);padding:12px 13px;color:var(--ink);font:12px/1 var(--body);outline:none}
+    .field input{direction:ltr}
+    .field input:focus,.field select:focus{border-color:var(--teal-soft)}
+    .field input::placeholder{color:var(--muted)}
+    .optnote{color:var(--muted);font:8px/1 var(--mono);text-transform:none;letter-spacing:0}
+
+    .dupe{display:flex;gap:10px;align-items:flex-start;margin:4px 0 14px;padding:11px 13px;border:1px solid rgba(154,123,46,.5);background:rgba(154,123,46,.08);color:#7c6420;font:10px/1.4 var(--body)}
+    .dupe b{display:block;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+
+    .step-cta{display:flex;gap:8px;margin-top:16px}
+    .step-cta .btn{flex:1;padding:14px;text-align:center;background:var(--teal-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .step-cta .btn:hover{background:var(--teal);color:var(--paper)}
+    .step-cta .btn.ghost{flex:0 0 auto;background:transparent;border:1px solid var(--line);color:var(--ink)}
+    .step-cta .btn.ghost:hover{background:var(--ink);color:var(--paper)}
+
+    .done-foot{padding:26px 16px;text-align:center}
+    .done-foot .seal{width:54px;height:54px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--teal-soft),var(--teal));color:var(--black)}
+    .done-foot .seal svg{width:27px;height:27px;stroke:var(--black);fill:none;stroke-width:2.4}
+    .done-foot h3{margin:0;font:500 26px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .done-foot h3{font-weight:800}
+    .done-foot p{margin:10px auto 0;max-width:300px;color:var(--muted);font:12px/1.5 var(--body)}
+    .done-next{margin-top:18px;border:1px solid var(--line);background:var(--card);text-align:start}
+    .done-next a{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--line);color:var(--ink);font:11px/1.2 var(--body)}
+    .done-next a:last-child{border-bottom:0}
+    .done-next a:hover{background:var(--paper)}
+    .done-next a .ar{color:var(--teal);font:12px/1 var(--mono)}
+    .done-foot .cta{margin-top:16px;display:flex;gap:8px}
+    .done-foot .cta .btn{flex:1;padding:13px;text-align:center;font:9px/1 var(--mono);text-transform:uppercase}
+    .done-foot .cta .btn.p{background:var(--black);color:var(--teal-bright)}
+    .done-foot .cta .btn.g{border:1px solid var(--ink);color:var(--ink)}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav em,.nav>a.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.addbtn{margin-top:14px}
+      .drawer{width:100vw;border-inline-start:0;border-top:4px solid var(--teal)}
+      .frow{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="youth-dashboard.html"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <a class="active" href="youth-players.html"><span data-t="nav_players">Youth Players</span><em>28</em></a>
+        <a href="youth-shortlist.html"><span data-t="nav_short">Shortlist</span><em>12</em></a>
+        <a href="youth-requests.html"><span data-t="nav_req">Requests</span><em>04</em></a>
+        <a href="youth-contacts.html"><span data-t="nav_cont">Contacts</span><em>17</em></a>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Youth / Academy</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_players">Youth Players</strong> / <span data-t="date">1 October 2026</span></div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div><p class="kicker" data-t="kicker">Academy desk / Add a prospect</p><h1 data-t="h1">New <span>prospect.</span></h1></div>
+          <button class="addbtn" onclick="openDrawer()" data-t="add">+ Add prospect</button>
+        </header>
+        <div class="roster-grid">
+          <div class="ghost-card dashed" onclick="openDrawer()"><span class="plus">+</span><span data-t="add_card">Register prospect<br>from IFA</span></div>
+          <div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div><div class="ghost-card"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <button class="close" onclick="closeDrawer()">×</button>
+      <div class="eyebrow" data-t="d_eyebrow">Academy / Register prospect</div>
+      <h2 data-t="d_title">Add a prospect</h2>
+      <div class="steps-label"><span id="l1" class="on" data-t="l1">Find</span><span id="l2" data-t="l2">Confirm</span><span id="l3" data-t="l3">Done</span></div>
+      <div class="prog"><i class="on"></i><i></i><i></i></div>
+    </div>
+    <div class="drawer-body">
+
+      <!-- STEP 1 — FIND ON IFA -->
+      <div class="astep open" id="s1">
+        <button class="astep-head" onclick="reopen(1)"><span class="n"><span>1</span></span><div class="t"><b data-t="s1t">Find on IFA</b><small id="s1sum" data-t="s1sum">Search football.org.il or paste a profile URL</small></div><span class="edit" data-t="edit">Edit</span></button>
+        <div class="astep-body"><div class="astep-inner">
+          <p class="seclabel" data-t="paste_l">Paste IFA player URL</p>
+          <div class="urlrow"><input data-ph="url" placeholder="football.org.il/players/player/?player_id="><button class="mini-btn" onclick="select()" data-t="load">Load</button></div>
+          <div class="divider"><span class="ln"></span><span data-t="or">or</span><span class="ln"></span></div>
+          <p class="seclabel" data-t="search_l">Search by name (HE / EN)</p>
+          <label class="search" id="searchBox"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="searchInput" value="madmon" data-ph="search" placeholder="Start typing a name…" onfocus="searchBox.classList.add('focus')" onblur="searchBox.classList.remove('focus')"></label>
+          <p class="srcnote" data-t="srcnote">Primary source · <b>IFA football.org.il</b> — age group, club & season form pulled automatically.</p>
+          <div class="results">
+            <button class="result" onclick="select()"><div class="ri">ע</div><div class="info"><b>Ilay Madmon</b><span class="he">עילי מדמון</span><span class="sub" data-t="r1sub">Maccabi Netanya · 12/03/2008 · Israel</span></div><span class="src">IFA</span></button>
+            <button class="result" onclick="select()"><div class="ri">ד</div><div class="info"><b>Daniel Madmon</b><span class="he">דניאל מדמון</span><span class="sub" data-t="r2sub">Hapoel Haifa · 04/2010 · Israel</span></div><span class="src">IFA</span></button>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- STEP 2 — CONFIRM & CONTACTS -->
+      <div class="astep locked" id="s2">
+        <button class="astep-head" onclick="reopen(2)"><span class="n"><span>2</span></span><div class="t"><b data-t="s2t">Confirm &amp; contacts</b><small id="s2sum" data-t="s2sum">Review IFA data, add player &amp; guardian</small></div><span class="edit" data-t="edit">Edit</span></button>
+        <div class="astep-body"><div class="astep-inner">
+          <div class="phero">
+            <div class="pimg">IM</div>
+            <div class="pi"><div class="nm">Ilay Madmon</div><div class="sub" data-t="phero_sub">CM · AM · Maccabi Netanya</div><span class="ag">U-19 · עילי מדמון</span></div>
+          </div>
+          <div class="attrs">
+            <div><label data-t="a_dob">Date of birth</label><b>12/03/2008</b></div>
+            <div><label data-t="a_ag">Age group (auto)</label><b class="teal">U-19</b></div>
+            <div><label data-t="a_academy">Academy</label><b data-t="a_academy_v">Youth premier</b></div>
+            <div><label data-t="a_nat">Nationality</label><b data-t="a_nat_v">Israel</b></div>
+          </div>
+          <div class="formrow">
+            <div><div class="v">12</div><div class="l" data-t="f_apps">IFA apps</div></div>
+            <div><div class="v">04</div><div class="l" data-t="f_goals">Goals</div></div>
+            <div><div class="v">06</div><div class="l" data-t="f_assists">Assists</div></div>
+          </div>
+
+          <div class="subhead" data-t="player_sec">Player contact (optional)</div>
+          <div class="frow">
+            <div class="field"><label data-t="ph_phone">Phone</label><input type="tel" placeholder="+972 54 123 4567"></div>
+            <div class="field"><label data-t="ph_email">Email</label><input type="email" placeholder="player@example.com"></div>
+          </div>
+
+          <div class="subhead g" data-t="guard_sec">Parent / guardian</div>
+          <div class="frow">
+            <div class="field"><label data-t="g_name">Name</label><input data-ph="g_name_ph" placeholder="Guardian name"></div>
+            <div class="field"><label data-t="g_rel">Relationship</label>
+              <select><option data-t="g_rel_father">Father</option><option data-t="g_rel_mother">Mother</option><option data-t="g_rel_guardian">Guardian</option></select>
+            </div>
+            <div class="field"><label data-t="g_phone">Phone</label><input type="tel" placeholder="+972 52 987 6543"></div>
+            <div class="field"><label data-t="g_email">Email <span class="optnote" data-t="opt">(optional)</span></label><input type="email" placeholder="guardian@example.com"></div>
+          </div>
+
+          <div class="step-cta"><button class="btn ghost" onclick="reopen(1)" data-t="change">Change</button><button class="btn" onclick="doSave()" data-t="add_acad">Add to academy</button></div>
+        </div></div>
+      </div>
+
+      <!-- STEP 3 — DONE -->
+      <div class="astep locked" id="s3">
+        <button class="astep-head"><span class="n"><span>3</span></span><div class="t"><b data-t="s3t">Added to academy</b><small data-t="s3sum">Ready for matching</small></div></button>
+        <div class="astep-body"><div class="astep-inner" style="padding:0">
+          <div class="done-foot">
+            <div class="seal"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
+            <h3 data-t="done_h">Registered.</h3>
+            <p data-t="done_p">Ilay Madmon is now in your youth academy and ready to be matched against club requirements.</p>
+            <div class="done-next">
+              <a href="youth-player-detail.html"><span data-t="next_profile">Open prospect profile</span><span class="ar">↗</span></a>
+              <a href="youth-shortlist.html"><span data-t="next_shortlist">Add to a shortlist</span><span class="ar">↗</span></a>
+              <a href="youth-requests.html"><span data-t="next_match">See matching club requests</span><span class="ar">↗</span></a>
+            </div>
+            <div class="cta"><button class="btn g" onclick="reset()" data-t="add_another">+ Add another</button><a class="btn p" href="youth-player-detail.html" data-t="open_profile">Open profile ↗</a></div>
+          </div>
+        </div></div>
+      </div>
+
+    </div>
+  </aside>
+
+  <script>
+    const scrim=document.getElementById('scrim'),drawer=document.getElementById('drawer');
+    function openDrawer(){scrim.classList.add('open');drawer.classList.add('open');}
+    function closeDrawer(){scrim.classList.remove('open');drawer.classList.remove('open');}
+    function setState(step){
+      [1,2,3].forEach(i=>{const el=document.getElementById('s'+i);el.classList.remove('open','done','locked');if(i<step)el.classList.add('done');else if(i===step)el.classList.add('open');else el.classList.add('locked');});
+      document.querySelectorAll('.prog i').forEach((d,idx)=>d.classList.toggle('on',idx<step));
+      ['l1','l2','l3'].forEach((id,idx)=>document.getElementById(id).classList.toggle('on',idx<step));
+    }
+    function reopen(step){const el=document.getElementById('s'+step);if(el.classList.contains('locked'))return;setState(step);}
+    function select(){const rtl=document.documentElement.dir==='rtl';document.getElementById('s1sum').textContent=rtl?'עילי מדמון · מכבי נתניה':'Ilay Madmon · Maccabi Netanya';setState(2);}
+    function doSave(){const rtl=document.documentElement.dir==='rtl';document.getElementById('s2sum').textContent=rtl?'עילי מדמון · נשמר':'Ilay Madmon · saved';setState(3);}
+    function reset(){document.getElementById('s1sum').textContent=(document.documentElement.dir==='rtl'?T.he.s1sum:EN.s1sum);document.getElementById('s2sum').textContent=(document.documentElement.dir==='rtl'?T.he.s2sum:EN.s2sum);setState(1);}
+
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקני נוער',nav_short:'רשימת מעקב',nav_req:'דרישות',nav_cont:'אנשי קשר',
+      platform:'פלטפורמה פעילה',platform_v:'נוער / אקדמיה',date:'1 באוקטובר 2026',
+      kicker:'דסק אקדמיה / הוספת כישרון',h1:'כישרון <span>חדש.</span>',add:'+ הוסף כישרון',add_card:'רישום כישרון<br>מ-IFA',
+      d_eyebrow:'אקדמיה / רישום כישרון',d_title:'הוספת כישרון',
+      l1:'איתור',l2:'אישור',l3:'סיום',
+      s1t:'איתור ב-IFA',s1sum:'חפשו ב-football.org.il או הדביקו קישור פרופיל',edit:'עריכה',paste_l:'הדביקו קישור שחקן IFA',load:'טען',or:'או',search_l:'חיפוש לפי שם (עב׳ / אנג׳)',
+      srcnote:'מקור ראשי · <b>IFA football.org.il</b> — קבוצת גיל, מועדון וכושר העונה נמשכים אוטומטית.',
+      r1sub:'מכבי נתניה · 12/03/2008 · ישראל',r2sub:'הפועל חיפה · 04/2010 · ישראל',
+      s2t:'אישור ואנשי קשר',s2sum:'בדיקת נתוני IFA, הוספת שחקן ואפוטרופוס',phero_sub:'קשר · קשר התקפי · מכבי נתניה',
+      a_dob:'תאריך לידה',a_ag:'קבוצת גיל (אוטומטי)',a_academy:'אקדמיה',a_academy_v:'נוער על',a_nat:'אזרחות',a_nat_v:'ישראל',
+      f_apps:'הופעות IFA',f_goals:'שערים',f_assists:'בישולים',
+      player_sec:'פרטי שחקן (לא חובה)',ph_phone:'טלפון',ph_email:'אימייל',
+      guard_sec:'הורה / אפוטרופוס',g_name:'שם',g_rel:'קרבה',g_rel_father:'אב',g_rel_mother:'אם',g_rel_guardian:'אפוטרופוס',g_phone:'טלפון',g_email:'אימייל <span class="optnote">(לא חובה)</span>',opt:'(לא חובה)',
+      change:'שינוי',add_acad:'הוסף לאקדמיה',
+      s3t:'נוסף לאקדמיה',s3sum:'מוכן להתאמה',done_h:'נרשם.',done_p:'עילי מדמון נמצא כעת באקדמיית הנוער שלך ומוכן להתאמה מול דרישות מועדונים.',
+      next_profile:'פתח תיק כישרון',next_shortlist:'הוסף לרשימת מעקב',next_match:'צפה בדרישות מועדון תואמות',
+      add_another:'+ הוסף עוד',open_profile:'פתח תיק ↗'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.innerHTML);
+    document.querySelectorAll('[data-ph]').forEach(el=>EN['ph_'+el.dataset.ph]=el.getAttribute('placeholder'));
+    const PH_HE={url:'football.org.il/players/player/?player_id=',search:'התחילו להקליד שם…',g_name_ph:'שם האפוטרופוס'};
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.innerHTML=(rtl?(T.he[k]??EN[k]):EN[k])||el.innerHTML;});
+      document.querySelectorAll('[data-ph]').forEach(el=>el.setAttribute('placeholder',(rtl?(PH_HE[el.dataset.ph]??EN['ph_'+el.dataset.ph]):EN['ph_'+el.dataset.ph])||''));
+    }
+  </script>
+</body>
+</html>

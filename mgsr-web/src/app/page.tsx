@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import BritLoader from '@/components/BritLoader';
 
 export default function HomePage() {
   const { user, loading } = useAuth();
@@ -14,9 +15,5 @@ export default function HomePage() {
     else router.replace('/login');
   }, [user, loading, router]);
 
-  return (
-    <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-      <div className="animate-pulse text-mgsr-teal">Loading...</div>
-    </div>
-  );
+  return <BritLoader fullPage={true} text="BRIT SPORT GROUP" subtitle="Welcome" />;
 }

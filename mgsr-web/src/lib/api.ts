@@ -401,10 +401,15 @@ export function streamReturnees(
 
 export function streamContractFinishers(
   onBatch: (event: ContractFinisherStreamEvent) => void,
-  onError?: (err: Error) => void
+  onError?: (err: Error) => void,
+  options?: { refresh?: boolean }
 ): () => void {
-  const url = BACKEND_URL
-    ? `${BACKEND_URL}/api/transfermarkt/contract-finishers/stream`
+  // Always use relative path — the SSE stream route lives in the Next.js app,
+  // not the external backend (which doesn't serve it and would fail the
+  // EventSource connection). Matches streamReturnees().
+  // refresh=true bypasses the server-side Firestore cache and re-scrapes.
+  const url = options?.refresh
+    ? '/api/transfermarkt/contract-finishers/stream?refresh=true'
     : '/api/transfermarkt/contract-finishers/stream';
   const es = new EventSource(url);
   let hasReceivedPlayers = false;

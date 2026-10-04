@@ -59,6 +59,14 @@ function looksLikeTransferRows(html) {
   return /<table[^>]*class=["'][^"']*items[^"']*["']/i.test(html) && /<tr[^>]*class=["'][^"']*(odd|even)[^"']*["']/i.test(html);
 }
 
+function hasPlayerProfileHeader(html) {
+  return /data-header/i.test(html || "");
+}
+
+function extractPlayerId(value) {
+  return String(value || "").match(/\/spieler\/(\d+)/i)?.[1] || null;
+}
+
 async function fetchWithNodeFetch(url) {
   const res = await fetch(url, {
     headers: getRandomHeaders(),
@@ -164,10 +172,10 @@ async function fetchDocument(url) {
     }
   }
 
-  if (isPlayerProfileUrl && !/data-header/i.test(html)) {
+  if (isPlayerProfileUrl && !hasPlayerProfileHeader(html)) {
     try {
       const scoutHtml = await fetchWithScoutProxy(url);
-      if (scoutHtml && /data-header/i.test(scoutHtml)) {
+      if (hasPlayerProfileHeader(scoutHtml)) {
         html = scoutHtml;
       } else if (!html && scoutHtml) {
         html = scoutHtml;
@@ -177,7 +185,18 @@ async function fetchDocument(url) {
     }
   }
 
-  if (!looksLikeTransferRows(html)) {
+  if (isPlayerProfileUrl && !hasPlayerProfileHeader(html)) {
+    try {
+      const proxyHtml = await fetchWithHtmlProxy(url);
+      if (hasPlayerProfileHeader(proxyHtml)) {
+        html = proxyHtml;
+      } else if (!html) {
+        html = proxyHtml;
+      }
+    } catch {
+      // Keep previous response/error path as source of truth.
+    }
+  } else if (!looksLikeTransferRows(html)) {
     try {
       const proxyHtml = await fetchWithHtmlProxy(url);
       if (looksLikeTransferRows(proxyHtml)) {
@@ -192,6 +211,16 @@ async function fetchDocument(url) {
 
   if (!html) {
     throw impitError || new Error("Empty response body");
+  }
+
+  if (isPlayerProfileUrl) {
+    const requestedPlayerId = extractPlayerId(url);
+    const responsePlayerId = extractPlayerId(
+      cheerio.load(html)("meta[property='og:url']").attr("content")
+    );
+    if (requestedPlayerId && responsePlayerId && requestedPlayerId !== responsePlayerId) {
+      throw new Error(`Profile ID mismatch: requested ${requestedPlayerId}, received ${responsePlayerId}`);
+    }
   }
 
   _consecutiveBlocks = 0;

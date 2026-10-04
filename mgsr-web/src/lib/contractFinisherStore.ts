@@ -43,7 +43,7 @@ export function getContractFinisherState(): ContractFinisherStoreState {
 }
 
 /** Start loading. Stream runs at module level and keeps going when page unmounts. */
-export function loadContractFinishers(): () => void {
+export function loadContractFinishers(options?: { refresh?: boolean }): () => void {
   streamClose?.();
   setState({ isLoading: true, error: null, players: [] });
 
@@ -61,7 +61,8 @@ export function loadContractFinishers(): () => void {
         error: err.message || 'Failed to load',
         players: state.players,
       });
-    }
+    },
+    options
   );
 
   return () => {

@@ -26,6 +26,9 @@ import {
   daysSince,
 } from '@/lib/shortlistIntelligence';
 import AppLayout from '@/components/AppLayout';
+import MenShortlist from '@/components/MenShortlist';
+import YouthShortlist from '@/components/YouthShortlist';
+import BritLoader from '@/components/BritLoader';
 import Link from 'next/link';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 
@@ -823,16 +826,29 @@ export default function ShortlistPage() {
       : entry.addedByAgentName || entry.addedByAgentHebrewName || '—';
 
   if (loading || !user) {
+    if (!isWomen) return <BritLoader fullPage={true} />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className={`animate-pulse font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{t('loading')}</div>
+        <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{t('loading')}</div>
       </div>
     );
   }
 
+  // ── Men & Youth platforms: "Light Management Room" full-bleed shortlist ──
+  if (platform === 'men') {
+    return <MenShortlist />;
+  }
+  if (platform === 'youth') {
+    return <YouthShortlist />;
+  }
+
+  // From here on the platform is narrowed to 'women' | 'youth'; alias keeps the
+  // residual men-only branches below well-typed without runtime change.
+  const platformStr: string = platform;
+
   const showingCount = sorted.length;
   const totalCount = entries.length;
-  const isFiltered = (platform === 'men' || platform === 'youth') && (filterBy !== 'all' || positionFilter !== null || specificPositionFilter !== null || withNotesOnly || agentFilter !== null || searchQuery.trim() !== '') && showingCount < totalCount;
+  const isFiltered = (platformStr === 'men' || platformStr === 'youth') && (filterBy !== 'all' || positionFilter !== null || specificPositionFilter !== null || withNotesOnly || agentFilter !== null || searchQuery.trim() !== '') && showingCount < totalCount;
 
   return (
     <AppLayout>
@@ -851,7 +867,7 @@ export default function ShortlistPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-            {platform === 'men' && (
+            {platformStr === 'men' && (
               <>
                 <Link
                   href="/release-notifications"
@@ -894,7 +910,7 @@ export default function ShortlistPage() {
         ) : (
           <>
             {/* Sort & Filter bar — youth, search + with-notes filter */}
-            {platform === 'youth' && entries.length > 0 && (
+            {platformStr === 'youth' && entries.length > 0 && (
               <div className="flex flex-col gap-3 mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl youth-glass-card">
                 {/* Search bar */}
                 <div className="relative">
@@ -939,7 +955,7 @@ export default function ShortlistPage() {
             )}
 
             {/* Sort & Filter bar — men only, always visible when we have entries */}
-            {platform === 'men' && entries.length > 0 && (
+            {platformStr === 'men' && entries.length > 0 && (
               <div className="brit-filter-tray flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl">
                 {/* Search bar */}
                 <div className="relative">
@@ -1090,7 +1106,7 @@ export default function ShortlistPage() {
             )}
 
             {sorted.length === 0 ? (
-              entries.length > 0 && (platform === 'men' || platform === 'youth') && (filterBy !== 'all' || agentFilter || positionFilter || specificPositionFilter || withNotesOnly || searchQuery.trim()) ? (
+              entries.length > 0 && (platformStr === 'men' || platformStr === 'youth') && (filterBy !== 'all' || agentFilter || positionFilter || specificPositionFilter || withNotesOnly || searchQuery.trim()) ? (
             <div className={`py-20 px-6 rounded-2xl bg-mgsr-card/50 border border-mgsr-border text-center ${isYouth ? 'youth-glass-card' : ''}`}>
               <p className="text-mgsr-text text-lg font-medium mb-2">{t('shortlist_filter_empty')}</p>
               <p className="text-mgsr-muted text-sm mb-6 max-w-sm mx-auto">{t('shortlist_filter_empty_hint').replace('{n}', String(entries.length))}</p>
@@ -1113,7 +1129,7 @@ export default function ShortlistPage() {
               <p className="text-mgsr-text text-xl font-semibold mb-2">{isWomen ? t('shortlist_empty_women') : t('shortlist_empty')}</p>
               <p className="text-mgsr-muted text-sm mb-8">{isYouth ? t('shortlist_empty_hint_youth') : isWomen ? t('shortlist_empty_hint_women') : t('shortlist_empty_hint')}</p>
               <div className="flex flex-wrap justify-center gap-3 relative">
-                {platform === 'men' && (
+                {platformStr === 'men' && (
                   <>
                     <Link
                       href="/release-notifications"
@@ -1149,7 +1165,7 @@ export default function ShortlistPage() {
             <div className={`grid gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3 ${isWomen ? '' : ''}`}>
             {sorted.map((entry, i) => {
               const playerUrl = entry.tmProfileUrl;
-              const intel = platform === 'men' ? entryIntelligence.get(playerUrl) : null;
+              const intel = platformStr === 'men' ? entryIntelligence.get(playerUrl) : null;
               const matchCount = intel?.matchCount ?? 0;
               const matchingReqs = intel?.matchingRequests ?? [];
               const freeAgent = isFreeAgent(entry.currentClub?.clubName ?? entry.clubJoinedName);
@@ -1176,7 +1192,7 @@ export default function ShortlistPage() {
               const isSoccerDonnaUrl = playerUrl?.includes('soccerdonna');
               const isFmInsideUrl = playerUrl?.includes('fminside');
 
-              const isEu = platform === 'men' && isEuNational(entry.playerNationality, euCountries, entry.playerNationalities);
+              const isEu = platformStr === 'men' && isEuNational(entry.playerNationality, euCountries, entry.playerNationalities);
               const isHighlighted = highlightedUrl === entry.tmProfileUrl;
               const isNotesExpanded = expandedNotesUrl === entry.tmProfileUrl;
               const notes = entry.notes ?? [];
@@ -1544,7 +1560,7 @@ export default function ShortlistPage() {
                     </div>
 
                     {/* Teammates */}
-                    {platform === 'men' && (
+                    {platformStr === 'men' && (
                       <div className="px-4 py-2">
                         <button
                           type="button"

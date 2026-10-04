@@ -43,7 +43,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   // Phone / contact
   "playerPhoneNumber", "agentPhoneNumber",
   // Flags
-  "haveMandate", "interestedInIsrael",
+  "haveMandate", "interestedInIsrael", "isOurAsset",
   // Family status
   "isMarried", "kidsCount",
   // English proficiency

@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group Youth — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --teal:#2f7d6e;--teal-soft:#5fa391;--teal-bright:#8fc9b8;
+      --red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    ::selection{background:var(--teal-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--teal-soft),var(--teal));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#9fb8b0;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav>a.active{color:var(--teal-bright)}
+    .nav>a.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--teal-soft)}
+    .nav em{color:var(--teal-soft);font-style:normal}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--teal-bright)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--teal-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 80px}
+
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:30px}
+    .kicker{margin:0 0 16px;color:var(--teal);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(48px,6vw,86px)/.82 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--teal)}
+    .addbtn{padding:13px 18px;background:var(--teal-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s;white-space:nowrap}
+    .addbtn:hover{background:var(--teal);color:var(--paper)}
+
+    .signals{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:34px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .signal{min-height:104px;padding:18px 20px 20px 0;border-inline-end:1px solid var(--line)}
+    .signal:not(:first-child){padding-inline-start:20px}
+    .signal:last-child{border-inline-end:0}
+    .signal label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .signal strong{display:block;margin-top:14px;font:500 clamp(30px,3.4vw,46px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .signal strong{font-weight:800}
+    .signal small{display:block;margin-top:10px;color:var(--muted);font:9px/1 var(--mono)}
+    .signal .teal{color:var(--teal)}
+
+    .grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,.8fr);gap:48px}
+    .module{margin-bottom:46px}
+    .module-head{display:flex;justify-content:space-between;align-items:baseline;gap:20px;padding-bottom:13px;border-bottom:1px solid var(--line)}
+    .module-head h2{margin:0;font:500 24px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .module-head h2{font-weight:800}
+    .module-head span{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+
+    .ladder{display:flex;flex-direction:column}
+    .rung{display:grid;grid-template-columns:50px 1fr 34px;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}
+    .rung:last-child{border-bottom:0}
+    .rung .ag{font:500 18px/1 var(--display);text-transform:uppercase}
+    .rung.peak .ag{color:var(--teal)}
+    .rung .track{height:8px;background:var(--paper-2);position:relative}
+    .rung .fill{position:absolute;inset:0 auto 0 0;background:var(--teal-soft)}
+    [dir=rtl] .rung .fill{inset:0 0 0 auto}
+    .rung.peak .fill{background:var(--teal)}
+    .rung .c{color:var(--muted);font:11px/1 var(--mono);text-align:end}
+
+    .deadline{display:grid;grid-template-columns:48px 1fr 86px;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
+    .deadline .flag{color:var(--teal);font:9px/1 var(--mono)}
+    .deadline h3{margin:0 0 4px;font:500 20px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .deadline h3{font-weight:800}
+    .deadline p{margin:0;color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}
+    .deadline time{color:var(--teal);text-align:end;font:500 16px/.9 var(--display);text-transform:uppercase}
+
+    .black-module{background:var(--black);color:var(--paper);padding:24px 24px 10px}
+    .black-module .module-head{border-color:var(--dark-line)}
+    .black-module .module-head h2{color:var(--paper)}
+    .black-module .module-head span{color:#9fb8b0}
+    .prow{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;padding:16px 0;border-bottom:1px solid var(--dark-line)}
+    .prow .av{width:44px;height:44px;background:var(--teal-soft);color:var(--ink);display:grid;place-items:center;font:600 14px/1 var(--display)}
+    .prow h3{margin:0 0 4px;font:500 20px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .prow h3{font-weight:800}
+    .prow p{margin:0;color:#9fb8b0;font:9px/1.4 var(--mono);text-transform:uppercase}
+    .prow .ag{font:9px/1 var(--mono);color:var(--teal-bright);border:1px solid rgba(143,201,184,.4);padding:5px 8px;text-transform:uppercase}
+
+    .feed{border-top:1px solid var(--line)}
+    .frow{display:grid;grid-template-columns:64px 1fr auto;gap:16px;padding:14px 0;border-bottom:1px solid var(--line);align-items:center}
+    .frow time{color:var(--muted);font:9px/1 var(--mono)}
+    .frow p{margin:0;font:12px/1.4 var(--body)}
+    .frow p b{font-weight:600}
+    .frow .t{color:var(--teal);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--teal-soft);padding:5px 7px}
+
+    @media(max-width:980px){.grid{grid-template-columns:1fr;gap:0}}
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav em,.nav>a.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.addbtn{margin-top:14px}
+      .signals{grid-template-columns:1fr 1fr}.signal:nth-child(2){border-inline-end:0}.signal:nth-child(n+3){border-top:1px solid var(--line)}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a class="active" href="youth-dashboard.html"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <a href="youth-players.html"><span data-t="nav_players">Youth Players</span><em>28</em></a>
+        <a href="youth-shortlist.html"><span data-t="nav_short">Shortlist</span><em>12</em></a>
+        <a href="youth-requests.html"><span data-t="nav_req">Requests</span><em>04</em></a>
+        <a href="youth-contacts.html"><span data-t="nav_cont">Contacts</span><em>17</em></a>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Youth / Academy</strong><span data-t="roster_lab">Prospects</span><strong data-t="roster_v">28 tracked</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_dash">Dashboard</strong> / <span data-t="date">1 October 2026</span></div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><button data-t="search">Search /</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div>
+            <p class="kicker" data-t="kicker">Academy desk / Youth platform · IFA</p>
+            <h1 data-t="greeting">Good afternoon,<br><span>Lior.</span></h1>
+          </div>
+          <a class="addbtn" href="youth-add-player.html" data-t="add">+ Add prospect</a>
+        </header>
+
+        <section class="signals">
+          <div class="signal"><label data-t="s1">Prospects tracked</label><strong>28</strong><small data-t="s1n">U-13 → U-21</small></div>
+          <div class="signal"><label data-t="s2">National callups</label><strong class="teal">09</strong><small data-t="s2n">This season</small></div>
+          <div class="signal"><label data-t="s3">Mandates</label><strong>04</strong><small data-t="s3n">Under review</small></div>
+          <div class="signal"><label data-t="s4">Trial window</label><strong class="teal">19d</strong><small data-t="s4n">Winter showcase</small></div>
+        </section>
+
+        <div class="grid">
+          <div>
+            <section class="module">
+              <div class="module-head"><h2 data-t="m_ladder">Roster by age group</h2><span data-t="m_ladder_s">28 prospects</span></div>
+              <div class="ladder">
+                <div class="rung"><span class="ag">U-13</span><div class="track"><div class="fill" style="width:18%"></div></div><span class="c">02</span></div>
+                <div class="rung"><span class="ag">U-14</span><div class="track"><div class="fill" style="width:28%"></div></div><span class="c">03</span></div>
+                <div class="rung"><span class="ag">U-15</span><div class="track"><div class="fill" style="width:42%"></div></div><span class="c">05</span></div>
+                <div class="rung peak"><span class="ag">U-17</span><div class="track"><div class="fill" style="width:80%"></div></div><span class="c">08</span></div>
+                <div class="rung"><span class="ag">U-19</span><div class="track"><div class="fill" style="width:58%"></div></div><span class="c">06</span></div>
+                <div class="rung"><span class="ag">U-21</span><div class="track"><div class="fill" style="width:36%"></div></div><span class="c">04</span></div>
+              </div>
+            </section>
+
+            <section class="black-module">
+              <div class="module-head"><h2 data-t="m_review">Prospects to review</h2><span data-t="m_review_s">02 need sign-off</span></div>
+              <div class="prow"><div class="av">IM</div><div><h3>Ilay Madmon</h3><p data-t="r1">CM · Maccabi Netanya · guardian consent pending</p></div><span class="ag">U-19</span></div>
+              <div class="prow"><div class="av">AG</div><div><h3>Adam Gabai</h3><p data-t="r2">ST · Beitar Jerusalem · trial offer to confirm</p></div><span class="ag">U-18</span></div>
+            </section>
+          </div>
+
+          <aside>
+            <section class="module">
+              <div class="module-head"><h2 data-t="m_dead">Deadlines</h2><span data-t="m_dead_s">03 priority</span></div>
+              <div class="deadline"><div class="flag">IFA / 01</div><div><h3 data-t="d1">Trial window</h3><p data-t="d1s">Winter showcase submissions</p></div><time data-t="d1t">19 days</time></div>
+              <div class="deadline"><div class="flag">MND / 02</div><div><h3 data-t="d2">Madmon mandate</h3><p data-t="d2s">Guardian signature required</p></div><time data-t="d2t">06 days</time></div>
+              <div class="deadline"><div class="flag">U19 / 03</div><div><h3 data-t="d3">Haifa trial</h3><p data-t="d3s">Kartsev · sporting director</p></div><time data-t="d3t">11 days</time></div>
+            </section>
+
+            <section class="module">
+              <div class="module-head"><h2 data-t="m_feed">Recent activity</h2><span data-t="today">Today</span></div>
+              <div class="feed">
+                <div class="frow"><time>14:12</time><p><b>Ilay Madmon</b><br><span style="color:var(--muted)" data-t="f1">IFA stats synced · 12 apps, 4 goals</span></p><span class="t">IFA</span></div>
+                <div class="frow"><time>12:40</time><p><b>Adam Gabai</b><br><span style="color:var(--muted)" data-t="f2">Added to shortlist · U-18</span></p><span class="t" data-t="f2t">Short</span></div>
+                <div class="frow"><time>11:05</time><p><b>Noam Peretz</b><br><span style="color:var(--muted)" data-t="f3">Guardian contact updated</span></p><span class="t" data-t="f3t">Guard</span></div>
+                <div class="frow"><time>09:16</time><p><b>Eden Kartsev</b><br><span style="color:var(--muted)" data-t="f4">Matched · Maccabi Haifa U-19</span></p><span class="t" data-t="f4t">Match</span></div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקני נוער',nav_short:'רשימת מעקב',nav_req:'דרישות',nav_cont:'אנשי קשר',
+      platform:'פלטפורמה פעילה',platform_v:'נוער / אקדמיה',roster_lab:'כישרונות',roster_v:'28 במעקב',search:'חיפוש /',add:'+ הוסף כישרון',date:'1 באוקטובר 2026',
+      kicker:'דסק אקדמיה / פלטפורמת נוער · IFA',greeting:'צהריים טובים,<br><span>ליאור.</span>',
+      s1:'כישרונות במעקב',s1n:'U-13 → U-21',s2:'זימוני נבחרת',s2n:'העונה',s3:'מנדטים',s3n:'בבדיקה',s4:'חלון מבחנים',s4n:'ראווה חורף',
+      m_ladder:'סגל לפי קבוצת גיל',m_ladder_s:'28 כישרונות',m_review:'כישרונות לבדיקה',m_review_s:'2 ממתינים לאישור',
+      r1:'קשר · מכבי נתניה · ממתין להסכמת אפוטרופוס',r2:'חלוץ · ביתר ירושלים · לאשר הצעת מבחן',
+      m_dead:'מועדי יעד',m_dead_s:'3 בעדיפות',d1:'חלון מבחנים',d1s:'הגשות ראווה חורף',d1t:'19 ימים',d2:'מנדט מדמון',d2s:'נדרשת חתימת אפוטרופוס',d2t:'6 ימים',d3:'מבחן חיפה',d3s:'קרצב · מנהל מקצועי',d3t:'11 ימים',
+      m_feed:'פעילות אחרונה',today:'היום',f1:'סטטיסטיקת IFA סונכרנה · 12 הופעות, 4 שערים',f2:'נוסף לרשימת מעקב · U-18',f2t:'מעקב',f3:'פרטי אפוטרופוס עודכנו',f3t:'אפוטר׳',f4:'הותאם · מכבי חיפה U-19',f4t:'התאמה'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.innerHTML);
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.innerHTML=(rtl?(T.he[k]??EN[k]):EN[k])||el.innerHTML;});
+    }
+  </script>
+</body>
+</html>

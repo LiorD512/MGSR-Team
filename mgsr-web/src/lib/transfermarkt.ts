@@ -516,6 +516,129 @@ export async function handlePlayer(urlParam: string) {
   };
 }
 
+export interface NextMatch {
+  date: string;
+  time: string | null;
+  opponent: string;
+  venue: string | null;
+  homeAway: 'home' | 'away' | null;
+  competition: string | null;
+  sourceUrl: string;
+}
+
+function currentSeasonYearForFixtures(): number {
+  const now = new Date();
+  return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+}
+
+function clubIdFromUrl(url: string | undefined): string | null {
+  const match = url?.match(/\/verein\/(\d+)/i);
+  return match?.[1] || null;
+}
+
+function fixtureScheduleUrl(clubUrl: string, seasonYear: number): string | null {
+  try {
+    const parsed = new URL(clubUrl);
+    if (!parsed.hostname.toLowerCase().endsWith('transfermarkt.com')) return null;
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    const vereinIndex = segments.findIndex((segment) => segment.toLowerCase() === 'verein');
+    const clubId = vereinIndex >= 0 ? segments[vereinIndex + 1] : null;
+    const slug = segments[0];
+    if (!slug || !clubId || !/^\d+$/.test(clubId)) return null;
+    return `${TRANSFERMARKT_BASE}/${slug}/spielplan/verein/${clubId}/saison_id/${seasonYear}/plus/1`;
+  } catch {
+    return null;
+  }
+}
+
+function parseFixtureDate(text: string): { label: string; timestamp: number } | null {
+  const match = text.match(
+    /\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\b/i
+  );
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const timestamp = Date.UTC(year, month - 1, day);
+  if (!Number.isFinite(timestamp)) return null;
+  return { label: match[0].replace(/\s+/g, ' ').trim(), timestamp };
+}
+
+function parseFixtureTime(text: string): string | null {
+  const match = text.match(/\b(?:[01]?\d|2[0-3]):[0-5]\d\s*(?:AM|PM)?\b/i);
+  return match?.[0]?.replace(/\s+/g, ' ').trim() || null;
+}
+
+function normalizeFixtureTeamName(name: string): string {
+  return name.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * Reads the club schedule and stadium separately because Transfermarkt's
+ * schedule table contains the fixture but not the venue name.
+ */
+export async function handleNextMatch(playerUrl: string): Promise<{ match: NextMatch | null }> {
+  const player = await handlePlayer(playerUrl);
+  const clubUrl = player.currentClub?.clubTmProfile;
+  const scheduleUrl = clubUrl ? fixtureScheduleUrl(clubUrl, currentSeasonYearForFixtures()) : null;
+  if (!clubUrl || !scheduleUrl) return { match: null };
+
+  const scheduleHtml = await fetchHtmlWithRetry(scheduleUrl);
+  const $schedule = cheerio.load(scheduleHtml);
+  const clubId = clubIdFromUrl(clubUrl);
+  const currentClubName = normalizeFixtureTeamName(player.currentClub?.clubName || '');
+  const now = Date.now();
+  const candidates: NextMatch[] = [];
+
+  $schedule('table tr').each((_, row) => {
+    const $row = $schedule(row);
+    const rowText = $row.text().replace(/\s+/g, ' ').trim();
+    const date = parseFixtureDate(rowText);
+    if (!date || date.timestamp < Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate())) return;
+
+    const teamLinks: { id: string | null; name: string }[] = [];
+    $row.find('a[href*="/verein/"]').each((__, anchor) => {
+      const $anchor = $schedule(anchor);
+      const name = ($anchor.attr('title') || $anchor.text()).replace(/\s+/g, ' ').trim();
+      const id = clubIdFromUrl($anchor.attr('href'));
+      if (name && !teamLinks.some((team) => team.id === id && team.name === name)) teamLinks.push({ id, name });
+    });
+    if (teamLinks.length < 2) return;
+
+    const home = teamLinks[0];
+    const away = teamLinks[1];
+    const isHome = clubId ? home.id === clubId : normalizeFixtureTeamName(home.name) === currentClubName;
+    const isAway = clubId ? away.id === clubId : normalizeFixtureTeamName(away.name) === currentClubName;
+    if (!isHome && !isAway) return;
+
+    const $box = $row.closest('.box');
+    const competition = $box.find('h2.content-box-headline').first().text().replace(/\s+/g, ' ').trim() || null;
+    candidates.push({
+      date: date.label,
+      time: parseFixtureTime(rowText),
+      opponent: isHome ? away.name : home.name,
+      venue: null,
+      homeAway: isHome ? 'home' : 'away',
+      competition,
+      sourceUrl: scheduleUrl,
+    });
+  });
+
+  candidates.sort((a, b) => {
+    const aTime = parseFixtureDate(a.date)?.timestamp ?? now;
+    const bTime = parseFixtureDate(b.date)?.timestamp ?? now;
+    return aTime - bTime;
+  });
+  const next = candidates[0];
+  if (!next) return { match: null };
+
+  // `venue` stays null deliberately. The club page only lists the club's own
+  // stadium, which is the wrong ground whenever the fixture is away or played
+  // at a neutral venue — and a plausible-looking wrong stadium is worse than
+  // none. Per-match venue comes from Flashscore's signed feed instead.
+  return { match: next };
+}
+
 /**
  * Get the most recent transfer fee (in euros) for a player.
  * Used to filter out players bought for big money (e.g. >€2.5M) who are not realistic for Ligat Ha'Al.
@@ -1072,10 +1195,21 @@ function getContractFinisherWindow(): { window: string; yearsToQuery: number[] }
   const now = new Date();
   const month = now.getMonth() + 1;
   const year = Math.max(now.getFullYear(), 2026);
-  if (month >= 2 && month <= 9) {
+  // Bucket by the NEXT transfer window relative to today:
+  //  • Feb–Aug  → next window is Summer; contracts expiring 30 Jun of this year.
+  //  • Sep–Jan  → next window is Winter; contracts expiring 31 Dec (this year)
+  //               / 31 Jan (next year). September onward already points at winter,
+  //               so it must NOT be bucketed as summer (contracts ending Nov/Dec
+  //               belong to the winter window, matching Transfermarkt's data).
+  if (month >= 2 && month <= 8) {
     return { window: 'Summer', yearsToQuery: [year] };
   }
   return { window: 'Winter', yearsToQuery: [year, year + 1] };
+}
+
+/** Current contract-finisher window label ('Summer' | 'Winter'), for cache responses. */
+export function getContractFinisherWindowLabel(): string {
+  return getContractFinisherWindow().window;
 }
 
 function parseMarketValueCF(val: string | null): number {
@@ -1089,6 +1223,31 @@ function parseMarketValueCF(val: string | null): number {
 function formatContractExpiryDate(window: string, year: number, isFirstYear: boolean): string {
   if (window === 'Summer') return `30.06.${year}`;
   return isFirstYear ? `31.12.${year}` : `31.01.${year}`;
+}
+
+/**
+ * Extract the real contract-end date (dd.mm.yyyy) from an "expiring contracts"
+ * table row so the card matches Transfermarkt exactly. Returns null when no
+ * date cell is present (caller falls back to the synthesized window date).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractContractEndDateCF($: any, row: any): string | null {
+  let found: string | null = null;
+  $(row)
+    .find('td')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .each((_: number, td: any) => {
+      if (found) return;
+      const text = $(td).text().trim();
+      // Match a standalone dd.mm.yyyy (allow d.m.yyyy); ignore cells with extra text.
+      const m = text.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+      if (m) {
+        const mm = parseInt(m[2], 10);
+        const dd = parseInt(m[1], 10);
+        if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) found = text;
+      }
+    });
+  return found;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1231,11 +1390,10 @@ export async function handleContractFinishers() {
               ? makeAbsoluteUrl(playerImageRaw.replace('medium', 'big'))
               : null;
 
-            const contractExpiry = formatContractExpiryDate(
-              config.window,
-              jahr,
-              config.yearsToQuery[0] === jahr
-            );
+            const scrapedExpiry = extractContractEndDateCF($, row);
+            const contractExpiry =
+              scrapedExpiry ||
+              formatContractExpiryDate(config.window, jahr, config.yearsToQuery[0] === jahr);
             all.push({
               playerImage,
               playerName,
@@ -1395,11 +1553,13 @@ export async function* handleContractFinishersStream(): AsyncGenerator<
               ? makeAbsoluteUrl(playerImageRaw.replace('medium', 'big'))
               : null;
 
-            const contractExpiry = formatContractExpiryDate(
-              config.window,
-              jahr,
-              config.yearsToQuery[0] === jahr
-            );
+            // Prefer the REAL contract-end date from the row (Transfermarkt's
+            // "expiring contracts" table carries a dd.mm.yyyy cell) so each card
+            // matches TM exactly; fall back to the synthesized window date.
+            const scrapedExpiry = extractContractEndDateCF($, row);
+            const contractExpiry =
+              scrapedExpiry ||
+              formatContractExpiryDate(config.window, jahr, config.yearsToQuery[0] === jahr);
             const p = {
               playerImage,
               playerName,

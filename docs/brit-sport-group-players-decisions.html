@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Players / Decision Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    /* ── Decision control bar (not part of the product; a preview harness) ── */
+    .decisions{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;padding:12px 22px;background:#1b1b18;color:var(--paper);border-bottom:1px solid var(--dark-line)}
+    .decisions .grp{display:flex;align-items:center;gap:10px}
+    .decisions .lab{color:#b8b2a5;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.14em}
+    .decisions .seg{display:flex;border:1px solid rgba(243,240,232,.25)}
+    .decisions .seg button{padding:8px 13px;font:9px/1 var(--mono);text-transform:uppercase;color:#b8b2a5;border-inline-start:1px solid rgba(243,240,232,.18)}
+    .decisions .seg button:first-child{border-inline-start:0}
+    .decisions .seg button.active{background:var(--gold-soft);color:var(--ink)}
+    .decisions .hint{margin-inline-start:auto;color:#8f8a80;font:9px/1.4 var(--mono);text-transform:uppercase;max-width:340px}
+
+    /* ── Shell ── */
+    .app{min-height:calc(100vh - 46px);display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:46px;height:calc(100vh - 46px);display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .rail-label{margin:31px 0 13px;color:#969188;font:9px/1 var(--mono);letter-spacing:.13em;text-transform:uppercase}
+    .nav{display:grid;gap:3px}
+    .nav a{display:flex;justify-content:space-between;align-items:center;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s}
+    .nav a:hover,.nav a.active{color:var(--gold-soft)}
+    .nav a.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:43px}
+
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:34px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(52px,6.4vw,96px)/.8 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .view-toggle{display:flex;border:1px solid var(--line)}
+    .view-toggle button{padding:11px 16px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line)}
+    .view-toggle button:last-child{border-inline-end:0}
+    .view-toggle button.active{background:var(--black);color:var(--gold-soft)}
+
+    .signals{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:34px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .signal{min-height:104px;padding:18px 20px 20px 0;border-inline-end:1px solid var(--line)}
+    .signal:not(:first-child){padding-inline-start:20px}
+    .signal:last-child{border-inline-end:0}
+    .signal label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .signal strong{display:block;margin-top:14px;font:500 clamp(30px,3.4vw,46px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .signal strong{font-weight:800;letter-spacing:normal}
+    .signal small{display:block;margin-top:10px;color:var(--muted);font:9px/1 var(--mono)}
+    .signal .gold{color:var(--gold)}
+
+    .tray{border:1px solid var(--line);margin-bottom:16px}
+    .tray-top{display:grid;grid-template-columns:1fr auto;border-bottom:1px solid var(--line)}
+    .search{display:flex;align-items:center;gap:14px;padding:0 20px}
+    .search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
+    .search input{width:100%;border:0;background:transparent;padding:20px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .segment{display:flex;border-inline-start:1px solid var(--line)}
+    .segment button{padding:0 18px;font:10px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-start:1px solid var(--line)}
+    .segment button:first-child{border-inline-start:0}
+    .segment button.active{background:var(--gold-soft);color:var(--ink)}
+    .chips{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+    .chip{padding:13px 16px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line);transition:.15s}
+    .chip:hover{color:var(--ink)}
+    .chip.on{background:var(--black);color:var(--gold-soft)}
+    .chip .dot{display:inline-block;width:5px;height:5px;margin-inline-end:6px;background:var(--gold-soft);border-radius:50%;vertical-align:middle;opacity:0}
+    .chip.on .dot{opacity:1}
+    .tray-bottom{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px;flex-wrap:wrap}
+    .sort{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .sort span{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .sort button{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .sort button.active{color:var(--gold)}
+    .clear{color:var(--red);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count{margin:0 2px 20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    .roster{width:100%;border-collapse:collapse}
+    .roster thead th{padding:12px 14px;color:var(--muted);text-align:start;font:9px/1 var(--mono);font-weight:400;text-transform:uppercase;border-bottom:1px solid var(--line)}
+    .roster tbody tr{border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
+    .roster tbody tr:hover{background:rgba(17,17,15,.035)}
+    .roster td{padding:13px 14px;font:11px/1.2 var(--mono);vertical-align:middle}
+    .cell-player{display:flex;align-items:center;gap:13px}
+    .thumb{width:42px;height:42px;object-fit:cover;filter:grayscale(1);background:linear-gradient(160deg,#23231f,#11110f);flex:none}
+    .thumb.ph{display:grid;place-items:center;color:var(--paper);font:500 15px/1 var(--display);filter:none}
+    .cell-player .pname{font-family:var(--body);font-weight:700;font-size:13px;text-transform:none;letter-spacing:0}
+    .cell-player .pmeta{margin-top:3px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .pos-tags{display:flex;gap:5px}
+    .pos-tags b{font:400 9px/1 var(--mono);padding:5px 7px;border:1px solid var(--line);text-transform:uppercase}
+    .val{font-weight:500;color:var(--ink)}
+    .flags{display:flex;gap:6px;flex-wrap:wrap}
+    .tag{font:9px/1 var(--mono);text-transform:uppercase;padding:5px 7px;border:1px solid var(--line)}
+    .tag.eu{color:var(--gold);border-color:var(--gold-soft)}
+    .tag.mandate{color:var(--green);border-color:var(--green)}
+    .tag.free{color:var(--red);border-color:var(--red)}
+    .tag.exp{color:var(--red);border-color:var(--red)}
+    .tag.loan{color:var(--muted)}
+
+    .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px}
+    .card{position:relative;overflow:hidden;background:var(--black);cursor:pointer;min-height:290px}
+    .card img{width:100%;height:100%;min-height:290px;object-fit:cover;filter:grayscale(1);opacity:.62;transition:.3s}
+    .card .ph{width:100%;height:100%;min-height:290px;background:linear-gradient(160deg,#26261f,#101010)}
+    .card:hover img{opacity:.78;transform:scale(1.03)}
+    .card:after{content:'';position:absolute;inset:44% 0 0;background:linear-gradient(180deg,transparent,rgba(17,17,15,.9))}
+    .card-top{position:absolute;top:14px;inset-inline:14px;z-index:1;display:flex;justify-content:space-between}
+    .card-top .num{color:var(--gold-soft);font:9px/1 var(--mono)}
+    .card-top .ct-flags{display:flex;gap:5px}
+    .card-top .ct-flags b{font:9px/1 var(--mono);color:var(--paper);border:1px solid var(--dark-line);padding:4px 6px;text-transform:uppercase}
+    .card-copy{position:absolute;inset-inline:14px;bottom:14px;z-index:1;color:var(--paper)}
+    .card-copy small{color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}
+    .card-copy h3{margin:8px 0 4px;font:500 26px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .card-copy h3{font-weight:800}
+    .card-copy .cval{color:#c9c3b6;font:9px/1.4 var(--mono);text-transform:uppercase}
+    .hidden{display:none}
+
+    /* Navigation-flash (simulates going to full profile) */
+    .navflash{position:fixed;inset:0;z-index:70;display:none;place-items:center;background:rgba(17,17,15,.86);color:var(--paper);text-align:center}
+    .navflash.show{display:grid}
+    .navflash .k{color:var(--gold-soft);font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.2em;margin-bottom:16px}
+    .navflash h2{margin:0;font:500 46px/.9 var(--display);text-transform:uppercase}
+    .navflash .u{margin-top:18px;color:#b8b2a5;font:10px/1 var(--mono)}
+    [dir=rtl] .navflash h2{font-weight:800}
+
+    /* Drawer */
+    .scrim{position:fixed;inset:0;z-index:55;background:rgba(17,17,15,.55);opacity:0;pointer-events:none;transition:.25s}
+    .scrim.open{opacity:1;pointer-events:auto}
+    .drawer{position:fixed;top:0;bottom:0;inset-inline-end:0;z-index:56;width:min(440px,94vw);background:var(--paper);border-inline-start:4px solid var(--gold);transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);overflow-y:auto}
+    [dir=rtl] .drawer{transform:translateX(-100%)}
+    .drawer.open{transform:none}
+    .drawer-hero{position:relative;height:230px;background:var(--black)}
+    .drawer-hero img{width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.68}
+    .drawer-hero .ph{position:absolute;inset:0;background:linear-gradient(160deg,#26261f,#101010)}
+    .drawer-hero:after{content:'';position:absolute;inset:40% 0 0;background:linear-gradient(180deg,transparent,rgba(17,17,15,.92))}
+    .drawer-hero .close{position:absolute;top:14px;inset-inline-end:16px;z-index:2;color:var(--paper);font:22px/1 var(--display)}
+    .drawer-hero .hero-copy{position:absolute;inset-inline:22px;bottom:18px;z-index:1;color:var(--paper)}
+    .drawer-hero .hero-copy small{color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}
+    .drawer-hero .hero-copy h2{margin:8px 0 0;font:500 40px/.85 var(--display);text-transform:uppercase}
+    [dir=rtl] .drawer-hero .hero-copy h2{font-weight:800}
+    .drawer-body{padding:24px 22px 30px}
+    .facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
+    .facts div{padding:13px 0;border-bottom:1px solid var(--line)}
+    .facts div:nth-child(even){padding-inline-start:14px;border-inline-start:1px solid var(--line)}
+    .facts label{display:block;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .facts strong{display:block;margin-top:6px;font:500 20px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .facts strong{font-weight:800}
+    .drawer-note{margin:22px 0 0;padding:16px;background:rgba(17,17,15,.04);border-inline-start:2px solid var(--gold-soft)}
+    .drawer-note label{display:block;margin-bottom:8px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .drawer-note p{margin:0;color:var(--ink);font:11px/1.5 var(--body)}
+    .drawer-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+    .drawer-actions button{padding:13px;text-align:center;font:9px/1 var(--mono);text-transform:uppercase}
+    .drawer-actions .primary{background:var(--black);color:var(--gold-soft)}
+    .drawer-actions .ghost{border:1px solid var(--ink);color:var(--ink)}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-label,.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px}.nav a{padding:6px 0}.nav em,.nav a.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:28px 18px 60px}
+      .masthead{display:block}.view-toggle{margin-top:18px;display:inline-flex}
+      .signals{grid-template-columns:1fr 1fr}
+      .tray-top{grid-template-columns:1fr}.segment{border-inline-start:0;border-top:1px solid var(--line);overflow-x:auto}
+      .roster thead{display:none}.roster tbody tr{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:12px 4px}.roster td{padding:0;border:0}.cell-player{grid-column:1/-1}
+    }
+  </style>
+</head>
+<body>
+  <!-- Decision harness -->
+  <div class="decisions">
+    <div class="grp">
+      <span class="lab">Click behavior</span>
+      <div class="seg" id="seg-click">
+        <button class="active" data-click="drawer" onclick="setClick('drawer')">Quick-view drawer</button>
+        <button data-click="direct" onclick="setClick('direct')">Direct to profile</button>
+      </div>
+    </div>
+    <div class="grp">
+      <span class="lab">Default view</span>
+      <div class="seg" id="seg-view">
+        <button class="active" data-view="table" onclick="setDefaultView('table')">Ledger</button>
+        <button data-view="gallery" onclick="setDefaultView('gallery')">Gallery</button>
+      </div>
+    </div>
+    <div class="grp">
+      <span class="lab">Language</span>
+      <div class="seg" id="seg-lang">
+        <button class="active" onclick="setLang('en')">EN</button>
+        <button onclick="setLang('he')">HE</button>
+      </div>
+    </div>
+    <span class="hint" id="hint">Click any player row/card to see the current behavior. Toggle the switches to preview each decision.</span>
+  </div>
+
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <p class="rail-label" data-t="workspace">Workspace</p>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <a class="active" href="#"><span data-t="nav_players">Players</span><em>02</em></a>
+        <a href="#"><span data-t="nav_req">Requests</span><em>03</em></a>
+        <a href="#"><span data-t="nav_short">Shortlist</span><em>04</em></a>
+        <a href="#"><span data-t="nav_cont">Contacts</span><em>05</em></a>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Men / Europe</strong><span data-t="roster">Roster assets</span><strong>42</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_players">Players</strong> / <span data-t="date">24 September 2026</span></div>
+        <div class="actions"><button data-t="add">Add player /</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div>
+            <p class="kicker" data-t="kicker">Private client office / Men platform</p>
+            <h1><span data-t="head_a">The</span> <span class="gold" data-t="head_b">roster.</span></h1>
+          </div>
+          <div class="view-toggle">
+            <button id="vt-table" class="active" onclick="setView('table')" data-t="ledger">Ledger</button>
+            <button id="vt-gallery" onclick="setView('gallery')" data-t="gallery">Gallery</button>
+          </div>
+        </header>
+
+        <section class="signals">
+          <div class="signal"><label data-t="s_roster">Roster assets</label><strong>42</strong><small data-t="s_roster_n">26 EU passports</small></div>
+          <div class="signal"><label data-t="s_value">Managed value</label><strong class="gold">€48.55M</strong><small data-t="s_value_n">Across 38 valued</small></div>
+          <div class="signal"><label data-t="s_mandate">Under mandate</label><strong>29</strong><small data-t="s_mandate_n">13 without</small></div>
+          <div class="signal"><label data-t="s_free">Free agents</label><strong class="gold">04</strong><small data-t="s_free_n">Available now</small></div>
+        </section>
+
+        <section class="tray">
+          <div class="tray-top">
+            <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input data-ph="search" placeholder="Search player, club or agent"></label>
+            <div class="segment"><button class="active">All</button><button>GK</button><button>DEF</button><button>MID</button><button>FWD</button></div>
+          </div>
+          <div class="chips">
+            <button class="chip on"><span class="dot"></span><span data-t="f_my">My players</span></button>
+            <button class="chip"><span class="dot"></span>🇪🇺 <span data-t="f_eu">EU national</span></button>
+            <button class="chip"><span class="dot"></span><span data-t="f_mandate">With mandate</span></button>
+            <button class="chip"><span class="dot"></span><span data-t="f_free">Free agents</span></button>
+            <button class="chip"><span class="dot"></span><span data-t="f_exp">Contract expiring</span></button>
+          </div>
+          <div class="tray-bottom">
+            <div class="sort"><span data-t="sort">Sort</span><button class="active" data-t="sort_new">Newest</button><button data-t="sort_age">Age</button><button data-t="sort_val">Market value</button><button data-t="sort_name">Name</button></div>
+            <button class="clear" data-t="clear">Clear filters ×</button>
+          </div>
+        </section>
+
+        <p class="result-count"><span data-t="showing_a">Showing</span> <b>42</b> <span data-t="showing_b">of 42 assets</span> / <b>1</b> <span data-t="showing_c">filter active</span></p>
+
+        <div id="view-table"><table class="roster"><thead><tr><th data-t="th_player">Player</th><th data-t="th_club">Club</th><th data-t="th_pos">Pos</th><th data-t="th_age">Age</th><th data-t="th_val">Value</th><th data-t="th_sig">Signals</th></tr></thead><tbody id="tbody"></tbody></table></div>
+        <div id="view-gallery" class="gallery hidden"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Direct-navigation flash -->
+  <div class="navflash" id="navflash" onclick="this.classList.remove('show')">
+    <div><div class="k" data-t="navigating">Navigating to full profile</div><h2 id="nav-name">Player</h2><div class="u" id="nav-url">/players/…</div></div>
+  </div>
+
+  <!-- Quick-view drawer -->
+  <div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-hero"><img id="d-img" src="" alt=""><div class="ph" id="d-ph" style="display:none"></div><button class="close" onclick="closeDrawer()">×</button><div class="hero-copy"><small id="d-sub">Club / Position</small><h2 id="d-name">Player</h2></div></div>
+    <div class="drawer-body">
+      <div class="facts">
+        <div><label data-t="th_val">Market value</label><strong id="d-val">€0</strong></div>
+        <div><label data-t="th_age">Age</label><strong id="d-age">—</strong></div>
+        <div><label data-t="th_pos">Position</label><strong id="d-pos">—</strong></div>
+        <div><label data-t="f_mandate2">Mandate</label><strong id="d-mandate">—</strong></div>
+        <div><label data-t="nationality">Nationality</label><strong id="d-nat">—</strong></div>
+        <div><label data-t="agent">Agent</label><strong id="d-agent">—</strong></div>
+      </div>
+      <div class="drawer-note"><label data-t="latest_note">Latest note</label><p id="d-note">—</p></div>
+      <div class="drawer-actions"><button class="primary" onclick="fromDrawerToProfile()" data-t="open_profile">Open full profile</button><button class="ghost" data-t="whatsapp">Message on WhatsApp</button></div>
+    </div>
+  </aside>
+
+  <script>
+    const players=[
+      {name:'Liel Abada',club:'Charlotte FC',pos:['RW','LW'],age:24,val:'€7.00M',nat:'Israel',eu:true,mandate:true,agent:'Lior Dahan',note:'Coach happy with minutes; revisit clause in winter.',img:'https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=600&q=80'},
+      {name:'Anan Khalaili',club:'Royale Union SG',pos:['RW'],age:22,val:'€6.50M',nat:'Israel',eu:true,mandate:true,agent:'Lior Dahan',note:'Two UEFA scouts tracking. Hold.',img:'https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=600&q=80'},
+      {name:'Roy Revivo',club:'Maccabi Tel Aviv',pos:['LB'],age:26,val:'€1.80M',nat:'Israel',eu:false,mandate:true,agent:'D. Cohen',note:'',img:'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=600&q=80'},
+      {name:'Dean David',club:'Maccabi Haifa',pos:['CF'],age:30,val:'€1.50M',nat:'Israel',eu:true,mandate:true,exp:true,agent:'Lior Dahan',note:'Mandate renewal window opens in 6 days.',img:''},
+      {name:'Guy Melamed',club:'Free agent',pos:['ST'],age:29,val:'€650K',nat:'Israel',eu:true,mandate:false,free:true,agent:'D. Cohen',note:'Weighing two offers from AFC.',img:''},
+      {name:'Ofri Arad',club:'Kairat Almaty',pos:['CB'],age:25,val:'€800K',nat:'Israel',eu:false,mandate:true,agent:'Lior Dahan',note:'',img:'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=600&q=80'},
+      {name:'Idan Toklomati',club:'Charlotte FC',pos:['CF'],age:20,val:'€2.20M',nat:'Nigeria',eu:false,mandate:false,agent:'S. Levi',note:'Breakout season; monitor value.',img:''},
+      {name:'Stav Lemkin',club:'Shakhtar (loan)',pos:['CB'],age:22,val:'€1.20M',nat:'Israel',eu:true,mandate:true,loan:true,agent:'Lior Dahan',note:'Loan review scheduled.',img:''}
+    ];
+
+    // Translations for the language toggle so RTL/Heebo is visible.
+    const T={en:{},he:{
+      sub:'חדר ניהול',workspace:'סביבת עבודה',nav_dash:'לוח בקרה',nav_players:'שחקנים',nav_req:'בקשות',nav_short:'רשימת מעקב',nav_cont:'אנשי קשר',
+      platform:'פלטפורמה פעילה',platform_v:'גברים / אירופה',roster:'נכסי סגל',date:'24 בספטמבר 2026',add:'הוסף שחקן /',
+      kicker:'משרד לקוחות פרטי / פלטפורמת גברים',head_a:'הסגל',head_b:'שלנו.',ledger:'טבלה',gallery:'גלריה',
+      s_roster:'נכסי סגל',s_roster_n:'26 דרכונים אירופיים',s_value:'שווי מנוהל',s_value_n:'על פני 38 מוערכים',s_mandate:'עם מנדט',s_mandate_n:'13 ללא',s_free:'שחקנים חופשיים',s_free_n:'זמינים כעת',
+      f_my:'השחקנים שלי',f_eu:'דרכון אירופי',f_mandate:'עם מנדט',f_free:'שחקנים חופשיים',f_exp:'חוזה מסתיים',
+      sort:'מיון',sort_new:'חדשים',sort_age:'גיל',sort_val:'שווי שוק',sort_name:'שם',clear:'נקה סינון ×',
+      showing_a:'מוצג',showing_b:'מתוך 42 נכסים',showing_c:'סינון פעיל',
+      th_player:'שחקן',th_club:'מועדון',th_pos:'עמדה',th_age:'גיל',th_val:'שווי',th_sig:'סימונים',
+      f_mandate2:'מנדט',nationality:'לאום',agent:'סוכן',latest_note:'הערה אחרונה',open_profile:'פתח פרופיל מלא',whatsapp:'שלח הודעה בוואטסאפ',navigating:'עובר לפרופיל המלא',search:'חיפוש שחקן, מועדון או סוכן'
+    }};
+    const EN_TEXT={}; // captured on load
+
+    const initials=n=>n.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+    const tbody=document.getElementById('tbody');
+    const gallery=document.getElementById('view-gallery');
+    let clickMode='drawer';
+    let currentPlayer=null;
+
+    function flagsHtml(p){
+      let h='';
+      if(p.eu)h+='<span class="tag eu">EU</span>';
+      if(p.mandate)h+='<span class="tag mandate">'+(document.documentElement.dir==='rtl'?'מנדט':'Mandate')+'</span>';
+      if(p.free)h+='<span class="tag free">'+(document.documentElement.dir==='rtl'?'חופשי':'Free')+'</span>';
+      else if(p.exp)h+='<span class="tag exp">'+(document.documentElement.dir==='rtl'?'מסתיים':'Exp')+'</span>';
+      if(p.loan)h+='<span class="tag loan">'+(document.documentElement.dir==='rtl'?'השאלה':'Loan')+'</span>';
+      return h||'<span class="pmeta">—</span>';
+    }
+
+    function render(){
+      tbody.innerHTML='';gallery.innerHTML='';
+      players.forEach((p,i)=>{
+        const tr=document.createElement('tr');
+        tr.onclick=()=>onPlayer(p);
+        const thumb=p.img?`<img class="thumb" src="${p.img}" alt="">`:`<div class="thumb ph">${initials(p.name)}</div>`;
+        tr.innerHTML=`<td class="cell-player">${thumb}<div><div class="pname">${p.name}</div><div class="pmeta">${p.nat}</div></div></td>
+          <td>${p.club}</td><td><div class="pos-tags">${p.pos.map(x=>`<b>${x}</b>`).join('')}</div></td>
+          <td>${p.age}</td><td class="val">${p.val}</td><td><div class="flags">${flagsHtml(p)}</div></td>`;
+        tbody.appendChild(tr);
+
+        const card=document.createElement('article');card.className='card';card.onclick=()=>onPlayer(p);
+        const media=p.img?`<img src="${p.img}" alt="">`:`<div class="ph"></div>`;
+        let ct='';if(p.eu)ct+='<b>EU</b>';if(p.free)ct+='<b>'+(document.documentElement.dir==='rtl'?'חופשי':'Free')+'</b>';if(p.exp)ct+='<b>'+(document.documentElement.dir==='rtl'?'מסתיים':'Exp')+'</b>';
+        card.innerHTML=`${media}<div class="card-top"><span class="num">${String(i+1).padStart(2,'0')}</span><span class="ct-flags">${ct}</span></div>
+          <div class="card-copy"><small>${p.club} / ${p.pos.join(' ')}</small><h3>${p.name}</h3><div class="cval">${p.val} · ${p.age}</div></div>`;
+        gallery.appendChild(card);
+      });
+    }
+
+    function onPlayer(p){
+      currentPlayer=p;
+      if(clickMode==='direct'){flashNav(p);}else{openDrawer(p);}
+    }
+
+    // Decision 1: click behavior
+    function setClick(mode){
+      clickMode=mode;
+      [...document.querySelectorAll('#seg-click button')].forEach(b=>b.classList.toggle('active',b.dataset.click===mode));
+      document.getElementById('hint').textContent = mode==='drawer'
+        ? 'Rows/cards open a quick-view drawer. "Open full profile" inside the drawer navigates to /players/[id].'
+        : 'Rows/cards navigate straight to the full /players/[id] profile — no drawer.';
+    }
+
+    // Decision 2: default view (also flips the live view immediately)
+    function setDefaultView(v){
+      [...document.querySelectorAll('#seg-view button')].forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+      setView(v);
+    }
+    function setView(v){
+      document.getElementById('vt-table').classList.toggle('active',v==='table');
+      document.getElementById('vt-gallery').classList.toggle('active',v==='gallery');
+      document.getElementById('view-table').classList.toggle('hidden',v!=='table');
+      document.getElementById('view-gallery').classList.toggle('hidden',v!=='gallery');
+    }
+
+    function flashNav(p){
+      document.getElementById('nav-name').textContent=p.name;
+      document.getElementById('nav-url').textContent='/players/'+p.name.toLowerCase().replace(/\s+/g,'-')+'?from=/players';
+      document.getElementById('navflash').classList.add('show');
+    }
+
+    function openDrawer(p){
+      document.getElementById('d-name').textContent=p.name;
+      document.getElementById('d-sub').textContent=`${p.club} / ${p.pos.join(' ')}`;
+      document.getElementById('d-val').textContent=p.val;
+      document.getElementById('d-age').textContent=p.age;
+      document.getElementById('d-pos').textContent=p.pos.join(' / ');
+      const rtl=document.documentElement.dir==='rtl';
+      document.getElementById('d-mandate').textContent=p.mandate?(rtl?'פעיל':'Active'):(p.free?(rtl?'חופשי':'Free agent'):(rtl?'אין':'None'));
+      document.getElementById('d-nat').textContent=p.nat;
+      document.getElementById('d-agent').textContent=p.agent||'—';
+      document.getElementById('d-note').textContent=p.note||(rtl?'אין הערות':'No notes recorded.');
+      const img=document.getElementById('d-img'),ph=document.getElementById('d-ph');
+      if(p.img){img.src=p.img;img.style.display='block';ph.style.display='none';}else{img.style.display='none';ph.style.display='block';}
+      document.getElementById('drawer').classList.add('open');
+      document.getElementById('scrim').classList.add('open');
+    }
+    function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('scrim').classList.remove('open');}
+    function fromDrawerToProfile(){closeDrawer();if(currentPlayer)flashNav(currentPlayer);}
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();document.getElementById('navflash').classList.remove('show');}});
+
+    // Language
+    function captureEn(){document.querySelectorAll('[data-t]').forEach(el=>{EN_TEXT[el.dataset.t]=el.textContent;});
+      document.querySelectorAll('[data-ph]').forEach(el=>{EN_TEXT['ph_'+el.dataset.ph]=el.getAttribute('placeholder');});}
+    function setLang(l){
+      const rtl=l==='he';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=l;
+      [...document.querySelectorAll('#seg-lang button')].forEach((b,i)=>b.classList.toggle('active',(i===0)!==rtl));
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.textContent=(rtl?(T.he[k]??EN_TEXT[k]):EN_TEXT[k])||el.textContent;});
+      document.querySelectorAll('[data-ph]').forEach(el=>{const k='ph_'+el.dataset.ph;el.setAttribute('placeholder',(rtl?(T.he.search??EN_TEXT[k]):EN_TEXT[k])||'');});
+      render();
+    }
+
+    captureEn();
+    render();
+    setClick('drawer');
+  </script>
+</body>
+</html>

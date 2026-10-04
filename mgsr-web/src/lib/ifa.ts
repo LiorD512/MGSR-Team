@@ -183,10 +183,18 @@ function cleanClubSnippet(club: string | undefined): string | undefined {
   return c;
 }
 
-/** Extract player_id from link if it's a valid IFA player page */
+/**
+ * Extract player_id from any IFA player page link.
+ * Accepts the standard /players/player/ path as well as the English/national
+ * variants (e.g. /en/national-team-player/?player_id=), as long as the link is
+ * on football.org.il and carries a numeric player_id. We normalise every match
+ * back to the canonical /players/player/ URL downstream.
+ */
 function extractPlayerIdFromLink(link: string): string | null {
-  if (!link.includes('/players/player/') || !link.includes('player_id=')) return null;
-  const m = link.match(/player_id=(\d+)/);
+  if (!link || !link.includes('player_id=')) return null;
+  if (!link.includes('football.org.il')) return null;
+  // Guard against team/other id params that also carry player_id-like tokens.
+  const m = link.match(/[?&]player_id=(\d+)/);
   return m?.[1] ?? null;
 }
 
@@ -323,16 +331,15 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
       }
     };
 
+    // NOTE: free Serper accounts reject the `site:`/`inurl:` operators
+    // ("Query pattern not allowed for free accounts"), so we use a plain
+    // keyword query that still surfaces football.org.il player pages.
     if (isHebrew) {
-      // Hebrew + inurl: returns 0 on Serper — go straight to working query
-      await runSerperSearch(`site:football.org.il ${q} שחקן`, 'he');
+      await runSerperSearch(`football.org.il ${q} שחקן`, 'he');
     } else {
-      await runSerperSearch(`site:football.org.il inurl:player_id ${q}`);
+      await runSerperSearch(`football.org.il ${q} player`);
       if (playerUrlMap.size < 5) {
-        await runSerperSearch(`site:football.org.il inurl:player_id ${q} player`);
-      }
-      if (playerUrlMap.size < 5) {
-        await runSerperSearch(`site:football.org.il inurl:player_id ${q} שחקן`, 'he');
+        await runSerperSearch(`football.org.il ${q} שחקן`, 'he');
       }
     }
   }
@@ -367,7 +374,17 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
           console.error('[IFA] SerpAPI search error:', err);
         }
       };
-      await runSearch(`site:football.org.il inurl:player_id ${q}`);
+      // Plain keyword queries: the restrictive `site:`/`inurl:` form returns
+      // zero Google results here, so we search by name + football.org.il and
+      // let extractPlayerIdFromLink keep only real IFA player pages.
+      if (isHebrew) {
+        await runSearch(`football.org.il ${q} שחקן`, { hl: 'he' });
+      } else {
+        await runSearch(`football.org.il ${q} player`);
+        if (playerUrlMap.size < 3) {
+          await runSearch(`football.org.il ${q} שחקן`, { hl: 'he' });
+        }
+      }
     }
   }
 

@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Player Profile / Light Management Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    /* ── Shell ── */
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .rail-label{margin:31px 0 13px;color:#969188;font:9px/1 var(--mono);letter-spacing:.13em;text-transform:uppercase}
+    .nav{display:grid;gap:3px}
+    .nav a{display:flex;justify-content:space-between;align-items:center;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s}
+    .nav a:hover,.nav a.active{color:var(--gold-soft)}
+    .nav a.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar .crumbs strong{color:var(--paper);font-weight:400}
+    .topbar .crumbs a:hover{color:var(--gold-soft)}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover,.actions a:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1360px;padding:34px 43px 80px}
+
+    /* ── Back + action bar ── */
+    .actionbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px;flex-wrap:wrap}
+    .back{display:inline-flex;align-items:center;gap:9px;color:var(--gold);font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .back .arw{font-size:14px}
+    .toolbtns{display:flex;gap:10px;flex-wrap:wrap}
+    .toolbtn{padding:9px 13px;border:1px solid var(--line);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;transition:.15s}
+    .toolbtn:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .toolbtn.danger{color:var(--red);border-color:rgba(182,66,53,.4)}
+    .toolbtn.danger:hover{background:rgba(182,66,53,.08)}
+
+    /* ── Hero ── */
+    .hero{position:relative;overflow:hidden;background:var(--black);color:var(--paper);margin-bottom:2px}
+    .hero-media{position:absolute;inset:0}
+    .hero-media img{width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.42}
+    .hero-media:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(17,17,15,.94) 30%,rgba(17,17,15,.5) 70%,transparent),radial-gradient(circle at 88% 10%,rgba(201,166,107,.28),transparent 46%)}
+    .hero-inner{position:relative;z-index:1;display:flex;gap:30px;align-items:flex-end;padding:38px 40px}
+    .hero-portrait{width:150px;height:180px;flex:none;object-fit:cover;filter:grayscale(1);border:1px solid var(--dark-line);background:linear-gradient(160deg,#26261f,#101010)}
+    .hero-copy{flex:1;min-width:0}
+    .hero-kicker{margin:0 0 12px;display:flex;align-items:center;gap:10px;color:var(--gold-soft);font:9px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+    .hero-kicker .flag{width:20px;height:14px;object-fit:cover;border:1px solid var(--dark-line)}
+    .hero h1{margin:0;font:500 clamp(46px,5.4vw,84px)/.84 var(--display);letter-spacing:-.03em;text-transform:uppercase}
+    [dir=rtl] .hero h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .hero-sub{margin:14px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;color:#c9c3b6;font:10px/1 var(--mono);text-transform:uppercase}
+    .hero-sub .club{display:inline-flex;align-items:center;gap:8px;color:var(--paper)}
+    .hero-sub .club img{width:20px;height:20px;object-fit:cover}
+    .hero-sub .tag{padding:4px 8px;border:1px solid var(--dark-line);color:var(--gold-soft)}
+    .hero-value{flex:none;text-align:end}
+    .hero-value .v{font:500 40px/.8 var(--display)}
+    [dir=rtl] .hero-value .v{font-weight:800}
+    .hero-value .l{margin-top:8px;color:#aaa69c;font:9px/1 var(--mono);text-transform:uppercase}
+    .hero-value .delta{margin-top:8px;color:#8fae7a;font:9px/1 var(--mono)}
+
+    /* ── Signals strip ── */
+    .signals{display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:26px}
+    .sig{padding:16px 16px 18px 0;border-inline-end:1px solid var(--line)}
+    .sig:not(:first-child){padding-inline-start:16px}
+    .sig:last-child{border-inline-end:0}
+    .sig label{display:block;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .sig strong{display:block;margin-top:11px;font:500 22px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .sig strong{font-weight:800}
+    .sig.edit{cursor:pointer;transition:background .12s}
+    .sig.edit:hover{background:rgba(17,17,15,.03)}
+    .sig .pen{float:inline-end;opacity:0;color:var(--muted);font-size:10px}
+    .sig.edit:hover .pen{opacity:1}
+    .sig .empty{color:rgba(22,22,19,.32)}
+
+    /* ── Section tabs ── */
+    .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:26px;overflow-x:auto}
+    .tabs button{padding:14px 20px;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;transition:.15s}
+    .tabs button:hover{color:var(--ink)}
+    .tabs button.active{color:var(--ink);border-bottom-color:var(--gold)}
+    .tabs button .c{margin-inline-start:7px;color:var(--gold)}
+
+    /* ── Layout grid ── */
+    .grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,.9fr);gap:44px}
+    .pane{display:none}
+    .pane.show{display:block}
+    .module{margin-bottom:40px}
+    .mod-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:18px}
+    .mod-head h2{margin:0;font:500 22px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .mod-head h2{font-weight:800}
+    .mod-head .act{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase}
+    .mod-head .act:hover{color:var(--ink)}
+
+    /* Fact rows */
+    .facts{border-top:1px solid var(--line)}
+    .facts .row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}
+    .facts .row label{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .facts .row .v{font:500 15px/1 var(--body);text-align:end}
+    .facts .row .v.mono{font:500 13px/1 var(--mono)}
+    .facts .row.editable{cursor:pointer}
+    .facts .row.editable:hover label{color:var(--ink)}
+    .facts .row .pen{margin-inline-start:8px;color:var(--muted);opacity:0;font-size:10px}
+    .facts .row.editable:hover .pen{opacity:1}
+
+    /* Value chart */
+    .chart-card{border:1px solid var(--line);background:var(--card)}
+    .chart-top{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px 8px}
+    .chart-top .cur{font:500 32px/.85 var(--display)}
+    [dir=rtl] .chart-top .cur{font-weight:800}
+    .chart-top .curlab{margin-top:6px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .chart-top .peak{text-align:end;color:var(--muted);font:9px/1.5 var(--mono);text-transform:uppercase}
+    .chart-top .peak b{display:block;color:var(--gold);font-weight:500;font-size:12px}
+    .spark{padding:0 12px 6px}
+    .spark svg{width:100%;height:120px;display:block}
+    .chart-foot{display:flex;border-top:1px solid var(--line)}
+    .chart-foot div{flex:1;text-align:center;padding:12px 0;border-inline-end:1px solid var(--line)}
+    .chart-foot div:last-child{border-inline-end:0}
+    .chart-foot label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .chart-foot b{display:block;margin-top:6px;font:500 13px/1 var(--mono)}
+    .chart-foot .up{color:var(--green)}
+
+    /* Contact + agent cards */
+    .kv{border:1px solid var(--line);background:var(--card);padding:18px 20px;margin-bottom:16px}
+    .kv h3{margin:0 0 14px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .contact{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0}
+    .contact:not(:last-child){border-bottom:1px solid var(--line)}
+    .contact .who{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .contact .num{font:500 13px/1 var(--mono);color:var(--gold)}
+    .contact .wa{margin-inline-start:8px;color:var(--green)}
+    .agentline{display:flex;align-items:center;gap:12px;padding:6px 0}
+    .agentline .dot{width:26px;height:26px;border-radius:50%;background:var(--gold-soft);color:var(--ink);display:grid;place-items:center;font:700 10px/1 var(--body);flex:none}
+    .agentline .nm{font-weight:600;font-size:13px}
+    .agentline .rl{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;margin-top:3px}
+
+    /* Toggle switches */
+    .switchrow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 0}
+    .switchrow:not(:last-child){border-bottom:1px solid var(--line)}
+    .switchrow .lbl{font:10px/1.3 var(--mono);text-transform:uppercase;color:var(--ink)}
+    .switchrow .sub{color:var(--muted);font:9px/1.4 var(--mono);margin-top:4px;text-transform:none}
+    .sw{position:relative;width:42px;height:22px;flex:none}
+    .sw input{opacity:0;width:0;height:0}
+    .sw .track{position:absolute;inset:0;background:#cfc7b5;transition:.2s;border-radius:2px}
+    .sw .track:before{content:'';position:absolute;width:16px;height:16px;top:3px;inset-inline-start:3px;background:#fff;transition:.2s}
+    .sw input:checked + .track{background:var(--gold-soft)}
+    .sw input:checked + .track:before{transform:translateX(20px)}
+    [dir=rtl] .sw input:checked + .track:before{transform:translateX(-20px)}
+
+    /* Chips (english level, foot) */
+    .chips4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+    .chips4 button{padding:9px 0;border:1px solid var(--line);font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
+    .chips4 button.on{background:var(--black);color:var(--gold-soft)}
+    .counter{display:flex;align-items:center;gap:12px}
+    .counter button{width:26px;height:26px;border:1px solid var(--line);color:var(--ink);font-size:15px}
+    .counter b{min-width:2ch;text-align:center;font:500 18px/1 var(--display)}
+
+    /* Documents */
+    .doc{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+    .doc:last-of-type{border-bottom:0}
+    .doc .nm{display:flex;align-items:center;gap:10px;min-width:0}
+    .doc .ic{width:26px;height:26px;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);flex:none}
+    .doc .t{font:500 12px/1.3 var(--body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .doc .meta{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;margin-top:4px}
+    .doc .ops{display:flex;gap:4px;flex:none}
+    .doc .ops button{width:28px;height:28px;display:grid;place-items:center;color:var(--muted)}
+    .doc .ops button:hover{color:var(--gold)}
+    .doc .ops button.del:hover{color:var(--red)}
+    .addbtn{width:100%;margin-top:14px;padding:12px 0;border:1px dashed var(--line);color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase}
+    .addbtn:hover{border-color:var(--gold-soft);background:rgba(164,125,67,.04)}
+    .doc-badge{font:8px/1 var(--mono);text-transform:uppercase;padding:4px 6px;border:1px solid var(--green);color:var(--green)}
+    .doc-badge.exp{border-color:var(--red);color:var(--red)}
+
+    /* Offers / matching requests */
+    .offer{border:1px solid var(--line);background:var(--card);padding:14px 16px;margin-bottom:12px}
+    .offer .oh{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .offer .club{display:flex;align-items:center;gap:10px;font-weight:700;font-size:13px}
+    .offer .club img{width:22px;height:22px;object-fit:cover}
+    .offer .st{font:8px/1 var(--mono);text-transform:uppercase;padding:5px 8px;border:1px solid var(--line);color:var(--muted)}
+    .offer .st.offered{border-color:var(--gold-soft);color:var(--gold)}
+    .offer .st.positive{border-color:var(--green);color:var(--green)}
+    .offer .om{margin-top:10px;color:var(--muted);font:9px/1.5 var(--mono);text-transform:uppercase}
+    .offer .fb{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font:11px/1.5 var(--body);color:var(--ink)}
+    .offer .fb span{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;margin-bottom:5px}
+
+    /* Notes */
+    .note{border:1px solid var(--line);background:var(--card);padding:15px 16px;margin-bottom:12px}
+    .note p{margin:0;font:13px/1.55 var(--body);white-space:pre-wrap}
+    .note .nm{margin-top:11px;display:flex;gap:12px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .note .nm .by{color:var(--gold)}
+    .note .ops{float:inline-end;display:flex;gap:4px}
+    .note .ops button{width:26px;height:26px;display:grid;place-items:center;color:var(--muted)}
+    .note .ops button:hover{color:var(--gold)}
+    .note .ops button.del:hover{color:var(--red)}
+
+    /* Panels placeholder (career / similar / FM) */
+    .panel{border:1px solid var(--line);background:var(--card);padding:18px 20px;margin-bottom:16px}
+    .panel h3{margin:0 0 14px;font:500 15px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .panel h3{font-weight:800}
+    .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+    .statgrid div{background:var(--card);padding:14px 10px;text-align:center}
+    .statgrid label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .statgrid b{display:block;margin-top:7px;font:500 24px/.9 var(--display)}
+    [dir=rtl] .statgrid b{font-weight:800}
+    .seasonrow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font:11px/1 var(--mono)}
+    .seasonrow:last-child{border-bottom:0}
+    .seasonrow .s{color:var(--muted)}
+
+    /* Sticky action bar */
+    .stickybar{position:sticky;bottom:0;margin-top:10px;display:flex;gap:0;border:1px solid var(--line);background:var(--card)}
+    .stickybar button{flex:1;padding:16px 0;display:flex;align-items:center;justify-content:center;gap:9px;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink);border-inline-end:1px solid var(--line);transition:.15s}
+    .stickybar button:last-child{border-inline-end:0}
+    .stickybar button:hover{background:var(--black);color:var(--gold-soft)}
+    .stickybar button.primary{background:var(--gold-soft);color:var(--ink)}
+    .stickybar button.primary:hover{background:var(--gold);color:var(--paper)}
+
+    .empty{padding:26px 0;text-align:center;color:var(--muted);font:9px/1.5 var(--mono);text-transform:uppercase}
+
+    /* Lang switch in topbar */
+    #lang{color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+
+    @media(max-width:1080px){.grid{grid-template-columns:1fr;gap:0}}
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-label,.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px}.nav a{padding:6px 0}.nav em,.nav a.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 70px}
+      .hero-inner{flex-direction:column;align-items:flex-start;gap:20px;padding:26px 22px}.hero-value{text-align:start}
+      .signals{grid-template-columns:1fr 1fr}.sig:nth-child(2n){border-inline-end:0}.sig:nth-child(n+3){border-top:1px solid var(--line)}
+      .stickybar{flex-wrap:wrap}.stickybar button{flex:1 1 33%;border-bottom:1px solid var(--line)}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <p class="rail-label" data-t="workspace">Workspace</p>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <a class="active" href="#"><span data-t="nav_players">Players</span><em>02</em></a>
+        <a href="#"><span data-t="nav_req">Requests</span><em>03</em></a>
+        <a href="#"><span data-t="nav_short">Shortlist</span><em>04</em></a>
+        <a href="#"><span data-t="nav_cont">Contacts</span><em>05</em></a>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Men / Europe</strong><span data-t="agent_lab">Agent</span><strong>Lior Dahan</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="crumbs">BRIT / <a href="#" data-t="nav_players">Players</a> / <strong>Liel Abada</strong></div>
+        <div class="actions">
+          <button id="lang" onclick="toggleLang()">HE / EN</button>
+          <span>TLV 14:45</span>
+          <span class="avatar">LD</span>
+        </div>
+      </header>
+
+      <main class="canvas">
+        <!-- Back + tools -->
+        <div class="actionbar">
+          <a class="back" href="#"><span class="arw">←</span><span data-t="back">Back to roster</span></a>
+          <div class="toolbtns">
+            <button class="toolbtn" data-t="refresh">Refresh from TM</button>
+            <button class="toolbtn" data-t="view_tm">View on TM ↗</button>
+            <button class="toolbtn danger" data-t="delete">Delete</button>
+          </div>
+        </div>
+
+        <!-- Hero -->
+        <section class="hero">
+          <div class="hero-media"><img src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=1400&q=80" alt=""></div>
+          <div class="hero-inner">
+            <img class="hero-portrait" src="https://images.unsplash.com/photo-1519861531473-9200262188bf?auto=format&fit=crop&w=400&q=80" alt="">
+            <div class="hero-copy">
+              <p class="hero-kicker">
+                <img class="flag" src="https://flagcdn.com/il.svg" alt=""><span data-t="kicker">Confidential player dossier</span>
+              </p>
+              <h1>Liel Abada</h1>
+              <div class="hero-sub">
+                <span>RW · LW</span>
+                <span class="club"><img src="https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=60&q=80" alt="">Charlotte FC · USA</span>
+                <span class="tag">🇪🇺 <span data-t="eu">EU passport</span></span>
+                <span class="tag" data-t="mandate_tag">Mandate</span>
+              </div>
+            </div>
+            <div class="hero-value">
+              <div class="v">€7.00M</div>
+              <div class="l" data-t="market_value">Market value</div>
+              <div class="delta">▲ 16.7% <span data-t="ytd">this year</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Signals (key facts, some editable) -->
+        <section class="signals">
+          <div class="sig"><label data-t="age">Age</label><strong>24</strong></div>
+          <div class="sig"><label data-t="height">Height</label><strong>1.71m</strong></div>
+          <div class="sig"><label data-t="foot">Foot</label><strong data-t="foot_r">Right</strong></div>
+          <div class="sig"><label data-t="contract">Contract</label><strong>Jun 2027</strong></div>
+          <div class="sig edit" onclick="alert('Edit salary / fee')"><span class="pen">✎</span><label data-t="salary">Salary</label><strong>€40–60k</strong></div>
+          <div class="sig edit" onclick="alert('Edit salary / fee')"><span class="pen">✎</span><label data-t="fee">Transfer fee</label><strong class="empty">—</strong></div>
+        </section>
+
+        <!-- Section tabs -->
+        <div class="tabs" role="tablist">
+          <button class="active" onclick="showTab('overview',this)" data-t="tab_overview">Overview</button>
+          <button onclick="showTab('performance',this)" data-t="tab_perf">Performance</button>
+          <button onclick="showTab('documents',this)" data-t="tab_docs">Documents<span class="c">3</span></button>
+          <button onclick="showTab('market',this)" data-t="tab_market">Requests & Offers<span class="c">2</span></button>
+          <button onclick="showTab('notes',this)" data-t="tab_notes">Notes<span class="c">4</span></button>
+        </div>
+
+        <!-- ═══ OVERVIEW ═══ -->
+        <div class="pane show" id="pane-overview">
+          <div class="grid">
+            <!-- Left: value chart + status -->
+            <div>
+              <section class="module">
+                <div class="mod-head"><h2 data-t="value_history">Value history</h2><span class="act">4 pts</span></div>
+                <div class="chart-card">
+                  <div class="chart-top">
+                    <div><div class="cur">€7.00M</div><div class="curlab" data-t="current">Current</div></div>
+                    <div class="peak"><span data-t="peak">Peak</span><b>€8.50M</b>Mar 24</div>
+                  </div>
+                  <div class="spark">
+                    <svg viewBox="0 0 600 120" preserveAspectRatio="none">
+                      <polyline fill="none" stroke="#a47d43" stroke-width="2" points="0,86 120,74 240,40 360,58 480,30 600,44"/>
+                      <polygon fill="rgba(164,125,67,.10)" points="0,86 120,74 240,40 360,58 480,30 600,44 600,120 0,120"/>
+                      <circle cx="600" cy="44" r="4" fill="#11110f" stroke="#a47d43" stroke-width="2"/>
+                    </svg>
+                  </div>
+                  <div class="chart-foot">
+                    <div><label data-t="low">Low</label><b>€4.20M</b></div>
+                    <div><label data-t="peak">Peak</label><b>€8.50M</b></div>
+                    <div><label data-t="change">Change</label><b class="up">+€1.00M</b></div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Key details as fact rows -->
+              <section class="module">
+                <div class="mod-head"><h2 data-t="details">Details</h2></div>
+                <div class="facts">
+                  <div class="row"><label data-t="club">Club</label><span class="v">Charlotte FC</span></div>
+                  <div class="row"><label data-t="nationality">Nationality</label><span class="v">Israel</span></div>
+                  <div class="row"><label data-t="on_loan">On loan from</label><span class="v empty">—</span></div>
+                  <div class="row editable" onclick="alert('Edit agency')"><label data-t="agency">Agency</label><span class="v">BRIT Sport Group<span class="pen">✎</span></span></div>
+                  <div class="row"><label data-t="added">Added</label><span class="v mono">12 Aug 2024</span></div>
+                </div>
+              </section>
+            </div>
+
+            <!-- Right: agent, contact, switches -->
+            <aside>
+              <div class="kv">
+                <h3 data-t="agent_charge">Agent in charge</h3>
+                <div class="agentline"><span class="dot">LD</span><div><div class="nm">Lior Dahan</div><div class="rl" data-t="assigned">Assigned</div></div></div>
+                <div style="height:1px;background:var(--line);margin:12px 0"></div>
+                <div class="agentline"><span class="dot" style="background:#d8cdb4;color:#77736a">DC</span><div><div class="nm" style="color:var(--muted)">D. Cohen</div><div class="rl" data-t="original">Original agent</div></div></div>
+                <button class="addbtn" style="margin-top:14px" data-t="transfer">Request transfer to me</button>
+              </div>
+
+              <div class="kv">
+                <h3 data-t="contact">Contact</h3>
+                <div class="contact"><span class="who" data-t="player_phone">Player</span><span><span class="num" dir="ltr">+972 54 000 0000</span><span class="wa">✆</span></span></div>
+                <div class="contact"><span class="who" data-t="agent_phone">Agent</span><span><span class="num" dir="ltr">+972 52 111 1111</span><span class="wa">✆</span></span></div>
+              </div>
+
+              <div class="kv">
+                <h3 data-t="status">Status</h3>
+                <div class="switchrow"><div><div class="lbl" data-t="mandate">Mandate</div><div class="sub" dir="ltr">Expires 12/10/2026 · Israel</div></div><label class="sw"><input type="checkbox" checked><span class="track"></span></label></div>
+                <div class="switchrow"><div class="lbl">🇮🇱 <span data-t="israel">Interested in Israel</span></div><label class="sw"><input type="checkbox" checked><span class="track"></span></label></div>
+                <div class="switchrow"><div class="lbl">💍 <span data-t="married">Married</span></div><label class="sw"><input type="checkbox"><span class="track"></span></label></div>
+                <div class="switchrow"><div class="lbl">👶 <span data-t="kids">Kids</span></div><div class="counter"><button>−</button><b>0</b><button>+</button></div></div>
+              </div>
+
+              <div class="kv">
+                <h3 data-t="english">English level</h3>
+                <div class="chips4">
+                  <button data-t="eng_none">None</button>
+                  <button class="on" data-t="eng_med">Medium</button>
+                  <button data-t="eng_good">Good</button>
+                  <button data-t="eng_native">Native</button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <!-- ═══ PERFORMANCE ═══ -->
+        <div class="pane" id="pane-performance">
+          <div class="panel">
+            <h3 data-t="season_stats">Season 24/25</h3>
+            <div class="statgrid">
+              <div><label data-t="apps">Apps</label><b>28</b></div>
+              <div><label data-t="goals">Goals</label><b>11</b></div>
+              <div><label data-t="assists">Assists</label><b>6</b></div>
+              <div><label data-t="minutes">Minutes</label><b>2210</b></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 data-t="by_season">By season</h3>
+            <div class="seasonrow"><span>24/25 · Charlotte FC</span><span class="s">28 apps · 11 G · 6 A</span></div>
+            <div class="seasonrow"><span>23/24 · Celtic</span><span class="s">31 apps · 9 G · 8 A</span></div>
+            <div class="seasonrow"><span>22/23 · Celtic</span><span class="s">35 apps · 14 G · 5 A</span></div>
+          </div>
+          <div class="panel">
+            <h3 data-t="fm_intel">FM intelligence · similar players · GPS</h3>
+            <p class="empty" style="text-align:start;padding:8px 0" data-t="panels_note">These existing analysis panels plug in here unchanged — restyled to the paper theme.</p>
+          </div>
+        </div>
+
+        <!-- ═══ DOCUMENTS ═══ -->
+        <div class="pane" id="pane-documents">
+          <section class="module" style="max-width:720px">
+            <div class="mod-head"><h2 data-t="documents">Documents</h2><span class="act">3</span></div>
+            <div class="doc"><div class="nm"><span class="ic">📄</span><div><div class="t">Mandate_Liel_Abada.pdf</div><div class="meta">Mandate · 12 Aug 2024</div></div></div><div class="ops"><span class="doc-badge">Valid</span><button title="Open">↗</button><button class="del" title="Delete">🗑</button></div></div>
+            <div class="doc"><div class="nm"><span class="ic">📄</span><div><div class="t">Passport_Abada.pdf</div><div class="meta">Passport · 10 Aug 2024</div></div></div><div class="ops"><button title="Open">↗</button><button class="del" title="Delete">🗑</button></div></div>
+            <div class="doc"><div class="nm"><span class="ic">📄</span><div><div class="t">Agreement_2023.pdf</div><div class="meta">Other · 02 Jan 2024</div></div></div><div class="ops"><span class="doc-badge exp">Expired</span><button title="Open">↗</button><button class="del" title="Delete">🗑</button></div></div>
+            <button class="addbtn" data-t="add_doc">+ Upload document</button>
+          </section>
+        </div>
+
+        <!-- ═══ REQUESTS & OFFERS ═══ -->
+        <div class="pane" id="pane-market">
+          <section class="module">
+            <div class="mod-head"><h2 data-t="matching">Matching requests</h2><span class="act">2</span></div>
+            <div class="offer">
+              <div class="oh"><span class="club"><img src="https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=60&q=80" alt="">FC Utrecht</span><span class="st" data-t="st_match">Match</span></div>
+              <div class="om">Left/Right winger · EU passport · €40–60k</div>
+              <button class="addbtn" style="margin-top:12px" data-t="mark_offered">Mark as offered</button>
+            </div>
+            <div class="offer">
+              <div class="oh"><span class="club"><img src="https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=60&q=80" alt="">Hapoel Beer Sheva</span><span class="st offered" data-t="st_offered">Offered</span></div>
+              <div class="om" data-t="offered_by">Offered by Lior Dahan · 14 Sep</div>
+              <div class="fb"><span data-t="club_feedback">Club feedback</span>Interested, waiting on budget confirmation.</div>
+            </div>
+          </section>
+          <section class="module">
+            <div class="mod-head"><h2 data-t="proposal_hist">Proposal history</h2></div>
+            <div class="offer">
+              <div class="oh"><span class="club">Al Ain FC</span><span class="st positive" data-t="st_positive">Positive</span></div>
+              <div class="om" data-t="offered_by2">Offered · 20 Aug</div>
+              <div class="fb"><span data-t="club_feedback">Club feedback</span>Strong interest, revisit in winter window.</div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ═══ NOTES ═══ -->
+        <div class="pane" id="pane-notes">
+          <section class="module" style="max-width:760px">
+            <div class="mod-head"><h2 data-t="notes">Notes</h2><button class="act" data-t="add_note">+ Add note</button></div>
+            <div class="note"><div class="ops"><button title="Edit">✎</button><button class="del" title="Delete">🗑</button></div><p>Coach very happy with recent minutes. Agent to revisit the release clause in the winter window — target €9M.</p><div class="nm"><span class="by">Lior Dahan</span><span>18 Sep 2026</span></div></div>
+            <div class="note"><div class="ops"><button title="Edit">✎</button><button class="del" title="Delete">🗑</button></div><p>Two UEFA clubs sent scouts to the last fixture. Hold and monitor value.</p><div class="nm"><span class="by">D. Cohen</span><span>02 Sep 2026</span></div></div>
+            <div class="note"><div class="ops"><button title="Edit">✎</button><button class="del" title="Delete">🗑</button></div><p>Family settled in Charlotte. Open to European move if project is right.</p><div class="nm"><span class="by">Lior Dahan</span><span>21 Aug 2026</span></div></div>
+          </section>
+        </div>
+
+        <!-- Sticky action bar -->
+        <div class="stickybar">
+          <button data-t="gen_mandate">◈ <span>Generate mandate</span></button>
+          <button class="primary" data-t="share">↗ <span>Share to club</span></button>
+          <button data-t="portfolio">▤ <span>Prepare portfolio</span></button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    function showTab(id,btn){
+      document.querySelectorAll('.pane').forEach(p=>p.classList.remove('show'));
+      document.getElementById('pane-'+id).classList.add('show');
+      [...btn.parentNode.children].forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      window.scrollTo({top:document.querySelector('.tabs').offsetTop-90,behavior:'smooth'});
+    }
+
+    // Language toggle (EN/HE + RTL, Heebo)
+    const T={he:{
+      sub:'חדר ניהול',workspace:'סביבת עבודה',nav_dash:'לוח בקרה',nav_players:'שחקנים',nav_req:'בקשות',nav_short:'רשימת מעקב',nav_cont:'אנשי קשר',
+      platform:'פלטפורמה פעילה',platform_v:'גברים / אירופה',agent_lab:'סוכן',
+      back:'חזרה לסגל',refresh:'רענן מ-TM',view_tm:'צפה ב-TM ↗',delete:'מחק',
+      kicker:'תיק שחקן חסוי',eu:'דרכון אירופי',mandate_tag:'מנדט',market_value:'שווי שוק',ytd:'השנה',
+      age:'גיל',height:'גובה',foot:'רגל',foot_r:'ימין',contract:'חוזה',salary:'שכר',fee:'דמי העברה',
+      tab_overview:'סקירה',tab_perf:'ביצועים',tab_docs:'מסמכים',tab_market:'בקשות והצעות',tab_notes:'הערות',
+      value_history:'היסטוריית שווי',current:'נוכחי',peak:'שיא',low:'שפל',change:'שינוי',
+      details:'פרטים',club:'מועדון',nationality:'לאום',on_loan:'בהשאלה מ',agency:'סוכנות',added:'נוסף',
+      agent_charge:'סוכן אחראי',assigned:'משויך',original:'סוכן מקורי',transfer:'בקש העברה אליי',
+      contact:'יצירת קשר',player_phone:'שחקן',agent_phone:'סוכן',
+      status:'סטטוס',mandate:'מנדט',israel:'מעוניין בישראל',married:'נשוי',kids:'ילדים',
+      english:'רמת אנגלית',eng_none:'ללא',eng_med:'בינוני',eng_good:'טוב',eng_native:'שפת אם',
+      season_stats:'עונת 24/25',apps:'הופעות',goals:'שערים',assists:'בישולים',minutes:'דקות',
+      by_season:'לפי עונה',fm_intel:'מודיעין FM · שחקנים דומים · GPS',panels_note:'פאנלי הניתוח הקיימים משתלבים כאן ללא שינוי — מותאמים לעיצוב הנייר.',
+      documents:'מסמכים',add_doc:'+ העלה מסמך',
+      matching:'בקשות תואמות',st_match:'תואם',mark_offered:'סמן כהוצע',st_offered:'הוצע',offered_by:'הוצע ע"י ליאור דהן · 14 בספט׳',club_feedback:'משוב מהמועדון',
+      proposal_hist:'היסטוריית הצעות',st_positive:'חיובי',offered_by2:'הוצע · 20 באוג׳',
+      notes:'הערות',add_note:'+ הוסף הערה',
+      gen_mandate:'הפק מנדט',share:'שתף למועדון',portfolio:'הכן לפורטפוליו'
+    }};
+    const EN={};
+    function cap(){document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.textContent);}
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.textContent=(rtl?(T.he[k]??EN[k]):EN[k])||el.textContent;});
+    }
+    cap();
+  </script>
+</body>
+</html>

@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, user } = useAuth();
@@ -34,78 +35,119 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      dir={isRtl ? 'rtl' : 'ltr'}
-      className="min-h-screen min-h-[100dvh] bg-mgsr-dark flex items-center justify-center p-4 relative overflow-hidden"
-    >
-      {/* Language toggle - RTL: button on left */}
-      <button
-        onClick={() => setLang(isRtl ? 'en' : 'he')}
-        className={`absolute top-4 sm:top-6 px-3 py-1.5 rounded-lg text-sm text-mgsr-muted hover:text-[var(--mgsr-gold)] hover:bg-[var(--mgsr-gold-dim)] transition z-20 ${isRtl ? 'left-4 sm:left-6' : 'right-4 sm:right-6'}`}
-      >
-        {isRtl ? 'English' : 'עברית'}
-      </button>
-      {/* Background atmosphere */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_24%_18%,rgba(245,200,116,0.16)_0%,transparent_48%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_78%_82%,rgba(245,200,116,0.08)_0%,transparent_46%)]" />
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22 opacity=%220.03%22/%3E%3C/svg%3E')] opacity-30" />
+    <div className="brit-login" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
+      {/* ═══ BRAND PANEL ═══ */}
+      <section className="bl-brand">
+        <div className="bl-bg" />
+        <div className="bl-ghost" aria-hidden>B</div>
 
-      <div className="w-full max-w-md relative z-10">
-        <div className="bg-mgsr-card border border-[var(--mgsr-gold)]/15 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/30">
-          <div className="mb-6 flex items-center gap-4">
-            <img src="/brit_circle_black_gold.svg" alt="BRIT Sport Group" className="h-14 w-14 shrink-0" />
-            <div className="min-w-0">
-              <h1 className="text-3xl font-display font-bold text-[var(--mgsr-gold)] tracking-tight mb-1">
-                {t('login_title')}
-              </h1>
-              <p className="text-mgsr-muted">{t('login_subtitle')}</p>
-            </div>
+        <div className="bl-top">
+          <div className="bl-crest">
+            <img src="/brit_circle_black_gold.svg" alt="BRIT Sport Group" className="mark" />
+            <span className="wordmark">
+              {t('login_title')}
+              <small>{t('login_brand_wordmark_sub')}</small>
+            </span>
           </div>
-          <div className="h-px w-full bg-gradient-to-r from-transparent via-[var(--mgsr-gold)]/25 to-transparent mb-6" />
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-mgsr-muted mb-2">
-                {t('login_email')}
-              </label>
+        <div className="bl-mid">
+          <p className="bl-eyebrow">{t('login_brand_eyebrow')}</p>
+          <h1>
+            {t('login_brand_line1')}<br />
+            {t('login_brand_line2')}
+            {t('login_brand_line3') ? <><br />{t('login_brand_line3')}</> : null}
+          </h1>
+          <p className="bl-tagline">{t('login_brand_tagline')}</p>
+        </div>
+
+        <div className="bl-bot">
+          <span><span className="dot" />{t('login_secure')}</span>
+          <span>© BRIT Sport Group</span>
+        </div>
+      </section>
+
+      {/* ═══ SIGN-IN PANE ═══ */}
+      <section className="bl-pane">
+        <button
+          type="button"
+          className="bl-lang"
+          onClick={() => setLang(isRtl ? 'en' : 'he')}
+        >
+          {isRtl ? 'English' : 'עברית'}
+        </button>
+
+        <form className="bl-form" onSubmit={handleSubmit}>
+          <div className="bl-mobile-crest">
+            <img src="/brit_circle_black_gold.svg" alt="" className="mark" />
+            <b>{t('login_title')}</b>
+          </div>
+
+          <p className="bl-kicker">{t('login_kicker')}</p>
+          <h2>{t('login_heading')}</h2>
+          <p className="bl-sub">{t('login_subtitle')}</p>
+          <div className="bl-rule" />
+
+          <div className="bl-field">
+            <label htmlFor="bl-email">{t('login_email')}</label>
+            <div className="bl-inputwrap">
               <input
+                id="bl-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder={t('login_email_placeholder')}
+                autoComplete="username"
+                dir="ltr"
                 required
-                className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--mgsr-gold)]/60 focus:ring-1 focus:ring-[var(--mgsr-gold)]/25 transition"
-                placeholder="you@example.com"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-mgsr-muted mb-2">
-                {t('login_password')}
-              </label>
+          </div>
+
+          <div className="bl-field">
+            <label htmlFor="bl-pw">{t('login_password')}</label>
+            <div className="bl-inputwrap">
               <input
-                type="password"
+                id="bl-pw"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--mgsr-gold)]/60 focus:ring-1 focus:ring-[var(--mgsr-gold)]/25 transition"
                 placeholder="••••••••"
+                autoComplete="current-password"
+                dir="ltr"
+                required
               />
+              <button
+                type="button"
+                className="bl-peek"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? t('login_hide') : t('login_show')}
+              >
+                {showPassword ? t('login_hide') : t('login_show')}
+              </button>
             </div>
-            {error && (
-              <p className="text-sm text-mgsr-red bg-mgsr-red/10 px-4 py-2 rounded-lg">{error}</p>
-            )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 rounded-xl bg-[var(--mgsr-gold)] text-mgsr-dark font-semibold hover:bg-[#e8bb67] disabled:opacity-50 disabled:cursor-not-allowed transition hover:scale-[1.01] active:scale-[0.99]"
-            >
-              {loading ? t('login_signing_in') : t('login_sign_in')}
-            </button>
-          </form>
-        </div>
-        <p className="mt-6 text-center text-sm text-mgsr-muted">
-          {t('login_hint')}
-        </p>
-      </div>
+          </div>
+
+          {error && (
+            <div className="bl-err" role="alert">
+              <span aria-hidden>⚠</span>
+              <span>{error}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className={`bl-submit${loading ? ' loading' : ''}`}
+            disabled={loading}
+          >
+            <span className="spin" aria-hidden />
+            <span className="label">{loading ? t('login_signing_in') : t('login_sign_in')}</span>
+            {!loading && <span className="arrow" aria-hidden>→</span>}
+          </button>
+
+          <p className="bl-hint">{t('login_hint')}</p>
+        </form>
+      </section>
     </div>
   );
 }

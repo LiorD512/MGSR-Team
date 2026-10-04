@@ -40,8 +40,10 @@ const WORKER_RUNS_COLLECTION = "WorkerRuns";
 const PLAYER_REFRESH_WORKER_DOC = "PlayerRefreshWorker";
 
 const RECENT_REFRESH_THRESHOLD_MS = 20 * 60 * 60 * 1000;
+const RETRYABLE_FAILURE_DEFER_MS = Number(process.env.RETRYABLE_FAILURE_DEFER_MS || 6 * 60 * 60 * 1000);
+const PROFILE_MISMATCH_DEFER_MS = Number(process.env.PROFILE_MISMATCH_DEFER_MS || 7 * 24 * 60 * 60 * 1000);
 const MAX_HISTORY_ENTRIES = 24;
-const ACTIVE_RUN_LEASE_MS = Number(process.env.PLAYER_REFRESH_ACTIVE_LEASE_MS || 2 * 60 * 60 * 1000);
+const ACTIVE_RUN_LEASE_MS = Number(process.env.PLAYER_REFRESH_ACTIVE_LEASE_MS || 50 * 60 * 1000);
 
 // ── Hourly micro-batch settings ──────────────────────────────────────
 // Each hourly run processes at most MAX_PER_RUN players (stalest first).
@@ -54,9 +56,10 @@ const MAX_PER_RUN = Number(process.env.MAX_PER_RUN || 200);
 // TM rate limits, so we can use shorter intervals than before (was 12-18s).
 const SINGLE_NET_DELAY_MIN_MS = Number(process.env.SINGLE_NET_DELAY_MIN_MS || 8000);
 const SINGLE_NET_DELAY_VARIANCE_MS = Number(process.env.SINGLE_NET_DELAY_VARIANCE_MS || 6000);
-const BLOCK_BACKOFF_MIN_MS = 90000;
-const MAX_BLOCK_BACKOFF_MS = 300000;
-const MAX_RETRIES = 3;
+const BLOCK_BACKOFF_MIN_MS = Number(process.env.BLOCK_BACKOFF_MIN_MS || 15000);
+const MAX_BLOCK_BACKOFF_MS = Number(process.env.MAX_BLOCK_BACKOFF_MS || 30000);
+const MAX_RETRIES = Number(process.env.MAX_RETRIES || 1);
+const MAX_CONSECUTIVE_BLOCKS = Number(process.env.MAX_CONSECUTIVE_BLOCKS || 3);
 // Jitter at start so we don't always hit TM at :00 sharp every hour
 const START_JITTER_MAX_MS = Number(process.env.START_JITTER_MAX_MS || 60000);
 const DISABLE_ANTI_PATTERN_PAUSE = process.env.DISABLE_ANTI_PATTERN_PAUSE === "1";
@@ -89,6 +92,7 @@ function buildPlayerRefreshSummary(snapshot) {
       const player = doc.data();
       if (!player.tmProfile?.trim()) return null;
       if (shouldSkipUnfetchablePlayer(player)) return null;
+      if (toMs(player.nextRefreshAttemptAt) > Date.now()) return null;
       return { player, docRef: doc.ref };
     })
     .filter(Boolean)
@@ -227,6 +231,23 @@ function shouldSkipUnfetchablePlayer(player) {
   // Historical transient errors (for example no-data-header rendering issues)
   // must stay retryable so the worker can self-heal poisoned records.
   return failCount >= 5 && isPermanentProfileFailure(lastError);
+}
+
+function normalizePlayerName(name) {
+  return String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(" ")
+    .filter((part) => part.length > 1);
+}
+
+function hasMatchingPlayerName(expectedName, profileName) {
+  const expectedParts = normalizePlayerName(expectedName);
+  const profileParts = new Set(normalizePlayerName(profileName));
+  return expectedParts.length > 0 && expectedParts.some((part) => profileParts.has(part));
 }
 
 async function recordSuccess(summary, durationMs) {
@@ -450,11 +471,25 @@ async function runPlayerRefresh() {
 
       let retries = 0;
       let succeeded = false;
+      let lastRetryableCause = null;
 
       while (retries <= MAX_RETRIES && !succeeded) {
         const result = await updatePlayerByTmProfile(tmProfile);
 
         if (result.success && result.data) {
+          if (!hasMatchingPlayerName(player.fullName, result.data.profileName)) {
+            failCount++;
+            const error = `Profile name mismatch: expected ${player.fullName || "unknown"}, received ${result.data.profileName || "unknown"}`;
+            try {
+              await docRef.update({
+                lastRefreshError: error,
+                tmProfileMismatch: true,
+                nextRefreshAttemptAt: Date.now() + PROFILE_MISMATCH_DEFER_MS,
+              });
+            } catch (_) {}
+            log(`Profile mismatch ${index + 1}/${total}: ${error}`);
+            break;
+          }
           try {
             await processSuccessfulUpdate(
               player,
@@ -465,7 +500,7 @@ async function runPlayerRefresh() {
             );
             // Clear any previous failure state on success
             if (player.refreshFailCount || player.tmProfileUnfetchable) {
-              try { await docRef.update({ refreshFailCount: 0, lastRefreshError: null, tmProfileUnfetchable: false }); } catch (_) {}
+              try { await docRef.update({ refreshFailCount: 0, lastRefreshError: null, nextRefreshAttemptAt: null, tmProfileUnfetchable: false }); } catch (_) {}
             }
             successCount++;
             consecutiveBlocks = 0;
@@ -479,7 +514,21 @@ async function runPlayerRefresh() {
         } else {
           const cause = result.error || "Unknown error";
           if (isRetryableTmFailure(cause)) {
+            lastRetryableCause = cause;
             consecutiveBlocks++;
+            if (consecutiveBlocks >= MAX_CONSECUTIVE_BLOCKS) {
+              failCount++;
+              try {
+                await docRef.update({
+                  lastRefreshError: lastRetryableCause,
+                  nextRefreshAttemptAt: Date.now() + RETRYABLE_FAILURE_DEFER_MS,
+                });
+              } catch (_) {}
+              log(
+                `Circuit breaker: ${consecutiveBlocks} consecutive upstream blocks; deferred ${player.fullName} for retry and ended batch to protect quota.`
+              );
+              break;
+            }
             retries++;
             if (retries > MAX_RETRIES) break;
 
@@ -495,6 +544,11 @@ async function runPlayerRefresh() {
           } else {
             failCount++;
             const updateData = { lastRefreshError: cause };
+            if (cause.startsWith("Profile ID mismatch:")) {
+              updateData.tmProfileMismatch = true;
+              updateData.nextRefreshAttemptAt = Date.now() + PROFILE_MISMATCH_DEFER_MS;
+              log(`Profile mismatch ${index + 1}/${total}: ${player.fullName} — ${cause}`);
+            }
             // Only clearly permanent profile failures should move toward
             // unfetchable. Transient TM/proxy/network failures should stay retryable.
             if (isPermanentProfileFailure(cause)) {
@@ -515,7 +569,17 @@ async function runPlayerRefresh() {
 
       if (!succeeded && retries > MAX_RETRIES) {
         failCount++;
+        try {
+          await docRef.update({
+            lastRefreshError: lastRetryableCause || "Retryable upstream failure",
+            nextRefreshAttemptAt: Date.now() + RETRYABLE_FAILURE_DEFER_MS,
+          });
+        } catch (_) {}
         log(`Giving up on ${index + 1}/${total}: ${player.fullName}`);
+      }
+
+      if (consecutiveBlocks >= MAX_CONSECUTIVE_BLOCKS) {
+        break;
       }
 
       // Randomized delay with optional local override.

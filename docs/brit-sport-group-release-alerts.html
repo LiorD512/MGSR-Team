@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Release Alerts / Light Management Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a,.nav-group{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav-group:hover,.nav>a.active,.nav-group.active{color:var(--gold-soft)}
+    .nav>a.active:before,.nav-group.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .nav-sub{display:grid;gap:2px;margin:0 0 6px;padding-inline-start:2px}
+    .nav-sub a{display:flex;align-items:center;padding:8px 0;color:#8f8b81;font:9px/1 var(--mono);text-transform:uppercase;transition:color .15s}
+    .nav-sub a:hover,.nav-sub a.active{color:var(--gold-soft)}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 80px}
+
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:30px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(52px,6.4vw,96px)/.8 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .masthead .sub{margin:14px 0 0;color:var(--muted);font:12px/1.5 var(--body);max-width:520px}
+    .mast-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+    .refresh{display:flex;align-items:center;gap:9px;padding:12px 16px;background:var(--gold-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s}
+    .refresh:hover{background:var(--gold);color:var(--paper)}
+    .refresh svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+    .refresh.live svg{animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .last-run{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+
+    /* Progress ticker (enrichment) */
+    .ticker{border:1px solid var(--line);background:var(--card);margin-bottom:22px;padding:16px 18px}
+    .ticker-head{display:flex;align-items:center;justify-content:space-between;gap:14px}
+    .ticker-head .st{display:flex;align-items:center;gap:9px;color:var(--ink);font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .ticker-head .st .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.2s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+    .ticker-head .stage{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .bar{height:4px;background:var(--paper-2);margin:14px 0 12px;overflow:hidden}
+    .bar span{display:block;height:100%;width:64%;background:var(--gold)}
+    .ticker-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+    .ticker-stats div{color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}
+    .ticker-stats b{color:var(--ink);font-weight:500}
+    .ticker-stats b.ok{color:var(--green)}.ticker-stats b.err{color:var(--red)}
+    .ticker-current{margin-top:10px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .ticker-current b{color:var(--gold)}
+
+    /* Signals */
+    .signals{display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:26px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .sig{min-height:96px;padding:16px 18px 18px 0;border-inline-end:1px solid var(--line)}
+    .sig:not(:first-child){padding-inline-start:18px}
+    .sig:last-child{border-inline-end:0}
+    .sig label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .sig strong{display:block;margin-top:12px;font:500 clamp(28px,3vw,40px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .sig strong{font-weight:800}
+    .sig small{display:block;margin-top:9px;color:var(--muted);font:9px/1 var(--mono)}
+    .sig .roster{color:var(--green)}
+
+    /* Filter tray */
+    .tray{border:1px solid var(--line);margin-bottom:16px}
+    .search{display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--line)}
+    .search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
+    .search input{width:100%;border:0;background:transparent;padding:20px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .filter-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+    .filter-row:last-child{border-bottom:0}
+    .filter-label{display:flex;align-items:center;padding:0 18px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;border-inline-end:1px solid var(--line);white-space:nowrap}
+    .chipset{display:flex;flex-wrap:wrap;flex:1}
+    .chipset button{padding:13px 15px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line);transition:.15s}
+    .chipset button:hover{color:var(--ink)}
+    .chipset button.on{background:var(--gold-soft);color:var(--ink)}
+    .result-count{margin:0 2px 20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    /* Feed */
+    .feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
+    .alert{border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;transition:border-color .15s;position:relative}
+    .alert:hover{border-color:var(--gold-soft)}
+    .alert.roster{border-inline-start:3px solid var(--green)}
+    .alert-badge{position:absolute;top:0;inset-inline-end:0;z-index:2;padding:5px 9px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--paper);background:var(--red)}
+    .alert-badge.roster{background:var(--green)}
+    .alert-top{display:flex;gap:14px;padding:16px}
+    .portrait{position:relative;width:64px;height:64px;flex:none}
+    .portrait img{width:100%;height:100%;object-fit:cover;filter:grayscale(.25);background:var(--black);border:1px solid var(--line)}
+    .portrait .flag{position:absolute;bottom:-4px;inset-inline-end:-4px;width:20px;height:14px;object-fit:cover;border:1px solid var(--paper)}
+    .who{min-width:0;flex:1}
+    .who .nm{font:500 22px/.95 var(--display);text-transform:uppercase;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .who .nm{font-weight:800;letter-spacing:normal}
+    .who .meta{margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+    .who .pos{font:8px/1 var(--mono);text-transform:uppercase;color:var(--ink);border:1px solid var(--line);padding:4px 7px}
+    .who .age{font:8px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
+    .who .nat{font:10px/1.2 var(--body);color:var(--muted)}
+    .who .released{margin-top:9px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .who .released b{color:var(--red);font-weight:500}
+
+    .value-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-top:1px solid var(--line)}
+    .value-row .mv{display:flex;flex-direction:column;gap:3px}
+    .value-row .mv label{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .value-row .mv b{font:500 18px/1 var(--mono);color:var(--ink)}
+    .value-row .acts{display:flex;gap:8px}
+    .value-row .acts button,.value-row .acts a{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--line);color:var(--ink);transition:.15s}
+    .value-row .acts .save:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .value-row .acts .save svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8}
+    .value-row .acts .saved{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+    .value-row .acts .saved svg{fill:var(--ink);stroke:none}
+    .value-row .acts .open{color:var(--green);border-color:var(--green)}
+    .value-row .acts .open:hover{background:var(--green);color:var(--paper)}
+
+    /* Teammates expander */
+    .mates{border-top:1px solid var(--line)}
+    .mates-btn{width:100%;display:flex;align-items:center;gap:10px;padding:12px 16px;color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;transition:.15s}
+    .mates-btn:hover{background:var(--paper)}
+    .mates-btn .ico{width:15px;height:15px;stroke:var(--gold);fill:none;stroke-width:1.7;flex:none}
+    .mates-btn .lbl{flex:1;text-align:start}
+    .mates-btn .chev{width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2;transition:transform .2s}
+    .alert.open .mates-btn .chev{transform:rotate(180deg)}
+    .mates-list{display:none;padding:4px 12px 12px}
+    .alert.open .mates-list{display:grid;gap:8px}
+    .mate{display:flex;align-items:center;gap:11px;padding:9px 10px;border:1px solid var(--line);background:var(--paper)}
+    .mate img{width:34px;height:34px;object-fit:cover;filter:grayscale(1);background:var(--black);flex:none}
+    .mate .mi{min-width:0;flex:1}
+    .mate .mi b{display:block;font:500 13px/1.1 var(--body);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mate .mi span{color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+    .mate .together{font:8px/1 var(--mono);text-transform:uppercase;color:var(--gold);border:1px solid var(--gold-soft);padding:5px 7px;flex:none}
+    .mate .wa{width:28px;height:28px;flex:none;display:grid;place-items:center;background:var(--green);color:var(--paper);border-radius:50%}
+    .mate .wa svg{width:14px;height:14px;fill:var(--paper)}
+
+    .empty{border:1px dashed var(--line);padding:60px 20px;text-align:center;color:var(--muted);font:10px/1.6 var(--mono);text-transform:uppercase}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav>a,.nav-group{padding:6px 0}.nav em,.nav>a.active:before,.nav-group.active:before,.nav-sub{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.mast-right{align-items:flex-start;margin-top:18px}
+      .signals{grid-template-columns:1fr}.ticker-stats{grid-template-columns:1fr 1fr}
+      .filter-row{flex-direction:column;align-items:stretch}.filter-label{border-inline-end:0;border-bottom:1px solid var(--line);padding:12px 16px}
+      .feed{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <button class="nav-group"><span data-t="nav_players">Players</span><em>+</em></button>
+        <a href="#"><span data-t="nav_req">Club Requirements</span><em>03</em></a>
+        <a href="#"><span data-t="nav_cont">Contacts</span><em>04</em></a>
+        <button class="nav-group active"><span data-t="nav_signals">Signals</span><em>−</em></button>
+        <div class="nav-sub">
+          <a class="active" href="#" data-t="nav_release">Release Alerts</a>
+          <a href="#" data-t="nav_club">Club Change Alerts</a>
+          <a href="#" data-t="nav_loan">On Loan</a>
+        </div>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Men / Europe</strong><span data-t="live_lab">Live alerts</span><strong>24</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_release">Release Alerts</strong> / 24 September 2026</div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div>
+            <p class="kicker" data-t="kicker">Opportunity feed / Free agents wire</p>
+            <h1><span data-t="head_a">Release</span> <span class="gold" data-t="head_b">alerts.</span></h1>
+            <p class="sub" data-t="sub_txt">Fresh releases as clubs let players go — including roster names who just became free agents. One tap to shortlist.</p>
+          </div>
+          <div class="mast-right">
+            <button class="refresh" id="refreshBtn" onclick="toggleLive()"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg><span data-t="refresh">Fetch + enrich now</span></button>
+            <span class="last-run" data-t="last_run">Last sweep · 12 min ago</span>
+          </div>
+        </header>
+
+        <!-- Enrichment ticker (visible while refreshing) -->
+        <section class="ticker" id="ticker" style="display:none">
+          <div class="ticker-head">
+            <div class="st"><span class="dot"></span><span data-t="enriching">Enriching new releases</span></div>
+            <span class="stage" data-t="stage">Stage · fetching profiles</span>
+          </div>
+          <div class="bar"><span></span></div>
+          <div class="ticker-stats">
+            <div><span data-t="tk_proc">Processed</span><br><b>32 / 50</b></div>
+            <div><span data-t="tk_ok">Enriched</span><br><b class="ok">30</b></div>
+            <div><span data-t="tk_err">Failed</span><br><b class="err">2</b></div>
+            <div><span data-t="tk_eta">ETA</span><br><b>~00:48</b></div>
+          </div>
+          <div class="ticker-current"><span data-t="tk_now">Now</span> · <b>Referencing squad histories…</b></div>
+        </section>
+
+        <!-- Signals -->
+        <section class="signals">
+          <div class="sig"><label data-t="s_total">Total alerts</label><strong>24</strong><small data-t="s_total_n">Last 7 days</small></div>
+          <div class="sig"><label data-t="s_roster">From your roster</label><strong class="roster">03</strong><small data-t="s_roster_n">Now free agents</small></div>
+          <div class="sig"><label data-t="s_new">New today</label><strong>07</strong><small data-t="s_new_n">Since last sweep</small></div>
+        </section>
+
+        <!-- Filters -->
+        <section class="tray">
+          <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input data-ph="search" placeholder="Search name, position, nationality or profile"></label>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_pos">Position</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)">GK</button><button onclick="segOne(this)">CB</button><button onclick="segOne(this)">FB</button>
+              <button onclick="segOne(this)">DM</button><button onclick="segOne(this)">CM</button><button onclick="segOne(this)">AM</button>
+              <button onclick="segOne(this)">W</button><button onclick="segOne(this)">CF</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_age">Age</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)" data-t="a_u23">U23</button>
+              <button onclick="segOne(this)" data-t="a_2329">23–29</button>
+              <button onclick="segOne(this)" data-t="a_30">30+</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_region">Region</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)" data-t="r_uefa">UEFA</button>
+              <button onclick="segOne(this)" data-t="r_conmebol">CONMEBOL</button>
+              <button onclick="segOne(this)" data-t="r_caf">CAF</button>
+              <button onclick="segOne(this)" data-t="r_afc">AFC</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_source">Source</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)" data-t="src_roster">From roster</button>
+            </div>
+          </div>
+        </section>
+
+        <p class="result-count"><span data-t="showing_a">Showing</span> <b>24</b> <span data-t="showing_b">of 24 alerts</span></p>
+
+        <div id="feed" class="feed"></div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const players=[
+      {name:'Marco Reus',pos:'AM',age:35,nat:'Germany',flag:'https://flagcdn.com/w40/de.png',img:'https://img.a.transfermarkt.technology/portrait/big/35207-1685019368.jpg',mv:'€4.00m',released:'2h ago',roster:false,saved:false,mates:2,region:'UEFA'},
+      {name:'Dani Alves',pos:'FB',age:41,nat:'Brazil',flag:'https://flagcdn.com/w40/br.png',img:'https://img.a.transfermarkt.technology/portrait/big/15947-1663258023.jpg',mv:'€500k',released:'5h ago',roster:false,saved:true,mates:0,region:'CONMEBOL'},
+      {name:'Eran Zahavi',pos:'CF',age:37,nat:'Israel',flag:'https://flagcdn.com/w40/il.png',img:'https://img.a.transfermarkt.technology/portrait/big/126667-1631521253.jpg',mv:'€1.20m',released:'8h ago',roster:true,saved:false,mates:4,region:'UEFA'},
+      {name:'Jesse Lingard',pos:'AM',age:32,nat:'England',flag:'https://flagcdn.com/w40/gb-eng.png',img:'https://img.a.transfermarkt.technology/portrait/big/183930-1663606983.jpg',mv:'€2.50m',released:'Yesterday',roster:false,saved:false,mates:1,region:'UEFA'},
+      {name:'Munas Dabbur',pos:'CF',age:32,nat:'Israel',flag:'https://flagcdn.com/w40/il.png',img:'https://img.a.transfermarkt.technology/portrait/big/258745-1631521398.jpg',mv:'€2.00m',released:'Yesterday',roster:true,saved:false,mates:3,region:'UEFA'},
+      {name:'Adam Lallana',pos:'CM',age:36,nat:'England',flag:'https://flagcdn.com/w40/gb-eng.png',img:'https://img.a.transfermarkt.technology/portrait/big/93619-1663606864.jpg',mv:'€1.00m',released:'2d ago',roster:false,saved:false,mates:0,region:'UEFA'}
+    ];
+
+    const feed=document.getElementById('feed');
+    const WA='<svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35z"/></svg>';
+
+    function render(){
+      const rtl=document.documentElement.dir==='rtl';
+      feed.innerHTML=players.map(p=>{
+        const badge=p.roster
+          ? `<span class="alert-badge roster">${rtl?'שחקן מהסגל':'Roster player'}</span>`
+          : `<span class="alert-badge">${rtl?'שוחרר':'Released'}</span>`;
+        const saveBtn=p.saved
+          ? `<button class="saved"><svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>${rtl?'נשמר':'Saved'}</button>`
+          : `<button class="save"><svg viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>${rtl?'הוסף לרשימה':'Shortlist'}</button>`;
+        const openBtn=p.roster?`<a class="open">${rtl?'לתיק השחקן':'Open profile'}</a>`:'';
+        const matesLbl=p.mates>0
+          ? `${p.mates} ${rtl?'חברים לקבוצה מהסגל':'roster teammates'}`
+          : (rtl?'בדוק חברים לקבוצה מהסגל':'Tap for roster teammates');
+        const matesRows=p.mates>0?Array.from({length:Math.min(p.mates,2)}).map((_,i)=>`
+          <div class="mate">
+            <img src="https://img.a.transfermarkt.technology/portrait/big/${[126667,258745,148455][i%3]}-1631521253.jpg" alt="">
+            <div class="mi"><b>${['Bibras Natcho','Dia Saba','Sun Menachem'][i%3]}</b><span>CM · 33 · €800k</span></div>
+            <span class="together">${3-i} ${rtl?'משחקים יחד':'games together'}</span>
+            <a class="wa" title="WhatsApp">${WA}</a>
+          </div>`).join(''):`<p style="margin:0;padding:10px;border:1px solid var(--line);background:var(--paper);color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase">${rtl?'אין חברים לקבוצה מהסגל':'No roster teammates found'}</p>`;
+        return `<article class="alert${p.roster?' roster':''}">
+          ${badge}
+          <div class="alert-top">
+            <div class="portrait"><img src="${p.img}" alt=""><img class="flag" src="${p.flag}" alt=""></div>
+            <div class="who">
+              <div class="nm">${p.name}</div>
+              <div class="meta"><span class="pos">${p.pos}</span><span class="age">${rtl?'גיל':'Age'} ${p.age}</span><span class="nat">${p.nat}</span></div>
+              <div class="released">${rtl?'שוחרר':'Released'} · <b>${p.released}</b></div>
+            </div>
+          </div>
+          <div class="value-row">
+            <div class="mv"><label>${rtl?'שווי שוק':'Market value'}</label><b>${p.mv}</b></div>
+            <div class="acts">${openBtn}${saveBtn}</div>
+          </div>
+          <div class="mates">
+            <button class="mates-btn" onclick="this.closest('.alert').classList.toggle('open')">
+              <svg class="ico" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.4-1.9M17 20H7m10 0v-2c0-.7-.1-1.3-.4-1.9M7 20H2v-2a3 3 0 015.4-1.9M7 20v-2c0-.7.1-1.3.4-1.9m0 0a5 5 0 019.3 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              <span class="lbl">${matesLbl}</span>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div class="mates-list">${matesRows}</div>
+          </div>
+        </article>`;
+      }).join('');
+    }
+    function segOne(btn){[...btn.parentNode.children].forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+    let live=false;
+    function toggleLive(){
+      live=!live;
+      document.getElementById('ticker').style.display=live?'block':'none';
+      document.getElementById('refreshBtn').classList.toggle('live',live);
+      const rtl=document.documentElement.dir==='rtl';
+      document.querySelector('#refreshBtn span').textContent=live?(rtl?'מרענן כעת…':'Refreshing now…'):(rtl?'משיכה + העשרה':'Fetch + enrich now');
+    }
+
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקנים',nav_req:'דרישות מועדונים',nav_cont:'אנשי קשר',
+      nav_signals:'התראות',nav_release:'התראות שחרור',nav_club:'התראות מעבר מועדון',nav_loan:'בהשאלה',
+      platform:'פלטפורמה פעילה',platform_v:'גברים / אירופה',live_lab:'התראות פעילות',
+      kicker:'פיד הזדמנויות / חוזרים חופשיים',head_a:'התראות',head_b:'שחרור.',
+      sub_txt:'שחרורים טריים ברגע שמועדונים משחררים שחקנים — כולל שחקנים מהסגל שהפכו לחופשיים. הוספה לרשימת מעקב בלחיצה.',
+      refresh:'משיכה + העשרה',last_run:'סריקה אחרונה · לפני 12 דק׳',
+      enriching:'מעשיר שחרורים חדשים',stage:'שלב · משיכת פרופילים',tk_proc:'עובדו',tk_ok:'הועשרו',tk_err:'נכשלו',tk_eta:'זמן משוער',tk_now:'כעת',
+      s_total:'סה״כ התראות',s_total_n:'7 ימים אחרונים',s_roster:'מהסגל שלך',s_roster_n:'כעת חופשיים',s_new:'חדשות היום',s_new_n:'מאז הסריקה האחרונה',
+      f_pos:'עמדה',f_age:'גיל',f_region:'אזור',f_source:'מקור',all:'הכל',
+      a_u23:'עד 23',a_2329:'23–29',a_30:'30+',
+      r_uefa:'אירופה',r_conmebol:'דרום אמריקה',r_caf:'אפריקה',r_afc:'אסיה',src_roster:'מהסגל',
+      showing_a:'מוצג',showing_b:'מתוך 24 התראות'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.textContent);
+    document.querySelectorAll('[data-ph]').forEach(el=>EN['ph_'+el.dataset.ph]=el.getAttribute('placeholder'));
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.textContent=(rtl?(T.he[k]??EN[k]):EN[k])||el.textContent;});
+      document.querySelectorAll('[data-ph]').forEach(el=>el.setAttribute('placeholder',(rtl?(T.he.search??EN['ph_'+el.dataset.ph]):EN['ph_'+el.dataset.ph])||''));
+      render();
+    }
+    render();
+  </script>
+</body>
+</html>

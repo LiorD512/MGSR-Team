@@ -48,3 +48,25 @@ export function makeAbsoluteUrl(url: string): string {
   if (url.startsWith('http')) return url;
   return url;
 }
+
+export const BRIT_SPORT_GROUP_AGENCY_URL =
+  'https://www.transfermarkt.com/brit-sport-group/beraterfirma/berater/6448';
+
+export function normalizeAgencyUrl(value: string | undefined): string {
+  if (!value) return '';
+  try {
+    const parsed = new URL(value);
+    return `${parsed.hostname.toLowerCase()}${parsed.pathname.replace(/\/$/, '')}`;
+  } catch {
+    return value.trim().toLowerCase().replace(/\/$/, '');
+  }
+}
+
+export function isPlayerOurAsset(
+  player: { isOurAsset?: boolean; agencyUrl?: string } | null | undefined
+): boolean {
+  if (!player) return false;
+  if (player.isOurAsset === true) return true;
+  if (player.isOurAsset === false) return false;
+  return normalizeAgencyUrl(player.agencyUrl) === normalizeAgencyUrl(BRIT_SPORT_GROUP_AGENCY_URL);
+}

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Upcoming Match Indicator — Concepts v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #161613; --black: #11110f; --paper: #f3f0e8; --paper-2: #e4ded1;
+    --gold: #a47d43; --gold-soft: #c9a66b; --gold-bright: #e7c079;
+    --red: #b64235; --green: #5c6f4a; --muted: #77736a;
+    --line: rgba(243,240,232,0.12);
+    --display: 'Oswald', Impact, sans-serif;
+    --body: 'Manrope', Helvetica, sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0c0c0b; color: var(--paper); font-family: var(--body); padding: 44px 26px 90px; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  h1.title { font-family: var(--display); font-weight: 700; font-size: 32px; letter-spacing: .02em; text-transform: uppercase; }
+  h1.title span { color: var(--gold-soft); }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 6px; max-width: 720px; line-height: 1.55; }
+
+  .concept { margin-top: 52px; }
+  .chead { display: flex; align-items: baseline; gap: 14px; border-bottom: 1px solid var(--line); padding-bottom: 11px; margin-bottom: 22px; }
+  .chead .num { font-family: var(--mono); font-size: 11px; color: var(--gold-soft); letter-spacing: .14em; }
+  .chead h2 { font-family: var(--display); font-weight: 600; font-size: 21px; text-transform: uppercase; letter-spacing: .03em; }
+  .chead .tag { font-family: var(--mono); font-size: 9px; color: var(--gold-bright); border: 1px solid rgba(201,166,107,.35); border-radius: 999px; padding: 3px 9px; letter-spacing: .08em; text-transform: uppercase; }
+  .chead .desc { color: var(--muted); font-size: 12px; margin-left: auto; max-width: 420px; text-align: right; line-height: 1.45; }
+
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(231,192,121,.6)} 70%{box-shadow:0 0 0 8px rgba(231,192,121,0)} 100%{box-shadow:0 0 0 0 rgba(231,192,121,0)} }
+  @keyframes sweep { to { transform: translateX(240px); } }
+  .mono { font-family: var(--mono); }
+
+  /* mini asset card used as context in a few concepts */
+  .mini { width: 150px; flex:0 0 150px; height: 210px; border-radius: 4px; overflow: hidden; position: relative; background:#1a1916; }
+  .mini .ph { position:absolute; inset:0; background:
+      radial-gradient(34% 26% at 52% 30%, rgba(0,0,0,.5) 0%, rgba(0,0,0,0) 70%),
+      radial-gradient(22% 16% at 52% 22%, #7a6749 0%, rgba(122,103,73,0) 72%),
+      radial-gradient(120% 80% at 60% 18%, #6b5a44 0%, #2a2620 55%, #161512 100%); }
+  .mini .ph::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, transparent 40%, rgba(17,17,15,.9) 100%); }
+  .mini .nm { position:absolute; left:10px; right:10px; bottom:10px; z-index:2; font-family:var(--display); font-weight:700; font-size:14px; line-height:.98; text-transform:uppercase; }
+  .mini .pos { position:absolute; left:10px; right:10px; bottom:38px; z-index:2; font-family:var(--mono); font-size:7px; letter-spacing:.1em; color:var(--gold-soft); text-transform:uppercase; }
+
+  /* ═══════════════ CONCEPT 5 — "Matchweek Timeline Rail" (off-card, above cards) ═══════════════ */
+  .c5 { background: linear-gradient(180deg, rgba(164,125,67,.05), rgba(17,17,15,0)); border: 1px solid var(--line); border-radius: 6px; padding: 20px 22px 26px; }
+  .c5 .lbl { font-family: var(--mono); font-size: 9px; letter-spacing:.16em; color: var(--gold-soft); text-transform: uppercase; margin-bottom: 18px; }
+  .c5 .rail { position: relative; }
+  .c5 .rail .line { position:absolute; top: 7px; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, var(--gold), rgba(201,166,107,.15)); }
+  .c5 .stops { display: flex; justify-content: space-between; position: relative; }
+  .c5 .stop { position: relative; padding-top: 22px; text-align: center; min-width: 90px; }
+  .c5 .stop .dot { position:absolute; top: 2px; left: 50%; transform: translateX(-50%); width: 11px; height: 11px; border-radius: 50%; background: #1a1916; border: 2px solid var(--gold-soft); }
+  .c5 .stop.next .dot { background: var(--gold-bright); border-color: var(--gold-bright); animation: pulse 2s infinite; }
+  .c5 .stop .cd { font-family: var(--display); font-weight: 700; font-size: 20px; line-height: 1; }
+  .c5 .stop.next .cd { color: var(--gold-bright); }
+  .c5 .stop .who { font-family: var(--mono); font-size: 9px; color: var(--paper-2); margin-top: 5px; }
+  .c5 .stop .meta { font-family: var(--mono); font-size: 8px; color: var(--muted); margin-top: 3px; letter-spacing:.06em; text-transform: uppercase; }
+
+  /* ═══════════════ CONCEPT 6 — "Next Fixture Hero Strip" (off-card, side panel) ═══════════════ */
+  .c6 { display:flex; gap: 20px; align-items: stretch; }
+  .c6 .panel { flex: 1; position: relative; overflow: hidden; border-radius: 6px; border:1px solid var(--line);
+    background: linear-gradient(115deg, #17150f 0%, #211d13 45%, #14130f 100%); padding: 24px 26px; display:flex; flex-direction:column; justify-content:space-between; }
+  .c6 .panel::before { content:''; position:absolute; top:-40%; right:-10%; width: 320px; height: 320px; border-radius:50%;
+    background: radial-gradient(closest-side, rgba(231,192,121,.14), transparent); }
+  .c6 .top { display:flex; align-items:center; justify-content:space-between; }
+  .c6 .top .kick { font-family:var(--mono); font-size:9px; letter-spacing:.16em; color:var(--gold-soft); text-transform:uppercase; }
+  .c6 .top .live { font-family:var(--mono); font-size:9px; color:var(--gold-bright); display:flex; align-items:center; gap:7px; text-transform:uppercase; letter-spacing:.1em; }
+  .c6 .top .live::before { content:''; width:6px;height:6px;border-radius:50%;background:var(--gold-bright); animation:pulse 2s infinite; }
+  .c6 .fixture { display:flex; align-items:center; gap: 18px; margin: 18px 0; }
+  .c6 .team { display:flex; align-items:center; gap: 11px; }
+  .c6 .crest { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.06); border:1px solid rgba(201,166,107,.4); display:grid; place-items:center; font-size:15px; }
+  .c6 .team b { font-family: var(--display); font-weight:600; font-size: 17px; text-transform:uppercase; letter-spacing:.02em; }
+  .c6 .vs { font-family:var(--display); font-weight:300; font-size: 15px; color: var(--muted); }
+  .c6 .count { display:flex; align-items:flex-end; gap: 14px; }
+  .c6 .count .big { font-family: var(--display); font-weight:700; font-size: 54px; line-height: .85; color: var(--gold-bright); letter-spacing:.01em; }
+  .c6 .count .small { font-family:var(--mono); font-size: 11px; color: var(--paper-2); padding-bottom: 6px; }
+  .c6 .foot { font-family:var(--mono); font-size:9px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; }
+
+  /* ═══════════════ CONCEPT 7 — "Header Fixture Ticker" (in the OUR ASSETS header) ═══════════════ */
+  .c7 { }
+  .c7 .assets-head { display:flex; align-items:center; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .c7 .assets-head h3 { font-family:var(--display); font-weight:700; font-size: 26px; text-transform:uppercase; letter-spacing:.01em; }
+  .c7 .assets-head h3 span { color: var(--gold-soft); }
+  .c7 .ticker { margin-left: auto; display:flex; align-items:center; gap: 12px; background: rgba(164,125,67,.08); border: 1px solid rgba(201,166,107,.28);
+    border-radius: 999px; padding: 7px 8px 7px 15px; overflow:hidden; }
+  .c7 .ticker .eyebrow { font-family:var(--mono); font-size:8px; letter-spacing:.14em; color: var(--gold-soft); text-transform:uppercase; }
+  .c7 .ticker .fx { font-family:var(--display); font-weight:600; font-size: 13px; text-transform:uppercase; letter-spacing:.02em; white-space:nowrap; }
+  .c7 .ticker .cd { font-family:var(--mono); font-size: 12px; color: var(--black); background: linear-gradient(180deg, var(--gold-bright), var(--gold)); border-radius:999px; padding: 5px 11px; white-space:nowrap; }
+  .c7 .assets-row { display:flex; gap: 14px; margin-top: 18px; }
+
+  /* ═══════════════ CONCEPT 8 — "Radial Fixture Orbit" (off-card feature tile) ═══════════════ */
+  .c8 { display:flex; gap: 20px; }
+  .c8 .orbit { width: 300px; flex:0 0 300px; height: 300px; position: relative; border-radius: 8px; border:1px solid var(--line);
+    background: radial-gradient(circle at 50% 42%, #211d13, #100f0d 70%); overflow:hidden; display:grid; place-items:center; }
+  .c8 .ring { position:absolute; width: 210px; height: 210px; border-radius:50%;
+    background: conic-gradient(from -90deg, var(--gold-bright) 0% 62%, rgba(255,255,255,.08) 62% 100%);
+    -webkit-mask: radial-gradient(closest-side, transparent 70%, #000 71%); mask: radial-gradient(closest-side, transparent 70%, #000 71%); }
+  .c8 .core { position: relative; text-align:center; z-index:2; }
+  .c8 .core .big { font-family:var(--display); font-weight:700; font-size: 56px; line-height:.8; color: var(--paper); }
+  .c8 .core .small { font-family:var(--mono); font-size: 12px; color: var(--gold-bright); letter-spacing:.1em; text-transform:uppercase; margin-top:6px; }
+  .c8 .core .to { font-family:var(--mono); font-size: 9px; color: var(--muted); letter-spacing:.14em; text-transform:uppercase; margin-top: 14px; }
+  .c8 .badge-top { position:absolute; top: 18px; left:0; right:0; text-align:center; font-family:var(--mono); font-size:8px; letter-spacing:.2em; color:var(--gold-soft); text-transform:uppercase; }
+  .c8 .badge-bot { position:absolute; bottom: 20px; left:0; right:0; text-align:center; }
+  .c8 .badge-bot .teams { font-family:var(--display); font-weight:600; font-size:14px; text-transform:uppercase; letter-spacing:.03em; }
+  .c8 .badge-bot .when { font-family:var(--mono); font-size:9px; color:var(--muted); margin-top:4px; letter-spacing:.08em; }
+
+  /* ═══════════════ CONCEPT 9 — "Vertical Countdown Spine" (thin rail LEFT of the card) ═══════════════ */
+  .c9 { display:flex; gap: 0; }
+  .c9 .spine { width: 58px; flex:0 0 58px; height: 210px; border-radius: 4px 0 0 4px; background: linear-gradient(180deg, var(--gold) 0%, #6f5327 100%);
+    display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding: 12px 0; position:relative; }
+  .c9 .spine .top { writing-mode: vertical-rl; transform: rotate(180deg); font-family:var(--mono); font-size:8px; letter-spacing:.2em; color: rgba(17,17,15,.7); text-transform:uppercase; }
+  .c9 .spine .cd { text-align:center; }
+  .c9 .spine .cd b { display:block; font-family:var(--display); font-weight:700; font-size: 22px; color: var(--black); line-height:.9; }
+  .c9 .spine .cd b.m { font-size: 15px; opacity:.75; }
+  .c9 .spine .cd span { font-family:var(--mono); font-size:7px; color: rgba(17,17,15,.7); letter-spacing:.12em; text-transform:uppercase; }
+  .c9 .spine .dot { width:7px;height:7px;border-radius:50%;background:var(--black); }
+  .c9 .card { width: 150px; flex:0 0 150px; height:210px; border-radius: 0 4px 4px 0; overflow:hidden; position:relative; background:#1a1916; }
+  .c9 .card .ph { position:absolute; inset:0; background:
+      radial-gradient(34% 26% at 52% 30%, rgba(0,0,0,.5), transparent 70%),
+      radial-gradient(120% 80% at 60% 18%, #6b5a44, #2a2620 55%, #161512 100%); }
+  .c9 .card .ph::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, transparent 40%, rgba(17,17,15,.9)); }
+  .c9 .card .nm { position:absolute; left:10px; right:10px; bottom:10px; z-index:2; font-family:var(--display); font-weight:700; font-size:14px; line-height:.98; text-transform:uppercase; }
+  .c9 .card .opp { position:absolute; left:10px; top:10px; z-index:2; font-family:var(--mono); font-size:7px; letter-spacing:.08em; color:var(--gold-bright); background:rgba(17,17,15,.6); padding:3px 6px; text-transform:uppercase; }
+
+  /* ═══════════════ CONCEPT 10 — "Boarding Pass" (off-card horizontal, editorial) ═══════════════ */
+  .c10 .pass { display:flex; align-items:stretch; border:1px solid rgba(201,166,107,.3); border-radius:6px; overflow:hidden; background:#141310; max-width: 640px; }
+  .c10 .stub { background: linear-gradient(160deg, var(--gold), #6f5327); color: var(--black); padding: 18px 16px; display:flex; flex-direction:column; justify-content:center; align-items:center; min-width: 108px; position:relative; }
+  .c10 .stub::after { content:''; position:absolute; right:-1px; top:0; bottom:0; width:2px; background-image: radial-gradient(circle, rgba(20,19,16,.9) 1.4px, transparent 1.6px); background-size: 2px 10px; }
+  .c10 .stub .k { font-family:var(--mono); font-size:8px; letter-spacing:.18em; text-transform:uppercase; opacity:.75; }
+  .c10 .stub .big { font-family:var(--display); font-weight:700; font-size: 34px; line-height:.85; margin-top:4px; }
+  .c10 .stub .big small { font-size:15px; }
+  .c10 .body { flex:1; padding: 16px 20px; display:flex; flex-direction:column; justify-content:center; gap: 10px; }
+  .c10 .body .route { display:flex; align-items:center; gap: 14px; }
+  .c10 .body .route b { font-family:var(--display); font-weight:600; font-size:17px; text-transform:uppercase; letter-spacing:.02em; }
+  .c10 .body .route .arrow { flex:1; height:1px; background: linear-gradient(90deg, var(--gold-soft), transparent); position:relative; }
+  .c10 .body .route .arrow::after { content:'✈'; position:absolute; right:-2px; top:-8px; font-size:11px; color:var(--gold-soft); }
+  .c10 .body .grid { display:flex; gap: 26px; }
+  .c10 .body .grid div span { display:block; font-family:var(--mono); font-size:8px; letter-spacing:.12em; color:var(--muted); text-transform:uppercase; }
+  .c10 .body .grid div b { font-family:var(--display); font-weight:500; font-size:13px; }
+
+  .foot { margin-top: 60px; color: var(--muted); font-size: 12px; text-align:center; line-height:1.7; }
+  .foot b { color: var(--gold-soft); }
+  .placement { font-family:var(--mono); font-size:8px; color:var(--gold-bright); letter-spacing:.12em; text-transform:uppercase; border:1px solid rgba(201,166,107,.3); border-radius:999px; padding:3px 9px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="title">Upcoming Match Indicator — <span>Concepts v2</span></h1>
+  <p class="sub">Six new directions, most of them <b>off the player card</b> — because the fixture is roster-wide, time-based info that deserves its own moment rather than fighting the portrait. Same data throughout: Bnei Reineh vs Hapoel Kfar Shalem, tomorrow 19:00, ~33h 44m to kickoff.</p>
+
+  <!-- 05 -->
+  <div class="concept c7">
+    <div class="chead"><span class="num">07</span><h2>Header Fixture Ticker</h2><span class="placement">in section header</span><span class="desc">A slim live pill docked in the OUR ASSETS title row. Zero card clutter — the next fixture reads as a section-level status.</span></div>
+    <div class="assets-head">
+      <h3>Our <span>Assets</span></h3>
+      <div class="ticker">
+        <span class="eyebrow">Next up</span>
+        <span class="fx">Bnei Reineh · Kfar Shalem</span>
+        <span class="cd">33H 44M</span>
+      </div>
+    </div>
+    <div class="assets-row">
+      <div class="mini"><div class="ph"></div><div class="pos">Bnei Reineh</div><div class="nm">Gontie Diomande</div></div>
+      <div class="mini"><div class="ph"></div><div class="pos">Bnei Yehuda</div><div class="nm">Ofoeke Emmanuel</div></div>
+      <div class="mini"><div class="ph"></div><div class="pos">Bnei Reineh</div><div class="nm">Next Asset</div></div>
+    </div>
+  </div>
+
+  <!-- 06 -->
+  <div class="concept c6">
+    <div class="chead"><span class="num">06</span><h2>Next Fixture Hero Strip</h2><span class="placement">off-card side panel</span><span class="desc">A dedicated glowing panel that treats the next match as an event: big countdown, home vs away crests, warm radial light. Sits beside the assets grid.</span></div>
+    <div class="c6">
+      <div class="panel">
+        <div class="top"><span class="kick">Next fixture · Tomorrow 19:00</span><span class="live">Countdown</span></div>
+        <div class="fixture">
+          <div class="team"><span class="crest">◈</span><b>Bnei Reineh</b></div>
+          <span class="vs">vs</span>
+          <div class="team"><b>Kfar Shalem</b><span class="crest">◇</span></div>
+        </div>
+        <div class="count"><span class="big">33H 44M</span><span class="small">to kickoff · Gontie Diomande features</span></div>
+        <div class="foot" style="margin-top:16px">Israel · Liga Leumit · Round 6</div>
+      </div>
+      <div class="mini"><div class="ph"></div><div class="pos">Bnei Reineh</div><div class="nm">Gontie Diomande</div></div>
+    </div>
+  </div>
+
+  <!-- 05 timeline -->
+  <div class="concept">
+    <div class="chead"><span class="num">05</span><h2>Matchweek Timeline Rail</h2><span class="placement">off-card, full-width band</span><span class="desc">All upcoming assets' fixtures on one horizontal timeline, soonest glowing. Turns "next match" into a week-at-a-glance planner above the grid.</span></div>
+    <div class="c5">
+      <div class="lbl">This matchweek · 4 assets in action</div>
+      <div class="rail">
+        <div class="line"></div>
+        <div class="stops">
+          <div class="stop next"><span class="dot"></span><div class="cd">33H</div><div class="who">Diomande</div><div class="meta">vs Kfar Shalem · Tmrw 19:00</div></div>
+          <div class="stop"><span class="dot"></span><div class="cd">2D</div><div class="who">Emmanuel</div><div class="meta">vs Kiryat Gat · Wed 20:15</div></div>
+          <div class="stop"><span class="dot"></span><div class="cd">4D</div><div class="who">Cohen</div><div class="meta">vs H. Haifa · Fri 18:00</div></div>
+          <div class="stop"><span class="dot"></span><div class="cd">6D</div><div class="who">Levi</div><div class="meta">vs M. Netanya · Sun 19:30</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 08 -->
+  <div class="concept">
+    <div class="chead"><span class="num">08</span><h2>Radial Fixture Orbit</h2><span class="placement">off-card feature tile</span><span class="desc">A hero countdown dial as a standalone tile — the gold arc depletes toward kickoff. Feels like a launch clock; strongest single focal point.</span></div>
+    <div class="c8">
+      <div class="orbit">
+        <div class="badge-top">Next fixture</div>
+        <div class="ring"></div>
+        <div class="core"><div class="big">33</div><div class="small">hrs 44 min</div><div class="to">to kickoff</div></div>
+        <div class="badge-bot"><div class="teams">Bnei Reineh · Kfar Shalem</div><div class="when">Tomorrow · 19:00 · Diomande</div></div>
+      </div>
+      <div class="mini"><div class="ph"></div><div class="pos">Bnei Reineh</div><div class="nm">Gontie Diomande</div></div>
+      <div class="mini"><div class="ph"></div><div class="pos">Bnei Yehuda</div><div class="nm">Ofoeke Emmanuel</div></div>
+    </div>
+  </div>
+
+  <!-- 09 -->
+  <div class="concept">
+    <div class="chead"><span class="num">09</span><h2>Vertical Countdown Spine</h2><span class="placement">attached beside card</span><span class="desc">A solid gold spine hugging the card's left edge carries the countdown vertically. On-card-adjacent but never covers the photo — the portrait stays untouched.</span></div>
+    <div class="c9">
+      <div class="spine">
+        <span class="top">Next match</span>
+        <div class="cd"><b>33</b><span>hrs</span><b class="m">44</b><span>min</span></div>
+        <span class="dot"></span>
+      </div>
+      <div class="card"><div class="ph"></div><div class="opp">VS Kfar Shalem</div><div class="nm">Gontie Diomande</div></div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="concept">
+    <div class="chead"><span class="num">10</span><h2>Matchday Boarding Pass</h2><span class="placement">off-card editorial</span><span class="desc">The fixture as a travel pass — perforated gold stub with the countdown, route-style home→away, and a flight-line. Distinctive, premium, unmistakably "an event".</span></div>
+    <div class="c10">
+      <div class="pass">
+        <div class="stub"><span class="k">Kickoff in</span><span class="big">33<small>h</small></span><span class="k" style="margin-top:6px">44 min</span></div>
+        <div class="body">
+          <div class="route"><b>Bnei Reineh</b><span class="arrow"></span><b>Kfar Shalem</b></div>
+          <div class="grid">
+            <div><span>Date</span><b>Tomorrow</b></div>
+            <div><span>Kickoff</span><b>19:00</b></div>
+            <div><span>Comp</span><b>Liga Leumit</b></div>
+            <div><span>Asset</span><b>G. Diomande</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">
+    Placements range from <b>in the section header</b> (07) to <b>fully off-card feature tiles</b> (05, 06, 08, 10) to <b>card-adjacent</b> (09).<br>
+    The timeline (05) and hero strip (06) scale to the whole roster; the orbit (08) and boarding pass (10) are bold single-fixture statements.<br>
+    Tell me the direction and I'll build it live into the dashboard.
+  </p>
+</div>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group Youth — Contacts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --teal:#2f7d6e;--teal-soft:#5fa391;--teal-bright:#8fc9b8;
+      --red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    ::selection{background:var(--teal-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--teal-soft),var(--teal));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#9fb8b0;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav>a.active{color:var(--teal-bright)}
+    .nav>a.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--teal-soft)}
+    .nav em{color:var(--teal-soft);font-style:normal}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--teal-bright)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--teal-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 80px}
+
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:30px}
+    .kicker{margin:0 0 16px;color:var(--teal);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(48px,6vw,86px)/.82 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--teal)}
+    .addbtn{padding:13px 18px;background:var(--teal-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .addbtn:hover{background:var(--teal);color:var(--paper)}
+
+    .signals{display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:30px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .signal{min-height:100px;padding:18px 20px 20px 0;border-inline-end:1px solid var(--line)}
+    .signal:not(:first-child){padding-inline-start:20px}
+    .signal:last-child{border-inline-end:0}
+    .signal label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .signal strong{display:block;margin-top:14px;font:500 clamp(28px,3vw,42px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .signal strong{font-weight:800}
+    .signal small{display:block;margin-top:10px;color:var(--muted);font:9px/1 var(--mono)}
+
+    .tray{border:1px solid var(--line);margin-bottom:16px}
+    .search{display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--line)}
+    .search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
+    .search input{width:100%;border:0;background:transparent;padding:20px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .filter-row{display:flex;align-items:stretch}
+    .filter-label{display:flex;align-items:center;padding:0 18px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;border-inline-end:1px solid var(--line);white-space:nowrap}
+    .chipset{display:flex;flex-wrap:wrap;flex:1}
+    .chipset button{padding:13px 15px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line)}
+    .chipset button.on{background:var(--teal-soft);color:var(--ink)}
+    .note-chip{display:flex;align-items:center;padding:0 18px;color:var(--muted);font:8px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.06em;max-width:160px;border-inline-start:1px solid var(--line);text-align:end}
+
+    .result-count{margin:0 2px 20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    .country{margin-bottom:34px}
+    .country-head{display:flex;align-items:center;gap:14px;padding-bottom:12px;border-bottom:1px solid var(--ink);margin-bottom:18px}
+    .country-head .code{width:28px;height:19px;display:grid;place-items:center;background:var(--black);color:var(--teal-bright);font:600 9px/1 var(--display);flex:none}
+    .country-head h2{margin:0;font:500 24px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .country-head h2{font-weight:800}
+    .country-head .cnt{margin-inline-start:auto;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .country-head .cnt b{color:var(--ink);font-weight:500}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+    .contact{border:1px solid var(--line);background:var(--card);position:relative}
+    .contact:hover{border-color:var(--teal-soft)}
+    .typetag{position:absolute;top:0;inset-inline-end:0;padding:5px 9px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--paper);background:var(--black)}
+    .row1{display:flex;align-items:flex-start;gap:14px;padding:16px 16px 14px}
+    .crest{width:52px;height:52px;flex:none;display:grid;place-items:center;background:var(--black);color:var(--teal-bright);font:600 18px/1 var(--display)}
+    .who{min-width:0;flex:1}
+    .who .nm{font:500 20px/1 var(--display);text-transform:uppercase}
+    [dir=rtl] .who .nm{font-weight:800}
+    .who .org{margin-top:5px;color:var(--muted);font:11px/1.3 var(--body)}
+    .who .org b{color:var(--ink);font-weight:600}
+    .rolebar{padding:0 16px 14px}
+    .role{font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--ink);border:1px solid var(--line);padding:6px 9px}
+    .role.key{border-color:var(--teal-soft);color:var(--teal)}
+    .row2{display:flex;align-items:stretch;border-top:1px solid var(--line)}
+    .phone{flex:1;display:flex;align-items:center;gap:9px;padding:13px 16px;color:var(--ink);font:12px/1 var(--mono);border-inline-end:1px solid var(--line);min-width:0}
+    .phone .wa{width:24px;height:24px;flex:none;display:grid;place-items:center;background:var(--green);color:var(--paper);border-radius:50%}
+    .phone .wa svg{width:13px;height:13px;fill:var(--paper)}
+    .ops{display:flex;flex:none}
+    .ops button{width:46px;display:grid;place-items:center;color:var(--muted);border-inline-start:1px solid var(--line)}
+    .ops button:first-child{border-inline-start:0}
+    .ops button svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7}
+    .ops button:hover{color:var(--teal)}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav em,.nav>a.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.addbtn{margin-top:14px}
+      .signals{grid-template-columns:1fr}
+      .filter-row{flex-direction:column}.filter-label{border-inline-end:0;border-bottom:1px solid var(--line);padding:12px 16px}.note-chip{border-inline-start:0;border-top:1px solid var(--line);padding:12px 16px;text-align:start;max-width:none}
+      .grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="youth-dashboard.html"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <a href="youth-players.html"><span data-t="nav_players">Youth Players</span><em>28</em></a>
+        <a href="youth-shortlist.html"><span data-t="nav_short">Shortlist</span><em>12</em></a>
+        <a href="youth-requests.html"><span data-t="nav_req">Requests</span><em>04</em></a>
+        <a class="active" href="youth-contacts.html"><span data-t="nav_cont">Contacts</span><em>17</em></a>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Youth / Academy</strong><span data-t="net_l">Network</span><strong data-t="net_v">17 clubs</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_cont">Contacts</strong> / <span data-t="date">1 October 2026</span></div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><button data-t="add_a">Add contact /</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div><p class="kicker" data-t="kicker">Academy desk / Club directory</p><h1 data-t="h1">The <span>directory.</span></h1></div>
+          <button class="addbtn" data-t="add">+ Add contact</button>
+        </header>
+
+        <section class="signals">
+          <div class="signal"><label data-t="s1">In the network</label><strong>17</strong><small data-t="s1n">Club &amp; academy people</small></div>
+          <div class="signal"><label data-t="s2">Clubs</label><strong>17</strong><small data-t="s2n">Academies &amp; clubs</small></div>
+          <div class="signal"><label data-t="s3">Markets</label><strong>03</strong><small data-t="s3n">Countries on file</small></div>
+        </section>
+
+        <section class="tray">
+          <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input data-ph="search" placeholder="Search name, club or number"></label>
+          <div class="filter-row">
+            <span class="filter-label" data-t="type">Type</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)" data-t="clubs">Clubs</button>
+            </div>
+            <span class="note-chip" data-t="note">Youth · clubs &amp; academies only</span>
+          </div>
+        </section>
+
+        <p class="result-count"><span data-t="showing">Showing</span> <b>17</b> <span data-t="showing2">of 17 contacts across 3 markets</span></p>
+
+        <div id="dir"></div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const WA='<span class="wa"><svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49 2.99 1.29 2.99.86 3.53.81.54-.05 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42z"/></svg></span>';
+    const EDIT='<button title="Edit"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>';
+    const DEL='<button title="Delete"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg></button>';
+    const DIR=[
+      {country:'Israel',countryHe:'ישראל',code:'IL',count:12,people:[
+        {crest:'MH',name:'Ronen Gefen',nameHe:'רונן גפן',org:'Maccabi Haifa · Academy',orgHe:'מכבי חיפה · אקדמיה',role:'sd',phone:'+972 54 221 1133'},
+        {crest:'BS',name:'Yossi Tamir',nameHe:'יוסי תמיר',org:'Hapoel Beer Sheva · Academy',orgHe:'הפועל ב"ש · אקדמיה',role:'u19',phone:'+972 52 884 9910'},
+        {crest:'MT',name:'Avi Ben-Lulu',nameHe:'אבי בן לולו',org:'Maccabi Tel Aviv · Youth',orgHe:'מכבי ת"א · נוער',role:'head',phone:'+972 50 332 7788'},
+        {crest:'BJ',name:'Shimon Mizrahi',nameHe:'שמעון מזרחי',org:'Beitar Jerusalem · Academy',orgHe:'ביתר ירושלים · אקדמיה',role:'scout',phone:'+972 54 667 2210'}
+      ]},
+      {country:'England',countryHe:'אנגליה',code:'EN',count:3,people:[
+        {crest:'BH',name:'James Carter',nameHe:'ג׳יימס קרטר',org:'Brighton · Academy',orgHe:'ברייטון · אקדמיה',role:'rec',phone:'+44 7700 900 221'},
+        {crest:'SO',name:'Tom Wallace',nameHe:'טום וואלאס',org:'Southampton · Academy',orgHe:'סאות׳המפטון · אקדמיה',role:'u18',phone:'+44 7700 900 884'}
+      ]},
+      {country:'Belgium',countryHe:'בלגיה',code:'BE',count:2,people:[
+        {crest:'GK',name:'Luc Maes',nameHe:'לוק מאס',org:'Genk · Youth Academy',orgHe:'גנק · אקדמיית נוער',role:'head',phone:'+32 470 55 2211'}
+      ]}
+    ];
+    const ROLE={sd:{en:'Sport director',he:'מנהל מקצועי',key:1},u19:{en:'U-19 coach',he:'מאמן U-19',key:0},head:{en:'Head of academy',he:'ראש אקדמיה',key:1},scout:{en:'Scout',he:'סקאוט',key:0},rec:{en:'Recruitment lead',he:'ראש גיוס',key:1},u18:{en:'U-18 lead',he:'אחראי U-18',key:0}};
+    const dir=document.getElementById('dir');
+    function render(){
+      const rtl=document.documentElement.dir==='rtl';
+      const clubTxt=rtl?'מועדון':'Club';
+      const contactsTxt=rtl?'אנשי קשר':'contacts';
+      dir.innerHTML=DIR.map(c=>`
+        <div class="country">
+          <div class="country-head"><span class="code">${c.code}</span><h2>${rtl?c.countryHe:c.country}</h2><span class="cnt"><b>${String(c.count).padStart(2,'0')}</b> ${contactsTxt}</span></div>
+          <div class="grid">
+            ${c.people.map(p=>{const r=ROLE[p.role];return `
+              <article class="contact"><span class="typetag">${clubTxt}</span>
+                <div class="row1"><div class="crest">${p.crest}</div><div class="who"><div class="nm">${rtl?p.nameHe:p.name}</div><div class="org">${rtl?'ב־':'at '}<b>${rtl?p.orgHe:p.org}</b></div></div></div>
+                <div class="rolebar"><span class="role${r.key?' key':''}">${rtl?r.he:r.en}</span></div>
+                <div class="row2"><a class="phone" href="#" dir="ltr">${WA}${p.phone}</a><div class="ops">${EDIT}${DEL}</div></div>
+              </article>`;}).join('')}
+          </div>
+        </div>`).join('');
+    }
+
+    function segOne(btn){[...btn.parentNode.children].forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקני נוער',nav_short:'רשימת מעקב',nav_req:'דרישות',nav_cont:'אנשי קשר',
+      platform:'פלטפורמה פעילה',platform_v:'נוער / אקדמיה',net_l:'רשת',net_v:'17 מועדונים',date:'1 באוקטובר 2026',add_a:'הוסף איש קשר /',
+      kicker:'דסק אקדמיה / ספר מועדונים',h1:'ה<span>ספר.</span>',add:'+ הוסף איש קשר',
+      s1:'ברשת',s1n:'אנשי מועדון ואקדמיה',s2:'מועדונים',s2n:'מועדונים ואקדמיות',s3:'שווקים',s3n:'מדינות בתיק',
+      type:'סוג',all:'הכל',clubs:'מועדונים',note:'נוער · מועדונים ואקדמיות בלבד',
+      showing:'מוצג',showing2:'מתוך 17 אנשי קשר ב-3 שווקים'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.innerHTML);
+    document.querySelectorAll('[data-ph]').forEach(el=>EN['ph_'+el.dataset.ph]=el.getAttribute('placeholder'));
+    const PH_HE={search:'חיפוש שם, מועדון או מספר'};
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.innerHTML=(rtl?(T.he[k]??EN[k]):EN[k])||el.innerHTML;});
+      document.querySelectorAll('[data-ph]').forEach(el=>el.setAttribute('placeholder',(rtl?(PH_HE[el.dataset.ph]??EN['ph_'+el.dataset.ph]):EN['ph_'+el.dataset.ph])||''));
+      render();
+    }
+    render();
+  </script>
+</body>
+</html>

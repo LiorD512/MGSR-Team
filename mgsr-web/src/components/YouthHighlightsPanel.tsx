@@ -7,6 +7,7 @@ import {
   parseYouTubeVideoId,
   fetchYouTubeOembed,
   formatViews,
+  formatDuration,
   type HighlightVideo,
 } from '@/lib/highlightsApi';
 
@@ -118,6 +119,8 @@ interface YouthHighlightsPanelProps {
   pinnedHighlights?: HighlightVideo[];
   isRtl?: boolean;
   playerCollection?: 'Players' | 'PlayersWomen' | 'PlayersYouth';
+  /** 'editorial' renders the Light Management Room reel grid (men/women profile) */
+  variant?: 'default' | 'editorial';
 }
 
 export default function YouthHighlightsPanel({
@@ -125,6 +128,7 @@ export default function YouthHighlightsPanel({
   pinnedHighlights,
   isRtl: isRtlProp,
   playerCollection = 'PlayersYouth',
+  variant = 'default',
 }: YouthHighlightsPanelProps) {
   const { t, isRtl: contextRtl } = useLanguage();
   const isRtl = isRtlProp ?? contextRtl;
@@ -132,6 +136,7 @@ export default function YouthHighlightsPanel({
   const pinned = pinnedHighlights ?? [];
   const [expanded, setExpanded] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [playingEditorial, setPlayingEditorial] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -215,6 +220,103 @@ export default function YouthHighlightsPanel({
       setSaving(false);
     }
   }, [pinned, playerId]);
+
+  /* ── EDITORIAL variant: Light Management Room reel grid ───────────── */
+  if (variant === 'editorial') {
+    const MAX = 2;
+    const canAdd = pinned.length < MAX;
+    const fmtDate = (iso: string) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleDateString(isRtl ? 'he-IL' : 'en-GB', { month: 'short', year: 'numeric' });
+    };
+    return (
+      <section className="bp-module" dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className="bp-mod-head">
+          <h2>{t('highlights_title')}</h2>
+          {pinned.length > 0 && <span className="act">{pinned.length} / {MAX}</span>}
+        </div>
+        {pinned.length > 0 ? (
+          <div className="bp-reels">
+            {pinned.map((v, idx) => {
+              const src = detectSource(v.embedUrl);
+              const isActive = activeIndex === idx && playingEditorial;
+              const dur = formatDuration(v.durationSeconds ?? 0);
+              return (
+                <div key={v.id} className="bp-reel">
+                  {isActive && v.source === 'youtube' && v.embedUrl ? (
+                    <iframe
+                      src={`${v.embedUrl}?autoplay=1&rel=0&modestbranding=1`}
+                      className="bp-reel-frame"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={v.title}
+                    />
+                  ) : (
+                    <>
+                      {v.thumbnailUrl ? (
+                        <img src={v.thumbnailUrl} alt={v.title} className="bp-reel-thumb" loading="lazy" />
+                      ) : (
+                        <span className="bp-reel-ph" />
+                      )}
+                      {dur && <span className="bp-reel-dur">{dur}</span>}
+                      <button
+                        type="button"
+                        className="bp-reel-play"
+                        aria-label={`Play: ${v.title}`}
+                        onClick={() => {
+                          if (v.source === 'youtube' && v.embedUrl) {
+                            setActiveIndex(idx);
+                            setPlayingEditorial(true);
+                          } else {
+                            window.open(v.embedUrl, '_blank', 'noopener,noreferrer');
+                          }
+                        }}
+                      >
+                        <span>▶</span>
+                      </button>
+                      <div className="bp-reel-cap">
+                        <b>{v.title}</b>
+                        <small>{sourceConfig[src].label}{fmtDate(v.publishedAt) ? ` · ${fmtDate(v.publishedAt)}` : ''}</small>
+                      </div>
+                      <button
+                        type="button"
+                        className="bp-reel-rm"
+                        onClick={() => handleRemove(v.id)}
+                        disabled={saving}
+                        aria-label={t('youth_highlights_remove')}
+                      >✕</button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="bp-reel-empty">{t('youth_highlights_empty')}</div>
+        )}
+
+        {canAdd && (
+          <div className="bp-reel-add">
+            <input
+              type="text"
+              value={urlInput}
+              onChange={(e) => { setUrlInput(e.target.value); setError(null); }}
+              placeholder={t('youth_highlights_url_placeholder')}
+              dir="ltr"
+              disabled={adding || saving}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+            />
+            <button type="button" onClick={handleAdd} disabled={adding || saving || !urlInput.trim()}>
+              {adding || saving ? '…' : `+ ${t('youth_highlights_add')}`}
+            </button>
+          </div>
+        )}
+        {error && <p className="bp-reel-err">{error}</p>}
+      </section>
+    );
+  }
 
   return (
     <div

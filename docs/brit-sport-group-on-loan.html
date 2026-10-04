@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — On Loan (Returnees) / Light Management Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a,.nav-group{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav-group:hover,.nav>a.active,.nav-group.active{color:var(--gold-soft)}
+    .nav>a.active:before,.nav-group.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .nav-sub{display:grid;gap:2px;margin:0 0 6px;padding-inline-start:2px}
+    .nav-sub a{display:flex;align-items:center;padding:8px 0;color:#8f8b81;font:9px/1 var(--mono);text-transform:uppercase;transition:color .15s}
+    .nav-sub a:hover,.nav-sub a.active{color:var(--gold-soft)}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 80px}
+
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:30px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(52px,6.4vw,96px)/.8 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .masthead .sub{margin:14px 0 0;color:var(--muted);font:12px/1.5 var(--body);max-width:520px}
+    .mast-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+    [dir=rtl] .mast-right{align-items:flex-start}
+    .reload{display:flex;align-items:center;gap:9px;padding:12px 16px;border:1px solid var(--line);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s}
+    .reload:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .reload svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+    /* league load progress */
+    .loadbar{width:220px}
+    .loadbar .lb-top{display:flex;justify-content:space-between;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;margin-bottom:6px}
+    .loadbar .lb-top b{color:var(--ink);font-weight:500}
+    .loadbar .track{height:3px;background:var(--paper-2);overflow:hidden}
+    .loadbar .track span{display:block;height:100%;width:70%;background:var(--gold)}
+
+    /* Signals */
+    .signals{display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:26px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .sig{min-height:96px;padding:16px 18px 18px 0;border-inline-end:1px solid var(--line)}
+    .sig:not(:first-child){padding-inline-start:18px}
+    .sig:last-child{border-inline-end:0}
+    .sig label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .sig strong{display:block;margin-top:12px;font:500 clamp(28px,3vw,40px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .sig strong{font-weight:800}
+    .sig small{display:block;margin-top:9px;color:var(--muted);font:9px/1 var(--mono)}
+    .sig .saved{color:var(--gold)}
+
+    /* Filter tray */
+    .tray{border:1px solid var(--line);margin-bottom:16px}
+    .filter-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+    .filter-row:last-child{border-bottom:0}
+    .filter-label{display:flex;align-items:center;padding:0 18px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;border-inline-end:1px solid var(--line);white-space:nowrap}
+    .chipset{display:flex;flex-wrap:wrap;flex:1}
+    .chipset button{display:flex;align-items:center;gap:7px;padding:13px 15px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line);transition:.15s}
+    .chipset button:hover{color:var(--ink)}
+    .chipset button.on{background:var(--gold-soft);color:var(--ink)}
+    .chipset button .c{color:var(--muted);font-size:8px}
+    .chipset button.on .c{color:var(--ink)}
+    .chipset button:disabled{opacity:.4;cursor:not-allowed}
+    .result-count{margin:0 2px 20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    /* Feed */
+    .feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
+    .rt{border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;transition:border-color .15s;position:relative}
+    .rt:hover{border-color:var(--gold-soft)}
+    .rt-badge{position:absolute;top:0;inset-inline-end:0;z-index:2;padding:5px 9px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--paper);background:var(--gold)}
+    .rt-top{position:relative;display:flex;gap:14px;padding:16px;overflow:hidden;background:var(--black)}
+    .flagbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.6;transition:.3s;z-index:0}
+    .flagbg-ph{position:absolute;inset:0;background:linear-gradient(160deg,#26261f,#101010);z-index:0}
+    .rt-top:after{content:'';position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(17,17,15,.35),rgba(17,17,15,.9))}
+    .rt:hover .flagbg{opacity:.76;transform:scale(1.04)}
+    .portrait{position:relative;z-index:1;width:64px;height:64px;flex:none}
+    .portrait img{width:100%;height:100%;object-fit:cover;filter:grayscale(.25);background:var(--black);border:1px solid var(--dark-line)}
+    .who{position:relative;z-index:1;min-width:0;flex:1;color:var(--paper)}
+    .who .nm{font:500 22px/.95 var(--display);text-transform:uppercase;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .who .nm{font-weight:800;letter-spacing:normal}
+    .who .meta{margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+    .who .pos{font:8px/1 var(--mono);text-transform:uppercase;color:var(--paper);border:1px solid var(--dark-line);padding:4px 7px}
+    .who .age{font:8px/1 var(--mono);text-transform:uppercase;color:#c9c3b6}
+    .who .nat{font:10px/1.2 var(--body);color:#c9c3b6}
+
+    /* Return facts: value + returned date */
+    .facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
+    .facts div{padding:12px 16px;border-inline-end:1px solid var(--line)}
+    .facts div:last-child{border-inline-end:0}
+    .facts label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .facts b{display:block;margin-top:7px;font:500 16px/1 var(--mono)}
+    .facts .val b{color:var(--ink)}
+    .facts .ret b{color:var(--gold)}
+
+    /* Loan lane: on loan from → back at */
+    .lane{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:12px;padding:16px;border-top:1px solid var(--line)}
+    .lane .club{min-width:0}
+    .lane .club label{display:block;height:10px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .lane .club .cn{margin-top:8px;display:flex;align-items:center;gap:8px;min-width:0;min-height:28px}
+    .lane .club .logo{width:26px;height:26px;object-fit:contain;background:#fff;border:1px solid var(--line);padding:2px;flex:none}
+    .lane .club .logo.ph{display:grid;place-items:center;background:var(--black);color:var(--gold-soft);font:600 9px/1 var(--display)}
+    .lane .club .cnm{font:500 14px/1.15 var(--body);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .lane .club.back .cnm{color:var(--gold);font-weight:600}
+    .lane .arrow{width:30px;height:28px;display:grid;place-items:center;flex:none}
+    .lane .arrow span{width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--gold-soft);border-radius:50%}
+    .lane .arrow svg{width:15px;height:15px;stroke:var(--gold);fill:none;stroke-width:2}
+    [dir=rtl] .lane .arrow svg{transform:scaleX(-1)}
+
+    .actions-row{display:flex;gap:8px;flex-wrap:wrap;padding:14px 16px;border-top:1px solid var(--line)}
+    .actions-row button,.actions-row a{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--line);color:var(--ink);transition:.15s}
+    .actions-row .save:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .actions-row .save svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8}
+    .actions-row .saved{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+    .actions-row .saved svg{width:12px;height:12px;fill:var(--ink);stroke:none}
+
+    /* Teammates expander */
+    .mates{border-top:1px solid var(--line)}
+    .mates-btn{width:100%;display:flex;align-items:center;gap:10px;padding:12px 16px;color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;transition:.15s}
+    .mates-btn:hover{background:var(--paper)}
+    .mates-btn .ico{width:15px;height:15px;stroke:var(--gold);fill:none;stroke-width:1.7;flex:none}
+    .mates-btn .lbl{flex:1;text-align:start}
+    .mates-btn .chev{width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2;transition:transform .2s;flex:none}
+    .rt.open .mates-btn .chev{transform:rotate(180deg)}
+    .mates-list{display:none;padding:4px 12px 12px}
+    .rt.open .mates-list{display:grid;gap:8px}
+    .mate{display:flex;align-items:center;gap:11px;padding:9px 10px;border:1px solid var(--line);background:var(--paper)}
+    .mate img{width:34px;height:34px;object-fit:cover;filter:grayscale(1);background:var(--black);flex:none}
+    .mate .mi{min-width:0;flex:1}
+    .mate .mi b{display:block;font:500 13px/1.1 var(--body);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mate .mi span{color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+    .mate .together{font:8px/1 var(--mono);text-transform:uppercase;color:var(--gold);border:1px solid var(--gold-soft);padding:5px 7px;flex:none}
+    .mate .wa{width:28px;height:28px;flex:none;display:grid;place-items:center;background:var(--green);color:var(--paper);border-radius:50%}
+    .mate .wa svg{width:14px;height:14px;fill:var(--paper)}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav>a,.nav-group{padding:6px 0}.nav em,.nav>a.active:before,.nav-group.active:before,.nav-sub{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.mast-right{align-items:flex-start;margin-top:18px}
+      .signals{grid-template-columns:1fr}
+      .filter-row{flex-direction:column;align-items:stretch}.filter-label{border-inline-end:0;border-bottom:1px solid var(--line);padding:12px 16px}
+      .feed{grid-template-columns:1fr}.loadbar{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <button class="nav-group"><span data-t="nav_players">Players</span><em>+</em></button>
+        <a href="#"><span data-t="nav_req">Club Requirements</span><em>03</em></a>
+        <a href="#"><span data-t="nav_cont">Contacts</span><em>04</em></a>
+        <button class="nav-group active"><span data-t="nav_signals">Signals</span><em>−</em></button>
+        <div class="nav-sub">
+          <a href="#" data-t="nav_release">Release Alerts</a>
+          <a href="#" data-t="nav_club">Club Change Alerts</a>
+          <a class="active" href="#" data-t="nav_loan">On Loan</a>
+        </div>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Men / Europe</strong><span data-t="ret_lab">Returnees</span><strong>34</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_loan">On Loan</strong> / 24 September 2026</div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div>
+            <p class="kicker" data-t="kicker">Return wire / Loan spells ending</p>
+            <h1><span data-t="head_a">Back from</span> <span class="gold" data-t="head_b">loan.</span></h1>
+            <p class="sub" data-t="sub_txt">Players returning to their parent clubs as loan spells end — a window to catch them before they settle or move again.</p>
+          </div>
+          <div class="mast-right">
+            <div class="loadbar">
+              <div class="lb-top"><span data-t="lb_leagues">Leagues scanned</span><b>21 / 30</b></div>
+              <div class="track"><span></span></div>
+            </div>
+            <button class="reload"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg><span data-t="reload">Reload</span></button>
+          </div>
+        </header>
+
+        <section class="signals">
+          <div class="sig"><label data-t="s_total">Returnees</label><strong>34</strong><small data-t="s_total_n">Loans just ended</small></div>
+          <div class="sig"><label data-t="s_saved">Shortlisted</label><strong class="saved">06</strong><small data-t="s_saved_n">Already tracked</small></div>
+          <div class="sig"><label data-t="s_leagues">Leagues</label><strong>21<span style="color:var(--muted)">/30</span></strong><small data-t="s_leagues_n">Coverage</small></div>
+        </section>
+
+        <section class="tray">
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_pos">Position</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All <span class="c">34</span></button>
+              <button onclick="segOne(this)">GK <span class="c">3</span></button>
+              <button onclick="segOne(this)">DEF <span class="c">11</span></button>
+              <button onclick="segOne(this)">MID <span class="c">12</span></button>
+              <button onclick="segOne(this)">FWD <span class="c">8</span></button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_val">Value</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)">150K–500K <span class="c">9</span></button>
+              <button onclick="segOne(this)">500K–1M <span class="c">10</span></button>
+              <button onclick="segOne(this)">1M–2M <span class="c">8</span></button>
+              <button onclick="segOne(this)">2M–3M <span class="c">4</span></button>
+              <button onclick="segOne(this)">3M–4M <span class="c">2</span></button>
+              <button onclick="segOne(this)">4M–6M <span class="c">1</span></button>
+            </div>
+          </div>
+        </section>
+
+        <p class="result-count"><span data-t="showing_a">Showing</span> <b>34</b> <span data-t="showing_b">of 34 returnees</span></p>
+
+        <div id="feed" class="feed"></div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const players=[
+      {name:'Dor Turgeman',pos:'CF',age:22,val:'€3.50m',nat:'il',img:'https://img.a.transfermarkt.technology/portrait/big/689123-1663.jpg',ret:'30 Jun 2026',parent:'Maccabi Tel Aviv',parentLogo:'https://tmssl.akamaized.net/images/wappen/head/3646.png',loanClub:'Hapoel Haifa',mates:3},
+      {name:'Oscar Gloukh',pos:'AM',age:21,val:'€22.00m',nat:'il',img:'https://img.a.transfermarkt.technology/portrait/big/745123-1663.jpg',ret:'30 Jun 2026',parent:'RB Salzburg',parentLogo:'https://tmssl.akamaized.net/images/wappen/head/409.png',loanClub:'Sturm Graz',mates:0},
+      {name:'Anssumane Fati',pos:'W',age:22,val:'€8.00m',nat:'es',img:'https://img.a.transfermarkt.technology/portrait/big/640123-1663.jpg',ret:'30 Jun 2026',parent:'FC Barcelona',parentLogo:'https://tmssl.akamaized.net/images/wappen/head/131.png',loanClub:'Brighton',mates:1},
+      {name:'Facundo Pellistri',pos:'RW',age:24,val:'€6.00m',nat:'uy',img:'https://img.a.transfermarkt.technology/portrait/big/598123-1663.jpg',ret:'30 Jun 2026',parent:'Man United',parentLogo:'https://tmssl.akamaized.net/images/wappen/head/985.png',loanClub:'Granada',mates:0},
+      {name:'Emanuel Emegha',pos:'CF',age:23,val:'€12.00m',nat:'nl',img:'https://img.a.transfermarkt.technology/portrait/big/701123-1663.jpg',ret:'30 Jun 2026',parent:'Strasbourg',parentLogo:'https://tmssl.akamaized.net/images/wappen/head/667.png',loanClub:'Chelsea',mates:2},
+      {name:'Cher Ndour',pos:'CM',age:21,val:'€10.00m',nat:'it',img:'https://img.a.transfermarkt.technology/portrait/big/712123-1663.jpg',ret:'30 Jun 2026',parent:'PSG',parentLogo:'https://tmssl.akamaized.net/images/wappen/head/583.png',loanClub:'Besiktas',mates:0}
+    ];
+
+    const feed=document.getElementById('feed');
+    const WA='<svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35z"/></svg>';
+
+    function render(){
+      const rtl=document.documentElement.dir==='rtl';
+      feed.innerHTML=players.map((p,idx)=>{
+        const flag=`https://flagcdn.com/w640/${p.nat}.png`;
+        const saved=idx===2;
+        const parentInit=p.parent.slice(0,2).toUpperCase();
+        const loanInit=p.loanClub.slice(0,2).toUpperCase();
+        const saveBtn=saved
+          ? `<span class="saved"><svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>${rtl?'נשמר':'Saved'}</span>`
+          : `<button class="save"><svg viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>${rtl?'הוסף לרשימה':'Shortlist'}</button>`;
+        const matesLbl=p.mates>0?`${p.mates} ${rtl?'חברים לקבוצה מהסגל':'roster teammates'}`:(rtl?'בדוק חברים לקבוצה מהסגל':'Tap for roster teammates');
+        const matesRows=p.mates>0?Array.from({length:Math.min(p.mates,2)}).map((_,i)=>`
+          <div class="mate">
+            <img src="https://img.a.transfermarkt.technology/portrait/big/${[126667,258745,148455][i%3]}-1631521253.jpg" alt="" onerror="this.src='https://via.placeholder.com/40'">
+            <div class="mi"><b>${['Bibras Natcho','Dia Saba','Sun Menachem'][i%3]}</b><span>CM · 33 · €800k</span></div>
+            <span class="together">${3-i} ${rtl?'משחקים יחד':'games together'}</span>
+            <a class="wa" title="WhatsApp">${WA}</a>
+          </div>`).join(''):`<p style="margin:0;padding:10px;border:1px solid var(--line);background:var(--paper);color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase">${rtl?'אין חברים לקבוצה מהסגל':'No roster teammates found'}</p>`;
+        return `<article class="rt">
+          <span class="rt-badge">${rtl?'חזר מהשאלה '+p.ret:'Returned '+p.ret}</span>
+          <div class="rt-top">
+            <img class="flagbg" src="${flag}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'flagbg-ph'}))">
+            <div class="portrait"><img src="${p.img}" alt="" onerror="this.src='https://via.placeholder.com/72'"></div>
+            <div class="who">
+              <div class="nm">${p.name}</div>
+              <div class="meta"><span class="pos">${p.pos}</span><span class="age">${rtl?'גיל':'Age'} ${p.age}</span><span class="nat">${p.nat.toUpperCase()}</span></div>
+            </div>
+          </div>
+          <div class="facts">
+            <div class="val"><label>${rtl?'שווי שוק':'Market value'}</label><b>${p.val}</b></div>
+            <div class="ret"><label>${rtl?'חזר בתאריך':'Returned'}</label><b>${p.ret}</b></div>
+          </div>
+          <div class="lane">
+            <div class="club loan"><label>${rtl?'היה בהשאלה ב':'On loan at'}</label><div class="cn"><div class="logo ph">${loanInit}</div><span class="cnm">${p.loanClub}</span></div></div>
+            <div class="arrow"><span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span></div>
+            <div class="club back"><label>${rtl?'חזר ל':'Back at'}</label><div class="cn"><img class="logo" src="${p.parentLogo}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'logo ph',textContent:'${parentInit}'}))"><span class="cnm">${p.parent}</span></div></div>
+          </div>
+          <div class="actions-row">
+            ${saveBtn}
+            <a class="tm">${rtl?'טרנספרמרקט ↗':'Transfermarkt ↗'}</a>
+          </div>
+          <div class="mates">
+            <button class="mates-btn" onclick="this.closest('.rt').classList.toggle('open')">
+              <svg class="ico" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.4-1.9M17 20H7m10 0v-2c0-.7-.1-1.3-.4-1.9M7 20H2v-2a3 3 0 015.4-1.9M7 20v-2c0-.7.1-1.3.4-1.9m0 0a5 5 0 019.3 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              <span class="lbl">${matesLbl}</span>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div class="mates-list">${matesRows}</div>
+          </div>
+        </article>`;
+      }).join('');
+    }
+    function segOne(btn){[...btn.parentNode.children].forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקנים',nav_req:'דרישות מועדונים',nav_cont:'אנשי קשר',
+      nav_signals:'התראות',nav_release:'התראות שחרור',nav_club:'התראות חילופי מועדון',nav_loan:'בהשאלה',
+      platform:'פלטפורמה פעילה',platform_v:'גברים / אירופה',ret_lab:'חוזרים',
+      kicker:'פיד חזרות / תקופות השאלה מסתיימות',head_a:'חוזרים',head_b:'מהשאלה.',
+      sub_txt:'שחקנים שחוזרים למועדון האם שלהם בתום תקופת ההשאלה — חלון לתפוס אותם לפני שיתמקמו או יעברו שוב.',
+      lb_leagues:'ליגות נסרקו',reload:'טען מחדש',
+      s_total:'חוזרים',s_total_n:'השאלות שהסתיימו',s_saved:'ברשימת מעקב',s_saved_n:'כבר במעקב',s_leagues:'ליגות',s_leagues_n:'כיסוי',
+      f_pos:'עמדה',f_val:'שווי',all:'הכל',
+      showing_a:'מוצג',showing_b:'מתוך 34 חוזרים'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.textContent);
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.textContent=(rtl?(T.he[k]??EN[k]):EN[k])||el.textContent;});
+      render();
+    }
+    render();
+  </script>
+</body>
+</html>

@@ -27,22 +27,22 @@ if gcloud run jobs describe $PLAYER_JOB --region $REGION --project $PROJECT_ID 2
     --image gcr.io/$PROJECT_ID/$IMAGE_NAME \
     --region $REGION \
     --project $PROJECT_ID \
-    --task-timeout 2h \
+    --task-timeout 45m \
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \
-    --set-env-vars "JOB_MODE=player-refresh,SCOUT_TM_PROXY_URL=https://mgsr-backend.onrender.com/tm_proxy,TM_HTML_PROXY_URL=$TM_HTML_PROXY_URL" \
+    --set-env-vars "JOB_MODE=player-refresh,SCOUT_TM_PROXY_URL=https://mgsr-backend.onrender.com/tm_proxy,TM_HTML_PROXY_URL=$TM_HTML_PROXY_URL,MAX_PER_RUN=75,PLAYER_REFRESH_ACTIVE_LEASE_MS=3000000,MAX_RETRIES=1,BLOCK_BACKOFF_MIN_MS=15000,MAX_BLOCK_BACKOFF_MS=30000,MAX_CONSECUTIVE_BLOCKS=3,RETRYABLE_FAILURE_DEFER_MS=21600000,PROFILE_MISMATCH_DEFER_MS=604800000" \
     --set-secrets "SCOUT_ENRICH_SECRET=SCOUT_ENRICH_SECRET:latest"
 else
   gcloud run jobs create $PLAYER_JOB \
     --image gcr.io/$PROJECT_ID/$IMAGE_NAME \
     --region $REGION \
     --project $PROJECT_ID \
-    --task-timeout 2h \
+    --task-timeout 45m \
     --memory 512Mi \
     --cpu 1 \
     --max-retries 0 \
-    --set-env-vars "JOB_MODE=player-refresh,SCOUT_TM_PROXY_URL=https://mgsr-backend.onrender.com/tm_proxy,TM_HTML_PROXY_URL=$TM_HTML_PROXY_URL" \
+    --set-env-vars "JOB_MODE=player-refresh,SCOUT_TM_PROXY_URL=https://mgsr-backend.onrender.com/tm_proxy,TM_HTML_PROXY_URL=$TM_HTML_PROXY_URL,MAX_PER_RUN=75,PLAYER_REFRESH_ACTIVE_LEASE_MS=3000000,MAX_RETRIES=1,BLOCK_BACKOFF_MIN_MS=15000,MAX_BLOCK_BACKOFF_MS=30000,MAX_CONSECUTIVE_BLOCKS=3,RETRYABLE_FAILURE_DEFER_MS=21600000,PROFILE_MISMATCH_DEFER_MS=604800000" \
     --set-secrets "SCOUT_ENRICH_SECRET=SCOUT_ENRICH_SECRET:latest"
 fi
 

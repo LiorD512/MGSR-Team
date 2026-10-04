@@ -287,6 +287,14 @@ Separate Gradle module for HTML scraping via JSoup:
 - Tunnel (`/chat-room`) remains implemented, but is currently hidden from desktop and mobile navigation menus (commented nav entries) per management-web configuration request.
 - Desktop app-shell brand block now removes the eyebrow microcopy near the sidebar logo and renders a single gold BRIT Sport Group wordmark vertically centered with the logo, while preserving the original wordmark size.
 - Desktop app-shell sidebar brand link no longer renders the rounded white framed container behind the BRIT logo/wordmark; only the logo + text remain visible.
+- Desktop app-shell sidebar navigation no longer displays numeric labels beside Dashboard, Club Requirements, or Contacts.
+- Dashboard OUR ASSETS cards and roster asset determination use `isPlayerOurAsset`: if `isOurAsset === true` the player is explicitly included; if `isOurAsset === false` the player is explicitly excluded even if their agency matches; if `isOurAsset === undefined` it defaults to matching the BRIT Sport Group Transfermarkt agency profile (`berater/6448`).
+- Dashboard Player Birthdays module rows now open the quick-profile drawer (`.brit-drawer`) upon clicking a player, replicating the exact quick-profile drawer behavior from the Roster screen (`/players`) with facts, OUR ASSET toggle, notes, full profile navigation, and WhatsApp actions.
+- Men player profile hero banner (`.bp-hero`) now renders the player's nationality flag as the background image (monochrome grayscale with dark gradient overlay, matching the club change alerts screen) and replaces the 'CONFIDENTIAL PLAYER DOSSIER' kicker label with the player's nationality in the matching gold monospace typography. The action bar tools now place the Share action at the top between 'View on Transfermarkt' and 'Delete', and removes the redundant 'Prepare for portfolio' button from the bottom action bar.
+- Dashboard OUR ASSETS confidential dossier dialog now includes a "GENERATE MATCHDAY IMAGE" button triggering the MATCHDAY graphic generator modal (`MatchdayGeneratorModal.tsx`). The feature auto-assembles factual fixture data (`/api/flashscore/next-match` and `/api/transfermarkt/next-match`), player photos, club crests, and stadium details, allows mood selection (`cinematic`, `dark`, `golden_hour`, `night`, `dramatic`), leverages Gemini AI for conceptual artwork, composites high-fidelity typographic overlays (headline, player name, teams, date/time, competition, venue, round, club crests), runs automated quality control checks, and supports download and saving via `/api/matchday/generate` and `/api/matchday/save`.
+- In the Roster screen (`/players` on web), clicking a player opens their quick-profile drawer which now includes a "MARK AS OUR ASSET" switch matching the design of the player profile page switches (`.bp-sw` with gold-soft track and white knob). The exact same switch is also implemented in the Dashboard OUR ASSETS confidential player dossier dialog (`.brit-modal-switchrow`), letting agents toggle a player into or out of OUR ASSETS directly from the dialog. For players whose agency URL already matches BRIT Sport Group, the switch defaults to ON; toggling it ON manually sets `isOurAsset: true` and immediately adds the player to OUR ASSETS, while toggling it OFF manually sets `isOurAsset: false` and removes the player from OUR ASSETS even if their agency URL matches. Updates sync immediately to Firestore and through Cloud Functions `playersUpdate` (with `isOurAsset` in `ALLOWED_UPDATE_FIELDS`).
+- Dashboard OUR ASSETS now includes every matching roster player and advances through animated two-player windows using bounded gold back and forward arrows; the final odd player is paired with the preceding player.
+- Dashboard OUR ASSETS dossier dialogs now load the selected player's next club fixture through `/api/flashscore/next-match`, showing Flashscore-derived date, kickoff, opponent, opponent logo, home/away status, competition, stadium, round, and direct team/match links in EN/HE with loading, unavailable, and source-error states. Next fixtures for players in OUR ASSETS (`marquee`) are preloaded when the dashboard loads, storing results in-memory and in `sessionStorage` (`brit-next-match-cache-v2`) keyed by club and country. The dossier dialog reads immediately from cache when opened; if opened while the preload fetch is still in flight, it connects to that same promise rather than starting a duplicate request. The request passes the already-loaded roster club identity (`club` and `country`) so a transient Transfermarkt profile failure does not block Flashscore; the Transfermarkt URL is optional, but a country anchor is mandatory for a reliable match. The resolver searches bounded club-name variants because Transfermarkt and Flashscore use aliases such as `Bnei Yehuda Tel Aviv` versus `Bnei Yehuda` and `Dinamo Samarqand` versus the canonical `Din. Samarkand` page (`hKfpFhoD`), including verified abbreviation/transliteration normalization. It then requires the same country, men’s football classification, a meaningful shared club-name token, a unique candidate, independent team-page title/country verification, and fixture participant-ID agreement. Youth suffixes must match, so senior-only Flashscore pages are not substituted for U19 assets. Missing country, unsupported clubs, or ambiguous candidates fail closed. The OUR ASSETS dossier also omits the next-match panel and skips the request for U19/U-19/U 19 clubs. It extracts round from match-specific Flashscore metadata, venue from the selected fixture’s home-team page (rather than the roster player’s generic team page, so away fixtures show the actual stadium), and the opponent's official club badge from the Flashscore fixture feed (OA/OB token matching home/away side). The opponent club name in the dossier dialog is displayed alongside its logo, sized proportionally (26px) with object-contain to match the dossier typography and existing club badge styling. The dossier action row keeps the internal player profile as the primary action and conditionally exposes the stored Transfermarkt URL as a secondary `Open TM` link in EN/HE. This is the club's scheduled next match; it does not assert player selection, availability, or lineup status, and kickoff/venue details remain subject to official changes. The previous `/api/transfermarkt/next-match` route remains available for existing consumers.
 - Web browser/tab branding now forces BRIT icon assets via `mgsr-web/src/app/layout.tsx` metadata icons and `mgsr-web/public/manifest.json` icon source, both pointed to `brit_circle_black_gold.svg` with a version query to bypass stale favicon cache.
 - Dashboard hero no longer renders the "Agency Pulse / דופק הסוכנות" eyebrow badge; only greeting, user name, and date remain in the hero header.
 - Players hero no longer renders the "Squad Intelligence / מודיעין סגל" eyebrow badge and now starts directly with the page headline and stats subtitle.
@@ -299,7 +307,7 @@ Separate Gradle module for HTML scraping via JSoup:
 - Returnees streaming endpoint (`mgsr-web/src/app/api/transfermarkt/returnees/stream/route.ts`) now emits periodic SSE heartbeats during long scrape batches to prevent proxy/browser idle disconnects that previously caused premature "Stream connection failed" in the Returnees UI.
 - Desktop app-shell desktop page chrome no longer renders the shared framed header card, status pills, or shared page-title headline; pages now begin directly with their own content.
 - Web Tasks page (men platform) now uses the BRIT gold/black treatment instead of the older teal/blue palette across the hero, toolbar actions, task cards, empty states, and create/edit task flows.
-- Web Shortlist page (men platform) now uses BRIT gold accent tokens end-to-end (hero CTAs, filter tray, chips, cards, loading states, badges, action pills, and empty states), replacing the legacy teal/purple split.
+- Web Shortlist page (men platform) now uses BRIT gold accent tokens end-to-end (hero CTAs, filter tray, chips, cards, loading states, badges, action pills, and empty states), replacing the legacy teal/purple split. Clicking on a player card in either the board or ledger view opens the Target Intelligence Drawer (`MenShortlistDrawer.tsx`) with player image hero background, market & contract metrics, locker room connections (roster teammates who played with this target with 1-click WhatsApp inquiry), live club request matches, outreach & Instagram pitch copy tools, agency notes timeline, and direct conversion actions (Sign to Roster via guided drawer prefilled directly into step 2 confirm & contacts with player data already loaded, Share, TM, Remove).
 - BRIT redesign copy in shell/hero surfaces is now routed through `LanguageProvider` translation keys (EN/HE) instead of hardcoded English text, including route meta labels, navigation section headers, workspace badges, and redesigned hero/filter labels across the upgraded feature pages.
 - Web theme tokens were upgraded in `mgsr-web/src/app/globals.css` + `mgsr-web/tailwind.config.ts` to a richer cinematic palette (deep navy, luminous teal, premium gold) with shared aurora and sheen effects so all screens inherit the updated wow-style surfaces consistently.
 - Temporary feature visibility toggle (commented, not deleted): `Shadow Teams`, `Portfolio`, dashboard `Open Transfer Windows`, and dashboard `Ligat Ha'al analytics` are hidden from primary navigation/dashboard UI via commented entries/sections in app shell and dashboard files.
@@ -806,6 +814,7 @@ Both Android and Web support switching between Men, Women, and Youth platforms a
 | Transfermarkt.com | Android (JSoup), Web (Cheerio), Render (BeautifulSoup), Cloud Functions (Cheerio), GCP Workers (Cheerio) | Player profiles, market values, contracts, transfers, free agents, loan returnees |
 | API-Football | Render server | Per-90 stats (goals, assists, tackles, progressive carries, key passes, etc.) |
 | FMInside.com | Render server | Football Manager attributes (36 attrs), CA/PA ratings |
+| Flashscore.com | Web (`mgsr-web/src/lib/flashscore.ts`) | Exact club resolution and upcoming fixtures, including opponent, kickoff, competition, venue, and source links |
 | SoccerDonna.de | Android (JSoup), Web (Cheerio) | Women player profiles and search |
 | IFA (football.org.il) | Cloud Function `ifaFetchProfile` | Israel Football Association youth player data |
 | Google News | Web API route | Football news articles |
@@ -1089,7 +1098,15 @@ Server-side Cheerio scraping:
 | `/api/transfermarkt/returnees/stream` | SSE streaming |
 | `/api/transfermarkt/performance` | Player performance history |
 | `/api/transfermarkt/teammates` | Player's teammates |
+| `/api/transfermarkt/next-match` | Current club's earliest future fixture, including date, kickoff, opponent, home/away, competition, stadium, and source schedule URL |
 | `/api/transfermarkt/transfer-windows` | Transfer window dates |
+
+### Flashscore Routes (`/api/flashscore/`)
+Server-side Flashscore search and structured team-page fixture retrieval:
+
+| Route | Purpose |
+|-------|---------|
+| `/api/flashscore/next-match` | Resolves the player's current football club using exact name, optional country, soccer, and men anchors plus independent team-page verification; accepts roster `club`/`country` identity to survive Transfermarkt outages and legacy missing-country records, rejects ambiguous name-only matches, requires fixture participant-ID agreement, and returns the earliest future fixture with date, kickoff, opponent, opponent logo, home/away, competition, venue, round, and direct Flashscore links |
 
 ### Document Routes (`/api/documents/`)
 
@@ -1139,6 +1156,13 @@ Server-side Cheerio scraping:
 | `/api/share/generate-scout-report` | Generate scout report for share page |
 | `/api/share/image/[token]` | Dynamic OG image generation |
 | `/api/share/vcard` | Generate vCard for contact sharing |
+
+### Matchday Routes (`/api/matchday/`)
+
+| Route | Purpose |
+|-------|---------|
+| `/api/matchday/generate` | Run MATCHDAY generator pipeline: gathers fixture facts, player images, club badges, generates AI artwork, composites layout & typography, and returns result with quality checks |
+| `/api/matchday/save` | Persists generated MATCHDAY record to Firestore `matchdayGenerations` collection |
 
 ### Other Routes
 
@@ -1268,6 +1292,7 @@ All parsers handle: `€300k`, `€1.50m`, `€300K`, `€1.50M` (case-insensiti
 ### Design Artifact
 
 - `docs/britsportgroup-web-redesign-mock.html` is the current BRIT Sport Group management-web redesign concept. The mock is a single interactive HTML document covering the main authenticated pages, public share flows, and mandate signing flow with a unified black/gold premium UI direction.
+- `docs/brit-sport-group-club-requirements.html` is the interactive design showcase for the Club Requirements & Directives screen. It matches the signature BRIT Sport Group design system with full Light Atelier & Executive Obsidian themes, bilingual English/Hebrew RTL support, 4 view modes (Ledger Dossier, Tactical Pitch Cards, Position Radar/Kanban, and By Club Matrix), expandable mandate dossiers, instant WhatsApp/Email player pitch generation, and encrypted club guest portal dialogs.
 
 ---
 

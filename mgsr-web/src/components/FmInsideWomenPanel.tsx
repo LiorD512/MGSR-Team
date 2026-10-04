@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import SimilarPlayersWomenPanel from '@/components/SimilarPlayersWomenPanel';
+import BritLoader from '@/components/BritLoader';
 
 /* ------------------------------------------------------------------ */
 /*  FMInside Women API response shape (compatible with FmIntelligenceData) */
@@ -93,19 +94,6 @@ function fitDotClasses(fit: number): string {
   return 'bg-red-500/30 text-gray-400';
 }
 
-/* ------------------------------------------------------------------ */
-/*  Skeleton loader (women theme)                                     */
-/* ------------------------------------------------------------------ */
-function SkeletonLoader({ loadingText }: { loadingText: string }) {
-  return (
-    <div className="p-5 rounded-xl bg-mgsr-card border border-[var(--women-rose)]/20">
-      <div className="flex items-center gap-3">
-        <div className="w-5 h-5 border-2 border-[var(--women-rose)] border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm text-mgsr-muted">{loadingText}</span>
-      </div>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  No match state — redesigned for women's theme                      */
@@ -381,7 +369,7 @@ export default function FmInsideWomenPanel({
   }, [data]);
 
   if (loading) {
-    return <SkeletonLoader loadingText={t('fm_loading_women')} />;
+    return <BritLoader text="LOADING FM DATA" subtitle="Fetching player intelligence" />;
   }
 
   if (noMatch) {

@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Contract Finisher / Light Management Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a,.nav-group{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav-group:hover,.nav>a.active,.nav-group.active{color:var(--gold-soft)}
+    .nav>a.active:before,.nav-group.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .nav-sub{display:grid;gap:2px;margin:0 0 6px;padding-inline-start:2px}
+    .nav-sub a{display:flex;align-items:center;padding:8px 0;color:#8f8b81;font:9px/1 var(--mono);text-transform:uppercase;transition:color .15s}
+    .nav-sub a:hover,.nav-sub a.active{color:var(--gold-soft)}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 80px}
+
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:26px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(52px,6.4vw,96px)/.8 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .masthead .sub{margin:14px 0 0;color:var(--muted);font:12px/1.5 var(--body);max-width:520px}
+    .mast-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+    [dir=rtl] .mast-right{align-items:flex-start}
+    .window-tag{display:flex;align-items:center;gap:9px;padding:11px 15px;border:1px solid var(--gold-soft);color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .window-tag svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+    .reload{display:flex;align-items:center;gap:9px;padding:11px 15px;border:1px solid var(--line);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s}
+    .reload:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .reload svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+
+    /* Signals */
+    .signals{display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:22px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .sig{min-height:92px;padding:16px 18px 18px 0;border-inline-end:1px solid var(--line)}
+    .sig:not(:first-child){padding-inline-start:18px}
+    .sig:last-child{border-inline-end:0}
+    .sig label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .sig strong{display:block;margin-top:12px;font:500 clamp(28px,3vw,40px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .sig strong{font-weight:800}
+    .sig small{display:block;margin-top:9px;color:var(--muted);font:9px/1 var(--mono)}
+    .sig .saved{color:var(--gold)}
+
+    /* Filter tray */
+    .tray{border:1px solid var(--line);margin-bottom:16px}
+    .search{display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--line)}
+    .search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
+    .search input{width:100%;border:0;background:transparent;padding:18px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .filter-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+    .filter-row:last-child{border-bottom:0}
+    .filter-label{display:flex;align-items:center;padding:0 18px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;border-inline-end:1px solid var(--line);white-space:nowrap;min-width:96px}
+    .chipset{display:flex;flex-wrap:wrap;flex:1}
+    .chipset button{padding:12px 14px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line);transition:.15s}
+    .chipset button:hover{color:var(--ink)}
+    .chipset button.on{background:var(--gold-soft);color:var(--ink)}
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px}
+    .roster-toggle{display:flex;align-items:center;gap:10px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .roster-toggle .sw{width:34px;height:18px;border:1px solid var(--line);border-radius:9px;position:relative;transition:.15s}
+    .roster-toggle .sw:after{content:'';position:absolute;top:2px;inset-inline-start:2px;width:12px;height:12px;background:var(--muted);border-radius:50%;transition:.15s}
+    .roster-toggle.on .sw{background:var(--gold-soft);border-color:var(--gold-soft)}
+    .roster-toggle.on .sw:after{inset-inline-start:18px;background:var(--ink)}
+    .foot-note{color:var(--muted);font:8px/1.3 var(--mono);text-transform:uppercase}
+
+    .result-count{margin:0 2px 20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    /* Feed */
+    .feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+    .cf{border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;transition:border-color .15s;position:relative}
+    .cf:hover{border-color:var(--gold-soft)}
+    .cf-badge{position:absolute;top:0;inset-inline-end:0;z-index:2;display:flex;align-items:center;gap:5px;padding:5px 9px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink);background:var(--gold-soft)}
+    .cf-badge svg{width:10px;height:10px;stroke:var(--ink);fill:none;stroke-width:2}
+    .cf-top{position:relative;display:flex;gap:14px;padding:16px;overflow:hidden;background:var(--black)}
+    .flagbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.6;transition:.3s;z-index:0}
+    .flagbg-ph{position:absolute;inset:0;background:linear-gradient(160deg,#26261f,#101010);z-index:0}
+    .cf-top:after{content:'';position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(17,17,15,.35),rgba(17,17,15,.9))}
+    .cf:hover .flagbg{opacity:.76;transform:scale(1.04)}
+    .portrait{position:relative;z-index:1;width:64px;height:64px;flex:none}
+    .portrait img{width:100%;height:100%;object-fit:cover;filter:grayscale(.25);background:var(--black);border:1px solid var(--dark-line)}
+    .who{position:relative;z-index:1;min-width:0;flex:1;color:var(--paper)}
+    .who .nm{font:500 22px/.95 var(--display);text-transform:uppercase;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .who .nm{font-weight:800;letter-spacing:normal}
+    .who .meta{margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+    .who .pos{font:8px/1 var(--mono);text-transform:uppercase;color:var(--paper);border:1px solid var(--dark-line);padding:4px 7px}
+    .who .age{font:8px/1 var(--mono);text-transform:uppercase;color:#c9c3b6}
+    .who .nat{font:10px/1.2 var(--body);color:#c9c3b6}
+    .who .foot{font:8px/1 var(--mono);text-transform:uppercase;color:var(--gold-soft);border:1px solid rgba(201,166,107,.4);padding:4px 7px}
+
+    /* Facts: value | club | expiry */
+    .facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
+    .facts div{padding:12px 16px;border-inline-end:1px solid var(--line);min-width:0}
+    .facts div:last-child{border-inline-end:0}
+    .facts label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .facts b{display:block;margin-top:7px;font:500 15px/1.1 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .facts .val b{color:var(--ink)}
+    .facts .club b{color:var(--ink);font-family:var(--body);font-size:13px}
+    .facts .exp{grid-column:1/-1;border-inline-end:0;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
+    .facts .exp .clock{width:26px;height:26px;flex:none;display:grid;place-items:center;border:1px solid var(--gold-soft);border-radius:50%}
+    .facts .exp .clock svg{width:13px;height:13px;stroke:var(--gold);fill:none;stroke-width:2}
+    .facts .exp .txt label{margin:0}
+    .facts .exp .txt b{color:var(--gold);margin-top:4px}
+
+    .cf-actions{display:flex;gap:8px;flex-wrap:wrap;padding:14px 16px;border-top:1px solid var(--line)}
+    .cf-actions button,.cf-actions a{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--line);color:var(--ink);transition:.15s}
+    .cf-actions .save:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .cf-actions .save svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8}
+    .cf-actions .saved{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+    .cf-actions .saved svg{width:12px;height:12px;fill:var(--ink);stroke:none}
+
+    /* Teammates expander */
+    .mates{border-top:1px solid var(--line)}
+    .mates-btn{width:100%;display:flex;align-items:center;gap:10px;padding:12px 16px;color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;transition:.15s}
+    .mates-btn:hover{background:var(--paper)}
+    .mates-btn .ico{width:15px;height:15px;stroke:var(--gold);fill:none;stroke-width:1.7;flex:none}
+    .mates-btn .lbl{flex:1;text-align:start}
+    .mates-btn .chev{width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2;transition:transform .2s;flex:none}
+    .cf.open .mates-btn .chev{transform:rotate(180deg)}
+    .mates-list{display:none;padding:4px 12px 12px}
+    .cf.open .mates-list{display:grid;gap:8px}
+    .mate{display:flex;align-items:center;gap:11px;padding:9px 10px;border:1px solid var(--line);background:var(--paper)}
+    .mate img{width:34px;height:34px;object-fit:cover;filter:grayscale(1);background:var(--black);flex:none}
+    .mate .mi{min-width:0;flex:1}
+    .mate .mi b{display:block;font:500 13px/1.1 var(--body);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mate .mi span{color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+    .mate .together{font:8px/1 var(--mono);text-transform:uppercase;color:var(--gold);border:1px solid var(--gold-soft);padding:5px 7px;flex:none}
+    .mate .wa{width:28px;height:28px;flex:none;display:grid;place-items:center;background:var(--green);color:var(--paper);border-radius:50%}
+    .mate .wa svg{width:14px;height:14px;fill:var(--paper)}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav>a,.nav-group{padding:6px 0}.nav em,.nav>a.active:before,.nav-group.active:before,.nav-sub{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.mast-right{align-items:flex-start;margin-top:18px}
+      .signals{grid-template-columns:1fr}
+      .filter-row{flex-direction:column;align-items:stretch}.filter-label{border-inline-end:0;border-bottom:1px solid var(--line);padding:12px 16px}
+      .feed{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <button class="nav-group"><span data-t="nav_players">Players</span><em>+</em></button>
+        <a href="#"><span data-t="nav_req">Club Requirements</span><em>03</em></a>
+        <a href="#"><span data-t="nav_cont">Contacts</span><em>04</em></a>
+        <button class="nav-group active"><span data-t="nav_signals">Signals</span><em>−</em></button>
+        <div class="nav-sub">
+          <a href="#" data-t="nav_release">Release Alerts</a>
+          <a href="#" data-t="nav_club">Club Change Alerts</a>
+          <a href="#" data-t="nav_loan">On Loan</a>
+          <a class="active" href="#" data-t="nav_cf">Contract Finisher</a>
+        </div>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Men / Europe</strong><span data-t="cf_lab">Expiring soon</span><strong>62</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_cf">Contract Finisher</strong> / 24 September 2026</div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div>
+            <p class="kicker" data-t="kicker">Contract clock / Expiries this window</p>
+            <h1><span data-t="head_a">Contracts</span> <span class="gold" data-t="head_b">running out.</span></h1>
+            <p class="sub" data-t="sub_txt">Players whose deals expire towards the summer window — free or low-fee opportunities before their clubs move to renew or sell.</p>
+          </div>
+          <div class="mast-right">
+            <div class="window-tag"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span data-t="window">Towards summer window</span></div>
+            <button class="reload"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg><span data-t="reload">Reload</span></button>
+          </div>
+        </header>
+
+        <section class="signals">
+          <div class="sig"><label data-t="s_total">Expiring soon</label><strong>62</strong><small data-t="s_total_n">Across European leagues</small></div>
+          <div class="sig"><label data-t="s_saved">Shortlisted</label><strong class="saved">08</strong><small data-t="s_saved_n">Already tracked</small></div>
+          <div class="sig"><label data-t="s_free">Free next window</label><strong>27</strong><small data-t="s_free_n">Out of contract</small></div>
+        </section>
+
+        <section class="tray">
+          <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input data-ph="search" placeholder="Search name, position, nationality or profile"></label>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_pos">Position</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)">GK</button><button onclick="segOne(this)">CB</button><button onclick="segOne(this)">FB</button>
+              <button onclick="segOne(this)">DM</button><button onclick="segOne(this)">CM</button><button onclick="segOne(this)">AM</button>
+              <button onclick="segOne(this)">W</button><button onclick="segOne(this)">CF</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_age">Age</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)">18–21</button><button onclick="segOne(this)">22–25</button>
+              <button onclick="segOne(this)">26–29</button><button onclick="segOne(this)">30+</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_region">Region</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)" data-t="r_uefa">UEFA</button>
+              <button onclick="segOne(this)" data-t="r_conmebol">CONMEBOL</button>
+              <button onclick="segOne(this)" data-t="r_caf">CAF</button>
+              <button onclick="segOne(this)" data-t="r_afc">AFC</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_foot">Foot</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)" data-t="foot_left">Left</button>
+              <button onclick="segOne(this)" data-t="foot_right">Right</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_val">Value</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="all">All</button>
+              <button onclick="segOne(this)">€150K–500K</button><button onclick="segOne(this)">€500K–1M</button>
+              <button onclick="segOne(this)">€1M–2M</button><button onclick="segOne(this)">€2M–3M</button><button onclick="segOne(this)">€3M–5M</button>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <button class="roster-toggle" id="rosterToggle" onclick="this.classList.toggle('on')">
+              <span class="sw"></span><span data-t="roster_only">Roster players only</span>
+            </button>
+            <span class="foot-note" data-t="foot_hint">Foot data enriched on demand</span>
+          </div>
+        </section>
+
+        <p class="result-count"><span data-t="showing_a">Showing</span> <b>62</b> <span data-t="showing_b">of 62 expiring contracts</span></p>
+
+        <div id="feed" class="feed"></div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const players=[
+      {name:'Jonathan David',pos:'CF',age:25,nat:'ca',foot:'Right',val:'€45.00m',club:'Lille',exp:'30 Jun 2026',mates:2},
+      {name:'Alphonso Davies',pos:'LB',age:25,nat:'ca',foot:'Left',val:'€60.00m',club:'Bayern Munich',exp:'30 Jun 2026',mates:0},
+      {name:'Manor Solomon',pos:'LW',age:26,nat:'il',foot:'Right',val:'€15.00m',club:'Tottenham',exp:'30 Jun 2026',mates:3},
+      {name:'Piotr Zielinski',pos:'CM',age:31,nat:'pl',foot:'Left',val:'€18.00m',club:'Inter',exp:'30 Jun 2026',mates:1},
+      {name:'Antonio Rudiger',pos:'CB',age:33,nat:'de',foot:'Right',val:'€12.00m',club:'Real Madrid',exp:'30 Jun 2026',mates:0},
+      {name:'Dor Peretz',pos:'CM',age:30,nat:'il',foot:'Right',val:'€2.00m',club:'NY Red Bulls',exp:'31 Dec 2025',mates:4}
+    ];
+
+    const feed=document.getElementById('feed');
+    const WA='<svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35z"/></svg>';
+    const CLOCK='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+
+    function render(){
+      const rtl=document.documentElement.dir==='rtl';
+      feed.innerHTML=players.map((p,idx)=>{
+        const flag=`https://flagcdn.com/w640/${p.nat}.png`;
+        const saved=idx===2;
+        const footTxt=p.foot==='Left'?(rtl?'רגל שמאל':'Left foot'):(rtl?'רגל ימין':'Right foot');
+        const saveBtn=saved
+          ? `<span class="saved"><svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>${rtl?'נשמר':'Saved'}</span>`
+          : `<button class="save"><svg viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>${rtl?'הוסף לרשימה':'Shortlist'}</button>`;
+        const matesLbl=p.mates>0?`${p.mates} ${rtl?'חברים לקבוצה מהסגל':'roster teammates'}`:(rtl?'בדוק חברים לקבוצה מהסגל':'Tap for roster teammates');
+        const matesRows=p.mates>0?Array.from({length:Math.min(p.mates,2)}).map((_,i)=>`
+          <div class="mate">
+            <img src="https://img.a.transfermarkt.technology/portrait/big/${[126667,258745,148455][i%3]}-1631521253.jpg" alt="" onerror="this.src='https://via.placeholder.com/40'">
+            <div class="mi"><b>${['Bibras Natcho','Dia Saba','Sun Menachem'][i%3]}</b><span>CM · 33 · €800k</span></div>
+            <span class="together">${3-i} ${rtl?'משחקים יחד':'games together'}</span>
+            <a class="wa" title="WhatsApp">${WA}</a>
+          </div>`).join(''):`<p style="margin:0;padding:10px;border:1px solid var(--line);background:var(--paper);color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase">${rtl?'אין חברים לקבוצה מהסגל':'No roster teammates found'}</p>`;
+        return `<article class="cf">
+          <span class="cf-badge">${CLOCK}${rtl?'סיום חוזה':'Expires'} ${p.exp}</span>
+          <div class="cf-top">
+            <img class="flagbg" src="${flag}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'flagbg-ph'}))">
+            <div class="portrait"><img src="https://via.placeholder.com/72" alt=""></div>
+            <div class="who">
+              <div class="nm">${p.name}</div>
+              <div class="meta"><span class="pos">${p.pos}</span><span class="age">${rtl?'גיל':'Age'} ${p.age}</span><span class="foot">${footTxt}</span></div>
+            </div>
+          </div>
+          <div class="facts">
+            <div class="val"><label>${rtl?'שווי שוק':'Market value'}</label><b>${p.val}</b></div>
+            <div class="club"><label>${rtl?'מועדון נוכחי':'Current club'}</label><b>${p.club}</b></div>
+            <div class="exp"><span class="clock">${CLOCK}</span><div class="txt"><label>${rtl?'החוזה מסתיים':'Contract expires'}</label><b>${p.exp}</b></div></div>
+          </div>
+          <div class="cf-actions">
+            ${saveBtn}
+            <a class="save">${rtl?'טרנספרמרקט ↗':'Transfermarkt ↗'}</a>
+          </div>
+          <div class="mates">
+            <button class="mates-btn" onclick="this.closest('.cf').classList.toggle('open')">
+              <svg class="ico" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.4-1.9M17 20H7m10 0v-2c0-.7-.1-1.3-.4-1.9M7 20H2v-2a3 3 0 015.4-1.9M7 20v-2c0-.7.1-1.3.4-1.9m0 0a5 5 0 019.3 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              <span class="lbl">${matesLbl}</span>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div class="mates-list">${matesRows}</div>
+          </div>
+        </article>`;
+      }).join('');
+    }
+    function segOne(btn){[...btn.parentNode.children].forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקנים',nav_req:'דרישות מועדונים',nav_cont:'אנשי קשר',
+      nav_signals:'התראות',nav_release:'התראות שחרור',nav_club:'התראות חילופי מועדון',nav_loan:'בהשאלה',nav_cf:'מסיימי חוזה',
+      platform:'פלטפורמה פעילה',platform_v:'גברים / אירופה',cf_lab:'מסתיימים בקרוב',
+      kicker:'שעון חוזים / סיומי חוזה בחלון הזה',head_a:'חוזים',head_b:'שמסתיימים.',
+      sub_txt:'שחקנים שהחוזה שלהם מסתיים לקראת חלון הקיץ — הזדמנויות חינם או בעלות נמוכה לפני שהמועדון יחדש או ימכור.',
+      window:'לקראת חלון קיץ',reload:'טען מחדש',
+      s_total:'מסתיימים בקרוב',s_total_n:'בליגות אירופה',s_saved:'ברשימת מעקב',s_saved_n:'כבר במעקב',s_free:'חופשי בחלון הבא',s_free_n:'ללא חוזה',
+      f_pos:'עמדה',f_age:'גיל',f_region:'אזור',f_foot:'רגל',f_val:'שווי',all:'הכל',
+      r_uefa:'אירופה',r_conmebol:'דרום אמריקה',r_caf:'אפריקה',r_afc:'אסיה',
+      foot_left:'שמאל',foot_right:'ימין',roster_only:'שחקנים מהסגל בלבד',foot_hint:'נתוני רגל מועשרים לפי דרישה',
+      showing_a:'מוצג',showing_b:'מתוך 62 חוזים מסתיימים'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.textContent);
+    document.querySelectorAll('[data-ph]').forEach(el=>EN['ph_'+el.dataset.ph]=el.getAttribute('placeholder'));
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.textContent=(rtl?(T.he[k]??EN[k]):EN[k])||el.textContent;});
+      document.querySelectorAll('[data-ph]').forEach(el=>el.setAttribute('placeholder',(rtl?(T.he.search??EN['ph_'+el.dataset.ph]):EN['ph_'+el.dataset.ph])||''));
+      render();
+    }
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brit Sport Group — Executive Men Dashboard Redesign</title>
+  
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700&family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  
+  <!-- Tailwind CDN with Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Heebo', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+            display: ['"Bricolage Grotesque"', '"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['"Cinzel"', 'Georgia', 'serif'],
+            hebrew: ['Heebo', 'sans-serif']
+          },
+          colors: {
+            gold: {
+              400: '#F3D179',
+              500: '#D4AF37',
+              600: '#B8860B',
+              700: '#8A6508'
+            },
+            pitch: {
+              300: '#4EFA8B',
+              400: '#00F29D',
+              500: '#10B981',
+              600: '#059669',
+              glow: 'rgba(0, 242, 157, 0.15)'
+            },
+            cyan: {
+              400: '#38BDF8',
+              500: '#00D2FF',
+              600: '#0284C7'
+            },
+            obsidian: {
+              950: '#05070A',
+              900: '#090B0E',
+              850: '#0E1117',
+              800: '#131822',
+              750: '#18202E',
+              700: '#232D3F'
+            }
+          },
+          boxShadow: {
+            'glow-gold': '0 0 35px -5px rgba(212, 175, 55, 0.25)',
+            'glow-pitch': '0 0 35px -5px rgba(0, 242, 157, 0.25)',
+            'glow-cyan': '0 0 35px -5px rgba(0, 210, 255, 0.25)',
+            'luxury-card': '0 20px 50px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.08)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(10, 14, 20, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Subtle Animated Gradients & Mesh */
+    .bg-mesh-obsidian {
+      background: 
+        radial-gradient(at 0% 0%, rgba(212, 175, 55, 0.07) 0px, transparent 45%),
+        radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.06) 0px, transparent 40%),
+        radial-gradient(at 50% 100%, rgba(14, 165, 233, 0.05) 0px, transparent 50%),
+        linear-gradient(180deg, #07090C 0%, #090B0E 50%, #05070A 100%);
+    }
+
+    .bg-mesh-kinetic {
+      background: 
+        radial-gradient(at 10% 20%, rgba(0, 242, 157, 0.12) 0px, transparent 40%),
+        radial-gradient(at 90% 10%, rgba(0, 210, 255, 0.12) 0px, transparent 45%),
+        radial-gradient(at 50% 80%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+        linear-gradient(175deg, #040711 0%, #080D1A 60%, #04060E 100%);
+    }
+
+    .bg-mesh-atelier {
+      background: 
+        radial-gradient(at 85% 15%, rgba(229, 169, 60, 0.08) 0px, transparent 45%),
+        radial-gradient(at 15% 85%, rgba(255, 255, 255, 0.03) 0px, transparent 45%),
+        linear-gradient(180deg, #0C0D10 0%, #111317 50%, #0A0B0E 100%);
+    }
+
+    .glass-panel {
+      background: rgba(19, 24, 34, 0.72);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-panel-gold {
+      background: linear-gradient(135deg, rgba(28, 34, 46, 0.82) 0%, rgba(18, 22, 32, 0.88) 100%);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+    }
+
+    .glass-panel-kinetic {
+      background: linear-gradient(145deg, rgba(14, 21, 37, 0.85) 0%, rgba(8, 13, 24, 0.92) 100%);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(0, 242, 157, 0.18);
+    }
+
+    .glass-panel-atelier {
+      background: rgba(20, 22, 28, 0.8);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    /* Shimmer & Scanline details */
+    .shimmer-line {
+      position: relative;
+      overflow: hidden;
+    }
+    .shimmer-line::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+      animation: shimmer 4s infinite ease-in-out;
+    }
+    @keyframes shimmer {
+      0% { left: -100%; }
+      50% { left: 200%; }
+      100% { left: 200%; }
+    }
+
+    /* Radar pulse */
+    .pulse-ring {
+      position: relative;
+    }
+    .pulse-ring::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: inherit;
+      border: 2px solid currentColor;
+      opacity: 0.6;
+      animation: pulse-border 2.5s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+    }
+    @keyframes pulse-border {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      70% { transform: scale(1.35); opacity: 0; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+
+    /* Device frame sizing */
+    .viewport-desktop { width: 100%; max-width: 1540px; margin: 0 auto; }
+    .viewport-tablet { width: 1024px; max-width: 100%; margin: 0 auto; box-shadow: 0 0 80px rgba(0,0,0,0.9); border-radius: 28px; border: 8px solid #1c222e; overflow: hidden; }
+    .viewport-mobile { width: 410px; max-width: 100%; margin: 0 auto; box-shadow: 0 0 90px rgba(0,0,0,0.95); border-radius: 46px; border: 12px solid #1a202c; overflow: hidden; }
+
+    /* RTL typography tweaks */
+    [dir="rtl"] {
+      font-family: 'Heebo', '"Plus Jakarta Sans"', sans-serif;
+    }
+    [dir="rtl"] .font-display {
+      font-family: 'Heebo', sans-serif;
+      font-weight: 800;
+    }
+
+    /* Number tabular styling */
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body class="bg-[#05070A] text-slate-100 min-h-screen antialiased selection:bg-gold-500/30 selection:text-gold-400">
+
+  <!-- ==========================================
+       TOP CONTROL & DESIGN SYSTEM TOOLBAR
+       ========================================== -->
+  <header class="sticky top-0 z-50 bg-[#090B0E]/90 backdrop-blur-2xl border-b border-white/10 px-4 sm:px-6 py-3 transition-all duration-300">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      
+      <!-- Logo & Concept Label -->
+      <div class="flex items-center gap-3.5 w-full md:w-auto justify-between md:justify-start">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-gold-600 via-gold-400 to-amber-200 p-[1.5px] shadow-glow-gold">
+            <div class="w-full h-full bg-[#090B0E] rounded-[10px] flex items-center justify-center font-bold font-serif text-gold-400 text-sm tracking-wider">
+              BSG
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-display font-extrabold text-white text-base tracking-tight">BRIT SPORT GROUP</span>
+              <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-gold-500/15 text-gold-400 border border-gold-500/30">
+                MEN PLATFORM
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400 font-medium">Executive Football Operations Suite • 2026 Redesign</p>
+          </div>
+        </div>
+
+        <!-- Quick Info Badge on Mobile -->
+        <div class="md:hidden flex items-center gap-2">
+          <button onclick="toggleDesignModal()" class="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-300">
+            Specs
+          </button>
+        </div>
+      </div>
+
+      <!-- Center: 3 Archetype Selector Buttons -->
+      <div class="flex items-center p-1 bg-black/50 border border-white/10 rounded-2xl w-full md:w-auto justify-center overflow-x-auto">
+        <button id="btn-concept-1" onclick="switchConcept(1)" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-300 flex items-center gap-2 bg-gradient-to-r from-gold-500/20 to-amber-500/20 text-gold-300 border border-gold-500/40 shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-gold-400"></span>
+          <span>1. Sovereign Obsidian</span>
+          <span class="text-[9px] uppercase px-1.5 py-0.2 rounded bg-gold-500/30 text-gold-200">Executive</span>
+        </button>
+
+        <button id="btn-concept-2" onclick="switchConcept(2)" class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 flex items-center gap-2 text-slate-400 hover:text-white">
+          <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+          <span>2. Pitch Telemetry</span>
+          <span class="text-[9px] uppercase px-1.5 py-0.2 rounded bg-white/10 text-slate-300">Kinetic</span>
+        </button>
+
+        <button id="btn-concept-3" onclick="switchConcept(3)" class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 flex items-center gap-2 text-slate-400 hover:text-white">
+          <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+          <span>3. Atelier Minimal</span>
+          <span class="text-[9px] uppercase px-1.5 py-0.2 rounded bg-white/10 text-slate-300">Editorial</span>
+        </button>
+      </div>
+
+      <!-- Right Controls: Viewport + Language + Specs -->
+      <div class="flex items-center gap-2 flex-wrap justify-center md:justify-end">
+        <!-- Viewport Selector -->
+        <div class="flex items-center bg-black/40 border border-white/10 rounded-xl p-0.5 text-xs text-slate-400">
+          <button onclick="setViewport('desktop')" id="vp-desktop" class="p-1.5 px-2 rounded-lg bg-white/10 text-white font-medium" title="Desktop 1440p+">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </button>
+          <button onclick="setViewport('tablet')" id="vp-tablet" class="p-1.5 px-2 rounded-lg hover:text-white transition" title="iPad / Tablet">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          </button>
+          <button onclick="setViewport('mobile')" id="vp-mobile" class="p-1.5 px-2 rounded-lg hover:text-white transition" title="iPhone Mobile">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Language Toggle -->
+        <button onclick="toggleLanguage()" id="lang-btn" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-200 transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gold-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span id="lang-label">עברית (RTL)</span>
+        </button>
+
+        <!-- Design Specs Drawer Trigger -->
+        <button onclick="toggleDesignModal()" class="px-3 py-1.5 rounded-xl bg-gold-500/10 hover:bg-gold-500/20 border border-gold-500/30 text-gold-300 text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span class="hidden lg:inline">Design Architecture &</span><span>Specs</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ==========================================
+       MAIN VIEWPORT CONTAINER
+       ========================================== -->
+  <main id="viewport-container" class="viewport-desktop transition-all duration-500 py-6 px-3 sm:px-6">
+
+    <!-- CONCEPT 1: THE SOVEREIGN OBSIDIAN (DEFAULT) -->
+    <section id="concept-1-view" class="space-y-6 transition-opacity duration-300">
+      
+      <!-- Top Flight Deck / Hero Banner -->
+      <div class="glass-panel-gold rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-luxury-card shimmer-line">
+        <!-- Ambient Glow Elements -->
+        <div class="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-gradient-to-br from-gold-500/20 to-amber-600/10 blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-pitch-500/10 blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          
+          <!-- Greeting & Identity -->
+          <div class="space-y-2">
+            <div class="flex items-center gap-2.5">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pitch-500/15 border border-pitch-500/30 text-pitch-400 text-xs font-semibold">
+                <span class="w-2 h-2 rounded-full bg-pitch-400 animate-pulse"></span>
+                <span class="i18n-live-market">LIVE MARKET ENGINE ACTIVE</span>
+              </span>
+              <span class="text-xs text-slate-400 font-mono">TEL AVIV 14:45 • LONDON 12:45 • NY 07:45</span>
+            </div>
+
+            <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display tracking-tight text-white">
+              <span class="i18n-greeting">Good afternoon</span>, <span class="text-transparent bg-clip-text bg-gradient-to-r from-gold-400 via-amber-200 to-white">Lior Dahan</span>
+            </h1>
+            <p class="text-slate-400 text-sm max-w-2xl leading-relaxed i18n-hero-subtitle">
+              Brit Sport Group Executive Command Center. Real-time portfolio valuation, mandate expiration surveillance, active window countdowns, and high-priority transfer intelligence.
+            </p>
+          </div>
+
+          <!-- Quick Action Flight Buttons -->
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button onclick="triggerAction('request')" class="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-gold-500 to-amber-600 text-obsidian-950 font-bold text-xs uppercase tracking-wider hover:brightness-110 shadow-glow-gold transition flex items-center gap-2">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span class="i18n-new-request">New Club Request</span>
+            </button>
+
+            <button onclick="triggerAction('search')" class="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-xs transition flex items-center gap-2">
+              <svg class="w-4 h-4 text-gold-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <span>Instant Radar (⌘K)</span>
+            </button>
+
+            <button onclick="triggerAction('share')" class="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition" title="Export Daily Agency Briefing">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Metric Pulse Ribbon (High-Yield Bento Bar) -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mt-8 pt-6 border-t border-white/10">
+          
+          <!-- Metric 1: Total Portfolio Valuation -->
+          <div class="p-4 rounded-2xl bg-black/40 border border-white/10 hover:border-gold-500/40 transition-all duration-300 group">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <span class="i18n-kpi-valuation">Portfolio Value</span>
+              <span class="text-pitch-400 font-mono text-[10px] font-bold">+€3.4M</span>
+            </div>
+            <p class="text-2xl lg:text-3xl font-extrabold font-display text-white mt-2 group-hover:text-gold-400 transition">
+              €48.55M
+            </p>
+            <div class="flex items-center gap-1.5 mt-1 text-[11px] text-slate-400">
+              <span class="w-1.5 h-1.5 rounded-full bg-pitch-400"></span>
+              <span>42 <span class="i18n-roster-players">Roster Players</span></span>
+            </div>
+          </div>
+
+          <!-- Metric 2: Active Mandates Surveillance -->
+          <div class="p-4 rounded-2xl bg-black/40 border border-amber-500/20 hover:border-amber-500/50 transition-all duration-300 group">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <span class="i18n-kpi-mandates">Mandate Health</span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400 uppercase">Alert</span>
+            </div>
+            <p class="text-2xl lg:text-3xl font-extrabold font-display text-amber-300 mt-2">
+              88.1%
+            </p>
+            <div class="flex items-center gap-1.5 mt-1 text-[11px] text-amber-400/80">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              <span>5 <span class="i18n-expiring-30d">Expiring &lt;30d</span></span>
+            </div>
+          </div>
+
+          <!-- Metric 3: Active Club Inquiries / Requests -->
+          <div class="p-4 rounded-2xl bg-black/40 border border-white/10 hover:border-cyan-500/40 transition-all duration-300 group">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <span class="i18n-kpi-requests">Club Requests</span>
+              <span class="text-cyan-400 font-mono text-[10px] font-bold">14 Active</span>
+            </div>
+            <p class="text-2xl lg:text-3xl font-extrabold font-display text-white mt-2 group-hover:text-cyan-400 transition">
+              14
+            </p>
+            <div class="flex items-center gap-1.5 mt-1 text-[11px] text-slate-400">
+              <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+              <span>6 <span class="i18n-direct-matched">Direct Matched</span></span>
+            </div>
+          </div>
+
+          <!-- Metric 4: Pending Sign-Offs (Transfers/Docs) -->
+          <div class="p-4 rounded-2xl bg-black/40 border border-pitch-500/20 hover:border-pitch-500/50 transition-all duration-300 group">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <span class="i18n-kpi-signoffs">Deal Pipeline</span>
+              <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-pitch-500/20 text-pitch-400 uppercase">Action</span>
+            </div>
+            <p class="text-2xl lg:text-3xl font-extrabold font-display text-pitch-300 mt-2">
+              3
+            </p>
+            <div class="flex items-center gap-1.5 mt-1 text-[11px] text-slate-400">
+              <span class="w-1.5 h-1.5 rounded-full bg-pitch-400"></span>
+              <span class="i18n-pending-transfers">Awaiting Sign-off</span>
+            </div>
+          </div>
+
+          <!-- Metric 5: Monitored Shortlist Targets -->
+          <div class="p-4 rounded-2xl bg-black/40 border border-white/10 hover:border-white/30 transition-all duration-300 group">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <span class="i18n-kpi-shortlist">Shortlist Target</span>
+              <span class="text-slate-500 text-[10px]">Scout DB</span>
+            </div>
+            <p class="text-2xl lg:text-3xl font-extrabold font-display text-white mt-2">
+              28
+            </p>
+            <div class="flex items-center gap-1.5 mt-1 text-[11px] text-slate-400">
+              <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+              <span>12 <span class="i18n-free-agents">Contract Enders</span></span>
+            </div>
+          </div>
+
+          <!-- Metric 6: Top Window Urgency -->
+          <div class="p-4 rounded-2xl bg-gradient-to-br from-red-950/40 to-black/60 border border-red-500/30 hover:border-red-500/60 transition-all duration-300 group">
+            <div class="flex items-center justify-between text-xs text-red-300">
+              <span class="i18n-kpi-window">ISRAEL WINDOW</span>
+              <span class="px-1 py-0.2 rounded text-[9px] font-bold bg-red-500/20 text-red-400">CLOSING</span>
+            </div>
+            <p class="text-2xl lg:text-3xl font-extrabold font-display text-red-400 mt-2 font-mono">
+              6d 14h
+            </p>
+            <div class="flex items-center gap-1.5 mt-1 text-[11px] text-red-300/80">
+              <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping"></span>
+              <span>8 <span class="i18n-active-dialogues">Active Dialogues</span></span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ========================================================
+           ROW 2: DUAL COMMAND DECK — ACTION RADAR & MARKET PULSE
+           ======================================================== -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- LEFT 7 COLS: URGENT ACTION DESK & DEAL PIPELINE -->
+        <div class="lg:col-span-7 space-y-6">
+          
+          <!-- Widget A: Urgent Deals & Pending Agent Transfers -->
+          <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-white/10 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-5">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+                </div>
+                <div>
+                  <h2 class="text-base font-bold font-display text-white i18n-pending-action-title">Deal Pipeline & Transfer Sign-Offs</h2>
+                  <p class="text-xs text-slate-400">Direct authorization requests between agency scouts</p>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold font-mono">2 PENDING</span>
+            </div>
+
+            <!-- Transfer Item Cards -->
+            <div class="space-y-3">
+              
+              <!-- Deal 1 -->
+              <div class="p-4 rounded-2xl bg-[#090C12] border border-white/10 hover:border-gold-500/30 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
+                <div class="flex items-center gap-3.5">
+                  <div class="relative">
+                    <img src="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=120&auto=format&fit=crop&q=80" alt="Player" class="w-12 h-12 rounded-xl object-cover border border-white/10" />
+                    <span class="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded bg-obsidian-900 border border-gold-500/40 text-[9px] font-bold text-gold-400">RW</span>
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <h4 class="text-sm font-bold text-white group-hover:text-gold-300 transition">Omer Atzili</h4>
+                      <span class="text-xs text-slate-400">• 31 yrs</span>
+                      <span class="text-xs font-semibold text-pitch-400 font-mono">€1.80M</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                      Transfer assignment: <span class="text-slate-300 font-medium">Lior Dahan</span> → <span class="text-gold-400 font-medium">Avi Nimni</span>
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-2 self-end sm:self-auto">
+                  <button onclick="approveTransfer('Omer Atzili')" class="px-3 py-1.5 rounded-xl bg-pitch-500/20 hover:bg-pitch-500/30 text-pitch-400 border border-pitch-500/40 text-xs font-bold transition flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Authorize</span>
+                  </button>
+                  <button onclick="openPlayerModal('Omer Atzili', 'Al Ain / Free Target', '€1.80M', 'RW / AM', '31')" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition">
+                    Details
+                  </button>
+                </div>
+              </div>
+
+              <!-- Deal 2 -->
+              <div class="p-4 rounded-2xl bg-[#090C12] border border-white/10 hover:border-gold-500/30 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
+                <div class="flex items-center gap-3.5">
+                  <div class="relative">
+                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80" alt="Player" class="w-12 h-12 rounded-xl object-cover border border-white/10" />
+                    <span class="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded bg-obsidian-900 border border-cyan-500/40 text-[9px] font-bold text-cyan-400">CB</span>
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <h4 class="text-sm font-bold text-white group-hover:text-gold-300 transition">Stav Lemkin</h4>
+                      <span class="text-xs text-slate-400">• 22 yrs</span>
+                      <span class="text-xs font-semibold text-pitch-400 font-mono">€1.20M</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                      Shakhtar Donetsk loan negotiation • <span class="text-cyan-400">Awaiting your mandate countersign</span>
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-2 self-end sm:self-auto">
+                  <button onclick="approveTransfer('Stav Lemkin')" class="px-3 py-1.5 rounded-xl bg-pitch-500/20 hover:bg-pitch-500/30 text-pitch-400 border border-pitch-500/40 text-xs font-bold transition flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Sign Mandate</span>
+                  </button>
+                  <button onclick="openPlayerModal('Stav Lemkin', 'Maccabi Tel Aviv / Shakhtar', '€1.20M', 'CB', '22')" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium transition">
+                    Details
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Widget B: Mandates Expiring Surveillance (<30 Days Warning) -->
+          <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-orange-500/20 bg-gradient-to-br from-orange-950/10 to-obsidian-900">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                </div>
+                <div>
+                  <h3 class="text-base font-bold font-display text-white i18n-mandate-expiring-title">Mandates Expiring in &lt;30 Days</h3>
+                  <p class="text-xs text-slate-400">Immediate extension required to prevent free agent vulnerability</p>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-orange-500/20 text-orange-400 text-xs font-bold font-mono">3 CRITICAL</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              
+              <!-- Player 1 -->
+              <div class="p-3.5 rounded-2xl bg-black/50 border border-red-500/30 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white">Dean David</span>
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/20 text-red-400">6 DAYS LEFT</span>
+                  </div>
+                  <p class="text-[11px] text-slate-400 mt-1">Maccabi Haifa • CF • €1.50M</p>
+                </div>
+                <div class="mt-3 flex items-center justify-between pt-2 border-t border-white/5">
+                  <span class="text-[10px] text-slate-400 font-mono">Expires: 30.09.2026</span>
+                  <button onclick="quickRenew('Dean David')" class="text-xs text-gold-400 hover:text-gold-300 font-bold">Renew →</button>
+                </div>
+              </div>
+
+              <!-- Player 2 -->
+              <div class="p-3.5 rounded-2xl bg-black/50 border border-orange-500/30 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white">Guy Melamed</span>
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-500/20 text-orange-400">14 DAYS</span>
+                  </div>
+                  <p class="text-[11px] text-slate-400 mt-1">Hapoel Haifa • ST • €650K</p>
+                </div>
+                <div class="mt-3 flex items-center justify-between pt-2 border-t border-white/5">
+                  <span class="text-[10px] text-slate-400 font-mono">Expires: 08.10.2026</span>
+                  <button onclick="quickRenew('Guy Melamed')" class="text-xs text-gold-400 hover:text-gold-300 font-bold">Renew →</button>
+                </div>
+              </div>
+
+              <!-- Player 3 -->
+              <div class="p-3.5 rounded-2xl bg-black/50 border border-amber-500/30 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white">Ofri Arad</span>
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400">22 DAYS</span>
+                  </div>
+                  <p class="text-[11px] text-slate-400 mt-1">Kairat Almaty • CB • €800K</p>
+                </div>
+                <div class="mt-3 flex items-center justify-between pt-2 border-t border-white/5">
+                  <span class="text-[10px] text-slate-400 font-mono">Expires: 16.10.2026</span>
+                  <button onclick="quickRenew('Ofri Arad')" class="text-xs text-gold-400 hover:text-gold-300 font-bold">Renew →</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Widget C: Player Birthdays & Relationship CRM -->
+          <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-white/10">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v3"/><path d="M12 8v3"/><path d="M17 8v3"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/></svg>
+                </div>
+                <div>
+                  <h3 class="text-base font-bold font-display text-white i18n-birthdays-title">Upcoming Player Birthdays</h3>
+                  <p class="text-xs text-slate-400">Client retention touchpoints & personalized WhatsApp outreach</p>
+                </div>
+              </div>
+              <span class="text-xs text-purple-400 font-semibold">THIS WEEK (2)</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="p-3.5 rounded-2xl bg-[#090C12] border border-white/10 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-xl object-cover border border-purple-500/40" />
+                  <div>
+                    <h5 class="text-sm font-bold text-white">Liel Abada</h5>
+                    <p class="text-xs text-slate-400">Turning 25 in <span class="text-purple-400 font-bold">2 days</span> (Oct 3)</p>
+                  </div>
+                </div>
+                <button onclick="openWhatsApp('Liel Abada')" class="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-400 text-xs font-bold transition flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+                  <span>Wish</span>
+                </button>
+              </div>
+
+              <div class="p-3.5 rounded-2xl bg-[#090C12] border border-white/10 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80" class="w-10 h-10 rounded-xl object-cover border border-purple-500/40" />
+                  <div>
+                    <h5 class="text-sm font-bold text-white">Roy Revivo</h5>
+                    <p class="text-xs text-slate-400">Turning 23 in <span class="text-purple-400 font-bold">5 days</span> (Oct 6)</p>
+                  </div>
+                </div>
+                <button onclick="openWhatsApp('Roy Revivo')" class="px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-400 text-xs font-bold transition flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+                  <span>Wish</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT 5 COLS: REAL-TIME FEED & TRANSFER WINDOW RADAR -->
+        <div class="lg:col-span-5 space-y-6">
+          
+          <!-- Widget D: Active Transfer Windows Radar -->
+          <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-white/10">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-pitch-500/15 border border-pitch-500/30 flex items-center justify-center text-pitch-400">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold font-display text-white i18n-window-radar-title">Transfer Windows Radar</h3>
+                  <p class="text-[11px] text-slate-400">Target market deadlines & club contacts</p>
+                </div>
+              </div>
+              <span class="text-[10px] font-mono font-bold text-pitch-400 bg-pitch-500/10 px-2 py-0.5 rounded border border-pitch-500/20">5 ACTIVE</span>
+            </div>
+
+            <!-- List of Windows -->
+            <div class="space-y-2.5">
+              
+              <!-- Window 1: Israel -->
+              <div class="p-3 rounded-xl bg-[#090C12] border border-red-500/30 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <span class="text-lg">🇮🇱</span>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-bold text-white">Israel (Ligat Ha'al)</span>
+                      <span class="text-[9px] px-1.5 py-0.2 rounded bg-red-500/20 text-red-400 font-bold">URGENT</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400">14 Linked Club Directors</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-xs font-bold font-mono text-red-400">6 Days Left</span>
+                  <p class="text-[9px] text-slate-500">Closes Oct 01</p>
+                </div>
+              </div>
+
+              <!-- Window 2: Saudi Pro League -->
+              <div class="p-3 rounded-xl bg-[#090C12] border border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <span class="text-lg">🇸🇦</span>
+                  <div>
+                    <span class="text-xs font-bold text-white">Saudi Arabia (SPL)</span>
+                    <p class="text-[10px] text-slate-400">6 High-Budget Contacts</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-xs font-bold font-mono text-amber-400">12 Days</span>
+                  <p class="text-[9px] text-slate-500">Closes Oct 07</p>
+                </div>
+              </div>
+
+              <!-- Window 3: MLS -->
+              <div class="p-3 rounded-xl bg-[#090C12] border border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <span class="text-lg">🇺🇸</span>
+                  <div>
+                    <span class="text-xs font-bold text-white">USA (MLS Secondary)</span>
+                    <p class="text-[10px] text-slate-400">8 Partner Sporting Directors</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-xs font-bold font-mono text-pitch-400">24 Days</span>
+                  <p class="text-[9px] text-slate-500">Closes Oct 19</p>
+                </div>
+              </div>
+
+              <!-- Window 4: UAE Pro League -->
+              <div class="p-3 rounded-xl bg-[#090C12] border border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <span class="text-lg">🇦🇪</span>
+                  <div>
+                    <span class="text-xs font-bold text-white">UAE Pro League</span>
+                    <p class="text-[10px] text-slate-400">5 Direct Agencies</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-xs font-bold font-mono text-pitch-400">28 Days</span>
+                  <p class="text-[9px] text-slate-500">Closes Oct 23</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Widget E: Live Activity Stream (Smart Feed) -->
+          <div class="glass-panel rounded-3xl p-5 sm:p-6 border border-white/10">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-gold-500/15 border border-gold-500/30 flex items-center justify-center text-gold-400">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold font-display text-white i18n-feed-title">Real-Time Market Feed</h3>
+                  <p class="text-[11px] text-slate-400">Continuous Transfermarkt & scout updates</p>
+                </div>
+              </div>
+              <span class="w-2 h-2 rounded-full bg-pitch-400 animate-ping"></span>
+            </div>
+
+            <!-- Feed Timeline -->
+            <div class="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-px before:bg-white/10">
+              
+              <!-- Feed Item 1: Market Value Upgrade -->
+              <div class="flex items-start gap-3 relative group">
+                <div class="w-7 h-7 rounded-full bg-pitch-500/20 border border-pitch-500/40 text-pitch-400 flex items-center justify-center text-xs shrink-0 z-10">
+                  📈
+                </div>
+                <div class="flex-1 p-3 rounded-2xl bg-[#090C12] border border-white/5 hover:border-pitch-500/30 transition">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white">Anan Khalaili</span>
+                    <span class="text-[10px] text-slate-500">12m ago</span>
+                  </div>
+                  <p class="text-xs text-slate-300 mt-0.5">
+                    Market value upgraded from <span class="line-through text-slate-500">€5.0M</span> to <span class="text-pitch-400 font-bold font-mono">€6.5M</span> (Royale Union SG)
+                  </p>
+                </div>
+              </div>
+
+              <!-- Feed Item 2: Club Request Received -->
+              <div class="flex items-start gap-3 relative group">
+                <div class="w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center text-xs shrink-0 z-10">
+                  📩
+                </div>
+                <div class="flex-1 p-3 rounded-2xl bg-[#090C12] border border-white/5 hover:border-cyan-500/30 transition">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white">Gent (Jupiler Pro)</span>
+                    <span class="text-[10px] text-slate-500">1h ago</span>
+                  </div>
+                  <p class="text-xs text-slate-300 mt-0.5">
+                    Inquiry: Looking for <span class="text-cyan-400 font-semibold">Left Back U23</span> with EU passport. Match score: 94%.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Feed Item 3: Free Agent Alert -->
+              <div class="flex items-start gap-3 relative group">
+                <div class="w-7 h-7 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center text-xs shrink-0 z-10">
+                  ⚡
+                </div>
+                <div class="flex-1 p-3 rounded-2xl bg-[#090C12] border border-white/5 hover:border-purple-500/30 transition">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-white">Contract Finisher Alert</span>
+                    <span class="text-[10px] text-slate-500">3h ago</span>
+                  </div>
+                  <p class="text-xs text-slate-300 mt-0.5">
+                    <span class="text-purple-300 font-medium">Dan Glazer</span> entered final 6 months of contract. Eligible for pre-contract negotiations.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ========================================================
+           ROW 3: ROSTER ANALYTICS & MARKET INTELLIGENCE MATRIX
+           ======================================================== -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <!-- Chart 1: Squad Positional Balance -->
+        <div class="glass-panel rounded-3xl p-5 border border-white/10">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 i18n-chart-position">Squad Positional Depth</h4>
+            <span class="text-xs font-mono text-gold-400">42 Players</span>
+          </div>
+          <div class="space-y-2.5 mt-4">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-white font-medium">Forwards (FWD / WING)</span>
+                <span class="text-gold-400 font-mono font-bold">14 (33%)</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-black/50 overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-gold-500 to-amber-300 rounded-full" style="width: 33%"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-white font-medium">Midfielders (CM / CAM / DM)</span>
+                <span class="text-pitch-400 font-mono font-bold">13 (31%)</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-black/50 overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-pitch-500 to-emerald-300 rounded-full" style="width: 31%"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-white font-medium">Defenders (CB / RB / LB)</span>
+                <span class="text-cyan-400 font-mono font-bold">11 (26%)</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-black/50 overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-cyan-500 to-sky-300 rounded-full" style="width: 26%"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-white font-medium">Goalkeepers (GK)</span>
+                <span class="text-purple-400 font-mono font-bold">4 (10%)</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-black/50 overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-purple-500 to-indigo-300 rounded-full" style="width: 10%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart 2: Age Demographics Curve -->
+        <div class="glass-panel rounded-3xl p-5 border border-white/10">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 i18n-chart-age">Age Distribution Curve</h4>
+            <span class="text-xs font-mono text-pitch-400">Avg 24.8y</span>
+          </div>
+          <div class="grid grid-cols-4 gap-2 text-center mt-4">
+            <div class="p-3 rounded-2xl bg-black/40 border border-white/5">
+              <span class="text-[10px] text-slate-400 uppercase font-bold">U21</span>
+              <p class="text-xl font-bold font-display text-pitch-300 mt-1">9</p>
+              <span class="text-[9px] text-pitch-400/80">Talents</span>
+            </div>
+            <div class="p-3 rounded-2xl bg-black/40 border border-gold-500/20 bg-gold-500/5">
+              <span class="text-[10px] text-gold-300 uppercase font-bold">22-25</span>
+              <p class="text-xl font-bold font-display text-gold-400 mt-1">16</p>
+              <span class="text-[9px] text-gold-400/80">Peak Assets</span>
+            </div>
+            <div class="p-3 rounded-2xl bg-black/40 border border-white/5">
+              <span class="text-[10px] text-slate-400 uppercase font-bold">26-29</span>
+              <p class="text-xl font-bold font-display text-white mt-1">11</p>
+              <span class="text-[9px] text-slate-400">Senior</span>
+            </div>
+            <div class="p-3 rounded-2xl bg-black/40 border border-white/5">
+              <span class="text-[10px] text-slate-400 uppercase font-bold">30+</span>
+              <p class="text-xl font-bold font-display text-slate-300 mt-1">6</p>
+              <span class="text-[9px] text-slate-500">Veteran</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-4 text-center">
+            🔥 60% of portfolio in prime European transfer bracket (19-25)
+          </p>
+        </div>
+
+        <!-- Chart 3: Valuation Tiers -->
+        <div class="glass-panel rounded-3xl p-5 border border-white/10">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 i18n-chart-tiers">Valuation Tiers</h4>
+            <span class="text-xs font-mono text-cyan-400">€48.55M Total</span>
+          </div>
+          <div class="space-y-2 mt-3">
+            <div class="flex items-center justify-between p-2 rounded-xl bg-black/40 text-xs">
+              <span class="text-slate-300">💎 €5M+ Super Assets</span>
+              <span class="font-mono font-bold text-pitch-400">2 players (€14.5M)</span>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded-xl bg-black/40 text-xs">
+              <span class="text-slate-300">⭐ €1M - €5M Tier 1</span>
+              <span class="font-mono font-bold text-gold-400">14 players (€22.8M)</span>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded-xl bg-black/40 text-xs">
+              <span class="text-slate-300">📈 €500K - €1M Growth</span>
+              <span class="font-mono font-bold text-cyan-400">16 players (€9.4M)</span>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded-xl bg-black/40 text-xs">
+              <span class="text-slate-300">🌱 Under €500K Seed</span>
+              <span class="font-mono font-bold text-slate-400">10 players (€1.85M)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart 4: EU Passport & Foreign Eligibility -->
+        <div class="glass-panel rounded-3xl p-5 border border-white/10 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 i18n-chart-passport">Passport & EU Transfer Leverage</h4>
+              <span class="text-xs font-mono text-pitch-400">62% EU</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed mt-2">
+              <strong class="text-white">26 players</strong> hold full European Community (EU) passports, removing foreign player quota restrictions in Top 5 Leagues.
+            </p>
+          </div>
+          <div class="mt-4 p-3 rounded-2xl bg-pitch-500/10 border border-pitch-500/30 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-base">🇪🇺</span>
+              <span class="text-xs font-bold text-pitch-300">EU Verified Status</span>
+            </div>
+            <span class="text-xs font-mono font-bold text-pitch-400">26 / 42</span>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- CONCEPT 2: PITCH TELEMETRY / KINETIC HORIZON (HIDDEN BY DEFAULT) -->
+    <section id="concept-2-view" class="space-y-6 hidden transition-opacity duration-300">
+      
+      <!-- Futuristic Operations Banner -->
+      <div class="glass-panel-kinetic rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-glow-pitch">
+        <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-pitch-500/20 blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 font-mono text-xs text-pitch-400">
+              <span class="w-2.5 h-2.5 rounded-full bg-pitch-400 animate-pulse"></span>
+              <span>TACTICAL TELEMETRY STREAM // NODE #01</span>
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold font-display tracking-tight text-white">
+              Football Operations <span class="text-transparent bg-clip-text bg-gradient-to-r from-pitch-400 to-cyan-400">Horizon Deck</span>
+            </h1>
+            <p class="text-slate-300 text-sm max-w-xl">
+              High-velocity sports management telemetry. Spatial tracking, squad contract trajectories, and automated Transfermarkt delta feeds.
+            </p>
+          </div>
+
+          <!-- Futuristic Stats Dial -->
+          <div class="flex items-center gap-4 bg-black/60 p-4 rounded-3xl border border-pitch-500/30">
+            <div class="text-center">
+              <span class="text-[10px] text-slate-400 font-mono uppercase">Portfolio Index</span>
+              <p class="text-3xl font-extrabold font-mono text-pitch-400">€48.5M</p>
+              <span class="text-[10px] text-cyan-400">+7.8% YTD</span>
+            </div>
+            <div class="h-10 w-px bg-white/15"></div>
+            <div class="text-center">
+              <span class="text-[10px] text-slate-400 font-mono uppercase">Readiness</span>
+              <p class="text-3xl font-extrabold font-mono text-white">96.4</p>
+              <span class="text-[10px] text-pitch-400">Peak Form</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-time Horizontal Radar Scroller -->
+        <div class="mt-6 pt-5 border-t border-white/10 flex items-center gap-3 overflow-x-auto pb-2">
+          <div class="px-3.5 py-2 rounded-xl bg-pitch-500/10 border border-pitch-500/30 flex items-center gap-2 shrink-0">
+            <span class="text-xs font-mono text-pitch-300">🇮🇱 LIGAT HA'AL:</span>
+            <span class="text-xs font-bold text-white font-mono">CLOSING IN 6 DAYS</span>
+          </div>
+          <div class="px-3.5 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center gap-2 shrink-0">
+            <span class="text-xs font-mono text-cyan-300">🏴󠁧󠁢󠁥󠁮󠁧󠁿 PREMIER LEAGUE:</span>
+            <span class="text-xs font-bold text-white font-mono">SCOUT RADAR ACTIVE</span>
+          </div>
+          <div class="px-3.5 py-2 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center gap-2 shrink-0">
+            <span class="text-xs font-mono text-purple-300">🇺🇸 MLS SECONDARY:</span>
+            <span class="text-xs font-bold text-white font-mono">3 OFFERS OPEN</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kinetic Interactive Matrix -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Interactive Quadrant Matrix -->
+        <div class="lg:col-span-2 glass-panel rounded-3xl p-6 border border-white/10">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-white font-display">Player Value vs. Contract Horizon Matrix</h3>
+              <p class="text-xs text-slate-400">Bubble size = Market Value (€M) • Color = Mandate status</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-pitch-500/20 text-pitch-400 text-[10px] font-mono font-bold">QUADRANT ALPHA</span>
+            </div>
+          </div>
+
+          <!-- Scatter Simulation Canvas -->
+          <div class="relative h-64 bg-[#050914] rounded-2xl border border-white/10 p-4 overflow-hidden flex flex-col justify-between">
+            <!-- Grid lines -->
+            <div class="absolute inset-0 grid grid-cols-2 grid-rows-2 border-slate-800 pointer-events-none">
+              <div class="border-r border-b border-white/5 p-2 text-[10px] font-mono text-slate-600">HIGH VALUE • LONG CONTRACT (STARS)</div>
+              <div class="border-b border-white/5 p-2 text-[10px] font-mono text-amber-500/50 text-right">HIGH VALUE • SHORT CONTRACT (URGENT)</div>
+              <div class="border-r border-white/5 p-2 text-[10px] font-mono text-slate-600">DEVELOPING • PROTECTED</div>
+              <div class="p-2 text-[10px] font-mono text-slate-600 text-right">CONTRACT ENDERS</div>
+            </div>
+
+            <!-- Simulated Player Bubbles -->
+            <div onclick="openPlayerModal('Anan Khalaili', 'Royale Union SG', '€6.50M', 'RW', '21')" class="absolute top-8 left-1/4 w-12 h-12 rounded-full bg-gradient-to-tr from-pitch-500 to-cyan-400 opacity-90 border-2 border-white shadow-glow-pitch cursor-pointer flex items-center justify-center text-[10px] font-bold text-black hover:scale-125 transition transform" title="Anan Khalaili - €6.5M">
+              AK
+            </div>
+
+            <div onclick="openPlayerModal('Liel Abada', 'Charlotte FC', '€7.00M', 'RW/LW', '24')" class="absolute top-10 left-1/3 w-14 h-14 rounded-full bg-gradient-to-tr from-gold-500 to-amber-300 opacity-90 border-2 border-white shadow-glow-gold cursor-pointer flex items-center justify-center text-[10px] font-bold text-black hover:scale-125 transition transform" title="Liel Abada - €7.0M">
+              LA
+            </div>
+
+            <div onclick="openPlayerModal('Dean David', 'Maccabi Haifa', '€1.50M', 'CF', '29')" class="absolute top-20 right-16 w-9 h-9 rounded-full bg-gradient-to-tr from-red-500 to-orange-400 opacity-90 border-2 border-white shadow-sm cursor-pointer flex items-center justify-center text-[9px] font-bold text-white hover:scale-125 transition transform animate-pulse" title="Dean David - Expiring!">
+              DD
+            </div>
+
+            <div onclick="openPlayerModal('Roy Revivo', 'Maccabi Tel Aviv', '€1.80M', 'LB', '22')" class="absolute bottom-12 left-1/4 w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-400 opacity-90 border-2 border-white shadow-glow-cyan cursor-pointer flex items-center justify-center text-[10px] font-bold text-black hover:scale-125 transition transform" title="Roy Revivo - €1.8M">
+              RR
+            </div>
+
+            <div onclick="openPlayerModal('Stav Lemkin', 'Maccabi Tel Aviv', '€1.20M', 'CB', '22')" class="absolute bottom-16 right-1/3 w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-400 opacity-90 border-2 border-white shadow-sm cursor-pointer flex items-center justify-center text-[9px] font-bold text-white hover:scale-125 transition transform" title="Stav Lemkin - €1.2M">
+              SL
+            </div>
+
+            <div class="mt-auto flex justify-between text-[10px] text-slate-500 font-mono z-10">
+              <span>← CONTRACT RUNWAY (MONTHS) →</span>
+              <span>← MARKET VALUATION (€) →</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Telemetry Action Feed -->
+        <div class="glass-panel rounded-3xl p-6 border border-white/10 flex flex-col justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white font-display mb-3">Instant Scout Dispatch</h3>
+            <p class="text-xs text-slate-400 leading-relaxed mb-4">
+              Direct AI telemetry filters matching incoming requests against your verified database.
+            </p>
+            <div class="space-y-2.5">
+              <div class="p-3 rounded-2xl bg-black/40 border border-pitch-500/30 flex items-center justify-between">
+                <div>
+                  <span class="text-xs font-bold text-white">Bundesliga Club 🇩🇪</span>
+                  <p class="text-[10px] text-slate-400">Seeking: Right Wing (U23)</p>
+                </div>
+                <button onclick="triggerAction('match')" class="px-2.5 py-1 rounded-lg bg-pitch-500/20 text-pitch-300 text-xs font-bold">2 Matches</button>
+              </div>
+
+              <div class="p-3 rounded-2xl bg-black/40 border border-cyan-500/30 flex items-center justify-between">
+                <div>
+                  <span class="text-xs font-bold text-white">Eredivisie Club 🇳🇱</span>
+                  <p class="text-[10px] text-slate-400">Seeking: Ball Playing CB</p>
+                </div>
+                <button onclick="triggerAction('match')" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 text-xs font-bold">3 Matches</button>
+              </div>
+            </div>
+          </div>
+
+          <button onclick="triggerAction('scout')" class="w-full mt-4 py-3 rounded-2xl bg-gradient-to-r from-pitch-500 to-cyan-500 text-obsidian-950 font-bold text-xs uppercase tracking-wider hover:opacity-95 transition">
+            Launch AI Scout Neural Search
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- CONCEPT 3: ATELIER EDITORIAL / LUXURY MINIMAL (HIDDEN BY DEFAULT) -->
+    <section id="concept-3-view" class="space-y-8 hidden transition-opacity duration-300">
+      
+      <!-- Architectural Editorial Header -->
+      <div class="glass-panel-atelier rounded-3xl p-8 border border-white/10 bg-[#0C0D11] relative">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-8">
+          <div>
+            <span class="text-xs font-mono uppercase tracking-widest text-amber-500">Brit Sport Group • Private Client Office</span>
+            <h1 class="text-4xl sm:text-6xl font-serif text-white mt-2 tracking-tight">
+              Executive Dossier
+            </h1>
+            <p class="text-slate-400 text-sm mt-2 max-w-lg">
+              Curated strategic overview of agency portfolio, high-value assets, and market leverage opportunities.
+            </p>
+          </div>
+          <div class="text-left md:text-right">
+            <span class="text-xs font-mono text-slate-500 uppercase tracking-widest">Total Managed Assets</span>
+            <p class="text-4xl sm:text-5xl font-serif text-amber-400">€48,550,000</p>
+            <span class="text-xs text-slate-400">Verified Transfermarkt Valuation</span>
+          </div>
+        </div>
+
+        <!-- Editorial 3-Column Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+          <div>
+            <span class="text-xs font-mono uppercase tracking-widest text-slate-400">01 / Priority Mandate</span>
+            <h3 class="text-xl font-serif text-white mt-2">Atzili & David Negotiations</h3>
+            <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+              Two premier offensive profiles entering decisive window phases. Extension docs prepared for agency sign-off.
+            </p>
+            <button onclick="openPlayerModal('Dean David', 'Maccabi Haifa', '€1.50M', 'CF', '29')" class="mt-3 text-xs text-amber-400 font-bold underline underline-offset-4 hover:text-amber-300">Review dossier →</button>
+          </div>
+
+          <div>
+            <span class="text-xs font-mono uppercase tracking-widest text-slate-400">02 / International Radar</span>
+            <h3 class="text-xl font-serif text-white mt-2">European Quota Advantage</h3>
+            <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+              62% of roster holds EU citizenship. High demand from Belgium, Netherlands, and Scottish Premiership.
+            </p>
+            <button onclick="triggerAction('eu')" class="mt-3 text-xs text-amber-400 font-bold underline underline-offset-4 hover:text-amber-300">View EU eligible players →</button>
+          </div>
+
+          <div>
+            <span class="text-xs font-mono uppercase tracking-widest text-slate-400">03 / Window Deadlines</span>
+            <h3 class="text-xl font-serif text-white mt-2">October Surge Markets</h3>
+            <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+              Israel closing in 6 days. Saudi Arabia & MLS open until late October with maximum liquidity.
+            </p>
+            <button onclick="triggerAction('windows')" class="mt-3 text-xs text-amber-400 font-bold underline underline-offset-4 hover:text-amber-300">Explore window schedule →</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Curated Minimalist Data Table -->
+      <div class="glass-panel-atelier rounded-3xl p-6 border border-white/10 bg-[#0C0D11]">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-serif text-white">Elite Asset Roster Summary</h3>
+          <span class="text-xs font-mono text-slate-400">TOP VALUATION BRACKET</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="border-b border-white/10 text-[10px] uppercase font-mono text-slate-500">
+              <tr>
+                <th class="pb-3">Player</th>
+                <th class="pb-3">Club</th>
+                <th class="pb-3">Position</th>
+                <th class="pb-3">Age</th>
+                <th class="pb-3">Market Value</th>
+                <th class="pb-3">Mandate Status</th>
+                <th class="pb-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              <tr class="hover:bg-white/[0.02] transition">
+                <td class="py-3.5 font-bold text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                  Liel Abada
+                </td>
+                <td class="py-3.5">Charlotte FC (MLS)</td>
+                <td class="py-3.5 font-mono">RW / LW</td>
+                <td class="py-3.5">24</td>
+                <td class="py-3.5 font-mono text-amber-400 font-bold">€7.00M</td>
+                <td class="py-3.5"><span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px]">Verified 2028</span></td>
+                <td class="py-3.5 text-right"><button onclick="openPlayerModal('Liel Abada', 'Charlotte FC', '€7.00M', 'RW/LW', '24')" class="text-slate-400 hover:text-white">Profile</button></td>
+              </tr>
+              <tr class="hover:bg-white/[0.02] transition">
+                <td class="py-3.5 font-bold text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                  Anan Khalaili
+                </td>
+                <td class="py-3.5">Royale Union SG (Jupiler Pro)</td>
+                <td class="py-3.5 font-mono">RW</td>
+                <td class="py-3.5">21</td>
+                <td class="py-3.5 font-mono text-amber-400 font-bold">€6.50M</td>
+                <td class="py-3.5"><span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px]">Verified 2029</span></td>
+                <td class="py-3.5 text-right"><button onclick="openPlayerModal('Anan Khalaili', 'Royale Union SG', '€6.50M', 'RW', '21')" class="text-slate-400 hover:text-white">Profile</button></td>
+              </tr>
+              <tr class="hover:bg-white/[0.02] transition">
+                <td class="py-3.5 font-bold text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                  Roy Revivo
+                </td>
+                <td class="py-3.5">Maccabi Tel Aviv</td>
+                <td class="py-3.5 font-mono">LB</td>
+                <td class="py-3.5">22</td>
+                <td class="py-3.5 font-mono text-amber-400 font-bold">€1.80M</td>
+                <td class="py-3.5"><span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px]">Verified 2027</span></td>
+                <td class="py-3.5 text-right"><button onclick="openPlayerModal('Roy Revivo', 'Maccabi Tel Aviv', '€1.80M', 'LB', '22')" class="text-slate-400 hover:text-white">Profile</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ==========================================
+       INTERACTIVE MODALS & DRAWERS
+       ========================================== -->
+
+  <!-- Modal 1: Quick Player Dossier Preview -->
+  <div id="player-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4 transition-all">
+    <div class="glass-panel rounded-3xl max-w-lg w-full p-6 border border-gold-500/30 relative shadow-2xl animate-scale-in">
+      <button onclick="closePlayerModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center">✕</button>
+      
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-gold-500 to-amber-300 p-[1.5px]">
+          <div class="w-full h-full bg-obsidian-900 rounded-[14px] flex items-center justify-center text-xl font-bold text-gold-400 font-display">
+            ⚽
+          </div>
+        </div>
+        <div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-gold-500/20 text-gold-400 border border-gold-500/30 uppercase">Roster Elite</span>
+          <h3 id="modal-player-name" class="text-xl font-extrabold text-white font-display mt-0.5">Player Name</h3>
+          <p id="modal-player-club" class="text-xs text-slate-400">Club Name</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2.5 p-3 rounded-2xl bg-black/50 border border-white/10 my-4 text-center">
+        <div>
+          <span class="text-[10px] text-slate-400">Valuation</span>
+          <p id="modal-player-val" class="text-sm font-bold text-gold-400 font-mono">€0.0M</p>
+        </div>
+        <div>
+          <span class="text-[10px] text-slate-400">Position</span>
+          <p id="modal-player-pos" class="text-sm font-bold text-white font-mono">POS</p>
+        </div>
+        <div>
+          <span class="text-[10px] text-slate-400">Age</span>
+          <p id="modal-player-age" class="text-sm font-bold text-white font-mono">00</p>
+        </div>
+      </div>
+
+      <div class="space-y-2 text-xs text-slate-300">
+        <div class="flex justify-between py-1.5 border-b border-white/5">
+          <span class="text-slate-400">EU Passport:</span>
+          <span class="text-pitch-400 font-semibold">Verified (Eligible)</span>
+        </div>
+        <div class="flex justify-between py-1.5 border-b border-white/5">
+          <span class="text-slate-400">Agency Agent in Charge:</span>
+          <span class="text-white font-semibold">Lior Dahan</span>
+        </div>
+        <div class="flex justify-between py-1.5 border-b border-white/5">
+          <span class="text-slate-400">Mandate Expiry:</span>
+          <span class="text-white font-mono">31.12.2028</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 mt-6">
+        <button onclick="sendWhatsAppModal()" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-obsidian-950 font-bold text-xs flex items-center justify-center gap-1.5 hover:brightness-110 transition">
+          Direct WhatsApp
+        </button>
+        <button onclick="closePlayerModal()" class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Design System Specs & UX Rationale -->
+  <div id="design-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-lg hidden items-center justify-center p-4 transition-all">
+    <div class="glass-panel rounded-3xl max-w-2xl w-full p-6 sm:p-8 border border-white/15 max-h-[90vh] overflow-y-auto relative shadow-2xl">
+      <button onclick="toggleDesignModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center">✕</button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-gold-500/20 border border-gold-500/40 flex items-center justify-center text-gold-400 font-bold">
+          🎨
+        </div>
+        <div>
+          <h3 class="text-xl font-bold font-display text-white">Brit Sport Group — Design Intelligence & Specs</h3>
+          <p class="text-xs text-slate-400">Tailored UI/UX Pro Max Architecture for Men's Football Agency</p>
+        </div>
+      </div>
+
+      <div class="space-y-6 text-xs text-slate-300 mt-6 leading-relaxed">
+        
+        <!-- Archetype Details -->
+        <div class="p-4 rounded-2xl bg-black/50 border border-gold-500/30">
+          <h4 class="font-bold text-gold-400 text-sm mb-1">Option 1: The Sovereign Obsidian (Recommended)</h4>
+          <p class="text-slate-300">
+            <strong>Inspiration:</strong> Swiss luxury private banking meets high-frequency sports deal desks. Deep carbon obsidian base (<code class="text-gold-300">#090B0E</code>), satin glass panels, brushed gold accents (<code class="text-gold-300">#D4AF37</code>), and emerald alpha signals (<code class="text-pitch-400">#10B981</code>).
+          </p>
+          <ul class="list-disc list-inside mt-2 text-slate-400 space-y-1">
+            <li><strong>Typography:</strong> Plus Jakarta Sans (Headings/Body) + JetBrains Mono (Numbers/Market Values) + Heebo (Full Hebrew RTL support).</li>
+            <li><strong>High Info-Density Bento Grid:</strong> Zero wasted space; actionable mandate warnings and one-click transfer signoffs.</li>
+          </ul>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/50 border border-pitch-500/30">
+          <h4 class="font-bold text-pitch-400 text-sm mb-1">Option 2: Pitch Telemetry / Kinetic Horizon</h4>
+          <p class="text-slate-300">
+            <strong>Inspiration:</strong> Modern European football analytics command center. Spatial interactive scatter quadrant (Market Value vs Contract Runway), pitch glow (<code class="text-pitch-400">#00F29D</code>) & cyan telemetry (<code class="text-cyan-400">#00D2FF</code>).
+          </p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/50 border border-white/20">
+          <h4 class="font-bold text-white text-sm mb-1">Option 3: Atelier Editorial / Luxury Minimal</h4>
+          <p class="text-slate-300">
+            <strong>Inspiration:</strong> High-fashion boutique agency. Architectural gridlines, serif display highlights (<code class="text-amber-400">Cinzel</code>), minimal high-contrast tables.
+          </p>
+        </div>
+
+        <!-- Pre-delivery Checklist -->
+        <div class="p-4 rounded-2xl bg-white/5 border border-white/10">
+          <h4 class="font-bold text-white text-sm mb-2">Pre-Delivery Quality & Accessibility Checklist</h4>
+          <div class="grid grid-cols-2 gap-2 text-slate-300 text-[11px]">
+            <div>✓ WCAG 2.1 AA Contrast Ratio (4.5:1+)</div>
+            <div>✓ Native Hebrew RTL mirror architecture</div>
+            <div>✓ Tabular Mono numbers for currencies</div>
+            <div>✓ Fully Responsive: 375px → 1540px+</div>
+            <div>✓ No generic emoji icons (Pure SVG)</div>
+            <div>✓ Mobile touch targets ≥ 44px</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="mt-6 pt-4 border-t border-white/10 flex justify-end">
+        <button onclick="toggleDesignModal()" class="px-5 py-2.5 rounded-xl bg-gold-500 text-obsidian-950 font-bold text-xs">
+          Close Specs
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 bg-[#090C12] border border-gold-500/40 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transform translate-y-24 opacity-0 transition-all duration-300">
+    <span class="w-2.5 h-2.5 rounded-full bg-pitch-400"></span>
+    <span id="toast-msg" class="text-xs font-semibold">Action confirmed!</span>
+  </div>
+
+  <!-- ==========================================
+       INTERACTIVE JAVASCRIPT LOGIC
+       ========================================== -->
+  <script>
+    let currentConcept = 1;
+    let isRtl = false;
+    let activePlayer = { name: '', club: '', val: '', pos: '', age: '' };
+
+    // Translations Dictionary (EN <-> HE)
+    const translations = {
+      en: {
+        liveMarket: 'LIVE MARKET ENGINE ACTIVE',
+        greeting: 'Good afternoon',
+        heroSubtitle: 'Brit Sport Group Executive Command Center. Real-time portfolio valuation, mandate expiration surveillance, active window countdowns, and high-priority transfer intelligence.',
+        newRequest: 'New Club Request',
+        valuation: 'Portfolio Value',
+        mandates: 'Mandate Health',
+        requests: 'Club Requests',
+        signoffs: 'Deal Pipeline',
+        shortlist: 'Shortlist Target',
+        window: 'ISRAEL WINDOW',
+        pendingActionTitle: 'Deal Pipeline & Transfer Sign-Offs',
+        mandateExpiringTitle: 'Mandates Expiring in <30 Days',
+        birthdaysTitle: 'Upcoming Player Birthdays',
+        windowRadarTitle: 'Transfer Windows Radar',
+        feedTitle: 'Real-Time Market Feed',
+        chartPosition: 'Squad Positional Depth',
+        chartAge: 'Age Distribution Curve',
+        chartTiers: 'Valuation Tiers',
+        chartPassport: 'Passport & EU Transfer Leverage',
+        langBtn: 'עברית (RTL)',
+        rosterPlayers: 'Roster Players',
+        expiring30d: 'Expiring <30d',
+        directMatched: 'Direct Matched',
+        pendingTransfers: 'Awaiting Sign-off',
+        freeAgents: 'Contract Enders',
+        activeDialogues: 'Active Dialogues'
+      },
+      he: {
+        liveMarket: 'מנוע שוק חי פעיל',
+        greeting: 'צהריים טובים',
+        heroSubtitle: 'מרכז הפיקוד הניהולי של בריט ספורט גרופ. שווי תיק שחקנים בזמן אמת, ניטור תוקף מנדטים, ספירה לאחור של חלונות העברות ומודיעין עסקאות מתקדם.',
+        newRequest: 'דרישת מועדון חדשה',
+        valuation: 'שווי פורטפוליו',
+        mandates: 'בריאות מנדטים',
+        requests: 'דרישות מועדונים',
+        signoffs: 'צינור עסקאות',
+        shortlist: 'מעקב שחקנים',
+        window: 'חלון ישראל',
+        pendingActionTitle: 'אישורי העברות ועסקאות בצנרת',
+        mandateExpiringTitle: 'מנדטים לפקיעה בתוך 30 יום',
+        birthdaysTitle: 'ימי הולדת קרובים של שחקנים',
+        windowRadarTitle: 'מכ״ם חלונות העברות',
+        feedTitle: 'פיד אירועי שוק חי',
+        chartPosition: 'עומק עמדות בסגל',
+        chartAge: 'עקומת התפלגות גילאים',
+        chartTiers: 'מדרגות שווי שוק',
+        chartPassport: 'דרכונים ומינוף לאירופה',
+        langBtn: 'English (LTR)',
+        rosterPlayers: 'שחקני סגל',
+        expiring30d: 'לפקיעה ב-30 יום',
+        directMatched: 'התאמות ישירות',
+        pendingTransfers: 'ממתינים לחתימה',
+        freeAgents: 'מסיימי חוזה',
+        activeDialogues: 'שיחות פעילות'
+      }
+    };
+
+    function switchConcept(num) {
+      currentConcept = num;
+      
+      // Update buttons
+      for (let i = 1; i <= 3; i++) {
+        const btn = document.getElementById(`btn-concept-1`);
+        const btn2 = document.getElementById(`btn-concept-2`);
+        const btn3 = document.getElementById(`btn-concept-3`);
+        
+        btn.className = num === 1 
+          ? 'px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-300 flex items-center gap-2 bg-gradient-to-r from-gold-500/20 to-amber-500/20 text-gold-300 border border-gold-500/40 shadow-sm'
+          : 'px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 flex items-center gap-2 text-slate-400 hover:text-white';
+
+        btn2.className = num === 2 
+          ? 'px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-300 flex items-center gap-2 bg-gradient-to-r from-pitch-500/20 to-cyan-500/20 text-pitch-300 border border-pitch-500/40 shadow-sm'
+          : 'px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 flex items-center gap-2 text-slate-400 hover:text-white';
+
+        btn3.className = num === 3 
+          ? 'px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-300 flex items-center gap-2 bg-white/15 text-white border border-white/30 shadow-sm'
+          : 'px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 flex items-center gap-2 text-slate-400 hover:text-white';
+      }
+
+      // Show/Hide views
+      document.getElementById('concept-1-view').classList.toggle('hidden', num !== 1);
+      document.getElementById('concept-2-view').classList.toggle('hidden', num !== 2);
+      document.getElementById('concept-3-view').classList.toggle('hidden', num !== 3);
+
+      // Body background mesh change
+      document.body.className = num === 1 ? 'bg-mesh-obsidian text-slate-100 min-h-screen antialiased selection:bg-gold-500/30 selection:text-gold-400' :
+                                num === 2 ? 'bg-mesh-kinetic text-slate-100 min-h-screen antialiased selection:bg-pitch-500/30 selection:text-pitch-400' :
+                                            'bg-mesh-atelier text-slate-100 min-h-screen antialiased selection:bg-amber-500/30 selection:text-amber-400';
+
+      showToast(`Switched to Option ${num}: ${num === 1 ? 'Sovereign Obsidian' : num === 2 ? 'Pitch Telemetry' : 'Atelier Minimal'}`);
+    }
+
+    function setViewport(size) {
+      const c = document.getElementById('viewport-container');
+      const bDesk = document.getElementById('vp-desktop');
+      const bTab = document.getElementById('vp-tablet');
+      const bMob = document.getElementById('vp-mobile');
+
+      bDesk.className = size === 'desktop' ? 'p-1.5 px-2 rounded-lg bg-white/10 text-white font-medium' : 'p-1.5 px-2 rounded-lg hover:text-white transition';
+      bTab.className = size === 'tablet' ? 'p-1.5 px-2 rounded-lg bg-white/10 text-white font-medium' : 'p-1.5 px-2 rounded-lg hover:text-white transition';
+      bMob.className = size === 'mobile' ? 'p-1.5 px-2 rounded-lg bg-white/10 text-white font-medium' : 'p-1.5 px-2 rounded-lg hover:text-white transition';
+
+      c.className = size === 'desktop' ? 'viewport-desktop transition-all duration-500 py-6 px-3 sm:px-6' :
+                    size === 'tablet' ? 'viewport-tablet transition-all duration-500 py-6 px-4' :
+                                        'viewport-mobile transition-all duration-500 py-6 px-3';
+      
+      showToast(`Previewing ${size.toUpperCase()} Layout`);
+    }
+
+    function toggleLanguage() {
+      isRtl = !isRtl;
+      document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+      document.documentElement.lang = isRtl ? 'he' : 'en';
+
+      const d = isRtl ? translations.he : translations.en;
+      document.getElementById('lang-label').innerText = d.langBtn;
+
+      // Update text nodes
+      updateText('.i18n-live-market', d.liveMarket);
+      updateText('.i18n-greeting', d.greeting);
+      updateText('.i18n-hero-subtitle', d.heroSubtitle);
+      updateText('.i18n-new-request', d.newRequest);
+      updateText('.i18n-kpi-valuation', d.valuation);
+      updateText('.i18n-kpi-mandates', d.mandates);
+      updateText('.i18n-kpi-requests', d.requests);
+      updateText('.i18n-kpi-signoffs', d.signoffs);
+      updateText('.i18n-kpi-shortlist', d.shortlist);
+      updateText('.i18n-kpi-window', d.window);
+      updateText('.i18n-pending-action-title', d.pendingActionTitle);
+      updateText('.i18n-mandate-expiring-title', d.mandateExpiringTitle);
+      updateText('.i18n-birthdays-title', d.birthdaysTitle);
+      updateText('.i18n-window-radar-title', d.windowRadarTitle);
+      updateText('.i18n-feed-title', d.feedTitle);
+      updateText('.i18n-chart-position', d.chartPosition);
+      updateText('.i18n-chart-age', d.chartAge);
+      updateText('.i18n-chart-tiers', d.chartTiers);
+      updateText('.i18n-chart-passport', d.chartPassport);
+      updateText('.i18n-roster-players', d.rosterPlayers);
+      updateText('.i18n-expiring-30d', d.expiring30d);
+      updateText('.i18n-direct-matched', d.directMatched);
+      updateText('.i18n-pending-transfers', d.pendingTransfers);
+      updateText('.i18n-free-agents', d.freeAgents);
+      updateText('.i18n-active-dialogues', d.activeDialogues);
+
+      showToast(isRtl ? 'השפה הוחלפה לעברית (RTL)' : 'Switched to English (LTR)');
+    }
+
+    function updateText(sel, val) {
+      document.querySelectorAll(sel).forEach(el => el.innerText = val);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-msg').innerText = msg;
+      t.classList.remove('translate-y-24', 'opacity-0');
+      setTimeout(() => {
+        t.classList.add('translate-y-24', 'opacity-0');
+      }, 2600);
+    }
+
+    function approveTransfer(playerName) {
+      showToast(`✓ Deal Transfer for ${playerName} successfully authorized & countersigned!`);
+    }
+
+    function quickRenew(playerName) {
+      showToast(`📋 Mandate renewal document initiated for ${playerName}`);
+    }
+
+    function openWhatsApp(playerName) {
+      showToast(`💬 Opening WhatsApp draft for ${playerName}`);
+    }
+
+    function openPlayerModal(name, club, val, pos, age) {
+      activePlayer = { name, club, val, pos, age };
+      document.getElementById('modal-player-name').innerText = name;
+      document.getElementById('modal-player-club').innerText = club;
+      document.getElementById('modal-player-val').innerText = val;
+      document.getElementById('modal-player-pos').innerText = pos;
+      document.getElementById('modal-player-age').innerText = age;
+      
+      const m = document.getElementById('player-modal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closePlayerModal() {
+      const m = document.getElementById('player-modal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function sendWhatsAppModal() {
+      showToast(`💬 WhatsApp message dispatched for ${activePlayer.name}`);
+      closePlayerModal();
+    }
+
+    function toggleDesignModal() {
+      const m = document.getElementById('design-modal');
+      if (m.classList.contains('hidden')) {
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+      } else {
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+      }
+    }
+
+    function triggerAction(type) {
+      if (type === 'request') showToast('Opening New Club Request Form...');
+      if (type === 'search') showToast('Instant Radar Search Activated (Press ⌘K)');
+      if (type === 'share') showToast('Generating Executive PDF Briefing...');
+      if (type === 'match') showToast('Filtering Roster Matches for Club Request...');
+      if (type === 'scout') showToast('Connecting to Neural Scout Cluster...');
+      if (type === 'eu') showToast('Filtering 26 European Passport Holders...');
+      if (type === 'windows') showToast('Opening Full Transfer Window Schedule...');
+    }
+
+    // Keyboard shortcut (⌘K / Ctrl+K)
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        triggerAction('search');
+      }
+    });
+  </script>
+</body>
+</html>

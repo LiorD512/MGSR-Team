@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group Youth — Management Room Mocks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --teal:#2f7d6e;--teal-soft:#5fa391;--teal-bright:#8fc9b8;
+      --red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{background:var(--paper)}
+    body{background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    .wrap{max-width:1180px;margin:0 auto;padding:40px 34px 100px}
+    .topline{display:flex;justify-content:flex-end;margin-bottom:18px}
+    .lang{border:1px solid var(--line);padding:9px 14px;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+    .lang:hover{border-color:var(--teal-soft);color:var(--teal)}
+    .kicker{color:var(--teal);font:10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+    .kicker:before{content:'';display:inline-block;width:26px;height:1px;vertical-align:middle;margin-inline-end:12px;background:var(--teal)}
+    h1{margin:18px 0 0;font:600 clamp(44px,6.5vw,88px)/.85 var(--display);letter-spacing:-.03em;text-transform:uppercase}
+    [dir=rtl] h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    h1 span{color:var(--teal)}
+    .lede{margin-top:22px;max-width:720px;color:var(--muted);font:15px/1.7 var(--body)}
+    .lede b{color:var(--ink);font-weight:600}
+
+    .principles{display:grid;grid-template-columns:repeat(3,1fr);margin-top:46px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .pr{padding:22px 20px 24px;border-inline-end:1px solid var(--line)}
+    .pr:last-child{border-inline-end:0}
+    .pr .n{color:var(--teal);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .pr h3{margin:12px 0 8px;font:500 22px/.95 var(--display);text-transform:uppercase}
+    [dir=rtl] .pr h3{font-weight:800}
+    .pr p{color:var(--muted);font:12.5px/1.6 var(--body)}
+
+    .seclabel{margin:56px 0 18px;display:flex;align-items:center;gap:14px;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase}
+    .seclabel:after{content:'';flex:1;height:1px;background:var(--line)}
+
+    .screens{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .card{display:block;border:1px solid var(--line);background:var(--card);transition:border-color .15s,transform .15s}
+    .card:hover{border-color:var(--teal-soft);transform:translateY(-3px)}
+    .thumb{height:132px;position:relative;overflow:hidden;background:var(--black);border-bottom:1px solid var(--line)}
+    .thumb .wire{position:absolute;inset:16px;display:flex;gap:7px}
+    .thumb .railw{width:22px;background:rgba(243,240,232,.08);border:1px solid rgba(243,240,232,.1)}
+    .thumb .col{flex:1;display:flex;flex-direction:column;gap:5px}
+    .thumb .bar{height:8px;background:rgba(243,240,232,.08)}
+    .thumb .bar.t{background:var(--teal-soft);opacity:.7;width:54%}
+    .thumb .rowb{display:flex;gap:5px;flex:1}
+    .thumb .tile{flex:1;background:rgba(243,240,232,.05);border:1px solid rgba(243,240,232,.08)}
+    .num{position:absolute;top:12px;inset-inline-end:14px;z-index:1;color:var(--teal-bright);font:9px/1 var(--mono);letter-spacing:.1em}
+    .meta{padding:16px 18px 18px}
+    .meta .route{color:var(--teal);font:9px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase}
+    .meta h3{margin:9px 0 6px;font:500 22px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .meta h3{font-weight:800}
+    .meta p{color:var(--muted);font:12px/1.55 var(--body)}
+
+    .foot{margin-top:64px;padding-top:22px;border-top:1px solid var(--line);color:var(--muted);font:12.5px/1.75 var(--body)}
+    .foot b{color:var(--ink)}
+    @media(max-width:860px){.principles,.screens{grid-template-columns:1fr}.pr{border-inline-end:0;border-bottom:1px solid var(--line)}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topline"><button class="lang" id="lang" onclick="toggleLang()">HE / EN</button></div>
+    <p class="kicker" data-t="kicker">BRIT Sport Group · Youth platform · Management room</p>
+    <h1 data-t="h1">The youth <span>desk.</span></h1>
+    <p class="lede" data-t="lede">Same management room as the men's platform — identical bones: paper and ink, Oswald headlines, DM Mono labels, the black rail, the bordered signal strip, the chipset filters. The one deliberate shift is the accent: where men run on <b>gold</b>, youth runs on a cooler <b>pitch-teal</b>. Everything else that makes youth different is content, not chrome — <b>age-group</b> as the organizing axis, the <b>IFA</b> as the data source, and <b>guardians</b> as first-class contacts.</p>
+
+    <div class="principles">
+      <div class="pr"><div class="n" data-t="d1n">Difference 01</div><h3 data-t="d1h">Teal, not gold</h3><p data-t="d1p">One restrained accent, swapped across every active state, tag and headline word. Reads as the same system in a younger key.</p></div>
+      <div class="pr"><div class="n" data-t="d2n">Difference 02</div><h3 data-t="d2h">Age group over value</h3><p data-t="d2p">Prospects have no market value. The U-13 → U-21 ladder takes its place — as the signal, the filter, and the tag on every card.</p></div>
+      <div class="pr"><div class="n" data-t="d3n">Difference 03</div><h3 data-t="d3h">IFA &amp; guardians</h3><p data-t="d3p">Data comes from football.org.il. Season form (apps · goals · assists) and a guardian contact row sit where TM value and agents live for men.</p></div>
+    </div>
+
+    <div class="seclabel" data-t="seclabel">The screens · 7 mocks</div>
+    <div class="screens">
+      <a class="card" href="youth-dashboard.html">
+        <div class="thumb"><span class="num">01</span><div class="wire"><div class="railw"></div><div class="col"><div class="bar t"></div><div class="rowb"><div class="tile"></div><div class="tile"></div><div class="tile"></div></div></div></div></div>
+        <div class="meta"><div class="route">/dashboard</div><h3 data-t="s1h">Dashboard</h3><p data-t="s1p">Greeting masthead, bordered signals, deadlines & feed — age-group read-out.</p></div>
+      </a>
+      <a class="card" href="youth-players.html">
+        <div class="thumb"><span class="num">02</span><div class="wire"><div class="railw"></div><div class="col"><div class="bar t"></div><div class="bar"></div><div class="rowb"><div class="tile"></div><div class="tile"></div></div></div></div></div>
+        <div class="meta"><div class="route">/players</div><h3 data-t="s2h">Youth Players</h3><p data-t="s2p">Ledger / Gallery roster, position + notes chips, age-group tags, IFA source.</p></div>
+      </a>
+      <a class="card" href="youth-player-detail.html">
+        <div class="thumb"><span class="num">03</span><div class="wire"><div class="railw"></div><div class="col"><div class="bar t"></div><div class="rowb"><div class="tile"></div><div class="tile" style="flex:2"></div></div></div></div></div>
+        <div class="meta"><div class="route">/players/youth/[id]</div><h3 data-t="s3h">Prospect Profile</h3><p data-t="s3p">Dark hero, IFA stats facts, mandate, player + guardian contacts, notes.</p></div>
+      </a>
+      <a class="card" href="youth-add-player.html">
+        <div class="thumb"><span class="num">04</span><div class="wire"><div class="railw"></div><div class="col"><div class="bar t"></div><div class="bar"></div><div class="bar"></div></div></div></div>
+        <div class="meta"><div class="route">/players/add</div><h3 data-t="s4h">Add Prospect</h3><p data-t="s4p">Drawer: IFA search / paste, confirm, player & guardian phones.</p></div>
+      </a>
+      <a class="card" href="youth-shortlist.html">
+        <div class="thumb"><span class="num">05</span><div class="wire"><div class="railw"></div><div class="col"><div class="bar t"></div><div class="rowb"><div class="tile"></div><div class="tile"></div></div></div></div></div>
+        <div class="meta"><div class="route">/shortlist</div><h3 data-t="s5h">Shortlist</h3><p data-t="s5p">Tracked prospects, With-notes lens, age-group tags.</p></div>
+      </a>
+      <a class="card" href="youth-requests.html">
+        <div class="thumb"><span class="num">06</span><div class="wire"><div class="railw"></div><div class="col"><div class="bar t"></div><div class="rowb"><div class="tile"></div><div class="tile"></div></div></div></div></div>
+        <div class="meta"><div class="route">/requests</div><h3 data-t="s6h">Club Requirements</h3><p data-t="s6p">Academy asks matched to prospects, streamlined ledger.</p></div>
+      </a>
+      <a class="card" href="youth-contacts.html">
+        <div class="thumb"><span class="num">07</span><div class="wire"><div class="railw"></div><div class="col"><div class="bar t"></div><div class="bar"></div><div class="rowb"><div class="tile"></div><div class="tile"></div><div class="tile"></div></div></div></div></div>
+        <div class="meta"><div class="route">/contacts</div><h3 data-t="s7h">Club Directory</h3><p data-t="s7p">Country-grouped clubs & academies — no agencies for youth.</p></div>
+      </a>
+    </div>
+
+    <div class="foot" data-t="foot"><b>System in one line:</b> the men's "Light Management Room" exactly — paper <b>#f3f0e8</b>, ink <b>#161613</b>, black rail, noise texture, Oswald / Manrope / DM Mono, bordered signals & chipsets — with the gold accent re-tuned to <b>pitch-teal #2f7d6e</b>, and age-group / IFA / guardian standing in for value / Transfermarkt / agent.</div>
+  </div>
+
+  <script>
+    const T={he:{
+      kicker:'BRIT Sport Group · פלטפורמת נוער · חדר ניהול',
+      h1:'דסק <span>הנוער.</span>',
+      lede:'אותו חדר ניהול כמו פלטפורמת הגברים — אותם יסודות: נייר ודיו, כותרות Oswald, תוויות DM Mono, הסרגל השחור, רצועת הסיגנלים הממוסגרת, מסנני הצ׳יפים. ההבדל המכוון היחיד הוא צבע ההדגשה: במקום <b>זהב</b> אצל הגברים, הנוער פועל ב<b>טורקיז מגרש</b> קריר יותר. כל השאר שמייחד את הנוער הוא תוכן, לא מעטפת — <b>קבוצת הגיל</b> כציר המארגן, ה-<b>IFA</b> כמקור הנתונים, ו<b>אפוטרופוסים</b> כאנשי קשר מהשורה הראשונה.',
+      d1n:'הבדל 01',d1h:'טורקיז, לא זהב',d1p:'הדגשה מרוסנת אחת, מוחלפת בכל מצב פעיל, תווית ומילת כותרת. נקראת כאותה מערכת בגוון צעיר יותר.',
+      d2n:'הבדל 02',d2h:'קבוצת גיל במקום שווי',d2p:'לכישרונות אין שווי שוק. סולם ה-U-13 → U-21 תופס את מקומו — כסיגנל, כמסנן, וכתווית בכל כרטיס.',
+      d3n:'הבדל 03',d3h:'IFA ואפוטרופוסים',d3p:'הנתונים מגיעים מ-football.org.il. כושר העונה (הופעות · שערים · בישולים) ושורת אפוטרופוס יושבים במקום שבו שווי TM וסוכנים יושבים אצל הגברים.',
+      seclabel:'המסכים · 7 מוקאפים',
+      s1h:'לוח בקרה',s1p:'כותרת ברכה, סיגנלים ממוסגרים, מועדי יעד ופיד — קריאת קבוצות גיל.',
+      s2h:'שחקני נוער',s2p:'סגל טבלה / גלריה, צ׳יפים של עמדה והערות, תוויות גיל, מקור IFA.',
+      s3h:'תיק כישרון',s3p:'כותר כהה, נתוני IFA, מנדט, אנשי קשר שחקן + אפוטרופוס, הערות.',
+      s4h:'הוספת כישרון',s4p:'מגירה: חיפוש/הדבקת IFA, אישור, טלפוני שחקן ואפוטרופוס.',
+      s5h:'רשימת מעקב',s5p:'כישרונות במעקב, עדשת הערות, תוויות גיל.',
+      s6h:'דרישות מועדונים',s6p:'בקשות אקדמיה מותאמות לכישרונות, טבלה ממוקדת.',
+      s7h:'ספר מועדונים',s7p:'מקובצים לפי מדינה — מועדונים ואקדמיות בלבד, ללא סוכנויות.',
+      foot:'<b>המערכת במשפט:</b> בדיוק "חדר הניהול המואר" של הגברים — נייר <b>#f3f0e8</b>, דיו <b>#161613</b>, סרגל שחור, מרקם רעש, Oswald / Manrope / DM Mono, סיגנלים וצ׳יפים ממוסגרים — עם הדגשת הזהב מכוונת מחדש ל<b>טורקיז מגרש #2f7d6e</b>, וקבוצת גיל / IFA / אפוטרופוס מחליפים שווי / Transfermarkt / סוכן.'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.innerHTML);
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.innerHTML=(rtl?(T.he[k]??EN[k]):EN[k])||el.innerHTML;});
+    }
+  </script>
+</body>
+</html>

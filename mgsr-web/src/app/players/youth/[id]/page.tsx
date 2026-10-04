@@ -25,9 +25,11 @@ import {
 } from '@/lib/playersYouth';
 import { flattenPdf } from '@/lib/pdfFlatten';
 import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
-import AppLayout from '@/components/AppLayout';
+import BritRail from '@/components/BritRail';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import YouthHighlightsPanel from '@/components/YouthHighlightsPanel';
+import YouthPlayerProfile from '@/components/YouthPlayerProfile';
+import YouthAddProspectDrawer from '@/components/YouthAddProspectDrawer';
 import { type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import { usePlayerMatchResults } from '@/hooks/useMatchResults';
 import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
@@ -65,7 +67,7 @@ interface Account {
 
 export default function YouthPlayerPage() {
   const { user, loading } = useAuth();
-  const { t, isRtl } = useLanguage();
+  const { t, isRtl, lang, setLang } = useLanguage();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -85,6 +87,7 @@ export default function YouthPlayerPage() {
   const [documents, setDocuments] = useState<PlayerDocument[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [editOpen, setEditOpen] = useState(false);
+  const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -820,445 +823,150 @@ export default function YouthPlayerPage() {
   const glassCard = 'youth-glass-card rounded-2xl';
   const glassInputSm = 'w-full px-4 py-3 rounded-2xl youth-glass-input text-mgsr-text placeholder-mgsr-muted/60 focus:outline-none transition text-sm';
   const glassLabel = 'block text-xs font-medium text-[var(--youth-cyan)]/70 uppercase tracking-wider mb-2';
-  const cyanBtn = 'text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/10';
-  const violetBtn = 'text-[var(--youth-violet)] hover:bg-[var(--youth-violet)]/10';
 
-  // ── Loading / Not found ──
-  if (loading || !user) {
+  // ── Loading / Not found ── (editorial Light Management Room shell)
+  if (loading || !user || loadingPlayer) {
     return (
-      <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className="animate-pulse youth-gradient-text font-display text-xl">Loading...</div>
-      </div>
-    );
-  }
-
-  if (loadingPlayer) {
-    return (
-      <AppLayout>
-        <div className="max-w-2xl mx-auto py-12">
-          <div className="animate-pulse text-mgsr-muted">Loading player...</div>
+      <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
+        <div className="brit-app">
+          <BritRail active="players" />
+          <div className="brit-main">
+            <div className="brit-profile" style={{ padding: '60px 43px' }}>
+              <div className="bp-empty">{t('loading')}</div>
+            </div>
+          </div>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   if (!player) {
     return (
-      <AppLayout>
-        <div className="max-w-2xl mx-auto py-12">
-          <p className="text-mgsr-muted mb-6">{t('youth_detail_not_found')}</p>
-          <Link href={backHref} scroll={false} className="text-[var(--youth-cyan)] hover:underline">← {backLabel}</Link>
+      <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
+        <div className="brit-app">
+          <BritRail active="players" />
+          <div className="brit-main">
+            <div className="brit-profile" style={{ padding: '60px 43px' }}>
+              <div className="bp-actionbar">
+                <Link href={backHref} scroll={false} className="bp-back">
+                  <span style={{ transform: isRtl ? 'scaleX(-1)' : undefined }}>←</span>
+                  {backLabel}
+                </Link>
+              </div>
+              <div className="bp-empty">{t('youth_detail_not_found')}</div>
+            </div>
+          </div>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   return (
-    <AppLayout>
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-5xl mx-auto">
-        {/* Top bar */}
-        <div className="flex items-center justify-between mb-4 sm:mb-8">
-          <Link href={backHref} scroll={false} className="hidden lg:inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--youth-cyan)] transition-colors group">
-            <span className={`transition-transform group-hover:-translate-x-1 ${isRtl ? 'rotate-180' : ''}`}>←</span>
-            <span className="text-sm font-medium">{backLabel}</span>
-          </Link>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button type="button" onClick={() => setShowAddTaskModal(true)} className={`px-4 py-2 rounded-xl text-sm font-medium bg-white/5 border border-[var(--youth-violet)]/30 ${violetBtn} transition`}>
-              {t('youth_detail_task_btn')}
-            </button>
-            <button type="button" onClick={openEdit} className={`px-4 py-2 rounded-xl text-sm font-medium bg-white/5 border border-[var(--youth-cyan)]/30 ${cyanBtn} transition`}>
-              {t('youth_detail_edit')}
-            </button>
-            <button type="button" onClick={() => setDeleteOpen(true)} className="px-4 py-2 rounded-xl text-sm font-medium bg-white/5 border border-red-500/30 text-mgsr-muted hover:text-red-400 hover:border-red-400/50 transition">
-              {t('youth_detail_delete')}
-            </button>
-          </div>
-        </div>
-
-        {/* ── Hero card ── */}
-        <div className={`${glassCard} p-4 sm:p-6 mb-5 sm:mb-8 relative overflow-hidden`}>
-          {/* Glow background */}
-          <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full opacity-10 pointer-events-none" style={{ background: 'radial-gradient(circle, var(--youth-cyan) 0%, transparent 70%)' }} />
-          <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full opacity-8 pointer-events-none" style={{ background: 'radial-gradient(circle, var(--youth-violet) 0%, transparent 70%)' }} />
-
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 relative z-10">
-            <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0 self-center sm:self-start">
-              {player.profileImage && (
-                <img
-                  src={player.profileImage}
-                  alt=""
-                  className="absolute inset-0 w-full h-full rounded-xl object-cover border border-[var(--youth-cyan)]/20 z-10"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-              )}
-              <div
-                className="w-full h-full rounded-xl flex items-center justify-center border-2 border-white/15"
-                style={{ background: 'linear-gradient(135deg, #00D4FF, #A855F7)' }}
-              >
-                <span className="text-2xl sm:text-3xl font-extrabold text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-                  {(player.fullName || '?').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                </span>
-              </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="font-display font-bold text-xl sm:text-2xl text-mgsr-text">{player.fullName}</h1>
-              {player.fullNameHe && (
-                <p className="text-[var(--youth-cyan)]/60 text-sm mt-0.5" dir="rtl">{player.fullNameHe}</p>
-              )}
-              <div className="flex flex-wrap gap-2 mt-2">
-                {player.positions?.map((pos) => (
-                  <span key={pos} className="px-2.5 py-0.5 rounded-xl bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)] text-xs font-semibold border border-[var(--youth-cyan)]/20">
-                    {pos}
-                  </span>
-                ))}
-                {player.ageGroup && (
-                  <span className="px-2.5 py-0.5 rounded-xl bg-[var(--youth-violet)]/15 text-[var(--youth-violet)] text-xs font-semibold border border-[var(--youth-violet)]/20">
-                    {player.ageGroup}
-                  </span>
-                )}
-              </div>
-              <p className="text-mgsr-muted text-sm mt-2">
-                {player.currentClub?.clubName || '—'}
-                {player.nationality && ` • ${player.nationality}`}
-              </p>
-              {player.ifaUrl && (
-                <a href={player.ifaUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-[var(--youth-cyan)]/50 hover:text-[var(--youth-cyan)] mt-1 transition">
-                  🔗 {t('youth_detail_ifa_profile')}
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Two-column layout ── */}
-        <div className="grid lg:grid-cols-3 gap-5 sm:gap-8">
-          {/* Left column */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Mandate switch */}
-            <div className={`${glassCard} p-4 sm:p-5`}>
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-semibold text-[var(--youth-cyan)]/60 uppercase tracking-wider mb-1">{t('youth_detail_mandate')}</h3>
-                  {player.haveMandate && (() => {
-                    const valid = documents.filter((d) => (d.type ?? '').toUpperCase() === 'MANDATE' && !d.expired && (d.expiresAt == null || d.expiresAt >= Date.now()));
-                    const maxExp = Math.max(0, ...valid.map((d) => d.expiresAt ?? 0));
-                    if (maxExp <= 0) return null;
-                    const d = new Date(maxExp);
-                    return <p className="text-xs text-mgsr-muted mt-0.5" dir="ltr">{t('youth_detail_expires')} {d.toLocaleDateString()}</p>;
-                  })()}
-                </div>
-                <label className="mgsr-switch">
-                  <input
-                    type="checkbox"
-                    checked={player.haveMandate ?? false}
-                    disabled={mandateToggling}
-                    onChange={() => handleMandateToggle(!(player.haveMandate ?? false))}
-                  />
-                  <span className="mgsr-slider" />
-                </label>
-              </div>
-            </div>
-
-            {/* Contact cards */}
-            {(player.playerPhoneNumber || player.playerEmail || player.parentContact?.parentPhoneNumber) && (
-              <div className={`${glassCard} p-4 sm:p-5 space-y-4`}>
-                <h3 className="text-sm font-semibold text-[var(--youth-cyan)]/60 uppercase tracking-wider">{t('youth_detail_contact')}</h3>
-
-                {/* Player contact */}
-                {(player.playerPhoneNumber || player.playerEmail) && (
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-[var(--youth-cyan)]/40 uppercase font-medium">{t('youth_detail_player_section')}</p>
-                    {player.playerPhoneNumber && (
-                      <a href={toWhatsAppUrl(player.playerPhoneNumber) ?? `tel:${player.playerPhoneNumber}`} target="_blank" rel="noopener noreferrer" className="text-[var(--youth-cyan)] hover:underline text-sm block" dir="ltr">
-                        📱 {player.playerPhoneNumber}
-                      </a>
-                    )}
-                    {player.playerEmail && (
-                      <a href={`mailto:${player.playerEmail}`} className="text-[var(--youth-cyan)]/80 hover:underline text-sm block">
-                        ✉️ {player.playerEmail}
-                      </a>
-                    )}
-                  </div>
-                )}
-
-                {/* Parent contact */}
-                {player.parentContact && (player.parentContact.parentName || player.parentContact.parentPhoneNumber) && (
-                  <div className="pt-3 border-t border-[var(--youth-cyan)]/10 space-y-1.5">
-                    <p className="text-xs text-[var(--youth-violet)]/50 uppercase font-medium flex items-center gap-1">
-                      <span>👤</span>
-                      {player.parentContact.parentRelationship || t('youth_detail_parent')}
-                      {player.parentContact.parentName && ` — ${player.parentContact.parentName}`}
-                    </p>
-                    {player.parentContact.parentPhoneNumber && (
-                      <a href={toWhatsAppUrl(player.parentContact.parentPhoneNumber) ?? `tel:${player.parentContact.parentPhoneNumber}`} target="_blank" rel="noopener noreferrer" className="text-[var(--youth-violet)] hover:underline text-sm block" dir="ltr">
-                        📱 {player.parentContact.parentPhoneNumber}
-                      </a>
-                    )}
-                    {player.parentContact.parentEmail && (
-                      <a href={`mailto:${player.parentContact.parentEmail}`} className="text-[var(--youth-violet)]/80 hover:underline text-sm block">
-                        ✉️ {player.parentContact.parentEmail}
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* IFA Stats (if available) */}
-            {player.ifaStats && (player.ifaStats.matches || player.ifaStats.goals) && (
-              <div className={`${glassCard} p-5`}>
-                <h3 className="text-sm font-semibold text-[var(--youth-cyan)]/60 uppercase tracking-wider mb-3">{t('youth_detail_ifa_stats')}</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  {player.ifaStats.matches != null && (
-                    <div className="text-center">
-                      <div className="text-2xl font-bold youth-gradient-text">{player.ifaStats.matches}</div>
-                      <div className="text-[10px] text-mgsr-muted uppercase">{t('youth_detail_matches')}</div>
-                    </div>
-                  )}
-                  {player.ifaStats.goals != null && (
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-[var(--youth-cyan)]">{player.ifaStats.goals}</div>
-                      <div className="text-[10px] text-mgsr-muted uppercase">{t('youth_detail_goals')}</div>
-                    </div>
-                  )}
-                  {player.ifaStats.assists != null && (
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-[var(--youth-violet)]">{player.ifaStats.assists}</div>
-                      <div className="text-[10px] text-mgsr-muted uppercase">{t('youth_detail_assists')}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Matching Requests */}
-            {player && id && (
-              <MatchingRequestsSection
-                matchingRequests={matchingRequests}
-                playerProfileUrl={typeof window !== 'undefined' ? `${window.location.origin}/players/youth/${id}` : ''}
-                accounts={accounts}
-                currentUserEmail={user?.email}
-                onMarkAsOffered={handleMarkAsOffered}
-                onUpdateFeedback={handleUpdateOfferFeedback}
-              />
-            )}
-
-            {/* Documents */}
-            <div className={`${glassCard} p-5`}>
-              <h3 className="text-sm font-semibold text-[var(--youth-cyan)]/60 uppercase tracking-wider mb-3">{t('youth_detail_documents')}</h3>
-              {uploadError && (
-                <div className="py-2 px-3 rounded-lg bg-red-500/20 text-red-400 text-sm mb-2">{uploadError}</div>
-              )}
-              {uploadingDocument && (
-                <div className="flex items-center gap-3 py-3 text-sm text-mgsr-muted">
-                  <div className="w-5 h-5 border-2 border-[var(--youth-cyan)] border-t-transparent rounded-full animate-spin" />
-                  {t('youth_detail_uploading')}
-                </div>
-              )}
-              {documents.length === 0 && !uploadingDocument ? (
-                <div className="py-6 text-center">
-                  <p className="text-sm text-mgsr-muted mb-4">{t('youth_detail_no_documents')}</p>
-                  <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*,application/pdf" className="hidden" onChange={handleUploadDocument} />
-                  <button onClick={() => fileInputRef.current?.click()} className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)] font-medium text-sm hover:bg-[var(--youth-cyan)]/25 transition border border-[var(--youth-cyan)]/20`}>
-                    {t('youth_detail_upload')}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {documents.map((d) => (
-                    <div key={d.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0 text-sm">
-                      <a href={d.storageUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 truncate text-[var(--youth-cyan)] hover:underline">
-                        {d.name || d.type || t('youth_detail_document')}
-                      </a>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {d.expired && <span className="text-red-400 text-xs">{t('youth_detail_expired')}</span>}
-                        <button onClick={() => setDocToDelete(d)} className="p-1.5 text-mgsr-muted hover:text-red-400 rounded-lg transition">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*,application/pdf" className="hidden" onChange={handleUploadDocument} />
-                  <button onClick={() => fileInputRef.current?.click()} disabled={uploadingDocument} className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/25 transition font-medium text-sm border border-[var(--youth-cyan)]/20 disabled:opacity-50">
-                    {t('youth_detail_upload')}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right column — Tasks + Notes */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Highlights */}
-            {player && id && (
-              <YouthHighlightsPanel
-                playerId={id}
-                pinnedHighlights={player.pinnedHighlights as any}
-                isRtl={isRtl}
-              />
-            )}
-
-            {/* Tasks */}
-            {tasksEnabled && (
-            <div className={`${glassCard} p-4 sm:p-5`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-[var(--youth-violet)]/60 uppercase tracking-wider">{t('youth_detail_tasks')}</h3>
-                <button type="button" onClick={() => setShowAddTaskModal(true)} className={`text-sm font-medium ${violetBtn} px-3 py-2 rounded-xl transition`}>
-                  {t('youth_detail_add')}
-                </button>
-              </div>
-              {playerTasks.length === 0 ? (
-                <p className="text-sm text-mgsr-muted py-4 text-center">{t('youth_detail_no_tasks')}</p>
-              ) : (
-                <ul className="space-y-2">
-                  {playerTasks.map((task) => (
-                    <li key={task.id} className="flex items-start gap-3 py-2 border-b border-white/5 last:border-0">
-                      <input
-                        type="checkbox"
-                        checked={task.isCompleted ?? false}
-                        onChange={async () => {
-                          await callTasksToggleComplete({ platform: 'youth', taskId: task.id, isCompleted: !task.isCompleted });
-                        }}
-                        className="mt-1 rounded accent-[var(--youth-violet)]"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${task.isCompleted ? 'line-through text-mgsr-muted' : 'text-mgsr-text'}`}>
-                          {task.title}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                          {task.createdByAgentName && (
-                            <span className="text-xs text-mgsr-muted">
-                              {t('tasks_opened_by')} <span className="text-[var(--youth-cyan)]">{task.createdByAgentName}</span>
-                            </span>
-                          )}
-                          {task.agentName && (
-                            <span className="text-xs text-mgsr-muted">
-                              {t('tasks_assigned_to_label')} <span className="text-mgsr-text">{task.agentName}</span>
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                          {task.createdAt && (
-                            <span className="text-xs text-mgsr-muted">
-                              {t('tasks_created_on')} {new Date(task.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}
-                            </span>
-                          )}
-                          {task.dueDate && (
-                            <span className={`text-xs ${task.dueDate < Date.now() && !task.isCompleted ? 'text-red-400 font-medium' : 'text-mgsr-muted'}`}>
-                              {t('tasks_due_label')} {new Date(task.dueDate).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}
-                            </span>
-                          )}
-                        </div>
-                        {task.linkedAgentContactName && (
-                          <p className="text-xs text-mgsr-muted mt-0.5">
-                            {t('tasks_linked_agent')}: <span className="text-mgsr-text">{task.linkedAgentContactName}</span>
-                            {task.linkedAgentContactPhone && (
-                              <a href={`tel:${task.linkedAgentContactPhone}`} className="ms-1.5 text-[var(--youth-cyan)] hover:underline">{task.linkedAgentContactPhone}</a>
-                            )}
-                          </p>
+    <>
+      <YouthPlayerProfile
+        t={t}
+        isRtl={isRtl}
+        lang={lang}
+        setLang={setLang}
+        player={player}
+        displayName={isRtl ? (player.fullNameHe || player.fullName) : player.fullName}
+        documents={documents}
+        sortedNotes={sortedNotes}
+        backHref={backHref}
+        backLabel={backLabel}
+        resolveAgentName={resolveAgentName}
+        mandateToggling={mandateToggling}
+        uploadingDocument={uploadingDocument}
+        uploadError={uploadError}
+        sharing={sharing}
+        addingToPortfolio={addingToPortfolio}
+        shareError={shareError}
+        portfolioError={portfolioError}
+        tasksEnabled={tasksEnabled}
+        hasValidMandate={hasValidMandate}
+        mandateExpiryLabel={(() => {
+          const valid = documents.filter((d) => (d.type ?? '').toUpperCase() === 'MANDATE' && !d.expired && (d.expiresAt == null || d.expiresAt >= Date.now()));
+          const maxExp = Math.max(0, ...valid.map((d) => d.expiresAt ?? 0));
+          return maxExp > 0 ? new Date(maxExp).toLocaleDateString() : null;
+        })()}
+        onEdit={() => setShowEditDrawer(true)}
+        onDelete={() => setDeleteOpen(true)}
+        onAddTask={() => setShowAddTaskModal(true)}
+        onMandateToggle={handleMandateToggle}
+        onUploadClick={() => fileInputRef.current?.click()}
+        onDeleteDoc={(d) => setDocToDelete(d as PlayerDocument)}
+        onAddNote={() => { setNoteModalOpen('add'); setNoteDraft(''); }}
+        onEditNote={(n) => { setEditingNote(n); setNoteDraft(n.notes ?? ''); setNoteModalOpen('edit'); }}
+        onDeleteNote={(n) => setDeleteConfirmNote(n)}
+        onShare={() => { setIncludePlayerContact(false); setIncludeAgencyContact(false); setShowShareLanguageModal(true); }}
+        onPreparePortfolio={() => setShowPortfolioLanguageModal(true)}
+        fileInput={
+          <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*,application/pdf" className="hidden" onChange={handleUploadDocument} />
+        }
+        editDrawer={
+          <YouthAddProspectDrawer
+            open={showEditDrawer}
+            onClose={() => setShowEditDrawer(false)}
+            editPlayer={player}
+            onSaved={() => setShowEditDrawer(false)}
+          />
+        }
+        highlightsPanel={
+          player && id ? (
+            <YouthHighlightsPanel
+              playerId={id}
+              pinnedHighlights={player.pinnedHighlights as any}
+              isRtl={isRtl}
+            />
+          ) : null
+        }
+        matchingRequestsBlock={
+          player && id ? (
+            <MatchingRequestsSection
+              matchingRequests={matchingRequests}
+              playerProfileUrl={typeof window !== 'undefined' ? `${window.location.origin}/players/youth/${id}` : ''}
+              accounts={accounts}
+              currentUserEmail={user?.email}
+              onMarkAsOffered={handleMarkAsOffered}
+              onUpdateFeedback={handleUpdateOfferFeedback}
+            />
+          ) : null
+        }
+        tasksBlock={
+          tasksEnabled ? (
+            playerTasks.length === 0 ? (
+              <p className="brit-empty-note" style={{ color: 'var(--muted)', fontSize: 13, padding: '10px 0' }}>{t('youth_detail_no_tasks')}</p>
+            ) : (
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                {playerTasks.map((task) => (
+                  <li key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+                    <input
+                      type="checkbox"
+                      checked={task.isCompleted ?? false}
+                      onChange={async () => { await callTasksToggleComplete({ platform: 'youth', taskId: task.id, isCompleted: !task.isCompleted }); }}
+                      style={{ marginTop: 3 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, textDecoration: task.isCompleted ? 'line-through' : 'none', color: task.isCompleted ? 'var(--muted)' : 'var(--ink)' }}>{task.title}</p>
+                      <div style={{ marginTop: 4, color: 'var(--muted)', fontSize: 11 }}>
+                        {task.agentName && <span>{t('tasks_assigned_to_label')} {task.agentName}</span>}
+                        {task.dueDate && (
+                          <span style={{ marginInlineStart: 8, color: task.dueDate < Date.now() && !task.isCompleted ? 'var(--red)' : 'var(--muted)' }}>
+                            {t('tasks_due_label')} {new Date(task.dueDate).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}
+                          </span>
                         )}
                       </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            )}
-
-            {/* Notes */}
-            <div className={`${glassCard} p-5`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-[var(--youth-cyan)]/60 uppercase tracking-wider">{t('youth_detail_notes')}</h3>
-                <button
-                  type="button"
-                  onClick={() => { setNoteModalOpen('add'); setNoteDraft(''); }}
-                  className={`text-sm font-medium ${cyanBtn} px-3 py-1.5 rounded-xl transition`}
-                >
-                  {t('youth_detail_add_note')}
-                </button>
-              </div>
-              {sortedNotes.length === 0 ? (
-                <p className="text-sm text-mgsr-muted py-4 text-center">{t('youth_detail_no_notes')}</p>
-              ) : (
-                <div className="space-y-3">
-                  {sortedNotes.map((note, i) => (
-                    <div key={i} className="p-3 rounded-xl bg-white/3 border border-white/5">
-                      <p className="text-sm text-mgsr-text whitespace-pre-wrap">{note.notes}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <p className="text-xs text-mgsr-muted">
-                          {resolveAgentName(note.createBy)} • {note.createdAt ? new Date(note.createdAt).toLocaleDateString() : ''}
-                        </p>
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => { setEditingNote(note); setNoteDraft(note.notes ?? ''); setNoteModalOpen('edit'); }}
-                            className="text-xs text-[var(--youth-cyan)]/50 hover:text-[var(--youth-cyan)] transition px-2 py-1"
-                          >
-                            {t('youth_detail_edit')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteConfirmNote(note)}
-                            className="text-xs text-red-400/50 hover:text-red-400 transition px-2 py-1"
-                          >
-                            {t('youth_detail_delete')}
-                          </button>
-                        </div>
-                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : null
+        }
+      />
 
-            {/* Agent in charge */}
-            {player.agentInChargeName && (
-              <div className={`${glassCard} p-5`}>
-                <h3 className="text-sm font-semibold text-[var(--youth-cyan)]/60 uppercase tracking-wider mb-2">{t('youth_detail_agent_in_charge')}</h3>
-                <p className="text-mgsr-text">{resolveAgentName(player.agentInChargeName)}</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom bar - Share & Prepare for portfolio */}
-        <div className="sticky bottom-0 left-0 right-0 mt-8 rounded-t-2xl border border-t border-mgsr-border bg-mgsr-card/90 backdrop-blur-sm p-4 shadow-[0_0_30px_rgba(0,212,255,0.06)]">
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-6">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setIncludePlayerContact(false);
-                  setIncludeAgencyContact(false);
-                  setShowShareLanguageModal(true);
-                }}
-                disabled={sharing}
-                className="flex items-center gap-2 text-[var(--youth-cyan)] hover:underline disabled:opacity-50"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-                <span className="font-medium text-sm">{t('player_info_share')}</span>
-              </button>
-              <button
-                type="button"
-                onClick={(e) => { e.preventDefault(); setShowPortfolioLanguageModal(true); }}
-                disabled={addingToPortfolio}
-                className="flex items-center gap-2 text-[var(--youth-cyan)] hover:underline disabled:opacity-50"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                <span className="font-medium text-sm">{t('player_info_prepare_portfolio')}</span>
-              </button>
-            </div>
-            {(shareError || portfolioError) && (
-              <p className="text-sm text-red-400 text-center">{shareError || portfolioError}</p>
-            )}
-          </div>
-        </div>
-
+      {/* Modals + overlays (kept from the original route; rendered as siblings) */}
+      <div dir={isRtl ? 'rtl' : 'ltr'} style={{ display: 'contents' }}>
         {/* Portfolio preparation loader */}
         {addingToPortfolio && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70">
@@ -1684,6 +1392,6 @@ export default function YouthPlayerPage() {
           />
         )}
       </div>
-    </AppLayout>
+    </>
   );
 }

@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Contacts / Light Management Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a,.nav-group{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav-group:hover,.nav>a.active,.nav-group.active{color:var(--gold-soft)}
+    .nav>a.active:before,.nav-group.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 80px}
+
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:34px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(52px,6.4vw,96px)/.8 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .mast-right{display:flex;flex-direction:column;align-items:flex-end;gap:14px}
+    .view-toggle{display:flex;border:1px solid var(--line)}
+    .view-toggle button{padding:11px 16px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line)}
+    .view-toggle button:last-child{border-inline-end:0}
+    .view-toggle button.active{background:var(--black);color:var(--gold-soft)}
+    .mast-actions{display:flex;gap:10px}
+    .mast-actions button{padding:11px 15px;border:1px solid var(--line);font:9px/1 var(--mono);text-transform:uppercase;color:var(--ink)}
+    .mast-actions button:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .mast-actions button.primary{background:var(--gold-soft);border-color:var(--gold-soft)}
+
+    /* Signals — 3 tiles */
+    .signals{display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:34px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .sig{min-height:100px;padding:16px 18px 18px 0;border-inline-end:1px solid var(--line)}
+    .sig:not(:first-child){padding-inline-start:18px}
+    .sig:last-child{border-inline-end:0}
+    .sig label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .sig strong{display:block;margin-top:12px;font:500 clamp(28px,3vw,40px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .sig strong{font-weight:800}
+    .sig small{display:block;margin-top:9px;color:var(--muted);font:9px/1 var(--mono)}
+
+    .tray{border:1px solid var(--line);margin-bottom:16px}
+    .search{display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--line)}
+    .search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
+    .search input{width:100%;border:0;background:transparent;padding:20px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .filter-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+    .filter-row:last-child{border-bottom:0}
+    .filter-label{display:flex;align-items:center;padding:0 18px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;border-inline-end:1px solid var(--line);white-space:nowrap}
+    .chipset{display:flex;flex-wrap:wrap;flex:1}
+    .chipset button{padding:13px 15px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line);transition:.15s}
+    .chipset button:hover{color:var(--ink)}
+    .chipset button.on{background:var(--gold-soft);color:var(--ink)}
+    .result-count{margin:0 2px 20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    /* Country ledger sections */
+    .ledger{flex-direction:column;gap:34px}
+    .country-head{display:flex;align-items:center;gap:14px;padding-bottom:12px;border-bottom:1px solid var(--ink);margin-bottom:18px}
+    .country-head .flag{width:26px;height:18px;object-fit:cover;border:1px solid var(--line);flex:none}
+    .country-head .flag.mono{display:grid;place-items:center;background:var(--black);color:var(--gold-soft);font:600 9px/1 var(--display);width:26px;height:18px}
+    .country-head h2{margin:0;font:500 24px/.9 var(--display);text-transform:uppercase;letter-spacing:-.01em}
+    [dir=rtl] .country-head h2{font-weight:800;letter-spacing:normal}
+    .country-head .cnt{margin-inline-start:auto;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .country-head .cnt b{color:var(--ink);font-weight:500}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+    /* Contact card — a "personnel file" */
+    .contact{border:1px solid var(--line);background:var(--card);transition:border-color .15s;position:relative}
+    .contact:hover{border-color:var(--gold-soft)}
+    .contact .row1{display:flex;align-items:flex-start;gap:14px;padding:16px 16px 14px}
+    .crest{width:52px;height:52px;flex:none;background:#fff;border:1px solid var(--line);display:grid;place-items:center;overflow:hidden}
+    .crest img{width:100%;height:100%;object-fit:contain;padding:5px}
+    .crest.initial{background:var(--black);color:var(--gold-soft);font:600 20px/1 var(--display)}
+    .crest.agency{background:var(--ink);color:var(--paper);font:600 10px/1.1 var(--mono);text-transform:uppercase;text-align:center;letter-spacing:.05em;padding:4px}
+    .who{min-width:0;flex:1}
+    .who .nm{font:500 20px/1 var(--display);text-transform:uppercase;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .who .nm{font-weight:800;letter-spacing:normal}
+    .who .org{margin-top:5px;color:var(--muted);font:11px/1.3 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .who .org b{color:var(--ink);font-weight:600}
+    .typetag{position:absolute;top:0;inset-inline-end:0;padding:5px 9px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--paper);background:var(--black)}
+    .typetag.agency{background:var(--gold)}
+    .rolebar{display:flex;align-items:center;gap:8px;padding:0 16px 14px}
+    .role{font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--ink);border:1px solid var(--line);padding:6px 9px}
+    .role.key{border-color:var(--gold-soft);color:var(--gold)}
+    .row2{display:flex;align-items:stretch;border-top:1px solid var(--line)}
+    .phone{flex:1;display:flex;align-items:center;gap:9px;padding:13px 16px;color:var(--ink);font:12px/1 var(--mono);letter-spacing:.02em;border-inline-end:1px solid var(--line);min-width:0}
+    .phone .wa{width:24px;height:24px;flex:none;display:grid;place-items:center;background:var(--green);color:var(--paper);border-radius:50%}
+    .phone .wa svg{width:13px;height:13px;fill:var(--paper)}
+    .phone span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .phone.empty{color:var(--muted);font-family:var(--body);font-style:italic;text-transform:none}
+    .phone.empty .wa{background:var(--paper-2);color:var(--muted)}
+    .phone.empty .wa svg{fill:var(--muted)}
+    .ops{display:flex;flex:none}
+    .ops button{width:46px;display:grid;place-items:center;color:var(--muted);border-inline-start:1px solid var(--line);transition:.15s}
+    .ops button:first-child{border-inline-start:0}
+    .ops button svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7}
+    .ops button:hover{color:var(--gold)}
+    .ops button.del:hover{color:var(--red)}
+
+    /* View switching */
+    .ledger{display:none}
+    .ledger.on{display:flex}
+    .table{border:1px solid var(--line);background:var(--card);display:none}
+    .table.on{display:block}
+    .thead,.trow{display:grid;grid-template-columns:2.2fr 1.6fr 1fr 1.4fr 70px;align-items:center}
+    .thead{background:var(--black);color:#c9c3b6;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .thead div{padding:14px 16px;border-inline-end:1px solid var(--dark-line)}
+    .thead div:last-child{border-inline-end:0}
+    .trow{border-top:1px solid var(--line);transition:background .12s}
+    .trow:hover{background:var(--paper)}
+    .trow>div{padding:13px 16px;border-inline-end:1px solid var(--line);min-width:0}
+    .trow>div:last-child{border-inline-end:0}
+    .trow .tp-name{display:flex;align-items:center;gap:11px}
+    .trow .tp-name .mini{width:30px;height:30px;flex:none;background:#fff;border:1px solid var(--line);display:grid;place-items:center;overflow:hidden}
+    .trow .tp-name .mini img{width:100%;height:100%;object-fit:contain;padding:3px}
+    .trow .tp-name .mini.ini{background:var(--black);color:var(--gold-soft);font:600 12px/1 var(--display)}
+    .trow .tp-name b{font:500 14px/1.1 var(--body);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .trow .tp-org{color:var(--muted);font:12px/1.3 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .trow .tp-role{color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase}
+    .trow .tp-phone{color:var(--ink);font:11px/1 var(--mono)}
+    .trow .tp-phone.empty{color:var(--muted);font-family:var(--body);font-style:italic}
+    .trow .tp-ops{display:flex;gap:2px;padding:8px 10px}
+    .trow .tp-ops button{width:26px;height:26px;display:grid;place-items:center;color:var(--muted)}
+    .trow .tp-ops button svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.7}
+    .trow .tp-ops button:hover{color:var(--gold)}
+    .trow .tp-ops button.del:hover{color:var(--red)}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav>a,.nav-group{padding:6px 0}.nav em,.nav>a.active:before,.nav-group.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.mast-right{align-items:flex-start;margin-top:18px}
+      .signals{grid-template-columns:1fr}
+      .filter-row{flex-direction:column;align-items:stretch}.filter-label{border-inline-end:0;border-bottom:1px solid var(--line);padding:12px 16px}
+      .grid{grid-template-columns:1fr}
+      .table{overflow-x:auto}.thead,.trow{grid-template-columns:2.2fr 1.4fr 1fr 70px}.thead .h-phone,.trow .tp-phone{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <button class="nav-group"><span data-t="nav_players">Players</span><em>+</em></button>
+        <a href="#"><span data-t="nav_req">Club Requirements</span><em>03</em></a>
+        <a class="active" href="#"><span data-t="nav_cont">Contacts</span><em>04</em></a>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Men / Europe</strong><span data-t="net">Network</span><strong>48</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_cont">Contacts</strong> / 24 September 2026</div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div>
+            <p class="kicker" data-t="kicker">Private client office / Relationship network</p>
+            <h1><span data-t="head_a">The little</span> <span class="gold" data-t="head_b">black book.</span></h1>
+          </div>
+          <div class="mast-right">
+            <div class="view-toggle"><button class="active" id="v-cards" onclick="setView('cards')" data-t="v_cards">Directory</button><button id="v-table" onclick="setView('table')" data-t="v_table">Ledger</button></div>
+            <div class="mast-actions"><button data-t="export">↗ Export</button><button class="primary" data-t="add">+ Add contact</button></div>
+          </div>
+        </header>
+
+        <section class="signals">
+          <div class="sig"><label data-t="s_all">In the network</label><strong>48</strong><small data-t="s_all_n">People on file</small></div>
+          <div class="sig"><label data-t="s_clubs">Clubs</label><strong>31</strong><small data-t="s_clubs_n">Decision makers</small></div>
+          <div class="sig"><label data-t="s_agencies">Agencies</label><strong>17</strong><small data-t="s_agencies_n">Partner intermediaries</small></div>
+        </section>
+
+        <section class="tray">
+          <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input data-ph="search" placeholder="Search name, club, agency or number"></label>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_type">Type</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="f_all">All</button>
+              <button onclick="segOne(this)" data-t="f_clubs">Clubs</button>
+              <button onclick="segOne(this)" data-t="f_agencies">Agencies</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label" data-t="f_role">Role</span>
+            <div class="chipset">
+              <button class="on" onclick="segOne(this)" data-t="r_all">All</button>
+              <button onclick="segOne(this)" data-t="r_sd">Sport director</button>
+              <button onclick="segOne(this)" data-t="r_ceo">CEO</button>
+              <button onclick="segOne(this)" data-t="r_coach">Coach</button>
+              <button onclick="segOne(this)" data-t="r_scout">Scout</button>
+              <button onclick="segOne(this)" data-t="r_agent">Agent</button>
+            </div>
+          </div>
+        </section>
+
+        <p class="result-count"><span data-t="showing_a">Showing</span> <b>48</b> <span data-t="showing_b">of 48 contacts across 6 markets</span></p>
+
+        <div id="ledger" class="ledger on"></div>
+        <div id="table" class="table"></div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // contactType: CLUB | AGENCY. role → normalized keys. logo optional.
+    const contacts=[
+      {country:'Israel',type:'CLUB',name:'Roni Levy',role:'SPORT_DIRECTOR',org:'Hapoel Beer Sheva',phone:'+972 52 411 2233',logo:'https://tmssl.akamaized.net/images/wappen/head/3646.png'},
+      {country:'Israel',type:'CLUB',name:'Amit Ben David',role:'CEO',org:'Maccabi Tel Aviv',phone:'+972 54 900 1188',logo:'https://tmssl.akamaized.net/images/wappen/head/3646.png'},
+      {country:'Israel',type:'AGENCY',name:'Doron Katz',role:'AGENT',org:'Katz Sports Management',phone:'+972 50 777 6543',logo:''},
+      {country:'Israel',type:'CLUB',name:'Yossi Mizrahi',role:'COACH',org:'Maccabi Haifa',phone:'',logo:''},
+
+      {country:'Netherlands',type:'CLUB',name:'Dirk Bakker',role:'SPORT_DIRECTOR',org:'FC Utrecht',phone:'+31 6 2244 8890',logo:'https://tmssl.akamaized.net/images/wappen/head/200.png'},
+      {country:'Netherlands',type:'AGENCY',name:'Sander Vos',role:'AGENCY_DIRECTOR',org:'Vos & Partners',phone:'+31 6 1199 2277',logo:''},
+      {country:'Netherlands',type:'CLUB',name:'Marco de Wit',role:'SCOUT',org:'AZ Alkmaar',phone:'+31 6 8834 1200',logo:'https://tmssl.akamaized.net/images/wappen/head/1090.png'},
+
+      {country:'Saudi Arabia',type:'CLUB',name:'Faisal Al-Harbi',role:'BOARD_MEMBER',org:'Al Nassr',phone:'+966 55 210 4477',logo:'https://tmssl.akamaized.net/images/wappen/head/18544.png'},
+      {country:'Saudi Arabia',type:'CLUB',name:'Khalid Al-Otaibi',role:'SPORT_DIRECTOR',org:'Al Hilal',phone:'+966 50 664 9911',logo:'https://tmssl.akamaized.net/images/wappen/head/18541.png'},
+      {country:'Saudi Arabia',type:'AGENCY',name:'Tariq Nasser',role:'INTERMEDIARY',org:'Gulf Football Advisory',phone:'+966 53 300 7788',logo:''},
+
+      {country:'United Arab Emirates',type:'CLUB',name:'Omar Saeed',role:'SPORT_DIRECTOR',org:'Al Ain FC',phone:'+971 50 122 3344',logo:'https://tmssl.akamaized.net/images/wappen/head/12147.png'},
+      {country:'United Arab Emirates',type:'CLUB',name:'Ahmed Rashid',role:'PRESIDENT',org:'Shabab Al Ahli',phone:'+971 55 908 6612',logo:''},
+
+      {country:'Belgium',type:'CLUB',name:'Marc Declercq',role:'SPORT_DIRECTOR',org:'Royale Union SG',phone:'+32 470 55 2211',logo:'https://tmssl.akamaized.net/images/wappen/head/2596.png'},
+      {country:'Belgium',type:'AGENCY',name:'Luc Peeters',role:'AGENT',org:'Peeters Football',phone:'+32 478 90 1234',logo:''},
+
+      {country:'Portugal',type:'CLUB',name:'João Ferreira',role:'ASSISTANT_COACH',org:'Vitória SC',phone:'+351 91 233 4455',logo:''},
+      {country:'Portugal',type:'AGENCY',name:'Rui Almeida',role:'AGENCY_DIRECTOR',org:'Lusitano Sports',phone:'+351 96 778 9900',logo:''}
+    ];
+
+    const ROLE_LABEL={
+      COACH:{en:'Coach',he:'מאמן'},ASSISTANT_COACH:{en:'Assistant coach',he:'עוזר מאמן'},
+      SPORT_DIRECTOR:{en:'Sport director',he:'מנהל מקצועי'},CEO:{en:'CEO',he:'מנכ״ל'},
+      BOARD_MEMBER:{en:'Board member',he:'חבר הנהלה'},PRESIDENT:{en:'President',he:'נשיא'},
+      SCOUT:{en:'Scout',he:'סקאוט'},AGENT:{en:'Agent',he:'סוכן'},
+      INTERMEDIARY:{en:'Intermediary',he:'מתווך'},AGENCY_DIRECTOR:{en:'Agency director',he:'מנהל סוכנות'},
+      UNKNOWN:{en:'Contact',he:'איש קשר'}
+    };
+    const KEY_ROLES=['SPORT_DIRECTOR','CEO','PRESIDENT','BOARD_MEMBER','AGENCY_DIRECTOR'];
+    const COUNTRY_HE={Israel:'ישראל',Netherlands:'הולנד','Saudi Arabia':'סעודיה','United Arab Emirates':'איחוד האמירויות',Belgium:'בלגיה',Portugal:'פורטוגל'};
+    const COUNTRY_CODE={Israel:'IL',Netherlands:'NL','Saudi Arabia':'SA','United Arab Emirates':'AE',Belgium:'BE',Portugal:'PT'};
+    const WA='<span class="wa"><svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35z"/></svg></span>';
+
+    function crest(c){
+      if(c.type==='AGENCY'){
+        const initials=c.org.split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+        return `<div class="crest agency">${initials}</div>`;
+      }
+      if(c.logo) return `<div class="crest"><img src="${c.logo}" alt=""></div>`;
+      return `<div class="crest initial">${(c.name||c.org||'?')[0]}</div>`;
+    }
+    function miniCrest(c){
+      if(c.logo && c.type==='CLUB') return `<div class="mini"><img src="${c.logo}" alt=""></div>`;
+      return `<div class="mini ini">${(c.name||c.org||'?')[0]}</div>`;
+    }
+
+    const ledger=document.getElementById('ledger');
+    const table=document.getElementById('table');
+
+    function render(){
+      const rtl=document.documentElement.dir==='rtl';
+      const roleTxt=r=>(ROLE_LABEL[r]||ROLE_LABEL.UNKNOWN)[rtl?'he':'en'];
+
+      // group by country
+      const groups={};
+      contacts.forEach(c=>{(groups[c.country]=groups[c.country]||[]).push(c);});
+      const order=Object.keys(groups).sort();
+
+      // ---- Directory (cards) ----
+      ledger.innerHTML=order.map(country=>{
+        const list=groups[country];
+        const cn=rtl?(COUNTRY_HE[country]||country):country;
+        const cards=list.map(c=>{
+          const key=KEY_ROLES.includes(c.role)?' key':'';
+          const typeTxt=c.type==='AGENCY'?(rtl?'סוכנות':'Agency'):(rtl?'מועדון':'Club');
+          const phone=c.phone
+            ? `<a class="phone" href="#" dir="ltr">${WA}<span>${c.phone}</span></a>`
+            : `<div class="phone empty">${WA}<span>${rtl?'אין מספר':'No number'}</span></div>`;
+          return `<article class="contact">
+            <span class="typetag ${c.type==='AGENCY'?'agency':''}">${typeTxt}</span>
+            <div class="row1">
+              ${crest(c)}
+              <div class="who">
+                <div class="nm">${c.name}</div>
+                <div class="org">${rtl?'ב־':'at '}<b>${c.org}</b></div>
+              </div>
+            </div>
+            <div class="rolebar"><span class="role${key}">${roleTxt(c.role)}</span></div>
+            <div class="row2">
+              ${phone}
+              <div class="ops">
+                <button title="Edit"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+                <button class="del" title="Delete"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg></button>
+              </div>
+            </div>
+          </article>`;
+        }).join('');
+        return `<section>
+          <div class="country-head">
+            <span class="flag mono">${COUNTRY_CODE[country]||'··'}</span>
+            <h2>${cn}</h2>
+            <span class="cnt"><b>${list.length}</b> ${rtl?'אנשי קשר':'contacts'}</span>
+          </div>
+          <div class="grid">${cards}</div>
+        </section>`;
+      }).join('');
+
+      // ---- Ledger (table) ----
+      const rows=contacts.map(c=>{
+        const phone=c.phone
+          ? `<div class="tp-phone" dir="ltr">${c.phone}</div>`
+          : `<div class="tp-phone empty">${rtl?'—':'—'}</div>`;
+        return `<div class="trow">
+          <div class="tp-name">${miniCrest(c)}<b>${c.name}</b></div>
+          <div class="tp-org">${c.org}</div>
+          <div class="tp-role">${roleTxt(c.role)}</div>
+          ${phone}
+          <div class="tp-ops">
+            <button title="Edit"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+            <button class="del" title="Delete"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg></button>
+          </div>
+        </div>`;
+      }).join('');
+      table.innerHTML=`<div class="thead">
+        <div data-h="name">${rtl?'שם':'Name'}</div>
+        <div data-h="org">${rtl?'ארגון':'Organisation'}</div>
+        <div data-h="role">${rtl?'תפקיד':'Role'}</div>
+        <div class="h-phone" data-h="phone">${rtl?'טלפון':'Phone'}</div>
+        <div data-h="ops"></div>
+      </div>${rows}`;
+    }
+
+    function setView(v){
+      document.getElementById('v-cards').classList.toggle('active',v==='cards');
+      document.getElementById('v-table').classList.toggle('active',v==='table');
+      ledger.classList.toggle('on',v==='cards');
+      table.classList.toggle('on',v==='table');
+    }
+    function segOne(btn){[...btn.parentNode.children].forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקנים',nav_req:'דרישות מועדונים',nav_cont:'אנשי קשר',
+      platform:'פלטפורמה פעילה',platform_v:'גברים / אירופה',net:'רשת',
+      kicker:'משרד לקוחות פרטי / רשת קשרים',head_a:'הפנקס',head_b:'השחור.',v_cards:'ספר קשרים',v_table:'טבלה',export:'↗ ייצוא',add:'+ הוסף איש קשר',
+      s_all:'ברשת',s_all_n:'אנשים בתיק',s_clubs:'מועדונים',s_clubs_n:'מקבלי החלטות',s_agencies:'סוכנויות',s_agencies_n:'סוכנים שותפים',
+      f_type:'סוג',f_all:'הכל',f_clubs:'מועדונים',f_agencies:'סוכנויות',
+      f_role:'תפקיד',r_all:'הכל',r_sd:'מנהל מקצועי',r_ceo:'מנכ״ל',r_coach:'מאמן',r_scout:'סקאוט',r_agent:'סוכן',
+      showing_a:'מוצג',showing_b:'מתוך 48 אנשי קשר ב־6 שווקים',search:'חיפוש שם, מועדון, סוכנות או מספר'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.textContent);
+    document.querySelectorAll('[data-ph]').forEach(el=>EN['ph_'+el.dataset.ph]=el.getAttribute('placeholder'));
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.textContent=(rtl?(T.he[k]??EN[k]):EN[k])||el.textContent;});
+      document.querySelectorAll('[data-ph]').forEach(el=>el.setAttribute('placeholder',(rtl?(T.he.search??EN['ph_'+el.dataset.ph]):EN['ph_'+el.dataset.ph])||''));
+      render();
+    }
+    render();
+  </script>
+</body>
+</html>

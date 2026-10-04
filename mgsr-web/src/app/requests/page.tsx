@@ -10,6 +10,8 @@ import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestor
 import { db } from '@/lib/firebase';
 import { callRequestsDelete, callShortlistAdd } from '@/lib/callables';
 import AppLayout from '@/components/AppLayout';
+import MenRequests from '@/components/MenRequests';
+import BritLoader from '@/components/BritLoader';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { getPositionDisplayName } from '@/lib/appConfig';
 import { matchRequestToPlayers, type ClubRequest as MatcherRequest, type RosterPlayer } from '@/lib/requestMatcher';
@@ -219,6 +221,12 @@ export default function RequestsPage() {
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  // Club requests screen is not used on the youth platform — bounce to the
+  // dashboard if someone lands on /requests while on youth (direct URL / back).
+  useEffect(() => {
+    if (platform === 'youth') router.replace('/dashboard');
+  }, [platform, router]);
 
   // Load agent English→Hebrew name map from Accounts
   useEffect(() => {
@@ -730,12 +738,27 @@ export default function RequestsPage() {
   };
 
   if (loading || !user) {
+    if (!isWomen) return <BritLoader fullPage={true} />;
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className={`animate-pulse font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
+        <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
       </div>
     );
   }
+
+  // Youth has no club-requests screen — render nothing while the effect above
+  // redirects to the dashboard.
+  if (platform === 'youth') {
+    return <BritLoader fullPage={true} />;
+  }
+
+  // ── Men platform: "Light Management Room" full-bleed board ──
+  if (platform === 'men') {
+    return <MenRequests />;
+  }
+
+  // Narrowed to 'women' | 'youth' below; alias keeps residual men branches typed.
+  const platformStr: string = platform;
 
   return (
     <AppLayout>

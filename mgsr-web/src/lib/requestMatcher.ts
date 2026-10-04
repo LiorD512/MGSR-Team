@@ -22,6 +22,7 @@ export interface RosterPlayer {
   tmProfile?: string;
   nationality?: string;
   nationalities?: string[];
+  playerPhoneNumber?: string;
 }
 
 export interface ClubRequest {

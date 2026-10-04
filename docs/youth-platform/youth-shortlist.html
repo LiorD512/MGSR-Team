@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group Youth — Shortlist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --teal:#2f7d6e;--teal-soft:#5fa391;--teal-bright:#8fc9b8;
+      --red:#b64235;--green:#5c6f4a;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    ::selection{background:var(--teal-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--teal-soft),var(--teal));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#9fb8b0;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav>a.active{color:var(--teal-bright)}
+    .nav>a.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--teal-soft)}
+    .nav em{color:var(--teal-soft);font-style:normal}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--teal-bright)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--teal-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 80px}
+
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:30px}
+    .kicker{margin:0 0 16px;color:var(--teal);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(48px,6vw,86px)/.82 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--teal)}
+    .addbtn{padding:13px 18px;background:var(--teal-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .addbtn:hover{background:var(--teal);color:var(--paper)}
+
+    .signals{display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:30px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .signal{min-height:100px;padding:18px 20px 20px 0;border-inline-end:1px solid var(--line)}
+    .signal:not(:first-child){padding-inline-start:20px}
+    .signal:last-child{border-inline-end:0}
+    .signal label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .signal strong{display:block;margin-top:14px;font:500 clamp(28px,3vw,42px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .signal strong{font-weight:800}
+    .signal small{display:block;margin-top:10px;color:var(--muted);font:9px/1 var(--mono)}
+    .signal .teal{color:var(--teal)}
+
+    .tray{border:1px solid var(--line);margin-bottom:16px}
+    .search{display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--line)}
+    .search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
+    .search input{width:100%;border:0;background:transparent;padding:20px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .chips{display:flex;flex-wrap:wrap}
+    .chip{display:flex;align-items:center;gap:8px;padding:13px 16px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line)}
+    .chip .dot{width:5px;height:5px;border-radius:50%;background:var(--muted)}
+    .chip.on{color:var(--ink)}
+    .chip.on .dot{background:var(--teal)}
+    .result-count{margin:0 2px 20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    .roster{width:100%;border-collapse:collapse}
+    .roster thead th{padding:12px 14px;color:var(--muted);text-align:start;font:9px/1 var(--mono);font-weight:400;text-transform:uppercase;border-bottom:1px solid var(--line)}
+    .roster thead th:last-child{text-align:end}
+    .roster tbody tr{border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
+    .roster tbody tr:hover{background:rgba(17,17,15,.035)}
+    .roster td{padding:13px 14px;font:11px/1.2 var(--mono);vertical-align:middle}
+    .cell-player{display:flex;align-items:center;gap:13px}
+    .thumb{width:42px;height:42px;display:grid;place-items:center;background:linear-gradient(160deg,#23231f,#11110f);color:var(--teal-bright);font:500 15px/1 var(--display);flex:none}
+    .cell-player .pname{font-family:var(--body);font-weight:700;font-size:13px}
+    .cell-player .he{margin-top:2px;color:var(--muted);font:10px/1 var(--body);direction:rtl}
+    .pos-tags b{font:400 9px/1 var(--mono);padding:5px 7px;border:1px solid var(--line);text-transform:uppercase}
+    .stat-cell{display:flex;gap:14px}
+    .stat-cell b{color:var(--ink);font-weight:500}
+    .stat-cell span{color:var(--muted)}
+    .agtag{font:9px/1 var(--mono);text-transform:uppercase;padding:5px 8px;border:1px solid var(--teal-soft);color:var(--teal)}
+    .added{color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}
+    .added b{color:var(--ink);font-weight:500}
+    .flags{display:flex;gap:6px;justify-content:flex-end}
+    .tag.note{font:9px/1 var(--mono);text-transform:uppercase;padding:5px 7px;border:1px solid var(--green);color:var(--green)}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav em,.nav>a.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.addbtn{margin-top:14px}
+      .signals{grid-template-columns:1fr}
+      .roster thead{display:none}.roster tbody tr{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:12px 4px}.roster td{padding:0;border:0}.cell-player{grid-column:1/-1}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="youth-dashboard.html"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <a href="youth-players.html"><span data-t="nav_players">Youth Players</span><em>28</em></a>
+        <a class="active" href="youth-shortlist.html"><span data-t="nav_short">Shortlist</span><em>12</em></a>
+        <a href="youth-requests.html"><span data-t="nav_req">Requests</span><em>04</em></a>
+        <a href="youth-contacts.html"><span data-t="nav_cont">Contacts</span><em>17</em></a>
+      </nav>
+      <div class="rail-footer"><span data-t="platform">Active platform</span><strong data-t="platform_v">Youth / Academy</strong><span data-t="tracked_l">Tracked</span><strong data-t="tracked_v">12 prospects</strong></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_short">Shortlist</strong> / <span data-t="date">1 October 2026</span></div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><button data-t="add_a">Add prospect /</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <header class="masthead">
+          <div><p class="kicker" data-t="kicker">Academy desk / Watch list</p><h1 data-t="h1">The <span>shortlist.</span></h1></div>
+          <a class="addbtn" href="youth-add-player.html" data-t="add">+ Add youth player</a>
+        </header>
+
+        <section class="signals">
+          <div class="signal"><label data-t="s1">Tracked</label><strong>12</strong><small data-t="s1n">Across all age groups</small></div>
+          <div class="signal"><label data-t="s2">With notes</label><strong class="teal">07</strong><small data-t="s2n">Scouting detail</small></div>
+          <div class="signal"><label data-t="s3">Added this week</label><strong>03</strong><small data-t="s3n">New targets</small></div>
+        </section>
+
+        <section class="tray">
+          <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input data-ph="search" placeholder="Search shortlisted prospects"></label>
+          <div class="chips">
+            <button class="chip on" onclick="this.classList.toggle('on')"><span class="dot"></span><span data-t="c_all">All</span></button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span><span data-t="c_notes">With notes</span></button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>U-15</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>U-17</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>U-19</button>
+            <button class="chip" onclick="this.classList.toggle('on')"><span class="dot"></span>U-21</button>
+          </div>
+        </section>
+
+        <p class="result-count"><span data-t="showing">Showing</span> <b>12</b> <span data-t="showing2">of 12 tracked prospects</span></p>
+
+        <table class="roster">
+          <thead><tr><th data-t="th_p">Prospect</th><th data-t="th_club">Club</th><th data-t="th_pos">Pos</th><th data-t="th_form">IFA form</th><th data-t="th_added">Added</th><th data-t="th_ag">Age group</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const S=[
+      {name:'Tomer Gonen',he:'תומר גונן',club:'M. Petah Tikva',clubHe:'מכבי פ"ת',pos:['CF'],apps:16,g:10,a:3,by:'Lior Dahan',byHe:'ליאור דהן',date:'22 Sep',dateHe:'22 בספט׳',ag:'U-17',note:true,init:'TG'},
+      {name:'Roi Ben-David',he:'רועי בן דוד',club:'Hapoel Beer Sheva',clubHe:'הפועל ב"ש',pos:['CB'],apps:19,g:1,a:2,by:'Scout desk',byHe:'מערך סקאוטינג',date:'18 Sep',dateHe:'18 בספט׳',ag:'U-19',note:false,init:'RB'},
+      {name:'Shai Azar',he:'שי אזר',club:'Bnei Sakhnin',clubHe:'בני סכנין',pos:['LW'],apps:13,g:6,a:7,by:'Lior Dahan',byHe:'ליאור דהן',date:'14 Sep',dateHe:'14 בספט׳',ag:'U-16',note:true,init:'SA'},
+      {name:'Eitan Nissim',he:'איתן ניסים',club:'Maccabi Haifa',clubHe:'מכבי חיפה',pos:['DM'],apps:21,g:2,a:4,by:'Scout desk',byHe:'מערך סקאוטינג',date:'09 Sep',dateHe:'09 בספט׳',ag:'U-21',note:false,init:'EN'},
+      {name:'Gal Harush',he:'גל הרוש',club:'FC Ashdod',clubHe:'מ.ס. אשדוד',pos:['RW'],apps:11,g:5,a:4,by:'Lior Dahan',byHe:'ליאור דהן',date:'06 Sep',dateHe:'06 בספט׳',ag:'U-15',note:true,init:'GH'}
+    ];
+    const tbody=document.getElementById('tbody');
+    function render(){
+      const rtl=document.documentElement.dir==='rtl';
+      const L=rtl?{apps:'הופ׳',g:'ש',a:'ב',note:'הערות'}:{apps:'apps',g:'g',a:'a',note:'Notes'};
+      tbody.innerHTML=S.map(p=>`
+        <tr>
+          <td class="cell-player"><div class="thumb">${p.init}</div><div><div class="pname">${rtl?p.he:p.name}</div><div class="he">${rtl?p.name:p.he}</div></div></td>
+          <td>${rtl?p.clubHe:p.club}</td>
+          <td><div class="pos-tags">${p.pos.map(x=>`<b>${x}</b>`).join('')}</div></td>
+          <td><div class="stat-cell"><span><b>${p.apps}</b> ${L.apps}</span><span><b>${p.g}</b> ${L.g}</span><span><b>${p.a}</b> ${L.a}</span></div></td>
+          <td><div class="added"><b>${rtl?p.byHe:p.by}</b><br>${rtl?p.dateHe:p.date}</div></td>
+          <td style="text-align:end"><div class="flags">${p.note?`<span class="tag note">${L.note}</span>`:''}<span class="agtag">${p.ag}</span></div></td>
+        </tr>`).join('');
+    }
+
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקני נוער',nav_short:'רשימת מעקב',nav_req:'דרישות',nav_cont:'אנשי קשר',
+      platform:'פלטפורמה פעילה',platform_v:'נוער / אקדמיה',tracked_l:'במעקב',tracked_v:'12 כישרונות',date:'1 באוקטובר 2026',add_a:'הוסף כישרון /',
+      kicker:'דסק אקדמיה / רשימת מעקב',h1:'רשימת ה<span>מעקב.</span>',add:'+ הוסף שחקן נוער',
+      s1:'במעקב',s1n:'בכל קבוצות הגיל',s2:'עם הערות',s2n:'פירוט סקאוטינג',s3:'נוספו השבוע',s3n:'יעדים חדשים',
+      c_all:'הכל',c_notes:'עם הערות',showing:'מוצג',showing2:'מתוך 12 כישרונות במעקב',
+      th_p:'כישרון',th_club:'מועדון',th_pos:'עמדה',th_form:'כושר IFA',th_added:'נוסף',th_ag:'קבוצת גיל'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.innerHTML);
+    document.querySelectorAll('[data-ph]').forEach(el=>EN['ph_'+el.dataset.ph]=el.getAttribute('placeholder'));
+    const PH_HE={search:'חיפוש כישרונות ברשימה'};
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.innerHTML=(rtl?(T.he[k]??EN[k]):EN[k])||el.innerHTML;});
+      document.querySelectorAll('[data-ph]').forEach(el=>el.setAttribute('placeholder',(rtl?(PH_HE[el.dataset.ph]??EN['ph_'+el.dataset.ph]):EN['ph_'+el.dataset.ph])||''));
+      render();
+    }
+    render();
+  </script>
+</body>
+</html>

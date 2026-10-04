@@ -82,9 +82,9 @@ object AppConfigManager {
         "slovenia", "spain", "sweden"
     )
 
-    private val FALLBACK_SALARY_RANGES = listOf(">5", "6-10", "11-15", "16-20", "20-25", "26-30", "30+")
+    private val FALLBACK_SALARY_RANGES = listOf(">5", "6-10", "11-15", "16-20", "20-25", "26-30", "30-35", "35-40", "40-50", "50-60", "60-80", "80-100", "100+")
 
-    private val FALLBACK_TRANSFER_FEES = listOf("Free/Free loan", "<200", "300-600", "700-900", "1m+")
+    private val FALLBACK_TRANSFER_FEES = listOf("Free/Free loan", "<200", "200-300", "300-600", "600-900", "900k-1m", "1-1.5m", "1.5-2m", "2-3m", "3-5m", "5-10m", "10m+")
 
     private val FALLBACK_COUNTRY_EN_TO_HE = mapOf(
         "Afghanistan" to "אפגניסטן", "Albania" to "אלבניה", "Algeria" to "אלג'יריה",
