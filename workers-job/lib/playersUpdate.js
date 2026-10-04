@@ -126,6 +126,8 @@ async function updatePlayerByTmProfile(tmProfile) {
       return { success: false, error: "Profile page not rendered (no data-header)" };
     }
 
+    const profileName = $("h1").first().text().trim();
+
     // Info-table Citizenship row has ALL citizenships; header itemprop only has primary
     const citizenshipLabel = $('span.info-table__content--regular').filter(function() {
       return $(this).text().trim().startsWith('Citizenship');
@@ -212,6 +214,7 @@ async function updatePlayerByTmProfile(tmProfile) {
     return {
       success: true,
       data: {
+        profileName,
         marketValue,
         profileImage: playerImage,
         nationalityFlag: flag,
