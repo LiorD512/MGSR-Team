@@ -22,7 +22,8 @@ export type BritRailActive =
   | 'release'
   | 'club-change'
   | 'returnees'
-  | 'contract-finisher';
+  | 'contract-finisher'
+  | 'war-room';
 
 interface BritRailProps {
   active: BritRailActive;
@@ -122,6 +123,13 @@ export default function BritRail({ active }: BritRailProps) {
               </div>
             )}
           </>
+        )}
+
+        {/* War Room — Alpha Board (men-only) */}
+        {!isYouth && (
+          <Link href="/war-room/alpha-board" className={active === 'war-room' || pathname.startsWith('/war-room') ? 'active' : ''}>
+            <span>{t('nav_war_room')}</span>
+          </Link>
         )}
       </nav>
     </aside>
