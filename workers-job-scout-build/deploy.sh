@@ -44,7 +44,7 @@ if gcloud run jobs describe $JOB_NAME --region $REGION --project $PROJECT_ID 2>/
     --region $REGION \
     --project $PROJECT_ID \
     --task-timeout 18h \
-    --memory 1Gi \
+    --memory 2Gi \
     --cpu 1 \
     --max-retries 0 \
     --set-env-vars "$ENV_VARS" \
@@ -55,7 +55,7 @@ else
     --region $REGION \
     --project $PROJECT_ID \
     --task-timeout 18h \
-    --memory 1Gi \
+    --memory 2Gi \
     --cpu 1 \
     --max-retries 0 \
     --set-env-vars "$ENV_VARS" \

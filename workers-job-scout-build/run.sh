@@ -90,6 +90,17 @@ echo "=== Committing and pushing ==="
 git config user.email "scout-build@mgsr.local"
 git config user.name "Scout Build Bot"
 
+# ── Keep git memory bounded when packing the large JSON DB files (~130MB). ──
+# Without these, `git pack-objects` can OOM the container (signal 9) while
+# compressing on push. Low window/depth + capped pack memory trades a little
+# compression for reliability.
+git config pack.windowMemory 128m
+git config pack.packSizeLimit 128m
+git config pack.threads 1
+git config core.bigFileThreshold 16m
+git config pack.window 0
+git config pack.depth 0
+
 # Remote already has token from clone URL
 DATE=$(date +%Y-%m-%d)
 
