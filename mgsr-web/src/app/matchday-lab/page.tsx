@@ -21,6 +21,8 @@ import { auth } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
 import BritLoader from '@/components/BritLoader';
 
+type Decision = 'accept' | 'review' | 'reject' | 'unverified';
+
 interface RankedCandidate {
   imageUrl: string;
   source: string;
@@ -29,33 +31,47 @@ interface RankedCandidate {
   width: number;
   height: number;
   fileSize: number;
-  searchRelevanceScore: number;
-  sourceTrustScore: number;
-  imageQualityScore: number;
+  identityScore: number;
+  photoQualityScore: number;
   compositionScore: number;
-  identityConfidence: number;
+  sourceTrustScore: number;
+  matchdaySuitabilityScore: number;
+  searchRelevanceScore: number;
   finalScore: number;
-  decision: 'accept' | 'review' | 'reject';
+  decision: Decision;
   reasons: string[];
   peopleCount: number | null;
   singleClearSubject: boolean;
+  faceClearlyVisible: boolean;
+  isGraphicOrPoster: boolean;
   usedGemini: boolean;
+  perceptualHash: string | null;
 }
 
 interface Rejected {
   imageUrl: string;
   source: string;
+  stage: string;
   reason: string;
 }
 
 interface Diagnostics {
   providersConfigured: { serper: boolean; serpapi: boolean; googleCse: boolean };
+  providersUsed: string[];
   geminiConfigured: boolean;
+  identityVerificationAvailable: boolean;
   queryCount: number;
-  candidatesDiscovered: number;
-  candidatesDownloaded: number;
-  candidatesRejected: number;
+  queries: string[];
+  rawCandidatesDiscovered: number;
+  uniqueAfterUrlDedupe: number;
+  uniqueAfterPerceptualDedupe: number;
+  technicalRejects: number;
+  graphicRejects: number;
+  identityRejects: number;
+  suitabilityRejects: number;
   geminiCalls: number;
+  geminiVerifiedCandidates: number;
+  finalCandidates: number;
   cacheHit: boolean;
   cacheSource: string;
   timings: { totalMs: number; searchMs: number; rankMs: number };
@@ -96,8 +112,8 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function decisionBadge(d: RankedCandidate['decision']) {
-  const map = { accept: '#2e7d32', review: '#b8860b', reject: '#8b2e2e' } as const;
+function decisionBadge(d: Decision) {
+  const map = { accept: '#2e7d32', review: '#b8860b', reject: '#8b2e2e', unverified: '#5a4a9a' } as const;
   return (
     <span
       style={{
@@ -229,6 +245,7 @@ function LabInner() {
     color: 'rgba(243,240,232,0.5)',
   };
   const noVerified = result?.recommended === 'NO_VERIFIED_PLAYER_IMAGE';
+  const identityUnavailable = result ? !result.diagnostics.identityVerificationAvailable : false;
 
   return (
     <div style={{ color: '#f3f0e8', fontFamily: 'system-ui, sans-serif' }}>
@@ -300,6 +317,20 @@ function LabInner() {
 
       {result && (
         <>
+          {/* ── Identity-verification availability notice ── */}
+          {identityUnavailable && (
+            <div
+              style={{
+                padding: '12px 16px', borderRadius: 2, marginBottom: 12, fontSize: 13, fontWeight: 500,
+                border: '1px solid rgba(90,74,154,0.6)', background: 'rgba(90,74,154,0.14)', color: '#c9bdf0',
+              }}
+            >
+              Automatic identity verification is UNAVAILABLE this run{' '}
+              {result && !result.diagnostics.geminiConfigured ? '(Gemini key not configured in this environment)' : '(Gemini disabled for this run)'}.
+              No candidate can be ACCEPTED — all verifiable results are marked UNVERIFIED for manual review.
+            </div>
+          )}
+
           {/* ── Recommendation banner ── */}
           <div
             style={{
@@ -310,28 +341,46 @@ function LabInner() {
             }}
           >
             {noVerified
-              ? 'NO_VERIFIED_PLAYER_IMAGE — no candidate cleared the identity bar. Manual upload remains the fallback.'
-              : 'RECOMMENDED — top candidate ACCEPTED as the MATCHDAY source.'}
+              ? 'NO_VERIFIED_PLAYER_IMAGE — no candidate cleared the identity bar (Gemini-verified identity ≥ 80 on a clean, suitable photo). Manual upload remains the fallback.'
+              : 'RECOMMENDED — top candidate ACCEPTED (identity ≥ 80, verified) as the MATCHDAY source.'}
           </div>
 
           {/* ── Diagnostics ── */}
           <div style={{ background: '#15150f', border: '1px solid rgba(243,240,232,0.12)', borderRadius: 2, padding: 16, marginBottom: 20 }}>
             <div style={{ ...labelStyle, marginBottom: 10 }}>Run diagnostics</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
               <Flag label="Serper" on={result.diagnostics.providersConfigured.serper} />
               <Flag label="SerpAPI" on={result.diagnostics.providersConfigured.serpapi} />
               <Flag label="Google CSE" on={result.diagnostics.providersConfigured.googleCse} />
               <Flag label="Gemini key" on={result.diagnostics.geminiConfigured} />
+              <Flag label="Identity verify" on={result.diagnostics.identityVerificationAvailable} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14, fontSize: 13 }}>
+
+            {/* Discovery → filter → verify funnel */}
+            <div style={{ ...labelStyle, marginBottom: 6, color: 'rgba(243,240,232,0.4)' }}>Funnel</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 14, fontSize: 13, marginBottom: 14 }}>
               <Metric label="Queries" value={result.diagnostics.queryCount} />
-              <Metric label="Discovered" value={result.diagnostics.candidatesDiscovered} />
-              <Metric label="Downloaded" value={result.diagnostics.candidatesDownloaded} />
-              <Metric label="Rejected" value={result.diagnostics.candidatesRejected} />
+              <Metric label="Raw discovered" value={result.diagnostics.rawCandidatesDiscovered} />
+              <Metric label="After URL dedupe" value={result.diagnostics.uniqueAfterUrlDedupe} />
+              <Metric label="After perceptual" value={result.diagnostics.uniqueAfterPerceptualDedupe} />
+              <Metric label="Technical rejects" value={result.diagnostics.technicalRejects} />
+              <Metric label="Graphic rejects" value={result.diagnostics.graphicRejects} />
+              <Metric label="Identity rejects" value={result.diagnostics.identityRejects} />
+              <Metric label="Suitability rejects" value={result.diagnostics.suitabilityRejects} />
               <Metric label="Gemini calls" value={result.diagnostics.geminiCalls} />
+              <Metric label="Gemini verified" value={result.diagnostics.geminiVerifiedCandidates} />
+              <Metric label="Final candidates" value={result.diagnostics.finalCandidates} />
+            </div>
+
+            {/* Timing + cache */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 14, fontSize: 13 }}>
               <Metric label="Total ms" value={result.diagnostics.timings.totalMs} />
               <Metric label="Search ms" value={result.diagnostics.timings.searchMs} />
               <Metric label="Rank ms" value={result.diagnostics.timings.rankMs} />
+              <div>
+                <div style={labelStyle}>Providers used</div>
+                <div style={{ fontSize: 13 }}>{result.diagnostics.providersUsed.join(', ') || '—'}</div>
+              </div>
               <div>
                 <div style={labelStyle}>Cache</div>
                 <div style={{ fontSize: 14, color: result.diagnostics.cacheHit ? '#8bd98d' : 'rgba(243,240,232,0.6)' }}>
@@ -389,19 +438,31 @@ function LabInner() {
                   </div>
                   <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                      <span style={labelStyle}>Final</span>
-                      <span style={{ fontSize: 26, fontWeight: 700, color: scoreColor(c.finalScore) }}>{c.finalScore}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={labelStyle}>Identity (hard gate)</span>
+                        <span style={{ fontSize: 30, fontWeight: 800, color: scoreColor(c.identityScore) }}>{c.identityScore}</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ ...labelStyle, display: 'block' }}>Suitability</span>
+                        <span style={{ fontSize: 22, fontWeight: 700, color: scoreColor(c.matchdaySuitabilityScore) }}>{c.matchdaySuitabilityScore}</span>
+                      </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-                      <Stat label="Identity" value={c.identityConfidence} />
-                      <Stat label="Source trust" value={c.sourceTrustScore} />
-                      <Stat label="Quality" value={c.imageQualityScore} />
+                      <Stat label="Photo quality" value={c.photoQualityScore} />
                       <Stat label="Composition" value={c.compositionScore} />
+                      <Stat label="Source trust" value={c.sourceTrustScore} />
+                      <Stat label="Final (non-identity)" value={c.finalScore} />
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {c.usedGemini && <Flag label="Face visible" on={c.faceClearlyVisible} />}
+                      {c.usedGemini && <Flag label="Clean photo" on={!c.isGraphicOrPoster} />}
+                      {c.usedGemini && c.peopleCount != null && (
+                        <Flag label={`${c.peopleCount} ppl`} on={c.peopleCount === 1} />
+                      )}
                     </div>
                     <div style={{ fontSize: 11, color: 'rgba(243,240,232,0.55)' }}>
                       {c.width}×{c.height} · {(c.fileSize / 1024).toFixed(0)} KB · {c.source}
-                      {c.peopleCount != null ? ` · ${c.peopleCount} ppl` : ''}
-                      {c.usedGemini ? ' · Gemini ✓' : ' · (no Gemini)'}
+                      {c.usedGemini ? ' · Gemini ✓' : ' · identity UNVERIFIED'}
                     </div>
                     {c.sourceUrl && (
                       <a href={c.sourceUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: GOLD, wordBreak: 'break-all' }}>
@@ -441,6 +502,7 @@ function LabInner() {
               <ul style={{ marginTop: 10, fontSize: 11, color: 'rgba(243,240,232,0.5)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {result.rejected.map((r, i) => (
                   <li key={i} style={{ wordBreak: 'break-all' }}>
+                    <span style={{ color: GOLD, textTransform: 'uppercase' }}>[{r.stage}]</span>{' '}
                     <span style={{ color: '#d9534f' }}>{r.reason}</span> — {r.imageUrl || '(no url)'} [{r.source}]
                   </li>
                 ))}

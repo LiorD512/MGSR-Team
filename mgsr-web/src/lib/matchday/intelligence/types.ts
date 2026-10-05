@@ -37,12 +37,23 @@ export interface DownloadedCandidate extends PhotoCandidate {
   mimeType: string;
   /** Normalised PNG bytes, kept in-memory only during a request. */
   bytes: Buffer;
+  /** Perceptual dHash (hex) for near-duplicate collapsing. */
+  perceptualHash: string | null;
 }
 
-/** Why a downloaded candidate was discarded before ranking. */
+/** The stage at which a candidate was discarded (for the diagnostics funnel). */
+export type RejectStage =
+  | 'technical'
+  | 'perceptual_duplicate'
+  | 'graphic'
+  | 'identity'
+  | 'suitability';
+
+/** Why a candidate was discarded. */
 export interface RejectedCandidate {
   imageUrl: string;
   source: string;
+  stage: RejectStage;
   reason: string;
 }
 
@@ -67,7 +78,11 @@ export interface SourceTrustResult {
 
 // ── Ranking ──────────────────────────────────────────────────────────────────
 
-/** Gemini's opinion on a single candidate. Advisory only — one signal. */
+/**
+ * Gemini's classification of a single EXISTING photo. Gemini NEVER generates or
+ * alters anything — it only answers questions about what is already in frame.
+ * Identity is the decisive signal; the rest inform MATCHDAY suitability.
+ */
 export interface IdentityVerdict {
   /** 0–100 plausibility that this is the real requested player. */
   identityConfidence: number;
@@ -77,12 +92,23 @@ export interface IdentityVerdict {
   singleClearSubject: boolean;
   /** Gemini's read on whether this is a photograph (vs logo/graphic/art). */
   isPhotograph: boolean;
+  /** True when the frame is (or is embedded in) a poster/graphic/collage/screenshot. */
+  isGraphicOrPoster: boolean;
+  /** True when a human face is clearly visible (not away/obstructed/tiny). */
+  faceClearlyVisible: boolean;
+  /** 0–100 Gemini's own read on MATCHDAY suitability (framing/pose/clarity). */
+  matchdaySuitability: number;
   reasons: string[];
   /** True when the verdict came from Gemini; false when it was skipped. */
   usedGemini: boolean;
 }
 
-export type RankDecision = 'accept' | 'review' | 'reject';
+/**
+ * `unverified` is distinct from `reject`: the candidate is not disqualified, but
+ * identity could not be model-verified (e.g. Gemini unavailable), so it can
+ * never auto-ACCEPT. It is surfaced for human REVIEW only.
+ */
+export type RankDecision = 'accept' | 'review' | 'reject' | 'unverified';
 
 /** A fully scored candidate. */
 export interface RankedCandidate {
@@ -94,21 +120,29 @@ export interface RankedCandidate {
   height: number;
   fileSize: number;
 
-  // Component scores (each 0–100).
-  searchRelevanceScore: number;
-  sourceTrustScore: number;
-  imageQualityScore: number;
+  // Component scores (each 0–100), kept SEPARATE on purpose. Identity is a hard
+  // gate — the others never rescue a weak identity score.
+  identityScore: number;
+  photoQualityScore: number;
   compositionScore: number;
-  identityConfidence: number;
-
+  sourceTrustScore: number;
+  matchdaySuitabilityScore: number;
+  searchRelevanceScore: number;
+  /** Blend of the NON-identity signals, only meaningful once identity passes. */
   finalScore: number;
+
   decision: RankDecision;
   reasons: string[];
 
-  /** Face / people signals surfaced for the debug UI. */
+  /** Signals surfaced for the debug UI. */
   peopleCount: number | null;
   singleClearSubject: boolean;
+  faceClearlyVisible: boolean;
+  isGraphicOrPoster: boolean;
   usedGemini: boolean;
+
+  /** Perceptual hash (dHash hex) used for near-duplicate collapsing. */
+  perceptualHash: string | null;
 }
 
 // ── Pipeline result ──────────────────────────────────────────────────────────
@@ -135,14 +169,29 @@ export interface IntelligenceDiagnostics {
     serpapi: boolean;
     googleCse: boolean;
   };
+  /** Which providers actually returned ≥1 hit this run. */
+  providersUsed: string[];
   /** Whether a Gemini key is present (not the key). */
   geminiConfigured: boolean;
+  /** Whether automatic identity verification was possible this run. */
+  identityVerificationAvailable: boolean;
+
   queryCount: number;
-  candidatesDiscovered: number;
-  candidatesDownloaded: number;
-  candidatesRejected: number;
-  /** Number of Gemini vision calls actually made this run. */
+  /** Every query string that was issued. */
+  queries: string[];
+
+  // ── Funnel ──
+  rawCandidatesDiscovered: number;
+  uniqueAfterUrlDedupe: number;
+  uniqueAfterPerceptualDedupe: number;
+  technicalRejects: number;
+  graphicRejects: number;
+  identityRejects: number;
+  suitabilityRejects: number;
   geminiCalls: number;
+  geminiVerifiedCandidates: number;
+  finalCandidates: number;
+
   /** Whether the result was served from an existing cached/approved image. */
   cacheHit: boolean;
   /** manual_override | approved_auto | none */

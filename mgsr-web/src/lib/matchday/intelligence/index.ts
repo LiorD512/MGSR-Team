@@ -1,10 +1,15 @@
 /**
  * MATCHDAY Player Image Intelligence — orchestration entrypoint.
  *
- * find → download/validate → rank → (optional) Gemini verify → choose top 3.
+ *   discover (broad) → URL-dedupe → download/validate → graphic-reject →
+ *   perceptual-dedupe → Gemini identity+suitability classify → score →
+ *   hard identity gate → Top 3–5.
+ *
  * This is the only function callers need to run the discovery layer. It does
  * NOT write anything or touch the renderer; approval/caching is a separate,
- * explicit step (`cachePlayerPhoto.approvePlayerImage`).
+ * explicit step (`cachePlayerPhoto.approvePlayerImage`). It never lowers the
+ * identity bar to produce a result — `NO_VERIFIED_PLAYER_IMAGE` is a valid,
+ * correct outcome.
  */
 
 import { findPlayerPhotos, imageSearchConfigured, providersConfigured } from './findPlayerPhotos';
@@ -20,12 +25,16 @@ export * from './types';
 export { buildQueries, findPlayerPhotos, imageSearchConfigured, providersConfigured } from './findPlayerPhotos';
 export { rankPhotos, geminiVerificationConfigured } from './rankPhotos';
 export { scoreSource, TRUST_TIER_SCORE } from './sourceTrust';
+export { perceptualHash, hammingDistance, isNearDuplicate } from './perceptualHash';
 export {
   approvePlayerImage,
   getApprovedPlayerImage,
   getManualOverrideUrl,
   resolveExistingPlayerImage,
 } from './cachePlayerPhoto';
+
+/** How many final candidates to surface (3–5). */
+const TOP_N = 5;
 
 export interface DiscoverOptions extends RankOptions {
   /** Cache state the caller already resolved (for diagnostics only). */
@@ -41,12 +50,21 @@ export async function discoverPlayerPhotos(
 
   const diagnostics: IntelligenceDiagnostics = {
     providersConfigured: providersConfigured(),
+    providersUsed: [],
     geminiConfigured: geminiVerificationConfigured(),
+    identityVerificationAvailable: geminiVerificationConfigured() && options?.useGemini !== false,
     queryCount: 0,
-    candidatesDiscovered: 0,
-    candidatesDownloaded: 0,
-    candidatesRejected: 0,
+    queries: [],
+    rawCandidatesDiscovered: 0,
+    uniqueAfterUrlDedupe: 0,
+    uniqueAfterPerceptualDedupe: 0,
+    technicalRejects: 0,
+    graphicRejects: 0,
+    identityRejects: 0,
+    suitabilityRejects: 0,
     geminiCalls: 0,
+    geminiVerifiedCandidates: 0,
+    finalCandidates: 0,
     cacheHit: options?.cacheHit ?? false,
     cacheSource: options?.cacheSource ?? 'none',
     timings: { totalMs: 0, searchMs: 0, rankMs: 0 },
@@ -69,19 +87,22 @@ export async function discoverPlayerPhotos(
   };
 
   if (!imageSearchConfigured()) {
-    base.rejected = [{ imageUrl: '', source: 'config', reason: 'No image-search provider configured' }];
+    base.rejected = [{ imageUrl: '', source: 'config', stage: 'technical', reason: 'No image-search provider configured' }];
     diagnostics.timings.totalMs = Date.now() - startedAt;
     return base;
   }
 
   const searchStart = Date.now();
-  const { queries, candidates } = await findPlayerPhotos(input);
+  const { queries, candidates, rawHitCount, providersUsed } = await findPlayerPhotos(input);
   diagnostics.timings.searchMs = Date.now() - searchStart;
 
   base.queries = queries;
   base.foundCount = candidates.length;
   diagnostics.queryCount = queries.length;
-  diagnostics.candidatesDiscovered = candidates.length;
+  diagnostics.queries = queries;
+  diagnostics.providersUsed = providersUsed;
+  diagnostics.rawCandidatesDiscovered = rawHitCount;
+  diagnostics.uniqueAfterUrlDedupe = candidates.length;
 
   if (candidates.length === 0) {
     diagnostics.timings.totalMs = Date.now() - startedAt;
@@ -89,31 +110,31 @@ export async function discoverPlayerPhotos(
   }
 
   const rankStart = Date.now();
-  const { ranked, rejected, downloadedCount, geminiUsed, geminiCalls } = await rankPhotos(
-    candidates,
-    input,
-    queries,
-    options
-  );
+  const outcome = await rankPhotos(candidates, input, queries, options);
   diagnostics.timings.rankMs = Date.now() - rankStart;
 
-  base.downloadedCount = downloadedCount;
-  base.rejected = rejected;
-  base.rejectedCount = rejected.length + ranked.filter((r) => r.decision === 'reject').length;
-  base.geminiUsed = geminiUsed;
-  base.topCandidates = ranked.slice(0, 3);
+  base.downloadedCount = outcome.downloadedCount;
+  base.rejected = outcome.rejected;
+  base.rejectedCount =
+    outcome.rejected.length + outcome.ranked.filter((r) => r.decision === 'reject').length;
+  base.geminiUsed = outcome.geminiUsed;
+  base.topCandidates = outcome.ranked.slice(0, TOP_N);
 
-  diagnostics.candidatesDownloaded = downloadedCount;
-  diagnostics.candidatesRejected = base.rejectedCount;
-  diagnostics.geminiCalls = geminiCalls;
+  diagnostics.uniqueAfterPerceptualDedupe = outcome.uniqueAfterPerceptual;
+  diagnostics.technicalRejects = outcome.technicalRejects;
+  diagnostics.graphicRejects = outcome.graphicRejects;
+  diagnostics.identityRejects = outcome.identityRejects;
+  diagnostics.suitabilityRejects = outcome.suitabilityRejects;
+  diagnostics.geminiCalls = outcome.geminiCalls;
+  diagnostics.geminiVerifiedCandidates = outcome.geminiVerifiedCandidates;
+  diagnostics.finalCandidates = base.topCandidates.length;
 
-  // Recommend only when the best candidate was actually accepted. Anything less
-  // returns the sentinel so the caller falls back to manual upload rather than
-  // risking the wrong face. This is the identity-safety contract — never
-  // "close enough".
-  const best = ranked[0];
-  base.recommended =
-    best && best.decision === 'accept' ? best.imageUrl : NO_VERIFIED_PLAYER_IMAGE;
+  // Recommend ONLY when the best candidate is a full ACCEPT. ACCEPT already
+  // requires Gemini-verified identity ≥ 80 on a clean, suitable photograph, so
+  // this is the identity-safety contract: anything less → sentinel → manual
+  // upload fallback. Never "close enough".
+  const best = outcome.ranked[0];
+  base.recommended = best && best.decision === 'accept' ? best.imageUrl : NO_VERIFIED_PLAYER_IMAGE;
 
   diagnostics.timings.totalMs = Date.now() - startedAt;
   return base;

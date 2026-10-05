@@ -31,12 +31,15 @@ export function providersConfigured(): { serper: boolean; serpapi: boolean; goog
 }
 
 /** How many hits to request per query from the providers. */
-const PER_QUERY = 10;
+const PER_QUERY = 12;
 
 /**
- * Build targeted queries, strongest-identity first. The club + country
- * variants disambiguate players who share a name; the plainer variants widen
- * coverage when a player has little web presence.
+ * Build ~12–15 targeted queries, strongest-identity first. Breadth matters:
+ * a player with little web presence may only appear under one specific phrasing,
+ * and more raw candidates means more chances to find a clean, verifiable photo.
+ * The club + country variants disambiguate players who share a name; the
+ * context variants (goal/match/training/interview, recent seasons, social) widen
+ * coverage. Social media is just one phrasing among many — never the foundation.
  */
 export function buildQueries(input: PlayerPhotoSearchInput): string[] {
   const name = input.playerName.trim();
@@ -45,14 +48,31 @@ export function buildQueries(input: PlayerPhotoSearchInput): string[] {
   if (!name) return [];
 
   const q = `"${name}"`;
+  const thisYear = new Date().getFullYear();
+
   const queries = [
-    `${q} ${club ?? ''} footballer`.replace(/\s+/g, ' ').trim(),
+    // Strongest identity anchors first (club + role).
+    club ? `${q} ${club} footballer` : '',
     club ? `${q} ${club} player` : '',
-    country ? `${q} ${country} football` : '',
-    `${q} football`,
-    `${q} footballer`,
     club ? `${q} ${club}` : '',
-  ].filter(Boolean);
+    country ? `${q} ${country} football` : '',
+    // Plain football identity.
+    `${q} footballer`,
+    `${q} football`,
+    // Context phrasings that tend to surface real match/portrait photography.
+    `${q} match`,
+    `${q} goal`,
+    `${q} training`,
+    `${q} interview`,
+    // Recency — current and next season often carry fresh, in-kit photos.
+    `${q} ${thisYear}`,
+    `${q} ${thisYear + 1}`,
+    // Social is one source among many, not the foundation.
+    `${q} instagram`,
+    club && country ? `${q} ${club} ${country}` : '',
+  ]
+    .map((s) => s.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
 
   // De-duplicate while preserving order.
   return Array.from(new Set(queries));
@@ -73,17 +93,22 @@ function normaliseUrl(url: string): string {
 export interface FindResult {
   queries: string[];
   candidates: PhotoCandidate[];
+  /** Raw hit count before URL de-duplication (for the diagnostics funnel). */
+  rawHitCount: number;
+  /** Providers that actually returned ≥1 hit this run. */
+  providersUsed: string[];
 }
 
 /**
- * Discover candidate photos for a player. Runs the queries in parallel, tags
+ * Discover candidate photos for a player. Runs all queries in parallel, tags
  * each hit with the query that surfaced it, and de-duplicates by normalised
- * URL (keeping the first/strongest query's attribution).
+ * URL (keeping the first/strongest query's attribution). Perceptual
+ * de-duplication happens later, after download, in the ranking stage.
  */
 export async function findPlayerPhotos(input: PlayerPhotoSearchInput): Promise<FindResult> {
   const queries = buildQueries(input);
   if (queries.length === 0 || !imageSearchConfigured()) {
-    return { queries, candidates: [] };
+    return { queries, candidates: [], rawHitCount: 0, providersUsed: [] };
   }
 
   const now = Date.now();
@@ -99,9 +124,13 @@ export async function findPlayerPhotos(input: PlayerPhotoSearchInput): Promise<F
   );
 
   const seen = new Set<string>();
+  const providers = new Set<string>();
   const candidates: PhotoCandidate[] = [];
+  let rawHitCount = 0;
   for (const batch of perQuery) {
     for (const { query, hit } of batch) {
+      rawHitCount++;
+      if (hit.source) providers.add(hit.source);
       const key = normaliseUrl(hit.url);
       if (seen.has(key)) continue;
       seen.add(key);
@@ -116,5 +145,5 @@ export async function findPlayerPhotos(input: PlayerPhotoSearchInput): Promise<F
     }
   }
 
-  return { queries, candidates };
+  return { queries, candidates, rawHitCount, providersUsed: Array.from(providers) };
 }
