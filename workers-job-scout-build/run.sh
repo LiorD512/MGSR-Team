@@ -7,8 +7,9 @@
 set -e
 
 REPO_URL="${SCOUT_REPO_URL:?SCOUT_REPO_URL required}"
-BUILD_CMD="${BUILD_COMMAND:-python3 build.py}"
-DB_FILES="${DB_FILES_TO_COMMIT:-*.db data/*.db}"
+BUILD_CMD="${BUILD_COMMAND:-python3 run_build.py}"
+# Commit the JSON DB files the scout server actually uses (full + slim server file).
+DB_FILES="${DB_FILES_TO_COMMIT:-data/global_players.json data/global_players_slim.json}"
 GIT_BRANCH="${GIT_BRANCH:-main}"
 MIN_API_ENRICHED_PCT="${MIN_API_ENRICHED_PCT:-40}"
 ENRICH_GUARD_DISABLED="${ENRICH_GUARD_DISABLED:-false}"

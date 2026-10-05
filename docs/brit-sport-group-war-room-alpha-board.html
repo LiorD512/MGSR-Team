@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — War Room / Alpha Board (concept)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--blue:#4a5f6f;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    /* Shell */
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper);overflow-y:auto}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a,.nav-group{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav-group:hover,.nav>a.active,.nav-group.active{color:var(--gold-soft)}
+    .nav>a.active:before,.nav-group.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .nav-sub{display:grid;gap:2px;margin:0 0 6px;padding-inline-start:2px}
+    .nav-sub a{display:flex;align-items:center;gap:9px;padding:8px 0;color:#8f8b81;font:9px/1 var(--mono);text-transform:uppercase;transition:color .15s}
+    .nav-sub a:hover,.nav-sub a.active{color:var(--gold-soft)}
+    .nav-sub a .sdot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.5;flex:none}
+    .nav-sub a.active .sdot{opacity:1}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+    .rail-footer .live-row{display:flex;align-items:center;gap:7px}
+    .rail-footer .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.3s ease-in-out infinite}
+    .data-src{margin-top:14px;padding:10px;border:1px solid var(--dark-line);border-radius:3px}
+    .data-src label{display:block;color:#8f8b81;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .data-src .srcs{margin-top:8px;display:grid;gap:5px}
+    .data-src .srcrow{display:flex;align-items:center;gap:7px;font:9px/1.3 var(--mono);color:#c9c3b6}
+    .data-src .srcrow .d{width:6px;height:6px;border-radius:50%;flex:none}
+    .data-src .srcrow .d.on{background:var(--green)}.data-src .srcrow .d.off{background:var(--muted)}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1600px;padding:34px 43px 90px}
+
+    /* data provenance banner */
+    .prov{display:flex;align-items:center;gap:12px;margin-bottom:24px;padding:12px 16px;border:1px dashed var(--gold-soft);background:rgba(164,125,67,.06);color:var(--muted);font:10px/1.5 var(--mono);text-transform:uppercase}
+    .prov b{color:var(--gold)}
+    .prov .x{margin-inline-start:auto;cursor:pointer;color:var(--muted)}
+
+    /* Masthead */
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:26px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;gap:9px}
+    .kicker .pulse{width:7px;height:7px;border-radius:50%;background:var(--red);animation:pulse 1.3s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+    .masthead h1{margin:0;font:500 clamp(52px,6.4vw,92px)/.8 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .masthead .sub{margin:14px 0 0;color:var(--muted);font:12px/1.5 var(--body);max-width:560px}
+    .mast-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+    [dir=rtl] .mast-right{align-items:flex-start}
+    .refresh{display:flex;align-items:center;gap:9px;padding:12px 16px;background:var(--gold-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s}
+    .refresh:hover{background:var(--gold);color:var(--paper)}
+    .refresh svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+    .last-run{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+
+    /* Signals */
+    .signals{display:grid;grid-template-columns:repeat(5,1fr);margin-bottom:22px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .sig{min-height:94px;padding:15px 16px 16px 0;border-inline-end:1px solid var(--line)}
+    .sig:not(:first-child){padding-inline-start:16px}
+    .sig:last-child{border-inline-end:0}
+    .sig label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .sig strong{display:block;margin-top:11px;font:500 clamp(26px,2.8vw,38px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .sig strong{font-weight:800}
+    .sig small{display:block;margin-top:8px;color:var(--muted);font:9px/1 var(--mono)}
+    .sig .gold{color:var(--gold)}.sig .green{color:var(--green)}.sig .red{color:var(--red)}
+
+    /* Lens + trigger filter bar */
+    .tray{border:1px solid var(--line);margin-bottom:14px}
+    .lens-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+    .lens-label{display:flex;align-items:center;padding:0 18px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;border-inline-end:1px solid var(--line);white-space:nowrap}
+    .lens-set{display:flex;flex-wrap:wrap;flex:1}
+    .lens-set button{padding:14px 16px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line);transition:.15s;display:flex;align-items:center;gap:7px}
+    .lens-set button:hover{color:var(--ink)}
+    .lens-set button.on{background:var(--black);color:var(--gold-soft)}
+    .lens-set button .ic{font-size:12px}
+    .search{display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--line)}
+    .search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
+    .search input{width:100%;border:0;background:transparent;padding:18px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .trigrow{display:flex;flex-wrap:wrap;align-items:center;gap:0}
+    .trig{padding:12px 14px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line);display:flex;align-items:center;gap:7px;transition:.15s}
+    .trig:hover{color:var(--ink)}
+    .trig.on{background:var(--gold-soft);color:var(--ink)}
+    .trig .tdot{width:7px;height:7px;border-radius:50%;flex:none}
+    .tray-bottom{display:flex;align-items:center;justify-content:space-between;padding:11px 18px}
+    .sort{display:flex;align-items:center;gap:14px}
+    .sort span{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .sort button{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .sort button.on{color:var(--gold)}
+    .clear{color:var(--red);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count{margin:0 2px 18px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    /* Board */
+    .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:16px}
+    .pcard{border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;transition:border-color .15s;cursor:pointer;position:relative;overflow:hidden}
+    .pcard:hover{border-color:var(--gold-soft)}
+    .pcard.tier-a{border-inline-start:3px solid var(--gold)}
+    .pcard.tier-b{border-inline-start:3px solid var(--green)}
+    .pcard.tier-c{border-inline-start:3px solid var(--muted)}
+
+    .pc-top{display:flex;gap:14px;padding:16px 16px 12px}
+    .alpha{position:relative;width:66px;height:66px;flex:none}
+    .alpha svg{width:66px;height:66px;transform:rotate(-90deg)}
+    .alpha .av{position:absolute;inset:0;display:grid;place-items:center;line-height:1}
+    .alpha .av b{font:500 20px/1 var(--display);color:var(--ink)}
+    .alpha .av small{display:block;color:var(--muted);font:7px/1 var(--mono);text-transform:uppercase;margin-top:3px}
+    .portrait{position:relative;width:56px;height:56px;flex:none}
+    .portrait img{width:100%;height:100%;object-fit:cover;filter:grayscale(.3);background:var(--black);border:1px solid var(--line)}
+    .portrait .flag{position:absolute;bottom:-4px;inset-inline-end:-4px;width:19px;height:13px;object-fit:cover;border:1px solid var(--paper)}
+    .who{min-width:0;flex:1}
+    .who .nm{font:500 23px/.95 var(--display);text-transform:uppercase;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .who .nm{font-weight:800;letter-spacing:normal}
+    .who .meta{margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+    .who .pos{font:8px/1 var(--mono);text-transform:uppercase;color:var(--ink);border:1px solid var(--line);padding:4px 7px}
+    .who .age{font:8px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
+    .who .club{margin-top:8px;color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+    .who .club b{color:var(--ink);font-weight:500}
+
+    /* trigger chips (the "why now") */
+    .triggers{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 12px}
+    .tchip{display:inline-flex;align-items:center;gap:6px;font:8px/1 var(--mono);text-transform:uppercase;padding:5px 8px;border:1px solid var(--line);letter-spacing:.03em}
+    .tchip .d{width:7px;height:7px;border-radius:50%;flex:none}
+    .tchip.xg{color:var(--green);border-color:var(--green)}
+    .tchip.form{color:var(--blue);border-color:var(--blue)}
+    .tchip.contract{color:var(--amber);border-color:var(--amber)}
+    .tchip.free{color:var(--red);border-color:var(--red)}
+    .tchip.fm{color:var(--gold);border-color:var(--gold-soft)}
+    .tchip.rumour{color:var(--ink);border-color:var(--line);background:rgba(17,17,15,.05)}
+    .tchip.brief{color:var(--green);border-color:var(--green);background:rgba(92,111,74,.08)}
+
+    /* stat strip (sportmonks) */
+    .stats{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .stats div{padding:10px 6px;text-align:center;border-inline-end:1px solid var(--line)}
+    .stats div:last-child{border-inline-end:0}
+    .stats label{display:block;color:var(--muted);font:7px/1 var(--mono);text-transform:uppercase}
+    .stats b{display:block;margin-top:6px;font:500 14px/1 var(--mono);color:var(--ink)}
+    .stats b.up{color:var(--green)}.stats b.down{color:var(--red)}.stats b.gold{color:var(--gold)}
+
+    /* mini form sparkline row */
+    .trend{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line)}
+    .trend label{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;white-space:nowrap}
+    .spark{display:flex;align-items:flex-end;gap:3px;height:26px;flex:1}
+    .spark i{flex:1;background:var(--gold-soft);min-height:3px;opacity:.5}
+    .spark i.hi{background:var(--gold);opacity:1}
+    .trend .delta{font:9px/1 var(--mono);white-space:nowrap}
+    .trend .delta.up{color:var(--green)}.trend .delta.down{color:var(--red)}
+
+    .pc-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px}
+    .mv{display:flex;flex-direction:column;gap:3px}
+    .mv label{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .mv b{font:500 17px/1 var(--mono);color:var(--ink)}
+    .mv .ceil{color:var(--gold);font:8px/1 var(--mono)}
+    .acts{display:flex;gap:7px}
+    .acts button{display:inline-flex;align-items:center;gap:5px;padding:9px 11px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--line);color:var(--ink);transition:.15s}
+    .acts .dossier{color:var(--gold);border-color:var(--gold-soft)}
+    .acts .dossier:hover{background:var(--gold-soft);color:var(--ink)}
+    .acts .save:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .acts .dismiss{color:var(--muted)}
+    .acts .dismiss:hover{color:var(--red);border-color:var(--red)}
+
+    .empty{border:1px dashed var(--line);padding:50px 20px;text-align:center;color:var(--muted);font:10px/1.6 var(--mono);text-transform:uppercase}
+
+    /* Dossier drawer */
+    .scrim{position:fixed;inset:0;z-index:30;background:rgba(17,17,15,.6);opacity:0;pointer-events:none;transition:.25s}
+    .scrim.open{opacity:1;pointer-events:auto}
+    .drawer{position:fixed;top:0;inset-inline-end:0;bottom:0;z-index:31;width:min(600px,96vw);background:var(--paper);border-inline-start:4px solid var(--gold);transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);overflow-y:auto}
+    [dir=rtl] .drawer{transform:translateX(-100%)}
+    .drawer.open{transform:none}
+    .dh{position:relative;background:var(--black);color:var(--paper);padding:22px 24px 20px}
+    .dh .close{position:absolute;top:14px;inset-inline-end:16px;color:var(--paper);font:22px/1 var(--display)}
+    .dh-top{display:flex;gap:14px;align-items:center}
+    .dh-top img{width:66px;height:66px;object-fit:cover;filter:grayscale(.25);border:1px solid var(--dark-line);flex:none}
+    .dh-info small{color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}
+    .dh-info h2{margin:7px 0 0;font:500 36px/.85 var(--display);text-transform:uppercase}
+    [dir=rtl] .dh-info h2{font-weight:800}
+    .dh-alpha{display:flex;align-items:center;gap:14px;margin-top:18px;padding-top:16px;border-top:1px solid var(--dark-line)}
+    .dh-alpha .big{font:500 40px/1 var(--display);color:var(--gold-soft)}
+    .dh-alpha .lbl{color:#cfc9bc;font:9px/1.5 var(--mono);text-transform:uppercase}
+    .dh-alpha .verdict{margin-inline-start:auto;padding:8px 14px;font:500 14px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
+    .verdict.SIGN{background:var(--green);color:var(--paper)}
+    .verdict.MONITOR{background:var(--amber);color:var(--paper)}
+    .verdict.PASS{background:var(--red);color:var(--paper)}
+    .db{padding:20px 24px 40px}
+    .sec{border:1px solid var(--line);background:var(--card);margin-bottom:14px}
+    .sec>h3{margin:0;padding:12px 15px;border-bottom:1px solid var(--line);font:500 14px/1 var(--display);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:9px}
+    [dir=rtl] .sec>h3{font-weight:800}
+    .sec>h3 .prov-tag{margin-inline-start:auto;font:7px/1 var(--mono);color:var(--muted);text-transform:uppercase;border:1px solid var(--line);padding:3px 6px;letter-spacing:.05em}
+    .sec .body{padding:14px 15px}
+    .why{display:grid;gap:8px}
+    .why .w{display:flex;gap:9px;align-items:flex-start;font:11px/1.5 var(--body);color:var(--ink)}
+    .why .w .mk{font:8px/1 var(--mono);padding:4px 6px;text-transform:uppercase;flex:none;margin-top:1px;border:1px solid}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line)}
+    .grid2 div{padding:11px 12px;border-inline-end:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .grid2 div:nth-child(even){border-inline-end:0}
+    .grid2 label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .grid2 b{display:block;margin-top:6px;font:500 15px/1 var(--mono);color:var(--ink)}
+    .grid2 b.up{color:var(--green)}.grid2 b.down{color:var(--red)}.grid2 b.gold{color:var(--gold)}
+    .rumours{display:grid;gap:9px}
+    .rum{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);background:var(--paper)}
+    .rum .prob{font:8px/1 var(--mono);text-transform:uppercase;padding:4px 7px;flex:none}
+    .rum .prob.HIGH{background:var(--red);color:var(--paper)}
+    .rum .prob.MEDIUM{background:var(--amber);color:var(--paper)}
+    .rum .prob.LOW{background:var(--paper-2);color:var(--ink)}
+    .rum .rtxt{flex:1;min-width:0}
+    .rum .rtxt b{display:block;font:500 11px/1.3 var(--body);color:var(--ink)}
+    .rum .rtxt span{color:var(--muted);font:8px/1.4 var(--mono);text-transform:uppercase}
+    .cta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+    .cta a{padding:14px;text-align:center;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+    .cta .primary{background:var(--black);color:var(--gold-soft)}
+    .cta .ghost{border:1px solid var(--ink);color:var(--ink)}
+
+    @media(max-width:980px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer,.data-src{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav>a,.nav-group{padding:6px 0}.nav em,.nav>a.active:before,.nav-group.active:before,.nav-sub{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.mast-right{align-items:flex-start;margin-top:18px}
+      .signals{grid-template-columns:1fr 1fr}
+      .lens-row{flex-direction:column;align-items:stretch}.lens-label{border-inline-end:0;border-bottom:1px solid var(--line);padding:12px 16px}
+      .board{grid-template-columns:1fr}.grid2,.cta{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Rail -->
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <button class="nav-group"><span data-t="nav_players">Players</span><em>+</em></button>
+        <a href="#"><span data-t="nav_req">Club Requirements</span><em>03</em></a>
+        <a href="#"><span data-t="nav_cont">Contacts</span><em>04</em></a>
+        <button class="nav-group"><span data-t="nav_signals">Signals</span><em>+</em></button>
+        <button class="nav-group active"><span data-t="nav_warroom">War Room</span><em>−</em></button>
+        <div class="nav-sub">
+          <a class="active" href="#" data-t="nav_board"><span class="sdot"></span>Alpha Board</a>
+          <a href="#" data-t="nav_agents"><span class="sdot"></span>Agent Network</a>
+          <a href="#" data-t="nav_search"><span class="sdot"></span>Scout Search</a>
+          <a href="#" data-t="nav_watch"><span class="sdot"></span>Watchlist</a>
+        </div>
+      </nav>
+      <div class="data-src">
+        <label data-t="ds_title">Data sources · live</label>
+        <div class="srcs">
+          <div class="srcrow"><span class="d on"></span>Sportmonks · xG + rumours</div>
+          <div class="srcrow"><span class="d on"></span>Sportmonks · player stats</div>
+          <div class="srcrow"><span class="d on"></span>Transfermarkt · value</div>
+          <div class="srcrow"><span class="d on"></span>FMInside · CA / PA</div>
+        </div>
+      </div>
+      <div class="rail-footer">
+        <span class="live-row"><span class="live-dot"></span><span data-t="live_lab">Board refreshed</span></span><strong>07:00 TLV</strong>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_warroom">War Room</strong> / <strong data-t="nav_board">Alpha Board</strong> / 05 October 2026</div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <!-- provenance note -->
+        <div class="prov" id="prov">
+          <span data-t="prov_txt"><b>Concept mock.</b> Real players & clubs; every stat is modelled on the exact Sportmonks API schema (xG, form, minutes, transfer rumours) that the live integration would populate. Values are representative, not live-fetched.</span>
+          <span class="x" onclick="document.getElementById('prov').style.display='none'">×</span>
+        </div>
+
+        <!-- Masthead -->
+        <header class="masthead">
+          <div>
+            <p class="kicker"><span class="pulse"></span><span data-t="kicker">Alpha generation / Men platform</span></p>
+            <h1 data-t="head"><span data-t="head_a">The</span> <span data-t="head_b">alpha board.</span></h1>
+            <p class="sub" data-t="sub_txt">Signable players surfaced before the market reacts — ranked by an Alpha Score built from xG over-performance, form, contract runway, releases and rumour heat. Every card tells you why it's here, and why now.</p>
+          </div>
+          <div class="mast-right">
+            <button class="refresh" id="refreshBtn" onclick="rebuild()"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg><span data-t="refresh">Rebuild board</span></button>
+            <span class="last-run" data-t="last_run">Auto-rebuilt daily · 07:00 TLV</span>
+          </div>
+        </header>
+
+        <!-- Signals -->
+        <section class="signals">
+          <div class="sig"><label data-t="s_live">Live opportunities</label><strong id="s-count">18</strong><small data-t="s_live_n">On the board now</small></div>
+          <div class="sig"><label data-t="s_new">New since yesterday</label><strong class="gold">05</strong><small data-t="s_new_n">Fresh triggers</small></div>
+          <div class="sig"><label data-t="s_xg">xG overperformers</label><strong class="green">06</strong><small data-t="s_xg_n">Form running hot</small></div>
+          <div class="sig"><label data-t="s_contract">Contract &lt; 12mo</label><strong class="amber" style="color:var(--amber)">04</strong><small data-t="s_contract_n">Leverage window</small></div>
+          <div class="sig"><label data-t="s_free">Free / released</label><strong class="red">02</strong><small data-t="s_free_n">Available now</small></div>
+        </section>
+
+        <!-- Lenses + triggers -->
+        <section class="tray">
+          <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input data-ph="search" placeholder="Search or describe a target — 'left-footed CB under 23, EU, under €5M'"></label>
+          <div class="lens-row">
+            <span class="lens-label" data-t="l_lens">Lens</span>
+            <div class="lens-set">
+              <button class="on" onclick="lensOne(this)"><span class="ic">⚡</span><span data-t="lens_all">Everything</span></button>
+              <button onclick="lensOne(this)"><span class="ic">💎</span><span data-t="lens_gem">Prospects &amp; gems</span></button>
+              <button onclick="lensOne(this)"><span class="ic">📈</span><span data-t="lens_form">In-form now</span></button>
+              <button onclick="lensOne(this)"><span class="ic">⏳</span><span data-t="lens_leverage">Leverage windows</span></button>
+              <button onclick="lensOne(this)"><span class="ic">🎯</span><span data-t="lens_brief">Matches a brief</span></button>
+              <button onclick="lensOne(this)"><span class="ic">🧬</span><span data-t="lens_similar">Find similar…</span></button>
+            </div>
+          </div>
+          <div class="lens-row">
+            <span class="lens-label" data-t="l_trig">Triggers</span>
+            <div class="trigrow">
+              <button class="trig" onclick="this.classList.toggle('on')"><span class="tdot" style="background:var(--green)"></span><span data-t="tr_xg">xG overperform</span></button>
+              <button class="trig" onclick="this.classList.toggle('on')"><span class="tdot" style="background:var(--blue)"></span><span data-t="tr_form">Form spike</span></button>
+              <button class="trig" onclick="this.classList.toggle('on')"><span class="tdot" style="background:var(--blue)"></span><span data-t="tr_minutes">Minutes rising</span></button>
+              <button class="trig" onclick="this.classList.toggle('on')"><span class="tdot" style="background:var(--amber)"></span><span data-t="tr_contract">Contract expiring</span></button>
+              <button class="trig" onclick="this.classList.toggle('on')"><span class="tdot" style="background:var(--red)"></span><span data-t="tr_free">Released</span></button>
+              <button class="trig" onclick="this.classList.toggle('on')"><span class="tdot" style="background:var(--gold)"></span><span data-t="tr_fm">FM potential gap</span></button>
+              <button class="trig" onclick="this.classList.toggle('on')"><span class="tdot" style="background:var(--ink)"></span><span data-t="tr_rumour">Rumour heat</span></button>
+            </div>
+          </div>
+          <div class="tray-bottom">
+            <div class="sort">
+              <span data-t="sort_lbl">Rank by</span>
+              <button class="on" onclick="sortOne(this)" data-t="sort_alpha">Alpha Score</button>
+              <button onclick="sortOne(this)" data-t="sort_new">Freshness</button>
+              <button onclick="sortOne(this)" data-t="sort_value">Value gap</button>
+              <button onclick="sortOne(this)" data-t="sort_age">Age</button>
+            </div>
+            <button class="clear" data-t="clear">Reset lenses ×</button>
+          </div>
+        </section>
+
+        <p class="result-count"><span data-t="showing_a">Showing</span> <b id="rc">18</b> <span data-t="showing_b">opportunities · ranked by Alpha Score · 2 dismissed today</span></p>
+
+        <div id="board" class="board"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Dossier drawer -->
+  <div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+  <aside class="drawer" id="drawer" aria-label="Player dossier">
+    <div class="dh">
+      <button class="close" onclick="closeDrawer()">×</button>
+      <div class="dh-top">
+        <img id="d-img" src="" alt="">
+        <div class="dh-info"><small id="d-sub">Club / Position / Age</small><h2 id="d-name">Player</h2></div>
+      </div>
+      <div class="dh-alpha">
+        <div><div class="big" id="d-alpha">—</div><div class="lbl" data-t="d_alpha_lbl">Alpha Score</div></div>
+        <span class="verdict SIGN" id="d-verdict">SIGN</span>
+      </div>
+    </div>
+    <div class="db">
+      <!-- why now -->
+      <div class="sec">
+        <h3>⚡ <span data-t="d_why">Why now</span><span class="prov-tag">Computed</span></h3>
+        <div class="body"><div class="why" id="d-why"></div></div>
+      </div>
+      <!-- performance (sportmonks) -->
+      <div class="sec">
+        <h3>📊 <span data-t="d_perf">Performance signal</span><span class="prov-tag">Sportmonks</span></h3>
+        <div class="body">
+          <div class="grid2">
+            <div><label data-t="d_goals">Goals / 90</label><b id="d-g90">—</b></div>
+            <div><label data-t="d_xg">xG / 90</label><b id="d-xg90">—</b></div>
+            <div><label data-t="d_delta">xG over/under</label><b id="d-xgdelta">—</b></div>
+            <div><label data-t="d_npxg">npxG / 90</label><b id="d-npxg">—</b></div>
+            <div><label data-t="d_minutes">Minutes (season)</label><b id="d-min">—</b></div>
+            <div><label data-t="d_rating">Sofascore rating</label><b id="d-rating">—</b></div>
+          </div>
+        </div>
+      </div>
+      <!-- market + contract (sportmonks + TM) -->
+      <div class="sec">
+        <h3>💰 <span data-t="d_market">Market &amp; leverage</span><span class="prov-tag">Sportmonks · TM</span></h3>
+        <div class="body">
+          <div class="grid2">
+            <div><label data-t="d_mv">Market value</label><b id="d-mv">—</b></div>
+            <div><label data-t="d_ceiling">FM ceiling (CA→PA)</label><b class="gold" id="d-ceiling">—</b></div>
+            <div><label data-t="d_contract">Contract until</label><b id="d-contract">—</b></div>
+            <div><label data-t="d_leverage">Leverage</label><b id="d-leverage">—</b></div>
+          </div>
+        </div>
+      </div>
+      <!-- rumour feed (sportmonks) -->
+      <div class="sec">
+        <h3>📰 <span data-t="d_rumours">Rumour feed</span><span class="prov-tag">Sportmonks</span></h3>
+        <div class="body"><div class="rumours" id="d-rumours"></div></div>
+      </div>
+      <div class="cta">
+        <a class="primary" href="#" data-t="d_shortlist">+ Add to shortlist</a>
+        <a class="ghost" href="#" data-t="d_tm">Open on Transfermarkt</a>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    const flag=c=>`https://flagcdn.com/w40/${c}.png`;
+    const PH='https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=200&q=80';
+
+    /* Real players/clubs; data fields modelled on Sportmonks schema (representative values). */
+    const players=[
+      {name:'Assan Ouédraogo',pos:'CM',age:18,nat:'Germany',cc:'de',club:'RB Leipzig',mv:'€18.0m',ceiling:'131→170',
+       g90:0.21,xg90:0.14,npxg90:0.12,xgDelta:+0.07,minutes:1180,rating:7.14,contract:'2029',monthsLeft:40,
+       triggers:['fm','form'],alpha:93,verdict:'SIGN',tier:'a',formSpark:[2,3,4,6,7,8,9],formDelta:'+2 last 5',minSpark:[3,4,5,6,7,8,9],
+       why:['FM potential gap +39 (131→170) — one of the highest in his age bracket','Minutes trending up 6 games running; now a regular starter at 18','xG slightly over-performing — finishing is real, not luck'],
+       rumours:[{to:'Newcastle United',prob:'LOW',src:'Sky Sports',amount:'€22m',date:'2 days ago'}]},
+
+      {name:'Tyler Dibling',pos:'RW',age:18,nat:'England',cc:'gb-eng',club:'Southampton',mv:'€20.0m',ceiling:'128→168',
+       g90:0.28,xg90:0.19,npxg90:0.19,xgDelta:+0.09,minutes:1620,rating:7.02,contract:'2027',monthsLeft:14,
+       triggers:['fm','contract','rumour'],alpha:90,verdict:'SIGN',tier:'a',formSpark:[4,5,5,7,8,8,9],formDelta:'+3 last 5',minSpark:[6,7,7,8,8,9,9],
+       why:['Contract runs down in 14 months — valuation suppressed by relegation-year noise','FM gap +40, elite take-on volume for his age','Three sources link a January move — get ahead of it'],
+       rumours:[{to:'Tottenham',prob:'MEDIUM',src:'The Athletic',amount:'€35m',date:'Yesterday'},{to:'Man United',prob:'LOW',src:'Fabrizio Romano',amount:'—',date:'4 days ago'}]},
+
+      {name:'Karim Konaté',pos:'CF',age:21,nat:'Ivory Coast',cc:'ci',club:'RB Salzburg',mv:'€18.0m',ceiling:'132→164',
+       g90:0.72,xg90:0.58,npxg90:0.51,xgDelta:+0.14,minutes:1340,rating:7.33,contract:'2028',monthsLeft:28,
+       triggers:['xg','form'],alpha:89,verdict:'SIGN',tier:'a',formSpark:[5,6,7,7,8,9,9],formDelta:'+4 last 5',minSpark:[5,6,6,7,7,8,8],
+       why:['Elite xG volume (0.58/90) — Salzburg conversion profile','Over-performing xG by +0.14/90 and sustaining it over 15 games','Movement DNA overlaps early-career high-value strikers'],
+       rumours:[{to:'RB Leipzig',prob:'MEDIUM',src:'Kicker',amount:'€28m',date:'3 days ago'}]},
+
+      {name:'Oscar Gloukh',pos:'AM',age:21,nat:'Israel',cc:'il',club:'RB Salzburg',mv:'€22.0m',ceiling:'139→166',
+       g90:0.31,xg90:0.26,npxg90:0.24,xgDelta:+0.05,minutes:1710,rating:7.41,contract:'2028',monthsLeft:28,
+       triggers:['brief','form','fm'],alpha:88,verdict:'SIGN',tier:'a',formSpark:[6,6,7,8,8,9,9],formDelta:'+2 last 5',minSpark:[7,7,8,8,8,9,9],
+       why:['Matches your open brief: creative #10, EU minutes, Maccabi TLV creative requirement','High chance-creation volume; key passes top quartile','Roster-adjacent — you have relationships here'],
+       rumours:[{to:'Brighton',prob:'LOW',src:'ESPN',amount:'€30m',date:'6 days ago'}]},
+
+      {name:'Yankuba Minteh',pos:'RW',age:20,nat:'Gambia',cc:'gm',club:'Brighton',mv:'€30.0m',ceiling:'134→160',
+       g90:0.33,xg90:0.24,npxg90:0.24,xgDelta:+0.09,minutes:1490,rating:7.08,contract:'2029',monthsLeft:40,
+       triggers:['xg','minutes'],alpha:84,verdict:'MONITOR',tier:'b',formSpark:[4,5,6,6,7,8,8],formDelta:'+2 last 5',minSpark:[4,5,6,7,8,8,9],
+       why:['PL-tested right-sided dribbler, carries into the box rising','Over-performing xG but sample still building','Minutes climbing after a slow start'],
+       rumours:[]},
+
+      {name:'Hugo Larsson',pos:'CM',age:20,nat:'Sweden',cc:'se',club:'Eint. Frankfurt',mv:'€28.0m',ceiling:'140→165',
+       g90:0.12,xg90:0.09,npxg90:0.09,xgDelta:+0.03,minutes:1880,rating:7.19,contract:'2028',monthsLeft:28,
+       triggers:['fm','minutes'],alpha:83,verdict:'MONITOR',tier:'b',formSpark:[6,6,7,7,7,8,8],formDelta:'+1 last 5',minSpark:[7,8,8,8,9,9,9],
+       why:['Bundesliga-tested two-way midfielder, nailed-on starter at 20','Progressive passing 88th percentile for age','FM gap +25 with room to grow in the final third'],
+       rumours:[{to:'Liverpool',prob:'LOW',src:'Bild',amount:'€40m',date:'1 week ago'}]},
+
+      {name:'Dor Turgeman',pos:'CF',age:21,nat:'Israel',cc:'il',club:'Maccabi Tel Aviv',mv:'€4.00m',ceiling:'118→150',
+       g90:0.48,xg90:0.41,npxg90:0.38,xgDelta:+0.07,minutes:1260,rating:7.05,contract:'2026',monthsLeft:9,
+       triggers:['brief','contract','xg'],alpha:81,verdict:'MONITOR',tier:'b',formSpark:[4,5,6,7,8,8,9],formDelta:'+3 last 5',minSpark:[5,5,6,7,7,8,8],
+       why:['Contract expires in 9 months — strong leverage, low fee likely','Clinical movement, fits the Beer Sheva target-man brief','Domestic finisher over-performing xG, ready to step up'],
+       rumours:[{to:'Hapoel Beer Sheva',prob:'MEDIUM',src:'ONE',amount:'€3m',date:'5 days ago'}]},
+
+      {name:'Guy Melamed',pos:'ST',age:29,nat:'Israel',cc:'il',club:'Free agent',mv:'€650k',ceiling:'—',
+       g90:0.41,xg90:0.36,npxg90:0.33,xgDelta:+0.05,minutes:980,rating:6.88,contract:'Free',monthsLeft:0,
+       triggers:['free','xg'],alpha:72,verdict:'MONITOR',tier:'c',formSpark:[5,6,6,7,7,7,8],formDelta:'+1 last 5',minSpark:[4,5,5,6,6,7,7],
+       why:['Available now on a free — zero fee, immediate-impact finisher','Still over-performing xG at 29','Weighing two AFC offers; move fast if interested'],
+       rumours:[{to:'Al-Wehda',prob:'MEDIUM',src:'Winner',amount:'Free',date:'2 days ago'}]}
+    ];
+
+    const board=document.getElementById('board');
+    const T_trig={
+      xg:['xG overperform','ביצועי xG'],form:['Form spike','זינוק בכושר'],minutes:['Minutes rising','דקות עולות'],
+      contract:['Contract <12mo','חוזה <12 ח׳'],free:['Released / free','שוחרר'],fm:['FM gap','פער FM'],
+      brief:['Matches a brief','מתאים לדרישה'],rumour:['Rumour heat','חום שמועות']
+    };
+    const rtlNow=()=>document.documentElement.dir==='rtl';
+
+    function sparkHtml(arr){const mx=Math.max(...arr);return arr.map(v=>`<i class="${v>=mx-0?'hi':(v>=mx-1?'hi':'')}" style="height:${(v/9)*100}%"></i>`).join('');}
+
+    function card(p){
+      const rtl=rtlNow();
+      const circ=2*Math.PI*29, dash=circ*(p.alpha/100);
+      const ring=p.alpha>=88?'var(--gold)':p.alpha>=80?'var(--green)':'var(--muted)';
+      const trigChips=p.triggers.map(t=>{
+        const cls={xg:'xg',form:'form',minutes:'form',contract:'contract',free:'free',fm:'fm',rumour:'rumour',brief:'brief'}[t];
+        const dotc={xg:'var(--green)',form:'var(--blue)',minutes:'var(--blue)',contract:'var(--amber)',free:'var(--red)',fm:'var(--gold)',rumour:'var(--ink)',brief:'var(--green)'}[t];
+        return `<span class="tchip ${cls}"><span class="d" style="background:${dotc}"></span>${rtl?T_trig[t][1]:T_trig[t][0]}</span>`;
+      }).join('');
+      const dcls=p.xgDelta>=0?'up':'down';
+      const dtxt=(p.xgDelta>=0?'+':'')+p.xgDelta.toFixed(2);
+      return `<article class="pcard tier-${p.tier}" onclick='openDrawer(${JSON.stringify(p).replace(/'/g,"&#39;")})'>
+        <div class="pc-top">
+          <div class="alpha">
+            <svg viewBox="0 0 66 66"><circle cx="33" cy="33" r="29" fill="none" stroke="rgba(22,22,19,.12)" stroke-width="4"/>
+            <circle cx="33" cy="33" r="29" fill="none" stroke="${ring}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${dash} ${circ}"/></svg>
+            <div class="av"><b>${p.alpha}</b><small>${rtl?'אלפא':'alpha'}</small></div>
+          </div>
+          <div class="who">
+            <div class="nm">${p.name}</div>
+            <div class="meta"><span class="pos">${p.pos}</span><span class="age">${rtl?'גיל':'Age'} ${p.age}</span><img class="flag" style="position:static;width:18px;height:12px;border:0" src="${flag(p.cc)}" alt=""></div>
+            <div class="club"><b>${p.club}</b> · ${p.nat}</div>
+          </div>
+        </div>
+        <div class="triggers">${trigChips}</div>
+        <div class="stats">
+          <div><label>G/90</label><b>${p.g90.toFixed(2)}</b></div>
+          <div><label>xG/90</label><b>${p.xg90.toFixed(2)}</b></div>
+          <div><label>xG +/−</label><b class="${dcls}">${dtxt}</b></div>
+          <div><label>${rtl?'דירוג':'Rating'}</label><b>${p.rating.toFixed(2)}</b></div>
+          <div><label>CA→PA</label><b class="gold">${p.ceiling}</b></div>
+        </div>
+        <div class="trend">
+          <label>${rtl?'כושר 7 מש׳':'Form · 7g'}</label>
+          <div class="spark">${sparkHtml(p.formSpark)}</div>
+          <span class="delta up">${rtl?'עולה':''} ${p.formDelta}</span>
+        </div>
+        <div class="pc-foot">
+          <div class="mv"><label>${rtl?'שווי שוק':'Market value'}</label><b>${p.mv}</b>${p.ceiling!=='—'?`<span class="ceil">${rtl?'תקרת FM גבוהה':'high FM ceiling'}</span>`:''}</div>
+          <div class="acts">
+            <button class="dossier" onclick='event.stopPropagation();openDrawer(${JSON.stringify(p).replace(/'/g,"&#39;")})'>${rtl?'תיק':'Dossier'}</button>
+            <button class="save" onclick="event.stopPropagation();this.textContent='${rtl?'נשמר':'Saved'}'">${rtl?'רשימה':'Shortlist'}</button>
+            <button class="dismiss" onclick="event.stopPropagation();this.closest('.pcard').style.display='none'" title="${rtl?'הסתר':'Dismiss'}">×</button>
+          </div>
+        </div>
+      </article>`;
+    }
+
+    function render(){board.innerHTML=players.map(card).join('');}
+
+    function openDrawer(p){
+      const rtl=rtlNow();
+      document.getElementById('d-img').src=PH;
+      document.getElementById('d-name').textContent=p.name;
+      document.getElementById('d-sub').textContent=`${p.club} / ${p.pos} / ${rtl?'גיל':'Age'} ${p.age}`;
+      document.getElementById('d-alpha').textContent=p.alpha;
+      const v=document.getElementById('d-verdict');v.textContent=p.verdict;v.className='verdict '+p.verdict;
+      document.getElementById('d-why').innerHTML=p.why.map((w,i)=>`<div class="w"><span class="mk" style="color:var(--gold);border-color:var(--gold-soft)">${i+1}</span>${w}</div>`).join('');
+      document.getElementById('d-g90').textContent=p.g90.toFixed(2);
+      document.getElementById('d-xg90').textContent=p.xg90.toFixed(2);
+      const dd=document.getElementById('d-xgdelta');dd.textContent=(p.xgDelta>=0?'+':'')+p.xgDelta.toFixed(2)+(rtl?' לכל 90':' per 90');dd.className='b '+(p.xgDelta>=0?'up':'down');dd.classList.add(p.xgDelta>=0?'up':'down');
+      document.getElementById('d-npxg').textContent=p.npxg90.toFixed(2);
+      document.getElementById('d-min').textContent=p.minutes.toLocaleString();
+      document.getElementById('d-rating').textContent=p.rating.toFixed(2);
+      document.getElementById('d-mv').textContent=p.mv;
+      document.getElementById('d-ceiling').textContent=p.ceiling;
+      document.getElementById('d-contract').textContent=p.contract;
+      document.getElementById('d-leverage').textContent=p.monthsLeft===0?(rtl?'מקסימלי · חופשי':'Maximal · free agent'):p.monthsLeft<=12?(rtl?'גבוה':'High'):(rtl?'בינוני':'Moderate');
+      const rum=document.getElementById('d-rumours');
+      rum.innerHTML=p.rumours.length?p.rumours.map(r=>`<div class="rum"><span class="prob ${r.prob}">${r.prob}</span><div class="rtxt"><b>→ ${r.to} · ${r.amount}</b><span>${r.src} · ${r.date}</span></div></div>`).join('')
+        :`<p style="margin:0;color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase">${rtl?'אין שמועות פעילות':'No active rumours — low market noise'}</p>`;
+      document.getElementById('drawer').classList.add('open');
+      document.getElementById('scrim').classList.add('open');
+    }
+    function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('scrim').classList.remove('open');}
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+
+    function lensOne(b){[...b.parentNode.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+    function sortOne(b){[...b.parentNode.querySelectorAll('button')].forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+    let busy=false;
+    function rebuild(){if(busy)return;busy=true;const b=document.getElementById('refreshBtn');b.classList.add('live');setTimeout(()=>{b.classList.remove('live');busy=false;},1400);}
+
+    /* localization */
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקנים',nav_req:'דרישות מועדונים',nav_cont:'אנשי קשר',nav_signals:'התראות',
+      nav_warroom:'חדר מלחמה',nav_board:'לוח אלפא',nav_agents:'רשת סוכנים',nav_search:'חיפוש סקאוט',nav_watch:'רשימת מעקב',
+      ds_title:'מקורות נתונים · חי',live_lab:'הלוח רוענן',
+      prov_txt:'מוקאפ קונספט. שחקנים ומועדונים אמיתיים; כל נתון בנוי על הסכמה המדויקת של Sportmonks (xG, כושר, דקות, שמועות העברה). הערכים מייצגים, לא נשלפו בזמן אמת.',
+      kicker:'ייצור אלפא / פלטפורמת גברים',head_a:'לוח',head_b:'האלפא.',
+      sub_txt:'שחקנים בני-החתמה שמתגלים לפני שהשוק מגיב — מדורגים לפי ציון אלפא הבנוי מביצועי xG, כושר, מרחק לסיום חוזה, שחרורים וחום שמועות. כל כרטיס מספר למה הוא כאן, ולמה עכשיו.',
+      refresh:'בנה מחדש',last_run:'נבנה אוטומטית מדי יום · 07:00',
+      s_live:'הזדמנויות פעילות',s_live_n:'על הלוח עכשיו',s_new:'חדשות מאתמול',s_new_n:'טריגרים טריים',s_xg:'מצטייני xG',s_xg_n:'כושר חם',s_contract:'חוזה <12 ח׳',s_contract_n:'חלון מינוף',s_free:'חופשי / שוחרר',s_free_n:'זמין עכשיו',
+      l_lens:'עדשה',lens_all:'הכל',lens_gem:'כשרונות ומציאות',lens_form:'בכושר כעת',lens_leverage:'חלונות מינוף',lens_brief:'מתאים לדרישה',lens_similar:'מצא דומים…',
+      l_trig:'טריגרים',tr_xg:'ביצועי xG',tr_form:'זינוק כושר',tr_minutes:'דקות עולות',tr_contract:'חוזה מסתיים',tr_free:'שוחרר',tr_fm:'פער פוטנציאל FM',tr_rumour:'חום שמועות',
+      sort_lbl:'דרג לפי',sort_alpha:'ציון אלפא',sort_new:'טריות',sort_value:'פער ערך',sort_age:'גיל',clear:'אפס עדשות ×',
+      showing_a:'מוצג',showing_b:'הזדמנויות · מדורג לפי ציון אלפא · 2 נדחו היום',
+      d_alpha_lbl:'ציון אלפא',d_why:'למה עכשיו',d_perf:'אות ביצועים',d_market:'שוק ומינוף',d_rumours:'פיד שמועות',
+      d_goals:'שערים / 90',d_xg:'xG / 90',d_delta:'xG מעל/מתחת',d_npxg:'npxG / 90',d_minutes:'דקות (עונה)',d_rating:'דירוג Sofascore',
+      d_mv:'שווי שוק',d_ceiling:'תקרת FM (CA→PA)',d_contract:'חוזה עד',d_leverage:'מינוף',d_shortlist:'+ הוסף לרשימה',d_tm:'פתח בטרנספרמרקט'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.textContent);
+    document.querySelectorAll('[data-ph]').forEach(el=>EN['ph_'+el.dataset.ph]=el.getAttribute('placeholder'));
+    const PH_HE={search:'חפש או תאר מטרה — "בלם שמאלי עד 23, EU, עד €5M"'};
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.textContent=(rtl?(T.he[k]??EN[k]):EN[k])||el.textContent;});
+      document.querySelectorAll('[data-ph]').forEach(el=>{const k=el.dataset.ph;el.setAttribute('placeholder',(rtl?(PH_HE[k]??EN['ph_'+k]):EN['ph_'+k])||'');});
+      render();
+    }
+    render();
+  </script>
+</body>
+</html>
