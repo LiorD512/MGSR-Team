@@ -14,7 +14,7 @@ import MobileBottomTabBar from '@/components/mobile/MobileBottomTabBar';
 import NotificationPrompt from '@/components/NotificationPrompt';
 import { WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 
-type NavItem = { href: string; labelKey: string; badge?: 'chat' | 'new' };
+type NavItem = { href: string; labelKey: string; badge?: 'chat' | 'new'; children?: NavItem[] };
 type NavSection = { id: string; titleKey: string; items: NavItem[] };
 
 const navSections: NavSection[] = [
@@ -47,7 +47,16 @@ const navSections: NavSection[] = [
     id: 'intel',
     titleKey: 'app_shell_section_intelligence',
     items: [
-      { href: '/war-room', labelKey: 'nav_war_room' },
+      {
+        href: '/war-room',
+        labelKey: 'nav_war_room',
+        children: [
+          { href: '/war-room/discovery', labelKey: 'nav_war_room_discovery' },
+          { href: '/war-room/agent-network', labelKey: 'nav_war_room_agent_network' },
+          { href: '/war-room/ai-scout', labelKey: 'nav_ai_scout' },
+          { href: '/war-room/find-next', labelKey: 'nav_find_next' },
+        ],
+      },
       // TEMP HIDDEN (user request): { href: '/chat-room', labelKey: 'nav_chat_room', badge: 'chat' },
     ],
   },
@@ -88,6 +97,70 @@ const youthNavSections: NavSection[] = [
 function isNavItemActive(pathname: string, href: string) {
   if (href === '/dashboard') return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/* ── Collapsible nav group (e.g. War Room) ── */
+function NavGroup({
+  item,
+  pathname,
+  t,
+  onNavClick,
+  activeClass,
+}: {
+  item: NavItem;
+  pathname: string;
+  t: (k: string) => string;
+  onNavClick?: () => void;
+  activeClass: string;
+}) {
+  const children = item.children ?? [];
+  const anyChildActive = children.some((c) => isNavItemActive(pathname, c.href));
+  const groupMatchesPath = pathname === item.href || pathname.startsWith(`${item.href}/`);
+  const [open, setOpen] = useState(groupMatchesPath);
+
+  // Keep the group open whenever we navigate into one of its routes.
+  useEffect(() => {
+    if (groupMatchesPath) setOpen(true);
+  }, [groupMatchesPath]);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={`group w-full rounded-2xl border px-4 py-3 transition min-h-[48px] flex items-center justify-between ${
+          anyChildActive
+            ? activeClass
+            : 'border-white/5 text-mgsr-muted hover:text-mgsr-text hover:border-white/10 hover:bg-white/[0.03]'
+        }`}
+      >
+        <span className="font-medium tracking-[0.01em]">{t(item.labelKey)}</span>
+        <span className="text-base leading-none opacity-80 w-4 text-center">{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <div className="mt-1.5 ml-3 space-y-1">
+          {children.map((child) => {
+            const isActive = isNavItemActive(pathname, child.href);
+            return (
+              <Link
+                key={child.href}
+                href={child.href}
+                onClick={onNavClick}
+                className={`block rounded-xl border px-4 py-2.5 text-sm transition min-h-[42px] flex items-center ${
+                  isActive
+                    ? activeClass
+                    : 'border-white/5 text-mgsr-muted hover:text-mgsr-text hover:border-white/10 hover:bg-white/[0.03]'
+                }`}
+              >
+                <span className="font-medium tracking-[0.01em]">{t(child.labelKey)}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ── Desktop sidebar nav content (unchanged) ── */
@@ -147,6 +220,18 @@ function NavContent({
             <div className="px-3 text-[10px] uppercase tracking-[0.24em] text-mgsr-muted/80">{t(section.titleKey)}</div>
             <div className="space-y-1.5">
               {section.items.map((item) => {
+                if (item.children) {
+                  return (
+                    <NavGroup
+                      key={item.href}
+                      item={item}
+                      pathname={pathname}
+                      t={t}
+                      onNavClick={onNavClick}
+                      activeClass={activeClass}
+                    />
+                  );
+                }
                 const isActive = isNavItemActive(pathname, item.href);
                 return (
                   <Link

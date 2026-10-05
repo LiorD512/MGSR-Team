@@ -67,7 +67,7 @@ interface TabItem {
 const menTabs: TabItem[] = [
   { href: '/dashboard', labelKey: 'nav_dashboard', icon: IconDashboard },
   { href: '/players', labelKey: 'nav_players', icon: IconPlayers, matchPrefixes: ['/players'] },
-  { href: '/war-room', labelKey: 'nav_war_room', icon: IconAIScout },
+  { href: '/war-room/discovery', labelKey: 'nav_war_room', icon: IconAIScout, matchPrefixes: ['/war-room'] },
   ...(WEB_TASKS_ENABLED ? [{ href: '/tasks', labelKey: 'nav_tasks', icon: IconTasks }] : []),
 ];
 
@@ -89,7 +89,10 @@ export const menMoreItems = [
   { href: '/returnees', labelKey: 'nav_returnee' },
   // DISABLED — Vercel cost optimization (May 2026)
   // { href: '/news', labelKey: 'nav_news' },
-  { href: '/war-room', labelKey: 'nav_war_room' },
+  { href: '/war-room/discovery', labelKey: 'nav_war_room_discovery' },
+  { href: '/war-room/agent-network', labelKey: 'nav_war_room_agent_network' },
+  { href: '/war-room/ai-scout', labelKey: 'nav_ai_scout' },
+  { href: '/war-room/find-next', labelKey: 'nav_find_next' },
   // { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
   // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio' },
   { href: '/contacts', labelKey: 'nav_contacts' },
