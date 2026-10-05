@@ -72,16 +72,6 @@
     @keyframes spin{to{transform:rotate(360deg)}}
     .last-run{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
 
-    /* ── Sub-view tab strip ── */
-    .viewstrip{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);margin-bottom:22px}
-    .viewstrip button{display:flex;align-items:center;gap:10px;padding:15px 20px;font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-inline-end:1px solid var(--line);transition:.15s;flex:1;justify-content:center;min-width:150px}
-    .viewstrip button:last-child{border-inline-end:0}
-    .viewstrip button .ico{font-size:14px;line-height:1}
-    .viewstrip button:hover{color:var(--ink)}
-    .viewstrip button.active{background:var(--black);color:var(--gold-soft)}
-    .viewstrip button .n{color:var(--muted);font-size:8px}
-    .viewstrip button.active .n{color:var(--gold-soft)}
-
     /* ── Enrichment ticker ── */
     .ticker{border:1px solid var(--line);background:var(--card);margin-bottom:22px;padding:16px 18px}
     .ticker-head{display:flex;align-items:center;justify-content:space-between;gap:14px}
@@ -279,7 +269,6 @@
       .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
       .masthead{display:block}.mast-right{align-items:flex-start;margin-top:18px}
       .signals{grid-template-columns:1fr 1fr}.ticker-stats{grid-template-columns:1fr 1fr}
-      .viewstrip button{min-width:50%;flex:auto}
       .filter-row{flex-direction:column;align-items:stretch}.filter-label{border-inline-end:0;border-bottom:1px solid var(--line);padding:12px 16px}
       .feed{grid-template-columns:1fr}.mkt-grid,.drawer-cta{grid-template-columns:1fr}
     }
@@ -332,13 +321,6 @@
         </header>
 
         <!-- Sub-view strip -->
-        <div class="viewstrip" role="tablist">
-          <button class="active" data-view="discovery" onclick="setView('discovery')"><span class="ico">⚡</span><span data-t="vs_discovery">Discovery</span><span class="n">24</span></button>
-          <button data-view="agents" onclick="setView('agents')"><span class="ico">🕵</span><span data-t="vs_agents">Agent Network</span><span class="n">12</span></button>
-          <button data-view="aiscout" onclick="setView('aiscout')"><span class="ico">🔍</span><span data-t="vs_aiscout">AI Scout</span></button>
-          <button data-view="findnext" onclick="setView('findnext')"><span class="ico">🧠</span><span data-t="vs_findnext">Find Next</span></button>
-        </div>
-
         <!-- Enrichment ticker (shown while sweeping) -->
         <section class="ticker" id="ticker" style="display:none">
           <div class="ticker-head">
@@ -774,7 +756,6 @@
     /* ───────────── View switching ───────────── */
     function setView(v){
       document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+v));
-      document.querySelectorAll('.viewstrip button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
       document.querySelectorAll('.nav-sub a').forEach(a=>a.classList.remove('active'));
       const map={discovery:0,agents:1,aiscout:2,findnext:3};
       document.querySelectorAll('.nav-sub a')[map[v]].classList.add('active');
@@ -801,7 +782,6 @@
       kicker:'מרכז גיוס / פלטפורמת גברים',head_a:'חדר',head_b:'המלחמה.',
       sub_txt:'גילוי מבוסס AI, רשת הסוכנים שלך, סקאוטינג בשפה טבעית והתאמת חתימה "מצא את הבא" — שולחן מודיעין אחד לכל החלטת חתימה.',
       refresh:'הפעל סריקת גילוי',last_run:'סריקה אחרונה · לפני 18 דק׳',
-      vs_discovery:'גילוי',vs_agents:'רשת סוכנים',vs_aiscout:'סקאוט AI',vs_findnext:'מצא את הבא',
       enriching:'מעשיר מועמדי גילוי',stage:'שלב · התאמה לדרישות מועדון',tk_proc:'נסרקו',tk_ok:'כשירים',tk_err:'הושמטו',tk_eta:'זמן משוער',tk_now:'כעת',
       s_total:'מועמדים פעילים',s_total_n:'סריקה זו',s_match:'התאמות לדרישות',s_match_n:'מתאימים לבקשות',s_gem:'מציאות נסתרות',s_gem_n:'מתומחרים נמוך · PA גבוה',s_sign:'מדורגי חתימה',s_sign_n:'המלצת AI',
       f_source:'מקור',f_pos:'עמדה',f_rec:'פסיקת AI',all:'הכל',src_match:'התאמה לדרישה',src_gem:'מציאה',src_general:'מאגר כללי',rec_sign:'חתום',rec_monitor:'עקוב',
