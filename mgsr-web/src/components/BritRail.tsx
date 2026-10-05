@@ -22,7 +22,8 @@ export type BritRailActive =
   | 'release'
   | 'club-change'
   | 'returnees'
-  | 'contract-finisher';
+  | 'contract-finisher'
+  | 'war-room';
 
 interface BritRailProps {
   active: BritRailActive;
@@ -40,12 +41,19 @@ export default function BritRail({ active }: BritRailProps) {
     active === 'release' || active === 'club-change' || active === 'returnees' || active === 'contract-finisher';
   const [signalsOpen, setSignalsOpen] = useState(signalsActive);
 
+  const warRoomActive = active === 'war-room' || pathname.startsWith('/war-room');
+  const [warRoomOpen, setWarRoomOpen] = useState(warRoomActive);
+
   const isRoster = pathname === '/players' || pathname.startsWith('/players/');
   const isShortlist = pathname === '/shortlist';
   const isRelease = pathname === '/release-notifications';
   const isClubChange = pathname === '/club-change-notifications';
   const isReturnees = pathname === '/returnees';
   const isContractFinisher = pathname === '/contract-finisher';
+  const isWarDiscovery = pathname === '/war-room/discovery' || pathname === '/war-room';
+  const isWarAgents = pathname === '/war-room/agent-network';
+  const isWarAiScout = pathname === '/war-room/ai-scout';
+  const isWarFindNext = pathname === '/war-room/find-next';
 
   return (
     <aside className="brit-rail">
@@ -118,6 +126,37 @@ export default function BritRail({ active }: BritRailProps) {
                 </Link>
                 <Link href="/contract-finisher" className={active === 'contract-finisher' || isContractFinisher ? 'active' : ''}>
                   <span>{t('nav_contract_finisher')}</span>
+                </Link>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* War Room group — expandable (men-only) */}
+        {!isYouth && (
+          <>
+            <button
+              type="button"
+              className={`brit-nav-group${warRoomActive ? ' active' : ''}`}
+              aria-expanded={warRoomOpen}
+              onClick={() => setWarRoomOpen((v) => !v)}
+            >
+              <span>{t('nav_war_room')}</span>
+              <em>{warRoomOpen ? '−' : '+'}</em>
+            </button>
+            {warRoomOpen && (
+              <div className="brit-nav-sub">
+                <Link href="/war-room/discovery" className={isWarDiscovery ? 'active' : ''}>
+                  <span>{t('nav_war_room_discovery')}</span>
+                </Link>
+                <Link href="/war-room/agent-network" className={isWarAgents ? 'active' : ''}>
+                  <span>{t('nav_war_room_agent_network')}</span>
+                </Link>
+                <Link href="/war-room/ai-scout" className={isWarAiScout ? 'active' : ''}>
+                  <span>{t('nav_ai_scout')}</span>
+                </Link>
+                <Link href="/war-room/find-next" className={isWarFindNext ? 'active' : ''}>
+                  <span>{t('nav_find_next')}</span>
                 </Link>
               </div>
             )}

@@ -4,13 +4,14 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import AppLayout from '@/components/AppLayout';
+import BritRail from '@/components/BritRail';
+import BritPlatformSwitch from '@/components/BritPlatformSwitch';
+import BritLoader from '@/components/BritLoader';
 import FindNextTab from '@/components/FindNextTab';
-import { WarRoomMasthead } from '../_shared';
 
 export default function WarRoomFindNextPage() {
   const { user, loading } = useAuth();
-  const { t, isRtl, lang } = useLanguage();
+  const { t, isRtl, lang, setLang } = useLanguage();
   const router = useRouter();
   const isHe = lang === 'he';
 
@@ -19,28 +20,48 @@ export default function WarRoomFindNextPage() {
   }, [user, loading, router]);
 
   if (loading || !user) {
-    return (
-      <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className="animate-pulse text-[var(--mgsr-gold)] font-display">{t('loading')}</div>
-      </div>
-    );
+    return <BritLoader fullPage />;
   }
 
+  const dateStr = new Date().toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+  const timeStr = new Date().toLocaleTimeString(isRtl ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+
   return (
-    <AppLayout>
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-[78rem] mx-auto">
-        <WarRoomMasthead
-          kicker={isHe ? 'מצא את הבא / התאמת חתימה' : 'Find next / Signature match'}
-          titleLead={isHe ? 'מצא' : 'Find'}
-          titleAccent={isHe ? 'את הבא.' : 'next.'}
-          sub={
-            isHe
-              ? 'חיפוש יורש מבוסס דנ"א של כוכב — מצא את ההתאמה הבאה לפי חתימת שחקן.'
-              : 'Signature-based star successor search — find the next match from a player DNA profile.'
-          }
-        />
-        <FindNextTab />
+    <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
+      <div className="brit-app">
+        <BritRail active="war-room" />
+
+        <div className="brit-main">
+          <header className="brit-topbar">
+            <div>
+              BRIT / <strong>{t('nav_war_room')}</strong> / <strong>{t('nav_find_next')}</strong> / {dateStr}
+            </div>
+            <div className="brit-actions">
+              <BritPlatformSwitch />
+              <button onClick={() => setLang(lang === 'en' ? 'he' : 'en')}>{lang === 'en' ? 'HE / EN' : 'EN / HE'}</button>
+              <span>TLV {timeStr}</span>
+            </div>
+          </header>
+
+          <main className="brit-canvas">
+            <header className="brit-masthead">
+              <div>
+                <p className="brit-kicker">{isHe ? 'מצא את הבא / התאמת חתימה' : 'Find next / Signature match'}</p>
+                <h1>
+                  {isHe ? 'מצא את' : 'Find'} <span>{isHe ? 'הבא.' : 'next.'}</span>
+                </h1>
+                <p className="brit-ra-sub">
+                  {isHe
+                    ? 'חיפוש יורש מבוסס דנ"א של כוכב — מצא את ההתאמה הבאה לפי חתימת שחקן.'
+                    : 'Signature-based star successor search — find the next match from a player DNA profile.'}
+                </p>
+              </div>
+            </header>
+
+            <FindNextTab />
+          </main>
+        </div>
       </div>
-    </AppLayout>
+    </div>
   );
 }

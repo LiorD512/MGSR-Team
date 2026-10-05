@@ -5122,3 +5122,151 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 @keyframes bl-sp{to{transform:rotate(360deg)}}
 
 .brit-login .bl-hint{margin:26px 0 0;text-align:center;color:var(--muted);font:9px/1.5 var(--l-mono);text-transform:uppercase;letter-spacing:.06em}
+
+/* ═══════════════════════════════════════════════════════
+   MEN WAR ROOM (Discovery / Agent network / AI scout / Find next)
+   — extends .brit-room. Reuses .brit-ra-* feed/card styling and only
+   adds the few helpers the War Room cards need, all in the gold/black
+   token palette so they match the approved editorial mock.
+   ═══════════════════════════════════════════════════════ */
+
+/* Four equal signal tiles (variant of brit-signals-3) */
+.brit-room .brit-signals.brit-signals-4{grid-template-columns:repeat(4,1fr);margin-bottom:34px}
+.brit-room .brit-signals-4 .brit-signal:first-child strong{font:500 clamp(30px,3.6vw,50px)/0.8 var(--display);letter-spacing:0}
+.brit-room .brit-signal strong.brit-gold{color:var(--gold)}
+
+/* Masthead right column — refresh + last-run, reuse .brit-ra-mast/.brit-ra-refresh/.brit-ra-lastrun */
+
+/* ── War Room card body (sits under the .brit-ra-top header inside a .brit-ra-alert) ── */
+.brit-room .brit-wr-body{display:flex;flex-direction:column;padding:14px 16px;gap:11px}
+.brit-room .brit-wr-badges{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.brit-room .brit-wr-tag{font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:5px 8px;border:1px solid var(--line);color:var(--muted)}
+.brit-room .brit-wr-tag.gold{color:var(--gold);border-color:var(--gold-soft)}
+.brit-room .brit-wr-tag.solid{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+.brit-room .brit-wr-tag.roster{color:var(--green);border-color:var(--green)}
+.brit-room .brit-wr-tag.shortlist{color:var(--gold);border-color:var(--gold-soft)}
+
+/* Stats / FM metrics line */
+.brit-room .brit-wr-stats{display:flex;flex-wrap:wrap;gap:12px;color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}
+.brit-room .brit-wr-stats b{color:var(--ink);font-weight:500}
+.brit-room .brit-wr-stats .rating{color:var(--gold);font-weight:500}
+
+/* Hidden-gem reason block */
+.brit-room .brit-wr-gem{border:1px solid var(--gold-soft);background:color-mix(in srgb, var(--gold-soft) 8%, transparent);padding:11px 12px}
+.brit-room .brit-wr-gem label{display:block;color:var(--gold);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.brit-room .brit-wr-gem p{margin:0;color:var(--ink);font:11px/1.5 var(--body)}
+
+/* ── AI Scout console ── */
+.brit-room .brit-wr-console{border:1px solid var(--line);background:var(--card);padding:18px 20px;margin-bottom:16px}
+.brit-room .brit-wr-console-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em}
+.brit-room .brit-wr-console-head .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);animation:brit-ra-pulse 1.2s ease-in-out infinite}
+.brit-room .brit-wr-searchbox{display:flex;gap:10px;align-items:stretch}
+.brit-room .brit-wr-searchbox textarea{flex:1;resize:none;padding:12px 14px;background:var(--paper);border:1px solid var(--line);color:var(--ink);font:13px/1.5 var(--body);transition:border-color .15s}
+.brit-room .brit-wr-searchbox textarea:focus{outline:0;border-color:var(--gold-soft)}
+.brit-room .brit-wr-searchbox textarea::placeholder{color:var(--muted)}
+.brit-room .brit-wr-searchbtn{flex:none;align-self:flex-start;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:14px 18px;background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s}
+.brit-room .brit-wr-searchbtn:hover{background:var(--gold);color:var(--paper)}
+.brit-room .brit-wr-searchbtn:disabled{opacity:.5;cursor:default}
+.brit-room .brit-wr-searchbtn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+.brit-room .brit-wr-searchbtn .sp{width:13px;height:13px;border:2px solid rgba(22,22,19,.3);border-top-color:var(--ink);border-radius:50%;animation:brit-ra-spin .8s linear infinite}
+.brit-room .brit-wr-chiprow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+.brit-room .brit-wr-chiprow .lbl{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+.brit-room .brit-wr-chip{padding:8px 11px;border:1px solid var(--line);font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);transition:.15s;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brit-room .brit-wr-chip:hover{color:var(--ink);border-color:var(--gold-soft)}
+.brit-room .brit-wr-chip.on{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+.brit-room .brit-wr-chip:disabled{opacity:.5;cursor:default}
+
+/* Interpretation panel */
+.brit-room .brit-wr-interp{border:1px solid var(--gold-soft);background:color-mix(in srgb, var(--gold-soft) 7%, transparent);padding:14px 16px;margin-bottom:16px}
+.brit-room .brit-wr-interp label{display:block;color:var(--gold);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px}
+.brit-room .brit-wr-interp p{margin:0 0 5px;color:var(--ink);font:12px/1.5 var(--body)}
+.brit-room .brit-wr-interp p:last-child{margin-bottom:0}
+
+/* Error banner */
+.brit-room .brit-wr-error{border:1px solid var(--red);background:color-mix(in srgb, var(--red) 8%, transparent);padding:14px 16px;margin-bottom:16px;color:var(--red);font:11px/1.5 var(--body)}
+.brit-room .brit-wr-error button{margin-top:6px;color:var(--red);font:9px/1 var(--mono);text-transform:uppercase;text-decoration:underline}
+
+/* Results header row (count + find more) */
+.brit-room .brit-wr-reshead{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:13px;margin-bottom:16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brit-room .brit-wr-reshead .cnt{display:flex;align-items:center;gap:10px;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink)}
+.brit-room .brit-wr-reshead .cnt .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.brit-room .brit-wr-reshead .cnt .mode{color:var(--gold);border:1px solid var(--gold-soft);padding:4px 7px}
+
+/* Scout result card — match ring + recommendation */
+.brit-room .brit-wr-scoutcard{border:1px solid var(--line);background:var(--card);transition:border-color .15s}
+.brit-room .brit-wr-scoutcard:hover{border-color:var(--gold-soft)}
+.brit-room .brit-wr-scoutcard.open{border-color:var(--gold-soft)}
+.brit-room .brit-wr-scouttop{display:flex;gap:14px;padding:16px;cursor:pointer;align-items:flex-start}
+.brit-room .brit-wr-ring{width:52px;height:52px;flex:none;border-radius:50%;display:grid;place-items:center}
+.brit-room .brit-wr-ring .inner{width:40px;height:40px;border-radius:50%;background:var(--card);display:grid;place-items:center}
+.brit-room .brit-wr-ring .inner b{font:500 12px/1 var(--display);color:var(--gold)}
+.brit-room .brit-wr-scoutname{font:500 20px/.95 var(--display);text-transform:uppercase;letter-spacing:-.01em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[dir=rtl] .brit-room .brit-wr-scoutname{font-weight:800;letter-spacing:normal}
+.brit-room .brit-wr-rec{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--line)}
+.brit-room .brit-wr-rec svg{width:11px;height:11px;fill:currentColor}
+.brit-room .brit-wr-rec.sign{color:var(--green);border-color:var(--green)}
+.brit-room .brit-wr-rec.monitor{color:var(--gold);border-color:var(--gold-soft)}
+.brit-room .brit-wr-rec.pass{color:var(--red);border-color:var(--red)}
+.brit-room .brit-wr-chev{width:15px;height:15px;stroke:var(--muted);fill:none;stroke-width:2;transition:transform .2s;flex:none}
+.brit-room .brit-wr-scoutcard.open .brit-wr-chev{transform:rotate(180deg)}
+
+/* Scout analysis chip sections */
+.brit-room .brit-wr-sec{margin-top:4px}
+.brit-room .brit-wr-sec label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.brit-room .brit-wr-sec .chips{display:flex;flex-wrap:wrap;gap:6px}
+.brit-room .brit-wr-sec .chips span{font:9px/1.2 var(--mono);padding:5px 7px;border:1px solid var(--line);color:var(--muted)}
+.brit-room .brit-wr-sec .chips span.gold{color:var(--gold);border-color:var(--gold-soft)}
+.brit-room .brit-wr-sec .chips span.green{color:var(--green);border-color:var(--green)}
+
+/* Expanded report */
+.brit-room .brit-wr-report{border-top:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.brit-room .brit-wr-report .loadrow{display:flex;align-items:center;gap:10px;color:var(--gold);font:10px/1 var(--mono);text-transform:uppercase}
+.brit-room .brit-wr-report .loadrow .sp{width:16px;height:16px;border:2px solid rgba(201,166,107,.35);border-top-color:var(--gold-soft);border-radius:50%;animation:brit-ra-spin .9s linear infinite}
+.brit-room .brit-wr-verdict{border:1px solid var(--gold-soft);background:color-mix(in srgb, var(--gold-soft) 8%, transparent);padding:13px 14px}
+.brit-room .brit-wr-verdict label{display:block;color:var(--gold);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.brit-room .brit-wr-verdict p{margin:0;color:var(--ink);font:12px/1.5 var(--body)}
+.brit-room .brit-wr-verdict .risk{margin-top:8px;color:var(--red);font:10px/1.4 var(--body)}
+.brit-room .brit-wr-verdict .opp{margin-top:5px;color:var(--green);font:10px/1.4 var(--body)}
+.brit-room .brit-wr-repgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.brit-room .brit-wr-repcell{border:1px solid var(--line);background:var(--paper);padding:11px 12px}
+.brit-room .brit-wr-repcell h5{margin:0 0 6px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.brit-room .brit-wr-repcell p{margin:0;color:var(--ink);font:11px/1.5 var(--body)}
+
+/* Agent network grouped sections */
+.brit-room .brit-wr-agentgroup{border:1px solid var(--line);background:var(--card);margin-bottom:18px}
+.brit-room .brit-wr-agenthead{display:flex;align-items:center;gap:11px;padding:13px 16px;background:var(--black);color:var(--paper);border-bottom:1px solid var(--dark-line)}
+.brit-room .brit-wr-agenthead .flag{font-size:20px;line-height:1}
+.brit-room .brit-wr-agenthead h3{margin:0;flex:1;font:500 18px/1 var(--display);text-transform:uppercase;letter-spacing:-.01em}
+[dir=rtl] .brit-room .brit-wr-agenthead h3{font-weight:800;letter-spacing:normal}
+.brit-room .brit-wr-agenthead .cnt{color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}
+.brit-room .brit-wr-profiles{display:flex;flex-direction:column}
+.brit-room .brit-wr-profile{display:flex;gap:13px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.brit-room .brit-wr-profile:last-child{border-bottom:0}
+.brit-room .brit-wr-profile .pic{width:52px;height:52px;flex:none;object-fit:cover;filter:grayscale(.25);background:var(--black);border:1px solid var(--line)}
+.brit-room .brit-wr-profile .body{min-width:0;flex:1;display:flex;flex-direction:column;gap:7px}
+.brit-room .brit-wr-profile .nm{font:500 17px/1 var(--display);text-transform:uppercase;letter-spacing:-.01em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[dir=rtl] .brit-room .brit-wr-profile .nm{font-weight:800;letter-spacing:normal}
+.brit-room .brit-wr-profile .sub{color:var(--muted);font:10px/1.3 var(--mono);text-transform:uppercase}
+.brit-room .brit-wr-profile .reason{color:var(--ink);font:11px/1.5 var(--body);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.brit-room .brit-wr-profile .foundby{display:inline-flex;align-items:center;gap:5px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--gold);border:1px solid var(--gold-soft);padding:4px 7px;align-self:flex-start}
+
+/* Action row (shared by discovery/scout/profile cards) */
+.brit-room .brit-wr-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.brit-room .brit-wr-acts a,.brit-room .brit-wr-acts button{display:inline-flex;align-items:center;gap:6px;padding:8px 11px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--line);color:var(--ink);transition:.15s}
+.brit-room .brit-wr-acts a:hover{border-color:var(--gold-soft);color:var(--gold)}
+.brit-room .brit-wr-acts .save{color:var(--gold);border-color:var(--gold-soft)}
+.brit-room .brit-wr-acts .save:hover{background:var(--gold-soft);color:var(--ink)}
+.brit-room .brit-wr-acts .save:disabled{opacity:.55;cursor:default}
+.brit-room .brit-wr-acts .save svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8}
+.brit-room .brit-wr-acts .fb{width:30px;height:30px;padding:0;display:grid;place-items:center;color:var(--muted)}
+.brit-room .brit-wr-acts .fb svg{width:15px;height:15px;fill:currentColor}
+.brit-room .brit-wr-acts .fb.up.on,.brit-room .brit-wr-acts .fb.up:hover{color:var(--green);border-color:var(--green)}
+.brit-room .brit-wr-acts .fb.down.on,.brit-room .brit-wr-acts .fb.down:hover{color:var(--red);border-color:var(--red)}
+.brit-room .brit-wr-acts .sp{width:11px;height:11px;border:2px solid rgba(201,166,107,.35);border-top-color:var(--gold-soft);border-radius:50%;animation:brit-ra-spin .8s linear infinite}
+
+@media(max-width:900px){
+  .brit-room .brit-signals.brit-signals-4{grid-template-columns:1fr 1fr}
+  .brit-room .brit-wr-repgrid{grid-template-columns:1fr}
+  .brit-room .brit-wr-searchbox{flex-direction:column}
+  .brit-room .brit-wr-searchbtn{align-self:stretch}
+}

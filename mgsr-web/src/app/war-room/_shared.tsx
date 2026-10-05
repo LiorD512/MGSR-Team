@@ -191,68 +191,6 @@ export interface RosterTeammateMatch {
   matchesPlayedTogether: number;
 }
 
-/* ── BRIT masthead shared by every War Room screen ── */
-export function WarRoomMasthead({
-  kicker,
-  titleLead,
-  titleAccent,
-  sub,
-  right,
-}: {
-  kicker: string;
-  titleLead: string;
-  titleAccent: string;
-  sub?: string;
-  right?: React.ReactNode;
-}) {
-  return (
-    <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between mb-7">
-      <div className="min-w-0">
-        <p className="flex items-center gap-2.5 text-[10px] font-mono uppercase tracking-[0.12em] text-[var(--mgsr-gold)] mb-4">
-          <span className="w-1.5 h-1.5 rounded-full bg-[var(--mgsr-gold)] animate-pulse" />
-          {kicker}
-        </p>
-        <h1 className="font-display font-bold uppercase leading-[0.85] tracking-tight text-mgsr-text text-[clamp(2.6rem,6vw,5rem)]">
-          {titleLead} <span className="text-[var(--mgsr-gold)]">{titleAccent}</span>
-        </h1>
-        {sub && <p className="mt-4 max-w-xl text-sm leading-relaxed text-mgsr-muted">{sub}</p>}
-      </div>
-      {right && <div className="flex flex-col items-start md:items-end gap-3 shrink-0">{right}</div>}
-    </header>
-  );
-}
-
-/* ── BRIT signals strip (big stat tiles) ── */
-export function WarRoomSignals({
-  items,
-}: {
-  items: { label: string; value: React.ReactNode; sub?: string; accent?: 'gold' | 'green' | 'default' }[];
-}) {
-  return (
-    <section
-      className="grid border-y border-mgsr-border mb-6"
-      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0,1fr))` }}
-    >
-      {items.map((s, i) => (
-        <div
-          key={i}
-          className={`min-h-[100px] px-4 py-4 ${i < items.length - 1 ? 'border-e border-mgsr-border' : ''}`}
-        >
-          <div className="text-[9px] font-mono uppercase tracking-[0.08em] text-mgsr-muted">{s.label}</div>
-          <div
-            className={`mt-3 font-display font-bold uppercase leading-none text-[clamp(1.8rem,3vw,2.6rem)] ${
-              s.accent === 'gold' ? 'text-[var(--mgsr-gold)]' : s.accent === 'green' ? 'text-[var(--mgsr-teal)]' : 'text-mgsr-text'
-            }`}
-          >
-            {s.value}
-          </div>
-          {s.sub && <div className="mt-2 text-[9px] font-mono text-mgsr-muted">{s.sub}</div>}
-        </div>
-      ))}
-    </section>
-  );
-}
-
 /* ── Roster teammates ("played with") expander, shared across cards ── */
 export function TeammatesPanel({
   tmUrl,
