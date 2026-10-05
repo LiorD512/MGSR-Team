@@ -8,10 +8,14 @@
  * priorities can be tuned without hunting through the ranking code.
  */
 
-import type { SourceTrustResult, SourceTrustTier } from './types';
+import type { PhotoCandidate, SourceTrustResult, SourceTrustTier } from './types';
+import { normalizeInstagramHandle } from './providers/instagramProvider';
 
 /** Score floor for each tier. The ranker blends this with other signals. */
 export const TRUST_TIER_SCORE: Record<SourceTrustTier, number> = {
+  // The player's own Instagram is the single most identity-trustworthy source:
+  // it is their account, so a photo there is almost certainly them.
+  player_instagram: 100,
   official_club: 98,
   verified_social: 92,
   major_media: 84,
@@ -157,4 +161,38 @@ export function scoreSource(sourceUrl: string | null, imageUrl: string): SourceT
   }
 
   return { tier: 'unknown', score: TRUST_TIER_SCORE.unknown, reason: `Unrecognised source (${host})` };
+}
+
+/**
+ * Context-aware trust: when a candidate came from the InstagramPhotoProvider
+ * (i.e. the player's OWN known profile), it earns the top `player_instagram`
+ * tier regardless of host — identity provenance beats host reputation. All
+ * other candidates fall back to host-based `scoreSource`.
+ *
+ * The known handle is passed so we only award the top tier when the candidate's
+ * origin page actually references that handle (defence against a mislabelled
+ * candidate).
+ */
+export function scoreCandidateSource(
+  candidate: Pick<PhotoCandidate, 'imageUrl' | 'sourceUrl' | 'provider' | 'sourceType'>,
+  knownHandle: string | null | undefined
+): SourceTrustResult {
+  const handle = normalizeInstagramHandle(knownHandle);
+  if (candidate.provider === 'instagram' && candidate.sourceType === 'INSTAGRAM' && handle) {
+    const page = (candidate.sourceUrl ?? '').toLowerCase();
+    const img = candidate.imageUrl.toLowerCase();
+    const referencesHandle = page.includes(`instagram.com/${handle}`);
+    const isIgCdn = /cdninstagram\.com|fbcdn\.net/.test(img);
+    // Award the top tier when it is clearly from this player's profile, else
+    // treat as ordinary verified-social so a loosely-matched hit is not
+    // over-trusted.
+    if (referencesHandle || isIgCdn) {
+      return {
+        tier: 'player_instagram',
+        score: TRUST_TIER_SCORE.player_instagram,
+        reason: `Player's own Instagram (@${handle})`,
+      };
+    }
+  }
+  return scoreSource(candidate.sourceUrl, candidate.imageUrl);
 }

@@ -12,17 +12,59 @@
  * validate, rank and cache photographs that already exist in the wild.
  */
 
+// ── Provider architecture ────────────────────────────────────────────────────
+
+/**
+ * Coarse category of where a candidate came from — surfaced in the UI and used
+ * by the ranker so identity-strong origins (the player's own Instagram) are
+ * trusted above generic search, independent of pixel quality.
+ */
+export type SourceType = 'INSTAGRAM' | 'CLUB' | 'MEDIA' | 'SEARCH';
+
+/**
+ * A photo-discovery provider. Each provider turns a player into raw candidates
+ * in a normalised shape the shared pipeline understands. New authorized sources
+ * (an official Instagram media API, a club media API, …) can be added by
+ * implementing this interface — nothing downstream changes.
+ */
+export interface PhotoProvider {
+  /** Stable id, e.g. 'instagram' | 'image_search'. */
+  readonly id: string;
+  /** True when this provider is usable for the given player + environment. */
+  isAvailable(input: PlayerPhotoSearchInput): boolean;
+  /** Produce raw candidates (no download/validation here). */
+  findPlayerPhotos(input: PlayerPhotoSearchInput): Promise<ProviderResult>;
+}
+
+/** What a provider returns: its candidates plus auditing metadata. */
+export interface ProviderResult {
+  providerId: string;
+  candidates: PhotoCandidate[];
+  /** Raw hit count before URL de-dup (diagnostics). */
+  rawHitCount: number;
+  /** Queries/handles this provider issued (diagnostics). */
+  queries: string[];
+  /** Underlying search backends that returned ≥1 hit (diagnostics). */
+  backendsUsed: string[];
+  /** Human note, e.g. why a provider produced nothing. */
+  note?: string;
+}
+
 // ── Candidate discovery ──────────────────────────────────────────────────────
 
 /** A raw image candidate, before download/validation. */
 export interface PhotoCandidate {
   playerId: string | null;
   imageUrl: string;
-  /** Provider that returned it (serper / serpapi / google_cse). */
+  /** Underlying backend that returned it (serper / serpapi / google_cse / provider). */
   source: string;
-  /** Origin page the image was found on, when the provider reports one. */
+  /** Which provider surfaced it (instagram / image_search). */
+  provider: string;
+  /** Coarse category used for trust + UI badges. */
+  sourceType: SourceType;
+  /** Origin page the image was found on, when known. */
   sourceUrl: string | null;
-  /** The exact query that surfaced this candidate (for auditing). */
+  /** The exact query/handle that surfaced this candidate (for auditing). */
   searchQuery: string;
   discoveredAt: number;
 }
@@ -60,6 +102,7 @@ export interface RejectedCandidate {
 // ── Source trust ─────────────────────────────────────────────────────────────
 
 export type SourceTrustTier =
+  | 'player_instagram'
   | 'official_club'
   | 'verified_social'
   | 'major_media'
@@ -90,14 +133,29 @@ export interface IdentityVerdict {
   peopleCount: number | null;
   /** Whether exactly one subject is clearly usable for a MATCHDAY crop. */
   singleClearSubject: boolean;
-  /** Gemini's read on whether this is a photograph (vs logo/graphic/art). */
+  /** Gemini's read on whether this is a real photograph (vs logo/graphic/art). */
   isPhotograph: boolean;
-  /** True when the frame is (or is embedded in) a poster/graphic/collage/screenshot. */
+  /** Whether the subject is a football player (kit / pitch / football context). */
+  isFootballPlayer: boolean;
+  /** Explicit graphic/poster/collage/screenshot flags (per spec §3). */
+  isGraphic: boolean;
+  isPoster: boolean;
+  isCollage: boolean;
+  isScreenshot: boolean;
+  hasLargeText: boolean;
+  /** Convenience: any of graphic/poster/collage/screenshot/large-text. */
   isGraphicOrPoster: boolean;
   /** True when a human face is clearly visible (not away/obstructed/tiny). */
   faceClearlyVisible: boolean;
+  /** True when enough of the body/upper body is visible for a 9:16 crop. */
+  bodyVisible: boolean;
   /** 0–100 Gemini's own read on MATCHDAY suitability (framing/pose/clarity). */
   matchdaySuitability: number;
+  /**
+   * True only when identity was judged against the supplied reference image
+   * (profileImage), which makes the confidence meaningfully stronger.
+   */
+  comparedToReference: boolean;
   reasons: string[];
   /** True when the verdict came from Gemini; false when it was skipped. */
   usedGemini: boolean;
@@ -114,6 +172,10 @@ export type RankDecision = 'accept' | 'review' | 'reject' | 'unverified';
 export interface RankedCandidate {
   imageUrl: string;
   source: string;
+  /** Which provider surfaced it (instagram / image_search). */
+  provider: string;
+  /** Coarse category: INSTAGRAM | CLUB | MEDIA | SEARCH. */
+  sourceType: SourceType;
   sourceUrl: string | null;
   searchQuery: string;
   width: number;
@@ -133,12 +195,21 @@ export interface RankedCandidate {
 
   decision: RankDecision;
   reasons: string[];
+  /** Explicit rejection reasons (subset of reasons, spec §11). */
+  rejectionReasons: string[];
 
   /** Signals surfaced for the debug UI. */
   peopleCount: number | null;
   singleClearSubject: boolean;
-  faceClearlyVisible: boolean;
-  isGraphicOrPoster: boolean;
+  faceVisible: boolean;
+  bodyVisible: boolean;
+  isRealPhotograph: boolean;
+  isSinglePerson: boolean;
+  isGraphic: boolean;
+  isPoster: boolean;
+  isCollage: boolean;
+  isScreenshot: boolean;
+  comparedToReference: boolean;
   usedGemini: boolean;
 
   /** Perceptual hash (dHash hex) used for near-duplicate collapsing. */
@@ -152,6 +223,13 @@ export interface PlayerPhotoSearchInput {
   playerName: string;
   club?: string | null;
   country?: string | null;
+  /** The player's Instagram handle (any format); normalised internally. */
+  instagramHandle?: string | null;
+  /**
+   * A known reference photo of the player (e.g. Transfermarkt headshot). Used
+   * ONLY to help identity verification — it never becomes the MATCHDAY image.
+   */
+  profileImage?: string | null;
 }
 
 /** Sentinel returned when nothing clears the identity/quality bar. */
@@ -176,12 +254,23 @@ export interface IntelligenceDiagnostics {
   /** Whether automatic identity verification was possible this run. */
   identityVerificationAvailable: boolean;
 
+  /** Whether the player had an Instagram handle to search. */
+  instagramHandleKnown: boolean;
+  /** Normalised handle used (never a credential). */
+  instagramUsername: string | null;
+  /** Whether a reference image was available for identity comparison. */
+  referenceImageAvailable: boolean;
+
   queryCount: number;
   /** Every query string that was issued. */
   queries: string[];
 
   // ── Funnel ──
   rawCandidatesDiscovered: number;
+  /** Raw candidates that came from the Instagram provider. */
+  instagramCandidates: number;
+  /** Raw candidates from the fallback image-search provider. */
+  otherCandidates: number;
   uniqueAfterUrlDedupe: number;
   uniqueAfterPerceptualDedupe: number;
   technicalRejects: number;
@@ -238,12 +327,41 @@ export interface MatchdayPlayerImageRecord {
   /** The original web URL we discovered it at. */
   originalUrl: string;
   source: string;
+  /** Provider + coarse category this came from. */
+  provider: string;
+  sourceType: SourceType;
   sourceUrl: string | null;
   identityScore: number;
   qualityScore: number;
+  matchdaySuitabilityScore: number;
   finalScore: number;
   approvalStatus: ApprovalStatus;
   width: number;
   height: number;
   discoveredAt: number;
+}
+
+/**
+ * Cached identity-verification verdict for a specific image, keyed by its
+ * perceptual hash, so the same photo is never re-sent to Gemini. Scoped per
+ * player (same photo, different target player, is a different question).
+ */
+export interface CachedIdentityVerdict {
+  perceptualHash: string;
+  playerId: string;
+  identityConfidence: number;
+  isPhotograph: boolean;
+  isFootballPlayer: boolean;
+  isGraphic: boolean;
+  isPoster: boolean;
+  isCollage: boolean;
+  isScreenshot: boolean;
+  hasLargeText: boolean;
+  faceClearlyVisible: boolean;
+  bodyVisible: boolean;
+  singleClearSubject: boolean;
+  peopleCount: number | null;
+  matchdaySuitability: number;
+  comparedToReference: boolean;
+  cachedAt: number;
 }

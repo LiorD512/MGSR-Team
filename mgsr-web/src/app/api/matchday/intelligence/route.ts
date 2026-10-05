@@ -13,12 +13,16 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 interface Body {
-  /** Resolve club/country from Firestore when provided. */
+  /** Resolve club/country/instagram/profileImage from Firestore when provided. */
   playerId?: string | null;
   /** Direct overrides (also used for ad-hoc testing without a player doc). */
   playerName?: string | null;
   club?: string | null;
   country?: string | null;
+  /** Instagram handle (any format); PRIMARY photo source when present. */
+  instagramHandle?: string | null;
+  /** Known reference photo URL (identity aid only; never the MATCHDAY image). */
+  profileImage?: string | null;
   /** Disable the Gemini verification pass (deterministic / cost-free test). */
   useGemini?: boolean;
   maxDownloads?: number;
@@ -58,6 +62,8 @@ async function hydrateFromPlayer(playerId: string): Promise<Partial<PlayerPhotoS
       playerName: typeof d.fullName === 'string' ? d.fullName : undefined,
       club: currentClub.clubName,
       country: currentClub.clubCountry ?? (typeof d.nationality === 'string' ? d.nationality : undefined),
+      instagramHandle: typeof d.instagramHandle === 'string' ? d.instagramHandle : undefined,
+      profileImage: typeof d.profileImage === 'string' ? d.profileImage : undefined,
     };
   } catch {
     return {};
@@ -84,6 +90,8 @@ export async function POST(request: NextRequest) {
     playerName: (body.playerName ?? fromDoc.playerName ?? '').trim(),
     club: (body.club ?? fromDoc.club ?? null) || null,
     country: (body.country ?? fromDoc.country ?? null) || null,
+    instagramHandle: (body.instagramHandle ?? fromDoc.instagramHandle ?? null) || null,
+    profileImage: (body.profileImage ?? fromDoc.profileImage ?? null) || null,
   };
 
   if (!input.playerName) {
@@ -101,6 +109,7 @@ export async function POST(request: NextRequest) {
       useGemini: body.useGemini,
       maxDownloads: body.maxDownloads,
       maxGeminiChecks: body.maxGeminiChecks,
+      useVerdictCache: true,
     });
     const match: RankedCandidate | undefined = result.topCandidates.find(
       (c) => c.imageUrl === body.approveUrl
@@ -130,6 +139,7 @@ export async function POST(request: NextRequest) {
     maxGeminiChecks: body.maxGeminiChecks,
     cacheHit: existing.kind !== 'none',
     cacheSource: existing.kind,
+    useVerdictCache: true,
   });
 
   return NextResponse.json({ existing, ...result });

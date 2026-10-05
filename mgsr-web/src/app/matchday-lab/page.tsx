@@ -23,9 +23,13 @@ import BritLoader from '@/components/BritLoader';
 
 type Decision = 'accept' | 'review' | 'reject' | 'unverified';
 
+type SourceType = 'INSTAGRAM' | 'CLUB' | 'MEDIA' | 'SEARCH';
+
 interface RankedCandidate {
   imageUrl: string;
   source: string;
+  provider: string;
+  sourceType: SourceType;
   sourceUrl: string | null;
   searchQuery: string;
   width: number;
@@ -40,10 +44,18 @@ interface RankedCandidate {
   finalScore: number;
   decision: Decision;
   reasons: string[];
+  rejectionReasons: string[];
   peopleCount: number | null;
   singleClearSubject: boolean;
-  faceClearlyVisible: boolean;
-  isGraphicOrPoster: boolean;
+  faceVisible: boolean;
+  bodyVisible: boolean;
+  isRealPhotograph: boolean;
+  isSinglePerson: boolean;
+  isGraphic: boolean;
+  isPoster: boolean;
+  isCollage: boolean;
+  isScreenshot: boolean;
+  comparedToReference: boolean;
   usedGemini: boolean;
   perceptualHash: string | null;
 }
@@ -60,9 +72,14 @@ interface Diagnostics {
   providersUsed: string[];
   geminiConfigured: boolean;
   identityVerificationAvailable: boolean;
+  instagramHandleKnown: boolean;
+  instagramUsername: string | null;
+  referenceImageAvailable: boolean;
   queryCount: number;
   queries: string[];
   rawCandidatesDiscovered: number;
+  instagramCandidates: number;
+  otherCandidates: number;
   uniqueAfterUrlDedupe: number;
   uniqueAfterPerceptualDedupe: number;
   technicalRejects: number;
@@ -131,6 +148,20 @@ function decisionBadge(d: Decision) {
   );
 }
 
+function sourceBadge(t: SourceType) {
+  const map: Record<SourceType, string> = { INSTAGRAM: '#c13584', CLUB: '#2e7d32', MEDIA: '#2a6f97', SEARCH: '#6b6b6b' };
+  return (
+    <span
+      style={{
+        fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, padding: '3px 8px', borderRadius: 2,
+        background: map[t], color: '#fff', fontWeight: 600,
+      }}
+    >
+      SOURCE = {t}
+    </span>
+  );
+}
+
 function Flag({ label, on }: { label: string; on: boolean }) {
   return (
     <span
@@ -155,6 +186,8 @@ function LabInner() {
   const [playerName, setPlayerName] = useState('');
   const [club, setClub] = useState('');
   const [country, setCountry] = useState('');
+  const [instagramHandle, setInstagramHandle] = useState('');
+  const [profileImage, setProfileImage] = useState('');
   const [useGemini, setUseGemini] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -184,6 +217,8 @@ function LabInner() {
           playerName: playerName.trim() || null,
           club: club.trim() || null,
           country: country.trim() || null,
+          instagramHandle: instagramHandle.trim() || null,
+          profileImage: profileImage.trim() || null,
           useGemini,
         }),
       });
@@ -215,6 +250,8 @@ function LabInner() {
           playerName: playerName.trim() || null,
           club: club.trim() || null,
           country: country.trim() || null,
+          instagramHandle: instagramHandle.trim() || null,
+          profileImage: profileImage.trim() || null,
           useGemini,
           approveUrl: url,
         }),
@@ -277,6 +314,15 @@ function LabInner() {
         <div>
           <label style={labelStyle}>Country</label>
           <input style={inputStyle} value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Nigeria" />
+        </div>
+        <div>
+          <label style={labelStyle}>Instagram handle (PRIMARY source)</label>
+          <input style={inputStyle} value={instagramHandle} onChange={(e) => setInstagramHandle(e.target.value)} placeholder="@username or instagram.com/username" />
+          <span style={{ fontSize: 10, color: 'rgba(243,240,232,0.4)' }}>Auto-loads from the player doc when a Player ID is given.</span>
+        </div>
+        <div>
+          <label style={labelStyle}>Reference image URL (identity aid)</label>
+          <input style={inputStyle} value={profileImage} onChange={(e) => setProfileImage(e.target.value)} placeholder="https://… (never becomes the MATCHDAY image)" />
         </div>
       </div>
 
@@ -341,8 +387,8 @@ function LabInner() {
             }}
           >
             {noVerified
-              ? 'NO_VERIFIED_PLAYER_IMAGE — no candidate cleared the identity bar (Gemini-verified identity ≥ 80 on a clean, suitable photo). Manual upload remains the fallback.'
-              : 'RECOMMENDED — top candidate ACCEPTED (identity ≥ 80, verified) as the MATCHDAY source.'}
+              ? 'NO_VERIFIED_PLAYER_IMAGE — no candidate cleared the identity bar (Gemini-verified identity ≥ 85 on a clean, suitable photo). Manual upload remains the fallback.'
+              : 'RECOMMENDED — top candidate ACCEPTED (Gemini-verified identity ≥ 85) as the MATCHDAY source.'}
           </div>
 
           {/* ── Diagnostics ── */}
@@ -354,13 +400,22 @@ function LabInner() {
               <Flag label="Google CSE" on={result.diagnostics.providersConfigured.googleCse} />
               <Flag label="Gemini key" on={result.diagnostics.geminiConfigured} />
               <Flag label="Identity verify" on={result.diagnostics.identityVerificationAvailable} />
+              <Flag label="IG handle" on={result.diagnostics.instagramHandleKnown} />
+              <Flag label="Reference image" on={result.diagnostics.referenceImageAvailable} />
             </div>
+            {result.diagnostics.instagramUsername && (
+              <div style={{ fontSize: 11, color: 'rgba(243,240,232,0.55)', marginBottom: 12 }}>
+                Instagram username: <span style={{ color: '#c13584' }}>@{result.diagnostics.instagramUsername}</span>
+              </div>
+            )}
 
             {/* Discovery → filter → verify funnel */}
             <div style={{ ...labelStyle, marginBottom: 6, color: 'rgba(243,240,232,0.4)' }}>Funnel</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 14, fontSize: 13, marginBottom: 14 }}>
               <Metric label="Queries" value={result.diagnostics.queryCount} />
               <Metric label="Raw discovered" value={result.diagnostics.rawCandidatesDiscovered} />
+              <Metric label="Instagram candidates" value={result.diagnostics.instagramCandidates} />
+              <Metric label="Other candidates" value={result.diagnostics.otherCandidates} />
               <Metric label="After URL dedupe" value={result.diagnostics.uniqueAfterUrlDedupe} />
               <Metric label="After perceptual" value={result.diagnostics.uniqueAfterPerceptualDedupe} />
               <Metric label="Technical rejects" value={result.diagnostics.technicalRejects} />
@@ -431,9 +486,10 @@ function LabInner() {
                   <div style={{ position: 'relative', background: '#000', aspectRatio: '9 / 12' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={c.imageUrl} alt={`candidate ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 6 }}>
+                    <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 6, flexWrap: 'wrap', maxWidth: '92%' }}>
                       <span style={{ fontSize: 11, background: '#000a', padding: '3px 8px', borderRadius: 2 }}>#{i + 1}</span>
                       {decisionBadge(c.decision)}
+                      {sourceBadge(c.sourceType)}
                     </div>
                   </div>
                   <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -453,15 +509,19 @@ function LabInner() {
                       <Stat label="Source trust" value={c.sourceTrustScore} />
                       <Stat label="Final (non-identity)" value={c.finalScore} />
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {c.usedGemini && <Flag label="Face visible" on={c.faceClearlyVisible} />}
-                      {c.usedGemini && <Flag label="Clean photo" on={!c.isGraphicOrPoster} />}
-                      {c.usedGemini && c.peopleCount != null && (
-                        <Flag label={`${c.peopleCount} ppl`} on={c.peopleCount === 1} />
-                      )}
-                    </div>
+                    {c.usedGemini && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        <Flag label="Face" on={c.faceVisible} />
+                        <Flag label="Body" on={c.bodyVisible} />
+                        <Flag label="Real photo" on={c.isRealPhotograph} />
+                        <Flag label="Single person" on={c.isSinglePerson} />
+                        <Flag label="Not graphic" on={!c.isGraphic && !c.isPoster && !c.isCollage && !c.isScreenshot} />
+                        {c.comparedToReference && <Flag label="Vs reference" on={true} />}
+                        {c.peopleCount != null && <Flag label={`${c.peopleCount} ppl`} on={c.peopleCount === 1} />}
+                      </div>
+                    )}
                     <div style={{ fontSize: 11, color: 'rgba(243,240,232,0.55)' }}>
-                      {c.width}×{c.height} · {(c.fileSize / 1024).toFixed(0)} KB · {c.source}
+                      {c.width}×{c.height} · {(c.fileSize / 1024).toFixed(0)} KB · {c.provider}/{c.source}
                       {c.usedGemini ? ' · Gemini ✓' : ' · identity UNVERIFIED'}
                     </div>
                     {c.sourceUrl && (
