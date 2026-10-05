@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MGSR Android · Dashboard v2 (Cinematic)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* ═══════════════════════════════════════════════════════════════
+     MGSR TEAM — Android Dashboard · v2 "Night Room"
+     A cinematic, OLED-dark reinterpretation of the brand editorial
+     language: molten-gold accents, glass + glow, a living hero
+     spotlight, a bento stat grid, and a floating pill nav.
+     Keeps the Oswald/Manrope/DM Mono DNA — but makes it move.
+     ═══════════════════════════════════════════════════════════════ */
+
+  :root {
+    --bg:        #0b0b0e;
+    --bg-2:      #121117;
+    --ink:       #f4efe3;
+    --ink-dim:   #a39d8f;
+    --ink-faint: #6c675d;
+    --gold:      #e7c079;
+    --gold-deep: #a47d43;
+    --gold-lit:  #ffe2a6;
+    --rose:      #d98a7e;
+    --red:       #e5584a;
+    --teal:      #67d8c4;
+    --violet:    #9a8cf0;
+    --glass:     rgba(255,255,255,.045);
+    --glass-brd: rgba(255,255,255,.08);
+    --display: 'Oswald', Impact, sans-serif;
+    --body:    'Manrope', Helvetica, sans-serif;
+    --mono:    'DM Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: #19191c;
+    font-family: var(--body);
+    color: var(--ink);
+    display: flex; flex-wrap: wrap; gap: 60px;
+    justify-content: center; align-items: flex-start;
+    padding: 56px 24px 90px; min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 18% 8%, rgba(231,192,121,.10), transparent 42%),
+      radial-gradient(circle at 85% 92%, rgba(154,140,240,.08), transparent 44%);
+  }
+
+  .stage-label { width:100%; text-align:center; color:#8c877c; font-family:var(--mono);
+    text-transform:uppercase; letter-spacing:.24em; font-size:11px; margin-bottom:-18px; }
+  .stage-label b { color:var(--gold-lit); font-weight:500; }
+
+  /* ── Phone frame ── */
+  .phone {
+    width: 390px; max-width: 100%; height: 844px;
+    background: var(--bg); border-radius: 46px; position: relative; overflow: hidden;
+    box-shadow: 0 0 0 11px #050506, 0 0 0 13px #2a2a30, 0 50px 90px rgba(0,0,0,.6),
+                inset 0 0 120px rgba(0,0,0,.5);
+    display: flex; flex-direction: column;
+  }
+  .phone::after { content:''; position:absolute; right:-13px; top:160px; width:3px; height:92px; background:#2a2a30; border-radius:0 3px 3px 0; }
+
+  /* Ambient mesh behind everything */
+  .ambient {
+    position:absolute; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(60% 42% at 78% 6%, rgba(231,192,121,.18), transparent 60%),
+      radial-gradient(70% 46% at 10% 30%, rgba(154,140,240,.12), transparent 62%),
+      radial-gradient(80% 50% at 50% 108%, rgba(103,216,196,.10), transparent 60%);
+    animation: drift 16s ease-in-out infinite alternate;
+  }
+  @keyframes drift { from { transform: translate3d(0,0,0) scale(1);} to { transform: translate3d(0,-14px,0) scale(1.06);} }
+
+  /* ── Status bar ── */
+  .statusbar { height:34px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 22px 0 24px; font-family:var(--mono); font-size:12px; color:var(--ink); flex:none; position:relative; z-index:30; }
+  .statusbar .notch { position:absolute; left:50%; transform:translateX(-50%); top:7px; width:96px; height:20px; background:#000; border-radius:0 0 14px 14px; }
+  .sb-icons { display:flex; gap:7px; align-items:center; }
+  .bar { width:15px; height:10px; background:linear-gradient(90deg,var(--ink) 70%,rgba(244,239,227,.4) 70%); border-radius:1px; }
+  .batt { width:20px; height:10px; border:1.4px solid var(--ink); border-radius:2px; position:relative; }
+  .batt::after { content:''; position:absolute; inset:1.4px; right:5px; background:var(--ink); }
+
+  /* ── Scroll area ── */
+  .screen { flex:1; overflow-y:auto; position:relative; z-index:10; }
+  .screen::-webkit-scrollbar { width:0; }
+  .content { padding: 6px 20px 130px; }
+
+  /* ── Header ── */
+  .head { display:flex; align-items:center; justify-content:space-between; padding: 8px 0 20px; }
+  .head-left { display:flex; align-items:center; gap:12px; }
+  .brit-logo { width:40px; height:40px; flex:none; filter: drop-shadow(0 2px 10px rgba(231,192,121,.4)); }
+  .head-left .hi { font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); }
+  .head-left .nm { font-family:var(--display); font-weight:600; font-size:19px; letter-spacing:.02em; line-height:1; margin-top:3px; }
+  .head-right { display:flex; align-items:center; gap:8px; }
+  .ibtn { width:40px; height:40px; border-radius:14px; display:grid; place-items:center; position:relative;
+    background:var(--glass); border:1px solid var(--glass-brd); color:var(--ink-dim); cursor:pointer; backdrop-filter: blur(8px); transition:.15s; }
+  .ibtn:active { transform:scale(.92); }
+  .ibtn svg { width:19px; height:19px; }
+  .dot-badge { position:absolute; top:-3px; right:-3px; min-width:17px; height:17px; padding:0 4px; background:var(--red);
+    color:#fff; border-radius:9px; font-family:var(--mono); font-size:9px; display:grid; place-items:center; border:2px solid var(--bg);
+    box-shadow:0 0 10px rgba(229,88,74,.7); }
+
+  /* ── Platform switch (glass pills) ── */
+  .pswitch { position:relative; display:grid; grid-template-columns:repeat(3,1fr); background:var(--glass);
+    border:1px solid var(--glass-brd); border-radius:999px; padding:4px; margin-bottom:22px; backdrop-filter:blur(10px); }
+  .ps-thumb { position:absolute; top:4px; bottom:4px; left:4px; width:calc(33.333% - 4px); border-radius:999px;
+    background:linear-gradient(135deg,var(--gold-lit),var(--gold-deep)); box-shadow:0 4px 16px -4px rgba(231,192,121,.6);
+    transition:transform .42s cubic-bezier(.2,.8,.2,1), background .4s; }
+  .pswitch button { position:relative; z-index:1; border:0; background:transparent; cursor:pointer; padding:9px 0;
+    font-family:var(--display); font-weight:600; font-size:12px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-dim);
+    display:flex; align-items:center; justify-content:center; gap:6px; }
+  .pswitch button.on { color:#1a1510; }
+  .ps-dot { width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.5; }
+  .pswitch button.on .ps-dot { opacity:1; }
+
+  /* ── HERO spotlight card ── */
+  .hero { position:relative; border-radius:28px; overflow:hidden; min-height:300px; margin-bottom:18px;
+    background:linear-gradient(160deg,#1c1a16,#0d0d10 70%); border:1px solid var(--glass-brd);
+    box-shadow:0 24px 60px -20px rgba(0,0,0,.8); }
+  .hero-glow { position:absolute; inset:0; background:radial-gradient(90% 70% at 72% 20%, rgba(231,192,121,.3), transparent 55%);
+    animation: breathe 5s ease-in-out infinite; }
+  @keyframes breathe { 0%,100%{opacity:.65} 50%{opacity:1} }
+  .hero-grid { position:absolute; inset:0; opacity:.3;
+    background-image:linear-gradient(rgba(231,192,121,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(231,192,121,.08) 1px,transparent 1px);
+    background-size:34px 34px; mask-image:radial-gradient(circle at 72% 30%,#000,transparent 72%); }
+  .hero-silhouette { position:absolute; right:-6px; bottom:0; width:210px; height:270px; z-index:1;
+    display:grid; place-items:end center; }
+  .hero-silhouette svg { width:170px; height:240px; color:#2a271f; filter:drop-shadow(0 0 30px rgba(231,192,121,.25)); }
+  .hero-eyebrow { position:absolute; top:20px; left:22px; z-index:3; display:flex; align-items:center; gap:8px;
+    font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold-lit); }
+  .live-dot { width:7px; height:7px; border-radius:50%; background:var(--red); box-shadow:0 0 0 0 rgba(229,88,74,.7); animation:pulse 1.6s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(229,88,74,.6)} 70%{box-shadow:0 0 0 9px rgba(229,88,74,0)} 100%{box-shadow:0 0 0 0 rgba(229,88,74,0)} }
+  .hero-crest { position:absolute; top:16px; right:18px; z-index:3; width:40px; height:40px; border-radius:12px;
+    background:var(--glass); border:1px solid var(--glass-brd); display:grid; place-items:center; backdrop-filter:blur(6px);
+    font-family:var(--display); font-weight:600; font-size:13px; color:var(--gold); }
+  .hero-body { position:absolute; left:22px; bottom:20px; z-index:3; max-width:230px; }
+  .hero-pos { font-family:var(--mono); font-size:9px; text-transform:uppercase; color:var(--ink-dim); letter-spacing:.08em; }
+  .hero-name { font-family:var(--display); font-weight:600; font-size:42px; line-height:.86; text-transform:uppercase; letter-spacing:-.02em; margin:6px 0 2px; }
+  .hero-name span { color:var(--gold); }
+  .hero-val { font-family:var(--mono); font-size:11px; color:var(--gold-lit); margin-top:8px; }
+  .hero-countdown { display:flex; gap:7px; margin-top:16px; }
+  .cd-unit { background:var(--glass); border:1px solid var(--glass-brd); border-radius:10px; padding:8px 10px; text-align:center; min-width:46px; backdrop-filter:blur(8px); }
+  .cd-unit b { display:block; font-family:var(--display); font-weight:600; font-size:22px; line-height:1; color:var(--ink); }
+  .cd-unit small { display:block; margin-top:3px; font-family:var(--mono); font-size:7.5px; text-transform:uppercase; color:var(--ink-faint); letter-spacing:.08em; }
+  .cd-sep { align-self:center; font-family:var(--display); font-size:20px; color:var(--gold); }
+  .hero-vs { position:absolute; right:18px; bottom:22px; z-index:3; text-align:right; }
+  .hero-vs .vl { font-family:var(--mono); font-size:8px; text-transform:uppercase; color:var(--ink-faint); }
+  .hero-vs .opp { font-family:var(--display); font-weight:500; font-size:18px; text-transform:uppercase; margin-top:3px; }
+  .hero-vs .comp { font-family:var(--mono); font-size:8px; color:var(--gold); text-transform:uppercase; margin-top:4px; }
+
+  /* ── Bento stat grid ── */
+  .bento { display:grid; grid-template-columns:1.3fr 1fr; grid-auto-rows:minmax(96px,auto); gap:12px; margin-bottom:26px; }
+  .tile { position:relative; border-radius:20px; padding:16px; overflow:hidden;
+    background:var(--glass); border:1px solid var(--glass-brd); backdrop-filter:blur(10px); }
+  .tile .lab { font-family:var(--mono); font-size:9px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); }
+  .tile .big { font-family:var(--display); font-weight:600; font-size:40px; line-height:.9; margin-top:6px; }
+  .tile .sub { font-family:var(--mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; margin-top:6px; }
+  .tile.wide { grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between; }
+  .tile.gold { background:linear-gradient(140deg,rgba(231,192,121,.16),rgba(231,192,121,.03)); border-color:rgba(231,192,121,.3); }
+  .tile.gold .big { color:var(--gold-lit); }
+  .tile.alert { border-color:rgba(229,88,74,.4); }
+  .tile.alert .big { color:var(--red); }
+  .tile .spark { position:absolute; right:0; bottom:0; left:0; height:40px; opacity:.55; }
+  /* radial ring */
+  .ring { --p:72; width:62px; height:62px; border-radius:50%; flex:none;
+    background:conic-gradient(var(--gold) calc(var(--p)*1%), rgba(255,255,255,.08) 0);
+    display:grid; place-items:center; position:relative; }
+  .ring::before { content:''; position:absolute; inset:6px; border-radius:50%; background:var(--bg-2); }
+  .ring b { position:relative; z-index:1; font-family:var(--display); font-weight:600; font-size:16px; color:var(--gold-lit); }
+  .mini-bars { display:flex; align-items:flex-end; gap:4px; height:40px; margin-top:2px; }
+  .mini-bars i { width:7px; border-radius:3px 3px 0 0; background:linear-gradient(var(--gold-lit),var(--gold-deep)); display:block; }
+
+  /* ── Section header ── */
+  .sec-head { display:flex; align-items:baseline; justify-content:space-between; margin:0 0 14px; }
+  .sec-head h2 { font-family:var(--display); font-weight:600; font-size:22px; text-transform:uppercase; letter-spacing:.01em; }
+  .sec-head h2 .g { color:var(--gold); }
+  .sec-head .act { font-family:var(--mono); font-size:9px; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:4px; }
+  .sec-head .act .arr { color:var(--gold); }
+
+  /* ── Quick actions (floating orbs) ── */
+  .orbs { display:flex; gap:14px; overflow-x:auto; margin:0 -20px 28px; padding:4px 20px 10px; scrollbar-width:none; }
+  .orbs::-webkit-scrollbar { height:0; }
+  .orb { flex:none; width:66px; text-align:center; cursor:pointer; }
+  .orb .ic { width:58px; height:58px; border-radius:20px; display:grid; place-items:center; margin:0 auto 7px;
+    background:var(--glass); border:1px solid var(--glass-brd); backdrop-filter:blur(8px); color:var(--gold); transition:.18s; position:relative; overflow:hidden; }
+  .orb .ic::after { content:''; position:absolute; inset:0; background:radial-gradient(circle at 50% 0%, rgba(231,192,121,.25), transparent 70%); opacity:0; transition:.2s; }
+  .orb:active .ic { transform:translateY(-3px); border-color:rgba(231,192,121,.4); }
+  .orb:active .ic::after { opacity:1; }
+  .orb .ic svg { width:24px; height:24px; }
+  .orb span { font-family:var(--mono); font-size:8.5px; text-transform:uppercase; color:var(--ink-dim); letter-spacing:.03em; }
+  .orb.lead .ic { background:linear-gradient(140deg,var(--gold-lit),var(--gold-deep)); color:#1a1510; border-color:transparent; box-shadow:0 8px 20px -6px rgba(231,192,121,.6); }
+
+  /* ── Pending / alert strip (horizontal cards) ── */
+  .alert-rail { display:flex; gap:12px; overflow-x:auto; margin:0 -20px 28px; padding:0 20px 8px; scrollbar-width:none; }
+  .alert-rail::-webkit-scrollbar { height:0; }
+  .acard { flex:none; width:235px; border-radius:20px; padding:16px; position:relative; overflow:hidden;
+    background:linear-gradient(150deg,#1a1813,#0d0d10); border:1px solid rgba(231,192,121,.22); }
+  .acard .flag { position:absolute; top:0; right:0; padding:5px 10px; border-radius:0 20px 0 14px;
+    font-family:var(--mono); font-size:8px; text-transform:uppercase; letter-spacing:.06em; }
+  .acard .flag.urgent { background:rgba(229,88,74,.18); color:var(--red); }
+  .acard .flag.soon { background:rgba(231,192,121,.16); color:var(--gold-lit); }
+  .acard .av { width:46px; height:46px; border-radius:14px; background:var(--glass); border:1px solid var(--glass-brd);
+    display:grid; place-items:center; font-family:var(--display); font-weight:600; font-size:19px; color:var(--gold); margin-bottom:12px; }
+  .acard h3 { font-family:var(--display); font-weight:600; font-size:20px; text-transform:uppercase; line-height:.95; }
+  .acard p { font-family:var(--mono); font-size:9px; color:var(--ink-dim); text-transform:uppercase; margin-top:5px; line-height:1.4; }
+  .acard .cta { margin-top:14px; display:inline-flex; align-items:center; gap:6px; padding:9px 14px; border-radius:999px;
+    background:linear-gradient(135deg,var(--gold-lit),var(--gold-deep)); color:#1a1510; font-family:var(--mono); font-size:9px; text-transform:uppercase; cursor:pointer; }
+
+  /* ── Birthday chip row ── */
+  .bday { display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+  .bday .ava { width:46px; height:46px; border-radius:50%; flex:none; display:grid; place-items:center; position:relative;
+    background:conic-gradient(var(--gold),var(--rose),var(--gold)); }
+  .bday .ava::before { content:''; position:absolute; inset:2.5px; border-radius:50%; background:var(--bg-2); }
+  .bday .ava b { position:relative; z-index:1; font-family:var(--display); font-weight:600; font-size:17px; color:var(--ink); }
+  .bday .meta h3 { font-family:var(--body); font-weight:700; font-size:15px; }
+  .bday .meta p { font-family:var(--mono); font-size:9px; color:var(--ink-dim); text-transform:uppercase; margin-top:3px; }
+  .bday .right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .bday .cake { font-family:var(--display); font-weight:600; font-size:16px; color:var(--gold); }
+  .bday .cake.today { color:var(--red); }
+  .wa { width:38px; height:38px; border-radius:12px; background:rgba(103,216,196,.12); border:1px solid rgba(103,216,196,.3);
+    display:grid; place-items:center; color:var(--teal); cursor:pointer; }
+  .wa svg { width:18px; height:18px; }
+
+  /* ── Activity feed (timeline) ── */
+  .feed { position:relative; padding-left:26px; }
+  .feed::before { content:''; position:absolute; left:9px; top:4px; bottom:14px; width:2px;
+    background:linear-gradient(var(--gold),rgba(231,192,121,.1)); }
+  .fitem { position:relative; padding:0 0 20px; }
+  .fitem::before { content:''; position:absolute; left:-22px; top:3px; width:10px; height:10px; border-radius:50%;
+    background:var(--bg); border:2px solid var(--gold); box-shadow:0 0 0 4px rgba(231,192,121,.12); }
+  .fitem.rose::before { border-color:var(--rose); box-shadow:0 0 0 4px rgba(217,138,126,.12); }
+  .fitem.teal::before { border-color:var(--teal); box-shadow:0 0 0 4px rgba(103,216,196,.12); }
+  .fitem .ftype { font-family:var(--mono); font-size:8.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-dim); }
+  .fitem .fmain { font-family:var(--body); font-weight:700; font-size:14px; margin-top:4px; }
+  .fitem .fmain em { font-style:normal; color:var(--gold-lit); }
+  .fitem .ftime { font-family:var(--mono); font-size:8px; color:var(--ink-faint); margin-top:4px; }
+
+  /* ── Floating pill nav ── */
+  .nav { position:absolute; left:50%; transform:translateX(-50%); bottom:20px; z-index:50;
+    display:flex; align-items:center; gap:4px; padding:7px; border-radius:999px;
+    background:rgba(18,17,23,.72); border:1px solid var(--glass-brd); backdrop-filter:blur(18px);
+    box-shadow:0 16px 40px -10px rgba(0,0,0,.8); }
+  .nav a { width:46px; height:46px; border-radius:50%; display:grid; place-items:center; color:var(--ink-faint); cursor:pointer; transition:.18s; position:relative; }
+  .nav a svg { width:21px; height:21px; }
+  .nav a.active { color:#1a1510; background:linear-gradient(135deg,var(--gold-lit),var(--gold-deep));
+    box-shadow:0 6px 16px -4px rgba(231,192,121,.6); }
+  .nav a.fab { background:var(--glass); color:var(--gold); border:1px solid rgba(231,192,121,.4); }
+
+  .home-ind { position:absolute; bottom:7px; left:50%; transform:translateX(-50%); z-index:70; width:128px; height:5px; border-radius:3px; background:rgba(244,239,227,.4); }
+
+  @media (max-width:520px){ body{padding:16px 0 40px} .phone{border-radius:0; box-shadow:none; height:auto; min-height:100vh} }
+</style>
+</head>
+<body>
+
+  <div class="stage-label">MGSR TEAM · ANDROID DASHBOARD <b>v2 — "Night Room"</b> · cinematic / glass / living hero</div>
+
+  <!-- ══════════════ MEN ══════════════ -->
+  <div class="phone">
+    <div class="ambient"></div>
+
+    <div class="statusbar">
+      <span>9:41</span>
+      <div class="notch"></div>
+      <div class="sb-icons"><span class="bar"></span>
+        <svg width="15" height="11" viewBox="0 0 15 11" fill="none"><path d="M7.5 9.5a1 1 0 100 0M4 7c2-1.8 5-1.8 7 0M1.5 4.5c3.3-3 8.7-3 12 0" stroke="#f4efe3" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span class="batt"></span></div>
+    </div>
+
+    <div class="screen">
+      <div class="content">
+
+        <!-- Header with real BRIT logo -->
+        <div class="head">
+          <div class="head-left">
+            <svg class="brit-logo" viewBox="0 0 525 525">
+              <circle cx="262.5" cy="262.5" r="262.5" fill="#0d0d10"/>
+              <path d="M301.53,131.5H139.73C138.5,131.5 137.5,132.5 137.5,133.73V154.97C137.5,156.2 138.43,157.2 139.66,157.2C158.69,157.22 296.86,157.39 301.53,157.39C306.55,157.39 339.08,158.3 349.79,188.86C360.3,226.88 334.11,245.88 317.81,254.83C315.1,256.32 314.96,260.19 317.58,261.81C341.08,276.3 359.68,291.11 360.72,317.38C359.04,363.3 320.86,368.75 288.05,367.43C286.86,367.38 285.93,366.42 285.93,365.23C285.94,328.08 286.12,255.82 286.12,247.43C285.37,209.46 257.18,196.38 242.67,196.66L139.74,196.23C138.51,196.22 137.5,197.22 137.5,198.46V219.69C137.5,220.92 138.5,221.92 139.73,221.92H154.82C156.05,221.92 157.05,222.92 157.05,224.15V332.61C157.05,333.84 156.05,334.84 154.82,334.84H139.73C138.5,334.84 137.5,335.84 137.5,337.07V358.49C137.5,359.72 138.5,360.72 139.73,360.72H180.36C181.59,360.72 182.59,359.72 182.59,358.49V224.15C182.59,222.92 183.59,221.92 184.82,221.92H237.84C246.85,221.72 259.25,231.75 259.25,243.85V390.65C259.25,391.88 260.23,392.8 261.46,392.82C279.22,393.16 325.5,396.75 349.53,383.23C380.2,365.99 388.2,342.59 387.45,315.58C386.73,289.73 372.08,274.17 353.93,260.22C352.73,259.29 352.75,257.45 353.95,256.51C373.71,240.98 388.96,206.33 370.71,168.81C354.54,138.18 321.34,131.5 301.53,131.5Z" fill="url(#gg)"/>
+              <defs><linearGradient id="gg" x1="336" y1="131" x2="208" y2="393" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#ffe2a6"/><stop offset="1" stop-color="#916e46"/></linearGradient></defs>
+            </svg>
+            <div>
+              <div class="hi">Good morning</div>
+              <div class="nm">Lior Dahan</div>
+            </div>
+          </div>
+          <div class="head-right">
+            <div class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg></div>
+            <div class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="dot-badge">9+</span></div>
+          </div>
+        </div>
+
+        <!-- Platform switch -->
+        <div class="pswitch">
+          <div class="ps-thumb" style="transform:translateX(0)"></div>
+          <button class="on"><span class="ps-dot"></span>Men</button>
+          <button><span class="ps-dot"></span>Women</button>
+          <button><span class="ps-dot"></span>Youth</button>
+        </div>
+
+        <!-- HERO spotlight: top asset + live next match -->
+        <div class="hero">
+          <div class="hero-glow"></div>
+          <div class="hero-grid"></div>
+          <div class="hero-silhouette">
+            <svg viewBox="0 0 120 170" fill="currentColor"><path d="M60 8a18 18 0 100 36 18 18 0 000-36zM30 54c-7 2-12 9-12 18v34h14l4 56h48l4-56h14V72c0-9-5-16-12-18-10 6-16 8-30 8s-20-2-30-8z"/></svg>
+          </div>
+          <div class="hero-eyebrow"><span class="live-dot"></span>Spotlight · Next fixture</div>
+          <div class="hero-crest">MH</div>
+          <div class="hero-body">
+            <div class="hero-pos">Maccabi Haifa · Forward</div>
+            <div class="hero-name">Omer<br/><span>Atzili</span></div>
+            <div class="hero-val">◈ Marquee asset · €4.2M</div>
+            <div class="hero-countdown">
+              <div class="cd-unit"><b>00</b><small>Days</small></div>
+              <span class="cd-sep">:</span>
+              <div class="cd-unit"><b>03</b><small>Hrs</small></div>
+              <span class="cd-sep">:</span>
+              <div class="cd-unit"><b>24</b><small>Min</small></div>
+            </div>
+          </div>
+          <div class="hero-vs">
+            <div class="vl">Home vs</div>
+            <div class="opp">B"Sheva</div>
+            <div class="comp">Ligat Ha'Al · R8</div>
+          </div>
+        </div>
+
+        <!-- Bento stat grid -->
+        <div class="bento">
+          <div class="tile gold">
+            <div class="lab">Portfolio value</div>
+            <div class="big">€48.6M</div>
+            <div class="sub">↑ 4.2% this window</div>
+            <svg class="spark" viewBox="0 0 200 40" preserveAspectRatio="none"><path d="M0 32 L30 28 L60 30 L90 20 L120 22 L150 12 L180 14 L200 6" fill="none" stroke="#ffe2a6" stroke-width="2"/><path d="M0 32 L30 28 L60 30 L90 20 L120 22 L150 12 L180 14 L200 6 L200 40 L0 40 Z" fill="rgba(231,192,121,.14)"/></svg>
+          </div>
+          <div class="tile">
+            <div class="lab">Mandate rate</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:10px">
+              <div class="ring" style="--p:72"><b>72%</b></div>
+              <div class="sub" style="margin:0">23 / 31<br/>signed</div>
+            </div>
+          </div>
+          <div class="tile">
+            <div class="lab">Roster</div>
+            <div class="big">31</div>
+            <div class="sub">14 EU-eligible</div>
+          </div>
+          <div class="tile alert">
+            <div class="lab">Expiring</div>
+            <div class="big">03</div>
+            <div class="sub">Within 30 days</div>
+          </div>
+          <div class="tile wide">
+            <div>
+              <div class="lab">Weekly activity</div>
+              <div class="sub" style="margin-top:4px">42 events · 8 transfers tracked</div>
+            </div>
+            <div class="mini-bars">
+              <i style="height:40%"></i><i style="height:65%"></i><i style="height:30%"></i><i style="height:80%"></i><i style="height:55%"></i><i style="height:95%"></i><i style="height:70%"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick action orbs -->
+        <div class="sec-head"><h2>Quick <span class="g">launch</span></h2></div>
+        <div class="orbs">
+          <div class="orb lead"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2M16 3.1a4 4 0 010 7.8M22 21v-2a4 4 0 00-3-3.9" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>Players</span></div>
+          <div class="orb"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round"/></svg></div><span>Shortlist</span></div>
+          <div class="orb"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg></div><span>Releases</span></div>
+          <div class="orb"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round"/></svg></div><span>Contracts</span></div>
+          <div class="orb"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 110 20 10 10 0 010-20zM12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>War Room</span></div>
+          <div class="orb"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>Tasks</span></div>
+        </div>
+
+        <!-- Pending decisions rail -->
+        <div class="sec-head"><h2>Needs <span class="g">you</span></h2><span class="act">2 to authorise</span></div>
+        <div class="alert-rail">
+          <div class="acard">
+            <div class="flag urgent">Expires 6d</div>
+            <div class="av">S</div>
+            <h3>Mohammad Saif</h3>
+            <p>CM · €2.4M · Hapoel B"Sheva<br/>Mandate renewal pending</p>
+            <div class="cta">Authorise →</div>
+          </div>
+          <div class="acard">
+            <div class="flag soon">Expires 11d</div>
+            <div class="av">N</div>
+            <h3>Idan Nachmias</h3>
+            <p>CB · €1.1M · Maccabi Haifa<br/>Mandate renewal pending</p>
+            <div class="cta">Authorise →</div>
+          </div>
+          <div class="acard">
+            <div class="flag soon">New</div>
+            <div class="av">↹</div>
+            <h3>Transfer in</h3>
+            <p>From Agent D. Levi<br/>Anan Jaber · RW</p>
+            <div class="cta">Review →</div>
+          </div>
+        </div>
+
+        <!-- Birthdays -->
+        <div class="sec-head"><h2>Birthdays</h2><span class="act">4 upcoming</span></div>
+        <div class="bday">
+          <div class="ava"><b>O</b></div>
+          <div class="meta"><h3>Omer Atzili</h3><p>Maccabi Haifa · turns 32</p></div>
+          <div class="right"><span class="cake today">Today</span>
+            <div class="wa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.3L2 22l4.9-1.4A10 10 0 1012 2zm0 2a8 8 0 11-4.2 14.8l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 0112 4zm4.3 11c-.2-.1-1.3-.6-1.5-.7-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.5 6.5 0 01-3.2-2.8c-.1-.2 0-.3.1-.5l.5-.6c.1-.2.1-.3 0-.5l-.7-1.6c-.2-.4-.3-.4-.5-.4h-.5c-.2 0-.5.1-.7.3-.9.9-.9 2.2-.1 3.5A9 9 0 0014 17c1.3.4 2.3.3 2.9-.1.4-.2.9-.9 1-1.4.1-.5.1-.9 0-1-.1-.1-.3-.2-.6-.3z"/></svg></div>
+          </div>
+        </div>
+        <div class="bday">
+          <div class="ava"><b>D</b></div>
+          <div class="meta"><h3>Dor Peretz</h3><p>Red Star · turns 31</p></div>
+          <div class="right"><span class="cake">3d</span></div>
+        </div>
+        <div class="bday" style="border-bottom:0">
+          <div class="ava"><b>E</b></div>
+          <div class="meta"><h3>Eran Zahavi</h3><p>Without club · turns 39</p></div>
+          <div class="right"><span class="cake">7d</span></div>
+        </div>
+
+        <!-- Activity feed as timeline -->
+        <div class="sec-head" style="margin-top:28px"><h2>Live <span class="g">feed</span></h2><span class="act">42 events</span></div>
+        <div class="feed">
+          <div class="fitem">
+            <div class="ftype">Market value ↑</div>
+            <div class="fmain"><em>Omer Atzili</em> rose to €4.2M</div>
+            <div class="ftime">Today · 09:12</div>
+          </div>
+          <div class="fitem rose">
+            <div class="ftype">Club change</div>
+            <div class="fmain"><em>Dor Peretz</em> joined Red Star</div>
+            <div class="ftime">Yesterday · 17:40</div>
+          </div>
+          <div class="fitem teal">
+            <div class="ftype">Note added</div>
+            <div class="fmain">New note on <em>Idan Nachmias</em></div>
+            <div class="ftime">Yesterday · 11:05</div>
+          </div>
+          <div class="fitem">
+            <div class="ftype">Shortlist +</div>
+            <div class="fmain"><em>Anan Jaber</em> added to shortlist</div>
+            <div class="ftime">Oct 3 · 14:22</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Floating pill nav -->
+    <nav class="nav">
+      <a class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 12l9-9 9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2M16 3.1a4 4 0 010 7.8M22 21v-2a4 4 0 00-3-3.9" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <a class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg></a>
+      <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg></a>
+      <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </nav>
+    <div class="home-ind"></div>
+  </div>
+
+
+  <!-- ══════════════ YOUTH (teal retint) ══════════════ -->
+  <div class="phone" style="--gold:#53d2b8; --gold-deep:#2f7d6e; --gold-lit:#9af0dc;">
+    <div class="ambient" style="background:
+      radial-gradient(60% 42% at 78% 6%, rgba(83,210,184,.2), transparent 60%),
+      radial-gradient(70% 46% at 10% 30%, rgba(154,140,240,.12), transparent 62%),
+      radial-gradient(80% 50% at 50% 108%, rgba(0,212,255,.12), transparent 60%);"></div>
+
+    <div class="statusbar">
+      <span>9:41</span><div class="notch"></div>
+      <div class="sb-icons"><span class="bar"></span>
+        <svg width="15" height="11" viewBox="0 0 15 11" fill="none"><path d="M7.5 9.5a1 1 0 100 0M4 7c2-1.8 5-1.8 7 0M1.5 4.5c3.3-3 8.7-3 12 0" stroke="#f4efe3" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span class="batt"></span></div>
+    </div>
+
+    <div class="screen">
+      <div class="content">
+        <div class="head">
+          <div class="head-left">
+            <svg class="brit-logo" viewBox="0 0 525 525" style="filter:drop-shadow(0 2px 10px rgba(83,210,184,.4))">
+              <circle cx="262.5" cy="262.5" r="262.5" fill="#0d0d10"/>
+              <path d="M301.53,131.5H139.73C138.5,131.5 137.5,132.5 137.5,133.73V154.97C137.5,156.2 138.43,157.2 139.66,157.2C158.69,157.22 296.86,157.39 301.53,157.39C306.55,157.39 339.08,158.3 349.79,188.86C360.3,226.88 334.11,245.88 317.81,254.83C315.1,256.32 314.96,260.19 317.58,261.81C341.08,276.3 359.68,291.11 360.72,317.38C359.04,363.3 320.86,368.75 288.05,367.43C286.86,367.38 285.93,366.42 285.93,365.23C285.94,328.08 286.12,255.82 286.12,247.43C285.37,209.46 257.18,196.38 242.67,196.66L139.74,196.23C138.51,196.22 137.5,197.22 137.5,198.46V219.69C137.5,220.92 138.5,221.92 139.73,221.92H154.82C156.05,221.92 157.05,222.92 157.05,224.15V332.61C157.05,333.84 156.05,334.84 154.82,334.84H139.73C138.5,334.84 137.5,335.84 137.5,337.07V358.49C137.5,359.72 138.5,360.72 139.73,360.72H180.36C181.59,360.72 182.59,359.72 182.59,358.49V224.15C182.59,222.92 183.59,221.92 184.82,221.92H237.84C246.85,221.72 259.25,231.75 259.25,243.85V390.65C259.25,391.88 260.23,392.8 261.46,392.82C279.22,393.16 325.5,396.75 349.53,383.23C380.2,365.99 388.2,342.59 387.45,315.58C386.73,289.73 372.08,274.17 353.93,260.22C352.73,259.29 352.75,257.45 353.95,256.51C373.71,240.98 388.96,206.33 370.71,168.81C354.54,138.18 321.34,131.5 301.53,131.5Z" fill="url(#gt)"/>
+              <defs><linearGradient id="gt" x1="336" y1="131" x2="208" y2="393" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#9af0dc"/><stop offset="1" stop-color="#2f7d6e"/></linearGradient></defs>
+            </svg>
+            <div><div class="hi" style="color:#53d2b8">Good morning</div><div class="nm">Lior Dahan</div></div>
+          </div>
+          <div class="head-right">
+            <div class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg></div>
+            <div class="ibtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="dot-badge" style="background:#2f7d6e;box-shadow:0 0 10px rgba(83,210,184,.6)">4</span></div>
+          </div>
+        </div>
+
+        <div class="pswitch">
+          <div class="ps-thumb" style="transform:translateX(200%);background:linear-gradient(135deg,#9af0dc,#2f7d6e)"></div>
+          <button><span class="ps-dot"></span>Men</button>
+          <button><span class="ps-dot"></span>Women</button>
+          <button class="on"><span class="ps-dot"></span>Youth</button>
+        </div>
+
+        <!-- Hero: top prospect -->
+        <div class="hero">
+          <div class="hero-glow" style="background:radial-gradient(90% 70% at 72% 20%, rgba(83,210,184,.3), transparent 55%)"></div>
+          <div class="hero-grid" style="background-image:linear-gradient(rgba(83,210,184,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(83,210,184,.08) 1px,transparent 1px)"></div>
+          <div class="hero-silhouette"><svg viewBox="0 0 120 170" fill="currentColor" style="color:#1d2a27;filter:drop-shadow(0 0 30px rgba(83,210,184,.25))"><path d="M60 8a18 18 0 100 36 18 18 0 000-36zM30 54c-7 2-12 9-12 18v34h14l4 56h48l4-56h14V72c0-9-5-16-12-18-10 6-16 8-30 8s-20-2-30-8z"/></svg></div>
+          <div class="hero-eyebrow" style="color:#9af0dc"><span class="live-dot" style="background:#53d2b8;animation:none;box-shadow:0 0 10px #53d2b8"></span>Prospect spotlight</div>
+          <div class="hero-crest" style="color:#53d2b8">MH</div>
+          <div class="hero-body">
+            <div class="hero-pos">Maccabi Haifa U19 · AM</div>
+            <div class="hero-name">Yoav<br/><span style="color:#53d2b8">Cohen</span></div>
+            <div class="hero-val" style="color:#9af0dc">◈ U19 · 8 IFA caps</div>
+            <div class="hero-countdown">
+              <div class="cd-unit"><b>84</b><small>Rating</small></div>
+              <div class="cd-unit"><b>12</b><small>G+A</small></div>
+              <div class="cd-unit"><b>+3</b><small>Trend</small></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bento -->
+        <div class="bento">
+          <div class="tile gold" style="background:linear-gradient(140deg,rgba(83,210,184,.16),rgba(83,210,184,.03));border-color:rgba(83,210,184,.3)">
+            <div class="lab">Academy pipeline</div>
+            <div class="big" style="color:#9af0dc">18</div>
+            <div class="sub">↑ 2 promoted this month</div>
+            <svg class="spark" viewBox="0 0 200 40" preserveAspectRatio="none"><path d="M0 34 L30 30 L60 24 L90 26 L120 16 L150 18 L180 8 L200 10" fill="none" stroke="#9af0dc" stroke-width="2"/><path d="M0 34 L30 30 L60 24 L90 26 L120 16 L150 18 L180 8 L200 10 L200 40 L0 40Z" fill="rgba(83,210,184,.14)"/></svg>
+          </div>
+          <div class="tile">
+            <div class="lab">Peak group</div>
+            <div class="big" style="color:#9af0dc">U19</div>
+            <div class="sub">7 prospects</div>
+          </div>
+          <div class="tile">
+            <div class="lab">IFA caps</div>
+            <div class="big">09</div>
+            <div class="sub">Youth int'l</div>
+          </div>
+          <div class="tile">
+            <div class="lab">Watchlist</div>
+            <div class="big">05</div>
+            <div class="sub">Scouting active</div>
+          </div>
+          <div class="tile wide">
+            <div><div class="lab">Age ladder</div><div class="sub" style="margin-top:4px">U15 — U21 spread</div></div>
+            <div class="mini-bars"><i style="height:40%;background:linear-gradient(#9af0dc,#2f7d6e)"></i><i style="height:65%;background:linear-gradient(#9af0dc,#2f7d6e)"></i><i style="height:100%;background:linear-gradient(#9af0dc,#2f7d6e)"></i><i style="height:45%;background:linear-gradient(#9af0dc,#2f7d6e)"></i></div>
+          </div>
+        </div>
+
+        <div class="sec-head"><h2>Quick <span class="g" style="color:#53d2b8">launch</span></h2></div>
+        <div class="orbs">
+          <div class="orb lead"><div class="ic" style="background:linear-gradient(140deg,#9af0dc,#2f7d6e);color:#102320;box-shadow:0 8px 20px -6px rgba(83,210,184,.6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>Players</span></div>
+          <div class="orb"><div class="ic" style="color:#53d2b8"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round"/></svg></div><span>Shortlist</span></div>
+          <div class="orb"><div class="ic" style="color:#53d2b8"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-3-3.87M4 21v-2a4 4 0 013-3.87M12 11a4 4 0 100-8 4 4 0 000 8z" stroke-linecap="round"/></svg></div><span>Contacts</span></div>
+          <div class="orb"><div class="ic" style="color:#53d2b8"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round"/></svg></div><span>Requests</span></div>
+          <div class="orb"><div class="ic" style="color:#53d2b8"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>Tasks</span></div>
+        </div>
+
+        <div class="sec-head"><h2>Live <span class="g" style="color:#53d2b8">feed</span></h2><span class="act">16 events</span></div>
+        <div class="feed" style="--gold:#53d2b8">
+          <div class="fitem" style="--gold:#53d2b8"><div class="fitem"></div>
+            <div class="ftype">Promotion</div>
+            <div class="fmain"><em style="color:#9af0dc">Yoav Cohen</em> U17 → U19</div>
+            <div class="ftime">Today · 08:30</div>
+          </div>
+          <div class="fitem teal"><div class="ftype">Note added</div><div class="fmain">New note on <em style="color:#9af0dc">Nadav Levi</em></div><div class="ftime">Yesterday · 16:10</div></div>
+          <div class="fitem"><div class="ftype">Shortlist +</div><div class="fmain"><em style="color:#9af0dc">Gal Shabtai</em> added</div><div class="ftime">Oct 2 · 13:45</div></div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a class="active" style="background:linear-gradient(135deg,#9af0dc,#2f7d6e);color:#102320;box-shadow:0 6px 16px -4px rgba(83,210,184,.6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 12l9-9 9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <a class="fab" style="color:#53d2b8;border-color:rgba(83,210,184,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg></a>
+      <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </nav>
+    <div class="home-ind"></div>
+  </div>
+
+  <div class="stage-label" style="margin-top:6px;margin-bottom:0">Left: <b>MEN</b> (molten gold) · Right: <b>YOUTH</b> (electric teal) — living hero · bento stats · glass orbs · timeline feed · floating nav</div>
+
+</body>
+</html>
