@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — War Room / Light Management Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--muted:#77736a;
+      --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    /* ── Shell ── */
+    .app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper);overflow-y:auto}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:3px;margin-top:28px}
+    .nav>a,.nav-group{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav-group:hover,.nav>a.active,.nav-group.active{color:var(--gold-soft)}
+    .nav>a.active:before,.nav-group.active:before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .nav-sub{display:grid;gap:2px;margin:0 0 6px;padding-inline-start:2px;overflow:hidden}
+    .nav-sub a{display:flex;align-items:center;gap:9px;padding:8px 0;color:#8f8b81;font:9px/1 var(--mono);text-transform:uppercase;transition:color .15s}
+    .nav-sub a:hover,.nav-sub a.active{color:var(--gold-soft)}
+    .nav-sub a .sdot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.5;flex:none}
+    .nav-sub a.active .sdot{opacity:1}
+    .rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}
+    .rail-footer strong{display:block;color:var(--paper);font-weight:400}
+    .rail-footer .live-row{display:flex;align-items:center;gap:7px}
+    .rail-footer .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.3s ease-in-out infinite}
+
+    .main{min-width:0}
+    .topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:19px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1540px;padding:34px 43px 90px}
+
+    /* ── Masthead ── */
+    .masthead{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:28px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;gap:9px}
+    .kicker .pulse{width:7px;height:7px;border-radius:50%;background:var(--red);animation:pulse 1.3s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+    .masthead h1{margin:0;font:500 clamp(52px,6.4vw,96px)/.8 var(--display);letter-spacing:-.045em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .masthead .sub{margin:14px 0 0;color:var(--muted);font:12px/1.5 var(--body);max-width:540px}
+    .mast-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+    [dir=rtl] .mast-right{align-items:flex-start}
+    .refresh{display:flex;align-items:center;gap:9px;padding:12px 16px;background:var(--gold-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s}
+    .refresh:hover{background:var(--gold);color:var(--paper)}
+    .refresh svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+    .refresh.live svg{animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .last-run{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+
+    /* ── Sub-view tab strip ── */
+    .viewstrip{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);margin-bottom:22px}
+    .viewstrip button{display:flex;align-items:center;gap:10px;padding:15px 20px;font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-inline-end:1px solid var(--line);transition:.15s;flex:1;justify-content:center;min-width:150px}
+    .viewstrip button:last-child{border-inline-end:0}
+    .viewstrip button .ico{font-size:14px;line-height:1}
+    .viewstrip button:hover{color:var(--ink)}
+    .viewstrip button.active{background:var(--black);color:var(--gold-soft)}
+    .viewstrip button .n{color:var(--muted);font-size:8px}
+    .viewstrip button.active .n{color:var(--gold-soft)}
+
+    /* ── Enrichment ticker ── */
+    .ticker{border:1px solid var(--line);background:var(--card);margin-bottom:22px;padding:16px 18px}
+    .ticker-head{display:flex;align-items:center;justify-content:space-between;gap:14px}
+    .ticker-head .st{display:flex;align-items:center;gap:9px;color:var(--ink);font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .ticker-head .st .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.2s ease-in-out infinite}
+    .ticker-head .stage{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .bar{height:4px;background:var(--paper-2);margin:14px 0 12px;overflow:hidden}
+    .bar span{display:block;height:100%;width:64%;background:var(--gold)}
+    .ticker-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+    .ticker-stats div{color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}
+    .ticker-stats b{color:var(--ink);font-weight:500}
+    .ticker-stats b.ok{color:var(--green)}.ticker-stats b.err{color:var(--red)}
+    .ticker-current{margin-top:10px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .ticker-current b{color:var(--gold)}
+
+    /* ── Signals ── */
+    .signals{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:26px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .sig{min-height:100px;padding:16px 18px 18px 0;border-inline-end:1px solid var(--line)}
+    .sig:not(:first-child){padding-inline-start:18px}
+    .sig:last-child{border-inline-end:0}
+    .sig label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .sig strong{display:block;margin-top:12px;font:500 clamp(28px,3vw,42px)/.8 var(--display);text-transform:uppercase}
+    [dir=rtl] .sig strong{font-weight:800}
+    .sig small{display:block;margin-top:9px;color:var(--muted);font:9px/1 var(--mono)}
+    .sig .gold{color:var(--gold)}.sig .green{color:var(--green)}
+
+    /* ── Filter tray ── */
+    .tray{border:1px solid var(--line);margin-bottom:16px}
+    .search{display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--line)}
+    .search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
+    .search input{width:100%;border:0;background:transparent;padding:20px 0;color:var(--ink);font:12px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;outline:none}
+    .search input::placeholder{color:var(--muted)}
+    .filter-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+    .filter-row:last-child{border-bottom:0}
+    .filter-label{display:flex;align-items:center;padding:0 18px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;border-inline-end:1px solid var(--line);white-space:nowrap}
+    .chipset{display:flex;flex-wrap:wrap;flex:1}
+    .chipset button{padding:13px 15px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line);transition:.15s}
+    .chipset button:hover{color:var(--ink)}
+    .chipset button.on{background:var(--gold-soft);color:var(--ink)}
+    .result-count{margin:0 2px 20px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    .view{display:none}
+    .view.active{display:block}
+
+    /* ── Discovery feed ── */
+    .feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(368px,1fr));gap:16px}
+    .cand{border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;transition:border-color .15s;position:relative}
+    .cand:hover{border-color:var(--gold-soft)}
+    .cand.gem{border-inline-start:3px solid var(--gold)}
+    .cand.match{border-inline-start:3px solid var(--green)}
+    .cand-badge{position:absolute;top:0;inset-inline-end:0;z-index:2;padding:5px 9px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--paper);background:var(--muted)}
+    .cand-badge.gem{background:var(--gold)}
+    .cand-badge.match{background:var(--green)}
+    .cand-badge.agent{background:var(--black);color:var(--gold-soft)}
+    .cand-top{display:flex;gap:14px;padding:16px}
+    .ring{position:relative;width:62px;height:62px;flex:none}
+    .ring svg{width:62px;height:62px;transform:rotate(-90deg)}
+    .ring .score{position:absolute;inset:0;display:grid;place-items:center;font:500 16px/1 var(--display);color:var(--ink)}
+    .ring .score small{display:block;color:var(--muted);font:7px/1 var(--mono);text-transform:uppercase;margin-top:2px}
+    .portrait{position:relative;width:58px;height:58px;flex:none}
+    .portrait img{width:100%;height:100%;object-fit:cover;filter:grayscale(.3);background:var(--black);border:1px solid var(--line)}
+    .portrait .flag{position:absolute;bottom:-4px;inset-inline-end:-4px;width:20px;height:14px;object-fit:cover;border:1px solid var(--paper)}
+    .who{min-width:0;flex:1}
+    .who .nm{font:500 22px/.95 var(--display);text-transform:uppercase;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .who .nm{font-weight:800;letter-spacing:normal}
+    .who .meta{margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+    .who .pos{font:8px/1 var(--mono);text-transform:uppercase;color:var(--ink);border:1px solid var(--line);padding:4px 7px}
+    .who .age{font:8px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
+    .who .club{margin-top:8px;color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+    .who .club b{color:var(--ink);font-weight:500}
+
+    .stat-strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .stat-strip div{padding:10px 8px;text-align:center;border-inline-end:1px solid var(--line)}
+    .stat-strip div:last-child{border-inline-end:0}
+    .stat-strip label{display:block;color:var(--muted);font:7px/1 var(--mono);text-transform:uppercase}
+    .stat-strip b{display:block;margin-top:6px;font:500 15px/1 var(--mono);color:var(--ink)}
+    .stat-strip b.ca{color:var(--gold)}
+
+    .narrative{padding:13px 16px;border-bottom:1px solid var(--line);color:var(--muted);font:10px/1.5 var(--body);border-inline-start:2px solid var(--gold-soft)}
+    .narrative b{color:var(--ink);font-weight:600}
+    .cand-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px}
+    .mv{display:flex;flex-direction:column;gap:3px}
+    .mv label{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .mv b{font:500 18px/1 var(--mono);color:var(--ink)}
+    .acts{display:flex;gap:8px}
+    .acts button,.acts a{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--line);color:var(--ink);transition:.15s}
+    .acts .report{color:var(--gold);border-color:var(--gold-soft)}
+    .acts .report:hover{background:var(--gold-soft);color:var(--ink)}
+    .acts .save:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .acts .save svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8}
+    .acts .saved{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+    .acts .saved svg{fill:var(--ink);stroke:none}
+
+    /* ── Agent carousel ── */
+    .agent-carousel{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 16px;margin-bottom:4px}
+    .agent-chip{flex:none;display:flex;flex-direction:column;align-items:center;gap:8px;width:76px;cursor:pointer;opacity:.6;transition:.15s}
+    .agent-chip:hover,.agent-chip.on{opacity:1}
+    .agent-chip .ava{width:60px;height:60px;border-radius:50%;overflow:hidden;border:2px solid transparent;background:var(--black);display:grid;place-items:center;color:var(--gold-soft);font:500 16px/1 var(--display)}
+    .agent-chip.on .ava{border-color:var(--gold)}
+    .agent-chip .ava img{width:100%;height:100%;object-fit:cover;filter:grayscale(.3)}
+    .agent-chip span{font:8px/1.2 var(--mono);text-transform:uppercase;color:var(--muted);text-align:center}
+    .agent-chip.on span{color:var(--ink)}
+
+    .agent-section{margin-bottom:28px}
+    .agent-head{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:16px}
+    .agent-head .ava{width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--black);display:grid;place-items:center;color:var(--gold-soft);font:500 13px/1 var(--display);flex:none}
+    .agent-head .ava img{width:100%;height:100%;object-fit:cover;filter:grayscale(.3)}
+    .agent-head h2{margin:0;font:500 24px/.9 var(--display);text-transform:uppercase}
+    [dir=rtl] .agent-head h2{font-weight:800}
+    .agent-head .cnt{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;margin-inline-start:auto}
+
+    /* feedback */
+    .fb{display:flex;gap:6px;margin-inline-start:auto}
+    .fb button{width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);color:var(--muted);transition:.15s}
+    .fb button svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8}
+    .fb button.up.on{background:var(--green);border-color:var(--green);color:var(--paper)}
+    .fb button.down.on{background:var(--red);border-color:var(--red);color:var(--paper)}
+    .fb button:hover{color:var(--ink)}
+
+    /* ── AI Scout prompt ── */
+    .ai-wrap{border:1px solid var(--line);background:var(--card);padding:26px}
+    .ai-prompt{display:flex;gap:12px;align-items:stretch}
+    .ai-prompt input{flex:1;border:1px solid var(--line);background:var(--paper);padding:18px 18px;color:var(--ink);font:12px/1.4 var(--mono);outline:none}
+    .ai-prompt input::placeholder{color:var(--muted)}
+    .ai-prompt button{padding:0 24px;background:var(--black);color:var(--gold-soft);font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;transition:.15s}
+    .ai-prompt button:hover{background:var(--gold-soft);color:var(--ink)}
+    .ai-examples{margin-top:18px;display:flex;flex-wrap:wrap;gap:9px}
+    .ai-examples span{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;align-self:center}
+    .ai-examples button{padding:9px 13px;border:1px solid var(--line);color:var(--ink);font:9px/1 var(--mono);transition:.15s}
+    .ai-examples button:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .ai-note{margin:22px 0 0;padding:14px 16px;background:rgba(17,17,15,.04);border-inline-start:2px solid var(--gold-soft);color:var(--muted);font:10px/1.6 var(--body)}
+    .ai-note b{color:var(--ink)}
+
+    .findnext-hero{display:flex;align-items:center;gap:16px;margin-bottom:18px;padding:18px 20px;border:1px solid var(--line);background:var(--card)}
+    .findnext-hero .big{font:500 40px/.8 var(--display);color:var(--gold)}
+    .findnext-hero p{margin:0;color:var(--muted);font:11px/1.6 var(--body)}
+    .findnext-hero p b{color:var(--ink);font-weight:600}
+
+    .empty{border:1px dashed var(--line);padding:50px 20px;text-align:center;color:var(--muted);font:10px/1.6 var(--mono);text-transform:uppercase}
+
+    /* ── Report drawer ── */
+    .scrim{position:fixed;inset:0;z-index:30;background:rgba(17,17,15,.6);opacity:0;pointer-events:none;transition:.25s}
+    .scrim.open{opacity:1;pointer-events:auto}
+    .drawer{position:fixed;top:0;inset-inline-end:0;bottom:0;z-index:31;width:min(560px,96vw);background:var(--paper);border-inline-start:4px solid var(--gold);transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);overflow-y:auto}
+    [dir=rtl] .drawer{transform:translateX(-100%)}
+    .drawer.open{transform:none}
+    .drawer-hero{position:relative;background:var(--black);color:var(--paper);padding:22px 24px 20px}
+    .drawer-hero .close{position:absolute;top:14px;inset-inline-end:16px;color:var(--paper);font:22px/1 var(--display)}
+    .drawer-hero .dh-top{display:flex;gap:14px;align-items:center}
+    .drawer-hero .dh-top img{width:64px;height:64px;object-fit:cover;filter:grayscale(.25);border:1px solid var(--dark-line);flex:none}
+    .drawer-hero .dh-info small{color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}
+    .drawer-hero .dh-info h2{margin:7px 0 0;font:500 34px/.85 var(--display);text-transform:uppercase}
+    [dir=rtl] .drawer-hero .dh-info h2{font-weight:800}
+    .rec-bar{display:flex;align-items:center;gap:14px;margin-top:18px;padding-top:16px;border-top:1px solid var(--dark-line)}
+    .rec-badge{padding:8px 14px;font:500 14px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
+    .rec-badge.SIGN{background:var(--green);color:var(--paper)}
+    .rec-badge.MONITOR{background:var(--amber);color:var(--paper)}
+    .rec-badge.PASS{background:var(--red);color:var(--paper)}
+    .rec-conf{color:#cfc9bc;font:9px/1.5 var(--mono);text-transform:uppercase}
+    .rec-conf b{color:var(--gold-soft);font:500 20px/1 var(--display);display:block}
+    .one-liner{margin-top:14px;color:#d7d1c4;font:12px/1.6 var(--body);font-style:italic}
+
+    .drawer-body{padding:22px 24px 40px}
+    .rsection{border:1px solid var(--line);background:var(--card);margin-bottom:16px}
+    .rsection>h3{margin:0;padding:13px 16px;border-bottom:1px solid var(--line);font:500 15px/1 var(--display);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:9px}
+    [dir=rtl] .rsection>h3{font-weight:800}
+    .rsection .rbody{padding:14px 16px}
+    .rsection p.analysis{margin:0 0 12px;color:var(--ink);font:11px/1.6 var(--body)}
+    .rlist{display:grid;gap:7px}
+    .rlist .rl{display:flex;gap:9px;align-items:flex-start;color:var(--muted);font:10px/1.5 var(--body)}
+    .rlist .rl .mk{font:8px/1 var(--mono);padding:4px 6px;text-transform:uppercase;flex:none;margin-top:1px}
+    .rlist .rl .mk.pos{color:var(--green);border:1px solid var(--green)}
+    .rlist .rl .mk.neg{color:var(--red);border:1px solid var(--red)}
+    .rlist .rl .mk.opp{color:var(--gold);border:1px solid var(--gold-soft)}
+    .metrics{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+    .metrics span{font:9px/1 var(--mono);text-transform:uppercase;color:var(--ink);border:1px solid var(--line);padding:6px 8px}
+    .mkt-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);margin-top:4px}
+    .mkt-grid div{padding:11px 12px;border-inline-end:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .mkt-grid div:nth-child(even){border-inline-end:0}
+    .mkt-grid div:nth-last-child(-n+2){border-bottom:0}
+    .mkt-grid label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .mkt-grid b{display:block;margin-top:6px;font:500 15px/1 var(--mono);color:var(--ink)}
+    .mkt-grid b.gold{color:var(--gold)}
+    .fitlist{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+    .fitlist span{font:9px/1 var(--mono);text-transform:uppercase;color:var(--gold);border:1px solid var(--gold-soft);padding:6px 9px}
+    .drawer-cta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+    .drawer-cta a{padding:14px;text-align:center;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+    .drawer-cta .primary{background:var(--black);color:var(--gold-soft)}
+    .drawer-cta .ghost{border:1px solid var(--ink);color:var(--ink)}
+
+    @media(max-width:900px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:15px 18px}
+      .lockup{border:0;padding:0}.rail-footer{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav>a,.nav-group{padding:6px 0}.nav em,.nav>a.active:before,.nav-group.active:before,.nav-sub{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 60px}
+      .masthead{display:block}.mast-right{align-items:flex-start;margin-top:18px}
+      .signals{grid-template-columns:1fr 1fr}.ticker-stats{grid-template-columns:1fr 1fr}
+      .viewstrip button{min-width:50%;flex:auto}
+      .filter-row{flex-direction:column;align-items:stretch}.filter-label{border-inline-end:0;border-bottom:1px solid var(--line);padding:12px 16px}
+      .feed{grid-template-columns:1fr}.mkt-grid,.drawer-cta{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Rail -->
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <button class="nav-group"><span data-t="nav_players">Players</span><em>+</em></button>
+        <a href="#"><span data-t="nav_req">Club Requirements</span><em>03</em></a>
+        <a href="#"><span data-t="nav_cont">Contacts</span><em>04</em></a>
+        <button class="nav-group"><span data-t="nav_signals">Signals</span><em>+</em></button>
+        <button class="nav-group active"><span data-t="nav_warroom">War Room</span><em>−</em></button>
+        <div class="nav-sub">
+          <a class="active" href="#" onclick="setView('discovery');return false" data-t="nav_discovery"><span class="sdot"></span>Discovery</a>
+          <a href="#" onclick="setView('agents');return false" data-t="nav_agents"><span class="sdot"></span>Agent Network</a>
+          <a href="#" onclick="setView('aiscout');return false" data-t="nav_aiscout"><span class="sdot"></span>AI Scout</a>
+          <a href="#" onclick="setView('findnext');return false" data-t="nav_findnext"><span class="sdot"></span>Find Next</a>
+        </div>
+      </nav>
+      <div class="rail-footer">
+        <span data-t="platform">Active platform</span><strong data-t="platform_v">Men / Europe</strong>
+        <span class="live-row"><span class="live-dot"></span><span data-t="live_lab">Live candidates</span></span><strong>36</strong>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_warroom">War Room</strong> / <strong id="crumb-view" data-t="nav_discovery">Discovery</strong> / 05 October 2026</div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <main class="canvas">
+        <!-- Masthead -->
+        <header class="masthead">
+          <div>
+            <p class="kicker"><span class="pulse"></span><span data-t="kicker">Recruitment command / Men platform</span></p>
+            <h1 data-t="head_a">The <span data-t="head_b">war room.</span></h1>
+            <p class="sub" data-t="sub_txt">AI discovery, your agent network, natural-language scouting and signature-match "Find Next" — one intelligence desk for every signing decision.</p>
+          </div>
+          <div class="mast-right">
+            <button class="refresh" id="refreshBtn" onclick="toggleLive()"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg><span data-t="refresh">Run discovery sweep</span></button>
+            <span class="last-run" data-t="last_run">Last sweep · 18 min ago</span>
+          </div>
+        </header>
+
+        <!-- Sub-view strip -->
+        <div class="viewstrip" role="tablist">
+          <button class="active" data-view="discovery" onclick="setView('discovery')"><span class="ico">⚡</span><span data-t="vs_discovery">Discovery</span><span class="n">24</span></button>
+          <button data-view="agents" onclick="setView('agents')"><span class="ico">🕵</span><span data-t="vs_agents">Agent Network</span><span class="n">12</span></button>
+          <button data-view="aiscout" onclick="setView('aiscout')"><span class="ico">🔍</span><span data-t="vs_aiscout">AI Scout</span></button>
+          <button data-view="findnext" onclick="setView('findnext')"><span class="ico">🧠</span><span data-t="vs_findnext">Find Next</span></button>
+        </div>
+
+        <!-- Enrichment ticker (shown while sweeping) -->
+        <section class="ticker" id="ticker" style="display:none">
+          <div class="ticker-head">
+            <div class="st"><span class="dot"></span><span data-t="enriching">Enriching discovery candidates</span></div>
+            <span class="stage" data-t="stage">Stage · matching club requirements</span>
+          </div>
+          <div class="bar"><span></span></div>
+          <div class="ticker-stats">
+            <div><span data-t="tk_proc">Scanned</span><br><b>340 / 500</b></div>
+            <div><span data-t="tk_ok">Qualified</span><br><b class="ok">24</b></div>
+            <div><span data-t="tk_err">Dropped</span><br><b class="err">11</b></div>
+            <div><span data-t="tk_eta">ETA</span><br><b>~00:52</b></div>
+          </div>
+          <div class="ticker-current"><span data-t="tk_now">Now</span> · <b>Cross-referencing FM potential vs market value…</b></div>
+        </section>
+
+        <!-- ══════════════ DISCOVERY ══════════════ -->
+        <section class="view active" id="view-discovery">
+          <section class="signals">
+            <div class="sig"><label data-t="s_total">Live candidates</label><strong>24</strong><small data-t="s_total_n">This sweep</small></div>
+            <div class="sig"><label data-t="s_match">Request matches</label><strong class="green">09</strong><small data-t="s_match_n">Fit open briefs</small></div>
+            <div class="sig"><label data-t="s_gem">Hidden gems</label><strong class="gold">07</strong><small data-t="s_gem_n">Undervalued · high PA</small></div>
+            <div class="sig"><label data-t="s_sign">SIGN-rated</label><strong>05</strong><small data-t="s_sign_n">AI recommendation</small></div>
+          </section>
+
+          <section class="tray">
+            <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input data-ph="d_search" placeholder="Search candidate, club, nationality or position"></label>
+            <div class="filter-row">
+              <span class="filter-label" data-t="f_source">Source</span>
+              <div class="chipset">
+                <button class="on" onclick="segOne(this)" data-t="all">All</button>
+                <button onclick="segOne(this)" data-t="src_match">Request match</button>
+                <button onclick="segOne(this)" data-t="src_gem">Hidden gem</button>
+                <button onclick="segOne(this)" data-t="src_general">General pool</button>
+              </div>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label" data-t="f_pos">Position</span>
+              <div class="chipset">
+                <button class="on" onclick="segOne(this)" data-t="all">All</button>
+                <button onclick="segOne(this)">GK</button><button onclick="segOne(this)">CB</button><button onclick="segOne(this)">FB</button>
+                <button onclick="segOne(this)">DM</button><button onclick="segOne(this)">CM</button><button onclick="segOne(this)">AM</button>
+                <button onclick="segOne(this)">W</button><button onclick="segOne(this)">CF</button>
+              </div>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label" data-t="f_rec">AI verdict</span>
+              <div class="chipset">
+                <button class="on" onclick="segOne(this)" data-t="all">All</button>
+                <button onclick="segOne(this)" data-t="rec_sign">Sign</button>
+                <button onclick="segOne(this)" data-t="rec_monitor">Monitor</button>
+              </div>
+            </div>
+          </section>
+
+          <p class="result-count"><span data-t="showing_a">Showing</span> <b>24</b> <span data-t="d_showing_b">of 24 candidates</span></p>
+          <div id="feed" class="feed"></div>
+        </section>
+
+        <!-- ══════════════ AGENT NETWORK ══════════════ -->
+        <section class="view" id="view-agents">
+          <section class="signals" style="grid-template-columns:repeat(3,1fr)">
+            <div class="sig"><label data-t="a_total">Profiles submitted</label><strong>12</strong><small data-t="a_total_n">From 4 agents</small></div>
+            <div class="sig"><label data-t="a_new">New this week</label><strong class="green">04</strong><small data-t="a_new_n">Awaiting review</small></div>
+            <div class="sig"><label data-t="a_up">Marked relevant</label><strong class="gold">07</strong><small data-t="a_up_n">Thumbs up</small></div>
+          </section>
+
+          <div class="agent-carousel" id="agentCarousel"></div>
+
+          <section class="tray">
+            <div class="filter-row" style="border-top:0">
+              <span class="filter-label" data-t="f_pos">Position</span>
+              <div class="chipset">
+                <button class="on" onclick="segOne(this)" data-t="all">All</button>
+                <button onclick="segOne(this)">GK</button><button onclick="segOne(this)">CB</button><button onclick="segOne(this)">RB</button>
+                <button onclick="segOne(this)">LB</button><button onclick="segOne(this)">DM</button><button onclick="segOne(this)">CM</button>
+                <button onclick="segOne(this)">AM</button><button onclick="segOne(this)">RW</button><button onclick="segOne(this)">LW</button><button onclick="segOne(this)">CF</button>
+              </div>
+            </div>
+          </section>
+
+          <p class="result-count"><span data-t="showing_a">Showing</span> <b>12</b> <span data-t="a_showing_b">of 12 profiles · 4 agents</span></p>
+          <div id="agentSections"></div>
+        </section>
+
+        <!-- ══════════════ AI SCOUT ══════════════ -->
+        <section class="view" id="view-aiscout">
+          <div class="ai-wrap">
+            <div class="ai-prompt">
+              <input data-ph="ai_ph" placeholder="Describe the player you need…" value="Left-footed CB, under 23, EU passport, strong aerially, under €4M">
+              <button data-t="ai_run">Scout →</button>
+            </div>
+            <div class="ai-examples">
+              <span data-t="ai_try">Try</span>
+              <button data-t="ai_e1">Press-resistant DM, Eredivisie</button>
+              <button data-t="ai_e2">Pacey RW with EU passport</button>
+              <button data-t="ai_e3">Ball-playing GK under 25</button>
+              <button data-t="ai_e4">Target man, immediate impact</button>
+            </div>
+            <p class="ai-note" data-t="ai_note"><b>Natural-language scouting.</b> Describe profile, position, budget, passport and league in plain words — the engine searches 19K+ players, enriches with per-90 stats & FM attributes, and ranks the closest matches.</p>
+          </div>
+          <p class="result-count" style="margin-top:22px"><span data-t="ai_results">8 matches ranked by fit</span></p>
+          <div id="aiFeed" class="feed"></div>
+        </section>
+
+        <!-- ══════════════ FIND NEXT ══════════════ -->
+        <section class="view" id="view-findnext">
+          <div class="findnext-hero">
+            <div class="big">∞</div>
+            <div>
+              <div style="font:500 20px/.9 var(--display);text-transform:uppercase;margin-bottom:6px" data-t="fn_title">Find me the next…</div>
+              <p data-t="fn_sub">Signature-match discovery. Pick a reference player and the engine finds rising profiles with the closest statistical & tactical DNA — before the market prices them in.</p>
+            </div>
+          </div>
+          <div class="ai-wrap">
+            <div class="ai-prompt">
+              <input data-ph="fn_ph" placeholder="Reference player (e.g. Mohamed Salah)" value="Mohamed Salah">
+              <button data-t="fn_run">Find next →</button>
+            </div>
+            <div class="ai-examples">
+              <span data-t="ai_try">Try</span>
+              <button>Jude Bellingham</button>
+              <button>Florian Wirtz</button>
+              <button>Alexis Mac Allister</button>
+              <button>Khvicha Kvaratskhelia</button>
+            </div>
+          </div>
+          <p class="result-count" style="margin-top:22px"><span data-t="fn_results">Closest signature matches to</span> <b>Mohamed Salah</b></p>
+          <div id="fnFeed" class="feed"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Report drawer -->
+  <div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+  <aside class="drawer" id="drawer" aria-label="Scout report">
+    <div class="drawer-hero">
+      <button class="close" onclick="closeDrawer()">×</button>
+      <div class="dh-top">
+        <img id="r-img" src="" alt="">
+        <div class="dh-info"><small id="r-sub">Club / Position / Age</small><h2 id="r-name">Player</h2></div>
+      </div>
+      <div class="rec-bar">
+        <span class="rec-badge SIGN" id="r-rec">SIGN</span>
+        <div class="rec-conf"><b id="r-conf">87%</b><span data-t="r_confidence">AI confidence</span></div>
+      </div>
+      <p class="one-liner" id="r-oneliner">—</p>
+    </div>
+    <div class="drawer-body">
+      <!-- Synthesis -->
+      <div class="rsection">
+        <h3>🧠 <span data-t="r_synth">Synthesis</span></h3>
+        <div class="rbody">
+          <p class="analysis" id="r-summary">—</p>
+          <div class="rlist" id="r-opps"></div>
+          <div class="rlist" id="r-risks" style="margin-top:9px"></div>
+        </div>
+      </div>
+      <!-- Stats agent -->
+      <div class="rsection">
+        <h3>📊 <span data-t="r_stats">Stats Agent</span></h3>
+        <div class="rbody">
+          <p class="analysis" id="r-stats-analysis">—</p>
+          <div class="rlist" id="r-strengths"></div>
+          <div class="rlist" id="r-weaknesses" style="margin-top:9px"></div>
+          <div class="metrics" id="r-metrics"></div>
+        </div>
+      </div>
+      <!-- Market agent -->
+      <div class="rsection">
+        <h3>💰 <span data-t="r_market">Market Agent</span></h3>
+        <div class="rbody">
+          <p class="analysis" id="r-market-analysis">—</p>
+          <div class="mkt-grid">
+            <div><label data-t="r_curval">Current value</label><b id="r-curval">—</b></div>
+            <div><label data-t="r_range">Comparable range</label><b id="r-range">—</b></div>
+            <div><label data-t="r_bid">Suggested bid</label><b class="gold" id="r-bid">—</b></div>
+            <div><label data-t="r_lev">Contract leverage</label><b id="r-lev">—</b></div>
+          </div>
+        </div>
+      </div>
+      <!-- Tactics agent -->
+      <div class="rsection">
+        <h3>⚽ <span data-t="r_tactics">Tactics Agent</span></h3>
+        <div class="rbody">
+          <p class="analysis" id="r-tactics-analysis">—</p>
+          <div class="mkt-grid">
+            <div><label data-t="r_role">Best role</label><b id="r-role">—</b></div>
+            <div><label data-t="r_system">Best system</label><b id="r-system">—</b></div>
+          </div>
+          <div style="margin-top:12px"><label style="color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase" data-t="r_fit">Best club fit</label>
+            <div class="fitlist" id="r-fit"></div>
+          </div>
+        </div>
+      </div>
+      <div class="drawer-cta">
+        <a class="primary" href="#" data-t="r_shortlist">+ Add to shortlist</a>
+        <a class="ghost" href="#" data-t="r_tm">Open on Transfermarkt</a>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    /* ───────────── Mock data ───────────── */
+    const flag=c=>`https://flagcdn.com/w40/${c}.png`;
+    const PH='https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=200&q=80';
+    // Parse "€55.0m" / "€650k" to millions, then build a scaled range string.
+    function mvNum(mv){const s=(mv||'').replace(/[^0-9.km]/gi,'');const n=parseFloat(s)||0;return /k/i.test(s)?n/1000:n;}
+    function fmtM(n){return n>=1?'€'+n.toFixed(1).replace(/\.0$/,'')+'m':'€'+Math.round(n*1000)+'k';}
+    function mvRange(mv,lo,hi){const n=mvNum(mv);return fmtM(n*lo)+'–'+fmtM(n*hi);}
+
+    const candidates=[
+      {name:'Leny Yoro',pos:'CB',age:19,nat:'France',cc:'fr',club:'Manchester Utd',mv:'€55.0m',score:94,source:'gem',ca:148,pa:178,g90:0.1,a90:0.0,rating:7.3,
+       narrative:'FM gap of +30 (CA 148 → PA 178) with elite recovery pace. Market has already moved — but still ahead of true ceiling.',
+       rec:'MONITOR',conf:71,oneLiner:'Generational ceiling, but current price demands patience and a clear pathway.'},
+      {name:'João Neves',pos:'DM',age:20,nat:'Portugal',cc:'pt',club:'Paris SG',mv:'€70.0m',score:91,source:'match',ca:154,pa:172,g90:0.1,a90:0.2,rating:7.5,
+       narrative:'Matches the Al Nassr DM brief on every axis: ball-winning, progressive carries, press resistance. Elite CM profile.',
+       rec:'SIGN',conf:88,oneLiner:'Textbook fit for the anchor brief — relentless engine with modern distribution.'},
+      {name:'Assan Ouédraogo',pos:'CM',age:18,nat:'Germany',cc:'de',club:'RB Leipzig',mv:'€18.0m',score:88,source:'gem',ca:131,pa:170,g90:0.2,a90:0.3,rating:7.1,
+       narrative:'Undervalued box-to-box with +39 FM gap. Minutes rising; value likely to double inside 12 months.',
+       rec:'SIGN',conf:84,oneLiner:'Classic hidden gem — buy the trajectory before the market catches up.'},
+      {name:'Giorgi Mamardashvili',pos:'GK',age:24,nat:'Georgia',cc:'ge',club:'Liverpool',mv:'€30.0m',score:82,source:'match',ca:150,pa:160,g90:0.0,a90:0.0,rating:7.0,
+       narrative:'Shot-stopping percentile 94th, strong on crosses. Fits the ball-playing GK requirement from Utrecht.',
+       rec:'MONITOR',conf:69,oneLiner:'Reliable modern keeper; distribution range is the one swing factor.'},
+      {name:'Oscar Gloukh',pos:'AM',age:21,nat:'Israel',cc:'il',club:'RB Salzburg',mv:'€22.0m',score:90,source:'match',ca:139,pa:166,g90:0.3,a90:0.4,rating:7.4,
+       narrative:'Roster-adjacent Israeli #10 with EU minutes. High creative output, matches the Maccabi TLV creative brief.',
+       rec:'SIGN',conf:86,oneLiner:'Creative hub with the passport, profile and pedigree to lead a line of attack.'},
+      {name:'Hugo Larsson',pos:'CM',age:20,nat:'Sweden',cc:'se',club:'Eint. Frankfurt',mv:'€28.0m',score:85,source:'general',ca:140,pa:165,g90:0.1,a90:0.2,rating:7.2,
+       narrative:'Two-way midfielder, Bundesliga-tested. Progressive passing in the 88th percentile for his age bracket.',
+       rec:'MONITOR',conf:73,oneLiner:'Steady riser with a complete midfield base — ceiling depends on final third.'},
+      {name:'Tyler Dibling',pos:'W',age:18,nat:'England',cc:'gb-eng',club:'Southampton',mv:'€20.0m',score:87,source:'gem',ca:128,pa:168,g90:0.3,a90:0.2,rating:7.0,
+       narrative:'Explosive dribbler, +40 FM gap. Take-on success elite; undervalued due to relegation-year context.',
+       rec:'SIGN',conf:81,oneLiner:'Buy the dip — relegation noise is masking a top-tier wide ceiling.'},
+      {name:'Antonio Nusa',pos:'W',age:19,nat:'Norway',cc:'no',club:'RB Leipzig',mv:'€25.0m',score:83,source:'match',ca:134,pa:162,g90:0.2,a90:0.3,rating:7.1,
+       narrative:'Direct wide threat matching the Al Ain RW brief: 1v1 ability, final-ball improving, EU minutes.',
+       rec:'MONITOR',conf:70,oneLiner:'Direct and fearless; end-product consistency is the remaining question.'}
+    ];
+
+    const agents=[
+      {id:'all',name:'All',n:12},
+      {id:'ld',name:'Lior Dahan',n:4,ava:'LD'},
+      {id:'dc',name:'D. Cohen',n:3,ava:'DC'},
+      {id:'sl',name:'S. Levi',n:3,ava:'SL'},
+      {id:'om',name:'O. Mizrahi',n:2,ava:'OM'}
+    ];
+    const agentProfiles=[
+      {agent:'ld',name:'Dor Turgeman',pos:'CF',age:21,nat:'Israel',cc:'il',club:'Maccabi TLV',mv:'€4.00m',score:88,type:'Roster-adjacent',
+       explanation:'Clinical young striker, excellent movement in the box. Could suit the Beer Sheva target-man brief.'},
+      {agent:'ld',name:'Idan Toklomati',pos:'CF',age:20,nat:'Nigeria',cc:'ng',club:'Charlotte FC',mv:'€2.20m',score:82,type:'Breakout',
+       explanation:'Breakout MLS season. Monitor valuation — physical profile travels to AFC markets.'},
+      {agent:'ld',name:'Stav Lemkin',pos:'CB',age:22,nat:'Israel',cc:'il',club:'Shakhtar (loan)',mv:'€1.20m',score:79,type:'Loan review',
+       explanation:'Composed left-footed CB, loan going well. Mandate renewal window opening soon.'},
+      {agent:'ld',name:'Anan Khalaili',pos:'RW',age:22,nat:'Israel',cc:'il',club:'Union SG',mv:'€6.50m',score:91,type:'Hold',
+       explanation:'Two UEFA scouts tracking. Elite ceiling — hold and let value climb through the window.'},
+      {agent:'dc',name:'Roy Revivo',pos:'LB',age:26,nat:'Israel',cc:'il',club:'Maccabi TLV',mv:'€1.80m',score:76,type:'Request fit',
+       explanation:'Modern attacking full-back, fits the Utrecht LB brief except the EU passport constraint.'},
+      {agent:'dc',name:'Guy Melamed',pos:'ST',age:29,nat:'Israel',cc:'il',club:'Free agent',mv:'€650k',score:72,type:'Free agent',
+       explanation:'Available now, weighing two AFC offers. Experienced finisher for an immediate-impact brief.'},
+      {agent:'dc',name:'Ali Mohamed',pos:'DM',age:27,nat:'Ghana',cc:'gh',club:'Hapoel BS',mv:'€1.10m',score:74,type:'Request fit',
+       explanation:'Ball-winning six with Ligat Ha\'al pedigree. Anchors a midfield, strong duel numbers.'},
+      {agent:'sl',name:'Ofri Arad',pos:'CB',age:25,nat:'Israel',cc:'il',club:'Kairat Almaty',mv:'€800k',score:77,type:'Request fit',
+       explanation:'Left-footed CB comfortable building out — matches the Royale Union SG defensive brief.'},
+      {agent:'sl',name:'Dolev Haziza',pos:'LW',age:29,nat:'Israel',cc:'il',club:'Al-Ettifaq',mv:'€1.50m',score:70,type:'Monitor',
+       explanation:'Creative wide player, Saudi minutes. Watch for a release that opens a return move.'},
+      {agent:'sl',name:'Sagiv Jehezkel',pos:'RW',age:30,nat:'Israel',cc:'il',club:'Trabzonspor',mv:'€2.00m',score:73,type:'Monitor',
+       explanation:'Direct winger with goals. Experienced option for a win-now wide brief.'},
+      {agent:'om',name:'Eden Karzev',pos:'CM',age:24,nat:'Israel',cc:'il',club:'Maccabi TLV',mv:'€2.50m',score:81,type:'Hold',
+       explanation:'Left-footed deep playmaker, excellent range. One of the stronger domestic #8 profiles.'},
+      {agent:'om',name:'Ilay Madmon',pos:'DM',age:22,nat:'Israel',cc:'il',club:'Maccabi TLV',mv:'€1.80m',score:78,type:'Breakout',
+       explanation:'Tidy young six, strong progression numbers. Rising minutes, value trending up.'}
+    ];
+
+    const aiMatches=candidates.slice(0,6).map((c,i)=>({...c,source:'general',score:92-i*3}));
+    const fnMatches=[
+      {name:'Rodrygo',pos:'W',age:23,nat:'Brazil',cc:'br',club:'Real Madrid',mv:'€90.0m',score:89,source:'general',ca:160,pa:168,g90:0.5,a90:0.4,rating:7.6,narrative:'Shares Salah\'s inside-forward signature: cutting in off the right, high xG+xA, elite 1v1.',rec:'MONITOR',conf:68,oneLiner:'Elite comparable profile, but priced at the ceiling.'},
+      {name:'Jamie Gittens',pos:'W',age:20,nat:'England',cc:'gb-eng',club:'Dortmund',mv:'€40.0m',score:86,source:'gem',ca:138,pa:168,g90:0.3,a90:0.3,rating:7.2,narrative:'Rising inverted winger — dribble volume and shot locations mirror early-career Salah.',rec:'SIGN',conf:82,oneLiner:'Closest affordable signature match — buy the trajectory.'},
+      {name:'Karim Konaté',pos:'CF',age:21,nat:'Ivory Coast',cc:'ci',club:'RB Salzburg',mv:'€18.0m',score:83,source:'gem',ca:132,pa:164,g90:0.6,a90:0.1,rating:7.1,narrative:'High-volume finisher with Salzburg conversion profile; movement DNA overlaps strongly.',rec:'SIGN',conf:79,oneLiner:'Undervalued finisher with a Salah-like shot map.'},
+      {name:'Yankuba Minteh',pos:'W',age:20,nat:'Gambia',cc:'gm',club:'Brighton',mv:'€30.0m',score:80,source:'match',ca:134,pa:160,g90:0.3,a90:0.3,rating:7.0,narrative:'Right-sided dribbler, Premier League-tested, strong carries into the box.',rec:'MONITOR',conf:72,oneLiner:'PL-proven wide threat with room to grow end product.'}
+    ];
+
+    /* report lookup by name */
+    const reportFor=(c)=>({
+      summary:`${c.name} profiles as a ${c.pos} with a CA/PA gap of ${c.pa-c.ca} (${c.ca} → ${c.pa}). ${c.oneLiner} The three-agent read aligns on a ${c.rec} verdict at ${c.conf}% confidence given current trajectory, context and price.`,
+      opportunities:['Market value still trails the FM potential ceiling','Minutes trending upward across the last 6 months','Profile fits an open club requirement on the board'],
+      risks:['Price sensitive to one strong tournament window','Final-third output needs sustained sample size'],
+      statsAnalysis:`Per-90 output of ${c.g90} G and ${c.a90} A with a ${c.rating} match rating. Underlying numbers (take-ons, progressive actions, duels) place him in the upper quartile for his age bracket.`,
+      strengths:['Progressive carries · top quartile','Pace & acceleration · elite','Decision-making under press'],
+      weaknesses:['Aerial duels below position median','Consistency across lower-tempo games'],
+      metrics:[`Rating ${c.rating}`,`G/90 ${c.g90}`,`A/90 ${c.a90}`,`FM CA ${c.ca}`,`FM PA ${c.pa}`,`Gap +${c.pa-c.ca}`],
+      marketAnalysis:`At ${c.mv} the player sits ${c.source==='gem'?'below':'in line with'} comparable transactions for the profile. Contract runway gives ${c.source==='gem'?'strong':'moderate'} negotiating leverage.`,
+      curval:c.mv,range:mvRange(c.mv,0.8,1.2),
+      bid:fmtM(mvNum(c.mv)*0.9),lev:c.age<21?'High':'Moderate',
+      tacticsAnalysis:`Best deployed as a ${c.pos} in a possession-forward structure. Pressing triggers and off-ball movement suit a front-foot system.`,
+      role:c.pos==='CF'?'Advanced forward':c.pos==='W'?'Inside forward':c.pos==='DM'?'Deep anchor':c.pos==='AM'?'Creative 10':'Progressor',
+      system:c.pos==='DM'?'4-3-3 single pivot':c.pos==='W'?'4-2-3-1 wide':'4-3-3',
+      fit:['Royale Union SG','FC Utrecht','Maccabi Tel Aviv']
+    });
+
+    /* ───────────── Rendering ───────────── */
+    const T_src={gem:['Hidden gem','מציאה'],match:['Request match','התאמה לדרישה'],general:['General pool','מאגר כללי'],agent:['Agent pick','בחירת סוכן']};
+    function rtlNow(){return document.documentElement.dir==='rtl';}
+
+    function candCard(c,i){
+      const rtl=rtlNow();
+      const cls=c.source==='gem'?'gem':c.source==='match'?'match':'';
+      const badgeTxt=rtl?T_src[c.source][1]:T_src[c.source][0];
+      const circ=2*Math.PI*26;
+      const dash=circ*(c.score/100);
+      return `<article class="cand ${cls}">
+        <span class="cand-badge ${cls||''}">${badgeTxt}</span>
+        <div class="cand-top">
+          <div class="ring">
+            <svg viewBox="0 0 62 62"><circle cx="31" cy="31" r="26" fill="none" stroke="rgba(22,22,19,.12)" stroke-width="4"/>
+            <circle cx="31" cy="31" r="26" fill="none" stroke="var(--gold)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${dash} ${circ}"/></svg>
+            <div class="score">${c.score}<small>${rtl?'התאמה':'match'}</small></div>
+          </div>
+          <div class="who">
+            <div class="nm">${c.name}</div>
+            <div class="meta"><span class="pos">${c.pos}</span><span class="age">${rtl?'גיל':'Age'} ${c.age}</span><img class="flag" style="position:static;width:18px;height:12px;border:0" src="${flag(c.cc)}" alt=""></div>
+            <div class="club"><b>${c.club}</b> · ${c.nat}</div>
+          </div>
+        </div>
+        <div class="stat-strip">
+          <div><label>${rtl?'דירוג':'Rating'}</label><b>${c.rating}</b></div>
+          <div><label>G/90</label><b>${c.g90}</b></div>
+          <div><label>A/90</label><b>${c.a90}</b></div>
+          <div><label>FM CA→PA</label><b class="ca">${c.ca}→${c.pa}</b></div>
+        </div>
+        <div class="narrative"><b>${rtl?'ניתוח צופה':'Scout read'} ·</b> ${c.narrative}</div>
+        <div class="cand-foot">
+          <div class="mv"><label>${rtl?'שווי שוק':'Market value'}</label><b>${c.mv}</b></div>
+          <div class="acts">
+            <button class="report" onclick='openDrawer(${JSON.stringify(c).replace(/'/g,"&#39;")})'>${rtl?'דוח מלא':'Full report'}</button>
+            <button class="save" onclick="this.classList.toggle('saved');this.classList.toggle('save')"><svg viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>${rtl?'רשימה':'Shortlist'}</button>
+          </div>
+        </div>
+      </article>`;
+    }
+
+    function renderFeed(id,list){document.getElementById(id).innerHTML=list.map(candCard).join('');}
+
+    function renderAgents(){
+      const rtl=rtlNow();
+      document.getElementById('agentCarousel').innerHTML=agents.map((a,i)=>`
+        <div class="agent-chip ${i===0?'on':''}" onclick="selectAgentChip(this,'${a.id}')">
+          <div class="ava">${a.ava?a.ava:(rtl?'הכל':'ALL')}</div>
+          <span>${a.id==='all'?(rtl?'כל הסוכנים':'All agents'):a.name}<br>${a.id==='all'?a.n:a.n+(rtl?' פרופילים':' profiles')}</span>
+        </div>`).join('');
+      renderAgentSections('all');
+    }
+    function selectAgentChip(el,id){[...el.parentNode.children].forEach(c=>c.classList.remove('on'));el.classList.add('on');renderAgentSections(id);}
+    function renderAgentSections(filter){
+      const rtl=rtlNow();
+      const groups=agents.filter(a=>a.id!=='all'&&(filter==='all'||a.id===filter));
+      document.getElementById('agentSections').innerHTML=groups.map(a=>{
+        const profs=agentProfiles.filter(p=>p.agent===a.id);
+        if(!profs.length)return'';
+        return `<section class="agent-section">
+          <div class="agent-head"><div class="ava">${a.ava}</div><h2>${a.name}</h2><span class="cnt">${profs.length} ${rtl?'פרופילים':'profiles'}</span></div>
+          <div class="feed">${profs.map(profileCard).join('')}</div>
+        </section>`;
+      }).join('');
+    }
+    function profileCard(p,i){
+      const rtl=rtlNow();
+      const circ=2*Math.PI*26,dash=circ*(p.score/100);
+      const c={...p,rec:p.score>=85?'SIGN':p.score>=75?'MONITOR':'PASS',conf:p.score,ca:120+p.score%30,pa:155+p.score%20,g90:0.2,a90:0.2,rating:(6.8+p.score/100).toFixed(1),oneLiner:p.explanation,narrative:p.explanation};
+      return `<article class="cand">
+        <span class="cand-badge agent">${p.type}</span>
+        <div class="cand-top">
+          <div class="ring"><svg viewBox="0 0 62 62"><circle cx="31" cy="31" r="26" fill="none" stroke="rgba(22,22,19,.12)" stroke-width="4"/>
+          <circle cx="31" cy="31" r="26" fill="none" stroke="var(--gold)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${dash} ${circ}"/></svg>
+          <div class="score">${p.score}<small>${rtl?'התאמה':'match'}</small></div></div>
+          <div class="who">
+            <div class="nm">${p.name}</div>
+            <div class="meta"><span class="pos">${p.pos}</span><span class="age">${rtl?'גיל':'Age'} ${p.age}</span><img class="flag" style="position:static;width:18px;height:12px;border:0" src="${flag(p.cc)}" alt=""></div>
+            <div class="club"><b>${p.club}</b> · ${p.mv}</div>
+          </div>
+        </div>
+        <div class="narrative"><b>${rtl?'הערת סוכן':'Agent note'} ·</b> ${p.explanation}</div>
+        <div class="cand-foot">
+          <div class="acts">
+            <button class="report" onclick='openDrawer(${JSON.stringify(c).replace(/'/g,"&#39;")})'>${rtl?'דוח מלא':'Full report'}</button>
+            <button class="save" onclick="this.classList.toggle('saved');this.classList.toggle('save')"><svg viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>${rtl?'רשימה':'Shortlist'}</button>
+          </div>
+          <div class="fb">
+            <button class="up" onclick="fbTog(this,'up')" title="Relevant"><svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.3a2 2 0 0 0 2-1.7l1.4-9A2 2 0 0 0 19.7 9H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg></button>
+            <button class="down" onclick="fbTog(this,'down')" title="Not relevant"><svg viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.7a2 2 0 0 0-2 1.7l-1.4 9A2 2 0 0 0 4.3 15H10z"/><path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg></button>
+          </div>
+        </div>
+      </article>`;
+    }
+    function fbTog(btn,kind){
+      const row=btn.parentNode;
+      const other=row.querySelector(kind==='up'?'.down':'.up');
+      other.classList.remove('on');
+      btn.classList.toggle('on');
+    }
+
+    /* ───────────── Report drawer ───────────── */
+    function openDrawer(c){
+      const rtl=rtlNow();
+      const r=reportFor(c);
+      document.getElementById('r-img').src=PH;
+      document.getElementById('r-name').textContent=c.name;
+      document.getElementById('r-sub').textContent=`${c.club} / ${c.pos} / ${rtl?'גיל':'Age'} ${c.age}`;
+      const rec=document.getElementById('r-rec');rec.textContent=c.rec;rec.className='rec-badge '+c.rec;
+      document.getElementById('r-conf').textContent=c.conf+'%';
+      document.getElementById('r-oneliner').textContent='“'+c.oneLiner+'”';
+      document.getElementById('r-summary').textContent=r.summary;
+      document.getElementById('r-opps').innerHTML=r.opportunities.map(o=>`<div class="rl"><span class="mk opp">${rtl?'הזדמנות':'Opp'}</span>${o}</div>`).join('');
+      document.getElementById('r-risks').innerHTML=r.risks.map(o=>`<div class="rl"><span class="mk neg">${rtl?'סיכון':'Risk'}</span>${o}</div>`).join('');
+      document.getElementById('r-stats-analysis').textContent=r.statsAnalysis;
+      document.getElementById('r-strengths').innerHTML=r.strengths.map(o=>`<div class="rl"><span class="mk pos">+</span>${o}</div>`).join('');
+      document.getElementById('r-weaknesses').innerHTML=r.weaknesses.map(o=>`<div class="rl"><span class="mk neg">−</span>${o}</div>`).join('');
+      document.getElementById('r-metrics').innerHTML=r.metrics.map(m=>`<span>${m}</span>`).join('');
+      document.getElementById('r-market-analysis').textContent=r.marketAnalysis;
+      document.getElementById('r-curval').textContent=r.curval;
+      document.getElementById('r-range').textContent=r.range;
+      document.getElementById('r-bid').textContent=r.bid;
+      document.getElementById('r-lev').textContent=r.lev;
+      document.getElementById('r-tactics-analysis').textContent=r.tacticsAnalysis;
+      document.getElementById('r-role').textContent=r.role;
+      document.getElementById('r-system').textContent=r.system;
+      document.getElementById('r-fit').innerHTML=r.fit.map(f=>`<span>${f}</span>`).join('');
+      document.getElementById('drawer').classList.add('open');
+      document.getElementById('scrim').classList.add('open');
+    }
+    function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('scrim').classList.remove('open');}
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+
+    /* ───────────── View switching ───────────── */
+    function setView(v){
+      document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+v));
+      document.querySelectorAll('.viewstrip button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+      document.querySelectorAll('.nav-sub a').forEach(a=>a.classList.remove('active'));
+      const map={discovery:0,agents:1,aiscout:2,findnext:3};
+      document.querySelectorAll('.nav-sub a')[map[v]].classList.add('active');
+      const labels={discovery:['Discovery','גילוי'],agents:['Agent Network','רשת סוכנים'],aiscout:['AI Scout','סקאוט AI'],findnext:['Find Next','מצא את הבא']};
+      document.getElementById('crumb-view').textContent=labels[v][rtlNow()?1:0];
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+    function segOne(btn){[...btn.parentNode.children].forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+
+    let live=false;
+    function toggleLive(){
+      live=!live;
+      document.getElementById('ticker').style.display=live?'block':'none';
+      document.getElementById('refreshBtn').classList.toggle('live',live);
+      const rtl=rtlNow();
+      document.querySelector('#refreshBtn span').textContent=live?(rtl?'סורק כעת…':'Sweeping now…'):(rtl?'הפעל סריקת גילוי':'Run discovery sweep');
+    }
+
+    /* ───────────── Localization ───────────── */
+    const T={he:{
+      sub:'חדר ניהול',nav_dash:'לוח בקרה',nav_players:'שחקנים',nav_req:'דרישות מועדונים',nav_cont:'אנשי קשר',nav_signals:'התראות',
+      nav_warroom:'חדר מלחמה',nav_discovery:'גילוי',nav_agents:'רשת סוכנים',nav_aiscout:'סקאוט AI',nav_findnext:'מצא את הבא',
+      platform:'פלטפורמה פעילה',platform_v:'גברים / אירופה',live_lab:'מועמדים פעילים',
+      kicker:'מרכז גיוס / פלטפורמת גברים',head_a:'חדר',head_b:'המלחמה.',
+      sub_txt:'גילוי מבוסס AI, רשת הסוכנים שלך, סקאוטינג בשפה טבעית והתאמת חתימה "מצא את הבא" — שולחן מודיעין אחד לכל החלטת חתימה.',
+      refresh:'הפעל סריקת גילוי',last_run:'סריקה אחרונה · לפני 18 דק׳',
+      vs_discovery:'גילוי',vs_agents:'רשת סוכנים',vs_aiscout:'סקאוט AI',vs_findnext:'מצא את הבא',
+      enriching:'מעשיר מועמדי גילוי',stage:'שלב · התאמה לדרישות מועדון',tk_proc:'נסרקו',tk_ok:'כשירים',tk_err:'הושמטו',tk_eta:'זמן משוער',tk_now:'כעת',
+      s_total:'מועמדים פעילים',s_total_n:'סריקה זו',s_match:'התאמות לדרישות',s_match_n:'מתאימים לבקשות',s_gem:'מציאות נסתרות',s_gem_n:'מתומחרים נמוך · PA גבוה',s_sign:'מדורגי חתימה',s_sign_n:'המלצת AI',
+      f_source:'מקור',f_pos:'עמדה',f_rec:'פסיקת AI',all:'הכל',src_match:'התאמה לדרישה',src_gem:'מציאה',src_general:'מאגר כללי',rec_sign:'חתום',rec_monitor:'עקוב',
+      showing_a:'מוצג',d_showing_b:'מתוך 24 מועמדים',a_showing_b:'מתוך 12 פרופילים · 4 סוכנים',
+      a_total:'פרופילים שהוגשו',a_total_n:'מ-4 סוכנים',a_new:'חדשים השבוע',a_new_n:'ממתינים לבדיקה',a_up:'סומנו רלוונטיים',a_up_n:'אגודל למעלה',
+      ai_run:'סקאוט ←',ai_try:'נסה',ai_e1:'DM עמיד ללחץ, אירדיוויזי',ai_e2:'כנף ימני מהיר עם דרכון EU',ai_e3:'שוער משחק עם רגל, עד 25',ai_e4:'חוד חנית, השפעה מיידית',
+      ai_note:'סקאוטינג בשפה טבעית. תאר פרופיל, עמדה, תקציב, דרכון וליגה במילים — המנוע סורק 19 אלף+ שחקנים ומדרג את ההתאמות הקרובות.',ai_results:'8 התאמות מדורגות לפי התאמה',
+      fn_title:'מצא לי את הבא…',fn_sub:'גילוי לפי חתימה. בחר שחקן ייחוס והמנוע ימצא פרופילים עולים עם ה-DNA הסטטיסטי והטקטי הקרוב ביותר — לפני שהשוק מתמחר אותם.',fn_run:'מצא ←',fn_results:'התאמות החתימה הקרובות ל',
+      r_confidence:'ביטחון AI',r_synth:'סינתזה',r_stats:'סוכן נתונים',r_market:'סוכן שוק',r_tactics:'סוכן טקטי',
+      r_curval:'שווי נוכחי',r_range:'טווח השוואתי',r_bid:'הצעה מוצעת',r_lev:'מנוף חוזה',r_role:'תפקיד מיטבי',r_system:'מערך מיטבי',r_fit:'התאמת מועדון מיטבית',
+      r_shortlist:'+ הוסף לרשימה',r_tm:'פתח בטרנספרמרקט'
+    }};
+    const EN={};
+    document.querySelectorAll('[data-t]').forEach(el=>EN[el.dataset.t]=el.textContent);
+    document.querySelectorAll('[data-ph]').forEach(el=>EN['ph_'+el.dataset.ph]=el.getAttribute('placeholder'));
+    const T_ph_he={d_search:'חפש מועמד, מועדון, לאום או עמדה',ai_ph:'תאר את השחקן שאתה צריך…',fn_ph:'שחקן ייחוס (למשל מוחמד סלאח)'};
+    function toggleLang(){
+      const rtl=document.documentElement.dir!=='rtl';
+      document.documentElement.dir=rtl?'rtl':'ltr';document.documentElement.lang=rtl?'he':'en';
+      document.getElementById('lang').textContent=rtl?'EN / HE':'HE / EN';
+      document.querySelectorAll('[data-t]').forEach(el=>{const k=el.dataset.t;el.textContent=(rtl?(T.he[k]??EN[k]):EN[k])||el.textContent;});
+      document.querySelectorAll('[data-ph]').forEach(el=>{const k=el.dataset.ph;el.setAttribute('placeholder',(rtl?(T_ph_he[k]??EN['ph_'+k]):EN['ph_'+k])||'');});
+      renderAll();
+    }
+
+    function renderAll(){
+      renderFeed('feed',candidates);
+      renderFeed('aiFeed',aiMatches);
+      renderFeed('fnFeed',fnMatches);
+      renderAgents();
+    }
+    renderAll();
+  </script>
+</body>
+</html>
