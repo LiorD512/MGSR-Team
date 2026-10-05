@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MGSR Android · Dashboard Redesign Mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* ════════════════════════════════════════════════════════════
+     MGSR TEAM — Android Dashboard Redesign
+     Adapts the web "BRIT · Light Management Room" look & feel
+     (paper theme · Oswald/Manrope/DM Mono · gold + red accents)
+     to a mobile-first Android layout. Material-3 patterns:
+     status bar, collapsing top app bar, segmented platform switch,
+     cards, FAB, bottom navigation.
+     ════════════════════════════════════════════════════════════ */
+
+  :root {
+    --ink: #161613;
+    --black: #11110f;
+    --paper: #f3f0e8;
+    --paper-2: #e4ded1;
+    --card: #fbf9f3;
+    --gold: #a47d43;
+    --gold-soft: #c9a66b;
+    --gold-bright: #e7c079;
+    --red: #b64235;
+    --green: #5c6f4a;
+    --amber: #b07a2b;
+    --blue: #4a5f6f;
+    --muted: #77736a;
+    --muted-2: #aba69b;
+    --line: rgba(22, 22, 19, 0.18);
+    --line-2: rgba(22, 22, 19, 0.07);
+    --dark-line: rgba(243, 240, 232, 0.2);
+    --display: 'Oswald', Impact, sans-serif;
+    --body: 'Manrope', Helvetica, sans-serif;
+    --mono: 'DM Mono', monospace;
+
+    /* Material elevation shadows tuned to the paper theme */
+    --shadow-1: 0 1px 2px rgba(17,17,15,.14), 0 1px 3px rgba(17,17,15,.08);
+    --shadow-2: 0 2px 6px rgba(17,17,15,.14), 0 4px 12px rgba(17,17,15,.10);
+    --shadow-fab: 0 6px 18px -4px rgba(164,125,67,.6), 0 2px 6px rgba(17,17,15,.3);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: #2a2a26;
+    font-family: var(--body);
+    color: var(--ink);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 48px;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 48px 24px 80px;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(201,166,107,.10), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(182,66,53,.08), transparent 42%);
+  }
+
+  .stage-label {
+    width: 100%;
+    text-align: center;
+    color: #cbc6ba;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: .22em;
+    font-size: 11px;
+    margin-bottom: -16px;
+  }
+  .stage-label b { color: var(--gold-bright); font-weight: 500; }
+
+  /* ── Phone frame (Android device chrome) ── */
+  .phone {
+    width: 390px;
+    max-width: 100%;
+    height: 844px;
+    background: var(--paper);
+    border-radius: 44px;
+    box-shadow: 0 0 0 11px #0c0c0a, 0 0 0 13px #26261f, 0 40px 80px rgba(0,0,0,.55);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .phone::after { /* side buttons illusion */
+    content: '';
+    position: absolute;
+    right: -13px; top: 150px;
+    width: 3px; height: 90px;
+    background: #26261f;
+    border-radius: 0 3px 3px 0;
+  }
+
+  /* Paper grain overlay */
+  .phone .grain {
+    position: absolute; inset: 0; z-index: 60; pointer-events: none; opacity: .05;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");
+  }
+
+  /* ── Android status bar ── */
+  .statusbar {
+    height: 34px;
+    background: var(--black);
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .04em;
+    flex: none;
+    position: relative;
+    z-index: 30;
+  }
+  .statusbar .notch {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    top: 7px; width: 94px; height: 20px; background: #000; border-radius: 0 0 14px 14px;
+  }
+  .statusbar .sb-icons { display: flex; gap: 7px; align-items: center; }
+  .statusbar .bar { display: inline-block; width: 15px; height: 10px;
+    background: linear-gradient(90deg, var(--paper) 70%, rgba(243,240,232,.4) 70%);
+    border-radius: 1px; }
+  .batt { width: 20px; height: 10px; border: 1.4px solid var(--paper); border-radius: 2px; position: relative; }
+  .batt::after { content:''; position:absolute; inset:1.4px; right: 5px; background: var(--paper); }
+  .batt::before { content:''; position:absolute; right:-3px; top:3px; width:2px; height:4px; background:var(--paper); border-radius:0 1px 1px 0; }
+
+  /* ── Top app bar (dark, Material collapsing style) ── */
+  .appbar {
+    background: var(--black);
+    color: var(--paper);
+    padding: 10px 18px 16px;
+    flex: none;
+    z-index: 30;
+    box-shadow: var(--shadow-1);
+  }
+  .appbar-top {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .brand-lockup { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 36px; height: 36px; border-radius: 9px; flex: none;
+    background: linear-gradient(140deg, var(--gold-bright), var(--gold));
+    display: grid; place-items: center;
+    font-family: var(--display); font-weight: 600; font-size: 17px; color: var(--black);
+    letter-spacing: -.02em;
+  }
+  .brand-lockup strong { display:block; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .09em; }
+  .brand-lockup small { display:block; margin-top: 2px; color: #9b968c; font-family: var(--mono); font-size: 8px; text-transform: uppercase; letter-spacing: .12em; }
+
+  .appbar-actions { display: flex; align-items: center; gap: 6px; }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: grid; place-items: center; position: relative;
+    color: #d9d5ca; cursor: pointer; transition: background .15s;
+  }
+  .icon-btn:active { background: rgba(243,240,232,.1); }
+  .icon-btn svg { width: 20px; height: 20px; }
+  .badge {
+    position: absolute; top: 5px; right: 5px; min-width: 16px; height: 16px; padding: 0 4px;
+    background: var(--red); color: #fff; border-radius: 9px;
+    font-family: var(--mono); font-size: 9px; font-weight: 500;
+    display: grid; place-items: center; border: 2px solid var(--black);
+  }
+  .flag-btn {
+    width: 30px; height: 20px; border-radius: 3px; overflow: hidden; cursor: pointer;
+    box-shadow: 0 0 0 1px rgba(243,240,232,.25);
+    background: linear-gradient(#fff 33%, #0038b8 33% 66%, #fff 66%);
+    display: grid; place-items: center;
+  }
+  .flag-btn span { color: #0038b8; font-size: 10px; }
+
+  .appbar-meta {
+    margin-top: 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    color: #9b968c; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+  }
+  .appbar-meta strong { color: var(--paper); font-weight: 400; }
+
+  /* ── Scroll body ── */
+  .screen { flex: 1; overflow-y: auto; position: relative; z-index: 10; }
+  .screen::-webkit-scrollbar { width: 0; }
+  .content { padding: 20px 18px 110px; }
+
+  /* ── Platform switch (segmented, Material) ── */
+  .platform-switch {
+    position: relative;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    margin-bottom: 22px;
+  }
+  .platform-switch .ps-thumb {
+    position: absolute; top: 4px; bottom: 4px; left: 4px;
+    width: calc(33.333% - 4px);
+    background: var(--black);
+    border-radius: 999px;
+    box-shadow: 0 3px 10px -3px rgba(17,17,15,.5);
+    transition: transform .4s cubic-bezier(.2,.75,.2,1);
+  }
+  .platform-switch button {
+    position: relative; z-index: 1;
+    border: 0; background: transparent; cursor: pointer;
+    padding: 9px 0;
+    font-family: var(--display); font-weight: 600; font-size: 12px; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .platform-switch button.on { color: var(--gold-bright); }
+  .ps-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .55; }
+  .platform-switch button.on .ps-dot { opacity: 1; }
+
+  /* ── Masthead greeting ── */
+  .masthead { margin-bottom: 24px; }
+  .kicker { color: var(--gold); font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 12px; }
+  .masthead h1 {
+    font-family: var(--display); font-weight: 500; font-size: 46px; line-height: .84;
+    letter-spacing: -.04em; text-transform: uppercase;
+  }
+  .masthead h1 span { color: var(--gold); }
+  .mast-note { margin-top: 14px; color: var(--muted); font-family: var(--mono); font-size: 10px; line-height: 1.6; text-transform: uppercase; }
+  .mast-note strong { color: var(--ink); font-weight: 500; }
+
+  /* ── Signals (editorial stat strip) ── */
+  .signals {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 30px;
+  }
+  .signal { padding: 16px 12px 18px 0; border-inline-end: 1px solid var(--line); }
+  .signal:not(:first-child) { padding-inline-start: 12px; }
+  .signal:last-child { border-inline-end: 0; }
+  .signal label { display: block; color: var(--muted); font-family: var(--mono); font-size: 8.5px; letter-spacing: .07em; text-transform: uppercase; }
+  .signal strong { display: block; margin-top: 10px; font-family: var(--display); font-weight: 500; font-size: 34px; line-height: .8; text-transform: uppercase; }
+  .signal strong.red { color: var(--red); }
+  .signal small { display: block; margin-top: 8px; color: var(--muted); font-family: var(--mono); font-size: 8.5px; }
+
+  /* ── Quick actions (horizontal scroll chips) ── */
+  .quick-row {
+    display: flex; gap: 10px; overflow-x: auto; margin: 0 -18px 30px; padding: 0 18px 4px;
+    scrollbar-width: none;
+  }
+  .quick-row::-webkit-scrollbar { height: 0; }
+  .chip {
+    flex: none; display: flex; align-items: center; gap: 8px;
+    padding: 11px 16px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--line);
+    font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--ink); cursor: pointer; box-shadow: var(--shadow-1); white-space: nowrap;
+  }
+  .chip svg { width: 15px; height: 15px; color: var(--gold); }
+  .chip.primary { background: var(--black); color: var(--paper); border-color: var(--black); }
+  .chip.primary svg { color: var(--gold-bright); }
+
+  /* ── Module (section) ── */
+  .module { margin-bottom: 32px; }
+  .module-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+    padding-bottom: 11px; border-bottom: 1px solid var(--line); margin-bottom: 4px;
+  }
+  .module-head h2 { font-family: var(--display); font-weight: 500; font-size: 23px; text-transform: uppercase; letter-spacing: -.01em; }
+  .module-head h2 .g { color: var(--gold); }
+  .module-head .meta { color: var(--muted); font-family: var(--mono); font-size: 9px; text-transform: uppercase; }
+  .module-head .meta a { color: var(--gold); text-decoration: none; }
+
+  /* ── Birthdays / deadline rows ── */
+  .deadline {
+    display: grid; grid-template-columns: 48px 1fr auto; gap: 14px; align-items: center;
+    padding: 16px 0; border-bottom: 1px solid var(--line);
+  }
+  .deadline .code { color: var(--gold); font-family: var(--mono); font-size: 10px; }
+  .deadline h3 { font-family: var(--display); font-weight: 500; font-size: 21px; text-transform: uppercase; margin-bottom: 4px; line-height: .9; }
+  .deadline p { color: var(--muted); font-family: var(--mono); font-size: 9px; line-height: 1.4; text-transform: uppercase; }
+  .deadline p em { color: var(--gold); font-style: normal; }
+  .deadline .action { display: flex; align-items: center; gap: 10px; justify-self: end; }
+  .wish-btn { padding: 8px 11px; background: var(--gold-soft); color: var(--ink); border: 0; cursor: pointer;
+    font-family: var(--mono); font-size: 9px; text-transform: uppercase; }
+  .deadline time { color: var(--gold); font-family: var(--display); font-weight: 500; font-size: 17px; text-transform: uppercase; }
+  .deadline time.red { color: var(--red); }
+
+  /* ── Black module (pending decisions) ── */
+  .black-module {
+    background: var(--black); color: var(--paper);
+    padding: 22px 20px 10px; border-radius: 16px; box-shadow: var(--shadow-2);
+  }
+  .black-module .module-head { border-color: var(--dark-line); }
+  .black-module .module-head h2 { color: var(--paper); }
+  .black-module .module-head .meta { color: #9b968c; }
+  .approval { display: grid; grid-template-columns: 44px 1fr auto; gap: 14px; align-items: center;
+    padding: 16px 0; border-bottom: 1px solid var(--dark-line); }
+  .approval:last-child { border-bottom: 0; }
+  .approval .av { width: 44px; height: 54px; border-radius: 6px; display: grid; place-items: center;
+    background: rgba(243,240,232,.08); color: #9b968c; font-family: var(--display); font-size: 18px; overflow: hidden; }
+  .approval .av img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); }
+  .approval h3 { font-family: var(--display); font-weight: 500; font-size: 20px; text-transform: uppercase; margin-bottom: 4px; }
+  .approval p { color: #9b968c; font-family: var(--mono); font-size: 9px; line-height: 1.4; text-transform: uppercase; }
+  .approve-btn { padding: 9px 11px; background: var(--gold-soft); color: var(--ink); border: 0; cursor: pointer;
+    font-family: var(--mono); font-size: 9px; text-transform: uppercase; white-space: nowrap; }
+
+  /* ── Mandate watch (card trio → mobile stack of 2-col) ── */
+  .mandates { display: grid; grid-template-columns: 1fr 1fr; }
+  .mandate { padding: 16px 12px 18px 0; border-bottom: 1px solid var(--line); }
+  .mandate:nth-child(even) { padding-inline-start: 12px; border-inline-start: 1px solid var(--line); }
+  .mandate strong { display: block; margin-bottom: 6px; font-family: var(--display); font-weight: 500; font-size: 19px; text-transform: uppercase; line-height: .9; }
+  .mandate .exp { color: var(--red); font-family: var(--mono); font-size: 9px; text-transform: uppercase; }
+  .mandate p { min-height: 28px; margin: 9px 0 12px; color: var(--muted); font-family: var(--mono); font-size: 9px; line-height: 1.4; }
+  .mandate .link { padding-bottom: 3px; border-bottom: 1px solid var(--ink); font-family: var(--mono); font-size: 9px; text-transform: uppercase; cursor: pointer; display: inline-block; }
+
+  /* ── Our assets (marquee cards) ── */
+  .assets { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; }
+  .asset { position: relative; min-height: 190px; border-radius: 14px; overflow: hidden; background: var(--black); cursor: pointer; box-shadow: var(--shadow-2); }
+  .asset .ph { position: absolute; inset: 0; background: linear-gradient(160deg, #30302a, #11110f); }
+  .asset .ph svg { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 70px; height: 70px; opacity: .18; color: var(--paper); }
+  .asset::after { content: ''; position: absolute; inset: 48% 0 0; background: linear-gradient(180deg, transparent, rgba(17,17,15,.82)); }
+  .asset .copy { position: absolute; inset-inline: 12px; bottom: 12px; z-index: 1; color: var(--paper); }
+  .asset .copy small { color: var(--gold-soft); font-family: var(--mono); font-size: 8px; text-transform: uppercase; letter-spacing: .04em; }
+  .asset .copy h3 { margin: 6px 0 3px; font-family: var(--display); font-weight: 500; font-size: 22px; text-transform: uppercase; line-height: .88; }
+  .asset .copy p { color: #c4bfb3; font-family: var(--mono); font-size: 9px; text-transform: uppercase; }
+
+  /* ── Matchweek timeline rail ── */
+  .matchweek { margin-top: 16px; padding: 15px 14px 12px; border: 1px solid var(--line); border-radius: 10px;
+    background: radial-gradient(120% 140% at 0% 0%, rgba(201,166,107,.1), transparent 55%), var(--card); }
+  .matchweek-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+  .matchweek-title { font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+  .matchweek-count { font-family: var(--mono); font-size: 9px; text-transform: uppercase; color: var(--muted); }
+  .mw-rail { position: relative; padding-top: 6px; }
+  .mw-line { position: absolute; top: 24px; left: 18px; right: 18px; height: 2px; background: linear-gradient(90deg, rgba(201,166,107,.5), rgba(201,166,107,.1)); }
+  .mw-stops { position: relative; display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+  .mw-stops::-webkit-scrollbar { height: 0; }
+  .mw-stop { flex: none; width: 76px; display: flex; flex-direction: column; align-items: center; gap: 5px; background: transparent; border: 0; cursor: pointer; text-align: center; }
+  .mw-crest { position: relative; width: 40px; height: 40px; border-radius: 50%; background: var(--paper-2); border: 2px solid var(--card);
+    display: grid; place-items: center; font-family: var(--display); font-size: 12px; color: var(--ink); box-shadow: 0 0 0 2px var(--line); }
+  .mw-stop.next .mw-crest { box-shadow: 0 0 0 2px var(--gold), 0 0 12px rgba(201,166,107,.6); }
+  .mw-stop.urgent .mw-crest { box-shadow: 0 0 0 2px var(--red), 0 0 12px rgba(182,66,53,.55); }
+  .mw-ha { position: absolute; bottom: -3px; right: -3px; width: 16px; height: 16px; border-radius: 50%; background: var(--black); color: var(--paper);
+    font-family: var(--mono); font-size: 8px; display: grid; place-items: center; }
+  .mw-who { font-family: var(--mono); font-size: 10px; font-weight: 500; text-transform: uppercase; }
+  .mw-opp { font-family: var(--mono); font-size: 8px; color: var(--muted); text-transform: uppercase; }
+  .mw-cd { font-family: var(--display); font-weight: 600; font-size: 13px; }
+  .mw-when { font-family: var(--mono); font-size: 8px; color: var(--muted); text-transform: uppercase; }
+
+  /* ── Club requests / activity feed rows ── */
+  .feed-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+    padding: 14px 0; border-bottom: 1px solid var(--line); text-decoration: none; color: inherit; }
+  .feed-row time { font-family: var(--mono); font-size: 9px; color: var(--gold); white-space: nowrap; }
+  .feed-row .thumb { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; filter: grayscale(.4); background: var(--paper-2);
+    display: grid; place-items: center; font-family: var(--display); font-size: 14px; color: var(--muted); }
+  .feed-row p { font-family: var(--mono); font-size: 10px; text-transform: uppercase; color: var(--muted); line-height: 1.5; }
+  .feed-row p strong { display: block; color: var(--ink); font-family: var(--body); font-weight: 700; font-size: 12px; text-transform: none; margin-top: 2px; }
+  .feed-row .tag { font-family: var(--mono); font-size: 8.5px; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); padding: 4px 7px; border-radius: 4px; white-space: nowrap; }
+  .feed-row .tag.new { color: var(--green); border-color: var(--green); }
+  .new-request { display: block; margin-top: 14px; text-align: center; padding: 12px; border: 1px dashed var(--line);
+    font-family: var(--mono); font-size: 10px; text-transform: uppercase; color: var(--gold); cursor: pointer; border-radius: 8px; }
+
+  .reveal { display: flex; align-items: center; gap: 12px; margin-top: 14px; background: transparent; border: 0; cursor: pointer; width: 100%; }
+  .reveal-line { flex: 1; height: 1px; background: var(--line); }
+  .reveal-label { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .reveal-label em { color: var(--gold); font-style: normal; }
+
+  /* ── Roster intelligence table ── */
+  .roster { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .roster th { padding: 14px 0 9px; color: var(--muted); text-align: start; font-family: var(--mono); font-size: 9px; font-weight: 400; text-transform: uppercase; }
+  .roster th:last-child, .roster td:last-child { text-align: end; }
+  .roster td { padding: 13px 0; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 10px; }
+  .roster td:first-child { font-family: var(--body); font-weight: 700; }
+  .roster td:nth-child(2) { color: var(--muted); }
+
+  /* ── FAB ── */
+  .fab {
+    position: absolute; right: 18px; bottom: 92px; z-index: 40;
+    width: 56px; height: 56px; border-radius: 18px;
+    background: linear-gradient(140deg, var(--gold-bright), var(--gold));
+    display: grid; place-items: center; cursor: pointer; box-shadow: var(--shadow-fab);
+  }
+  .fab svg { width: 26px; height: 26px; color: var(--black); }
+
+  /* ── Bottom navigation (Material 3) ── */
+  .bottom-nav {
+    flex: none; z-index: 30; position: relative;
+    background: var(--black); display: grid; grid-template-columns: repeat(5, 1fr);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom)); 
+    box-shadow: 0 -2px 10px rgba(0,0,0,.3);
+  }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 4px 0; color: #8a867c; }
+  .nav-item svg { width: 22px; height: 22px; }
+  .nav-item span { font-family: var(--mono); font-size: 8px; text-transform: uppercase; letter-spacing: .03em; }
+  .nav-item.active { color: var(--gold-bright); }
+  .nav-item.active .nav-pill { position: absolute; }
+  .nav-item .ind { height: 3px; width: 22px; border-radius: 3px; background: transparent; margin-top: -1px; }
+  .nav-item.active .ind { background: var(--gold-bright); }
+
+  .home-indicator { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 70;
+    width: 128px; height: 5px; border-radius: 3px; background: rgba(243,240,232,.5); }
+
+  @media (max-width: 520px) {
+    body { padding: 20px 0 40px; }
+    .phone { border-radius: 0; box-shadow: none; height: auto; min-height: 100vh; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="stage-label">MGSR TEAM · ANDROID DASHBOARD — <b>"Light Management Room" redesign</b> · aligned with new web look</div>
+
+  <!-- ════════════ PHONE 1 — MEN platform ════════════ -->
+  <div class="phone">
+    <div class="grain"></div>
+
+    <!-- Status bar -->
+    <div class="statusbar">
+      <span>9:41</span>
+      <div class="notch"></div>
+      <div class="sb-icons">
+        <span class="bar"></span>
+        <svg width="15" height="11" viewBox="0 0 15 11" fill="none"><path d="M7.5 9.5a1 1 0 100 0M4 7c2-1.8 5-1.8 7 0M1.5 4.5c3.3-3 8.7-3 12 0" stroke="#f3f0e8" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span class="batt"></span>
+      </div>
+    </div>
+
+    <!-- Top app bar -->
+    <div class="appbar">
+      <div class="appbar-top">
+        <div class="brand-lockup">
+          <div class="brand-mark">B</div>
+          <div>
+            <strong>BRIT</strong>
+            <small>MGSR · Management Room</small>
+          </div>
+        </div>
+        <div class="appbar-actions">
+          <div class="flag-btn"><span>HE</span></div>
+          <div class="icon-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="badge">9+</span>
+          </div>
+          <div class="icon-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6z"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="appbar-meta">
+        <span>BRIT / <strong>Dashboard</strong></span>
+        <span>Monday, Oct 5 · TLV 09:41</span>
+      </div>
+    </div>
+
+    <!-- Scrollable screen -->
+    <div class="screen">
+      <div class="content">
+
+        <!-- Platform switch -->
+        <div class="platform-switch">
+          <div class="ps-thumb" style="transform: translateX(0)"></div>
+          <button class="on"><span class="ps-dot"></span>Men</button>
+          <button><span class="ps-dot"></span>Women</button>
+          <button><span class="ps-dot"></span>Youth</button>
+        </div>
+
+        <!-- Masthead -->
+        <div class="masthead">
+          <p class="kicker">Good morning —</p>
+          <h1>Hello<br/><span>Lior.</span></h1>
+          <p class="mast-note">Your management room is live.<br/><strong>3 mandates need attention this week.</strong></p>
+        </div>
+
+        <!-- Signals -->
+        <section class="signals">
+          <div class="signal">
+            <label>Portfolio</label>
+            <strong>€48.6M</strong>
+            <small>Across 24 valued players</small>
+          </div>
+          <div class="signal">
+            <label>Roster</label>
+            <strong>31</strong>
+            <small>14 EU-eligible</small>
+          </div>
+          <div class="signal">
+            <label>Mandates</label>
+            <strong class="red">03</strong>
+            <small>Action required</small>
+          </div>
+        </section>
+
+        <!-- Quick actions -->
+        <div class="quick-row">
+          <div class="chip primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Players
+          </div>
+          <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round"/></svg>Shortlist</div>
+          <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>Releases</div>
+          <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round"/></svg>Contracts</div>
+          <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 110 20 10 10 0 010-20zM12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>War Room</div>
+          <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4H8M4 12H2m18 0h2M4 4l16 16" stroke-linecap="round"/></svg>Tasks</div>
+        </div>
+
+        <!-- Player birthdays -->
+        <section class="module">
+          <div class="module-head">
+            <h2>Birthdays</h2>
+            <span class="meta">4 upcoming</span>
+          </div>
+          <div class="deadline">
+            <div class="code">TODAY</div>
+            <div>
+              <h3>Omer Atzili</h3>
+              <p>Maccabi Haifa / turns 32</p>
+              <p class="brit-birthday-agent" style="color:var(--muted);font-family:var(--mono);font-size:9px;text-transform:uppercase;margin-top:4px">Agent <em>Lior D.</em></p>
+            </div>
+            <div class="action">
+              <button class="wish-btn">Wish ↗</button>
+              <time class="red">Today</time>
+            </div>
+          </div>
+          <div class="deadline">
+            <div class="code">08 OCT</div>
+            <div>
+              <h3>Dor Peretz</h3>
+              <p>Maccabi Tel Aviv / turns 31</p>
+            </div>
+            <div class="action"><time>3d</time></div>
+          </div>
+          <div class="deadline" style="border-bottom:0">
+            <div class="code">12 OCT</div>
+            <div>
+              <h3>Eran Zahavi</h3>
+              <p>Without club / turns 39</p>
+            </div>
+            <div class="action"><time>7d</time></div>
+          </div>
+        </section>
+
+        <!-- Pending decisions (black module) -->
+        <section class="module black-module">
+          <div class="module-head">
+            <h2>Pending</h2>
+            <span class="meta">2 to authorise</span>
+          </div>
+          <div class="approval">
+            <div class="av">S</div>
+            <div>
+              <h3>Mohammad Saif</h3>
+              <p>CM / €2.4M<br/>Hapoel Be'er Sheva / expires in 6d</p>
+            </div>
+            <button class="approve-btn">Authorise</button>
+          </div>
+          <div class="approval">
+            <div class="av">N</div>
+            <div>
+              <h3>Idan Nachmias</h3>
+              <p>CB / €1.1M<br/>Maccabi Haifa / expires in 11d</p>
+            </div>
+            <button class="approve-btn">Authorise</button>
+          </div>
+        </section>
+
+        <!-- Mandate watch -->
+        <section class="module">
+          <div class="module-head">
+            <h2>Mandate <span class="g">watch</span></h2>
+            <span class="meta">Soonest 3</span>
+          </div>
+          <div class="mandates">
+            <article class="mandate">
+              <strong>M. Saif</strong>
+              <span class="exp">Expires in 6d</span>
+              <p>Hapoel B"S / CM / €2.4M</p>
+              <span class="link">Initiate renewal</span>
+            </article>
+            <article class="mandate">
+              <strong>I. Nachmias</strong>
+              <span class="exp">Expires in 11d</span>
+              <p>Maccabi Haifa / CB / €1.1M</p>
+              <span class="link">Initiate renewal</span>
+            </article>
+            <article class="mandate" style="border-bottom:0">
+              <strong>A. Jaber</strong>
+              <span class="exp">Expires in 19d</span>
+              <p>Bnei Sakhnin / RW / €0.8M</p>
+              <span class="link">Initiate renewal</span>
+            </article>
+          </div>
+        </section>
+
+        <!-- Our assets (marquee) -->
+        <section class="module">
+          <div class="module-head">
+            <h2>Our <span class="g">assets</span></h2>
+            <span class="meta">8 marquee</span>
+          </div>
+          <div class="assets">
+            <article class="asset">
+              <div class="ph"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 3l2.9 2.1-1.1 3.4h-3.6L9.1 7.1 12 5z"/></svg></div>
+              <div class="copy">
+                <small>Maccabi Haifa / FWD</small>
+                <h3>Omer Atzili</h3>
+                <p>€4.2M</p>
+              </div>
+            </article>
+            <article class="asset">
+              <div class="ph"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 3l2.9 2.1-1.1 3.4h-3.6L9.1 7.1 12 5z"/></svg></div>
+              <div class="copy">
+                <small>Red Star / MID</small>
+                <h3>Dor Peretz</h3>
+                <p>€3.5M</p>
+              </div>
+            </article>
+          </div>
+
+          <!-- Matchweek timeline -->
+          <div class="matchweek">
+            <div class="matchweek-head">
+              <span class="matchweek-title">Matchweek</span>
+              <span class="matchweek-count">6 fixtures</span>
+            </div>
+            <div class="mw-rail">
+              <div class="mw-line"></div>
+              <div class="mw-stops">
+                <button class="mw-stop next urgent">
+                  <span class="mw-crest">BS<span class="mw-ha">H</span></span>
+                  <span class="mw-who">Atzili</span>
+                  <span class="mw-opp">vs B"S</span>
+                  <span class="mw-cd" style="color:var(--red)">3H</span>
+                  <span class="mw-when">Today 20:00</span>
+                </button>
+                <button class="mw-stop">
+                  <span class="mw-crest">TA<span class="mw-ha">A</span></span>
+                  <span class="mw-who">Peretz</span>
+                  <span class="mw-opp">@ MTA</span>
+                  <span class="mw-cd" style="color:var(--gold)">1D</span>
+                  <span class="mw-when">Tue 19:30</span>
+                </button>
+                <button class="mw-stop">
+                  <span class="mw-crest">SA<span class="mw-ha">H</span></span>
+                  <span class="mw-who">Jaber</span>
+                  <span class="mw-opp">vs SAK</span>
+                  <span class="mw-cd" style="color:var(--blue)">4D</span>
+                  <span class="mw-when">Fri 21:00</span>
+                </button>
+                <button class="mw-stop">
+                  <span class="mw-crest">AS<span class="mw-ha">A</span></span>
+                  <span class="mw-who">Saif</span>
+                  <span class="mw-opp">@ ASH</span>
+                  <span class="mw-cd" style="color:var(--blue)">5D</span>
+                  <span class="mw-when">Sat 18:00</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Club requests -->
+        <section class="module">
+          <div class="module-head">
+            <h2>Club requests</h2>
+            <span class="meta">5 live</span>
+          </div>
+          <a class="feed-row">
+            <time>05 Oct</time>
+            <p>Hapoel Tel Aviv<strong>ST / 20–26 / EU</strong></p>
+            <span class="tag new">New</span>
+          </a>
+          <a class="feed-row">
+            <time>03 Oct</time>
+            <p>Maccabi Netanya<strong>CB / 23+</strong></p>
+            <span class="tag">Open</span>
+          </a>
+          <a class="feed-row" style="border-bottom:0">
+            <time>01 Oct</time>
+            <p>FC Ashdod<strong>GK / ≤30</strong></p>
+            <span class="tag">Open</span>
+          </a>
+          <div class="new-request">+ New club request</div>
+        </section>
+
+        <!-- Recent activity -->
+        <section class="module">
+          <div class="module-head">
+            <h2>Recent <span class="g">activity</span></h2>
+            <span class="meta">Showing 4 of 42</span>
+          </div>
+          <a class="feed-row">
+            <div class="thumb">O</div>
+            <p>Market value increased<strong>Omer Atzili · €3.8M → €4.2M</strong></p>
+            <span><time style="color:var(--gold);font-family:var(--mono);font-size:9px">05 Oct<br/>09:12</time></span>
+          </a>
+          <a class="feed-row">
+            <div class="thumb">D</div>
+            <p>Club change<strong>Dor Peretz · joined Red Star</strong></p>
+            <span><time style="color:var(--gold);font-family:var(--mono);font-size:9px">04 Oct<br/>17:40</time></span>
+          </a>
+          <a class="feed-row">
+            <div class="thumb">N</div>
+            <p>Note added<strong>Idan Nachmias</strong></p>
+            <span><time style="color:var(--gold);font-family:var(--mono);font-size:9px">04 Oct<br/>11:05</time></span>
+          </a>
+          <a class="feed-row" style="border-bottom:0">
+            <div class="thumb">J</div>
+            <p>Added to shortlist<strong>Anan Jaber</strong></p>
+            <span><time style="color:var(--gold);font-family:var(--mono);font-size:9px">03 Oct<br/>14:22</time></span>
+          </a>
+          <button class="reveal">
+            <span class="reveal-line"></span>
+            <span class="reveal-label">Reveal all 42 <em>↓</em></span>
+            <span class="reveal-line"></span>
+          </button>
+        </section>
+
+        <!-- Roster intelligence -->
+        <section class="module" style="margin-bottom:0">
+          <div class="module-head">
+            <h2>Roster <span class="g">intel</span></h2>
+            <span class="meta"><a>View all 31</a></span>
+          </div>
+          <table class="roster">
+            <thead>
+              <tr><th>Player</th><th>Club</th><th>Pos</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Omer Atzili</td><td>Maccabi Haifa</td><td>FWD</td><td>€4.2M</td></tr>
+              <tr><td>Dor Peretz</td><td>Red Star</td><td>MID</td><td>€3.5M</td></tr>
+              <tr><td>Mohammad Saif</td><td>Hapoel B"S</td><td>CM</td><td>€2.4M</td></tr>
+              <tr><td>Idan Nachmias</td><td>Maccabi Haifa</td><td>CB</td><td>€1.1M</td></tr>
+              <tr><td>Anan Jaber</td><td>Bnei Sakhnin</td><td>RW</td><td>€0.8M</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- FAB -->
+    <div class="fab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+    </div>
+
+    <!-- Bottom navigation -->
+    <nav class="bottom-nav">
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 12l9-9 9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Home</span>
+        <div class="ind"></div>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2M16 3.1a4 4 0 010 7.8M22 21v-2a4 4 0 00-3-3.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Players</span>
+        <div class="ind"></div>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+        <span>Scout</span>
+        <div class="ind"></div>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Tasks</span>
+        <div class="ind"></div>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Chat</span>
+        <div class="ind"></div>
+      </div>
+    </nav>
+
+    <div class="home-indicator"></div>
+  </div>
+
+
+  <!-- ════════════ PHONE 2 — YOUTH platform (teal retint) ════════════ -->
+  <div class="phone" style="--gold:#2f7d6e; --gold-soft:#5fa391; --gold-bright:#8fc9b8;">
+    <div class="grain"></div>
+
+    <div class="statusbar">
+      <span>9:41</span>
+      <div class="notch"></div>
+      <div class="sb-icons">
+        <span class="bar"></span>
+        <svg width="15" height="11" viewBox="0 0 15 11" fill="none"><path d="M7.5 9.5a1 1 0 100 0M4 7c2-1.8 5-1.8 7 0M1.5 4.5c3.3-3 8.7-3 12 0" stroke="#f3f0e8" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span class="batt"></span>
+      </div>
+    </div>
+
+    <div class="appbar">
+      <div class="appbar-top">
+        <div class="brand-lockup">
+          <div class="brand-mark" style="background:linear-gradient(140deg,#8fc9b8,#2f7d6e)">B</div>
+          <div>
+            <strong>BRIT</strong>
+            <small>MGSR · Academy Room</small>
+          </div>
+        </div>
+        <div class="appbar-actions">
+          <div class="flag-btn"><span>HE</span></div>
+          <div class="icon-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="badge" style="background:#2f7d6e">4</span>
+          </div>
+          <div class="icon-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6z"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="appbar-meta">
+        <span>BRIT / <strong>Dashboard</strong></span>
+        <span>Monday, Oct 5 · TLV 09:41</span>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div class="content">
+
+        <div class="platform-switch">
+          <div class="ps-thumb" style="transform: translateX(200%)"></div>
+          <button><span class="ps-dot"></span>Men</button>
+          <button><span class="ps-dot"></span>Women</button>
+          <button class="on"><span class="ps-dot"></span>Youth</button>
+        </div>
+
+        <div class="masthead">
+          <p class="kicker">Good morning —</p>
+          <h1>Hello<br/><span>Lior.</span></h1>
+          <p class="mast-note">Academy pipeline is live.<br/><strong>2 age-group talents to review.</strong></p>
+        </div>
+
+        <section class="signals">
+          <div class="signal">
+            <label>Pipeline</label>
+            <strong>18</strong>
+            <small>Across U15–U21</small>
+          </div>
+          <div class="signal">
+            <label>Peak age</label>
+            <strong>U19</strong>
+            <small>7 prospects</small>
+          </div>
+          <div class="signal">
+            <label>IFA caps</label>
+            <strong>09</strong>
+            <small>Youth internationals</small>
+          </div>
+        </section>
+
+        <div class="quick-row">
+          <div class="chip primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Players
+          </div>
+          <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round"/></svg>Shortlist</div>
+          <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-3-3.87M4 21v-2a4 4 0 013-3.87M12 11a4 4 0 100-8 4 4 0 000 8z" stroke-linecap="round"/></svg>Contacts</div>
+          <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round"/></svg>Requests</div>
+          <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" stroke-linecap="round" stroke-linejoin="round"/></svg>Tasks</div>
+        </div>
+
+        <!-- Age-group ladder (youth-specific) -->
+        <section class="module">
+          <div class="module-head">
+            <h2>Age <span class="g">ladder</span></h2>
+            <span class="meta">U15 — U21</span>
+          </div>
+          <div style="display:flex;flex-direction:column">
+            <div style="display:grid;grid-template-columns:44px 1fr 30px;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)">
+              <span style="font-family:var(--display);font-weight:500;font-size:17px;text-transform:uppercase">U15</span>
+              <span style="height:8px;background:var(--paper-2);position:relative;border-radius:4px"><span style="position:absolute;inset:0 60% 0 0;background:var(--gold-soft);border-radius:4px"></span></span>
+              <span style="color:var(--muted);font-family:var(--mono);font-size:10px;text-align:end">3</span>
+            </div>
+            <div style="display:grid;grid-template-columns:44px 1fr 30px;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)">
+              <span style="font-family:var(--display);font-weight:500;font-size:17px;text-transform:uppercase">U17</span>
+              <span style="height:8px;background:var(--paper-2);position:relative;border-radius:4px"><span style="position:absolute;inset:0 35% 0 0;background:var(--gold-soft);border-radius:4px"></span></span>
+              <span style="color:var(--muted);font-family:var(--mono);font-size:10px;text-align:end">5</span>
+            </div>
+            <div style="display:grid;grid-template-columns:44px 1fr 30px;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)">
+              <span style="font-family:var(--display);font-weight:500;font-size:17px;text-transform:uppercase;color:var(--gold)">U19</span>
+              <span style="height:8px;background:var(--paper-2);position:relative;border-radius:4px"><span style="position:absolute;inset:0 5% 0 0;background:var(--gold);border-radius:4px"></span></span>
+              <span style="color:var(--muted);font-family:var(--mono);font-size:10px;text-align:end">7</span>
+            </div>
+            <div style="display:grid;grid-template-columns:44px 1fr 30px;gap:14px;align-items:center;padding:12px 0">
+              <span style="font-family:var(--display);font-weight:500;font-size:17px;text-transform:uppercase">U21</span>
+              <span style="height:8px;background:var(--paper-2);position:relative;border-radius:4px"><span style="position:absolute;inset:0 70% 0 0;background:var(--gold-soft);border-radius:4px"></span></span>
+              <span style="color:var(--muted);font-family:var(--mono);font-size:10px;text-align:end">3</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Our assets -->
+        <section class="module">
+          <div class="module-head">
+            <h2>Our <span class="g">prospects</span></h2>
+            <span class="meta">6 marquee</span>
+          </div>
+          <div class="assets">
+            <article class="asset">
+              <div class="ph"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 3l2.9 2.1-1.1 3.4h-3.6L9.1 7.1 12 5z"/></svg></div>
+              <div class="copy">
+                <small>Maccabi Haifa U19 / AM</small>
+                <h3>Y. Cohen</h3>
+                <p>U19 · 8 IFA caps</p>
+              </div>
+            </article>
+            <article class="asset">
+              <div class="ph"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 3l2.9 2.1-1.1 3.4h-3.6L9.1 7.1 12 5z"/></svg></div>
+              <div class="copy">
+                <small>Hapoel TA U17 / ST</small>
+                <h3>N. Levi</h3>
+                <p>U17 · 5 IFA caps</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Recent activity -->
+        <section class="module" style="margin-bottom:0">
+          <div class="module-head">
+            <h2>Recent <span class="g">activity</span></h2>
+            <span class="meta">Showing 3 of 16</span>
+          </div>
+          <a class="feed-row">
+            <div class="thumb">C</div>
+            <p>Promoted age group<strong>Y. Cohen · U17 → U19</strong></p>
+            <span><time style="color:var(--gold);font-family:var(--mono);font-size:9px">05 Oct<br/>08:30</time></span>
+          </a>
+          <a class="feed-row">
+            <div class="thumb">L</div>
+            <p>Note added<strong>N. Levi</strong></p>
+            <span><time style="color:var(--gold);font-family:var(--mono);font-size:9px">04 Oct<br/>16:10</time></span>
+          </a>
+          <a class="feed-row" style="border-bottom:0">
+            <div class="thumb">S</div>
+            <p>Added to shortlist<strong>G. Shabtai</strong></p>
+            <span><time style="color:var(--gold);font-family:var(--mono);font-size:9px">02 Oct<br/>13:45</time></span>
+          </a>
+        </section>
+
+      </div>
+    </div>
+
+    <div class="fab" style="background:linear-gradient(140deg,#8fc9b8,#2f7d6e)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+    </div>
+
+    <nav class="bottom-nav">
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 12l9-9 9 9M5 10v10h14V10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Home</span><div class="ind"></div>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2M16 3.1a4 4 0 010 7.8M22 21v-2a4 4 0 00-3-3.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Players</span><div class="ind"></div>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+        <span>Scout</span><div class="ind"></div>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Tasks</span><div class="ind"></div>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Chat</span><div class="ind"></div>
+      </div>
+    </nav>
+
+    <div class="home-indicator"></div>
+  </div>
+
+  <div class="stage-label" style="margin-top:8px;margin-bottom:0">
+    Left: <b>MEN</b> (gold accent) &nbsp;·&nbsp; Right: <b>YOUTH</b> (teal retint) — same editorial room, platform-themed
+  </div>
+
+</body>
+</html>
