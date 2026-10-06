@@ -6,11 +6,24 @@
  *   hiding players who were released but have since SIGNED A NEW CLUB — so the
  *   screen only shows players who are genuinely still without a club.
  *
+ * HOW IT DECIDES (per-player, from the player's own TM profile)
+ *   For every NEW_RELEASE_FROM_CLUB event currently on the screen, fetch the
+ *   player's TM profile and classify:
+ *     - STILL FREE  → current club is a "without club" variant, OR the profile
+ *                     carries a "Joining: Without Club" / "To leave" marker
+ *                     (contract ending into no club — e.g. a player still rostered
+ *                     this season but leaving for free). These stay visible.
+ *     - SIGNED      → a real current club AND no "joining without club" marker.
+ *                     These get hidden.
+ *     - UNKNOWN     → profile fetch failed / unparseable → leave as-is (fail-safe).
+ *   The list-based "free agent" sources are NOT authoritative here: TM's
+ *   free-agent lists don't cover the whole released population and ignore the
+ *   value filter, so only the player's own profile reliably answers "signed?".
+ *
  * NON-DESTRUCTIVE
- *   This worker NEVER deletes FeedEvents. It only toggles a boolean field
- *   `hiddenFromReleases` on NEW_RELEASE_FROM_CLUB events:
- *     - sets it to true  when the player is no longer a free agent on TM
- *     - sets it back to false (self-heal) if the player reappears as a free agent
+ *   NEVER deletes FeedEvents. Only toggles a boolean field `hiddenFromReleases`:
+ *     - true  when the player has signed a new club
+ *     - false (self-heal) if a previously-hidden player is free again
  *   The men's screen filters out events where hiddenFromReleases === true.
  *
  * SCOPE
@@ -19,28 +32,20 @@
  *   releases refresh workers (workers-job/releasesRefresh.js, _releases_refresh.ts).
  *
  * ANTI-BLOCK
- *   Reuses the exact TM scraping stack proven by _releases_refresh.ts and the
- *   weekly returnees/finishers GitHub Actions jobs: header-generator realistic
- *   headers, randomized gaps, and a circuit breaker. Only scrapes LIST pages
- *   (not per-player profiles) once a week — low, safe volume.
- *
- * SAFETY GUARDS (so a flaky TM scrape never wrongly hides a still-free player)
- *   1. Health gate  — aborts (changes nothing) if the scrape looks degraded.
- *   2. Grace period — a player must be absent from the free-agent list for
- *                     RELEASE_MISS_THRESHOLD consecutive healthy runs before
- *                     being hidden (miss counters live in WorkerState).
- *   Because hiding is reversible, any rare mistake auto-corrects next run.
+ *   TM challenges plain requests from GitHub Actions IPs (HTTP 202), so fetches
+ *   go through the shared HTML proxy the Cloud Run workers use, with a direct
+ *   header-generator fetch as fallback and per-URL retries. Runs weekly.
  *
  * STATE
- *   WorkerState/ReleasesCleanerWorker  — releaseMissCounts + lastRunSuccess
- *   WorkerRuns/ReleasesCleanerWorker   — status/summary for observability
- *   (Separate docs from the refresh worker — zero interference.)
+ *   WorkerRuns/ReleasesCleanerWorker — status/summary for observability.
  *
  * USAGE
  *   Dry run (prints what it WOULD hide/unhide, writes nothing):
  *     cd mgsr-web && npx tsx _releases_cleaner.ts --dry-run
  *   Apply:
  *     cd mgsr-web && npx tsx _releases_cleaner.ts
+ *   Options:
+ *     --limit=N   only process the first N screen players (debug)
  *   GH Actions: env FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
  */
 import { initializeApp, cert } from 'firebase-admin/app';
@@ -65,6 +70,12 @@ if (fs.existsSync(envPath)) {
 }
 
 const DRY_RUN = process.argv.includes('--dry-run');
+const LIMIT = (() => {
+  const arg = process.argv.find((a) => a.startsWith('--limit='));
+  if (!arg) return 0;
+  const n = Number.parseInt(arg.split('=')[1], 10);
+  return Number.isNaN(n) ? 0 : n;
+})();
 
 const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
@@ -78,53 +89,34 @@ if (!projectId || !clientEmail || !privateKey) {
 const app = initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
 const db = getFirestore(app);
 
-// ── Constants (match the refresh worker exactly) ──
-const TRANSFERMARKT_BASE_URL = 'https://www.transfermarkt.com';
+// ── Constants ──
+const TM_HTML_PROXY_URL =
+  process.env.TM_HTML_PROXY_URL ||
+  'https://management.britsportgroup.com/api/transfermarkt/html-proxy';
 const FEED_EVENTS_TABLE = 'FeedEvents'; // MEN platform collection
-const WORKER_STATE_COLLECTION = 'WorkerState';
 const WORKER_RUNS_COLLECTION = 'WorkerRuns';
 const WORKER_STATE_DOC = 'ReleasesCleanerWorker';
 const FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB = 'NEW_RELEASE_FROM_CLUB';
 
-const RELEASE_RANGES: [number, number][] = [
-  [150000, 250000],
-  [250001, 400000],
-  [400001, 600000],
-  [600001, 800000],
-  [800001, 1000000],
-  [1000001, 1200000],
-  [1200001, 1400000],
-  [1400001, 1600000],
-  [1600001, 1800000],
-  [1800001, 2000000],
-  [2000001, 2200000],
-  [2200001, 2500000],
-  [2500001, 3000000],
-  [3000001, 3500000],
-  [3500001, 4000000],
+const WITHOUT_CLUB_VARIANTS = [
+  'without club', 'ohne verein', 'sans club', 'sin club',
+  'senza squadra', 'sem clube', 'geen club', 'bez klubu',
+  'klubsuz', 'free agent', 'vereinslos', 'retired', 'career break',
 ];
 
-const DELAY_BETWEEN_RANGES_MS = 6000;
-const RANGE_RETRY_ATTEMPTS = 3;
-const RANGE_RETRY_DELAY_MS = 4000;
+// Max profiles to classify per run (safety cap on TM volume).
+const MAX_PROFILES_PER_RUN = Number(process.env.MAX_PROFILES_PER_RUN || 1500);
+// Health gate: if fewer than this fraction of profiles classified successfully,
+// treat the run as degraded and skip all writes (fail-safe = keep showing).
+const MIN_SUCCESS_RATE = Number(process.env.MIN_SUCCESS_RATE || 0.6);
 
-// ── Safety-guard tunables (env-overridable) ──
-// A player must be absent from the free-agent list for this many consecutive
-// healthy runs before being hidden. Weekly cadence => default 1 is already a
-// stable observation window; set to 2 for extra caution.
-const RELEASE_MISS_THRESHOLD = Number(process.env.RELEASE_MISS_THRESHOLD || 1);
-// Minimum free agents a healthy scrape must yield. Below this we assume the
-// scrape is degraded and refuse to hide anyone (fail-safe = keep showing).
-const RELEASE_HEALTHY_FLOOR = Number(process.env.RELEASE_HEALTHY_FLOOR || 100);
-
-// ── TM fetching strategy ──
-// Plain https.get / fetch from GitHub Actions IPs gets challenged by TM
-// (HTTP 202 bot wall), so we fetch through the shared HTML proxy that the
-// Cloud Run workers rely on (browser-grade egress that bypasses the block).
-// A direct fetch with realistic headers is kept as a secondary fallback.
-const TM_HTML_PROXY_URL =
-  process.env.TM_HTML_PROXY_URL ||
-  'https://management.britsportgroup.com/api/transfermarkt/html-proxy';
+// ── Fetch pacing / per-URL retry (no global circuit breaker — see note) ──
+let _lastFetchTime = 0;
+const MIN_FETCH_GAP_MS = Number(process.env.TM_MIN_GAP_MS || 1200);
+const MAX_FETCH_GAP_MS = Number(process.env.TM_MAX_GAP_MS || 2800);
+const FETCH_TIMEOUT_MS = 30000;
+const FETCH_URL_ATTEMPTS = Number(process.env.TM_FETCH_ATTEMPTS || 4);
+const FETCH_RETRY_BASE_MS = Number(process.env.TM_FETCH_RETRY_MS || 3000);
 
 const headerGen = new HeaderGenerator({
   browsers: [{ name: 'chrome', minVersion: 128, maxVersion: 135 }],
@@ -132,16 +124,6 @@ const headerGen = new HeaderGenerator({
   operatingSystems: ['windows', 'macos'],
   locales: ['en-US'],
 });
-
-// ── Circuit breaker ──
-let _consecutiveBlocks = 0;
-let _circuitOpenUntil = 0;
-const CIRCUIT_THRESHOLD = 3;
-const CIRCUIT_COOLDOWN = 5 * 60 * 1000;
-let _lastFetchTime = 0;
-const MIN_FETCH_GAP_MS = 1500;
-const MAX_FETCH_GAP_MS = 4000;
-const FETCH_TIMEOUT_MS = 30000;
 
 function log(msg: string) {
   console.log(`[ReleasesCleaner] ${msg}`);
@@ -162,18 +144,10 @@ function getRealisticHeaders(): Record<string, string> {
   return h;
 }
 
-/** HTML looks like a real TM transfer/free-agent list page (not a bot wall). */
-function looksLikeTransferList(html: string): boolean {
+/** HTML looks like a real TM player profile (has the data-header section). */
+function looksLikeProfile(html: string): boolean {
   if (!html) return false;
-  return /class=["'][^"']*\bitems\b/i.test(html) && /tr\s+class=["'](odd|even)/i.test(html);
-}
-
-function registerBlock(): void {
-  _consecutiveBlocks++;
-  if (_consecutiveBlocks >= CIRCUIT_THRESHOLD) {
-    _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN;
-    console.warn(`[TM] Circuit breaker TRIPPED after ${_consecutiveBlocks} blocks. Cooling down 5 min.`);
-  }
+  return /data-header/i.test(html) && /<h1/i.test(html);
 }
 
 /** Fetch via the shared HTML proxy (primary — bypasses the GH Actions block). */
@@ -183,6 +157,7 @@ async function fetchViaProxy(url: string): Promise<string> {
     headers: { Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
+  if (res.status === 202) throw new Error('HTTP 202');
   if (!res.ok) throw new Error(`proxy HTTP ${res.status}`);
   return res.text();
 }
@@ -193,187 +168,91 @@ async function fetchDirect(url: string): Promise<string> {
     headers: getRealisticHeaders(),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
-  // 202 = TM bot challenge; 403/429/503 = rate/forbidden — all treated as blocks.
   if ([202, 403, 429, 503].includes(res.status)) throw new Error(`HTTP ${res.status}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
 
-async function fetchDocument(url: string): Promise<cheerio.Root> {
-  if (_circuitOpenUntil > Date.now()) {
-    throw new Error('TM circuit breaker open — cooling down');
-  }
-  // Rate limiter: randomized gap between requests.
-  const now = Date.now();
-  const gap = randomDelay();
-  const wait = gap - (now - _lastFetchTime);
-  if (wait > 0) await sleep(wait);
-  _lastFetchTime = Date.now();
-
-  let html = '';
+/**
+ * Fetch a TM profile page as a Cheerio doc. Retries the same URL up to
+ * FETCH_URL_ATTEMPTS times (proxy first, direct fallback), with backoff.
+ * Only a page that looks like a real profile is accepted.
+ */
+async function fetchProfile(url: string): Promise<cheerio.Root | null> {
   let lastErr: Error | null = null;
+  for (let attempt = 1; attempt <= FETCH_URL_ATTEMPTS; attempt++) {
+    const gap = randomDelay();
+    const since = Date.now() - _lastFetchTime;
+    if (since < gap) await sleep(gap - since);
+    _lastFetchTime = Date.now();
 
-  // 1) Primary: HTML proxy.
-  try {
-    const proxyHtml = await fetchViaProxy(url);
-    if (looksLikeTransferList(proxyHtml)) {
-      _consecutiveBlocks = 0;
-      return cheerio.load(proxyHtml);
+    for (const fetcher of [fetchViaProxy, fetchDirect]) {
+      try {
+        const html = await fetcher(url);
+        if (looksLikeProfile(html)) return cheerio.load(html);
+        lastErr = new Error('response did not look like a profile');
+      } catch (err) {
+        lastErr = err instanceof Error ? err : new Error(String(err));
+      }
     }
-    html = proxyHtml; // keep as last resort if direct also fails
-  } catch (err) {
-    lastErr = err instanceof Error ? err : new Error(String(err));
-  }
 
-  // 2) Fallback: direct fetch with realistic headers.
-  try {
-    const directHtml = await fetchDirect(url);
-    if (looksLikeTransferList(directHtml)) {
-      _consecutiveBlocks = 0;
-      return cheerio.load(directHtml);
+    if (attempt < FETCH_URL_ATTEMPTS) {
+      await sleep(FETCH_RETRY_BASE_MS * attempt + Math.floor(Math.random() * 1500));
     }
-    if (!html) html = directHtml;
-  } catch (err) {
-    lastErr = err instanceof Error ? err : new Error(String(err));
-    // A block from the direct path still counts toward the circuit breaker.
-    if (/HTTP (202|403|429|503)/.test(lastErr.message)) registerBlock();
   }
-
-  // Neither source produced a real list page.
-  if (!looksLikeTransferList(html)) {
-    registerBlock();
-    throw lastErr || new Error('TM returned no usable list HTML (possible block)');
-  }
-  _consecutiveBlocks = 0;
-  return cheerio.load(html);
+  if (lastErr) log(`  fetch failed for ${url}: ${lastErr.message}`);
+  return null;
 }
 
-// ── TM list parsing (free-agent detection) — mirrors _releases_refresh.ts ──
-const WITHOUT_CLUB_VARIANTS = [
-  'without club', 'ohne verein', 'sans club', 'sin club',
-  'senza squadra', 'sem clube', 'geen club', 'bez klubu',
-  'klubsuz', 'free agent',
-];
+// ── Profile classification ──
+type Verdict = 'STILL_FREE' | 'SIGNED' | 'UNKNOWN';
 
-function isWithoutClub($: cheerio.Root, row: cheerio.Cheerio): boolean {
-  const tables = row.find('table.inline-table');
-  if (tables.length < 3) return false;
-  const newClubCell = tables.eq(2);
-  const imgAlt = newClubCell.find('img').attr('alt')?.trim().toLowerCase() || '';
-  const cellText = newClubCell.text().trim().toLowerCase();
-  return WITHOUT_CLUB_VARIANTS.some((v) => imgAlt.includes(v) || cellText.includes(v));
+function isWithoutClubText(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const v = value.trim().toLowerCase();
+  if (!v) return false;
+  return WITHOUT_CLUB_VARIANTS.some((variant) => v.includes(variant));
 }
 
-/** Extract player profile URLs from a "newest transfers → without club" page. */
-function parseWithoutClubUrls($: cheerio.Root): string[] {
-  const rows = $('table.items')
-    .find('tr.odd, tr.even')
-    .filter((_i, el) => isWithoutClub($, $(el)))
-    .get();
+/**
+ * Decide whether a player, by their profile, is still effectively without a club.
+ *
+ * KEEP (STILL_FREE) when ANY of:
+ *   - current club (data-header__club) is a "without club" variant, OR
+ *   - the header carries a "Joining: Without Club" marker (title) or links to
+ *     TM's "without-club" squad page (href contains /without-club/ or
+ *     /vereinslos/), i.e. a "To leave → Without Club" player such as a contract
+ *     expiring into no next club.
+ * HIDE (SIGNED) when: a real current club AND none of the above markers.
+ */
+function classifyProfile($: cheerio.Root): Verdict {
+  // Current club in the header.
+  const clubLink = $('span.data-header__club a').first();
+  const clubName = (clubLink.attr('title') || clubLink.text() || '').trim();
 
-  return rows
-    .map((el) => {
-      const firstTable = $(el).find('td').find('table.inline-table').eq(0);
-      const href = firstTable.find('a').attr('href') || '';
-      return href ? `${TRANSFERMARKT_BASE_URL}${href}` : '';
-    })
-    .filter(Boolean);
-}
-
-/** Extract player profile URLs from the dedicated free-agents list page. */
-function parseFreeAgentUrls($: cheerio.Root): string[] {
-  const rows = $('table.items').find('tr.odd, tr.even').get();
-  return rows
-    .map((el) => {
-      const firstTable = $(el).find('td').find('table.inline-table').eq(0);
-      const href = firstTable.find('a').attr('href') || '';
-      return href ? `${TRANSFERMARKT_BASE_URL}${href}` : '';
-    })
-    .filter(Boolean);
-}
-
-function getTotalPages($: cheerio.Root): number {
-  const paginationSelectors = [
-    'div.pager li.tm-pagination__list-item',
-    'li.tm-pagination__list-item',
-    'ul.tm-pagination li',
-    'div.pager li',
-  ];
-  for (const sel of paginationSelectors) {
-    const nums = $(sel)
-      .map((_i, el) => parseInt($(el).text().trim(), 10))
-      .get()
-      .filter((n: number) => !isNaN(n));
-    const max = Math.max(0, ...nums);
-    if (max >= 1) return max;
-  }
-  const pageLinks = $("a[href*='page=']");
-  let maxPage = 1;
-  pageLinks.each((_i, el) => {
-    const href = $(el).attr('href') || '';
-    const m = href.match(/page=(\d+)/);
-    if (m) {
-      const p = parseInt(m[1], 10);
-      if (p > maxPage) maxPage = p;
-    }
+  // Any "Joining: Without Club" marker anywhere in the header.
+  let hasJoiningWithoutClub = false;
+  $('span.data-header__club a, div.data-header a, a[title^="Joining"]').each((_i, el) => {
+    const title = ($(el).attr('title') || '').toLowerCase();
+    const href = ($(el).attr('href') || '').toLowerCase();
+    if (title.includes('joining') && title.includes('without club')) hasJoiningWithoutClub = true;
+    if (href.includes('/without-club/') || href.includes('/vereinslos/')) hasJoiningWithoutClub = true;
   });
-  return Math.max(1, maxPage);
+
+  // "To leave" ribbon text (localized variants) also means leaving — keep if it
+  // points at without-club (already captured by the href/title checks above),
+  // but we treat a bare "to leave" conservatively as KEEP only when paired with
+  // a without-club destination to avoid keeping players leaving FOR another club.
+
+  const currentClubIsFree = isWithoutClubText(clubName);
+
+  if (currentClubIsFree) return 'STILL_FREE';
+  if (hasJoiningWithoutClub) return 'STILL_FREE';
+  if (clubName) return 'SIGNED';
+  return 'UNKNOWN';
 }
 
-function buildReleasesUrl(minValue: number, maxValue: number, page = 1): string {
-  return `${TRANSFERMARKT_BASE_URL}/transfers/neuestetransfers/statistik?land_id=0&wettbewerb_id=alle&minMarktwert=${minValue}&maxMarktwert=${maxValue}&plus=1&page=${page}`;
-}
-
-function buildFreeAgentsUrl(minValue: number, maxValue: number, page = 1): string {
-  return `${TRANSFERMARKT_BASE_URL}/transfers/vertragslosespieler/statistik?ausrichtung=&spielerposition_id=0&land_id=&wettbewerb_id=alle&seit=0&altersklasse=&minMarktwert=${minValue}&maxMarktwert=${maxValue}&plus=1&page=${page}`;
-}
-
-/** All still-free-agent profile URLs in a value range (both TM sources). */
-async function getFreeAgentUrlsForRange(minValue: number, maxValue: number): Promise<string[]> {
-  const urls: string[] = [];
-
-  // Source 1: newest transfers where destination is "Without Club".
-  const firstUrl = buildReleasesUrl(minValue, maxValue, 1);
-  const $first = await fetchDocument(firstUrl);
-  const releasePages = getTotalPages($first);
-  urls.push(...parseWithoutClubUrls($first));
-  for (let page = 2; page <= releasePages; page++) {
-    const $p = await fetchDocument(buildReleasesUrl(minValue, maxValue, page));
-    urls.push(...parseWithoutClubUrls($p));
-  }
-
-  // Source 2: dedicated free-agents (vertragslosespieler) list.
-  const firstFreeUrl = buildFreeAgentsUrl(minValue, maxValue, 1);
-  const $free = await fetchDocument(firstFreeUrl);
-  const freePages = getTotalPages($free);
-  urls.push(...parseFreeAgentUrls($free));
-  for (let page = 2; page <= freePages; page++) {
-    const $p = await fetchDocument(buildFreeAgentsUrl(minValue, maxValue, page));
-    urls.push(...parseFreeAgentUrls($p));
-  }
-
-  return urls;
-}
-
-// ── Firestore state helpers (dedicated ReleasesCleaner docs) ──
-async function getMissCounts(dbRef: Firestore): Promise<Record<string, number>> {
-  const snap = await dbRef.collection(WORKER_STATE_COLLECTION).doc(WORKER_STATE_DOC).get();
-  const data = snap.exists ? snap.data() : {};
-  const counts = data?.releaseMissCounts;
-  return counts && typeof counts === 'object' ? (counts as Record<string, number>) : {};
-}
-
-async function saveMissCounts(dbRef: Firestore, counts: Record<string, number>): Promise<void> {
-  await dbRef.collection(WORKER_STATE_COLLECTION).doc(WORKER_STATE_DOC).set(
-    {
-      releaseMissCounts: counts,
-      lastRunSuccess: Date.now(),
-      updatedAt: Date.now(),
-    },
-    { merge: true }
-  );
-}
-
+// ── Firestore helpers ──
 async function recordSuccess(dbRef: Firestore, summary: string, durationMs: number): Promise<void> {
   const now = Date.now();
   await dbRef.collection(WORKER_RUNS_COLLECTION).doc(WORKER_STATE_DOC).set(
@@ -408,31 +287,37 @@ async function recordFailure(dbRef: Firestore, error: string, durationMs: number
   log(`[WorkerRuns] FAILED — ${error}`);
 }
 
+interface ScreenEvent {
+  id: string;
+  playerUrl: string;
+  playerName: string;
+  hidden: boolean;
+}
+
 /** Load all NEW_RELEASE_FROM_CLUB events: profile URL + current hidden flag + doc id. */
-async function getScreenReleaseEvents(
-  dbRef: Firestore
-): Promise<Array<{ id: string; playerUrl: string; hidden: boolean }>> {
+async function getScreenReleaseEvents(dbRef: Firestore): Promise<ScreenEvent[]> {
   const snap = await dbRef
     .collection(FEED_EVENTS_TABLE)
     .where('type', '==', FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB)
     .get();
 
-  const events: Array<{ id: string; playerUrl: string; hidden: boolean }> = [];
+  const events: ScreenEvent[] = [];
   snap.docs.forEach((doc) => {
     const data = doc.data() || {};
     const playerUrl = typeof data.playerTmProfile === 'string' ? data.playerTmProfile : '';
     if (!playerUrl) return;
-    events.push({ id: doc.id, playerUrl, hidden: data.hiddenFromReleases === true });
+    events.push({
+      id: doc.id,
+      playerUrl,
+      playerName: typeof data.playerName === 'string' ? data.playerName : '',
+      hidden: data.hiddenFromReleases === true,
+    });
   });
   return events;
 }
 
 /** Commit hiddenFromReleases flag changes in batches (merge; never deletes). */
-async function applyHiddenFlag(
-  dbRef: Firestore,
-  docIds: string[],
-  hidden: boolean
-): Promise<void> {
+async function applyHiddenFlag(dbRef: Firestore, docIds: string[], hidden: boolean): Promise<void> {
   const feedRef = dbRef.collection(FEED_EVENTS_TABLE);
   for (let i = 0; i < docIds.length; i += 400) {
     const chunk = docIds.slice(i, i + 400);
@@ -447,113 +332,108 @@ async function applyHiddenFlag(
 // ── Main ──
 async function main() {
   const startTime = Date.now();
-  log(`Starting releases cleaner (men / FeedEvents)${DRY_RUN ? ' — DRY RUN' : ''}`);
+  log(`Starting releases cleaner (men / FeedEvents, per-profile)${DRY_RUN ? ' — DRY RUN' : ''}`);
 
   try {
-    // 1) Current men's screen population.
-    const screenEvents = await getScreenReleaseEvents(db);
-    const screenUrls = new Set(screenEvents.map((e) => e.playerUrl));
-    log(`Screen release events: ${screenEvents.length} (unique players: ${screenUrls.size})`);
+    // 1) Current men's screen population (unique by player URL — one event per player).
+    const allEvents = await getScreenReleaseEvents(db);
+    const byUrl = new Map<string, ScreenEvent[]>();
+    for (const ev of allEvents) {
+      if (!byUrl.has(ev.playerUrl)) byUrl.set(ev.playerUrl, []);
+      byUrl.get(ev.playerUrl)!.push(ev);
+    }
+    let playerUrls = Array.from(byUrl.keys());
+    log(`Screen release events: ${allEvents.length} (unique players: ${playerUrls.length})`);
 
-    if (screenEvents.length === 0) {
+    if (playerUrls.length === 0) {
       const durationMs = Date.now() - startTime;
       if (!DRY_RUN) await recordSuccess(db, 'No release events on screen; nothing to clean', durationMs);
       log('No NEW_RELEASE_FROM_CLUB events found — done');
       return;
     }
 
-    // 2) Who is still a free agent on TM today.
-    const freeAgentUrls = new Set<string>();
-    let rangesFailed = 0;
-
-    for (let i = 0; i < RELEASE_RANGES.length; i++) {
-      const [minVal, maxVal] = RELEASE_RANGES[i];
-      log(`Fetching range ${i + 1}/${RELEASE_RANGES.length}: ${minVal}-${maxVal}`);
-      let success = false;
-      for (let attempt = 1; attempt <= RANGE_RETRY_ATTEMPTS; attempt++) {
-        try {
-          const urls = await getFreeAgentUrlsForRange(minVal, maxVal);
-          urls.forEach((u) => freeAgentUrls.add(u));
-          log(`  ✅ ${urls.length} free-agent URLs`);
-          success = true;
-          break;
-        } catch (err: any) {
-          log(`  ❌ Attempt ${attempt}/${RANGE_RETRY_ATTEMPTS} failed: ${err.message}`);
-          if (attempt < RANGE_RETRY_ATTEMPTS) await sleep(RANGE_RETRY_DELAY_MS);
-        }
-      }
-      if (!success) rangesFailed++;
-      if (i < RELEASE_RANGES.length - 1) await sleep(DELAY_BETWEEN_RANGES_MS);
+    if (LIMIT > 0) {
+      playerUrls = playerUrls.slice(0, LIMIT);
+      log(`--limit active: processing first ${playerUrls.length} players`);
+    } else if (playerUrls.length > MAX_PROFILES_PER_RUN) {
+      playerUrls = playerUrls.slice(0, MAX_PROFILES_PER_RUN);
+      log(`Capped to MAX_PROFILES_PER_RUN=${MAX_PROFILES_PER_RUN} this run`);
     }
 
-    log(`Live free agents collected: ${freeAgentUrls.size}, ranges failed: ${rangesFailed}`);
-
-    // 3) HEALTH GATE — refuse to hide anything on a degraded scrape.
-    const scrapeHealthy = rangesFailed === 0 && freeAgentUrls.size >= RELEASE_HEALTHY_FLOOR;
-    if (!scrapeHealthy) {
-      const durationMs = Date.now() - startTime;
-      const msg =
-        `Degraded scrape (rangesFailed=${rangesFailed}, freeAgents=${freeAgentUrls.size} < floor ${RELEASE_HEALTHY_FLOOR}) ` +
-        '— skipping all hide/unhide to avoid wrongly hiding free agents';
-      log(msg);
-      if (!DRY_RUN) await recordFailure(db, msg, durationMs);
-      // Do NOT exit non-zero: a skipped-for-safety run is not a crash.
-      return;
-    }
-
-    // 4) GRACE PERIOD — update per-player miss counters.
-    const missCounts = await getMissCounts(db);
-    const nextMissCounts: Record<string, number> = {};
-
-    for (const url of Array.from(screenUrls)) {
-      if (freeAgentUrls.has(url)) {
-        nextMissCounts[url] = 0; // still a free agent → reset
-      } else {
-        nextMissCounts[url] = (missCounts[url] || 0) + 1; // absent → increment
-      }
-    }
-
-    // 5) Decide hide / unhide (non-destructive).
+    // 2) Classify each player by their profile.
     const toHideDocIds: string[] = [];
     const toUnhideDocIds: string[] = [];
-    let hideCandidates = 0;
+    let signed = 0;
+    let stillFree = 0;
+    let unknown = 0;
+    let processed = 0;
 
-    for (const event of screenEvents) {
-      const stillFree = freeAgentUrls.has(event.playerUrl);
-      const misses = nextMissCounts[event.playerUrl] || 0;
-      const shouldHide = !stillFree && misses >= RELEASE_MISS_THRESHOLD;
+    for (const url of playerUrls) {
+      const events = byUrl.get(url)!;
+      const anyHidden = events.some((e) => e.hidden);
+      const $ = await fetchProfile(url);
+      processed++;
 
-      if (shouldHide) hideCandidates++;
+      let verdict: Verdict = 'UNKNOWN';
+      if ($) verdict = classifyProfile($);
 
-      if (shouldHide && !event.hidden) {
-        toHideDocIds.push(event.id);
-      } else if (stillFree && event.hidden) {
-        // Self-heal: player is back on the free-agent list → make visible again.
-        toUnhideDocIds.push(event.id);
+      if (verdict === 'SIGNED') {
+        signed++;
+        if (!anyHidden) toHideDocIds.push(...events.map((e) => e.id));
+      } else if (verdict === 'STILL_FREE') {
+        stillFree++;
+        // Self-heal: a previously-hidden player who is free again.
+        toUnhideDocIds.push(...events.filter((e) => e.hidden).map((e) => e.id));
+      } else {
+        unknown++;
+        // UNKNOWN → leave as-is (fail-safe).
+      }
+
+      if (processed % 50 === 0) {
+        log(`  progress ${processed}/${playerUrls.length} — signed=${signed}, free=${stillFree}, unknown=${unknown}`);
       }
     }
 
+    const successRate = processed > 0 ? (processed - unknown) / processed : 0;
     log(
-      `Hide candidates (absent >= ${RELEASE_MISS_THRESHOLD} run(s)): ${hideCandidates} | ` +
-        `newly hiding: ${toHideDocIds.length} | unhiding (self-heal): ${toUnhideDocIds.length}`
+      `Classified ${processed}: SIGNED=${signed}, STILL_FREE=${stillFree}, UNKNOWN=${unknown} ` +
+        `(success rate ${(successRate * 100).toFixed(1)}%)`
     );
+    log(`Newly hiding events: ${toHideDocIds.length} | unhiding (self-heal): ${toUnhideDocIds.length}`);
+
+    // 3) HEALTH GATE — if too many profiles failed to classify, don't write.
+    if (successRate < MIN_SUCCESS_RATE) {
+      const durationMs = Date.now() - startTime;
+      const msg =
+        `Degraded run: only ${(successRate * 100).toFixed(1)}% of ${processed} profiles classified ` +
+        `(min ${(MIN_SUCCESS_RATE * 100).toFixed(0)}%) — skipping all writes to avoid wrong hides`;
+      log(msg);
+      if (!DRY_RUN) await recordFailure(db, msg, durationMs);
+      return;
+    }
 
     if (DRY_RUN) {
       log('DRY RUN — no writes performed.');
       log(`Would hide ${toHideDocIds.length} event(s); would unhide ${toUnhideDocIds.length} event(s).`);
-      log('Sample hide doc ids: ' + toHideDocIds.slice(0, 20).join(', '));
+      const sampleSigned = playerUrls
+        .filter((u) => {
+          const evs = byUrl.get(u)!;
+          return evs.some((e) => toHideDocIds.includes(e.id));
+        })
+        .slice(0, 15);
+      log('Sample players that would be hidden (SIGNED):');
+      for (const u of sampleSigned) log(`   - ${byUrl.get(u)![0].playerName || u} (${u})`);
       return;
     }
 
-    // 6) Apply.
+    // 4) Apply (non-destructive).
     if (toHideDocIds.length) await applyHiddenFlag(db, toHideDocIds, true);
     if (toUnhideDocIds.length) await applyHiddenFlag(db, toUnhideDocIds, false);
-    await saveMissCounts(db, nextMissCounts);
 
     const durationMs = Date.now() - startTime;
     const summary =
       `hidden=${toHideDocIds.length}, unhidden=${toUnhideDocIds.length}, ` +
-      `screen=${screenEvents.length}, freeAgents=${freeAgentUrls.size}`;
+      `signed=${signed}, stillFree=${stillFree}, unknown=${unknown}, processed=${processed}`;
     await recordSuccess(db, summary, durationMs);
     log(`Complete — ${summary} in ${durationMs}ms`);
   } catch (err: any) {
