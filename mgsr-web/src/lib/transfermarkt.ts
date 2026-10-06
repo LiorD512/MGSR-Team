@@ -25,6 +25,24 @@ function getRealisticHeaders(): Record<string, string> {
   return h;
 }
 
+// ── HTML proxy ────────────────────────────────────────────────────────────
+// Transfermarkt blocks plain requests coming from GitHub Actions / Cloud
+// Function IPs (HTTP 202/403/429/503). When TM_HTML_PROXY_URL is set (CI/cron),
+// route fetches through the shared proxy — it runs on management.britsportgroup
+// .com, an IP TM does not block, and reuses the same header-generator pipeline.
+// On Vercel (no env var) we fetch TM directly, exactly as before. This mirrors
+// the proven approach in _releases_cleaner.ts.
+const TM_HTML_PROXY_URL =
+  (typeof process !== 'undefined' && process.env?.TM_HTML_PROXY_URL) || '';
+
+async function fetchViaProxy(url: string): Promise<Response> {
+  const proxyUrl = `${TM_HTML_PROXY_URL}?url=${encodeURIComponent(url)}`;
+  return fetch(proxyUrl, {
+    headers: { Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+}
+
 // ── Circuit breaker: stop hammering TM if it starts blocking ──
 let _consecutiveBlocks = 0;
 let _circuitOpenUntil = 0;
@@ -51,23 +69,52 @@ export async function fetchHtml(url: string): Promise<string> {
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   _lastFetchTime = Date.now();
 
-  const res = await fetch(url, {
-    headers: getRealisticHeaders(),
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
+  // ── Proxy-first strategy (CI/cron) ────────────────────────────────────
+  // When TM_HTML_PROXY_URL is set (GitHub Actions, cron jobs), try the proxy
+  // first. If it fails, fall back to direct fetch (which may work or may be
+  // blocked). On Vercel (no proxy env) we go direct — exactly as before.
+  const fetchers: Array<() => Promise<Response>> = [];
+  if (TM_HTML_PROXY_URL) {
+    fetchers.push(() => fetchViaProxy(url));
+  }
+  fetchers.push(() =>
+    fetch(url, {
+      headers: getRealisticHeaders(),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    })
+  );
 
-  if (res.status === 429 || res.status === 403 || res.status === 503) {
-    _consecutiveBlocks++;
-    if (_consecutiveBlocks >= CIRCUIT_THRESHOLD) {
-      _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN;
-      console.warn(`[TM] Circuit breaker TRIPPED after ${_consecutiveBlocks} blocks. Cooling down 5 min.`);
+  let lastErr: Error | undefined;
+  for (const doFetch of fetchers) {
+    try {
+      const res = await doFetch();
+
+      if (res.status === 202 || res.status === 429 || res.status === 403 || res.status === 503) {
+        _consecutiveBlocks++;
+        if (_consecutiveBlocks >= CIRCUIT_THRESHOLD) {
+          _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN;
+          console.warn(`[TM] Circuit breaker TRIPPED after ${_consecutiveBlocks} blocks. Cooling down 5 min.`);
+        }
+        lastErr = new Error(`HTTP ${res.status}`);
+        continue; // try next fetcher
+      }
+
+      if (!res.ok) {
+        lastErr = new Error(`HTTP ${res.status}`);
+        continue;
+      }
+
+      _consecutiveBlocks = 0; // reset on success
+      return await res.text();
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err));
+      // continue to next fetcher
     }
-    throw new Error(`HTTP ${res.status}`);
   }
 
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  _consecutiveBlocks = 0; // reset on success
-  return res.text();
+  // All fetchers failed
+  if (lastErr) throw lastErr;
+  throw new Error('fetchHtml: no fetcher succeeded');
 }
 
 export async function fetchHtmlWithRetry(url: string, maxRetries = 2): Promise<string> {
