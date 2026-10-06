@@ -256,13 +256,13 @@ export default function WarRoomAsk() {
                   </div>
                   <div className="qbody">
                     <div className="qtop">
-                      <a className="qname" href={url} target="_blank" rel="noopener noreferrer">{s.name || '—'}</a>
+                      <a className="qname" href={url ?? undefined} target="_blank" rel="noopener noreferrer">{s.name || '—'}</a>
                     </div>
                     <div className="qmeta">
                       {s.age ?? '—'} · {s.position ?? '—'} · {s.marketValue ?? '—'}{s.club ? ` · ${s.club}` : ''}
                     </div>
                     <div className="aacts">
-                      <a className="brit-wr-btn ghost" href={url} target="_blank" rel="noopener noreferrer">TM →</a>
+                      <a className="brit-wr-btn ghost" href={url ?? undefined} target="_blank" rel="noopener noreferrer">TM →</a>
                       <button className="brit-wr-btn gold" onClick={() => addToShortlist(s)} disabled={isAdding}>
                         {isAdding ? (he ? 'מוסיף…' : 'Adding…') : `+ ${he ? 'מעקב' : 'Shortlist'}`}
                       </button>
