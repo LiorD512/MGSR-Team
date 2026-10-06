@@ -295,6 +295,15 @@ export default function AlphaBoardMen() {
               BRIT / <strong>{t('nav_war_room')}</strong> / {dateStr}
             </div>
             <div className="brit-actions">
+              <span className="brit-ab-lastrun">{isHe ? 'נבנה אוטומטית מדי יום · 07:00' : 'Auto-refreshed daily · 07:00'}</span>
+              <button
+                className={`brit-ra-refresh${rebuilding ? ' live' : ''}`}
+                onClick={() => fetchBoard({ rebuild: true })}
+                disabled={rebuilding}
+              >
+                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 3v6h-6" /></svg>
+                <span>{rebuilding ? (isHe ? 'מרענן…' : 'Refreshing…') : (isHe ? 'רענן' : 'Refresh')}</span>
+              </button>
               <BritPlatformSwitch />
               <button onClick={() => setLang(lang === 'en' ? 'he' : 'en')}>{lang === 'en' ? 'HE / EN' : 'EN / HE'}</button>
               <span>TLV {timeStr}</span>
@@ -307,7 +316,6 @@ export default function AlphaBoardMen() {
               <div className="brit-ab-mastflex">
                 <div>
                   <p className="brit-kicker">
-                    <span className="brit-ab-pulse" />
                     {isHe ? 'ייצור אלפא / פלטפורמת גברים' : 'Alpha generation / Men platform'}
                   </p>
                   <h1>{isHe ? 'לוח ' : 'Alpha '}<span>{isHe ? 'אלפא.' : 'board.'}</span></h1>
@@ -316,17 +324,6 @@ export default function AlphaBoardMen() {
                       ? 'שחקנים בני-החתמה בטווח הרכש שלך, שמתגלים לפני שהשוק מגיב. לוח אחד מדורג, סיבה אחת לכל אחד — פתח כל כרטיס לתיק המלא.'
                       : 'Signable players in your acquisition range, surfaced before the market reacts. One ranked board, one reason each — open any card for the full dossier.'}
                   </p>
-                </div>
-                <div className="brit-ab-mastright">
-                  <span className="brit-ab-lastrun">{isHe ? 'נבנה אוטומטית מדי יום · 07:00' : 'Auto-rebuilt daily · 07:00'}</span>
-                  <button
-                    className={`brit-ra-refresh${rebuilding ? ' live' : ''}`}
-                    onClick={() => fetchBoard({ rebuild: true })}
-                    disabled={rebuilding}
-                  >
-                    <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 3v6h-6" /></svg>
-                    <span>{rebuilding ? (isHe ? 'בונה…' : 'Rebuilding…') : (isHe ? 'בנה מחדש' : 'Rebuild')}</span>
-                  </button>
                 </div>
               </div>
             </header>
