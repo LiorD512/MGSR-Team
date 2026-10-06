@@ -100,13 +100,10 @@ const RELEASES_ALL_CACHE_KEY = 'releases-all';
 const WORKER_RUNS_COLLECTION = 'WorkerRuns';
 const WORKER_STATE_DOC = 'ReleasesCleanerWorker';
 const FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB = 'NEW_RELEASE_FROM_CLUB';
-// The screen subscribes to the newest 1000 feed events, but those 1000 are a
-// MIX of event types (NEW_RELEASE_FROM_CLUB, BECAME_FREE_AGENT, CLUB_CHANGE…),
-// so the release slice of a 1000 window is smaller and fluctuates. To reliably
-// cover every release the screen could show (and keep hidden ones in range for
-// self-heal), the cleaner scans a larger window. This only widens the candidate
-// set — the roster + value/age gates still scope it to the on-screen population.
-const FEED_EVENTS_FETCH_LIMIT = Number(process.env.FEED_EVENTS_FETCH_LIMIT || 3000);
+// Match the screen's feed subscription: newest 1000 events (orderBy timestamp
+// desc, limit 1000). The screen never shows anything beyond this window, so the
+// cleaner should not process older releases either. Env-overridable if needed.
+const FEED_EVENTS_FETCH_LIMIT = Number(process.env.FEED_EVENTS_FETCH_LIMIT || 1000);
 
 const WITHOUT_CLUB_VARIANTS = [
   'without club', 'ohne verein', 'sans club', 'sin club',
@@ -491,7 +488,6 @@ async function main() {
     // use it as the authoritative value/age source for the visibility gate,
     // exactly like the screen does.
     const metaCache = await loadReleasesAllCache(db);
-    log(`Loaded releases-all cache entries: ${metaCache.size}`);
 
     // Resolve exactly like the screen: firstMeaningful(event, cache) — which
     // rejects "-", "—", "unknown" and blanks (turning them into "missing").
@@ -499,49 +495,6 @@ async function main() {
       firstMeaningfulStr(ev.marketValue, metaCache.get(ev.playerUrl)?.marketValue) || '';
     const ageFor = (ev: ScreenEvent): string =>
       firstMeaningfulStr(ev.playerAge, metaCache.get(ev.playerUrl)?.playerAge) || '';
-
-    // Diagnostic: where does value/age data come from? (pinpoints empty sources)
-    let docHasVA = 0;
-    let cacheHasVA = 0;
-    let noVA = 0;
-    for (const url of Array.from(byUrl.keys())) {
-      const ev = byUrl.get(url)![0];
-      const docVA = !!(ev.marketValue && ev.playerAge);
-      const cacheVA = !!(metaCache.get(url)?.marketValue && metaCache.get(url)?.playerAge);
-      if (docVA) docHasVA++;
-      else if (cacheVA) cacheHasVA++;
-      else noVA++;
-    }
-    log(`Value/age source — doc: ${docHasVA}, cache: ${cacheHasVA}, neither: ${noVA}`);
-
-    // Diagnostic: sample real value/age strings + how the gate parses them.
-    const sampleUrls = Array.from(byUrl.keys()).slice(0, 10);
-    log('Sample value/age (raw doc → parsed):');
-    for (const url of sampleUrls) {
-      const ev = byUrl.get(url)![0];
-      const mv = valueFor(ev);
-      const ag = ageFor(ev);
-      log(
-        `   "${ev.playerName}" | mv="${mv}" → ${parseMarketValue(mv)} | age="${ag}" → ${parsePlayerAge(ag)} | visible=${isVisibleOnScreen(mv, ag)}`
-      );
-    }
-    // Gate breakdown across ALL players.
-    let failValue = 0;
-    let failAge = 0;
-    let passBoth = 0;
-    for (const url of Array.from(byUrl.keys())) {
-      const ev = byUrl.get(url)![0];
-      const v = parseMarketValue(valueFor(ev));
-      const a = parsePlayerAge(ageFor(ev));
-      const vOk = v >= NOTIFICATION_MIN_MARKET_VALUE && v <= NOTIFICATION_MAX_MARKET_VALUE;
-      const aOk = a !== null && a <= NOTIFICATION_MAX_AGE;
-      if (vOk && aOk) passBoth++;
-      else {
-        if (!vOk) failValue++;
-        if (!aOk) failAge++;
-      }
-    }
-    log(`Gate breakdown — pass both: ${passBoth}, fail value: ${failValue}, fail age: ${failAge}`);
 
     // Only consider players actually VISIBLE on the screen: the screen filters
     // to market value 150k–4M and age ≤ 33 (release-notifications `filteredPlayers`).
