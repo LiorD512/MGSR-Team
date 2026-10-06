@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Alpha Board / Card designs (v7)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--blue:#4a5f6f;--muted:#8a867d;--muted-2:#aba69b;
+      --line:rgba(22,22,19,.14);--line-2:rgba(22,22,19,.07);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo',sans-serif;--body:'Heebo',sans-serif;--mono:'Heebo',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:40;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+
+    .wrap{max-width:1280px;margin:0 auto;padding:40px 32px 90px}
+    .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:8px}
+    .kicker{color:var(--gold);font:10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;margin:0 0 12px}
+    h1{margin:0;font:500 clamp(40px,5vw,66px)/.86 var(--display);letter-spacing:-.03em;text-transform:uppercase}
+    h1 span{color:var(--gold)}
+    .lead{margin:14px 0 0;color:var(--muted);font:13px/1.6 var(--body);max-width:620px}
+    .langbtn{padding:9px 14px;border:1px solid var(--line);color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .langbtn:hover{border-color:var(--gold-soft);color:var(--gold)}
+
+    .variant-head{display:flex;align-items:center;gap:14px;margin:48px 0 6px}
+    .variant-head .n{width:30px;height:30px;display:grid;place-items:center;background:var(--ink);color:var(--paper);font:500 13px/1 var(--display)}
+    .variant-head h2{margin:0;font:500 22px/1 var(--display);text-transform:uppercase;letter-spacing:.02em}
+    [dir=rtl] .variant-head h2{font-weight:800}
+    .variant-head .ln{flex:1;height:1px;background:var(--line)}
+    .variant-desc{margin:0 0 20px 44px;color:var(--muted);font:11px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.03em;max-width:620px}
+    [dir=rtl] .variant-desc{margin:0 44px 20px 0}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+    .grid.v2{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
+
+    /* shared bits */
+    .score-ring{position:relative;width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-items:center}
+    .score-ring .inner{width:40px;height:40px;border-radius:50%;background:var(--card);display:grid;place-items:center;line-height:1}
+    .score-ring .inner b{font:500 16px/1 var(--display);color:var(--ink)}
+    .score-ring .inner small{display:block;font:6px/1 var(--mono);color:var(--muted-2);text-transform:uppercase;letter-spacing:.08em;margin-top:1px}
+    .verdict{padding:5px 9px;font:500 10px/1 var(--display);letter-spacing:.06em;text-transform:uppercase}
+    .verdict.SIGN{background:var(--green);color:var(--paper)}
+    .verdict.MONITOR{background:var(--amber);color:var(--paper)}
+    .verdict.PASS{background:var(--red);color:var(--paper)}
+    .huntchip{display:inline-flex;align-items:center;gap:6px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+    .huntchip .d{width:7px;height:7px;border-radius:50%;background:var(--gold);flex:none}
+
+    /* ════════ VARIANT 1 — "Intelligence Dossier" (Release-Alerts DNA) ════════
+       Dark flag-bg header + portrait, light body with the hunt metric bar + stat chips. */
+    .v1card{border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;position:relative;transition:border-color .15s,transform .15s;cursor:pointer;overflow:hidden}
+    .v1card:hover{border-color:var(--gold-soft);transform:translateY(-3px)}
+    .v1card .rank{position:absolute;top:0;inset-inline-start:0;z-index:3;width:28px;height:28px;display:grid;place-items:center;background:var(--gold);color:var(--black);font:500 12px/1 var(--display)}
+    .v1top{position:relative;display:flex;gap:14px;padding:16px 16px 16px 36px;overflow:hidden;background:var(--black)}
+    .v1top .flagbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.5;z-index:0;transition:.3s}
+    .v1card:hover .v1top .flagbg{opacity:.7;transform:scale(1.05)}
+    .v1top:after{content:'';position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(17,17,15,.4),rgba(17,17,15,.92))}
+    .v1top .portrait{position:relative;z-index:1;width:62px;height:62px;flex:none}
+    .v1top .portrait img{width:100%;height:100%;object-fit:cover;filter:grayscale(.2);border:1px solid var(--dark-line)}
+    .v1top .who{position:relative;z-index:1;min-width:0;flex:1;color:var(--paper)}
+    .v1top .who .nm{font:500 21px/.95 var(--display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .v1top .who .nm{font-weight:800}
+    .v1top .who .meta{margin-top:7px;display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+    .v1top .who .pos{font:8px/1 var(--mono);text-transform:uppercase;color:var(--paper);border:1px solid var(--dark-line);padding:4px 7px}
+    .v1top .who .mut{font:9px/1.2 var(--body);color:#c9c3b6}
+    .v1top .ring{position:relative;z-index:1}
+    .v1top .ring .inner{background:#1b1b17}
+    .v1top .ring .inner b{color:var(--gold-soft)}
+    .v1metric{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line-2)}
+    .v1metric .big{font:500 21px/1 var(--display);color:var(--ink)}
+    .v1metric .ml{color:var(--muted);font:8px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+    .v1metric .bar{flex:1;height:5px;background:var(--paper-2);position:relative}
+    .v1metric .bar i{position:absolute;inset-inline-start:0;top:0;height:100%;background:var(--gold)}
+    .v1why{padding:12px 16px;flex:1}
+    .v1why .huntchip{margin-bottom:7px}
+    .v1why p{margin:0;font:12px/1.5 var(--body);color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .v1stats{display:flex;gap:0;border-top:1px solid var(--line)}
+    .v1stats .s{flex:1;padding:10px 8px;text-align:center;border-inline-end:1px solid var(--line)}
+    .v1stats .s:last-child{border-inline-end:0}
+    .v1stats .s label{display:block;color:var(--muted);font:7px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+    .v1stats .s b{display:block;margin-top:5px;font:500 14px/1 var(--mono);color:var(--ink)}
+    .v1foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-top:1px solid var(--line);background:var(--paper)}
+    .v1foot .mv{display:flex;flex-direction:column;gap:3px}
+    .v1foot .mv b{font:500 17px/1 var(--mono);color:var(--ink)}
+    .v1foot .mv small{color:var(--muted-2);font:8px/1 var(--mono);text-transform:uppercase}
+    .acts{display:flex;gap:7px}
+    .acts .btn{display:flex;align-items:center;gap:6px;padding:9px 12px;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;transition:.15s}
+    .acts .btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8}
+    .acts .save{background:var(--black);color:var(--gold-soft)}.acts .save:hover{background:var(--gold);color:var(--paper)}
+    .acts .ic{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--line);color:var(--muted);padding:0}
+    .acts .ic svg{width:14px}
+    .acts .ic:hover{border-color:var(--red);color:var(--red)}
+
+    /* ════════ VARIANT 2 — "Scout Row" (Shortlist/Roster DNA) ════════
+       Horizontal, data-dense row. Portrait left, metric center, score+value right. */
+    .v2card{display:flex;align-items:stretch;gap:0;border:1px solid var(--line);background:var(--card);position:relative;transition:border-color .15s;cursor:pointer;overflow:hidden}
+    .v2card:hover{border-color:var(--gold-soft)}
+    .v2card.top3{border-inline-start:3px solid var(--gold)}
+    .v2card .lead{display:flex;align-items:center;gap:13px;padding:15px;min-width:0;flex:1}
+    .v2card .rank{font:500 15px/1 var(--display);color:var(--muted-2);width:20px;text-align:center;flex:none}
+    .v2card.top3 .rank{color:var(--gold)}
+    .v2card .portrait{width:52px;height:52px;flex:none;position:relative}
+    .v2card .portrait img{width:100%;height:100%;object-fit:cover;filter:grayscale(.3);background:var(--black)}
+    .v2card .portrait .fl{position:absolute;bottom:-3px;inset-inline-end:-3px;width:18px;height:13px;object-fit:cover;border:1px solid var(--card)}
+    .v2card .who{min-width:0}
+    .v2card .who .nm{font:500 18px/1 var(--display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .v2card .who .nm{font-weight:800}
+    .v2card .who .meta{margin-top:5px;color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+    .v2card .who .huntchip{margin-top:8px}
+    .v2mid{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:15px;border-inline-start:1px solid var(--line);min-width:120px}
+    .v2mid .big{font:500 20px/1 var(--display);color:var(--ink)}
+    .v2mid .ml{color:var(--muted);font:7px/1.2 var(--mono);text-transform:uppercase}
+    .v2mid .bar{height:4px;background:var(--paper-2);position:relative;margin-top:4px}
+    .v2mid .bar i{position:absolute;inset-inline-start:0;top:0;height:100%;background:var(--gold)}
+    .v2right{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:15px;border-inline-start:1px solid var(--line);background:var(--paper);min-width:118px}
+    .v2right .mv{font:500 15px/1 var(--mono);color:var(--ink)}
+    .v2right .mvl{color:var(--muted-2);font:7px/1 var(--mono);text-transform:uppercase;margin-top:-5px}
+    .v2right .rowacts{display:flex;gap:6px}
+    .v2right .rowacts button{width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);color:var(--muted)}
+    .v2right .rowacts button svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8}
+    .v2right .rowacts .save:hover{border-color:var(--gold);color:var(--gold)}
+    .v2right .rowacts .dis:hover{border-color:var(--red);color:var(--red)}
+
+    /* ════════ VARIANT 3 — "Hero Portrait" (big visual, premium) ════════
+       Full-bleed portrait with gradient; score ring overlay; stats strip under. */
+    .v3card{position:relative;border:1px solid var(--line);background:var(--black);overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}
+    .v3card:hover{transform:translateY(-3px);border-color:var(--gold-soft)}
+    .v3hero{position:relative;height:240px;overflow:hidden;background:linear-gradient(160deg,#23231f,#11110f)}
+    .v3hero .flagbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.22}
+    .v3hero .portrait{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 18%;filter:grayscale(1);opacity:.64;z-index:1}
+    .v3hero:after{content:'';position:absolute;inset:40% 0 0;z-index:2;background:linear-gradient(180deg,transparent,rgba(17,17,15,.92))}
+    .v3hero .rank{position:absolute;top:0;inset-inline-start:0;z-index:4;width:30px;height:30px;display:grid;place-items:center;background:var(--gold);color:var(--black);font:500 13px/1 var(--display)}
+    .v3hero .verdict{position:absolute;top:12px;inset-inline-end:12px;z-index:4}
+    .v3hero .score-ring{position:absolute;bottom:12px;inset-inline-end:12px;z-index:4;width:56px;height:56px;background:conic-gradient(var(--gold-soft) var(--deg),rgba(243,240,232,.25) 0)}
+    .v3hero .score-ring .inner{width:44px;height:44px;background:#15150f}
+    .v3hero .score-ring .inner b{color:var(--gold-soft);font-size:17px}
+    .v3hero .score-ring .inner small{color:#b7b1a3}
+    .v3hero .who{position:absolute;bottom:12px;inset-inline-start:14px;z-index:4;color:var(--paper);max-width:62%}
+    .v3hero .who .nm{font:500 24px/.92 var(--display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .v3hero .who .nm{font-weight:800}
+    .v3hero .who .meta{margin-top:6px;color:#c9c3b6;font:9px/1.3 var(--mono);text-transform:uppercase}
+    .v3body{background:var(--card);padding:13px 15px}
+    .v3body .huntrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .v3body .metric{font:500 18px/1 var(--display);color:var(--ink)}
+    .v3body .metric span{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;margin-inline-start:6px}
+    .v3body p{margin:0 0 12px;font:12px/1.5 var(--body);color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .v3body .foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:12px;border-top:1px solid var(--line)}
+    .v3body .mv b{font:500 16px/1 var(--mono)}
+    .v3body .mv small{display:block;color:var(--muted-2);font:7px/1 var(--mono);text-transform:uppercase;margin-top:3px}
+
+    @media(max-width:820px){ .v2card{flex-wrap:wrap} .v2mid,.v2right{border-inline-start:0;border-top:1px solid var(--line);flex:1} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <div>
+        <p class="kicker" id="kicker">Alpha board / Card design study</p>
+        <h1 id="title">Card <span>designs.</span></h1>
+        <p class="lead" id="lead">Three ways to render the Alpha Board cards, each borrowing from an existing BRIT screen you already like. Same data (hunt metric, match score, why-now, market value). Pick one — or mix.</p>
+      </div>
+      <button class="langbtn" id="lang" onclick="toggleLang()">HE / EN</button>
+    </div>
+
+    <!-- VARIANT 1 -->
+    <div class="variant-head"><span class="n">1</span><h2 id="v1t">Intelligence Dossier</h2><span class="ln"></span></div>
+    <p class="variant-desc" id="v1d">Release-Alerts DNA · dark flag-background header with portrait, light body with the ranking-metric bar, a 3-stat strip, and actions. Premium & information-rich.</p>
+    <div class="grid" id="g1"></div>
+
+    <!-- VARIANT 2 -->
+    <div class="variant-head"><span class="n">2</span><h2 id="v2t">Scout Row</h2><span class="ln"></span></div>
+    <p class="variant-desc" id="v2d">Shortlist/Roster DNA · compact horizontal row. Scan many players fast — portrait + name on the left, the hunt metric in the middle, score & value on the right. Highest density.</p>
+    <div class="grid v2" id="g2"></div>
+
+    <!-- VARIANT 3 -->
+    <div class="variant-head"><span class="n">3</span><h2 id="v3t">Hero Portrait</h2><span class="ln"></span></div>
+    <p class="variant-desc" id="v3d">Big-visual board · full-bleed portrait with gradient, score ring + verdict overlaid, metric & why-now below. Most striking — fewer per screen, maximum impact.</p>
+    <div class="grid" id="g3"></div>
+  </div>
+
+<script>
+let LANG='en';
+const he=()=>LANG==='he';
+function toggleLang(){LANG=he()?'en':'he';document.documentElement.lang=LANG;document.documentElement.dir=he()?'rtl':'ltr';document.getElementById('lang').textContent=he()?'EN / HE':'HE / EN';renderText();renderAll();}
+function renderText(){
+  document.getElementById('kicker').textContent=he()?'לוח אלפא / מחקר עיצוב כרטיסים':'Alpha board / Card design study';
+  document.getElementById('title').innerHTML=he()?'עיצובי <span>כרטיסים.</span>':'Card <span>designs.</span>';
+  document.getElementById('lead').textContent=he()?'שלוש דרכים להציג את כרטיסי לוח האלפא, כל אחת שואבת ממסך BRIT קיים שאתה כבר אוהב. אותם נתונים. בחר אחד — או שלב.':'Three ways to render the Alpha Board cards, each borrowing from an existing BRIT screen you already like. Same data. Pick one — or mix.';
+  document.getElementById('v1t').textContent=he()?'תיק מודיעין':'Intelligence Dossier';
+  document.getElementById('v2t').textContent=he()?'שורת סקאוט':'Scout Row';
+  document.getElementById('v3t').textContent=he()?'דיוקן גיבור':'Hero Portrait';
+  document.getElementById('v1d').textContent=he()?'DNA של התראות שחרור · כותרת כהה עם רקע דגל ודיוקן, גוף בהיר עם פס מדד הדירוג, רצועת 3 סטטיסטיקות ופעולות.':'Release-Alerts DNA · dark flag-background header with portrait, light body with the ranking-metric bar, a 3-stat strip, and actions.';
+  document.getElementById('v2d').textContent=he()?'DNA של רשימת מעקב/סגל · שורה אופקית קומפקטית. סרוק הרבה שחקנים מהר.':'Shortlist/Roster DNA · compact horizontal row. Scan many players fast.';
+  document.getElementById('v3d').textContent=he()?'לוח ויזואלי · דיוקן מלא עם גרדיאנט, טבעת ציון וורדיקט מעל, מדד ולמה-עכשיו מתחת.':'Big-visual board · full-bleed portrait with gradient, score ring + verdict overlaid, metric & why-now below.';
+}
+
+/* mock data — mirrors the alpha board hunt=goals */
+const IMG=n=>`https://placehold.co/200x200/11110f/c9a66b?text=${encodeURIComponent(n.split(' ').map(w=>w[0]).join('').slice(0,3))}`;
+const FLAG=c=>`https://flagcdn.com/w160/${c}.png`;
+const P=[
+  {n:'Hamza Catakovic',pos:'CF',lg:'A Division Cyprus',age:22,mv:'€500K',score:100,v:'SIGN',flag:'ba',metric:'1.63',ml:'Goals / 90',bar:100,g:'0.98',a:'0.21',r:'7.3',why:'1.63 goals per 90 — the sharpest finisher in your band right now.'},
+  {n:'Álex Blanco',pos:'CF',lg:'1 Lig',age:23,mv:'€300K',score:97,v:'SIGN',flag:'es',metric:'1.43',ml:'Goals / 90',bar:92,g:'0.88',a:'0.19',r:'7.1',why:'1.43 goals per 90 at just €300K — elite output-for-price.'},
+  {n:"Jean-Paul N'Djoli",pos:'CF',lg:'Eerste Divisie',age:21,mv:'€700K',score:91,v:'SIGN',flag:'cd',metric:'1.24',ml:'Goals / 90',bar:84,g:'0.74',a:'0.26',r:'7.0',why:'21yo running at 1.24 G/90 in a credible league — buy before breakout.'},
+  {n:'João Correia',pos:'CF',lg:'A Division Cyprus',age:22,mv:'€1.30M',score:85,v:'MONITOR',flag:'pt',metric:'1.23',ml:'Goals / 90',bar:82,g:'0.71',a:'0.18',r:'6.9',why:'Consistent 1.23 G/90, mid-band value with resale room.'},
+  {n:'Mathis Picouleau',pos:'CF',lg:'National',age:20,mv:'€300K',score:82,v:'MONITOR',flag:'fr',metric:'1.14',ml:'Goals / 90',bar:78,g:'0.68',a:'0.14',r:'6.8',why:'20yo scoring 1.14 G/90 — one to watch a month longer.'},
+  {n:'Omer Turgeman',pos:'CF',lg:'Ligat haAl',age:21,mv:'€500K',score:80,v:'SIGN',flag:'il',metric:'1.08',ml:'Goals / 90',bar:74,g:'0.64',a:'0.33',r:'7.0',why:'Strong G+A profile, direct fit for the Israeli market.'},
+];
+
+function ringStyle(score){const deg=Math.round(score*3.6);return `--deg:${deg}deg;`}
+function renderAll(){ g1(); g2(); g3(); }
+
+function g1(){
+  document.getElementById('g1').innerHTML=P.map((p,i)=>`
+  <article class="v1card">
+    <span class="rank">${i+1}</span>
+    <div class="v1top">
+      <img class="flagbg" src="${FLAG(p.flag)}" alt="">
+      <div class="portrait"><img src="${IMG(p.n)}" alt=""></div>
+      <div class="who">
+        <div class="nm">${p.n}</div>
+        <div class="meta"><span class="pos">${p.pos}</span><span class="mut">${p.lg} · ${he()?'גיל':'Age'} ${p.age}</span></div>
+      </div>
+      <div class="score-ring ring" style="background:conic-gradient(var(--gold-soft) ${p.score*3.6}deg, rgba(243,240,232,.18) 0)">
+        <div class="inner"><b>${p.score}</b><small>${he()?'התאמה':'match'}</small></div>
+      </div>
+    </div>
+    <div class="v1metric">
+      <div><div class="big">${p.metric} <span style="font:8px/1 var(--mono);color:var(--muted)">/90</span></div><div class="ml">${he()?'שערים ל-90':'Goals / 90'}</div></div>
+      <div class="bar"><i style="width:${p.bar}%"></i></div>
+    </div>
+    <div class="v1why">
+      <span class="huntchip"><span class="d"></span>${he()?'כובשים':'Best goalscorers'}</span>
+      <p>${p.why}</p>
+    </div>
+    <div class="v1stats">
+      <div class="s"><label>${he()?'שערים/90':'G/90'}</label><b>${p.g}</b></div>
+      <div class="s"><label>${he()?'בישולים/90':'A/90'}</label><b>${p.a}</b></div>
+      <div class="s"><label>${he()?'דירוג':'Rating'}</label><b>${p.r}</b></div>
+    </div>
+    <div class="v1foot">
+      <div class="mv"><b>${p.mv}</b><small>${he()?'שווי שוק':'Market value'}</small></div>
+      <div class="acts">
+        <button class="btn save"><svg viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>${he()?'מעקב':'Shortlist'}</button>
+        <button class="ic"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+  </article>`).join('');
+}
+
+function g2(){
+  document.getElementById('g2').innerHTML=P.map((p,i)=>`
+  <article class="v2card${i<3?' top3':''}">
+    <div class="lead">
+      <span class="rank">${i+1}</span>
+      <div class="portrait"><img src="${IMG(p.n)}" alt=""><img class="fl" src="${FLAG(p.flag)}" alt=""></div>
+      <div class="who">
+        <div class="nm">${p.n}</div>
+        <div class="meta">${p.pos} · ${p.lg} · ${he()?'גיל':'Age'} ${p.age}</div>
+        <span class="huntchip"><span class="d"></span>${p.metric} ${he()?'שערים ל-90':'G/90'}</span>
+      </div>
+    </div>
+    <div class="v2mid">
+      <div class="big">${p.metric}</div>
+      <div class="ml">${he()?'שערים ל-90':'Goals / 90'}</div>
+      <div class="bar"><i style="width:${p.bar}%"></i></div>
+    </div>
+    <div class="v2right">
+      <div class="score-ring" style="background:conic-gradient(var(--gold) ${p.score*3.6}deg, var(--paper-2) 0)"><div class="inner"><b>${p.score}</b><small>${he()?'התאמה':'match'}</small></div></div>
+      <div><div class="mv">${p.mv}</div></div>
+      <div class="rowacts"><button class="save"><svg viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg></button><button class="dis"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    </div>
+  </article>`).join('');
+}
+
+function g3(){
+  document.getElementById('g3').innerHTML=P.map((p,i)=>`
+  <article class="v3card">
+    <div class="v3hero">
+      <img class="flagbg" src="${FLAG(p.flag)}" alt="">
+      <img class="portrait" src="${IMG(p.n)}" alt="">
+      <span class="rank">${i+1}</span>
+      <span class="verdict ${p.v}">${p.v}</span>
+      <div class="score-ring" style="${ringStyle(p.score)}"><div class="inner"><b>${p.score}</b><small>${he()?'התאמה':'match'}</small></div></div>
+      <div class="who"><div class="nm">${p.n}</div><div class="meta">${p.pos} · ${p.lg} · ${he()?'גיל':'Age'} ${p.age}</div></div>
+    </div>
+    <div class="v3body">
+      <div class="huntrow">
+        <span class="huntchip"><span class="d"></span>${he()?'כובשים':'Best goalscorers'}</span>
+        <span class="metric">${p.metric}<span>${he()?'שערים/90':'G/90'}</span></span>
+      </div>
+      <p>${p.why}</p>
+      <div class="foot">
+        <div class="mv"><b>${p.mv}</b><small>${he()?'שווי שוק':'Market value'}</small></div>
+        <div class="acts">
+          <button class="btn save"><svg viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>${he()?'מעקב':'Shortlist'}</button>
+          <button class="ic"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </article>`).join('');
+}
+
+renderText(); renderAll();
+</script>
+</body>
+</html>

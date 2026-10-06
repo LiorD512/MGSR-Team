@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Alpha Board / Hunt (v6)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--blue:#4a5f6f;--muted:#8a867d;--muted-2:#aba69b;
+      --line:rgba(22,22,19,.14);--line-2:rgba(22,22,19,.07);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    .app{min-height:100vh;display:grid;grid-template-columns:244px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:26px 22px;background:var(--black);color:var(--paper);overflow-y:auto}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:24px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 14px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#9a958b;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:1px;margin-top:26px}
+    .nav>a,.nav-group{display:flex;justify-content:space-between;align-items:center;width:100%;padding:11px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav-group:hover,.nav>a.active,.nav-group.active{color:var(--gold-soft)}
+    .nav>a.active:before,.nav-group.active:before{content:'';width:18px;height:1px;margin-inline-end:-18px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .nav-sub{display:grid;gap:1px;margin:2px 0 6px;padding-inline-start:2px}
+    .nav-sub a{display:flex;align-items:center;gap:9px;padding:8px 0;color:#817d74;font:9px/1 var(--mono);text-transform:uppercase;transition:color .15s}
+    .nav-sub a:hover,.nav-sub a.active{color:var(--gold-soft)}
+    .nav-sub a .sdot{width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.5}
+    .nav-sub a.active .sdot{opacity:1}
+    .rail-foot{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#817d74;font:9px/1.7 var(--mono);text-transform:uppercase}
+    .rail-foot .mandate{margin-bottom:12px;padding:10px 11px;border:1px solid var(--dark-line)}
+    .rail-foot .mandate label{display:block;color:#9a958b;font:8px/1 var(--mono);letter-spacing:.1em}
+    .rail-foot .mandate strong{display:block;margin-top:6px;color:var(--gold-soft);font:500 13px/1 var(--display)}
+
+    .main{min-width:0}
+    .topbar{height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 44px;background:var(--black);color:#9a958b;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:18px}
+    .actions button:hover{color:var(--gold-soft)}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1560px;padding:38px 44px 100px}
+
+    /* Masthead */
+    .masthead{margin-bottom:24px}
+    .kicker{margin:0 0 14px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(42px,5vw,76px)/.84 var(--display);letter-spacing:-.03em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .masthead .sub{margin:14px 0 0;color:var(--muted);font:13px/1.6 var(--body);max-width:600px}
+
+    /* ── HUNT chooser ── */
+    .hunt-q{margin:30px 0 14px;color:var(--ink);font:500 15px/1 var(--display);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+    [dir=rtl] .hunt-q{font-weight:800}
+    .hunt-q .ln{flex:1;height:1px;background:var(--line)}
+    .hunts{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:30px}
+    .hunt{position:relative;display:flex;flex-direction:column;gap:9px;padding:16px;border:1px solid var(--line);background:var(--card);text-align:start;transition:.18s;overflow:hidden}
+    .hunt:hover{border-color:var(--gold-soft);transform:translateY(-2px)}
+    .hunt.on{border-color:var(--gold);background:linear-gradient(135deg,rgba(164,125,67,.1),var(--card))}
+    .hunt.on:before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:3px;background:var(--gold)}
+    .hunt .ico{width:26px;height:26px;stroke:var(--muted);fill:none;stroke-width:1.5}
+    .hunt.on .ico{stroke:var(--gold)}
+    .hunt b{font:500 14px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em;color:var(--ink)}
+    [dir=rtl] .hunt b{font-weight:700}
+    .hunt.on b{color:var(--gold)}
+    .hunt span{color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}
+    .hunt .metric{margin-top:2px;color:var(--muted-2);font:8px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+
+    /* ── Acquisition range slider ── */
+    .rangebar{border:1px solid var(--gold-soft);background:rgba(164,125,67,.05);padding:18px 20px;margin-bottom:14px}
+    .rangebar .rb-top{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+    .rangebar .rb-lbl{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .rangebar .rb-val{color:var(--ink);font:500 20px/1 var(--display);text-transform:uppercase}
+    .rangebar .rb-val b{color:var(--gold)}
+    .rangebar .rb-reset{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;border-bottom:1px solid var(--line);letter-spacing:.05em}
+    .rangebar .rb-reset:hover{color:var(--gold)}
+    /* dual slider */
+    .slider{position:relative;height:34px;margin:0 10px}
+    .slider .track{position:absolute;top:15px;left:0;right:0;height:4px;background:var(--paper-2)}
+    .slider .fill{position:absolute;top:15px;height:4px;background:var(--gold)}
+    .slider input[type=range]{position:absolute;top:0;left:0;width:100%;height:34px;margin:0;background:transparent;pointer-events:none;-webkit-appearance:none;appearance:none}
+    .slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;pointer-events:all;width:20px;height:20px;border-radius:50%;background:var(--black);border:2px solid var(--gold);cursor:grab;margin-top:0;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+    .slider input[type=range]::-webkit-slider-thumb:active{cursor:grabbing;background:var(--gold)}
+    .slider input[type=range]::-moz-range-thumb{pointer-events:all;width:20px;height:20px;border-radius:50%;background:var(--black);border:2px solid var(--gold);cursor:grab}
+    .slider input[type=range]::-webkit-slider-runnable-track{height:34px}
+    .ticks{display:flex;justify-content:space-between;margin:8px 12px 0;color:var(--muted-2);font:8px/1 var(--mono);text-transform:uppercase}
+    .rb-presets{display:flex;gap:7px;margin-top:14px;flex-wrap:wrap}
+    .rb-presets button{padding:7px 11px;border:1px solid var(--line);color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;transition:.15s}
+    .rb-presets button:hover,.rb-presets button.on{border-color:var(--gold);color:var(--gold)}
+
+    /* filter chips */
+    .poschips{display:flex;gap:7px;overflow-x:auto;padding:2px 0;margin-bottom:16px;scrollbar-width:none}
+    .poschips::-webkit-scrollbar{display:none}
+    .poschip{flex:none;padding:9px 14px;border:1px solid var(--line);color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;transition:.15s}
+    .poschip:hover{color:var(--ink);border-color:var(--muted)}
+    .poschip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+    .result-count{margin:4px 2px 18px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+    .result-count b{color:var(--ink);font-weight:500}
+    .result-count .meth{margin-inline-start:auto;color:var(--muted-2);font-size:8px}
+
+    /* ── Board ── */
+    .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+    .card{position:relative;background:var(--card);border:1px solid var(--line);cursor:pointer;transition:border-color .15s,transform .15s;display:flex;flex-direction:column}
+    .card:hover{border-color:var(--gold-soft);transform:translateY(-2px)}
+    .card .rank{position:absolute;top:0;inset-inline-start:0;width:26px;height:26px;display:grid;place-items:center;background:var(--ink);color:var(--paper);font:500 11px/1 var(--display);z-index:1}
+    .card.top3 .rank{background:var(--gold)}
+    .c-head{display:flex;align-items:center;gap:13px;padding:16px 16px 13px 16px}
+    .c-head img{width:50px;height:50px;object-fit:cover;filter:grayscale(.35);background:var(--black);flex:none;margin-inline-start:16px}
+    .c-id{min-width:0;flex:1}
+    .c-id .nm{font:500 20px/.95 var(--display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .c-id .nm{font-weight:800}
+    .c-id .meta{margin-top:5px;color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+    .c-id .meta b{color:var(--ink);font-weight:500}
+    .mscore{text-align:center;flex:none}
+    .mscore b{display:block;font:500 25px/.9 var(--display);color:var(--gold)}
+    .mscore small{display:block;margin-top:2px;color:var(--muted-2);font:7px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    /* the stat that this hunt ranks by, shown big */
+    .c-metric{padding:0 16px 12px;display:flex;align-items:center;gap:12px}
+    .c-metric .big{font:500 22px/1 var(--display);color:var(--ink)}
+    .c-metric .ml{color:var(--muted);font:8px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+    .c-metric .bar{flex:1;height:5px;background:var(--paper-2);position:relative}
+    .c-metric .bar i{position:absolute;inset-inline-start:0;top:0;height:100%;background:var(--gold)}
+    .c-why{padding:0 16px 14px;flex:1}
+    .c-why .tag{display:inline-flex;align-items:center;gap:6px;font:8px/1 var(--mono);text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+    .c-why .tag .d{width:7px;height:7px;border-radius:50%;background:var(--gold)}
+    .c-why p{margin:0;font:12px/1.5 var(--body);color:var(--ink)}
+    .c-foot{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--line-2);margin-top:auto}
+    .c-foot .mv{display:flex;flex-direction:column;gap:3px}
+    .c-foot .mv b{font:500 16px/1 var(--mono)}
+    .c-foot .mv small{color:var(--muted-2);font:8px/1 var(--mono);text-transform:uppercase}
+    .c-foot .acts{display:flex;gap:7px}
+    .c-foot .acts button{width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--line);color:var(--muted);transition:.15s}
+    .c-foot .acts button svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.7}
+    .c-foot .acts .save:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .c-foot .acts .dismiss:hover{border-color:var(--red);color:var(--red)}
+
+    .empty{padding:60px;text-align:center;border:1px dashed var(--line);color:var(--muted);font:11px/1.6 var(--mono);text-transform:uppercase}
+
+    @media(max-width:980px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:14px 18px}
+      .lockup{border:0;padding:0}.rail-foot{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav>a,.nav-group{padding:6px 0}.nav em,.nav-sub{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:24px 18px 70px}
+      .board{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small>Management room</small></div></a>
+      <nav class="nav">
+        <a href="#"><span>Dashboard</span><em>01</em></a>
+        <button class="nav-group"><span>Players</span><em>+</em></button>
+        <a href="#"><span>Club Requirements</span><em>03</em></a>
+        <a href="#"><span>Contacts</span><em>04</em></a>
+        <button class="nav-group"><span>Signals</span><em>+</em></button>
+        <button class="nav-group active"><span>War Room</span><em>−</em></button>
+        <div class="nav-sub">
+          <a class="active" href="#"><span class="sdot"></span>Alpha Board</a>
+          <a href="#"><span class="sdot"></span>Scout Agents</a>
+          <a href="#"><span class="sdot"></span>Ask</a>
+          <a href="#"><span class="sdot"></span>Successors</a>
+        </div>
+      </nav>
+      <div class="rail-foot">
+        <div class="mandate"><label>Acquisition range</label><strong id="railBand">€150K – €2.0M</strong></div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong>War Room</strong> / <strong>Alpha Board</strong> / 06 October 2026</div>
+        <div class="actions"><button id="lang" onclick="toggleLang()">HE / EN</button><span>MEN</span><span>TLV 14:45</span><span class="avatar">LD</span></div>
+      </header>
+
+      <div class="canvas">
+        <div class="masthead">
+          <p class="kicker" id="kicker">Alpha generation / Men platform</p>
+          <h1 id="title">Alpha <span>board.</span></h1>
+          <p class="sub" id="sub">Pick what you're hunting today — the board recomputes against the real player data and ranks the best matches inside your acquisition range.</p>
+        </div>
+
+        <!-- HUNT CHOOSER -->
+        <div class="hunt-q" id="huntQ"><span>What are we hunting today?</span><span class="ln"></span></div>
+        <div class="hunts" id="hunts"></div>
+
+        <!-- ACQUISITION RANGE SLIDER -->
+        <div class="rangebar">
+          <div class="rb-top">
+            <span class="rb-lbl" id="rbLbl">Acquisition range · drag to adjust</span>
+            <span class="rb-val"><b id="rbMin">€150K</b> — <b id="rbMax">€2.0M</b></span>
+            <button class="rb-reset" onclick="resetRange()" id="rbReset">Reset to default</button>
+          </div>
+          <div class="slider" id="slider">
+            <div class="track"></div>
+            <div class="fill" id="fill"></div>
+            <input type="range" id="rMin" min="0" max="40" step="1" value="3">
+            <input type="range" id="rMax" min="0" max="40" step="1" value="20">
+          </div>
+          <div class="ticks"><span>€0</span><span>€1M</span><span>€2M</span><span>€5M</span><span>€10M+</span></div>
+          <div class="rb-presets" id="presets"></div>
+        </div>
+
+        <!-- position chips -->
+        <div class="poschips" id="poschips"></div>
+
+        <p class="result-count" id="count"></p>
+
+        <div class="board" id="board"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ───────── i18n ───────── */
+let LANG='en';
+const he=()=>LANG==='he';
+function toggleLang(){LANG=he()?'en':'he';document.documentElement.lang=LANG;document.documentElement.dir=he()?'rtl':'ltr';document.getElementById('lang').textContent=he()?'EN / HE':'HE / EN';renderAll();}
+
+/* ───────── value scale (non-linear so the band is draggable with resolution) ─────────
+   40 steps mapped to euro values. Index→euros lookup. */
+const STEPS=[];
+(function(){ // 0..1M in 50k, 1M..2M in 100k, 2M..5M in 250k, 5M..10M in 500k, then 10M,15M,20M
+  for(let v=0; v<=1000000; v+=50000) STEPS.push(v);     // 0..1M (21)
+  for(let v=1100000; v<=2000000; v+=100000) STEPS.push(v); // (10) -> 31
+  for(let v=2250000; v<=5000000; v+=250000) STEPS.push(v); // (11) -> 42... trim to 40
+})();
+while(STEPS.length>41)STEPS.pop();
+const idxToEur=i=>STEPS[Math.max(0,Math.min(STEPS.length-1,i))]||0;
+function fmtEur(v){ if(v>=1000000)return '€'+(v/1000000).toFixed(v%1000000===0?1:2).replace(/\.0$/,'.0')+'M'; if(v>=1000)return '€'+Math.round(v/1000)+'K'; return '€'+v; }
+
+/* ───────── HUNT definitions — each maps to REAL player fields ───────── */
+const HUNTS=[
+  {id:'form',en:'Best form',he:'הכי בכושר',sub:{en:'Hot right now',he:'חמים כרגע'},metric:{en:'By match rating',he:'לפי דירוג משחק'},
+   key:'rating',unit:'',max:9,needMin:true,ico:'<path d="M3 13l4-4 4 4 6-7"/><path d="M3 20h18"/>'},
+  {id:'goals',en:'Best goalscorers',he:'כובשים',sub:{en:'Pure finishers',he:'מסיימים טהורים'},metric:{en:'By goals / 90',he:'לפי שערים ל-90'},
+   key:'goals',unit:'/90',max:1.1,ico:'<circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>'},
+  {id:'creators',en:'Best creators',he:'יוצרים',sub:{en:'Assists + key passes',he:'בישולים + מסירות מפתח'},metric:{en:'By chance creation',he:'לפי יצירת מצבים'},
+   key:'create',unit:'/90',max:3.5,ico:'<path d="M4 12h10M14 6l6 6-6 6"/>'},
+  {id:'dribblers',en:'Best dribblers',he:'דריבלרים',sub:{en:'1v1 beaters',he:'מנצחי אחד על אחד'},metric:{en:'By dribbles / 90',he:'לפי דריבלים ל-90'},
+   key:'dribbles',unit:'/90',max:4.5,ico:'<path d="M12 2a4 4 0 100 8 4 4 0 000-8z"/><path d="M6 22l3-7 3 2 3-2 3 7"/>'},
+  {id:'defenders',en:'Best defenders',he:'מגינים',sub:{en:'Tackles + duels',he:'חטיפות + דו-קרבות'},metric:{en:'By defensive output',he:'לפי תפוקה הגנתית'},
+   key:'defense',unit:'/90',max:6.5,ico:'<path d="M12 2l8 3v6c0 5-3.5 8-8 11-4.5-3-8-6-8-11V5z"/>'},
+  {id:'ceiling',en:'Highest ceiling',he:'תקרה גבוהה',sub:{en:'FM potential gap',he:'פער פוטנציאל FM'},metric:{en:'By FM potential',he:'לפי פוטנציאל FM'},
+   key:'ceiling',unit:'',max:185,ico:'<path d="M12 2v6m0 0 3-3m-3 3L9 5"/><circle cx="12" cy="15" r="6"/>'},
+  {id:'value',en:'Best value',he:'הכי משתלמים',sub:{en:'Output per €',he:'תפוקה לכל €'},metric:{en:'By bang-for-buck',he:'לפי תמורה למחיר'},
+   key:'value',unit:'',max:100,ico:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'},
+  {id:'leverage',en:'Contract leverage',he:'מינוף חוזה',sub:{en:'Expiring / free',he:'מסתיים / חופשי'},metric:{en:'By months left',he:'לפי חודשים שנותרו'},
+   key:'leverage',unit:'',max:100,ico:'<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/>'},
+  {id:'youngstart',en:'Young starters',he:'צעירים פותחים',sub:{en:'Trusted & young',he:'צעירים ומהימנים'},metric:{en:'By minutes × youth',he:'לפי דקות × גיל'},
+   key:'youth',unit:'',max:100,ico:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'},
+];
+
+/* ───────── mock player pool (fields mirror the real scout DB) ───────── */
+const POOL=[
+  mk('Ensar Brahic','FWD','Beerschot VA','Jupiler Pro League',22,1500000,7,{rating:7.42,goals:0.71,assists:0.19,keyp:1.6,dribbles:1.4,tki:0.9,duels:52,mins:14,fmca:128,fmpa:152}),
+  mk('Malek El Mala','FWD','1.FC Köln','2. Bundesliga',21,1800000,22,{rating:7.11,goals:0.55,assists:0.28,keyp:1.9,dribbles:2.1,tki:1.1,duels:55,mins:11,fmca:131,fmpa:158}),
+  mk('Sankara Karamoko','FWD','Wolfsberger AC','Bundesliga (AUT)',22,900000,30,{rating:6.98,goals:0.48,assists:0.22,keyp:1.3,dribbles:1.8,tki:0.8,duels:49,mins:13,fmca:122,fmpa:144}),
+  mk('Atakan Müjde','AM','Kasimpasa','Süper Lig (TUR)',22,1500000,8,{rating:7.18,goals:0.31,assists:0.44,keyp:2.9,dribbles:3.2,tki:1.4,duels:51,mins:15,fmca:126,fmpa:150}),
+  mk('Dario Pavlović','AM','FK Čukarički','SuperLiga (SRB)',23,750000,6,{rating:7.21,goals:0.21,assists:0.41,keyp:3.1,dribbles:2.4,tki:1.6,duels:48,mins:16,fmca:120,fmpa:141}),
+  mk('Luka Ranđelović','WING','FK Vojvodina','SuperLiga (SRB)',20,600000,20,{rating:6.84,goals:0.18,assists:0.24,keyp:1.8,dribbles:4.1,tki:1.2,duels:46,mins:12,fmca:112,fmpa:150}),
+  mk('Omer Turgeman','FWD','Maccabi Netanya','Ligat haAl (ISR)',21,500000,16,{rating:7.02,goals:0.44,assists:0.33,keyp:2.2,dribbles:2.0,tki:1.0,duels:50,mins:15,fmca:118,fmpa:140}),
+  mk('Mateo Čolak','DM','HNK Rijeka','HNL (CRO)',24,1100000,14,{rating:6.91,goals:0.05,assists:0.12,keyp:0.9,dribbles:0.7,tki:5.4,duels:63,mins:18,fmca:124,fmpa:136}),
+  mk('Nikola Stević','DEF','FK Radnički','SuperLiga (SRB)',23,400000,12,{rating:6.88,goals:0.03,assists:0.04,keyp:0.4,dribbles:0.3,tki:4.6,duels:71,mins:17,fmca:116,fmpa:138}),
+  mk('Youssef Benali','WING','Raja Casablanca','Botola Pro (MAR)',22,650000,24,{rating:6.95,goals:0.39,assists:0.31,keyp:2.0,dribbles:3.6,tki:1.1,duels:47,mins:13,fmca:119,fmpa:143}),
+  mk('Agustín Rossi','AM','Defensa y Justicia','Primera (ARG)',21,850000,10,{rating:6.90,goals:0.19,assists:0.29,keyp:2.6,dribbles:2.3,tki:1.5,duels:49,mins:14,fmca:117,fmpa:139}),
+  mk('Deniz Aydın','FB','Göztepe','Süper Lig (TUR)',23,1200000,19,{rating:6.82,goals:0.06,assists:0.26,keyp:1.4,dribbles:1.9,tki:3.8,duels:58,mins:16,fmca:121,fmpa:133}),
+  mk('Marko Ilić','GK','Free agent','— (last SRB)',26,300000,0,{rating:6.80,goals:0,assists:0,keyp:0,dribbles:0,tki:0,duels:0,mins:14,fmca:118,fmpa:128,gk:true}),
+  mk('Tomás Belmonte','CM','Lanús','Primera (ARG)',24,1400000,15,{rating:6.86,goals:0.09,assists:0.18,keyp:1.9,dribbles:1.2,tki:3.4,duels:57,mins:16,fmca:120,fmpa:130}),
+  mk('Petar Krivak','FB','NK Osijek','HNL (CRO)',19,250000,30,{rating:6.70,goals:0.02,assists:0.15,keyp:1.1,dribbles:1.6,tki:3.1,duels:54,mins:9,fmca:108,fmpa:150}),
+  mk('Diego Fuentes','FWD','Unión La Calera','Primera (CHI)',20,450000,9,{rating:7.05,goals:0.62,assists:0.14,keyp:1.2,dribbles:1.7,tki:0.6,duels:51,mins:12,fmca:114,fmpa:147}),
+  mk('Kaan Yilmaz','WING','Samsunspor','Süper Lig (TUR)',21,980000,18,{rating:6.93,goals:0.27,assists:0.21,keyp:1.7,dribbles:3.9,tki:1.0,duels:45,mins:13,fmca:117,fmpa:145}),
+  mk('Rok Zupan','DM','NK Celje','PrvaLiga (SVN)',22,520000,11,{rating:6.89,goals:0.08,assists:0.14,keyp:1.3,dribbles:0.9,tki:4.9,duels:61,mins:15,fmca:115,fmpa:138}),
+  mk('Lucas Oliveira','DEF','Coritiba','Serie B (BRA)',21,700000,13,{rating:6.84,goals:0.04,assists:0.03,keyp:0.3,dribbles:0.4,tki:4.2,duels:69,mins:16,fmca:116,fmpa:144}),
+  mk('Ivan Novak','AM','Spartak Trnava','Fortuna Liga (SVK)',23,480000,7,{rating:7.08,goals:0.26,assists:0.38,keyp:2.8,dribbles:2.7,tki:1.4,duels:48,mins:15,fmca:118,fmpa:137}),
+];
+
+function mk(name,pos,club,league,age,mv,months,s){
+  const create = +( (s.assists||0) + (s.keyp||0)*0.35 ).toFixed(2);
+  const defense = +(s.tki||0).toFixed(1);
+  return {name,pos,club,league,age,mv,months,...s,create,defense,
+    img:`https://placehold.co/120x120/11110f/c9a66b?text=${encodeURIComponent(name.split(' ').map(w=>w[0]).join('').slice(0,3))}`};
+}
+
+/* ───────── scoring per hunt (0-100 match score) ───────── */
+function rawMetric(p,hunt){
+  switch(hunt.key){
+    case 'rating': return p.mins>=6 ? p.rating : 0;        // needs sample
+    case 'goals': return p.goals;
+    case 'create': return p.create;
+    case 'dribbles': return p.dribbles;
+    case 'defense': return p.defense;
+    case 'ceiling': return p.fmpa;
+    case 'value': { const out=Math.max(p.goals+p.assists, p.defense/5, (p.fmpa-120)/30); return out/(p.mv/1000000+0.3)*18; }
+    case 'leverage': return p.months<=0?100: p.months<=6?90: p.months<=12?72: p.months<=18?45: 20;
+    case 'youth': return (p.mins*2.2) * (24-Math.min(p.age,24))/6 * (p.age<=22?1:0.4);
+    default: return 0;
+  }
+}
+function matchScore(p,hunt){
+  const r=rawMetric(p,hunt);
+  let pct = Math.round(Math.min(100, (r/hunt.max)*100));
+  // light quality nudge from rating so a fluke doesn't top a hunt
+  if(['goals','create','dribbles','defense'].includes(hunt.key) && p.mins<6) pct=Math.round(pct*0.5);
+  return Math.max(0,Math.min(100,pct));
+}
+function metricLabel(p,hunt){
+  switch(hunt.key){
+    case 'rating': return p.rating.toFixed(2);
+    case 'goals': return p.goals.toFixed(2)+' /90';
+    case 'create': return p.create.toFixed(2)+' /90';
+    case 'dribbles': return p.dribbles.toFixed(1)+' /90';
+    case 'defense': return p.defense.toFixed(1)+' /90';
+    case 'ceiling': return 'PA '+p.fmpa+' · gap +'+(p.fmpa-p.fmca);
+    case 'value': return 'score '+matchScore(p,hunt);
+    case 'leverage': return p.months<=0?(he()?'חופשי':'Free agent'):p.months+(he()?' ח׳':' mo left');
+    case 'youth': return (he()?'גיל ':'Age ')+p.age+' · '+p.mins.toFixed(0)+(he()?' משחקי 90':' 90s');
+    default: return '';
+  }
+}
+function whyLine(p,hunt){
+  const L={
+    form:{en:`Running hot — ${p.rating.toFixed(2)} rating across ${p.mins.toFixed(0)} full matches.`,he:`בכושר — דירוג ${p.rating.toFixed(2)} על ${p.mins.toFixed(0)} משחקים מלאים.`},
+    goals:{en:`${p.goals.toFixed(2)} goals per 90 — top of the pool in your band.`,he:`${p.goals.toFixed(2)} שערים ל-90 — בצמרת בטווח שלך.`},
+    creators:{en:`${p.assists.toFixed(2)} assists + ${p.keyp.toFixed(1)} key passes per 90.`,he:`${p.assists.toFixed(2)} בישולים + ${p.keyp.toFixed(1)} מסירות מפתח ל-90.`},
+    dribblers:{en:`${p.dribbles.toFixed(1)} successful dribbles per 90 — a 1v1 threat.`,he:`${p.dribbles.toFixed(1)} דריבלים מוצלחים ל-90 — איום באחד על אחד.`},
+    defenders:{en:`${p.defense.toFixed(1)} tackles+interceptions per 90, ${p.duels}% duels won.`,he:`${p.defense.toFixed(1)} חטיפות+יירוטים ל-90, ${p.duels}% דו-קרבות.`},
+    ceiling:{en:`FM potential ${p.fmpa} vs ${p.fmca} current — ${p.fmpa-p.fmca} points of headroom.`,he:`פוטנציאל FM ${p.fmpa} מול ${p.fmca} נוכחי — ${p.fmpa-p.fmca} נק׳ מרחב.`},
+    value:{en:`Strong output for just ${fmtEur(p.mv)} — high bang-for-buck.`,he:`תפוקה גבוהה בשווי ${fmtEur(p.mv)} בלבד — תמורה מצוינת.`},
+    leverage:{en:p.months<=0?`Free agent — zero fee, pure wage play.`:`Contract down to ${p.months} months — fee leverage.`,he:p.months<=0?`חופשי — ללא דמי העברה.`:`חוזה ל-${p.months} חודשים — מינוף.`},
+    youngstart:{en:`${p.age}yo already trusted — ${p.mins.toFixed(0)} full matches banked.`,he:`בן ${p.age} וכבר מהימן — ${p.mins.toFixed(0)} משחקים מלאים.`},
+  };
+  return (L[hunt.id]||{en:'',he:''})[LANG];
+}
+
+/* ───────── state ───────── */
+let HUNT='form', POS='all', RMIN=idxToEur(3), RMAX=idxToEur(20), shortlisted=new Set(), dismissed=new Set();
+const POSES=['all','GK','DEF','FB','DM','CM','AM','WING','FWD'];
+
+/* ───────── render ───────── */
+function renderAll(){ renderHunts(); renderPresets(); renderPos(); renderBoard(); syncRangeLabels(); updateMast(); }
+
+function updateMast(){
+  const h=HUNTS.find(x=>x.id===HUNT);
+  document.getElementById('kicker').textContent = he()?'ציד אלפא / פלטפורמת גברים':'Alpha hunt / Men platform';
+  document.getElementById('title').innerHTML = he()? `לוח <span>אלפא.</span>` : `Alpha <span>board.</span>`;
+  document.getElementById('sub').textContent = he()
+    ? 'בחר מה אתה צד היום — הלוח מחשב מחדש מול נתוני השחקנים האמיתיים ומדרג את ההתאמות הטובות בטווח הרכש שלך.'
+    : "Pick what you're hunting today — the board recomputes against the real player data and ranks the best matches inside your acquisition range.";
+  document.getElementById('huntQ').firstElementChild.textContent = he()?'מה אנחנו צדים היום?':'What are we hunting today?';
+  document.getElementById('rbLbl').textContent = he()?'טווח רכש · גרור לשינוי':'Acquisition range · drag to adjust';
+  document.getElementById('rbReset').textContent = he()?'אפס לברירת מחדל':'Reset to default';
+}
+
+function renderHunts(){
+  document.getElementById('hunts').innerHTML = HUNTS.map(h=>`
+    <button class="hunt${h.id===HUNT?' on':''}" onclick="setHunt('${h.id}')">
+      <svg class="ico" viewBox="0 0 24 24">${h.ico}</svg>
+      <b>${he()?h.he:h.en}</b>
+      <span>${(he()?h.sub.he:h.sub.en)}</span>
+      <span class="metric">${he()?h.metric.he:h.metric.en}</span>
+    </button>`).join('');
+}
+function renderPresets(){
+  const P=[['150K–2M',150000,2000000],['Free–500K',0,500000],['500K–1.5M',500000,1500000],['1M–3M',1000000,3000000],['Up to 5M',0,5000000]];
+  document.getElementById('presets').innerHTML = P.map(([lbl,mn,mx])=>{
+    const on = Math.abs(mn-RMIN)<1 && Math.abs(mx-RMAX)<1;
+    return `<button class="${on?'on':''}" onclick="setPreset(${mn},${mx})">${lbl}</button>`;
+  }).join('');
+}
+function renderPos(){
+  document.getElementById('poschips').innerHTML = POSES.map(p=>`<button class="poschip${POS===p?' on':''}" onclick="setPos('${p}')">${p==='all'?(he()?'כל העמדות':'All positions'):p}</button>`).join('');
+}
+
+function currentList(){
+  const hunt=HUNTS.find(h=>h.id===HUNT);
+  let list=POOL.filter(p=>!dismissed.has(p.name))
+    .filter(p=>p.mv>=RMIN && (RMAX===0||p.mv<=RMAX))
+    .filter(p=>POS==='all'?true: groupOf(p.pos)===POS);
+  // GK pool is tiny — exclude from attack hunts
+  if(['goals','creators','dribblers'].includes(hunt.id)) list=list.filter(p=>!p.gk);
+  list=list.map(p=>({p,score:matchScore(p,hunt),raw:rawMetric(p,hunt)}))
+           .filter(x=>x.raw>0)
+           .sort((a,b)=> b.score-a.score || b.raw-a.raw);
+  return {hunt,list};
+}
+function groupOf(pos){ return POSES.includes(pos)?pos: (pos==='CB'||pos==='DEF')?'DEF':pos; }
+
+function renderBoard(){
+  const {hunt,list}=currentList();
+  const cnt=document.getElementById('count');
+  cnt.innerHTML = `<b>${list.length}</b> ${he()?'התאמות':'matches'} · ${he()?'מדורג '+hunt.he:'ranked by '+hunt.en.toLowerCase()} <span class="meth">${he()?'מחושב מנתוני השחקנים':'computed from player data'}</span>`;
+  const board=document.getElementById('board');
+  if(!list.length){ board.innerHTML=`<div class="empty">${he()?'אין התאמות בטווח/עמדה האלה — נסה להרחיב את הטווח':'No matches in this range/position — try widening the range'}</div>`; return; }
+  board.innerHTML=list.map((x,i)=>{
+    const p=x.p, pct=Math.min(100, Math.round((x.raw/hunt.max)*100));
+    return `<article class="card${i<3?' top3':''}" onclick="alert('${(he()?'תיק שחקן (הדגמה): ':'Player dossier (demo): ')+p.name}')">
+      <span class="rank">${i+1}</span>
+      <div class="c-head">
+        <img src="${p.img}">
+        <div class="c-id"><div class="nm">${p.name}</div><div class="meta"><b>${p.pos}</b> · ${p.league} · ${he()?'גיל':'Age'} ${p.age}</div></div>
+        <div class="mscore"><b>${x.score}</b><small>MATCH</small></div>
+      </div>
+      <div class="c-metric">
+        <div><div class="big">${metricLabel(p,hunt)}</div><div class="ml">${he()?hunt.metric.he:hunt.metric.en}</div></div>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+      </div>
+      <div class="c-why"><span class="tag"><span class="d"></span>${he()?hunt.he:hunt.en}</span><p>${whyLine(p,hunt)}</p></div>
+      <div class="c-foot">
+        <div class="mv"><b>${fmtEur(p.mv)}</b><small>${p.club}</small></div>
+        <div class="acts">
+          <button class="save" title="Shortlist" onclick="event.stopPropagation();this.style.borderColor='var(--gold)';this.style.color='var(--gold)'"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9-9a5 5 0 0 1 9-2 5 5 0 0 1 9 2c-2 4.5-9 9-9 9z"/></svg></button>
+          <button class="dismiss" title="Dismiss" onclick="event.stopPropagation();dismiss('${p.name}')"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+      </div>
+    </article>`;
+  }).join('');
+}
+
+/* ───────── interactions ───────── */
+function setHunt(id){HUNT=id;renderHunts();renderBoard();updateMast();}
+function setPos(p){POS=p;renderPos();renderBoard();}
+function dismiss(name){dismissed.add(name);renderBoard();}
+function setPreset(mn,mx){RMIN=mn;RMAX=mx;syncSlidersFromValues();syncRangeLabels();renderPresets();renderBoard();}
+function resetRange(){setPreset(150000,2000000);}
+
+/* dual slider wiring */
+const rMin=document.getElementById('rMin'), rMax=document.getElementById('rMax'), fill=document.getElementById('fill');
+function syncSlidersFromValues(){
+  // find nearest index for RMIN / RMAX
+  const nearest=v=>{let bi=0,bd=1e15;STEPS.forEach((s,i)=>{const d=Math.abs(s-v);if(d<bd){bd=d;bi=i;}});return bi;};
+  rMin.value=nearest(RMIN); rMax.value=(RMAX===0?STEPS.length-1:nearest(RMAX));
+  paintFill();
+}
+function paintFill(){
+  const a=+rMin.value, b=+rMax.value, max=+rMin.max;
+  const lo=Math.min(a,b)/max*100, hi=Math.max(a,b)/max*100;
+  fill.style.insetInlineStart=lo+'%'; fill.style.width=(hi-lo)+'%';
+  // also mirror for LTR left
+  fill.style.left=lo+'%'; fill.style.width=(hi-lo)+'%';
+}
+function onSlide(){
+  let a=+rMin.value, b=+rMax.value;
+  if(a>b){ const t=a;a=b;b=t; } // keep order
+  RMIN=idxToEur(a); RMAX=idxToEur(b);
+  if(b>=STEPS.length-1) RMAX = (idxToEur(b)>=5000000? 0 : idxToEur(b)); // top = "no limit"-ish (we keep 5M)
+  paintFill(); syncRangeLabels(); renderPresets(); renderBoard();
+}
+rMin.addEventListener('input',onSlide); rMax.addEventListener('input',onSlide);
+
+function syncRangeLabels(){
+  document.getElementById('rbMin').textContent=fmtEur(RMIN);
+  document.getElementById('rbMax').textContent=RMAX===0?(he()?'ללא הגבלה':'No limit'):fmtEur(RMAX);
+  document.getElementById('railBand').textContent=`${fmtEur(RMIN)} – ${RMAX===0?'∞':fmtEur(RMAX)}`;
+}
+
+/* init */
+syncSlidersFromValues();
+renderAll();
+</script>
+</body>
+</html>

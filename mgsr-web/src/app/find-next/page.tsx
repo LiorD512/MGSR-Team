@@ -1,16 +1,18 @@
 'use client';
 
+/**
+ * /find-next → redirect to the new War Room "Successors" screen.
+ * (Old target was /ai-scout?tab=find-next, part of the retired dark design.)
+ */
+
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import BritLoader from '@/components/BritLoader';
 
 export default function FindNextRedirect() {
   const router = useRouter();
   useEffect(() => {
-    router.replace('/ai-scout?tab=find-next');
+    router.replace('/war-room/successors');
   }, [router]);
-  return (
-    <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-      <div className="animate-pulse text-mgsr-teal font-display">Redirecting...</div>
-    </div>
-  );
+  return <BritLoader fullPage />;
 }

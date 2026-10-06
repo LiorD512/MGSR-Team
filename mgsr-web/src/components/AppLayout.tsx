@@ -43,14 +43,10 @@ const navSections: NavSection[] = [
       // TEMP HIDDEN (user request): { href: '/shadow-teams', labelKey: 'nav_shadow_teams' },
     ],
   },
-  {
-    id: 'intel',
-    titleKey: 'app_shell_section_intelligence',
-    items: [
-      { href: '/war-room', labelKey: 'nav_war_room' },
-      // TEMP HIDDEN (user request): { href: '/chat-room', labelKey: 'nav_chat_room', badge: 'chat' },
-    ],
-  },
+  // NOTE: the old "Intelligence / War Room" nav section was removed — the men
+  // platform no longer uses AppLayout, and War Room now lives in BritRail as an
+  // expandable group (/war-room/alpha-board etc.). AppLayout remains only as the
+  // shell for the women platform (and a few shared/youth pages).
 ];
 
 const womenNavSections: NavSection[] = [
