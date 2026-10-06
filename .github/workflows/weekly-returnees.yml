@@ -31,3 +31,6 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
           FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          # TM blocks plain requests from GH Actions (HTTP 202/403), so route
+          # through the shared HTML proxy. Mirrors weekly-releases-cleaner.yml.
+          TM_HTML_PROXY_URL: ${{ vars.TM_HTML_PROXY_URL || 'https://management.britsportgroup.com/api/transfermarkt/html-proxy' }}
