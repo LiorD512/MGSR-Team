@@ -104,6 +104,13 @@ const WITHOUT_CLUB_VARIANTS = [
   'klubsuz', 'free agent', 'vereinslos', 'retired', 'career break',
 ];
 
+// Visibility gate — MUST match the men's screen (release-notifications/page.tsx
+// `filteredPlayers`). The screen only shows events with market value in
+// [150k, 4M] and age <= 33, so the cleaner only needs to check those players.
+const NOTIFICATION_MIN_MARKET_VALUE = 150000;
+const NOTIFICATION_MAX_MARKET_VALUE = 4000000;
+const NOTIFICATION_MAX_AGE = 33;
+
 // Max profiles to classify per run (safety cap on TM volume).
 const MAX_PROFILES_PER_RUN = Number(process.env.MAX_PROFILES_PER_RUN || 1500);
 // Health gate: if fewer than this fraction of profiles classified successfully,
@@ -204,6 +211,49 @@ async function fetchProfile(url: string): Promise<cheerio.Root | null> {
   return null;
 }
 
+// ── Visibility gate parsing (mirror the screen's releases.ts helpers) ──
+/** Parse a market-value string (e.g. "€1.5m", "€500k") to EUR. Matches the screen. */
+function parseMarketValue(value?: string | null): number {
+  if (!value || value.includes('-')) return 0;
+  const cleaned = String(value).replace(/[€\s]/g, '').toLowerCase();
+  if (cleaned.includes('k')) return (parseFloat(cleaned.replace('k', '')) || 0) * 1000;
+  if (cleaned.includes('m')) return (parseFloat(cleaned.replace('m', '')) || 0) * 1_000_000;
+  return parseFloat(cleaned) || 0;
+}
+
+function parsePlayerAge(value?: string | null): number | null {
+  if (!value) return null;
+  const match = String(value).match(/\d{1,2}/);
+  if (!match) return null;
+  const age = Number.parseInt(match[0], 10);
+  return Number.isNaN(age) ? null : age;
+}
+
+/**
+ * True when an event could be visible on the screen (value 150k–4M, age ≤ 33).
+ *
+ * The screen enriches value/age at runtime (from the `releases-all` cache and
+ * live profile fetches), so an event doc may have blank value/age even though
+ * the player IS shown. To avoid skipping anyone the user sees, we only EXCLUDE
+ * a player when their data is present AND clearly outside the gate. Unknown /
+ * blank value or age is treated as "could be visible" (processed anyway — the
+ * profile fetch we do next also yields the authoritative verdict).
+ */
+function isVisibleOnScreen(marketValue?: string, playerAge?: string): boolean {
+  const hasValue = !!(marketValue && marketValue.trim() && !marketValue.includes('-'));
+  const hasAge = parsePlayerAge(playerAge) !== null;
+
+  if (hasValue) {
+    const value = parseMarketValue(marketValue);
+    if (value < NOTIFICATION_MIN_MARKET_VALUE || value > NOTIFICATION_MAX_MARKET_VALUE) return false;
+  }
+  if (hasAge) {
+    const age = parsePlayerAge(playerAge)!;
+    if (age > NOTIFICATION_MAX_AGE) return false;
+  }
+  return true;
+}
+
 // ── Profile classification ──
 type Verdict = 'STILL_FREE' | 'SIGNED' | 'UNKNOWN';
 
@@ -291,10 +341,12 @@ interface ScreenEvent {
   id: string;
   playerUrl: string;
   playerName: string;
+  marketValue: string;
+  playerAge: string;
   hidden: boolean;
 }
 
-/** Load all NEW_RELEASE_FROM_CLUB events: profile URL + current hidden flag + doc id. */
+/** Load all NEW_RELEASE_FROM_CLUB events: profile URL + value/age + hidden flag + doc id. */
 async function getScreenReleaseEvents(dbRef: Firestore): Promise<ScreenEvent[]> {
   const snap = await dbRef
     .collection(FEED_EVENTS_TABLE)
@@ -310,6 +362,8 @@ async function getScreenReleaseEvents(dbRef: Firestore): Promise<ScreenEvent[]> 
       id: doc.id,
       playerUrl,
       playerName: typeof data.playerName === 'string' ? data.playerName : '',
+      marketValue: typeof data.marketValue === 'string' ? data.marketValue : '',
+      playerAge: typeof data.playerAge === 'string' ? data.playerAge : '',
       hidden: data.hiddenFromReleases === true,
     });
   });
@@ -335,15 +389,25 @@ async function main() {
   log(`Starting releases cleaner (men / FeedEvents, per-profile)${DRY_RUN ? ' — DRY RUN' : ''}`);
 
   try {
-    // 1) Current men's screen population (unique by player URL — one event per player).
+    // 1) Current men's screen population (unique by player URL — one card per player).
     const allEvents = await getScreenReleaseEvents(db);
     const byUrl = new Map<string, ScreenEvent[]>();
     for (const ev of allEvents) {
       if (!byUrl.has(ev.playerUrl)) byUrl.set(ev.playerUrl, []);
       byUrl.get(ev.playerUrl)!.push(ev);
     }
-    let playerUrls = Array.from(byUrl.keys());
-    log(`Screen release events: ${allEvents.length} (unique players: ${playerUrls.length})`);
+
+    // Only consider players actually VISIBLE on the screen: the screen filters
+    // to market value 150k–4M and age ≤ 33 (release-notifications `filteredPlayers`).
+    // A player is visible if any of their events passes that gate.
+    const allPlayerCount = byUrl.size;
+    let playerUrls = Array.from(byUrl.keys()).filter((url) =>
+      byUrl.get(url)!.some((e) => isVisibleOnScreen(e.marketValue, e.playerAge))
+    );
+    log(
+      `Screen release events: ${allEvents.length} | unique players: ${allPlayerCount} | ` +
+        `visible (value 150k–4M, age ≤ 33): ${playerUrls.length}`
+    );
 
     if (playerUrls.length === 0) {
       const durationMs = Date.now() - startTime;
