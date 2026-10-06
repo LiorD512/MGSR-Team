@@ -87,6 +87,9 @@ interface FeedEvent {
   playerNationalityFlag?: string;
   transferDate?: string;
   extraInfo?: string;
+  // Set by the weekly ReleasesCleaner worker when a released player has signed a
+  // new club. The event is kept intact (never deleted); it is only hidden here.
+  hiddenFromReleases?: boolean;
   timestamp?: unknown;
 }
 
@@ -764,7 +767,8 @@ export default function ReleaseNotificationsPage() {
       events.filter(
         (event) =>
           event.type === 'NEW_RELEASE_FROM_CLUB' &&
-          !!event.playerTmProfile
+          !!event.playerTmProfile &&
+          event.hiddenFromReleases !== true
       )
     );
     return deduped.filter((event) => !rosterProfiles.has(event.playerTmProfile));
