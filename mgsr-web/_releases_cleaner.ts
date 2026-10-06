@@ -214,6 +214,15 @@ async function fetchProfile(url: string): Promise<cheerio.Root | null> {
 }
 
 // ── Visibility gate parsing (mirror the screen's releases.ts helpers) ──
+/** Mirror of the screen's firstMeaningful: skip blank / "-" / "—" / "unknown". */
+function firstMeaningfulStr(...values: Array<string | undefined | null>): string | undefined {
+  for (const value of values) {
+    const v = value?.trim();
+    if (v && v !== '-' && v !== '—' && v.toLowerCase() !== 'unknown') return v;
+  }
+  return undefined;
+}
+
 /** Parse a market-value string (e.g. "€1.5m", "€500k") to EUR. Matches the screen. */
 function parseMarketValue(value?: string | null): number {
   if (!value || value.includes('-')) return 0;
@@ -441,10 +450,12 @@ async function main() {
     const metaCache = await loadReleasesAllCache(db);
     log(`Loaded releases-all cache entries: ${metaCache.size}`);
 
+    // Resolve exactly like the screen: firstMeaningful(event, cache) — which
+    // rejects "-", "—", "unknown" and blanks (turning them into "missing").
     const valueFor = (ev: ScreenEvent): string =>
-      ev.marketValue || metaCache.get(ev.playerUrl)?.marketValue || '';
+      firstMeaningfulStr(ev.marketValue, metaCache.get(ev.playerUrl)?.marketValue) || '';
     const ageFor = (ev: ScreenEvent): string =>
-      ev.playerAge || metaCache.get(ev.playerUrl)?.playerAge || '';
+      firstMeaningfulStr(ev.playerAge, metaCache.get(ev.playerUrl)?.playerAge) || '';
 
     // Diagnostic: where does value/age data come from? (pinpoints empty sources)
     let docHasVA = 0;
@@ -459,6 +470,35 @@ async function main() {
       else noVA++;
     }
     log(`Value/age source — doc: ${docHasVA}, cache: ${cacheHasVA}, neither: ${noVA}`);
+
+    // Diagnostic: sample real value/age strings + how the gate parses them.
+    const sampleUrls = Array.from(byUrl.keys()).slice(0, 10);
+    log('Sample value/age (raw doc → parsed):');
+    for (const url of sampleUrls) {
+      const ev = byUrl.get(url)![0];
+      const mv = valueFor(ev);
+      const ag = ageFor(ev);
+      log(
+        `   "${ev.playerName}" | mv="${mv}" → ${parseMarketValue(mv)} | age="${ag}" → ${parsePlayerAge(ag)} | visible=${isVisibleOnScreen(mv, ag)}`
+      );
+    }
+    // Gate breakdown across ALL players.
+    let failValue = 0;
+    let failAge = 0;
+    let passBoth = 0;
+    for (const url of Array.from(byUrl.keys())) {
+      const ev = byUrl.get(url)![0];
+      const v = parseMarketValue(valueFor(ev));
+      const a = parsePlayerAge(ageFor(ev));
+      const vOk = v >= NOTIFICATION_MIN_MARKET_VALUE && v <= NOTIFICATION_MAX_MARKET_VALUE;
+      const aOk = a !== null && a <= NOTIFICATION_MAX_AGE;
+      if (vOk && aOk) passBoth++;
+      else {
+        if (!vOk) failValue++;
+        if (!aOk) failAge++;
+      }
+    }
+    log(`Gate breakdown — pass both: ${passBoth}, fail value: ${failValue}, fail age: ${failAge}`);
 
     // Only consider players actually VISIBLE on the screen: the screen filters
     // to market value 150k–4M and age ≤ 33 (release-notifications `filteredPlayers`).
