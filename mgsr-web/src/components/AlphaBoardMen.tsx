@@ -183,13 +183,15 @@ const HUNTS: HuntDef[] = [
 const POSITIONS: { id: string; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'GK', label: 'GK' },
-  { id: 'DEF', label: 'DEF' },
-  { id: 'FB', label: 'FB' },
+  { id: 'CB', label: 'CB' },
+  { id: 'RB', label: 'RB' },
+  { id: 'LB', label: 'LB' },
   { id: 'DM', label: 'DM' },
   { id: 'CM', label: 'CM' },
   { id: 'AM', label: 'AM' },
-  { id: 'WING', label: 'WING' },
-  { id: 'FWD', label: 'FWD' },
+  { id: 'RW', label: 'RW' },
+  { id: 'LW', label: 'LW' },
+  { id: 'CF', label: 'CF' },
 ];
 
 // Trigger id → coloured dot (gold/black token palette only).
