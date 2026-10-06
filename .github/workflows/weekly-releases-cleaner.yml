@@ -1,10 +1,11 @@
 name: Weekly Releases Cleaner (Men)
 
 # Keeps the men's "Latest Releases" screen (/release-notifications) clean by
-# hiding released players who have since signed a new club. Non-destructive:
-# only toggles `hiddenFromReleases` on FeedEvents — never deletes events.
-# Runs on GitHub Actions (same proven TM scraping stack as the returnees /
-# contract-finishers weekly jobs) so it is not blocked by Transfermarkt.
+# hiding released players who have since signed a new club. For each player on
+# the screen it reads their TM profile and hides only genuinely-signed players
+# (a real current club AND no "to leave / joining Without Club" marker).
+# Non-destructive: only toggles `hiddenFromReleases` on FeedEvents — never
+# deletes events. Fetches via the shared HTML proxy so TM does not block it.
 
 on:
   schedule:
@@ -21,7 +22,8 @@ on:
 jobs:
   releases-cleaner:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Per-player profile fetches: budget generously (hundreds of profiles).
+    timeout-minutes: 180
     defaults:
       run:
         working-directory: mgsr-web
