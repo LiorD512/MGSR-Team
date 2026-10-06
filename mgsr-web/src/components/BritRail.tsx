@@ -23,7 +23,11 @@ export type BritRailActive =
   | 'club-change'
   | 'returnees'
   | 'contract-finisher'
-  | 'war-room';
+  | 'war-room'
+  | 'war-room-alpha'
+  | 'war-room-agents'
+  | 'war-room-ask'
+  | 'war-room-successors';
 
 interface BritRailProps {
   active: BritRailActive;
@@ -41,12 +45,20 @@ export default function BritRail({ active }: BritRailProps) {
     active === 'release' || active === 'club-change' || active === 'returnees' || active === 'contract-finisher';
   const [signalsOpen, setSignalsOpen] = useState(signalsActive);
 
+  const warRoomActive =
+    active === 'war-room' || active === 'war-room-alpha' || active === 'war-room-agents' || active === 'war-room-ask' || active === 'war-room-successors';
+  const [warRoomOpen, setWarRoomOpen] = useState(warRoomActive);
+
   const isRoster = pathname === '/players' || pathname.startsWith('/players/');
   const isShortlist = pathname === '/shortlist';
   const isRelease = pathname === '/release-notifications';
   const isClubChange = pathname === '/club-change-notifications';
   const isReturnees = pathname === '/returnees';
   const isContractFinisher = pathname === '/contract-finisher';
+  const isWarAlpha = pathname.startsWith('/war-room/alpha-board');
+  const isWarAgents = pathname === '/war-room/scout-agents';
+  const isWarAsk = pathname === '/war-room/ask';
+  const isWarSucc = pathname === '/war-room/successors';
 
   return (
     <aside className="brit-rail">
@@ -125,11 +137,35 @@ export default function BritRail({ active }: BritRailProps) {
           </>
         )}
 
-        {/* War Room — Alpha Board (men-only) */}
+        {/* War Room group — expandable (men-only) */}
         {!isYouth && (
-          <Link href="/war-room/alpha-board" className={active === 'war-room' || pathname.startsWith('/war-room') ? 'active' : ''}>
-            <span>{t('nav_war_room')}</span>
-          </Link>
+          <>
+            <button
+              type="button"
+              className={`brit-nav-group${warRoomActive ? ' active' : ''}`}
+              aria-expanded={warRoomOpen}
+              onClick={() => setWarRoomOpen((v) => !v)}
+            >
+              <span>{t('nav_war_room')}</span>
+              <em>{warRoomOpen ? '−' : '+'}</em>
+            </button>
+            {warRoomOpen && (
+              <div className="brit-nav-sub">
+                <Link href="/war-room/alpha-board" className={active === 'war-room-alpha' || active === 'war-room' || isWarAlpha ? 'active' : ''}>
+                  <span>{t('nav_war_room_alpha')}</span>
+                </Link>
+                <Link href="/war-room/scout-agents" className={active === 'war-room-agents' || isWarAgents ? 'active' : ''}>
+                  <span>{t('nav_war_room_agents')}</span>
+                </Link>
+                <Link href="/war-room/ask" className={active === 'war-room-ask' || isWarAsk ? 'active' : ''}>
+                  <span>{t('nav_war_room_ask')}</span>
+                </Link>
+                <Link href="/war-room/successors" className={active === 'war-room-successors' || isWarSucc ? 'active' : ''}>
+                  <span>{t('nav_war_room_successors')}</span>
+                </Link>
+              </div>
+            )}
+          </>
         )}
       </nav>
     </aside>

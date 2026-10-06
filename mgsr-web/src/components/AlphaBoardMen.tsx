@@ -287,7 +287,7 @@ export default function AlphaBoardMen() {
   return (
     <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
       <div className="brit-app">
-        <BritRail active="war-room" />
+        <BritRail active="war-room-alpha" />
 
         <div className="brit-main">
           <header className="brit-topbar">
