@@ -5443,3 +5443,65 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   .brit-room .brit-wr-srow { flex-wrap: wrap; }
   .brit-room .brit-wr-refcard .sigbar { grid-template-columns: 100px 1fr 36px; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   ALPHA BOARD — HUNT chooser + draggable range + card metric
+   ═══════════════════════════════════════════════════════ */
+
+/* "What are we hunting today?" header */
+.brit-room .brit-ab-huntq { display: flex; align-items: center; gap: 10px; margin: 4px 0 14px; color: var(--ink); font: 500 15px/1 var(--display); text-transform: uppercase; letter-spacing: .04em; }
+.brit-room[dir='rtl'] .brit-ab-huntq { font-weight: 800; }
+.brit-room .brit-ab-huntq .ln { flex: 1; height: 1px; background: var(--line); }
+
+/* hunt tiles */
+.brit-room .brit-ab-hunts { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin-bottom: 24px; }
+.brit-room .brit-ab-hunt { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--line); background: var(--card); text-align: start; transition: transform .15s, border-color .15s; overflow: hidden; cursor: pointer; }
+.brit-room .brit-ab-hunt:hover { border-color: var(--gold-soft); transform: translateY(-2px); }
+.brit-room .brit-ab-hunt.on { border-color: var(--gold); background: linear-gradient(135deg, rgba(164,125,67,.1), var(--card)); }
+.brit-room .brit-ab-hunt.on::before { content: ''; position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+.brit-room .brit-ab-hunt .ico { width: 26px; height: 26px; stroke: var(--muted); fill: none; stroke-width: 1.5; }
+.brit-room .brit-ab-hunt.on .ico { stroke: var(--gold); }
+.brit-room .brit-ab-hunt b { font: 500 14px/1.1 var(--display); text-transform: uppercase; letter-spacing: .02em; color: var(--ink); }
+.brit-room[dir='rtl'] .brit-ab-hunt b { font-weight: 700; }
+.brit-room .brit-ab-hunt.on b { color: var(--gold); }
+.brit-room .brit-ab-hunt .sub { color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+.brit-room .brit-ab-hunt .metric { color: var(--muted-2); font: 8px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.brit-room .brit-ab-hunt .cnt { margin-top: 2px; align-self: flex-start; padding: 3px 7px; background: var(--paper-2); color: var(--muted); font: 8px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.brit-room .brit-ab-hunt.on .cnt { background: rgba(164,125,67,.18); color: var(--gold); }
+
+/* draggable acquisition range */
+.brit-room .brit-ab-rangebar { border: 1px solid var(--gold-soft); background: rgba(164,125,67,.05); padding: 18px 20px; margin-bottom: 16px; }
+.brit-room .brit-ab-rangebar .rb-top { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.brit-room .brit-ab-rangebar .rb-lbl { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+.brit-room .brit-ab-rangebar .rb-val { color: var(--ink); font: 500 20px/1 var(--display); text-transform: uppercase; }
+.brit-room .brit-ab-rangebar .rb-val b { color: var(--gold); }
+.brit-room .brit-ab-rangebar .rb-reset { color: var(--muted); font: 8px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--line); background: transparent; cursor: pointer; }
+.brit-room .brit-ab-rangebar .rb-reset:hover { color: var(--gold); }
+.brit-room .brit-ab-slider { position: relative; height: 34px; margin: 0 10px; }
+.brit-room .brit-ab-slider .track { position: absolute; top: 15px; inset-inline: 0; height: 4px; background: var(--paper-2); }
+.brit-room .brit-ab-slider .fill { position: absolute; top: 15px; height: 4px; background: var(--gold); }
+.brit-room .brit-ab-slider input[type=range] { position: absolute; top: 0; inset-inline-start: 0; width: 100%; height: 34px; margin: 0; background: transparent; pointer-events: none; -webkit-appearance: none; appearance: none; }
+.brit-room .brit-ab-slider input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; pointer-events: all; width: 20px; height: 20px; border-radius: 50%; background: var(--black); border: 2px solid var(--gold); cursor: grab; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+.brit-room .brit-ab-slider input[type=range]::-webkit-slider-thumb:active { cursor: grabbing; background: var(--gold); }
+.brit-room .brit-ab-slider input[type=range]::-moz-range-thumb { pointer-events: all; width: 20px; height: 20px; border-radius: 50%; background: var(--black); border: 2px solid var(--gold); cursor: grab; }
+.brit-room .brit-ab-rangebar .rb-ticks { display: flex; justify-content: space-between; margin: 8px 12px 0; color: var(--muted-2); font: 8px/1 var(--mono); text-transform: uppercase; }
+.brit-room .brit-ab-rangebar .rb-presets { display: flex; gap: 7px; margin-top: 14px; flex-wrap: wrap; }
+.brit-room .brit-ab-rangebar .rb-presets button { padding: 7px 11px; border: 1px solid var(--line); color: var(--muted); background: transparent; font: 8px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em; transition: .15s; cursor: pointer; }
+.brit-room .brit-ab-rangebar .rb-presets button:hover, .brit-room .brit-ab-rangebar .rb-presets button.on { border-color: var(--gold); color: var(--gold); }
+
+/* card rank badge */
+.brit-room .brit-ab-rank { position: absolute; top: 0; inset-inline-start: 0; width: 26px; height: 26px; display: grid; place-items: center; background: var(--ink); color: var(--paper); font: 500 11px/1 var(--display); z-index: 1; }
+.brit-room .brit-ab-card.top3 .brit-ab-rank { background: var(--gold); }
+.brit-room .brit-ab-card .brit-ab-chead { padding-inline-start: 34px; }
+
+/* card ranking-metric row */
+.brit-room .brit-ab-cmetric { display: flex; align-items: center; gap: 12px; padding: 0 16px 12px; }
+.brit-room .brit-ab-cmetric .mval { flex: none; }
+.brit-room .brit-ab-cmetric .big { font: 500 20px/1 var(--display); color: var(--ink); }
+.brit-room .brit-ab-cmetric .ml { margin-top: 3px; color: var(--muted); font: 8px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.brit-room .brit-ab-cmetric .bar { flex: 1; height: 5px; background: var(--paper-2); position: relative; }
+.brit-room .brit-ab-cmetric .bar i { position: absolute; inset-inline-start: 0; top: 0; height: 100%; background: var(--gold); }
+
+@media (max-width: 980px) {
+  .brit-room .brit-ab-hunts { grid-template-columns: 1fr 1fr; }
+}

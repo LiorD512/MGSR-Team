@@ -45,6 +45,8 @@ interface AlphaPlayer {
   foot: string;
   image: string; // may be empty
   alpha_score: number; // 0-100
+  hunt_score: number;  // 0-100, how well the player matches the active hunt
+  hunt_metric: number; // raw value the active hunt ranks by
   verdict: 'SIGN' | 'MONITOR' | 'PASS';
   tier: 'a' | 'b' | 'c';
   why_now: string;
@@ -70,6 +72,8 @@ interface AlphaBoardResponse {
   count: number;
   total_in_band: number;
   band: { min: number; max: number };
+  hunt: string | null;
+  hunt_counts: Record<string, number>;
   signals: {
     in_band: number;
     form_rising: number;
@@ -83,13 +87,97 @@ interface AlphaBoardResponse {
 // ─────────────────────────────────────────────────────────────────────────
 // Static option lists
 // ─────────────────────────────────────────────────────────────────────────
-const LENSES: { id: string; en: string; he: string }[] = [
-  { id: 'all', en: 'All', he: 'הכל' },
-  { id: 'riser', en: 'Undervalued risers', he: 'עליות מתומחרות נמוך' },
-  { id: 'form', en: 'In-form', he: 'בכושר' },
-  { id: 'contract', en: 'Leverage windows', he: 'חלונות מינוף' },
-  { id: 'free', en: 'Free & released', he: 'חופשי ושוחרר' },
-  { id: 'intensity', en: 'Intensity', he: 'אינטנסיביות' },
+// "What are we hunting today?" — each hunt re-ranks the board by a real metric.
+// id must match the server's HUNTS keys in alpha_board.py.
+interface HuntDef {
+  id: string;
+  en: string; he: string;
+  subEn: string; subHe: string;
+  metricEn: string; metricHe: string;
+  icon: string; // inner SVG paths
+  /** format the ranking metric for display on the card */
+  fmt: (p: AlphaPlayer, isHe: boolean) => string;
+  /** 0–1 fraction for the metric bar on the card */
+  bar: (p: AlphaPlayer) => number;
+  /** plain-language "why this ranks here" line */
+  why: (p: AlphaPlayer, isHe: boolean) => string;
+}
+
+const HUNTS: HuntDef[] = [
+  {
+    id: 'form', en: 'Best form', he: 'הכי בכושר', subEn: 'Hot right now', subHe: 'חמים כרגע',
+    metricEn: 'By match rating', metricHe: 'לפי דירוג משחק',
+    icon: '<path d="M3 13l4-4 4 4 6-7"/><path d="M3 20h18"/>',
+    fmt: (p) => num(p.rating),
+    bar: (p) => p.rating / 9,
+    why: (p, he) => he ? `בכושר — דירוג ${num(p.rating)} על ${num(p.minutes_90s, 0)} משחקים מלאים.` : `Running hot — ${num(p.rating)} rating across ${num(p.minutes_90s, 0)} full matches.`,
+  },
+  {
+    id: 'goals', en: 'Best goalscorers', he: 'כובשים', subEn: 'Pure finishers', subHe: 'מסיימים טהורים',
+    metricEn: 'By goals / 90', metricHe: 'לפי שערים ל-90',
+    icon: '<circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>',
+    fmt: (p) => `${num(p.goals_per90)} /90`,
+    bar: (p) => p.goals_per90 / 1.1,
+    why: (p, he) => he ? `${num(p.goals_per90)} שערים ל-90 — בצמרת הטווח שלך.` : `${num(p.goals_per90)} goals per 90 — top of your band.`,
+  },
+  {
+    id: 'creators', en: 'Best creators', he: 'יוצרים', subEn: 'Assists + key passes', subHe: 'בישולים + מסירות',
+    metricEn: 'By chance creation', metricHe: 'לפי יצירת מצבים',
+    icon: '<path d="M4 12h10M14 6l6 6-6 6"/>',
+    fmt: (p) => `${num(p.hunt_metric)} /90`,
+    bar: (p) => p.hunt_metric / 3.5,
+    why: (p, he) => he ? `${num(p.assists_per90)} בישולים + ${num(p.key_passes_per90, 1)} מסירות מפתח ל-90.` : `${num(p.assists_per90)} assists + ${num(p.key_passes_per90, 1)} key passes per 90.`,
+  },
+  {
+    id: 'dribblers', en: 'Best dribblers', he: 'דריבלרים', subEn: '1v1 beaters', subHe: 'מנצחי אחד על אחד',
+    metricEn: 'By dribbles / 90', metricHe: 'לפי דריבלים ל-90',
+    icon: '<path d="M12 2a4 4 0 100 8 4 4 0 000-8z"/><path d="M6 22l3-7 3 2 3-2 3 7"/>',
+    fmt: (p) => `${num(p.dribbles_per90, 1)} /90`,
+    bar: (p) => p.dribbles_per90 / 4.5,
+    why: (p, he) => he ? `${num(p.dribbles_per90, 1)} דריבלים מוצלחים ל-90 — איום באחד על אחד.` : `${num(p.dribbles_per90, 1)} successful dribbles per 90 — a 1v1 threat.`,
+  },
+  {
+    id: 'defenders', en: 'Best defenders', he: 'מגינים', subEn: 'Tackles + duels', subHe: 'חטיפות + דו-קרבות',
+    metricEn: 'By defensive output', metricHe: 'לפי תפוקה הגנתית',
+    icon: '<path d="M12 2l8 3v6c0 5-3.5 8-8 11-4.5-3-8-6-8-11V5z"/>',
+    fmt: (p) => `${num(p.tackles_int_per90, 1)} /90`,
+    bar: (p) => p.tackles_int_per90 / 6.5,
+    why: (p, he) => he ? `${num(p.tackles_int_per90, 1)} חטיפות+יירוטים ל-90, ${Math.round(p.duels_won_pct)}% דו-קרבות.` : `${num(p.tackles_int_per90, 1)} tackles+interceptions per 90, ${Math.round(p.duels_won_pct)}% duels won.`,
+  },
+  {
+    id: 'ceiling', en: 'Highest ceiling', he: 'תקרה גבוהה', subEn: 'FM potential gap', subHe: 'פער פוטנציאל FM',
+    metricEn: 'By FM potential', metricHe: 'לפי פוטנציאל FM',
+    icon: '<path d="M12 2v6m0 0 3-3m-3 3L9 5"/><circle cx="12" cy="15" r="6"/>',
+    fmt: (p) => `PA ${p.fm_pa} · +${p.fm_gap}`,
+    bar: (p) => p.fm_pa / 185,
+    why: (p, he) => he ? `פוטנציאל FM ${p.fm_pa} מול ${p.fm_ca} נוכחי — ${p.fm_gap} נק׳ מרחב.` : `FM potential ${p.fm_pa} vs ${p.fm_ca} current — ${p.fm_gap} points of headroom.`,
+  },
+  {
+    id: 'value', en: 'Best value', he: 'הכי משתלמים', subEn: 'Output per €', subHe: 'תפוקה לכל €',
+    metricEn: 'By bang-for-buck', metricHe: 'לפי תמורה למחיר',
+    icon: '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
+    fmt: (p) => `${Math.round(p.hunt_score)}`,
+    bar: (p) => p.hunt_score / 100,
+    why: (p, he) => he ? `תפוקה גבוהה בשווי ${p.market_value} בלבד — תמורה מצוינת.` : `Strong output for just ${p.market_value} — high bang-for-buck.`,
+  },
+  {
+    id: 'leverage', en: 'Contract leverage', he: 'מינוף חוזה', subEn: 'Expiring / free', subHe: 'מסתיים / חופשי',
+    metricEn: 'By months left', metricHe: 'לפי חודשים שנותרו',
+    icon: '<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/>',
+    fmt: (p, he) => p.contract_months_left <= 0 ? (he ? 'חופשי' : 'Free agent') : `${Math.round(p.contract_months_left)}${he ? ' ח׳' : ' mo'}`,
+    bar: (p) => p.hunt_score / 100,
+    why: (p, he) => p.contract_months_left <= 0
+      ? (he ? 'חופשי — ללא דמי העברה.' : 'Free agent — zero fee, pure wage play.')
+      : (he ? `חוזה ל-${Math.round(p.contract_months_left)} חודשים — מינוף.` : `Contract down to ${Math.round(p.contract_months_left)} months — fee leverage.`),
+  },
+  {
+    id: 'youngstart', en: 'Young starters', he: 'צעירים פותחים', subEn: 'Trusted & young', subHe: 'צעירים ומהימנים',
+    metricEn: 'By minutes × youth', metricHe: 'לפי דקות × גיל',
+    icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    fmt: (p, he) => `${he ? 'גיל ' : 'Age '}${p.age} · ${num(p.minutes_90s, 0)}`,
+    bar: (p) => p.hunt_score / 100,
+    why: (p, he) => he ? `בן ${p.age} וכבר מהימן — ${num(p.minutes_90s, 0)} משחקים מלאים.` : `${p.age}yo already trusted — ${num(p.minutes_90s, 0)} full matches banked.`,
+  },
 ];
 
 const POSITIONS: { id: string; label: string }[] = [
@@ -161,6 +249,25 @@ const fmtEurBand = (eur: number): string => {
 const num = (v: number, digits = 2): string =>
   Number.isFinite(v) ? v.toFixed(digits) : '—';
 
+// ── Acquisition-range slider scale ──
+// Non-linear euro steps so the agency band (€0–€2M) gets fine resolution and
+// the long tail (up to €10M) is still reachable. index ↔ euros.
+const RANGE_STEPS: number[] = (() => {
+  const s: number[] = [];
+  for (let v = 0; v <= 1_000_000; v += 50_000) s.push(v);        // 0 … 1M  (21)
+  for (let v = 1_100_000; v <= 2_000_000; v += 100_000) s.push(v); // … 2M   (10)
+  for (let v = 2_250_000; v <= 5_000_000; v += 250_000) s.push(v); // … 5M   (11)
+  for (let v = 5_500_000; v <= 10_000_000; v += 500_000) s.push(v);// … 10M  (10)
+  return s;
+})();
+const RANGE_MAX_IDX = RANGE_STEPS.length - 1;
+const idxToEur = (i: number): number => RANGE_STEPS[Math.max(0, Math.min(RANGE_MAX_IDX, Math.round(i)))];
+const eurToIdx = (v: number): number => {
+  let best = 0, bd = Infinity;
+  RANGE_STEPS.forEach((s, i) => { const d = Math.abs(s - v); if (d < bd) { bd = d; best = i; } });
+  return best;
+};
+
 // ─────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────
@@ -180,8 +287,14 @@ export default function AlphaBoardMen() {
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
-  const [lens, setLens] = useState('all');
+  const [hunt, setHunt] = useState('form');       // default hunt
   const [position, setPosition] = useState('all');
+  const [huntCounts, setHuntCounts] = useState<Record<string, number>>({});
+
+  // Committed acquisition band (what the server is queried with). The slider
+  // edits a local draft and only commits on release, so we don't spam the API.
+  const DEFAULT_BAND = { min: 150_000, max: 2_000_000 };
+  const [band, setBand] = useState<{ min: number; max: number }>(DEFAULT_BAND);
 
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
   const [shortlistedUrls, setShortlistedUrls] = useState<Set<string>>(new Set());
@@ -193,7 +306,7 @@ export default function AlphaBoardMen() {
   const dateStr = new Date().toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
   const timeStr = new Date().toLocaleTimeString(isRtl ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' });
 
-  // ── Fetch the board (re-fetches on lens/position/lang change) ──
+  // ── Fetch the board (re-fetches on hunt/position/band/lang change) ──
   const fetchBoard = useCallback(async () => {
     const myReq = ++reqRef.current;
     setLoading(true);
@@ -201,7 +314,9 @@ export default function AlphaBoardMen() {
     try {
       const params = new URLSearchParams();
       if (position !== 'all') params.set('position', position);
-      if (lens !== 'all') params.set('trigger', lens);
+      if (hunt) params.set('hunt', hunt);
+      params.set('band_min', String(band.min));
+      params.set('band_max', String(band.max));
       params.set('lang', lang);
       const res = await fetch(`/api/war-room/alpha-board?${params.toString()}`, {
         signal: AbortSignal.timeout(120000),
@@ -215,6 +330,7 @@ export default function AlphaBoardMen() {
         setBoard(Array.isArray(data.board) ? data.board : []);
         if (data.signals) setSignals(data.signals);
         if (data.band) setBandRange(data.band);
+        if (data.hunt_counts) setHuntCounts(data.hunt_counts);
         if (typeof data.total_in_band === 'number') setTotalInBand(data.total_in_band);
       }
     } catch (err) {
@@ -227,7 +343,7 @@ export default function AlphaBoardMen() {
         setLoading(false);
       }
     }
-  }, [position, lens, lang, isHe]);
+  }, [position, hunt, band, lang, isHe]);
 
   useEffect(() => {
     void fetchBoard();
@@ -278,7 +394,42 @@ export default function AlphaBoardMen() {
     setDismissedUrls((prev) => new Set(prev).add(url));
   }, []);
 
-  const bandLabel = `${fmtEurBand(bandRange.min)} – ${fmtEurBand(bandRange.max)}`;
+  // ── Acquisition-range slider: draft indices while dragging; commit on release ──
+  const [draftMinIdx, setDraftMinIdx] = useState(() => eurToIdx(DEFAULT_BAND.min));
+  const [draftMaxIdx, setDraftMaxIdx] = useState(() => eurToIdx(DEFAULT_BAND.max));
+  const draftMin = idxToEur(Math.min(draftMinIdx, draftMaxIdx));
+  const draftMax = idxToEur(Math.max(draftMinIdx, draftMaxIdx));
+  const atTop = Math.max(draftMinIdx, draftMaxIdx) >= RANGE_MAX_IDX;
+
+  // Keep the slider draft in sync when the band is reset/changed programmatically.
+  useEffect(() => {
+    setDraftMinIdx(eurToIdx(band.min));
+    setDraftMaxIdx(eurToIdx(band.max));
+  }, [band.min, band.max]);
+
+  const commitBand = useCallback(() => {
+    const lo = idxToEur(Math.min(draftMinIdx, draftMaxIdx));
+    const hi = idxToEur(Math.max(draftMinIdx, draftMaxIdx));
+    if (lo !== band.min || hi !== band.max) setBand({ min: lo, max: hi });
+  }, [draftMinIdx, draftMaxIdx, band.min, band.max]);
+
+  const setPreset = useCallback((min: number, max: number) => {
+    setBand({ min, max });
+  }, []);
+
+  const BAND_PRESETS: { label: string; min: number; max: number }[] = [
+    { label: '150K–2M', min: 150_000, max: 2_000_000 },
+    { label: 'Free–500K', min: 0, max: 500_000 },
+    { label: '500K–1.5M', min: 500_000, max: 1_500_000 },
+    { label: '1M–3M', min: 1_000_000, max: 3_000_000 },
+    { label: 'Up to 5M', min: 0, max: 5_000_000 },
+  ];
+
+  const activeHunt = HUNTS.find((h) => h.id === hunt) || HUNTS[0];
+
+  // Position-filter the (server already hunt-ranked) board, apply search + dismissals.
+  const draftFillLo = (Math.min(draftMinIdx, draftMaxIdx) / RANGE_MAX_IDX) * 100;
+  const draftFillHi = (Math.max(draftMinIdx, draftMaxIdx) / RANGE_MAX_IDX) * 100;
 
   return (
     <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
@@ -308,45 +459,76 @@ export default function AlphaBoardMen() {
                   <h1>{isHe ? 'לוח ' : 'Alpha '}<span>{isHe ? 'אלפא.' : 'board.'}</span></h1>
                   <p className="brit-ra-sub">
                     {isHe
-                      ? 'שחקנים בני-החתמה בטווח הרכש שלך, שמתגלים לפני שהשוק מגיב. לוח אחד מדורג, סיבה אחת לכל אחד — פתח כל כרטיס לתיק המלא.'
-                      : 'Signable players in your acquisition range, surfaced before the market reacts. One ranked board, one reason each — open any card for the full dossier.'}
+                      ? 'בחר מה אתה צד היום — הלוח מחשב מחדש מול נתוני השחקנים האמיתיים ומדרג את ההתאמות הטובות בטווח הרכש שלך.'
+                      : "Pick what you're hunting today — the board recomputes against the real player data and ranks the best matches inside your acquisition range."}
                   </p>
                 </div>
               </div>
             </header>
 
-            {/* Value band — the KEY constraint, shown explicitly (locked) */}
-            <div className="brit-ab-band">
-              <span className="lbl">{isHe ? 'טווח רכש · נעול' : 'Acquisition range · locked'}</span>
-              <span className="val">{bandLabel}</span>
-              <div className="track"><i /></div>
+            {/* HUNT chooser — "what are we hunting today?" */}
+            <div className="brit-ab-huntq">
+              <span>{isHe ? 'מה אנחנו צדים היום?' : 'What are we hunting today?'}</span>
+              <span className="ln" />
+            </div>
+            <div className="brit-ab-hunts">
+              {HUNTS.map((h) => {
+                const count = huntCounts[h.id];
+                return (
+                  <button
+                    key={h.id}
+                    className={`brit-ab-hunt${hunt === h.id ? ' on' : ''}`}
+                    onClick={() => setHunt(h.id)}
+                  >
+                    <svg className="ico" viewBox="0 0 24 24" dangerouslySetInnerHTML={{ __html: h.icon }} />
+                    <b>{isHe ? h.he : h.en}</b>
+                    <span className="sub">{isHe ? h.subHe : h.subEn}</span>
+                    <span className="metric">{isHe ? h.metricHe : h.metricEn}</span>
+                    {typeof count === 'number' && (
+                      <span className="cnt">{count} {isHe ? 'מתאימים' : 'match'}</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Thin signals line */}
-            <section className="brit-signals brit-ab-signals">
-              <div className="brit-signal brit-ab-sig">
-                <strong>{String(signals.in_band ?? totalInBand).padStart(2, '0')}</strong>
-                <small>{isHe ? 'בטווח כעת' : 'In band'}</small>
+            {/* Acquisition range — draggable dual slider */}
+            <div className="brit-ab-rangebar">
+              <div className="rb-top">
+                <span className="rb-lbl">{isHe ? 'טווח רכש · גרור לשינוי' : 'Acquisition range · drag to adjust'}</span>
+                <span className="rb-val"><b>{fmtEurBand(draftMin)}</b> — <b>{atTop ? (isHe ? '∞' : 'No limit') : fmtEurBand(draftMax)}</b></span>
+                <button className="rb-reset" onClick={() => setPreset(DEFAULT_BAND.min, DEFAULT_BAND.max)}>
+                  {isHe ? 'אפס לברירת מחדל' : 'Reset to default'}
+                </button>
               </div>
-              <div className="brit-signal brit-ab-sig">
-                <strong className="green">{String(signals.form_rising).padStart(2, '0')}</strong>
-                <small>{isHe ? 'כושר עולה' : 'Form rising'}</small>
+              <div className="brit-ab-slider">
+                <div className="track" />
+                <div className="fill" style={{ insetInlineStart: `${draftFillLo}%`, width: `${draftFillHi - draftFillLo}%` }} />
+                <input
+                  type="range" min={0} max={RANGE_MAX_IDX} step={1} value={draftMinIdx}
+                  onChange={(e) => setDraftMinIdx(Number(e.target.value))}
+                  onMouseUp={commitBand} onTouchEnd={commitBand} onKeyUp={commitBand}
+                  aria-label={isHe ? 'שווי מינימלי' : 'Minimum value'}
+                />
+                <input
+                  type="range" min={0} max={RANGE_MAX_IDX} step={1} value={draftMaxIdx}
+                  onChange={(e) => setDraftMaxIdx(Number(e.target.value))}
+                  onMouseUp={commitBand} onTouchEnd={commitBand} onKeyUp={commitBand}
+                  aria-label={isHe ? 'שווי מקסימלי' : 'Maximum value'}
+                />
               </div>
-              <div className="brit-signal brit-ab-sig">
-                <strong className="amber">{String(signals.leverage).padStart(2, '0')}</strong>
-                <small>{isHe ? 'חלונות מינוף' : 'Leverage'}</small>
+              <div className="rb-ticks"><span>€0</span><span>€1M</span><span>€2M</span><span>€5M</span><span>€10M</span></div>
+              <div className="rb-presets">
+                {BAND_PRESETS.map((p) => {
+                  const on = band.min === p.min && band.max === p.max;
+                  return (
+                    <button key={p.label} className={on ? 'on' : ''} onClick={() => setPreset(p.min, p.max)}>{p.label}</button>
+                  );
+                })}
               </div>
-              <div className="brit-signal brit-ab-sig">
-                <strong className="red">{String(signals.free).padStart(2, '0')}</strong>
-                <small>{isHe ? 'חופשי / שוחרר' : 'Free / released'}</small>
-              </div>
-              <div className="brit-signal brit-ab-sig">
-                <strong className="gold">{String(signals.risers).padStart(2, '0')}</strong>
-                <small>{isHe ? 'עליות' : 'Risers'}</small>
-              </div>
-            </section>
+            </div>
 
-            {/* Controls — search (rank-by is implicit: server ranks by Alpha) */}
+            {/* Search + position chips */}
             <div className="brit-ab-controls">
               <label className="brit-search">
                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
@@ -356,23 +538,9 @@ export default function AlphaBoardMen() {
                   placeholder={isHe ? 'חפש לפי שם, מועדון או ליגה…' : 'Search by name, club or league…'}
                 />
               </label>
-              <span className="brit-ab-rankby">{isHe ? 'מדורג לפי אלפא' : 'Ranked by Alpha'}</span>
+              <span className="brit-ab-rankby">{isHe ? (`מדורג ${activeHunt.he}`) : (`Ranked by ${activeHunt.en.toLowerCase()}`)}</span>
             </div>
 
-            {/* Lens pills (re-fetch with trigger=) */}
-            <div className="brit-ab-lenses">
-              {LENSES.map((l) => (
-                <button
-                  key={l.id}
-                  className={`brit-ab-lens${lens === l.id ? ' on' : ''}`}
-                  onClick={() => setLens(l.id)}
-                >
-                  {isHe ? l.he : l.en}
-                </button>
-              ))}
-            </div>
-
-            {/* Position chips (re-fetch with position=) */}
             <div className="brit-ab-poschips">
               {POSITIONS.map((p) => (
                 <button
@@ -388,8 +556,8 @@ export default function AlphaBoardMen() {
             {/* Result count */}
             <p className="brit-result-count">
               {isHe
-                ? `${visible.length} הזדמנויות בטווח · מדורג לפי ציון אלפא`
-                : `${visible.length} opportunities in range · ranked by Alpha Score`}
+                ? `${visible.length} התאמות · מדורג ${activeHunt.he}`
+                : `${visible.length} matches · ranked by ${activeHunt.en.toLowerCase()}`}
             </p>
 
             {/* Board */}
@@ -405,10 +573,12 @@ export default function AlphaBoardMen() {
               </div>
             ) : (
               <div className="brit-ab-board">
-                {visible.map((p) => (
+                {visible.map((p, i) => (
                   <AlphaCard
                     key={p.url}
                     player={p}
+                    rank={i + 1}
+                    huntDef={activeHunt}
                     isHe={isHe}
                     isAdding={addingUrl === p.url}
                     isSaved={shortlistedUrls.has(p.url)}
@@ -441,9 +611,11 @@ export default function AlphaBoardMen() {
 // Card
 // ─────────────────────────────────────────────────────────────────────────
 function AlphaCard({
-  player, isHe, isAdding, isSaved, onOpen, onShortlist, onDismiss,
+  player, rank, huntDef, isHe, isAdding, isSaved, onOpen, onShortlist, onDismiss,
 }: {
   player: AlphaPlayer;
+  rank: number;
+  huntDef: HuntDef;
   isHe: boolean;
   isAdding: boolean;
   isSaved: boolean;
@@ -452,13 +624,15 @@ function AlphaCard({
   onDismiss: () => void;
 }) {
   const p = player;
-  const hot = p.alpha_score >= 85;
-  const trig = p.triggers?.[0];
+  const matchScore = Math.round(p.hunt_score);
+  const hot = matchScore >= 85;
   const flag = flagUrl(p.nationality);
+  const barPct = Math.max(0, Math.min(100, huntDef.bar(p) * 100));
 
   return (
-    <article className={`brit-ab-card tier-${p.tier}`} onClick={onOpen} role="button" tabIndex={0}
+    <article className={`brit-ab-card tier-${p.tier}${rank <= 3 ? ' top3' : ''}`} onClick={onOpen} role="button" tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}>
+      <span className="brit-ab-rank">{rank}</span>
       <div className="brit-ab-chead">
         {p.image
           ? <img src={p.image} alt="" />
@@ -471,19 +645,26 @@ function AlphaCard({
           </div>
         </div>
         <div className={`brit-ab-score${hot ? ' hot' : ''}`}>
-          <b>{p.alpha_score}</b>
-          <small>{isHe ? 'אלפא' : 'alpha'}</small>
+          <b>{matchScore}</b>
+          <small>{isHe ? 'התאמה' : 'match'}</small>
         </div>
       </div>
 
+      {/* Ranking metric for this hunt */}
+      <div className="brit-ab-cmetric">
+        <div className="mval">
+          <div className="big">{huntDef.fmt(p, isHe)}</div>
+          <div className="ml">{isHe ? huntDef.metricHe : huntDef.metricEn}</div>
+        </div>
+        <div className="bar"><i style={{ width: `${barPct}%` }} /></div>
+      </div>
+
       <div className="brit-ab-cwhy">
-        {trig && (
-          <span className="tag">
-            <span className="d" style={{ background: triggerColor(trig.id) }} />
-            {trig.label}
-          </span>
-        )}
-        <p>{p.why_now}</p>
+        <span className="tag">
+          <span className="d" style={{ background: 'var(--gold)' }} />
+          {isHe ? huntDef.he : huntDef.en}
+        </span>
+        <p>{huntDef.why(p, isHe)}</p>
       </div>
 
       <div className="brit-ab-cfoot">
