@@ -100,8 +100,13 @@ const RELEASES_ALL_CACHE_KEY = 'releases-all';
 const WORKER_RUNS_COLLECTION = 'WorkerRuns';
 const WORKER_STATE_DOC = 'ReleasesCleanerWorker';
 const FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB = 'NEW_RELEASE_FROM_CLUB';
-// MUST match the screen's feed subscription limit (release-notifications/page.tsx).
-const FEED_EVENTS_FETCH_LIMIT = Number(process.env.FEED_EVENTS_FETCH_LIMIT || 1000);
+// The screen subscribes to the newest 1000 feed events, but those 1000 are a
+// MIX of event types (NEW_RELEASE_FROM_CLUB, BECAME_FREE_AGENT, CLUB_CHANGE…),
+// so the release slice of a 1000 window is smaller and fluctuates. To reliably
+// cover every release the screen could show (and keep hidden ones in range for
+// self-heal), the cleaner scans a larger window. This only widens the candidate
+// set — the roster + value/age gates still scope it to the on-screen population.
+const FEED_EVENTS_FETCH_LIMIT = Number(process.env.FEED_EVENTS_FETCH_LIMIT || 3000);
 
 const WITHOUT_CLUB_VARIANTS = [
   'without club', 'ohne verein', 'sans club', 'sin club',
