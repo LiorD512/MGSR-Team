@@ -94,11 +94,14 @@ const TM_HTML_PROXY_URL =
   process.env.TM_HTML_PROXY_URL ||
   'https://management.britsportgroup.com/api/transfermarkt/html-proxy';
 const FEED_EVENTS_TABLE = 'FeedEvents'; // MEN platform collection
+const PLAYERS_COLLECTION = 'Players'; // MEN roster
 const SCRAPING_CACHE_COLLECTION = 'ScrapingCache';
 const RELEASES_ALL_CACHE_KEY = 'releases-all';
 const WORKER_RUNS_COLLECTION = 'WorkerRuns';
 const WORKER_STATE_DOC = 'ReleasesCleanerWorker';
 const FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB = 'NEW_RELEASE_FROM_CLUB';
+// MUST match the screen's feed subscription limit (release-notifications/page.tsx).
+const FEED_EVENTS_FETCH_LIMIT = Number(process.env.FEED_EVENTS_FETCH_LIMIT || 1000);
 
 const WITHOUT_CLUB_VARIANTS = [
   'without club', 'ohne verein', 'sans club', 'sin club',
@@ -392,18 +395,45 @@ interface ScreenEvent {
   hidden: boolean;
 }
 
-/** Load all NEW_RELEASE_FROM_CLUB events: profile URL + value/age + hidden flag + doc id. */
+/** Roster player TM profile URLs (men = Players collection), to exclude like the screen. */
+async function getRosterProfileUrls(dbRef: Firestore): Promise<Set<string>> {
+  const urls = new Set<string>();
+  try {
+    const snap = await dbRef.collection(PLAYERS_COLLECTION).get();
+    snap.docs.forEach((doc) => {
+      const tm = doc.data()?.tmProfile;
+      if (typeof tm === 'string' && tm.trim()) urls.add(tm.trim());
+    });
+  } catch (err) {
+    log(`Warning: failed to load roster players: ${err instanceof Error ? err.message : err}`);
+  }
+  return urls;
+}
+
+/**
+ * Load the events that the men's screen actually shows, replicating its exact
+ * pipeline (release-notifications/page.tsx):
+ *   1. newest FEED_EVENTS_FETCH_LIMIT events overall (orderBy timestamp desc)
+ *   2. keep type === NEW_RELEASE_FROM_CLUB, has playerTmProfile, NOT hidden
+ *   3. (roster removal happens in the caller, like the screen)
+ * The screen only subscribes to the newest 1000 events — older releases are not
+ * loaded, so the cleaner must use the same window or it over-counts massively.
+ */
 async function getScreenReleaseEvents(dbRef: Firestore): Promise<ScreenEvent[]> {
   const snap = await dbRef
     .collection(FEED_EVENTS_TABLE)
-    .where('type', '==', FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB)
+    .orderBy('timestamp', 'desc')
+    .limit(FEED_EVENTS_FETCH_LIMIT)
     .get();
 
   const events: ScreenEvent[] = [];
   snap.docs.forEach((doc) => {
     const data = doc.data() || {};
+    if (data.type !== FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB) return;
     const playerUrl = typeof data.playerTmProfile === 'string' ? data.playerTmProfile : '';
     if (!playerUrl) return;
+    // Keep hidden events too: the cleaner must be able to self-heal (un-hide a
+    // player who became free again). The screen excludes hidden for display.
     events.push({
       id: doc.id,
       playerUrl,
@@ -435,13 +465,21 @@ async function main() {
   log(`Starting releases cleaner (men / FeedEvents, per-profile)${DRY_RUN ? ' — DRY RUN' : ''}`);
 
   try {
-    // 1) Current men's screen population (unique by player URL — one card per player).
+    // 1) Current men's screen population — replicate the screen's pipeline:
+    //    newest 1000 feed events → NEW_RELEASE_FROM_CLUB → minus roster players.
     const allEvents = await getScreenReleaseEvents(db);
+    const rosterUrls = await getRosterProfileUrls(db);
+    const beforeRoster = new Set(allEvents.map((e) => e.playerUrl)).size;
+    const releaseEvents = allEvents.filter((e) => !rosterUrls.has(e.playerUrl));
     const byUrl = new Map<string, ScreenEvent[]>();
-    for (const ev of allEvents) {
+    for (const ev of releaseEvents) {
       if (!byUrl.has(ev.playerUrl)) byUrl.set(ev.playerUrl, []);
       byUrl.get(ev.playerUrl)!.push(ev);
     }
+    log(
+      `Feed window: ${allEvents.length} release events in newest ${FEED_EVENTS_FETCH_LIMIT} | ` +
+        `unique players ${beforeRoster} | after roster removal ${byUrl.size} (roster size ${rosterUrls.size})`
+    );
 
     // The FeedEvent docs often have blank marketValue/playerAge — the screen
     // enriches those from the `releases-all` ScrapingCache. Load that cache and
@@ -503,19 +541,18 @@ async function main() {
     // Only consider players actually VISIBLE on the screen: the screen filters
     // to market value 150k–4M and age ≤ 33 (release-notifications `filteredPlayers`).
     // A player is visible if any of their events passes that gate.
-    const allPlayerCount = byUrl.size;
     let playerUrls = Array.from(byUrl.keys()).filter((url) =>
       byUrl.get(url)!.some((e) => isVisibleOnScreen(valueFor(e), ageFor(e)))
     );
     log(
-      `Screen release events: ${allEvents.length} | unique players: ${allPlayerCount} | ` +
-        `visible (value 150k–4M, age ≤ 33): ${playerUrls.length}`
+      `On-screen players (after roster + value/age gate): ${playerUrls.length} ` +
+        `(this should ~match the screen's total)`
     );
 
     if (playerUrls.length === 0) {
       const durationMs = Date.now() - startTime;
-      if (!DRY_RUN) await recordSuccess(db, 'No release events on screen; nothing to clean', durationMs);
-      log('No NEW_RELEASE_FROM_CLUB events found — done');
+      if (!DRY_RUN) await recordSuccess(db, 'No on-screen release players; nothing to clean', durationMs);
+      log('Nothing to process — done');
       return;
     }
 
