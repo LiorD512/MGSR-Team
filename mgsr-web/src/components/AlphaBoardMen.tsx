@@ -627,73 +627,64 @@ function AlphaCard({
 }) {
   const p = player;
   const matchScore = Math.round(p.hunt_score);
-  const hot = matchScore >= 85;
   const flag = flagUrl(p.nationality);
-  const barPct = Math.max(0, Math.min(100, huntDef.bar(p) * 100));
+  const ringDeg = Math.round(Math.max(0, Math.min(100, matchScore)) * 3.6);
+  const leagueStr = p.league && p.league !== '—' ? p.league : (isHe ? 'חופשי' : 'Free agent');
 
   return (
-    <article className={`brit-ab-card tier-${p.tier}${rank <= 3 ? ' top3' : ''}`} onClick={onOpen} role="button" tabIndex={0}
+    <article className={`brit-ab-hero${rank <= 3 ? ' top3' : ''}`} onClick={onOpen} role="button" tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}>
-      <span className="brit-ab-rank">{rank}</span>
-      <div className="brit-ab-chead">
+      {/* Hero portrait with flag background + gradient */}
+      <div className="hero">
+        {flag && <img className="flagbg" src={flag} alt="" aria-hidden="true" />}
         {p.image
-          ? <img src={p.image} alt="" />
-          : <div className="brit-ab-cimg-ph" aria-hidden="true" />}
-        <div className="brit-ab-cid">
+          ? <img className="portrait" src={p.image} alt="" />
+          : <div className="portrait-ph" aria-hidden="true" />}
+        <span className="rank">{rank}</span>
+        <span className={`brit-ab-verdict ${p.verdict}`}>{p.verdict}</span>
+        <div className="score-ring" style={{ background: `conic-gradient(var(--gold-soft) ${ringDeg}deg, rgba(243,240,232,.22) 0)` }}>
+          <div className="inner"><b>{matchScore}</b><small>{isHe ? 'התאמה' : 'match'}</small></div>
+        </div>
+        <div className="who">
           <div className="nm" title={p.name}>{p.name}</div>
-          <div className="meta">
-            <b>{p.club}</b> · {p.position} · {isHe ? `גיל ${p.age}` : `Age ${p.age}`}
-            {flag && <img className="fl" src={flag} alt="" />}
+          <div className="meta">{p.position} · {leagueStr} · {isHe ? `גיל ${p.age}` : `Age ${p.age}`}</div>
+        </div>
+      </div>
+
+      {/* Body: hunt metric + why-now + value/actions */}
+      <div className="body">
+        <div className="huntrow">
+          <span className="huntchip"><span className="d" />{isHe ? huntDef.he : huntDef.en}</span>
+          <span className="metric">{huntDef.fmt(p, isHe)}<span className="ml">{isHe ? huntDef.metricHe : huntDef.metricEn}</span></span>
+        </div>
+        <p className="why">{huntDef.why(p, isHe)}</p>
+        <div className="foot">
+          <div className="mv">
+            <b>{p.market_value}</b>
+            <small>{isHe ? 'שווי שוק' : 'Market value'}</small>
           </div>
-        </div>
-        <div className={`brit-ab-score${hot ? ' hot' : ''}`}>
-          <b>{matchScore}</b>
-          <small>{isHe ? 'התאמה' : 'match'}</small>
-        </div>
-      </div>
-
-      {/* Ranking metric for this hunt */}
-      <div className="brit-ab-cmetric">
-        <div className="mval">
-          <div className="big">{huntDef.fmt(p, isHe)}</div>
-          <div className="ml">{isHe ? huntDef.metricHe : huntDef.metricEn}</div>
-        </div>
-        <div className="bar"><i style={{ width: `${barPct}%` }} /></div>
-      </div>
-
-      <div className="brit-ab-cwhy">
-        <span className="tag">
-          <span className="d" style={{ background: 'var(--gold)' }} />
-          {isHe ? huntDef.he : huntDef.en}
-        </span>
-        <p>{huntDef.why(p, isHe)}</p>
-      </div>
-
-      <div className="brit-ab-cfoot">
-        <div className="mv">
-          <b>{p.market_value}</b>
-          <small>{isHe ? 'שווי שוק' : 'Market value'}</small>
-        </div>
-        <div className="acts">
-          <button
-            className="save"
-            disabled={isAdding || isSaved}
-            title={isHe ? 'הוסף לרשימה' : 'Shortlist'}
-            onClick={(e) => { e.stopPropagation(); onShortlist(); }}
-          >
-            {isSaved ? (
-              <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
-            ) : (
-              <svg viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-            )}
-          </button>
-          <button
-            className="dismiss"
-            title={isHe ? 'הסתר' : 'Dismiss'}
-            onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-          >
-            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
+          <div className="acts">
+            <button
+              className="save"
+              disabled={isAdding || isSaved}
+              title={isHe ? 'הוסף לרשימה' : 'Shortlist'}
+              onClick={(e) => { e.stopPropagation(); onShortlist(); }}
+            >
+              {isSaved ? (
+                <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+              )}
+              <span>{isSaved ? (isHe ? 'נשמר' : 'Saved') : (isHe ? 'מעקב' : 'Shortlist')}</span>
+            </button>
+            <button
+              className="ic"
+              title={isHe ? 'הסתר' : 'Dismiss'}
+              onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+            >
+              <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+          </div>
         </div>
       </div>
     </article>

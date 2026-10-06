@@ -5505,3 +5505,61 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 @media (max-width: 980px) {
   .brit-room .brit-ab-hunts { grid-template-columns: 1fr 1fr; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   ALPHA BOARD — Hero Portrait card
+   Full-bleed portrait + flag bg + gradient; score ring + verdict
+   overlaid; hunt metric + why-now + value below.
+   ═══════════════════════════════════════════════════════ */
+.brit-room .brit-ab-hero { position: relative; border: 1px solid var(--line); background: var(--black); overflow: hidden; cursor: pointer; transition: transform .15s, border-color .15s; display: flex; flex-direction: column; }
+.brit-room .brit-ab-hero:hover { transform: translateY(-3px); border-color: var(--gold-soft); }
+.brit-room .brit-ab-hero:focus-visible { outline: 2px solid var(--gold-soft); outline-offset: 2px; }
+
+/* hero image area */
+.brit-room .brit-ab-hero .hero { position: relative; height: 212px; overflow: hidden; }
+.brit-room .brit-ab-hero .hero .flagbg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); opacity: .35; z-index: 0; transition: .3s; }
+.brit-room .brit-ab-hero:hover .hero .flagbg { opacity: .5; transform: scale(1.04); }
+.brit-room .brit-ab-hero .hero .portrait { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; filter: grayscale(.15); z-index: 1; }
+.brit-room .brit-ab-hero:hover .hero .portrait { transform: scale(1.03); transition: transform .3s; }
+.brit-room .brit-ab-hero .hero .portrait-ph { position: absolute; inset: 0; z-index: 1; background: linear-gradient(160deg, #26261f, #101010); }
+.brit-room .brit-ab-hero .hero::after { content: ''; position: absolute; inset: 0; z-index: 2; background: linear-gradient(180deg, rgba(17,17,15,.08) 28%, rgba(17,17,15,.55) 58%, rgba(17,17,15,.96)); }
+
+/* rank + verdict overlays */
+.brit-room .brit-ab-hero .hero .rank { position: absolute; top: 0; inset-inline-start: 0; z-index: 4; width: 30px; height: 30px; display: grid; place-items: center; background: var(--ink); color: var(--paper); font: 500 13px/1 var(--display); }
+.brit-room .brit-ab-hero.top3 .hero .rank { background: var(--gold); color: var(--black); }
+.brit-room .brit-ab-hero .hero .brit-ab-verdict { position: absolute; top: 12px; inset-inline-end: 12px; z-index: 4; padding: 5px 9px; font: 500 10px/1 var(--display); letter-spacing: .06em; text-transform: uppercase; }
+.brit-room .brit-ab-hero .brit-ab-verdict.SIGN { background: var(--green); color: var(--paper); }
+.brit-room .brit-ab-hero .brit-ab-verdict.MONITOR { background: var(--amber); color: var(--paper); }
+.brit-room .brit-ab-hero .brit-ab-verdict.PASS { background: var(--red); color: var(--paper); }
+
+/* score ring */
+.brit-room .brit-ab-hero .hero .score-ring { position: absolute; bottom: 12px; inset-inline-end: 12px; z-index: 4; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; }
+.brit-room .brit-ab-hero .hero .score-ring .inner { width: 44px; height: 44px; border-radius: 50%; background: #15150f; display: grid; place-items: center; line-height: 1; }
+.brit-room .brit-ab-hero .hero .score-ring .inner b { font: 500 17px/1 var(--display); color: var(--gold-soft); }
+.brit-room .brit-ab-hero .hero .score-ring .inner small { display: block; margin-top: 2px; font: 6px/1 var(--mono); color: #b7b1a3; text-transform: uppercase; letter-spacing: .08em; }
+
+/* name block over the hero */
+.brit-room .brit-ab-hero .hero .who { position: absolute; bottom: 12px; inset-inline-start: 14px; z-index: 4; color: var(--paper); max-width: 60%; }
+.brit-room .brit-ab-hero .hero .who .nm { font: 500 24px/.92 var(--display); text-transform: uppercase; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brit-room[dir='rtl'] .brit-ab-hero .hero .who .nm { font-weight: 800; letter-spacing: normal; }
+.brit-room .brit-ab-hero .hero .who .meta { margin-top: 6px; color: #c9c3b6; font: 9px/1.3 var(--mono); text-transform: uppercase; }
+
+/* body */
+.brit-room .brit-ab-hero .body { background: var(--card); padding: 13px 15px; display: flex; flex-direction: column; flex: 1; }
+.brit-room .brit-ab-hero .body .huntrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.brit-room .brit-ab-hero .body .huntchip { display: inline-flex; align-items: center; gap: 6px; font: 8px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.brit-room .brit-ab-hero .body .huntchip .d { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); flex: none; }
+.brit-room .brit-ab-hero .body .metric { font: 500 18px/1 var(--display); color: var(--ink); white-space: nowrap; }
+.brit-room .brit-ab-hero .body .metric .ml { color: var(--muted); font: 8px/1 var(--mono); text-transform: uppercase; margin-inline-start: 6px; }
+.brit-room .brit-ab-hero .body .why { margin: 0 0 12px; font: 12px/1.5 var(--body); color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.brit-room .brit-ab-hero .body .foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); margin-top: auto; }
+.brit-room .brit-ab-hero .body .mv b { font: 500 16px/1 var(--mono); color: var(--ink); }
+.brit-room .brit-ab-hero .body .mv small { display: block; margin-top: 3px; color: var(--muted-2); font: 7px/1 var(--mono); text-transform: uppercase; }
+.brit-room .brit-ab-hero .body .acts { display: flex; gap: 7px; }
+.brit-room .brit-ab-hero .body .acts .save { display: flex; align-items: center; gap: 6px; padding: 9px 12px; background: var(--black); color: var(--gold-soft); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em; transition: .15s; }
+.brit-room .brit-ab-hero .body .acts .save:hover:not(:disabled) { background: var(--gold); color: var(--paper); }
+.brit-room .brit-ab-hero .body .acts .save:disabled { opacity: .65; cursor: default; }
+.brit-room .brit-ab-hero .body .acts .save svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.brit-room .brit-ab-hero .body .acts .ic { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); color: var(--muted); transition: .15s; }
+.brit-room .brit-ab-hero .body .acts .ic svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.brit-room .brit-ab-hero .body .acts .ic:hover { border-color: var(--red); color: var(--red); }
