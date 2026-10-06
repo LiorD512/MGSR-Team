@@ -626,7 +626,10 @@ function AlphaCard({
   onDismiss: () => void;
 }) {
   const p = player;
-  const matchScore = Math.round(p.hunt_score);
+  // hunt_score is the match score for the active hunt. Fall back to the Alpha
+  // score if the server hasn't sent it yet, and never render NaN.
+  const rawScore = Number.isFinite(p.hunt_score) && p.hunt_score > 0 ? p.hunt_score : p.alpha_score;
+  const matchScore = Number.isFinite(rawScore) ? Math.round(rawScore) : 0;
   const flag = flagUrl(p.nationality);
   const ringDeg = Math.round(Math.max(0, Math.min(100, matchScore)) * 3.6);
   const leagueStr = p.league && p.league !== '—' ? p.league : (isHe ? 'חופשי' : 'Free agent');
