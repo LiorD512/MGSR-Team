@@ -1226,6 +1226,39 @@ function formatContractExpiryDate(window: string, year: number, isFirstYear: boo
 }
 
 /**
+ * Parse the month (1–12) from a dd.mm.yyyy / d.m.yyyy contract-end date string.
+ * Returns null when the string isn't a plain date we can read.
+ */
+function parseContractEndMonth(date: string | null): number | null {
+  if (!date) return null;
+  const m = date.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (!m) return null;
+  const month = parseInt(m[2], 10);
+  return month >= 1 && month <= 12 ? month : null;
+}
+
+/**
+ * Decide whether a scraped contract-end date actually belongs to the active
+ * transfer window. Transfermarkt's `jahr` filter returns a whole CALENDAR year
+ * (both June and December expiries), so we must reject out-of-window rows here —
+ * otherwise summer (June) contracts leak into the Winter screen and vice versa.
+ *
+ *  • Summer window → contracts ending May–Aug  (the 30 Jun cohort).
+ *  • Winter window → contracts ending Nov–Feb  (the 31 Dec / 31 Jan cohort).
+ *
+ * When no real date was scraped (`realDate` is null) we keep the row: the caller
+ * falls back to the synthesized in-window date, so we never drop a legitimate
+ * player just because Transfermarkt omitted the date cell.
+ */
+function isExpiryInWindow(window: string, realDate: string | null): boolean {
+  const month = parseContractEndMonth(realDate);
+  if (month == null) return true; // no real date → trust the synthesized window date
+  if (window === 'Summer') return month >= 5 && month <= 8;
+  // Winter: Nov, Dec, Jan, Feb
+  return month === 11 || month === 12 || month === 1 || month === 2;
+}
+
+/**
  * Extract the real contract-end date (dd.mm.yyyy) from an "expiring contracts"
  * table row so the card matches Transfermarkt exactly. Returns null when no
  * date cell is present (caller falls back to the synthesized window date).
@@ -1391,6 +1424,13 @@ export async function handleContractFinishers() {
               : null;
 
             const scrapedExpiry = extractContractEndDateCF($, row);
+
+            // ── Window-month gate ──────────────────────────────
+            // Transfermarkt's `jahr` returns a full calendar year (Jun + Dec).
+            // Reject rows whose real expiry month falls outside the active window
+            // so summer contracts never leak into Winter and vice-versa.
+            if (!isExpiryInWindow(config.window, scrapedExpiry)) return;
+
             const contractExpiry =
               scrapedExpiry ||
               formatContractExpiryDate(config.window, jahr, config.yearsToQuery[0] === jahr);
@@ -1557,6 +1597,13 @@ export async function* handleContractFinishersStream(): AsyncGenerator<
             // "expiring contracts" table carries a dd.mm.yyyy cell) so each card
             // matches TM exactly; fall back to the synthesized window date.
             const scrapedExpiry = extractContractEndDateCF($, row);
+
+            // ── Window-month gate ──────────────────────────────
+            // Transfermarkt's `jahr` returns a full calendar year (Jun + Dec).
+            // Reject rows whose real expiry month falls outside the active window
+            // so summer contracts never leak into Winter and vice-versa.
+            if (!isExpiryInWindow(config.window, scrapedExpiry)) return;
+
             const contractExpiry =
               scrapedExpiry ||
               formatContractExpiryDate(config.window, jahr, config.yearsToQuery[0] === jahr);
