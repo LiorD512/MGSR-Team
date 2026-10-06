@@ -50,7 +50,12 @@ export function loadContractFinishers(options?: { refresh?: boolean }): () => vo
   streamClose = streamContractFinishers(
     (event: ContractFinisherStreamEvent) => {
       if (event.windowLabel) setState({ windowLabel: event.windowLabel });
-      if (event.players) setState({ players: [...event.players] });
+      // Only replace the list when the event carries players. A trailing empty
+      // frame (e.g. the graceful end after a dropped connection) must NOT wipe
+      // the 2–3K players already accumulated on screen.
+      if (event.players && event.players.length > 0) {
+        setState({ players: [...event.players] });
+      }
       if (event.isLoading === false) {
         setState({ isLoading: false, error: event.error || null });
       }

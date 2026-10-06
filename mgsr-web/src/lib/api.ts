@@ -412,12 +412,22 @@ export function streamContractFinishers(
     ? '/api/transfermarkt/contract-finishers/stream?refresh=true'
     : '/api/transfermarkt/contract-finishers/stream';
   const es = new EventSource(url);
+  // Keep the last event so that if the connection drops mid-stream (e.g. a
+  // serverless/Vercel timeout) we can replay the LAST NON-EMPTY payload as the
+  // graceful end — never an empty list, which would wipe the accumulated
+  // players on screen. Mirrors streamReturnees().
+  let lastEvent: ContractFinisherStreamEvent | null = null;
   let hasReceivedPlayers = false;
 
   es.onmessage = (e) => {
     try {
       const data = JSON.parse(e.data) as ContractFinisherStreamEvent;
-      if (data.players && data.players.length > 0) hasReceivedPlayers = true;
+      // Only remember events that actually carry players, so a trailing empty
+      // frame can never become the "last known good" state we replay.
+      if (data.players && data.players.length > 0) {
+        hasReceivedPlayers = true;
+        lastEvent = data;
+      }
       onBatch(data);
       if (data.isLoading === false) es.close();
     } catch (err) {
@@ -428,9 +438,11 @@ export function streamContractFinishers(
 
   es.onerror = () => {
     es.close();
-    // If we already received players, treat as graceful end (Vercel timeout)
-    if (hasReceivedPlayers) {
-      onBatch({ players: [], isLoading: false } as unknown as ContractFinisherStreamEvent);
+    // If we already received players, treat as a graceful end (Vercel timeout):
+    // replay the last non-empty payload with isLoading:false. Do NOT emit an
+    // empty players array — that would reset the on-screen list to 0.
+    if (hasReceivedPlayers && lastEvent) {
+      onBatch({ ...lastEvent, isLoading: false });
     } else {
       onError?.(new Error('Stream connection failed'));
     }

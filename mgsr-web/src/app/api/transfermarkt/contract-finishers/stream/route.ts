@@ -31,12 +31,38 @@ export async function GET(request: NextRequest) {
   const allPlayers: Record<string, unknown>[] = [];
   const stream = new ReadableStream({
     async start(controller) {
+      // ── Progressive cache write ──────────────────────────────────
+      // Vercel serverless has a hard execution timeout (60s hobby, 300s pro).
+      // If the function is killed mid-stream, neither the success nor the catch
+      // path below runs, so the cache would never be written and the NEXT
+      // visitor starts scraping from zero again — the user sees it climb to a
+      // few thousand then reset. By snapshotting the cache periodically as we
+      // go, whatever we scraped so far is persisted; the next load returns a
+      // warm (possibly partial) cache instantly instead of restarting.
+      let lastCachedCount = 0;
+      let cacheWriteInFlight = false;
+      const maybeCacheProgress = () => {
+        if (cacheWriteInFlight) return;
+        // Only re-write once at least 200 new players have accumulated, to
+        // keep Firestore writes bounded during a long scrape.
+        if (allPlayers.length - lastCachedCount < 200) return;
+        cacheWriteInFlight = true;
+        const snapshot = allPlayers.slice();
+        lastCachedCount = snapshot.length;
+        setCacheChunked(CACHE_KEY, snapshot)
+          .catch(() => {})
+          .finally(() => {
+            cacheWriteInFlight = false;
+          });
+      };
+
       try {
         for await (const event of handleContractFinishersStream()) {
           if (event.players?.length) allPlayers.length = 0, allPlayers.push(...event.players);
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+          maybeCacheProgress();
         }
-        // Cache the final result in chunks
+        // Final cache write — authoritative, covers the full result
         if (allPlayers.length) await setCacheChunked(CACHE_KEY, allPlayers).catch(() => {});
         controller.close();
       } catch (err) {
