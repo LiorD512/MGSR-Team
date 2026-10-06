@@ -533,13 +533,17 @@ export default function FindNextTab() {
     <>
       {/* Masthead */}
       <header className="brit-masthead">
-        <p className="brit-kicker">{isHe ? 'התאמת חתימה / פלטפורמת גברים' : 'Signature match / Men platform'}</p>
-        <h1>{isHe ? 'מצא את ' : 'Find the '}<span>{isHe ? 'הבא.' : 'next.'}</span></h1>
-        <p className="brit-ra-sub">
-          {isHe
-            ? 'בחר שחקן ייחוס והמנוע ימצא שחקנים צעירים וזולים עם חתימה סטטיסטית דומה — בטווח שלך.'
-            : 'Pick a reference player and the engine finds young, affordable players with a similar statistical signature — in your band.'}
-        </p>
+        <div className="brit-ab-mastflex">
+          <div>
+            <p className="brit-kicker">{isHe ? 'התאמת חתימה / פלטפורמת גברים' : 'Signature match / Men platform'}</p>
+            <h1>{isHe ? 'מצא את ' : 'Find the '}<span>{isHe ? 'הבא.' : 'next.'}</span></h1>
+            <p className="brit-ra-sub">
+              {isHe
+                ? 'בחר שחקן ייחוס והמנוע ימצא שחקנים צעירים וזולים עם חתימה סטטיסטית דומה — בטווח שלך.'
+                : 'Pick a reference player and the engine finds young, affordable players with a similar statistical signature — in your band.'}
+            </p>
+          </div>
+        </div>
       </header>
 
       {/* Search config panel */}

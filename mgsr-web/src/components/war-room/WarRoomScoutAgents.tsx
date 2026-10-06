@@ -203,13 +203,17 @@ export default function WarRoomScoutAgents() {
     <>
       {/* Masthead */}
       <header className="brit-masthead">
-        <p className="brit-kicker">{he ? 'רשת פרסונות / פלטפורמת גברים' : 'Persona network / Men platform'}</p>
-        <h1>{he ? 'סוכני ' : 'Scout '}<span>{he ? 'סקאוט.' : 'agents.'}</span></h1>
-        <p className="brit-ra-sub">
-          {he
-            ? 'כל פרסונת סקאוט מכסה אזור וסגנון ומזרימה את הבחירות שלה. משוב (👍/👎) מלמד את הסוכנים מה אתה מחפש.'
-            : 'Each AI scout persona works a region and style, streaming its own picks. Thumbs feedback teaches the agents what you want.'}
-        </p>
+        <div className="brit-ab-mastflex">
+          <div>
+            <p className="brit-kicker">{he ? 'רשת פרסונות / פלטפורמת גברים' : 'Persona network / Men platform'}</p>
+            <h1>{he ? 'סוכני ' : 'Scout '}<span>{he ? 'סקאוט.' : 'agents.'}</span></h1>
+            <p className="brit-ra-sub">
+              {he
+                ? 'כל פרסונת סקאוט מכסה אזור וסגנון ומזרימה את הבחירות שלה. משוב (👍/👎) מלמד את הסוכנים מה אתה מחפש.'
+                : 'Each AI scout persona works a region and style, streaming its own picks. Thumbs feedback teaches the agents what you want.'}
+            </p>
+          </div>
+        </div>
       </header>
 
       {/* meta line */}

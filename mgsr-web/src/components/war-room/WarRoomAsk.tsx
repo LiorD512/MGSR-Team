@@ -182,13 +182,17 @@ export default function WarRoomAsk() {
     <>
       {/* Masthead */}
       <header className="brit-masthead">
-        <p className="brit-kicker">{he ? 'חיפוש בשפה טבעית / פלטפורמת גברים' : 'Natural-language search / Men platform'}</p>
-        <h1>{he ? 'שאל את ' : 'Ask the '}<span>{he ? 'הסקאוט.' : 'scout.'}</span></h1>
-        <p className="brit-ra-sub">
-          {he
-            ? 'תאר את השחקן במילים שלך. הסקאוט מפרש את הבריף ומחזיר התאמות מדורגות.'
-            : 'Describe the player in your own words. The scout interprets the brief and returns matches ranked by fit.'}
-        </p>
+        <div className="brit-ab-mastflex">
+          <div>
+            <p className="brit-kicker">{he ? 'חיפוש בשפה טבעית / פלטפורמת גברים' : 'Natural-language search / Men platform'}</p>
+            <h1>{he ? 'שאל את ' : 'Ask the '}<span>{he ? 'הסקאוט.' : 'scout.'}</span></h1>
+            <p className="brit-ra-sub">
+              {he
+                ? 'תאר את השחקן במילים שלך. הסקאוט מפרש את הבריף ומחזיר התאמות מדורגות.'
+                : 'Describe the player in your own words. The scout interprets the brief and returns matches ranked by fit.'}
+            </p>
+          </div>
+        </div>
       </header>
 
       {/* Console */}
