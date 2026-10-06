@@ -177,7 +177,6 @@ export default function AlphaBoardMen() {
   const [totalInBand, setTotalInBand] = useState(0);
 
   const [loading, setLoading] = useState(true);
-  const [rebuilding, setRebuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
@@ -194,18 +193,16 @@ export default function AlphaBoardMen() {
   const dateStr = new Date().toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
   const timeStr = new Date().toLocaleTimeString(isRtl ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' });
 
-  // ── Fetch the board (re-fetches on lens/position/lang change, or manual rebuild) ──
-  const fetchBoard = useCallback(async (opts?: { rebuild?: boolean }) => {
+  // ── Fetch the board (re-fetches on lens/position/lang change) ──
+  const fetchBoard = useCallback(async () => {
     const myReq = ++reqRef.current;
-    if (opts?.rebuild) setRebuilding(true);
-    else setLoading(true);
+    setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
       if (position !== 'all') params.set('position', position);
       if (lens !== 'all') params.set('trigger', lens);
       params.set('lang', lang);
-      if (opts?.rebuild) params.set('_t', String(Date.now()));
       const res = await fetch(`/api/war-room/alpha-board?${params.toString()}`, {
         signal: AbortSignal.timeout(120000),
       });
@@ -228,7 +225,6 @@ export default function AlphaBoardMen() {
     } finally {
       if (myReq === reqRef.current) {
         setLoading(false);
-        setRebuilding(false);
       }
     }
   }, [position, lens, lang, isHe]);
@@ -295,15 +291,6 @@ export default function AlphaBoardMen() {
               BRIT / <strong>{t('nav_war_room')}</strong> / {dateStr}
             </div>
             <div className="brit-actions">
-              <span className="brit-ab-lastrun">{isHe ? 'נבנה אוטומטית מדי יום · 07:00' : 'Auto-refreshed daily · 07:00'}</span>
-              <button
-                className={`brit-ra-refresh${rebuilding ? ' live' : ''}`}
-                onClick={() => fetchBoard({ rebuild: true })}
-                disabled={rebuilding}
-              >
-                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 3v6h-6" /></svg>
-                <span>{rebuilding ? (isHe ? 'מרענן…' : 'Refreshing…') : (isHe ? 'רענן' : 'Refresh')}</span>
-              </button>
               <BritPlatformSwitch />
               <button onClick={() => setLang(lang === 'en' ? 'he' : 'en')}>{lang === 'en' ? 'HE / EN' : 'EN / HE'}</button>
               <span>TLV {timeStr}</span>
