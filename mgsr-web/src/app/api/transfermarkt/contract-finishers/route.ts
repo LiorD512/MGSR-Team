@@ -5,7 +5,9 @@ import { getCachedChunked, setCacheChunked } from '@/lib/scrapingCache';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-const CACHE_KEY = 'contract-finishers';
+// Bumped to -v2 to invalidate caches populated before the window-month fix,
+// which contained out-of-window (e.g. June/summer) contracts under Winter.
+const CACHE_KEY = 'contract-finishers-v2';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export async function GET(request: NextRequest) {
