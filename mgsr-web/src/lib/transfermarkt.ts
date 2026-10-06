@@ -1243,15 +1243,23 @@ function getContractFinisherWindow(): { window: string; yearsToQuery: number[] }
   const month = now.getMonth() + 1;
   const year = Math.max(now.getFullYear(), 2026);
   // Bucket by the NEXT transfer window relative to today:
-  //  • Feb–Aug  → next window is Summer; contracts expiring 30 Jun of this year.
-  //  • Sep–Jan  → next window is Winter; contracts expiring 31 Dec (this year)
-  //               / 31 Jan (next year). September onward already points at winter,
-  //               so it must NOT be bucketed as summer (contracts ending Nov/Dec
-  //               belong to the winter window, matching Transfermarkt's data).
+  //  • Feb–Aug  → next window is Summer; contracts expiring 30 Jun of THIS year.
+  //  • Sep–Jan  → next window is Winter; contracts expiring 31 Dec of THIS year.
+  //
+  // The TM `endendevertraege/statistik` page returns ALL contracts expiring in
+  // the given calendar year (both June and December) with NO month column, so
+  // we cannot distinguish summer from winter inside a single year. By querying
+  // only the CURRENT year for each window we get the right cohort:
+  //   • Summer 2026 → jahr=2026 → mostly 30 Jun 2026 contracts ✓
+  //   • Winter 2026 → jahr=2026 → mostly 31 Dec 2026 contracts ✓
+  //
+  // Previously this queried [year, year+1] for Winter, which dragged in the
+  // ENTIRE next calendar year (overwhelmingly June = summer) with no way to
+  // filter them out — that was the bug producing ~12K players instead of ~3-4K.
   if (month >= 2 && month <= 8) {
     return { window: 'Summer', yearsToQuery: [year] };
   }
-  return { window: 'Winter', yearsToQuery: [year, year + 1] };
+  return { window: 'Winter', yearsToQuery: [year] };
 }
 
 /** Current contract-finisher window label ('Summer' | 'Winter'), for cache responses. */

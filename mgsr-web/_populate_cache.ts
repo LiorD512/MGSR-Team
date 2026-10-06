@@ -113,7 +113,7 @@ async function populateContractFinishers(): Promise<{ total: number; errors: str
   const errors: string[] = [];
   if (finalPlayers.length) {
     console.log(`  Writing ${finalPlayers.length} players in chunks...`);
-    const result = await writeChunked('contract-finishers-v2', finalPlayers);
+    const result = await writeChunked('contract-finishers-v3', finalPlayers);
     errors.push(...result.errors);
     console.log(`  ✅ Cached all ${finalPlayers.length} contract finishers to Firestore (${result.chunks} chunks)`);
   } else {
@@ -173,7 +173,7 @@ async function main() {
 
   if (totalPlayers === 0) {
     const returneesStaleExists = await hasExistingChunkedCache('returnees-stream-all');
-    const finishersStaleExists = await hasExistingChunkedCache('contract-finishers-v2');
+    const finishersStaleExists = await hasExistingChunkedCache('contract-finishers-v3');
     if (returneesStaleExists || finishersStaleExists) {
       console.log('⚠️  NO FRESH DATA — keeping existing cache (stale fallback available)');
       process.exit(0);
