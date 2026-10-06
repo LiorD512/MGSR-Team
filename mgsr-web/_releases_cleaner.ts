@@ -45,7 +45,6 @@
  */
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import * as https from 'https';
 import * as cheerio from 'cheerio';
 import { HeaderGenerator } from 'header-generator';
 import * as fs from 'fs';
@@ -118,7 +117,15 @@ const RELEASE_MISS_THRESHOLD = Number(process.env.RELEASE_MISS_THRESHOLD || 1);
 // scrape is degraded and refuse to hide anyone (fail-safe = keep showing).
 const RELEASE_HEALTHY_FLOOR = Number(process.env.RELEASE_HEALTHY_FLOOR || 100);
 
-// ── Header Generator (same as _releases_refresh.ts) ──
+// ── TM fetching strategy ──
+// Plain https.get / fetch from GitHub Actions IPs gets challenged by TM
+// (HTTP 202 bot wall), so we fetch through the shared HTML proxy that the
+// Cloud Run workers rely on (browser-grade egress that bypasses the block).
+// A direct fetch with realistic headers is kept as a secondary fallback.
+const TM_HTML_PROXY_URL =
+  process.env.TM_HTML_PROXY_URL ||
+  'https://management.britsportgroup.com/api/transfermarkt/html-proxy';
+
 const headerGen = new HeaderGenerator({
   browsers: [{ name: 'chrome', minVersion: 128, maxVersion: 135 }],
   devices: ['desktop'],
@@ -134,6 +141,7 @@ const CIRCUIT_COOLDOWN = 5 * 60 * 1000;
 let _lastFetchTime = 0;
 const MIN_FETCH_GAP_MS = 1500;
 const MAX_FETCH_GAP_MS = 4000;
+const FETCH_TIMEOUT_MS = 30000;
 
 function log(msg: string) {
   console.log(`[ReleasesCleaner] ${msg}`);
@@ -148,59 +156,95 @@ function sleep(ms: number): Promise<void> {
 }
 
 function getRealisticHeaders(): Record<string, string> {
-  const h = headerGen.getHeaders();
+  const h = headerGen.getHeaders() as Record<string, string>;
   h['referer'] = 'https://www.transfermarkt.com/';
   if (!h['accept-language']) h['accept-language'] = 'en-US,en;q=0.9';
   return h;
 }
 
-// ── TM HTML fetching (same strategy as _releases_refresh.ts) ──
-function fetchHtml(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (_circuitOpenUntil > Date.now()) {
-      reject(new Error('TM circuit breaker open — cooling down'));
-      return;
-    }
-    const headers = getRealisticHeaders();
-    const req = https.get(url, { headers }, (res) => {
-      if (res.statusCode === 429 || res.statusCode === 403 || res.statusCode === 503 || res.statusCode === 405) {
-        _consecutiveBlocks++;
-        if (_consecutiveBlocks >= CIRCUIT_THRESHOLD) {
-          _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN;
-          console.warn(`[TM] Circuit breaker TRIPPED after ${_consecutiveBlocks} blocks. Cooling down 5 min.`);
-        }
-        reject(new Error(`HTTP ${res.statusCode}`));
-        return;
-      }
-      if (res.statusCode !== 200) {
-        reject(new Error(`HTTP ${res.statusCode}`));
-        return;
-      }
-      _consecutiveBlocks = 0;
-      const chunks: Buffer[] = [];
-      res.on('data', (c: Buffer) => chunks.push(c));
-      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-      res.on('error', reject);
-    });
-    req.on('error', reject);
-    req.setTimeout(12000, () => {
-      req.destroy();
-      reject(new Error('Timeout'));
-    });
-  });
+/** HTML looks like a real TM transfer/free-agent list page (not a bot wall). */
+function looksLikeTransferList(html: string): boolean {
+  if (!html) return false;
+  return /class=["'][^"']*\bitems\b/i.test(html) && /tr\s+class=["'](odd|even)/i.test(html);
 }
 
-async function fetchHtmlWithGap(url: string): Promise<string> {
+function registerBlock(): void {
+  _consecutiveBlocks++;
+  if (_consecutiveBlocks >= CIRCUIT_THRESHOLD) {
+    _circuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN;
+    console.warn(`[TM] Circuit breaker TRIPPED after ${_consecutiveBlocks} blocks. Cooling down 5 min.`);
+  }
+}
+
+/** Fetch via the shared HTML proxy (primary — bypasses the GH Actions block). */
+async function fetchViaProxy(url: string): Promise<string> {
+  const proxyUrl = `${TM_HTML_PROXY_URL}?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxyUrl, {
+    headers: { Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`proxy HTTP ${res.status}`);
+  return res.text();
+}
+
+/** Direct fetch with realistic headers (secondary fallback). */
+async function fetchDirect(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: getRealisticHeaders(),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  // 202 = TM bot challenge; 403/429/503 = rate/forbidden — all treated as blocks.
+  if ([202, 403, 429, 503].includes(res.status)) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
+
+async function fetchDocument(url: string): Promise<cheerio.Root> {
+  if (_circuitOpenUntil > Date.now()) {
+    throw new Error('TM circuit breaker open — cooling down');
+  }
+  // Rate limiter: randomized gap between requests.
   const now = Date.now();
   const gap = randomDelay();
   const wait = gap - (now - _lastFetchTime);
   if (wait > 0) await sleep(wait);
   _lastFetchTime = Date.now();
-  return fetchHtml(url);
-}
 
-async function fetchDocument(url: string): Promise<cheerio.Root> {
-  const html = await fetchHtmlWithGap(url);
+  let html = '';
+  let lastErr: Error | null = null;
+
+  // 1) Primary: HTML proxy.
+  try {
+    const proxyHtml = await fetchViaProxy(url);
+    if (looksLikeTransferList(proxyHtml)) {
+      _consecutiveBlocks = 0;
+      return cheerio.load(proxyHtml);
+    }
+    html = proxyHtml; // keep as last resort if direct also fails
+  } catch (err) {
+    lastErr = err instanceof Error ? err : new Error(String(err));
+  }
+
+  // 2) Fallback: direct fetch with realistic headers.
+  try {
+    const directHtml = await fetchDirect(url);
+    if (looksLikeTransferList(directHtml)) {
+      _consecutiveBlocks = 0;
+      return cheerio.load(directHtml);
+    }
+    if (!html) html = directHtml;
+  } catch (err) {
+    lastErr = err instanceof Error ? err : new Error(String(err));
+    // A block from the direct path still counts toward the circuit breaker.
+    if (/HTTP (202|403|429|503)/.test(lastErr.message)) registerBlock();
+  }
+
+  // Neither source produced a real list page.
+  if (!looksLikeTransferList(html)) {
+    registerBlock();
+    throw lastErr || new Error('TM returned no usable list HTML (possible block)');
+  }
+  _consecutiveBlocks = 0;
   return cheerio.load(html);
 }
 
