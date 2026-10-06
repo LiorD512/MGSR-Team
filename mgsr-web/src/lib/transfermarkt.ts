@@ -1241,25 +1241,24 @@ const CF_MAX_COOLDOWN_RETRIES = 3; // how many times to wait out a block before 
 function getContractFinisherWindow(): { window: string; yearsToQuery: number[] } {
   const now = new Date();
   const month = now.getMonth() + 1;
-  const year = Math.max(now.getFullYear(), 2026);
-  // Bucket by the NEXT transfer window relative to today:
-  //  • Feb–Aug  → next window is Summer; contracts expiring 30 Jun of THIS year.
-  //  • Sep–Jan  → next window is Winter; contracts expiring 31 Dec of THIS year.
-  //
+  const currentYear = now.getFullYear();
   // The TM `endendevertraege/statistik` page returns ALL contracts expiring in
-  // the given calendar year (both June and December) with NO month column, so
-  // we cannot distinguish summer from winter inside a single year. By querying
-  // only the CURRENT year for each window we get the right cohort:
-  //   • Summer 2026 → jahr=2026 → mostly 30 Jun 2026 contracts ✓
-  //   • Winter 2026 → jahr=2026 → mostly 31 Dec 2026 contracts ✓
+  // a given calendar year (June + December mixed) with NO date column, so we
+  // can only query ONE year at a time to avoid cross-window pollution.
   //
-  // Previously this queried [year, year+1] for Winter, which dragged in the
-  // ENTIRE next calendar year (overwhelmingly June = summer) with no way to
-  // filter them out — that was the bug producing ~12K players instead of ~3-4K.
-  if (month >= 2 && month <= 8) {
-    return { window: 'Summer', yearsToQuery: [year] };
+  // Year rollover rule: switch to the NEW year on **March 1** every year.
+  //   • Jan–Feb  → still scrape PREVIOUS year (Dec/Jan winter contracts).
+  //   • Mar–Aug  → scrape current year (Summer window — June contracts).
+  //   • Sep–Dec  → scrape current year (Winter window — December contracts).
+  //
+  // This avoids the January/February gap where getFullYear() already returns
+  // the new year but the relevant winter contracts still live in the old year.
+  const effectiveYear = Math.max(month <= 2 ? currentYear - 1 : currentYear, 2026);
+
+  if (month >= 3 && month <= 8) {
+    return { window: 'Summer', yearsToQuery: [effectiveYear] };
   }
-  return { window: 'Winter', yearsToQuery: [year] };
+  return { window: 'Winter', yearsToQuery: [effectiveYear] };
 }
 
 /** Current contract-finisher window label ('Summer' | 'Winter'), for cache responses. */
