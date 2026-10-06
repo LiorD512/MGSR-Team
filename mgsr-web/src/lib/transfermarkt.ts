@@ -1241,17 +1241,24 @@ const CF_MAX_COOLDOWN_RETRIES = 3; // how many times to wait out a block before 
 function getContractFinisherWindow(): { window: string; yearsToQuery: number[] } {
   const now = new Date();
   const month = now.getMonth() + 1;
-  const year = Math.max(now.getFullYear(), 2026);
-  // Bucket by the NEXT transfer window relative to today:
-  //  • Feb–Aug  → next window is Summer; contracts expiring 30 Jun of this year.
-  //  • Sep–Jan  → next window is Winter; contracts expiring 31 Dec (this year)
-  //               / 31 Jan (next year). September onward already points at winter,
-  //               so it must NOT be bucketed as summer (contracts ending Nov/Dec
-  //               belong to the winter window, matching Transfermarkt's data).
-  if (month >= 2 && month <= 8) {
-    return { window: 'Summer', yearsToQuery: [year] };
+  const currentYear = now.getFullYear();
+  // The TM `endendevertraege/statistik` page returns ALL contracts expiring in
+  // a given calendar year (June + December mixed) with NO date column, so we
+  // can only query ONE year at a time to avoid cross-window pollution.
+  //
+  // Year rollover rule: switch to the NEW year on **March 1** every year.
+  //   • Jan–Feb  → still scrape PREVIOUS year (Dec/Jan winter contracts).
+  //   • Mar–Aug  → scrape current year (Summer window — June contracts).
+  //   • Sep–Dec  → scrape current year (Winter window — December contracts).
+  //
+  // This avoids the January/February gap where getFullYear() already returns
+  // the new year but the relevant winter contracts still live in the old year.
+  const effectiveYear = Math.max(month <= 2 ? currentYear - 1 : currentYear, 2026);
+
+  if (month >= 3 && month <= 8) {
+    return { window: 'Summer', yearsToQuery: [effectiveYear] };
   }
-  return { window: 'Winter', yearsToQuery: [year, year + 1] };
+  return { window: 'Winter', yearsToQuery: [effectiveYear] };
 }
 
 /** Current contract-finisher window label ('Summer' | 'Winter'), for cache responses. */

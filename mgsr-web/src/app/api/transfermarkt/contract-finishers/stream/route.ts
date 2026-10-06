@@ -6,9 +6,10 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 300;
 
-// Bumped to -v2 to invalidate caches populated before the window-month fix,
-// which contained out-of-window (e.g. June/summer) contracts under Winter.
-const CACHE_KEY = 'contract-finishers-v2';
+// Bumped to -v3: the v2 cache still contained ~12K players including the wrong
+// year (2027 summer contracts). The year-query fix now queries only the current
+// year, producing a correct winter-only list.
+const CACHE_KEY = 'contract-finishers-v3';
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export async function GET(request: NextRequest) {
