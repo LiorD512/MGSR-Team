@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — War Room (v5, unified · true-to-form modes)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--blue:#4a5f6f;--muted:#8a867d;--muted-2:#aba69b;
+      --line:rgba(22,22,19,.14);--line-2:rgba(22,22,19,.07);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    a{color:inherit;text-decoration:none}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    input,textarea{font:inherit}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    /* Shell */
+    .app{min-height:100vh;display:grid;grid-template-columns:244px minmax(0,1fr)}
+    .rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:26px 22px;background:var(--black);color:var(--paper);overflow-y:auto}
+    .lockup{display:flex;align-items:center;gap:12px;padding-bottom:24px;border-bottom:1px solid var(--dark-line)}
+    .lockup .mark{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 15px/1 var(--display)}
+    .lockup strong{display:block;font:600 14px/1 var(--display);letter-spacing:.08em}
+    .lockup small{display:block;margin-top:5px;color:#9a958b;font:9px/1 var(--mono);text-transform:uppercase}
+    .nav{display:grid;gap:1px;margin-top:26px}
+    .nav>a,.nav-group{display:flex;justify-content:space-between;align-items:center;width:100%;padding:11px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;transition:color .15s;text-align:start}
+    .nav>a:hover,.nav-group:hover,.nav>a.active,.nav-group.active{color:var(--gold-soft)}
+    .nav>a.active:before,.nav-group.active:before{content:'';width:18px;height:1px;margin-inline-end:-18px;background:var(--gold-soft)}
+    .nav em{color:var(--gold-soft);font-style:normal}
+    .rail-foot{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#817d74;font:9px/1.7 var(--mono);text-transform:uppercase}
+    .rail-foot .mandate{margin-bottom:12px;padding:10px 11px;border:1px solid var(--dark-line)}
+    .rail-foot .mandate label{display:block;color:#9a958b;font:8px/1 var(--mono);letter-spacing:.1em}
+    .rail-foot .mandate strong{display:block;margin-top:6px;color:var(--gold-soft);font:500 13px/1 var(--display)}
+    .rail-foot .row{display:flex;align-items:center;gap:7px}
+    .rail-foot .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+    .rail-foot strong.w{color:var(--paper);font-weight:400}
+
+    .main{min-width:0}
+    .topbar{height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 44px;background:var(--black);color:#9a958b;font:10px/1 var(--mono);text-transform:uppercase}
+    .topbar strong{color:var(--paper);font-weight:400}
+    .actions{display:flex;align-items:center;gap:18px}
+    .actions button:hover{color:var(--gold-soft)}
+    .actions .refresh{display:flex;align-items:center;gap:8px;color:#9a958b}
+    .actions .refresh svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2}
+    .actions .refresh:hover{color:var(--gold-soft)}
+    .actions .refresh.live svg{animation:spin 1s linear infinite}
+    .avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+    .canvas{max-width:1560px;padding:40px 44px 100px}
+
+    .work{display:grid;grid-template-columns:230px minmax(0,1fr);gap:30px;align-items:start}
+
+    /* Intent rail */
+    .intents{position:sticky;top:24px;display:flex;flex-direction:column;gap:4px}
+    .intents .ihdr{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em;margin:0 0 10px}
+    .intent{display:flex;gap:12px;align-items:flex-start;padding:13px 13px;border:1px solid transparent;border-inline-start:2px solid transparent;transition:.15s;text-align:start;width:100%}
+    .intent:hover{background:var(--card);border-color:var(--line)}
+    .intent.on{background:var(--card);border-color:var(--line);border-inline-start:2px solid var(--gold)}
+    .intent .ico{width:17px;height:17px;flex:none;stroke:var(--muted);fill:none;stroke-width:1.6;margin-top:1px}
+    .intent.on .ico{stroke:var(--gold)}
+    .intent .itxt{min-width:0}
+    .intent .itxt b{display:block;font:500 12px/1.1 var(--display);text-transform:uppercase;letter-spacing:.03em;color:var(--ink)}
+    [dir=rtl] .intent .itxt b{font-weight:700}
+    .intent.on .itxt b{color:var(--gold)}
+    .intent .itxt span{display:block;margin-top:4px;color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+    .intent .cnt{margin-inline-start:auto;color:var(--muted-2);font:500 13px/1 var(--mono);flex:none}
+    .intent.on .cnt{color:var(--gold)}
+    .intents .idiv{height:1px;background:var(--line);margin:10px 2px}
+    .intents .ihint{padding:0 2px;color:var(--muted-2);font:8px/1.6 var(--mono);text-transform:uppercase}
+
+    .surface{min-width:0}
+
+    /* Masthead */
+    .masthead{margin-bottom:22px}
+    .kicker{margin:0 0 14px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(40px,4.4vw,58px)/.88 var(--display);letter-spacing:-.03em;text-transform:uppercase}
+    [dir=rtl] .masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+    .masthead h1 span{color:var(--gold)}
+    .masthead .sub{margin:14px 0 0;color:var(--muted);font:13px/1.6 var(--body);max-width:580px}
+
+    .band{display:flex;align-items:center;gap:14px;margin:20px 0 0;padding:12px 16px;border:1px solid var(--gold-soft);background:rgba(164,125,67,.05)}
+    .band .lbl{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .band .val{color:var(--ink);font:500 15px/1 var(--display);text-transform:uppercase}
+    .band .track{flex:1;height:4px;background:var(--paper-2);position:relative;max-width:260px}
+    .band .track i{position:absolute;top:0;height:100%;background:var(--gold);inset-inline-start:12%;width:30%}
+
+    .signals{display:flex;flex-wrap:wrap;gap:0 36px;padding:16px 0;margin:24px 0 22px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .sig{display:flex;align-items:baseline;gap:10px}
+    .sig b{font:500 22px/1 var(--display);text-transform:uppercase}
+    .sig b.gold{color:var(--gold)}.sig b.green{color:var(--green)}.sig b.amber{color:var(--amber)}.sig b.red{color:var(--red)}
+    .sig span{color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.04em;max-width:96px}
+
+    /* shared chip rows */
+    .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0;margin-bottom:10px;scrollbar-width:none}
+    .chips::-webkit-scrollbar{display:none}
+    .chip{flex:none;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border:1px solid var(--line);color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;transition:.15s;white-space:nowrap}
+    .chip:hover{color:var(--ink);border-color:var(--muted)}
+    .chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+    .chip.gold.on{background:var(--gold);border-color:var(--gold);color:var(--paper)}
+
+    .result-count{margin:4px 2px 18px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+    .result-count b{color:var(--ink);font-weight:500}
+
+    /* ════ ALPHA BOARD — card board ════ */
+    .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+    .card{position:relative;background:var(--card);border:1px solid var(--line);cursor:pointer;transition:border-color .15s;display:flex;flex-direction:column}
+    .card:hover{border-color:var(--gold-soft)}
+    .card.tier-a{border-top:2px solid var(--gold)}.card.tier-b{border-top:2px solid var(--green)}.card.tier-c{border-top:2px solid var(--muted-2)}
+    .c-head{display:flex;align-items:center;gap:13px;padding:16px 16px 13px}
+    .c-head img{width:50px;height:50px;object-fit:cover;filter:grayscale(.35);background:var(--black);flex:none}
+    .c-id{min-width:0;flex:1}
+    .c-id .nm{font:500 20px/.95 var(--display);text-transform:uppercase;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    [dir=rtl] .c-id .nm{font-weight:800;letter-spacing:normal}
+    .c-id .meta{margin-top:5px;color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+    .c-id .meta b{color:var(--ink);font-weight:500}
+    .ascore{text-align:center;flex:none}
+    .ascore b{display:block;font:500 25px/.9 var(--display);color:var(--ink)}
+    .ascore.hot b{color:var(--gold)}
+    .ascore small{display:block;margin-top:2px;color:var(--muted-2);font:7px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .c-why{padding:0 16px 14px;display:flex;flex-direction:column;gap:9px;flex:1}
+    .c-why .tag{display:inline-flex;align-items:center;gap:6px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+    .c-why .tag .d{width:7px;height:7px;border-radius:50%;flex:none}
+    .c-why p{margin:0;font:12.5px/1.5 var(--body);color:var(--ink);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .c-foot{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--line-2);margin-top:auto}
+    .c-foot .mv{display:flex;flex-direction:column;gap:3px}
+    .c-foot .mv b{font:500 16px/1 var(--mono);color:var(--ink)}
+    .c-foot .mv small{color:var(--muted-2);font:8px/1 var(--mono);text-transform:uppercase}
+    .c-foot .acts{display:flex;gap:7px}
+    .c-foot .acts button{width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--line);color:var(--muted);transition:.15s}
+    .c-foot .acts button svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.7}
+    .c-foot .acts .save:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .c-foot .acts .dismiss:hover{border-color:var(--red);color:var(--red)}
+
+    /* ════ DISCOVERY — feed of wide rows ════ */
+    .feed{display:flex;flex-direction:column;gap:12px}
+    .frow{display:flex;gap:16px;padding:16px 18px;background:var(--card);border:1px solid var(--line);transition:border-color .15s}
+    .frow:hover{border-color:var(--gold-soft)}
+    .frow>img{width:56px;height:56px;object-fit:cover;filter:grayscale(.35);background:var(--black);flex:none}
+    .frow .fbody{flex:1;min-width:0}
+    .frow .fname{font:500 19px/1 var(--display);text-transform:uppercase}
+    [dir=rtl] .frow .fname{font-weight:800}
+    .frow .fmeta{margin-top:6px;color:var(--muted);font:10px/1.4 var(--mono);text-transform:uppercase}
+    .frow .ftags{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+    .srcbadge{font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:5px 8px}
+    .srcbadge.req{background:rgba(74,95,111,.14);color:var(--blue)}
+    .srcbadge.gem{background:rgba(176,122,43,.16);color:var(--amber)}
+    .srcbadge.gen{background:var(--paper-2);color:var(--muted)}
+    .frow .fstats{margin-top:9px;color:var(--muted);font:10px/1.5 var(--mono);text-transform:uppercase;display:flex;flex-wrap:wrap;gap:4px 14px}
+    .frow .fstats b{color:var(--ink);font-weight:500}
+    .gemwhy{margin-top:10px;padding:10px 12px;border:1px solid rgba(176,122,43,.3);background:rgba(176,122,43,.06)}
+    .gemwhy label{display:block;color:var(--amber);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+    .gemwhy p{margin:0;font:11.5px/1.5 var(--body);color:var(--ink)}
+    .played{margin-top:10px;display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--line);color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .played svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.6}
+    .frow .facts{display:flex;flex-direction:column;gap:8px;align-self:center;flex:none}
+    .btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 13px;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;transition:.15s}
+    .btn.ghost{border:1px solid var(--line);color:var(--muted)}.btn.ghost:hover{border-color:var(--muted);color:var(--ink)}
+    .btn.gold{background:var(--black);color:var(--gold-soft)}.btn.gold:hover{background:var(--gold);color:var(--paper)}
+    .btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8}
+
+    /* ════ SCOUT AGENTS — grouped sections ════ */
+    .agentsec{border:1px solid var(--line);margin-bottom:16px;background:var(--card)}
+    .agenthead{display:flex;align-items:center;gap:11px;padding:13px 16px;border-bottom:1px solid var(--line);background:rgba(22,22,19,.03)}
+    .agenthead .flag{font-size:20px;line-height:1}
+    .agenthead b{font:500 15px/1 var(--display);text-transform:uppercase}
+    [dir=rtl] .agenthead b{font-weight:800}
+    .agenthead .live{margin-inline-start:auto;display:flex;align-items:center;gap:7px;color:var(--green);font:9px/1 var(--mono);text-transform:uppercase}
+    .agenthead .live .d{width:6px;height:6px;border-radius:50%;background:var(--green)}
+    .agentbody{padding:10px;display:flex;flex-direction:column;gap:8px}
+    .arow{display:flex;gap:13px;padding:12px;border:1px solid var(--line-2);background:var(--paper)}
+    .arow>img{width:44px;height:44px;object-fit:cover;filter:grayscale(.35);background:var(--black);flex:none}
+    .arow .abody{flex:1;min-width:0}
+    .arow .atop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+    .ptype{font:7px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:4px 7px;background:rgba(176,122,43,.16);color:var(--amber)}
+    .arow .aname{font:500 16px/1 var(--display);text-transform:uppercase}
+    [dir=rtl] .arow .aname{font-weight:800}
+    .arow .ameta{margin-top:4px;color:var(--muted);font:9px/1.3 var(--mono);text-transform:uppercase}
+    .arow .areason{margin-top:7px;font:11.5px/1.5 var(--body);color:var(--ink)}
+    .arow .aacts{display:flex;align-items:center;gap:8px;margin-top:10px}
+    .thumb{width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);color:var(--muted);transition:.15s}
+    .thumb svg{width:14px;height:14px;fill:currentColor}
+    .thumb.up:hover,.thumb.up.on{border-color:var(--green);color:var(--green)}
+    .thumb.down:hover,.thumb.down.on{border-color:var(--red);color:var(--red)}
+
+    /* ════ ASK — console ════ */
+    .console{border:1px solid var(--line);background:var(--card);padding:18px 18px 16px;margin-bottom:16px}
+    .console .term{display:flex;align-items:center;gap:8px;color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+    .console .term .d{width:7px;height:7px;border-radius:50%;background:var(--gold)}
+    .askwrap{display:flex;gap:10px}
+    .askwrap textarea{flex:1;border:1px solid var(--line);background:var(--paper);padding:13px 14px;color:var(--ink);font:13px/1.5 var(--body);resize:none;outline:none}
+    .askwrap textarea:focus{border-color:var(--gold-soft)}
+    .askwrap .go{flex:none;align-self:stretch;padding:0 22px;background:var(--black);color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .askwrap .go:hover{background:var(--gold);color:var(--paper)}
+    .divmode{display:flex;align-items:center;gap:8px;margin-top:12px}
+    .divmode .dl{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+    .examples{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    .examples .ex{padding:8px 12px;border:1px solid var(--line);color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;transition:.15s}
+    .examples .ex:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .interp{display:flex;gap:12px;margin-bottom:16px;padding:13px 15px;border:1px solid var(--gold-soft);background:rgba(164,125,67,.05)}
+    .interp .ii{flex:none;color:var(--gold)}
+    .interp .ii svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6}
+    .interp b{display:block;color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;margin-bottom:6px}
+    .interp p{margin:0;font:12px/1.5 var(--body);color:var(--ink)}
+    .askresults{display:flex;flex-direction:column;gap:10px}
+    .qrow{display:flex;gap:15px;padding:15px 17px;background:var(--card);border:1px solid var(--line);cursor:pointer;transition:border-color .15s}
+    .qrow:hover{border-color:var(--gold-soft)}
+    .ring{width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-items:center}
+    .ring .inner{width:38px;height:38px;border-radius:50%;background:var(--card);display:grid;place-items:center;font:500 12px/1 var(--display);color:var(--gold)}
+    .qrow .qbody{flex:1;min-width:0}
+    .qrow .qtop{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .qrow .qname{font:500 18px/1 var(--display);text-transform:uppercase}
+    [dir=rtl] .qrow .qname{font-weight:800}
+    .verdict{padding:6px 11px;font:500 11px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;flex:none}
+    .verdict.SIGN{background:var(--green);color:var(--paper)}.verdict.MONITOR{background:var(--amber);color:var(--paper)}.verdict.PASS{background:var(--red);color:var(--paper)}
+    .qrow .qmeta{margin-top:6px;color:var(--muted);font:10px/1.4 var(--mono);text-transform:uppercase}
+    .findmore{margin-top:14px;display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border:1px solid var(--line);color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+    .findmore:hover{border-color:var(--gold-soft);color:var(--gold)}
+    .findmore svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8}
+
+    /* ════ SUCCESSORS — config panel + signature ════ */
+    .cfg{border:1px solid var(--line);background:var(--card);padding:20px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px}
+    .cfg .fld label{display:block;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+    .cfg .fld input[type=text]{width:100%;border:1px solid var(--line);background:var(--paper);padding:12px 13px;color:var(--ink);font:13px/1 var(--body);outline:none}
+    .cfg .fld input[type=text]:focus{border-color:var(--gold-soft)}
+    .rngval{color:var(--gold);font:500 14px/1 var(--display)}
+    .cfg input[type=range]{width:100%;accent-color:var(--gold);margin-top:8px}
+    .cfg .runbtn{grid-column:1/-1;padding:14px;background:var(--black);color:var(--gold-soft);font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .cfg .runbtn:hover{background:var(--gold);color:var(--paper)}
+    .refcard{border:1px solid var(--line);background:var(--card);padding:16px 18px;margin-bottom:14px}
+    .refcard .rh{display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+    .refcard .rh img{width:52px;height:52px;object-fit:cover;filter:grayscale(.25);background:var(--black)}
+    .refcard .rh small{color:var(--gold);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .refcard .rh b{display:block;margin-top:6px;font:500 22px/1 var(--display);text-transform:uppercase}
+    [dir=rtl] .refcard .rh b{font-weight:800}
+    .sig-title{margin:16px 0 12px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .sigbars{display:grid;gap:10px}
+    .sigbar{display:grid;grid-template-columns:140px 1fr 42px;align-items:center;gap:12px}
+    .sigbar .sl{color:var(--ink);font:10px/1.3 var(--mono);text-transform:uppercase}
+    .sigbar .st{height:8px;background:var(--paper-2);position:relative}
+    .sigbar .st i{position:absolute;inset-inline-start:0;top:0;height:100%;background:var(--gold)}
+    .sigbar .sp{color:var(--gold);font:500 13px/1 var(--display);text-align:end}
+    .succ{display:flex;flex-direction:column;gap:10px}
+    .srow{display:flex;gap:15px;padding:15px 17px;background:var(--card);border:1px solid var(--line);cursor:pointer;transition:border-color .15s}
+    .srow:hover{border-color:var(--gold-soft)}
+    .srow>img{width:50px;height:50px;object-fit:cover;filter:grayscale(.35);background:var(--black);flex:none}
+    .srow .sbody{flex:1;min-width:0}
+    .srow .sname{font:500 18px/1 var(--display);text-transform:uppercase}
+    [dir=rtl] .srow .sname{font-weight:800}
+    .srow .smeta{margin-top:5px;color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}
+    .srow .breakdown{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+    .bchip{font:8px/1 var(--mono);text-transform:uppercase;padding:5px 8px;border:1px solid var(--line);color:var(--muted)}
+    .bchip b{color:var(--green);font-weight:500}
+    .srow .sscore{text-align:center;flex:none}
+    .srow .sscore b{display:block;font:500 24px/.9 var(--display);color:var(--gold)}
+    .srow .sscore small{display:block;margin-top:3px;color:var(--muted-2);font:7px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+
+    /* placeholder */
+    .placeholder{padding:60px 24px;text-align:center;border:1px dashed var(--line);color:var(--muted);font:11px/1.6 var(--mono);text-transform:uppercase}
+    .placeholder svg{width:34px;height:34px;stroke:var(--muted-2);fill:none;stroke-width:1.4;margin:0 auto 16px}
+
+    /* dossier drawer */
+    .scrim{position:fixed;inset:0;z-index:30;background:rgba(17,17,15,.55);opacity:0;pointer-events:none;transition:.25s}
+    .scrim.open{opacity:1;pointer-events:auto}
+    .drawer{position:fixed;top:0;inset-inline-end:0;bottom:0;z-index:31;width:min(620px,96vw);background:var(--paper);border-inline-start:3px solid var(--gold);transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);overflow-y:auto}
+    [dir=rtl] .drawer{transform:translateX(-100%)}
+    .drawer.open{transform:none}
+    .dh{position:relative;background:var(--black);color:var(--paper);padding:26px 28px 22px}
+    .dh .close{position:absolute;top:16px;inset-inline-end:18px;color:var(--paper);font:22px/1 var(--display)}
+    .dh-top{display:flex;gap:16px;align-items:center}
+    .dh-top img{width:70px;height:70px;object-fit:cover;filter:grayscale(.25);border:1px solid var(--dark-line);flex:none}
+    .dh-info small{color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+    .dh-info h2{margin:8px 0 0;font:500 34px/.85 var(--display);text-transform:uppercase}
+    [dir=rtl] .dh-info h2{font-weight:800}
+    .dh-alpha{display:flex;align-items:center;gap:16px;margin-top:20px;padding-top:18px;border-top:1px solid var(--dark-line)}
+    .dh-alpha .big{font:500 42px/1 var(--display);color:var(--gold-soft)}
+    .dh-alpha .lbl{color:#cfc9bc;font:9px/1.5 var(--mono);text-transform:uppercase}
+    .dh-alpha .verdict{margin-inline-start:auto}
+    .db{padding:24px 28px 44px}
+    .sec{margin-bottom:26px}
+    .sec>h3{margin:0 0 14px;font:500 13px/1 var(--display);text-transform:uppercase;letter-spacing:.08em;color:var(--ink);padding-bottom:10px;border-bottom:1px solid var(--line)}
+    [dir=rtl] .sec>h3{font-weight:800}
+    .why{display:grid;gap:11px}
+    .why .w{display:flex;gap:11px;align-items:flex-start;font:12px/1.55 var(--body);color:var(--ink)}
+    .why .w .n{font:500 11px/1 var(--display);color:var(--gold);flex:none;margin-top:2px;width:14px}
+    .sg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line)}
+    .sg div{padding:13px 12px;border-inline-end:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .sg div:nth-child(3n){border-inline-end:0}
+    .sg label{display:block;color:var(--muted);font:8px/1.2 var(--mono);text-transform:uppercase}
+    .sg b{display:block;margin-top:7px;font:500 17px/1 var(--mono);color:var(--ink)}
+    .cta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+    .cta a{padding:15px;text-align:center;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
+    .cta .primary{background:var(--black);color:var(--gold-soft)}
+    .cta .ghost{border:1px solid var(--ink);color:var(--ink)}
+
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    @media(max-width:1120px){
+      .work{grid-template-columns:1fr;gap:18px}
+      .intents{position:static;flex-direction:row;overflow-x:auto;gap:8px;scrollbar-width:none}
+      .intents::-webkit-scrollbar{display:none}
+      .intents .ihdr,.intents .idiv,.intents .ihint{display:none}
+      .intent{min-width:210px}
+      .cfg{grid-template-columns:1fr}
+    }
+    @media(max-width:860px){
+      .app{display:block}.rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;padding:14px 18px}
+      .lockup{border:0;padding:0}.rail-foot{display:none}.nav{display:flex;flex-wrap:wrap;gap:14px;margin:0}.nav>a,.nav-group{padding:6px 0}.nav em,.nav>a.active:before,.nav-group.active:before{display:none}
+      .topbar{height:auto;padding:12px 18px;flex-wrap:wrap;gap:10px}.canvas{padding:26px 18px 70px}
+      .board{grid-template-columns:1fr}.sg,.cta{grid-template-columns:1fr 1fr}
+      .frow,.qrow,.srow{flex-wrap:wrap}.frow .facts{flex-direction:row;width:100%}
+      .sigbar{grid-template-columns:100px 1fr 36px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <a class="lockup" href="#"><span class="mark">B</span><div><strong>BRIT SPORT GROUP</strong><small data-t="sub">Management room</small></div></a>
+      <nav class="nav">
+        <a href="#"><span data-t="nav_dash">Dashboard</span><em>01</em></a>
+        <button class="nav-group"><span data-t="nav_players">Players</span><em>+</em></button>
+        <a href="#"><span data-t="nav_req">Club Requirements</span><em>03</em></a>
+        <a href="#"><span data-t="nav_cont">Contacts</span><em>04</em></a>
+        <button class="nav-group"><span data-t="nav_signals">Signals</span><em>+</em></button>
+        <a href="#" class="active"><span data-t="nav_warroom">War Room</span><em>→</em></a>
+      </nav>
+      <div class="rail-foot">
+        <div class="mandate"><label data-t="band_lbl">Acquisition range</label><strong>€150K – €2.0M</strong></div>
+        <span class="row"><span class="dot"></span><span data-t="foot_lab">Data refreshed</span></span><strong class="w">Today · 07:00 TLV</strong>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div>BRIT / <strong data-t="nav_warroom">War Room</strong> / <strong id="crumb">Alpha Board</strong> / 06 October 2026</div>
+        <div class="actions">
+          <button class="refresh" id="refreshBtn" onclick="doRefresh()"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg><span id="refreshLbl" data-t="refresh">Refresh</span></button>
+          <button id="lang" onclick="toggleLang()">HE / EN</button>
+          <span>TLV 14:45</span>
+          <span class="avatar">LD</span>
+        </div>
+      </header>
+
+      <div class="canvas">
+        <div class="work">
+          <div class="intents">
+            <p class="ihdr" data-t="how_to_find">How to find</p>
+            <button class="intent on" data-intent="alpha" onclick="setIntent('alpha')">
+              <svg class="ico" viewBox="0 0 24 24"><path d="M3 13l4-4 4 4 6-7"/><path d="M3 20h18"/></svg>
+              <span class="itxt"><b data-t="i_alpha">Alpha Board</b><span data-t="i_alpha_s">Ranked signals</span></span><span class="cnt">60</span>
+            </button>
+            <button class="intent" data-intent="discovery" onclick="setIntent('discovery')">
+              <svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <span class="itxt"><b data-t="i_disc">Discovery</b><span data-t="i_disc_s">Daily feed</span></span><span class="cnt">24</span>
+            </button>
+            <button class="intent" data-intent="agents" onclick="setIntent('agents')">
+              <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+              <span class="itxt"><b data-t="i_agents">Scout Agents</b><span data-t="i_agents_s">Persona picks</span></span><span class="cnt">18</span>
+            </button>
+            <button class="intent" data-intent="ask" onclick="setIntent('ask')">
+              <svg class="ico" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 4.5 16.8L21 21l-1.2-4.5A9 9 0 0 0 12 3Z"/><path d="M9 10h6M9 13h4"/></svg>
+              <span class="itxt"><b data-t="i_ask">Ask</b><span data-t="i_ask_s">Natural search</span></span><span class="cnt">—</span>
+            </button>
+            <button class="intent" data-intent="next" onclick="setIntent('next')">
+              <svg class="ico" viewBox="0 0 24 24"><path d="M12 2v6m0 0 3-3m-3 3L9 5"/><circle cx="12" cy="15" r="6"/></svg>
+              <span class="itxt"><b data-t="i_next">Successors</b><span data-t="i_next_s">Find the next…</span></span><span class="cnt">—</span>
+            </button>
+            <div class="idiv"></div>
+            <p class="ihint" data-t="hint">Men platform · one shortlist feeds every mode</p>
+          </div>
+
+          <div class="surface">
+            <div class="masthead">
+              <p class="kicker" id="kicker">Alpha generation / Men platform</p>
+              <h1 id="title">Alpha <span>board.</span></h1>
+              <p class="sub" id="sub"></p>
+            </div>
+            <div class="band" id="band">
+              <span class="lbl" data-t="band_lbl2">Acquisition range · locked</span>
+              <span class="val">€150K – €2.0M</span>
+              <div class="track"><i></i></div>
+            </div>
+            <section class="signals" id="signals">
+              <div class="sig"><b>92</b><span data-t="s_inband">In band</span></div>
+              <div class="sig"><b class="green">13</b><span data-t="s_form">Form rising</span></div>
+              <div class="sig"><b class="amber">61</b><span data-t="s_lev">Leverage</span></div>
+              <div class="sig"><b class="red">04</b><span data-t="s_free">Free / released</span></div>
+              <div class="sig"><b class="gold">27</b><span data-t="s_ris">Risers</span></div>
+            </section>
+            <div class="ctl" id="ctl"></div>
+            <p class="result-count" id="count"></p>
+            <div id="stage"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- drawer -->
+  <div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+  <aside class="drawer" id="drawer">
+    <div class="dh">
+      <button class="close" onclick="closeDrawer()">×</button>
+      <div class="dh-top"><img id="dImg" src="" alt=""><div class="dh-info"><small id="dMeta">—</small><h2 id="dName">—</h2></div></div>
+      <div class="dh-alpha"><div><div class="big" id="dScore">—</div><div class="lbl" data-t="alpha_score">Alpha score</div></div><span class="verdict SIGN" id="dVerdict">SIGN</span></div>
+    </div>
+    <div class="db">
+      <div class="sec"><h3 data-t="why_now">Why now</h3><div class="why" id="dWhy"></div></div>
+      <div class="sec"><h3 data-t="per90">Per-90 output</h3><div class="sg" id="dStats"></div></div>
+      <div class="cta"><a class="primary" onclick="fakeShortlist()" data-t="add_short">Add to shortlist</a><a class="ghost" data-t="open_tm">Open on Transfermarkt</a></div>
+    </div>
+  </aside>
+
+<script>
+/* i18n */
+const I18N={
+  en:{sub:'Management room',nav_dash:'Dashboard',nav_players:'Players',nav_req:'Club Requirements',nav_cont:'Contacts',nav_signals:'Signals',nav_warroom:'War Room',band_lbl:'Acquisition range',band_lbl2:'Acquisition range · locked',foot_lab:'Data refreshed',refresh:'Refresh',how_to_find:'How to find',i_alpha:'Alpha Board',i_alpha_s:'Ranked signals',i_disc:'Discovery',i_disc_s:'Daily feed',i_agents:'Scout Agents',i_agents_s:'Persona picks',i_ask:'Ask',i_ask_s:'Natural search',i_next:'Successors',i_next_s:'Find the next…',hint:'Men platform · one shortlist feeds every mode',s_inband:'In band',s_form:'Form rising',s_lev:'Leverage',s_free:'Free / released',s_ris:'Risers',alpha_score:'Alpha score',why_now:'Why now',per90:'Per-90 output',add_short:'Add to shortlist',open_tm:'Open on Transfermarkt'},
+  he:{sub:'חדר ניהול',nav_dash:'דאשבורד',nav_players:'שחקנים',nav_req:'דרישות מועדון',nav_cont:'אנשי קשר',nav_signals:'סיגנלים',nav_warroom:'חדר מלחמה',band_lbl:'טווח רכש',band_lbl2:'טווח רכש · נעול',foot_lab:'עודכן לאחרונה',refresh:'רענן',how_to_find:'איך למצוא',i_alpha:'לוח אלפא',i_alpha_s:'סיגנלים מדורגים',i_disc:'גילוי',i_disc_s:'פיד יומי',i_agents:'סוכני סקאוט',i_agents_s:'בחירות פרסונה',i_ask:'שאל',i_ask_s:'חיפוש חופשי',i_next:'יורשים',i_next_s:'מצא את הבא…',hint:'פלטפורמת גברים · רשימת מעקב אחת',s_inband:'בטווח',s_form:'כושר עולה',s_lev:'מינוף',s_free:'חופשי',s_ris:'עולים',alpha_score:'ציון אלפא',why_now:'למה עכשיו',per90:'תפוקה ל-90',add_short:'הוסף למעקב',open_tm:'פתח בטרנספרמרקט'}
+};
+let LANG='en';
+function toggleLang(){LANG=LANG==='en'?'he':'en';document.documentElement.lang=LANG;document.documentElement.dir=LANG==='he'?'rtl':'ltr';document.getElementById('lang').textContent=LANG==='en'?'HE / EN':'EN / HE';document.querySelectorAll('[data-t]').forEach(el=>{const k=el.getAttribute('data-t');if(I18N[LANG][k])el.textContent=I18N[LANG][k];});render();}
+const he=()=>LANG==='he';
+const IMG=n=>`https://placehold.co/120x120/11110f/c9a66b?text=${encodeURIComponent(n.split(' ').map(w=>w[0]).join('').slice(0,3))}`;
+const DOT={free:'#b64235',contract:'#b07a2b',fm:'#a47d43',riser:'#a47d43',form:'#4a5f6f',minutes:'#4a5f6f',output:'#5c6f4a',intensity:'#5c6f4a'};
+
+/* ───── per-mode mock data ───── */
+const ALPHA=[
+  {n:'Ensar Brahic',pos:'FWD',lg:'Jupiler Pro League',age:22,club:'Beerschot VA',mv:'€1.5M',score:91,tier:'a',verdict:'SIGN',trig:'form',why:'5 goals in last 7 — API rating up 0.4 vs season. Output spiking ahead of value.',stats:{Goals:'0.71',Assists:'0.19',Rating:'7.21'}},
+  {n:'Malek El Mala',pos:'FWD',lg:'2. Bundesliga',age:21,club:'1.FC Köln',mv:'€1.8M',score:91,tier:'a',verdict:'SIGN',trig:'fm',why:'FM potential 158 vs current 131 — a 27-point gap. Buy before breakout.',stats:{Goals:'0.55',Assists:'0.28',Rating:'7.04'}},
+  {n:'Sankara Karamoko',pos:'FWD',lg:'Bundesliga (AUT)',age:22,club:'Wolfsberger AC',mv:'€900K',score:90,tier:'a',verdict:'SIGN',trig:'riser',why:'Value jumped €450K→€900K in one window, still below ceiling.',stats:{Goals:'0.48',Assists:'0.22',Rating:'6.98'}},
+  {n:'Dario Pavlović',pos:'AM',lg:'SuperLiga (SRB)',age:23,club:'FK Čukarički',mv:'€750K',score:88,tier:'a',verdict:'SIGN',trig:'contract',why:'Contract expires in 6 months — strong leverage window.',stats:{Goals:'0.21',Assists:'0.41',Rating:'7.11'}},
+  {n:'Omer Turgeman',pos:'FWD',lg:'Ligat haAl (ISR)',age:21,club:'Maccabi Netanya',mv:'€500K',score:85,tier:'b',verdict:'SIGN',trig:'output',why:'Combined G+A per 90 top-5 in league. Israeli market fit.',stats:{Goals:'0.44',Assists:'0.33',Rating:'7.02'}},
+  {n:'Mateo Čolak',pos:'DM',lg:'HNL (CRO)',age:24,club:'HNK Rijeka',mv:'€1.1M',score:83,tier:'b',verdict:'MONITOR',trig:'intensity',why:'Tackles + interceptions per 90 lead the league. Physical profile travels.',stats:{'Tkl+Int':'5.4','Duels%':'63%',Rating:'6.91'}},
+  {n:'Marko Ilić',pos:'GK',lg:'Free agent',age:26,club:'Free agent',mv:'€300K',score:74,tier:'c',verdict:'SIGN',trig:'free',why:'Contract expired — zero fee, pure wage play. Shot-stopping above last league.',stats:{'Save%':'74%','CS':'0.33',Rating:'6.8'}},
+];
+const DISCOVERY=[
+  {src:'req',n:'Tomás Belmonte',pos:'CM',age:24,club:'Lanús',lg:'Primera (ARG)',mv:'€1.4M',label:'Request match · open CM brief',stats:'G/90 0.08 · A/90 0.18 · Rating 6.86',played:2},
+  {src:'gem',n:'Petar Krivak',pos:'RB',age:19,club:'NK Osijek',lg:'HNL (CRO)',mv:'€250K',label:'Hidden Gem ★ 87',stats:'FM CA 118 · FM PA 150 (+32)',gem:'19yo with FM potential 150 and barely any minutes yet. Flag before the market catches on.',played:0},
+  {src:'gem',n:'Luka Ranđelović',pos:'LW',age:20,club:'FK Vojvodina',lg:'SuperLiga (SRB)',mv:'€600K',label:'Hidden Gem ★ 81',stats:'Dribbles 3.1 · A/90 0.24 · Rating 6.84',gem:'Just broke into the XI, dribble volume high. Early mover advantage.',played:1},
+  {src:'gen',n:'Deniz Aydın',pos:'LB',age:23,club:'Göztepe',lg:'Süper Lig (TUR)',mv:'€1.2M',label:'Discovery',stats:'A/90 0.26 · Tkl+Int 3.8 · Rating 6.82',played:0},
+  {src:'gen',n:'Youssef Benali',pos:'RW',age:22,club:'Raja Casablanca',lg:'Botola Pro (MAR)',mv:'€650K',label:'Discovery',stats:'G/90 0.39 · A/90 0.31 · Rating 6.95',played:3},
+];
+const AGENTS_DATA=[
+  {flag:'🇷🇸',name:'Balkan Eye',players:[
+    {ptype:'Contract leverage',n:'Dario Pavlović',pos:'AM',age:23,club:'FK Čukarički',lg:'SuperLiga',mv:'€750K',reason:'6 months left and top-quartile creativity for the league — classic leverage window in your band.'},
+    {ptype:'Riser',n:'Nikola Stević',pos:'CB',age:23,club:'FK Radnički',lg:'SuperLiga',mv:'€400K',reason:'Aerial duels 71%, value at the band floor. Club unlikely to renew.'},
+  ]},
+  {flag:'🇦🇷',name:'LatAm Radar',players:[
+    {ptype:'FM gap',n:'Agustín Rossi',pos:'AM',age:21,club:'Defensa y Justicia',lg:'Primera',mv:'€850K',reason:'FM gap 22 points, strong key-pass volume. South-American export profile.'},
+  ]},
+  {flag:'🇲🇦',name:'Value Hunter',players:[
+    {ptype:'Form rising',n:'Youssef Benali',pos:'RW',age:22,club:'Raja Casablanca',lg:'Botola Pro',mv:'€650K',reason:'3 goals + 2 assists in 4. Pace profile fits counter systems, room to resell.'},
+  ]},
+];
+const ASK=[
+  {pct:88,n:'Ensar Brahic',pos:'FWD',age:22,club:'Beerschot VA',mv:'€1.5M',verdict:'SIGN'},
+  {pct:81,n:'Omer Turgeman',pos:'FWD',age:21,club:'Maccabi Netanya',mv:'€500K',verdict:'SIGN'},
+  {pct:72,n:'Sankara Karamoko',pos:'FWD',age:22,club:'Wolfsberger AC',mv:'€900K',verdict:'MONITOR'},
+];
+const SIGNATURE=[['Non-penalty xG','0.52',86],['Shots on target /90','1.9',78],['Progressive carries','4.1',71],['Box touches /90','6.3',83],['Pressures /90','18.2',64]];
+const SUCCESSORS=[
+  {n:'Ensar Brahic',pos:'FWD',age:22,club:'Beerschot VA',lg:'Jupiler Pro',mv:'€1.5M',score:84,b:[['Signature',91],['Value gap',72],['Age',88]]},
+  {n:'Benjamín Agüero',pos:'FWD',age:20,club:'Independiente',lg:'Primera (ARG)',mv:'€1.1M',score:79,b:[['Signature',84],['Value gap',80],['Age',92]]},
+  {n:'Sankara Karamoko',pos:'FWD',age:22,club:'Wolfsberger AC',lg:'Bundesliga (AUT)',mv:'€900K',score:76,b:[['Signature',80],['Value gap',77],['Age',88]]},
+];
+
+const CFG={
+  alpha:{crumb:{en:'Alpha Board',he:'לוח אלפא'},kicker:{en:'Alpha generation / Men platform',he:'ייצור אלפא / פלטפורמת גברים'},title:{en:['Alpha ','board.'],he:['לוח ','אלפא.']},sub:{en:'Signable players in your acquisition range, surfaced before the market reacts. One ranked board, one reason each.',he:'שחקנים בני-החתמה בטווח הרכש שלך, שמתגלים לפני שהשוק מגיב. לוח אחד מדורג, סיבה אחת לכל אחד.'},signals:true,band:true},
+  discovery:{crumb:{en:'Discovery',he:'גילוי'},kicker:{en:'Daily feed / Men platform',he:'פיד יומי / פלטפורמת גברים'},title:{en:['Discovery ','feed.'],he:['פיד ','גילוי.']},sub:{en:'A fresh daily stream — request matches, hidden gems and general finds, pulled from the full scout database.',he:'זרם יומי טרי — התאמות דרישה, יהלומים נסתרים ומציאות כלליות מתוך מאגר הסקאוט.'},signals:false,band:true},
+  agents:{crumb:{en:'Scout Agents',he:'סוכני סקאוט'},kicker:{en:'Persona network / Men platform',he:'רשת פרסונות / פלטפורמת גברים'},title:{en:['Scout ','agents.'],he:['סוכני ','סקאוט.']},sub:{en:'Each AI scout persona works a region and style, streaming its own picks. Thumbs feedback teaches the agents.',he:'כל פרסונת סקאוט מכסה אזור וסגנון ומזרימה בחירות. משוב מלמד את הסוכנים.'},signals:false,band:true},
+  ask:{crumb:{en:'Ask',he:'שאל'},kicker:{en:'Natural-language search / Men platform',he:'חיפוש בשפה טבעית / פלטפורמת גברים'},title:{en:['Ask the ','scout.'],he:['שאל את ','הסקאוט.']},sub:{en:'Describe the player in your own words. The scout interprets the brief and returns matches ranked by fit.',he:'תאר את השחקן במילים שלך. הסקאוט מפרש ומחזיר התאמות מדורגות.'},signals:false,band:true},
+  next:{crumb:{en:'Successors',he:'יורשים'},kicker:{en:'Signature match / Men platform',he:'התאמת חתימה / פלטפורמת גברים'},title:{en:['Find the ','next.'],he:['מצא את ','הבא.']},sub:{en:'Pick a reference player; the engine finds signable successors with a similar statistical signature, in your band.',he:'בחר שחקן ייחוס והמנוע ימצא יורשים עם חתימה סטטיסטית דומה בטווח שלך.'},signals:false,band:true}
+};
+
+/* ───── state ───── */
+let INTENT='alpha', LENS='all', POS='all', SRC='all', AGENT='all', askDone=false, nextDone=false, refName='Dušan Vlahović';
+
+function setIntent(k){INTENT=k;document.querySelectorAll('.intent').forEach(b=>b.classList.toggle('on',b.dataset.intent===k));LENS='all';POS='all';SRC='all';AGENT='all';askDone=false;nextDone=false;render();}
+
+function render(){
+  const c=CFG[INTENT];
+  document.getElementById('crumb').textContent=c.crumb[LANG];
+  document.getElementById('kicker').textContent=c.kicker[LANG];
+  const[a,b]=c.title[LANG];document.getElementById('title').innerHTML=`${a}<span>${b}</span>`;
+  document.getElementById('sub').textContent=c.sub[LANG];
+  document.getElementById('band').style.display=c.band?'flex':'none';
+  document.getElementById('signals').style.display=c.signals?'flex':'none';
+  renderControl();
+  renderStage();
+}
+
+/* control bars */
+const LENSES=[['all','All','הכל'],['riser','Risers','עליות'],['form','In-form','בכושר'],['contract','Leverage','מינוף'],['free','Free','חופשי'],['intensity','Intensity','אינטנסיביות']];
+const POSES=['all','GK','DEF','FB','DM','CM','AM','WING','FWD'];
+const SRCS=[['all','All sources','הכל'],['req','Request matches','התאמות דרישה'],['gem','Hidden gems','יהלומים נסתרים'],['gen','General','כללי']];
+const AGS=[['all','All agents','כל הסוכנים'],['Balkan Eye','🇷🇸 Balkan Eye','🇷🇸 עין הבלקן'],['LatAm Radar','🇦🇷 LatAm Radar','🇦🇷 ראדאר'],['Value Hunter','🇲🇦 Value Hunter','🇲🇦 צייד ערך']];
+const EXAMPLES={en:['Fast strikers under 24 with 5+ goals','Creative midfielders from Belgium under 26','Left-footed centre-backs, Eastern Europe','Free-agent wingers with pace'],he:['חלוצים מהירים עד 24 עם 5+ שערים','קשרים יצירתיים מבלגיה עד 26','בלמים שמאליים ממזרח אירופה','כנפים חופשיים עם מהירות']};
+
+function chips(items,cur,fn,gold){return `<div class="chips">`+items.map(it=>{const id=it[0],l=he()&&it[2]?it[2]:it[1];return `<button class="chip${gold?' gold':''}${id===cur?' on':''}" onclick="${fn}('${id}')">${l}</button>`;}).join('')+`</div>`;}
+
+function renderControl(){
+  const el=document.getElementById('ctl'); el.innerHTML='';
+  if(INTENT==='alpha'){el.innerHTML=chips(LENSES,LENS,'sLens')+chips(POSES.map(p=>[p,p,p]),POS,'sPos',true);}
+  else if(INTENT==='discovery'){el.innerHTML=chips(SRCS,SRC,'sSrc');}
+  else if(INTENT==='agents'){el.innerHTML=chips(AGS,AGENT,'sAgent')+chips(POSES.map(p=>[p,p,p]),POS,'sPos',true);}
+  else if(INTENT==='ask'){
+    const ph=he()?'תאר שחקן… למשל "חלוץ מהיר עד 23 בטווח שלי"':'Describe a player… e.g. "fast striker under 23 in my band"';
+    el.innerHTML=`<div class="console">
+      <div class="term"><span class="d"></span>${he()?'מסוף חיפוש הסקאוט':'Scout search terminal'}</div>
+      <div class="askwrap"><textarea id="ask" rows="2" placeholder="${ph}">${askDone?(he()?'חלוצים מהירים עד 24 עם 5+ שערים':'fast strikers under 24 with 5+ goals'):''}</textarea><button class="go" onclick="runAsk()">${he()?'חפש':'Search'}</button></div>
+      <div class="divmode"><span class="dl">${he()?'מצב גיוון':'Diversity'}</span>${['Strict','Balanced','Discovery'].map((m,i)=>`<button class="chip${i===1?' on':''}">${m}</button>`).join('')}</div>
+      <div class="examples">${EXAMPLES[LANG].map(e=>`<button class="ex" onclick="document.getElementById('ask').value='${e.replace(/'/g,"\\'")}'">${e}</button>`).join('')}</div>
+    </div>`;
+  }
+  else if(INTENT==='next'){
+    el.innerHTML=`<div class="cfg">
+      <div class="fld"><label>${he()?'שחקן ייחוס':'Reference player'}</label><input type="text" id="ref" value="${refName}"></div>
+      <div class="fld"><label>${he()?'טווח גיל':'Age range'} <span class="rngval">17 – 23</span></label><input type="range" min="17" max="35" value="23"></div>
+      <div class="fld"><label>${he()?'טווח שווי':'Market value'} <span class="rngval">€150K – €2M</span></label><input type="range" min="0" max="20" value="7"></div>
+      <button class="runbtn" onclick="runNext()">${he()?'מצא יורשים':'Find successors'}</button>
+    </div>`;
+  }
+}
+function sLens(v){LENS=v;renderControl();renderStage();}
+function sPos(v){POS=v;renderControl();renderStage();}
+function sSrc(v){SRC=v;renderControl();renderStage();}
+function sAgent(v){AGENT=v;renderControl();renderStage();}
+function runAsk(){askDone=true;renderControl();renderStage();}
+function runNext(){nextDone=true;const r=document.getElementById('ref');if(r)refName=r.value||refName;renderControl();renderStage();}
+
+/* stage render per mode */
+function trigLabel(t){const L={en:{free:'Free agent',contract:'Contract leverage',fm:'FM potential gap',riser:'Undervalued riser',form:'Form rising',minutes:'Minutes opportunity',output:'Output above league',intensity:'Defensive intensity'},he:{free:'חופשי',contract:'מינוף חוזה',fm:'פער פוטנציאל',riser:'מתומחר נמוך',form:'כושר עולה',minutes:'הזדמנות דקות',output:'תפוקה מעל הליגה',intensity:'אינטנסיביות'}};return L[LANG][t]||t;}
+
+function renderStage(){
+  const stage=document.getElementById('stage'), count=document.getElementById('count');
+  if(INTENT==='alpha') return renderAlpha(stage,count);
+  if(INTENT==='discovery') return renderDiscovery(stage,count);
+  if(INTENT==='agents') return renderAgents(stage,count);
+  if(INTENT==='ask') return renderAsk(stage,count);
+  if(INTENT==='next') return renderNext(stage,count);
+}
+
+function renderAlpha(stage,count){
+  let list=ALPHA.slice();
+  if(LENS!=='all')list=list.filter(p=>p.trig===LENS);
+  if(POS!=='all')list=list.filter(p=>p.pos===POS);
+  count.innerHTML=`<b>${list.length}</b> ${he()?'הזדמנויות · מדורג לפי ציון אלפא':'opportunities · ranked by alpha score'}`;
+  stage.innerHTML=`<div class="board">`+list.map((p,i)=>`
+    <article class="card tier-${p.tier}" onclick='openDrawer(${JSON.stringify(p).replace(/'/g,"&#39;")})'>
+      <div class="c-head"><img src="${IMG(p.n)}"><div class="c-id"><div class="nm">${p.n}</div><div class="meta"><b>${p.pos}</b> · ${p.lg} · ${he()?'גיל':'Age'} ${p.age}</div></div><div class="ascore${p.score>=85?' hot':''}"><b>${p.score}</b><small>ALPHA</small></div></div>
+      <div class="c-why"><span class="tag"><span class="d" style="background:${DOT[p.trig]}"></span>${trigLabel(p.trig)}</span><p>${p.why}</p></div>
+      <div class="c-foot"><div class="mv"><b>${p.mv}</b><small>${p.club}</small></div><div class="acts"><button class="save" onclick="event.stopPropagation();fakeShortlist()"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9-9a5 5 0 0 1 9-2 5 5 0 0 1 9 2c-2 4.5-9 9-9 9z"/></svg></button><button class="dismiss" onclick="event.stopPropagation();this.closest('.card').style.opacity=.3"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div>
+    </article>`).join('')+`</div>`;
+  if(!list.length)stage.innerHTML=`<div class="placeholder">${he()?'אין תוצאות למסנן':'No results for this filter'}</div>`;
+}
+
+function renderDiscovery(stage,count){
+  let list=DISCOVERY.slice();
+  if(SRC!=='all')list=list.filter(p=>p.src===SRC);
+  count.innerHTML=`<b>${list.length}</b> ${he()?'מועמדים בפיד של היום · עודכן לפני 2 שעות':'candidates in today\u2019s feed · updated 2h ago'}`;
+  stage.innerHTML=`<div class="feed">`+list.map(p=>{
+    const cls=p.src==='req'?'req':p.src==='gem'?'gem':'gen';
+    return `<div class="frow"><img src="${IMG(p.n)}"><div class="fbody">
+      <div class="fname">${p.n}</div>
+      <div class="fmeta">${p.pos} · ${he()?'גיל':'Age'} ${p.age} · ${p.mv} · ${p.club} · ${p.lg}</div>
+      <div class="ftags"><span class="srcbadge ${cls}">${p.label}</span></div>
+      <div class="fstats">${p.stats}</div>
+      ${p.gem?`<div class="gemwhy"><label>${he()?'למה יהלום נסתר?':'Why hidden gem?'}</label><p>${p.gem}</p></div>`:''}
+      <div class="played"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/></svg>${p.played>0?(he()?`${p.played} מהסגל שיחקו איתו`:`${p.played} roster players played with him`):(he()?'אין קשרי סגל':'No roster links')}</div>
+    </div><div class="facts"><button class="btn ghost"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"/></svg>TM</button><button class="btn gold" onclick="fakeShortlist()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>${he()?'מעקב':'Shortlist'}</button></div></div>`;
+  }).join('')+`</div>`;
+  if(!list.length)stage.innerHTML=`<div class="placeholder">${he()?'אין מועמדים למקור הזה':'No candidates for this source'}</div>`;
+}
+
+function renderAgents(stage,count){
+  let secs=AGENTS_DATA.slice();
+  if(AGENT!=='all')secs=secs.filter(s=>s.name===AGENT);
+  if(POS!=='all')secs=secs.map(s=>({...s,players:s.players.filter(p=>p.pos===POS)})).filter(s=>s.players.length);
+  const total=secs.reduce((a,s)=>a+s.players.length,0);
+  count.innerHTML=`<b>${total}</b> ${he()?'בחירות · הרצה אחרונה לפני 6 שעות':'picks across your agents · last run 6h ago'}`;
+  stage.innerHTML=secs.map(s=>`<section class="agentsec">
+    <div class="agenthead"><span class="flag">${s.flag}</span><b>${s.name}</b><span class="live"><span class="d"></span>${s.players.length} ${he()?'שחקנים':'players'}</span></div>
+    <div class="agentbody">${s.players.map(p=>`<div class="arow"><img src="${IMG(p.n)}"><div class="abody">
+      <div class="atop"><span class="ptype">${p.ptype}</span></div>
+      <div class="aname">${p.n}</div>
+      <div class="ameta">${p.pos} · ${he()?'גיל':'Age'} ${p.age} · ${p.mv} · ${p.club} · ${p.lg}</div>
+      <div class="areason">${p.reason}</div>
+      <div class="aacts"><button class="thumb up"><svg viewBox="0 0 20 20"><path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.3v5.4a2 2 0 001.1 1.8A4 4 0 008.9 18h5.4a2 2 0 002-1.6l1.2-6A2 2 0 0015.6 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.7a4 4 0 01-.8 2.4L6.8 7.9a4 4 0 00-.8 2.4z"/></svg></button><button class="thumb down"><svg viewBox="0 0 20 20"><path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.7V4.2a2 2 0 00-1.1-1.8A4 4 0 0011 2H5.6a2 2 0 00-2 1.6l-1.2 6A2 2 0 004.4 12H8v4a2 2 0 002 2 1 1 0 001-1v-.7a4 4 0 01.8-2.4l1.4-1.9a4 4 0 00.8-2.4z"/></svg></button><button class="btn ghost">TM →</button><button class="btn gold" onclick="fakeShortlist()">+ ${he()?'מעקב':'Shortlist'}</button></div>
+    </div></div>`).join('')}</div>
+  </section>`).join('');
+  if(!total)stage.innerHTML=`<div class="placeholder">${he()?'אין בחירות למסנן הזה':'No picks match this filter'}</div>`;
+}
+
+function renderAsk(stage,count){
+  if(!askDone){count.textContent='';stage.innerHTML=`<div class="placeholder"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>${he()?'הקלד בריף למעלה כדי לקבל התאמות מדורגות':'Type a brief above to get ranked matches'}</div>`;return;}
+  count.innerHTML=`<b>${ASK.length}</b> ${he()?'מטרות נמצאו · מדורג לפי התאמה':'targets acquired · ranked by fit'}`;
+  stage.innerHTML=`<div class="interp"><span class="ii"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 4.5 16.8L21 21l-1.2-4.5A9 9 0 0 0 12 3Z"/></svg></span><div><b>${he()?'פרשנות הסקאוט':'Scout interpretation'}</b><p>${he()?'מחפש חלוצים מהירים בני ≤24 עם תפוקת שערים גבוהה, בטווח €150K–€2M. 3 התאמות דורגו לפי התאמה טקטית וסטטיסטית.':'Looking for quick centre-forwards aged ≤24 with high goal output, inside €150K–€2M. 3 matches ranked by tactical + statistical fit.'}</p></div></div>
+  <div class="askresults">`+ASK.map(p=>{
+    const deg=p.pct*3.6;
+    return `<div class="qrow" onclick='openDrawer(${JSON.stringify({...p,score:p.pct,why:(he()?"התאמה חזקה לבריף — פרופיל חלוץ מהיר עם תפוקה גבוהה.":"Strong brief match — quick, high-output forward profile."),stats:{Fit:p.pct+"%",Age:p.age,MV:p.mv}}).replace(/'/g,"&#39;")})'>
+      <div class="ring" style="background:conic-gradient(var(--gold) ${deg}deg, var(--paper-2) ${deg}deg)"><div class="inner">${p.pct}%</div></div>
+      <div class="qbody"><div class="qtop"><div class="qname">${p.n}</div><span class="verdict ${p.verdict}">${p.verdict}</span></div><div class="qmeta">${p.pos} · ${he()?'גיל':'Age'} ${p.age} · ${p.mv} · ${p.club}</div></div>
+    </div>`;}).join('')+`</div>
+  <button class="findmore" onclick="runAsk()"><svg viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>${he()?'חפש עוד מטרות':'Find more targets'}</button>`;
+}
+
+function renderNext(stage,count){
+  if(!nextDone){count.textContent='';stage.innerHTML=`<div class="placeholder"><svg viewBox="0 0 24 24"><path d="M12 2v6m0 0 3-3m-3 3L9 5"/><circle cx="12" cy="15" r="6"/></svg>${he()?'הזן שחקן ייחוס והרץ כדי למצוא יורשים בטווח שלך':'Enter a reference player and run to find successors in your band'}</div>`;return;}
+  count.innerHTML=`<b>${SUCCESSORS.length}</b> ${he()?'יורשים סטטיסטיים · נסרקו 26,830 שחקנים':'statistical successors · 26,830 players scanned'}`;
+  stage.innerHTML=`<div class="refcard">
+    <div class="rh"><img src="${IMG(refName)}"><div><small>${he()?'שחקן ייחוס':'Reference player'}</small><b>${refName}</b></div></div>
+    <div class="sig-title">${he()?'חתימה סטטיסטית (אחוזון מול עמדה)':'Statistical signature (percentile vs position)'}</div>
+    <div class="sigbars">${SIGNATURE.map(([l,v,pc])=>`<div class="sigbar"><span class="sl">${l}</span><span class="st"><i style="width:${pc}%"></i></span><span class="sp">${pc}</span></div>`).join('')}</div>
+  </div>
+  <div class="succ">`+SUCCESSORS.map(p=>`<div class="srow" onclick='openDrawer(${JSON.stringify({...p,verdict:"SIGN",trig:"riser",why:(he()?"חתימה דומה לשחקן הייחוס, בטווח הרכש שלך.":"Similar signature to the reference, inside your acquisition band."),stats:{Signature:p.b[0][1]+"%",Age:p.age,MV:p.mv}}).replace(/'/g,"&#39;")})'>
+    <img src="${IMG(p.n)}"><div class="sbody"><div class="sname">${p.n}</div><div class="smeta">${p.pos} · ${he()?'גיל':'Age'} ${p.age} · ${p.mv} · ${p.club} · ${p.lg}</div>
+    <div class="breakdown">${p.b.map(([k,v])=>`<span class="bchip">${k} <b>${v}</b></span>`).join('')}</div></div>
+    <div class="sscore"><b>${p.score}</b><small>${he()?'ציון':'MATCH'}</small></div>
+  </div>`).join('')+`</div>`;
+}
+
+/* drawer */
+function openDrawer(p){
+  document.getElementById('dImg').src=IMG(p.n);
+  document.getElementById('dName').textContent=p.n;
+  document.getElementById('dMeta').textContent=`${p.pos||''} · ${p.club||''}${p.lg?' · '+p.lg:''}`;
+  document.getElementById('dScore').textContent=p.score||'—';
+  const v=document.getElementById('dVerdict');v.textContent=p.verdict||'MONITOR';v.className='verdict '+(p.verdict||'MONITOR');
+  document.getElementById('dWhy').innerHTML=`<div class="w"><span class="n">01</span><span>${p.why||''}</span></div>`;
+  document.getElementById('dStats').innerHTML=Object.entries(p.stats||{}).map(([k,val])=>`<div><label>${k}</label><b>${val}</b></div>`).join('');
+  document.getElementById('scrim').classList.add('open');document.getElementById('drawer').classList.add('open');
+}
+function closeDrawer(){document.getElementById('scrim').classList.remove('open');document.getElementById('drawer').classList.remove('open');}
+function fakeShortlist(){alert(he()?'נוסף לרשימת המעקב (הדגמה)':'Added to shortlist (demo)');}
+function doRefresh(){const b=document.getElementById('refreshBtn');b.classList.add('live');setTimeout(()=>b.classList.remove('live'),900);renderStage();}
+
+render();
+</script>
+</body>
+</html>
