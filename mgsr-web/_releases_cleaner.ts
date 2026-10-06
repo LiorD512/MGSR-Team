@@ -94,6 +94,8 @@ const TM_HTML_PROXY_URL =
   process.env.TM_HTML_PROXY_URL ||
   'https://management.britsportgroup.com/api/transfermarkt/html-proxy';
 const FEED_EVENTS_TABLE = 'FeedEvents'; // MEN platform collection
+const SCRAPING_CACHE_COLLECTION = 'ScrapingCache';
+const RELEASES_ALL_CACHE_KEY = 'releases-all';
 const WORKER_RUNS_COLLECTION = 'WorkerRuns';
 const WORKER_STATE_DOC = 'ReleasesCleanerWorker';
 const FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB = 'NEW_RELEASE_FROM_CLUB';
@@ -230,28 +232,22 @@ function parsePlayerAge(value?: string | null): number | null {
 }
 
 /**
- * True when an event could be visible on the screen (value 150k–4M, age ≤ 33).
- *
- * The screen enriches value/age at runtime (from the `releases-all` cache and
- * live profile fetches), so an event doc may have blank value/age even though
- * the player IS shown. To avoid skipping anyone the user sees, we only EXCLUDE
- * a player when their data is present AND clearly outside the gate. Unknown /
- * blank value or age is treated as "could be visible" (processed anyway — the
- * profile fetch we do next also yields the authoritative verdict).
+ * True when an event is visible on the screen. Mirrors the screen's
+ * `filteredPlayers` exactly: it REQUIRES a known market value in [150k, 4M] and
+ * a known age ≤ 33 (`value >= MIN && value <= MAX && age !== null && age <= MAX`).
+ * A player with no resolvable value/age is NOT shown by the screen, so we treat
+ * missing data as not-visible here too. Value/age should be resolved from the
+ * event doc first and the `releases-all` cache second (same sources as screen).
  */
 function isVisibleOnScreen(marketValue?: string, playerAge?: string): boolean {
-  const hasValue = !!(marketValue && marketValue.trim() && !marketValue.includes('-'));
-  const hasAge = parsePlayerAge(playerAge) !== null;
-
-  if (hasValue) {
-    const value = parseMarketValue(marketValue);
-    if (value < NOTIFICATION_MIN_MARKET_VALUE || value > NOTIFICATION_MAX_MARKET_VALUE) return false;
-  }
-  if (hasAge) {
-    const age = parsePlayerAge(playerAge)!;
-    if (age > NOTIFICATION_MAX_AGE) return false;
-  }
-  return true;
+  const value = parseMarketValue(marketValue);
+  const age = parsePlayerAge(playerAge);
+  return (
+    value >= NOTIFICATION_MIN_MARKET_VALUE &&
+    value <= NOTIFICATION_MAX_MARKET_VALUE &&
+    age !== null &&
+    age <= NOTIFICATION_MAX_AGE
+  );
 }
 
 // ── Profile classification ──
@@ -337,6 +333,47 @@ async function recordFailure(dbRef: Firestore, error: string, durationMs: number
   log(`[WorkerRuns] FAILED — ${error}`);
 }
 
+/**
+ * Load the `releases-all` chunked ScrapingCache that the screen uses to enrich
+ * value/age. Returns a map playerUrl -> { marketValue, playerAge }.
+ * Chunk format (see src/lib/scrapingCache.ts): docs `releases-all-chunk-0..N`,
+ * each with a `payload` array; chunk-0 also has `totalChunks`.
+ */
+async function loadReleasesAllCache(
+  dbRef: Firestore
+): Promise<Map<string, { marketValue?: string; playerAge?: string }>> {
+  const map = new Map<string, { marketValue?: string; playerAge?: string }>();
+  try {
+    const col = dbRef.collection(SCRAPING_CACHE_COLLECTION);
+    const first = await col.doc(`${RELEASES_ALL_CACHE_KEY}-chunk-0`).get();
+    if (!first.exists) return map;
+    const firstData = first.data() || {};
+    const totalChunks = Number(firstData.totalChunks) || 1;
+
+    const payloads: any[] = [...((firstData.payload as any[]) || [])];
+    if (totalChunks > 1) {
+      const snaps = await Promise.all(
+        Array.from({ length: totalChunks - 1 }, (_v, i) =>
+          col.doc(`${RELEASES_ALL_CACHE_KEY}-chunk-${i + 1}`).get()
+        )
+      );
+      for (const s of snaps) if (s.exists) payloads.push(...(((s.data() || {}).payload as any[]) || []));
+    }
+
+    for (const p of payloads) {
+      const url = typeof p?.playerUrl === 'string' ? p.playerUrl : '';
+      if (!url) continue;
+      map.set(url, {
+        marketValue: typeof p?.marketValue === 'string' ? p.marketValue : undefined,
+        playerAge: typeof p?.playerAge === 'string' ? p.playerAge : undefined,
+      });
+    }
+  } catch (err) {
+    log(`Warning: failed to load ${RELEASES_ALL_CACHE_KEY} cache: ${err instanceof Error ? err.message : err}`);
+  }
+  return map;
+}
+
 interface ScreenEvent {
   id: string;
   playerUrl: string;
@@ -397,12 +434,38 @@ async function main() {
       byUrl.get(ev.playerUrl)!.push(ev);
     }
 
+    // The FeedEvent docs often have blank marketValue/playerAge — the screen
+    // enriches those from the `releases-all` ScrapingCache. Load that cache and
+    // use it as the authoritative value/age source for the visibility gate,
+    // exactly like the screen does.
+    const metaCache = await loadReleasesAllCache(db);
+    log(`Loaded releases-all cache entries: ${metaCache.size}`);
+
+    const valueFor = (ev: ScreenEvent): string =>
+      ev.marketValue || metaCache.get(ev.playerUrl)?.marketValue || '';
+    const ageFor = (ev: ScreenEvent): string =>
+      ev.playerAge || metaCache.get(ev.playerUrl)?.playerAge || '';
+
+    // Diagnostic: where does value/age data come from? (pinpoints empty sources)
+    let docHasVA = 0;
+    let cacheHasVA = 0;
+    let noVA = 0;
+    for (const url of Array.from(byUrl.keys())) {
+      const ev = byUrl.get(url)![0];
+      const docVA = !!(ev.marketValue && ev.playerAge);
+      const cacheVA = !!(metaCache.get(url)?.marketValue && metaCache.get(url)?.playerAge);
+      if (docVA) docHasVA++;
+      else if (cacheVA) cacheHasVA++;
+      else noVA++;
+    }
+    log(`Value/age source — doc: ${docHasVA}, cache: ${cacheHasVA}, neither: ${noVA}`);
+
     // Only consider players actually VISIBLE on the screen: the screen filters
     // to market value 150k–4M and age ≤ 33 (release-notifications `filteredPlayers`).
     // A player is visible if any of their events passes that gate.
     const allPlayerCount = byUrl.size;
     let playerUrls = Array.from(byUrl.keys()).filter((url) =>
-      byUrl.get(url)!.some((e) => isVisibleOnScreen(e.marketValue, e.playerAge))
+      byUrl.get(url)!.some((e) => isVisibleOnScreen(valueFor(e), ageFor(e)))
     );
     log(
       `Screen release events: ${allEvents.length} | unique players: ${allPlayerCount} | ` +
