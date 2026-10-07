@@ -1,24 +1,33 @@
 'use client';
 
 /**
- * War Room → Scout Agents.
+ * War Room → Scout Agents — "The Director's Desk".
  *
- * Each AI scout persona monitors a country/region and streams its own picks.
- * Grouped into sections by agent, with 👍/👎 feedback and position filter.
- * Rendered inside the Brit light room shell.
+ * An action-first decision surface, not a country-grouped list. Each pick
+ * already passed through the AI Sport Director (scoutAgent → sportDirector →
+ * Gemini); this screen surfaces that judgement:
+ *   • the recommended action (SIGN NOW / MONITOR / LOW PRIORITY),
+ *   • the Director's plain-language verdict,
+ *   • the fit score, value arc, contract leverage, FM potential, and
+ *   • cross-agent corroboration ("found by N scouts").
+ *
+ * One calm sentence up top conveys the daily scale of the 44-agent network.
+ * No thumbs — the honest feedback signal is a shortlist add. Cards open a
+ * dossier drawer with the full report. Rendered inside the Brit light shell.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { collection, doc, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
-import { callShortlistAdd, callScoutProfileFeedbackSet } from '@/lib/callables';
+import { callShortlistAdd } from '@/lib/callables';
 import { extractPlayerIdFromUrl } from '@/lib/api';
-import { AGENTS_CONFIG, type AgentId } from '@/lib/scoutAgentConfig';
 import { getPositionDisplayName } from '@/lib/appConfig';
-import type { ScoutProfileResponse } from '@/types/scoutProfiles';
+import type { ScoutProfileResponse, ScoutRunSummary } from '@/types/scoutProfiles';
+
+const TM_DEFAULT_IMG = 'https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1';
 
 function samePlayer(a: string, b: string): boolean {
   const ia = extractPlayerIdFromUrl(a);
@@ -28,8 +37,7 @@ function samePlayer(a: string, b: string): boolean {
 
 function shortenPosition(pos: string | undefined): string {
   if (!pos?.trim()) return '—';
-  const p = pos.trim();
-  const lower = p.toLowerCase();
+  const lower = pos.trim().toLowerCase();
   const map: Record<string, string> = {
     goalkeeper: 'GK', 'centre-back': 'CB', 'center-back': 'CB',
     'right-back': 'RB', 'left-back': 'LB', 'defensive midfield': 'DM',
@@ -38,41 +46,46 @@ function shortenPosition(pos: string | undefined): string {
     'second striker': 'SS', striker: 'ST',
   };
   for (const [k, v] of Object.entries(map)) if (lower.includes(k)) return v;
-  return p.split(' - ').pop()?.toUpperCase() || p.toUpperCase();
+  return pos.trim().split(' - ').pop()?.toUpperCase() || pos.trim().toUpperCase();
 }
 
-function timeAgo(ms: number): string {
+function timeAgo(ms: number, he: boolean): string {
   const s = Math.floor((Date.now() - ms) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return `${Math.floor(s / 86400)}d ago`;
+  if (s < 3600) return he ? 'ממש עכשיו' : 'just now';
+  if (s < 86400) return `${Math.floor(s / 3600)}${he ? ' שע׳' : 'h ago'}`;
+  return `${Math.floor(s / 86400)}${he ? ' ימים' : 'd ago'}`;
 }
 
-const TM_DEFAULT_IMG = 'https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1';
+const fmtInt = (n: number) => n.toLocaleString('en-US');
 
-// Fixed position filter list — mirrors the Alpha Board screen exactly
-// (mgsr-web/src/components/AlphaBoardMen.tsx → POSITIONS), in tactical order.
-const POSITION_FILTER_ORDER = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'RW', 'LW', 'CF'] as const;
+// Director action → verdict flag class + label
+type Lens = 'sign' | 'monitor' | 'all';
+function actionTier(action?: string | null): 'sign' | 'monitor' | 'low' {
+  if (action === 'SHORTLIST_NOW') return 'sign';
+  if (action === 'LOW_PRIORITY') return 'low';
+  return 'monitor';
+}
 
 export default function WarRoomScoutAgents() {
   const { user } = useAuth();
   const { lang } = useLanguage() as ReturnType<typeof useLanguage>;
+  const he = lang === 'he';
 
   const [profiles, setProfiles] = useState<ScoutProfileResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [run, setRun] = useState<ScoutRunSummary | null>(null);
   const [lastRunAt, setLastRunAt] = useState<number | null>(null);
-  const [agentFilter, setAgentFilter] = useState<AgentId | 'all'>('all');
+  const [loading, setLoading] = useState(true);
+  const [lens, setLens] = useState<Lens>('sign');
   const [posFilter, setPosFilter] = useState<string>('all');
-  const [feedback, setFeedback] = useState<Record<string, 'up' | 'down'>>({});
+  const [search, setSearch] = useState('');
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
   const [rosterUrls, setRosterUrls] = useState<Set<string>>(new Set());
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
+  const [savedUrls, setSavedUrls] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState<ScoutProfileResponse | null>(null);
 
-  const he = lang === 'he';
-
-  // Shortlist + roster status
+  // Shortlist + roster status (to exclude players you already have)
   useEffect(() => {
     if (!user) return;
     const u1 = onSnapshot(collection(db, 'Shortlists'), (snap) => {
@@ -84,49 +97,26 @@ export default function WarRoomScoutAgents() {
     return () => { u1(); u2(); };
   }, [user]);
 
-  // Feedback
-  useEffect(() => {
-    if (!user) return;
-    const ref = doc(db, 'ScoutProfileFeedback', user.uid);
-    const unsub = onSnapshot(ref, (snap) => {
-      const raw = (snap.data()?.feedback as Record<string, unknown>) || {};
-      const flat: Record<string, 'up' | 'down'> = {};
-      for (const [k, v] of Object.entries(raw)) {
-        flat[k] = (typeof v === 'object' && v !== null ? (v as { feedback: 'up' | 'down' }).feedback : v) as 'up' | 'down';
-      }
-      setFeedback(flat);
-    });
-    return () => unsub();
-  }, [user]);
-
-  // Load profiles
+  // Load profiles + sweep funnel
   const fetchProfiles = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (agentFilter !== 'all') params.set('agentId', agentFilter);
-      const res = await fetch(`/api/war-room/scout-profiles?${params.toString()}`, {
-        signal: AbortSignal.timeout(30000),
-      });
+      const res = await fetch('/api/war-room/scout-profiles', { signal: AbortSignal.timeout(30000) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setProfiles(data.profiles ?? []);
+      setRun(data.run ?? null);
       setLastRunAt(data.lastRunAt ?? null);
     } catch {
       setProfiles([]);
+      setRun(null);
       setLastRunAt(null);
     } finally {
       setLoading(false);
     }
-  }, [agentFilter]);
+  }, []);
 
   useEffect(() => { if (user) fetchProfiles(); }, [user, fetchProfiles]);
-
-  const setProfileFeedback = useCallback(async (profileId: string, fb: 'up' | 'down', agentId: string) => {
-    if (!user) return;
-    await callScoutProfileFeedbackSet({ uid: user.uid, profileId, feedback: fb, agentId });
-    setFeedback((prev) => ({ ...prev, [profileId]: fb }));
-  }, [user]);
 
   const addToShortlist = useCallback(async (p: ScoutProfileResponse) => {
     if (!user) return;
@@ -155,6 +145,7 @@ export default function WarRoomScoutAgents() {
         sourceAgentId: p.agentId,
         sourceProfileId: p.id,
       });
+      setSavedUrls((prev) => new Set(prev).add(url));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed');
     } finally {
@@ -162,58 +153,78 @@ export default function WarRoomScoutAgents() {
     }
   }, [user, rosterUrls, he]);
 
-  // Filter out roster + shortlisted, apply agent + position filters, group by agent
-  const visible = useMemo(() => {
-    return profiles
-      .filter((p) => {
-        const url = p.tmProfileUrl;
-        if (!url) return true;
-        if (Array.from(rosterUrls).some((r) => samePlayer(r, url))) return false;
-        if (Array.from(shortlistUrls).some((s) => samePlayer(s, url))) return false;
-        return true;
-      })
-      .filter((p) => (agentFilter === 'all' ? true : p.agentId === agentFilter))
-      .filter((p) => (posFilter === 'all' ? true : shortenPosition(p.position) === posFilter));
-  }, [profiles, rosterUrls, shortlistUrls, agentFilter, posFilter]);
+  // Exclude roster + shortlisted, then rank by Director fit score → match score.
+  const ranked = useMemo(() => {
+    const base = profiles.filter((p) => {
+      const url = p.tmProfileUrl;
+      if (!url) return true;
+      if (Array.from(rosterUrls).some((r) => samePlayer(r, url))) return false;
+      if (Array.from(shortlistUrls).some((s) => samePlayer(s, url))) return false;
+      return true;
+    });
+    return base.sort((a, b) => {
+      const fa = a.directorFitScore ?? 0;
+      const fb = b.directorFitScore ?? 0;
+      if (fb !== fa) return fb - fa;
+      return (b.matchScore ?? 0) - (a.matchScore ?? 0);
+    });
+  }, [profiles, rosterUrls, shortlistUrls]);
 
-  // Position filter follows the Alpha Board's fixed tactical order (not A→Z,
-  // and without stray codes like SS / LEFT MIDFIELD). Only surface positions
-  // that actually appear in the visible data, preserving the canonical order.
-  const availablePositions = useMemo(() => {
-    const present = new Set<string>();
-    for (const p of visible) {
-      const code = shortenPosition(p.position);
-      if (code && code !== '—') present.add(code);
+  const counts = useMemo(() => {
+    let sign = 0, monitor = 0;
+    for (const p of ranked) {
+      const t = actionTier(p.directorAction);
+      if (t === 'sign') sign += 1;
+      else if (t === 'monitor') monitor += 1;
     }
-    return POSITION_FILTER_ORDER.filter((code) => present.has(code));
-  }, [visible]);
+    return { sign, monitor, all: ranked.length };
+  }, [ranked]);
 
-  const agentIds = (Object.keys(AGENTS_CONFIG) as AgentId[]).sort((a, b) => {
-    const na = he ? AGENTS_CONFIG[a].nameHe : AGENTS_CONFIG[a].name;
-    const nb = he ? AGENTS_CONFIG[b].nameHe : AGENTS_CONFIG[b].name;
-    return na.localeCompare(nb, he ? 'he' : 'en');
-  });
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return ranked.filter((p) => {
+      // lens
+      if (lens === 'sign' && actionTier(p.directorAction) !== 'sign') return false;
+      if (lens === 'monitor' && actionTier(p.directorAction) !== 'monitor') return false;
+      // position
+      if (posFilter !== 'all' && shortenPosition(p.position) !== posFilter) return false;
+      // search
+      if (q) {
+        const hay = `${p.playerName} ${p.club} ${p.league} ${p.agentName}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [ranked, lens, posFilter, search]);
 
-  // Group players by agent, then order the sections A→Z by agent display name
-  // so the list matches the agent chip order (no more "Finland first").
-  const grouped = useMemo(() => {
-    const byAgent = visible.reduce<Record<string, ScoutProfileResponse[]>>((acc, p) => {
-      (acc[p.agentId] = acc[p.agentId] || []).push(p);
-      return acc;
-    }, {});
-    const agentName = (id: string) => {
-      const cfg = AGENTS_CONFIG[id as AgentId];
-      return (he ? cfg?.nameHe : cfg?.name) || id;
-    };
-    return Object.entries(byAgent).sort(([a], [b]) =>
-      agentName(a).localeCompare(agentName(b), he ? 'he' : 'en'),
-    );
-  }, [visible, he]);
+  const positions = useMemo(() => {
+    const order = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'RW', 'LW', 'CF'];
+    const present = new Set<string>();
+    for (const p of ranked) {
+      const c = shortenPosition(p.position);
+      if (c && c !== '—') present.add(c);
+    }
+    return order.filter((c) => present.has(c));
+  }, [ranked]);
 
   const displayPos = (pos: string | undefined) => {
     const code = shortenPosition(pos);
     return he ? getPositionDisplayName(code, true) : code;
   };
+
+  const laneTitle =
+    lens === 'sign'
+      ? (he ? <>המנהל <em>ממליץ להחתים</em></> : <>The Director is <em>telling you to sign</em></>)
+      : lens === 'monitor'
+        ? (he ? <>שחקנים <em>למעקב</em></> : <>Players to <em>monitor</em></>)
+        : (he ? <>כל <em>ההמלצות</em></> : <>All <em>calls</em></>);
+
+  const laneCount =
+    lens === 'sign' ? `${counts.sign} ${he ? 'המלצות · לפי ציון התאמה' : 'calls · ranked by fit score'}`
+      : lens === 'monitor' ? `${counts.monitor} ${he ? 'למעקב' : 'to monitor'}`
+        : `${counts.all} ${he ? 'המלצות' : 'approved'}`;
+
+  const isSaved = (url: string) => savedUrls.has(url) || Array.from(shortlistUrls).some((s) => samePlayer(s, url));
 
   return (
     <>
@@ -225,110 +236,334 @@ export default function WarRoomScoutAgents() {
             <h1>{he ? 'סוכני ' : 'Scout '}<span>{he ? 'סקאוט.' : 'agents.'}</span></h1>
             <p className="brit-ra-sub">
               {he
-                ? 'כל פרסונת סקאוט מכסה אזור וסגנון ומזרימה את הבחירות שלה. משוב (👍/👎) מלמד את הסוכנים מה אתה מחפש.'
-                : 'Each AI scout persona works a region and style, streaming its own picks. Thumbs feedback teaches the agents what you want.'}
+                ? 'אלה ההמלצות — מדורגות לפי כמה המנהל הספורטיבי נוטה אליהן, לא לפי מדינה.'
+                : 'These are the calls — ranked by how hard your Sport Director is leaning, not by country.'}
             </p>
           </div>
         </div>
       </header>
 
-      {/* meta line */}
-      <section className="brit-wr-metaline">
-        <span>{profiles.length} {he ? 'פרופילים' : 'profiles'}</span>
-        {lastRunAt && <span>· {he ? 'הרצה אחרונה' : 'last run'} {timeAgo(lastRunAt)}</span>}
-      </section>
+      {/* Scale line — the agents' daily work in one sentence */}
+      {run && (
+        <div className="brit-dd-scale">
+          <span className="dot" />
+          <p>
+            {he ? (
+              <>
+                {run.leaguesScanned ? <>הרשת סרקה <b>{fmtInt(run.leaguesScanned)}</b> ליגות ו</> : null}
+                {run.matched != null && <>העלתה <b>{fmtInt(run.matched)}</b> מועמדים. </>}
+                {run.approved != null && <>המנהל אישר <b>{fmtInt(run.approved)}</b>, מתוכם <b className="go">{counts.sign} להחתמה מיידית</b>.</>}
+              </>
+            ) : (
+              <>
+                Your scout network {run.leaguesScanned ? <>swept <b>{fmtInt(run.leaguesScanned)}</b> league scans and </> : null}
+                {run.matched != null && <>surfaced <b>{fmtInt(run.matched)}</b> candidates. </>}
+                {run.approved != null && <>The Director backed <b>{fmtInt(run.approved)}</b> — <b className="go">{counts.sign} to sign now</b>.</>}
+                {' '}Here they are.
+              </>
+            )}
+          </p>
+          {lastRunAt && <span className="ago">{timeAgo(lastRunAt, he)}</span>}
+        </div>
+      )}
 
-      {/* Agent chips */}
-      <div className="brit-wr-chips">
-        <button className={`brit-wr-chip${agentFilter === 'all' ? ' on' : ''}`} onClick={() => setAgentFilter('all')}>
-          {he ? 'כל הסוכנים' : 'All agents'}
-        </button>
-        {agentIds.map((aid) => (
-          <button key={aid} className={`brit-wr-chip${agentFilter === aid ? ' on' : ''}`} onClick={() => setAgentFilter(aid)}>
-            {AGENTS_CONFIG[aid].flag} {he ? AGENTS_CONFIG[aid].nameHe : AGENTS_CONFIG[aid].name}
-          </button>
-        ))}
+      {error && <div className="brit-dd-error">{error}</div>}
+
+      {/* Lane head */}
+      <div className="brit-dd-lane">
+        <h2>{laneTitle}</h2>
+        <span className="count">{laneCount}</span>
       </div>
 
-      {/* Position chips — same fixed set/order as the Alpha Board screen.
-          English shows short codes (GK, CB, …); Hebrew shows translated names. */}
-      <div className="brit-wr-chips">
+      {/* Filter rail */}
+      <div className="brit-dd-rail">
+        <div className="brit-dd-seg">
+          <button className={lens === 'sign' ? 'on' : ''} onClick={() => setLens('sign')}>
+            {he ? 'להחתמה' : 'Sign now'} · {counts.sign}
+          </button>
+          <button className={lens === 'monitor' ? 'on' : ''} onClick={() => setLens('monitor')}>
+            {he ? 'מעקב' : 'Monitor'} · {counts.monitor}
+          </button>
+          <button className={lens === 'all' ? 'on' : ''} onClick={() => setLens('all')}>
+            {he ? 'הכל' : 'All'} · {counts.all}
+          </button>
+        </div>
         <button className={`brit-wr-chip gold${posFilter === 'all' ? ' on' : ''}`} onClick={() => setPosFilter('all')}>
           {he ? 'כל העמדות' : 'All positions'}
         </button>
-        {availablePositions.map((code) => (
+        {positions.map((code) => (
           <button key={code} className={`brit-wr-chip gold${posFilter === code ? ' on' : ''}`} onClick={() => setPosFilter(code)}>
             {he ? getPositionDisplayName(code, true) : code}
           </button>
         ))}
+        <span className="spacer" />
+        <label className="brit-dd-search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={he ? 'שם, מועדון, ליגה או סוכן…' : 'Name, club, league or scout…'}
+          />
+        </label>
       </div>
 
-      {error && <div className="brit-wr-error">{error}</div>}
-
-      {loading && <div className="brit-wr-placeholder">{he ? 'מתחבר לרשת הסוכנים…' : 'Connecting to agent network…'}</div>}
+      {loading && <div className="brit-dd-placeholder">{he ? 'מתחבר לרשת הסוכנים…' : 'Connecting to agent network…'}</div>}
 
       {!loading && visible.length === 0 && (
-        <div className="brit-wr-placeholder">
-          {he ? 'אין פרופילים עדיין. הסוכנים רצים כל 3 ימים.' : 'No profiles yet. Agents run every 3 days.'}
+        <div className="brit-dd-placeholder">
+          {he ? 'אין המלצות תואמות. הסוכנים רצים כל כמה ימים.' : 'No matching calls. Agents run every few days.'}
         </div>
       )}
 
-      {!loading && grouped.map(([agentId, list]) => {
-        const cfg = AGENTS_CONFIG[agentId as AgentId];
-        return (
-          <section key={agentId} className="brit-wr-agentsec">
-            <div className="brit-wr-agenthead">
-              <span className="flag">{cfg?.flag || '🌍'}</span>
-              <b>{(he ? cfg?.nameHe : cfg?.name) || agentId}</b>
-              <span className="live"><span className="d" />{list.length} {he ? 'שחקנים' : 'players'}</span>
-            </div>
-            <div className="brit-wr-agentbody">
-              {list.map((p) => {
-                const isAdding = addingUrl === p.tmProfileUrl;
-                return (
-                  <div key={p.id} className="brit-wr-arow">
-                    <img
-                      src={p.profileImage || TM_DEFAULT_IMG}
-                      alt=""
-                      onError={(e) => { (e.target as HTMLImageElement).src = TM_DEFAULT_IMG; }}
-                    />
-                    <div className="abody">
-                      <div className="atop">
-                        <span className="ptype">{he ? p.profileTypeLabelHe : p.profileTypeLabel}</span>
-                      </div>
-                      <div className="aname">{p.playerName}</div>
-                      <div className="ameta">
-                        {displayPos(p.position)} · {he ? 'גיל' : 'Age'} {p.age} · {p.marketValue}{p.club ? ` · ${p.club}` : ''}{p.league ? ` · ${p.league}` : ''}
-                      </div>
-                      <div className="areason">{(he ? p.scoutExplanationHe : p.scoutExplanationEn) || p.matchReason}</div>
-                      <div className="aacts">
-                        <button
-                          className={`brit-wr-thumb up${feedback[p.id] === 'up' ? ' on' : ''}`}
-                          onClick={() => setProfileFeedback(p.id, 'up', p.agentId)}
-                          title={he ? 'בחירה טובה' : 'Good pick'}
-                        >
-                          <svg viewBox="0 0 20 20"><path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.3v5.4a2 2 0 001.1 1.8A4 4 0 008.9 18h5.4a2 2 0 002-1.6l1.2-6A2 2 0 0015.6 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.7a4 4 0 01-.8 2.4L6.8 7.9a4 4 0 00-.8 2.4z" /></svg>
-                        </button>
-                        <button
-                          className={`brit-wr-thumb down${feedback[p.id] === 'down' ? ' on' : ''}`}
-                          onClick={() => setProfileFeedback(p.id, 'down', p.agentId)}
-                          title={he ? 'לא רלוונטי' : 'Not relevant'}
-                        >
-                          <svg viewBox="0 0 20 20"><path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.7V4.2a2 2 0 00-1.1-1.8A4 4 0 0011 2H5.6a2 2 0 00-2 1.6l-1.2 6A2 2 0 004.4 12H8v4a2 2 0 002 2 1 1 0 001-1v-.7a4 4 0 01.8-2.4l1.4-1.9a4 4 0 00.8-2.4z" /></svg>
-                        </button>
-                        <a className="brit-wr-btn ghost" href={p.tmProfileUrl} target="_blank" rel="noopener noreferrer">TM →</a>
-                        <button className="brit-wr-btn gold" onClick={() => addToShortlist(p)} disabled={isAdding}>
-                          {isAdding ? (he ? 'מוסיף…' : 'Adding…') : `+ ${he ? 'מעקב' : 'Shortlist'}`}
-                        </button>
-                      </div>
+      {/* The deck */}
+      {!loading && visible.length > 0 && (
+        <div className="brit-dd-deck">
+          {visible.map((p) => {
+            const tier = actionTier(p.directorAction);
+            const arc = p.directorValueArc;
+            const months = contractMonths(p.contractExpires);
+            const saved = isSaved(p.tmProfileUrl);
+            const adding = addingUrl === p.tmProfileUrl;
+            return (
+              <article key={p.id} className={`brit-dd-card ${tier}`} role="button" tabIndex={0}
+                onClick={() => setDrawer(p)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDrawer(p); } }}>
+                <div className="brit-dd-act">
+                  <span className={`brit-dd-flag ${tier}`}>
+                    {tier === 'sign'
+                      ? <><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>{he ? 'להחתמה' : 'Sign now'}</>
+                      : tier === 'low'
+                        ? (he ? 'עדיפות נמוכה' : 'Low priority')
+                        : <><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4" /><path d="M12 16h.01" /></svg>{he ? 'מעקב' : 'Monitor'}</>}
+                  </span>
+                  {arc && (
+                    <span className={`brit-dd-arc ${arc}`}>
+                      <i />{arc === 'rising' ? (he ? 'ערך עולה' : 'Value rising') : arc === 'peak' ? (he ? 'בשיא' : 'At peak') : (he ? 'ערך יורד' : 'Value declining')}
+                    </span>
+                  )}
+                  {typeof p.directorFitScore === 'number' && (
+                    <span className="brit-dd-fit"><b>{p.directorFitScore}</b><small>{he ? 'התאמה' : 'fit /10'}</small></span>
+                  )}
+                </div>
+
+                <div className="brit-dd-id">
+                  <div className="brit-dd-pf">
+                    {p.profileImage
+                      ? <img src={p.profileImage} alt="" onError={(e) => { (e.target as HTMLImageElement).src = TM_DEFAULT_IMG; }} />
+                      : initials(p.playerName)}
+                    <span className="fl">{p.agentFlag}</span>
+                  </div>
+                  <div>
+                    <div className="brit-dd-nm">{p.playerName}</div>
+                    <div className="brit-dd-meta">{displayPos(p.position)} · {he ? 'גיל' : ''} {p.age} · {p.marketValue}</div>
+                    <div className="brit-dd-loc">
+                      {p.club}{p.league ? ` · ${p.league}` : ''} · {he ? p.agentNameHe : p.agentName} {he ? 'סקאוט' : 'scout'}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
+                </div>
+
+                <div className="brit-dd-verdict">
+                  <div className="q">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M8 10h8M8 14h5" /></svg>
+                    {he ? 'המלצת המנהל' : "Director's call"}
+                  </div>
+                  <p>{p.directorVerdict || p.scoutNarrative || (he ? p.scoutExplanationHe : p.scoutExplanationEn) || p.matchReason}</p>
+                </div>
+
+                <div className="brit-dd-sigs">
+                  {p.corroborationCount && p.corroborationCount >= 2 && (
+                    <span className="brit-dd-sig cor">
+                      <svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+                      {he ? `${p.corroborationCount} סוכנים` : `${p.corroborationCount} scouts`}
+                    </span>
+                  )}
+                  {months != null && months <= 12 && (
+                    <span className="brit-dd-sig hot">
+                      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                      {he ? 'חוזה' : 'Contract'} <b>&nbsp;{months}{he ? ' ח׳' : 'mo'}</b>
+                    </span>
+                  )}
+                  {typeof p.fmPa === 'number' && p.fmPa > 0 && (
+                    <span className="brit-dd-sig rise">
+                      <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-8" /></svg>FM PA <b>&nbsp;{p.fmPa}</b>
+                    </span>
+                  )}
+                  {typeof p.matchScore === 'number' && p.matchScore > 0 && (
+                    <span className="brit-dd-sig">
+                      <svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5z" /></svg>{he ? 'התאמה' : 'Match'} <b>&nbsp;{p.matchScore}</b>
+                    </span>
+                  )}
+                </div>
+
+                <div className="brit-dd-foot">
+                  <button className="brit-dd-btn ghost" onClick={(e) => { e.stopPropagation(); setDrawer(p); }}>
+                    {he ? 'דוח מלא' : 'Full report'}
+                  </button>
+                  <button className="brit-dd-btn gold" disabled={adding || saved}
+                    onClick={(e) => { e.stopPropagation(); addToShortlist(p); }}>
+                    {saved
+                      ? (he ? 'נוסף ✓' : 'Added ✓')
+                      : adding ? (he ? 'מוסיף…' : 'Adding…')
+                        : <><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>{he ? 'מעקב' : 'Shortlist'}</>}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Dossier drawer */}
+      <div className={`brit-scrim${drawer ? ' open' : ''}`} onClick={() => setDrawer(null)} />
+      <aside className={`brit-drawer brit-dossier${drawer ? ' open' : ''}`}>
+        {drawer && <DossierBody p={drawer} he={he} displayPos={displayPos}
+          onClose={() => setDrawer(null)}
+          onShortlist={() => addToShortlist(drawer)}
+          saved={isSaved(drawer.tmProfileUrl)}
+          adding={addingUrl === drawer.tmProfileUrl} />}
+      </aside>
     </>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+function DossierBody({
+  p, he, displayPos, onClose, onShortlist, saved, adding,
+}: {
+  p: ScoutProfileResponse;
+  he: boolean;
+  displayPos: (pos: string | undefined) => string;
+  onClose: () => void;
+  onShortlist: () => void;
+  saved: boolean;
+  adding: boolean;
+}) {
+  const tier = actionTier(p.directorAction);
+  const months = contractMonths(p.contractExpires);
+  const actionLabel = tier === 'sign' ? (he ? 'להחתמה מיידית' : 'SIGN NOW')
+    : tier === 'low' ? (he ? 'עדיפות נמוכה' : 'LOW PRIORITY') : (he ? 'מעקב' : 'MONITOR');
+
+  return (
+    <>
+      <div className="brit-drawer-hero">
+        {p.profileImage ? <img src={p.profileImage} alt="" onError={(e) => { (e.target as HTMLImageElement).src = TM_DEFAULT_IMG; }} /> : <div className="brit-drawer-flagbg-ph" />}
+        <button className="brit-drawer-close" onClick={onClose} aria-label="Close">✕</button>
+        <div className="brit-drawer-hero-copy">
+          <small>{p.agentFlag} {(he ? p.profileTypeLabelHe : p.profileTypeLabel)} · {actionLabel}</small>
+          <h2>{p.playerName}</h2>
+          <div style={{ fontSize: 12, color: 'var(--gold-soft)', marginTop: 6 }}>
+            {displayPos(p.position)} · {he ? 'גיל' : 'Age'} {p.age}{p.intelHeight ? ` · ${p.intelHeight}` : ''}{p.intelFoot ? ` · ${p.intelFoot}` : ''} · {p.club}
+          </div>
+        </div>
+      </div>
+
+      <div className="brit-drawer-body">
+        {/* Director verdict */}
+        {(p.directorVerdict || p.scoutNarrative) && (
+          <div className="brit-drawer-box">
+            <div className="brit-drawer-box-head">
+              <label>{he ? 'המלצת המנהל הספורטיבי' : 'Sport Director verdict'}</label>
+              <span className="badge">{actionLabel}</span>
+            </div>
+            <p className="brit-dd-dossier-verdict">{p.directorVerdict || p.scoutNarrative}</p>
+            {p.directorDataFlags && p.directorDataFlags.length > 0 && (
+              <div className="brit-dd-flags">
+                {p.directorDataFlags.map((f, i) => <div className="f" key={i}>⚠ {f}</div>)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Corroboration */}
+        {p.corroboratingAgents && p.corroboratingAgents.length >= 2 && (
+          <div className="brit-drawer-box">
+            <div className="brit-drawer-box-head">
+              <label>{he ? 'חיזוק בין-סוכנים' : 'Scout corroboration'}</label>
+            </div>
+            <div className="brit-dd-corrob">
+              {p.corroboratingAgents.map((a) => (
+                <span className="ag" key={a.id}>{a.flag} {he ? a.nameHe : a.name}</span>
+              ))}
+            </div>
+            <p style={{ margin: '10px 0 0', font: '11.5px/1.4 var(--body)', color: 'var(--muted)' }}>
+              {he ? 'שחקן זה עלה אצל מספר סוכנים באופן עצמאי — אות אמון חזק.' : 'Surfaced independently by multiple scouts — a strong corroboration signal.'}
+            </p>
+          </div>
+        )}
+
+        {/* Performance */}
+        {(p.apiGoals != null || p.apiRating != null || p.goalsPer90 != null) && (
+          <div className="brit-drawer-box">
+            <div className="brit-drawer-box-head">
+              <label>{he ? 'ביצועים · API-Football' : 'Performance · API-Football'}</label>
+            </div>
+            <div className="brit-dossier-grid">
+              {p.apiGoals != null && <div className="brit-dossier-stat"><b>{p.apiGoals}</b><small>{he ? 'שערים' : 'goals'}</small></div>}
+              {p.apiAssists != null && <div className="brit-dossier-stat"><b>{p.apiAssists}</b><small>{he ? 'בישולים' : 'assists'}</small></div>}
+              {p.contribPer90 != null && <div className="brit-dossier-stat"><b>{p.contribPer90.toFixed(2)}</b><small>G+A /90</small></div>}
+              {p.apiRating != null && <div className="brit-dossier-stat"><b>{p.apiRating.toFixed(1)}</b><small>{he ? 'דירוג' : 'rating'}</small></div>}
+              {p.apiMinutes90s != null && <div className="brit-dossier-stat"><b>{Math.round(p.apiMinutes90s)}</b><small>{he ? 'משחקים מלאים' : 'full matches'}</small></div>}
+            </div>
+          </div>
+        )}
+
+        {/* Potential + Market */}
+        <div className="brit-drawer-box">
+          <div className="brit-drawer-box-head"><label>{he ? 'פוטנציאל ושוק' : 'Potential & market'}</label></div>
+          <div className="brit-dossier-kv-list">
+            {typeof p.fmPa === 'number' && p.fmPa > 0 && <KV k={he ? 'פוטנציאל FM' : 'FM potential'} v={String(p.fmPa)} />}
+            {typeof p.fmCa === 'number' && p.fmCa > 0 && <KV k={he ? 'יכולת נוכחית FM' : 'FM current'} v={String(p.fmCa)} />}
+            {typeof p.fmPa === 'number' && typeof p.fmCa === 'number' && p.fmPa > 0 && p.fmCa > 0 && (
+              <KV k={he ? 'מרחב גדילה' : 'Headroom'} v={`+${p.fmPa - p.fmCa}`} />
+            )}
+            <KV k={he ? 'שווי שוק' : 'Market value'} v={p.marketValue} />
+            {months != null && <KV k={he ? 'חודשים לחוזה' : 'Months left'} v={String(months)} />}
+          </div>
+        </div>
+
+        {/* Real-world intel */}
+        {(p.intelWage || p.intelAgent || p.intelHonours != null || p.intelClubElo != null) && (
+          <div className="brit-drawer-box">
+            <div className="brit-drawer-box-head"><label>{he ? 'מודיעין · TheSportsDB / ClubElo' : 'Real-world intel · TheSportsDB / ClubElo'}</label></div>
+            <div className="brit-dossier-kv-list">
+              {p.intelWage && <KV k={he ? 'שכר משוער' : 'Est. wage'} v={p.intelWage} />}
+              {p.intelAgent && <KV k={he ? 'סוכן' : 'Agent'} v={p.intelAgent} />}
+              {p.intelHonours != null && <KV k={he ? 'תארים' : 'Honours'} v={String(p.intelHonours)} />}
+              {p.intelClubElo != null && <KV k={he ? 'חוזק מועדון' : 'Club strength'} v={`Elo ${p.intelClubElo}`} />}
+            </div>
+          </div>
+        )}
+
+        {/* CTA */}
+        <div className="brit-dossier-cta">
+          <a className="ghost" href={p.tmProfileUrl} target="_blank" rel="noopener noreferrer">{he ? 'פתח בטרנספרמרקט' : 'Open on Transfermarkt'}</a>
+          <button className="primary" disabled={adding || saved} onClick={onShortlist}>
+            {saved ? (he ? 'נוסף ✓' : 'Added ✓') : adding ? (he ? 'מוסיף…' : 'Adding…') : (he ? 'הוסף למעקב' : 'Add to shortlist')}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function KV({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="brit-dossier-kv">
+      <span className="k">{k}</span>
+      <span className="v">{v}</span>
+    </div>
+  );
+}
+
+function initials(name: string): string {
+  return name.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '—';
+}
+
+/** Rough months remaining from a contract-expiry string/timestamp. */
+function contractMonths(contractExpires: string | number | null | undefined): number | null {
+  if (contractExpires == null) return null;
+  const d = typeof contractExpires === 'number' ? new Date(contractExpires) : new Date(contractExpires);
+  if (isNaN(d.getTime())) return null;
+  const months = Math.round((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30));
+  return months < 0 ? 0 : months;
 }

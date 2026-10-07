@@ -2170,6 +2170,28 @@ async function runScoutAgent() {
   console.log(`[ScoutAgent] Image enrichment: ${cacheHits} cached, ${enrichedReal} freshly scraped, ${enrichedDefault} no-photo placeholders`);
 
   // ═══════════════════════════════════════════════════════════════
+  // Cross-agent corroboration (per-player): if a player was independently
+  // surfaced by 2+ country agents, that is the Director's highest-conviction
+  // signal. Stamp the list of corroborating agents onto each approved doc so
+  // the War Room can show a "found by N scouts" badge. Computed over ALL
+  // profiles (incl. rejected) so corroboration counts even cross-type.
+  // ═══════════════════════════════════════════════════════════════
+  const corroborationByUrl = {};
+  for (const { data } of profilesToWrite) {
+    const url = normalizePlayerUrl(data.tmProfileUrl);
+    if (!url) continue;
+    (corroborationByUrl[url] = corroborationByUrl[url] || new Set()).add(data.agentId);
+  }
+  for (const { data } of approvedProfiles) {
+    const url = normalizePlayerUrl(data.tmProfileUrl);
+    const agents = url ? corroborationByUrl[url] : null;
+    if (agents && agents.size >= 2) {
+      data.corroboratingAgents = [...agents];
+      data.corroborationCount = agents.size;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // DELETE all old profiles before writing fresh batch
   // SAFETY: Only clear when we have new profiles to write — prevents
   // empty Firestore when external APIs are down

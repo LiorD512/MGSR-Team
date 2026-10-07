@@ -5665,3 +5665,111 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-dossier-cta .primary:disabled { opacity: .6; cursor: default; }
 .brit-room .brit-dossier-cta .ghost { border: 1px solid var(--ink); color: var(--ink); background: transparent; }
 .brit-room .brit-dossier-cta .ghost:hover { background: var(--ink); color: var(--paper); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   WAR ROOM — SCOUT AGENTS "Director's Desk" (prefix: .brit-dd-*)
+   Action-first decision surface. Reuses .brit-room tokens + .brit-drawer.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* scale line — the agents' daily volume in one plain sentence */
+.brit-room .brit-dd-scale { display: flex; align-items: center; gap: 12px; margin: 20px 0 6px; padding: 14px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.brit-room .brit-dd-scale .dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(92,111,74,.6); animation: brit-dd-ping 2.2s infinite; }
+@keyframes brit-dd-ping { 0% { box-shadow: 0 0 0 0 rgba(92,111,74,.5); } 70% { box-shadow: 0 0 0 8px rgba(92,111,74,0); } 100% { box-shadow: 0 0 0 0 rgba(92,111,74,0); } }
+.brit-room .brit-dd-scale p { flex: 1; margin: 0; font: 13.5px/1.5 var(--body); color: #4a473f; }
+.brit-room .brit-dd-scale p b { color: var(--ink); font-weight: 700; }
+.brit-room .brit-dd-scale p b.go { color: var(--green); }
+.brit-room .brit-dd-scale .ago { font: 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+
+/* lane head */
+.brit-room .brit-dd-lane { display: flex; align-items: baseline; justify-content: space-between; margin: 26px 0 14px; gap: 12px; flex-wrap: wrap; }
+.brit-room .brit-dd-lane h2 { margin: 0; font: 600 22px/1 var(--display); text-transform: uppercase; letter-spacing: .5px; }
+.brit-room .brit-dd-lane h2 em { font-style: normal; color: var(--gold); }
+.brit-room .brit-dd-lane .count { font: 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+/* filter rail */
+.brit-room .brit-dd-rail { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+.brit-room .brit-dd-seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--card); }
+.brit-room .brit-dd-seg button { font: 9px/1 var(--mono); letter-spacing: .05em; text-transform: uppercase; padding: 9px 13px; border: 0; background: transparent; cursor: pointer; color: var(--muted); border-inline-end: 1px solid var(--line-2); transition: .14s; }
+.brit-room .brit-dd-seg button:last-child { border-inline-end: 0; }
+.brit-room .brit-dd-seg button.on { background: var(--ink); color: var(--paper); }
+.brit-room .brit-dd-rail .spacer { flex: 1; }
+.brit-room .brit-dd-search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 13px; background: var(--card); min-width: 210px; }
+.brit-room .brit-dd-search svg { width: 15px; height: 15px; stroke: var(--muted); fill: none; stroke-width: 2; }
+.brit-room .brit-dd-search input { border: 0; background: transparent; outline: none; font: 13px var(--body); width: 100%; color: var(--ink); }
+
+/* the deck */
+.brit-room .brit-dd-deck { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+.brit-room .brit-dd-card { background: var(--card); border: 1px solid var(--line); border-radius: 15px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: transform .16s, box-shadow .16s, border-color .16s; }
+.brit-room .brit-dd-card:hover { transform: translateY(-3px); box-shadow: 0 22px 46px -30px rgba(0,0,0,.5); border-color: var(--gold-soft); }
+.brit-room .brit-dd-card.sign { border-top: 3px solid var(--green); }
+.brit-room .brit-dd-card.monitor { border-top: 3px solid var(--amber); }
+.brit-room .brit-dd-card.low { border-top: 3px solid var(--muted-2); }
+
+.brit-room .brit-dd-act { display: flex; align-items: center; gap: 9px; padding: 12px 15px; border-bottom: 1px solid var(--line-2); }
+.brit-room .brit-dd-flag { font: 500 10px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase; padding: 5px 10px; border-radius: 7px; display: inline-flex; align-items: center; gap: 6px; }
+.brit-room .brit-dd-flag.sign { background: #e3eadb; color: var(--green); }
+.brit-room .brit-dd-flag.monitor { background: #f3e7cf; color: var(--amber); }
+.brit-room .brit-dd-flag.low { background: #ebe7de; color: var(--muted); }
+.brit-room .brit-dd-flag svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.3; }
+.brit-room .brit-dd-arc { display: inline-flex; align-items: center; gap: 5px; font: 10.5px var(--body); color: var(--muted); }
+.brit-room .brit-dd-arc i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: var(--muted-2); }
+.brit-room .brit-dd-arc.rising i { background: var(--green); }
+.brit-room .brit-dd-arc.peak i { background: var(--amber); }
+.brit-room .brit-dd-arc.declining i { background: var(--red); }
+.brit-room .brit-dd-fit { margin-inline-start: auto; text-align: end; }
+.brit-room .brit-dd-fit b { font: 700 20px/1 var(--display); }
+.brit-room .brit-dd-fit small { display: block; font: 8px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+.brit-room .brit-dd-id { display: flex; gap: 13px; padding: 14px 15px 11px; }
+.brit-room .brit-dd-pf { width: 60px; height: 60px; border-radius: 12px; flex: none; background: linear-gradient(135deg,#2a2a26,#161613); display: grid; place-items: center; font: 700 20px/1 var(--display); color: var(--gold-soft); position: relative; overflow: hidden; }
+.brit-room .brit-dd-pf img { width: 100%; height: 100%; object-fit: cover; }
+.brit-room .brit-dd-pf .fl { position: absolute; inset-block-end: -2px; inset-inline-end: -2px; font-size: 15px; }
+.brit-room .brit-dd-nm { font: 600 22px/.98 var(--display); }
+.brit-room .brit-dd-meta { font: 12px var(--body); color: var(--muted); margin-top: 3px; }
+.brit-room .brit-dd-loc { font: 11.5px var(--body); color: #4a473f; margin-top: 3px; }
+
+.brit-room .brit-dd-verdict { margin: 0 15px 13px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line-2); border-radius: 11px; }
+.brit-room body[data-platform] .brit-dd-verdict, .brit-room .brit-dd-verdict { background: #fff; }
+.brit-room .brit-dd-verdict .q { font: 9.5px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.brit-room .brit-dd-verdict .q svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+.brit-room .brit-dd-verdict p { margin: 0; font: 12.5px/1.5 var(--body); color: #2d2b26; }
+.brit-room .brit-dd-verdict p b { color: var(--ink); }
+
+.brit-room .brit-dd-sigs { display: flex; gap: 7px; flex-wrap: wrap; padding: 0 15px 13px; }
+.brit-room .brit-dd-sig { display: inline-flex; align-items: center; gap: 6px; font: 11px var(--body); background: #efe9dc; border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; color: #3a382f; }
+.brit-room .brit-dd-sig svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+.brit-room .brit-dd-sig b { font-weight: 700; }
+.brit-room .brit-dd-sig.hot { background: #f6e3e0; border-color: rgba(182,66,53,.3); color: var(--red); }
+.brit-room .brit-dd-sig.rise { background: #e3eadb; border-color: rgba(92,111,74,.3); color: var(--green); }
+.brit-room .brit-dd-sig.cor { background: #f0e6d2; border-color: rgba(164,125,67,.35); color: var(--gold); }
+
+.brit-room .brit-dd-foot { margin-top: auto; display: flex; gap: 8px; padding: 12px 15px; border-top: 1px solid var(--line-2); background: rgba(17,17,15,.03); }
+.brit-room .brit-dd-btn { font: 10.5px/1 var(--mono); letter-spacing: .05em; text-transform: uppercase; padding: 11px 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer; transition: .14s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.brit-room .brit-dd-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+.brit-room .brit-dd-btn.ghost { flex: 1; color: var(--ink); }
+.brit-room .brit-dd-btn.ghost:hover { border-color: var(--ink); }
+.brit-room .brit-dd-btn.gold { flex: 1; background: var(--gold); color: var(--paper); border-color: var(--gold); }
+.brit-room .brit-dd-btn.gold:hover:not(:disabled) { background: var(--black); color: var(--gold-soft); }
+.brit-room .brit-dd-btn.gold:disabled { opacity: .6; cursor: default; }
+
+/* dossier extras (reuses .brit-drawer / .brit-dossier shell) */
+.brit-room .brit-dd-dossier-verdict { margin: 0; font: 13.5px/1.6 var(--body); color: #2d2b26; }
+.brit-room .brit-dd-corrob { display: flex; gap: 8px; flex-wrap: wrap; }
+.brit-room .brit-dd-corrob .ag { display: inline-flex; align-items: center; gap: 6px; background: #f0e6d2; border: 1px solid rgba(164,125,67,.3); border-radius: 999px; padding: 5px 11px; font: 12px var(--body); color: var(--gold); }
+.brit-room .brit-dd-flags { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.brit-room .brit-dd-flags .f { display: flex; gap: 8px; align-items: flex-start; font: 12px/1.4 var(--body); color: var(--amber); }
+
+/* loading / empty */
+.brit-room .brit-dd-placeholder { padding: 40px 0; text-align: center; color: var(--muted); font: 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.brit-room .brit-dd-error { margin: 14px 0; padding: 12px 16px; border: 1px solid rgba(182,66,53,.4); background: rgba(182,66,53,.06); color: var(--red); font: 12px var(--body); border-radius: 8px; }
+
+/* dossier content helpers for Director's Desk */
+.brit-room .brit-dossier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.brit-room .brit-dossier-stat { background: var(--card); padding: 12px 10px; text-align: center; }
+.brit-room .brit-dossier-stat b { display: block; font: 700 22px/1 var(--display); color: var(--ink); }
+.brit-room .brit-dossier-stat small { display: block; margin-top: 5px; font: 8px/1 var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.brit-room .brit-dossier-kv-list { display: flex; flex-direction: column; }
+.brit-room .brit-dossier-kv { display: flex; align-items: baseline; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--line-2); }
+.brit-room .brit-dossier-kv:last-child { border-bottom: 0; }
+.brit-room .brit-dossier-kv .k { color: var(--muted); font: 11px var(--body); }
+.brit-room .brit-dossier-kv .v { font: 600 14px/1 var(--display); color: var(--ink); }

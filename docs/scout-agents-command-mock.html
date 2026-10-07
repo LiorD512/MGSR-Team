@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scout Agents — Network Command · BRIT Sport Group</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+    --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--blue:#4a5f6f;--muted:#77736a;--muted-2:#aba69b;
+    --line:rgba(22,22,19,.14);--line-2:rgba(22,22,19,.07);--dark-line:rgba(243,240,232,.2);
+    --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased}
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1260px;margin:0 auto;padding:30px 24px 120px;position:relative;z-index:1}
+  ::selection{background:var(--gold);color:#fff}
+
+  .doc-hero{border-bottom:3px solid var(--ink);padding-bottom:24px}
+  .doc-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin-bottom:9px}
+  .doc-hero h1{font-family:var(--display);font-weight:700;font-size:58px;line-height:.92;text-transform:uppercase;letter-spacing:-.5px}
+  .doc-hero h1 span{color:var(--gold)}
+  .doc-hero p{max-width:820px;color:#4a473f;margin-top:14px;font-size:15.5px}
+  .doc-hero p b{color:var(--ink)}
+
+  .mock{background:var(--paper);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-top:28px;box-shadow:0 30px 70px -40px rgba(0,0,0,.55)}
+  .mock-chrome{display:flex;align-items:center;gap:10px;padding:11px 18px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:#efe9dc}
+  .mock-chrome .dots{display:flex;gap:6px;margin-right:4px}.mock-chrome .dots i{width:11px;height:11px;border-radius:50%;display:inline-block}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 26px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--card)}
+  .topbar strong{color:var(--ink)}.topbar .r{display:flex;gap:16px;align-items:center}
+  .canvas{padding:30px 34px}
+
+  .mh-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+  .mh h1{font-family:var(--display);font-weight:700;font-size:52px;text-transform:uppercase;line-height:.92;margin-top:3px}
+  .mh h1 span{color:var(--gold)}
+  .mh .sub{color:#4a473f;font-size:14.5px;max-width:760px;margin-top:10px}
+
+  /* ════ THE NETWORK SWEEP — makes the scale visible ════ */
+  .sweep{margin:26px 0 10px;background:linear-gradient(105deg,#1a1a17,#232320);color:var(--paper);border-radius:16px;padding:22px 26px;position:relative;overflow:hidden}
+  .sweep::after{content:'';position:absolute;right:-60px;top:-60px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(201,166,107,.22),transparent 70%)}
+  .sweep .sweep-h{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:18px}
+  .sweep .live{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(92,111,74,.6);animation:ping 2.2s infinite}
+  @keyframes ping{0%{box-shadow:0 0 0 0 rgba(92,111,74,.5)}70%{box-shadow:0 0 0 8px rgba(92,111,74,0)}100%{box-shadow:0 0 0 0 rgba(92,111,74,0)}}
+  /* funnel */
+  .funnel{display:flex;align-items:stretch;gap:0;position:relative;z-index:1}
+  .fstage{flex:1;padding:0 18px;border-right:1px solid rgba(243,240,232,.14);position:relative}
+  .fstage:first-child{padding-left:0}.fstage:last-child{border-right:0;padding-right:0}
+  .fstage .fn{font-family:var(--display);font-weight:700;font-size:38px;line-height:1}
+  .fstage .fn.gold{color:var(--gold-soft)}.fstage .fn.green{color:#8fae75}
+  .fstage .fl{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#9a958a;margin-top:6px}
+  .fstage .fsub{font-size:11px;color:#c9c2b2;margin-top:3px}
+  .fstage .arrow{position:absolute;right:-7px;top:20px;color:#5a564d;font-size:14px}
+  .sweep .foot{display:flex;gap:22px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(243,240,232,.14);font-size:12px;color:#c9c2b2;position:relative;z-index:1;flex-wrap:wrap}
+  .sweep .foot b{color:#fff;font-family:var(--display);font-size:14px}
+
+  /* ════ "NEW THIS CYCLE" strip ════ */
+  .newstrip{display:flex;align-items:center;gap:14px;margin:22px 0 6px}
+  .newstrip h3{font-family:var(--display);font-size:18px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+  .newstrip h3 em{font-style:normal;color:var(--gold)}
+  .newstrip .ln{flex:1;height:1px;background:var(--line)}
+  .newstrip .seeall{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+  .newrail{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 14px}
+  .newpill{min-width:230px;flex:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;transition:.15s;position:relative}
+  .newpill:hover{transform:translateY(-2px);box-shadow:0 12px 26px -18px rgba(0,0,0,.4);border-color:var(--gold-soft)}
+  .newpill .np-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .newpill .np-flag{font-size:16px}
+  .newpill .np-new{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;background:var(--green);color:#fff;border-radius:5px;padding:2px 6px;margin-left:auto}
+  .newpill .np-nm{font-family:var(--display);font-size:17px;font-weight:600;line-height:1}
+  .newpill .np-meta{font-size:11px;color:var(--muted);margin-top:3px}
+  .newpill .np-reason{font-size:11.5px;color:#4a473f;margin-top:8px;line-height:1.4}
+  .newpill .np-type{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-top:8px}
+
+  /* layout: director calls + agent roster */
+  .cols{display:grid;grid-template-columns:1fr 290px;gap:22px;margin-top:28px;align-items:start}
+  @media(max-width:960px){.cols{grid-template-columns:1fr}}
+
+  .lane-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+  .lane-head h2{font-family:var(--display);font-weight:600;font-size:22px;text-transform:uppercase;letter-spacing:.5px}
+  .lane-head h2 em{font-style:normal;color:var(--gold)}
+  .lane-head .count{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+  .rail{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+  .seg button{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:9px 13px;border:0;background:transparent;cursor:pointer;color:var(--muted);border-right:1px solid var(--line-2);transition:.14s}
+  .seg button:last-child{border-right:0}.seg button.on{background:var(--ink);color:var(--paper)}
+  .chip{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:8px 12px;border:1px solid var(--line);background:var(--card);border-radius:999px;cursor:pointer;color:#4a473f;transition:.14s}
+  .chip:hover{border-color:var(--gold)}.chip.on{background:var(--gold);border-color:var(--gold);color:#fff}
+
+  /* unified director card */
+  .deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+  .ucard{background:var(--card);border:1px solid var(--line);border-radius:15px;overflow:hidden;transition:.18s;display:flex;flex-direction:column;cursor:pointer}
+  .ucard:hover{transform:translateY(-3px);box-shadow:0 22px 46px -30px rgba(0,0,0,.5);border-color:var(--gold-soft)}
+  .ucard.sign{border-top:3px solid var(--green)}.ucard.monitor{border-top:3px solid var(--amber)}
+  .uc-top{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line-2)}
+  .flag{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:7px;display:inline-flex;align-items:center;gap:5px}
+  .flag.sign{background:#e3eadb;color:var(--green)}.flag.monitor{background:#f3e7cf;color:var(--amber)}
+  .flag svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.3}
+  .uc-top .score{margin-left:auto;text-align:right}.uc-top .score b{font-family:var(--display);font-size:19px;font-weight:700;line-height:1}
+  .uc-top .score small{font-family:var(--mono);font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block}
+  .uc-id{display:flex;gap:12px;padding:13px 14px 10px}
+  .uc-id .pf{width:56px;height:56px;border-radius:11px;flex:none;background:linear-gradient(135deg,#2a2a26,#161613);display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:19px;color:var(--gold-soft);position:relative;overflow:hidden}
+  .uc-id .pf .fl{position:absolute;bottom:-2px;right:-2px;font-size:14px}
+  .uc-id .nm{font-family:var(--display);font-size:21px;font-weight:600;line-height:.98}
+  .uc-id .meta{font-size:12px;color:var(--muted);margin-top:3px}
+  .uc-id .loc{font-size:11px;color:#4a473f;margin-top:3px}
+  .uc-headline{margin:0 14px 12px;padding:11px 13px;background:#fff;border:1px solid var(--line-2);border-radius:10px}
+  .uc-headline .q{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:5px}
+  .uc-headline p{font-size:12px;line-height:1.5;color:#2d2b26}.uc-headline p b{color:var(--ink)}
+  .uc-signals{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 12px}
+  .sig{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;background:#efe9dc;border:1px solid var(--line);border-radius:7px;padding:5px 8px;color:#3a382f}
+  .sig svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2}.sig b{font-weight:700}
+  .sig.hot{background:#f6e3e0;border-color:rgba(182,66,53,.3);color:var(--red)}
+  .sig.rise{background:#e3eadb;border-color:rgba(92,111,74,.3);color:var(--green)}
+  .sig.cor{background:#f0e6d2;border-color:rgba(164,125,67,.35);color:var(--gold)}
+  .uc-foot{margin-top:auto;display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--line-2);background:#f7f4ec}
+  .btn{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;transition:.14s;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+  .btn:hover{border-color:var(--ink)}.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+  .btn.gold{background:var(--gold);color:#fff;border-color:var(--gold);flex:1}.btn.gold:hover{background:#8f6c38}.btn.ghost{flex:1}
+
+  /* ════ AGENT ROSTER (right rail) — the 44 scouts at work ════ */
+  .roster{background:var(--card);border:1px solid var(--line);border-radius:15px;overflow:hidden;position:sticky;top:16px}
+  .roster-h{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .roster-h b{font-family:var(--display);font-size:16px;text-transform:uppercase;letter-spacing:.5px}
+  .roster-h .ct{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.06em}
+  .roster-sort{display:flex;gap:0;padding:8px 10px;border-bottom:1px solid var(--line-2);font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}
+  .roster-sort button{flex:1;border:0;background:transparent;color:var(--muted);cursor:pointer;padding:5px}.roster-sort button.on{color:var(--ink);border-bottom:2px solid var(--gold)}
+  .arow{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line-2);cursor:pointer;transition:.12s}
+  .arow:hover{background:#f2ece0}
+  .arow .fl{font-size:17px}
+  .arow .an{font-size:13px;font-weight:600;flex:1}
+  .arow .an small{display:block;font-family:var(--mono);font-size:9.5px;color:var(--muted);font-weight:400}
+  .arow .gr{font-family:var(--display);font-weight:700;font-size:17px;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:#fff}
+  .gr.a{background:var(--green)}.gr.b{background:#7c8a5c}.gr.c{background:var(--amber)}.gr.d{background:var(--red)}
+  .arow .pk{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:30px;text-align:right}
+  .arow .nw{font-family:var(--mono);font-size:9px;color:var(--green);background:#e3eadb;border-radius:5px;padding:1px 5px;margin-left:4px}
+  .roster-foot{padding:11px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--gold);text-align:center;cursor:pointer}
+
+  .foot-note{margin-top:44px;padding:24px 26px;border:1px dashed var(--line);border-radius:14px;font-size:14px;color:#4a473f;background:var(--card);line-height:1.65}
+  .foot-note b{color:var(--ink)}.foot-note h4{font-family:var(--display);text-transform:uppercase;font-size:19px;margin-bottom:10px}
+  .foot-note ul{margin:10px 0 0 18px}.foot-note li{margin:6px 0}
+  code{font-family:var(--mono);font-size:12px;background:#efe9dc;padding:2px 6px;border-radius:5px}
+  @media(max-width:720px){.doc-hero h1{font-size:38px}.mh h1{font-size:36px}.funnel{flex-wrap:wrap;gap:14px}.fstage{min-width:45%;border-right:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="doc-hero">
+    <div class="doc-kicker">Persona Network · Men Platform · v2</div>
+    <h1>Scout Agents<span> — Network Command.</span></h1>
+    <p>Last version read like 4 nice cards and hid the engine. But the point of this screen is the <b>engine</b>: 44 scouts sweeping leagues every cycle, hundreds of profiles found, your Sport Director filtering them to a handful of real calls. This version makes that <b>scale legible</b> — the sweep, the funnel, what's new since yesterday, which scouts are performing — then lands you on the calls. The volume becomes the value, not noise.</p>
+  </div>
+
+  <div class="mock">
+    <div class="mock-chrome"><span class="dots"><i style="background:#e26d5c"></i><i style="background:#e3b23c"></i><i style="background:#5c6f4a"></i></span>management.britsportgroup.com / war-room / scout-agents</div>
+    <div class="topbar">
+      <div>BRIT / <strong>WAR ROOM</strong> / SCOUT AGENTS / 07 OCT 2026</div>
+      <div class="r"><span>MEN</span><span>HE / EN</span><span>TLV 10:51</span></div>
+    </div>
+
+    <div class="canvas">
+      <div class="mh">
+        <div class="mh-kicker">Persona network / Men platform</div>
+        <h1>Scout <span>agents.</span></h1>
+        <div class="sub">Your 44-strong AI scout network ran 18h ago. Here's what the world's leagues gave up this cycle — and what your Sport Director says to do about it.</div>
+      </div>
+
+      <!-- THE NETWORK SWEEP (funnel) -->
+      <div class="sweep">
+        <div class="sweep-h"><span class="live"></span>Last network sweep · 18h ago · 44 agents · 61 leagues</div>
+        <div class="funnel">
+          <div class="fstage"><div class="fn">2,418</div><div class="fl">Players scanned</div><div class="fsub">across 61 leagues worldwide</div><span class="arrow">→</span></div>
+          <div class="fstage"><div class="fn gold">384</div><div class="fl">Matched a profile</div><div class="fsub">8 opportunity archetypes</div><span class="arrow">→</span></div>
+          <div class="fstage"><div class="fn gold">251</div><div class="fl">Director approved</div><div class="fsub">133 rejected as noise</div><span class="arrow">→</span></div>
+          <div class="fstage"><div class="fn green">37</div><div class="fl">Sign-now calls</div><div class="fsub">+ 214 to monitor</div></div>
+        </div>
+        <div class="foot">
+          <span><b>+63</b> brand-new players vs last cycle</span>
+          <span><b>9</b> found by 2+ scouts independently</span>
+          <span><b>12</b> also appearing in transfer rumors</span>
+          <span><b>A–</b> network grade this run</span>
+        </div>
+      </div>
+
+      <!-- NEW THIS CYCLE -->
+      <div class="newstrip">
+        <h3>New <em>since your last visit</em></h3>
+        <div class="ln"></div>
+        <span class="seeall">63 fresh · see all →</span>
+      </div>
+      <div class="newrail">
+        <div class="newpill">
+          <div class="np-top"><span class="np-flag">🇷🇸</span><span class="np-nm" style="font-size:15px">M. Ranđelović</span><span class="np-new">New</span></div>
+          <div class="np-meta">AM · 20 · €450K · Čukarički</div>
+          <div class="np-reason">U21, 148 FM ceiling — <b>and a 2nd scout flagged him</b>.</div>
+          <div class="np-type">Hidden gem · fit 9/10</div>
+        </div>
+        <div class="newpill">
+          <div class="np-top"><span class="np-flag">🇵🇹</span><span class="np-nm" style="font-size:15px">D. Essugo</span><span class="np-new">New</span></div>
+          <div class="np-meta">CF · 24 · €1.2M · Rio Ave</div>
+          <div class="np-reason">11 goals, final-year deal — buy before the price moves.</div>
+          <div class="np-type">Contract expiring · fit 9/10</div>
+        </div>
+        <div class="newpill">
+          <div class="np-top"><span class="np-flag">🇧🇷</span><span class="np-nm" style="font-size:15px">Kauã Lima</span><span class="np-new">New</span></div>
+          <div class="np-meta">LW · 19 · €800K · Athletico-PR</div>
+          <div class="np-reason">Breakout half-season, FM PA 155 — South-American upside.</div>
+          <div class="np-type">Undervalued by FM · fit 8/10</div>
+        </div>
+        <div class="newpill">
+          <div class="np-top"><span class="np-flag">🇫🇮</span><span class="np-nm" style="font-size:15px">O. Kemppäinen</span><span class="np-new">New</span></div>
+          <div class="np-meta">RB · 22 · €300K · AC Oulu</div>
+          <div class="np-reason">Starter, 4 months left — realistic free in January.</div>
+          <div class="np-type">Contract expiring · fit 8/10</div>
+        </div>
+        <div class="newpill">
+          <div class="np-top"><span class="np-flag">🇷🇴</span><span class="np-nm" style="font-size:15px">A. Mihai</span><span class="np-new">New</span></div>
+          <div class="np-meta">DM · 21 · €550K · FCSB</div>
+          <div class="np-reason">Tier-2 riser, high duel win rate — ready to step up.</div>
+          <div class="np-type">Lower-league riser · fit 7/10</div>
+        </div>
+      </div>
+
+      <!-- CALLS + ROSTER -->
+      <div class="cols">
+        <!-- LEFT: the calls -->
+        <div>
+          <div class="lane-head">
+            <h2>The Director's <em>calls</em></h2>
+            <span class="count">251 approved · showing 37 sign-now</span>
+          </div>
+          <div class="rail">
+            <div class="seg"><button class="on">Sign now · 37</button><button>Monitor · 214</button><button>All · 251</button></div>
+            <span class="chip on">All positions</span><span class="chip">CB</span><span class="chip">DM</span><span class="chip">CM</span><span class="chip">AM</span><span class="chip">CF</span>
+          </div>
+
+          <div class="deck">
+            <!-- card 1 (corroborated) -->
+            <div class="ucard sign">
+              <div class="uc-top"><span class="flag sign"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Sign now</span><span class="score"><b>9</b><small>fit</small></span></div>
+              <div class="uc-id"><div class="pf">MR<span class="fl">🇷🇸</span></div><div><div class="nm">Matija Ranđelović</div><div class="meta">AM · 20 · €450K</div><div class="loc">Čukarički · Serbia scout</div></div></div>
+              <div class="uc-headline"><div class="q">Director's call</div><p>€450K U21, 148 FM ceiling — <b>two scouts found him independently</b>. Move early.</p></div>
+              <div class="uc-signals"><span class="sig cor"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>2 scouts</span><span class="sig rise"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-8"/></svg>FM 148</span><span class="sig">Match 82</span></div>
+              <div class="uc-foot"><button class="btn ghost">Report</button><button class="btn gold"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Shortlist</button></div>
+            </div>
+            <!-- card 2 (rumor convergence) -->
+            <div class="ucard sign">
+              <div class="uc-top"><span class="flag sign"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Sign now</span><span class="score"><b>9</b><small>fit</small></span></div>
+              <div class="uc-id"><div class="pf">DE<span class="fl">🇵🇹</span></div><div><div class="nm">Dário Essugo</div><div class="meta">CF · 24 · €1.2M</div><div class="loc">Rio Ave · Portugal scout</div></div></div>
+              <div class="uc-headline"><div class="q">Director's call</div><p>11 goals in a <b>final-contract year</b>, FM above his tag. Also live in transfer rumors.</p></div>
+              <div class="uc-signals"><span class="sig hot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>11mo</span><span class="sig cor"><svg viewBox="0 0 24 24"><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>In rumors</span><span class="sig">Match 88</span></div>
+              <div class="uc-foot"><button class="btn ghost">Report</button><button class="btn gold"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Shortlist</button></div>
+            </div>
+            <!-- card 3 -->
+            <div class="ucard sign">
+              <div class="uc-top"><span class="flag sign"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Sign now</span><span class="score"><b>8</b><small>fit</small></span></div>
+              <div class="uc-id"><div class="pf">OK<span class="fl">🇫🇮</span></div><div><div class="nm">Otto Kemppäinen</div><div class="meta">RB · 22 · €300K</div><div class="loc">AC Oulu · Finland scout</div></div></div>
+              <div class="uc-headline"><div class="q">Director's call</div><p>Starter with <b>4 months left</b> — realistic free or token fee in January. Low wage.</p></div>
+              <div class="uc-signals"><span class="sig hot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>4mo</span><span class="sig">Starter</span><span class="sig">Match 85</span></div>
+              <div class="uc-foot"><button class="btn ghost">Report</button><button class="btn gold"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Shortlist</button></div>
+            </div>
+            <!-- card 4 -->
+            <div class="ucard sign">
+              <div class="uc-top"><span class="flag sign"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Sign now</span><span class="score"><b>8</b><small>fit</small></span></div>
+              <div class="uc-id"><div class="pf">KL<span class="fl">🇧🇷</span></div><div><div class="nm">Kauã Lima</div><div class="meta">LW · 19 · €800K</div><div class="loc">Athletico-PR · Brazil scout</div></div></div>
+              <div class="uc-headline"><div class="q">Director's call</div><p>19yo breakout, <b>FM PA 155</b> vs €800K tag — the data says he's worth far more.</p></div>
+              <div class="uc-signals"><span class="sig rise"><svg viewBox="0 0 24 24"><path d="M12 2v6m0 0 3-3m-3 3L9 5"/><circle cx="12" cy="15" r="6"/></svg>+47 gap</span><span class="sig">U19</span><span class="sig">Match 84</span></div>
+              <div class="uc-foot"><button class="btn ghost">Report</button><button class="btn gold"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Shortlist</button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: the 44 scouts -->
+        <div class="roster">
+          <div class="roster-h"><b>Your scouts</b><span class="ct">44 agents</span></div>
+          <div class="roster-sort"><button class="on">Top performers</button><button>Most fresh</button><button>A–Z</button></div>
+
+          <div class="arow"><span class="fl">🇷🇸</span><span class="an">Serbia<small>Super Liga</small></span><span class="pk">31<span class="nw">+5</span></span><span class="gr a">A</span></div>
+          <div class="arow"><span class="fl">🇵🇹</span><span class="an">Portugal<small>Liga Portugal ×2</small></span><span class="pk">28<span class="nw">+7</span></span><span class="gr a">A</span></div>
+          <div class="arow"><span class="fl">🇧🇷</span><span class="an">Brazil<small>Série A/B</small></span><span class="pk">24<span class="nw">+9</span></span><span class="gr b">B</span></div>
+          <div class="arow"><span class="fl">🇳🇱</span><span class="an">Netherlands<small>Eredivisie ×2</small></span><span class="pk">22<span class="nw">+3</span></span><span class="gr b">B</span></div>
+          <div class="arow"><span class="fl">🇫🇮</span><span class="an">Finland<small>Veikkausliiga</small></span><span class="pk">11</span><span class="gr c">C</span></div>
+          <div class="arow"><span class="fl">🇹🇷</span><span class="an">Turkey<small>Süper Lig / 1. Lig</small></span><span class="pk">9</span><span class="gr c">C</span></div>
+          <div class="arow"><span class="fl">🇰🇿</span><span class="an">Kazakhstan<small>Premier Liga</small></span><span class="pk">2</span><span class="gr d">D</span></div>
+          <div class="roster-foot">View all 44 scouts →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- rationale -->
+  <div class="foot-note">
+    <h4>How this maxes out the agents' work</h4>
+    <p>The old screen (and my first mock) treated the agents like a <b>flat bucket of players</b>. But the agents' real output is a <b>daily operation at scale</b>, and that's what should feel alive. Four moves do it:</p>
+    <ul>
+      <li><b>The sweep funnel</b> — "2,418 scanned → 384 matched → 251 approved → 37 sign-now." This single strip turns invisible background work into a visible, impressive daily result. All of it is already logged in <code>ScoutAgentRuns</code> (<code>profilesFound</code>, <code>profilesBeforeReview</code>, <code>profilesRejected</code>, <code>leaguesScanned</code>) + the Director's <code>approvedCount</code>/<code>rejectedCount</code>.</li>
+      <li><b>"New since your last visit"</b> — the reason to open this every morning. Profiles carry <code>discoveredAt</code>; anything newer than your last session is fresh. This is the hook the old screen completely lacked.</li>
+      <li><b>The 44-scout roster</b> with grades + pick counts + fresh deltas — makes the <em>network</em> tangible: who's producing, who's recycling. Grades/approval/freshness already exist in <code>ScoutAgentRuns.sportDirector.agentReports</code>. Click a scout → filter the board to its picks (no inner tab, just a filter).</li>
+      <li><b>Convergence surfaced</b> — "found by 2+ scouts" and "also in rumors" are the Director's highest-conviction signals (per your skill doc) and are computed today but shown nowhere.</li>
+    </ul>
+    <p style="margin-top:12px"><b>No thumbs.</b> Shortlisting is the feedback. <b>No inner tabs</b> — it's one scrolling command surface: sweep → what's new → the calls, with the scout roster as a filter rail. Everything shown is already produced by your pipeline; the lift is the API exposing the funnel + director fields (which it already reads) and persisting the cross-agent list.</p>
+    <p style="margin-top:12px">If this is the direction, I'll build it for real on <code>/war-room/scout-agents</code>: (1) extend <code>/api/war-room/scout-profiles</code> to return the run funnel + director/corroboration fields, (2) add a tiny <code>ScoutAgentRuns</code> read for the agent roster, (3) rebuild <code>WarRoomScoutAgents.tsx</code> as this command surface. Say go.</p>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.seg').forEach(s=>s.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{s.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');})));
+  document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');}));
+  document.querySelectorAll('.roster-sort button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.roster-sort button').forEach(x=>x.classList.remove('on'));b.classList.add('on');}));
+</script>
+</body>
+</html>

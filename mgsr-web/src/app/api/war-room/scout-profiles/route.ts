@@ -57,6 +57,14 @@ export async function GET(request: NextRequest) {
       const marketValueEuro = d.marketValueEuro ?? 0;
       const displayValue =
         marketValueEuro > 0 ? formatMarketValue(marketValueEuro) : (d.marketValue || '');
+      // Corroborating agents (players surfaced by 2+ scouts) — written by the
+      // worker. Resolve agent ids to display flags for the "found by N scouts" badge.
+      const corroboratingIds: string[] = Array.isArray(d.corroboratingAgents) ? d.corroboratingAgents : [];
+      const corroboratingAgents = corroboratingIds.map((aid: string) => {
+        const cfg = AGENTS_CONFIG[aid as AgentId];
+        return { id: aid, name: cfg?.name || aid, nameHe: cfg?.nameHe || cfg?.name || aid, flag: cfg?.flag || '🌍' };
+      });
+
       return {
         id: doc.id,
         tmProfileUrl: d.tmProfileUrl || '',
@@ -86,6 +94,34 @@ export async function GET(request: NextRequest) {
         agentFlag: agentCfg?.flag || '🌍',
         scoutExplanationEn: profileCfg?.explanationEn || '',
         scoutExplanationHe: profileCfg?.explanationHe || '',
+
+        // ── Sport Director intelligence (stored on the doc, previously dropped) ──
+        directorVerdict: d.directorVerdict || null,
+        directorAction: d.directorAction || null,          // SHORTLIST_NOW | MONITOR | LOW_PRIORITY
+        directorFitScore: typeof d.directorFitScore === 'number' ? d.directorFitScore : null, // 1-10
+        directorValueArc: d.directorValueArc || null,      // rising | peak | declining
+        directorDataFlags: Array.isArray(d.directorDataFlags) ? d.directorDataFlags : [],
+        scoutNarrative: d.scoutNarrative || null,
+
+        // ── Per-90 performance (API-Football), previously dropped ──
+        goalsPer90: typeof d.goalsPer90 === 'number' ? d.goalsPer90 : null,
+        contribPer90: typeof d.contribPer90 === 'number' ? d.contribPer90 : null,
+        apiRating: typeof d.apiRating === 'number' ? d.apiRating : null,
+        apiGoals: typeof d.apiGoals === 'number' ? d.apiGoals : null,
+        apiAssists: typeof d.apiAssists === 'number' ? d.apiAssists : null,
+        apiMinutes90s: typeof d.apiMinutes90s === 'number' ? d.apiMinutes90s : null,
+
+        // ── Real-world intel (TheSportsDB / ClubElo), previously dropped ──
+        intelWage: d.intelWage || null,
+        intelAgent: d.intelAgent || null,
+        intelHonours: typeof d.intelHonours === 'number' ? d.intelHonours : null,
+        intelClubElo: typeof d.intelClubElo === 'number' ? d.intelClubElo : null,
+        intelFoot: d.intelFoot || null,
+        intelHeight: d.intelHeight || null,
+
+        // ── Cross-agent corroboration ──
+        corroboratingAgents,
+        corroborationCount: corroboratingAgents.length,
       };
     });
 
@@ -120,7 +156,20 @@ export async function GET(request: NextRequest) {
       .orderBy('runAt', 'desc')
       .limit(1)
       .get();
-    const lastRunAt = lastRun.docs[0]?.data()?.runAt ?? null;
+    const lastRunData = lastRun.docs[0]?.data();
+    const lastRunAt = lastRunData?.runAt ?? null;
+
+    // The sweep funnel — makes the agents' daily scale legible on the client.
+    // All already logged on the run doc; we just expose it.
+    const sd = (lastRunData?.sportDirector as Record<string, unknown> | undefined) || undefined;
+    const run = {
+      scanned: (lastRunData?.playersScanned as number) ?? (lastRunData?.unmatchedCandidatesTotal as number) ?? null,
+      matched: (lastRunData?.profilesBeforeReview as number) ?? null,
+      approved: (sd?.approvedCount as number) ?? (lastRunData?.profilesFound as number) ?? null,
+      rejected: (sd?.rejectedCount as number) ?? (lastRunData?.profilesRejected as number) ?? null,
+      leaguesScanned: (lastRunData?.leaguesScanned as number) ?? null,
+      crossAgent: (lastRunData?.crossLeagueDetections as number) ?? null,
+    };
 
     const byAgent = profiles.reduce<Record<string, number>>((acc, p) => {
       acc[p.agentId] = (acc[p.agentId] || 0) + 1;
@@ -130,6 +179,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       profiles,
       lastRunAt,
+      run,
       totalCount: profiles.length,
       byAgent,
     });

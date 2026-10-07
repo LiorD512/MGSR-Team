@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>War Room — Unified Board (Alpha + Scout Agents merged) · BRIT Sport Group</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+    --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--blue:#4a5f6f;--muted:#77736a;--muted-2:#aba69b;
+    --line:rgba(22,22,19,.14);--line-2:rgba(22,22,19,.07);--dark-line:rgba(243,240,232,.2);
+    --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased}
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1240px;margin:0 auto;padding:30px 24px 120px;position:relative;z-index:1}
+  ::selection{background:var(--gold);color:#fff}
+
+  .doc-hero{border-bottom:3px solid var(--ink);padding-bottom:24px}
+  .doc-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);margin-bottom:9px}
+  .doc-hero h1{font-family:var(--display);font-weight:700;font-size:58px;line-height:.92;text-transform:uppercase;letter-spacing:-.5px}
+  .doc-hero h1 span{color:var(--gold)}
+  .doc-hero p{max-width:800px;color:#4a473f;margin-top:14px;font-size:15.5px}
+
+  .idea{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:24px 0 6px}
+  .idea .b{background:#1a1a17;color:var(--paper);border-radius:14px;padding:20px 22px;position:relative;overflow:hidden}
+  .idea .b.two{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+  .idea h3{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:9px}
+  .idea .b.two h3{color:var(--gold)}
+  .idea p{font-size:13.5px;color:#e9e4d8}.idea .b.two p{color:#4a473f}
+  .idea b{color:#fff}.idea .b.two b{color:var(--ink)}
+
+  .mock{background:var(--paper);border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-top:30px;box-shadow:0 30px 70px -40px rgba(0,0,0,.55)}
+  .mock-chrome{display:flex;align-items:center;gap:10px;padding:11px 18px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:#efe9dc}
+  .mock-chrome .dots{display:flex;gap:6px;margin-right:4px}
+  .mock-chrome .dots i{width:11px;height:11px;border-radius:50%;display:inline-block}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 26px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--card)}
+  .topbar strong{color:var(--ink)}.topbar .r{display:flex;gap:16px;align-items:center}
+  .canvas{padding:30px 34px}
+
+  .mh-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+  .mh h1{font-family:var(--display);font-weight:700;font-size:52px;text-transform:uppercase;line-height:.92;margin-top:3px}
+  .mh h1 span{color:var(--gold)}
+  .mh .sub{color:#4a473f;font-size:14.5px;max-width:760px;margin-top:10px}
+
+  /* ── THE MODE SWITCH (the heart of the merge) ── */
+  .modeswitch{display:flex;gap:0;margin:26px 0 6px;border:1px solid var(--ink);border-radius:14px;overflow:hidden;background:var(--ink)}
+  .modeswitch button{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:16px 22px;border:0;background:transparent;cursor:pointer;transition:.18s;text-align:left;border-right:1px solid rgba(243,240,232,.12)}
+  .modeswitch button:last-child{border-right:0}
+  .modeswitch button .mt{font-family:var(--display);font-size:19px;font-weight:600;text-transform:uppercase;color:#c9c2b2;letter-spacing:.5px}
+  .modeswitch button .md{font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:#8a867d;text-transform:none}
+  .modeswitch button.on{background:var(--paper)}
+  .modeswitch button.on .mt{color:var(--ink)}
+  .modeswitch button.on .md{color:var(--gold)}
+  .modeswitch button .badge{position:absolute}
+
+  /* ── shared controls band ── */
+  .controls{border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px;background:var(--card);padding:16px 20px;margin-bottom:20px}
+  .ctl-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .ctl-row + .ctl-row{margin-top:12px;padding-top:12px;border-top:1px solid var(--line-2)}
+  .ctl-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);min-width:92px}
+
+  /* director lenses (mode A) */
+  .lens{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:9px 14px;border:1px solid var(--line);background:#fff;border-radius:999px;cursor:pointer;color:#4a473f;transition:.14s}
+  .lens:hover{border-color:var(--gold)}
+  .lens.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .lens .dot{width:8px;height:8px;border-radius:50%}
+  .lens .dot.sign{background:var(--green)}.lens .dot.mon{background:var(--amber)}.lens .dot.cor{background:var(--gold)}
+
+  /* hunt pills (mode B) */
+  .hunt{display:inline-flex;align-items:center;gap:8px;padding:10px 15px;border:1px solid var(--line);background:#fff;border-radius:11px;cursor:pointer;transition:.14s}
+  .hunt:hover{border-color:var(--gold)}
+  .hunt.on{background:var(--ink);border-color:var(--ink)}
+  .hunt.on *{color:var(--paper)!important}
+  .hunt svg{width:16px;height:16px;stroke:var(--gold);fill:none;stroke-width:1.8}
+  .hunt b{font-size:13px;font-weight:600}
+  .hunt small{font-family:var(--mono);font-size:9.5px;color:var(--muted);display:block}
+
+  .chip{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:7px 12px;border:1px solid var(--line);background:#fff;border-radius:999px;cursor:pointer;color:#4a473f;transition:.14s}
+  .chip:hover{border-color:var(--gold)}.chip.on{background:var(--gold);border-color:var(--gold);color:#fff}
+  .spacer{flex:1}
+  .srch{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:8px 13px;background:#fff;min-width:220px}
+  .srch svg{width:15px;height:15px;stroke:var(--muted);fill:none;stroke-width:2}
+  .srch input{border:0;background:transparent;outline:none;font-family:var(--body);font-size:13px;width:100%;color:var(--ink)}
+
+  /* band slider (shared) */
+  .band{display:flex;align-items:center;gap:14px;flex:1}
+  .band .track{position:relative;flex:1;height:6px;background:var(--paper-2);border-radius:999px}
+  .band .fill{position:absolute;height:100%;left:12%;right:28%;background:var(--gold);border-radius:999px}
+  .band .knob{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:var(--ink);transform:translate(-50%,-50%);border:2px solid var(--paper)}
+  .band .val{font-family:var(--display);font-size:15px;font-weight:600;white-space:nowrap}
+
+  .lane-head{display:flex;align-items:baseline;justify-content:space-between;margin:6px 0 16px}
+  .lane-head h2{font-family:var(--display);font-weight:600;font-size:22px;text-transform:uppercase;letter-spacing:.5px}
+  .lane-head h2 em{font-style:normal;color:var(--gold)}
+  .lane-head .count{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+  /* ── UNIFIED CARD ── */
+  .deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(372px,1fr));gap:18px}
+  .ucard{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;transition:.18s;position:relative;display:flex;flex-direction:column;cursor:pointer}
+  .ucard:hover{transform:translateY(-3px);box-shadow:0 24px 50px -30px rgba(0,0,0,.5);border-color:var(--gold-soft)}
+  .ucard.sign{border-top:3px solid var(--green)}
+  .ucard.monitor{border-top:3px solid var(--amber)}
+  .ucard.hunt-mode{border-top:3px solid var(--gold)}
+
+  .uc-top{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--line-2)}
+  .rank{font-family:var(--display);font-size:14px;font-weight:700;color:var(--gold);border:1px solid var(--line);border-radius:7px;padding:2px 9px}
+  .flag{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;border-radius:7px;display:inline-flex;align-items:center;gap:6px}
+  .flag.sign{background:#e3eadb;color:var(--green)}
+  .flag.monitor{background:#f3e7cf;color:var(--amber)}
+  .flag.metric{background:#f0e6d2;color:var(--gold)}
+  .flag svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2}
+  .uc-top .score{margin-left:auto;text-align:right}
+  .uc-top .score b{font-family:var(--display);font-size:20px;font-weight:700;line-height:1}
+  .uc-top .score small{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block}
+
+  .uc-id{display:flex;gap:14px;padding:15px 16px 12px}
+  .uc-id .pf{width:62px;height:62px;border-radius:12px;flex:none;background:linear-gradient(135deg,#2a2a26,#161613);display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:21px;color:var(--gold-soft);position:relative;overflow:hidden}
+  .uc-id .pf .fl{position:absolute;bottom:-2px;right:-2px;font-size:15px}
+  .uc-id .nm{font-family:var(--display);font-size:23px;font-weight:600;line-height:.98}
+  .uc-id .meta{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .uc-id .loc{font-size:11.5px;color:#4a473f;margin-top:3px}
+
+  .uc-headline{margin:0 16px 13px;padding:12px 14px;background:#fff;border:1px solid var(--line-2);border-radius:11px}
+  .uc-headline .q{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .uc-headline.director .q{color:var(--gold)}
+  .uc-headline.metric .q{color:var(--blue)}
+  .uc-headline p{font-size:12.5px;line-height:1.5;color:#2d2b26}
+  .uc-headline p b{color:var(--ink)}
+
+  .uc-signals{display:flex;gap:7px;flex-wrap:wrap;padding:0 16px 14px}
+  .sig{display:inline-flex;align-items:center;gap:6px;font-size:11px;background:#efe9dc;border:1px solid var(--line);border-radius:8px;padding:5px 9px;color:#3a382f}
+  .sig svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2}
+  .sig b{font-weight:700}
+  .sig.hot{background:#f6e3e0;border-color:rgba(182,66,53,.3);color:var(--red)}
+  .sig.rise{background:#e3eadb;border-color:rgba(92,111,74,.3);color:var(--green)}
+  .sig.cor{background:#f0e6d2;border-color:rgba(164,125,67,.35);color:var(--gold)}
+
+  .uc-foot{margin-top:auto;display:flex;gap:9px;padding:13px 16px;border-top:1px solid var(--line-2);background:#f7f4ec}
+  .btn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:11px 13px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer;transition:.14s;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .btn:hover{border-color:var(--ink)}.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+  .btn.gold{background:var(--gold);color:#fff;border-color:var(--gold);flex:1}
+  .btn.gold:hover{background:#8f6c38}.btn.ghost{flex:1}
+  .arc{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted)}
+  .arc i{width:7px;height:7px;border-radius:50%}.arc.rising i{background:var(--green)}.arc.peak i{background:var(--amber)}
+
+  /* convergence banner */
+  .converge{margin:0 0 18px;background:linear-gradient(100deg,#1a1a17,#2a2a26);color:var(--paper);border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:16px}
+  .converge .ic{width:40px;height:40px;flex:none;border-radius:10px;background:rgba(201,166,107,.18);display:grid;place-items:center}
+  .converge .ic svg{width:20px;height:20px;stroke:var(--gold-soft);fill:none;stroke-width:2}
+  .converge .t{font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.5px}
+  .converge .d{font-size:12.5px;color:#c9c2b2}
+  .converge .go{margin-left:auto;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold-soft);border:1px solid rgba(201,166,107,.4);border-radius:999px;padding:8px 15px;cursor:pointer}
+
+  .hint{display:none;font-size:12px;color:var(--muted);font-style:italic;margin:-6px 0 14px}
+  .hint.show{display:block}
+
+  .foot-note{margin-top:44px;padding:24px 26px;border:1px dashed var(--line);border-radius:14px;font-size:14px;color:#4a473f;background:var(--card);line-height:1.65}
+  .foot-note b{color:var(--ink)}.foot-note h4{font-family:var(--display);text-transform:uppercase;font-size:19px;margin-bottom:10px}
+  .foot-note ul{margin:10px 0 0 18px}.foot-note li{margin:6px 0}
+  .verdict-row{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
+  .verdict-row .v{flex:1;min-width:220px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#f7f4ec}
+  .verdict-row .v h5{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:7px}
+  .verdict-row .v.keep h5{color:var(--green)}.verdict-row .v.merge h5{color:var(--gold)}
+  code{font-family:var(--mono);font-size:12px;background:#efe9dc;padding:2px 6px;border-radius:5px}
+
+  @media(max-width:720px){.deck{grid-template-columns:1fr}.idea{grid-template-columns:1fr}.doc-hero h1{font-size:38px}.mh h1{font-size:36px}.modeswitch{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="doc-hero">
+    <div class="doc-kicker">War Room · Men Platform · Merge Study</div>
+    <h1>One board,<span> two lenses.</span></h1>
+    <p>What if the Alpha Board and Scout Agents weren't two screens fighting for the same players — but <b>one War Room board</b> you flip between two ways of thinking? The top switch is the whole idea: <b>"The Director's call"</b> (your network's briefing — who to sign, in the Director's words) and <b>"Hunt the market"</b> (the tool — rank the band by any metric). Same cards, same drawer, same shortlist, same acquisition band. Flip the lens, the board re-thinks itself.</p>
+  </div>
+
+  <div class="idea">
+    <div class="b">
+      <h3>Lens 1 — The Director's call</h3>
+      <p>This is today's <b>Scout Agents</b>, done right. Your 44 scouts reported, the Sport Director judged each pick — SIGN / MONITOR — and the cards lead with the <b>verdict</b> and the <b>"found by 2 scouts"</b> corroboration. A briefing you check: <b>"what did my network decide?"</b></p>
+    </div>
+    <div class="b two">
+      <h3>Lens 2 — Hunt the market</h3>
+      <p>This is today's <b>Alpha Board</b>. You pick what you're hunting — best form, goals, creators, highest ceiling, best value, contract leverage — and the same band re-ranks by that real metric. A tool you operate: <b>"rank the market for me."</b></p>
+    </div>
+  </div>
+
+  <div class="mock">
+    <div class="mock-chrome"><span class="dots"><i style="background:#e26d5c"></i><i style="background:#e3b23c"></i><i style="background:#5c6f4a"></i></span>management.britsportgroup.com / war-room / board</div>
+    <div class="topbar">
+      <div>BRIT / <strong>WAR ROOM</strong> / BOARD / 07 OCT 2026</div>
+      <div class="r"><span>MEN</span><span>HE / EN</span><span>TLV 10:51</span></div>
+    </div>
+
+    <div class="canvas">
+      <div class="mh">
+        <div class="mh-kicker">Alpha generation · Persona network / Men platform</div>
+        <h1>War <span>board.</span></h1>
+        <div class="sub">Signable players in your acquisition band. Flip between your Director's recommendations and a live market hunt — one shortlist feeds both.</div>
+      </div>
+
+      <!-- THE MODE SWITCH -->
+      <div class="modeswitch">
+        <button id="mode-a" class="on" onclick="setMode('a')">
+          <span class="mt">The Director's call</span>
+          <span class="md">What my scout network found &amp; decided · 37 sign-now</span>
+        </button>
+        <button id="mode-b" onclick="setMode('b')">
+          <span class="mt">Hunt the market</span>
+          <span class="md">Rank my band by a live metric · 142 in band</span>
+        </button>
+      </div>
+
+      <!-- shared + mode-specific controls -->
+      <div class="controls">
+        <!-- MODE A controls -->
+        <div id="ctl-a">
+          <div class="ctl-row">
+            <span class="ctl-label">Show</span>
+            <span class="lens on"><span class="dot sign"></span>Sign now · 37</span>
+            <span class="lens"><span class="dot mon"></span>Monitor · 214</span>
+            <span class="lens"><span class="dot cor"></span>Found by 2+ scouts · 9</span>
+            <span class="spacer"></span>
+            <label class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input placeholder="Name, club, league or scout…"></label>
+          </div>
+        </div>
+        <!-- MODE B controls -->
+        <div id="ctl-b" style="display:none">
+          <div class="ctl-row">
+            <span class="ctl-label">Hunting</span>
+            <span class="hunt on"><svg viewBox="0 0 24 24"><path d="M3 13l4-4 4 4 6-7"/><path d="M3 20h18"/></svg><span><b>Best form</b><small>by match rating</small></span></span>
+            <span class="hunt"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg><span><b>Goalscorers</b><small>goals /90</small></span></span>
+            <span class="hunt"><svg viewBox="0 0 24 24"><path d="M4 12h10M14 6l6 6-6 6"/></svg><span><b>Creators</b><small>assists+KP</small></span></span>
+            <span class="hunt"><svg viewBox="0 0 24 24"><path d="M12 2v6m0 0 3-3m-3 3L9 5"/><circle cx="12" cy="15" r="6"/></svg><span><b>Ceiling</b><small>FM potential</small></span></span>
+            <span class="hunt"><svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span><b>Value</b><small>per €</small></span></span>
+            <span class="hunt"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span><b>Leverage</b><small>contract</small></span></span>
+          </div>
+        </div>
+        <!-- SHARED band + position -->
+        <div class="ctl-row">
+          <span class="ctl-label">Band</span>
+          <div class="band">
+            <span class="val">€150K</span>
+            <div class="track"><div class="fill"></div><div class="knob" style="left:12%"></div><div class="knob" style="left:72%"></div></div>
+            <span class="val">€2.0M</span>
+          </div>
+        </div>
+        <div class="ctl-row">
+          <span class="ctl-label">Position</span>
+          <span class="chip on">All</span><span class="chip">GK</span><span class="chip">CB</span><span class="chip">RB</span><span class="chip">LB</span><span class="chip">DM</span><span class="chip">CM</span><span class="chip">AM</span><span class="chip">RW</span><span class="chip">LW</span><span class="chip">CF</span>
+        </div>
+      </div>
+
+      <!-- convergence banner (the merge's killer feature) -->
+      <div class="converge" id="converge">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+        <div>
+          <div class="t">3 players your Director likes <em style="color:var(--gold-soft);font-style:normal">and</em> top the hunt</div>
+          <div class="d">Highest-conviction signals — where the briefing and the market ranking agree.</div>
+        </div>
+        <span class="go">Show convergence →</span>
+      </div>
+
+      <div class="lane-head" id="lanehead">
+        <h2>The Director is <em>telling you to sign</em></h2>
+        <span class="count">37 calls · ranked by fit score</span>
+      </div>
+      <div class="hint" id="hintb">Ranked by match rating across your €150K–€2.0M band. Click a card for the full dossier.</div>
+
+      <div class="deck" id="deck">
+
+        <!-- ─────── MODE A cards (Director) ─────── -->
+        <div class="mode-a-card ucard sign" onclick="openDrawer()">
+          <div class="uc-top">
+            <span class="rank">01</span>
+            <span class="flag sign"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Sign now</span>
+            <span class="score"><b>9</b><small>fit /10</small></span>
+          </div>
+          <div class="uc-id">
+            <div class="pf">MR<span class="fl">🇷🇸</span></div>
+            <div><div class="nm">Matija Ranđelović</div><div class="meta">AM · 20 · €450K</div><div class="loc">Čukarički · Super Liga · Serbia 🇷🇸 scout</div></div>
+          </div>
+          <div class="uc-headline director">
+            <div class="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 10h8M8 14h5"/></svg>Director's call</div>
+            <p>A €450K U21 with a 148 FM ceiling — and <b>two scouts flagged him independently</b>, which almost never happens. League strength backs the output. Move early.</p>
+          </div>
+          <div class="uc-signals">
+            <span class="sig cor"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Found by <b>&nbsp;2 scouts</b></span>
+            <span class="sig rise"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-8"/></svg>FM PA <b>&nbsp;148</b></span>
+            <span class="sig"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5z"/></svg>Match <b>&nbsp;82</b></span>
+          </div>
+          <div class="uc-foot">
+            <span class="arc rising" style="align-self:center;margin-right:auto"><i></i>Value rising</span>
+            <button class="btn ghost" onclick="event.stopPropagation()">Report</button>
+            <button class="btn gold" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Shortlist</button>
+          </div>
+        </div>
+
+        <div class="mode-a-card ucard sign" onclick="openDrawer()">
+          <div class="uc-top">
+            <span class="rank">02</span>
+            <span class="flag sign"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Sign now</span>
+            <span class="score"><b>9</b><small>fit /10</small></span>
+          </div>
+          <div class="uc-id">
+            <div class="pf">DE<span class="fl">🇵🇹</span></div>
+            <div><div class="nm">Dário Essugo</div><div class="meta">CF · 24 · €1.2M</div><div class="loc">Rio Ave · Liga Portugal · Portugal 🇵🇹 scout</div></div>
+          </div>
+          <div class="uc-headline director">
+            <div class="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 10h8M8 14h5"/></svg>Director's call</div>
+            <p>Eleven goals in a <b>final-contract year</b> with FM potential above his €1.2M tag — buy before the price moves. Rio Ave cash in now or lose him free.</p>
+          </div>
+          <div class="uc-signals">
+            <span class="sig hot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Contract <b>&nbsp;11mo</b></span>
+            <span class="sig rise"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-8"/></svg>FM PA <b>&nbsp;163</b></span>
+            <span class="sig"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5z"/></svg>Match <b>&nbsp;88</b></span>
+          </div>
+          <div class="uc-foot">
+            <span class="arc rising" style="align-self:center;margin-right:auto"><i></i>Value rising</span>
+            <button class="btn ghost" onclick="event.stopPropagation()">Report</button>
+            <button class="btn gold" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Shortlist</button>
+          </div>
+        </div>
+
+        <div class="mode-a-card ucard sign" onclick="openDrawer()">
+          <div class="uc-top">
+            <span class="rank">03</span>
+            <span class="flag sign"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Sign now</span>
+            <span class="score"><b>8</b><small>fit /10</small></span>
+          </div>
+          <div class="uc-id">
+            <div class="pf">OK<span class="fl">🇫🇮</span></div>
+            <div><div class="nm">Otto Kemppäinen</div><div class="meta">RB · 22 · €300K</div><div class="loc">AC Oulu · Veikkausliiga · Finland 🇫🇮 scout</div></div>
+          </div>
+          <div class="uc-headline director">
+            <div class="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 10h8M8 14h5"/></svg>Director's call</div>
+            <p>Nailed-on starter with <b>four months left</b> — a free or token-fee move is realistic in January. Low wage keeps him well inside budget.</p>
+          </div>
+          <div class="uc-signals">
+            <span class="sig hot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Contract <b>&nbsp;4mo</b></span>
+            <span class="sig"><svg viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h12"/></svg>Starter</span>
+            <span class="sig"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5z"/></svg>Match <b>&nbsp;85</b></span>
+          </div>
+          <div class="uc-foot">
+            <span class="arc peak" style="align-self:center;margin-right:auto"><i></i>At peak</span>
+            <button class="btn ghost" onclick="event.stopPropagation()">Report</button>
+            <button class="btn gold" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Shortlist</button>
+          </div>
+        </div>
+
+        <!-- ─────── MODE B cards (Hunt — hidden by default) ─────── -->
+        <div class="mode-b-card ucard hunt-mode" style="display:none" onclick="openDrawer()">
+          <div class="uc-top">
+            <span class="rank">01</span>
+            <span class="flag metric"><svg viewBox="0 0 24 24"><path d="M3 13l4-4 4 4 6-7"/><path d="M3 20h18"/></svg>Best form</span>
+            <span class="score"><b>7.8</b><small>rating</small></span>
+          </div>
+          <div class="uc-id">
+            <div class="pf">NP<span class="fl">🇷🇸</span></div>
+            <div><div class="nm">Nemanja Pavlović</div><div class="meta">CM · 25 · €600K</div><div class="loc">FK Partizan · Super Liga · Serbia</div></div>
+          </div>
+          <div class="uc-headline metric">
+            <div class="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M3 13l4-4 4 4 6-7"/></svg>Why it ranks here</div>
+            <p>Running hot — <b>7.8 average rating</b> across 14 full matches. Top of your band on form right now.</p>
+          </div>
+          <div class="uc-signals">
+            <span class="sig"><svg viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h12"/></svg>14 matches</span>
+            <span class="sig rise"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-8"/></svg>Form rising</span>
+            <span class="sig"><svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>€600K</span>
+          </div>
+          <div class="uc-foot">
+            <span class="arc" style="align-self:center;margin-right:auto"><i style="background:var(--muted-2)"></i>Alpha 78</span>
+            <button class="btn ghost" onclick="event.stopPropagation()">Report</button>
+            <button class="btn gold" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Shortlist</button>
+          </div>
+        </div>
+
+        <div class="mode-b-card ucard hunt-mode" style="display:none" onclick="openDrawer()">
+          <div class="uc-top">
+            <span class="rank">02</span>
+            <span class="flag metric"><svg viewBox="0 0 24 24"><path d="M3 13l4-4 4 4 6-7"/><path d="M3 20h18"/></svg>Best form</span>
+            <span class="score"><b>7.6</b><small>rating</small></span>
+          </div>
+          <div class="uc-id">
+            <div class="pf">DE<span class="fl">🇵🇹</span></div>
+            <div><div class="nm">Dário Essugo</div><div class="meta">CF · 24 · €1.2M</div><div class="loc">Rio Ave · Liga Portugal · Portugal</div></div>
+          </div>
+          <div class="uc-headline metric">
+            <div class="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M3 13l4-4 4 4 6-7"/></svg>Why it ranks here</div>
+            <p>Running hot — <b>7.6 rating</b> across 19 full matches, 11 goals. <b style="color:var(--gold)">★ Director also says SIGN NOW.</b></p>
+          </div>
+          <div class="uc-signals">
+            <span class="sig cor"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Director: Sign</span>
+            <span class="sig"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v4"/></svg>0.71 G+A/90</span>
+            <span class="sig">€1.2M</span>
+          </div>
+          <div class="uc-foot">
+            <span class="arc" style="align-self:center;margin-right:auto"><i style="background:var(--muted-2)"></i>Alpha 85</span>
+            <button class="btn ghost" onclick="event.stopPropagation()">Report</button>
+            <button class="btn gold" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Shortlist</button>
+          </div>
+        </div>
+
+        <div class="mode-b-card ucard hunt-mode" style="display:none" onclick="openDrawer()">
+          <div class="uc-top">
+            <span class="rank">03</span>
+            <span class="flag metric"><svg viewBox="0 0 24 24"><path d="M3 13l4-4 4 4 6-7"/><path d="M3 20h18"/></svg>Best form</span>
+            <span class="score"><b>7.5</b><small>rating</small></span>
+          </div>
+          <div class="uc-id">
+            <div class="pf">TT<span class="fl">🇮🇱</span></div>
+            <div><div class="nm">Dor Turgeman</div><div class="meta">CF · 21 · €1.8M</div><div class="loc">Maccabi Tel Aviv · Ligat Ha'Al · Israel</div></div>
+          </div>
+          <div class="uc-headline metric">
+            <div class="q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M3 13l4-4 4 4 6-7"/></svg>Why it ranks here</div>
+            <p>Running hot — <b>7.5 rating</b>, 8 goals in 16 matches. In-band and in-form.</p>
+          </div>
+          <div class="uc-signals">
+            <span class="sig">16 matches</span>
+            <span class="sig"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>0.50 G/90</span>
+            <span class="sig">€1.8M</span>
+          </div>
+          <div class="uc-foot">
+            <span class="arc" style="align-self:center;margin-right:auto"><i style="background:var(--muted-2)"></i>Alpha 81</span>
+            <button class="btn ghost" onclick="event.stopPropagation()">Report</button>
+            <button class="btn gold" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Shortlist</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- rationale -->
+  <div class="foot-note">
+    <h4>Does merging work? Here's the honest read.</h4>
+    <p><b>The unifying model:</b> both screens were always "a board of signable players in your band." They only differed in <b>what drives the ranking</b> — your Director's judgment, or a market metric. So the merge isn't two things glued together; it's <b>one board with a lens switch</b>. The band slider, position chips, cards, dossier drawer and shortlist are shared. Only the top controls + each card's headline change with the lens.</p>
+    <p style="margin-top:10px"><b>The payoff the two separate screens can never give you — convergence.</b> When a player your Director flagged SIGN also tops the market hunt (the ★ badge + the banner), that's the Edwards-method "multiple independent signals agree" moment your own skill doc calls the highest-conviction call. You literally cannot see that when the data lives in two screens.</p>
+    <div class="verdict-row">
+      <div class="v keep">
+        <h5>Reasons to merge</h5>
+        One mental model ("the board"), one place to work · shared band/position/drawer/shortlist · convergence becomes visible · kills the "why two similar screens?" confusion · fewer nav items.
+      </div>
+      <div class="v merge">
+        <h5>Reasons to keep separate</h5>
+        Different rhythms — a <em>briefing you check</em> vs a <em>tool you operate</em> · different data freshness (6h cycle vs live) · the mode switch adds one cognitive step · power users may want each at a fixed URL.
+      </div>
+    </div>
+    <p style="margin-top:14px"><b>My take:</b> merge them. The lens switch is a smaller tax than maintaining two near-identical boards, and convergence is a real new signal. If you agree, the build is: one route <code>/war-room/board</code>, a <code>mode</code> state driving ranking + card headline, Director fields from <code>/api/war-room/scout-profiles</code> and hunts from <code>/api/war-room/alpha-board</code>, matched by TM player id to compute convergence. No thumbs. Tell me to proceed and I'll wire it.</p>
+  </div>
+
+</div>
+
+<script>
+  function setMode(m){
+    const a=m==='a';
+    document.getElementById('mode-a').classList.toggle('on',a);
+    document.getElementById('mode-b').classList.toggle('on',!a);
+    document.getElementById('ctl-a').style.display=a?'':'none';
+    document.getElementById('ctl-b').style.display=a?'none':'';
+    document.querySelectorAll('.mode-a-card').forEach(c=>c.style.display=a?'':'none');
+    document.querySelectorAll('.mode-b-card').forEach(c=>c.style.display=a?'none':'');
+    document.getElementById('hintb').classList.toggle('show',!a);
+    document.getElementById('converge').style.display=a?'':'none';
+    const lh=document.getElementById('lanehead');
+    lh.querySelector('h2').innerHTML=a?'The Director is <em>telling you to sign</em>':'Hunting <em>best form</em> in your band';
+    lh.querySelector('.count').textContent=a?'37 calls · ranked by fit score':'142 in band · ranked by match rating';
+  }
+  // visual toggles
+  document.querySelectorAll('.lens').forEach(l=>l.addEventListener('click',()=>{document.querySelectorAll('.lens').forEach(x=>x.classList.remove('on'));l.classList.add('on');}));
+  document.querySelectorAll('.hunt').forEach(h=>h.addEventListener('click',()=>{document.querySelectorAll('.hunt').forEach(x=>x.classList.remove('on'));h.classList.add('on');}));
+  document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');}));
+  function openDrawer(){alert('Dossier drawer — opens the same full report in both lenses (verdict, performance, FM potential, market, intel). Omitted here to keep the merge mock focused on the switch.');}
+</script>
+</body>
+</html>
