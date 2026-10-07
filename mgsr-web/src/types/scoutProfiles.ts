@@ -28,13 +28,12 @@ export interface ScoutProfileResponse {
   scoutExplanationEn?: string;
   scoutExplanationHe?: string;
 
-  // ── Sport Director intelligence (may be null for lower-ranked profiles) ──
-  directorVerdict?: string | null;
-  directorAction?: 'SHORTLIST_NOW' | 'MONITOR' | 'LOW_PRIORITY' | string | null;
-  directorFitScore?: number | null;
-  directorValueArc?: 'rising' | 'peak' | 'declining' | string | null;
-  directorDataFlags?: string[];
-  scoutNarrative?: string | null;
+  // ── Computed verdict (deterministic, from real numbers — no AI) ──
+  computedScore: number;                 // 0-100 opportunity score
+  computedTier: 'sign' | 'monitor' | 'watch';
+  computedValueArc: 'rising' | 'peak' | 'declining' | null;
+  computedReasonEn: string;
+  computedReasonHe: string;
 
   // ── Per-90 performance (API-Football) ──
   goalsPer90?: number | null;
