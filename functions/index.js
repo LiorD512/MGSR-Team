@@ -643,12 +643,19 @@ exports.releasesRefreshWorker = onMessagePublished(
  * Runs every 3 days at 00:00 Israel time. Publishes to Pub/Sub and returns
  * immediately so Cloud Scheduler never times out. The actual work runs in scoutAgentWorker.
  */
+// ⛔ DISABLED (per product decision): the Scout Agent network is paused.
+// This scheduler no longer publishes the Pub/Sub trigger. Kept as a no-op so
+// the deployed function still exists; re-enable by restoring the body below.
 exports.scoutAgentScheduled = onSchedule(
   { schedule: "0 0 */3 * *", timeZone: "Asia/Jerusalem" },
   async () => {
+    console.log("[scoutAgentScheduled] DISABLED — scout agent runs are paused. No trigger published.");
+    return;
+    /* ORIGINAL (restore to re-enable):
     console.log("[scoutAgentScheduled] Triggered (every 3 days 00:00) — publishing to Pub/Sub");
     await publishScoutAgentTrigger("scheduled_every_3_days");
     console.log("[scoutAgentScheduled] Published — worker will run asynchronously");
+    */
   }
 );
 
@@ -656,9 +663,15 @@ exports.scoutAgentScheduled = onSchedule(
  * Daily watchdog for Scout Agent cadence.
  * If latest run is stale (>80h), republish trigger to self-heal missed schedule runs.
  */
+// ⛔ DISABLED (per product decision): without this guard the watchdog would
+// detect the paused run as "stale" (>80h) and re-trigger it, defeating the
+// pause. No-op until the Scout Agent network is re-enabled.
 exports.scoutAgentWatchdogScheduled = onSchedule(
   { schedule: "0 6 * * *", timeZone: "Asia/Jerusalem" },
   async () => {
+    console.log("[scoutAgentWatchdogScheduled] DISABLED — scout agent runs are paused. Watchdog takes no action.");
+    return;
+    /* ORIGINAL (restore to re-enable):
     const MAX_STALENESS_MS = 80 * 60 * 60 * 1000; // 80h for "every 3 days" expectation
 
     const lastRunSnap = await db
@@ -682,6 +695,7 @@ exports.scoutAgentWatchdogScheduled = onSchedule(
       lastRunAt,
     });
     await publishScoutAgentTrigger("watchdog_recovery_stale_run");
+    */
   }
 );
 
@@ -698,6 +712,12 @@ exports.scoutAgentWorker = onMessagePublished(
     secrets: ["SCOUT_ENRICH_SECRET"],
   },
   async () => {
+    // ⛔ DISABLED (per product decision): hard stop so no stray/queued Pub/Sub
+    // message can run the agent network while it is paused. Remove this guard
+    // (and re-enable the schedulers) to resume.
+    console.log("[scoutAgentWorker] DISABLED — scout agent runs are paused. Ignoring trigger.");
+    return;
+    /* eslint-disable no-unreachable */
     console.log("[scoutAgentWorker] Started");
     try {
       const runResult = await runScoutAgent();
@@ -713,6 +733,7 @@ exports.scoutAgentWorker = onMessagePublished(
       console.error("[scoutAgentWorker] Failed:", err);
       throw err;
     }
+    /* eslint-enable no-unreachable */
   }
 );
 
