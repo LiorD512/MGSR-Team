@@ -51,6 +51,10 @@ function timeAgo(ms: number): string {
 
 const TM_DEFAULT_IMG = 'https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1';
 
+// Fixed position filter list — mirrors the Alpha Board screen exactly
+// (mgsr-web/src/components/AlphaBoardMen.tsx → POSITIONS), in tactical order.
+const POSITION_FILTER_ORDER = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'RW', 'LW', 'CF'] as const;
+
 export default function WarRoomScoutAgents() {
   const { user } = useAuth();
   const { lang } = useLanguage() as ReturnType<typeof useLanguage>;
@@ -172,20 +176,16 @@ export default function WarRoomScoutAgents() {
       .filter((p) => (posFilter === 'all' ? true : shortenPosition(p.position) === posFilter));
   }, [profiles, rosterUrls, shortlistUrls, agentFilter, posFilter]);
 
+  // Position filter follows the Alpha Board's fixed tactical order (not A→Z,
+  // and without stray codes like SS / LEFT MIDFIELD). Only surface positions
+  // that actually appear in the visible data, preserving the canonical order.
   const availablePositions = useMemo(() => {
-    const set = new Set<string>();
+    const present = new Set<string>();
     for (const p of visible) {
       const code = shortenPosition(p.position);
-      if (code && code !== '—') set.add(code);
+      if (code && code !== '—') present.add(code);
     }
-    return Array.from(set).sort();
-  }, [visible]);
-
-  const grouped = useMemo(() => {
-    return visible.reduce<Record<string, ScoutProfileResponse[]>>((acc, p) => {
-      (acc[p.agentId] = acc[p.agentId] || []).push(p);
-      return acc;
-    }, {});
+    return POSITION_FILTER_ORDER.filter((code) => present.has(code));
   }, [visible]);
 
   const agentIds = (Object.keys(AGENTS_CONFIG) as AgentId[]).sort((a, b) => {
@@ -193,6 +193,22 @@ export default function WarRoomScoutAgents() {
     const nb = he ? AGENTS_CONFIG[b].nameHe : AGENTS_CONFIG[b].name;
     return na.localeCompare(nb, he ? 'he' : 'en');
   });
+
+  // Group players by agent, then order the sections A→Z by agent display name
+  // so the list matches the agent chip order (no more "Finland first").
+  const grouped = useMemo(() => {
+    const byAgent = visible.reduce<Record<string, ScoutProfileResponse[]>>((acc, p) => {
+      (acc[p.agentId] = acc[p.agentId] || []).push(p);
+      return acc;
+    }, {});
+    const agentName = (id: string) => {
+      const cfg = AGENTS_CONFIG[id as AgentId];
+      return (he ? cfg?.nameHe : cfg?.name) || id;
+    };
+    return Object.entries(byAgent).sort(([a], [b]) =>
+      agentName(a).localeCompare(agentName(b), he ? 'he' : 'en'),
+    );
+  }, [visible, he]);
 
   const displayPos = (pos: string | undefined) => {
     const code = shortenPosition(pos);
@@ -234,14 +250,15 @@ export default function WarRoomScoutAgents() {
         ))}
       </div>
 
-      {/* Position chips */}
+      {/* Position chips — same fixed set/order as the Alpha Board screen.
+          English shows short codes (GK, CB, …); Hebrew shows translated names. */}
       <div className="brit-wr-chips">
         <button className={`brit-wr-chip gold${posFilter === 'all' ? ' on' : ''}`} onClick={() => setPosFilter('all')}>
           {he ? 'כל העמדות' : 'All positions'}
         </button>
         {availablePositions.map((code) => (
           <button key={code} className={`brit-wr-chip gold${posFilter === code ? ' on' : ''}`} onClick={() => setPosFilter(code)}>
-            {displayPos(code)}
+            {he ? getPositionDisplayName(code, true) : code}
           </button>
         ))}
       </div>
@@ -256,7 +273,7 @@ export default function WarRoomScoutAgents() {
         </div>
       )}
 
-      {!loading && Object.entries(grouped).map(([agentId, list]) => {
+      {!loading && grouped.map(([agentId, list]) => {
         const cfg = AGENTS_CONFIG[agentId as AgentId];
         return (
           <section key={agentId} className="brit-wr-agentsec">
