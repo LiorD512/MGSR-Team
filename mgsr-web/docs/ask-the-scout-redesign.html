@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ask the Scout — Redesign Mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* ───────────────────────────────────────────────
+   Tokens copied verbatim from .brit-room in
+   mgsr-web/src/app/globals.css so this mock drops
+   straight into the Light Management Room theme.
+   ─────────────────────────────────────────────── */
+:root {
+  --ink: #161613;
+  --black: #11110f;
+  --paper: #f3f0e8;
+  --paper-2: #e4ded1;
+  --card: #fbf9f3;
+  --gold: #a47d43;
+  --gold-soft: #c9a66b;
+  --gold-bright: #e0c488;
+  --red: #b64235;
+  --green: #5c6f4a;
+  --amber: #b07a2b;
+  --blue: #4a5f6f;
+  --muted: #77736a;
+  --muted-2: #aba69b;
+  --line: rgba(22, 22, 19, 0.18);
+  --line-2: rgba(22, 22, 19, 0.07);
+  --dark-line: rgba(243, 240, 232, 0.2);
+  --display: 'Oswald', Impact, sans-serif;
+  --body: 'Manrope', Helvetica, sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 14px/1.5 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+button { border: 0; color: inherit; font: inherit; cursor: pointer; background: transparent; }
+::selection { background: var(--gold-soft); color: var(--ink); }
+
+/* paper grain */
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: 20; pointer-events: none; opacity: .045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+}
+
+/* ── Shell ── */
+.app { min-height: 100vh; display: grid; grid-template-columns: 250px minmax(0, 1fr); }
+
+/* ── Rail ── */
+.rail { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 25px 22px; background: var(--black); color: var(--paper); }
+.lockup { display: flex; align-items: center; gap: 12px; padding-bottom: 25px; border-bottom: 1px solid var(--dark-line); }
+.lockup .mark { width: 44px; height: 44px; border-radius: 50%; flex: none; display: grid; place-items: center; border: 1.5px solid var(--gold-soft); color: var(--gold-soft); font: 600 15px/1 var(--display); letter-spacing: .04em; }
+.lockup strong { display: block; font: 600 15px/1 var(--display); letter-spacing: .08em; }
+.lockup small { display: block; margin-top: 5px; color: #aaa59b; font: 9px/1 var(--mono); text-transform: uppercase; }
+.nav { display: grid; gap: 3px; margin-top: 28px; }
+.nav a, .nav .group { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 12px 0; color: #aaa69c; text-align: start; font: 10px/1 var(--mono); text-transform: uppercase; transition: color .15s; }
+.nav a:hover, .nav a.active, .nav .group:hover, .nav .group.active { color: var(--gold-soft); }
+.nav a.active::before, .nav .group.active::before { content: ''; width: 20px; height: 1px; margin-inline-end: -20px; background: var(--gold-soft); }
+.nav em { color: var(--gold-soft); font-style: normal; }
+.nav-sub { display: grid; gap: 2px; padding: 2px 0 6px; margin-inline-start: 14px; border-inline-start: 1px solid var(--dark-line); }
+.nav-sub a { display: flex; align-items: center; padding: 9px 0 9px 14px; color: #8f8a80; font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; transition: color .15s; position: relative; }
+.nav-sub a:hover, .nav-sub a.active { color: var(--gold-soft); }
+.nav-sub a.active::before { content: ''; position: absolute; inset-inline-start: -1px; top: 50%; width: 2px; height: 14px; margin-top: -7px; background: var(--gold-soft); }
+.rail-footer { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--dark-line); color: #979289; font: 9px/1.6 var(--mono); text-transform: uppercase; }
+.rail-footer strong { display: block; color: var(--paper); font-weight: 400; }
+
+/* ── Main ── */
+.main { min-width: 0; }
+.topbar { height: 74px; display: flex; align-items: center; justify-content: space-between; padding: 0 43px; background: var(--black); color: #aaa69c; font: 10px/1 var(--mono); text-transform: uppercase; }
+.topbar strong { color: var(--paper); font-weight: 400; }
+.actions { display: flex; align-items: center; gap: 19px; }
+.pswitch { display: inline-flex; border: 1px solid var(--dark-line); }
+.pswitch span { padding: 7px 12px; font: 9px/1 var(--mono); text-transform: uppercase; }
+.pswitch span.on { background: var(--gold-soft); color: var(--ink); }
+
+.canvas { max-width: 1540px; padding: 43px; }
+
+/* ── Masthead (slimmed) ── */
+.masthead { display: flex; justify-content: space-between; align-items: end; gap: 30px; margin-bottom: 34px; }
+.kicker { margin: 0 0 14px; color: var(--gold); font: 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+.masthead h1 { margin: 0; font: 500 clamp(44px, 5.4vw, 76px)/.82 var(--display); letter-spacing: -.045em; text-transform: uppercase; }
+.masthead h1 span { color: var(--gold); }
+.sub { margin: 14px 0 0; color: var(--muted); font: 12px/1.5 var(--body); max-width: 520px; }
+.mast-note { max-width: 230px; color: var(--muted); font: 10px/1.6 var(--mono); text-transform: uppercase; text-align: end; }
+.mast-note strong { display: block; color: var(--ink); font-weight: 500; }
+
+/* ── Working grid: console (left) + brief (right) ── */
+.work { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 20px; }
+@media (max-width: 1080px) { .work { grid-template-columns: 1fr; } }
+
+/* ── Console ── */
+.console { border: 1px solid var(--line); background: var(--card); padding: 18px; }
+.term { display: flex; align-items: center; gap: 8px; color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px; }
+.term .d { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); position: relative; }
+.term .d::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 1px solid var(--gold-soft); opacity: .5; animation: ping 2.4s ease-out infinite; }
+@keyframes ping { 0% { transform: scale(.6); opacity: .6; } 100% { transform: scale(1.5); opacity: 0; } }
+.askwrap { display: flex; gap: 10px; }
+.askwrap .field { flex: 1; border: 1px solid var(--line); background: var(--paper); padding: 14px 15px; color: var(--ink); font: 15px/1.5 var(--body); outline: none; }
+.askwrap .field:focus { border-color: var(--gold-soft); }
+.askwrap .go { flex: none; align-self: stretch; padding: 0 24px; background: var(--black); color: var(--gold-soft); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; transition: .15s; }
+.askwrap .go:hover { background: var(--gold); color: var(--paper); }
+.divmode { display: flex; align-items: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.divmode .dl { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.chip { padding: 9px 14px; border: 1px solid var(--line); color: var(--muted); background: transparent; font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; transition: .15s; }
+.chip:hover { color: var(--ink); border-color: var(--muted); }
+.chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip .cx { display: block; margin-top: 4px; font-size: 7px; letter-spacing: .04em; opacity: .7; }
+
+.examples-label { margin: 18px 0 10px; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+.examples { display: flex; flex-wrap: wrap; gap: 8px; }
+.ex { padding: 9px 13px; border: 1px solid var(--line); color: var(--muted); background: transparent; font: 9px/1 var(--mono); text-transform: uppercase; transition: .15s; display: inline-flex; align-items: center; gap: 7px; }
+.ex:hover { border-color: var(--gold-soft); color: var(--gold); }
+.ex::before { content: '›'; color: var(--gold); font-weight: 700; }
+
+/* ── Brief panel (the redesigned interpretation) ── */
+.brief { border: 1px solid var(--gold-soft); background: rgba(164,125,67,.05); padding: 0; }
+.brief-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(164,125,67,.3); }
+.brief-head b { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+.brief-head .ok { display: inline-flex; align-items: center; gap: 6px; color: var(--green); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brief-head .ok .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.brief-facets { display: grid; grid-template-columns: 1fr 1fr; }
+.facet { padding: 13px 16px; border-bottom: 1px solid var(--line-2); }
+.facet:nth-child(odd) { border-inline-end: 1px solid var(--line-2); }
+.facet .fl { display: block; color: var(--muted); font: 8px/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 7px; }
+.facet .fv { font: 500 14px/1.3 var(--body); color: var(--ink); }
+.facet.wide { grid-column: 1 / -1; border-inline-end: 0; }
+.facet .tag { display: inline-block; margin: 0 5px 5px 0; padding: 4px 9px; background: var(--card); border: 1px solid var(--line); font: 9px/1 var(--mono); text-transform: uppercase; color: var(--ink); }
+.brief-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-top: 1px solid rgba(164,125,67,.3); }
+.brief-foot span { color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+.brief-foot span b { color: var(--gold); font-weight: 500; }
+.brief-foot .expand { color: var(--gold); border-bottom: 1px solid var(--gold-soft); font: 9px/1 var(--mono); text-transform: uppercase; padding-bottom: 2px; }
+
+/* ── Results ── */
+.count { margin: 6px 2px 16px; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em; display: flex; align-items: center; gap: 10px; }
+.count b { color: var(--ink); font-weight: 500; }
+.count .rule { flex: 1; height: 1px; background: var(--line); }
+
+.results { display: flex; flex-direction: column; gap: 10px; }
+.qrow { display: grid; grid-template-columns: 56px minmax(0,1fr) auto; gap: 16px; align-items: center; padding: 16px 18px; background: var(--card); border: 1px solid var(--line); transition: border-color .15s, transform .15s; }
+.qrow:hover { border-color: var(--gold-soft); transform: translateX(2px); }
+.ring { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; }
+.ring .inner { width: 42px; height: 42px; border-radius: 50%; background: var(--card); display: grid; place-items: center; font: 500 13px/1 var(--display); color: var(--gold); }
+.qbody { min-width: 0; }
+.qname { font: 500 20px/1 var(--display); text-transform: uppercase; letter-spacing: .01em; }
+.qmeta { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.qmeta .m { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font: 10px/1 var(--mono); text-transform: uppercase; }
+.qmeta .m b { color: var(--ink); font-weight: 500; }
+.qmeta .m .k { color: var(--muted-2); }
+.qwhy { margin-top: 10px; display: inline-flex; align-items: center; gap: 7px; padding: 5px 9px; background: rgba(92,111,74,.09); border: 1px solid rgba(92,111,74,.3); color: var(--green); font: 9px/1.3 var(--mono); text-transform: uppercase; }
+.aacts { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 14px; font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; transition: .15s; }
+.btn.ghost { border: 1px solid var(--line); color: var(--muted); }
+.btn.ghost:hover { border-color: var(--muted); color: var(--ink); }
+.btn.gold { background: var(--black); color: var(--gold-soft); }
+.btn.gold:hover { background: var(--gold); color: var(--paper); }
+
+.findmore { margin-top: 16px; display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border: 1px solid var(--line); color: var(--muted); background: transparent; font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; transition: .15s; }
+.findmore:hover { border-color: var(--gold-soft); color: var(--gold); }
+.findmore svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+
+.flag { width: 15px; height: 11px; display: inline-block; border-radius: 1px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── RAIL ── -->
+  <aside class="rail">
+    <a class="lockup" href="#">
+      <div class="mark">JB</div>
+      <div>
+        <strong>BRIT SPORT GROUP</strong>
+        <small>Management Room</small>
+      </div>
+    </a>
+    <nav class="nav">
+      <a href="#"><span>Dashboard</span></a>
+      <div class="group"><span>Players</span><em>+</em></div>
+      <a href="#"><span>Club Requirements</span></a>
+      <a href="#"><span>Contacts</span></a>
+      <div class="group"><span>Signals</span><em>+</em></div>
+      <div class="group active"><span>War Room</span><em>−</em></div>
+      <div class="nav-sub">
+        <a href="#"><span>Alpha Board</span></a>
+        <a href="#" class="active"><span>Ask</span></a>
+        <a href="#"><span>Successors</span></a>
+      </div>
+    </nav>
+    <div class="rail-footer">
+      <strong>Men Platform</strong>
+      Season 25/26
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+    <header class="topbar">
+      <div>BRIT / <strong>War Room</strong> / Ask / 07 October 2026</div>
+      <div class="actions">
+        <span class="pswitch"><span class="on">Men</span><span>Youth</span></span>
+        <span>TLV 14:32</span>
+      </div>
+    </header>
+
+    <main class="canvas">
+
+      <!-- Masthead -->
+      <header class="masthead">
+        <div>
+          <p class="kicker">Natural-language search / Men platform</p>
+          <h1>Ask the <span>scout.</span></h1>
+          <p class="sub">Describe the player in your own words. The scout interprets the brief and returns matches ranked by fit.</p>
+        </div>
+        <div class="mast-note">
+          <strong>Live index</strong>
+          27,400 profiles · updated 06:00 TLV
+        </div>
+      </header>
+
+      <!-- Working area: console + brief -->
+      <section class="work">
+
+        <!-- Console -->
+        <div class="console">
+          <div class="term"><span class="d"></span>Scout search terminal</div>
+          <div class="askwrap">
+            <input class="field" value="Fast strikers under 24 with 5+ goals for Israeli market" />
+            <button class="go">Search</button>
+          </div>
+          <div class="divmode">
+            <span class="dl">Diversity</span>
+            <button class="chip">Strict<span class="cx">On-brief only</span></button>
+            <button class="chip on">Balanced<span class="cx">Mix &amp; fit</span></button>
+            <button class="chip">Discovery<span class="cx">Wildcards</span></button>
+          </div>
+          <p class="examples-label">Try a brief</p>
+          <div class="examples">
+            <button class="ex">Fast strikers under 24 with 5+ goals for Israeli market</button>
+            <button class="ex">Creative midfielders from Belgium or Portugal under 26</button>
+            <button class="ex">Left-footed center backs from Eastern Europe</button>
+            <button class="ex">Free agent wingers with pace and dribbling ability</button>
+          </div>
+        </div>
+
+        <!-- Brief panel (redesigned interpretation) -->
+        <div class="brief">
+          <div class="brief-head">
+            <b>Scout interpretation</b>
+            <span class="ok"><span class="dot"></span>5 matches</span>
+          </div>
+          <div class="brief-facets">
+            <div class="facet">
+              <span class="fl">Position</span>
+              <span class="fv">Strikers</span>
+            </div>
+            <div class="facet">
+              <span class="fl">Age</span>
+              <span class="fv">Up to 24</span>
+            </div>
+            <div class="facet">
+              <span class="fl">Budget band</span>
+              <span class="fv">€300K – €600K</span>
+            </div>
+            <div class="facet">
+              <span class="fl">Value cap</span>
+              <span class="fv">≤ €2.5M <small style="color:var(--muted);font:9px/1 var(--mono)">Ligat ha'Al</small></span>
+            </div>
+            <div class="facet wide">
+              <span class="fl">Style &amp; market fit</span>
+              <span class="tag">5+ goals last season</span>
+              <span class="tag">Israeli-market fit</span>
+              <span class="tag">Fast / direct</span>
+              <span class="tag">Lower leagues OK</span>
+              <span class="tag">Affordable</span>
+            </div>
+          </div>
+          <div class="brief-foot">
+            <span>Requested <b>15</b> · showing best 5</span>
+            <button class="expand">Expand full search →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Results -->
+      <p class="count"><b>5</b> targets acquired · ranked by fit <span class="rule"></span></p>
+
+      <div class="results">
+
+        <!-- Row 1 -->
+        <div class="qrow">
+          <div class="ring" style="background: conic-gradient(var(--gold) 335deg, var(--paper-2) 335deg);">
+            <div class="inner">93%</div>
+          </div>
+          <div class="qbody">
+            <div class="qname">Christoph Lang</div>
+            <div class="qmeta">
+              <span class="m"><span class="k">Age</span><b>24</b></span>
+              <span class="m"><span class="k">Pos</span><b>Centre-Forward</b></span>
+              <span class="m"><span class="k">Value</span><b>€2.00M</b></span>
+              <span class="m"><span class="k">Club</span><b>LASK</b></span>
+            </div>
+            <div class="qwhy">★ 11 goals · direct runner · fits value cap</div>
+          </div>
+          <div class="aacts">
+            <a class="btn ghost">TM →</a>
+            <button class="btn gold">+ Shortlist</button>
+          </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="qrow">
+          <div class="ring" style="background: conic-gradient(var(--gold) 320deg, var(--paper-2) 320deg);">
+            <div class="inner">89%</div>
+          </div>
+          <div class="qbody">
+            <div class="qname">Marko Divković</div>
+            <div class="qmeta">
+              <span class="m"><span class="k">Age</span><b>23</b></span>
+              <span class="m"><span class="k">Pos</span><b>Centre-Forward</b></span>
+              <span class="m"><span class="k">Value</span><b>€1.20M</b></span>
+              <span class="m"><span class="k">Club</span><b>HNK Gorica</b></span>
+            </div>
+            <div class="qwhy">★ 9 goals · pace to stretch lines · lower league</div>
+          </div>
+          <div class="aacts">
+            <a class="btn ghost">TM →</a>
+            <button class="btn gold">+ Shortlist</button>
+          </div>
+        </div>
+
+        <!-- Row 3 -->
+        <div class="qrow">
+          <div class="ring" style="background: conic-gradient(var(--gold) 302deg, var(--paper-2) 302deg);">
+            <div class="inner">84%</div>
+          </div>
+          <div class="qbody">
+            <div class="qname">Elias Havel</div>
+            <div class="qmeta">
+              <span class="m"><span class="k">Age</span><b>22</b></span>
+              <span class="m"><span class="k">Pos</span><b>Second Striker</b></span>
+              <span class="m"><span class="k">Value</span><b>€850K</b></span>
+              <span class="m"><span class="k">Club</span><b>Baník Ostrava</b></span>
+            </div>
+            <div class="qwhy">★ 7 goals · high work-rate · affordable</div>
+          </div>
+          <div class="aacts">
+            <a class="btn ghost">TM →</a>
+            <button class="btn gold">+ Shortlist</button>
+          </div>
+        </div>
+
+        <!-- Row 4 -->
+        <div class="qrow">
+          <div class="ring" style="background: conic-gradient(var(--gold) 288deg, var(--paper-2) 288deg);">
+            <div class="inner">80%</div>
+          </div>
+          <div class="qbody">
+            <div class="qname">Dani Olmo Reyes</div>
+            <div class="qmeta">
+              <span class="m"><span class="k">Age</span><b>24</b></span>
+              <span class="m"><span class="k">Pos</span><b>Centre-Forward</b></span>
+              <span class="m"><span class="k">Value</span><b>€2.40M</b></span>
+              <span class="m"><span class="k">Club</span><b>CD Lugo</b></span>
+            </div>
+            <div class="qwhy">★ 8 goals · at value ceiling · poacher profile</div>
+          </div>
+          <div class="aacts">
+            <a class="btn ghost">TM →</a>
+            <button class="btn gold">+ Shortlist</button>
+          </div>
+        </div>
+
+        <!-- Row 5 -->
+        <div class="qrow">
+          <div class="ring" style="background: conic-gradient(var(--gold) 270deg, var(--paper-2) 270deg);">
+            <div class="inner">75%</div>
+          </div>
+          <div class="qbody">
+            <div class="qname">Tobias Lund</div>
+            <div class="qmeta">
+              <span class="m"><span class="k">Age</span><b>21</b></span>
+              <span class="m"><span class="k">Pos</span><b>Centre-Forward</b></span>
+              <span class="m"><span class="k">Value</span><b>€600K</b></span>
+              <span class="m"><span class="k">Club</span><b>Lyngby BK</b></span>
+            </div>
+            <div class="qwhy">★ 6 goals · raw but fast · development upside</div>
+          </div>
+          <div class="aacts">
+            <a class="btn ghost">TM →</a>
+            <button class="btn gold">+ Shortlist</button>
+          </div>
+        </div>
+
+      </div>
+
+      <button class="findmore">
+        <svg viewBox="0 0 24 24"><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></svg>
+        Find more targets
+      </button>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>
