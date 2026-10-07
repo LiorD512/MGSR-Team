@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Alpha Board / Player Dossier (v8, redesigned)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--blue:#4a5f6f;--muted:#8a867d;--muted-2:#aba69b;
+      --line:rgba(22,22,19,.14);--line-2:rgba(22,22,19,.07);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    [dir=rtl]{--display:'Heebo',sans-serif;--body:'Heebo',sans-serif;--mono:'Heebo',sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;background:#2a2a26;color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;justify-content:center;padding:30px 16px}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    .toolbar{position:fixed;top:14px;left:16px;display:flex;gap:8px;z-index:50}
+    .toolbar button{padding:8px 12px;border:1px solid var(--dark-line);color:var(--paper);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+    .toolbar button:hover{border-color:var(--gold-soft);color:var(--gold-soft)}
+
+    /* ── Drawer ── */
+    .drawer{width:min(560px,100%);background:var(--paper);border-top:3px solid var(--gold);overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.5)}
+
+    /* Header */
+    .dh{position:relative;background:var(--black);color:var(--paper);padding:0}
+    .dh-top{display:flex;gap:18px;align-items:flex-start;padding:24px 26px 20px}
+    .dh-top .portrait{width:84px;height:84px;flex:none;object-fit:cover;object-position:center 18%;filter:grayscale(1);opacity:.9;border:1px solid var(--dark-line);background:linear-gradient(160deg,#26261f,#101010)}
+    .dh-id{min-width:0;flex:1;padding-top:2px}
+    .dh-id .kick{color:var(--gold-soft);font:9px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .dh-id h2{margin:7px 0 0;font:500 30px/.92 var(--display);text-transform:uppercase;letter-spacing:-.01em}
+    [dir=rtl] .dh-id h2{font-weight:800;letter-spacing:normal}
+    .dh-id .bio{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px 10px;color:#c9c3b6;font:10px/1.4 var(--mono);text-transform:uppercase}
+    .dh-id .bio b{color:var(--paper);font-weight:500}
+    .dh .close{position:absolute;top:16px;right:18px;color:#c9c3b6;font:26px/1 var(--display)}
+    .dh .close:hover{color:var(--paper)}
+
+    /* score + verdict strip */
+    .dh-score{display:flex;align-items:center;gap:20px;padding:18px 26px;border-top:1px solid var(--dark-line);background:#15150f}
+    .dh-score .big{display:flex;align-items:baseline;gap:8px}
+    .dh-score .big b{font:500 44px/1 var(--display);color:var(--gold-soft)}
+    .dh-score .big .out{color:#8a857a;font:11px/1 var(--mono)}
+    .dh-score .lbl{color:#c9c3b6;font:8px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .dh-score .verdict{margin-inline-start:auto;text-align:center}
+    .dh-score .verdict .tag{display:block;padding:8px 16px;font:500 15px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
+    .verdict .tag.SIGN{background:var(--green);color:var(--paper)}
+    .verdict .tag.MONITOR{background:var(--amber);color:var(--paper)}
+    .verdict .tag.PASS{background:var(--red);color:var(--paper)}
+    .dh-score .verdict .vl{display:block;margin-top:6px;color:#8a857a;font:7px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+
+    /* body */
+    .db{padding:4px 26px 26px}
+    .sec{padding:22px 0;border-bottom:1px solid var(--line)}
+    .sec:last-child{border-bottom:0}
+    .sec-h{display:flex;align-items:center;gap:10px;margin:0 0 16px}
+    .sec-h h3{margin:0;font:500 12px/1 var(--display);text-transform:uppercase;letter-spacing:.1em;color:var(--ink)}
+    [dir=rtl] .sec-h h3{font-weight:800}
+    .sec-h .meta{margin-inline-start:auto;color:var(--muted-2);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:6px}
+    .sec-h .meta .src{border:1px solid var(--line);padding:4px 7px}
+
+    /* why now — plain language */
+    .why{display:flex;gap:13px;padding:15px 16px;border:1px solid var(--gold-soft);background:rgba(164,125,67,.06)}
+    .why .mark{flex:none;width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--paper);display:grid;place-items:center;font:500 13px/1 var(--display)}
+    .why .txt .headline{font:500 14px/1.4 var(--body);color:var(--ink)}
+    .why .txt .detail{margin-top:6px;color:var(--muted);font:12px/1.55 var(--body)}
+
+    /* stat context line */
+    .statctx{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 12px;background:var(--paper-2);color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.03em}
+    .statctx b{color:var(--ink);font-weight:500}
+    .statctx .dot{width:5px;height:5px;border-radius:50%;background:var(--amber);flex:none}
+
+    /* stat grid — totals + per90 */
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line)}
+    .stat{background:var(--card);padding:14px 15px}
+    .stat .k{color:var(--muted);font:8px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+    .stat .v{margin-top:8px;display:flex;align-items:baseline;gap:7px}
+    .stat .v .total{font:500 24px/1 var(--display);color:var(--ink)}
+    .stat .v .per90{color:var(--muted);font:11px/1 var(--mono)}
+    .stat.wide{grid-column:1/-1}
+    .stat .bar{margin-top:9px;height:4px;background:var(--paper-2);position:relative}
+    .stat .bar i{position:absolute;inset-inline-start:0;top:0;height:100%;background:var(--gold)}
+
+    /* profile facts row */
+    .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+    .fact{background:var(--card);padding:13px 14px}
+    .fact .k{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+    .fact .v{margin-top:7px;font:500 15px/1 var(--mono);color:var(--ink)}
+    .fact .v.sm{font-size:12px}
+
+    /* FM potential */
+    .fm{display:flex;align-items:center;gap:16px;padding:14px 16px;border:1px solid var(--line);background:var(--card)}
+    .fm .ring{width:58px;height:58px;border-radius:50%;flex:none;display:grid;place-items:center}
+    .fm .ring .inner{width:44px;height:44px;border-radius:50%;background:var(--card);display:grid;place-items:center}
+    .fm .ring .inner b{font:500 15px/1 var(--display);color:var(--gold)}
+    .fm .fmbody .cap{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+    .fm .fmbody .line{margin-top:6px;font:12.5px/1.5 var(--body);color:var(--ink)}
+    .fm .fmbody .line b{color:var(--gold);font-weight:600}
+
+    /* data notice */
+    .notice{display:flex;gap:12px;padding:14px 16px;border:1px solid var(--amber);background:rgba(176,122,43,.07)}
+    .notice .ic{flex:none;width:22px;height:22px;stroke:var(--amber);fill:none;stroke-width:1.6}
+    .notice .n-h{font:500 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--amber)}
+    .notice p{margin:7px 0 0;color:var(--ink);font:12px/1.55 var(--body)}
+
+    /* CTA */
+    .cta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+    .cta a{padding:15px;text-align:center;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
+    .cta .primary{background:var(--black);color:var(--gold-soft)}
+    .cta .primary:hover{background:var(--gold);color:var(--paper)}
+    .cta .ghost{border:1px solid var(--ink);color:var(--ink)}
+    .cta .ghost:hover{background:var(--ink);color:var(--paper)}
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="setLang('en')">EN</button>
+    <button onclick="setLang('he')">HE</button>
+  </div>
+
+  <aside class="drawer" id="drawer" dir="ltr"></aside>
+
+<script>
+// Real Čataković data from the DB.
+const P = {
+  name:'Hamza Čataković',
+  pos:'Centre-Forward', age:29, club:'AEL Limassol', league:'A Division Cyprus',
+  nationality:'Bosnia & Herzegovina', foot:'Left', height:'1.86 m',
+  marketValue:'€500K', contract:'31 May 2028', contractMonthsLeft:20, joined:'01 Jul 2026',
+  img:'https://media.api-sports.io/football/players/61419.png',
+  alpha:67, verdict:'PASS',
+  // stats block
+  statsSeason:'2025/26', statsClub:'Esenler Erokspor', statsLeague:'1. Lig · Turkey',
+  minutes:719, full90s:8.0, apps:29, lineups:5,
+  goals:13, goalsP90:1.63, assists:5, assistsP90:0.63,
+  shots:43, shotsP90:5.38, sot:28, sotP90:3.51, goalsPerShot:0.30,
+  keyPasses:12, keyPassesP90:1.50, rating:7.03,
+  dribbles:5, dribblesP90:0.63, dribbleAtt:10, duelsWonPct:35,
+  fmCA:53, fmPA:65, fmGap:12,
+  // dataset freshness
+  statsAreCurrent:false,
+};
+
+const I18N = {
+  en:{
+    kicker:'Alpha board · Men platform', alpha:'Alpha score', outof:'/ 100',
+    verdict_note:'Recommendation',
+    why_h:'Why now', why_src:'Signal',
+    perf_h:'Performance', perf_season:'Season', perf_src:'API-Football',
+    ctx:'Stats are from %CLUB% (%LEAGUE%), season %SEASON% — his previous club, not AEL Limassol.',
+    goals:'Goals', assists:'Assists', ga:'Goal involvements', shots:'Shots (on target)',
+    keyp:'Key passes', rating:'Avg match rating', mins:'Minutes played', apps:'Appearances (starts)',
+    conv:'Conversion', per90:'per 90',
+    fm_h:'Potential (Football Manager)', fm_cap:'Current → ceiling',
+    fm_line:'Current ability <b>%CA%</b>, potential <b>%PA%</b> — a <b>+%GAP%</b> growth gap. Low current rating for his output; model sees headroom but a modest ceiling.',
+    prof_h:'Profile', foot:'Foot', height:'Height', nat:'Nationality', pos:'Position',
+    mk_h:'Market & leverage', mv:'Market value', contract:'Contract until', left:'Months left', joined:'Joined',
+    notice_h:'Why no 2026/27 data',
+    notice:'AEL Limassol (Cyprus) isn\u2019t in our stats provider\u2019s coverage, so we matched Čataković on last season (2025/26) at his former club in Turkey. His identity is confirmed; the numbers above are from that spell and predate his summer move.',
+    add:'Add to shortlist', open:'Open on Transfermarkt',
+    verdict_map:{SIGN:'Sign',MONITOR:'Monitor',PASS:'Pass'},
+  },
+  he:{
+    kicker:'לוח אלפא · פלטפורמת גברים', alpha:'ציון אלפא', outof:'/ 100',
+    verdict_note:'המלצה',
+    why_h:'למה עכשיו', why_src:'סיגנל',
+    perf_h:'ביצועים', perf_season:'עונה', perf_src:'API-Football',
+    ctx:'הסטטיסטיקה היא מ-%CLUB% (%LEAGUE%), עונת %SEASON% — המועדון הקודם שלו, לא AEL Limassol.',
+    goals:'שערים', assists:'בישולים', ga:'מעורבות בשערים', shots:'בעיטות (למסגרת)',
+    keyp:'מסירות מפתח', rating:'דירוג משחק ממוצע', mins:'דקות', apps:'הופעות (פתיחה)',
+    conv:'יעילות', per90:'ל-90',
+    fm_h:'פוטנציאל (Football Manager)', fm_cap:'נוכחי → תקרה',
+    fm_line:'יכולת נוכחית <b>%CA%</b>, פוטנציאל <b>%PA%</b> — פער צמיחה של <b>+%GAP%</b>. דירוג נוכחי נמוך ביחס לתפוקה; יש מרווח אך תקרה צנועה.',
+    prof_h:'פרופיל', foot:'רגל', height:'גובה', nat:'לאום', pos:'עמדה',
+    mk_h:'שוק ומינוף', mv:'שווי שוק', contract:'חוזה עד', left:'חודשים שנותרו', joined:'הצטרף',
+    notice_h:'למה אין נתוני 2026/27',
+    notice:'AEL Limassol (קפריסין) אינה בכיסוי ספק הסטטיסטיקה שלנו, לכן התאמנו את צ\u2019טקוביץ\u2019 לפי העונה הקודמת (2025/26) במועדונו הקודם בטורקיה. הזהות מאומתת; המספרים הם מאותה תקופה, לפני המעבר בקיץ.',
+    add:'הוסף לרשימת מעקב', open:'פתח בטרנספרמרקט',
+    verdict_map:{SIGN:'להחתים',MONITOR:'מעקב',PASS:'לוותר'},
+  }
+};
+
+let LANG='en';
+function setLang(l){LANG=l;render();}
+const t=k=>I18N[LANG][k];
+
+function render(){
+  const he = LANG==='he';
+  const d = document.getElementById('drawer');
+  d.dir = he?'rtl':'ltr';
+  const ctx = t('ctx').replace('%CLUB%',P.statsClub).replace('%LEAGUE%',P.statsLeague).replace('%SEASON%',P.statsSeason);
+  const fmLine = t('fm_line').replace('%CA%',P.fmCA).replace('%PA%',P.fmPA).replace('%GAP%',P.fmGap);
+  const ringDeg = Math.round(P.alpha*3.6);
+  const fmDeg = Math.round(P.fmPA/100*360);
+
+  d.innerHTML = `
+  <div class="dh">
+    <button class="close">×</button>
+    <div class="dh-top">
+      <img class="portrait" src="${P.img}" alt="">
+      <div class="dh-id">
+        <div class="kick">${t('kicker')}</div>
+        <h2>${P.name}</h2>
+        <div class="bio">
+          <span><b>${P.pos}</b></span><span>·</span>
+          <span>${he?'גיל':'Age'} <b>${P.age}</b></span><span>·</span>
+          <span><b>${P.club}</b></span><span>·</span>
+          <span>${P.league}</span>
+        </div>
+      </div>
+    </div>
+    <div class="dh-score">
+      <div>
+        <div class="big"><b>${P.alpha}</b><span class="out">${t('outof')}</span></div>
+        <div class="lbl">${t('alpha')}</div>
+      </div>
+      <div class="verdict">
+        <span class="tag ${P.verdict}">${t('verdict_map')[P.verdict]}</span>
+        <span class="vl">${t('verdict_note')}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="db">
+    <!-- WHY NOW -->
+    <div class="sec">
+      <div class="sec-h"><h3>${t('why_h')}</h3><div class="meta"><span class="src">${t('why_src')}</span></div></div>
+      <div class="why">
+        <div class="mark">!</div>
+        <div class="txt">
+          <div class="headline">${he?'מסיים יעיל במחיר נמוך — 13 שערים ב-8 משחקים מלאים בלבד.':'An efficient finisher at a low price — 13 goals in just 8 full matches.'}</div>
+          <div class="detail">${he?'תפוקת השערים שלו גבוהה ביחס לדקות ששיחק ולשווי של €500K. עם זאת, זה מגיע מהעונה הקודמת בטורקיה — ראה הערת הנתונים למטה.':'His goal output is high relative to the minutes he played and his €500K value. Note this is from last season in Turkey — see the data note below.'}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PERFORMANCE -->
+    <div class="sec">
+      <div class="sec-h">
+        <h3>${t('perf_h')}</h3>
+        <div class="meta"><span>${t('perf_season')} <b style="color:var(--ink)">${P.statsSeason}</b></span><span class="src">${t('perf_src')}</span></div>
+      </div>
+      <div class="statctx"><span class="dot"></span>${ctx}</div>
+      <div class="stats">
+        <div class="stat"><div class="k">${t('goals')}</div><div class="v"><span class="total">${P.goals}</span><span class="per90">(${P.goalsP90} ${t('per90')})</span></div></div>
+        <div class="stat"><div class="k">${t('assists')}</div><div class="v"><span class="total">${P.assists}</span><span class="per90">(${P.assistsP90} ${t('per90')})</span></div></div>
+        <div class="stat"><div class="k">${t('shots')}</div><div class="v"><span class="total">${P.shots} <span style="font:400 13px/1 var(--mono);color:var(--muted)">(${P.sot})</span></span><span class="per90">(${P.shotsP90} ${t('per90')})</span></div></div>
+        <div class="stat"><div class="k">${t('keyp')}</div><div class="v"><span class="total">${P.keyPasses}</span><span class="per90">(${P.keyPassesP90} ${t('per90')})</span></div></div>
+        <div class="stat"><div class="k">${t('conv')}</div><div class="v"><span class="total">${Math.round(P.goalsPerShot*100)}%</span><span class="per90">${he?'שער לכל בעיטה':'goals per shot'}</span></div></div>
+        <div class="stat"><div class="k">${t('rating')}</div><div class="v"><span class="total" style="color:var(--gold)">${P.rating}</span><span class="per90">/ 10</span></div></div>
+        <div class="stat wide"><div class="k">${t('mins')} · ${t('apps')}</div><div class="v"><span class="total">${P.minutes}'</span><span class="per90">≈ ${P.full90s} ${he?'משחקים מלאים':'full matches'} · ${P.apps} ${he?'הופעות':'apps'} (${P.lineups} ${he?'פתיחה':'starts'})</span></div></div>
+      </div>
+    </div>
+
+    <!-- POTENTIAL (FM) -->
+    <div class="sec">
+      <div class="sec-h"><h3>${t('fm_h')}</h3><div class="meta"><span class="src">FMInside</span></div></div>
+      <div class="fm">
+        <div class="ring" style="background:conic-gradient(var(--gold-soft) ${fmDeg}deg, var(--paper-2) 0)">
+          <div class="inner"><b>${P.fmPA}</b></div>
+        </div>
+        <div class="fmbody">
+          <div class="cap">${t('fm_cap')}: ${P.fmCA} → ${P.fmPA}</div>
+          <div class="line">${fmLine}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="sec">
+      <div class="sec-h"><h3>${t('prof_h')}</h3><div class="meta"><span class="src">Transfermarkt</span></div></div>
+      <div class="facts">
+        <div class="fact"><div class="k">${t('pos')}</div><div class="v sm">${P.pos}</div></div>
+        <div class="fact"><div class="k">${t('foot')}</div><div class="v">${LANG==='he'?'שמאל':'Left'}</div></div>
+        <div class="fact"><div class="k">${t('height')}</div><div class="v">${P.height}</div></div>
+        <div class="fact"><div class="k">${t('nat')}</div><div class="v sm">${LANG==='he'?'בוסניה':'Bosnia & H.'}</div></div>
+        <div class="fact"><div class="k">${t('mv')}</div><div class="v">${P.marketValue}</div></div>
+        <div class="fact"><div class="k">${t('left')}</div><div class="v">${P.contractMonthsLeft}</div></div>
+      </div>
+    </div>
+
+    <!-- MARKET & LEVERAGE -->
+    <div class="sec">
+      <div class="sec-h"><h3>${t('mk_h')}</h3></div>
+      <div class="facts">
+        <div class="fact"><div class="k">${t('mv')}</div><div class="v">${P.marketValue}</div></div>
+        <div class="fact"><div class="k">${t('contract')}</div><div class="v sm">${P.contract}</div></div>
+        <div class="fact"><div class="k">${t('joined')}</div><div class="v sm">${P.joined}</div></div>
+      </div>
+    </div>
+
+    <!-- DATA NOTICE -->
+    <div class="sec">
+      <div class="notice">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><circle cx="12" cy="16.5" r=".6" fill="currentColor" stroke="none"/></svg>
+        <div>
+          <div class="n-h">${t('notice_h')}</div>
+          <p>${t('notice')}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta">
+      <a class="primary">${t('add')}</a>
+      <a class="ghost">${t('open')}</a>
+    </div>
+  </div>`;
+}
+render();
+</script>
+</body>
+</html>
