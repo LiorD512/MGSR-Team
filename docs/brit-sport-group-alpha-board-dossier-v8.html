@@ -134,7 +134,7 @@ const P = {
   alpha:67, verdict:'PASS',
   // stats block
   statsSeason:'2025/26', statsClub:'Esenler Erokspor', statsLeague:'1. Lig · Turkey',
-  minutes:719, full90s:8.0, apps:29, lineups:5,
+  minutes:719, full90s:'7.99', apps:29, lineups:5,
   goals:13, goalsP90:1.63, assists:5, assistsP90:0.63,
   shots:43, shotsP90:5.38, sot:28, sotP90:3.51, goalsPerShot:0.30,
   keyPasses:12, keyPassesP90:1.50, rating:7.03,
@@ -231,8 +231,8 @@ function render(){
       <div class="why">
         <div class="mark">!</div>
         <div class="txt">
-          <div class="headline">${he?'מסיים יעיל במחיר נמוך — 13 שערים ב-8 משחקים מלאים בלבד.':'An efficient finisher at a low price — 13 goals in just 8 full matches.'}</div>
-          <div class="detail">${he?'תפוקת השערים שלו גבוהה ביחס לדקות ששיחק ולשווי של €500K. עם זאת, זה מגיע מהעונה הקודמת בטורקיה — ראה הערת הנתונים למטה.':'His goal output is high relative to the minutes he played and his €500K value. Note this is from last season in Turkey — see the data note below.'}</div>
+          <div class="headline">${he?'מסיים יעיל במחיר נמוך — 13 שערים ב-719 דקות (ברובן כמחליף).':'An efficient finisher at a low price — 13 goals in 719 minutes, mostly off the bench.'}</div>
+          <div class="detail">${he?'תפוקת השערים שלו גבוהה ביחס לדקות המועטות ששיחק (29 הופעות, 5 בהרכב) ולשווי של €500K. הנתונים מהעונה הקודמת בטורקיה — ראה הערת הנתונים למטה.':'High goal output relative to his limited minutes (29 appearances, only 5 starts) and €500K value. The numbers are from last season in Turkey — see the data note below.'}</div>
         </div>
       </div>
     </div>
@@ -251,7 +251,7 @@ function render(){
         <div class="stat"><div class="k">${t('keyp')}</div><div class="v"><span class="total">${P.keyPasses}</span><span class="per90">(${P.keyPassesP90} ${t('per90')})</span></div></div>
         <div class="stat"><div class="k">${t('conv')}</div><div class="v"><span class="total">${Math.round(P.goalsPerShot*100)}%</span><span class="per90">${he?'שער לכל בעיטה':'goals per shot'}</span></div></div>
         <div class="stat"><div class="k">${t('rating')}</div><div class="v"><span class="total" style="color:var(--gold)">${P.rating}</span><span class="per90">/ 10</span></div></div>
-        <div class="stat wide"><div class="k">${t('mins')} · ${t('apps')}</div><div class="v"><span class="total">${P.minutes}'</span><span class="per90">≈ ${P.full90s} ${he?'משחקים מלאים':'full matches'} · ${P.apps} ${he?'הופעות':'apps'} (${P.lineups} ${he?'פתיחה':'starts'})</span></div></div>
+        <div class="stat wide"><div class="k">${t('apps')} · ${t('mins')}</div><div class="v"><span class="total">${P.apps} <span style="font:400 13px/1 var(--mono);color:var(--muted)">(${P.lineups} ${he?'פתיחה':'starts'})</span></span><span class="per90">${P.minutes} ${he?'דקות':'min'} · ${he?'בסיס per-90':'per-90 basis'} ${P.full90s}</span></div></div>
       </div>
     </div>
 
