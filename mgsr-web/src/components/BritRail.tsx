@@ -56,7 +56,7 @@ export default function BritRail({ active }: BritRailProps) {
   const isReturnees = pathname === '/returnees';
   const isContractFinisher = pathname === '/contract-finisher';
   const isWarAlpha = pathname.startsWith('/war-room/alpha-board');
-  const isWarAgents = pathname === '/war-room/scout-agents';
+  // const isWarAgents = pathname === '/war-room/scout-agents'; // Scout Agents dropped for now
   const isWarAsk = pathname === '/war-room/ask';
   const isWarSucc = pathname === '/war-room/successors';
 
@@ -154,9 +154,11 @@ export default function BritRail({ active }: BritRailProps) {
                 <Link href="/war-room/alpha-board" className={active === 'war-room-alpha' || active === 'war-room' || isWarAlpha ? 'active' : ''}>
                   <span>{t('nav_war_room_alpha')}</span>
                 </Link>
+                {/* Scout Agents screen dropped for now — hidden from nav until re-enabled.
                 <Link href="/war-room/scout-agents" className={active === 'war-room-agents' || isWarAgents ? 'active' : ''}>
                   <span>{t('nav_war_room_agents')}</span>
                 </Link>
+                */}
                 <Link href="/war-room/ask" className={active === 'war-room-ask' || isWarAsk ? 'active' : ''}>
                   <span>{t('nav_war_room_ask')}</span>
                 </Link>
