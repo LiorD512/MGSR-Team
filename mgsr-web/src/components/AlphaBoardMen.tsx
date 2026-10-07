@@ -65,6 +65,21 @@ interface AlphaPlayer {
   fm_gap: number;
   has_stats: boolean;
   league_coefficient: number;
+  // raw totals + provenance for the dossier
+  goals: number;
+  assists: number;
+  appearances: number;
+  lineups: number;
+  minutes: number;
+  shots_total: number;
+  shots_on: number;
+  goals_per_shot: number;
+  key_passes: number;
+  stats_season: string;   // "2025/26"
+  stats_club: string;     // API source club
+  stats_league: string;   // "1. Lig · Turkey"
+  stats_fetched_at: string;
+  stats_is_stale: boolean;
 }
 
 interface AlphaBoardResponse {
@@ -718,143 +733,168 @@ function AlphaDossier({
 
   if (!player) return null;
   const p = player;
-  const flag = flagUrl(p.nationality);
   const leagueStr = p.league && p.league !== '—' ? p.league : (isHe ? 'חופשי' : 'Free agent');
-  const subLine = `${p.club} · ${leagueStr} · ${p.position} · ${isHe ? `גיל ${p.age}` : `Age ${p.age}`}`;
   const verdictLabel =
     p.verdict === 'SIGN' ? t('rec_sign') : p.verdict === 'MONITOR' ? t('rec_monitor') : t('rec_pass');
 
-  const leverage =
-    p.contract_months_left > 0 && p.contract_months_left <= 12
-      ? (isHe ? 'מינוף: גבוה' : 'leverage: high')
-      : (isHe ? 'מינוף: בינוני' : 'leverage: moderate');
+  const hasStats = p.has_stats && p.minutes > 0;
+  // Totals shown first with the per-90 rate in parentheses.
+  const totalStat = (label: string, total: number | string, per90?: number, suffix = '') =>
+    ({ label, total: `${total}${suffix}`, per90: per90 !== undefined ? `${num(per90)} ${isHe ? 'ל-90' : 'per 90'}` : '' });
 
-  const stats: { label: string; value: string; cls?: string }[] = [
-    { label: isHe ? 'שערים / 90' : 'Goals / 90', value: num(p.goals_per90) },
-    { label: isHe ? 'בישולים / 90' : 'Assists / 90', value: num(p.assists_per90) },
-    { label: isHe ? 'ש+ב / 90' : 'G+A / 90', value: num(p.ga_per90) },
-    { label: isHe ? 'חטיפות+יירוטים / 90' : 'Tkl + Int / 90', value: num(p.tackles_int_per90, 1) },
-    { label: isHe ? 'דריבלים / 90' : 'Dribbles / 90', value: num(p.dribbles_per90, 1) },
-    { label: isHe ? 'מסירות מפתח / 90' : 'Key passes / 90', value: num(p.key_passes_per90, 1) },
-    { label: isHe ? 'דו-קרב %' : 'Duels won %', value: Number.isFinite(p.duels_won_pct) ? `${Math.round(p.duels_won_pct)}%` : '—' },
-    { label: isHe ? 'דירוג' : 'Rating', value: num(p.rating), cls: 'gold' },
-    { label: isHe ? 'דקות (90s)' : 'Minutes (90s)', value: num(p.minutes_90s, 1) },
-  ];
+  const statRows = hasStats ? [
+    totalStat(isHe ? 'שערים' : 'Goals', p.goals, p.goals_per90),
+    totalStat(isHe ? 'בישולים' : 'Assists', p.assists, p.assists_per90),
+    totalStat(isHe ? 'בעיטות (למסגרת)' : 'Shots (on target)', `${p.shots_total} (${p.shots_on})`),
+    totalStat(isHe ? 'מסירות מפתח' : 'Key passes', p.key_passes, p.key_passes_per90),
+    { label: isHe ? 'יעילות' : 'Conversion', total: `${Math.round((p.goals_per_shot || 0) * 100)}%`, per90: isHe ? 'שער לבעיטה' : 'goals per shot' },
+    { label: isHe ? 'דירוג משחק' : 'Avg match rating', total: num(p.rating), per90: '/ 10', gold: true },
+  ] : [];
+
+  const ringDeg = Math.round(Math.max(0, Math.min(100, p.alpha_score)) * 3.6);
+  const fmDeg = Math.round((p.fm_pa || 0) / 100 * 360);
 
   return (
     <>
       <div className="brit-scrim open" onClick={onClose} aria-hidden="true" />
-      <aside className="brit-drawer open brit-ab-drawer" aria-label={isHe ? 'תיק שחקן' : 'Player dossier'}>
-        {/* Header */}
-        <div className="brit-ab-dh">
+      <aside className="brit-drawer open brit-dossier" aria-label={isHe ? 'תיק שחקן' : 'Player dossier'}>
+        {/* ── Header ── */}
+        <div className="brit-dossier-h">
           <button className="brit-drawer-close" onClick={onClose} aria-label={t('room_close')}>×</button>
-          <div className="brit-ab-dh-top">
+          <div className="brit-dossier-top">
             {p.image
-              ? <img src={p.image} alt="" aria-hidden="true" />
-              : <div className="brit-ab-dh-ph" aria-hidden="true" />}
-            <div className="brit-ab-dh-info">
-              <small>
-                {flag && <img className="fl" src={flag} alt="" />}
-                {subLine}
-              </small>
+              ? <img className="portrait" src={p.image} alt="" aria-hidden="true" />
+              : <div className="portrait ph" aria-hidden="true" />}
+            <div className="brit-dossier-id">
+              <div className="kick">{isHe ? 'לוח אלפא · פלטפורמת גברים' : 'Alpha board · Men platform'}</div>
               <h2>{p.name}</h2>
+              <div className="bio">
+                <span><b>{p.position}</b></span><span>·</span>
+                <span>{isHe ? 'גיל' : 'Age'} <b>{p.age}</b></span><span>·</span>
+                <span><b>{p.club}</b></span><span>·</span>
+                <span>{leagueStr}</span>
+              </div>
             </div>
           </div>
-          <div className="brit-ab-dh-alpha">
-            <div>
-              <div className="big">{p.alpha_score}</div>
-              <div className="lbl">{isHe ? 'ציון אלפא' : 'Alpha Score'}</div>
+          <div className="brit-dossier-score">
+            <div className="big"><b>{p.alpha_score}</b><span className="out">/ 100</span></div>
+            <div className="lbl">{isHe ? 'ציון אלפא' : 'Alpha score'}</div>
+            <div className="verdict">
+              <span className={`tag ${p.verdict}`}>{verdictLabel}</span>
+              <span className="vl">{isHe ? 'המלצה' : 'Recommendation'}</span>
             </div>
-            <span className={`brit-ab-verdict ${p.verdict}`}>{verdictLabel}</span>
           </div>
         </div>
 
-        <div className="brit-ab-db">
-          {/* Why now — the triggers list */}
-          <section className="brit-ab-sec">
-            <h3>⚡ <span>{isHe ? 'למה עכשיו' : 'Why now'}</span><span className="src">{isHe ? 'מחושב' : 'Computed'}</span></h3>
-            <div className="brit-ab-why">
-              {p.triggers && p.triggers.length > 0 ? (
-                p.triggers.map((trig, i) => (
-                  <div className="w" key={trig.id || i}>
-                    <span className="d" style={{ background: triggerColor(trig.id) }} />
-                    {trig.label}
+        <div className="brit-dossier-b">
+          {/* ── Why now ── */}
+          <section className="brit-dossier-sec">
+            <div className="sh"><h3>{isHe ? 'למה עכשיו' : 'Why now'}</h3><span className="src">{isHe ? 'סיגנל' : 'Signal'}</span></div>
+            <div className="brit-dossier-why">
+              <span className="mark">!</span>
+              <div className="txt">
+                <div className="headline">{p.why_now || (p.triggers?.[0]?.label ?? '')}</div>
+                {p.triggers && p.triggers.length > 1 && (
+                  <div className="detail">
+                    {(isHe ? 'סיגנלים נוספים: ' : 'Also: ') + p.triggers.slice(1).map((tr) => tr.label).join(' · ')}
                   </div>
-                ))
-              ) : (
-                <div className="w"><span className="d" style={{ background: 'var(--muted)' }} />{p.why_now}</div>
-              )}
+                )}
+              </div>
             </div>
           </section>
 
-          {/* Performance */}
-          <section className="brit-ab-sec">
-            <h3>📊 <span>{isHe ? 'ביצועים' : 'Performance'}</span><span className="src">{p.has_stats ? 'FBref · Opta' : 'FMInside'}</span></h3>
-            <div className="brit-ab-sg">
-              {stats.map((s) => (
-                <div key={s.label}>
-                  <label>{s.label}</label>
-                  <b className={s.cls}>{s.value}</b>
-                </div>
-              ))}
-              <div>
-                <label>{isHe ? 'FM CA→PA' : 'FM CA→PA'}</label>
-                <b className="gold">{p.fm_ca || '—'}{p.fm_pa ? `→${p.fm_pa}` : ''}</b>
+          {/* ── Performance ── */}
+          {hasStats ? (
+            <section className="brit-dossier-sec">
+              <div className="sh">
+                <h3>{isHe ? 'ביצועים' : 'Performance'}</h3>
+                <span className="meta">{isHe ? 'עונה' : 'Season'} <b>{p.stats_season || '—'}</b></span>
+                <span className="src">API-Football</span>
               </div>
-              <div>
-                <label>{isHe ? 'פער FM' : 'FM gap'}</label>
-                <b>{Number.isFinite(p.fm_gap) ? `+${p.fm_gap}` : '—'}</b>
-              </div>
-            </div>
-            {/* Honest data-availability note */}
-            <div className="brit-ab-avail">
-              {!p.has_stats && (
-                <div className="ar off">
-                  <span className="d off" />
-                  {isHe ? 'נתונים מוגבלים לליגה זו' : 'Limited stats for this league'}
+              {p.stats_is_stale && (
+                <div className="brit-dossier-ctx">
+                  <span className="dot" />
+                  {isHe
+                    ? `הנתונים מ-${p.stats_club} (${p.stats_league}) — המועדון הקודם שלו, לא ${p.club}.`
+                    : `Stats are from ${p.stats_club} (${p.stats_league}) — his previous club, not ${p.club}.`}
                 </div>
               )}
-              <div className="ar off">
-                <span className="d off" />
-                {isHe ? 'xG לא בשימוש — נשפט לפי תפוקה + FM + אינטנסיביות' : 'xG not used — judged on output + FM + intensity'}
+              <div className="brit-dossier-stats">
+                {statRows.map((s) => (
+                  <div className="st" key={s.label}>
+                    <div className="k">{s.label}</div>
+                    <div className="v"><span className={`total${(s as { gold?: boolean }).gold ? ' gold' : ''}`}>{s.total}</span>{s.per90 && <span className="per90">{s.per90}</span>}</div>
+                  </div>
+                ))}
+                <div className="st wide">
+                  <div className="k">{isHe ? 'הופעות (פתיחה) · דקות' : 'Appearances (starts) · minutes'}</div>
+                  <div className="v">
+                    <span className="total">{p.appearances} <span className="sub">({p.lineups} {isHe ? 'פתיחה' : 'starts'})</span></span>
+                    <span className="per90">{p.minutes} {isHe ? 'דקות' : 'min'}</span>
+                  </div>
+                </div>
               </div>
+            </section>
+          ) : (
+            <section className="brit-dossier-sec">
+              <div className="sh"><h3>{isHe ? 'ביצועים' : 'Performance'}</h3></div>
+              <div className="brit-dossier-nostats">
+                {isHe ? 'אין נתוני ביצועים זמינים לליגה/עונה הזו.' : 'No performance stats available for this league/season.'}
+              </div>
+            </section>
+          )}
+
+          {/* ── Potential (FM) ── */}
+          {(p.fm_pa > 0) && (
+            <section className="brit-dossier-sec">
+              <div className="sh"><h3>{isHe ? 'פוטנציאל (Football Manager)' : 'Potential (Football Manager)'}</h3><span className="src">FMInside</span></div>
+              <div className="brit-dossier-fm">
+                <div className="ring" style={{ background: `conic-gradient(var(--gold-soft) ${fmDeg}deg, var(--paper-2) 0)` }}>
+                  <div className="inner"><b>{p.fm_pa}</b></div>
+                </div>
+                <div className="fmbody">
+                  <div className="cap">{isHe ? 'נוכחי → תקרה' : 'Current → ceiling'}: {p.fm_ca || '—'} → {p.fm_pa}</div>
+                  <div className="line">
+                    {isHe
+                      ? <>יכולת נוכחית <b>{p.fm_ca}</b>, פוטנציאל <b>{p.fm_pa}</b> — פער צמיחה של <b>+{p.fm_gap}</b>.</>
+                      : <>Current ability <b>{p.fm_ca}</b>, potential <b>{p.fm_pa}</b> — a <b>+{p.fm_gap}</b> growth gap.</>}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ── Market & leverage ── */}
+          <section className="brit-dossier-sec">
+            <div className="sh"><h3>{isHe ? 'שוק ומינוף' : 'Market & leverage'}</h3><span className="src">Transfermarkt</span></div>
+            <div className="brit-dossier-facts">
+              <div className="fact"><div className="k">{isHe ? 'שווי שוק' : 'Market value'}</div><div className="v">{p.market_value || '—'}</div></div>
+              <div className="fact"><div className="k">{isHe ? 'חוזה עד' : 'Contract until'}</div><div className="v sm">{p.contract || '—'}</div></div>
+              <div className="fact"><div className="k">{isHe ? 'חודשים שנותרו' : 'Months left'}</div><div className="v">{p.contract_months_left > 0 ? Math.round(p.contract_months_left) : '—'}</div></div>
             </div>
           </section>
 
-          {/* Market & leverage */}
-          <section className="brit-ab-sec">
-            <h3>💰 <span>{isHe ? 'שוק ומינוף' : 'Market & leverage'}</span><span className="src">TM · FMInside</span></h3>
-            <div className="brit-ab-sg brit-ab-sg-3">
-              <div>
-                <label>{isHe ? 'שווי שוק' : 'Market value'}</label>
-                <b>{p.market_value || '—'}</b>
+          {/* ── Data notice (only when stats are stale / from a prior club) ── */}
+          {p.stats_is_stale && hasStats && (
+            <section className="brit-dossier-sec">
+              <div className="brit-dossier-notice">
+                <svg className="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v5" /><circle cx="12" cy="16.5" r=".6" fill="currentColor" stroke="none" /></svg>
+                <div>
+                  <div className="n-h">{isHe ? 'הערת נתונים' : 'Data note'}</div>
+                  <p>
+                    {isHe
+                      ? `הזהות מאומתת, אך ספק הסטטיסטיקה עדיין לא מכסה את ${p.club}. המספרים הם מהעונה (${p.stats_season}) במועדונו הקודם (${p.stats_club}) ולפני המעבר.`
+                      : `Identity is confirmed, but the stats provider doesn\u2019t yet cover ${p.club}. The numbers are from season ${p.stats_season} at his former club (${p.stats_club}) and predate his move.`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <label>{isHe ? 'חוזה' : 'Contract'}</label>
-                <b>{p.contract || '—'}</b>
-              </div>
-              <div>
-                <label>{isHe ? 'חודשים שנותרו' : 'Months left'}</label>
-                <b className={p.contract_months_left > 0 && p.contract_months_left <= 12 ? 'amber' : undefined}>
-                  {p.contract_months_left > 0 ? Math.round(p.contract_months_left) : '—'}
-                  <span className="lev">{leverage}</span>
-                </b>
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
 
-          {/* Actions */}
-          <div className="brit-ab-cta">
-            <button
-              className="primary"
-              disabled={isAdding || isSaved}
-              onClick={onShortlist}
-            >
-              {isSaved
-                ? t('shortlist_already_added')
-                : isAdding
-                  ? t('shortlist_adding')
-                  : `+ ${t('shortlist_add')}`}
+          {/* ── Actions ── */}
+          <div className="brit-dossier-cta">
+            <button className="primary" disabled={isAdding || isSaved} onClick={onShortlist}>
+              {isSaved ? t('shortlist_already_added') : isAdding ? t('shortlist_adding') : `+ ${t('shortlist_add')}`}
             </button>
             <a className="ghost" href={p.url} target="_blank" rel="noopener noreferrer">
               {isHe ? 'פתח בטרנספרמרקט' : 'Open on Transfermarkt'}

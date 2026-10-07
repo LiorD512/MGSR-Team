@@ -5565,3 +5565,103 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-ab-hero .body .acts .ic { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); color: var(--muted); transition: .15s; }
 .brit-room .brit-ab-hero .body .acts .ic svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; }
 .brit-room .brit-ab-hero .body .acts .ic:hover { border-color: var(--red); color: var(--red); }
+
+/* ═══════════════════════════════════════════════════════
+   ALPHA BOARD — redesigned player DOSSIER drawer (v8)
+   Clean, mature, labelled. Totals first, per-90 in parens,
+   explicit stats season/source, plain why-now, data notice.
+   ═══════════════════════════════════════════════════════ */
+.brit-room .brit-dossier { width: min(560px, 96vw); }
+
+/* Header */
+.brit-room .brit-dossier-h { position: relative; background: var(--black); color: var(--paper); padding: 0; }
+.brit-room .brit-dossier-h .brit-drawer-close { position: absolute; top: 16px; inset-inline-end: 18px; color: #c9c3b6; font: 26px/1 var(--display); z-index: 2; background: transparent; border: 0; cursor: pointer; }
+.brit-room .brit-dossier-h .brit-drawer-close:hover { color: var(--paper); }
+.brit-room .brit-dossier-top { display: flex; gap: 18px; align-items: flex-start; padding: 24px 26px 20px; }
+.brit-room .brit-dossier-top .portrait { width: 84px; height: 84px; flex: none; object-fit: cover; object-position: center 18%; filter: grayscale(1); opacity: .9; border: 1px solid var(--dark-line); background: linear-gradient(160deg, #26261f, #101010); }
+.brit-room .brit-dossier-top .portrait.ph { opacity: 1; }
+.brit-room .brit-dossier-id { min-width: 0; flex: 1; padding-top: 2px; }
+.brit-room .brit-dossier-id .kick { color: var(--gold-soft); font: 9px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+.brit-room .brit-dossier-id h2 { margin: 7px 0 0; font: 500 30px/.92 var(--display); text-transform: uppercase; letter-spacing: -.01em; }
+.brit-room[dir='rtl'] .brit-dossier-id h2 { font-weight: 800; letter-spacing: normal; }
+.brit-room .brit-dossier-id .bio { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px 10px; color: #c9c3b6; font: 10px/1.4 var(--mono); text-transform: uppercase; }
+.brit-room .brit-dossier-id .bio b { color: var(--paper); font-weight: 500; }
+
+/* score + verdict strip */
+.brit-room .brit-dossier-score { display: flex; align-items: center; gap: 20px; padding: 18px 26px; border-top: 1px solid var(--dark-line); background: #15150f; }
+.brit-room .brit-dossier-score .big { display: flex; align-items: baseline; gap: 8px; }
+.brit-room .brit-dossier-score .big b { font: 500 44px/1 var(--display); color: var(--gold-soft); }
+.brit-room .brit-dossier-score .big .out { color: #8a857a; font: 11px/1 var(--mono); }
+.brit-room .brit-dossier-score .lbl { color: #c9c3b6; font: 8px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.brit-room .brit-dossier-score .verdict { margin-inline-start: auto; text-align: center; }
+.brit-room .brit-dossier-score .verdict .tag { display: block; padding: 8px 16px; font: 500 15px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; }
+.brit-room .brit-dossier-score .verdict .tag.SIGN { background: var(--green); color: var(--paper); }
+.brit-room .brit-dossier-score .verdict .tag.MONITOR { background: var(--amber); color: var(--paper); }
+.brit-room .brit-dossier-score .verdict .tag.PASS { background: var(--red); color: var(--paper); }
+.brit-room .brit-dossier-score .verdict .vl { display: block; margin-top: 6px; color: #8a857a; font: 7px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+
+/* body */
+.brit-room .brit-dossier-b { padding: 4px 26px 26px; background: var(--paper); }
+.brit-room .brit-dossier-sec { padding: 22px 0; border-bottom: 1px solid var(--line); }
+.brit-room .brit-dossier-sec:last-child { border-bottom: 0; }
+.brit-room .brit-dossier-sec .sh { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; }
+.brit-room .brit-dossier-sec .sh h3 { margin: 0; font: 500 12px/1 var(--display); text-transform: uppercase; letter-spacing: .1em; color: var(--ink); }
+.brit-room[dir='rtl'] .brit-dossier-sec .sh h3 { font-weight: 800; }
+.brit-room .brit-dossier-sec .sh .meta { margin-inline-start: auto; color: var(--muted-2); font: 8px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.brit-room .brit-dossier-sec .sh .meta b { color: var(--ink); }
+.brit-room .brit-dossier-sec .sh .src { color: var(--muted-2); font: 8px/1 var(--mono); text-transform: uppercase; border: 1px solid var(--line); padding: 4px 7px; margin-inline-start: 8px; }
+.brit-room .brit-dossier-sec .sh .meta + .src { margin-inline-start: 8px; }
+
+/* why now */
+.brit-room .brit-dossier-why { display: flex; gap: 13px; padding: 15px 16px; border: 1px solid var(--gold-soft); background: rgba(164,125,67,.06); }
+.brit-room .brit-dossier-why .mark { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--gold); color: var(--paper); display: grid; place-items: center; font: 500 13px/1 var(--display); }
+.brit-room .brit-dossier-why .txt .headline { font: 500 14px/1.4 var(--body); color: var(--ink); }
+.brit-room .brit-dossier-why .txt .detail { margin-top: 6px; color: var(--muted); font: 12px/1.55 var(--body); }
+
+/* stats context strip */
+.brit-room .brit-dossier-ctx { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 9px 12px; background: var(--paper-2); color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .03em; }
+.brit-room .brit-dossier-ctx b { color: var(--ink); font-weight: 500; }
+.brit-room .brit-dossier-ctx .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--amber); flex: none; }
+
+/* stat grid */
+.brit-room .brit-dossier-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.brit-room .brit-dossier-stats .st { background: var(--card); padding: 14px 15px; }
+.brit-room .brit-dossier-stats .st.wide { grid-column: 1 / -1; }
+.brit-room .brit-dossier-stats .st .k { color: var(--muted); font: 8px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+.brit-room .brit-dossier-stats .st .v { margin-top: 8px; display: flex; align-items: baseline; gap: 7px; }
+.brit-room .brit-dossier-stats .st .v .total { font: 500 24px/1 var(--display); color: var(--ink); }
+.brit-room .brit-dossier-stats .st .v .total.gold { color: var(--gold); }
+.brit-room .brit-dossier-stats .st .v .total .sub { font: 400 13px/1 var(--mono); color: var(--muted); }
+.brit-room .brit-dossier-stats .st .v .per90 { color: var(--muted); font: 11px/1 var(--mono); }
+.brit-room .brit-dossier-nostats { padding: 18px; border: 1px dashed var(--line); color: var(--muted); font: 11px/1.5 var(--mono); text-transform: uppercase; text-align: center; }
+
+/* FM potential */
+.brit-room .brit-dossier-fm { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border: 1px solid var(--line); background: var(--card); }
+.brit-room .brit-dossier-fm .ring { width: 58px; height: 58px; border-radius: 50%; flex: none; display: grid; place-items: center; }
+.brit-room .brit-dossier-fm .ring .inner { width: 44px; height: 44px; border-radius: 50%; background: var(--card); display: grid; place-items: center; }
+.brit-room .brit-dossier-fm .ring .inner b { font: 500 15px/1 var(--display); color: var(--gold); }
+.brit-room .brit-dossier-fm .fmbody .cap { color: var(--muted); font: 8px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+.brit-room .brit-dossier-fm .fmbody .line { margin-top: 6px; font: 12.5px/1.5 var(--body); color: var(--ink); }
+.brit-room .brit-dossier-fm .fmbody .line b { color: var(--gold); font-weight: 600; }
+
+/* facts grid */
+.brit-room .brit-dossier-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.brit-room .brit-dossier-facts .fact { background: var(--card); padding: 13px 14px; }
+.brit-room .brit-dossier-facts .fact .k { color: var(--muted); font: 8px/1 var(--mono); text-transform: uppercase; }
+.brit-room .brit-dossier-facts .fact .v { margin-top: 7px; font: 500 15px/1 var(--mono); color: var(--ink); }
+.brit-room .brit-dossier-facts .fact .v.sm { font-size: 12px; }
+
+/* data notice */
+.brit-room .brit-dossier-notice { display: flex; gap: 12px; padding: 14px 16px; border: 1px solid var(--amber); background: rgba(176,122,43,.07); }
+.brit-room .brit-dossier-notice .ic { flex: none; width: 22px; height: 22px; stroke: var(--amber); fill: none; stroke-width: 1.6; }
+.brit-room .brit-dossier-notice .n-h { font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--amber); }
+.brit-room .brit-dossier-notice p { margin: 7px 0 0; color: var(--ink); font: 12px/1.55 var(--body); }
+
+/* CTA */
+.brit-room .brit-dossier-cta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; }
+.brit-room .brit-dossier-cta a, .brit-room .brit-dossier-cta button { padding: 15px; text-align: center; font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; cursor: pointer; border: 0; }
+.brit-room .brit-dossier-cta .primary { background: var(--black); color: var(--gold-soft); }
+.brit-room .brit-dossier-cta .primary:hover:not(:disabled) { background: var(--gold); color: var(--paper); }
+.brit-room .brit-dossier-cta .primary:disabled { opacity: .6; cursor: default; }
+.brit-room .brit-dossier-cta .ghost { border: 1px solid var(--ink); color: var(--ink); background: transparent; }
+.brit-room .brit-dossier-cta .ghost:hover { background: var(--ink); color: var(--paper); }
