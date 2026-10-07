@@ -21,6 +21,117 @@ function getProfileImage(profileImage: string | null | undefined, tmProfileUrl: 
   return 'https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1';
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// DETERMINISTIC VERDICT ENGINE
+// No AI / Gemini. The verdict, score and reason are computed from the raw
+// numbers already on every ScoutProfiles doc (match score, FM potential,
+// contract months, per-90 output, value, age, league tier). This means every
+// profile gets a verdict — not just the top-10 Gemini subset.
+// ──────────────────────────────────────────────────────────────────────────
+
+/** Months remaining on a contract from TM's "contract until" string/number. */
+function contractMonthsLeft(contractExpires: unknown): number | null {
+  if (contractExpires == null) return null;
+  const d = typeof contractExpires === 'number' ? new Date(contractExpires) : new Date(String(contractExpires));
+  if (isNaN(d.getTime())) return null;
+  const m = Math.round((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30));
+  return m < 0 ? 0 : m;
+}
+
+const num = (v: unknown): number | null => (typeof v === 'number' && isFinite(v) ? v : null);
+
+interface ComputedVerdict {
+  score: number;              // 0-100 opportunity score
+  tier: 'sign' | 'monitor' | 'watch';
+  valueArc: 'rising' | 'peak' | 'declining' | null;
+  reasonEn: string;
+  reasonHe: string;
+}
+
+/**
+ * Compute an opportunity score + verdict from real data.
+ * Blends: base match score, FM potential headroom, contract leverage,
+ * per-90 output, youth, and value-for-band — all signals that exist on the doc.
+ */
+function computeVerdict(d: Record<string, unknown>): ComputedVerdict {
+  const match = num(d.matchScore) ?? 0;              // 0-100 from the worker
+  const fmPa = num(d.fmPa);
+  const fmCa = num(d.fmCa);
+  const age = num(d.age) ?? 0;
+  const valEuro = num(d.marketValueEuro) ?? 0;
+  const goals90 = num(d.goalsPer90);
+  const contrib90 = num(d.contribPer90);
+  const rating = num(d.apiRating);
+  const mins90 = num(d.apiMinutes90s);
+  const months = contractMonthsLeft(d.contractExpires);
+
+  // Start from the worker's match score (already a calibrated 0-100), then
+  // layer transparent bonuses. Cap at 100.
+  let score = match * 0.6; // 0-60 base from match score
+  const reasons: { en: string; he: string; weight: number }[] = [];
+
+  // FM potential headroom (CA→PA gap) — the clearest "upside" signal.
+  if (fmPa != null && fmPa > 0) {
+    const gap = fmCa != null && fmCa > 0 ? fmPa - fmCa : 0;
+    if (fmPa >= 150) { score += 14; reasons.push({ weight: 14, en: `elite FM potential (PA ${fmPa})`, he: `פוטנציאל FM גבוה (PA ${fmPa})` }); }
+    else if (fmPa >= 135) { score += 9; reasons.push({ weight: 9, en: `strong FM potential (PA ${fmPa})`, he: `פוטנציאל FM חזק (PA ${fmPa})` }); }
+    else if (fmPa >= 120) { score += 4; }
+    if (gap >= 25) { score += 6; reasons.push({ weight: 6, en: `${gap} points of growth room`, he: `${gap} נק׳ מרחב גדילה` }); }
+    else if (gap >= 12) { score += 3; }
+  }
+
+  // Contract leverage — expiring deals are cheap/free opportunities.
+  if (months != null) {
+    if (months <= 6) { score += 12; reasons.push({ weight: 12, en: `contract up in ${months} months — free/token-fee leverage`, he: `חוזה מסתיים בעוד ${months} ח׳ — מינוף להעברה חופשית/זולה` }); }
+    else if (months <= 12) { score += 7; reasons.push({ weight: 7, en: `contract down to ${months} months`, he: `נותרו ${months} ח׳ לחוזה` }); }
+    else if (months <= 18) { score += 3; }
+  }
+
+  // Per-90 output (only meaningful with real minutes).
+  if (mins90 != null && mins90 >= 5) {
+    if (goals90 != null && goals90 >= 0.5) { score += 9; reasons.push({ weight: 9, en: `${goals90.toFixed(2)} goals/90`, he: `${goals90.toFixed(2)} שערים ל-90` }); }
+    else if (contrib90 != null && contrib90 >= 0.6) { score += 7; reasons.push({ weight: 7, en: `${contrib90.toFixed(2)} G+A/90`, he: `${contrib90.toFixed(2)} G+A ל-90` }); }
+    else if (contrib90 != null && contrib90 >= 0.35) { score += 3; }
+    if (rating != null && rating >= 7.0) { score += 5; reasons.push({ weight: 5, en: `${rating.toFixed(2)} avg match rating`, he: `דירוג משחק ${rating.toFixed(2)}` }); }
+  }
+
+  // Youth premium.
+  if (age > 0 && age <= 20) { score += 6; reasons.push({ weight: 6, en: `only ${age} years old`, he: `בן ${age} בלבד` }); }
+  else if (age > 0 && age <= 23) { score += 3; }
+
+  // Value-for-band — cheaper picks inside the Israeli ceiling score better.
+  if (valEuro > 0) {
+    if (valEuro <= 500_000) { score += 5; reasons.push({ weight: 5, en: `low ask (€${Math.round(valEuro / 1000)}K)`, he: `מחיר נמוך (€${Math.round(valEuro / 1000)}K)` }); }
+    else if (valEuro <= 1_000_000) score += 2;
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  // Verdict tiers from the computed score.
+  const tier: ComputedVerdict['tier'] = score >= 72 ? 'sign' : score >= 55 ? 'monitor' : 'watch';
+
+  // Value arc from the real trajectory signals we have.
+  let valueArc: ComputedVerdict['valueArc'] = null;
+  const gap = fmPa != null && fmCa != null ? fmPa - fmCa : null;
+  if (age > 0 && age <= 23 && (gap == null || gap >= 10)) valueArc = 'rising';
+  else if (age >= 29) valueArc = 'declining';
+  else if (age >= 24 && age <= 28) valueArc = 'peak';
+
+  // Build the reason sentence from the top-weighted real signals.
+  const top = reasons.sort((a, b) => b.weight - a.weight).slice(0, 3);
+  const lead = tier === 'sign'
+    ? { en: 'Act now — ', he: 'כדאי לפעול עכשיו — ' }
+    : tier === 'monitor'
+      ? { en: 'Worth watching — ', he: 'שווה מעקב — ' }
+      : { en: 'On the radar — ', he: 'על הרדאר — ' };
+  const joinEn = top.length ? top.map((r) => r.en).join(', ') : 'solid profile match in your band';
+  const joinHe = top.length ? top.map((r) => r.he).join(', ') : 'התאמת פרופיל טובה בטווח שלך';
+  const reasonEn = `${lead.en}${joinEn}.`;
+  const reasonHe = `${lead.he}${joinHe}.`;
+
+  return { score, tier, valueArc, reasonEn, reasonHe };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const app = getFirebaseAdmin();
@@ -65,6 +176,9 @@ export async function GET(request: NextRequest) {
         return { id: aid, name: cfg?.name || aid, nameHe: cfg?.nameHe || cfg?.name || aid, flag: cfg?.flag || '🌍' };
       });
 
+      // Deterministic verdict from the real numbers on the doc.
+      const verdict = computeVerdict(d as Record<string, unknown>);
+
       return {
         id: doc.id,
         tmProfileUrl: d.tmProfileUrl || '',
@@ -95,15 +209,14 @@ export async function GET(request: NextRequest) {
         scoutExplanationEn: profileCfg?.explanationEn || '',
         scoutExplanationHe: profileCfg?.explanationHe || '',
 
-        // ── Sport Director intelligence (stored on the doc, previously dropped) ──
-        directorVerdict: d.directorVerdict || null,
-        directorAction: d.directorAction || null,          // SHORTLIST_NOW | MONITOR | LOW_PRIORITY
-        directorFitScore: typeof d.directorFitScore === 'number' ? d.directorFitScore : null, // 1-10
-        directorValueArc: d.directorValueArc || null,      // rising | peak | declining
-        directorDataFlags: Array.isArray(d.directorDataFlags) ? d.directorDataFlags : [],
-        scoutNarrative: d.scoutNarrative || null,
+        // ── Computed verdict (deterministic, from real numbers — no AI) ──
+        computedScore: verdict.score,                 // 0-100 opportunity score
+        computedTier: verdict.tier,                   // sign | monitor | watch
+        computedValueArc: verdict.valueArc,           // rising | peak | declining | null
+        computedReasonEn: verdict.reasonEn,
+        computedReasonHe: verdict.reasonHe,
 
-        // ── Per-90 performance (API-Football), previously dropped ──
+        // ── Per-90 performance (API-Football) ──
         goalsPer90: typeof d.goalsPer90 === 'number' ? d.goalsPer90 : null,
         contribPer90: typeof d.contribPer90 === 'number' ? d.contribPer90 : null,
         apiRating: typeof d.apiRating === 'number' ? d.apiRating : null,
@@ -144,9 +257,12 @@ export async function GET(request: NextRequest) {
         seenUrls.set(url, p);
       }
     }
-    profiles = Array.from(seenUrls.values()).sort(
-      (a, b) => (b.lastRefreshedAt ?? 0) - (a.lastRefreshedAt ?? 0)
-    );
+    // Rank by the computed opportunity score (best picks first), then recency.
+    profiles = Array.from(seenUrls.values()).sort((a, b) => {
+      const d = (b.computedScore ?? 0) - (a.computedScore ?? 0);
+      if (d !== 0) return d;
+      return (b.lastRefreshedAt ?? 0) - (a.lastRefreshedAt ?? 0);
+    });
 
     // Images use fallback URL from getProfileImage (constructed from TM player ID)
     // Market values are already stored in Firestore from scout agent runs
@@ -160,15 +276,22 @@ export async function GET(request: NextRequest) {
     const lastRunAt = lastRunData?.runAt ?? null;
 
     // The sweep funnel — makes the agents' daily scale legible on the client.
-    // All already logged on the run doc; we just expose it.
+    // Sweep funnel from the latest run doc. Guard against the worker's initial
+    // "status: running" placeholder (profilesFound/BeforeReview written as 0 at
+    // start, filled at the end) and a stale "runAt" ordering by only trusting
+    // the funnel when it is non-zero; otherwise fall back to the actual number
+    // of profiles we loaded, so the UI never claims "0 candidates" while 847
+    // profiles are on screen.
+    const nz = (v: unknown): number | null => (typeof v === 'number' && v > 0 ? v : null);
     const sd = (lastRunData?.sportDirector as Record<string, unknown> | undefined) || undefined;
+    const funnelApproved = nz(sd?.approvedCount) ?? nz(lastRunData?.profilesFound);
     const run = {
-      scanned: (lastRunData?.playersScanned as number) ?? (lastRunData?.unmatchedCandidatesTotal as number) ?? null,
-      matched: (lastRunData?.profilesBeforeReview as number) ?? null,
-      approved: (sd?.approvedCount as number) ?? (lastRunData?.profilesFound as number) ?? null,
-      rejected: (sd?.rejectedCount as number) ?? (lastRunData?.profilesRejected as number) ?? null,
-      leaguesScanned: (lastRunData?.leaguesScanned as number) ?? null,
-      crossAgent: (lastRunData?.crossLeagueDetections as number) ?? null,
+      scanned: nz(lastRunData?.playersScanned) ?? nz(lastRunData?.unmatchedCandidatesTotal),
+      matched: nz(lastRunData?.profilesBeforeReview) ?? funnelApproved ?? profiles.length,
+      approved: funnelApproved ?? profiles.length,
+      rejected: nz(sd?.rejectedCount) ?? nz(lastRunData?.profilesRejected),
+      leaguesScanned: nz(lastRunData?.leaguesScanned),
+      crossAgent: nz(lastRunData?.crossLeagueDetections),
     };
 
     const byAgent = profiles.reduce<Record<string, number>>((acc, p) => {

@@ -25,7 +25,7 @@ import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { callShortlistAdd } from '@/lib/callables';
 import { extractPlayerIdFromUrl } from '@/lib/api';
 import { getPositionDisplayName } from '@/lib/appConfig';
-import type { ScoutProfileResponse, ScoutRunSummary } from '@/types/scoutProfiles';
+import type { ScoutProfileResponse } from '@/types/scoutProfiles';
 
 const TM_DEFAULT_IMG = 'https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1';
 
@@ -58,12 +58,14 @@ function timeAgo(ms: number, he: boolean): string {
 
 const fmtInt = (n: number) => n.toLocaleString('en-US');
 
-// Director action → verdict flag class + label
+// Verdict tier comes straight from the deterministic engine in the API
+// (computed from real numbers — match score, FM potential, contract, per-90,
+// age, value). Every profile has one, so there is no "empty" fallback state.
 type Lens = 'sign' | 'monitor' | 'all';
-function actionTier(action?: string | null): 'sign' | 'monitor' | 'low' {
-  if (action === 'SHORTLIST_NOW') return 'sign';
-  if (action === 'LOW_PRIORITY') return 'low';
-  return 'monitor';
+type Tier = 'sign' | 'monitor' | 'watch';
+
+function tierOf(p: ScoutProfileResponse): Tier {
+  return p.computedTier ?? 'watch';
 }
 
 export default function WarRoomScoutAgents() {
@@ -72,7 +74,6 @@ export default function WarRoomScoutAgents() {
   const he = lang === 'he';
 
   const [profiles, setProfiles] = useState<ScoutProfileResponse[]>([]);
-  const [run, setRun] = useState<ScoutRunSummary | null>(null);
   const [lastRunAt, setLastRunAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [lens, setLens] = useState<Lens>('sign');
@@ -105,11 +106,9 @@ export default function WarRoomScoutAgents() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setProfiles(data.profiles ?? []);
-      setRun(data.run ?? null);
       setLastRunAt(data.lastRunAt ?? null);
     } catch {
       setProfiles([]);
-      setRun(null);
       setLastRunAt(null);
     } finally {
       setLoading(false);
@@ -162,40 +161,36 @@ export default function WarRoomScoutAgents() {
       if (Array.from(shortlistUrls).some((s) => samePlayer(s, url))) return false;
       return true;
     });
-    return base.sort((a, b) => {
-      const fa = a.directorFitScore ?? 0;
-      const fb = b.directorFitScore ?? 0;
-      if (fb !== fa) return fb - fa;
-      return (b.matchScore ?? 0) - (a.matchScore ?? 0);
-    });
+    // API already ranks by computedScore; keep that order (fall back defensively).
+    return base.sort((a, b) => (b.computedScore ?? 0) - (a.computedScore ?? 0));
   }, [profiles, rosterUrls, shortlistUrls]);
 
   const counts = useMemo(() => {
     let sign = 0, monitor = 0;
     for (const p of ranked) {
-      const t = actionTier(p.directorAction);
+      const t = tierOf(p);
       if (t === 'sign') sign += 1;
       else if (t === 'monitor') monitor += 1;
     }
     return { sign, monitor, all: ranked.length };
   }, [ranked]);
 
+  // If the top tier happens to be empty, open on "All" so the deck is never blank.
+  const effLens: Lens = lens === 'sign' && counts.sign === 0 ? 'all' : lens;
+
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return ranked.filter((p) => {
-      // lens
-      if (lens === 'sign' && actionTier(p.directorAction) !== 'sign') return false;
-      if (lens === 'monitor' && actionTier(p.directorAction) !== 'monitor') return false;
-      // position
+      if (effLens === 'sign' && tierOf(p) !== 'sign') return false;
+      if (effLens === 'monitor' && tierOf(p) !== 'monitor') return false;
       if (posFilter !== 'all' && shortenPosition(p.position) !== posFilter) return false;
-      // search
       if (q) {
         const hay = `${p.playerName} ${p.club} ${p.league} ${p.agentName}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [ranked, lens, posFilter, search]);
+  }, [ranked, effLens, posFilter, search]);
 
   const positions = useMemo(() => {
     const order = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'RW', 'LW', 'CF'];
@@ -213,16 +208,16 @@ export default function WarRoomScoutAgents() {
   };
 
   const laneTitle =
-    lens === 'sign'
-      ? (he ? <>המנהל <em>ממליץ להחתים</em></> : <>The Director is <em>telling you to sign</em></>)
-      : lens === 'monitor'
+    effLens === 'sign'
+      ? (he ? <>הכי <em>שווים להחתמה</em></> : <>Your <em>strongest signings</em></>)
+      : effLens === 'monitor'
         ? (he ? <>שחקנים <em>למעקב</em></> : <>Players to <em>monitor</em></>)
-        : (he ? <>כל <em>ההמלצות</em></> : <>All <em>calls</em></>);
+        : (he ? <>כל <em>הבחירות</em></> : <>All <em>picks</em></>);
 
   const laneCount =
-    lens === 'sign' ? `${counts.sign} ${he ? 'המלצות · לפי ציון התאמה' : 'calls · ranked by fit score'}`
-      : lens === 'monitor' ? `${counts.monitor} ${he ? 'למעקב' : 'to monitor'}`
-        : `${counts.all} ${he ? 'המלצות' : 'approved'}`;
+    effLens === 'sign' ? `${counts.sign} ${he ? 'בחירות · מדורג לפי ציון הזדמנות' : 'picks · ranked by opportunity score'}`
+      : effLens === 'monitor' ? `${counts.monitor} ${he ? 'למעקב' : 'to monitor'}`
+        : `${visible.length} ${he ? 'שחקנים' : 'players'}`;
 
   const isSaved = (url: string) => savedUrls.has(url) || Array.from(shortlistUrls).some((s) => samePlayer(s, url));
 
@@ -243,24 +238,19 @@ export default function WarRoomScoutAgents() {
         </div>
       </header>
 
-      {/* Scale line — the agents' daily work in one sentence */}
-      {run && (
+      {/* Scale line — the agents' daily work in one honest sentence.
+          Prefer the Director funnel when it exists; otherwise just state how
+          many players the network surfaced. Never print "0 candidates". */}
+      {!loading && ranked.length > 0 && (
         <div className="brit-dd-scale">
           <span className="dot" />
           <p>
             {he ? (
-              <>
-                {run.leaguesScanned ? <>הרשת סרקה <b>{fmtInt(run.leaguesScanned)}</b> ליגות ו</> : null}
-                {run.matched != null && <>העלתה <b>{fmtInt(run.matched)}</b> מועמדים. </>}
-                {run.approved != null && <>המנהל אישר <b>{fmtInt(run.approved)}</b>, מתוכם <b className="go">{counts.sign} להחתמה מיידית</b>.</>}
-              </>
+              <>רשת הסקאוטים שלך העלתה <b>{fmtInt(ranked.length)}</b> שחקנים בטווח הרכש שלך
+                {counts.sign > 0 && <>, מתוכם <b className="go">{counts.sign} שווים להחתמה</b></>}. מדורג לפי ציון הזדמנות.</>
             ) : (
-              <>
-                Your scout network {run.leaguesScanned ? <>swept <b>{fmtInt(run.leaguesScanned)}</b> league scans and </> : null}
-                {run.matched != null && <>surfaced <b>{fmtInt(run.matched)}</b> candidates. </>}
-                {run.approved != null && <>The Director backed <b>{fmtInt(run.approved)}</b> — <b className="go">{counts.sign} to sign now</b>.</>}
-                {' '}Here they are.
-              </>
+              <>Your scout network surfaced <b>{fmtInt(ranked.length)}</b> players in your acquisition band
+                {counts.sign > 0 && <> — <b className="go">{counts.sign} strong enough to sign</b></>}. Ranked by opportunity score.</>
             )}
           </p>
           {lastRunAt && <span className="ago">{timeAgo(lastRunAt, he)}</span>}
@@ -278,13 +268,13 @@ export default function WarRoomScoutAgents() {
       {/* Filter rail */}
       <div className="brit-dd-rail">
         <div className="brit-dd-seg">
-          <button className={lens === 'sign' ? 'on' : ''} onClick={() => setLens('sign')}>
-            {he ? 'להחתמה' : 'Sign now'} · {counts.sign}
+          <button className={effLens === 'sign' ? 'on' : ''} onClick={() => setLens('sign')}>
+            {he ? 'להחתמה' : 'Sign'} · {counts.sign}
           </button>
-          <button className={lens === 'monitor' ? 'on' : ''} onClick={() => setLens('monitor')}>
+          <button className={effLens === 'monitor' ? 'on' : ''} onClick={() => setLens('monitor')}>
             {he ? 'מעקב' : 'Monitor'} · {counts.monitor}
           </button>
-          <button className={lens === 'all' ? 'on' : ''} onClick={() => setLens('all')}>
+          <button className={effLens === 'all' ? 'on' : ''} onClick={() => setLens('all')}>
             {he ? 'הכל' : 'All'} · {counts.all}
           </button>
         </div>
@@ -319,8 +309,8 @@ export default function WarRoomScoutAgents() {
       {!loading && visible.length > 0 && (
         <div className="brit-dd-deck">
           {visible.map((p) => {
-            const tier = actionTier(p.directorAction);
-            const arc = p.directorValueArc;
+            const tier = tierOf(p);
+            const arc = p.computedValueArc;
             const months = contractMonths(p.contractExpires);
             const saved = isSaved(p.tmProfileUrl);
             const adding = addingUrl === p.tmProfileUrl;
@@ -331,9 +321,9 @@ export default function WarRoomScoutAgents() {
                 <div className="brit-dd-act">
                   <span className={`brit-dd-flag ${tier}`}>
                     {tier === 'sign'
-                      ? <><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>{he ? 'להחתמה' : 'Sign now'}</>
-                      : tier === 'low'
-                        ? (he ? 'עדיפות נמוכה' : 'Low priority')
+                      ? <><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>{he ? 'שווה החתמה' : 'Sign'}</>
+                      : tier === 'watch'
+                        ? (he ? 'על הרדאר' : 'On radar')
                         : <><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4" /><path d="M12 16h.01" /></svg>{he ? 'מעקב' : 'Monitor'}</>}
                   </span>
                   {arc && (
@@ -341,9 +331,7 @@ export default function WarRoomScoutAgents() {
                       <i />{arc === 'rising' ? (he ? 'ערך עולה' : 'Value rising') : arc === 'peak' ? (he ? 'בשיא' : 'At peak') : (he ? 'ערך יורד' : 'Value declining')}
                     </span>
                   )}
-                  {typeof p.directorFitScore === 'number' && (
-                    <span className="brit-dd-fit"><b>{p.directorFitScore}</b><small>{he ? 'התאמה' : 'fit /10'}</small></span>
-                  )}
+                  <span className="brit-dd-fit"><b>{p.computedScore}</b><small>{he ? 'ציון' : 'score'}</small></span>
                 </div>
 
                 <div className="brit-dd-id">
@@ -365,13 +353,13 @@ export default function WarRoomScoutAgents() {
                 <div className="brit-dd-verdict">
                   <div className="q">
                     <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M8 10h8M8 14h5" /></svg>
-                    {he ? 'המלצת המנהל' : "Director's call"}
+                    {he ? 'למה עכשיו' : 'Why now'}
                   </div>
-                  <p>{p.directorVerdict || p.scoutNarrative || (he ? p.scoutExplanationHe : p.scoutExplanationEn) || p.matchReason}</p>
+                  <p>{he ? p.computedReasonHe : p.computedReasonEn}</p>
                 </div>
 
                 <div className="brit-dd-sigs">
-                  {p.corroborationCount && p.corroborationCount >= 2 && (
+                  {(p.corroborationCount ?? 0) >= 2 && (
                     <span className="brit-dd-sig cor">
                       <svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
                       {he ? `${p.corroborationCount} סוכנים` : `${p.corroborationCount} scouts`}
@@ -388,9 +376,9 @@ export default function WarRoomScoutAgents() {
                       <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-8" /></svg>FM PA <b>&nbsp;{p.fmPa}</b>
                     </span>
                   )}
-                  {typeof p.matchScore === 'number' && p.matchScore > 0 && (
+                  {typeof p.goalsPer90 === 'number' && p.goalsPer90 >= 0.3 && (
                     <span className="brit-dd-sig">
-                      <svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5z" /></svg>{he ? 'התאמה' : 'Match'} <b>&nbsp;{p.matchScore}</b>
+                      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 3v4" /></svg>{p.goalsPer90.toFixed(2)} {he ? 'ש׳/90' : 'G/90'}
                     </span>
                   )}
                 </div>
@@ -438,10 +426,10 @@ function DossierBody({
   saved: boolean;
   adding: boolean;
 }) {
-  const tier = actionTier(p.directorAction);
+  const tier = tierOf(p);
   const months = contractMonths(p.contractExpires);
-  const actionLabel = tier === 'sign' ? (he ? 'להחתמה מיידית' : 'SIGN NOW')
-    : tier === 'low' ? (he ? 'עדיפות נמוכה' : 'LOW PRIORITY') : (he ? 'מעקב' : 'MONITOR');
+  const actionLabel = tier === 'sign' ? (he ? 'שווה החתמה' : 'SIGN')
+    : tier === 'watch' ? (he ? 'על הרדאר' : 'ON RADAR') : (he ? 'מעקב' : 'MONITOR');
 
   return (
     <>
@@ -458,21 +446,14 @@ function DossierBody({
       </div>
 
       <div className="brit-drawer-body">
-        {/* Director verdict */}
-        {(p.directorVerdict || p.scoutNarrative) && (
-          <div className="brit-drawer-box">
-            <div className="brit-drawer-box-head">
-              <label>{he ? 'המלצת המנהל הספורטיבי' : 'Sport Director verdict'}</label>
-              <span className="badge">{actionLabel}</span>
-            </div>
-            <p className="brit-dd-dossier-verdict">{p.directorVerdict || p.scoutNarrative}</p>
-            {p.directorDataFlags && p.directorDataFlags.length > 0 && (
-              <div className="brit-dd-flags">
-                {p.directorDataFlags.map((f, i) => <div className="f" key={i}>⚠ {f}</div>)}
-              </div>
-            )}
+        {/* Computed verdict — derived from the real numbers, no AI. */}
+        <div className="brit-drawer-box">
+          <div className="brit-drawer-box-head">
+            <label>{he ? 'הערכה' : 'The verdict'}</label>
+            <span className="badge">{actionLabel} · {p.computedScore}</span>
           </div>
-        )}
+          <p className="brit-dd-dossier-verdict">{he ? p.computedReasonHe : p.computedReasonEn}</p>
+        </div>
 
         {/* Corroboration */}
         {p.corroboratingAgents && p.corroboratingAgents.length >= 2 && (
