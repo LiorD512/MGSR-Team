@@ -19,6 +19,7 @@ import { extractPlayerIdFromUrl, getPlayerDetails } from '@/lib/api';
 import { aiScoutSearch, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { appendSeenKeys, appendStoredKeys, getSeenKeys, getStoredKeys } from '@/lib/searchNoveltyMemory';
 import { buildPlayerKey, type DiversityMode } from '@/lib/discoveryDiversity';
+import { parseInterpretation } from '@/lib/parseInterpretation';
 
 const MEMORY_SCOPE = 'war-room-ai-scout';
 const FRESHNESS_SCOPE = 'war-room-ai-scout:freshness';
@@ -41,6 +42,12 @@ const EXAMPLES_HE = [
   'בלמים שמאליים ממזרח אירופה',
   'כנפים חופשיים עם מהירות ודריבל',
 ];
+
+const MODE_LABELS: Record<DiversityMode, { en: string; he: string; subEn: string; subHe: string }> = {
+  strict: { en: 'Strict', he: 'מחמיר', subEn: 'On-brief only', subHe: 'לפי הבריף' },
+  balanced: { en: 'Balanced', he: 'מאוזן', subEn: 'Mix & fit', subHe: 'שילוב והתאמה' },
+  discovery: { en: 'Discovery', he: 'גילוי', subEn: 'Wildcards', subHe: 'הפתעות' },
+};
 
 export default function WarRoomAsk() {
   const { user } = useAuth();
@@ -168,6 +175,8 @@ export default function WarRoomAsk() {
     }
   }, [user, rosterUrls, he]);
 
+  const brief = useMemo(() => parseInterpretation(interpretation), [interpretation]);
+
   const visibleResults = useMemo(() => {
     return results.filter((s) => {
       const url = s.transfermarktUrl;
@@ -195,53 +204,100 @@ export default function WarRoomAsk() {
         </div>
       </header>
 
-      {/* Console */}
-      <div className="brit-wr-console">
-        <div className="term"><span className="d" />{he ? 'מסוף חיפוש הסקאוט' : 'Scout search terminal'}</div>
-        <div className="askwrap">
-          <textarea
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={2}
-            dir={isRtl ? 'rtl' : 'ltr'}
-            placeholder={he ? 'תאר שחקן… למשל "חלוץ מהיר עד 23 בטווח שלי"' : 'Describe a player… e.g. "fast striker under 23 in my band"'}
-            disabled={searching}
-          />
-          <button className="go" onClick={handleSearch} disabled={searching || !query.trim()}>
-            {searching ? '…' : (he ? 'חפש' : 'Search')}
-          </button>
-        </div>
-        <div className="divmode">
-          <span className="dl">{he ? 'מצב גיוון' : 'Diversity'}</span>
-          {(['strict', 'balanced', 'discovery'] as DiversityMode[]).map((m) => (
-            <button
-              key={m}
-              className={`brit-wr-chip${diversityMode === m ? ' on' : ''}`}
-              onClick={() => setDiversityMode(m)}
-              disabled={searching || searchingOther}
-            >
-              {m.charAt(0).toUpperCase() + m.slice(1)}
+      {/* Working area: console (left) + structured brief (right) */}
+      <div className="brit-wr-work">
+        {/* Console */}
+        <div className="brit-wr-console">
+          <div className="term"><span className="d" />{he ? 'מסוף חיפוש הסקאוט' : 'Scout search terminal'}</div>
+          <div className="askwrap">
+            <textarea
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={2}
+              dir={isRtl ? 'rtl' : 'ltr'}
+              placeholder={he ? 'תאר שחקן… למשל "חלוץ מהיר עד 23 בטווח שלי"' : 'Describe a player… e.g. "fast striker under 23 in my band"'}
+              disabled={searching}
+            />
+            <button className="go" onClick={handleSearch} disabled={searching || !query.trim()}>
+              {searching ? '…' : (he ? 'חפש' : 'Search')}
             </button>
-          ))}
+          </div>
+          <div className="divmode">
+            <span className="dl">{he ? 'מצב גיוון' : 'Diversity'}</span>
+            {(['strict', 'balanced', 'discovery'] as DiversityMode[]).map((m) => (
+              <button
+                key={m}
+                className={`brit-wr-chip${diversityMode === m ? ' on' : ''}`}
+                onClick={() => setDiversityMode(m)}
+                disabled={searching || searchingOther}
+              >
+                {he ? MODE_LABELS[m].he : MODE_LABELS[m].en}
+                <span className="cx">{he ? MODE_LABELS[m].subHe : MODE_LABELS[m].subEn}</span>
+              </button>
+            ))}
+          </div>
+          <p className="exlabel">{he ? 'נסה בריף' : 'Try a brief'}</p>
+          <div className="examples">
+            {(he ? EXAMPLES_HE : EXAMPLES_EN).map((ex) => (
+              <button key={ex} className="ex" onClick={() => setQuery(ex)} disabled={searching}>{ex}</button>
+            ))}
+          </div>
         </div>
-        <div className="examples">
-          {(he ? EXAMPLES_HE : EXAMPLES_EN).map((ex) => (
-            <button key={ex} className="ex" onClick={() => setQuery(ex)} disabled={searching}>{ex}</button>
-          ))}
-        </div>
+
+        {/* Structured brief — the parsed interpretation */}
+        {brief && (
+          <div className="brit-wr-brief">
+            <div className="bh">
+              <b>{he ? 'פרשנות הסקאוט' : 'Scout interpretation'}</b>
+              {brief.matchSummary && (
+                <span className={`ok${brief.hasMatches ? '' : ' none'}`}>
+                  <span className="dot" />{brief.matchSummary}
+                </span>
+              )}
+            </div>
+
+            {(brief.facets.length > 0 || brief.styleTags.length > 0) && (
+              <div className="facets">
+                {brief.facets.map((f, i) => (
+                  <div key={`${f.label}-${i}`} className="facet">
+                    <span className="fl">{f.label}</span>
+                    <span className="fv">{f.value}</span>
+                  </div>
+                ))}
+                {brief.styleTags.length > 0 && (
+                  <div className="facet wide">
+                    <span className="fl">{he ? 'סגנון והתאמת שוק' : 'Style & market fit'}</span>
+                    <span className="tags">
+                      {brief.styleTags.map((tag, i) => (
+                        <span key={`${tag}-${i}`} className="tag">{tag}</span>
+                      ))}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {brief.otherNotes.map((note, i) => (
+              <p key={`note-${i}`} className="bnote">{note}</p>
+            ))}
+
+            {(brief.metaNotes.length > 0 || brief.expandHint) && (
+              <div className="bfoot">
+                <span>{brief.metaNotes.join(' · ')}</span>
+                {brief.expandHint && (
+                  <button className="expand" onClick={handleSearchMore} disabled={searchingOther}>
+                    {searchingOther ? (he ? 'מרחיב…' : 'Expanding…') : brief.expandHint}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {error && <div className="brit-wr-error">{error} <button onClick={() => { fetch('/api/scout/warm').catch(() => {}); setError(null); }}>{he ? 'חמם ונסה שוב' : 'Warm & retry'}</button></div>}
       {addError && <div className="brit-wr-error">{addError}</div>}
-
-      {/* Interpretation */}
-      {interpretation && (
-        <div className="brit-wr-interp">
-          <b>{he ? 'פרשנות הסקאוט' : 'Scout interpretation'}</b>
-          {interpretation.split('\n').filter((l) => l.trim()).map((line, i) => <p key={i}>{line.trim()}</p>)}
-        </div>
-      )}
 
       {/* Results */}
       {!searching && visibleResults.length > 0 && (
@@ -253,24 +309,34 @@ export default function WarRoomAsk() {
               const pct = s.matchPercent ?? 0;
               const deg = pct * 3.6;
               const isAdding = addingUrl === url;
+              const whyRaw = (s.playingStyle || s.similarityReason || s.scoutAnalysis || '').trim();
+              // Keep the rationale pill to a single scannable phrase.
+              const why = whyRaw.length > 90 ? `${whyRaw.slice(0, 88).trimEnd()}…` : whyRaw;
+              const meta: Array<{ k: string; v: string }> = [
+                { k: he ? 'גיל' : 'Age', v: s.age || '—' },
+                { k: he ? 'עמדה' : 'Pos', v: s.position || '—' },
+                { k: he ? 'שווי' : 'Value', v: s.marketValue || '—' },
+              ];
+              if (s.club) meta.push({ k: he ? 'מועדון' : 'Club', v: s.club });
               return (
                 <div key={url || s.name} className="brit-wr-qrow">
                   <div className="ring" style={{ background: `conic-gradient(var(--gold) ${deg}deg, var(--paper-2) ${deg}deg)` }}>
                     <div className="inner">{pct}%</div>
                   </div>
                   <div className="qbody">
-                    <div className="qtop">
-                      <a className="qname" href={url ?? undefined} target="_blank" rel="noopener noreferrer">{s.name || '—'}</a>
-                    </div>
+                    <a className="qname" href={url ?? undefined} target="_blank" rel="noopener noreferrer">{s.name || '—'}</a>
                     <div className="qmeta">
-                      {s.age ?? '—'} · {s.position ?? '—'} · {s.marketValue ?? '—'}{s.club ? ` · ${s.club}` : ''}
+                      {meta.map((m) => (
+                        <span key={m.k} className="m"><span className="k">{m.k}</span><b>{m.v}</b></span>
+                      ))}
                     </div>
-                    <div className="aacts">
-                      <a className="brit-wr-btn ghost" href={url ?? undefined} target="_blank" rel="noopener noreferrer">TM →</a>
-                      <button className="brit-wr-btn gold" onClick={() => addToShortlist(s)} disabled={isAdding}>
-                        {isAdding ? (he ? 'מוסיף…' : 'Adding…') : `+ ${he ? 'מעקב' : 'Shortlist'}`}
-                      </button>
-                    </div>
+                    {why && <div className="qwhy">{why}</div>}
+                  </div>
+                  <div className="aacts">
+                    <a className="brit-wr-btn ghost" href={url ?? undefined} target="_blank" rel="noopener noreferrer">TM →</a>
+                    <button className="brit-wr-btn gold" onClick={() => addToShortlist(s)} disabled={isAdding}>
+                      {isAdding ? (he ? 'מוסיף…' : 'Adding…') : `+ ${he ? 'מעקב' : 'Shortlist'}`}
+                    </button>
                   </div>
                 </div>
               );
