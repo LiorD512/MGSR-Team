@@ -58,12 +58,24 @@ function timeAgo(ms: number, he: boolean): string {
 
 const fmtInt = (n: number) => n.toLocaleString('en-US');
 
-// Director action → verdict flag class + label
+// Director action → verdict tier.
+// When the Sport Director fields haven't been written yet (older docs, before
+// the next worker run), fall back to the match score (0-100), which every
+// profile has — so the screen is useful today and upgrades automatically once
+// the Director verdicts land.
 type Lens = 'sign' | 'monitor' | 'all';
-function actionTier(action?: string | null): 'sign' | 'monitor' | 'low' {
-  if (action === 'SHORTLIST_NOW') return 'sign';
-  if (action === 'LOW_PRIORITY') return 'low';
-  return 'monitor';
+type Tier = 'sign' | 'monitor' | 'low';
+
+function tierOf(p: { directorAction?: string | null; matchScore?: number }): Tier {
+  const a = p.directorAction;
+  if (a === 'SHORTLIST_NOW') return 'sign';
+  if (a === 'MONITOR') return 'monitor';
+  if (a === 'LOW_PRIORITY') return 'low';
+  // No director action yet → derive from match score.
+  const m = p.matchScore ?? 0;
+  if (m >= 80) return 'sign';
+  if (m >= 60) return 'monitor';
+  return 'low';
 }
 
 export default function WarRoomScoutAgents() {
@@ -162,10 +174,13 @@ export default function WarRoomScoutAgents() {
       if (Array.from(shortlistUrls).some((s) => samePlayer(s, url))) return false;
       return true;
     });
+    // Rank by Director fit score when present, else by match score so the
+    // ordering is still meaningful before the Director verdicts land.
+    const rankVal = (p: ScoutProfileResponse) =>
+      typeof p.directorFitScore === 'number' ? p.directorFitScore * 10 : (p.matchScore ?? 0);
     return base.sort((a, b) => {
-      const fa = a.directorFitScore ?? 0;
-      const fb = b.directorFitScore ?? 0;
-      if (fb !== fa) return fb - fa;
+      const d = rankVal(b) - rankVal(a);
+      if (d !== 0) return d;
       return (b.matchScore ?? 0) - (a.matchScore ?? 0);
     });
   }, [profiles, rosterUrls, shortlistUrls]);
@@ -173,7 +188,7 @@ export default function WarRoomScoutAgents() {
   const counts = useMemo(() => {
     let sign = 0, monitor = 0;
     for (const p of ranked) {
-      const t = actionTier(p.directorAction);
+      const t = tierOf(p);
       if (t === 'sign') sign += 1;
       else if (t === 'monitor') monitor += 1;
     }
@@ -184,8 +199,8 @@ export default function WarRoomScoutAgents() {
     const q = search.trim().toLowerCase();
     return ranked.filter((p) => {
       // lens
-      if (lens === 'sign' && actionTier(p.directorAction) !== 'sign') return false;
-      if (lens === 'monitor' && actionTier(p.directorAction) !== 'monitor') return false;
+      if (lens === 'sign' && tierOf(p) !== 'sign') return false;
+      if (lens === 'monitor' && tierOf(p) !== 'monitor') return false;
       // position
       if (posFilter !== 'all' && shortenPosition(p.position) !== posFilter) return false;
       // search
@@ -319,7 +334,7 @@ export default function WarRoomScoutAgents() {
       {!loading && visible.length > 0 && (
         <div className="brit-dd-deck">
           {visible.map((p) => {
-            const tier = actionTier(p.directorAction);
+            const tier = tierOf(p);
             const arc = p.directorValueArc;
             const months = contractMonths(p.contractExpires);
             const saved = isSaved(p.tmProfileUrl);
@@ -341,9 +356,11 @@ export default function WarRoomScoutAgents() {
                       <i />{arc === 'rising' ? (he ? 'ערך עולה' : 'Value rising') : arc === 'peak' ? (he ? 'בשיא' : 'At peak') : (he ? 'ערך יורד' : 'Value declining')}
                     </span>
                   )}
-                  {typeof p.directorFitScore === 'number' && (
+                  {typeof p.directorFitScore === 'number' ? (
                     <span className="brit-dd-fit"><b>{p.directorFitScore}</b><small>{he ? 'התאמה' : 'fit /10'}</small></span>
-                  )}
+                  ) : typeof p.matchScore === 'number' && p.matchScore > 0 ? (
+                    <span className="brit-dd-fit"><b>{p.matchScore}</b><small>{he ? 'ציון' : 'score'}</small></span>
+                  ) : null}
                 </div>
 
                 <div className="brit-dd-id">
@@ -371,7 +388,7 @@ export default function WarRoomScoutAgents() {
                 </div>
 
                 <div className="brit-dd-sigs">
-                  {p.corroborationCount && p.corroborationCount >= 2 && (
+                  {(p.corroborationCount ?? 0) >= 2 && (
                     <span className="brit-dd-sig cor">
                       <svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
                       {he ? `${p.corroborationCount} סוכנים` : `${p.corroborationCount} scouts`}
@@ -388,7 +405,7 @@ export default function WarRoomScoutAgents() {
                       <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7-8" /></svg>FM PA <b>&nbsp;{p.fmPa}</b>
                     </span>
                   )}
-                  {typeof p.matchScore === 'number' && p.matchScore > 0 && (
+                  {typeof p.directorFitScore === 'number' && typeof p.matchScore === 'number' && p.matchScore > 0 && (
                     <span className="brit-dd-sig">
                       <svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5z" /></svg>{he ? 'התאמה' : 'Match'} <b>&nbsp;{p.matchScore}</b>
                     </span>
@@ -438,7 +455,7 @@ function DossierBody({
   saved: boolean;
   adding: boolean;
 }) {
-  const tier = actionTier(p.directorAction);
+  const tier = tierOf(p);
   const months = contractMonths(p.contractExpires);
   const actionLabel = tier === 'sign' ? (he ? 'להחתמה מיידית' : 'SIGN NOW')
     : tier === 'low' ? (he ? 'עדיפות נמוכה' : 'LOW PRIORITY') : (he ? 'מעקב' : 'MONITOR');
@@ -458,21 +475,27 @@ function DossierBody({
       </div>
 
       <div className="brit-drawer-body">
-        {/* Director verdict */}
-        {(p.directorVerdict || p.scoutNarrative) && (
-          <div className="brit-drawer-box">
-            <div className="brit-drawer-box-head">
-              <label>{he ? 'המלצת המנהל הספורטיבי' : 'Sport Director verdict'}</label>
-              <span className="badge">{actionLabel}</span>
-            </div>
-            <p className="brit-dd-dossier-verdict">{p.directorVerdict || p.scoutNarrative}</p>
-            {p.directorDataFlags && p.directorDataFlags.length > 0 && (
-              <div className="brit-dd-flags">
-                {p.directorDataFlags.map((f, i) => <div className="f" key={i}>⚠ {f}</div>)}
+        {/* Director verdict (falls back to the scout rationale before the
+            Director's Gemini verdicts land on the docs) */}
+        {(() => {
+          const hasVerdict = !!(p.directorVerdict || p.scoutNarrative);
+          const text = p.directorVerdict || p.scoutNarrative || (he ? p.scoutExplanationHe : p.scoutExplanationEn) || p.matchReason;
+          if (!text) return null;
+          return (
+            <div className="brit-drawer-box">
+              <div className="brit-drawer-box-head">
+                <label>{hasVerdict ? (he ? 'המלצת המנהל הספורטיבי' : 'Sport Director verdict') : (he ? 'סיבת ההתאמה' : 'Why this profile')}</label>
+                {hasVerdict && <span className="badge">{actionLabel}</span>}
               </div>
-            )}
-          </div>
-        )}
+              <p className="brit-dd-dossier-verdict">{text}</p>
+              {p.directorDataFlags && p.directorDataFlags.length > 0 && (
+                <div className="brit-dd-flags">
+                  {p.directorDataFlags.map((f, i) => <div className="f" key={i}>⚠ {f}</div>)}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Corroboration */}
         {p.corroboratingAgents && p.corroboratingAgents.length >= 2 && (
