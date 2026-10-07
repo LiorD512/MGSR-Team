@@ -113,10 +113,55 @@ if (!fs.existsSync(forAppLogo)) {
 }
 
 convertVector(forAppLogo, path.join(__dirname, '../public/logo.svg'));
-convertVector(forAppLogo, path.join(__dirname, '../src/app/icon.svg'));
+
+// Favicon: emit as a STATIC public asset (public/icon.svg), NOT the Next.js
+// app/icon.svg convention. The convention generates a /icon.svg?<hash> route
+// that Vercel caches as `immutable` and reuses from the build cache, so a
+// broken icon kept being served even after the source was fixed. A plain
+// public file is served fresh from the deployment output and is referenced by
+// explicit, version-busted <link> tags in layout.tsx.
+convertVector(forAppLogo, path.join(__dirname, '../public/icon.svg'));
+
+// Also write a real multi-size favicon.ico into /public so the browser's
+// default /favicon.ico request resolves to the brand mark (no hashed route).
+try {
+  // Lazy require: sharp is a build-time dependency.
+  const sharp = require('sharp');
+  const svg = fs.readFileSync(path.join(__dirname, '../public/icon.svg'));
+  const sizes = [16, 32, 48];
+  Promise.all(
+    sizes.map((s) => sharp(svg).resize(s, s).png().toBuffer().then((data) => ({ s, data })))
+  )
+    .then((pngs) => {
+      const header = Buffer.alloc(6);
+      header.writeUInt16LE(0, 0);
+      header.writeUInt16LE(1, 2);
+      header.writeUInt16LE(pngs.length, 4);
+      let offset = 6 + 16 * pngs.length;
+      const entries = [];
+      for (const { s, data } of pngs) {
+        const e = Buffer.alloc(16);
+        e.writeUInt8(s >= 256 ? 0 : s, 0);
+        e.writeUInt8(s >= 256 ? 0 : s, 1);
+        e.writeUInt16LE(1, 4);
+        e.writeUInt16LE(32, 6);
+        e.writeUInt32LE(data.length, 8);
+        e.writeUInt32LE(offset, 12);
+        entries.push(e);
+        offset += data.length;
+      }
+      const ico = Buffer.concat([header, ...entries, ...pngs.map((p) => p.data)]);
+      fs.writeFileSync(path.join(__dirname, '../public/favicon.ico'), ico);
+      console.log('favicon.ico generated (16,32,48px) in public/');
+    })
+    .catch((e) => console.warn('favicon.ico generation skipped:', e.message));
+} catch (e) {
+  console.warn('sharp not available; skipping favicon.ico generation');
+}
+
 if (fs.existsSync(logoBlack)) {
   convertVector(logoBlack, path.join(__dirname, '../public/logo_black.svg'));
-  console.log('Logo converted from for_app_logo.xml -> logo.svg, icon.svg; logo_black.xml -> logo_black.svg');
+  console.log('Logo converted from for_app_logo.xml -> logo.svg, public/icon.svg; logo_black.xml -> logo_black.svg');
 } else {
-  console.log('Logo converted from for_app_logo.xml -> logo.svg, icon.svg');
+  console.log('Logo converted from for_app_logo.xml -> logo.svg, public/icon.svg');
 }
