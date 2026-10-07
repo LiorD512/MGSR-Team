@@ -86,6 +86,18 @@ print("Enrichment guard passed")
 PY
 fi
 
+# ── Integrity gate: block the push if ANY wrong-player match is present ──
+# verify_matches.py --assert exits non-zero when a verifiable wrong match (birth
+# date conflict, or weak name + conflicting club) remains in the DB, so a corrupt
+# snapshot can never reach Render. Soft-skips if the script isn't present yet.
+if [ "$INTEGRITY_GUARD_DISABLED" != "true" ] && [ -f verify_matches.py ]; then
+  echo "=== Match integrity gate (verify_matches.py --assert) ==="
+  if ! python3 verify_matches.py --assert; then
+    echo "ERROR: match integrity gate failed — wrong-player matches present. Refusing to push."
+    exit 1
+  fi
+fi
+
 echo "=== Committing and pushing ==="
 git config user.email "scout-build@mgsr.local"
 git config user.name "Scout Build Bot"
