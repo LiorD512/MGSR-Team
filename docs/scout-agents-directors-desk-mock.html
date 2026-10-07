@@ -57,16 +57,14 @@
   .mh .sub{color:#4a473f;font-size:14.5px;max-width:720px;margin-top:10px}
 
   /* ── pulse / run strip ── */
-  .pulse{display:flex;gap:0;margin:26px 0 10px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
-  .pulse .cell{flex:1;padding:16px 20px;border-right:1px solid var(--line-2)}
-  .pulse .cell:last-child{border-right:0}
-  .pulse .cell .n{font-family:var(--display);font-weight:700;font-size:30px;line-height:1}
-  .pulse .cell .n.gold{color:var(--gold)}
-  .pulse .cell .n.green{color:var(--green)}
-  .pulse .cell .l{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:5px}
-  .pulse .cell .live{display:inline-flex;align-items:center;gap:6px}
-  .pulse .cell .live::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(92,111,74,.6);animation:ping 2s infinite}
-  @keyframes ping{0%{box-shadow:0 0 0 0 rgba(92,111,74,.5)}70%{box-shadow:0 0 0 7px rgba(92,111,74,0)}100%{box-shadow:0 0 0 0 rgba(92,111,74,0)}}
+  /* one calm sentence that tells the scale story */
+  .scaleline{display:flex;align-items:center;gap:12px;margin:22px 0 6px;padding:14px 18px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .scaleline .dot{width:8px;height:8px;flex:none;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(92,111,74,.6);animation:ping 2.2s infinite}
+  @keyframes ping{0%{box-shadow:0 0 0 0 rgba(92,111,74,.5)}70%{box-shadow:0 0 0 8px rgba(92,111,74,0)}100%{box-shadow:0 0 0 0 rgba(92,111,74,0)}}
+  .scaleline p{font-size:14px;color:#4a473f;flex:1}
+  .scaleline p b{color:var(--ink);font-weight:700}
+  .scaleline p b.go{color:var(--green)}
+  .scaleline .ago{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 
   /* ── director's call lane (the hero: action-first) ── */
   .lane-head{display:flex;align-items:baseline;justify-content:space-between;margin:34px 0 14px}
@@ -203,9 +201,9 @@
 
   <!-- Doc intro -->
   <div class="doc-hero">
-    <div class="doc-kicker">Persona Network · Men Platform · New Direction</div>
+    <div class="doc-kicker">Persona Network · Men Platform · Director's Desk v2</div>
     <h1>The Director's<span> Desk.</span></h1>
-    <p>Not a list of players. A <b>decision surface</b>. Every pick already passed through your AI Sport Director — which wrote a verdict, a recommended action, a fit score for the Israeli market, and pulled real-world intel. The old screen threw all of that away and asked for thumbs. This surfaces it, and makes the only two moves that matter — <b>shortlist</b> or <b>open the full report</b> — one click away.</p>
+    <p>Same design you liked — kept clean on purpose. The only thing added is a <b>single sentence at the top</b> that answers "what did my 44 agents actually do?" without turning the screen into a dashboard. Every pick already passed through your AI Sport Director — a verdict, a recommended action, a fit score, real-world intel. This surfaces it and makes the two moves that matter — <b>shortlist</b> or <b>open the full report</b> — one click away. No thumbs.</p>
   </div>
 
   <div class="insight">
@@ -237,16 +235,14 @@
       <div class="mh">
         <div class="mh-kicker">Persona network / Men platform</div>
         <h1>Scout <span>agents.</span></h1>
-        <div class="sub">44 AI scouts worked their leagues and your Sport Director reviewed every pick. These are the calls — ranked by how hard the Director is leaning, not by country.</div>
+        <div class="sub">These are the calls — ranked by how hard your Sport Director is leaning, not by country.</div>
       </div>
 
-      <!-- run pulse -->
-      <div class="pulse">
-        <div class="cell"><div class="n gold">37</div><div class="l">Sign-now calls</div></div>
-        <div class="cell"><div class="n">214</div><div class="l">Monitoring</div></div>
-        <div class="cell"><div class="n green">9</div><div class="l">Found by 2+ scouts</div></div>
-        <div class="cell"><div class="n">44</div><div class="l">Agents reporting</div></div>
-        <div class="cell"><div class="n" style="font-size:17px;padding-top:8px"><span class="live">18h ago</span></div><div class="l">Last director review</div></div>
+      <!-- scale line: the agents' work, in one plain sentence -->
+      <div class="scaleline">
+        <span class="dot"></span>
+        <p>Overnight, your <b>44 scouts</b> swept <b>61 leagues</b> and surfaced <b>251 players</b>. The Director backed <b class="go">37 to sign now</b> and flagged <b>63 as new</b> since you last looked. Here they are.</p>
+        <span class="ago">18h ago</span>
       </div>
 
       <!-- lane head -->
