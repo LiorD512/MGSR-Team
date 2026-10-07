@@ -19,16 +19,19 @@ const goldGradient = `
       <stop offset="1" stop-color="#916E46"/>
     </linearGradient>`;
 
-// Circular badge (used for the browser-tab favicon) — black circle + gold monogram.
+// Brand background colour from the supplied logo (gold monogram on light/white).
+const bg = '#FFFFFF';
+
+// Circular badge (used for the browser-tab favicon) — white circle + gold monogram.
 const circleSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 525 525" width="525" height="525" role="img" aria-label="BRIT Sport Group logo">
-  <circle cx="262.5" cy="262.5" r="262.5" fill="#000"/>
+  <circle cx="262.5" cy="262.5" r="262.5" fill="${bg}"/>
   <path d="${monogramPath}" fill="url(#goldGradient)"/>
   <defs>${goldGradient}</defs>
 </svg>`;
 
-// Full-bleed square (used for apple-touch-icon + PWA icons) — black field + centered gold monogram.
+// Full-bleed square (used for apple-touch-icon + PWA icons) — white field + centered gold monogram.
 const squareSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 525 525" width="525" height="525" role="img" aria-label="BRIT Sport Group logo">
-  <rect width="525" height="525" rx="96" fill="#000"/>
+  <rect width="525" height="525" rx="96" fill="${bg}"/>
   <path d="${monogramPath}" fill="url(#goldGradient)"/>
   <defs>${goldGradient}</defs>
 </svg>`;
