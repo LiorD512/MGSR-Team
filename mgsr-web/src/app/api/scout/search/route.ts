@@ -75,6 +75,54 @@ function ageBucket(v?: number): string {
   return '>28';
 }
 
+/**
+ * Continent / region buckets emitted by extractNationality. These are NOT
+ * single countries, so we don't apply a client-side country filter for them
+ * (the backend handles region expansion); listed here so the filter can skip.
+ */
+const NATIONALITY_REGION_KEYS = new Set([
+  'african', 'south_american', 'european', 'scandinavian', 'balkan',
+  'north_american', 'central_american', 'asian',
+]);
+
+/**
+ * Map a country key (as produced by extractNationality) to the citizenship
+ * substrings that should count as a match. Most keys already equal the
+ * Transfermarkt citizenship string lower-cased; only the exceptions are listed.
+ */
+const CITIZENSHIP_ALIASES: Record<string, string[]> = {
+  'united states': ['united states', 'usa'],
+  korea: ['korea'], // matches "Korea, South" / "South Korea"
+  'czech republic': ['czech'],
+  'bosnia-herzegovina': ['bosnia'],
+  'north macedonia': ['macedonia'],
+  "cote d'ivoire": ["cote d'ivoire", 'ivory coast', 'côte', 'ivoire'],
+  'the gambia': ['gambia'],
+  netherlands: ['netherlands', 'holland'],
+};
+
+/**
+ * True when a result's citizenship matches any of the requested country keys.
+ * `requested` is the comma-separated nationality string from the parser.
+ * Falls open (returns true) when nothing is requested, the request is a
+ * region bucket, or the result has no citizenship — so it never over-filters.
+ */
+function matchesRequestedNationality(citizenshipRaw: unknown, requested?: string): boolean {
+  if (!requested) return true;
+  const keys = requested.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean);
+  if (keys.length === 0) return true;
+  // If any requested token is a continent/region, let the backend decide.
+  if (keys.some((k) => NATIONALITY_REGION_KEYS.has(k))) return true;
+
+  const cit = String(citizenshipRaw ?? '').trim().toLowerCase();
+  if (!cit) return true; // unknown citizenship — don't drop
+
+  return keys.some((key) => {
+    const aliases = CITIZENSHIP_ALIASES[key] ?? [key];
+    return aliases.some((a) => cit.includes(a));
+  });
+}
+
 function buildExposureClusterKey(parsed: {
   position?: string;
   nationality?: string;
@@ -351,9 +399,15 @@ async function fetchFreesearch(
   diversityMode: DiversityMode,
   seed: string,
   seenKeys: string[],
-  hardSeenKeys: string[]
+  hardSeenKeys: string[],
+  overrideValueMin?: number,
+  overrideValueMax?: number,
 ): Promise<NextResponse | null> {
   const parsed = parseFreeQuery(query, lang);
+  // Explicit UI value bounds win over anything parsed from the brief, so the
+  // relaxed top-up recruitment respects the same range the user picked.
+  if (overrideValueMin && overrideValueMin > 0) parsed.valueMin = overrideValueMin;
+  if (overrideValueMax && overrideValueMax > 0) parsed.valueMax = overrideValueMax;
   const requestedTotal = parsed.limit ?? 15;
   const fetchLimit = initial ? Math.min(5, requestedTotal) : requestedTotal;
   const hasMore = initial && requestedTotal > 5;
@@ -399,6 +453,25 @@ async function fetchFreesearch(
       });
       if (results.length < before) {
         console.log(`[AI Scout] Freesearch market cap (€${fsCap.toLocaleString()}): ${before} → ${results.length}`);
+      }
+    }
+
+    // Apply explicit UI market-value range — takes priority over NL-parsed
+    // value and narrows further than the league cap. Keeps players with an
+    // unknown value so we never silently drop them.
+    if ((overrideValueMin && overrideValueMin > 0) || (overrideValueMax && overrideValueMax > 0)) {
+      const before = results.length;
+      results = results.filter((p) => {
+        const mv = p.market_value;
+        if (mv == null || mv === '') return true;
+        const valEuro = _parseMarketValue(String(mv));
+        if (valEuro <= 0) return true;
+        if (overrideValueMin && overrideValueMin > 0 && valEuro < overrideValueMin) return false;
+        if (overrideValueMax && overrideValueMax > 0 && valEuro > overrideValueMax) return false;
+        return true;
+      });
+      if (results.length !== before) {
+        console.log(`[AI Scout] Freesearch value range (€${overrideValueMin ?? 0}–€${overrideValueMax ?? '∞'}): ${before} → ${results.length}`);
       }
     }
 
@@ -454,6 +527,25 @@ async function fetchFreesearch(
               : ` 🔄 From Transfermarkt (free agents + expiring contracts)`;
           }
         } catch { /* non-fatal */ }
+      }
+    }
+
+    // Apply nationality filter — the freesearch server may not restrict by
+    // citizenship, so enforce the requested country/countries client-side.
+    // Falls open on unknown citizenship or region buckets, so it never
+    // over-filters; only drops results that clearly don't match.
+    if (parsed.nationality && !NATIONALITY_REGION_KEYS.has(parsed.nationality.split(',')[0].trim().toLowerCase())) {
+      const before = results.length;
+      const filtered = results.filter((p) => matchesRequestedNationality(p.citizenship, parsed.nationality));
+      // Only apply when it leaves a usable pool — guards against a mismatch
+      // between our country keys and an unexpected citizenship format.
+      if (filtered.length > 0) {
+        results = filtered;
+        if (results.length < before) {
+          console.log(`[AI Scout] Freesearch nationality filter (${parsed.nationality}): ${before} → ${results.length}`);
+        }
+      } else {
+        console.log(`[AI Scout] Freesearch nationality filter (${parsed.nationality}) matched 0 — keeping unfiltered ${before}`);
       }
     }
 
@@ -523,6 +615,16 @@ async function fetchFreesearch(
       (lang === 'he'
         ? `מצאתי ${results.length} שחקנים מתוך מאגר (freesearch).${fsFallbackNote}`
         : `Found ${results.length} players (freesearch).${fsFallbackNote}`);
+    // Reflect an explicit UI value range in the brief (💰 line parsed by the
+    // Ask screen into the "Value" facet).
+    if ((overrideValueMin && overrideValueMin > 0) || (overrideValueMax && overrideValueMax > 0)) {
+      const fmtE = (v: number) => (v >= 1_000_000 ? `€${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}M` : `€${Math.round(v / 1_000)}K`);
+      let valText: string;
+      if (overrideValueMin && overrideValueMax) valText = `${fmtE(overrideValueMin)}–${fmtE(overrideValueMax)}`;
+      else if (overrideValueMax) valText = (lang === 'he' ? `עד ${fmtE(overrideValueMax)}` : `up to ${fmtE(overrideValueMax)}`);
+      else valText = (lang === 'he' ? `מעל ${fmtE(overrideValueMin!)}` : `above ${fmtE(overrideValueMin!)}`);
+      interpretation += lang === 'he' ? `\n💰 שווי שוק: ${valText}` : `\n💰 Value: ${valText}`;
+    }
     interpretation += lang === 'he'
       ? ` מצב גיוון: ${diversityMode}`
       : ` Diversity mode: ${diversityMode}`;
@@ -591,6 +693,10 @@ export async function POST(request: NextRequest) {
     const diversityMode = normalizeDiversityMode(body?.diversityMode);
     const useExposureGovernance = body?.useExposureGovernance === true;
     const userId = typeof body?.userId === 'string' && body.userId.trim() ? body.userId.trim() : null;
+    // Explicit market-value bounds (euros) from the Ask console control. These
+    // take priority over any value parsed from the natural-language brief.
+    const overrideValueMin = typeof body?.valueMin === 'number' && body.valueMin > 0 ? body.valueMin : undefined;
+    const overrideValueMax = typeof body?.valueMax === 'number' && body.valueMax > 0 ? body.valueMax : undefined;
     const clientSeenKeys: string[] = Array.isArray(body?.seenKeys)
       ? body.seenKeys.filter((k: unknown) => typeof k === 'string' && k.trim()).map((k: string) => k.trim())
       : [];
@@ -637,7 +743,7 @@ export async function POST(request: NextRequest) {
 
       // Use freesearch proxy (Python) when SCOUT_FREESEARCH_URL is set
       if (FREESEARCH_URL) {
-        const freesearchRes = await fetchFreesearch(query, queryFingerprint, persistentScope, freshnessScope, lang, initial, diversityMode, seed, seenKeys, hardSeenKeys);
+        const freesearchRes = await fetchFreesearch(query, queryFingerprint, persistentScope, freshnessScope, lang, initial, diversityMode, seed, seenKeys, hardSeenKeys, overrideValueMin, overrideValueMax);
         if (freesearchRes) {
           return freesearchRes;
         }
@@ -675,8 +781,9 @@ export async function POST(request: NextRequest) {
         minGoals: parsedHebrew?.minGoals ?? parsedMain.minGoals,
         minGoalContributions: parsedHebrew?.minGoalContributions ?? parsedMain.minGoalContributions,
         transferFee: parsedHebrew?.transferFee || parsedMain.transferFee,
-        valueMin: parsedHebrew?.valueMin ?? parsedMain.valueMin,
-        valueMax: parsedHebrew?.valueMax ?? parsedMain.valueMax,
+        // Explicit UI value bounds win over anything parsed from the brief.
+        valueMin: overrideValueMin ?? parsedHebrew?.valueMin ?? parsedMain.valueMin,
+        valueMax: overrideValueMax ?? parsedHebrew?.valueMax ?? parsedMain.valueMax,
         notes: _mergeNotes(parsedHebrew?.notes, parsedMain?.notes),
         interpretation: parsedHebrew?.interpretation || parsedMain.interpretation,
       };
