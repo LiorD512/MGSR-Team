@@ -49,6 +49,32 @@ const MODE_LABELS: Record<DiversityMode, { en: string; he: string; subEn: string
   discovery: { en: 'Discovery', he: 'גילוי', subEn: 'Wildcards', subHe: 'הפתעות' },
 };
 
+// Market-value presets (euros) — mirror the Find the Next screen for consistency.
+const VALUE_PRESETS: { label: string; labelHe?: string; value: number }[] = [
+  { label: '€100K', value: 100_000 },
+  { label: '€250K', value: 250_000 },
+  { label: '€500K', value: 500_000 },
+  { label: '€750K', value: 750_000 },
+  { label: '€1M', value: 1_000_000 },
+  { label: '€1.5M', value: 1_500_000 },
+  { label: '€2M', value: 2_000_000 },
+  { label: '€2.5M', value: 2_500_000 },
+  { label: '€3M', value: 3_000_000 },
+  { label: '€4M', value: 4_000_000 },
+  { label: '€5M', value: 5_000_000 },
+  { label: '€7.5M', value: 7_500_000 },
+  { label: '€10M', value: 10_000_000 },
+  { label: '€15M', value: 15_000_000 },
+  { label: '€20M', value: 20_000_000 },
+  { label: 'No limit', labelHe: 'ללא הגבלה', value: 0 },
+];
+
+function valueLabel(v: number, he: boolean): string {
+  const p = VALUE_PRESETS.find((x) => x.value === v);
+  if (p) return he && p.labelHe ? p.labelHe : p.label;
+  return `€${v.toLocaleString()}`;
+}
+
 export default function WarRoomAsk() {
   const { user } = useAuth();
   const { lang, isRtl } = useLanguage();
@@ -62,11 +88,24 @@ export default function WarRoomAsk() {
   const [error, setError] = useState<string | null>(null);
   const [seenUrls, setSeenUrls] = useState<string[]>([]);
   const [diversityMode, setDiversityMode] = useState<DiversityMode>('balanced');
+  // Market-value range (euros). 0 on max = "No limit".
+  const [valueMin, setValueMin] = useState<number>(0);
+  const [valueMax, setValueMax] = useState<number>(0);
 
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
   const [rosterUrls, setRosterUrls] = useState<Set<string>>(new Set());
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
+
+  // Keep min ≤ max (max = 0 means "No limit", so it never constrains min).
+  const handleValueMin = useCallback((next: number) => {
+    setValueMin(next);
+    setValueMax((cur) => (cur > 0 && cur < next ? next : cur));
+  }, []);
+  const handleValueMax = useCallback((next: number) => {
+    setValueMax(next);
+    if (next > 0) setValueMin((cur) => Math.min(cur, next));
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -97,7 +136,7 @@ export default function WarRoomAsk() {
     setInterpretation(null);
     setSeenUrls([]);
     try {
-      const data = await aiScoutSearch(q, lang as 'en' | 'he', true, false, [], diversityMode, seed, priorKeys, user?.uid);
+      const data = await aiScoutSearch(q, lang as 'en' | 'he', true, false, [], diversityMode, seed, priorKeys, user?.uid, valueMin, valueMax);
       setResults(data.players);
       setInterpretation(data.interpretation ?? null);
       const urls = data.players.map((p) => p.transfermarktUrl).filter(Boolean) as string[];
@@ -111,7 +150,7 @@ export default function WarRoomAsk() {
     } finally {
       setSearching(false);
     }
-  }, [query, lang, diversityMode, user?.uid]);
+  }, [query, lang, diversityMode, user?.uid, valueMin, valueMax]);
 
   const handleSearchMore = useCallback(async () => {
     const q = query.trim();
@@ -126,7 +165,7 @@ export default function WarRoomAsk() {
     setSearchingOther(true);
     setError(null);
     try {
-      const data = await aiScoutSearch(q, lang as 'en' | 'he', false, false, seenUrls, diversityMode, seed, [...memKeys, ...curKeys], user?.uid);
+      const data = await aiScoutSearch(q, lang as 'en' | 'he', false, false, seenUrls, diversityMode, seed, [...memKeys, ...curKeys], user?.uid, valueMin, valueMax);
       setResults(data.players);
       setInterpretation(data.interpretation ?? null);
       const newUrls = data.players.map((p) => p.transfermarktUrl).filter(Boolean) as string[];
@@ -139,7 +178,7 @@ export default function WarRoomAsk() {
     } finally {
       setSearchingOther(false);
     }
-  }, [query, lang, searchingOther, seenUrls, diversityMode, results, user?.uid]);
+  }, [query, lang, searchingOther, seenUrls, diversityMode, results, user?.uid, valueMin, valueMax]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSearch(); }
@@ -236,6 +275,35 @@ export default function WarRoomAsk() {
                 <span className="cx">{he ? MODE_LABELS[m].subHe : MODE_LABELS[m].subEn}</span>
               </button>
             ))}
+          </div>
+          <div className="valrow">
+            <span className="vl">{he ? 'שווי שוק' : 'Market value'}</span>
+            <span className="vfield">
+              <span className="vk">{he ? 'מינ' : 'Min'}</span>
+              <span className="valsel">
+                <select value={valueMin} onChange={(e) => handleValueMin(Number(e.target.value))} disabled={searching || searchingOther}>
+                  {VALUE_PRESETS.filter((p) => p.value > 0).map((p) => (
+                    <option key={`min-${p.value}`} value={p.value}>{he && p.labelHe ? p.labelHe : p.label}</option>
+                  ))}
+                </select>
+              </span>
+            </span>
+            <span className="vdash">—</span>
+            <span className="vfield">
+              <span className="vk">{he ? 'מקס' : 'Max'}</span>
+              <span className="valsel">
+                <select value={valueMax} onChange={(e) => handleValueMax(Number(e.target.value))} disabled={searching || searchingOther}>
+                  {VALUE_PRESETS.map((p) => (
+                    <option key={`max-${p.value}`} value={p.value}>{he && p.labelHe ? p.labelHe : p.label}</option>
+                  ))}
+                </select>
+              </span>
+            </span>
+            <span className="vsummary">
+              {valueMin > 0 ? valueLabel(valueMin, he) : (he ? 'כל ערך' : 'Any')}
+              {' – '}
+              {valueMax > 0 ? valueLabel(valueMax, he) : (he ? 'ללא הגבלה' : 'No limit')}
+            </span>
           </div>
           <p className="exlabel">{he ? 'נסה בריף' : 'Try a brief'}</p>
           <div className="examples">

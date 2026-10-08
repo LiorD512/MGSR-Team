@@ -199,6 +199,9 @@ export async function aiScoutSearch(
   seed?: string,
   seenKeys?: string[],
   userId?: string,
+  /** Explicit market-value bounds (euros) from the UI control. 0/undefined = no bound. */
+  valueMin?: number,
+  valueMax?: number,
 ): Promise<AiScoutSearchResult> {
   const res = await fetch('/api/scout/search', {
     method: 'POST',
@@ -213,6 +216,8 @@ export async function aiScoutSearch(
       ...(seed ? { seed } : {}),
       ...(seenKeys?.length ? { seenKeys } : {}),
       ...(userId ? { userId } : {}),
+      ...(valueMin && valueMin > 0 ? { valueMin } : {}),
+      ...(valueMax && valueMax > 0 ? { valueMax } : {}),
     }),
     cache: 'no-store',
     signal: AbortSignal.timeout(180000), // 3 min - scout server cold start

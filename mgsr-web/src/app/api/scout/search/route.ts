@@ -399,9 +399,15 @@ async function fetchFreesearch(
   diversityMode: DiversityMode,
   seed: string,
   seenKeys: string[],
-  hardSeenKeys: string[]
+  hardSeenKeys: string[],
+  overrideValueMin?: number,
+  overrideValueMax?: number,
 ): Promise<NextResponse | null> {
   const parsed = parseFreeQuery(query, lang);
+  // Explicit UI value bounds win over anything parsed from the brief, so the
+  // relaxed top-up recruitment respects the same range the user picked.
+  if (overrideValueMin && overrideValueMin > 0) parsed.valueMin = overrideValueMin;
+  if (overrideValueMax && overrideValueMax > 0) parsed.valueMax = overrideValueMax;
   const requestedTotal = parsed.limit ?? 15;
   const fetchLimit = initial ? Math.min(5, requestedTotal) : requestedTotal;
   const hasMore = initial && requestedTotal > 5;
@@ -447,6 +453,25 @@ async function fetchFreesearch(
       });
       if (results.length < before) {
         console.log(`[AI Scout] Freesearch market cap (€${fsCap.toLocaleString()}): ${before} → ${results.length}`);
+      }
+    }
+
+    // Apply explicit UI market-value range — takes priority over NL-parsed
+    // value and narrows further than the league cap. Keeps players with an
+    // unknown value so we never silently drop them.
+    if ((overrideValueMin && overrideValueMin > 0) || (overrideValueMax && overrideValueMax > 0)) {
+      const before = results.length;
+      results = results.filter((p) => {
+        const mv = p.market_value;
+        if (mv == null || mv === '') return true;
+        const valEuro = _parseMarketValue(String(mv));
+        if (valEuro <= 0) return true;
+        if (overrideValueMin && overrideValueMin > 0 && valEuro < overrideValueMin) return false;
+        if (overrideValueMax && overrideValueMax > 0 && valEuro > overrideValueMax) return false;
+        return true;
+      });
+      if (results.length !== before) {
+        console.log(`[AI Scout] Freesearch value range (€${overrideValueMin ?? 0}–€${overrideValueMax ?? '∞'}): ${before} → ${results.length}`);
       }
     }
 
@@ -590,6 +615,16 @@ async function fetchFreesearch(
       (lang === 'he'
         ? `מצאתי ${results.length} שחקנים מתוך מאגר (freesearch).${fsFallbackNote}`
         : `Found ${results.length} players (freesearch).${fsFallbackNote}`);
+    // Reflect an explicit UI value range in the brief (💰 line parsed by the
+    // Ask screen into the "Value" facet).
+    if ((overrideValueMin && overrideValueMin > 0) || (overrideValueMax && overrideValueMax > 0)) {
+      const fmtE = (v: number) => (v >= 1_000_000 ? `€${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}M` : `€${Math.round(v / 1_000)}K`);
+      let valText: string;
+      if (overrideValueMin && overrideValueMax) valText = `${fmtE(overrideValueMin)}–${fmtE(overrideValueMax)}`;
+      else if (overrideValueMax) valText = (lang === 'he' ? `עד ${fmtE(overrideValueMax)}` : `up to ${fmtE(overrideValueMax)}`);
+      else valText = (lang === 'he' ? `מעל ${fmtE(overrideValueMin!)}` : `above ${fmtE(overrideValueMin!)}`);
+      interpretation += lang === 'he' ? `\n💰 שווי שוק: ${valText}` : `\n💰 Value: ${valText}`;
+    }
     interpretation += lang === 'he'
       ? ` מצב גיוון: ${diversityMode}`
       : ` Diversity mode: ${diversityMode}`;
@@ -658,6 +693,10 @@ export async function POST(request: NextRequest) {
     const diversityMode = normalizeDiversityMode(body?.diversityMode);
     const useExposureGovernance = body?.useExposureGovernance === true;
     const userId = typeof body?.userId === 'string' && body.userId.trim() ? body.userId.trim() : null;
+    // Explicit market-value bounds (euros) from the Ask console control. These
+    // take priority over any value parsed from the natural-language brief.
+    const overrideValueMin = typeof body?.valueMin === 'number' && body.valueMin > 0 ? body.valueMin : undefined;
+    const overrideValueMax = typeof body?.valueMax === 'number' && body.valueMax > 0 ? body.valueMax : undefined;
     const clientSeenKeys: string[] = Array.isArray(body?.seenKeys)
       ? body.seenKeys.filter((k: unknown) => typeof k === 'string' && k.trim()).map((k: string) => k.trim())
       : [];
@@ -704,7 +743,7 @@ export async function POST(request: NextRequest) {
 
       // Use freesearch proxy (Python) when SCOUT_FREESEARCH_URL is set
       if (FREESEARCH_URL) {
-        const freesearchRes = await fetchFreesearch(query, queryFingerprint, persistentScope, freshnessScope, lang, initial, diversityMode, seed, seenKeys, hardSeenKeys);
+        const freesearchRes = await fetchFreesearch(query, queryFingerprint, persistentScope, freshnessScope, lang, initial, diversityMode, seed, seenKeys, hardSeenKeys, overrideValueMin, overrideValueMax);
         if (freesearchRes) {
           return freesearchRes;
         }
@@ -742,8 +781,9 @@ export async function POST(request: NextRequest) {
         minGoals: parsedHebrew?.minGoals ?? parsedMain.minGoals,
         minGoalContributions: parsedHebrew?.minGoalContributions ?? parsedMain.minGoalContributions,
         transferFee: parsedHebrew?.transferFee || parsedMain.transferFee,
-        valueMin: parsedHebrew?.valueMin ?? parsedMain.valueMin,
-        valueMax: parsedHebrew?.valueMax ?? parsedMain.valueMax,
+        // Explicit UI value bounds win over anything parsed from the brief.
+        valueMin: overrideValueMin ?? parsedHebrew?.valueMin ?? parsedMain.valueMin,
+        valueMax: overrideValueMax ?? parsedHebrew?.valueMax ?? parsedMain.valueMax,
         notes: _mergeNotes(parsedHebrew?.notes, parsedMain?.notes),
         interpretation: parsedHebrew?.interpretation || parsedMain.interpretation,
       };

@@ -5363,6 +5363,19 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-wr-console .divmode { display: flex; align-items: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .brit-room .brit-wr-console .divmode .dl { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
 .brit-room .brit-wr-console .brit-wr-chip .cx { display: block; margin-top: 4px; font-size: 7px; letter-spacing: .04em; opacity: .7; }
+/* Market value range */
+.brit-room .brit-wr-console .valrow { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.brit-room .brit-wr-console .valrow .vl { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .brit-wr-console .valrow .vfield { display: inline-flex; align-items: center; gap: 7px; }
+.brit-room .brit-wr-console .valrow .vfield .vk { color: var(--muted-2); font: 8px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+.brit-room .brit-wr-console .valsel { position: relative; }
+.brit-room .brit-wr-console .valsel select { appearance: none; -webkit-appearance: none; border: 1px solid var(--line); background: var(--paper); padding: 9px 30px 9px 12px; color: var(--ink); font: 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .03em; outline: none; cursor: pointer; transition: .15s; }
+.brit-room .brit-wr-console .valsel select:hover { border-color: var(--muted); }
+.brit-room .brit-wr-console .valsel select:focus { border-color: var(--gold-soft); }
+.brit-room .brit-wr-console .valsel select:disabled { opacity: .6; cursor: default; }
+.brit-room .brit-wr-console .valsel::after { content: '▾'; position: absolute; inset-inline-end: 11px; top: 50%; transform: translateY(-50%); color: var(--gold); font-size: 9px; pointer-events: none; }
+.brit-room .brit-wr-console .valrow .vdash { color: var(--muted-2); font: 10px/1 var(--mono); }
+.brit-room .brit-wr-console .valrow .vsummary { margin-inline-start: auto; color: var(--gold); font: 500 12px/1 var(--display); }
 .brit-room .brit-wr-console .exlabel { margin: 18px 0 10px; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; }
 .brit-room .brit-wr-console .examples { display: flex; flex-wrap: wrap; gap: 8px; }
 .brit-room .brit-wr-console .examples .ex { padding: 9px 13px; border: 1px solid var(--line); color: var(--muted); background: transparent; font: 9px/1 var(--mono); text-transform: uppercase; transition: .15s; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
