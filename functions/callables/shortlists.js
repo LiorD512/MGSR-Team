@@ -15,9 +15,8 @@ function getDb() {
 // Fields allowed on a shortlist entry (prevents arbitrary writes)
 const ALLOWED_ENTRY_FIELDS = new Set([
   "tmProfileUrl", "addedAt",
-  "playerImage", "playerName", "playerNameHe", "playerPosition", "playerAge",
+  "playerImage", "playerName", "playerPosition", "playerAge",
   "playerNationality", "playerNationalityFlag", "playerNationalities",
-  "ageGroup",
   "clubJoinedLogo", "clubJoinedName", "currentClub",
   "transferDate", "marketValue",
   "addedByAgentId", "addedByAgentName", "addedByAgentHebrewName",
