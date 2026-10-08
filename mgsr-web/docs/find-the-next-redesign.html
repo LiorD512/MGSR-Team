@@ -152,6 +152,33 @@ body::before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;op
 .bchip.style b{color:var(--gold)}
 .snarr{margin-top:11px;font:11.5px/1.55 var(--body);color:var(--muted);border-inline-start:2px solid var(--gold-soft);padding-inline-start:11px}
 .saacts{display:flex;align-items:center;gap:8px;margin-top:13px}
+
+/* ── Count + success-rate stat tiles ── */
+.statgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.stile{border:1px solid var(--line);background:var(--paper);padding:14px 15px;display:flex;align-items:center;gap:14px}
+.stile .big{display:flex;flex-direction:column;gap:3px;min-width:0}
+.stile .big b{font:500 30px/.9 var(--display);color:var(--ink)}
+.stile .big .u{color:var(--muted);font:8px/1.2 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.stile .rate{margin-inline-start:auto;display:flex;flex-direction:column;align-items:center;gap:6px}
+.stile .rate .ring-box{position:relative;width:48px;height:48px}
+.donut{width:48px;height:48px;transform:rotate(-90deg)}
+.donut .track{fill:none;stroke:var(--paper-2);stroke-width:5}
+.donut .val{fill:none;stroke:var(--gold);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .6s}
+.rate .pct{position:absolute;inset:0;display:grid;place-items:center;font:500 12px/1 var(--display);color:var(--gold)}
+.rate .rl{color:var(--muted-2);font:7px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.stile.full{grid-column:1/-1;justify-content:space-between}
+.stile .inline{display:flex;align-items:baseline;gap:8px}
+.stile .inline .k{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.stile .inline .v{font:500 18px/1 var(--display);color:var(--ink)}
+.stile .inline .v.g{color:var(--gold)}
+.minutes-note{margin-top:14px;color:var(--muted-2);font:8px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+
+/* Compact count/% stats inside successor cards */
+.cstats{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-2)}
+.cstat{display:flex;flex-direction:column;gap:3px}
+.cstat .cv{font:500 17px/1 var(--display);color:var(--ink)}
+.cstat .cv .pc{color:var(--gold);font-size:12px;margin-inline-start:3px}
+.cstat .cl{color:var(--muted-2);font:7px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
 </style>
 </head>
 <body>
@@ -186,7 +213,7 @@ body::before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;op
           <h1>Find the <span>next.</span></h1>
           <p class="sub">Pick a reference player and the engine finds young, affordable players with a similar statistical signature — in your band.</p>
         </div>
-        <div class="mast-note"><strong>Signature engine</strong>8,900 players profiled · pct vs position</div>
+        <div class="mast-note"><strong>Signature engine</strong>8,900 players profiled · totals &amp; success rates</div>
       </header>
 
       <!-- Config -->
@@ -251,14 +278,39 @@ body::before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;op
           </div>
         </div>
         <div class="hero-right">
-          <p class="sig-title">Statistical signature · percentile vs position</p>
-          <div class="sigbars">
-            <div class="sigbar"><span class="sl">G+A / 90</span><span class="st"><i style="width:84%"></i></span><span class="sp">84<small>pct</small></span></div>
-            <div class="sigbar"><span class="sl">Goals / 90</span><span class="st"><i style="width:88%"></i></span><span class="sp">88<small>pct</small></span></div>
-            <div class="sigbar"><span class="sl">Fouls drawn / 90</span><span class="st"><i style="width:80%"></i></span><span class="sp">80<small>pct</small></span></div>
-            <div class="sigbar"><span class="sl">Shots / 90</span><span class="st"><i style="width:87%"></i></span><span class="sp">87<small>pct</small></span></div>
-            <div class="sigbar"><span class="sl">Successful dribbles / 90</span><span class="st"><i style="width:54%"></i></span><span class="sp">54<small>pct</small></span></div>
+          <p class="sig-title">Season output · 32 apps · 2,710 min (30 × 90)</p>
+          <div class="statgrid">
+            <!-- Each tile: raw count (bold) + success/accuracy % as a ring -->
+            <div class="stile">
+              <div class="big"><b>97</b><span class="u">Dribbles</span></div>
+              <div class="rate">
+                <div class="ring-box"><svg class="donut" viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="18"/><circle class="val" cx="24" cy="24" r="18" stroke-dasharray="113.1" stroke-dashoffset="39.6"/></svg><span class="pct">65%</span></div>
+                <span class="rl">success</span>
+              </div>
+            </div>
+            <div class="stile">
+              <div class="big"><b>65</b><span class="u">Shots</span></div>
+              <div class="rate">
+                <div class="ring-box"><svg class="donut" viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="18"/><circle class="val" cx="24" cy="24" r="18" stroke-dasharray="113.1" stroke-dashoffset="36.2"/></svg><span class="pct">68%</span></div>
+                <span class="rl">on target</span>
+              </div>
+            </div>
+            <div class="stile">
+              <div class="big"><b>13</b><span class="u">Goals</span></div>
+              <div class="rate">
+                <div class="ring-box"><svg class="donut" viewBox="0 0 48 48"><circle class="track" cx="24" cy="24" r="18"/><circle class="val" cx="24" cy="24" r="18" stroke-dasharray="113.1" stroke-dashoffset="90.5"/></svg><span class="pct">20%</span></div>
+                <span class="rl">conversion</span>
+              </div>
+            </div>
+            <div class="stile full">
+              <div class="inline"><span class="k">Assists</span><span class="v">8</span></div>
+              <div class="inline"><span class="k">Key passes</span><span class="v">42</span></div>
+              <div class="inline"><span class="k">Duels won</span><span class="v g">47%</span></div>
+              <div class="inline"><span class="k">Fouls drawn</span><span class="v">50</span></div>
+              <div class="inline"><span class="k">API rating</span><span class="v g">7.42</span></div>
+            </div>
           </div>
+          <p class="minutes-note">↳ Totals over the last 365 days · success rates derived per attempt, not per 90</p>
           <div class="hero-foot">
             <div class="f"><span>Archetype</span><b class="g">Direct wide forward</b></div>
             <div class="f"><span>Elite traits</span><b>Shooting · Carrying</b></div>
@@ -287,6 +339,12 @@ body::before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;op
             <div class="sname"><a>Diogo Nascimento</a></div>
             <div class="smeta"><span class="m"><span class="k">Pos</span><b>LW</b></span><span class="m"><span class="k">Age</span><b>19</b></span><span class="m"><span class="k">Value</span><b>€3.00M</b></span><span class="m"><span class="k">Club</span><b>Rio Ave FC</b></span></div>
             <div class="breakdown"><span class="bchip style"><em>Direct dribbler</em></span><span class="bchip">Signature <b>91</b></span><span class="bchip">Value gap <b>+18</b></span><span class="bchip">Youth <b>+9</b></span></div>
+            <div class="cstats">
+              <div class="cstat"><span class="cv">54 <span class="pc">· 39%</span></span><span class="cl">Dribbles · success</span></div>
+              <div class="cstat"><span class="cv">25 <span class="pc">· 52%</span></span><span class="cl">Shots · on target</span></div>
+              <div class="cstat"><span class="cv">6<span class="pc">G</span> 2<span class="pc">A</span></span><span class="cl">Output · 20 apps</span></div>
+              <div class="cstat"><span class="cv">42%</span><span class="cl">Duels won</span></div>
+            </div>
             <p class="snarr">Mirrors Leão's shooting and carrying volume at a fifth of the value — a raw, left-footed wide forward already drawing fouls at an elite rate for his age.</p>
             <div class="saacts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
           </div>
@@ -306,6 +364,12 @@ body::before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;op
             <div class="sname"><a>Jackson González</a></div>
             <div class="smeta"><span class="m"><span class="k">Pos</span><b>LW</b></span><span class="m"><span class="k">Age</span><b>20</b></span><span class="m"><span class="k">Value</span><b>€800K</b></span><span class="m"><span class="k">Club</span><b>Mushuc Runa SC</b></span></div>
             <div class="breakdown"><span class="bchip style"><em>Explosive carrier</em></span><span class="bchip">Signature <b>86</b></span><span class="bchip">Value gap <b>+22</b></span><span class="bchip">Contract <b>+7</b></span></div>
+            <div class="cstats">
+              <div class="cstat"><span class="cv">28 <span class="pc">· 39%</span></span><span class="cl">Dribbles · success</span></div>
+              <div class="cstat"><span class="cv">22 <span class="pc">· 55%</span></span><span class="cl">Shots · on target</span></div>
+              <div class="cstat"><span class="cv">4<span class="pc">G</span> 1<span class="pc">A</span></span><span class="cl">Output · 18 apps</span></div>
+              <div class="cstat"><span class="cv">44%</span><span class="cl">Duels won</span></div>
+            </div>
             <p class="snarr">Ecuadorian flyer with higher goal output than the reference profile; contract expiring in 2026 makes him an outsized value play in your band.</p>
             <div class="saacts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
           </div>
@@ -325,6 +389,12 @@ body::before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;op
             <div class="sname"><a>Dennis Collander</a></div>
             <div class="smeta"><span class="m"><span class="k">Pos</span><b>LW</b></span><span class="m"><span class="k">Age</span><b>18</b></span><span class="m"><span class="k">Value</span><b>€275K</b></span><span class="m"><span class="k">Club</span><b>GAIS</b></span></div>
             <div class="breakdown"><span class="bchip style"><em>Foul-drawing winger</em></span><span class="bchip">Signature <b>82</b></span><span class="bchip">Value gap <b>+26</b></span><span class="bchip">Youth <b>+10</b></span></div>
+            <div class="cstats">
+              <div class="cstat"><span class="cv">41 <span class="pc">· 61%</span></span><span class="cl">Dribbles · success</span></div>
+              <div class="cstat"><span class="cv">31 <span class="pc">· 58%</span></span><span class="cl">Shots · on target</span></div>
+              <div class="cstat"><span class="cv">5<span class="pc">G</span> 3<span class="pc">A</span></span><span class="cl">Output · 24 apps</span></div>
+              <div class="cstat"><span class="cv">49%</span><span class="cl">Duels won</span></div>
+            </div>
             <p class="snarr">Swedish teenager over-indexing on fouls drawn and shot volume — the clearest "early Leão" trait set in the pool, four years younger and nearly free.</p>
             <div class="saacts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
           </div>
@@ -344,6 +414,12 @@ body::before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;op
             <div class="sname"><a>Martim Neto</a></div>
             <div class="smeta"><span class="m"><span class="k">Pos</span><b>LW</b></span><span class="m"><span class="k">Age</span><b>19</b></span><span class="m"><span class="k">Value</span><b>€4.00M</b></span><span class="m"><span class="k">Club</span><b>Elche CF</b></span></div>
             <div class="breakdown"><span class="bchip style"><em>Two-footed wide forward</em></span><span class="bchip">Signature <b>79</b></span><span class="bchip">Style <b>+12</b></span></div>
+            <div class="cstats">
+              <div class="cstat"><span class="cv">47 <span class="pc">· 64%</span></span><span class="cl">Dribbles · success</span></div>
+              <div class="cstat"><span class="cv">19 <span class="pc">· 47%</span></span><span class="cl">Shots · on target</span></div>
+              <div class="cstat"><span class="cv">3<span class="pc">G</span> 4<span class="pc">A</span></span><span class="cl">Output · 22 apps</span></div>
+              <div class="cstat"><span class="cv">45%</span><span class="cl">Duels won</span></div>
+            </div>
             <p class="snarr">Closest stylistic read on the ball — strong dribble success, slightly below on shot volume. At the top of your value band but with resale headroom.</p>
             <div class="saacts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
           </div>
