@@ -1,19 +1,31 @@
-# MATCHDAY POC — real test (Hapoel Akko vs Maccabi Bnei Raina)
+# MATCHDAY POC — Results
 
-Built from the uploaded assets. Nothing generated — the player's pixels are the
-exact uploaded photo, background auto-removed, composited onto a real stadium
-photo with real crests and accurate fixture facts.
+Proof-of-concept for on-demand matchday posters. **No face is ever generated** — the real
+player photo is cut out and composited. Only the *clothing* was repainted (kit swap), guided
+by a real kit reference, with the face strictly locked.
 
-**Facts used:** Junior Diomande · Hapoel Akko vs Maccabi Bnei Raina · Leumit League Round 9 · 09.10.2026 · 16:00
+## 1. Kit swap (Gemini, face-locked)
 
-### Gold Drama
-![gold](./md_gold_drama_small.jpg)
+Real player photo → background removed → Gemini repainted **only the shirt/shorts** into the
+white Bnei Reineh #57 kit from a reference image. Face, hair, pose, ball all preserved.
 
-### Night Blue
-![blue](./md_night_blue_small.jpg)
+![Kit swap](player_kitswap.jpeg)
 
-### Emerald
-![emerald](./md_emerald_small.jpg)
+## 2. Final "wow" poster
 
-### The cutout (background auto-removed)
-![cutout](./diomande_cutout.png)
+Deterministic compositing (sharp): stadium graded into a cinematic frame, gold glow + light
+rays, a soft ghost action-echo, the kitted hero, premium display typography, giant number
+watermark, and an accurate fixture panel sourced from real match facts.
+
+**Match:** Junior Diomande · Hapoel Akko vs Bnei Raina · Leumit League Round 9 · 09.10.2026 · 16:00
+
+![Final poster](matchday_wow_small.jpg)
+
+> Full resolution: `matchday_wow.png` (1080×1350)
+
+## Known remaining items
+- Sponsor text on chest reads "BONEHRENIH" (Gemini artifact) — fixable by compositing the real sponsor crest over it.
+- Crests on the fixture bar could use white circular backings for contrast.
+
+## Earlier template explorations
+![Gold](md_gold_drama_small.jpg) ![Night](md_night_blue_small.jpg) ![Emerald](md_emerald_small.jpg)
