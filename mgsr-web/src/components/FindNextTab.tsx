@@ -162,6 +162,87 @@ function deriveStats(p: FindNextResult): DerivedStats | null {
   };
 }
 
+/**
+ * Turn the backend's emoji-prefixed explanation into a short, clean "why".
+ * The raw string looks like:
+ *   "🎯 Profile match to Leroy Sané: 94%\n⚽ Style: Winger\n✅ Same playing
+ *    style as Leroy Sané\n📊 Signature stats: Dribbles/90: 5.37 | …\n💰
+ *    Undervalued relative to stats: €250k\n📋 Contract: 31/12/2027"
+ * We drop the lines already shown elsewhere (profile-match % is in the ring,
+ * the raw signature stats are in the stat band) and keep the human insight:
+ * the "same playing style" note plus any value/contract angle. Emoji are
+ * stripped so nothing renders as a tofu box.
+ */
+function cleanWhy(raw: string | null | undefined, refName?: string): string {
+  if (!raw || !raw.trim()) return '';
+  const isSymbol = (cp: number) =>
+    (cp >= 0x2190 && cp <= 0x27bf) || // arrows, misc symbols, dingbats
+    (cp >= 0x2b00 && cp <= 0x2bff) || // misc symbols & arrows
+    cp === 0xfe0e || cp === 0xfe0f || // variation selectors
+    (cp >= 0x1f000 && cp <= 0x1faff) || // emoji planes
+    (cp >= 0x1f1e6 && cp <= 0x1f1ff); // regional indicators
+  const stripEmoji = (s: string) =>
+    Array.from(s)
+      .filter((ch) => !isSymbol(ch.codePointAt(0) ?? 0))
+      .join('')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+  const keep: string[] = [];
+  for (const line of raw.split('\n')) {
+    const t = stripEmoji(line);
+    if (!t) continue;
+    const low = t.toLowerCase();
+    // Drop lines already represented in the ring / stat band.
+    if (low.startsWith('profile match')) continue;
+    if (low.startsWith('signature stats')) continue;
+    // "Style: Winger" duplicates the eyebrow archetype — skip the bare label.
+    if (/^style:\s*\S+$/i.test(t)) continue;
+    keep.push(t);
+  }
+  let out = keep.join(' · ');
+  // Tidy the common "Same playing style as X" phrasing.
+  if (refName) out = out.replace(new RegExp(`same playing style as ${refName}`, 'i'), `Same style as ${refName}`);
+  return out;
+}
+
+interface RadarGeom {
+  rings: string[];      // concentric grid polygons (outer→inner)
+  axes: { x: number; y: number }[];   // axis end points
+  shape: string;        // the player's percentile polygon
+  dots: { x: number; y: number }[];   // vertex dots
+  labels: { x: number; y: number; text: string; anchor: 'start' | 'middle' | 'end' }[];
+}
+
+/**
+ * Build the reference-signature radar geometry from the signature stats.
+ * N axes evenly spaced around the circle; each vertex sits at
+ * (percentile/100) of the max radius. Pure geometry — no magic numbers tied
+ * to a specific stat set, so it adapts to however many stats come back.
+ */
+function buildRadar(stats: SignatureStat[], R = 90): RadarGeom | null {
+  const n = stats.length;
+  if (n < 3) return null; // a radar needs at least a triangle
+  const pt = (radius: number, i: number) => {
+    const ang = -Math.PI / 2 + (i * 2 * Math.PI) / n; // start at top, clockwise
+    return { x: +(radius * Math.cos(ang)).toFixed(1), y: +(radius * Math.sin(ang)).toFixed(1) };
+  };
+  const poly = (radius: number) => Array.from({ length: n }, (_, i) => { const p = pt(radius, i); return `${p.x},${p.y}`; }).join(' ');
+
+  const rings = [R, R * 0.66, R * 0.33].map(poly);
+  const axes = Array.from({ length: n }, (_, i) => pt(R, i));
+  const dots = stats.map((s, i) => pt((Math.max(0, Math.min(100, s.percentile)) / 100) * R, i));
+  const shape = dots.map((p) => `${p.x},${p.y}`).join(' ');
+  const labels = stats.map((s, i) => {
+    const p = pt(R + 16, i);
+    const anchor: 'start' | 'middle' | 'end' = p.x > 6 ? 'start' : p.x < -6 ? 'end' : 'middle';
+    // Short label: drop the "/90" suffix, keep it compact for the ring.
+    const text = (s.label_en || s.label || '').replace(/\s*\/\s*90$/i, '').replace(/successful/i, 'Succ.').toUpperCase();
+    return { x: p.x, y: p.y, text, anchor };
+  });
+  return { rings, axes, shape, dots, labels };
+}
+
 interface FindNextResponse {
   reference_player?: ReferencePlayer;
   signature_stats?: SignatureStat[];
@@ -606,9 +687,11 @@ export default function FindNextTab() {
 
       {/* Search config panel */}
       <div className="brit-wr-cfg">
-        {/* Player name */}
-        <div className="brit-wr-cfg-field" style={{ gridColumn: '1 / -1' }}>
-          <label htmlFor="find-next-name">{isHe ? 'שחקן ייחוס' : 'Reference player'}</label>
+        <div className="cfg-term"><span className="d" />{isHe ? 'מנוע התאמת חתימה' : 'Signature match engine'}</div>
+
+        {/* Reference player — prompt row (input + search together) */}
+        <label className="cfg-label" htmlFor="find-next-name">{isHe ? 'שחקן ייחוס' : 'Reference player'}</label>
+        <div className="cfg-search">
           <input
             id="find-next-name"
             type="text"
@@ -619,70 +702,66 @@ export default function FindNextTab() {
             dir="ltr"
             disabled={searching}
           />
-          <div className="brit-wr-chips" style={{ marginTop: 10 }}>
-            {examples.slice(0, 12).map((name) => (
-              <button key={name} className="brit-wr-chip" onClick={() => setPlayerName(name)} disabled={searching}>{name}</button>
-            ))}
-          </div>
+          {searching && (
+            <button className="cfg-stop" onClick={handleStopSearch}>{isHe ? 'עצור' : 'Stop'}</button>
+          )}
+          <button className="cfg-go" onClick={handleSearch} disabled={searching || !playerName.trim()}>
+            {searching ? (isHe ? 'מחפש…' : 'Searching…') : (isHe ? 'מצא את הבא' : 'Find the next')}
+          </button>
+        </div>
+        <div className="cfg-chips">
+          {examples.slice(0, 10).map((name) => (
+            <button key={name} className="cfg-chip" onClick={() => setPlayerName(name)} disabled={searching}>{name}</button>
+          ))}
         </div>
 
-        {/* Age range */}
-        <div className="brit-wr-cfg-field">
-          <label>
-            {isHe ? 'טווח גיל' : 'Age range'}{' '}
-            <span className="brit-wr-cfg-val">{ageMin} – {ageMax}</span>
-          </label>
-          <div className="brit-wr-cfg-range">
-            <span>{isHe ? 'מינימום' : 'Min'}: {ageMin}</span>
-            <input type="range" min={17} max={35} value={ageMin} onChange={(e) => handleAgeMinChange(Number(e.target.value))} disabled={searching} />
+        {/* Filters row: age · value · diversity */}
+        <div className="cfg-filters">
+          <div className="cfg-f">
+            <div className="cfg-fh"><span className="k">{isHe ? 'טווח גיל' : 'Age range'}</span><span className="v">{ageMin} – {ageMax}</span></div>
+            <div className="cfg-range"><span>{isHe ? 'מינ' : 'Min'}</span><input type="range" min={17} max={35} value={ageMin} onChange={(e) => handleAgeMinChange(Number(e.target.value))} disabled={searching} /><b>{ageMin}</b></div>
+            <div className="cfg-range"><span>{isHe ? 'מקס' : 'Max'}</span><input type="range" min={17} max={35} value={ageMax} onChange={(e) => handleAgeMaxChange(Number(e.target.value))} disabled={searching} /><b>{ageMax}</b></div>
           </div>
-          <div className="brit-wr-cfg-range">
-            <span>{isHe ? 'מקסימום' : 'Max'}: {ageMax}</span>
-            <input type="range" min={17} max={35} value={ageMax} onChange={(e) => handleAgeMaxChange(Number(e.target.value))} disabled={searching} />
-          </div>
-        </div>
 
-        {/* Value range */}
-        <div className="brit-wr-cfg-field">
-          <label>
-            {isHe ? 'טווח שווי שוק' : 'Market value'}{' '}
-            <span className="brit-wr-cfg-val">
-              {VALUE_PRESETS.find((p) => p.value === valueMin)?.label ?? `€${valueMin}`} – {valueMax > 0 ? (VALUE_PRESETS.find((p) => p.value === valueMax)?.label ?? `€${valueMax}`) : (isHe ? 'ללא הגבלה' : 'No limit')}
-            </span>
-          </label>
-          <select value={String(valueMin)} onChange={(e) => handleValueMinChange(Number(e.target.value))} disabled={searching} className="brit-wr-cfg-select">
-            {VALUE_PRESETS.filter((p) => p.value > 0).map((p) => (
-              <option key={`min-${p.value}`} value={p.value}>{isHe && p.labelHe ? p.labelHe : p.label}</option>
-            ))}
-          </select>
-          <select value={String(valueMax)} onChange={(e) => handleValueMaxChange(Number(e.target.value))} disabled={searching} className="brit-wr-cfg-select">
-            {VALUE_PRESETS.map((p) => (
-              <option key={`max-${p.value}`} value={p.value}>{isHe && p.labelHe ? p.labelHe : p.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Diversity + search */}
-        <div className="brit-wr-cfg-actions">
-          <div className="brit-wr-chips">
-            <span className="brit-wr-cfg-dlabel">{isHe ? 'מצב גיוון' : 'Diversity'}</span>
-            {([
-              { key: 'strict' as DiversityMode, en: 'Strict', he: 'מדויק' },
-              { key: 'balanced' as DiversityMode, en: 'Balanced', he: 'מאוזן' },
-              { key: 'discovery' as DiversityMode, en: 'Discovery', he: 'תגלית' },
-            ]).map((m) => (
-              <button key={m.key} className={`brit-wr-chip${diversityMode === m.key ? ' on' : ''}`} onClick={() => setDiversityMode(m.key)} disabled={searching}>
-                {isHe ? m.he : m.en}
-              </button>
-            ))}
+          <div className="cfg-f">
+            <div className="cfg-fh">
+              <span className="k">{isHe ? 'שווי שוק' : 'Market value'}</span>
+              <span className="v">
+                {VALUE_PRESETS.find((p) => p.value === valueMin)?.label ?? `€${valueMin}`} – {valueMax > 0 ? (VALUE_PRESETS.find((p) => p.value === valueMax)?.label ?? `€${valueMax}`) : (isHe ? 'ללא הגבלה' : 'No limit')}
+              </span>
+            </div>
+            <div className="cfg-selrow">
+              <span className="cfg-sel">
+                <select value={String(valueMin)} onChange={(e) => handleValueMinChange(Number(e.target.value))} disabled={searching}>
+                  {VALUE_PRESETS.filter((p) => p.value > 0).map((p) => (
+                    <option key={`min-${p.value}`} value={p.value}>{isHe && p.labelHe ? p.labelHe : p.label}</option>
+                  ))}
+                </select>
+              </span>
+              <span className="cfg-dash">—</span>
+              <span className="cfg-sel">
+                <select value={String(valueMax)} onChange={(e) => handleValueMaxChange(Number(e.target.value))} disabled={searching}>
+                  {VALUE_PRESETS.map((p) => (
+                    <option key={`max-${p.value}`} value={p.value}>{isHe && p.labelHe ? p.labelHe : p.label}</option>
+                  ))}
+                </select>
+              </span>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {searching && (
-              <button className="brit-wr-btn ghost" onClick={handleStopSearch}>{isHe ? 'עצור' : 'Stop'}</button>
-            )}
-            <button className="brit-wr-btn gold" onClick={handleSearch} disabled={searching || !playerName.trim()} style={{ padding: '12px 24px' }}>
-              {searching ? (isHe ? 'מחפש…' : 'Searching…') : (isHe ? 'מצא את הכוכב הבא' : 'Find The Next')}
-            </button>
+
+          <div className="cfg-f">
+            <div className="cfg-fh"><span className="k">{isHe ? 'מצב גיוון' : 'Diversity'}</span></div>
+            <div className="cfg-modes">
+              {([
+                { key: 'strict' as DiversityMode, en: 'Strict', he: 'מדויק', subEn: 'On-brief', subHe: 'מדויק' },
+                { key: 'balanced' as DiversityMode, en: 'Balanced', he: 'מאוזן', subEn: 'Mix & fit', subHe: 'שילוב' },
+                { key: 'discovery' as DiversityMode, en: 'Discovery', he: 'תגלית', subEn: 'Wildcards', subHe: 'הפתעות' },
+              ]).map((m) => (
+                <button key={m.key} className={`cfg-mode${diversityMode === m.key ? ' on' : ''}`} onClick={() => setDiversityMode(m.key)} disabled={searching}>
+                  {isHe ? m.he : m.en}<span className="cx">{isHe ? m.subHe : m.subEn}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -691,7 +770,15 @@ export default function FindNextTab() {
       {error && <div className="brit-wr-error">{error}</div>}
 
       {/* Reference player signature hero */}
-      {response?.reference_player && (
+      {response?.reference_player && (() => {
+        const sigStats = response.signature_stats ?? [];
+        const statCount = sigStats.length;
+        const radar = buildRadar(sigStats);
+        // Fewer than 3 metrics = a radar is meaningless; flag the thin sample
+        // so the panel reads as intentional, not broken.
+        const sparse = statCount > 0 && statCount < 3;
+        const avgPct = statCount ? Math.round(sigStats.reduce((a, s) => a + (s.percentile || 0), 0) / statCount) : 0;
+        return (
         <div className="brit-wr-hero">
           <div className="hero-left">
             <span className="tag">{isHe ? 'חתימת ייחוס' : 'Reference signature'}</span>
@@ -706,27 +793,71 @@ export default function FindNextTab() {
             {response.reference_player.playing_style && (
               <div className="style-tag">{response.reference_player.playing_style}</div>
             )}
+            {radar ? (
+              <div className="radar-wrap">
+                <svg className="radar" viewBox="-132 -116 264 232" aria-label="Statistical signature radar">
+                  {radar.rings.map((pts, i) => <polygon key={`ring-${i}`} className="grid" points={pts} />)}
+                  {radar.axes.map((a, i) => <line key={`axis-${i}`} className="axis" x1="0" y1="0" x2={a.x} y2={a.y} />)}
+                  <polygon className="shape" points={radar.shape} />
+                  {radar.dots.map((d, i) => <circle key={`dot-${i}`} className="dot" cx={d.x} cy={d.y} r="3" />)}
+                  {radar.labels.map((l, i) => <text key={`lbl-${i}`} className="lbl" x={l.x} y={l.y} textAnchor={l.anchor}>{l.text}</text>)}
+                </svg>
+              </div>
+            ) : (
+              // No full radar (< 3 metrics): fill the panel with the archetype
+              // read instead of leaving a gap.
+              <div className="hero-archetype">
+                <span className="al">{isHe ? 'ארכיטיפ' : 'Archetype'}</span>
+                <b>{response.reference_player.playing_style || shortenPosition(response.reference_player.position)}</b>
+                <span className="asub">
+                  {statCount > 0
+                    ? (isHe ? `דירוג חתימה ממוצע · אחוזון ${avgPct}` : `Avg signature rank · ${avgPct}th pct`)
+                    : (isHe ? 'אין נתוני חתימה סטטיסטית' : 'No statistical signature on file')}
+                </span>
+              </div>
+            )}
           </div>
           <div className="hero-right">
-            {response.signature_stats && response.signature_stats.length > 0 ? (
+            {statCount > 0 ? (
               <>
                 <p className="sig-title">
-                  {isHe ? 'חתימה סטטיסטית · ל-90 דקות ואחוזון מול עמדה' : 'Statistical signature · per 90 & percentile vs position'}
+                  <span>{isHe ? 'חתימה סטטיסטית · ל-90 דקות ואחוזון מול עמדה' : 'Statistical signature · per 90 output & percentile rank'}</span>
+                  {sparse && (
+                    <span className="sig-sparse" title={isHe ? 'מעט מדדים אמינים זמינים לשחקן זה' : 'Few reliable metrics on file for this player'}>
+                      {isHe ? `${statCount} מדדים` : `${statCount} metrics`}
+                    </span>
+                  )}
                 </p>
-                <div className="sigbars">
-                  {response.signature_stats.map((stat) => (
-                    <div key={stat.stat_key} className="sigbar">
-                      <span className="sl">{stat.label}</span>
-                      <span className="sv">{stat.value}<small>/90</small></span>
-                      <span className="st"><i style={{ width: `${Math.max(0, Math.min(100, stat.percentile))}%` }} /></span>
-                      <span className="sp">{stat.percentile}<small>pct</small></span>
-                    </div>
-                  ))}
+                <div className={`sig-tiles${sparse ? ' sparse' : ''}`}>
+                  {sigStats.map((stat) => {
+                    const pctRank = Math.max(0, Math.min(100, stat.percentile));
+                    // ring circumference for r=18 ≈ 113.1
+                    const dash = 113.1 * (1 - pctRank / 100);
+                    const label = (stat.label_en || stat.label || '').replace(/\s*\/\s*90$/i, '');
+                    return (
+                      <div key={stat.stat_key} className="sig-tile">
+                        <div className="big">
+                          <b>{stat.value}<small>/90</small></b>
+                          <span className="u">{label}</span>
+                        </div>
+                        <div className="rate">
+                          <span className="ring-box">
+                            <svg className="donut" viewBox="0 0 48 48">
+                              <circle className="track" cx="24" cy="24" r="18" />
+                              <circle className="val" cx="24" cy="24" r="18" strokeDasharray="113.1" strokeDashoffset={dash} />
+                            </svg>
+                            <span className="pct">{stat.percentile}</span>
+                          </span>
+                          <span className="rl">{isHe ? 'אחוזון' : 'pct'}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="sig-note">
                   {isHe
-                    ? '↳ ל-90 דקות = קצב · אחוזון = דירוג מול שחקנים באותה עמדה'
-                    : '↳ per-90 = output rate · percentile = rank vs players in the same position'}
+                    ? '↳ מספר = פעולות ל-90 דקות · טבעת = אחוזון מול שחקנים באותה עמדה'
+                    : '↳ number = actions per 90 min · ring = percentile rank vs same position'}
                 </p>
               </>
             ) : (
@@ -734,7 +865,8 @@ export default function FindNextTab() {
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Results */}
       {response && response.results.length > 0 && (
@@ -770,7 +902,7 @@ export default function FindNextTab() {
                 return { label: isHe ? 'חתימה' : 'Signature', val: String(Math.round(player.signature_match)) };
               })();
               const clubLine = player.club || player.api_team || player.league || '—';
-              const why = (player.scout_narrative || player.explanation || '').trim();
+              const why = cleanWhy(player.scout_narrative || player.explanation, response?.reference_player?.name);
               return (
                 <div key={url || player.name} className="brit-wr-card">
                   <div className="card-head">

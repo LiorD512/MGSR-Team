@@ -70,12 +70,19 @@ export interface YouthAddProspectDrawerProps {
    * instead of creating a new record. Opens on the Confirm step.
    */
   editPlayer?: YouthPlayer | null;
+  /**
+   * When provided (and not in edit mode), the drawer opens and immediately
+   * loads this IFA profile URL — used to promote a shortlist target to the
+   * academy roster without re-searching. Also passed as removeFromShortlistUrl
+   * on create so the backend drops the shortlist entry on promotion.
+   */
+  initialIfaUrl?: string | null;
 }
 
 const initials = (name: string | undefined) =>
   (name || '?').split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
-export default function YouthAddProspectDrawer({ open, onClose, onSaved, editPlayer }: YouthAddProspectDrawerProps) {
+export default function YouthAddProspectDrawer({ open, onClose, onSaved, editPlayer, initialIfaUrl }: YouthAddProspectDrawerProps) {
   const { user } = useAuth();
   const { t, isRtl } = useLanguage();
   const router = useRouter();
@@ -290,6 +297,18 @@ export default function YouthAddProspectDrawer({ open, onClose, onSaved, editPla
     loadProfile(url);
   };
 
+  // Promote-from-shortlist: when opened with an IFA url (and not editing),
+  // auto-load that profile so the user lands on the Confirm step pre-filled.
+  useEffect(() => {
+    if (!open || editPlayer) return;
+    const url = initialIfaUrl?.trim();
+    if (url && url.includes('football.org.il')) {
+      setUrlInput(url);
+      loadProfile(url);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialIfaUrl, editPlayer]);
+
   const handleSelectResult = (r: YouthSearchResult) => {
     setSearchResults([]);
     setSearchQuery('');
@@ -391,6 +410,8 @@ export default function YouthAddProspectDrawer({ open, onClose, onSaved, editPla
         parentContact,
         agentInChargeId,
         agentInChargeName,
+        // When promoting a shortlist target, drop its shortlist entry on create.
+        removeFromShortlistUrl: initialIfaUrl?.trim() || undefined,
       } as Parameters<typeof callPlayersCreate>[0]);
 
       if (result.status === 'already_exists') {
