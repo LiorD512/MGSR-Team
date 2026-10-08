@@ -64,6 +64,12 @@ async function fetchImage(url: string, source: string): Promise<ResolvedCrest | 
     const height = meta.height ?? 0;
     if (!width || !height) return null;
 
+    // Crests are roughly square. A strongly non-square image is almost never a
+    // crest — it's a photo (e.g. a Wikipedia town article's church picture that
+    // a loose search can match). Reject it so a wrong photo can't win on size.
+    const ratio = Math.max(width, height) / Math.min(width, height);
+    if (ratio > 1.6) return null;
+
     const bytes = await pipeline.png().toBuffer();
     return { bytes, width, height, source, url };
   } catch {
@@ -91,11 +97,23 @@ async function wikipediaCrestUrl(clubName: string): Promise<string | null> {
   try {
     const search = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(
       `${clubName} football club`
-    )}&gsrlimit=1&prop=info&format=json&redirects=1`;
+    )}&gsrlimit=3&prop=info&format=json&redirects=1`;
     const found = await fetch(search, { headers: HEADERS, signal: AbortSignal.timeout(FETCH_TIMEOUT) });
     if (!found.ok) return null;
     const payload = (await found.json()) as { query?: { pages?: Record<string, { title?: string }> } };
-    const title = Object.values(payload?.query?.pages ?? {})[0]?.title;
+    const titles = Object.values(payload?.query?.pages ?? {})
+      .map((p) => p?.title)
+      .filter((t): t is string => Boolean(t));
+    // Only accept a page that is actually about a football/soccer club. "Garliava"
+    // (a town) would otherwise match and hand back its church photo. Require a
+    // club signal in the title; reject obvious non-club pages.
+    // Accept club pages including dotted forms like "F.C."/"A.C.". Reject pages
+    // that are clearly a place/list (e.g. "Acre, Israel", "List of ... clubs").
+    const isClubTitle = (t: string) => {
+      if (/^list of/i.test(t) || /,\s/.test(t)) return false;
+      return /(\bF\.?C\.?\b|\bF\.?K\.?\b|\bC\.?F\.?\b|\bS\.?C\.?\b|\bA\.?C\.?\b|football|soccer|\bunited\b|\bathletic\b|\bsporting\b)/i.test(t);
+    };
+    const title = titles.find(isClubTitle);
     if (!title) return null;
 
     const page = await fetch(`https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`, {
