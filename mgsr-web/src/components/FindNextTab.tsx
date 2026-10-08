@@ -64,6 +64,28 @@ interface SignatureStat {
   label_en: string;
   percentile: number;
   value: number;
+  /** Season count (per-90 × minutes). Absent for ratio stats (per-shot, %). */
+  total?: number;
+}
+
+/** Raw absolute season counts for the reference player (from the backend). */
+interface ReferenceTotals {
+  goals?: number;
+  assists?: number;
+  shots?: number;
+  shots_on_target?: number;
+  key_passes?: number;
+  dribbles?: number;
+  dribbles_success?: number;
+  dribble_success_pct?: number;
+  shot_accuracy_pct?: number;
+  tackles?: number;
+  interceptions?: number;
+  blocks?: number;
+  duels?: number;
+  duels_won?: number;
+  duels_won_pct?: number;
+  fouls_drawn?: number;
 }
 
 interface ReferencePlayer {
@@ -78,6 +100,10 @@ interface ReferencePlayer {
   nationality: string;
   playing_style: string | null;
   url: string;
+  api_minutes?: number;
+  api_appearances?: number;
+  api_rating?: number;
+  totals?: ReferenceTotals;
 }
 
 interface FindNextResult {
@@ -821,7 +847,18 @@ export default function FindNextTab() {
             {statCount > 0 ? (
               <>
                 <p className="sig-title">
-                  <span>{isHe ? 'חתימה סטטיסטית · ל-90 דקות ואחוזון מול עמדה' : 'Statistical signature · per 90 output & percentile rank'}</span>
+                  <span>
+                    {(() => {
+                      const apps = response.reference_player.api_appearances;
+                      const mins = response.reference_player.api_minutes;
+                      if (apps && mins) {
+                        return isHe
+                          ? `תפוקה עונתית · ${apps} משחקים · ${mins.toLocaleString()} דק׳`
+                          : `Season output · ${apps} apps · ${mins.toLocaleString()} min`;
+                      }
+                      return isHe ? 'חתימה סטטיסטית · סך העונה ואחוזון' : 'Statistical signature · season totals & percentile';
+                    })()}
+                  </span>
                   {sparse && (
                     <span className="sig-sparse" title={isHe ? 'מעט מדדים אמינים זמינים לשחקן זה' : 'Few reliable metrics on file for this player'}>
                       {isHe ? `${statCount} מדדים` : `${statCount} metrics`}
@@ -834,10 +871,17 @@ export default function FindNextTab() {
                     // ring circumference for r=18 ≈ 113.1
                     const dash = 113.1 * (1 - pctRank / 100);
                     const label = (stat.label_en || stat.label || '').replace(/\s*\/\s*90$/i, '');
+                    // Prefer the real season total; fall back to per-90 only when
+                    // the backend couldn't give a count (ratio stats).
+                    const hasTotal = typeof stat.total === 'number';
                     return (
                       <div key={stat.stat_key} className="sig-tile">
                         <div className="big">
-                          <b>{stat.value}<small>/90</small></b>
+                          {hasTotal ? (
+                            <b>{stat.total}<small>{isHe ? `· ${stat.value}/90` : `· ${stat.value}/90`}</small></b>
+                          ) : (
+                            <b>{stat.value}<small>/90</small></b>
+                          )}
                           <span className="u">{label}</span>
                         </div>
                         <div className="rate">
@@ -854,10 +898,29 @@ export default function FindNextTab() {
                     );
                   })}
                 </div>
+                {/* Extra totals the signature didn't surface (e.g. assists,
+                    dribble success %, duels won %) — real counts, easy to read. */}
+                {response.reference_player.totals && (() => {
+                  const t = response.reference_player.totals;
+                  const extra: { k: string; v: string }[] = [];
+                  if (t.assists != null) extra.push({ k: isHe ? 'בישולים' : 'Assists', v: String(t.assists) });
+                  if (t.dribbles != null && t.dribble_success_pct != null)
+                    extra.push({ k: isHe ? 'דריבלים' : 'Dribbles', v: `${t.dribbles} · ${t.dribble_success_pct}%` });
+                  if (t.duels_won_pct != null) extra.push({ k: isHe ? 'דו-קרבות' : 'Duels won', v: `${t.duels_won_pct}%` });
+                  if (t.key_passes != null) extra.push({ k: isHe ? 'מסירות מפתח' : 'Key passes', v: String(t.key_passes) });
+                  if (!extra.length) return null;
+                  return (
+                    <div className="sig-extra">
+                      {extra.map((e) => (
+                        <span key={e.k} className="x"><span className="xk">{e.k}</span><b>{e.v}</b></span>
+                      ))}
+                    </div>
+                  );
+                })()}
                 <p className="sig-note">
                   {isHe
-                    ? '↳ מספר = פעולות ל-90 דקות · טבעת = אחוזון מול שחקנים באותה עמדה'
-                    : '↳ number = actions per 90 min · ring = percentile rank vs same position'}
+                    ? '↳ מספר גדול = סך העונה · טבעת = אחוזון מול שחקנים באותה עמדה'
+                    : '↳ big number = season total · ring = percentile rank vs same position'}
                 </p>
               </>
             ) : (
