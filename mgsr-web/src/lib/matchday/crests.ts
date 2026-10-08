@@ -209,12 +209,18 @@ export async function resolveCrest(
   clubName: string,
   logoUrl: string | null | undefined
 ): Promise<ResolvedCrest | null> {
-  // Cache key is VERSIONED: bumping `v2` invalidates every crest cached under
-  // the old (buggy) resolution that could store a town photo (e.g. a church)
-  // instead of a crest. Old entries are simply never read again.
-  const cacheKey = `matchday-crest-v2-${sanitizeKey(clubName.toLowerCase())}`;
+  // Cache key is VERSIONED: bumping the version invalidates every crest cached
+  // under older (buggy) resolution. v3 clears entries that could hold the WRONG
+  // CLUB (e.g. "FC Ballkani" cached as Viktoria Plzeň) from before the
+  // Transfermarkt-search + name-scoring fixes.
+  const cacheKey = `matchday-crest-v3-${sanitizeKey(clubName.toLowerCase())}`;
+
+  // Only these sources are trusted enough to serve straight from cache. A
+  // cached Wikipedia/as-supplied result is NOT trusted on hit — we re-resolve,
+  // so one weak or wrong cached entry can never block the better TM source.
+  const TRUSTED = new Set(['transfermarkt-id', 'transfermarkt-search']);
   const cachedUrl = await getCached<{ url: string; source: string }>(cacheKey, CACHE_TTL_MS);
-  if (cachedUrl?.url) {
+  if (cachedUrl?.url && TRUSTED.has(cachedUrl.source)) {
     const hit = await fetchImage(cachedUrl.url, cachedUrl.source);
     if (hit && Math.min(hit.width, hit.height) >= DECENT_MIN) return hit;
   }
@@ -259,6 +265,9 @@ export async function resolveCrest(
   // 4) Fall back to the URL we were handed, however small.
   if (!best && logoUrl) best = await fetchImage(logoUrl, 'as-supplied');
 
-  if (best) void setCache(cacheKey, { url: best.url, source: best.source });
+  // Persist ONLY trusted Transfermarkt results. Caching a Wikipedia/as-supplied
+  // result risks pinning a weak-or-wrong crest for 30 days and blocking the
+  // better source on later runs — so those are recomputed every time instead.
+  if (best && TRUSTED.has(best.source)) void setCache(cacheKey, { url: best.url, source: best.source });
   return best;
 }
