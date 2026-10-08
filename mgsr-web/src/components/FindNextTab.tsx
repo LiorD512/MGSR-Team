@@ -650,9 +650,11 @@ export default function FindNextTab() {
 
       {/* Search config panel */}
       <div className="brit-wr-cfg">
-        {/* Player name */}
-        <div className="brit-wr-cfg-field" style={{ gridColumn: '1 / -1' }}>
-          <label htmlFor="find-next-name">{isHe ? 'שחקן ייחוס' : 'Reference player'}</label>
+        <div className="cfg-term"><span className="d" />{isHe ? 'מנוע התאמת חתימה' : 'Signature match engine'}</div>
+
+        {/* Reference player — prompt row (input + search together) */}
+        <label className="cfg-label" htmlFor="find-next-name">{isHe ? 'שחקן ייחוס' : 'Reference player'}</label>
+        <div className="cfg-search">
           <input
             id="find-next-name"
             type="text"
@@ -663,70 +665,66 @@ export default function FindNextTab() {
             dir="ltr"
             disabled={searching}
           />
-          <div className="brit-wr-chips" style={{ marginTop: 10 }}>
-            {examples.slice(0, 12).map((name) => (
-              <button key={name} className="brit-wr-chip" onClick={() => setPlayerName(name)} disabled={searching}>{name}</button>
-            ))}
-          </div>
+          {searching && (
+            <button className="cfg-stop" onClick={handleStopSearch}>{isHe ? 'עצור' : 'Stop'}</button>
+          )}
+          <button className="cfg-go" onClick={handleSearch} disabled={searching || !playerName.trim()}>
+            {searching ? (isHe ? 'מחפש…' : 'Searching…') : (isHe ? 'מצא את הבא' : 'Find the next')}
+          </button>
+        </div>
+        <div className="cfg-chips">
+          {examples.slice(0, 10).map((name) => (
+            <button key={name} className="cfg-chip" onClick={() => setPlayerName(name)} disabled={searching}>{name}</button>
+          ))}
         </div>
 
-        {/* Age range */}
-        <div className="brit-wr-cfg-field">
-          <label>
-            {isHe ? 'טווח גיל' : 'Age range'}{' '}
-            <span className="brit-wr-cfg-val">{ageMin} – {ageMax}</span>
-          </label>
-          <div className="brit-wr-cfg-range">
-            <span>{isHe ? 'מינימום' : 'Min'}: {ageMin}</span>
-            <input type="range" min={17} max={35} value={ageMin} onChange={(e) => handleAgeMinChange(Number(e.target.value))} disabled={searching} />
+        {/* Filters row: age · value · diversity */}
+        <div className="cfg-filters">
+          <div className="cfg-f">
+            <div className="cfg-fh"><span className="k">{isHe ? 'טווח גיל' : 'Age range'}</span><span className="v">{ageMin} – {ageMax}</span></div>
+            <div className="cfg-range"><span>{isHe ? 'מינ' : 'Min'}</span><input type="range" min={17} max={35} value={ageMin} onChange={(e) => handleAgeMinChange(Number(e.target.value))} disabled={searching} /><b>{ageMin}</b></div>
+            <div className="cfg-range"><span>{isHe ? 'מקס' : 'Max'}</span><input type="range" min={17} max={35} value={ageMax} onChange={(e) => handleAgeMaxChange(Number(e.target.value))} disabled={searching} /><b>{ageMax}</b></div>
           </div>
-          <div className="brit-wr-cfg-range">
-            <span>{isHe ? 'מקסימום' : 'Max'}: {ageMax}</span>
-            <input type="range" min={17} max={35} value={ageMax} onChange={(e) => handleAgeMaxChange(Number(e.target.value))} disabled={searching} />
-          </div>
-        </div>
 
-        {/* Value range */}
-        <div className="brit-wr-cfg-field">
-          <label>
-            {isHe ? 'טווח שווי שוק' : 'Market value'}{' '}
-            <span className="brit-wr-cfg-val">
-              {VALUE_PRESETS.find((p) => p.value === valueMin)?.label ?? `€${valueMin}`} – {valueMax > 0 ? (VALUE_PRESETS.find((p) => p.value === valueMax)?.label ?? `€${valueMax}`) : (isHe ? 'ללא הגבלה' : 'No limit')}
-            </span>
-          </label>
-          <select value={String(valueMin)} onChange={(e) => handleValueMinChange(Number(e.target.value))} disabled={searching} className="brit-wr-cfg-select">
-            {VALUE_PRESETS.filter((p) => p.value > 0).map((p) => (
-              <option key={`min-${p.value}`} value={p.value}>{isHe && p.labelHe ? p.labelHe : p.label}</option>
-            ))}
-          </select>
-          <select value={String(valueMax)} onChange={(e) => handleValueMaxChange(Number(e.target.value))} disabled={searching} className="brit-wr-cfg-select">
-            {VALUE_PRESETS.map((p) => (
-              <option key={`max-${p.value}`} value={p.value}>{isHe && p.labelHe ? p.labelHe : p.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Diversity + search */}
-        <div className="brit-wr-cfg-actions">
-          <div className="brit-wr-chips">
-            <span className="brit-wr-cfg-dlabel">{isHe ? 'מצב גיוון' : 'Diversity'}</span>
-            {([
-              { key: 'strict' as DiversityMode, en: 'Strict', he: 'מדויק' },
-              { key: 'balanced' as DiversityMode, en: 'Balanced', he: 'מאוזן' },
-              { key: 'discovery' as DiversityMode, en: 'Discovery', he: 'תגלית' },
-            ]).map((m) => (
-              <button key={m.key} className={`brit-wr-chip${diversityMode === m.key ? ' on' : ''}`} onClick={() => setDiversityMode(m.key)} disabled={searching}>
-                {isHe ? m.he : m.en}
-              </button>
-            ))}
+          <div className="cfg-f">
+            <div className="cfg-fh">
+              <span className="k">{isHe ? 'שווי שוק' : 'Market value'}</span>
+              <span className="v">
+                {VALUE_PRESETS.find((p) => p.value === valueMin)?.label ?? `€${valueMin}`} – {valueMax > 0 ? (VALUE_PRESETS.find((p) => p.value === valueMax)?.label ?? `€${valueMax}`) : (isHe ? 'ללא הגבלה' : 'No limit')}
+              </span>
+            </div>
+            <div className="cfg-selrow">
+              <span className="cfg-sel">
+                <select value={String(valueMin)} onChange={(e) => handleValueMinChange(Number(e.target.value))} disabled={searching}>
+                  {VALUE_PRESETS.filter((p) => p.value > 0).map((p) => (
+                    <option key={`min-${p.value}`} value={p.value}>{isHe && p.labelHe ? p.labelHe : p.label}</option>
+                  ))}
+                </select>
+              </span>
+              <span className="cfg-dash">—</span>
+              <span className="cfg-sel">
+                <select value={String(valueMax)} onChange={(e) => handleValueMaxChange(Number(e.target.value))} disabled={searching}>
+                  {VALUE_PRESETS.map((p) => (
+                    <option key={`max-${p.value}`} value={p.value}>{isHe && p.labelHe ? p.labelHe : p.label}</option>
+                  ))}
+                </select>
+              </span>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {searching && (
-              <button className="brit-wr-btn ghost" onClick={handleStopSearch}>{isHe ? 'עצור' : 'Stop'}</button>
-            )}
-            <button className="brit-wr-btn gold" onClick={handleSearch} disabled={searching || !playerName.trim()} style={{ padding: '12px 24px' }}>
-              {searching ? (isHe ? 'מחפש…' : 'Searching…') : (isHe ? 'מצא את הכוכב הבא' : 'Find The Next')}
-            </button>
+
+          <div className="cfg-f">
+            <div className="cfg-fh"><span className="k">{isHe ? 'מצב גיוון' : 'Diversity'}</span></div>
+            <div className="cfg-modes">
+              {([
+                { key: 'strict' as DiversityMode, en: 'Strict', he: 'מדויק', subEn: 'On-brief', subHe: 'מדויק' },
+                { key: 'balanced' as DiversityMode, en: 'Balanced', he: 'מאוזן', subEn: 'Mix & fit', subHe: 'שילוב' },
+                { key: 'discovery' as DiversityMode, en: 'Discovery', he: 'תגלית', subEn: 'Wildcards', subHe: 'הפתעות' },
+              ]).map((m) => (
+                <button key={m.key} className={`cfg-mode${diversityMode === m.key ? ' on' : ''}`} onClick={() => setDiversityMode(m.key)} disabled={searching}>
+                  {isHe ? m.he : m.en}<span className="cx">{isHe ? m.subHe : m.subEn}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
