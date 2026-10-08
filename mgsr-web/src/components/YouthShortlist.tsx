@@ -10,7 +10,6 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -19,6 +18,7 @@ import { SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
 import { callShortlistRemove } from '@/lib/callables';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
+import YouthAddShortlistDrawer from '@/components/YouthAddShortlistDrawer';
 
 interface ShortlistNote {
   text: string;
@@ -58,13 +58,13 @@ interface YouthShortlistCache {
 
 export default function YouthShortlist() {
   const { t, lang, setLang, isRtl } = useLanguage();
-  const router = useRouter();
 
   const cached = getScreenCache<YouthShortlistCache>('youth-shortlist');
 
   const [entries, setEntries] = useState<YouthShortlistEntry[]>([]);
   const [ready, setReady] = useState(false);
   const [removingUrl, setRemovingUrl] = useState<string | null>(null);
+  const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [search, setSearch] = useState(cached?.search ?? '');
   const [ageGroupFilter, setAgeGroupFilter] = useState<string | null>(cached?.ageGroupFilter ?? null);
   const [withNotes, setWithNotes] = useState(cached?.withNotes ?? false);
@@ -163,7 +163,7 @@ export default function YouthShortlist() {
                 </h1>
               </div>
               <div className="brit-mast-actions">
-                <button className="brit-mast-add" onClick={() => router.push('/players/add?shortlist=1')}>
+                <button className="brit-mast-add" onClick={() => setShowAddDrawer(true)}>
                   + {t('youth_add_youth_player')}
                 </button>
               </div>
@@ -283,6 +283,9 @@ export default function YouthShortlist() {
           </main>
         </div>
       </div>
+
+      {/* Add-to-shortlist guided drawer (Find → Confirm → Done) — mirrors the roster drawer design */}
+      <YouthAddShortlistDrawer open={showAddDrawer} onClose={() => setShowAddDrawer(false)} />
     </div>
   );
 }
