@@ -1,37 +1,41 @@
-# MATCHDAY POC — Results
+# MATCHDAY POC — Design System
 
-On-demand matchday posters. **No face is ever generated** — the real player photo is cut out
-and composited. Only the *clothing* was repainted (kit swap) from a real kit reference, with
-the face strictly locked. All match facts, crests, and fixture info are real/sourced.
-
-## Final poster (v4)
-
-Premium redesign following sports-graphic best practices: big hero with full headroom,
-gold rim-light separation, duotone navy stadium + haze, auto-fit massive surname, zoned
-bottom layout (no collisions), premium circular crest badges, balanced number watermark.
+Four unique, named matchday templates — each pixel-polished. **No face is ever generated.**
+The real player photo is cut out and composited. The player's shirt (kit swap) and a *second
+pose* were produced with Gemini while the **face/identity was strictly preserved** — only
+clothing and body pose change, never the face.
 
 **Match:** Junior Diomande · Hapoel Akko vs Bnei Raina · Leumit League Round 9 · 09.10.2026 · 16:00
 
-![Final poster](matchday_final_small.jpg)
+Two real, face-safe poses are used across the designs:
+- **Pose 1** — dynamic dribbling action (with ball)
+- **Pose 2** — arms-crossed studio hero (AI-posed, face preserved)
 
-> Full resolution: `matchday_final.png` (1080×1350)
+---
 
-## Kit swap step (Gemini, face-locked)
+## SPOTLIGHT
+Cinematic single-hero. Duotone navy stadium, gold rim-light, haze, protected title band.
+![SPOTLIGHT](design_spotlight_small.jpg)
 
-Real photo → background removed → Gemini repainted **only shirt/shorts** into the white
-Bnei Reineh #57 kit from a reference image. Face, hair, pose, ball preserved.
+## STATEMENT
+Bold typographic. Massive vertical surname up the left, arms-crossed portrait, high-contrast navy/gold.
+![STATEMENT](design_statement_small.jpg)
 
-![Kit swap](player_kitswap.jpeg)
+## DUEL
+Dual-pose. Faded action pose + sharp hero pose, split by a diagonal gold seam. High energy.
+![DUEL](design_duel_small.jpg)
+
+## BROADCAST
+Sports-TV look. Angled lower-third panel, gold number tab, kickoff ticker, bright real stadium.
+![BROADCAST](design_broadcast_small.jpg)
+
+---
+
+> Full-resolution PNGs (1080×1350): `design_spotlight.png`, `design_statement.png`, `design_duel.png`, `design_broadcast.png`
 
 ## Pipeline
 1. Player photo → background removal (rembg)
 2. Kit swap — face LOCKED, shirt repainted from real kit reference (Gemini)
-3. Re-cut clean + build gold rim-light glow
-4. Deterministic compositing (sharp): duotone stadium, hero, typography, crest badges, fixture
-5. Accurate facts/crests sourced from data, never AI
-
-## Known minor item
-- Sponsor on chest renders as the real "ER / BONEH RENIH" sponsor (legit); chest crest slightly soft.
-
-## Earlier iterations
-![v3](matchday_wow_small.jpg)
+3. Second pose — face LOCKED, body re-posed (Gemini)
+4. Clean re-cut + gold rim-light glow per pose
+5. Deterministic compositing (sharp): each named template, accurate fixture/crests
