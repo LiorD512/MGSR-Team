@@ -77,25 +77,30 @@ async function placeLayer(
   buf: Buffer | null,
   targetH: number,
   position: (w: number, h: number) => { left: number; top: number },
-  opts?: { mod?: { brightness?: number; saturation?: number }; fade?: boolean; flip?: boolean }
+  opts?: { mod?: { brightness?: number; saturation?: number }; fade?: boolean; fadeStart?: number; flip?: boolean }
 ): Promise<Buffer> {
   if (!buf) return emptySheet();
   let src = buf;
   if (opts?.flip) src = await sharp(buf).flop().png().toBuffer(); // mirror horizontally
   const s = await scaleH(src, targetH, opts?.mod);
-  const body = opts?.fade ? await bottomFade(s.buf) : s.buf;
+  const body = opts?.fade ? await bottomFade(s.buf, opts.fadeStart ?? 60) : s.buf;
   const { left, top } = position(s.w, s.h);
   return onCanvas(body, s.w, s.h, left, top);
 }
 
-/** Apply a soft bottom fade so a cropped torso dissolves into the background. */
-async function bottomFade(buf: Buffer): Promise<Buffer> {
+/**
+ * Fade the bottom of a layer to transparent so it dissolves into the scene
+ * instead of ending in a hard cut line. `startPct` is where the fade begins
+ * (0..100) — a high value (e.g. 82) gives a gentle, natural leg/feet blend; a
+ * low value (60) gives the stronger backdrop dissolve.
+ */
+async function bottomFade(buf: Buffer, startPct = 60): Promise<Buffer> {
   const { w, h } = await sizeOf(buf);
   const mask = Buffer.from(
     `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><defs>` +
       `<linearGradient id="m" x1="0" y1="0" x2="0" y2="1">` +
       `<stop offset="0%" stop-color="#fff" stop-opacity="1"/>` +
-      `<stop offset="60%" stop-color="#fff" stop-opacity="1"/>` +
+      `<stop offset="${startPct}%" stop-color="#fff" stop-opacity="1"/>` +
       `<stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>` +
       `<rect width="${w}" height="${h}" fill="url(#m)"/></svg>`
   );
@@ -116,7 +121,14 @@ async function textLayer(node: ReactNode): Promise<Buffer> {
 }
 
 function compLine(facts: MatchdayMatchFacts): string {
-  return [facts.country, facts.competition, facts.round].filter(Boolean).join('  •  ') || 'LEUMIT LEAGUE';
+  // The competition string often already carries the country (e.g.
+  // "Lithuania: I Lyga"), so only prepend country when it isn't already there —
+  // otherwise we get "LITHUANIA • LITHUANIA: I LYGA".
+  const comp = (facts.competition ?? '').trim();
+  const country = (facts.country ?? '').trim();
+  const compHasCountry = country && comp.toLowerCase().includes(country.toLowerCase());
+  const parts = compHasCountry ? [comp, facts.round] : [country, comp, facts.round];
+  return parts.filter(Boolean).join('  •  ') || 'MATCHDAY';
 }
 function dateLine(facts: MatchdayMatchFacts): string {
   return facts.time ? `${facts.date} at ${facts.time}` : facts.date;
@@ -180,7 +192,7 @@ async function renderMidnight(i: RenderV2Input): Promise<Buffer> {
     i.layers.cutAction,
     Math.round(V2_H * 0.56),
     (w, h) => ({ left: Math.round(V2_W * 0.72 - w / 2), top: V2_H - h - 20 }),
-    { mod: { brightness: 1.04, saturation: 1.08 } }
+    { mod: { brightness: 1.04, saturation: 1.08 }, fade: true, fadeStart: 84 }
   );
 
   const margin = 60;
@@ -231,7 +243,7 @@ async function renderMarble(i: RenderV2Input): Promise<Buffer> {
     i.layers.cutAction,
     Math.round(V2_H * 0.56),
     (w, h) => ({ left: Math.round(V2_W * 0.74 - w / 2), top: V2_H - h - 30 }),
-    { mod: { brightness: 1.03, saturation: 1.06 } }
+    { mod: { brightness: 1.03, saturation: 1.06 }, fade: true, fadeStart: 84 }
   );
 
   const margin = 56;
@@ -323,14 +335,14 @@ async function renderGolden(i: RenderV2Input): Promise<Buffer> {
         i.layers.hero,
         Math.round(V2_H * 0.48), // clearly smaller than the hero
         (w) => ({ left: Math.round(V2_W * 0.24 - w / 2), top: Math.round(V2_H * 0.4) }),
-        { mod: { brightness: 0.82, saturation: 0.9 }, flip: true } // mirrored + dimmer = depth
+        { mod: { brightness: 0.82, saturation: 0.9 }, flip: true, fade: true, fadeStart: 80 }
       )
     : await emptySheet();
   const heroSheet = await placeLayer(
     i.layers.cutAction,
     Math.round(V2_H * 0.62),
     (w) => ({ left: Math.round((twoFigures ? V2_W * 0.62 : V2_W * 0.5) - w / 2), top: Math.round(V2_H * 0.3) }),
-    { mod: { brightness: 1.05, saturation: 1.08 } }
+    { mod: { brightness: 1.05, saturation: 1.08 }, fade: true, fadeStart: 84 }
   );
   const txt = await centredBottomText(i);
 
@@ -361,14 +373,15 @@ async function renderStorm(i: RenderV2Input): Promise<Buffer> {
   const heroSheet = await placeLayer(
     i.layers.hero,
     Math.round(V2_H * 0.58),
-    (w) => ({ left: Math.round((twoFigures ? V2_W * 0.62 : V2_W * 0.5) - w / 2), top: Math.round(V2_H * 0.2) })
+    (w) => ({ left: Math.round((twoFigures ? V2_W * 0.62 : V2_W * 0.5) - w / 2), top: Math.round(V2_H * 0.2) }),
+    { fade: true, fadeStart: 84 }
   );
   const a1Sheet = twoFigures
     ? await placeLayer(
         i.layers.cutAction,
         Math.round(V2_H * 0.42),
         (w) => ({ left: Math.round(V2_W * 0.26 - w / 2), top: Math.round(V2_H * 0.34) }),
-        { mod: { brightness: 0.84, saturation: 0.9 }, flip: true }
+        { mod: { brightness: 0.84, saturation: 0.9 }, flip: true, fade: true, fadeStart: 80 }
       )
     : await emptySheet();
   const a2Sheet = await emptySheet();

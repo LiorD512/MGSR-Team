@@ -89,26 +89,17 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   });
 
   // ── Stage 4: crests ──
-  // When the dossier supplied a fixture, the logo URLs are the correct, operator-
-  // verified ones — use them VERBATIM (just fetch the bytes). Only fall back to
-  // resolveCrest()'s scraping/search when a URL is genuinely missing.
-  async function crestFrom(url: string | null, team: string): Promise<Buffer | null> {
-    if (input.fixture) {
-      if (url) {
-        const bytes = await fetchBytes(url);
-        if (bytes) return bytes;
-      }
-      // Missing URL even though the UI had a fixture: last-resort resolve.
-      const r = await resolveCrest(team, url);
-      return r?.bytes ?? null;
-    }
-    const r = await resolveCrest(team, url);
-    return r?.bytes ?? null;
-  }
-  const [homeCrest, awayCrest] = await Promise.all([
-    crestFrom(facts.homeLogo, facts.homeTeam),
-    crestFrom(facts.awayLogo, facts.awayTeam),
+  // Resolve a HIGH-RESOLUTION crest for each club. Because the team names now
+  // come from the dossier (correct), resolveCrest() searches for the RIGHT club
+  // — fixing both the wrong-logo bug and the pixelation (it upgrades the tiny
+  // Flashscore/TM badge to a Transfermarkt `original`/`big` or Wikipedia crest,
+  // never upscaling a thumbnail). The small dossier URL is only the last resort.
+  const [homeRes, awayRes] = await Promise.all([
+    resolveCrest(facts.homeTeam, facts.homeLogo),
+    resolveCrest(facts.awayTeam, facts.awayLogo),
   ]);
+  const homeCrest = homeRes?.bytes ?? (facts.homeLogo ? await fetchBytes(facts.homeLogo) : null);
+  const awayCrest = awayRes?.bytes ?? (facts.awayLogo ? await fetchBytes(facts.awayLogo) : null);
 
   // ── Stage 5: background sky for sky-based designs ──
   let sky: Buffer | null = null;
