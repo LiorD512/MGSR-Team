@@ -124,34 +124,44 @@ body::before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;op
 .count b{color:var(--ink);font-weight:500}
 .count .rule{flex:1;height:1px;background:var(--line)}
 
-/* Successor cards */
-.succ{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media (max-width:1200px){.succ{grid-template-columns:1fr}}
-.srow{display:grid;grid-template-columns:84px 1fr;gap:18px;padding:18px 20px;background:var(--card);border:1px solid var(--line);transition:border-color .15s,transform .15s}
-.srow:hover{border-color:var(--gold-soft);transform:translateY(-2px)}
-.sdna{display:flex;flex-direction:column;align-items:center;gap:10px}
-.ring{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;position:relative}
-.ring .inner{width:56px;height:56px;border-radius:50%;background:var(--card);display:grid;place-items:center;flex-direction:column;text-align:center}
-.ring .inner b{font:500 20px/.9 var(--display);color:var(--gold)}
-.ring .inner small{font:6px/1 var(--mono);color:var(--muted-2);text-transform:uppercase;letter-spacing:.1em;margin-top:2px}
-.mini-radar{width:64px;height:64px}
-.mini-radar .ref{fill:none;stroke:var(--muted-2);stroke-width:1;stroke-dasharray:2 2}
-.mini-radar .cand{fill:rgba(164,125,67,.22);stroke:var(--gold);stroke-width:1.5}
-.mini-cap{color:var(--muted-2);font:6px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
-.sbody{min-width:0}
-.sname{font:500 21px/1 var(--display);text-transform:uppercase;letter-spacing:.01em}
-.sname a:hover{text-decoration:underline}
-.smeta{margin-top:8px;display:flex;flex-wrap:wrap;gap:7px 13px}
-.smeta .m{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font:10px/1 var(--mono);text-transform:uppercase}
-.smeta .m .k{color:var(--muted-2)}
-.smeta .m b{color:var(--ink);font-weight:500}
-.breakdown{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
-.bchip{font:8px/1 var(--mono);text-transform:uppercase;padding:6px 9px;border:1px solid var(--line);color:var(--muted);display:inline-flex;gap:5px;align-items:center}
-.bchip b{color:var(--green);font-weight:600}
-.bchip.style{border-color:rgba(164,125,67,.4);color:var(--gold)}
-.bchip.style b{color:var(--gold)}
-.snarr{margin-top:11px;font:11.5px/1.55 var(--body);color:var(--muted);border-inline-start:2px solid var(--gold-soft);padding-inline-start:11px}
-.saacts{display:flex;align-items:center;gap:8px;margin-top:13px}
+/* ── Successor cards (clean rebuild) ── */
+.succ{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:1240px){.succ{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);transition:border-color .15s,box-shadow .2s,transform .15s;display:flex;flex-direction:column}
+.card:hover{border-color:var(--gold-soft);box-shadow:0 10px 30px -18px rgba(22,22,19,.35);transform:translateY(-2px)}
+
+/* Header: score badge + identity */
+.card-head{display:flex;align-items:center;gap:16px;padding:18px 20px 16px}
+.score{position:relative;width:58px;height:58px;flex:none;display:grid;place-items:center}
+.score .ring-bg{position:absolute;inset:0}
+.score .ring-bg circle{fill:none;stroke-width:3}
+.score .ring-bg .t{stroke:var(--paper-2)}
+.score .ring-bg .v{stroke:var(--gold);stroke-linecap:round;transform:rotate(-90deg);transform-origin:center}
+.score b{font:500 22px/1 var(--display);color:var(--ink)}
+.ident{min-width:0;flex:1}
+.ident .eyebrow{color:var(--gold);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+.ident .nm{margin-top:5px;font:500 22px/1 var(--display);text-transform:uppercase;letter-spacing:.01em;color:var(--ink)}
+.ident .nm a:hover{text-decoration:underline}
+.ident .mt{margin-top:7px;color:var(--muted);font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.02em}
+.ident .mt b{color:var(--ink);font-weight:500}
+.ident .mt .sep{color:var(--muted-2);margin:0 7px}
+.fit{flex:none;align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--gold-soft);background:rgba(164,125,67,.07);color:var(--gold);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.fit b{color:var(--gold);font:500 11px/1 var(--display)}
+
+/* Stats row — the centerpiece */
+.card-stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2)}
+.cs{padding:14px 16px;text-align:center;border-inline-end:1px solid var(--line-2)}
+.cs:last-child{border-inline-end:0}
+.cs .n{font:500 20px/1 var(--display);color:var(--ink)}
+.cs .n .p{color:var(--gold);font-size:13px;margin-inline-start:2px}
+.cs .n .a{color:var(--muted-2);font-size:13px;margin-inline-start:3px}
+.cs .l{margin-top:6px;color:var(--muted);font:7px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+
+/* Footer: why + actions */
+.card-foot{padding:14px 20px 16px;display:flex;align-items:center;gap:14px}
+.why{flex:1;min-width:0;color:var(--muted);font:11.5px/1.5 var(--body)}
+.why .q{color:var(--gold);font-weight:600;margin-inline-end:2px}
+.card-foot .acts{flex:none;display:flex;gap:8px}
 
 /* ── Count + success-rate stat tiles ── */
 .statgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
@@ -326,102 +336,106 @@ body::before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;op
       <div class="succ">
 
         <!-- Card 1 -->
-        <div class="srow">
-          <div class="sdna">
-            <div class="ring" style="background:conic-gradient(var(--gold) 338deg,var(--paper-2) 338deg)"><div class="inner"><b>94</b><small>Match</small></div></div>
-            <svg class="mini-radar" viewBox="-50 -50 100 100">
-              <polygon class="ref" points="0,-42 39.9,-13 24.7,33.9 -24.7,33.9 -39.9,-13" />
-              <polygon class="cand" points="0,-40 36,-11.7 20,30 -27.5,33 -34,-11" />
-            </svg>
-            <span class="mini-cap">vs ref</span>
-          </div>
-          <div class="sbody">
-            <div class="sname"><a>Diogo Nascimento</a></div>
-            <div class="smeta"><span class="m"><span class="k">Pos</span><b>LW</b></span><span class="m"><span class="k">Age</span><b>19</b></span><span class="m"><span class="k">Value</span><b>€3.00M</b></span><span class="m"><span class="k">Club</span><b>Rio Ave FC</b></span></div>
-            <div class="breakdown"><span class="bchip style"><em>Direct dribbler</em></span><span class="bchip">Signature <b>91</b></span><span class="bchip">Value gap <b>+18</b></span><span class="bchip">Youth <b>+9</b></span></div>
-            <div class="cstats">
-              <div class="cstat"><span class="cv">54 <span class="pc">· 39%</span></span><span class="cl">Dribbles · success</span></div>
-              <div class="cstat"><span class="cv">25 <span class="pc">· 52%</span></span><span class="cl">Shots · on target</span></div>
-              <div class="cstat"><span class="cv">6<span class="pc">G</span> 2<span class="pc">A</span></span><span class="cl">Output · 20 apps</span></div>
-              <div class="cstat"><span class="cv">42%</span><span class="cl">Duels won</span></div>
+        <div class="card">
+          <div class="card-head">
+            <div class="score">
+              <svg class="ring-bg" viewBox="0 0 58 58"><circle class="t" cx="29" cy="29" r="26"/><circle class="v" cx="29" cy="29" r="26" stroke-dasharray="163.4" stroke-dashoffset="9.8"/></svg>
+              <b>94</b>
             </div>
-            <p class="snarr">Mirrors Leão's shooting and carrying volume at a fifth of the value — a raw, left-footed wide forward already drawing fouls at an elite rate for his age.</p>
-            <div class="saacts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
+            <div class="ident">
+              <div class="eyebrow">Direct dribbler</div>
+              <div class="nm"><a>Diogo Nascimento</a></div>
+              <div class="mt"><b>LW</b><span class="sep">·</span>Age <b>19</b><span class="sep">·</span><b>€3.00M</b><span class="sep">·</span>Rio Ave FC</div>
+            </div>
+            <span class="fit">Value gap <b>+18</b></span>
+          </div>
+          <div class="card-stats">
+            <div class="cs"><div class="n">54<span class="p">·39%</span></div><div class="l">Dribbles · success</div></div>
+            <div class="cs"><div class="n">25<span class="p">·52%</span></div><div class="l">Shots · on target</div></div>
+            <div class="cs"><div class="n">6<span class="a">G</span> 2<span class="a">A</span></div><div class="l">Output · 20 apps</div></div>
+            <div class="cs"><div class="n">42<span class="p">%</span></div><div class="l">Duels won</div></div>
+          </div>
+          <div class="card-foot">
+            <p class="why"><span class="q">Why:</span>Leão's shooting &amp; carrying volume at a fifth of the value — already drawing fouls at an elite rate for his age.</p>
+            <div class="acts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
           </div>
         </div>
 
         <!-- Card 2 -->
-        <div class="srow">
-          <div class="sdna">
-            <div class="ring" style="background:conic-gradient(var(--gold) 320deg,var(--paper-2) 320deg)"><div class="inner"><b>89</b><small>Match</small></div></div>
-            <svg class="mini-radar" viewBox="-50 -50 100 100">
-              <polygon class="ref" points="0,-42 39.9,-13 24.7,33.9 -24.7,33.9 -39.9,-13" />
-              <polygon class="cand" points="0,-36 42,-13.5 22,30 -20,27 -31,-10" />
-            </svg>
-            <span class="mini-cap">vs ref</span>
-          </div>
-          <div class="sbody">
-            <div class="sname"><a>Jackson González</a></div>
-            <div class="smeta"><span class="m"><span class="k">Pos</span><b>LW</b></span><span class="m"><span class="k">Age</span><b>20</b></span><span class="m"><span class="k">Value</span><b>€800K</b></span><span class="m"><span class="k">Club</span><b>Mushuc Runa SC</b></span></div>
-            <div class="breakdown"><span class="bchip style"><em>Explosive carrier</em></span><span class="bchip">Signature <b>86</b></span><span class="bchip">Value gap <b>+22</b></span><span class="bchip">Contract <b>+7</b></span></div>
-            <div class="cstats">
-              <div class="cstat"><span class="cv">28 <span class="pc">· 39%</span></span><span class="cl">Dribbles · success</span></div>
-              <div class="cstat"><span class="cv">22 <span class="pc">· 55%</span></span><span class="cl">Shots · on target</span></div>
-              <div class="cstat"><span class="cv">4<span class="pc">G</span> 1<span class="pc">A</span></span><span class="cl">Output · 18 apps</span></div>
-              <div class="cstat"><span class="cv">44%</span><span class="cl">Duels won</span></div>
+        <div class="card">
+          <div class="card-head">
+            <div class="score">
+              <svg class="ring-bg" viewBox="0 0 58 58"><circle class="t" cx="29" cy="29" r="26"/><circle class="v" cx="29" cy="29" r="26" stroke-dasharray="163.4" stroke-dashoffset="18"/></svg>
+              <b>89</b>
             </div>
-            <p class="snarr">Ecuadorian flyer with higher goal output than the reference profile; contract expiring in 2026 makes him an outsized value play in your band.</p>
-            <div class="saacts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
+            <div class="ident">
+              <div class="eyebrow">Explosive carrier</div>
+              <div class="nm"><a>Jackson González</a></div>
+              <div class="mt"><b>LW</b><span class="sep">·</span>Age <b>20</b><span class="sep">·</span><b>€800K</b><span class="sep">·</span>Mushuc Runa SC</div>
+            </div>
+            <span class="fit">Value gap <b>+22</b></span>
+          </div>
+          <div class="card-stats">
+            <div class="cs"><div class="n">28<span class="p">·39%</span></div><div class="l">Dribbles · success</div></div>
+            <div class="cs"><div class="n">22<span class="p">·55%</span></div><div class="l">Shots · on target</div></div>
+            <div class="cs"><div class="n">4<span class="a">G</span> 1<span class="a">A</span></div><div class="l">Output · 18 apps</div></div>
+            <div class="cs"><div class="n">44<span class="p">%</span></div><div class="l">Duels won</div></div>
+          </div>
+          <div class="card-foot">
+            <p class="why"><span class="q">Why:</span>Higher goal output than the reference profile; a 2026 contract expiry makes him an outsized value play in your band.</p>
+            <div class="acts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
           </div>
         </div>
 
         <!-- Card 3 -->
-        <div class="srow">
-          <div class="sdna">
-            <div class="ring" style="background:conic-gradient(var(--gold) 306deg,var(--paper-2) 306deg)"><div class="inner"><b>85</b><small>Match</small></div></div>
-            <svg class="mini-radar" viewBox="-50 -50 100 100">
-              <polygon class="ref" points="0,-42 39.9,-13 24.7,33.9 -24.7,33.9 -39.9,-13" />
-              <polygon class="cand" points="0,-34 33,-10.7 26,36 -24,33 -37,-12" />
-            </svg>
-            <span class="mini-cap">vs ref</span>
-          </div>
-          <div class="sbody">
-            <div class="sname"><a>Dennis Collander</a></div>
-            <div class="smeta"><span class="m"><span class="k">Pos</span><b>LW</b></span><span class="m"><span class="k">Age</span><b>18</b></span><span class="m"><span class="k">Value</span><b>€275K</b></span><span class="m"><span class="k">Club</span><b>GAIS</b></span></div>
-            <div class="breakdown"><span class="bchip style"><em>Foul-drawing winger</em></span><span class="bchip">Signature <b>82</b></span><span class="bchip">Value gap <b>+26</b></span><span class="bchip">Youth <b>+10</b></span></div>
-            <div class="cstats">
-              <div class="cstat"><span class="cv">41 <span class="pc">· 61%</span></span><span class="cl">Dribbles · success</span></div>
-              <div class="cstat"><span class="cv">31 <span class="pc">· 58%</span></span><span class="cl">Shots · on target</span></div>
-              <div class="cstat"><span class="cv">5<span class="pc">G</span> 3<span class="pc">A</span></span><span class="cl">Output · 24 apps</span></div>
-              <div class="cstat"><span class="cv">49%</span><span class="cl">Duels won</span></div>
+        <div class="card">
+          <div class="card-head">
+            <div class="score">
+              <svg class="ring-bg" viewBox="0 0 58 58"><circle class="t" cx="29" cy="29" r="26"/><circle class="v" cx="29" cy="29" r="26" stroke-dasharray="163.4" stroke-dashoffset="24.5"/></svg>
+              <b>85</b>
             </div>
-            <p class="snarr">Swedish teenager over-indexing on fouls drawn and shot volume — the clearest "early Leão" trait set in the pool, four years younger and nearly free.</p>
-            <div class="saacts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
+            <div class="ident">
+              <div class="eyebrow">Foul-drawing winger</div>
+              <div class="nm"><a>Dennis Collander</a></div>
+              <div class="mt"><b>LW</b><span class="sep">·</span>Age <b>18</b><span class="sep">·</span><b>€275K</b><span class="sep">·</span>GAIS</div>
+            </div>
+            <span class="fit">Value gap <b>+26</b></span>
+          </div>
+          <div class="card-stats">
+            <div class="cs"><div class="n">41<span class="p">·61%</span></div><div class="l">Dribbles · success</div></div>
+            <div class="cs"><div class="n">31<span class="p">·58%</span></div><div class="l">Shots · on target</div></div>
+            <div class="cs"><div class="n">5<span class="a">G</span> 3<span class="a">A</span></div><div class="l">Output · 24 apps</div></div>
+            <div class="cs"><div class="n">49<span class="p">%</span></div><div class="l">Duels won</div></div>
+          </div>
+          <div class="card-foot">
+            <p class="why"><span class="q">Why:</span>Over-indexing on fouls drawn and shot volume — the clearest "early Leão" trait set in the pool, four years younger and nearly free.</p>
+            <div class="acts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
           </div>
         </div>
 
         <!-- Card 4 -->
-        <div class="srow">
-          <div class="sdna">
-            <div class="ring" style="background:conic-gradient(var(--gold) 288deg,var(--paper-2) 288deg)"><div class="inner"><b>80</b><small>Match</small></div></div>
-            <svg class="mini-radar" viewBox="-50 -50 100 100">
-              <polygon class="ref" points="0,-42 39.9,-13 24.7,33.9 -24.7,33.9 -39.9,-13" />
-              <polygon class="cand" points="0,-38 30,-9.7 20,30 -29,35 -30,-10" />
-            </svg>
-            <span class="mini-cap">vs ref</span>
-          </div>
-          <div class="sbody">
-            <div class="sname"><a>Martim Neto</a></div>
-            <div class="smeta"><span class="m"><span class="k">Pos</span><b>LW</b></span><span class="m"><span class="k">Age</span><b>19</b></span><span class="m"><span class="k">Value</span><b>€4.00M</b></span><span class="m"><span class="k">Club</span><b>Elche CF</b></span></div>
-            <div class="breakdown"><span class="bchip style"><em>Two-footed wide forward</em></span><span class="bchip">Signature <b>79</b></span><span class="bchip">Style <b>+12</b></span></div>
-            <div class="cstats">
-              <div class="cstat"><span class="cv">47 <span class="pc">· 64%</span></span><span class="cl">Dribbles · success</span></div>
-              <div class="cstat"><span class="cv">19 <span class="pc">· 47%</span></span><span class="cl">Shots · on target</span></div>
-              <div class="cstat"><span class="cv">3<span class="pc">G</span> 4<span class="pc">A</span></span><span class="cl">Output · 22 apps</span></div>
-              <div class="cstat"><span class="cv">45%</span><span class="cl">Duels won</span></div>
+        <div class="card">
+          <div class="card-head">
+            <div class="score">
+              <svg class="ring-bg" viewBox="0 0 58 58"><circle class="t" cx="29" cy="29" r="26"/><circle class="v" cx="29" cy="29" r="26" stroke-dasharray="163.4" stroke-dashoffset="32.7"/></svg>
+              <b>80</b>
             </div>
-            <p class="snarr">Closest stylistic read on the ball — strong dribble success, slightly below on shot volume. At the top of your value band but with resale headroom.</p>
-            <div class="saacts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
+            <div class="ident">
+              <div class="eyebrow">Two-footed wide forward</div>
+              <div class="nm"><a>Martim Neto</a></div>
+              <div class="mt"><b>LW</b><span class="sep">·</span>Age <b>19</b><span class="sep">·</span><b>€4.00M</b><span class="sep">·</span>Elche CF</div>
+            </div>
+            <span class="fit">Style <b>+12</b></span>
+          </div>
+          <div class="card-stats">
+            <div class="cs"><div class="n">47<span class="p">·64%</span></div><div class="l">Dribbles · success</div></div>
+            <div class="cs"><div class="n">19<span class="p">·47%</span></div><div class="l">Shots · on target</div></div>
+            <div class="cs"><div class="n">3<span class="a">G</span> 4<span class="a">A</span></div><div class="l">Output · 22 apps</div></div>
+            <div class="cs"><div class="n">45<span class="p">%</span></div><div class="l">Duels won</div></div>
+          </div>
+          <div class="card-foot">
+            <p class="why"><span class="q">Why:</span>Closest stylistic read on the ball — strong dribble success, slightly below on shot volume, with resale headroom.</p>
+            <div class="acts"><a class="btn ghost">TM →</a><button class="btn gold">+ Shortlist</button></div>
           </div>
         </div>
 
