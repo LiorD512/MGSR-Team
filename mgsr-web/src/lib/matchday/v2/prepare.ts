@@ -30,6 +30,28 @@ export interface PreparedLayers {
  * image doesn't actually contain a keyable magenta field (so we don't ship a
  * rectangle).
  */
+/**
+ * Shrink a cutout's alpha mask by ~1px so the outermost ring of edge pixels
+ * (where chroma spill lingers) is removed. Done by thresholding a slightly
+ * blurred alpha channel and reapplying it.
+ */
+async function erodeAlpha(png: Buffer): Promise<Buffer> {
+  const base = sharp(png).ensureAlpha();
+  const meta = await base.metadata();
+  if (!meta.width || !meta.height) return png;
+  // Erode: blur the alpha a touch, then push mid values to 0 (threshold high),
+  // which pulls the mask edge inward by about a pixel.
+  const alpha = await sharp(png)
+    .ensureAlpha()
+    .extractChannel(3)
+    .blur(1)
+    .linear(2.2, -200) // steepen + bias so partial edges drop out
+    .toColourspace('b-w')
+    .toBuffer();
+  const rgb = await sharp(png).removeAlpha().toBuffer();
+  return sharp(rgb).joinChannel(alpha).png().toBuffer();
+}
+
 async function keyOutMagenta(buf: Buffer): Promise<Buffer | null> {
   const img = sharp(buf).ensureAlpha();
   const { width, height } = await img.metadata();
@@ -40,18 +62,28 @@ async function keyOutMagenta(buf: Buffer): Promise<Buffer | null> {
   let keyed = 0;
   for (let i = 0; i < data.length; i += ch) {
     const r = data[i], g = data[i + 1], b = data[i + 2];
-    // Distance from pure magenta (255,0,255). Magenta = high R, low G, high B.
     const dist = Math.sqrt((r - CHROMA_KEY.r) ** 2 + (g - CHROMA_KEY.g) ** 2 + (b - CHROMA_KEY.b) ** 2);
-    if (dist < 70) {
-      data[i + 3] = 0; // fully transparent
+
+    if (dist < 90) {
+      // Core magenta → fully transparent (wider core removes more fringe).
+      data[i + 3] = 0;
       keyed++;
-    } else if (dist < 130) {
-      // Edge feather: partial alpha, and pull magenta spill out of the colour.
-      const a = Math.round(((dist - 70) / 60) * 255);
+      continue;
+    }
+    if (dist < 170) {
+      // Edge feather: ramp alpha from 0→full across the transition band.
+      const a = Math.round(((dist - 90) / 80) * 255);
       data[i + 3] = Math.min(data[i + 3], a);
-      // de-spill: clamp green up toward r/b average to neutralise magenta tint
-      const avg = (r + b) / 2;
-      if (g < avg) data[i + 1] = Math.round((g + avg) / 2);
+    }
+
+    // Magenta DE-SPILL on every surviving pixel: the pink fringe is pixels where
+    // red & blue are high but green is suppressed. Whenever green is the
+    // minority channel and R/B are both elevated, lift green toward their
+    // average to neutralise the magenta cast — this kills the pink border.
+    const avgRB = (r + b) / 2;
+    if (g < avgRB && r > 90 && b > 90) {
+      // Pull green most of the way up to avg (0.85) → near-grey neutralisation.
+      data[i + 1] = Math.round(g + (avgRB - g) * 0.85);
     }
   }
   // If almost nothing was keyed, the model didn't give us a magenta field —
@@ -59,9 +91,11 @@ async function keyOutMagenta(buf: Buffer): Promise<Buffer | null> {
   const ratio = keyed / (width * height);
   if (ratio < 0.04) return null;
 
+  // One extra erode step: shrink the alpha mask by ~1px so any last ring of
+  // magenta-tinted edge pixels is cut away entirely.
   const out = await sharp(data, { raw: { width, height, channels: ch } }).png().toBuffer();
-  // Trim the now-transparent border to the subject.
-  return sharp(out).trim({ threshold: 1 }).png().toBuffer();
+  const eroded = await erodeAlpha(out);
+  return sharp(eroded).trim({ threshold: 1 }).png().toBuffer();
 }
 
 /** Greyscale a transparent cutout while preserving its alpha, for the backdrop. */

@@ -104,16 +104,27 @@ async function wikipediaCrestUrl(clubName: string): Promise<string | null> {
     const titles = Object.values(payload?.query?.pages ?? {})
       .map((p) => p?.title)
       .filter((t): t is string => Boolean(t));
-    // Only accept a page that is actually about a football/soccer club. "Garliava"
-    // (a town) would otherwise match and hand back its church photo. Require a
-    // club signal in the title; reject obvious non-club pages.
-    // Accept club pages including dotted forms like "F.C."/"A.C.". Reject pages
-    // that are clearly a place/list (e.g. "Acre, Israel", "List of ... clubs").
+
+    // Wikipedia ranks by relevance, NOT "is this the exact club" — searching
+    // "FC Ballkani" returns "FC Viktoria Plzeň" first. So don't take the first
+    // club-like title; pick the one that best MATCHES the requested club name.
     const isClubTitle = (t: string) => {
-      if (/^list of/i.test(t) || /,\s/.test(t)) return false;
-      return /(\bF\.?C\.?\b|\bF\.?K\.?\b|\bC\.?F\.?\b|\bS\.?C\.?\b|\bA\.?C\.?\b|football|soccer|\bunited\b|\bathletic\b|\bsporting\b)/i.test(t);
+      if (/^list of/i.test(t) || /\bfootball in\b/i.test(t) || /\bseason\b/i.test(t)) return false;
+      if (/,\s/.test(t)) return false; // place pages like "Acre, Israel"
+      return /(\bF\.?C\.?\b|\bF\.?K\.?\b|\bC\.?F\.?\b|\bS\.?C\.?\b|\bA\.?C\.?\b|\bK\.?F\.?\b|football|soccer|\bunited\b|\bathletic\b|\bsporting\b)/i.test(
+        t
+      );
     };
-    const title = titles.find(isClubTitle);
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const GENERIC = new Set(['fc', 'fk', 'cf', 'sc', 'ac', 'kf', 'football', 'club', 'the', 'united', 'city', 'sporting', 'athletic']);
+    const keyTokens = norm(clubName).split(' ').filter((w) => w.length > 2 && !GENERIC.has(w));
+    const scored = titles
+      .filter(isClubTitle)
+      .map((t) => ({ t, matched: keyTokens.filter((k) => norm(t).includes(k)).length }))
+      .sort((a, b) => b.matched - a.matched);
+    // Require a distinctive token to match; otherwise return nothing (and fall
+    // back to the supplied crest) rather than hand back a different club.
+    const title = scored.find((s) => s.matched > 0)?.t ?? (keyTokens.length === 0 ? scored[0]?.t : undefined);
     if (!title) return null;
 
     const page = await fetch(`https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`, {
