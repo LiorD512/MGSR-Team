@@ -75,6 +75,54 @@ function ageBucket(v?: number): string {
   return '>28';
 }
 
+/**
+ * Continent / region buckets emitted by extractNationality. These are NOT
+ * single countries, so we don't apply a client-side country filter for them
+ * (the backend handles region expansion); listed here so the filter can skip.
+ */
+const NATIONALITY_REGION_KEYS = new Set([
+  'african', 'south_american', 'european', 'scandinavian', 'balkan',
+  'north_american', 'central_american', 'asian',
+]);
+
+/**
+ * Map a country key (as produced by extractNationality) to the citizenship
+ * substrings that should count as a match. Most keys already equal the
+ * Transfermarkt citizenship string lower-cased; only the exceptions are listed.
+ */
+const CITIZENSHIP_ALIASES: Record<string, string[]> = {
+  'united states': ['united states', 'usa'],
+  korea: ['korea'], // matches "Korea, South" / "South Korea"
+  'czech republic': ['czech'],
+  'bosnia-herzegovina': ['bosnia'],
+  'north macedonia': ['macedonia'],
+  "cote d'ivoire": ["cote d'ivoire", 'ivory coast', 'côte', 'ivoire'],
+  'the gambia': ['gambia'],
+  netherlands: ['netherlands', 'holland'],
+};
+
+/**
+ * True when a result's citizenship matches any of the requested country keys.
+ * `requested` is the comma-separated nationality string from the parser.
+ * Falls open (returns true) when nothing is requested, the request is a
+ * region bucket, or the result has no citizenship — so it never over-filters.
+ */
+function matchesRequestedNationality(citizenshipRaw: unknown, requested?: string): boolean {
+  if (!requested) return true;
+  const keys = requested.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean);
+  if (keys.length === 0) return true;
+  // If any requested token is a continent/region, let the backend decide.
+  if (keys.some((k) => NATIONALITY_REGION_KEYS.has(k))) return true;
+
+  const cit = String(citizenshipRaw ?? '').trim().toLowerCase();
+  if (!cit) return true; // unknown citizenship — don't drop
+
+  return keys.some((key) => {
+    const aliases = CITIZENSHIP_ALIASES[key] ?? [key];
+    return aliases.some((a) => cit.includes(a));
+  });
+}
+
 function buildExposureClusterKey(parsed: {
   position?: string;
   nationality?: string;
@@ -454,6 +502,25 @@ async function fetchFreesearch(
               : ` 🔄 From Transfermarkt (free agents + expiring contracts)`;
           }
         } catch { /* non-fatal */ }
+      }
+    }
+
+    // Apply nationality filter — the freesearch server may not restrict by
+    // citizenship, so enforce the requested country/countries client-side.
+    // Falls open on unknown citizenship or region buckets, so it never
+    // over-filters; only drops results that clearly don't match.
+    if (parsed.nationality && !NATIONALITY_REGION_KEYS.has(parsed.nationality.split(',')[0].trim().toLowerCase())) {
+      const before = results.length;
+      const filtered = results.filter((p) => matchesRequestedNationality(p.citizenship, parsed.nationality));
+      // Only apply when it leaves a usable pool — guards against a mismatch
+      // between our country keys and an unexpected citizenship format.
+      if (filtered.length > 0) {
+        results = filtered;
+        if (results.length < before) {
+          console.log(`[AI Scout] Freesearch nationality filter (${parsed.nationality}): ${before} → ${results.length}`);
+        }
+      } else {
+        console.log(`[AI Scout] Freesearch nationality filter (${parsed.nationality}) matched 0 — keeping unfiltered ${before}`);
       }
     }
 

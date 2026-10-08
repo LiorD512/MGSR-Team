@@ -406,101 +406,110 @@ function extractNationality(query: string): string | undefined {
   if (/אסיאתי|אסיאתיים|\basian\b/i.test(query)) return 'asian';
 
   // ── Specific nationalities → country name for backend substring match ──
+  // Each regex matches both the demonym/adjective ("portuguese", "belgian")
+  // AND the country-noun ("portugal", "belgium") so queries phrased as
+  // "players from Belgium or Portugal" are recognised, not just "Belgian".
   const NAT: [RegExp, string][] = [
     // South America
-    [/ברזילאי|ברזילאים|\bbrazilian\b/i, 'brazil'],
-    [/ארגנטינאי|ארגנטינאים|\bargentin(?:e|ean|ian)\b/i, 'argentina'],
-    [/אורוגוואי|\buruguayan\b/i, 'uruguay'],
-    [/קולומביאני|קולומביאנים|\bcolombian\b/i, 'colombia'],
-    [/צ'ילאני|צ'יליאני|\bchilean\b/i, 'chile'],
-    [/פרגוואי|\bparaguayan\b/i, 'paraguay'],
-    [/פרואני|\bperuvian\b/i, 'peru'],
-    [/אקוואדורי|\becuadorian\b/i, 'ecuador'],
-    [/ונצואלי|\bvenezuelan\b/i, 'venezuela'],
-    [/בוליביאני|\bbolivian\b/i, 'bolivia'],
+    [/ברזילאי|ברזילאים|\bbrazil(?:ian)?\b/i, 'brazil'],
+    [/ארגנטינאי|ארגנטינאים|\bargentin(?:a|e|ean|ian)\b/i, 'argentina'],
+    [/אורוגוואי|\buruguay(?:an)?\b/i, 'uruguay'],
+    [/קולומביאני|קולומביאנים|\bcolombia(?:n)?\b/i, 'colombia'],
+    [/צ'ילאני|צ'יליאני|\bchile(?:an)?\b/i, 'chile'],
+    [/פרגוואי|\bparaguay(?:an)?\b/i, 'paraguay'],
+    [/פרואני|\bperu(?:vian)?\b/i, 'peru'],
+    [/אקוואדורי|\becuador(?:ian)?\b/i, 'ecuador'],
+    [/ונצואלי|\bvenezuela(?:n)?\b/i, 'venezuela'],
+    [/בוליביאני|\bbolivia(?:n)?\b/i, 'bolivia'],
     // Africa
-    [/ניגרי|ניגרים|\bnigerian\b/i, 'nigeria'],
-    [/גאני|גאנים|\bghanaian\b/i, 'ghana'],
-    [/סנגלי|סנגלים|\bsenegalese\b/i, 'senegal'],
-    [/קמרוני|קמרונים|\bcameroonian\b/i, 'cameroon'],
-    [/מצרי|מצרים|\begyptian\b/i, 'egypt'],
-    [/מרוקאי|מרוקאים|\bmoroccan\b/i, 'morocco'],
-    [/אלג'ירי|אלג'ירים|\balgerian\b/i, 'algeria'],
-    [/טוניסאי|טוניסים|\btunisian\b/i, 'tunisia'],
+    [/ניגרי|ניגרים|\bnigeria(?:n)?\b/i, 'nigeria'],
+    [/גאני|גאנים|\bghana(?:ian)?\b/i, 'ghana'],
+    [/סנגלי|סנגלים|\bsenegal(?:ese)?\b/i, 'senegal'],
+    [/קמרוני|קמרונים|\bcameroon(?:ian)?\b/i, 'cameroon'],
+    [/מצרי|מצרים|\begypt(?:ian)?\b/i, 'egypt'],
+    [/מרוקאי|מרוקאים|\bmorocc(?:o|an)\b/i, 'morocco'],
+    [/אלג'ירי|אלג'ירים|\balgeria(?:n)?\b/i, 'algeria'],
+    [/טוניסאי|טוניסים|\btunisia(?:n)?\b/i, 'tunisia'],
     [/חוף\s*השנהב|איבורי|\bivorian\b|\bcote\s*d.?ivoire\b|\bivory\s*coast\b/i, "cote d'ivoire"],
-    [/מאלי|\bmalian\b/i, 'mali'],
-    [/גיניאני|\bguinean\b/i, 'guinea'],
-    [/קונגולזי|\bcongolese\b/i, 'congo'],
-    [/דרום\s*אפריקאי|\bsouth\s*african\b/i, 'south africa'],
-    [/גמביאני|\bgambian\b/i, 'the gambia'],
-    [/מוזמביקי|\bmozambican\b/i, 'mozambique'],
-    [/זימבבואני|\bzimbabwean\b/i, 'zimbabwe'],
-    [/זמביאני|\bzambian\b/i, 'zambia'],
-    [/בורקינבי|\bburkinab[eé]\b/i, 'burkina faso'],
-    [/טוגולזי|\btogolese\b/i, 'togo'],
-    [/בניני|\bbeninese\b/i, 'benin'],
+    [/מאלי|\bmali(?:an)?\b/i, 'mali'],
+    [/גיניאני|\bguinea(?:n)?\b/i, 'guinea'],
+    [/קונגולזי|\bcongo(?:lese)?\b/i, 'congo'],
+    [/דרום\s*אפריקאי|\bsouth\s*africa(?:n)?\b/i, 'south africa'],
+    [/גמביאני|\bgambia(?:n)?\b/i, 'the gambia'],
+    [/מוזמביקי|\bmozambi(?:que|can)\b/i, 'mozambique'],
+    [/זימבבואני|\bzimbabwe(?:an)?\b/i, 'zimbabwe'],
+    [/זמביאני|\bzambia(?:n)?\b/i, 'zambia'],
+    [/בורקינבי|\bburkina\s*faso\b|\bburkinab[eé]\b/i, 'burkina faso'],
+    [/טוגולזי|\btogo(?:lese)?\b/i, 'togo'],
+    [/בניני|\bbenin(?:ese)?\b/i, 'benin'],
     // Europe – Western
-    [/צרפתי|צרפתים|\bfrench\b/i, 'france'],
-    [/פורטוגלי|פורטוגלים|\bportuguese\b/i, 'portugal'],
-    [/ספרדי|ספרדים|\bspanish\b/i, 'spain'],
-    [/גרמני|גרמנים|\bgerman\b/i, 'germany'],
-    [/הולנדי|הולנדים|\bdutch\b/i, 'netherlands'],
-    [/בלגי|בלגים|\bbelgian\b/i, 'belgium'],
-    [/איטלקי|איטלקים|\bitalian\b/i, 'italy'],
-    [/שוויצרי|שוויצרים|\bswiss\b/i, 'switzerland'],
-    [/אוסטרי|\baustrian\b/i, 'austria'],
+    [/צרפתי|צרפתים|\bfran(?:ce|ch)\b/i, 'france'],
+    [/פורטוגלי|פורטוגלים|\bportug(?:al|uese)\b/i, 'portugal'],
+    [/ספרדי|ספרדים|\bspa(?:in|nish)\b/i, 'spain'],
+    [/גרמני|גרמנים|\bgerman(?:y)?\b/i, 'germany'],
+    [/הולנדי|הולנדים|\bdutch\b|\b(?:the\s*)?netherlands\b|\bholland\b/i, 'netherlands'],
+    [/בלגי|בלגים|\bbelgi(?:um|an)\b/i, 'belgium'],
+    [/איטלקי|איטלקים|\bital(?:y|ian)\b/i, 'italy'],
+    [/שוויצרי|שוויצרים|\bswiss\b|\bswitzerland\b/i, 'switzerland'],
+    [/אוסטרי|\baustria(?:n)?\b/i, 'austria'],
     // Europe – British Isles
-    [/אנגלי|אנגלים|\benglish\b/i, 'england'],
-    [/סקוטי|סקוטים|\bscottish\b|\bscots?\b/i, 'scotland'],
-    [/וולשי|\bwelsh\b/i, 'wales'],
-    [/אירי|\birish\b/i, 'ireland'],
+    [/אנגלי|אנגלים|\beng(?:land|lish)\b/i, 'england'],
+    [/סקוטי|סקוטים|\bscot(?:land|tish|s)?\b/i, 'scotland'],
+    [/וולשי|\bwel(?:sh|es)\b|\bwales\b/i, 'wales'],
+    [/אירי|\birish\b|\bireland\b/i, 'ireland'],
     // Europe – Nordics
-    [/דני|\bdanish\b|\bdane\b/i, 'denmark'],
-    [/נורבגי|\bnorwegian\b/i, 'norway'],
-    [/שוודי|\bswedish\b/i, 'sweden'],
-    [/פיני|\bfinnish\b/i, 'finland'],
-    [/איסלנדי|\bicelandic\b/i, 'iceland'],
+    [/דני|\bden(?:mark)\b|\bdanish\b|\bdane\b/i, 'denmark'],
+    [/נורבגי|\bnorway\b|\bnorwegian\b/i, 'norway'],
+    [/שוודי|\bsweden\b|\bswedish\b/i, 'sweden'],
+    [/פיני|\bfin(?:land|nish)\b/i, 'finland'],
+    [/איסלנדי|\biceland(?:ic)?\b/i, 'iceland'],
     // Europe – Eastern / Balkans
-    [/קרואטי|קרואטים|\bcroatian\b|\bcroat\b/i, 'croatia'],
-    [/סרבי|סרבים|\bserbian\b|\bserb\b/i, 'serbia'],
-    [/בוסני|\bbosnian\b/i, 'bosnia-herzegovina'],
-    [/אלבני|\balbanian\b/i, 'albania'],
-    [/קוסובי|\bkosovar\b|\bkosovan\b/i, 'kosovo'],
-    [/מונטנגרי|\bmontenegrin\b/i, 'montenegro'],
-    [/צפון\s*מקדוני|מקדוני|\bnorth\s*macedonian\b|\bmacedonian\b/i, 'north macedonia'],
-    [/סלובני|\bslovenian\b/i, 'slovenia'],
-    [/יווני|יוונים|\bgreek\b/i, 'greece'],
-    [/רומני|\bromanian\b/i, 'romania'],
-    [/בולגרי|\bbulgarian\b/i, 'bulgaria'],
+    [/קרואטי|קרואטים|\bcroatia(?:n)?\b|\bcroat\b/i, 'croatia'],
+    [/סרבי|סרבים|\bserbia(?:n)?\b|\bserb\b/i, 'serbia'],
+    [/בוסני|\bbosnia(?:n)?\b/i, 'bosnia-herzegovina'],
+    [/אלבני|\balbania(?:n)?\b/i, 'albania'],
+    [/קוסובי|\bkosov(?:o|ar|an)\b/i, 'kosovo'],
+    [/מונטנגרי|\bmontenegr(?:o|in)\b/i, 'montenegro'],
+    [/צפון\s*מקדוני|מקדוני|\bnorth\s*macedonia(?:n)?\b|\bmacedonia(?:n)?\b/i, 'north macedonia'],
+    [/סלובני|\bsloven(?:ia|ian)\b/i, 'slovenia'],
+    [/יווני|יוונים|\bgree(?:ce|k)\b/i, 'greece'],
+    [/רומני|\bromania(?:n)?\b/i, 'romania'],
+    [/בולגרי|\bbulgaria(?:n)?\b/i, 'bulgaria'],
     // Europe – Other Eastern
-    [/פולני|פולנים|\bpolish\b/i, 'poland'],
-    [/צ'כי|צ'כים|\bczech\b/i, 'czech republic'],
-    [/סלובקי|\bslovak\b/i, 'slovakia'],
-    [/הונגרי|\bhungarian\b/i, 'hungary'],
-    [/אוקראיני|\bukrainian\b/i, 'ukraine'],
-    [/רוסי|רוסים|\brussian\b/i, 'russia'],
-    [/גאורגי|\bgeorgian\b/i, 'georgia'],
-    [/טורקי|טורקים|\bturkish\b/i, 'turkey'],
+    [/פולני|פולנים|\bpol(?:and|ish)\b/i, 'poland'],
+    [/צ'כי|צ'כים|\bczech(?:ia)?\b/i, 'czech republic'],
+    [/סלובקי|\bslovak(?:ia)?\b/i, 'slovakia'],
+    [/הונגרי|\bhungar(?:y|ian)\b/i, 'hungary'],
+    [/אוקראיני|\bukrain(?:e|ian)\b/i, 'ukraine'],
+    [/רוסי|רוסים|\brussia(?:n)?\b/i, 'russia'],
+    [/גאורגי|\bgeorgia(?:n)?\b/i, 'georgia'],
+    [/טורקי|טורקים|\bturk(?:ey|ish)\b/i, 'turkey'],
     // North / Central America & Caribbean
-    [/מקסיקני|\bmexican\b/i, 'mexico'],
-    [/אמריקני|אמריקאי|\bamerican\b/i, 'united states'],
-    [/קנדי|\bcanadian\b/i, 'canada'],
-    [/ג'מייקני|\bjamaican\b/i, 'jamaica'],
-    [/קוסטה\s*ריקני|\bcosta\s*rican\b/i, 'costa rica'],
-    [/הונדורסי|\bhonduran\b/i, 'honduras'],
+    [/מקסיקני|\bmexic(?:o|an)\b/i, 'mexico'],
+    [/אמריקני|אמריקאי|\bamerican\b|\busa\b|\bunited\s*states\b/i, 'united states'],
+    [/קנדי|\bcanad(?:a|ian)\b/i, 'canada'],
+    [/ג'מייקני|\bjamaica(?:n)?\b/i, 'jamaica'],
+    [/קוסטה\s*ריקני|\bcosta\s*rica(?:n)?\b/i, 'costa rica'],
+    [/הונדורסי|\bhondur(?:as|an)\b/i, 'honduras'],
     // Asia / Oceania
-    [/יפני|\bjapanese\b/i, 'japan'],
-    [/קוריאני|\bkorean\b|\bsouth\s*korean\b/i, 'korea'],
-    [/אוסטרלי|\baustralian\b/i, 'australia'],
-    [/איראני|\biranian\b/i, 'iran'],
+    [/יפני|\bjapan(?:ese)?\b/i, 'japan'],
+    [/קוריאני|\bkorea(?:n)?\b|\bsouth\s*korean?\b/i, 'korea'],
+    [/אוסטרלי|\baustralia(?:n)?\b/i, 'australia'],
+    [/איראני|\biran(?:ian)?\b/i, 'iran'],
     // Catch-all
-    [/כורדי|כורדים|\bkurdish\b/i, 'kurdistan'],
+    [/כורדי|כורדים|\bkurd(?:ish|istan)\b/i, 'kurdistan'],
   ];
 
+  // Collect EVERY matching country (not first-match), so multi-country briefs
+  // like "Belgium or Portugal" capture both. Returned as a comma-separated
+  // list; de-duplicated while preserving match order.
+  const matched: string[] = [];
   for (const [pattern, value] of NAT) {
-    if (pattern.test(query)) return value;
+    if (pattern.test(query) && !matched.includes(value)) {
+      matched.push(value);
+    }
   }
-  return undefined;
+  return matched.length ? matched.join(',') : undefined;
 }
 
 /** Extract preferred foot: רגל ימין → right, רגל שמאל → left, shorthand שמאלי/ימני (excluding position contexts) */
@@ -739,10 +748,19 @@ function buildInterpretation(
     const f = footNames[parsed.foot] || { en: parsed.foot, he: parsed.foot };
     lines.push(lang === 'he' ? `🦶 רגל: ${f.he}` : `🦶 Foot: ${f.en}`);
   }
-  // Nationality
+  // Nationality — may be a comma-separated list of countries ("belgium,portugal").
   if (parsed.nationality) {
-    const n = natDisplay[parsed.nationality] || { en: parsed.nationality, he: parsed.nationality };
-    lines.push(lang === 'he' ? `🌍 לאום: ${n.he}` : `🌍 Nationality: ${n.en}`);
+    const names = parsed.nationality
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .map((c) => {
+        const n = natDisplay[c] || { en: c, he: c };
+        return lang === 'he' ? n.he : n.en;
+      });
+    if (names.length) {
+      lines.push(lang === 'he' ? `🌍 לאום: ${names.join(' / ')}` : `🌍 Nationality: ${names.join(' / ')}`);
+    }
   }
   // Free agent
   if (parsed.freeAgent) {
