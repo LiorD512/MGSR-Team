@@ -5487,6 +5487,10 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-wr-hero .hero-left .who { margin-top: 12px; color: #c9c3b7; font: 10px/1.7 var(--mono); text-transform: uppercase; }
 .brit-room .brit-wr-hero .hero-left .who b { color: var(--gold-soft); font-weight: 500; }
 .brit-room .brit-wr-hero .hero-left .style-tag { margin-top: 14px; color: var(--gold-soft); font: 10px/1.4 var(--mono); text-transform: uppercase; }
+.brit-room .brit-wr-hero .hero-left .hero-archetype { margin-top: auto; padding-top: 22px; display: flex; flex-direction: column; gap: 7px; }
+.brit-room .brit-wr-hero .hero-left .hero-archetype .al { color: #969188; font: 8px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em; }
+.brit-room .brit-wr-hero .hero-left .hero-archetype b { color: var(--paper); font: 500 20px/1.05 var(--display); text-transform: uppercase; letter-spacing: -.01em; }
+.brit-room .brit-wr-hero .hero-left .hero-archetype .asub { color: var(--gold-soft); font: 9px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .03em; }
 .brit-room .brit-wr-hero .hero-left .radar-wrap { margin-top: auto; padding-top: 20px; display: flex; justify-content: center; }
 .brit-room .brit-wr-hero .hero-left .radar { width: 190px; height: auto; overflow: visible; }
 .brit-room .brit-wr-hero .hero-left .radar .grid { fill: none; stroke: rgba(243,240,232,.14); stroke-width: 1; }
@@ -5496,7 +5500,10 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-wr-hero .hero-left .radar .lbl { fill: #d8d2c6; font: 500 10px/1 var(--mono); letter-spacing: .02em; text-transform: uppercase; }
 .brit-room .brit-wr-hero .hero-right { padding: 22px 26px; display: flex; flex-direction: column; }
 .brit-room .brit-wr-hero .sig-title { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
-.brit-room .brit-wr-hero .sig-title::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.brit-room .brit-wr-hero .sig-title > span:first-child { white-space: nowrap; }
+.brit-room .brit-wr-hero .sig-title::after { content: ''; order: 1; flex: 1; height: 1px; background: var(--line); }
+.brit-room .brit-wr-hero .sig-title .sig-sparse { order: 2; flex: none; padding: 4px 8px; border: 1px solid var(--amber); color: var(--amber); font: 8px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.brit-room .brit-wr-hero .sig-tiles.sparse { grid-template-columns: 1fr; }
 .brit-room .brit-wr-hero .sig-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .brit-room .brit-wr-hero .sig-tile { display: flex; align-items: center; gap: 14px; border: 1px solid var(--line); background: var(--paper); padding: 13px 15px; }
 .brit-room .brit-wr-hero .sig-tile .big { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

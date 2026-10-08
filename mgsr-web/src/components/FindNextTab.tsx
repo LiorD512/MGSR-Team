@@ -771,7 +771,13 @@ export default function FindNextTab() {
 
       {/* Reference player signature hero */}
       {response?.reference_player && (() => {
-        const radar = response.signature_stats ? buildRadar(response.signature_stats) : null;
+        const sigStats = response.signature_stats ?? [];
+        const statCount = sigStats.length;
+        const radar = buildRadar(sigStats);
+        // Fewer than 3 metrics = a radar is meaningless; flag the thin sample
+        // so the panel reads as intentional, not broken.
+        const sparse = statCount > 0 && statCount < 3;
+        const avgPct = statCount ? Math.round(sigStats.reduce((a, s) => a + (s.percentile || 0), 0) / statCount) : 0;
         return (
         <div className="brit-wr-hero">
           <div className="hero-left">
@@ -787,7 +793,7 @@ export default function FindNextTab() {
             {response.reference_player.playing_style && (
               <div className="style-tag">{response.reference_player.playing_style}</div>
             )}
-            {radar && (
+            {radar ? (
               <div className="radar-wrap">
                 <svg className="radar" viewBox="-132 -116 264 232" aria-label="Statistical signature radar">
                   {radar.rings.map((pts, i) => <polygon key={`ring-${i}`} className="grid" points={pts} />)}
@@ -797,16 +803,33 @@ export default function FindNextTab() {
                   {radar.labels.map((l, i) => <text key={`lbl-${i}`} className="lbl" x={l.x} y={l.y} textAnchor={l.anchor}>{l.text}</text>)}
                 </svg>
               </div>
+            ) : (
+              // No full radar (< 3 metrics): fill the panel with the archetype
+              // read instead of leaving a gap.
+              <div className="hero-archetype">
+                <span className="al">{isHe ? 'ארכיטיפ' : 'Archetype'}</span>
+                <b>{response.reference_player.playing_style || shortenPosition(response.reference_player.position)}</b>
+                <span className="asub">
+                  {statCount > 0
+                    ? (isHe ? `דירוג חתימה ממוצע · אחוזון ${avgPct}` : `Avg signature rank · ${avgPct}th pct`)
+                    : (isHe ? 'אין נתוני חתימה סטטיסטית' : 'No statistical signature on file')}
+                </span>
+              </div>
             )}
           </div>
           <div className="hero-right">
-            {response.signature_stats && response.signature_stats.length > 0 ? (
+            {statCount > 0 ? (
               <>
                 <p className="sig-title">
-                  {isHe ? 'חתימה סטטיסטית · ל-90 דקות ואחוזון מול עמדה' : 'Statistical signature · per 90 output & percentile rank'}
+                  <span>{isHe ? 'חתימה סטטיסטית · ל-90 דקות ואחוזון מול עמדה' : 'Statistical signature · per 90 output & percentile rank'}</span>
+                  {sparse && (
+                    <span className="sig-sparse" title={isHe ? 'מעט מדדים אמינים זמינים לשחקן זה' : 'Few reliable metrics on file for this player'}>
+                      {isHe ? `${statCount} מדדים` : `${statCount} metrics`}
+                    </span>
+                  )}
                 </p>
-                <div className="sig-tiles">
-                  {response.signature_stats.map((stat) => {
+                <div className={`sig-tiles${sparse ? ' sparse' : ''}`}>
+                  {sigStats.map((stat) => {
                     const pctRank = Math.max(0, Math.min(100, stat.percentile));
                     // ring circumference for r=18 ≈ 113.1
                     const dash = 113.1 * (1 - pctRank / 100);
