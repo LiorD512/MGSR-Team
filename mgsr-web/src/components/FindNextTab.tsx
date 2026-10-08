@@ -162,6 +162,50 @@ function deriveStats(p: FindNextResult): DerivedStats | null {
   };
 }
 
+/**
+ * Turn the backend's emoji-prefixed explanation into a short, clean "why".
+ * The raw string looks like:
+ *   "🎯 Profile match to Leroy Sané: 94%\n⚽ Style: Winger\n✅ Same playing
+ *    style as Leroy Sané\n📊 Signature stats: Dribbles/90: 5.37 | …\n💰
+ *    Undervalued relative to stats: €250k\n📋 Contract: 31/12/2027"
+ * We drop the lines already shown elsewhere (profile-match % is in the ring,
+ * the raw signature stats are in the stat band) and keep the human insight:
+ * the "same playing style" note plus any value/contract angle. Emoji are
+ * stripped so nothing renders as a tofu box.
+ */
+function cleanWhy(raw: string | null | undefined, refName?: string): string {
+  if (!raw || !raw.trim()) return '';
+  const isSymbol = (cp: number) =>
+    (cp >= 0x2190 && cp <= 0x27bf) || // arrows, misc symbols, dingbats
+    (cp >= 0x2b00 && cp <= 0x2bff) || // misc symbols & arrows
+    cp === 0xfe0e || cp === 0xfe0f || // variation selectors
+    (cp >= 0x1f000 && cp <= 0x1faff) || // emoji planes
+    (cp >= 0x1f1e6 && cp <= 0x1f1ff); // regional indicators
+  const stripEmoji = (s: string) =>
+    Array.from(s)
+      .filter((ch) => !isSymbol(ch.codePointAt(0) ?? 0))
+      .join('')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+  const keep: string[] = [];
+  for (const line of raw.split('\n')) {
+    const t = stripEmoji(line);
+    if (!t) continue;
+    const low = t.toLowerCase();
+    // Drop lines already represented in the ring / stat band.
+    if (low.startsWith('profile match')) continue;
+    if (low.startsWith('signature stats')) continue;
+    // "Style: Winger" duplicates the eyebrow archetype — skip the bare label.
+    if (/^style:\s*\S+$/i.test(t)) continue;
+    keep.push(t);
+  }
+  let out = keep.join(' · ');
+  // Tidy the common "Same playing style as X" phrasing.
+  if (refName) out = out.replace(new RegExp(`same playing style as ${refName}`, 'i'), `Same style as ${refName}`);
+  return out;
+}
+
 interface FindNextResponse {
   reference_player?: ReferencePlayer;
   signature_stats?: SignatureStat[];
@@ -770,7 +814,7 @@ export default function FindNextTab() {
                 return { label: isHe ? 'חתימה' : 'Signature', val: String(Math.round(player.signature_match)) };
               })();
               const clubLine = player.club || player.api_team || player.league || '—';
-              const why = (player.scout_narrative || player.explanation || '').trim();
+              const why = cleanWhy(player.scout_narrative || player.explanation, response?.reference_player?.name);
               return (
                 <div key={url || player.name} className="brit-wr-card">
                   <div className="card-head">
