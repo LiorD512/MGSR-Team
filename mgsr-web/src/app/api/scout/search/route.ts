@@ -1279,11 +1279,65 @@ async function fetchScoutRecruitment(
   },
   lang: string
 ): Promise<{ results?: Record<string, unknown>[] }> {
+  // The scout /recruitment endpoint matches ONE nationality via substring —
+  // a comma-joined value like "portugal,belgium" matches nobody. So when the
+  // brief names multiple countries, fan out one request per country and merge.
+  const nationalities = (parsed.nationality ?? '')
+    .split(',')
+    .map((n) => n.trim())
+    .filter(Boolean);
+
+  if (nationalities.length > 1) {
+    const perCountryLimit = parsed.limit ?? 15;
+    const settled = await Promise.allSettled(
+      nationalities.map((nat) =>
+        fetchScoutRecruitmentSingle({ ...parsed, nationality: nat, limit: perCountryLimit }, lang)
+      )
+    );
+    const merged: Record<string, unknown>[] = [];
+    const seen = new Set<string>();
+    for (const s of settled) {
+      if (s.status !== 'fulfilled') continue;
+      for (const p of s.value.results ?? []) {
+        const key = (typeof p.url === 'string' && p.url) || (typeof p.name === 'string' ? p.name : '');
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        merged.push(p);
+      }
+    }
+    // Re-rank the merged pool and cap to the requested limit.
+    merged.sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
+    console.log(`[AI Scout] Multi-nationality (${nationalities.join(', ')}) merged → ${merged.length} results`);
+    return { results: merged.slice(0, parsed.limit ?? 15) };
+  }
+
+  return fetchScoutRecruitmentSingle(parsed, lang);
+}
+
+/** Single /recruitment request. One nationality max (backend substring-matches one). */
+async function fetchScoutRecruitmentSingle(
+  parsed: {
+    position?: string;
+    ageMin?: number;
+    ageMax?: number;
+    foot?: string;
+    nationality?: string;
+    notes?: string;
+    transferFee?: string;
+    valueMin?: number;
+    valueMax?: number;
+    salaryRange?: string;
+    limit?: number;
+    excludeUrls?: string[];
+  },
+  lang: string
+): Promise<{ results?: Record<string, unknown>[] }> {
   const params = new URLSearchParams();
   if (parsed.position) params.set('position', parsed.position);
   if (parsed.ageMin != null) params.set('age_min', String(parsed.ageMin));
   if (parsed.ageMax != null) params.set('age_max', String(parsed.ageMax));
   if (parsed.foot?.trim()) params.set('foot', parsed.foot.trim());
+  // Only ever a single nationality here (caller splits multi-country).
   if (parsed.nationality?.trim()) params.set('nationality', parsed.nationality.trim());
   if (parsed.notes?.trim()) params.set('notes', parsed.notes.trim());
   if (parsed.transferFee?.trim()) params.set('transfer_fee', parsed.transferFee.trim());
