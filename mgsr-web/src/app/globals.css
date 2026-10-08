@@ -4788,7 +4788,7 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   background: rgba(8, 8, 10, 0.72);
   backdrop-filter: blur(4px);
 }
-.matchday-drawer {
+.matchday-drawer-panel {
   position: relative;
   width: min(560px, 100%);
   height: 100%;
@@ -4799,7 +4799,7 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   animation: matchday-slide-in 0.26s ease;
 }
 [dir='rtl'] .matchday-drawer-overlay { justify-content: flex-start; }
-[dir='rtl'] .matchday-drawer { border-left: none; border-right: 4px solid var(--gold); animation-name: matchday-slide-in-rtl; }
+[dir='rtl'] .matchday-drawer-panel { border-left: none; border-right: 4px solid var(--gold); animation-name: matchday-slide-in-rtl; }
 @keyframes matchday-slide-in { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes matchday-slide-in-rtl { from { transform: translateX(-40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 

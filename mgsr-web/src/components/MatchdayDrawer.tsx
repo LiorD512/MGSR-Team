@@ -282,7 +282,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
         if (e.target === e.currentTarget && phase !== 'running') onClose();
       }}
     >
-      <div className="brit-drawer matchday-drawer">
+      <div className="matchday-drawer-panel">
         <button className="brit-close" onClick={onClose} aria-label={t('room_close')} disabled={phase === 'running'}>
           ×
         </button>
