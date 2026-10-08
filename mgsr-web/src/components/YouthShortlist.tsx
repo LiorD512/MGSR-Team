@@ -9,20 +9,34 @@
  * Mirrors MenShortlist's shell/classes; youth-scoped data and columns.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
-import { SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
-import { callShortlistRemove } from '@/lib/callables';
+import { CLUB_REQUESTS_COLLECTIONS, SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
+import {
+  callShortlistRemove,
+  callShortlistAddNote,
+  callShortlistUpdateNote,
+  callShortlistDeleteNote,
+} from '@/lib/callables';
+import { getAllAccounts, getCurrentAccountForShortlist, type AccountForShortlist } from '@/lib/accounts';
+import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
+import type { ClubRequest } from '@/lib/requestMatcher';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
+import NoteTextarea, { type NoteAccount } from '@/components/NoteTextarea';
 import YouthAddShortlistDrawer from '@/components/YouthAddShortlistDrawer';
+import YouthAddProspectDrawer from '@/components/YouthAddProspectDrawer';
+import YouthShortlistDrawer, { type YouthShortlistDrawerEntry } from '@/components/YouthShortlistDrawer';
 
 interface ShortlistNote {
   text: string;
   createdBy?: string;
+  createdByHebrewName?: string;
+  createdById?: string;
   createdAt?: number;
 }
 interface YouthShortlistEntry {
@@ -57,6 +71,7 @@ interface YouthShortlistCache {
 }
 
 export default function YouthShortlist() {
+  const { user } = useAuth();
   const { t, lang, setLang, isRtl } = useLanguage();
 
   const cached = getScreenCache<YouthShortlistCache>('youth-shortlist');
@@ -69,18 +84,63 @@ export default function YouthShortlist() {
   const [ageGroupFilter, setAgeGroupFilter] = useState<string | null>(cached?.ageGroupFilter ?? null);
   const [withNotes, setWithNotes] = useState(cached?.withNotes ?? false);
 
+  // Target-intelligence drawer + demand/sign-to-academy wiring
+  const [drawerEntry, setDrawerEntry] = useState<YouthShortlistEntry | null>(null);
+  const [youthPlayers, setYouthPlayers] = useState<YouthPlayer[]>([]);
+  const [clubRequests, setClubRequests] = useState<ClubRequest[]>([]);
+  const [allAccounts, setAllAccounts] = useState<AccountForShortlist[]>([]);
+  const [signInitialUrl, setSignInitialUrl] = useState<string | null>(null);
+  const [showSignDrawer, setShowSignDrawer] = useState(false);
+  const pendingRemoveRef = useRef<Set<string>>(new Set());
+
+  // Note modal
+  const [noteEntry, setNoteEntry] = useState<YouthShortlistEntry | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [noteMode, setNoteMode] = useState<'add' | 'edit'>('add');
+  const [noteEditIndex, setNoteEditIndex] = useState(-1);
+  const [noteTaggedIds, setNoteTaggedIds] = useState<string[]>([]);
+  const [savingNote, setSavingNote] = useState(false);
+
   useEffect(() => {
     const col = SHORTLISTS_COLLECTIONS.youth;
     const unsub = onSnapshot(
       query(collection(db, col), orderBy('addedAt', 'desc')),
       (snap) => {
-        setEntries(snap.docs.map((d) => ({ tmProfileUrl: d.id, ...d.data() } as YouthShortlistEntry)));
+        const mapped = snap.docs.map((d) => ({ tmProfileUrl: d.id, ...d.data() } as YouthShortlistEntry));
+        const pending = pendingRemoveRef.current;
+        const filtered = pending.size > 0 ? mapped.filter((e) => !pending.has(e.tmProfileUrl)) : mapped;
+        const snapUrls = new Set(mapped.map((e) => e.tmProfileUrl));
+        Array.from(pending).forEach((u) => { if (!snapUrls.has(u)) pending.delete(u); });
+        setEntries(filtered);
         setReady(true);
       },
       () => setReady(true)
     );
     return () => unsub();
   }, []);
+
+  // Roster youth players (for IFA-form lookup) + active youth club requests (for demand matching)
+  useEffect(() => {
+    const unsubP = subscribePlayersYouth(setYouthPlayers);
+    const unsubR = onSnapshot(collection(db, CLUB_REQUESTS_COLLECTIONS.youth), (snap) => {
+      const reqs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ClubRequest & { status?: string }));
+      setClubRequests(reqs.filter((r) => r.status !== 'closed'));
+    }, () => setClubRequests([]));
+    return () => { unsubP(); unsubR(); };
+  }, []);
+
+  useEffect(() => {
+    getAllAccounts().then(setAllAccounts).catch(() => setAllAccounts([]));
+  }, []);
+
+  // Keep the open drawer in sync with real-time note/detail updates.
+  useEffect(() => {
+    if (drawerEntry) {
+      const updated = entries.find((e) => e.tmProfileUrl === drawerEntry.tmProfileUrl);
+      if (updated) setDrawerEntry(updated);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries]);
 
   useEffect(() => {
     setScreenCache<YouthShortlistCache>('youth-shortlist', { search, ageGroupFilter, withNotes });
@@ -123,14 +183,63 @@ export default function YouthShortlist() {
     ms ? new Date(ms).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' }) : '—';
 
   const removeEntry = async (e: YouthShortlistEntry) => {
-    setRemovingUrl(e.tmProfileUrl);
+    const url = e.tmProfileUrl;
+    pendingRemoveRef.current.add(url);
+    setEntries((prev) => prev.filter((x) => x.tmProfileUrl !== url));
+    if (drawerEntry?.tmProfileUrl === url) setDrawerEntry(null);
+    setRemovingUrl(url);
     try {
-      await callShortlistRemove({ platform: 'youth', tmProfileUrl: e.tmProfileUrl });
+      await callShortlistRemove({ platform: 'youth', tmProfileUrl: url });
     } catch {
-      /* ignore — optimistic UI */
+      pendingRemoveRef.current.delete(url);
     } finally {
       setRemovingUrl(null);
     }
+  };
+
+  // Promote a shortlist target to the youth academy roster.
+  const handleSignToRoster = (targetEntry: YouthShortlistDrawerEntry) => {
+    setDrawerEntry(null);
+    setSignInitialUrl(targetEntry.tmProfileUrl);
+    setShowSignDrawer(true);
+  };
+
+  // ── Notes ──
+  const openAddNote = (e: YouthShortlistEntry) => { setNoteEntry(e); setNoteMode('add'); setNoteText(''); setNoteEditIndex(-1); setNoteTaggedIds([]); };
+  const openEditNote = (e: YouthShortlistEntry, idx: number, text: string) => { setNoteEntry(e); setNoteMode('edit'); setNoteText(text); setNoteEditIndex(idx); setNoteTaggedIds([]); };
+  const closeNote = () => { setNoteEntry(null); setNoteText(''); setNoteEditIndex(-1); setNoteTaggedIds([]); };
+
+  const saveNote = async () => {
+    if (!noteEntry || !noteText.trim() || !user) return;
+    setSavingNote(true);
+    try {
+      if (noteMode === 'edit' && noteEditIndex >= 0) {
+        await callShortlistUpdateNote({ platform: 'youth', tmProfileUrl: noteEntry.tmProfileUrl, noteIndex: noteEditIndex, newText: noteText.trim() });
+      } else {
+        const account = await getCurrentAccountForShortlist(user);
+        await callShortlistAddNote({
+          platform: 'youth',
+          tmProfileUrl: noteEntry.tmProfileUrl,
+          noteText: noteText.trim(),
+          createdBy: account.name ?? 'Unknown',
+          createdByHebrewName: account.hebrewName ?? undefined,
+          createdById: account.id,
+          taggedAgentIds: noteTaggedIds.length ? noteTaggedIds : undefined,
+          agentName: account.name ?? undefined,
+          playerName: noteEntry.playerName ?? undefined,
+          playerImage: noteEntry.playerImage ?? undefined,
+        });
+      }
+      closeNote();
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const deleteNote = async (e: YouthShortlistEntry, idx: number) => {
+    try {
+      await callShortlistDeleteNote({ platform: 'youth', tmProfileUrl: e.tmProfileUrl, noteIndex: idx });
+    } catch { /* ignore */ }
   };
 
   return (
@@ -249,7 +358,7 @@ export default function YouthShortlist() {
                   </thead>
                   <tbody>
                     {list.map((e) => (
-                      <tr key={e.tmProfileUrl} style={{ cursor: 'default' }}>
+                      <tr key={e.tmProfileUrl} style={{ cursor: 'pointer' }} onClick={() => setDrawerEntry(e)}>
                         <td>
                           <div className="brit-cell-player">
                             {e.playerImage ? (
@@ -267,7 +376,7 @@ export default function YouthShortlist() {
                         <td><div className="brit-pos-tags">{positionsLabel(e)}</div></td>
                         <td className="brit-p-agent-cell">{agentName(e)}<br /><span className="brit-p-meta">{addedAgo(e.addedAt)}</span></td>
                         <td style={{ textAlign: 'end' }}>
-                          <div className="brit-flags">
+                          <div className="brit-flags" onClick={(ev) => ev.stopPropagation()}>
                             {(e.notes?.length ?? 0) > 0 && <span className="brit-tag mandate">{t('youth_with_notes')}</span>}
                             {e.ageGroup && <span className="brit-agtag">{e.ageGroup}</span>}
                             <button className="brit-sl-rm" onClick={() => removeEntry(e)} disabled={removingUrl === e.tmProfileUrl} title={t('shortlist_remove')}>✕</button>
@@ -284,8 +393,79 @@ export default function YouthShortlist() {
         </div>
       </div>
 
+      {/* Note modal (view / add / edit) */}
+      {noteEntry && (
+        <div className="brit-sl-modal-scrim" onClick={closeNote}>
+          <div className="brit-sl-modal" onClick={(ev) => ev.stopPropagation()} dir={isRtl ? 'rtl' : 'ltr'}>
+            <div className="brit-sl-modal-head">
+              <h3>{noteMode === 'edit' ? t('shortlist_notes_edit_title') : t('shortlist_notes_add_title')}</h3>
+              <button onClick={closeNote}>×</button>
+            </div>
+            <div className="brit-sl-modal-player">
+              {noteEntry.playerImage ? <img src={noteEntry.playerImage} alt="" /> : <div className="brit-p-thumb brit-p-thumb-ph" style={{ width: 40, height: 40 }}>{initials(noteEntry.playerName)}</div>}
+              <div>
+                <strong>{noteEntry.playerName || '—'}</strong>
+                <span>{[positionsLabel(noteEntry), clubDisplay(noteEntry)].filter(Boolean).join(' · ')}</span>
+              </div>
+            </div>
+            {noteMode === 'add' && (noteEntry.notes?.length ?? 0) > 0 && (
+              <div className="brit-sl-notelist">
+                {noteEntry.notes!.map((n, ni) => (
+                  <div className="brit-sl-noteitem" key={ni}>
+                    <p>{n.text}</p>
+                    <div className="meta">
+                      <span>{(isRtl ? n.createdByHebrewName || n.createdBy : n.createdBy) || '—'}</span>
+                      <span className="ops">
+                        <button onClick={() => openEditNote(noteEntry, ni, n.text)}>✎</button>
+                        <button className="del" onClick={() => deleteNote(noteEntry, ni)}>🗑</button>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <NoteTextarea
+              value={noteText}
+              onChange={setNoteText}
+              accounts={allAccounts.map((a) => ({ id: a.id, name: a.name ?? undefined, hebrewName: a.hebrewName ?? undefined })) as NoteAccount[]}
+              isRtl={isRtl}
+              placeholder={t('shortlist_notes_placeholder')}
+              rows={4}
+              autoFocus
+              className="brit-sl-textarea"
+              onTaggedAgentsChange={setNoteTaggedIds}
+            />
+            <div className="brit-sl-modal-actions">
+              <button onClick={closeNote}>{t('common_cancel')}</button>
+              <button className="primary" onClick={saveNote} disabled={!noteText.trim() || savingNote}>
+                {savingNote ? '…' : t('shortlist_notes_save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Target Intelligence Drawer (opens on row click) */}
+      <YouthShortlistDrawer
+        entry={drawerEntry as YouthShortlistDrawerEntry | null}
+        onClose={() => setDrawerEntry(null)}
+        onSignToRoster={handleSignToRoster}
+        onRemove={(e) => removeEntry(e as YouthShortlistEntry)}
+        onOpenAddNote={(e) => openAddNote(e as YouthShortlistEntry)}
+        youthPlayers={youthPlayers}
+        clubRequests={clubRequests}
+      />
+
       {/* Add-to-shortlist guided drawer (Find → Confirm → Done) — mirrors the roster drawer design */}
       <YouthAddShortlistDrawer open={showAddDrawer} onClose={() => setShowAddDrawer(false)} />
+
+      {/* Sign-to-academy: promote a shortlist target to the youth roster (prefilled from IFA) */}
+      <YouthAddProspectDrawer
+        open={showSignDrawer}
+        initialIfaUrl={signInitialUrl}
+        onClose={() => { setShowSignDrawer(false); setSignInitialUrl(null); }}
+        onSaved={() => { setShowSignDrawer(false); setSignInitialUrl(null); }}
+      />
     </div>
   );
 }
