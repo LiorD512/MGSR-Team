@@ -15,6 +15,25 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { db } from '@/lib/firebase';
 import type { MatchdayGenerateInput, MatchdayGenerateResult } from '@/lib/matchday/types';
 
+/**
+ * A fixture already resolved by the dossier's "next match" section. When this
+ * is present the generator uses it verbatim (correct teams + the exact logos
+ * the operator sees in the UI) instead of re-scraping — which is what produced
+ * wrong crests (e.g. an unrelated "LASK" badge).
+ */
+export interface MatchdaySeedFixture {
+  homeTeam: string;
+  awayTeam: string;
+  playerSide: 'home' | 'away';
+  homeLogo: string | null;
+  awayLogo: string | null;
+  date: string;
+  time: string | null;
+  competition: string | null;
+  round: string | null;
+  venue: string | null;
+}
+
 export interface MatchdaySeed {
   playerId?: string;
   playerName: string;
@@ -24,6 +43,8 @@ export interface MatchdaySeed {
   clubCountry?: string | null;
   clubLogo?: string | null;
   instagramHandle?: string | null;
+  /** Pre-resolved fixture from the dossier's next-match section (preferred). */
+  fixture?: MatchdaySeedFixture | null;
 }
 
 interface Props {

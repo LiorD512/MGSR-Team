@@ -18,6 +18,8 @@ export interface PreparedLayers {
   cutAction: Buffer | null; // transparent PNG (null if cutout failed)
   hero: Buffer | null; // transparent PNG
   backdropMono: Buffer | null; // transparent greyscale PNG
+  /** True only when `hero` is a genuinely DIFFERENT pose from `cutAction`. */
+  heroIsDistinct: boolean;
   usedGemini: boolean;
 }
 
@@ -86,18 +88,24 @@ export async function prepareLayers(opts: {
   const cutRaw = await cutoutPlayer(source);
   const cutAction = cutRaw ? await keyOutMagenta(cutRaw.bytes) : null;
 
-  // 3) Alternate hero pose (also keyed). Falls back to the action cutout.
+  // 3) Alternate hero pose (also keyed). Only counts as "distinct" when the
+  //    model actually returned a different pose — otherwise we must NOT render
+  //    two identical figures.
   let hero = cutAction;
+  let heroIsDistinct = false;
   if (opts.needHero) {
     const pose = await altPose(source);
     if (pose) {
       const keyed = await keyOutMagenta(pose.bytes);
-      if (keyed) hero = keyed;
+      if (keyed) {
+        hero = keyed;
+        heroIsDistinct = true;
+      }
     }
   }
 
   // 4) Monochrome backdrop from the hero (or action) cutout — only if we have one.
   const backdropMono = hero ? await toMono(hero) : null;
 
-  return { cutAction, hero, backdropMono, usedGemini: Boolean(cutAction) };
+  return { cutAction, hero, backdropMono, heroIsDistinct, usedGemini: Boolean(cutAction) };
 }

@@ -179,6 +179,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
           club: seed.club,
           clubCountry: seed.clubCountry ?? null,
           clubLogo: seed.clubLogo ?? null,
+          fixture: seed.fixture ?? null,
           playerPhotoUrl,
           stadiumPhotoUrl,
           kitPhotoUrl,

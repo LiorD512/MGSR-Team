@@ -31,6 +31,20 @@ export const MATCHDAY_DESIGNS: MatchdayDesign[] = [
   { id: 'marble', name: 'Marble', blurb: 'Clean white marble, portrait backdrop, framed crests.' },
 ];
 
+/** A fixture already resolved by the dossier — used verbatim, never re-scraped. */
+export interface MatchdayV2Fixture {
+  homeTeam: string;
+  awayTeam: string;
+  playerSide: 'home' | 'away';
+  homeLogo: string | null;
+  awayLogo: string | null;
+  date: string;
+  time: string | null;
+  competition: string | null;
+  round: string | null;
+  venue: string | null;
+}
+
 export interface MatchdayV2Input {
   playerId: string | null;
   playerName: string;
@@ -38,6 +52,8 @@ export interface MatchdayV2Input {
   club: string;
   clubCountry?: string | null;
   clubLogo?: string | null;
+  /** Pre-resolved fixture from the dossier (preferred over scraping). */
+  fixture?: MatchdayV2Fixture | null;
 
   /** Curated player photograph (required). */
   playerPhotoUrl?: string | null;

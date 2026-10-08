@@ -25,7 +25,7 @@ export interface RenderV2Input {
   facts: MatchdayMatchFacts;
   playerName: string;
   squadNumber?: string | null;
-  layers: { cutAction: Buffer | null; hero: Buffer | null; backdropMono: Buffer | null };
+  layers: { cutAction: Buffer | null; hero: Buffer | null; backdropMono: Buffer | null; heroIsDistinct?: boolean };
   homeCrest?: Buffer | null;
   awayCrest?: Buffer | null;
   stadium?: Buffer | null;
@@ -77,10 +77,12 @@ async function placeLayer(
   buf: Buffer | null,
   targetH: number,
   position: (w: number, h: number) => { left: number; top: number },
-  opts?: { mod?: { brightness?: number; saturation?: number }; fade?: boolean }
+  opts?: { mod?: { brightness?: number; saturation?: number }; fade?: boolean; flip?: boolean }
 ): Promise<Buffer> {
   if (!buf) return emptySheet();
-  const s = await scaleH(buf, targetH, opts?.mod);
+  let src = buf;
+  if (opts?.flip) src = await sharp(buf).flop().png().toBuffer(); // mirror horizontally
+  const s = await scaleH(src, targetH, opts?.mod);
   const body = opts?.fade ? await bottomFade(s.buf) : s.buf;
   const { left, top } = position(s.w, s.h);
   return onCanvas(body, s.w, s.h, left, top);
@@ -313,16 +315,21 @@ function centredBottomText(i: RenderV2Input): Promise<Buffer> {
 
 async function renderGolden(i: RenderV2Input): Promise<Buffer> {
   const bg = await skyBackground(i, { r: 60, g: 32, b: 12 });
-  const secSheet = await placeLayer(
-    i.layers.hero,
-    Math.round(V2_H * 0.55),
-    (w) => ({ left: Math.round(V2_W * 0.26 - w / 2), top: Math.round(V2_H * 0.33) }),
-    { mod: { brightness: 0.92 } }
-  );
+  // Secondary figure ONLY when we have a genuinely different pose. When we don't,
+  // a single centred hero reads far better than two identical copies.
+  const twoFigures = Boolean(i.layers.heroIsDistinct && i.layers.hero);
+  const secSheet = twoFigures
+    ? await placeLayer(
+        i.layers.hero,
+        Math.round(V2_H * 0.48), // clearly smaller than the hero
+        (w) => ({ left: Math.round(V2_W * 0.24 - w / 2), top: Math.round(V2_H * 0.4) }),
+        { mod: { brightness: 0.82, saturation: 0.9 }, flip: true } // mirrored + dimmer = depth
+      )
+    : await emptySheet();
   const heroSheet = await placeLayer(
     i.layers.cutAction,
     Math.round(V2_H * 0.62),
-    (w) => ({ left: Math.round(V2_W * 0.6 - w / 2), top: Math.round(V2_H * 0.3) }),
+    (w) => ({ left: Math.round((twoFigures ? V2_W * 0.62 : V2_W * 0.5) - w / 2), top: Math.round(V2_H * 0.3) }),
     { mod: { brightness: 1.05, saturation: 1.08 } }
   );
   const txt = await centredBottomText(i);
@@ -348,22 +355,23 @@ async function renderGolden(i: RenderV2Input): Promise<Buffer> {
 async function renderStorm(i: RenderV2Input): Promise<Buffer> {
   const bg = await skyBackground(i, { r: 30, g: 32, b: 40 });
 
+  // Two genuinely different poses → hero + one mirrored secondary (never three
+  // copies of the same image). One pose → a single centred hero.
+  const twoFigures = Boolean(i.layers.heroIsDistinct && i.layers.hero);
   const heroSheet = await placeLayer(
     i.layers.hero,
-    Math.round(V2_H * 0.56),
-    (w) => ({ left: Math.round(V2_W * 0.62 - w / 2), top: Math.round(V2_H * 0.2) })
+    Math.round(V2_H * 0.58),
+    (w) => ({ left: Math.round((twoFigures ? V2_W * 0.62 : V2_W * 0.5) - w / 2), top: Math.round(V2_H * 0.2) })
   );
-  const a1Sheet = await placeLayer(
-    i.layers.cutAction,
-    Math.round(V2_H * 0.34),
-    (w) => ({ left: Math.round(V2_W * 0.26 - w / 2), top: Math.round(V2_H * 0.24) }),
-    { mod: { brightness: 0.98 } }
-  );
-  const a2Sheet = await placeLayer(
-    i.layers.cutAction,
-    Math.round(V2_H * 0.4),
-    (w) => ({ left: Math.round(V2_W * 0.24 - w / 2), top: Math.round(V2_H * 0.44) })
-  );
+  const a1Sheet = twoFigures
+    ? await placeLayer(
+        i.layers.cutAction,
+        Math.round(V2_H * 0.42),
+        (w) => ({ left: Math.round(V2_W * 0.26 - w / 2), top: Math.round(V2_H * 0.34) }),
+        { mod: { brightness: 0.84, saturation: 0.9 }, flip: true }
+      )
+    : await emptySheet();
+  const a2Sheet = await emptySheet();
   const txt = await centredBottomText(i);
 
   const bs = 160;

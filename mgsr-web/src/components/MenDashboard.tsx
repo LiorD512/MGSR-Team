@@ -1542,7 +1542,28 @@ export default function MenDashboard({
               <button
                 type="button"
                 className="brit-matchday-btn"
-                onClick={() =>
+                onClick={() => {
+                  // Prefer the fixture already resolved + displayed in the
+                  // next-match section (correct teams AND the exact logos the
+                  // operator sees), so the generator never re-scrapes a wrong
+                  // crest. Our side = dossier.club/clubLogo; opponent =
+                  // nextMatch.opponent/opponentLogo; sides from homeAway.
+                  const nm = nextMatchState === 'ready' ? nextMatch : null;
+                  const fixture =
+                    nm && nm.homeAway
+                      ? {
+                          homeTeam: nm.homeAway === 'home' ? dossier.club : nm.opponent,
+                          awayTeam: nm.homeAway === 'home' ? nm.opponent : dossier.club,
+                          playerSide: nm.homeAway,
+                          homeLogo: nm.homeAway === 'home' ? dossier.clubLogo ?? null : nm.opponentLogo ?? null,
+                          awayLogo: nm.homeAway === 'home' ? nm.opponentLogo ?? null : dossier.clubLogo ?? null,
+                          date: nm.date,
+                          time: nm.time,
+                          competition: nm.competition,
+                          round: nm.round,
+                          venue: nm.venue,
+                        }
+                      : null;
                   setMatchdaySeed({
                     playerId: dossier.playerId,
                     playerName: dossier.name,
@@ -1552,8 +1573,9 @@ export default function MenDashboard({
                     clubCountry: dossier.clubCountry,
                     clubLogo: dossier.clubLogo,
                     instagramHandle: dossier.instagramHandle,
-                  })
-                }
+                    fixture,
+                  });
+                }}
               >
                 <span className="brit-matchday-btn-mark" aria-hidden>◈</span>
                 <span className="brit-matchday-btn-label">{t('matchday_generate_button')}</span>

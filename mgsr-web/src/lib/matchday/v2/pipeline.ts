@@ -35,13 +35,35 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   const generationId = randomUUID();
 
   // ── Stage 1: facts (required) ──
-  const facts = await gatherMatchFacts({
-    playerName: input.playerName,
-    club: input.club,
-    clubCountry: input.clubCountry,
-    clubLogo: input.clubLogo,
-    tmProfile: input.tmProfile,
-  });
+  // Prefer the fixture the dossier already resolved and showed the operator
+  // (correct teams + the exact logos). Only fall back to scraping when the UI
+  // didn't have a ready fixture — this is what stops wrong crests like "LASK".
+  let facts: MatchdayMatchFacts | null;
+  if (input.fixture) {
+    const f = input.fixture;
+    facts = {
+      playerName: input.playerName,
+      homeTeam: f.homeTeam,
+      awayTeam: f.awayTeam,
+      playerSide: f.playerSide,
+      country: input.clubCountry ?? null,
+      competition: f.competition,
+      round: f.round,
+      date: f.date,
+      time: f.time,
+      venue: f.venue,
+      homeLogo: f.homeLogo,
+      awayLogo: f.awayLogo,
+    };
+  } else {
+    facts = await gatherMatchFacts({
+      playerName: input.playerName,
+      club: input.club,
+      clubCountry: input.clubCountry,
+      clubLogo: input.clubLogo,
+      tmProfile: input.tmProfile,
+    });
+  }
   if (!facts) throw new MatchdayError('No upcoming fixture found for this player.', 'NO_MATCH');
 
   // ── Stage 2: curated player photo (required) ──
@@ -55,7 +77,10 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   const kitBytes = input.kitPhotoUrl?.trim() ? await fetchBytes(input.kitPhotoUrl) : null;
 
   // ── Stage 3: AI-assisted layer prep (face preserved) ──
-  const needHero = input.design === 'golden' || input.design === 'storm' || input.design === 'midnight' || input.design === 'marble';
+  // Only the two-figure designs need a genuinely different second pose. For the
+  // single-figure designs the backdrop reuses the action cutout (greyscaled),
+  // which avoids a wasted alt-pose generation.
+  const needHero = input.design === 'golden' || input.design === 'storm';
   const layers = await prepareLayers({
     playerPhoto: playerBytes,
     kitPhoto: kitBytes,
@@ -63,10 +88,26 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
     needHero,
   });
 
-  // ── Stage 4: crests (sourced) ──
+  // ── Stage 4: crests ──
+  // When the dossier supplied a fixture, the logo URLs are the correct, operator-
+  // verified ones — use them VERBATIM (just fetch the bytes). Only fall back to
+  // resolveCrest()'s scraping/search when a URL is genuinely missing.
+  async function crestFrom(url: string | null, team: string): Promise<Buffer | null> {
+    if (input.fixture) {
+      if (url) {
+        const bytes = await fetchBytes(url);
+        if (bytes) return bytes;
+      }
+      // Missing URL even though the UI had a fixture: last-resort resolve.
+      const r = await resolveCrest(team, url);
+      return r?.bytes ?? null;
+    }
+    const r = await resolveCrest(team, url);
+    return r?.bytes ?? null;
+  }
   const [homeCrest, awayCrest] = await Promise.all([
-    resolveCrest(facts.homeTeam, facts.homeLogo),
-    resolveCrest(facts.awayTeam, facts.awayLogo),
+    crestFrom(facts.homeLogo, facts.homeTeam),
+    crestFrom(facts.awayLogo, facts.awayTeam),
   ]);
 
   // ── Stage 5: background sky for sky-based designs ──
@@ -85,9 +126,9 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
     facts,
     playerName: input.playerName.toUpperCase(),
     squadNumber: input.squadNumber ?? null,
-    layers: { cutAction: layers.cutAction, hero: layers.hero, backdropMono: layers.backdropMono },
-    homeCrest: homeCrest?.bytes ?? null,
-    awayCrest: awayCrest?.bytes ?? null,
+    layers: { cutAction: layers.cutAction, hero: layers.hero, backdropMono: layers.backdropMono, heroIsDistinct: layers.heroIsDistinct },
+    homeCrest,
+    awayCrest,
     stadium,
     sky,
   });
