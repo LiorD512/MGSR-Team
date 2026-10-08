@@ -1194,10 +1194,12 @@ export async function searchFreeAgentsFallback(opts: {
         if (!profile) continue;
         const playerFoot = (profile.foot || '').toLowerCase();
         if (foot && playerFoot !== foot.toLowerCase()) continue;
-        // Check nationality if requested
+        // Check nationality if requested. `nationality` may be a comma-separated
+        // list ("portugal,belgium") — match if the player is ANY of them.
         if (nationality) {
           const natLower = (profile.nationality || '').toLowerCase();
-          if (!natLower.includes(nationality.toLowerCase())) continue;
+          const wanted = nationality.split(',').map((n) => n.trim().toLowerCase()).filter(Boolean);
+          if (wanted.length && !wanted.some((w) => natLower.includes(w))) continue;
         }
         enriched.push({
           ...candidate,
