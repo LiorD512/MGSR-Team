@@ -206,6 +206,43 @@ function cleanWhy(raw: string | null | undefined, refName?: string): string {
   return out;
 }
 
+interface RadarGeom {
+  rings: string[];      // concentric grid polygons (outer→inner)
+  axes: { x: number; y: number }[];   // axis end points
+  shape: string;        // the player's percentile polygon
+  dots: { x: number; y: number }[];   // vertex dots
+  labels: { x: number; y: number; text: string; anchor: 'start' | 'middle' | 'end' }[];
+}
+
+/**
+ * Build the reference-signature radar geometry from the signature stats.
+ * N axes evenly spaced around the circle; each vertex sits at
+ * (percentile/100) of the max radius. Pure geometry — no magic numbers tied
+ * to a specific stat set, so it adapts to however many stats come back.
+ */
+function buildRadar(stats: SignatureStat[], R = 90): RadarGeom | null {
+  const n = stats.length;
+  if (n < 3) return null; // a radar needs at least a triangle
+  const pt = (radius: number, i: number) => {
+    const ang = -Math.PI / 2 + (i * 2 * Math.PI) / n; // start at top, clockwise
+    return { x: +(radius * Math.cos(ang)).toFixed(1), y: +(radius * Math.sin(ang)).toFixed(1) };
+  };
+  const poly = (radius: number) => Array.from({ length: n }, (_, i) => { const p = pt(radius, i); return `${p.x},${p.y}`; }).join(' ');
+
+  const rings = [R, R * 0.66, R * 0.33].map(poly);
+  const axes = Array.from({ length: n }, (_, i) => pt(R, i));
+  const dots = stats.map((s, i) => pt((Math.max(0, Math.min(100, s.percentile)) / 100) * R, i));
+  const shape = dots.map((p) => `${p.x},${p.y}`).join(' ');
+  const labels = stats.map((s, i) => {
+    const p = pt(R + 16, i);
+    const anchor: 'start' | 'middle' | 'end' = p.x > 6 ? 'start' : p.x < -6 ? 'end' : 'middle';
+    // Short label: drop the "/90" suffix, keep it compact for the ring.
+    const text = (s.label_en || s.label || '').replace(/\s*\/\s*90$/i, '').replace(/successful/i, 'Succ.').toUpperCase();
+    return { x: p.x, y: p.y, text, anchor };
+  });
+  return { rings, axes, shape, dots, labels };
+}
+
 interface FindNextResponse {
   reference_player?: ReferencePlayer;
   signature_stats?: SignatureStat[];
@@ -733,7 +770,9 @@ export default function FindNextTab() {
       {error && <div className="brit-wr-error">{error}</div>}
 
       {/* Reference player signature hero */}
-      {response?.reference_player && (
+      {response?.reference_player && (() => {
+        const radar = response.signature_stats ? buildRadar(response.signature_stats) : null;
+        return (
         <div className="brit-wr-hero">
           <div className="hero-left">
             <span className="tag">{isHe ? 'חתימת ייחוס' : 'Reference signature'}</span>
@@ -747,6 +786,17 @@ export default function FindNextTab() {
             </div>
             {response.reference_player.playing_style && (
               <div className="style-tag">{response.reference_player.playing_style}</div>
+            )}
+            {radar && (
+              <div className="radar-wrap">
+                <svg className="radar" viewBox="-132 -116 264 232" aria-label="Statistical signature radar">
+                  {radar.rings.map((pts, i) => <polygon key={`ring-${i}`} className="grid" points={pts} />)}
+                  {radar.axes.map((a, i) => <line key={`axis-${i}`} className="axis" x1="0" y1="0" x2={a.x} y2={a.y} />)}
+                  <polygon className="shape" points={radar.shape} />
+                  {radar.dots.map((d, i) => <circle key={`dot-${i}`} className="dot" cx={d.x} cy={d.y} r="3" />)}
+                  {radar.labels.map((l, i) => <text key={`lbl-${i}`} className="lbl" x={l.x} y={l.y} textAnchor={l.anchor}>{l.text}</text>)}
+                </svg>
+              </div>
             )}
           </div>
           <div className="hero-right">
@@ -776,7 +826,8 @@ export default function FindNextTab() {
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Results */}
       {response && response.results.length > 0 && (
