@@ -102,6 +102,64 @@ interface FindNextResult {
   age_bonus: number;
   explanation: string;
   scout_narrative?: string;
+  // API-Football season stats (last 365d) — present when api_matched is true.
+  api_matched?: boolean;
+  api_appearances?: number;
+  api_minutes_90s?: number;
+  api_goals?: number;
+  api_assists?: number;
+  api_dribbles_per90?: number;
+  api_dribbles_success_per90?: number;
+  api_shots_per90?: number;
+  api_shots_on_target_per90?: number;
+  api_goals_per_shot?: number;
+  api_duels_won_pct?: number;
+  api_key_passes_per90?: number;
+  api_fouled_per90?: number;
+  api_rating?: number;
+}
+
+/** Human-readable season stats derived from the per-90 + total api_ fields. */
+interface DerivedStats {
+  dribbles: number;
+  dribbleSuccessPct: number | null;
+  shots: number;
+  shotsOnTargetPct: number | null;
+  goals: number;
+  assists: number;
+  conversionPct: number | null;
+  duelsWonPct: number | null;
+  appearances: number | null;
+}
+
+/** Round a per-90 rate × 90-blocks into a season total. */
+function toTotal(per90: number | undefined, mins90s: number | undefined): number {
+  if (!per90 || !mins90s) return 0;
+  return Math.round(per90 * mins90s);
+}
+
+/** Safe pct of two per-90 rates (part / whole × 100). */
+function ratePct(part: number | undefined, whole: number | undefined): number | null {
+  if (!part || !whole || whole <= 0) return null;
+  return Math.round((part / whole) * 100);
+}
+
+function deriveStats(p: FindNextResult): DerivedStats | null {
+  if (p.api_matched === false) return null;
+  const m = p.api_minutes_90s;
+  // Need minutes to turn per-90 into totals; without it, the readout is noise.
+  if (!m || m <= 0) return null;
+  return {
+    dribbles: toTotal(p.api_dribbles_per90, m),
+    dribbleSuccessPct: ratePct(p.api_dribbles_success_per90, p.api_dribbles_per90),
+    shots: toTotal(p.api_shots_per90, m),
+    shotsOnTargetPct: ratePct(p.api_shots_on_target_per90, p.api_shots_per90),
+    goals: p.api_goals ?? 0,
+    assists: p.api_assists ?? 0,
+    conversionPct: p.api_goals_per_shot != null ? Math.round(p.api_goals_per_shot * 100) : null,
+    duelsWonPct: p.api_duels_won_pct != null ? Math.round(p.api_duels_won_pct) : null,
+    appearances: p.api_appearances ?? null,
+  };
 }
 
 interface FindNextResponse {
@@ -632,34 +690,49 @@ export default function FindNextTab() {
       {/* Error */}
       {error && <div className="brit-wr-error">{error}</div>}
 
-      {/* Reference player + signature */}
+      {/* Reference player signature hero */}
       {response?.reference_player && (
-        <div className="brit-wr-refcard">
-          <div className="rh">
-            <div>
-              <small>{isHe ? 'שחקן ייחוס' : 'Reference player'}</small>
-              <b>{response.reference_player.name}</b>
-              <span className="rmeta">
-                {shortenPosition(response.reference_player.position)} · {response.reference_player.age} · {response.reference_player.market_value}
-                {response.reference_player.club && response.reference_player.club !== '?' && ` · ${response.reference_player.club}`}
-                {response.reference_player.playing_style && <em> · {response.reference_player.playing_style}</em>}
-              </span>
+        <div className="brit-wr-hero">
+          <div className="hero-left">
+            <span className="tag">{isHe ? 'חתימת ייחוס' : 'Reference signature'}</span>
+            <h2>{response.reference_player.name}</h2>
+            <div className="who">
+              <b>{shortenPosition(response.reference_player.position)}</b> · {response.reference_player.age} · {response.reference_player.club && response.reference_player.club !== '?' ? response.reference_player.club : response.reference_player.league}
+              <br />
+              {response.reference_player.market_value}
+              {response.reference_player.nationality && ` · ${response.reference_player.nationality}`}
+              {response.reference_player.foot && ` · ${response.reference_player.foot}`}
             </div>
+            {response.reference_player.playing_style && (
+              <div className="style-tag">{response.reference_player.playing_style}</div>
+            )}
           </div>
-          {response.signature_stats && response.signature_stats.length > 0 && (
-            <>
-              <p className="sig-title">{isHe ? 'חתימה סטטיסטית (אחוזון מול עמדה)' : 'Statistical signature (percentile vs position)'}</p>
-              <div className="sigbars">
-                {response.signature_stats.map((stat) => (
-                  <div key={stat.stat_key} className="sigbar">
-                    <span className="sl">{stat.label}</span>
-                    <span className="st"><i style={{ width: `${stat.percentile}%` }} /></span>
-                    <span className="sp">{stat.percentile}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+          <div className="hero-right">
+            {response.signature_stats && response.signature_stats.length > 0 ? (
+              <>
+                <p className="sig-title">
+                  {isHe ? 'חתימה סטטיסטית · ל-90 דקות ואחוזון מול עמדה' : 'Statistical signature · per 90 & percentile vs position'}
+                </p>
+                <div className="sigbars">
+                  {response.signature_stats.map((stat) => (
+                    <div key={stat.stat_key} className="sigbar">
+                      <span className="sl">{stat.label}</span>
+                      <span className="sv">{stat.value}<small>/90</small></span>
+                      <span className="st"><i style={{ width: `${Math.max(0, Math.min(100, stat.percentile))}%` }} /></span>
+                      <span className="sp">{stat.percentile}<small>pct</small></span>
+                    </div>
+                  ))}
+                </div>
+                <p className="sig-note">
+                  {isHe
+                    ? '↳ ל-90 דקות = קצב · אחוזון = דירוג מול שחקנים באותה עמדה'
+                    : '↳ per-90 = output rate · percentile = rank vs players in the same position'}
+                </p>
+              </>
+            ) : (
+              <p className="sig-title">{isHe ? 'אין נתוני חתימה זמינים' : 'No signature data available for this player'}</p>
+            )}
+          </div>
         </div>
       )}
 
@@ -685,35 +758,72 @@ export default function FindNextTab() {
               const url = player.url;
               const isAdding = addingToShortlistUrl === url;
               const inShortlist = url ? Array.from(shortlistUrls).some((u) => samePlayer(u, url)) : false;
+              const stats = deriveStats(player);
+              // Score ring arc: circumference for r=26 ≈ 163.4
+              const dashOffset = 163.4 * (1 - Math.max(0, Math.min(100, pct)) / 100);
+              // One consolidated "fit" pill — the single strongest signal.
+              const fit = (() => {
+                if (player.value_gap_bonus >= 7) return { label: isHe ? 'פער שווי' : 'Value gap', val: `+${Math.round(player.value_gap_bonus)}` };
+                if (player.style_match_bonus >= 10) return { label: isHe ? 'סגנון' : 'Style', val: `+${Math.round(player.style_match_bonus)}` };
+                if (player.contract_bonus >= 5) return { label: isHe ? 'חוזה' : 'Contract', val: `+${Math.round(player.contract_bonus)}` };
+                if (player.age_bonus >= 5) return { label: isHe ? 'צעיר' : 'Youth', val: `+${Math.round(player.age_bonus)}` };
+                return { label: isHe ? 'חתימה' : 'Signature', val: String(Math.round(player.signature_match)) };
+              })();
+              const clubLine = player.club || player.api_team || player.league || '—';
+              const why = (player.scout_narrative || player.explanation || '').trim();
               return (
-                <div key={url || player.name} className="brit-wr-srow">
-                  <div className="sscore"><b>{pct}</b><small>{isHe ? 'ציון' : 'MATCH'}</small></div>
-                  <div className="sbody">
-                    <div className="sname">
-                      {url ? <a href={url} target="_blank" rel="noopener noreferrer">{player.name || '—'}</a> : (player.name || '—')}
+                <div key={url || player.name} className="brit-wr-card">
+                  <div className="card-head">
+                    <div className="score">
+                      <svg className="ring-bg" viewBox="0 0 58 58">
+                        <circle className="t" cx="29" cy="29" r="26" />
+                        <circle className="v" cx="29" cy="29" r="26" strokeDasharray="163.4" strokeDashoffset={dashOffset} />
+                      </svg>
+                      <b>{pct}</b>
                     </div>
-                    <div className="smeta">
-                      {shortenPosition(player.position)} · {isHe ? 'גיל' : 'Age'} {player.age} · {player.market_value || '—'} · {player.club || player.api_team || player.league || '—'}
-                      {(player.club || player.api_team) && player.league && <span> ({player.league})</span>}
-                      {player.foot && ` · ${player.foot}`}
+                    <div className="ident">
+                      {player.playing_style && <div className="eyebrow">{player.playing_style}</div>}
+                      <div className="nm">
+                        {url ? <a href={url} target="_blank" rel="noopener noreferrer">{player.name || '—'}</a> : (player.name || '—')}
+                      </div>
+                      <div className="mt">
+                        <b>{shortenPosition(player.position)}</b><span className="sep">·</span>
+                        {isHe ? 'גיל' : 'Age'} <b>{player.age}</b><span className="sep">·</span>
+                        <b>{player.market_value || '—'}</b><span className="sep">·</span>{clubLine}
+                      </div>
                     </div>
-                    <div className="breakdown">
-                      {player.playing_style && <span className="bchip"><em>{player.playing_style}</em></span>}
-                      <span className="bchip">Signature <b>{Math.round(player.signature_match)}</b></span>
-                      {player.value_gap_bonus >= 7 && <span className="bchip">Value gap <b>{Math.round(player.value_gap_bonus)}</b></span>}
-                      {player.contract_bonus >= 5 && <span className="bchip">Contract <b>{Math.round(player.contract_bonus)}</b></span>}
-                      {player.style_match_bonus >= 10 && <span className="bchip">Style <b>{Math.round(player.style_match_bonus)}</b></span>}
-                      {player.age_bonus >= 5 && <span className="bchip">Youth <b>{Math.round(player.age_bonus)}</b></span>}
+                    <span className="fit">{fit.label} <b>{fit.val}</b></span>
+                  </div>
+
+                  {stats && (
+                    <div className="card-stats">
+                      <div className="cs">
+                        <div className="n">{stats.dribbles}{stats.dribbleSuccessPct != null && <span className="p">·{stats.dribbleSuccessPct}%</span>}</div>
+                        <div className="l">{isHe ? 'דריבלים · הצלחה' : 'Dribbles · success'}</div>
+                      </div>
+                      <div className="cs">
+                        <div className="n">{stats.shots}{stats.shotsOnTargetPct != null && <span className="p">·{stats.shotsOnTargetPct}%</span>}</div>
+                        <div className="l">{isHe ? 'בעיטות · למסגרת' : 'Shots · on target'}</div>
+                      </div>
+                      <div className="cs">
+                        <div className="n">{stats.goals}<span className="a">G</span> {stats.assists}<span className="a">A</span></div>
+                        <div className="l">{isHe ? `תפוקה · ${stats.appearances ?? '—'} משחקים` : `Output · ${stats.appearances ?? '—'} apps`}</div>
+                      </div>
+                      <div className="cs">
+                        <div className="n">{stats.duelsWonPct != null ? <>{stats.duelsWonPct}<span className="p">%</span></> : '—'}</div>
+                        <div className="l">{isHe ? 'דו-קרבות' : 'Duels won'}</div>
+                      </div>
                     </div>
-                    {(player.scout_narrative || player.explanation) && (
-                      <p className="snarr" dir={isHe ? 'rtl' : 'ltr'}>
-                        {(player.scout_narrative || player.explanation || '').split('\n').map((l, i) => <span key={i}>{l} </span>)}
+                  )}
+
+                  <div className="card-foot">
+                    {why && (
+                      <p className="why" dir={isHe ? 'rtl' : 'ltr'}>
+                        <span className="q">{isHe ? 'למה:' : 'Why:'}</span>{why}
                       </p>
                     )}
-                    <div className="aacts">
-                      {url && (
-                        <a className="brit-wr-btn ghost" href={url} target="_blank" rel="noopener noreferrer">TM →</a>
-                      )}
+                    <div className="acts">
+                      {url && <a className="brit-wr-btn ghost" href={url} target="_blank" rel="noopener noreferrer">TM →</a>}
                       {url && user && !inShortlist && (
                         <button className="brit-wr-btn gold" onClick={(e) => addToShortlist(player, e)} disabled={!!addingToShortlistUrl}>
                           {isAdding ? (isHe ? 'מוסיף…' : 'Adding…') : `+ ${isHe ? 'מעקב' : 'Shortlist'}`}
