@@ -42,16 +42,17 @@ interface GenResult {
   mimeType: string;
 }
 
-async function generate(parts: unknown[], label: string): Promise<GenResult | null> {
-  const ai = client();
-  let resp;
-  try {
-    resp = await ai.models.generateContent({ model: MODEL_PRIMARY, contents: [{ role: 'user', parts }] as never });
-  } catch (e) {
-    console.warn(`[matchday v2] ${label}: primary model failed, falling back:`, (e as Error).message);
-    resp = await ai.models.generateContent({ model: MODEL_FALLBACK, contents: [{ role: 'user', parts }] as never });
-  }
-  const cand = resp.candidates?.[0];
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Transient failures worth retrying: rate limits, overload, timeouts, 5xx. */
+function isTransient(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return /\b(429|500|502|503|504)\b/.test(msg) || /rate|quota|overload|unavailable|timeout|exhausted|internal/.test(msg);
+}
+
+/** Pull the first inline image out of a response, if any. */
+function extractImage(resp: unknown): GenResult | null {
+  const cand = (resp as { candidates?: Array<{ content?: { parts?: unknown[] } }> }).candidates?.[0];
   for (const p of cand?.content?.parts ?? []) {
     const inline = (p as { inlineData?: { data?: string; mimeType?: string } }).inlineData;
     if (inline?.data) {
@@ -59,7 +60,48 @@ async function generate(parts: unknown[], label: string): Promise<GenResult | nu
       return { bytes, mimeType: inline.mimeType ?? sniffMime(bytes) };
     }
   }
-  console.warn(`[matchday v2] ${label}: no image returned (finish=${cand?.finishReason})`);
+  return null;
+}
+
+/**
+ * Call a model once, returning an image or null. Never throws for an empty
+ * response; rethrows the API error so the caller can decide to retry/fallback.
+ */
+async function callModel(model: string, parts: unknown[]): Promise<GenResult | null> {
+  const ai = client();
+  const resp = await ai.models.generateContent({ model, contents: [{ role: 'user', parts }] as never });
+  return extractImage(resp);
+}
+
+/**
+ * Robust generation: try the primary model, then the fallback, each with a
+ * couple of retries on transient errors (rate limit / overload / 5xx). This is
+ * what makes a burst of generations not suddenly fail with "no image".
+ */
+async function generate(parts: unknown[], label: string): Promise<GenResult | null> {
+  const models = [MODEL_PRIMARY, MODEL_FALLBACK];
+  for (let m = 0; m < models.length; m++) {
+    const model = models[m];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const img = await callModel(model, parts);
+        if (img) return img;
+        // Empty (no image) — a short backoff then retry the same model.
+        if (attempt < 2) await sleep(600 * (attempt + 1));
+      } catch (e) {
+        const transient = isTransient(e);
+        console.warn(
+          `[matchday v2] ${label}: ${model} attempt ${attempt + 1} failed (${transient ? 'transient' : 'permanent'}): ${(e as Error).message}`
+        );
+        if (transient && attempt < 2) {
+          await sleep(800 * (attempt + 1)); // 0.8s, 1.6s backoff
+          continue;
+        }
+        break; // permanent error, or retries exhausted → try next model
+      }
+    }
+  }
+  console.warn(`[matchday v2] ${label}: all models/attempts exhausted — no image`);
   return null;
 }
 

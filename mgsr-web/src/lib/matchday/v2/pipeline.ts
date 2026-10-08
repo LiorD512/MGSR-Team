@@ -136,7 +136,7 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
     createdAt: Date.now(),
   });
 
-  const qualityChecks = buildChecks(facts, layers.usedGemini, Boolean(layers.cutAction), Boolean(homeCrest), Boolean(awayCrest), Boolean(kitBytes), rendered.width, rendered.height);
+  const qualityChecks = buildChecks(facts, geminiConfigured(), Boolean(layers.cutAction), Boolean(homeCrest), Boolean(awayCrest), Boolean(kitBytes), rendered.width, rendered.height);
 
   return {
     generationId,
@@ -149,7 +149,7 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
 
 function buildChecks(
   facts: MatchdayMatchFacts,
-  usedGemini: boolean,
+  keyConfigured: boolean,
   haveCutout: boolean,
   home: boolean,
   away: boolean,
@@ -157,9 +157,16 @@ function buildChecks(
   w: number,
   h: number
 ): MatchdayQualityCheck[] {
+  // Report the ACCURATE reason: a missing key vs a transient model failure
+  // (rate-limit / overload) are different problems with different fixes.
+  const cutoutDetail = haveCutout
+    ? 'clean transparent cutout'
+    : keyConfigured
+      ? 'cutout failed this run (model busy/rate-limited) — try again in a moment'
+      : 'cutout unavailable — GEMINI_API_KEY is not set';
   return [
     { id: 'identity', label: 'Player face preserved (never generated)', status: 'pass', detail: 'AI used only for cutout/kit/pose' },
-    { id: 'cutout', label: 'Player cutout', status: haveCutout ? 'pass' : 'fail', detail: haveCutout ? 'clean transparent cutout' : 'cutout unavailable — set GEMINI_API_KEY' },
+    { id: 'cutout', label: 'Player cutout', status: haveCutout ? 'pass' : 'fail', detail: cutoutDetail },
     { id: 'kit', label: 'Kit', status: kitSwapped ? 'pass' : 'warn', detail: kitSwapped ? 'swapped from reference' : 'original kit kept' },
     { id: 'teams', label: 'Home & away teams resolved', status: facts.homeTeam && facts.awayTeam ? 'pass' : 'fail', detail: `${facts.homeTeam} vs ${facts.awayTeam}` },
     { id: 'datetime', label: 'Date & kickoff', status: facts.date ? (facts.time ? 'pass' : 'warn') : 'fail', detail: `${facts.date}${facts.time ? ` • ${facts.time}` : ' • TBC'}` },
