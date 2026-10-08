@@ -14,7 +14,15 @@
 
 import type { MatchdayMatchFacts, MatchdayQualityCheck } from '../types';
 
-export type MatchdayDesignId = 'midnight' | 'golden' | 'storm' | 'marble';
+export type MatchdayDesignId =
+  | 'midnight'
+  | 'golden'
+  | 'storm'
+  | 'marble'
+  | 'inferno'
+  | 'frost'
+  | 'prestige'
+  | 'electric';
 
 export interface MatchdayDesign {
   id: MatchdayDesignId;
@@ -29,6 +37,10 @@ export const MATCHDAY_DESIGNS: MatchdayDesign[] = [
   { id: 'golden', name: 'Golden Hour', blurb: 'Sunset stadium sky, dual pose, centred.' },
   { id: 'storm', name: 'Storm', blurb: 'Dramatic storm sky, three-pose composition.' },
   { id: 'marble', name: 'Marble', blurb: 'Clean white marble, portrait backdrop, framed crests.' },
+  { id: 'inferno', name: 'Inferno', blurb: 'Fiery red-orange energy with a bold diagonal split.' },
+  { id: 'frost', name: 'Frost', blurb: 'Cool cinematic ice-blue with a teal rim glow.' },
+  { id: 'prestige', name: 'Prestige', blurb: 'Luxury black & gold, art-deco editorial elegance.' },
+  { id: 'electric', name: 'Electric', blurb: 'Vibrant neon cyber energy with glowing accents.' },
 ];
 
 /** A fixture already resolved by the dossier — used verbatim, never re-scraped. */

@@ -80,7 +80,12 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   // Only the two-figure designs need a genuinely different second pose. For the
   // single-figure designs the backdrop reuses the action cutout (greyscaled),
   // which avoids a wasted alt-pose generation.
-  const needHero = input.design === 'golden' || input.design === 'storm';
+  const needHero =
+    input.design === 'golden' ||
+    input.design === 'storm' ||
+    input.design === 'inferno' ||
+    input.design === 'frost' ||
+    input.design === 'electric';
   const layers = await prepareLayers({
     playerPhoto: playerBytes,
     kitPhoto: kitBytes,

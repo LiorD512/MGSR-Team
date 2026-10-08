@@ -4876,6 +4876,10 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .matchday-design-card.md-golden .md-swatch { background: linear-gradient(180deg, #3a2a12, #e9a23a 60%, #0a0603); }
 .matchday-design-card.md-storm .md-swatch { background: linear-gradient(180deg, #2c3240, #6b6250 70%, #0a0a0a); }
 .matchday-design-card.md-marble .md-swatch { background: linear-gradient(135deg, #f4f2ee, #d9d4cb); border: 1px solid #cfc8bd; }
+.matchday-design-card.md-inferno .md-swatch { background: linear-gradient(180deg, #2a0a04, #c23a0f 55%, #ff7a1a 100%); }
+.matchday-design-card.md-frost .md-swatch { background: linear-gradient(180deg, #0a1a2e, #1f6b8f 60%, #8fe3ff 100%); }
+.matchday-design-card.md-prestige .md-swatch { background: linear-gradient(135deg, #0b0a06, #121008 60%, #d8af4e 140%); border: 1px solid #4a3c18; }
+.matchday-design-card.md-electric .md-swatch { background: linear-gradient(135deg, #140a2e, #3b1d7a 55%, #7cf6c8 120%); }
 .matchday-design-card .md-name { font: 13px/1 var(--display); text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); }
 .matchday-design-card .md-blurb { font: 9px/1.3 var(--mono); color: var(--muted); }
 

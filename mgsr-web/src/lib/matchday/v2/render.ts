@@ -107,9 +107,35 @@ async function bottomFade(buf: Buffer, startPct = 60): Promise<Buffer> {
   return sharp(buf).ensureAlpha().composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
 }
 
+/**
+ * Normalise crests so two differently-shaped badges READ as the same size.
+ *
+ * Different crests have different aspect ratios (a round badge vs a tall
+ * shield). A plain `fit:contain` into a square box makes them look unequal.
+ * Instead we: trim each crest to its real content, scale it so its LONGEST side
+ * is a fixed fraction (~86%) of the slot — i.e. equal bounding size — then
+ * centre it on a uniform transparent square. Result: visually consistent crests
+ * regardless of shape.
+ */
 async function crestPng(buf: Buffer | null | undefined, size: number): Promise<Buffer | null> {
   if (!buf) return null;
-  return sharp(buf).resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+  // Trim transparent/flat borders so built-in padding doesn't skew the size.
+  let trimmed: Buffer;
+  try {
+    trimmed = await sharp(buf).ensureAlpha().trim({ threshold: 8 }).png().toBuffer();
+  } catch {
+    trimmed = await sharp(buf).ensureAlpha().png().toBuffer();
+  }
+  const inner = Math.round(size * 0.86); // equal bounding box for every crest
+  const scaled = await sharp(trimmed)
+    .resize(inner, inner, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toBuffer();
+  // Centre on a fixed square canvas so every crest occupies the same slot.
+  return sharp({ create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: scaled, gravity: 'centre' }])
+    .png()
+    .toBuffer();
 }
 
 // ── text layers via satori ──────────────────────────────────────────────────
@@ -261,8 +287,10 @@ async function renderMarble(i: RenderV2Input): Promise<Buffer> {
     const frameSvg = Buffer.from(
       `<svg width="${fsz}" height="${fsz}" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="${fsz - 4}" height="${fsz - 4}" rx="26" ry="26" fill="#ffffff" stroke="${GOLD}" stroke-width="3"/></svg>`
     );
-    const c = await sharp(crest).resize(fsz - 48, fsz - 48, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).toBuffer();
-    return sharp(frameSvg).composite([{ input: c, gravity: 'centre' }]).png().toBuffer();
+    // Normalise the crest (trim + equal bounding box) so round and shield crests
+    // read as the same size inside the frame.
+    const c = await crestPng(crest, fsz - 44);
+    return sharp(frameSvg).composite([{ input: c!, gravity: 'centre' }]).png().toBuffer();
   }
   const [fH, fA] = await Promise.all([frame(i.homeCrest), frame(i.awayCrest)]);
   const crestY = V2_H - 300;
@@ -406,6 +434,220 @@ async function renderStorm(i: RenderV2Input): Promise<Buffer> {
   return sharp(bg).composite(comp).png().toBuffer();
 }
 
+// ── New premium styles ─────────────────────────────────────────────────────
+// A shared, themeable builder: an atmospheric background + a sharp hero (plus a
+// subtle mirrored secondary when a distinct pose exists), accent geometry,
+// themed gold/colour typography and a consistent crest bar. Each named style
+// below is a distinct palette + treatment on top of this proven skeleton.
+
+interface Theme {
+  /** Background builder returning an opaque V2_W×V2_H PNG. */
+  bg: () => Promise<Buffer>;
+  /** Title + accent colour. */
+  accent: string;
+  /** Title fill (solid or gradient id defined in the text layer). */
+  titleColor: string;
+  /** Player colour grade. */
+  heroMod: { brightness?: number; saturation?: number };
+  /** Secondary figure placement style. */
+  secondary: 'mirror-left' | 'none';
+  /** Optional foreground glow/overlay drawn above the player (atmosphere). */
+  overlay?: () => Buffer;
+  /** Light or dark info text. */
+  textOnLight?: boolean;
+}
+
+function gradientField(stops: string): Buffer {
+  return Buffer.from(
+    `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><defs>` +
+      `<linearGradient id="g" x1="0" y1="0" x2="0.4" y2="1">${stops}</linearGradient>` +
+      `<radialGradient id="spot" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="100%" stop-color="#000000" stop-opacity="0"/></radialGradient>` +
+      `</defs><rect width="${V2_W}" height="${V2_H}" fill="url(#g)"/><rect width="${V2_W}" height="${V2_H}" fill="url(#spot)"/></svg>`
+  );
+}
+
+function rays(color: string, opacity: number): Buffer {
+  const n = 11;
+  const polys = Array.from({ length: n })
+    .map((_, k) => {
+      const cx = V2_W / 2;
+      const spread = (k - (n - 1) / 2) * 90;
+      return `<polygon points="${cx},${V2_H * 0.42} ${cx + spread - 24},-50 ${cx + spread + 24},-50" fill="${color}" opacity="${(opacity * (1 - Math.abs(k - (n - 1) / 2) / n)).toFixed(3)}"/>`;
+    })
+    .join('');
+  return Buffer.from(`<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg">${polys}</svg>`);
+}
+
+async function noise(base: Buffer): Promise<Buffer> {
+  // Subtle film grain for cinematic depth.
+  const grain = Buffer.from(
+    `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg">` +
+      Array.from({ length: 220 })
+        .map(() => {
+          const x = (Math.random() * V2_W) | 0;
+          const y = (Math.random() * V2_H) | 0;
+          const o = (Math.random() * 0.05).toFixed(3);
+          return `<circle cx="${x}" cy="${y}" r="1" fill="#ffffff" opacity="${o}"/>`;
+        })
+        .join('') +
+      `</svg>`
+  );
+  return sharp(base).composite([{ input: grain, blend: 'over' }]).png().toBuffer();
+}
+
+async function themedPoster(i: RenderV2Input, theme: Theme): Promise<Buffer> {
+  const bg = await theme.bg();
+  const twoFigures = theme.secondary !== 'none' && Boolean(i.layers.heroIsDistinct && i.layers.hero);
+
+  const secSheet = twoFigures
+    ? await placeLayer(
+        i.layers.hero,
+        Math.round(V2_H * 0.5),
+        (w) => ({ left: Math.round(V2_W * 0.26 - w / 2), top: Math.round(V2_H * 0.36) }),
+        { mod: { brightness: 0.8, saturation: 0.85 }, flip: true, fade: true, fadeStart: 80 }
+      )
+    : await emptySheet();
+
+  const heroSheet = await placeLayer(
+    i.layers.cutAction,
+    Math.round(V2_H * 0.64),
+    (w) => ({ left: Math.round((twoFigures ? V2_W * 0.6 : V2_W * 0.5) - w / 2), top: Math.round(V2_H * 0.27) }),
+    { mod: theme.heroMod, fade: true, fadeStart: 85 }
+  );
+
+  const info = theme.textOnLight ? '#1a1a1a' : '#ffffff';
+  const sub = theme.textOnLight ? '#555555' : '#d7d7d7';
+  const titleY = 150;
+  const txt = await textLayer(
+    div({ width: `${V2_W}px`, height: `${V2_H}px`, position: 'relative', flexDirection: 'column' }, [
+      text({ position: 'absolute', top: '72px', width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Montserrat', fontWeight: 600, fontSize: '30px', color: theme.accent, letterSpacing: '6px' }, compLine(i.facts).toUpperCase()),
+      text({ position: 'absolute', top: `${titleY}px`, width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Cinzel', fontWeight: 700, fontSize: '122px', color: theme.titleColor, letterSpacing: '2px' }, 'MATCHDAY'),
+      text({ position: 'absolute', top: `${titleY + 150}px`, width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Montserrat', fontWeight: 400, fontSize: '44px', color: info, letterSpacing: '4px' }, i.playerName),
+      text({ position: 'absolute', top: `${V2_H - 300}px`, width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Montserrat', fontWeight: 700, fontSize: '40px', color: info }, `${i.facts.homeTeam}   vs   ${i.facts.awayTeam}`),
+      text({ position: 'absolute', top: `${V2_H - 240}px`, width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Montserrat', fontWeight: 400, fontSize: '32px', color: sub, letterSpacing: '4px' }, dateLine(i.facts)),
+    ])
+  );
+
+  const bs = 170;
+  const [cH, cA] = await Promise.all([crestPng(i.homeCrest, bs), crestPng(i.awayCrest, bs)]);
+  const crestY = V2_H - 190;
+  const vs = await textLayer(
+    div({ width: `${V2_W}px`, height: `${V2_H}px`, position: 'relative' }, [
+      text({ position: 'absolute', top: `${crestY + bs / 2 - 32}px`, width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Cinzel', fontWeight: 700, fontSize: '56px', color: theme.accent }, 'VS'),
+    ])
+  );
+
+  const comp: sharp.OverlayOptions[] = [
+    { input: secSheet, left: 0, top: 0 },
+    { input: heroSheet, left: 0, top: 0 },
+  ];
+  if (theme.overlay) comp.push({ input: theme.overlay(), left: 0, top: 0, blend: 'screen' });
+  comp.push({ input: txt, left: 0, top: 0 });
+  if (cH) comp.push({ input: cH, left: Math.round(V2_W / 2 - 125 - bs / 2), top: crestY });
+  if (cA) comp.push({ input: cA, left: Math.round(V2_W / 2 + 125 - bs / 2), top: crestY });
+  comp.push({ input: vs, left: 0, top: 0 });
+  return sharp(bg).composite(comp).png().toBuffer();
+}
+
+// INFERNO — fiery red/orange, diagonal split, rays.
+async function renderInferno(i: RenderV2Input): Promise<Buffer> {
+  return themedPoster(i, {
+    accent: '#ffcf6b',
+    titleColor: '#ffe3a6',
+    heroMod: { brightness: 1.05, saturation: 1.14 },
+    secondary: 'mirror-left',
+    bg: async () => {
+      const field = gradientField(
+        `<stop offset="0%" stop-color="#2a0a04"/><stop offset="45%" stop-color="#7c1d08"/><stop offset="80%" stop-color="#c23a0f"/><stop offset="100%" stop-color="#1a0603"/>`
+      );
+      const withRays = await sharp(await sharp(field).png().toBuffer())
+        .composite([{ input: rays('#ff7a1a', 0.22), blend: 'screen' }])
+        .png()
+        .toBuffer();
+      // dark base for text at bottom
+      const vignette = Buffer.from(
+        `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="v" x1="0" y1="0" x2="0" y2="1"><stop offset="60%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#140502" stop-opacity="0.9"/></linearGradient></defs><rect width="${V2_W}" height="${V2_H}" fill="url(#v)"/></svg>`
+      );
+      return noise(await sharp(withRays).composite([{ input: vignette, blend: 'over' }]).png().toBuffer());
+    },
+  });
+}
+
+// FROST — cool ice-blue, teal rim, clean.
+async function renderFrost(i: RenderV2Input): Promise<Buffer> {
+  return themedPoster(i, {
+    accent: '#8fe3ff',
+    titleColor: '#eaf7ff',
+    heroMod: { brightness: 1.04, saturation: 1.0 },
+    secondary: 'mirror-left',
+    bg: async () => {
+      const field = gradientField(
+        `<stop offset="0%" stop-color="#0a1a2e"/><stop offset="45%" stop-color="#13395c"/><stop offset="80%" stop-color="#1f6b8f"/><stop offset="100%" stop-color="#060f1c"/>`
+      );
+      const withRays = await sharp(await sharp(field).png().toBuffer())
+        .composite([{ input: rays('#aee9ff', 0.16), blend: 'screen' }])
+        .png()
+        .toBuffer();
+      const vignette = Buffer.from(
+        `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="v" x1="0" y1="0" x2="0" y2="1"><stop offset="60%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#05101c" stop-opacity="0.92"/></linearGradient></defs><rect width="${V2_W}" height="${V2_H}" fill="url(#v)"/></svg>`
+      );
+      return noise(await sharp(withRays).composite([{ input: vignette, blend: 'over' }]).png().toBuffer());
+    },
+  });
+}
+
+// PRESTIGE — luxury black & gold, art-deco frame, editorial.
+async function renderPrestige(i: RenderV2Input): Promise<Buffer> {
+  return themedPoster(i, {
+    accent: '#d8af4e',
+    titleColor: '#e9cd7f',
+    heroMod: { brightness: 1.02, saturation: 1.04 },
+    secondary: 'none',
+    bg: async () => {
+      const field = gradientField(
+        `<stop offset="0%" stop-color="#121008"/><stop offset="50%" stop-color="#0b0a06"/><stop offset="100%" stop-color="#050403"/>`
+      );
+      // thin art-deco gold border frame
+      const frame = Buffer.from(
+        `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg">` +
+          `<rect x="40" y="40" width="${V2_W - 80}" height="${V2_H - 80}" fill="none" stroke="#d8af4e" stroke-opacity="0.55" stroke-width="2"/>` +
+          `<rect x="54" y="54" width="${V2_W - 108}" height="${V2_H - 108}" fill="none" stroke="#d8af4e" stroke-opacity="0.3" stroke-width="1"/>` +
+          `<circle cx="${V2_W / 2}" cy="40" r="6" fill="#d8af4e"/><circle cx="${V2_W / 2}" cy="${V2_H - 40}" r="6" fill="#d8af4e"/>` +
+          `</svg>`
+      );
+      return noise(await sharp(await sharp(field).png().toBuffer()).composite([{ input: frame, blend: 'over' }]).png().toBuffer());
+    },
+  });
+}
+
+// ELECTRIC — neon cyber, glowing accents, modern.
+async function renderElectric(i: RenderV2Input): Promise<Buffer> {
+  return themedPoster(i, {
+    accent: '#7cf6c8',
+    titleColor: '#ffffff',
+    heroMod: { brightness: 1.06, saturation: 1.12 },
+    secondary: 'mirror-left',
+    bg: async () => {
+      const field = gradientField(
+        `<stop offset="0%" stop-color="#140a2e"/><stop offset="45%" stop-color="#241158"/><stop offset="80%" stop-color="#3b1d7a"/><stop offset="100%" stop-color="#0a0618"/>`
+      );
+      // neon grid + glow bands
+      const grid = Buffer.from(
+        `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg">` +
+          Array.from({ length: 14 }).map((_, k) => `<line x1="0" y1="${(k + 1) * (V2_H / 15)}" x2="${V2_W}" y2="${(k + 1) * (V2_H / 15)}" stroke="#7cf6c8" stroke-opacity="0.06" stroke-width="1"/>`).join('') +
+          Array.from({ length: 8 }).map((_, k) => `<line y1="0" x1="${(k + 1) * (V2_W / 9)}" y2="${V2_H}" x2="${(k + 1) * (V2_W / 9)}" stroke="#b06bff" stroke-opacity="0.05" stroke-width="1"/>`).join('') +
+          `<rect width="${V2_W}" height="${V2_H}" fill="url(#glowb)"/>` +
+          `<defs><radialGradient id="glowb" cx="50%" cy="38%" r="55%"><stop offset="0%" stop-color="#7cf6c8" stop-opacity="0.18"/><stop offset="60%" stop-color="#b06bff" stop-opacity="0.06"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient></defs>` +
+          `</svg>`
+      );
+      const vignette = Buffer.from(
+        `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="v" x1="0" y1="0" x2="0" y2="1"><stop offset="62%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#070314" stop-opacity="0.92"/></linearGradient></defs><rect width="${V2_W}" height="${V2_H}" fill="url(#v)"/></svg>`
+      );
+      return noise(await sharp(await sharp(field).png().toBuffer()).composite([{ input: grid, blend: 'screen' }, { input: vignette, blend: 'over' }]).png().toBuffer());
+    },
+  });
+}
+
 export async function renderV2(input: RenderV2Input): Promise<{ bytes: Buffer; width: number; height: number }> {
   let bytes: Buffer;
   switch (input.design) {
@@ -420,6 +662,18 @@ export async function renderV2(input: RenderV2Input): Promise<{ bytes: Buffer; w
       break;
     case 'storm':
       bytes = await renderStorm(input);
+      break;
+    case 'inferno':
+      bytes = await renderInferno(input);
+      break;
+    case 'frost':
+      bytes = await renderFrost(input);
+      break;
+    case 'prestige':
+      bytes = await renderPrestige(input);
+      break;
+    case 'electric':
+      bytes = await renderElectric(input);
       break;
     default:
       bytes = await renderMidnight(input);
