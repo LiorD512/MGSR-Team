@@ -1,41 +1,35 @@
-# MATCHDAY POC — Design System
+# MATCHDAY — Redesigned Design System (reference-grade)
 
-Four unique, named matchday templates — each pixel-polished. **No face is ever generated.**
-The real player photo is cut out and composited. The player's shirt (kit swap) and a *second
-pose* were produced with Gemini while the **face/identity was strictly preserved** — only
-clothing and body pose change, never the face.
+Rebuilt to match the professional reference posters, at **true 9:16 (1080×1920)**.
+
+**Key fixes this round**
+- **Cutout** — now hard, natural edges via `isnet-general-use` (no alpha-matting), and the
+  ugly rim-light **glow was removed entirely**. Second player cropped out.
+- **Signature composition** — large **monochrome portrait backdrop** + sharp **color action
+  cutout** in front, exactly like the references.
+- **Typography** — elegant **Cinzel** serif gold "MATCHDAY" (matching the refs), Montserrat info.
+- **Backgrounds** — black/white marble textures, AI-generated golden-hour & storm skies, stadium bands.
+- Face is never generated; the kit swap + second pose preserve identity (only clothing/pose change).
 
 **Match:** Junior Diomande · Hapoel Akko vs Bnei Raina · Leumit League Round 9 · 09.10.2026 · 16:00
 
-Two real, face-safe poses are used across the designs:
-- **Pose 1** — dynamic dribbling action (with ball)
-- **Pose 2** — arms-crossed studio hero (AI-posed, face preserved)
+---
+
+## MIDNIGHT  — black marble, mono portrait + color action
+![MIDNIGHT](v2_midnight_small.jpg)
+
+## GOLDEN HOUR  — sunset stadium sky, two poses
+![GOLDEN HOUR](v2_golden_small.jpg)
+
+## STORM  — storm sky, three-pose composition, stadium base
+![STORM](v2_storm_small.jpg)
+
+## MARBLE  — clean white marble, mono portrait, rounded crest frames
+![MARBLE](v2_marble_small.jpg)
 
 ---
 
-## SPOTLIGHT
-Cinematic single-hero. Duotone navy stadium, gold rim-light, haze, protected title band.
-![SPOTLIGHT](design_spotlight_small.jpg)
+### Clean cutout (no glow, hard edges)
+![cutout](cutout_clean.png)
 
-## STATEMENT
-Bold typographic. Massive vertical surname up the left, arms-crossed portrait, high-contrast navy/gold.
-![STATEMENT](design_statement_small.jpg)
-
-## DUEL
-Dual-pose. Faded action pose + sharp hero pose, split by a diagonal gold seam. High energy.
-![DUEL](design_duel_small.jpg)
-
-## BROADCAST
-Sports-TV look. Angled lower-third panel, gold number tab, kickoff ticker, bright real stadium.
-![BROADCAST](design_broadcast_small.jpg)
-
----
-
-> Full-resolution PNGs (1080×1350): `design_spotlight.png`, `design_statement.png`, `design_duel.png`, `design_broadcast.png`
-
-## Pipeline
-1. Player photo → background removal (rembg)
-2. Kit swap — face LOCKED, shirt repainted from real kit reference (Gemini)
-3. Second pose — face LOCKED, body re-posed (Gemini)
-4. Clean re-cut + gold rim-light glow per pose
-5. Deterministic compositing (sharp): each named template, accurate fixture/crests
+> Full-resolution PNGs (1080×1920): `v2_midnight.png`, `v2_golden.png`, `v2_storm.png`, `v2_marble.png`
