@@ -141,7 +141,20 @@ async function wikipediaCrestUrl(clubName: string): Promise<string | null> {
     if (!best) return null;
 
     const absolute = best.startsWith('//') ? `https:${best}` : best;
-    return absolute.replace(/&amp;/g, '&');
+    const resolved = absolute.replace(/&amp;/g, '&');
+
+    // Final safety net: a crest's file is a logo/badge, not a photograph. Reject
+    // obvious photo filenames (jpg photos, or names signalling a building/place
+    // like a church, stadium, town hall) so a town article's lead image can
+    // never masquerade as a crest.
+    const fileName = decodeURIComponent(resolved.split('/').pop() ?? '').toLowerCase();
+    const looksLikePhoto =
+      /\.jpe?g($|\?)/.test(fileName) ||
+      /(church|cathedral|trej|bažny|stadium|arena|town|hall|panorama|aerial|street|square|building|view)/.test(fileName);
+    const looksLikeCrest = /(logo|crest|badge|emblem|wappen|fc|fk|\.svg)/.test(fileName);
+    if (looksLikePhoto && !looksLikeCrest) return null;
+
+    return resolved;
   } catch {
     return null;
   }
@@ -155,7 +168,10 @@ export async function resolveCrest(
   clubName: string,
   logoUrl: string | null | undefined
 ): Promise<ResolvedCrest | null> {
-  const cacheKey = `matchday-crest-${sanitizeKey(clubName.toLowerCase())}`;
+  // Cache key is VERSIONED: bumping `v2` invalidates every crest cached under
+  // the old (buggy) resolution that could store a town photo (e.g. a church)
+  // instead of a crest. Old entries are simply never read again.
+  const cacheKey = `matchday-crest-v2-${sanitizeKey(clubName.toLowerCase())}`;
   const cachedUrl = await getCached<{ url: string; source: string }>(cacheKey, CACHE_TTL_MS);
   if (cachedUrl?.url) {
     const hit = await fetchImage(cachedUrl.url, cachedUrl.source);
