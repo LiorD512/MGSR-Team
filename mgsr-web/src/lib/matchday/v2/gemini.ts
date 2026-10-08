@@ -64,27 +64,36 @@ async function generate(parts: unknown[], label: string): Promise<GenResult | nu
 }
 
 /**
- * Clean cutout — hard, natural edges, no glow. Returns a flattened image the
- * caller re-cuts to transparency with sharp/rembg-equivalent, OR the original
- * bytes if Gemini is unavailable.
+ * The chroma-key colour we ask the model to place the player on. Pure magenta
+ * is almost never present in skin/kit, so sharp can key it out cleanly. We ask
+ * for a FLAT SOLID colour (never "transparency", which the model fakes with a
+ * checkerboard it bakes into the pixels).
  */
-export async function cutoutPlayer(src: Buffer): Promise<GenResult> {
-  if (!geminiConfigured()) return { bytes: src, mimeType: sniffMime(src) };
+export const CHROMA_KEY = { r: 255, g: 0, b: 255 } as const;
+
+/**
+ * Place the player on a flat magenta background so the caller can key it out to
+ * true transparency. Returns null when Gemini is unavailable — the caller must
+ * then skip the cutout rather than paste a raw rectangle.
+ */
+export async function cutoutPlayer(src: Buffer): Promise<GenResult | null> {
+  if (!geminiConfigured()) return null;
   const out = await generate(
     [
       imagePart(src),
       {
         text:
-          'Cut out the football player from this photo with a CLEAN, SHARP, NATURAL edge. ' +
-          'Remove the entire background completely. Keep the player\'s face, body, kit, hair ' +
-          'and any ball EXACTLY as in the photo — do not alter the person. Do NOT add any glow, ' +
-          'halo, outline, shadow or light around the player. Edges around hair and body must be ' +
-          'crisp and realistic, like a professional studio cutout. Output just the player.',
+          'Replace the ENTIRE background of this football player photo with a single FLAT, SOLID ' +
+          'magenta colour (hex #FF00FF, RGB 255,0,255) that completely fills every pixel that is ' +
+          'not the player. Keep the player\'s face, body, kit, hair and any ball EXACTLY as in the ' +
+          'photo — do not alter the person, do not recolour them, do not add glow or shadow. The ' +
+          'edge around the hair and body must be crisp. Do NOT output a checkerboard or any ' +
+          'transparency pattern — the background must be a uniform magenta fill. Output the full image.',
       },
     ],
     'cutout'
   );
-  return out ?? { bytes: src, mimeType: sniffMime(src) };
+  return out;
 }
 
 /**
@@ -132,7 +141,8 @@ export async function altPose(src: Buffer): Promise<GenResult | null> {
           'unmistakably; do not restyle, age, slim or beautify the face. Keep the same kit and ' +
           'number. CHANGE ONLY the body pose and framing to a confident static hero pose: chest-up ' +
           'to waist-up, facing camera, arms crossed or hands on hips, calm powerful expression, head ' +
-          'level. Studio-style, clean. Output the player on a transparent background, high resolution.',
+          'level. Place the player on a single FLAT, SOLID magenta background (hex #FF00FF) filling ' +
+          'every non-player pixel — never a checkerboard or transparency pattern. High resolution.',
       },
     ],
     'alt-pose'

@@ -104,7 +104,7 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
     createdAt: Date.now(),
   });
 
-  const qualityChecks = buildChecks(facts, layers.usedGemini, Boolean(homeCrest), Boolean(awayCrest), Boolean(kitBytes), rendered.width, rendered.height);
+  const qualityChecks = buildChecks(facts, layers.usedGemini, Boolean(layers.cutAction), Boolean(homeCrest), Boolean(awayCrest), Boolean(kitBytes), rendered.width, rendered.height);
 
   return {
     generationId,
@@ -118,6 +118,7 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
 function buildChecks(
   facts: MatchdayMatchFacts,
   usedGemini: boolean,
+  haveCutout: boolean,
   home: boolean,
   away: boolean,
   kitSwapped: boolean,
@@ -125,7 +126,8 @@ function buildChecks(
   h: number
 ): MatchdayQualityCheck[] {
   return [
-    { id: 'identity', label: 'Player face preserved (never generated)', status: 'pass', detail: usedGemini ? 'AI used only for cutout/kit/pose' : 'no AI — original photo composited' },
+    { id: 'identity', label: 'Player face preserved (never generated)', status: 'pass', detail: 'AI used only for cutout/kit/pose' },
+    { id: 'cutout', label: 'Player cutout', status: haveCutout ? 'pass' : 'fail', detail: haveCutout ? 'clean transparent cutout' : 'cutout unavailable — set GEMINI_API_KEY' },
     { id: 'kit', label: 'Kit', status: kitSwapped ? 'pass' : 'warn', detail: kitSwapped ? 'swapped from reference' : 'original kit kept' },
     { id: 'teams', label: 'Home & away teams resolved', status: facts.homeTeam && facts.awayTeam ? 'pass' : 'fail', detail: `${facts.homeTeam} vs ${facts.awayTeam}` },
     { id: 'datetime', label: 'Date & kickoff', status: facts.date ? (facts.time ? 'pass' : 'warn') : 'fail', detail: `${facts.date}${facts.time ? ` • ${facts.time}` : ' • TBC'}` },

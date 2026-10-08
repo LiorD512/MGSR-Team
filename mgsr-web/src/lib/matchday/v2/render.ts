@@ -25,7 +25,7 @@ export interface RenderV2Input {
   facts: MatchdayMatchFacts;
   playerName: string;
   squadNumber?: string | null;
-  layers: { cutAction: Buffer; hero: Buffer; backdropMono: Buffer };
+  layers: { cutAction: Buffer | null; hero: Buffer | null; backdropMono: Buffer | null };
   homeCrest?: Buffer | null;
   awayCrest?: Buffer | null;
   stadium?: Buffer | null;
@@ -49,6 +49,11 @@ async function scaleH(buf: Buffer, targetH: number, mod?: { brightness?: number;
   return { buf: await p.png().toBuffer(), w: nw, h: nh };
 }
 
+/** An empty full-canvas transparent sheet (used when a layer is missing). */
+async function emptySheet(): Promise<Buffer> {
+  return sharp({ create: { width: V2_W, height: V2_H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toBuffer();
+}
+
 /** Place a layer onto a full-canvas transparent sheet, clipping overflow. */
 async function onCanvas(buf: Buffer, w: number, h: number, left: number, top: number): Promise<Buffer> {
   const sheet = sharp({ create: { width: V2_W, height: V2_H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
@@ -61,6 +66,24 @@ async function onCanvas(buf: Buffer, w: number, h: number, left: number, top: nu
   if (cw <= 0 || ch <= 0) return sheet.png().toBuffer();
   const piece = await sharp(buf).extract({ left: sx, top: sy, width: cw, height: ch }).toBuffer();
   return sheet.composite([{ input: piece, left: dx, top: dy }]).png().toBuffer();
+}
+
+/**
+ * Scale a (possibly null) layer to a target height and place it on the canvas
+ * via a positioner. Returns a transparent sheet when the layer is missing, so
+ * a failed cutout contributes nothing rather than a raw rectangle.
+ */
+async function placeLayer(
+  buf: Buffer | null,
+  targetH: number,
+  position: (w: number, h: number) => { left: number; top: number },
+  opts?: { mod?: { brightness?: number; saturation?: number }; fade?: boolean }
+): Promise<Buffer> {
+  if (!buf) return emptySheet();
+  const s = await scaleH(buf, targetH, opts?.mod);
+  const body = opts?.fade ? await bottomFade(s.buf) : s.buf;
+  const { left, top } = position(s.w, s.h);
+  return onCanvas(body, s.w, s.h, left, top);
 }
 
 /** Apply a soft bottom fade so a cropped torso dissolves into the background. */
@@ -145,22 +168,28 @@ function marbleSvg(dark: boolean): Buffer {
 async function renderMidnight(i: RenderV2Input): Promise<Buffer> {
   const bg = await sharp(marbleSvg(true)).png().toBuffer();
 
-  const back = await scaleH(i.layers.backdropMono, Math.round(V2_H * 0.64));
-  const backFaded = await bottomFade(back.buf);
-  const backSheet = await onCanvas(backFaded, back.w, back.h, Math.round(V2_W * 0.47 - back.w / 2), Math.round(V2_H * 0.1));
-
-  const act = await scaleH(i.layers.cutAction, Math.round(V2_H * 0.56), { brightness: 1.04, saturation: 1.08 });
-  const actSheet = await onCanvas(act.buf, act.w, act.h, Math.round(V2_W * 0.72 - act.w / 2), V2_H - act.h - 20);
+  const backSheet = await placeLayer(
+    i.layers.backdropMono,
+    Math.round(V2_H * 0.64),
+    (w) => ({ left: Math.round(V2_W * 0.47 - w / 2), top: Math.round(V2_H * 0.1) }),
+    { fade: true }
+  );
+  const actSheet = await placeLayer(
+    i.layers.cutAction,
+    Math.round(V2_H * 0.56),
+    (w, h) => ({ left: Math.round(V2_W * 0.72 - w / 2), top: V2_H - h - 20 }),
+    { mod: { brightness: 1.04, saturation: 1.08 } }
+  );
 
   const margin = 60;
   const txt = await textLayer(
     div({ width: `${V2_W}px`, height: `${V2_H}px`, flexDirection: 'column', position: 'relative', padding: `${margin}px` }, [
       text({ fontFamily: 'Cinzel', fontWeight: 700, fontSize: '118px', color: GOLD, letterSpacing: '2px', lineHeight: 1 }, 'MATCHDAY'),
       text({ fontFamily: 'Montserrat', fontWeight: 300, fontSize: '48px', color: '#fff', marginTop: '8px' }, i.playerName),
-      div({ position: 'absolute', left: `${margin}px`, bottom: '300px', flexDirection: 'column' }, [
-        text({ fontFamily: 'Montserrat', fontWeight: 600, fontSize: '30px', color: GOLD }, compLine(i.facts)),
-        text({ fontFamily: 'Montserrat', fontWeight: 400, fontSize: '42px', color: '#fff', marginTop: '14px' }, dateLine(i.facts)),
-        text({ fontFamily: 'Montserrat', fontWeight: 300, fontSize: '32px', color: '#c9c9c9', marginTop: '10px' }, i.facts.venue ?? ''),
+      div({ position: 'absolute', left: `${margin}px`, bottom: '300px', width: `${V2_W - margin * 2}px`, flexDirection: 'column' }, [
+        text({ fontFamily: 'Montserrat', fontWeight: 600, fontSize: '28px', color: GOLD, width: `${V2_W - margin * 2}px` }, compLine(i.facts).toUpperCase()),
+        text({ fontFamily: 'Montserrat', fontWeight: 400, fontSize: '40px', color: '#fff', marginTop: '14px' }, dateLine(i.facts)),
+        text({ fontFamily: 'Montserrat', fontWeight: 300, fontSize: '30px', color: '#c9c9c9', marginTop: '10px', width: `${V2_W - margin * 2}px` }, i.facts.venue ?? ''),
       ]),
     ])
   );
@@ -171,8 +200,8 @@ async function renderMidnight(i: RenderV2Input): Promise<Buffer> {
   const crestTxt = await textLayer(
     div({ width: `${V2_W}px`, height: `${V2_H}px`, position: 'relative' }, [
       text({ position: 'absolute', left: `${margin + bs + 30}px`, top: `${crestY + bs / 2 - 32}px`, fontFamily: 'Cinzel', fontWeight: 700, fontSize: '58px', color: GOLD }, 'VS'),
-      text({ position: 'absolute', left: `${margin}px`, top: `${crestY + bs + 8}px`, width: `${bs}px`, justifyContent: 'center', fontFamily: 'Montserrat', fontWeight: 600, fontSize: '24px', color: '#fff' }, i.facts.homeTeam),
-      text({ position: 'absolute', left: `${margin + bs + 120}px`, top: `${crestY + bs + 8}px`, width: `${bs}px`, justifyContent: 'center', fontFamily: 'Montserrat', fontWeight: 600, fontSize: '24px', color: '#fff' }, i.facts.awayTeam),
+      text({ position: 'absolute', left: `${margin}px`, top: `${crestY + bs + 10}px`, width: `${bs}px`, justifyContent: 'center', textAlign: 'center', fontFamily: 'Montserrat', fontWeight: 600, fontSize: '20px', lineHeight: 1.15, color: '#fff' }, i.facts.homeTeam),
+      text({ position: 'absolute', left: `${margin + bs + 120}px`, top: `${crestY + bs + 10}px`, width: `${bs}px`, justifyContent: 'center', textAlign: 'center', fontFamily: 'Montserrat', fontWeight: 600, fontSize: '20px', lineHeight: 1.15, color: '#fff' }, i.facts.awayTeam),
     ])
   );
 
@@ -190,12 +219,18 @@ async function renderMidnight(i: RenderV2Input): Promise<Buffer> {
 async function renderMarble(i: RenderV2Input): Promise<Buffer> {
   const bg = await sharp(marbleSvg(false)).png().toBuffer();
 
-  const back = await scaleH(i.layers.backdropMono, Math.round(V2_H * 0.52));
-  const backFaded = await bottomFade(back.buf);
-  const backSheet = await onCanvas(backFaded, back.w, back.h, Math.round(V2_W * 0.5 - back.w / 2), Math.round(V2_H * 0.03));
-
-  const act = await scaleH(i.layers.cutAction, Math.round(V2_H * 0.56), { brightness: 1.03, saturation: 1.06 });
-  const actSheet = await onCanvas(act.buf, act.w, act.h, Math.round(V2_W * 0.74 - act.w / 2), V2_H - act.h - 30);
+  const backSheet = await placeLayer(
+    i.layers.backdropMono,
+    Math.round(V2_H * 0.52),
+    (w) => ({ left: Math.round(V2_W * 0.5 - w / 2), top: Math.round(V2_H * 0.03) }),
+    { fade: true }
+  );
+  const actSheet = await placeLayer(
+    i.layers.cutAction,
+    Math.round(V2_H * 0.56),
+    (w, h) => ({ left: Math.round(V2_W * 0.74 - w / 2), top: V2_H - h - 30 }),
+    { mod: { brightness: 1.03, saturation: 1.06 } }
+  );
 
   const margin = 56;
   const txt = await textLayer(
@@ -278,10 +313,18 @@ function centredBottomText(i: RenderV2Input): Promise<Buffer> {
 
 async function renderGolden(i: RenderV2Input): Promise<Buffer> {
   const bg = await skyBackground(i, { r: 60, g: 32, b: 12 });
-  const sec = await scaleH(i.layers.hero, Math.round(V2_H * 0.55), { brightness: 0.92 });
-  const secSheet = await onCanvas(sec.buf, sec.w, sec.h, Math.round(V2_W * 0.26 - sec.w / 2), Math.round(V2_H * 0.33));
-  const hero = await scaleH(i.layers.cutAction, Math.round(V2_H * 0.62), { brightness: 1.05, saturation: 1.08 });
-  const heroSheet = await onCanvas(hero.buf, hero.w, hero.h, Math.round(V2_W * 0.6 - hero.w / 2), Math.round(V2_H * 0.3));
+  const secSheet = await placeLayer(
+    i.layers.hero,
+    Math.round(V2_H * 0.55),
+    (w) => ({ left: Math.round(V2_W * 0.26 - w / 2), top: Math.round(V2_H * 0.33) }),
+    { mod: { brightness: 0.92 } }
+  );
+  const heroSheet = await placeLayer(
+    i.layers.cutAction,
+    Math.round(V2_H * 0.62),
+    (w) => ({ left: Math.round(V2_W * 0.6 - w / 2), top: Math.round(V2_H * 0.3) }),
+    { mod: { brightness: 1.05, saturation: 1.08 } }
+  );
   const txt = await centredBottomText(i);
 
   const bs = 180;
@@ -305,12 +348,22 @@ async function renderGolden(i: RenderV2Input): Promise<Buffer> {
 async function renderStorm(i: RenderV2Input): Promise<Buffer> {
   const bg = await skyBackground(i, { r: 30, g: 32, b: 40 });
 
-  const hero = await scaleH(i.layers.hero, Math.round(V2_H * 0.56));
-  const heroSheet = await onCanvas(hero.buf, hero.w, hero.h, Math.round(V2_W * 0.62 - hero.w / 2), Math.round(V2_H * 0.2));
-  const a1 = await scaleH(i.layers.cutAction, Math.round(V2_H * 0.34), { brightness: 0.98 });
-  const a1Sheet = await onCanvas(a1.buf, a1.w, a1.h, Math.round(V2_W * 0.26 - a1.w / 2), Math.round(V2_H * 0.24));
-  const a2 = await scaleH(i.layers.cutAction, Math.round(V2_H * 0.4));
-  const a2Sheet = await onCanvas(a2.buf, a2.w, a2.h, Math.round(V2_W * 0.24 - a2.w / 2), Math.round(V2_H * 0.44));
+  const heroSheet = await placeLayer(
+    i.layers.hero,
+    Math.round(V2_H * 0.56),
+    (w) => ({ left: Math.round(V2_W * 0.62 - w / 2), top: Math.round(V2_H * 0.2) })
+  );
+  const a1Sheet = await placeLayer(
+    i.layers.cutAction,
+    Math.round(V2_H * 0.34),
+    (w) => ({ left: Math.round(V2_W * 0.26 - w / 2), top: Math.round(V2_H * 0.24) }),
+    { mod: { brightness: 0.98 } }
+  );
+  const a2Sheet = await placeLayer(
+    i.layers.cutAction,
+    Math.round(V2_H * 0.4),
+    (w) => ({ left: Math.round(V2_W * 0.24 - w / 2), top: Math.round(V2_H * 0.44) })
+  );
   const txt = await centredBottomText(i);
 
   const bs = 160;
