@@ -9,14 +9,17 @@ export const maxDuration = 60;
 const MAX_BYTES = 15 * 1024 * 1024;
 
 interface UploadBody {
-  kind: 'player' | 'stadium';
-  /** Player document id — required for `kind: 'player'`. */
+  kind: 'player' | 'stadium' | 'kit';
+  /** Player document id — required for `kind: 'player'` and `'kit'`. */
   playerId?: string | null;
   /** Club name — required for `kind: 'stadium'`; keys the stored asset. */
   club?: string | null;
   /** base64 data URL of the chosen image. */
   imageDataUrl: string;
 }
+
+/** A kit reference is small guidance art, not a panel fill — a modest floor. */
+const KIT_FLOOR = { width: 300, height: 300 } as const;
 
 /** Keeps a club name stable as a Firestore document id. */
 function clubKey(club: string): string {
@@ -39,14 +42,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (body?.kind !== 'player' && body?.kind !== 'stadium') {
-    return NextResponse.json({ error: "kind must be 'player' or 'stadium'" }, { status: 400 });
+  if (body?.kind !== 'player' && body?.kind !== 'stadium' && body?.kind !== 'kit') {
+    return NextResponse.json({ error: "kind must be 'player', 'stadium' or 'kit'" }, { status: 400 });
   }
   if (!body.imageDataUrl) {
     return NextResponse.json({ error: 'imageDataUrl is required' }, { status: 400 });
   }
-  if (body.kind === 'player' && !body.playerId) {
-    return NextResponse.json({ error: 'playerId is required for a player photo' }, { status: 400 });
+  if ((body.kind === 'player' || body.kind === 'kit') && !body.playerId) {
+    return NextResponse.json({ error: 'playerId is required for a player/kit photo' }, { status: 400 });
   }
   if (body.kind === 'stadium' && !body.club?.trim()) {
     return NextResponse.json({ error: 'club is required for a stadium photo' }, { status: 400 });
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest) {
 
   // Reject here rather than at render time, using the same panel dimensions the
   // renderer draws into — so "it uploaded fine but looks soft" cannot happen.
-  const floor = body.kind === 'player' ? PLAYER_PANEL : STADIUM_BAND;
+  const floor = body.kind === 'player' ? PLAYER_PANEL : body.kind === 'kit' ? KIT_FLOOR : STADIUM_BAND;
   let width = 0;
   let height = 0;
   try {
@@ -103,7 +106,9 @@ export async function POST(request: NextRequest) {
     const storagePath =
       body.kind === 'player'
         ? `matchday-assets/players/${body.playerId}.${stored.ext}`
-        : `matchday-assets/clubs/${clubKey(body.club!)}.${stored.ext}`;
+        : body.kind === 'kit'
+          ? `matchday-assets/kits/${body.playerId}.${stored.ext}`
+          : `matchday-assets/clubs/${clubKey(body.club!)}.${stored.ext}`;
 
     const bucket = await adminBucket();
     const file = bucket.file(storagePath);
@@ -118,6 +123,11 @@ export async function POST(request: NextRequest) {
         .collection('Players')
         .doc(body.playerId!)
         .set({ matchdayPhotoUrl: url }, { merge: true });
+    } else if (body.kind === 'kit') {
+      await adminDb()
+        .collection('Players')
+        .doc(body.playerId!)
+        .set({ matchdayKitUrl: url }, { merge: true });
     } else {
       await adminDb()
         .collection('ClubAssets')

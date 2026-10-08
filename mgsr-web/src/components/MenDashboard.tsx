@@ -23,7 +23,8 @@ import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import { openWhatsAppWithMessage } from '@/lib/whatsapp';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
-import MatchdayGeneratorModal, { type MatchdaySeed } from '@/components/MatchdayGeneratorModal';
+import { type MatchdaySeed } from '@/components/MatchdayGeneratorModal';
+import MatchdayDrawer from '@/components/MatchdayDrawer';
 import NotificationPrompt from '@/components/NotificationPrompt';
 import GlobalPlayerSearch, { type ShortlistSearchItem } from '@/components/GlobalPlayerSearch';
 import { db } from '@/lib/firebase';
@@ -1537,7 +1538,6 @@ export default function MenDashboard({
                 </label>
               </div>
             )}
-            {/* Generate matchday image — temporarily hidden (kept for future use).
             {!isUnder19Dossier && dossier.playerId && (
               <button
                 type="button"
@@ -1555,10 +1555,11 @@ export default function MenDashboard({
                   })
                 }
               >
-                {t('matchday_generate_button')}
+                <span className="brit-matchday-btn-mark" aria-hidden>◈</span>
+                <span className="brit-matchday-btn-label">{t('matchday_generate_button')}</span>
+                <span className="brit-matchday-btn-arrow" aria-hidden>→</span>
               </button>
             )}
-            */}
             {!isUnder19Dossier && <section className="bam-nm" aria-live="polite">
               <div className="bam-nm-top">
                 <span className="lbl"><span className="pulse" />{t('room_next_match')}</span>
@@ -1757,7 +1758,7 @@ export default function MenDashboard({
       </aside>
 
       {matchdaySeed && (
-        <MatchdayGeneratorModal seed={matchdaySeed} onClose={() => setMatchdaySeed(null)} />
+        <MatchdayDrawer seed={matchdaySeed} onClose={() => setMatchdaySeed(null)} />
       )}
       {searchOpen && (
         <GlobalPlayerSearch
