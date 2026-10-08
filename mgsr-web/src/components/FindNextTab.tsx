@@ -803,22 +803,38 @@ export default function FindNextTab() {
             {response.signature_stats && response.signature_stats.length > 0 ? (
               <>
                 <p className="sig-title">
-                  {isHe ? 'חתימה סטטיסטית · ל-90 דקות ואחוזון מול עמדה' : 'Statistical signature · per 90 & percentile vs position'}
+                  {isHe ? 'חתימה סטטיסטית · ל-90 דקות ואחוזון מול עמדה' : 'Statistical signature · per 90 output & percentile rank'}
                 </p>
-                <div className="sigbars">
-                  {response.signature_stats.map((stat) => (
-                    <div key={stat.stat_key} className="sigbar">
-                      <span className="sl">{stat.label}</span>
-                      <span className="sv">{stat.value}<small>/90</small></span>
-                      <span className="st"><i style={{ width: `${Math.max(0, Math.min(100, stat.percentile))}%` }} /></span>
-                      <span className="sp">{stat.percentile}<small>pct</small></span>
-                    </div>
-                  ))}
+                <div className="sig-tiles">
+                  {response.signature_stats.map((stat) => {
+                    const pctRank = Math.max(0, Math.min(100, stat.percentile));
+                    // ring circumference for r=18 ≈ 113.1
+                    const dash = 113.1 * (1 - pctRank / 100);
+                    const label = (stat.label_en || stat.label || '').replace(/\s*\/\s*90$/i, '');
+                    return (
+                      <div key={stat.stat_key} className="sig-tile">
+                        <div className="big">
+                          <b>{stat.value}<small>/90</small></b>
+                          <span className="u">{label}</span>
+                        </div>
+                        <div className="rate">
+                          <span className="ring-box">
+                            <svg className="donut" viewBox="0 0 48 48">
+                              <circle className="track" cx="24" cy="24" r="18" />
+                              <circle className="val" cx="24" cy="24" r="18" strokeDasharray="113.1" strokeDashoffset={dash} />
+                            </svg>
+                            <span className="pct">{stat.percentile}</span>
+                          </span>
+                          <span className="rl">{isHe ? 'אחוזון' : 'pct'}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="sig-note">
                   {isHe
-                    ? '↳ ל-90 דקות = קצב · אחוזון = דירוג מול שחקנים באותה עמדה'
-                    : '↳ per-90 = output rate · percentile = rank vs players in the same position'}
+                    ? '↳ מספר = פעולות ל-90 דקות · טבעת = אחוזון מול שחקנים באותה עמדה'
+                    : '↳ number = actions per 90 min · ring = percentile rank vs same position'}
                 </p>
               </>
             ) : (

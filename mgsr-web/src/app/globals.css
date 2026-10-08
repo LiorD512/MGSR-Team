@@ -5493,19 +5493,23 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-wr-hero .hero-left .radar .axis { stroke: rgba(243,240,232,.1); stroke-width: 1; }
 .brit-room .brit-wr-hero .hero-left .radar .shape { fill: rgba(201,166,107,.28); stroke: var(--gold-bright, var(--gold-soft)); stroke-width: 2; }
 .brit-room .brit-wr-hero .hero-left .radar .dot { fill: var(--gold-bright, var(--gold-soft)); }
-.brit-room .brit-wr-hero .hero-left .radar .lbl { fill: #aaa59b; font: 7px/1 var(--mono); text-transform: uppercase; }
+.brit-room .brit-wr-hero .hero-left .radar .lbl { fill: #d8d2c6; font: 500 10px/1 var(--mono); letter-spacing: .02em; text-transform: uppercase; }
 .brit-room .brit-wr-hero .hero-right { padding: 22px 26px; display: flex; flex-direction: column; }
 .brit-room .brit-wr-hero .sig-title { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
 .brit-room .brit-wr-hero .sig-title::after { content: ''; flex: 1; height: 1px; background: var(--line); }
-.brit-room .brit-wr-hero .sigbars { display: grid; gap: 12px; }
-.brit-room .brit-wr-hero .sigbar { display: grid; grid-template-columns: 150px 58px 1fr 50px; align-items: center; gap: 14px; }
-.brit-room .brit-wr-hero .sigbar .sl { color: var(--ink); font: 10px/1.3 var(--mono); text-transform: uppercase; }
-.brit-room .brit-wr-hero .sigbar .sv { color: var(--ink); font: 500 15px/1 var(--display); text-align: end; }
-.brit-room .brit-wr-hero .sigbar .sv small { color: var(--muted-2); font: 7px/1 var(--mono); margin-inline-start: 1px; }
-.brit-room .brit-wr-hero .sigbar .st { height: 9px; background: var(--paper-2); position: relative; overflow: hidden; }
-.brit-room .brit-wr-hero .sigbar .st i { position: absolute; inset-inline-start: 0; top: 0; height: 100%; background: linear-gradient(90deg, var(--gold-soft), var(--gold)); }
-.brit-room .brit-wr-hero .sigbar .sp { color: var(--gold); font: 500 15px/1 var(--display); text-align: end; }
-.brit-room .brit-wr-hero .sigbar .sp small { color: var(--muted-2); font: 7px/1 var(--mono); }
+.brit-room .brit-wr-hero .sig-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.brit-room .brit-wr-hero .sig-tile { display: flex; align-items: center; gap: 14px; border: 1px solid var(--line); background: var(--paper); padding: 13px 15px; }
+.brit-room .brit-wr-hero .sig-tile .big { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.brit-room .brit-wr-hero .sig-tile .big b { font: 500 26px/.9 var(--display); color: var(--ink); }
+.brit-room .brit-wr-hero .sig-tile .big b small { color: var(--muted-2); font: 9px/1 var(--mono); margin-inline-start: 2px; }
+.brit-room .brit-wr-hero .sig-tile .big .u { color: var(--muted); font: 8px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+.brit-room .brit-wr-hero .sig-tile .rate { margin-inline-start: auto; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.brit-room .brit-wr-hero .sig-tile .ring-box { position: relative; width: 46px; height: 46px; }
+.brit-room .brit-wr-hero .sig-tile .donut { width: 46px; height: 46px; }
+.brit-room .brit-wr-hero .sig-tile .donut .track { fill: none; stroke: var(--paper-2); stroke-width: 5; }
+.brit-room .brit-wr-hero .sig-tile .donut .val { fill: none; stroke: var(--gold); stroke-width: 5; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; }
+.brit-room .brit-wr-hero .sig-tile .pct { position: absolute; inset: 0; display: grid; place-items: center; font: 500 12px/1 var(--display); color: var(--gold); }
+.brit-room .brit-wr-hero .sig-tile .rl { color: var(--muted-2); font: 7px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; }
 .brit-room .brit-wr-hero .sig-note { margin-top: 16px; color: var(--muted-2); font: 8px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
 
 /* ── Successor cards ── */
@@ -5550,7 +5554,7 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   .brit-room .brit-wr-cfg .cfg-f { border-inline-end: 0; border-bottom: 1px solid var(--line-2); }
   .brit-room .brit-wr-cfg .cfg-f:last-child { border-bottom: 0; }
   .brit-room .brit-wr-hero { grid-template-columns: 1fr; }
-  .brit-room .brit-wr-hero .sigbar { grid-template-columns: 110px 48px 1fr 42px; gap: 10px; }
+  .brit-room .brit-wr-hero .sig-tiles { grid-template-columns: 1fr; }
   .brit-room .brit-wr-card .card-head { flex-wrap: wrap; }
   .brit-room .brit-wr-card .card-stats { grid-template-columns: 1fr 1fr; }
   .brit-room .brit-wr-card .cs:nth-child(2) { border-inline-end: 0; }
