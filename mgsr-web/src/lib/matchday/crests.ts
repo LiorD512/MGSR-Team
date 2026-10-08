@@ -77,6 +77,36 @@ async function fetchImage(url: string, source: string): Promise<ResolvedCrest | 
   }
 }
 
+/**
+ * Find a club's Transfermarkt crest by NAME (not by a URL we already hold).
+ * This is how we get a proper crest for the opponent, whose Transfermarkt id we
+ * never learn from the fixture feed. TM's quick-search returns the club's crest
+ * image, whose numeric id we lift and rebuild at `original`/`big` resolution.
+ * TM search is club-specific, so it is far less error-prone than a fuzzy
+ * Wikipedia name search (which returned Viktoria Plzeň for "FC Ballkani").
+ */
+async function transfermarktSearchCrestUrls(clubName: string): Promise<string[]> {
+  try {
+    const url = `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(clubName)}`;
+    const res = await fetch(url, {
+      headers: { ...HEADERS, 'accept-language': 'en' },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    // The first club crest in the results carries the club id we need.
+    const id = html.match(/\/wappen\/(?:head|normal|verysmall|small|medium|big)\/(\d+)\.png/)?.[1];
+    if (!id) return [];
+    return [
+      `https://img.a.transfermarkt.technology/wappen/original/${id}.png`,
+      `https://img.a.transfermarkt.technology/wappen/big/${id}.png`,
+    ];
+  } catch {
+    return [];
+  }
+}
+
 /** Transfermarkt serves the same crest at many sizes via the path segment. */
 function transfermarktVariants(url: string): string[] {
   const id = url.match(/\/wappen\/[^/]+\/(\d+)\.png/)?.[1];
@@ -190,10 +220,20 @@ export async function resolveCrest(
   }
 
   const attempts: Array<{ url: string; source: string }> = [];
+
+  // 1) Transfermarkt variants of the URL we already hold (our own club — the
+  //    stored clubLogo carries the TM id, so this is the biggest, cheapest win).
   if (logoUrl) {
     for (const url of transfermarktVariants(logoUrl)) {
-      attempts.push({ url, source: 'transfermarkt-original' });
+      attempts.push({ url, source: 'transfermarkt-id' });
     }
+  }
+
+  // 2) Transfermarkt SEARCH BY NAME — the primary route for the opponent, whose
+  //    TM id we never get from the fixture feed. Club-specific, so far more
+  //    reliable than a fuzzy Wikipedia name search.
+  for (const url of await transfermarktSearchCrestUrls(clubName)) {
+    attempts.push({ url, source: 'transfermarkt-search' });
   }
 
   let best: ResolvedCrest | null = null;
@@ -204,8 +244,8 @@ export async function resolveCrest(
     if (Math.min(hit.width, hit.height) >= DECENT_MIN) break;
   }
 
-  // Wikipedia is the only route to a usable opponent crest, since the fixture
-  // feed only ever gives us a 30×30 badge.
+  // 3) Wikipedia infobox crest — last resort when Transfermarkt has nothing
+  //    usable (name-scored so it can't hand back a different club).
   if (!best || Math.min(best.width, best.height) < DECENT_MIN) {
     const wikiUrl = await wikipediaCrestUrl(clubName);
     if (wikiUrl) {
@@ -216,7 +256,7 @@ export async function resolveCrest(
     }
   }
 
-  // Fall back to the URL we were handed, however small.
+  // 4) Fall back to the URL we were handed, however small.
   if (!best && logoUrl) best = await fetchImage(logoUrl, 'as-supplied');
 
   if (best) void setCache(cacheKey, { url: best.url, source: best.source });
