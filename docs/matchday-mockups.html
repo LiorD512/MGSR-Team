@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MATCHDAY — Art Direction Studies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bebas+Neue&family=Oswald:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Space+Grotesk:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --card-w: 360px;      /* 9:16 preview width */
+    --card-h: 640px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0b0b0d;
+    color: #e8e6df;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    padding: 56px 32px 120px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Page header ── */
+  .masthead { max-width: 1200px; margin: 0 auto 56px; }
+  .masthead .kick {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px; letter-spacing: 6px; text-transform: uppercase;
+    color: #8a8a84;
+  }
+  .masthead h1 {
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(44px, 7vw, 92px);
+    line-height: 0.92; letter-spacing: -1px; margin: 14px 0 18px;
+    text-transform: uppercase;
+    background: linear-gradient(100deg, #fff 10%, #c9a66b 60%, #7d5f30 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .masthead p { max-width: 680px; color: #b4b2aa; font-size: 15px; line-height: 1.65; }
+  .masthead .note {
+    margin-top: 18px; font-family: 'DM Mono', monospace; font-size: 11px;
+    letter-spacing: 1px; color: #6f6f69; line-height: 1.7;
+  }
+
+  /* ── Gallery grid ── */
+  .gallery {
+    max-width: 1240px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 56px 48px; justify-items: center;
+  }
+  .slot { width: var(--card-w); }
+  .slot .meta {
+    margin-bottom: 16px; display: flex; align-items: baseline; gap: 10px;
+  }
+  .slot .meta .num {
+    font-family: 'Anton', sans-serif; font-size: 20px; color: #c9a66b;
+  }
+  .slot .meta .name {
+    font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 3px;
+    text-transform: uppercase; color: #e8e6df;
+  }
+  .slot .meta .tag {
+    margin-left: auto; font-family: 'DM Mono', monospace; font-size: 10px;
+    letter-spacing: 2px; text-transform: uppercase; color: #74736d;
+    border: 1px solid #2c2c2a; padding: 3px 8px; border-radius: 2px;
+  }
+  .slot .desc {
+    margin-top: 14px; font-size: 13px; line-height: 1.6; color: #a4a39c;
+  }
+
+  /* ── The poster canvas (true 9:16) ── */
+  .poster {
+    width: var(--card-w); height: var(--card-h);
+    position: relative; overflow: hidden;
+    border-radius: 6px;
+    box-shadow: 0 30px 70px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .poster * { box-sizing: border-box; }
+
+  /* Crest chip rendered purely in CSS so the mock is self-contained */
+  .crest {
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Anton', sans-serif; letter-spacing: -0.5px;
+    position: relative; flex-shrink: 0;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     POSTER 01 — "BLACK GOLD" (BRIT house style, refined)
+     Mbappé · Real Madrid v Villarreal
+     ════════════════════════════════════════════════════════════ */
+  .p-blackgold {
+    background:
+      radial-gradient(120% 80% at 100% 0%, rgba(164,125,67,0.14), transparent 55%),
+      #0e0e0c;
+    color: #f3f0e8; padding: 40px 34px 34px;
+    display: flex; flex-direction: column;
+    font-family: 'Oswald', sans-serif;
+  }
+  .p-blackgold .eyebrow {
+    font-family: 'DM Mono', monospace; font-size: 10.5px; letter-spacing: 4px;
+    color: #c9a66b; text-transform: uppercase;
+  }
+  .p-blackgold .hr { height: 1px; background: rgba(243,240,232,0.18); margin: 14px 0 20px; }
+  .p-blackgold .big {
+    font-family: 'Anton', sans-serif; font-size: 74px; line-height: 0.84;
+    letter-spacing: -2px; text-transform: uppercase; color: #f3f0e8;
+  }
+  .p-blackgold .player {
+    font-size: 26px; font-weight: 600; letter-spacing: 1px; margin-top: 10px;
+    text-transform: uppercase; color: #c9a66b;
+  }
+  .p-blackgold .num {
+    font-family: 'Anton', sans-serif; position: absolute; right: 18px; top: 150px;
+    font-size: 240px; line-height: 1; color: rgba(164,125,67,0.1);
+    letter-spacing: -10px; pointer-events: none;
+  }
+  .p-blackgold .stage {
+    flex: 1; position: relative; margin: 20px 0 16px; border: 1px solid rgba(243,240,232,0.14);
+    background:
+      linear-gradient(0deg, rgba(14,14,12,0.9), transparent 60%),
+      repeating-linear-gradient(135deg, rgba(243,240,232,0.03) 0 2px, transparent 2px 9px),
+      radial-gradient(80% 60% at 50% 20%, rgba(164,125,67,0.18), transparent 70%),
+      #16160f;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .p-blackgold .silhouette {
+    width: 72%; height: 94%; align-self: flex-end;
+    background: linear-gradient(180deg, #3a382e 0%, #26261c 45%, #16160f 100%);
+    clip-path: polygon(42% 0,58% 0,60% 9%,57% 15%,70% 20%,76% 34%,72% 100%,28% 100%,24% 34%,30% 20%,43% 15%,40% 9%);
+  }
+  .p-blackgold .foot { display: flex; align-items: center; gap: 14px; }
+  .p-blackgold .foot .vs {
+    flex: 1; text-align: center; font-family: 'DM Mono', monospace;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #f3f0e8;
+  }
+  .p-blackgold .foot .vs b { display: block; font-family: 'Oswald'; font-size: 21px; color: #c9a66b; margin-top: 6px; letter-spacing: 0.5px; }
+  .p-blackgold .c-rm { width: 56px; height: 56px; border-radius: 50%; background: #f3f0e8; color: #00529f; font-size: 13px; }
+  .p-blackgold .c-vil { width: 56px; height: 56px; border-radius: 6px; background: #ffe667; color: #005187; font-size: 13px; }
+  .p-blackgold .brand {
+    text-align: center; margin-top: 16px; font-family: 'DM Mono', monospace;
+    font-size: 9.5px; letter-spacing: 6px; color: rgba(243,240,232,0.5); text-transform: uppercase;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     POSTER 02 — "IVORY EDITORIAL" (light / fashion-magazine)
+     Haaland · Man City v AEK Athens
+     ════════════════════════════════════════════════════════════ */
+  .p-ivory {
+    background: #efe9df; color: #16150f; padding: 42px 36px;
+    display: flex; flex-direction: column; font-family: 'Playfair Display', serif;
+  }
+  .p-ivory .top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .p-ivory .top .comp { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #6b8e9e; }
+  .p-ivory .top .dt { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: #8a857a; text-align: right; }
+  .p-ivory .issue { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: #a8a295; margin-top: 2px; }
+  .p-ivory .title {
+    font-size: 54px; line-height: 0.9; font-weight: 900; font-style: italic;
+    margin: 20px 0 6px; letter-spacing: -2px; white-space: nowrap;
+  }
+  .p-ivory .title .thin { font-weight: 700; font-style: normal; }
+  .p-ivory .rule { height: 2px; background: #16150f; margin: 10px 0 18px; }
+  .p-ivory .stage {
+    flex: 1; position: relative; border-radius: 2px; overflow: hidden;
+    background:
+      radial-gradient(70% 50% at 50% 15%, rgba(107,142,158,0.3), transparent 65%),
+      linear-gradient(180deg, #d9d2c5, #c7bfae);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .p-ivory .stage .num {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: 'Anton', sans-serif; font-size: 300px; color: rgba(22,21,15,0.07);
+    letter-spacing: -14px;
+  }
+  .p-ivory .silhouette {
+    width: 66%; height: 90%; align-self: flex-end; position: relative;
+    background: linear-gradient(180deg, #4a4336 0%, #2b2721 100%);
+    clip-path: polygon(42% 0,58% 0,60% 9%,57% 15%,70% 20%,76% 34%,72% 100%,28% 100%,24% 34%,30% 20%,43% 15%,40% 9%);
+  }
+  .p-ivory .kicker {
+    position: absolute; left: 22px; bottom: 20px; font-family: 'DM Mono', monospace;
+    font-size: 10px; letter-spacing: 2px; color: #efe9df; background: #16150f;
+    padding: 5px 9px; text-transform: uppercase;
+  }
+  .p-ivory .foot { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
+  .p-ivory .foot .nm { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; }
+  .p-ivory .foot .nm span { color: #6b8e9e; }
+  .p-ivory .foot .brand { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 3px; color: #8a857a; text-transform: uppercase; }
+  .p-ivory .c-city { width: 46px; height: 46px; border-radius: 50%; background: #6cabdd; color: #fff; font-size: 11px; }
+  .p-ivory .c-aek { width: 46px; height: 46px; border-radius: 50%; background: #16150f; color: #f6c915; font-size: 11px; }
+
+  /* ════════════════════════════════════════════════════════════
+     POSTER 03 — "FLOODLIGHT" (cinematic night / dramatic)
+     Haaland · Man City v AEK Athens — alt direction
+     ════════════════════════════════════════════════════════════ */
+  .p-flood {
+    background: #04070e; color: #eaf2ff; padding: 0; font-family: 'Oswald', sans-serif;
+    display: flex; flex-direction: column; position: relative;
+  }
+  .p-flood .sky {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(60% 40% at 20% 0%, rgba(108,171,221,0.5), transparent 60%),
+      radial-gradient(50% 35% at 85% 5%, rgba(108,171,221,0.4), transparent 55%),
+      linear-gradient(180deg, #0a1424 0%, #04070e 55%);
+  }
+  .p-flood .beam {
+    position: absolute; top: -40px; width: 2px; height: 320px; transform-origin: top;
+    background: linear-gradient(180deg, rgba(220,236,255,0.55), transparent);
+    filter: blur(1px);
+  }
+  .p-flood .beam.a { left: 18%; transform: rotate(16deg); }
+  .p-flood .beam.b { right: 18%; transform: rotate(-16deg); }
+  .p-flood .inner { position: relative; z-index: 2; padding: 40px 34px 32px; display: flex; flex-direction: column; height: 100%; }
+  .p-flood .eyebrow { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 4px; color: #8fc0ec; text-transform: uppercase; }
+  .p-flood .big {
+    font-family: 'Anton', sans-serif; font-size: 94px; line-height: 0.8; letter-spacing: -2px;
+    margin-top: 16px; text-transform: uppercase;
+    text-shadow: 0 0 36px rgba(143,192,236,0.4);
+  }
+  .p-flood .stage { flex: 1; position: relative; display: flex; align-items: flex-end; justify-content: center; margin: 10px 0; }
+  .p-flood .silhouette {
+    width: 72%; height: 78%; align-self: flex-end;
+    background: linear-gradient(180deg, #15223a 0%, #050810 100%);
+    clip-path: polygon(42% 0,58% 0,60% 9%,57% 15%,70% 20%,76% 34%,72% 100%,28% 100%,24% 34%,30% 20%,43% 15%,40% 9%);
+    box-shadow: 0 0 60px rgba(108,171,221,0.25);
+  }
+  .p-flood .halo { position: absolute; bottom: 0; width: 80%; height: 60%; background: radial-gradient(50% 70% at 50% 100%, rgba(108,171,221,0.35), transparent 70%); }
+  .p-flood .player { font-size: 26px; font-weight: 600; letter-spacing: 2px; color: #8fc0ec; text-transform: uppercase; }
+  .p-flood .foot { display: flex; align-items: center; gap: 12px; margin-top: 18px; border-top: 1px solid rgba(143,192,236,0.2); padding-top: 18px; }
+  .p-flood .foot .vs { flex: 1; text-align: center; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; }
+  .p-flood .foot .vs b { display: block; font-family: 'Oswald'; font-size: 22px; color: #8fc0ec; margin-top: 4px; }
+  .p-flood .c-city { width: 50px; height: 50px; border-radius: 50%; background: #6cabdd; color: #fff; font-size: 12px; }
+  .p-flood .c-aek { width: 50px; height: 50px; border-radius: 50%; background: #0b0b0b; color: #f6c915; font-size: 12px; border: 1px solid #f6c915; }
+  .p-flood .brand { text-align: center; margin-top: 14px; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 5px; color: rgba(234,242,255,0.45); }
+
+  /* ════════════════════════════════════════════════════════════
+     POSTER 04 — "RISO BRUTAL" (bold swiss / brutalist / print-zine)
+     Saka · Arsenal v Man City
+     ════════════════════════════════════════════════════════════ */
+  .p-riso {
+    background: #ed1c24; color: #fff; padding: 36px 30px; font-family: 'Archivo Black', sans-serif;
+    display: flex; flex-direction: column; position: relative; overflow: hidden;
+  }
+  .p-riso .grain { position: absolute; inset: 0; background-image: radial-gradient(rgba(0,0,0,0.18) 1px, transparent 1px); background-size: 4px 4px; mix-blend-mode: multiply; opacity: 0.5; }
+  .p-riso .top { position: relative; z-index: 2; display: flex; justify-content: space-between; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; font-weight: 400; }
+  .p-riso .mega {
+    position: relative; z-index: 2; font-size: 88px; line-height: 0.82; letter-spacing: -3px;
+    margin: 18px 0 0; text-transform: uppercase; -webkit-text-stroke: 0;
+  }
+  .p-riso .mega .out { color: transparent; -webkit-text-stroke: 2px #fff; }
+  .p-riso .stage {
+    position: relative; z-index: 2; flex: 1; margin: 18px 0; border: 3px solid #0b0b0b;
+    background: #0b0b0b; display: flex; align-items: flex-end; justify-content: center; overflow: hidden;
+  }
+  .p-riso .stage .barcode { position: absolute; top: 10px; left: 10px; width: 70px; height: 24px; background: repeating-linear-gradient(90deg, #fff 0 2px, transparent 2px 5px); }
+  .p-riso .silhouette {
+    width: 68%; height: 88%; align-self: flex-end;
+    background: linear-gradient(180deg, #ed1c24 0%, #7a0d12 100%);
+    clip-path: polygon(42% 0,58% 0,60% 9%,57% 15%,70% 20%,76% 34%,72% 100%,28% 100%,24% 34%,30% 20%,43% 15%,40% 9%);
+    mix-blend-mode: screen;
+  }
+  .p-riso .stage .no { position: absolute; right: 8px; bottom: 2px; font-size: 150px; color: rgba(255,255,255,0.12); line-height: 0.8; }
+  .p-riso .player { position: relative; z-index: 2; font-size: 24px; letter-spacing: -1px; text-transform: uppercase; }
+  .p-riso .foot { position: relative; z-index: 2; display: flex; align-items: center; gap: 10px; margin-top: 14px; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 400; letter-spacing: 1px; }
+  .p-riso .foot .vs { flex: 1; text-align: center; text-transform: uppercase; }
+  .p-riso .c-ars { width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #ef0107; font-family: 'Anton'; font-size: 12px; }
+  .p-riso .c-city { width: 44px; height: 44px; border-radius: 50%; background: #0b0b0b; color: #6cabdd; font-family: 'Anton'; font-size: 12px; }
+
+  /* ════════════════════════════════════════════════════════════
+     POSTER 05 — "BERNABÉU MARBLE" (luxe / premium / minimal light)
+     Mbappé · Real Madrid v Villarreal — alt direction
+     ════════════════════════════════════════════════════════════ */
+  .p-marble {
+    background:
+      linear-gradient(135deg, #fbfaf7 0%, #efece4 40%, #f6f3ec 100%);
+    color: #1a1a1a; padding: 46px 36px; font-family: 'Syne', sans-serif;
+    display: flex; flex-direction: column; position: relative; overflow: hidden;
+  }
+  .p-marble .vein { position: absolute; inset: 0; background:
+    linear-gradient(118deg, transparent 40%, rgba(164,125,67,0.08) 41%, transparent 43%),
+    linear-gradient(100deg, transparent 60%, rgba(0,0,0,0.04) 61%, transparent 64%); }
+  .p-marble .gold-line { position: relative; z-index: 2; height: 1px; background: linear-gradient(90deg, transparent, #a47d43, transparent); }
+  .p-marble .eyebrow { position: relative; z-index: 2; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 4px; color: #a47d43; text-transform: uppercase; margin-top: 14px; }
+  .p-marble .pre {
+    position: relative; z-index: 2; font-family: 'Oswald'; font-weight: 400; font-size: 22px;
+    letter-spacing: 12px; margin: 16px 0 0; text-transform: uppercase; color: #1a1a1a;
+  }
+  .p-marble .big {
+    position: relative; z-index: 2; font-size: 48px; font-weight: 800; line-height: 0.9;
+    letter-spacing: -1px; margin: 2px 0 4px; text-transform: uppercase; white-space: nowrap;
+  }
+  .p-marble .big .gold { color: #a47d43; }
+  .p-marble .player { position: relative; z-index: 2; font-family: 'Oswald'; font-weight: 300; font-size: 17px; letter-spacing: 5px; text-transform: uppercase; color: #555; }
+  .p-marble .stage { position: relative; z-index: 2; flex: 1; margin: 24px 0; display: flex; align-items: flex-end; justify-content: center; }
+  .p-marble .ring { position: absolute; top: 10px; width: 190px; height: 190px; border: 1px solid rgba(164,125,67,0.5); border-radius: 50%; }
+  .p-marble .ring.two { width: 150px; height: 150px; top: 30px; border-color: rgba(0,0,0,0.08); }
+  .p-marble .silhouette {
+    width: 60%; height: 92%; align-self: flex-end; position: relative;
+    background: linear-gradient(180deg, #c9a66b 0%, #7d5f30 100%);
+    clip-path: polygon(42% 0,58% 0,60% 9%,57% 15%,70% 20%,76% 34%,72% 100%,28% 100%,24% 34%,30% 20%,43% 15%,40% 9%);
+  }
+  .p-marble .foot { position: relative; z-index: 2; display: flex; align-items: center; gap: 14px; }
+  .p-marble .foot .mid { flex: 1; text-align: center; }
+  .p-marble .foot .mid .dt { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: #777; }
+  .p-marble .foot .mid .vs { font-family: 'Oswald'; font-weight: 600; font-size: 20px; letter-spacing: 1px; margin-top: 4px; text-transform: uppercase; }
+  .p-marble .c-rm { width: 50px; height: 50px; border-radius: 50%; background: #fff; color: #00529f; font-family: 'Anton'; font-size: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+  .p-marble .c-vil { width: 50px; height: 50px; border-radius: 6px; background: #ffe667; color: #005187; font-family: 'Anton'; font-size: 12px; }
+  .p-marble .brand { position: relative; z-index: 2; text-align: center; margin-top: 18px; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 6px; color: #a47d43; text-transform: uppercase; }
+
+  /* ════════════════════════════════════════════════════════════
+     POSTER 06 — "ELECTRIC GRID" (modern neo-brutalist / data-sport)
+     Saka · Arsenal v Man City — alt direction
+     ════════════════════════════════════════════════════════════ */
+  .p-grid {
+    background: #0c0c0f; color: #f2f2f2; padding: 36px 30px; font-family: 'Space Grotesk', sans-serif;
+    display: flex; flex-direction: column; position: relative; overflow: hidden;
+  }
+  .p-grid .net { position: absolute; inset: 0; background-image:
+    linear-gradient(rgba(242,2,7,0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(242,2,7,0.09) 1px, transparent 1px);
+    background-size: 30px 30px; }
+  .p-grid .top { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; }
+  .p-grid .chip { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; border: 1px solid #ef0107; color: #ef0107; padding: 4px 8px; display: inline-flex; align-items: center; gap: 6px; }
+  .p-grid .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: #ef0107; box-shadow: 0 0 8px #ef0107; }
+  .p-grid .live { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: #8a8a84; }
+  .p-grid .big {
+    position: relative; z-index: 2; font-family: 'Bebas Neue', sans-serif; font-size: 108px; line-height: 0.78;
+    letter-spacing: 1px; margin: 14px 0 2px;
+  }
+  .p-grid .big em { font-style: normal; color: #ef0107; }
+  .p-grid .player { position: relative; z-index: 2; font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 4px; color: #f2f2f2; text-transform: uppercase; }
+  .p-grid .stage { position: relative; z-index: 2; flex: 1; margin: 18px 0; display: flex; align-items: flex-end; justify-content: center; }
+  .p-grid .silhouette {
+    width: 70%; height: 86%; align-self: flex-end; position: relative;
+    background: linear-gradient(180deg, #ef0107 0%, #4a0305 100%);
+    clip-path: polygon(42% 0,58% 0,60% 9%,57% 15%,70% 20%,76% 34%,72% 100%,28% 100%,24% 34%,30% 20%,43% 15%,40% 9%);
+  }
+  .p-grid .stat { position: absolute; font-family: 'DM Mono', monospace; z-index: 3; }
+  .p-grid .stat.a { top: 10px; left: 0; }
+  .p-grid .stat.b { top: 90px; right: 0; text-align: right; }
+  .p-grid .stat .v { font-family: 'Bebas Neue'; font-size: 40px; line-height: 0.8; color: #ef0107; }
+  .p-grid .stat .l { font-size: 8px; letter-spacing: 2px; color: #8a8a84; text-transform: uppercase; }
+  .p-grid .foot { position: relative; z-index: 2; display: flex; align-items: center; gap: 12px; border-top: 1px solid #26262a; padding-top: 16px; }
+  .p-grid .foot .vs { flex: 1; text-align: center; }
+  .p-grid .foot .vs .dt { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: #8a8a84; }
+  .p-grid .foot .vs .m { font-family: 'Bebas Neue'; font-size: 24px; letter-spacing: 1px; }
+  .p-grid .c-ars { width: 46px; height: 46px; border-radius: 10px; background: #ef0107; color: #fff; font-family: 'Anton'; font-size: 12px; }
+  .p-grid .c-city { width: 46px; height: 46px; border-radius: 10px; background: #6cabdd; color: #1c2c5b; font-family: 'Anton'; font-size: 12px; }
+</style>
+</head>
+<body>
+
+  <header class="masthead">
+    <div class="kick">BRIT SPORT GROUP · CREATIVE STUDIO</div>
+    <h1>MATCHDAY<br/>Art Direction</h1>
+    <p>Six creative routes for the MATCHDAY poster engine — ranging from the house black-and-gold through ivory editorial, cinematic floodlight, brutalist riso print, Bernabéu marble luxe, and an electric data-grid. Each is a true 9:16 story frame built on <strong>real, verified fixtures</strong>.</p>
+    <div class="note">
+      ✦ Fixtures used — all real, upcoming as of 08 Oct 2026:<br/>
+      01 / 05 — Real Madrid v Villarreal · LaLiga MD8 · Sat 10 Oct 2026 · Santiago Bernabéu · <strong>Kylian Mbappé (10)</strong><br/>
+      02 / 03 — Manchester City v AEK Athens · UCL League Phase · Tue 20 Oct 2026 · Etihad Stadium · <strong>Erling Haaland (9)</strong><br/>
+      04 / 06 — Arsenal v Manchester City · Premier League · Sat 28 Nov 2026 · Emirates Stadium · <strong>Bukayo Saka (7)</strong><br/>
+      ✦ Silhouettes are CSS placeholders standing in for the curated player cut-out the live engine composites.
+    </div>
+  </header>
+
+  <main class="gallery">
+
+    <!-- ░░ 01 BLACK GOLD ░░ -->
+    <section class="slot">
+      <div class="meta"><span class="num">01</span><span class="name">Black Gold</span><span class="tag">Dark · House</span></div>
+      <div class="poster p-blackgold">
+        <div class="num">10</div>
+        <div class="eyebrow">España · LaLiga · Jornada 8</div>
+        <div class="hr"></div>
+        <div class="big">MATCH<br/>DAY</div>
+        <div class="player">Kylian Mbappé</div>
+        <div class="stage"><div class="silhouette"></div></div>
+        <div class="foot">
+          <div class="crest c-rm">RMA</div>
+          <div class="vs">SAT 10 OCT · 21:00<b>REAL MADRID v VILLARREAL</b>Santiago Bernabéu</div>
+          <div class="crest c-vil">VIL</div>
+        </div>
+        <div class="brand">BRIT SPORT GROUP</div>
+      </div>
+      <p class="desc">The refined house language — near-black field, gold hairlines, condensed display type. A ghosted squad number anchors the composition. Safe, premium, unmistakably BRIT.</p>
+    </section>
+
+    <!-- ░░ 02 IVORY EDITORIAL ░░ -->
+    <section class="slot">
+      <div class="meta"><span class="num">02</span><span class="name">Ivory Editorial</span><span class="tag">Light · Fashion</span></div>
+      <div class="poster p-ivory">
+        <div class="top">
+          <div>
+            <div class="comp">UEFA Champions League</div>
+            <div class="issue">League Phase · MD3</div>
+          </div>
+          <div class="dt">TUE 20 OCT 2026<br/>20:00 · ETIHAD</div>
+        </div>
+        <div class="title"><span class="thin">THE</span><br/>MATCHDAY</div>
+        <div class="rule"></div>
+        <div class="stage">
+          <div class="num">9</div>
+          <div class="silhouette"></div>
+          <div class="kicker">COVER · ERLING HAALAND</div>
+        </div>
+        <div class="foot">
+          <div class="crest c-city">MCI</div>
+          <div class="crest c-aek">AEK</div>
+          <div class="nm">MAN CITY <span>v</span> AEK ATHENS</div>
+          <div class="brand">BRIT</div>
+        </div>
+      </div>
+      <p class="desc">Treats the fixture like a magazine cover — warm ivory paper, italic Playfair masthead, a "COVER" credit tab. Elegant, unexpected, and great for feeds dominated by dark graphics.</p>
+    </section>
+
+    <!-- ░░ 03 FLOODLIGHT ░░ -->
+    <section class="slot">
+      <div class="meta"><span class="num">03</span><span class="name">Floodlight</span><span class="tag">Dark · Cinematic</span></div>
+      <div class="poster p-flood">
+        <div class="sky"></div>
+        <div class="beam a"></div><div class="beam b"></div>
+        <div class="inner">
+          <div class="eyebrow">Champions League · Matchday 3</div>
+          <div class="big">MATCH<br/>DAY</div>
+          <div class="stage"><div class="silhouette"></div><div class="halo"></div></div>
+          <div class="player">Erling Haaland</div>
+          <div class="foot">
+            <div class="crest c-city">MCI</div>
+            <div class="vs">TUE 20 OCT · 20:00<b>CITY v AEK</b>Etihad Stadium</div>
+            <div class="crest c-aek">AEK</div>
+          </div>
+          <div class="brand">BRIT SPORT GROUP</div>
+        </div>
+      </div>
+      <p class="desc">A European night under the lights: stadium floodlight beams, a cold blue glow and a haloed figure. Pure drama — built for marquee Champions League fixtures.</p>
+    </section>
+
+    <!-- ░░ 04 RISO BRUTAL ░░ -->
+    <section class="slot">
+      <div class="meta"><span class="num">04</span><span class="name">Riso Brutal</span><span class="tag">Bold · Print</span></div>
+      <div class="poster p-riso">
+        <div class="grain"></div>
+        <div class="top"><span>PREMIER LEAGUE</span><span>EMIRATES · N5</span></div>
+        <div class="mega">MATCH<br/><span class="out">DAY</span></div>
+        <div class="stage">
+          <div class="barcode"></div>
+          <div class="silhouette"></div>
+          <div class="no">07</div>
+        </div>
+        <div class="player">BUKAYO SAKA</div>
+        <div class="foot">
+          <div class="crest c-ars">ARS</div>
+          <div class="vs">SAT 28 NOV 2026 · ARSENAL v MAN CITY</div>
+          <div class="crest c-city">MCI</div>
+        </div>
+      </div>
+      <p class="desc">A screaming riso-print zine aesthetic — flat Arsenal red, halftone grain, outlined display type, barcode and jersey number as graphic furniture. Loud, young, built to stop a thumb.</p>
+    </section>
+
+    <!-- ░░ 05 BERNABÉU MARBLE ░░ -->
+    <section class="slot">
+      <div class="meta"><span class="num">05</span><span class="name">Bernabéu Marble</span><span class="tag">Light · Luxe</span></div>
+      <div class="poster p-marble">
+        <div class="vein"></div>
+        <div class="gold-line"></div>
+        <div class="eyebrow">LaLiga EA Sports · Matchday 8</div>
+        <div class="pre">Matchday</div>
+        <div class="big gold">MADRID</div>
+        <div class="player">Kylian Mbappé · 10</div>
+        <div class="stage">
+          <div class="ring"></div><div class="ring two"></div>
+          <div class="silhouette"></div>
+        </div>
+        <div class="foot">
+          <div class="crest c-rm">RMA</div>
+          <div class="mid"><div class="dt">SAT 10 OCT · 21:00 · BERNABÉU</div><div class="vs">Real Madrid v Villarreal</div></div>
+          <div class="crest c-vil">VIL</div>
+        </div>
+        <div class="brand">BRIT SPORT GROUP</div>
+      </div>
+      <p class="desc">Quiet luxury — marble paper, fine gold veining, concentric rings framing the figure, Syne display type. Reads expensive and restrained; ideal for premium / sponsor-facing posts.</p>
+    </section>
+
+    <!-- ░░ 06 ELECTRIC GRID ░░ -->
+    <section class="slot">
+      <div class="meta"><span class="num">06</span><span class="name">Electric Grid</span><span class="tag">Dark · Data-sport</span></div>
+      <div class="poster p-grid">
+        <div class="net"></div>
+        <div class="top"><span class="chip"><span class="dot"></span>MATCHDAY LIVE</span><span class="live">GW14 · 17:30 KO</span></div>
+        <div class="big">MATCH<em>.</em><br/>DAY</div>
+        <div class="player">BUKAYO SAKA / 07</div>
+        <div class="stage">
+          <div class="stat a"><div class="v">11</div><div class="l">G+A · PL</div></div>
+          <div class="stat b"><div class="v">LW</div><div class="l">Left Wing</div></div>
+          <div class="silhouette"></div>
+        </div>
+        <div class="foot">
+          <div class="crest c-ars">ARS</div>
+          <div class="vs"><div class="dt">SAT 28 NOV 2026 · EMIRATES</div><div class="m">ARSENAL v MAN CITY</div></div>
+          <div class="crest c-city">MCI</div>
+        </div>
+      </div>
+      <p class="desc">A modern broadcast / data-sport look — a faint red tactics grid, monospace HUD chips, floating stat callouts and a "LIVE" badge. Energetic and contemporary, speaks to a younger, numbers-literate audience.</p>
+    </section>
+
+  </main>
+
+</body>
+</html>
