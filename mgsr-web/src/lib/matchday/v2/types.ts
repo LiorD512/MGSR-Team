@@ -32,15 +32,14 @@ export interface MatchdayDesign {
   blurb: string;
 }
 
+// Four exceptional, cinematic styles — each builds the uploaded stadium into a
+// dramatic smoke-filled scene (graded dark + spotlight + rim-light + grounding
+// shadow + grain), differing by palette and mood.
 export const MATCHDAY_DESIGNS: MatchdayDesign[] = [
-  { id: 'midnight', name: 'Midnight', blurb: 'Black marble, monochrome portrait + colour action.' },
-  { id: 'golden', name: 'Golden Hour', blurb: 'Sunset stadium sky, dual pose, centred.' },
-  { id: 'storm', name: 'Storm', blurb: 'Dramatic storm sky, three-pose composition.' },
-  { id: 'marble', name: 'Marble', blurb: 'Clean white marble, portrait backdrop, framed crests.' },
-  { id: 'inferno', name: 'Inferno', blurb: 'Fiery red-orange energy with a bold diagonal split.' },
-  { id: 'frost', name: 'Frost', blurb: 'Cool cinematic ice-blue with a teal rim glow.' },
-  { id: 'prestige', name: 'Prestige', blurb: 'Luxury black & gold, art-deco editorial elegance.' },
-  { id: 'electric', name: 'Electric', blurb: 'Vibrant neon cyber energy with glowing accents.' },
+  { id: 'inferno', name: 'Inferno', blurb: 'Fiery red-orange, embers & thick smoke over the stadium.' },
+  { id: 'frost', name: 'Frost', blurb: 'Cold cinematic ice-blue with drifting haze and teal rim light.' },
+  { id: 'prestige', name: 'Prestige', blurb: 'Luxury black & gold, deep darkness, single-hero editorial.' },
+  { id: 'electric', name: 'Electric', blurb: 'Neon teal/violet energy, charged smoke, modern punch.' },
 ];
 
 /** A fixture already resolved by the dossier — used verbatim, never re-scraped. */

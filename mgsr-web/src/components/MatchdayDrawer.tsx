@@ -53,7 +53,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
   const { user } = useAuth();
 
   const [step, setStep] = useState<Step>('assets');
-  const [design, setDesign] = useState<MatchdayDesignId>('midnight');
+  const [design, setDesign] = useState<MatchdayDesignId>('inferno');
 
   // Curated assets.
   const [playerPhotoUrl, setPlayerPhotoUrl] = useState<string | null>(null);
