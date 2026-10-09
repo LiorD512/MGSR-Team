@@ -651,12 +651,38 @@ async function rimGlow(playerSheet: Buffer, color: string): Promise<Buffer> {
   return sharp(solid).blur(26).png().toBuffer();
 }
 
+/**
+ * Turn a real cutout into a DARK SILHOUETTE ECHO (its own shape, pushed almost
+ * to black with a faint scene tint, alpha preserved). Used for the secondary
+ * figure so it is obviously a design element, never a second (invented) person.
+ */
+async function silhouette(cutout: Buffer, tint: string): Promise<Buffer> {
+  const meta = await sharp(cutout).metadata();
+  const w = meta.width ?? 1;
+  const h = meta.height ?? 1;
+  // Extract the real alpha as a raw single-channel mask.
+  const alpha = await sharp(cutout).ensureAlpha().extractChannel(3).raw().toBuffer();
+  // Dark, scene-tinted solid base at the SAME dimensions.
+  const base = await sharp({ create: { width: w, height: h, channels: 3, background: tint } })
+    .modulate({ brightness: 0.5 })
+    .raw()
+    .toBuffer();
+  // Recombine base RGB + the cutout's alpha → a dark silhouette of the shape.
+  return sharp(base, { raw: { width: w, height: h, channels: 3 } })
+    .joinChannel(alpha, { raw: { width: w, height: h, channels: 1 } })
+    .png()
+    .toBuffer();
+}
+
 async function themedPoster(i: RenderV2Input, theme: Theme): Promise<Buffer> {
   // 1) Cinematic MAIN background: stadium (or sky) graded dark + colour wash +
   //    spotlight + thick smoke + vignette + grain.
   const bg = await cinematicStadiumBg(i, theme.scene);
 
-  const twoFigures = theme.secondary !== 'none' && Boolean(i.layers.heroIsDistinct && i.layers.hero);
+  // Two-figure layouts use a mirrored, DARKENED SILHOUETTE ECHO of the SAME
+  // real cutout — never an AI-generated second pose (which would invent a new
+  // face). It reads as a design element, so there's no risk of a "wrong person".
+  const twoFigures = theme.secondary !== 'none' && Boolean(i.layers.cutAction);
 
   // 2) Hero geometry (compute placement so we can ground + rim-light it).
   const heroH = Math.round(V2_H * 0.66);
@@ -670,13 +696,15 @@ async function themedPoster(i: RenderV2Input, theme: Theme): Promise<Buffer> {
   );
   const rimHero = await rimGlow(heroSheet, theme.scene.rim);
 
-  // 3) Secondary figure (mirrored, dimmer) behind, when a distinct pose exists.
+  // 3) Secondary = the SAME cutout, mirrored and pushed to a dark silhouette so
+  //    it's unmistakably a stylistic echo (not a second person). Tinted toward
+  //    the scene's rim colour at low strength for depth.
   const secSheet = twoFigures
     ? await placeLayer(
-        i.layers.hero,
-        Math.round(V2_H * 0.52),
-        (w) => ({ left: Math.round(V2_W * 0.26 - w / 2), top: Math.round(V2_H * 0.34) }),
-        { mod: { brightness: 0.72, saturation: 0.8 }, flip: true, fade: true, fadeStart: 78 }
+        await silhouette(i.layers.cutAction!, theme.scene.bottom),
+        Math.round(V2_H * 0.54),
+        (w) => ({ left: Math.round(V2_W * 0.24 - w / 2), top: Math.round(V2_H * 0.33) }),
+        { flip: true, fade: true, fadeStart: 76 }
       )
     : await emptySheet();
 

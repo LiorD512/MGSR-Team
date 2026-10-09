@@ -167,29 +167,12 @@ export async function swapKit(src: Buffer, kitRef: Buffer, squadNumber: string |
   );
 }
 
-/**
- * Produce an alternate confident HERO pose (chest/waist-up, arms crossed or
- * hands on hips) with the face strictly preserved. Returns null on failure.
- */
-export async function altPose(src: Buffer): Promise<GenResult | null> {
-  if (!geminiConfigured()) return null;
-  return generate(
-    [
-      imagePart(src),
-      {
-        text:
-          'Create an ALTERNATE HERO POSE of this exact football player for a poster. ABSOLUTE RULES: ' +
-          'keep the FACE, HEAD, HAIR, SKIN TONE and FACIAL FEATURES 100% identical — same person, ' +
-          'unmistakably; do not restyle, age, slim or beautify the face. Keep the same kit and ' +
-          'number. CHANGE ONLY the body pose and framing to a confident static hero pose: chest-up ' +
-          'to waist-up, facing camera, arms crossed or hands on hips, calm powerful expression, head ' +
-          'level. Place the player on a single FLAT, SOLID magenta background (hex #FF00FF) filling ' +
-          'every non-player pixel — never a checkerboard or transparency pattern. High resolution.',
-      },
-    ],
-    'alt-pose'
-  );
-}
+// NOTE: There is deliberately NO alternate-pose generator. Asking an image
+// model to "re-pose" the player repaints the whole person — including the FACE
+// — producing a convincing but DIFFERENT human. That violates the core rule
+// that the player's face is never generated. The secondary figure in two-figure
+// layouts is instead the real cutout, mirrored and darkened into a silhouette
+// echo (see render.ts) — a design element, never a second invented person.
 
 /** Generate an atmospheric background sky (no people, no text). */
 export async function generateSky(kind: 'golden' | 'storm'): Promise<GenResult | null> {

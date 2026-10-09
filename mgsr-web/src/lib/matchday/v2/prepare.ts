@@ -12,7 +12,7 @@
  */
 
 import sharp from 'sharp';
-import { cutoutPlayer, swapKit, altPose, CHROMA_KEY } from './gemini';
+import { cutoutPlayer, swapKit, CHROMA_KEY } from './gemini';
 
 export interface PreparedLayers {
   cutAction: Buffer | null; // transparent PNG (null if cutout failed)
@@ -122,24 +122,17 @@ export async function prepareLayers(opts: {
   const cutRaw = await cutoutPlayer(source);
   const cutAction = cutRaw ? await keyOutMagenta(cutRaw.bytes) : null;
 
-  // 3) Alternate hero pose (also keyed). Only counts as "distinct" when the
-  //    model actually returned a different pose — otherwise we must NOT render
-  //    two identical figures.
-  let hero = cutAction;
-  let heroIsDistinct = false;
-  if (opts.needHero) {
-    const pose = await altPose(source);
-    if (pose) {
-      const keyed = await keyOutMagenta(pose.bytes);
-      if (keyed) {
-        hero = keyed;
-        heroIsDistinct = true;
-      }
-    }
-  }
+  // 3) SECONDARY FIGURE — the real cutout reused, NEVER an AI-generated pose.
+  //    An alternate-pose generation re-paints the whole player, including the
+  //    FACE, producing a different person (the exact failure this feature must
+  //    never do). So `hero` is simply the same real cutout; the renderer styles
+  //    it (mirror + darken) into a silhouette echo, which reads as a design
+  //    element, not a second person. `heroIsDistinct` stays false by design.
+  const hero = cutAction;
+  const heroIsDistinct = false;
 
-  // 4) Monochrome backdrop from the hero (or action) cutout — only if we have one.
-  const backdropMono = hero ? await toMono(hero) : null;
+  // 4) Monochrome backdrop from the real cutout — only if we have one.
+  const backdropMono = cutAction ? await toMono(cutAction) : null;
 
   return { cutAction, hero, backdropMono, heroIsDistinct, usedGemini: Boolean(cutAction) };
 }
