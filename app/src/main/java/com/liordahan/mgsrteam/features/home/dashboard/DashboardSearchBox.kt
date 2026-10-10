@@ -53,12 +53,13 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 
-private val MenSearchBg = Color(0xFF152131)
-private val MenSearchBgAlt = Color(0xFF1A2A3D)
-private val MenSearchBorder = Color(0x55C7A35A)
-private val MenSearchGold = Color(0xFFC7A35A)
-private val MenSearchGoldSoft = Color(0xFFDDC187)
-private val MenSearchSubtle = Color(0xFFBFAF8A)
+// Men dashboard search — aligned to the website "Light Management Room" palette.
+private val MenSearchBg = Color(0xFFFBF9F3)       // web --card
+private val MenSearchBgAlt = Color(0xFFE4DED1)    // web --paper-2
+private val MenSearchBorder = Color(0x2E161613)   // web --line (ink hairline)
+private val MenSearchGold = Color(0xFFA47D43)     // web --gold
+private val MenSearchGoldSoft = Color(0xFF161613) // web --ink (primary text)
+private val MenSearchSubtle = Color(0xFF77736A)   // web --muted (secondary text)
 
 @Composable
 fun DashboardSearchBox(

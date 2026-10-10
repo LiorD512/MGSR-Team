@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BRIT SPORT GROUP — Mobile Management Room · Prototype</title>
+  <meta name="description" content="Interactive mobile UI prototype of the MGSR BRIT Sport Group app — the editorial Light Management Room, reimagined for mobile." />
+
+  <!-- Optional Google Fonts. Degrades gracefully (Impact / Helvetica / monospace) when blocked/offline. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="showcase">
+  <!-- Editorial backdrop + grain -->
+  <div class="sc-grain" aria-hidden="true"></div>
+
+  <main class="sc-stage">
+    <!-- Art-direction rail (hidden on narrow screens) -->
+    <aside class="sc-dossier">
+      <p class="sc-kicker">BRIT SPORT GROUP · MOBILE PROTOTYPE</p>
+      <h1 class="sc-title">THE MANAGEMENT<br /><span>ROOM</span>, IN YOUR POCKET.</h1>
+      <p class="sc-lede">
+        The editorial “Light Management Room” from the web, paper, ink and gold,
+        rebuilt as a cinematic mobile app. Not the website shrunk down; the room
+        re-staged for the hand.
+      </p>
+
+      <div class="sc-rule"></div>
+
+      <p class="sc-note-label">ART DIRECTION</p>
+      <ul class="sc-notes">
+        <li><em>01</em> Oswald mastheads, DM&nbsp;Mono kickers, Manrope copy.</li>
+        <li><em>02</em> Fractal paper-grain, gold hairlines, sparing black modules.</li>
+        <li><em>03</em> Three platforms, one slide: Men gold, Academy teal, Athena rose.</li>
+        <li><em>04</em> A members’-club entrance, a jaw-dropping dashboard canvas.</li>
+      </ul>
+
+      <div class="sc-rule"></div>
+
+      <p class="sc-note-label">PLATFORM</p>
+      <div class="sc-jump sc-jump-plain">
+        <button data-platform="men" class="sc-plat is-on">MEN</button>
+        <button data-platform="youth" class="sc-plat">ACADEMY</button>
+        <button data-platform="women" class="sc-plat">ATHENA</button>
+      </div>
+
+      <p class="sc-foot">BRIT SPORT GROUP · EST. INTERACTIVE MOCK · ASIA/JERUSALEM</p>
+    </aside>
+
+    <!-- The phone -->
+    <div class="sc-phone-wrap">
+      <div class="sc-phone" id="scPhone">
+        <div class="sc-phone-side sc-side-vol"></div>
+        <div class="sc-phone-side sc-side-pwr"></div>
+        <div class="sc-screen">
+          <!-- Status bar -->
+          <div class="sc-statusbar">
+            <span class="sc-sb-time" id="scClock">9:41</span>
+            <div class="sc-island" aria-hidden="true"></div>
+            <span class="sc-sb-right">
+              <svg viewBox="0 0 18 12" width="18" height="12" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1" fill="currentColor"/><rect x="4" y="5" width="3" height="7" rx="1" fill="currentColor"/><rect x="8" y="3" width="3" height="9" rx="1" fill="currentColor"/><rect x="12" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg>
+              <svg viewBox="0 0 16 12" width="16" height="12" aria-hidden="true"><path d="M8 2.5C5.4 2.5 3.1 3.6 1.5 5.3L0 3.8C2 1.6 4.8.3 8 .3s6 1.3 8 3.5L14.5 5.3C12.9 3.6 10.6 2.5 8 2.5Z" fill="currentColor"/><path d="M8 6.6c-1.3 0-2.5.5-3.4 1.4L3 6.4C4.3 5 6 4.3 8 4.3s3.7.7 5 2.1L11.4 8C10.5 7.1 9.3 6.6 8 6.6Z" fill="currentColor"/><circle cx="8" cy="10" r="1.6" fill="currentColor"/></svg>
+              <svg viewBox="0 0 26 12" width="26" height="12" aria-hidden="true"><rect x="0.5" y="0.5" width="22" height="11" rx="3" fill="none" stroke="currentColor"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/><rect x="23.5" y="4" width="2" height="4" rx="1" fill="currentColor"/></svg>
+            </span>
+          </div>
+
+          <!-- The running prototype mounts here -->
+          <iframe id="scApp" class="sc-app-frame" src="app.html" title="BRIT Sport Group mobile app" loading="eager"></iframe>
+        </div>
+      </div>
+      <p class="sc-caption">Tap, scroll and slide the platform switch. Everything is live.</p>
+    </div>
+  </main>
+
+  <!-- Full screen catalog — launches any screen directly in the phone frame -->
+  <section class="sc-catalog" id="scJump">
+    <div class="sc-cat-head">
+      <p class="sc-note-label">THE FULL ROOM · 24 SCREENS</p>
+      <h2 class="sc-cat-title">SCREEN<br /><span>CATALOG.</span></h2>
+      <p class="sc-cat-lede">Every screen in the Android inventory, reimagined for the hand. Tap any chip to launch it in the phone above.</p>
+    </div>
+
+    <div class="sc-cat-group">
+      <p class="sc-cat-label">01 · ENTRANCE</p>
+      <div class="sc-cat-grid">
+        <button data-screen="loader"><em>BRIT</em>Loader</button>
+        <button data-screen="login"><em>Members</em>Login</button>
+        <button data-screen="dashboard"><em>Hero</em>Dashboard</button>
+      </div>
+    </div>
+
+    <div class="sc-cat-group">
+      <p class="sc-cat-label">02 · PLAYERS</p>
+      <div class="sc-cat-grid">
+        <button data-screen="players"><em>List</em>Our Roster</button>
+        <button data-screen="dossier"><em>Deep · tabbed</em>Player Dossier</button>
+        <button data-screen="shortlist"><em>Boards</em>Shortlist</button>
+        <button data-screen="shadowTeams"><em>CSS pitch</em>Shadow Teams</button>
+        <button data-screen="empty"><em>First-run</em>Empty State</button>
+      </div>
+    </div>
+
+    <div class="sc-cat-group">
+      <p class="sc-cat-label">03 · INTELLIGENCE</p>
+      <div class="sc-cat-grid">
+        <button data-screen="warRoom"><em>4 sub-modes</em>War Room</button>
+        <button data-screen="aiScout"><em>Scan + rank</em>AI Scout</button>
+        <button data-screen="marketRadar"><em>Live moves</em>Market Radar</button>
+        <button data-screen="requests"><em>+ matching</em>Requests</button>
+      </div>
+    </div>
+
+    <div class="sc-cat-group">
+      <p class="sc-cat-label">04 · THE MARKET</p>
+      <div class="sc-cat-grid">
+        <button data-screen="releases"><em>Free-agent wire</em>Releases</button>
+        <button data-screen="returnees"><em>On loan</em>Returnees</button>
+        <button data-screen="contractFinisher"><em>Gold → red</em>Contract Finisher</button>
+        <button data-screen="clubChanges"><em>Who moved</em>Club Changes</button>
+      </div>
+    </div>
+
+    <div class="sc-cat-group">
+      <p class="sc-cat-label">05 · THE DESK</p>
+      <div class="sc-cat-grid">
+        <button data-screen="tasks"><em>Grouped</em>Tasks</button>
+        <button data-screen="contacts"><em>Network</em>Contacts</button>
+        <button data-screen="tunnel"><em>Team chat</em>The Tunnel</button>
+      </div>
+    </div>
+
+    <div class="sc-cat-foot">
+      <p class="sc-note-label">ART DIRECTION · SIGNATURE INTERACTIONS</p>
+      <div class="sc-ad-grid">
+        <div class="sc-ad"><em>TOKENS</em>Paper #f3f0e8 · Ink #161613 · Gold #a47d43. Platform retint swaps only --gold / --gold-soft: Men gold, Academy teal #2f7d6e, Athena rose #b05f7e.</div>
+        <div class="sc-ad"><em>TYPE</em>Oswald condensed mastheads (-0.045em, lh 0.8), Manrope body, DM Mono uppercase kickers (0.08–0.2em). System fallbacks: Impact / Helvetica / monospace.</div>
+        <div class="sc-ad"><em>SURFACE</em>Fixed fractalNoise paper-grain at ~0.045, 1px gold hairlines, sparing #11110f black modules, grayscale photo scrims with name overlays.</div>
+        <div class="sc-ad"><em>MOTION</em>Slide-push / fade router, sliding platform pill (.42s cubic-bezier), 3-ring BRIT loader, radar scan, orbital “thinking” rings, drag-down bottom sheets. Respects reduced-motion.</div>
+      </div>
+    </div>
+  </section>
+
+  <script src="showcase.js"></script>
+</body>
+</html>

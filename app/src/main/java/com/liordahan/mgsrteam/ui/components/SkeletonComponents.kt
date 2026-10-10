@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
@@ -68,13 +69,14 @@ fun rememberShimmerAlpha(index: Int = 0): Float {
 fun SkeletonBox(
     modifier: Modifier = Modifier,
     index: Int = 0,
-    shape: RoundedCornerShape = RoundedCornerShape(4.dp)
+    shape: RoundedCornerShape = RoundedCornerShape(4.dp),
+    baseColor: Color = HomeDarkCardBorder
 ) {
     val alpha = rememberShimmerAlpha(index)
     Box(
         modifier = modifier
             .clip(shape)
-            .background(HomeDarkCardBorder.copy(alpha = alpha))
+            .background(baseColor.copy(alpha = alpha))
     )
 }
 
@@ -305,12 +307,16 @@ fun SkeletonRequestList(
  */
 @Composable
 fun SkeletonDashboardLayout(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Defaults keep the dark skeleton for Women/Youth/other callers; the MEN
+    // dashboard passes its light "Light Management Room" colors so the loading
+    // state doesn't flash dark before the (now light) men dashboard appears.
+    cardColor: Color = HomeDarkCard,
+    shimmerColor: Color = HomeDarkCardBorder
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(HomeDarkBackground)
     ) {
         // Greeting header — matches GreetingHeader padding (top 48dp, h 20dp, bottom 8dp)
         Column(
@@ -363,7 +369,7 @@ fun SkeletonDashboardLayout(
                 Card(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+                    colors = CardDefaults.cardColors(containerColor = cardColor)
                 ) {
                     Column(
                         modifier = Modifier
@@ -425,7 +431,7 @@ fun SkeletonDashboardLayout(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+                    colors = CardDefaults.cardColors(containerColor = cardColor)
                 ) {
                     Column(
                         modifier = Modifier
