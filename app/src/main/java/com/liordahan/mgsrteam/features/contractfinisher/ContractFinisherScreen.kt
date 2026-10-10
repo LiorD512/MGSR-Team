@@ -67,6 +67,10 @@ import com.liordahan.mgsrteam.ui.theme.BritTokens
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
+import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 // ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
 // This screen was built in the old dark navy theme via the shared Home* colour
@@ -85,10 +89,6 @@ private val HomeOrangeAccent = BritTokens.amber
 private val HomeTealAccent = BritTokens.gold
 private val HomeTextPrimary = BritTokens.ink
 private val HomeTextSecondary = BritTokens.muted
-import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
-import kotlinx.coroutines.launch
-import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

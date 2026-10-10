@@ -49,6 +49,10 @@ import androidx.navigation.NavController
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.ui.theme.BritTokens
 
+import com.liordahan.mgsrteam.ui.utils.boldTextStyle
+import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import org.koin.androidx.compose.koinViewModel
+
 // ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
 // The War Room report is restyled to the mock's paper editorial look. The old
 // dark "report" theme (Home* + ReportPurple) is re-bound to BritTokens: the
@@ -66,9 +70,6 @@ private val HomeBlueAccent = BritTokens.blue
 private val HomeOrangeAccent = BritTokens.amber
 private val HomeGreenAccent = BritTokens.green
 private val HomeRedAccent = BritTokens.red
-import com.liordahan.mgsrteam.ui.utils.boldTextStyle
-import com.liordahan.mgsrteam.ui.utils.regularTextStyle
-import org.koin.androidx.compose.koinViewModel
 
 private val ReportPurple = BritTokens.gold
 private val ReportPurpleBg = BritTokens.gold.copy(alpha = 0.10f)

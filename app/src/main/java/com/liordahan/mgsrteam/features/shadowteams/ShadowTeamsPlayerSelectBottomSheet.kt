@@ -43,6 +43,9 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.repository.PlayerWithId
 import com.liordahan.mgsrteam.ui.theme.BritTokens
 
+import com.liordahan.mgsrteam.ui.utils.boldTextStyle
+import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+
 // BRIT editorial palette (FEAT-005): re-bind the former dark-theme Home* names
 // to BritTokens so the shadow-team player picker matches the paper editorial look.
 private val HomeDarkBackground = BritTokens.paper
@@ -51,8 +54,6 @@ private val HomeDarkCardBorder = BritTokens.line
 private val HomeTealAccent = BritTokens.gold
 private val HomeTextPrimary = BritTokens.ink
 private val HomeTextSecondary = BritTokens.muted
-import com.liordahan.mgsrteam.ui.utils.boldTextStyle
-import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 
 /** Position codes that map to formation slots (matches web shadowTeamFormations). */
 private val POSITION_ALIASES = mapOf(

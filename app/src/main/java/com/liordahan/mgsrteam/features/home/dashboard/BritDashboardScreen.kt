@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -653,7 +654,7 @@ private fun QuickActionsGrid(navController: NavController, accent: androidx.comp
             .fillMaxWidth()
             .height(220.dp),
     ) {
-        items(actions) { a ->
+        gridItems(actions) { a ->
             Column(
                 modifier = Modifier
                     .width(130.dp)

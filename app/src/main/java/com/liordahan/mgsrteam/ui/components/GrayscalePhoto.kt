@@ -32,7 +32,7 @@ fun GrayscalePlayerPhoto(
     name: String,
     modifier: Modifier = Modifier,
     scrimAlpha: Float = 0.85f,
-    content: @Composable BoxScopeContent = {},
+    content: BoxScopeContent = {},
 ) {
     Box(modifier = modifier.background(BritTokens.ink)) {
         if (!imageUrl.isNullOrBlank()) {

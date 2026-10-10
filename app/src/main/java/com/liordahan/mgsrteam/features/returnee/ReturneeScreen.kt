@@ -72,6 +72,14 @@ import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.theme.BritTokens
 
+import com.liordahan.mgsrteam.ui.utils.boldTextStyle
+import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
+import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
+import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
+
 // ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
 // Restyle the Returnees list from the old dark navy theme to the mock's
 // ".brit-room" paper/editorial look by re-binding the former shared Home*
@@ -85,13 +93,6 @@ private val HomeGreenAccent = BritTokens.green
 private val HomeTealAccent = BritTokens.gold
 private val HomeTextPrimary = BritTokens.ink
 private val HomeTextSecondary = BritTokens.muted
-import com.liordahan.mgsrteam.ui.utils.boldTextStyle
-import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
-import com.liordahan.mgsrteam.ui.utils.regularTextStyle
-import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
-import kotlinx.coroutines.launch
-import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

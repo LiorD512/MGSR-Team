@@ -88,6 +88,20 @@ import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.localization.CountryNameTranslator
 import com.liordahan.mgsrteam.ui.theme.BritTokens
 
+import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
+import com.liordahan.mgsrteam.ui.utils.boldTextStyle
+import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
+import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
+import com.liordahan.mgsrteam.ui.components.ToastManager
+import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
+import coil.compose.SubcomposeAsyncImage
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 // ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
 // The mock renders the War Room in the ".brit-room" paper editorial look (its
 // four sub-modes Alpha Board / Ask / Scout Agents / Successors use pageHead +
@@ -107,19 +121,6 @@ private val HomeBlueAccent = BritTokens.blue
 private val HomeOrangeAccent = BritTokens.amber
 private val HomeGreenAccent = BritTokens.green
 private val HomeRedAccent = BritTokens.red
-import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
-import com.liordahan.mgsrteam.ui.utils.boldTextStyle
-import com.liordahan.mgsrteam.ui.utils.regularTextStyle
-import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
-import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
-import com.liordahan.mgsrteam.ui.components.ToastManager
-import kotlinx.coroutines.launch
-import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
-import coil.compose.SubcomposeAsyncImage
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  COLOR SYSTEM — War Room "Mission Control" palette

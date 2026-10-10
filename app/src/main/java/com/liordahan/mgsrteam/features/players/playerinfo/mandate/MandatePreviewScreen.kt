@@ -53,6 +53,10 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.ui.theme.BritTokens
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+
 // BRIT editorial palette (FEAT-005): re-bind the mandate-preview chrome to the
 // paper editorial look. The rendered PDF page cards stay on Color.White (that
 // is the document surface). Data wiring (PDF render + share intent) is intact.
@@ -60,9 +64,6 @@ private val HomeDarkBackground = BritTokens.paper
 private val HomeDarkCardBorder = BritTokens.line
 private val HomeTealAccent = BritTokens.gold
 private val HomeTextPrimary = BritTokens.ink
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

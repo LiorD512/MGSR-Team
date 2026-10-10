@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+
 package com.liordahan.mgsrteam.ui.theme
 
 import androidx.compose.ui.graphics.Color

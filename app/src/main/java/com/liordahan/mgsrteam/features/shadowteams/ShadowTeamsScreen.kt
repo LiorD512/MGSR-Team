@@ -79,6 +79,13 @@ import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.BritTokens
 
+import com.liordahan.mgsrteam.ui.utils.boldTextStyle
+import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
+import com.liordahan.mgsrteam.ui.components.ToastManager
+import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
+
 // ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
 // Restyle the shadow-team chrome (scaffold / cards / text / accent) to the
 // mock's paper editorial look by re-binding the old Home* names to BritTokens.
@@ -90,12 +97,6 @@ private val HomeDarkCardBorder = BritTokens.line
 private val HomeTealAccent = BritTokens.gold
 private val HomeTextPrimary = BritTokens.ink
 private val HomeTextSecondary = BritTokens.muted
-import com.liordahan.mgsrteam.ui.utils.boldTextStyle
-import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
-import com.liordahan.mgsrteam.ui.components.ToastManager
-import com.liordahan.mgsrteam.ui.utils.regularTextStyle
-import kotlinx.coroutines.launch
-import org.koin.androidx.compose.koinViewModel
 
 private val GrassDark = Color(0xFF2d5a27)
 private val GrassLight = Color(0xFF3a7041)
