@@ -22,6 +22,10 @@
       var btn = e.target.closest('button[data-screen]');
       if (!btn) return;
       send({ type: 'brit-goto', screen: btn.getAttribute('data-screen') });
+      var phone = document.getElementById('scPhone');
+      if (phone && phone.scrollIntoView) {
+        try { phone.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (err) { phone.scrollIntoView(); }
+      }
     });
   }
 

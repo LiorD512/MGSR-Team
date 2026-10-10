@@ -271,9 +271,180 @@
     { id: 'tasks', label: 'Tasks', icon: 'tasks' }
   ];
 
+  /* ── Breadth-screen seed data (FEAT-003) ───────────────────────────────── */
+
+  // WAR ROOM — alpha board targets/opportunities
+  var WAR_ALPHA = [
+    { code: 'A-01', name: 'Petar Ilic', ctx: 'Playmaker · Hajduk Split · €5.1M', fit: 92, state: 'HOT', tone: 'red', move: 'Formal approach drafted' },
+    { code: 'A-02', name: 'Mathis Caron', ctx: 'Left-Back · RC Lens · €1.1M', fit: 88, state: 'WARM', tone: 'gold', move: 'Agent sounded out' },
+    { code: 'A-03', name: 'Dani Oliveira', ctx: 'Winger · SC Braga · loan review', fit: 84, state: 'LIVE', tone: 'green', move: 'Buy option live to month end' },
+    { code: 'A-04', name: 'Noa Gidron', ctx: 'Striker · free agent · immediate', fit: 79, state: 'OPEN', tone: 'blue', move: 'Trial window open' },
+    { code: 'A-05', name: 'Luka Prović', ctx: 'Keeper · Rijeka · Cat. B cover', fit: 73, state: 'COLD', tone: 'muted', move: 'Monitor · no contact' }
+  ];
+  // WAR ROOM — ask console seeded Q/A
+  var WAR_ASK = [
+    { q: 'Who should we chase for the No.9 mandate before the window shuts?', a: 'Three names lead the board. Eldad Barkai (24, Maccabi Haifa) is the proven scorer with 19 goals and a €12M clause. Noa Gidron is a free agent available immediately. Petar Ilic profiles as a creator, not a finisher. Recommend opening Barkai talks now and holding Gidron as a low-cost fallback.' },
+    { q: 'Which of our assets have the highest resale risk in the next 12 months?', a: 'Tomer Mizrahi (mandate expiring June 2025) and Dani Oliveira (loan buy-option decision pending) carry the most time pressure. Both need a decision inside 30 days to protect value.' }
+  ];
+  // WAR ROOM — autonomous scout agents
+  var WAR_AGENTS = [
+    { name: 'NO.10 HUNTER', brief: 'Creative mids · U-23 · Balkans + Portugal', state: 'running', found: 14, last: '2 MIN AGO', pct: 72 },
+    { name: 'FREE-AGENT WIRE', brief: 'Released players · immediate · Cat. A/B', state: 'running', found: 31, last: 'LIVE', pct: 48 },
+    { name: 'KEEPER COVER', brief: 'Goalkeepers · experienced · loan', state: 'idle', found: 6, last: '3 HRS AGO', pct: 100 },
+    { name: 'VALUE RADAR', brief: 'Contracts <18mo · undervalued · top-5 feeder', state: 'running', found: 22, last: '11 MIN AGO', pct: 64 }
+  ];
+  // WAR ROOM — succession targets
+  var WAR_SUCCESSORS = [
+    { role: 'OUR No.9', now: 'Eldad Barkai · 24', heir: 'Gabriel Mendes', heirCtx: 'converting · 20 · €3.6M', ready: 'READY 2026' },
+    { role: 'OUR No.10', now: 'Idan Vermouth · 25', heir: 'Petar Ilic', heirCtx: 'scout flag · 22 · €5.1M', ready: 'READY NOW' },
+    { role: 'OUR No.1', now: 'Tomer Mizrahi · 29', heir: 'Luka Prović', heirCtx: 'monitor · 21 · Cat. B', ready: 'READY 2027' }
+  ];
+
+  // AI SCOUT — ranked result pool (names here map to a dossier player by index)
+  var SCOUT_LEAGUES = ['Top-5 EU', 'Primeira', 'Bundesliga', 'HNL', 'Ligat ha’Al', 'Scandinavia'];
+  var SCOUT_RESULTS = [
+    { pidx: 3, fit: 94, why: 'Press-resistant No.10 · 13 assists · elite progression' },
+    { pidx: 1, fit: 90, why: 'Wide creator · 1v1 success 61% · loan-to-buy fit' },
+    { pidx: 5, fit: 86, why: 'Overlapping full-back · high stamina · low fee' },
+    { pidx: 0, fit: 83, why: 'Proven finisher · 0.68 xG/90 · clause attainable' },
+    { pidx: 6, fit: 78, why: 'Two-footed 8 · ball-winner · extension pending' }
+  ];
+
+  // SHORTLIST — grouped boards (player indices)
+  var SHORTLIST_BOARDS = [
+    { title: 'No. 9 MANDATE', sub: 'Striker · proven scorer', players: [0, 5] },
+    { title: 'CREATIVE MID', sub: 'No. 10 · U-23', players: [3, 6] },
+    { title: 'KEEPER COVER', sub: 'Free / loan · Cat. B', players: [4] }
+  ];
+
+  // REQUESTS — club requirement cards (matching = player indices from roster)
+  var REQUESTS = [
+    { club: 'FC Ashdod', crest: 'ASH', pos: 'Left-Back', budget: '€1.2M', deadline: 'CLOSES 4 DAYS', urgent: false, matching: [5], note: 'U-23, overlapping profile, loan considered.' },
+    { club: 'Maccabi Netanya', crest: 'NET', pos: 'Striker', budget: '€2.5M', deadline: 'URGENT · 2 DAYS', urgent: true, matching: [0, 5], note: 'Proven scorer, loan-to-buy preferred.' },
+    { club: 'Hapoel Haifa', crest: 'HAI', pos: 'Goalkeeper', budget: 'FREE', deadline: 'CLOSES 9 DAYS', urgent: false, matching: [4], note: 'Experienced cover, immediate.' },
+    { club: 'B. Jerusalem', crest: 'BJ', pos: 'Playmaker', budget: '€4.0M', deadline: 'CLOSES 12 DAYS', urgent: false, matching: [3, 6], note: 'Creative No.10, Balkan or local.' }
+  ];
+
+  // CONTACTS — segmented network
+  var CONTACTS = {
+    agencies: [
+      { name: 'Elite XI', role: 'Agency · 14 clients', org: 'Tel Aviv', touch: 'TODAY', fav: true },
+      { name: 'Gestifute Line', role: 'Agency · Iberia desk', org: 'Porto', touch: '2 DAYS', fav: false },
+      { name: 'Adriatic Reps', role: 'Agency · Balkans', org: 'Split', touch: '1 WEEK', fav: false }
+    ],
+    clubs: [
+      { name: 'Maccabi Haifa', role: 'Sporting Director', org: 'E. Katz', touch: 'YDAY', fav: true },
+      { name: 'SC Braga', role: 'Head of Recruitment', org: 'J. Costa', touch: '3 DAYS', fav: false },
+      { name: 'Union Berlin', role: 'Technical Lead', org: 'M. Fischer', touch: '1 WEEK', fav: false }
+    ],
+    people: [
+      { name: 'Dr. R. Peled', role: 'Club Medic', org: 'BRIT In-House', touch: 'TODAY', fav: true },
+      { name: 'Sivan Mor', role: 'Analyst · Data', org: 'BRIT Scouting', touch: 'YDAY', fav: false },
+      { name: 'A. Haddad', role: 'Regional Scout', org: 'Gulf desk', touch: '4 DAYS', fav: false }
+    ]
+  };
+
+  // RELEASES — free-agent wire
+  var RELEASES = [
+    { name: 'Noa Gidron', pos: 'Striker · 27', left: 'Hapoel Tel Aviv', date: 'TODAY', note: 'Mutual termination · immediate', hot: true },
+    { name: 'Diego Fuentes', pos: 'Centre-Back · 31', left: 'Famalicão', date: 'YDAY', note: 'Contract expired · experienced', hot: false },
+    { name: 'Yotam Bar', pos: 'Winger · 24', left: 'Bnei Sakhnin', date: '2 DAYS', note: 'Released · pace profile', hot: true },
+    { name: 'Marko Jurić', pos: 'Keeper · 29', left: 'HNK Gorica', date: '3 DAYS', note: 'Free agent · Cat. B cover', hot: false },
+    { name: 'Elie Haddad', pos: 'Midfield · 26', left: 'AEK Larnaca', date: '4 DAYS', note: 'Released · box-to-box', hot: false }
+  ];
+
+  // RETURNEES — loanees coming back
+  var RETURNEES = [
+    { name: 'Dani Oliveira', loan: 'SC Braga', parent: 'BRIT Pool', back: 'JUN 2025', status: 'buy-option', statusLabel: 'BUY OPTION', pidx: 1 },
+    { name: 'Gabriel Mendes', loan: 'Famalicão', parent: 'BRIT Pool', back: 'JUL 2025', status: 'review', statusLabel: 'TRIAL REVIEW', pidx: 5 },
+    { name: 'Ariel Tovim', loan: 'Hapoel Haifa', parent: 'BRIT Pool', back: 'MAY 2025', status: 'returning', statusLabel: 'RETURNING', pidx: null },
+    { name: 'Omar Zahavi', loan: 'Maccabi Netanya', parent: 'BRIT Pool', back: 'JUN 2025', status: 'extend', statusLabel: 'EXTEND LOAN', pidx: null }
+  ];
+
+  // CONTRACT FINISHER — expiring deals, days-left drives urgency
+  var FINISHERS = [
+    { name: 'Tomer Mizrahi', pos: 'Keeper · APOEL', days: 48, end: 'JUN 2025', pidx: 4 },
+    { name: 'Elad Mor', pos: 'Midfield · M. Netanya', days: 95, end: 'JUL 2025', pidx: null },
+    { name: 'Dani Oliveira', pos: 'Winger · SC Braga', days: 150, end: 'JUN 2026', pidx: 1 },
+    { name: 'Petar Ilic', pos: 'Playmaker · Hajduk', days: 410, end: 'JUN 2026', pidx: 3 }
+  ];
+
+  // TASKS — grouped by due bucket
+  var TASKS = [
+    { id: 't1', title: 'Call D. Shay re: Barkai renewal', player: 'Eldad Barkai', pidx: 0, due: 'TODAY', bucket: 'TODAY', prio: 'high', assignee: 'Lior', done: false, notes: 'Club opened talks to 2028. Hold position, push commission to 10%.' },
+    { id: 't2', title: 'Decide Oliveira buy-option', player: 'Dani Oliveira', pidx: 1, due: 'TODAY', bucket: 'TODAY', prio: 'high', assignee: 'Lior', done: false, notes: 'Braga triggered review clause. Decision window closes month end.' },
+    { id: 't3', title: 'Coordinate Mendes trial flights', player: 'Gabriel Mendes', pidx: 5, due: 'TODAY', bucket: 'TODAY', prio: 'mid', assignee: 'Sivan', done: true, notes: 'Famalicão trial · 10 days. Book flights + accommodation.' },
+    { id: 't4', title: 'File Ilic scouting dossier', player: 'Petar Ilic', pidx: 3, due: 'TOMORROW', bucket: 'THIS WEEK', prio: 'mid', assignee: 'Sivan', done: false, notes: 'AI Scout 92% match. Attach video reel + xA breakdown.' },
+    { id: 't5', title: 'Renewal call · Mizrahi', player: 'Tomer Mizrahi', pidx: 4, due: 'THU', bucket: 'THIS WEEK', prio: 'high', assignee: 'Lior', done: false, notes: 'Mandate expiring June. Captain, 13 clean sheets — lead the renewal.' },
+    { id: 't6', title: 'Send Union Berlin medical update', player: 'Yarin Cohen', pidx: 2, due: 'FRI', bucket: 'THIS WEEK', prio: 'low', assignee: 'Dr. Peled', done: false, notes: 'Return cleared. Forward clearance letter to club.' },
+    { id: 't7', title: 'Quarterly value report', player: null, pidx: null, due: 'NEXT WK', bucket: 'LATER', prio: 'low', assignee: 'Sivan', done: false, notes: 'Compile portfolio value movement for the board.' }
+  ];
+  var TASK_BUCKETS = ['TODAY', 'THIS WEEK', 'LATER'];
+
+  // SHADOW TEAMS — formations + slot assignments (player idx or null)
+  var FORMATIONS = {
+    '4-3-3': [
+      { pos: 'GK', x: 50, y: 90, pidx: 4 },
+      { pos: 'LB', x: 16, y: 70, pidx: 5 }, { pos: 'CB', x: 38, y: 74, pidx: 2 }, { pos: 'CB', x: 62, y: 74, pidx: null }, { pos: 'RB', x: 84, y: 70, pidx: null },
+      { pos: 'CM', x: 30, y: 50, pidx: 6 }, { pos: 'CM', x: 50, y: 46, pidx: 3 }, { pos: 'CM', x: 70, y: 50, pidx: null },
+      { pos: 'LW', x: 20, y: 24, pidx: 1 }, { pos: 'ST', x: 50, y: 18, pidx: 0 }, { pos: 'RW', x: 80, y: 24, pidx: null }
+    ],
+    '4-2-3-1': [
+      { pos: 'GK', x: 50, y: 90, pidx: 4 },
+      { pos: 'LB', x: 16, y: 72, pidx: 5 }, { pos: 'CB', x: 38, y: 76, pidx: 2 }, { pos: 'CB', x: 62, y: 76, pidx: null }, { pos: 'RB', x: 84, y: 72, pidx: null },
+      { pos: 'DM', x: 38, y: 56, pidx: 6 }, { pos: 'DM', x: 62, y: 56, pidx: null },
+      { pos: 'LM', x: 20, y: 36, pidx: 1 }, { pos: 'AM', x: 50, y: 34, pidx: 3 }, { pos: 'RM', x: 80, y: 36, pidx: null },
+      { pos: 'ST', x: 50, y: 16, pidx: 0 }
+    ],
+    '3-5-2': [
+      { pos: 'GK', x: 50, y: 90, pidx: 4 },
+      { pos: 'CB', x: 28, y: 74, pidx: 2 }, { pos: 'CB', x: 50, y: 77, pidx: null }, { pos: 'CB', x: 72, y: 74, pidx: null },
+      { pos: 'LWB', x: 12, y: 52, pidx: 5 }, { pos: 'CM', x: 36, y: 50, pidx: 6 }, { pos: 'CM', x: 50, y: 46, pidx: 3 }, { pos: 'CM', x: 64, y: 50, pidx: null }, { pos: 'RWB', x: 88, y: 52, pidx: null },
+      { pos: 'ST', x: 38, y: 20, pidx: 0 }, { pos: 'ST', x: 62, y: 20, pidx: 1 }
+    ]
+  };
+  var FORMATION_KEYS = ['4-3-3', '4-2-3-1', '3-5-2'];
+
+  // CHAT / THE TUNNEL — seeded threads + messages
+  var CHAT_THREADS = [
+    { id: 'desk', name: 'THE DESK', sub: 'Lior · Sivan · Dr. Peled', unread: 2 },
+    { id: 'scouting', name: 'SCOUTING', sub: 'Field reports', unread: 0 },
+    { id: 'board', name: 'THE BOARD', sub: 'Decisions', unread: 1 }
+  ];
+  var CHAT_MESSAGES = {
+    desk: [
+      { who: 'Sivan', me: false, when: '08:12', text: 'Barkai brace is filed. @Lior the near-post run is a pattern now.' },
+      { who: 'Lior', me: true, when: '08:20', text: 'Seen it. Pushing D. Shay on the renewal today.' },
+      { who: 'Dr. Peled', me: false, when: '09:05', text: 'Cohen cleared — full training Monday.' },
+      { who: 'Lior', me: true, when: '09:07', text: 'Great. @Sivan forward the letter to Union.' }
+    ],
+    scouting: [
+      { who: 'A. Haddad', me: false, when: 'YDAY', text: 'Ilic ran the derby. Two assists, controlled tempo throughout.' },
+      { who: 'Sivan', me: false, when: 'YDAY', text: 'AI Scout agrees — 92% on the No.10 mandate.' }
+    ],
+    board: [
+      { who: 'Board', me: false, when: 'MON', text: 'Approve Vermouth extension terms by Thursday.' },
+      { who: 'Lior', me: true, when: 'MON', text: 'Drafting now. Two years, option on a third.' }
+    ]
+  };
+
+  // NOTIFICATIONS — grouped read/unread
+  var NOTIFS = [
+    { group: 'TODAY', items: [
+      { kind: 'release', icon: 'releases', title: 'Noa Gidron released', ctx: 'Striker · free agent · immediate', when: '2H', unread: true, nav: 'releases' },
+      { kind: 'mandate', icon: 'requests', title: 'Netanya requirement is urgent', ctx: 'Striker brief closes in 2 days', when: '4H', unread: true, nav: 'requests' },
+      { kind: 'birthday', icon: 'contacts', title: 'Omri Levkovich turns 27', ctx: 'Send a birthday wish', when: '6H', unread: false, nav: 'dashboard' }
+    ] },
+    { group: 'EARLIER', items: [
+      { kind: 'club', icon: 'clubChanges', title: 'Braga triggered loan review', ctx: 'Dani Oliveira · decide buy option', when: 'YDAY', unread: false, nav: 'returnees' },
+      { kind: 'scout', icon: 'aiScout', title: 'Scout agent found 14 matches', ctx: 'NO.10 HUNTER · creative mids', when: 'YDAY', unread: false, nav: 'aiScout' },
+      { kind: 'health', icon: 'players', title: 'Yarin Cohen cleared to train', ctx: 'Union Berlin medical', when: '2 DAYS', unread: false, nav: 'players' }
+    ] }
+  ];
+
   var MORE_ITEMS = [
     { id: 'shortlist', label: 'Shortlist', icon: 'shortlist' },
-    { id: 'marketRadar', label: 'Market Radar', icon: 'marketRadar' },
+    { id: 'shadowTeams', label: 'Shadow Teams', icon: 'warRoom' },
     { id: 'releases', label: 'Releases', icon: 'releases' },
     { id: 'clubChanges', label: 'Club Changes', icon: 'clubChanges' },
     { id: 'contractFinisher', label: 'Contract Finisher', icon: 'contractFinisher' },
@@ -281,7 +452,9 @@
     { id: 'contacts', label: 'Contacts', icon: 'contacts' },
     { id: 'requests', label: 'Requests', icon: 'requests' },
     { id: 'aiScout', label: 'AI Scout', icon: 'aiScout' },
-    { id: 'tunnel', label: 'The Tunnel', icon: 'tunnel' }
+    { id: 'tunnel', label: 'The Tunnel', icon: 'tunnel' },
+    { id: 'marketRadar', label: 'Market Radar', icon: 'marketRadar' },
+    { id: 'empty', label: 'New Shortlist', icon: 'shortlist' }
   ];
 
   var SCREEN_TITLES = {
@@ -289,7 +462,8 @@
     shortlist: 'Shortlist', marketRadar: 'Market Radar', releases: 'Release Radar',
     clubChanges: 'Club Changes', contractFinisher: 'Contract Finisher', returnees: 'Returnees',
     contacts: 'Contacts', requests: 'Requests', aiScout: 'AI Scout Network', tunnel: 'The Tunnel',
-    dossier: 'Player Dossier'
+    dossier: 'Player Dossier', shadowTeams: 'Shadow Teams', taskDetail: 'Task Detail',
+    empty: 'New Shortlist'
   };
 
   /* ──────────────────────────────────────────────────────────────────────
@@ -369,7 +543,7 @@
     });
 
     document.getElementById('hdrBack').addEventListener('click', popScreen);
-    document.getElementById('hdrBell').addEventListener('click', function () { toast('No new notifications'); });
+    document.getElementById('hdrBell').addEventListener('click', openNotifications);
 
     var sheet = document.getElementById('moreSheet');
     sheet.addEventListener('click', function (e) {
@@ -417,7 +591,7 @@
   function stack() { return document.getElementById('stack'); }
 
   function renderScreenNode(name, arg) {
-    var inner = SCREENS[name] ? SCREENS[name](arg) : SCREENS.stub(name);
+    var inner = SCREENS[name] ? SCREENS[name](arg) : SCREENS.dashboard();
     var node = document.createElement('div');
     node.className = 'screen';
     node.setAttribute('data-screen', name);
@@ -879,6 +1053,45 @@
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, state.reduced ? 0 : 360);
   }
 
+  /* ──────────────────────────────────────────────────────────────────────
+     NOTIFICATION CENTER — slide-in overlay from the header bell
+     ────────────────────────────────────────────────────────────────────── */
+  function openNotifications() {
+    var existing = document.getElementById('notifFlow'); if (existing) return;
+    var unread = NOTIFS.reduce(function (n, g) { return n + g.items.filter(function (i) { return i.unread; }).length; }, 0);
+    var el = document.createElement('div');
+    el.className = 'flow-overlay notif-flow'; el.id = 'notifFlow';
+    el.innerHTML = '<div class="flow-backdrop" data-close="1"></div>' +
+      '<div class="notif-panel">' +
+        '<div class="notif-head"><div><p class="brit-kicker">THE DESK · ' + PLATFORM_LABEL[state.platform] + '</p>' +
+          '<h2>NOTIFICATIONS</h2></div>' +
+          '<button class="bsheet-x" data-close="1">' + svg('close', 2) + '</button></div>' +
+        '<div class="notif-bar"><span>' + unread + ' UNREAD</span><button class="notif-readall" data-notif-readall="1">MARK ALL READ</button></div>' +
+        '<div class="notif-body">' + NOTIFS.map(function (g) {
+          return '<div class="notif-group"><p class="notif-glabel">' + g.group + '</p>' +
+            g.items.map(function (it) {
+              return '<button class="notif-item' + (it.unread ? ' unread' : '') + '" data-notif-nav="' + it.nav + '">' +
+                '<span class="notif-ic">' + svg(it.icon, 1.6) + '</span>' +
+                '<div class="notif-copy"><h4>' + esc(it.title) + '</h4><p>' + esc(it.ctx) + '</p></div>' +
+                '<span class="notif-when">' + esc(it.when) + '</span></button>';
+            }).join('') + '</div>';
+        }).join('') + '</div>' +
+      '</div>';
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('open'); });
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-notif-readall]')) {
+        el.querySelectorAll('.notif-item.unread').forEach(function (x) { x.classList.remove('unread'); });
+        var bar = el.querySelector('.notif-bar span'); if (bar) bar.textContent = '0 UNREAD';
+        var dot = document.querySelector('#hdrBell .dot'); if (dot) dot.style.display = 'none';
+        return;
+      }
+      var nn = e.target.closest('[data-notif-nav]');
+      if (nn) { var target = nn.getAttribute('data-notif-nav'); closeFlow(el); if (target === 'dashboard') switchTab('dashboard'); else pushScreen(target); return; }
+      if (e.target.closest('[data-close]')) closeFlow(el);
+    });
+  }
+
   // Player Dossier (hero #2) — cinematic header + sticky tab bar + panels.
   var DOSSIER_TABS = ['OVERVIEW', 'PERFORMANCE', 'MARKET', 'DOCUMENTS', 'NOTES', 'SIMILAR', 'HIGHLIGHTS', 'CLUB INTEL'];
 
@@ -1016,33 +1229,602 @@
     '</div>';
   };
 
-  // Generic rich-ish stub for the breadth screens.
-  SCREENS.stub = function (name) {
-    var title = SCREEN_TITLES[name] || name;
-    var leads = {
-      warRoom: 'The alpha board, scout agents, successors and the ask-anything console.',
-      tasks: 'Everything the desk owes today — follow-ups, calls, filings.',
-      shortlist: 'Boards of targets per mandate, ranked by fit.',
-      marketRadar: 'Live transfer moves across the leagues you watch.',
-      releases: 'Players released this window — first to know, first to call.',
-      clubChanges: 'Who moved where, and which doors that opens.',
-      contractFinisher: 'Deals running down — the finisher queue.',
-      returnees: 'Loanees and returnees coming back into play.',
-      contacts: 'The network — agents, clubs, scouts, medics.',
-      requests: 'Inbound briefs and club requests awaiting a reply.',
-      aiScout: 'Autonomous scout agents working your mandates in the background.',
-      tunnel: 'The private team channel — the tunnel before the pitch.'
-    };
-    return '<p class="brit-kicker">' + DESK[state.platform] + '</p>' +
-      '<h1 style="margin:0 0 18px;font:500 46px/0.78 var(--display);letter-spacing:-0.045em;text-transform:uppercase">' + esc(title).toUpperCase().replace(/ /, '<br><span style="color:var(--gold)">') + (title.indexOf(' ') > -1 ? '</span>' : '') + '</h1>' +
-      '<p class="page-lead">' + (leads[name] || 'This room is on the plan.') + '</p>' +
-      '<div class="brit-signals">' +
-        '<div class="brit-signal"><label>STATUS</label><strong style="color:var(--gold)">LIVE</strong><small>Prototype</small></div>' +
-        '<div class="brit-signal"><label>PLATFORM</label><strong>' + PLATFORM_LABEL[state.platform] + '</strong><small>Retinted</small></div>' +
-        '<div class="brit-signal"><label>DESK</label><strong style="font-size:22px">BRIT</strong><small>Sport Group</small></div>' +
+  /* ──────────────────────────────────────────────────────────────────────
+     PAGE MASTHEAD helper (shared editorial header for breadth screens)
+     ────────────────────────────────────────────────────────────────────── */
+  function pageHead(kicker, line1, line2, meta) {
+    return '<header class="page-head">' +
+      '<p class="brit-kicker">' + esc(kicker) + '</p>' +
+      '<h1 class="page-mast">' + esc(line1) + (line2 ? '<br><span>' + esc(line2) + '</span>' : '') + '</h1>' +
+      (meta ? '<p class="page-meta">' + meta + '</p>' : '') +
+      '</header>';
+  }
+
+  function fitRing(pct, size) {
+    var s = size || 44, r = (s - 6) / 2, c = 2 * Math.PI * r, off = c * (1 - pct / 100);
+    return '<svg class="fit-ring" viewBox="0 0 ' + s + ' ' + s + '" width="' + s + '" height="' + s + '">' +
+      '<circle cx="' + s / 2 + '" cy="' + s / 2 + '" r="' + r + '" fill="none" stroke="var(--line)" stroke-width="3"/>' +
+      '<circle cx="' + s / 2 + '" cy="' + s / 2 + '" r="' + r + '" fill="none" stroke="var(--gold)" stroke-width="3" stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '" transform="rotate(-90 ' + s / 2 + ' ' + s / 2 + ')"/>' +
+      '<text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="var(--display)" font-weight="500" font-size="' + (s * 0.3) + '" fill="var(--ink)">' + pct + '</text>' +
+      '</svg>';
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     WAR ROOM — command room with segmented sub-modes
+     ────────────────────────────────────────────────────────────────────── */
+  var WAR_MODES = [
+    { id: 'alpha', label: 'Alpha Board' },
+    { id: 'ask', label: 'Ask' },
+    { id: 'agents', label: 'Scout Agents' },
+    { id: 'successors', label: 'Successors' }
+  ];
+  state.warMode = 'alpha';
+
+  function warAlphaHtml() {
+    return '<div class="war-alpha">' + WAR_ALPHA.map(function (a) {
+      return '<button class="alpha-card" data-dossier="' + (PLAYERS.map(function (p) { return p.name; }).indexOf(a.name)) + '">' +
+        '<div class="ac-left"><span class="ac-code">' + a.code + '</span>' + fitRing(a.fit, 46) + '</div>' +
+        '<div class="ac-body"><div class="ac-top"><h3>' + esc(a.name) + '</h3><span class="ac-state ac-' + a.tone + '">' + a.state + '</span></div>' +
+          '<p class="ac-ctx">' + esc(a.ctx) + '</p>' +
+          '<p class="ac-move">' + svg('arrow', 1.6) + ' ' + esc(a.move) + '</p></div>' +
+      '</button>';
+    }).join('') + '</div>';
+  }
+
+  function warAskHtml() {
+    return '<div class="war-ask">' +
+      '<div class="ask-log" id="askLog">' + WAR_ASK.map(function (x) {
+        return '<div class="ask-pair"><div class="ask-q">' + noteText(x.q) + '</div>' +
+          '<div class="ask-a"><span class="ask-brit">' + MARK + '</span><p>' + noteText(x.a) + '</p></div></div>';
+      }).join('') + '</div>' +
+      '<div class="ask-compose"><input type="text" id="askInput" placeholder="ASK THE ROOM ANYTHING…" autocomplete="off" />' +
+        '<button class="ask-send" data-ask-send="1">' + svg('arrow', 2) + '</button></div>' +
+      '<div class="ask-hints"><button class="ask-hint" data-ask-fill="Who are our highest resale-risk assets?">RESALE RISK</button>' +
+        '<button class="ask-hint" data-ask-fill="Rank the best fits for the No.9 mandate.">No.9 FITS</button>' +
+        '<button class="ask-hint" data-ask-fill="Which releases should we move on today?">TODAY’S RELEASES</button></div>';
+  }
+
+  function warAgentsHtml() {
+    return '<div class="war-agents">' + WAR_AGENTS.map(function (a) {
+      return '<div class="agent-card">' +
+        '<div class="agent-top"><div><h3>' + esc(a.name) + '</h3><p>' + esc(a.brief) + '</p></div>' +
+          '<span class="agent-state agent-' + a.state + '">' + (a.state === 'running' ? 'RUNNING' : 'IDLE') + '</span></div>' +
+        '<div class="agent-bar"><span style="width:' + a.pct + '%"></span></div>' +
+        '<div class="agent-foot"><span>' + a.found + ' MATCHES</span><span>' + esc(a.last) + '</span></div>' +
+      '</div>';
+    }).join('') +
+    '<button class="btn-gold war-newagent" data-ask-fill="deploy">+ DEPLOY NEW AGENT</button></div>';
+  }
+
+  function warSuccessorsHtml() {
+    return '<div class="war-succ">' + WAR_SUCCESSORS.map(function (s) {
+      return '<div class="succ-card"><div class="succ-role">' + esc(s.role) + '<span>' + esc(s.ready) + '</span></div>' +
+        '<div class="succ-chain"><div class="succ-now"><label>NOW</label><strong>' + esc(s.now) + '</strong></div>' +
+          '<span class="succ-arrow">' + svg('arrow', 1.8) + '</span>' +
+          '<div class="succ-heir"><label>SUCCESSOR</label><strong>' + esc(s.heir) + '</strong><small>' + esc(s.heirCtx) + '</small></div></div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function warBody(mode) {
+    if (mode === 'ask') return warAskHtml();
+    if (mode === 'agents') return warAgentsHtml();
+    if (mode === 'successors') return warSuccessorsHtml();
+    return warAlphaHtml();
+  }
+
+  SCREENS.warRoom = function () {
+    return '<div class="war-room" data-warmode="' + state.warMode + '">' +
+      pageHead('COMMAND ROOM · ' + PLATFORM_LABEL[state.platform], 'WAR', 'ROOM.', 'FOUR LENSES ON THE MARKET · ONE DESK') +
+      '<div class="war-seg" id="warSeg">' + WAR_MODES.map(function (m) {
+        return '<button class="warseg-btn' + (m.id === state.warMode ? ' on' : '') + '" data-warmode="' + m.id + '">' + m.label.toUpperCase() + '</button>';
+      }).join('') + '<span class="warseg-thumb" id="warSegThumb"></span></div>' +
+      '<div class="war-content" id="warContent">' + warBody(state.warMode) + '</div>' +
+    '</div>';
+  };
+
+  function switchWarMode(node, mode) {
+    state.warMode = mode;
+    var seg = node.querySelector('#warSeg');
+    seg.querySelectorAll('.warseg-btn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-warmode') === mode); });
+    node.querySelector('.war-room').setAttribute('data-warmode', mode);
+    var content = node.querySelector('#warContent');
+    content.classList.add('swapping');
+    setTimeout(function () {
+      content.innerHTML = warBody(mode);
+      content.classList.remove('swapping');
+    }, state.reduced ? 0 : 150);
+  }
+
+  function warThink(node, cb) {
+    var content = node.querySelector('#warContent');
+    var log = content.querySelector('#askLog');
+    if (!log) { cb(); return; }
+    var think = document.createElement('div');
+    think.className = 'ask-pair ask-thinking';
+    think.innerHTML = '<div class="ask-a"><span class="ask-brit think-rings"><span></span><span></span><span></span></span><p class="ask-dots">THINKING<span>.</span><span>.</span><span>.</span></p></div>';
+    log.appendChild(think);
+    log.scrollTop = log.scrollHeight;
+    setTimeout(function () { if (think.parentNode) think.parentNode.removeChild(think); cb(); }, state.reduced ? 60 : 1400);
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     AI SCOUT — criteria composer → scan → ranked results
+     ────────────────────────────────────────────────────────────────────── */
+  state.scout = { pos: 'Playmaker', ageMin: 18, ageMax: 24, budget: '€6M', leagues: ['Primeira', 'HNL'], ran: false };
+
+  SCREENS.aiScout = function () {
+    var sc = state.scout;
+    return '<div class="scout">' +
+      pageHead('AUTONOMOUS DISCOVERY', 'AI', 'SCOUT.', 'DESCRIBE THE PROFILE · THE NETWORK FINDS IT') +
+      '<div class="scout-composer" id="scoutComposer">' +
+        '<p class="fs-label">POSITION</p>' +
+        '<div class="chip-row">' + POSITIONS.filter(function (p) { return p !== 'All'; }).map(function (p) {
+          return '<button class="chip' + (sc.pos === p ? ' on' : '') + '" data-scpos="' + esc(p) + '">' + esc(p) + '</button>';
+        }).join('') + '</div>' +
+        '<p class="fs-label">AGE RANGE · <span class="sc-agev">' + sc.ageMin + '–' + sc.ageMax + '</span></p>' +
+        '<div class="sc-age"><button class="sc-step" data-scage="-">–</button><div class="sc-agebar"><span style="left:' + ((sc.ageMin - 16) / 24 * 100) + '%;right:' + (100 - (sc.ageMax - 16) / 24 * 100) + '%"></span></div><button class="sc-step" data-scage="+">+</button></div>' +
+        '<p class="fs-label">BUDGET CEILING</p>' +
+        '<div class="chip-row">' + ['€1M', '€3M', '€6M', '€10M', 'FREE'].map(function (b) {
+          return '<button class="chip' + (sc.budget === b ? ' on' : '') + '" data-scbud="' + esc(b) + '">' + esc(b) + '</button>';
+        }).join('') + '</div>' +
+        '<p class="fs-label">LEAGUES</p>' +
+        '<div class="chip-row">' + SCOUT_LEAGUES.map(function (l) {
+          return '<button class="chip' + (sc.leagues.indexOf(l) > -1 ? ' on' : '') + '" data-scleague="' + esc(l) + '">' + esc(l) + '</button>';
+        }).join('') + '</div>' +
+        '<button class="scout-run" id="scoutRun">' + svg('aiScout', 2) + ' RUN SCOUT</button>' +
       '</div>' +
-      '<p class="stub-note">The <b>' + esc(title) + '</b> experience is scoped for a <b>later feature</b>. The shell, navigation, transitions and retint already route here — this is a working placeholder, not a dead end.</p>' +
-      '<button class="login-enter" style="margin-top:24px;background:var(--gold);color:var(--black)" data-nav="dashboard">' + svg('back', 2) + ' BACK TO DASHBOARD</button>';
+      '<div class="scout-results" id="scoutResults"></div>' +
+    '</div>';
+  };
+
+  function runScout(node) {
+    var res = node.querySelector('#scoutResults');
+    var sc = state.scout;
+    res.innerHTML = '<div class="scan-stage"><div class="scan-radar"><span class="sr-sweep"></span><span class="sr-ring"></span><span class="sr-ring r2"></span>' +
+      '<span class="sr-blip b1"></span><span class="sr-blip b2"></span><span class="sr-blip b3"></span><span class="sr-blip b4"></span></div>' +
+      '<p class="scan-label" id="scanLabel">SCANNING ' + sc.leagues.length + ' LEAGUES…</p></div>';
+    res.scrollIntoView({ block: 'nearest', behavior: state.reduced ? 'auto' : 'smooth' });
+    var labels = ['PARSING CRITERIA…', 'QUERYING ' + sc.leagues.length + ' LEAGUES…', 'SCORING STYLE FIT…', 'RANKING CANDIDATES…'];
+    var li = 0;
+    var lab = res.querySelector('#scanLabel');
+    var iv = setInterval(function () { li++; if (lab && labels[li]) lab.textContent = labels[li]; }, state.reduced ? 40 : 480);
+    setTimeout(function () {
+      clearInterval(iv);
+      state.scout.ran = true;
+      res.innerHTML = '<div class="scout-reslist">' +
+        '<div class="srl-head"><span>' + SCOUT_RESULTS.length + ' CANDIDATES</span><span>RANKED BY STYLE FIT</span></div>' +
+        SCOUT_RESULTS.map(function (r, i) {
+          var p = PLAYERS[r.pidx];
+          return '<button class="scout-cand" data-dossier="' + r.pidx + '">' +
+            '<span class="sc-rank">' + (i + 1 < 10 ? '0' : '') + (i + 1) + '</span>' +
+            '<div class="sc-thumb phopo">' + SILH + '<span class="initials">' + initials(p.name) + '</span></div>' +
+            '<div class="sc-cbody"><h3>' + esc(p.name) + '</h3><p class="sc-cmeta">' + esc(p.pos) + ' · ' + esc(p.club) + ' · ' + p.age + '</p>' +
+              '<p class="sc-why">' + esc(r.why) + '</p></div>' +
+            fitRing(r.fit, 46) +
+          '</button>';
+        }).join('') + '</div>';
+    }, state.reduced ? 120 : 2100);
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     SHORTLIST — grouped boards + add-to-shortlist sheet
+     ────────────────────────────────────────────────────────────────────── */
+  SCREENS.shortlist = function () {
+    var total = SHORTLIST_BOARDS.reduce(function (n, b) { return n + b.players.length; }, 0);
+    return '<div class="shortlist">' +
+      pageHead('TARGET BOARDS · ' + PLATFORM_LABEL[state.platform], 'SHORT', 'LIST.', total + ' PLAYERS ACROSS ' + SHORTLIST_BOARDS.length + ' BOARDS') +
+      SHORTLIST_BOARDS.map(function (b, bi) {
+        return '<section class="sl-board">' +
+          '<div class="sl-board-head"><div><h2>' + esc(b.title) + '</h2><p>' + esc(b.sub) + '</p></div><span class="sl-count">' + b.players.length + '</span></div>' +
+          b.players.map(function (pi, rank) {
+            var p = PLAYERS[pi];
+            return '<button class="sl-row" data-dossier="' + pi + '">' +
+              '<span class="sl-rank">' + (rank + 1) + '</span>' +
+              '<div class="sl-thumb phopo">' + SILH + '<span class="initials">' + initials(p.name) + '</span></div>' +
+              '<div class="sl-body"><h3>' + esc(p.name) + '</h3><p>' + esc(p.pos) + ' · ' + esc(p.club) + ' · ' + esc(p.value) + '</p></div>' +
+              '<span class="sl-move">' + svg('clubChanges', 1.6) + '</span></button>';
+          }).join('') +
+        '</section>';
+      }).join('') +
+      '<button class="roster-fab" id="shortlistFab">' + svg('shortlist', 2) + '<span>ADD TO SHORTLIST</span></button>' +
+    '</div>';
+  };
+
+  function openShortlistSheet() {
+    var el = document.createElement('div');
+    el.className = 'flow-overlay'; el.id = 'slFlow';
+    var picked = null, board = SHORTLIST_BOARDS[0].title;
+    function render() {
+      el.innerHTML = '<div class="flow-backdrop" data-close="1"></div>' +
+        '<div class="bsheet">' +
+          '<div class="sheet-handle"></div>' +
+          '<div class="bsheet-head"><h2>ADD TO SHORTLIST</h2><button class="bsheet-x" data-close="1">' + svg('close', 2) + '</button></div>' +
+          '<div class="bsheet-body">' +
+            '<p class="fs-label">BOARD</p>' +
+            '<div class="chip-row">' + SHORTLIST_BOARDS.map(function (b) {
+              return '<button class="chip' + (board === b.title ? ' on' : '') + '" data-slboard="' + esc(b.title) + '">' + esc(b.title) + '</button>';
+            }).join('') + '</div>' +
+            '<p class="fs-label">PLAYER</p>' +
+            '<div class="sl-pick">' + PLAYERS.map(function (p, i) {
+              return '<button class="sl-pickrow' + (picked === i ? ' on' : '') + '" data-slpick="' + i + '">' +
+                '<div class="phopo">' + SILH + '<span class="initials">' + initials(p.name) + '</span></div>' +
+                '<span>' + esc(p.name) + '</span><em>' + esc(p.pos) + '</em></button>';
+            }).join('') + '</div>' +
+          '</div>' +
+          '<div class="bsheet-foot"><button class="btn-ghost" data-close="1">CANCEL</button>' +
+            '<button class="btn-gold" data-slsubmit="1">ADD TO BOARD</button></div>' +
+        '</div>';
+    }
+    render();
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('open'); });
+    el.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-slboard]');
+      var pk = e.target.closest('[data-slpick]');
+      if (b) { board = b.getAttribute('data-slboard'); el.querySelectorAll('[data-slboard]').forEach(function (x) { x.classList.toggle('on', x === b); }); return; }
+      if (pk) { picked = Number(pk.getAttribute('data-slpick')); el.querySelectorAll('[data-slpick]').forEach(function (x) { x.classList.toggle('on', x === pk); }); return; }
+      if (e.target.closest('[data-slsubmit]')) { closeFlow(el); toast(picked != null ? PLAYERS[picked].name.split(' ')[0] + ' added to ' + board : 'Pick a player first'); return; }
+      if (e.target.closest('[data-close]')) closeFlow(el);
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     REQUESTS / CLUB REQUIREMENTS — cards expandable to matching players
+     ────────────────────────────────────────────────────────────────────── */
+  SCREENS.requests = function () {
+    return '<div class="requests">' +
+      pageHead('CLUB REQUIREMENTS · ' + PLATFORM_LABEL[state.platform], 'RE', 'QUESTS.', REQUESTS.length + ' OPEN BRIEFS · TAP TO MATCH') +
+      '<div class="req-list">' + REQUESTS.map(function (r, i) {
+        return '<div class="req-card' + (r.urgent ? ' req-urgent' : '') + '" data-req="' + i + '">' +
+          '<button class="req-main" data-reqtoggle="' + i + '">' +
+            '<div class="req-crest">' + crestSvg(r.crest) + '</div>' +
+            '<div class="req-body"><div class="req-top"><h3>' + esc(r.club) + '</h3><span class="req-dl' + (r.urgent ? ' urgent' : '') + '">' + esc(r.deadline) + '</span></div>' +
+              '<p class="req-need">' + esc(r.pos) + ' · ' + esc(r.budget) + '</p>' +
+              '<p class="req-note">' + esc(r.note) + '</p></div>' +
+            '<span class="req-chev">' + svg('arrow', 1.6) + '</span>' +
+          '</button>' +
+          '<div class="req-matches" id="reqMatch' + i + '">' +
+            '<p class="req-match-label">MATCHING PLAYERS · ' + r.matching.length + '</p>' +
+            r.matching.map(function (pi) {
+              var p = PLAYERS[pi];
+              return '<button class="req-match-row" data-dossier="' + pi + '">' +
+                '<div class="phopo">' + SILH + '<span class="initials">' + initials(p.name) + '</span></div>' +
+                '<div><h4>' + esc(p.name) + '</h4><p>' + esc(p.pos) + ' · ' + esc(p.club) + ' · ' + esc(p.value) + '</p></div>' +
+                '<span class="rm-fit">' + (88 - pi * 2) + '</span></button>';
+            }).join('') +
+          '</div>' +
+        '</div>';
+      }).join('') + '</div>' +
+      '<button class="roster-fab" id="reqFab">' + svg('requests', 2) + '<span>ADD REQUEST</span></button>' +
+    '</div>';
+  };
+
+  function openRequestSheet() {
+    var el = document.createElement('div');
+    el.className = 'flow-overlay'; el.id = 'reqFlow';
+    el.innerHTML = '<div class="flow-backdrop" data-close="1"></div>' +
+      '<div class="bsheet">' +
+        '<div class="sheet-handle"></div>' +
+        '<div class="bsheet-head"><h2>ADD REQUEST</h2><button class="bsheet-x" data-close="1">' + svg('close', 2) + '</button></div>' +
+        '<div class="bsheet-body">' +
+          '<div class="ed-field"><label>CLUB</label><input type="text" placeholder="e.g. Maccabi Netanya" autocomplete="off" /></div>' +
+          '<div class="ed-field"><label>POSITION NEEDED</label><input type="text" placeholder="e.g. Striker" autocomplete="off" /></div>' +
+          '<div class="ed-field"><label>BUDGET CEILING</label><input type="text" placeholder="e.g. €2.5M" autocomplete="off" /></div>' +
+          '<div class="voice-note" data-voice="1"><span class="vn-mic">' + svg('tunnel', 1.8) + '</span><div><strong>HOLD TO RECORD A VOICE NOTE</strong><small>Dictate the brief — we transcribe it.</small></div><span class="vn-wave"><i></i><i></i><i></i><i></i><i></i></span></div>' +
+        '</div>' +
+        '<div class="bsheet-foot"><button class="btn-ghost" data-close="1">CANCEL</button>' +
+          '<button class="btn-gold" data-reqsubmit="1">POST REQUIREMENT</button></div>' +
+      '</div>';
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('open'); });
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-voice]')) { e.currentTarget.querySelector('.voice-note').classList.toggle('recording'); toast('Recording voice note…'); return; }
+      if (e.target.closest('[data-reqsubmit]')) { closeFlow(el); toast('Requirement posted to the board'); return; }
+      if (e.target.closest('[data-close]')) closeFlow(el);
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     CONTACTS — segmented relationship network
+     ────────────────────────────────────────────────────────────────────── */
+  state.contactSeg = 'agencies';
+  var CONTACT_SEGS = [{ id: 'agencies', label: 'Agencies' }, { id: 'clubs', label: 'Clubs' }, { id: 'people', label: 'People' }];
+
+  function contactRows(seg) {
+    return CONTACTS[seg].map(function (c) {
+      return '<button class="contact-row" data-contact="' + esc(c.name) + '">' +
+        '<div class="ct-mono phopo">' + SILH + '<span class="initials">' + initials(c.name) + '</span></div>' +
+        '<div class="ct-body"><div class="ct-top"><h3>' + esc(c.name) + '</h3>' + (c.fav ? '<span class="ct-fav">' + svg('shortlist', 1.4) + '</span>' : '') + '</div>' +
+          '<p>' + esc(c.role) + ' · ' + esc(c.org) + '</p></div>' +
+        '<span class="ct-touch">LAST<br>' + esc(c.touch) + '</span></button>';
+    }).join('');
+  }
+
+  SCREENS.contacts = function () {
+    return '<div class="contacts">' +
+      pageHead('THE NETWORK · ' + PLATFORM_LABEL[state.platform], 'CON', 'TACTS.', 'AGENTS · CLUBS · SCOUTS · MEDICS') +
+      '<div class="seg contact-seg" id="contactSeg">' + CONTACT_SEGS.map(function (s) {
+        return '<button class="seg-btn' + (s.id === state.contactSeg ? ' on' : '') + '" data-cseg="' + s.id + '">' + s.label.toUpperCase() + '</button>';
+      }).join('') + '</div>' +
+      '<div class="contact-list" id="contactList">' + contactRows(state.contactSeg) + '</div>' +
+      '<button class="roster-fab" id="contactFab">' + svg('contacts', 2) + '<span>ADD CONTACT</span></button>' +
+    '</div>';
+  };
+
+  function openContactSheet() {
+    var el = document.createElement('div');
+    el.className = 'flow-overlay'; el.id = 'ctFlow';
+    el.innerHTML = '<div class="flow-backdrop" data-close="1"></div>' +
+      '<div class="bsheet">' +
+        '<div class="sheet-handle"></div>' +
+        '<div class="bsheet-head"><h2>ADD CONTACT</h2><button class="bsheet-x" data-close="1">' + svg('close', 2) + '</button></div>' +
+        '<div class="bsheet-body">' +
+          '<p class="fs-label">TYPE</p><div class="chip-row">' + CONTACT_SEGS.map(function (s, i) {
+            return '<button class="chip' + (i === 0 ? ' on' : '') + '" data-cnew="' + s.id + '">' + s.label + '</button>';
+          }).join('') + '</div>' +
+          '<div class="ed-field"><label>NAME</label><input type="text" placeholder="e.g. E. Katz" autocomplete="off" /></div>' +
+          '<div class="ed-field"><label>ROLE</label><input type="text" placeholder="e.g. Sporting Director" autocomplete="off" /></div>' +
+          '<div class="ed-field"><label>ORGANISATION</label><input type="text" placeholder="e.g. Maccabi Haifa" autocomplete="off" /></div>' +
+        '</div>' +
+        '<div class="bsheet-foot"><button class="btn-ghost" data-close="1">CANCEL</button>' +
+          '<button class="btn-gold" data-ctsubmit="1">SAVE CONTACT</button></div>' +
+      '</div>';
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('open'); });
+    el.addEventListener('click', function (e) {
+      var cn = e.target.closest('[data-cnew]');
+      if (cn) { el.querySelectorAll('[data-cnew]').forEach(function (x) { x.classList.toggle('on', x === cn); }); return; }
+      if (e.target.closest('[data-ctsubmit]')) { closeFlow(el); toast('Contact saved to the network'); return; }
+      if (e.target.closest('[data-close]')) closeFlow(el);
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     RELEASES — editorial free-agent wire
+     ────────────────────────────────────────────────────────────────────── */
+  SCREENS.releases = function () {
+    return '<div class="releases">' +
+      pageHead('FREE-AGENT WIRE · ' + PLATFORM_LABEL[state.platform], 'RE', 'LEASES.', 'THE TRANSFER COLUMN · FIRST TO KNOW') +
+      '<div class="wire">' + RELEASES.map(function (r, i) {
+        return '<article class="wire-item' + (i === 0 ? ' lead' : '') + '">' +
+          '<div class="wire-rule"></div>' +
+          '<div class="wire-head"><span class="wire-date">' + esc(r.date) + (r.hot ? ' · <em>HOT</em>' : '') + '</span><span class="wire-pos">' + esc(r.pos) + '</span></div>' +
+          '<h3 class="wire-name">' + esc(r.name) + '</h3>' +
+          '<p class="wire-sub">Released by <strong>' + esc(r.left) + '</strong> — ' + esc(r.note) + '.</p>' +
+          '<div class="wire-foot"><button class="wire-sl" data-wire-sl="' + esc(r.name) + '">' + svg('shortlist', 1.5) + ' SHORTLIST</button>' +
+            '<button class="wire-call" data-wire-call="' + esc(r.name) + '">OPEN FILE ' + svg('arrow', 1.6) + '</button></div>' +
+        '</article>';
+      }).join('') + '</div>' +
+    '</div>';
+  };
+
+  /* ──────────────────────────────────────────────────────────────────────
+     RETURNEES / ON LOAN
+     ────────────────────────────────────────────────────────────────────── */
+  var RET_PILL = { 'buy-option': 'rr-target', 'review': 'rr-loan', 'returning': 'rr-active', 'extend': 'rr-expiring' };
+  SCREENS.returnees = function () {
+    return '<div class="returnees">' +
+      pageHead('ON LOAN · RETURNING · ' + PLATFORM_LABEL[state.platform], 'RETURN', 'EES.', RETURNEES.length + ' COMING BACK INTO PLAY') +
+      '<div class="ret-list">' + RETURNEES.map(function (r) {
+        var tappable = r.pidx != null;
+        return '<' + (tappable ? 'button' : 'div') + ' class="ret-row"' + (tappable ? ' data-dossier="' + r.pidx + '"' : '') + '>' +
+          '<div class="ret-crests"><span class="ret-crest">' + crestSvg(r.loan.slice(0, 3).toUpperCase()) + '</span><span class="ret-arrow">' + svg('returnees', 1.5) + '</span></div>' +
+          '<div class="ret-body"><h3>' + esc(r.name) + '</h3><p>FROM ' + esc(r.loan) + ' · BACK ' + esc(r.back) + '</p></div>' +
+          '<span class="rr-pill ' + RET_PILL[r.status] + '">' + r.statusLabel + '</span>' +
+        '</' + (tappable ? 'button' : 'div') + '>';
+      }).join('') + '</div>' +
+    '</div>';
+  };
+
+  /* ──────────────────────────────────────────────────────────────────────
+     CONTRACT FINISHER — expiring deals, gold→red urgency
+     ────────────────────────────────────────────────────────────────────── */
+  function urgencyTone(days) { return days <= 60 ? 'cf-red' : days <= 120 ? 'cf-amber' : 'cf-gold'; }
+  SCREENS.contractFinisher = function () {
+    var sorted = FINISHERS.slice().sort(function (a, b) { return a.days - b.days; });
+    return '<div class="finisher">' +
+      pageHead('EXPIRING DEALS · ' + PLATFORM_LABEL[state.platform], 'CONTRACT', 'FINISHER.', 'THE RUN-DOWN QUEUE · ACT BEFORE ZERO') +
+      '<div class="cf-list">' + sorted.map(function (f) {
+        var tone = urgencyTone(f.days);
+        var tappable = f.pidx != null;
+        return '<div class="cf-card ' + tone + '">' +
+          '<' + (tappable ? 'button' : 'div') + ' class="cf-main"' + (tappable ? ' data-dossier="' + f.pidx + '"' : '') + '>' +
+            '<div class="cf-count"><strong>' + f.days + '</strong><span>DAYS</span></div>' +
+            '<div class="cf-body"><h3>' + esc(f.name) + '</h3><p>' + esc(f.pos) + '</p><span class="cf-end">EXPIRES ' + esc(f.end) + '</span></div>' +
+          '</' + (tappable ? 'button' : 'div') + '>' +
+          '<div class="cf-bar"><span style="width:' + Math.max(4, 100 - Math.min(100, f.days / 4.2)) + '%"></span></div>' +
+          '<div class="cf-actions"><button class="cf-act" data-cf-renew="' + esc(f.name) + '">RENEW</button><button class="cf-act ghost" data-cf-plan="' + esc(f.name) + '">PLAN EXIT</button></div>' +
+        '</div>';
+      }).join('') + '</div>' +
+    '</div>';
+  };
+
+  /* ──────────────────────────────────────────────────────────────────────
+     TASKS + TASK DETAIL
+     ────────────────────────────────────────────────────────────────────── */
+  var PRIO_TONE = { high: 'prio-high', mid: 'prio-mid', low: 'prio-low' };
+  SCREENS.tasks = function () {
+    var open = TASKS.filter(function (t) { return !t.done; }).length;
+    return '<div class="tasks">' +
+      pageHead('THE DESK OWES · ' + PLATFORM_LABEL[state.platform], 'TASKS.', '', open + ' OPEN · ' + TASKS.length + ' TOTAL') +
+      TASK_BUCKETS.map(function (bucket) {
+        var items = TASKS.filter(function (t) { return t.bucket === bucket; });
+        if (!items.length) return '';
+        return '<section class="task-group"><div class="tg-head"><span>' + bucket + '</span><span class="tg-count">' + items.length + '</span></div>' +
+          items.map(function (t) {
+            return '<div class="task-row' + (t.done ? ' done' : '') + ' ' + PRIO_TONE[t.prio] + '">' +
+              '<button class="task-check" data-taskcheck="' + t.id + '" aria-label="Toggle">' + (t.done ? svg('tasks', 2) : '') + '</button>' +
+              '<button class="task-main" data-taskopen="' + t.id + '">' +
+                '<h3>' + esc(t.title) + '</h3>' +
+                '<p>' + (t.player ? esc(t.player) + ' · ' : '') + 'DUE ' + esc(t.due) + ' · ' + esc(t.assignee) + '</p>' +
+              '</button>' +
+              '<span class="task-prio"></span>' +
+            '</div>';
+          }).join('') +
+        '</section>';
+      }).join('') +
+      '<button class="roster-fab" id="taskFab">' + svg('tasks', 2) + '<span>ADD TASK</span></button>' +
+    '</div>';
+  };
+
+  function taskById(id) { for (var i = 0; i < TASKS.length; i++) if (TASKS[i].id === id) return TASKS[i]; return null; }
+
+  SCREENS.taskDetail = function (id) {
+    var t = taskById(id) || TASKS[0];
+    var p = t.pidx != null ? PLAYERS[t.pidx] : null;
+    return '<div class="task-detail" data-taskid="' + t.id + '">' +
+      '<header class="td-head"><span class="td-prio ' + PRIO_TONE[t.prio] + '">' + t.prio.toUpperCase() + ' PRIORITY</span>' +
+        '<h1>' + esc(t.title) + '</h1>' +
+        '<p class="td-status">' + (t.done ? 'COMPLETED' : 'OPEN') + ' · DUE ' + esc(t.due) + '</p></header>' +
+      (p ? '<button class="td-player" data-dossier="' + t.pidx + '"><div class="phopo">' + SILH + '<span class="initials">' + initials(p.name) + '</span></div>' +
+        '<div><label>LINKED PLAYER</label><strong>' + esc(p.name) + '</strong><small>' + esc(p.pos) + ' · ' + esc(p.club) + '</small></div>' + svg('arrow', 1.6) + '</button>' : '') +
+      '<div class="brit-facts td-facts">' +
+        '<div class="bf-row"><label>ASSIGNEE</label><span>' + esc(t.assignee) + '</span></div>' +
+        '<div class="bf-row"><label>DUE</label><span>' + esc(t.due) + '</span></div>' +
+        '<div class="bf-row"><label>BUCKET</label><span>' + esc(t.bucket) + '</span></div>' +
+      '</div>' +
+      '<div class="td-notes"><p class="fs-label">NOTES</p><p class="td-note-body">' + esc(t.notes) + '</p></div>' +
+      '<div class="dossier-actions td-actions">' +
+        '<button class="da-primary" data-taskdone="' + t.id + '">' + (t.done ? 'REOPEN TASK' : 'MARK COMPLETE') + '</button>' +
+        '<button class="da-secondary" data-taskedit="1">EDIT</button>' +
+      '</div>' +
+    '</div>';
+  };
+
+  function openTaskSheet() {
+    var el = document.createElement('div');
+    el.className = 'flow-overlay'; el.id = 'taskFlow';
+    el.innerHTML = '<div class="flow-backdrop" data-close="1"></div>' +
+      '<div class="bsheet">' +
+        '<div class="sheet-handle"></div>' +
+        '<div class="bsheet-head"><h2>ADD TASK</h2><button class="bsheet-x" data-close="1">' + svg('close', 2) + '</button></div>' +
+        '<div class="bsheet-body">' +
+          '<div class="ed-field"><label>TASK</label><input type="text" placeholder="e.g. Call agent re: renewal" autocomplete="off" /></div>' +
+          '<p class="fs-label">PRIORITY</p><div class="chip-row">' + ['High', 'Mid', 'Low'].map(function (x, i) { return '<button class="chip' + (i === 1 ? ' on' : '') + '" data-tprio="' + x + '">' + x + '</button>'; }).join('') + '</div>' +
+          '<p class="fs-label">DUE</p><div class="chip-row">' + ['Today', 'Tomorrow', 'This Week', 'Later'].map(function (x, i) { return '<button class="chip' + (i === 0 ? ' on' : '') + '" data-tdue="' + x + '">' + x + '</button>'; }).join('') + '</div>' +
+          '<div class="ed-field" style="margin-top:14px"><label>LINK PLAYER (optional)</label><input type="text" placeholder="e.g. Eldad Barkai" autocomplete="off" /></div>' +
+        '</div>' +
+        '<div class="bsheet-foot"><button class="btn-ghost" data-close="1">CANCEL</button>' +
+          '<button class="btn-gold" data-tasksubmit="1">ADD TASK</button></div>' +
+      '</div>';
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('open'); });
+    el.addEventListener('click', function (e) {
+      var pr = e.target.closest('[data-tprio]'); var du = e.target.closest('[data-tdue]');
+      if (pr) { el.querySelectorAll('[data-tprio]').forEach(function (x) { x.classList.toggle('on', x === pr); }); return; }
+      if (du) { el.querySelectorAll('[data-tdue]').forEach(function (x) { x.classList.toggle('on', x === du); }); return; }
+      if (e.target.closest('[data-tasksubmit]')) { closeFlow(el); toast('Task added to the desk'); return; }
+      if (e.target.closest('[data-close]')) closeFlow(el);
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     SHADOW TEAMS — CSS pitch + tappable slots + formation selector
+     ────────────────────────────────────────────────────────────────────── */
+  state.formation = '4-3-3';
+  SCREENS.shadowTeams = function () {
+    var slots = FORMATIONS[state.formation];
+    return '<div class="shadow">' +
+      pageHead('THE XI YOU WANT · ' + PLATFORM_LABEL[state.platform], 'SHADOW', 'TEAMS.', 'DRAFT THE SIDE · TAP A SLOT') +
+      '<div class="formation-pick" id="formationPick">' + FORMATION_KEYS.map(function (k) {
+        return '<button class="chip' + (k === state.formation ? ' on' : '') + '" data-formation="' + k + '">' + k + '</button>';
+      }).join('') + '</div>' +
+      '<div class="pitch" id="pitch">' +
+        '<div class="pitch-lines"><span class="pl-mid"></span><span class="pl-circle"></span><span class="pl-boxt"></span><span class="pl-boxb"></span><span class="pl-spot"></span></div>' +
+        slots.map(function (s, i) {
+          var p = s.pidx != null ? PLAYERS[s.pidx] : null;
+          return '<button class="slot' + (p ? ' filled' : ' empty') + '" style="left:' + s.x + '%;top:' + s.y + '%" data-slot="' + i + '">' +
+            '<span class="slot-disc">' + (p ? '<span class="slot-init">' + initials(p.name) + '</span>' : '+') + '</span>' +
+            '<span class="slot-pos">' + s.pos + '</span>' +
+            (p ? '<span class="slot-name">' + esc(p.name.split(' ')[1] || p.name) + '</span>' : '<span class="slot-name empty">EMPTY</span>') +
+          '</button>';
+        }).join('') +
+      '</div>' +
+      '<p class="shadow-note">Tap a filled slot to open the dossier · tap an empty slot to assign from the shortlist.</p>' +
+    '</div>';
+  };
+
+  /* ──────────────────────────────────────────────────────────────────────
+     CHAT / THE TUNNEL
+     ────────────────────────────────────────────────────────────────────── */
+  state.chatThread = 'desk';
+  function chatBubbles(tid) {
+    return CHAT_MESSAGES[tid].map(function (m) {
+      return '<div class="bubble-row ' + (m.me ? 'me' : 'them') + '">' +
+        (m.me ? '' : '<span class="bubble-who">' + esc(m.who) + '</span>') +
+        '<div class="bubble"><p>' + noteText(m.text) + '</p><span class="bubble-time">' + esc(m.when) + '</span></div>' +
+      '</div>';
+    }).join('');
+  }
+  SCREENS.tunnel = function () {
+    return '<div class="tunnel">' +
+      pageHead('PRIVATE CHANNEL · ' + PLATFORM_LABEL[state.platform], 'THE', 'TUNNEL.', 'THE ROOM BEFORE THE PITCH') +
+      '<div class="tunnel-threads" id="tunnelThreads">' + CHAT_THREADS.map(function (t) {
+        return '<button class="thread-chip' + (t.id === state.chatThread ? ' on' : '') + '" data-thread="' + t.id + '">' +
+          esc(t.name) + (t.unread ? '<span class="thread-dot">' + t.unread + '</span>' : '') + '</button>';
+      }).join('') + '</div>' +
+      '<div class="chat-log" id="chatLog">' + chatBubbles(state.chatThread) + '</div>' +
+      '<div class="chat-compose"><input type="text" id="chatInput" placeholder="MESSAGE THE DESK… use @ to mention" autocomplete="off" />' +
+        '<button class="chat-send" data-chat-send="1">' + svg('arrow', 2) + '</button></div>' +
+    '</div>';
+  };
+
+  /* ──────────────────────────────────────────────────────────────────────
+     MARKET RADAR + CLUB CHANGES — editorial feeds
+     ────────────────────────────────────────────────────────────────────── */
+  var RADAR = [
+    { who: 'Noa Gidron', move: 'Released · now a free agent', when: 'TODAY', tone: 'gold' },
+    { who: 'J. Costa', move: 'Braga opened talks for a loan buy', when: 'TODAY', tone: 'blue' },
+    { who: 'Petar Ilic', move: 'Scout flag raised to formal interest', when: 'YDAY', tone: 'gold' },
+    { who: 'Union Berlin', move: 'Scouting a Cat. B keeper', when: 'YDAY', tone: 'muted' },
+    { who: 'FC Ashdod', move: 'Posted a left-back requirement', when: '2 DAYS', tone: 'muted' }
+  ];
+  SCREENS.marketRadar = function () {
+    return '<div class="radar">' +
+      pageHead('LIVE MOVES · ' + PLATFORM_LABEL[state.platform], 'MARKET', 'RADAR.', 'THE LEAGUES YOU WATCH · IN REAL TIME') +
+      '<div class="radar-live"><span class="radar-pulse"></span>LIVE · ' + RADAR.length + ' MOVES TODAY</div>' +
+      '<div class="radar-feed">' + RADAR.map(function (r) {
+        return '<div class="radar-row"><span class="radar-tick radar-' + r.tone + '"></span>' +
+          '<div><h3>' + esc(r.who) + '</h3><p>' + esc(r.move) + '</p></div>' +
+          '<span class="radar-when">' + esc(r.when) + '</span></div>';
+      }).join('') + '</div>' +
+    '</div>';
+  };
+
+  var CLUBMOVES = [
+    { name: 'Diego Fuentes', from: 'Famalicão', to: 'Free agent', pos: 'CB · 31', when: 'YDAY' },
+    { name: 'Yotam Bar', from: 'Bnei Sakhnin', to: 'Free agent', pos: 'Winger · 24', when: '2 DAYS' },
+    { name: 'E. Katz', from: 'Scout', to: 'Maccabi Haifa SD', pos: 'Staff move', when: '3 DAYS' }
+  ];
+  SCREENS.clubChanges = function () {
+    return '<div class="clubchanges">' +
+      pageHead('WHO MOVED WHERE · ' + PLATFORM_LABEL[state.platform], 'CLUB', 'CHANGES.', 'EVERY MOVE OPENS A DOOR') +
+      '<div class="cc-list">' + CLUBMOVES.map(function (c) {
+        return '<div class="cc-row"><div class="cc-body"><h3>' + esc(c.name) + '</h3><p>' + esc(c.pos) + '</p></div>' +
+          '<div class="cc-move"><span class="cc-from">' + esc(c.from) + '</span>' + svg('clubChanges', 1.5) + '<span class="cc-to">' + esc(c.to) + '</span></div>' +
+          '<span class="cc-when">' + esc(c.when) + '</span></div>';
+      }).join('') + '</div>' +
+    '</div>';
+  };
+
+  /* ──────────────────────────────────────────────────────────────────────
+     EMPTY / FIRST-RUN state — premium editorial
+     ────────────────────────────────────────────────────────────────────── */
+  SCREENS.empty = function () {
+    return '<div class="empty-state">' +
+      '<div class="es-seal">' + MARK + '<span class="es-ring"></span></div>' +
+      '<p class="es-kicker">NO BOARDS YET · ' + PLATFORM_LABEL[state.platform] + '</p>' +
+      '<h1 class="es-mast">A BLANK<br><span>SHEET.</span></h1>' +
+      '<p class="es-lead">Every great signing starts here. Build your first shortlist board, add a target, and the room goes to work.</p>' +
+      '<div class="es-steps">' +
+        '<div class="es-step"><span>01</span>Name a board — tie it to a mandate.</div>' +
+        '<div class="es-step"><span>02</span>Add targets from the roster or the wire.</div>' +
+        '<div class="es-step"><span>03</span>Let AI Scout rank the fits.</div>' +
+      '</div>' +
+      '<button class="es-cta" data-nav="shortlist">' + svg('shortlist', 2) + ' CREATE FIRST BOARD</button>' +
+      '<button class="es-ghost" data-nav="aiScout">OR RUN THE AI SCOUT</button>' +
+    '</div>';
   };
 
   /* ──────────────────────────────────────────────────────────────────────
@@ -1304,6 +2086,112 @@
         return;
       }
       if (wish) { toast('Birthday wish sent to ' + wish.getAttribute('data-wish').split(' ')[0]); return; }
+
+      // ── WAR ROOM ────────────────────────────────────────────────────
+      var warMode = e.target.closest('[data-warmode]');
+      if (warMode) { switchWarMode(node, warMode.getAttribute('data-warmode')); return; }
+      if (e.target.closest('[data-ask-send]')) { sendAsk(node); return; }
+      var askFill = e.target.closest('[data-ask-fill]');
+      if (askFill) {
+        var v = askFill.getAttribute('data-ask-fill');
+        if (v === 'deploy') { toast('New scout agent deployed'); return; }
+        var ai = node.querySelector('#askInput'); if (ai) { ai.value = v; ai.focus(); }
+        return;
+      }
+
+      // ── AI SCOUT ────────────────────────────────────────────────────
+      if (e.target.closest('#scoutRun')) { runScout(node); return; }
+      var scpos = e.target.closest('[data-scpos]');
+      if (scpos) { state.scout.pos = scpos.getAttribute('data-scpos'); node.querySelectorAll('[data-scpos]').forEach(function (b) { b.classList.toggle('on', b === scpos); }); return; }
+      var scbud = e.target.closest('[data-scbud]');
+      if (scbud) { state.scout.budget = scbud.getAttribute('data-scbud'); node.querySelectorAll('[data-scbud]').forEach(function (b) { b.classList.toggle('on', b === scbud); }); return; }
+      var scl = e.target.closest('[data-scleague]');
+      if (scl) { var lg = scl.getAttribute('data-scleague'); var k = state.scout.leagues.indexOf(lg); if (k > -1) state.scout.leagues.splice(k, 1); else state.scout.leagues.push(lg); scl.classList.toggle('on'); return; }
+      var scage = e.target.closest('[data-scage]');
+      if (scage) {
+        var dir = scage.getAttribute('data-scage');
+        if (dir === '+') state.scout.ageMax = Math.min(40, state.scout.ageMax + 1);
+        else state.scout.ageMin = Math.max(16, state.scout.ageMin - 1);
+        if (state.scout.ageMin > state.scout.ageMax) state.scout.ageMin = state.scout.ageMax;
+        var comp = node.querySelector('#scoutComposer'); if (comp) { comp.querySelector('.sc-agev').textContent = state.scout.ageMin + '–' + state.scout.ageMax; var bar = comp.querySelector('.sc-agebar span'); if (bar) { bar.style.left = ((state.scout.ageMin - 16) / 24 * 100) + '%'; bar.style.right = (100 - (state.scout.ageMax - 16) / 24 * 100) + '%'; } }
+        return;
+      }
+
+      // ── SHORTLIST / REQUESTS / CONTACTS / TASKS FABs + sheets ─────────
+      if (e.target.closest('#shortlistFab')) { openShortlistSheet(); return; }
+      if (e.target.closest('#reqFab')) { openRequestSheet(); return; }
+      if (e.target.closest('#contactFab')) { openContactSheet(); return; }
+      if (e.target.closest('#taskFab')) { openTaskSheet(); return; }
+
+      // ── REQUESTS expand ───────────────────────────────────────────────
+      var reqT = e.target.closest('[data-reqtoggle]');
+      if (reqT) { var card = reqT.closest('.req-card'); card.classList.toggle('open'); return; }
+
+      // ── CONTACTS segmented ────────────────────────────────────────────
+      var cseg = e.target.closest('[data-cseg]');
+      if (cseg) {
+        state.contactSeg = cseg.getAttribute('data-cseg');
+        node.querySelectorAll('[data-cseg]').forEach(function (b) { b.classList.toggle('on', b === cseg); });
+        var cl = node.querySelector('#contactList'); if (cl) { cl.classList.add('swapping'); setTimeout(function () { cl.innerHTML = contactRows(state.contactSeg); cl.classList.remove('swapping'); }, state.reduced ? 0 : 140); }
+        return;
+      }
+      var contact = e.target.closest('[data-contact]');
+      if (contact) { toast('Opening ' + contact.getAttribute('data-contact')); return; }
+
+      // ── RELEASES / FINISHER / CLUB actions ────────────────────────────
+      var wsl = e.target.closest('[data-wire-sl]'); if (wsl) { e.stopPropagation(); wsl.classList.add('done'); wsl.innerHTML = 'SHORTLISTED'; toast(wsl.getAttribute('data-wire-sl').split(' ')[0] + ' shortlisted'); return; }
+      var wcall = e.target.closest('[data-wire-call]'); if (wcall) { toast('File opened · ' + wcall.getAttribute('data-wire-call').split(' ')[0]); return; }
+      var cfR = e.target.closest('[data-cf-renew]'); if (cfR) { e.stopPropagation(); toast('Renewal plan started · ' + cfR.getAttribute('data-cf-renew').split(' ')[0]); return; }
+      var cfP = e.target.closest('[data-cf-plan]'); if (cfP) { e.stopPropagation(); toast('Exit plan drafted'); return; }
+
+      // ── TASKS ─────────────────────────────────────────────────────────
+      var tcheck = e.target.closest('[data-taskcheck]');
+      if (tcheck) {
+        e.stopPropagation();
+        var tk = taskById(tcheck.getAttribute('data-taskcheck'));
+        if (tk) { tk.done = !tk.done; var row = tcheck.closest('.task-row'); row.classList.toggle('done', tk.done); tcheck.innerHTML = tk.done ? svg('tasks', 2) : ''; toast(tk.done ? 'Task completed' : 'Task reopened'); }
+        return;
+      }
+      var topen = e.target.closest('[data-taskopen]');
+      if (topen) { pushScreen('taskDetail', topen.getAttribute('data-taskopen')); return; }
+      var tdone = e.target.closest('[data-taskdone]');
+      if (tdone) {
+        var tk2 = taskById(tdone.getAttribute('data-taskdone'));
+        if (tk2) { tk2.done = !tk2.done; tdone.textContent = tk2.done ? 'REOPEN TASK' : 'MARK COMPLETE'; var st = node.querySelector('.td-status'); if (st) st.textContent = (tk2.done ? 'COMPLETED' : 'OPEN') + ' · DUE ' + tk2.due; toast(tk2.done ? 'Task completed' : 'Task reopened'); }
+        return;
+      }
+      if (e.target.closest('[data-taskedit]')) { toast('Edit task'); return; }
+
+      // ── SHADOW TEAMS ───────────────────────────────────────────────────
+      var formation = e.target.closest('[data-formation]');
+      if (formation) {
+        state.formation = formation.getAttribute('data-formation');
+        node.querySelectorAll('[data-formation]').forEach(function (b) { b.classList.toggle('on', b === formation); });
+        var pitch = node.querySelector('#pitch');
+        var fresh = renderScreenNode('shadowTeams');
+        if (pitch) { pitch.classList.add('reflow'); setTimeout(function () { var np = fresh.querySelector('#pitch'); pitch.outerHTML = np.outerHTML; }, state.reduced ? 0 : 120); }
+        return;
+      }
+      var slot = e.target.closest('[data-slot]');
+      if (slot) {
+        var si = Number(slot.getAttribute('data-slot'));
+        var sd = FORMATIONS[state.formation][si];
+        if (sd && sd.pidx != null) pushScreen('dossier', sd.pidx);
+        else { openShortlistSheet(); toast('Assign a player to ' + sd.pos); }
+        return;
+      }
+
+      // ── CHAT / TUNNEL ──────────────────────────────────────────────────
+      var thread = e.target.closest('[data-thread]');
+      if (thread) {
+        state.chatThread = thread.getAttribute('data-thread');
+        node.querySelectorAll('[data-thread]').forEach(function (b) { b.classList.toggle('on', b === thread); });
+        var dot = thread.querySelector('.thread-dot'); if (dot) dot.remove();
+        var log = node.querySelector('#chatLog'); if (log) { log.innerHTML = chatBubbles(state.chatThread); log.scrollTop = log.scrollHeight; }
+        return;
+      }
+      if (e.target.closest('[data-chat-send]')) { sendChat(node); return; }
+
       if (dossier) { pushScreen('dossier', dossier.getAttribute('data-dossier')); return; }
       if (fixture) { pushScreen('dossier', Number(fixture.getAttribute('data-fixture')) % PLAYERS.length); return; }
       if (nav) { pushScreen(nav.getAttribute('data-nav')); return; }
@@ -1319,6 +2207,51 @@
         });
       }
     }
+    // War Room — Enter to ask
+    if (name === 'warRoom') {
+      node.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.target.id === 'askInput') { e.preventDefault(); sendAsk(node); }
+      });
+    }
+    // Chat — Enter to send
+    if (name === 'tunnel') {
+      var cl2 = node.querySelector('#chatLog'); if (cl2) cl2.scrollTop = cl2.scrollHeight;
+      node.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.target.id === 'chatInput') { e.preventDefault(); sendChat(node); }
+      });
+    }
+  }
+
+  function sendAsk(node) {
+    var input = node.querySelector('#askInput');
+    var log = node.querySelector('#askLog');
+    if (!input || !log) return;
+    var q = input.value.trim(); if (!q) return;
+    var pair = document.createElement('div');
+    pair.className = 'ask-pair';
+    pair.innerHTML = '<div class="ask-q">' + noteText(esc(q)) + '</div>';
+    log.appendChild(pair);
+    input.value = '';
+    log.scrollTop = log.scrollHeight;
+    warThink(node, function () {
+      var ans = 'Reading the board now. Based on your live mandates and the current wire, the strongest move is to prioritise the targets already flagged HOT on the Alpha Board, then revisit the free-agent wire for low-cost cover. I have queued the detail to your tasks.';
+      var a = document.createElement('div');
+      a.className = 'ask-a';
+      a.innerHTML = '<span class="ask-brit">' + MARK + '</span><p>' + noteText(ans) + '</p>';
+      pair.appendChild(a);
+      log.scrollTop = log.scrollHeight;
+    });
+  }
+
+  function sendChat(node) {
+    var input = node.querySelector('#chatInput');
+    var log = node.querySelector('#chatLog');
+    if (!input || !log) return;
+    var txt = input.value.trim(); if (!txt) return;
+    CHAT_MESSAGES[state.chatThread].push({ who: 'Lior', me: true, when: stamp().slice(0, 5), text: txt });
+    log.innerHTML = chatBubbles(state.chatThread);
+    input.value = '';
+    log.scrollTop = log.scrollHeight;
   }
 
   /* ──────────────────────────────────────────────────────────────────────
