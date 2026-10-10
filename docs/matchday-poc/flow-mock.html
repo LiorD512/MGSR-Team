@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MATCHDAY Generator — Flow Mock</title>
+<style>
+  :root{
+    --ink:#161613; --black:#11110f; --paper:#f3f0e8; --paper-2:#e4ded1;
+    --card:#fbf9f3; --gold:#a47d43; --gold-soft:#c9a66b; --red:#b64235;
+    --green:#5c6f4a; --muted:#77736a; --line:rgba(22,22,19,.18);
+    --mono:'DM Mono',ui-monospace,monospace; --display:'Oswald',Impact,sans-serif;
+    --body:'Manrope',Helvetica,sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700&family=Oswald:wght@500;600;700&family=Cinzel:wght@700&display=swap');
+  *{box-sizing:border-box}
+  body{margin:0;background:#0c0d10;color:var(--ink);font-family:var(--body);padding:40px 20px}
+  h1.page{color:#f3f0e8;font-family:var(--display);text-transform:uppercase;letter-spacing:.06em;font-size:26px;text-align:center;margin:0 0 6px}
+  p.page-sub{color:#8d93a0;text-align:center;font:13px/1.5 var(--mono);margin:0 0 36px}
+  .legend{max-width:980px;margin:0 auto 30px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;color:#9aa0ad;font:11px/1 var(--mono)}
+  .legend b{color:#d7b36a}
+  .grid{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;align-items:flex-start}
+
+  /* ---- drawer frame ---- */
+  .drawer{width:380px;background:var(--paper);border-top:none;border-left:4px solid var(--gold);
+    box-shadow:0 24px 60px rgba(0,0,0,.5);display:flex;flex-direction:column;min-height:720px;position:relative}
+  .state-tag{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:#d7b36a;color:#1b1407;
+    font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em;padding:5px 12px;border-radius:20px;white-space:nowrap}
+  .close{position:absolute;top:14px;right:14px;width:26px;height:26px;border:none;background:transparent;font-size:22px;color:var(--muted);cursor:pointer;line-height:1}
+  .head{padding:22px 24px 0}
+  .head h2{margin:0;font-family:var(--display);font-size:21px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink)}
+  .seed{display:flex;gap:10px;align-items:baseline;margin-top:6px;font:10px/1.2 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .seed .pl{color:var(--gold)}
+
+  /* ---- stepper ---- */
+  .steps{display:flex;gap:6px;list-style:none;margin:18px 24px 18px;padding:0}
+  .steps li{flex:1;display:flex;align-items:center;gap:6px;padding:8px 4px;border-top:2px solid var(--line);
+    font:8.5px/1.1 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .steps li .n{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);font-size:9px;flex:none}
+  .steps li.active{color:var(--gold);border-top-color:var(--gold)}
+  .steps li.active .n{border-color:var(--gold);color:var(--gold)}
+  .steps li.done{color:var(--ink);border-top-color:var(--gold)}
+  .steps li.done .n{background:var(--gold);border-color:var(--gold);color:#fff;font-size:0}
+  .steps li.done .n::after{content:'✓';font-size:10px}
+
+  .body{padding:0 24px 24px;flex:1}
+  .hint{font:12px/1.5 var(--body);color:var(--muted);margin:0 0 16px}
+
+  /* ---- asset rows ---- */
+  .asset{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .thumb{width:46px;height:46px;border-radius:4px;background:var(--paper-2);flex:none;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#b9b2a3;font-size:18px}
+  .thumb.ok{background:linear-gradient(135deg,#2a3550,#141c2e)}
+  .asset .copy{flex:1;min-width:0}
+  .asset .copy label{display:block;font:11px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--ink);margin-bottom:3px}
+  .asset .copy p{margin:0;font:11px/1.3 var(--body);color:var(--muted)}
+  .asset.missing .copy p{color:var(--red)}
+  .asset .action{font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--gold);border:1px solid var(--gold);padding:7px 11px;border-radius:3px;cursor:pointer}
+  .req{color:var(--red);font-size:9px;vertical-align:super}
+
+  .numfield{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:3px;background:#fff}
+  .numfield span{font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+  .numfield input{width:72px;text-align:center;border:1px solid var(--line);border-radius:3px;padding:6px;font:16px/1 var(--display);color:var(--ink);background:var(--paper)}
+
+  .blocked{margin-top:14px;padding:10px 12px;background:rgba(182,66,53,.08);border:1px solid rgba(182,66,53,.3);border-radius:3px;font:11px/1.4 var(--body);color:var(--red)}
+
+  /* ---- buttons ---- */
+  .actions{display:flex;gap:8px;margin-top:20px}
+  .btn{flex:1;text-align:center;padding:13px;border-radius:3px;border:1px solid var(--gold);background:var(--gold);color:#fff;font:11px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em;cursor:pointer}
+  .btn.secondary{background:transparent;color:var(--gold)}
+  .btn.wa{background:#1fab54;border-color:#1fab54}
+  .btn:disabled{opacity:.5}
+
+  /* ---- design picker ---- */
+  .designs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .dcard{border:1px solid var(--line);border-radius:4px;background:#fff;padding:12px;cursor:pointer;text-align:left}
+  .dcard.sel{border-color:var(--gold);box-shadow:0 0 0 2px rgba(164,125,67,.25)}
+  .dcard .sw{height:64px;border-radius:3px;margin-bottom:6px}
+  .sw.inferno{background:linear-gradient(180deg,#2a0a04,#c23a0f 55%,#ff7a1a)}
+  .sw.frost{background:linear-gradient(180deg,#0a1a2e,#1f6b8f 60%,#8fe3ff)}
+  .sw.prestige{background:linear-gradient(135deg,#0b0a06,#121008 60%,#d8af4e 140%);border:1px solid #4a3c18}
+  .sw.electric{background:linear-gradient(135deg,#140a2e,#3b1d7a 55%,#7cf6c8 120%)}
+  .dcard .dn{font-family:var(--display);text-transform:uppercase;letter-spacing:.05em;font-size:13px;color:var(--ink)}
+  .dcard .db{font:9px/1.3 var(--mono);color:var(--muted)}
+
+  /* ---- progress ---- */
+  .prog{list-style:none;margin:30px 0;padding:0;display:flex;flex-direction:column;gap:14px}
+  .prog li{display:flex;align-items:center;gap:12px;font:12px/1 var(--body);color:var(--muted)}
+  .prog .dot{width:10px;height:10px;border-radius:50%;background:var(--line);flex:none}
+  .prog li.done .dot{background:var(--green)}
+  .prog li.active{color:var(--ink);font-weight:700}
+  .prog li.active .dot{background:var(--gold);box-shadow:0 0 0 4px rgba(164,125,67,.2)}
+
+  /* ---- result ---- */
+  .canvas{border:1px solid var(--line);border-radius:4px;overflow:hidden;aspect-ratio:1080/1920;background:
+    radial-gradient(circle at 50% 36%,rgba(255,120,30,.35),transparent 60%),linear-gradient(180deg,#1a0a06,#060708);
+    display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:18px 10px;color:#fff;position:relative}
+  .canvas .mk{font:9px/1 var(--mono);letter-spacing:.3em;color:#e9c879;margin-top:4px}
+  .canvas .md{font-family:'Cinzel',serif;font-weight:700;font-size:30px;letter-spacing:.04em;color:#ffe3a6}
+  .canvas .nm{font:10px/1 var(--mono);letter-spacing:.2em;margin-top:-6px}
+  .canvas .fig{flex:1;display:flex;align-items:flex-end;gap:4px;opacity:.9}
+  .canvas .fig .p{width:70px;height:150px;border-radius:20px 20px 0 0;background:linear-gradient(180deg,#e23,#911)}
+  .canvas .fig .p.s{width:48px;height:120px;filter:brightness(.4) saturate(.4)}
+  .canvas .fx{font:11px/1.4 var(--body);font-weight:700;text-align:center}
+  .canvas .fd{font:8px/1 var(--mono);color:#d9c08a}
+  .canvas .cr{display:flex;align-items:center;gap:10px}
+  .canvas .cr .c{width:28px;height:28px;border-radius:50%;border:1.5px solid #cfd6dd;background:#1b2436}
+
+  .checks{list-style:none;margin:14px 0;padding:0;display:flex;flex-direction:column;gap:5px}
+  .checks li{display:flex;align-items:center;gap:8px;font:10px/1.3 var(--mono);color:var(--muted)}
+  .checks .m{width:7px;height:7px;border-radius:50%;flex:none}
+  .checks .pass .m{background:#3a8}.checks .warn .m{background:#d9a441}.checks .fail .m{background:#b23}
+  .checks .d{margin-left:auto;color:var(--ink);text-align:right}
+
+  .deliver{margin:16px 0;padding:14px;border:1px solid var(--line);border-radius:4px;background:#fff}
+  .deliver .t{margin:0 0 10px;font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+  .dfield{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+  .dfield span{font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+  .dfield input{padding:9px 11px;border:1px solid var(--line);border-radius:3px;background:var(--paper);font:13px/1.2 var(--body);color:var(--ink)}
+  .msg{margin:8px 0 0;font:10px/1.3 var(--mono);color:var(--gold)}
+
+  .errbox{margin:30px 0;text-align:center}
+  .errbox p{color:var(--red);font:13px/1.5 var(--body)}
+</style>
+</head>
+<body>
+  <h1 class="page">MATCHDAY Generator — Flow Mock</h1>
+  <p class="page-sub">Every step &amp; state of the drawer · opens from the player card</p>
+  <div class="legend">
+    <span><b>1</b> Assets</span><span><b>2</b> Design</span><span><b>3</b> Generate</span><span><b>4</b> Deliver</span>
+    <span>· plus empty / loading / error / success states</span>
+  </div>
+
+  <div class="grid">
+
+    <!-- STATE A: Assets (missing player photo) -->
+    <div class="drawer">
+      <div class="state-tag">1 · Assets — blocked (no player photo)</div>
+      <button class="close">×</button>
+      <div class="head"><h2>MATCHDAY Generator</h2>
+        <div class="seed"><span class="pl">MOSES BAWA</span><span>GARLIAVA</span></div></div>
+      <ol class="steps">
+        <li class="active"><span class="n">1</span>Assets</li>
+        <li class="pending"><span class="n">2</span>Design</li>
+        <li class="pending"><span class="n">3</span>Generate</li>
+        <li class="pending"><span class="n">4</span>Deliver</li>
+      </ol>
+      <div class="body">
+        <p class="hint">Pick the player photo, an optional second photo, kit &amp; squad number, then a design. The face is never AI-generated — only the cutout, kit and background.</p>
+        <div class="asset missing">
+          <div class="thumb">⬚</div>
+          <div class="copy"><label>Player photo <span class="req">●</span></label><p>Required — upload a photo of this player</p></div>
+          <div class="action">Upload</div>
+        </div>
+        <div class="asset">
+          <div class="thumb">⬚</div>
+          <div class="copy"><label>Second player photo</label><p>Optional — a second real photo = second pose</p></div>
+          <div class="action">Upload</div>
+        </div>
+        <div class="asset">
+          <div class="thumb">⬚</div>
+          <div class="copy"><label>Official kit</label><p>Optional — repaints the shirt only</p></div>
+          <div class="action">Upload</div>
+        </div>
+        <div class="asset">
+          <div class="thumb">⬚</div>
+          <div class="copy"><label>Stadium photo</label><p>Optional — soft cinematic background</p></div>
+          <div class="action">Upload</div>
+        </div>
+        <div class="numfield"><span>Squad number</span><input value="70"/></div>
+        <div class="blocked">A MATCHDAY needs a real photo of this player. Upload one above — it is stored and reused.</div>
+        <div class="actions"><button class="btn" disabled>Next — choose a design</button></div>
+      </div>
+    </div>
+
+    <!-- STATE B: Assets ready -->
+    <div class="drawer">
+      <div class="state-tag">1 · Assets — ready</div>
+      <button class="close">×</button>
+      <div class="head"><h2>MATCHDAY Generator</h2>
+        <div class="seed"><span class="pl">MOSES BAWA</span><span>GARLIAVA</span></div></div>
+      <ol class="steps">
+        <li class="active"><span class="n">1</span>Assets</li>
+        <li class="pending"><span class="n">2</span>Design</li>
+        <li class="pending"><span class="n">3</span>Generate</li>
+        <li class="pending"><span class="n">4</span>Deliver</li>
+      </ol>
+      <div class="body">
+        <p class="hint">Pick the player photo, an optional second photo, kit &amp; squad number, then a design.</p>
+        <div class="asset"><div class="thumb ok"></div><div class="copy"><label>Player photo</label><p>Curated — this exact image is used.</p></div><div class="action">Replace</div></div>
+        <div class="asset"><div class="thumb ok"></div><div class="copy"><label>Second player photo</label><p>Added — used as a real second pose.</p></div><div class="action">Replace</div></div>
+        <div class="asset"><div class="thumb ok"></div><div class="copy"><label>Official kit</label><p>Added — shirt will be matched.</p></div><div class="action">Replace</div></div>
+        <div class="asset"><div class="thumb ok"></div><div class="copy"><label>Stadium photo</label><p>Added — used as the backdrop.</p></div><div class="action">Replace</div></div>
+        <div class="numfield"><span>Squad number</span><input value="70"/></div>
+        <div class="actions"><button class="btn">Next — choose a design →</button></div>
+      </div>
+    </div>
+
+    <!-- STATE C: Design -->
+    <div class="drawer">
+      <div class="state-tag">2 · Design</div>
+      <button class="close">×</button>
+      <div class="head"><h2>MATCHDAY Generator</h2>
+        <div class="seed"><span class="pl">MOSES BAWA</span><span>GARLIAVA</span></div></div>
+      <ol class="steps">
+        <li class="done"><span class="n"></span>Assets</li>
+        <li class="active"><span class="n">2</span>Design</li>
+        <li class="pending"><span class="n">3</span>Generate</li>
+        <li class="pending"><span class="n">4</span>Deliver</li>
+      </ol>
+      <div class="body">
+        <p class="hint">Choose a design. Each builds the stadium into a dramatic cinematic scene.</p>
+        <div class="designs">
+          <div class="dcard sel"><div class="sw inferno"></div><div class="dn">Inferno</div><div class="db">Fiery red-orange, embers &amp; smoke.</div></div>
+          <div class="dcard"><div class="sw frost"></div><div class="dn">Frost</div><div class="db">Cold ice-blue, drifting haze.</div></div>
+          <div class="dcard"><div class="sw prestige"></div><div class="dn">Prestige</div><div class="db">Black &amp; gold, single hero.</div></div>
+          <div class="dcard"><div class="sw electric"></div><div class="dn">Electric</div><div class="db">Neon teal/violet energy.</div></div>
+        </div>
+        <div class="actions">
+          <button class="btn secondary">Back</button>
+          <button class="btn">Generate MATCHDAY</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE D: Generating -->
+    <div class="drawer">
+      <div class="state-tag">3 · Generating</div>
+      <button class="close">×</button>
+      <div class="head"><h2>MATCHDAY Generator</h2>
+        <div class="seed"><span class="pl">MOSES BAWA</span><span>GARLIAVA</span></div></div>
+      <ol class="steps">
+        <li class="done"><span class="n"></span>Assets</li>
+        <li class="done"><span class="n"></span>Design</li>
+        <li class="active"><span class="n">3</span>Generate</li>
+        <li class="pending"><span class="n">4</span>Deliver</li>
+      </ol>
+      <div class="body">
+        <ul class="prog">
+          <li class="done"><span class="dot"></span>Resolving the fixture…</li>
+          <li class="done"><span class="dot"></span>Preparing the player (cutout)…</li>
+          <li class="active"><span class="dot"></span>Applying kit &amp; background scene…</li>
+          <li class="pending"><span class="dot"></span>Rendering the poster…</li>
+          <li class="pending"><span class="dot"></span>Quality checking…</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- STATE E: Deliver / success -->
+    <div class="drawer">
+      <div class="state-tag">4 · Deliver — success</div>
+      <button class="close">×</button>
+      <div class="head"><h2>MATCHDAY Generator</h2>
+        <div class="seed"><span class="pl">MOSES BAWA</span><span>GARLIAVA</span></div></div>
+      <ol class="steps">
+        <li class="done"><span class="n"></span>Assets</li>
+        <li class="done"><span class="n"></span>Design</li>
+        <li class="done"><span class="n"></span>Generate</li>
+        <li class="active"><span class="n">4</span>Deliver</li>
+      </ol>
+      <div class="body">
+        <div class="canvas">
+          <div><div class="mk">LITHUANIA · I LYGA · ROUND 26</div><div class="md">MATCHDAY</div><div class="nm">MOSES BAWA</div></div>
+          <div class="fig"><div class="p s"></div><div class="p"></div></div>
+          <div style="text-align:center">
+            <div class="fx">GARLIAVA vs FK ATMOSFERA</div><div class="fd">10/10/2026 at 14:00</div>
+            <div class="cr"><div class="c"></div><span style="font:10px/1 var(--mono);color:#d9c08a">VS</span><div class="c"></div></div>
+          </div>
+        </div>
+        <ul class="checks">
+          <li class="pass"><span class="m"></span>Player face preserved (never generated)<span class="d">ok</span></li>
+          <li class="pass"><span class="m"></span>Player cutout<span class="d">clean</span></li>
+          <li class="pass"><span class="m"></span>Home &amp; away teams<span class="d">Garliava vs Atmosfera</span></li>
+          <li class="pass"><span class="m"></span>Club crests<span class="d">home ok · away ok</span></li>
+          <li class="pass"><span class="m"></span>Rendered at 9:16<span class="d">1080×1920</span></li>
+        </ul>
+        <div class="deliver">
+          <p class="t">Send to yourself</p>
+          <div class="dfield"><span>Email</span><input value="agent@britsport.com"/></div>
+          <div class="dfield"><span>WhatsApp number</span><input value="054-1234567"/></div>
+          <div class="actions">
+            <button class="btn wa">Send via WhatsApp</button>
+            <button class="btn">Send via Email</button>
+          </div>
+          <p class="msg">✓ Email sent.</p>
+        </div>
+        <div class="actions">
+          <button class="btn secondary">Regenerate</button>
+          <button class="btn secondary">Save</button>
+          <button class="btn">Download</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE F: Error -->
+    <div class="drawer" style="min-height:420px">
+      <div class="state-tag">Error state</div>
+      <button class="close">×</button>
+      <div class="head"><h2>MATCHDAY Generator</h2>
+        <div class="seed"><span class="pl">MOSES BAWA</span><span>GARLIAVA</span></div></div>
+      <ol class="steps">
+        <li class="done"><span class="n"></span>Assets</li>
+        <li class="done"><span class="n"></span>Design</li>
+        <li class="active"><span class="n">3</span>Generate</li>
+        <li class="pending"><span class="n">4</span>Deliver</li>
+      </ol>
+      <div class="body">
+        <div class="errbox">
+          <p>Generation failed this run (model busy). Try again in a moment.</p>
+          <div class="actions">
+            <button class="btn secondary">Back</button>
+            <button class="btn">Regenerate</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

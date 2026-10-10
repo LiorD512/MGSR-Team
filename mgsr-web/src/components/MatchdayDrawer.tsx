@@ -103,14 +103,27 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
         setStadiumPhotoUrl((club?.data()?.stadiumPhotoUrl as string | undefined) ?? null);
         setKitPhotoUrl((player?.data()?.matchdayKitUrl as string | undefined) ?? null);
 
-        // Agent contact: map auth email → Accounts doc for a phone number.
-        if (user?.email) {
-          setAgentEmail(user.email);
-          const snap = await getDocs(collection(db, 'Accounts'));
-          const emailLower = user.email.toLowerCase();
-          const acct = snap.docs.find((d) => (d.data().email as string)?.toLowerCase() === emailLower);
-          const phone = (acct?.data()?.phone as string | undefined) || (acct?.data()?.whatsapp as string | undefined);
-          if (phone) setAgentPhone(phone);
+        // Agent contact — reuse the app's proven account resolver (same one the
+        // shortlist/share features use) so email + phone are found reliably.
+        if (user) {
+          // Email: prefer the account's email, else the auth email.
+          if (user.email) setAgentEmail(user.email);
+          try {
+            const { getCurrentAccountForShortlist } = await import('@/lib/accounts');
+            const acct = await getCurrentAccountForShortlist(user);
+            if (active) {
+              if (acct.phone) setAgentPhone(acct.phone);
+              // Some accounts store the login email only on the Account doc.
+              if (!user.email) {
+                const snap = await getDocs(collection(db, 'Accounts'));
+                const match = snap.docs.find((d) => d.id === acct.id);
+                const em = match?.data()?.email as string | undefined;
+                if (em) setAgentEmail(em);
+              }
+            }
+          } catch {
+            /* fall back to auth email only */
+          }
         }
       } catch {
         /* absent records just mean nothing is curated yet */
@@ -465,23 +478,50 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
 
               <div className="matchday-deliver">
                 <p className="matchday-deliver-title">{t('matchday_v2_deliver_title')}</p>
+
+                {/* Editable recipients, pre-filled from the agent's account.
+                    Shown so delivery works even if auto-detect missed one. */}
+                <div className="matchday-deliver-fields">
+                  <label className="matchday-deliver-field">
+                    <span>{t('matchday_v2_email_label')}</span>
+                    <input
+                      type="email"
+                      inputMode="email"
+                      placeholder="you@example.com"
+                      value={agentEmail}
+                      onChange={(e) => setAgentEmail(e.target.value)}
+                    />
+                  </label>
+                  <label className="matchday-deliver-field">
+                    <span>{t('matchday_v2_phone_label')}</span>
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      placeholder="05X-XXXXXXX"
+                      value={agentPhone}
+                      onChange={(e) => setAgentPhone(e.target.value)}
+                    />
+                  </label>
+                </div>
+
                 <div className="matchday-deliver-row">
                   <button
                     className="brit-modal-action matchday-wa"
                     onClick={() => void handleSend('whatsapp')}
-                    disabled={sending !== null}
+                    disabled={sending !== null || !agentPhone.trim()}
+                    title={agentPhone.trim() ? undefined : t('matchday_v2_no_phone')}
                   >
                     {sending === 'whatsapp' ? '…' : t('matchday_v2_send_whatsapp')}
                   </button>
                   <button
                     className="brit-modal-action"
                     onClick={() => void handleSend('email')}
-                    disabled={sending !== null}
+                    disabled={sending !== null || !agentEmail.trim()}
+                    title={agentEmail.trim() ? undefined : t('matchday_v2_no_email')}
                   >
                     {sending === 'email' ? '…' : t('matchday_v2_send_email')}
                   </button>
                 </div>
-                {agentEmail && <p className="matchday-deliver-to">{t('matchday_v2_sending_to')}: {agentEmail}</p>}
                 {sendMsg && <p className="matchday-deliver-msg">{sendMsg}</p>}
               </div>
 
