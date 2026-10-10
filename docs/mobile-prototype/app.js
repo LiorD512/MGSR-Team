@@ -68,6 +68,159 @@
     { name: 'Tomer Mizrahi', role: 'Keeper · 29', club: 'APOEL', note: 'Captain · clean sheets' }
   ];
 
+  /* Full player dossier records — index-aligned with ASSETS[0..4] for the
+     dashboard/matchweek deep-links, then extended with more roster entries.
+     No real PII, no real photos. */
+  var PLAYERS = [
+    {
+      name: 'Eldad Barkai', pos: 'Striker', club: 'Maccabi Haifa', clubShort: 'HAI',
+      age: 24, height: '1.84 m', foot: 'Right', nat: 'Israel', jersey: 9,
+      value: '€6.4M', valuePeak: '€7.1M', clause: '€12.0M', contract: 'June 2027',
+      agent: 'D. Shay · Elite XI', status: 'active', statusLabel: 'ACTIVE',
+      shirt: 'Maccabi Haifa', league: 'Ligat ha’Al', standing: '2nd · 41 pts',
+      note: 'Golden boot race', interested: true,
+      next: { home: 'Maccabi Haifa', away: 'Beitar Jerusalem', homeShort: 'HAI', awayShort: 'BJ', side: 'home', comp: 'Ligat ha’Al', round: 'Round 24', date: 'SAT 12 APR', time: '20:00', venue: 'Sammy Ofer Stadium, Haifa' },
+      stats: { apps: 28, goals: 19, assists: 6, minutes: 2360 },
+      spark: [2, 4, 3, 6, 5, 8, 7, 10, 9, 12, 14, 19],
+      docs: [
+        { name: 'Representation Agreement', meta: 'PDF · signed 2023', tag: 'ACTIVE' },
+        { name: 'Passport · Israel', meta: 'ID · exp 2029', tag: 'VERIFIED' },
+        { name: 'Medical Clearance', meta: 'PDF · Mar 2025', tag: 'CURRENT' }
+      ],
+      notes: [
+        { who: 'Lior', when: 'TODAY', text: 'Brace vs Beitar — @scouting flagged the near-post run again. Elite finishing streak.' },
+        { who: 'D. Shay', when: '3 DAYS', text: 'Club opened talks on a new deal to 2028. Hold for the summer window.' }
+      ],
+      similar: [1, 4, 3],
+      highlights: ['Brace vs Beitar', 'Hat-trick vs Ashdod', 'Winner vs Tel Aviv', 'Derby strike'],
+      marketLine: [{ y: '2022', v: '€2.1M' }, { y: '2023', v: '€3.8M' }, { y: '2024', v: '€5.5M' }, { y: 'NOW', v: '€6.4M' }]
+    },
+    {
+      name: 'Dani Oliveira', pos: 'Winger', club: 'SC Braga', clubShort: 'BRA',
+      age: 21, height: '1.78 m', foot: 'Left', nat: 'Portugal', jersey: 7,
+      value: '€9.2M', valuePeak: '€9.8M', clause: '€20.0M', contract: 'June 2026',
+      agent: 'M. Katz · Gestifute Line', status: 'loan', statusLabel: 'ON LOAN',
+      league: 'Primeira Liga', standing: '4th · 38 pts',
+      note: 'Loan review window', interested: false,
+      next: { home: 'FC Porto', away: 'SC Braga', homeShort: 'POR', awayShort: 'BRA', side: 'away', comp: 'Primeira Liga', round: 'Round 27', date: 'SUN 13 APR', time: '18:30', venue: 'Estádio do Dragão, Porto' },
+      stats: { apps: 24, goals: 7, assists: 11, minutes: 1980 },
+      spark: [3, 2, 5, 4, 7, 6, 8, 7, 9, 8, 10, 11],
+      docs: [
+        { name: 'Loan Agreement', meta: 'PDF · to Jun 2025', tag: 'ACTIVE' },
+        { name: 'Passport · Portugal', meta: 'EU · exp 2031', tag: 'VERIFIED' }
+      ],
+      notes: [
+        { who: 'M. Katz', when: 'TODAY', text: 'Braga triggered the loan review clause. @lior decide buy option by month end.' }
+      ],
+      similar: [3, 0, 4],
+      highlights: ['Solo goal vs Sporting', 'Assist reel · MW22', 'Nutmeg vs Benfica'],
+      marketLine: [{ y: '2022', v: '€3.0M' }, { y: '2023', v: '€5.4M' }, { y: '2024', v: '€8.1M' }, { y: 'NOW', v: '€9.2M' }]
+    },
+    {
+      name: 'Yarin Cohen', pos: 'Centre-Back', club: 'Union Berlin', clubShort: 'UNB',
+      age: 26, height: '1.90 m', foot: 'Right', nat: 'Israel', jersey: 4,
+      value: '€8.0M', valuePeak: '€8.0M', clause: '—', contract: 'June 2027',
+      agent: 'R. Peled · BRIT In-House', status: 'active', statusLabel: 'ACTIVE',
+      league: 'Bundesliga', standing: '9th · 34 pts',
+      note: 'Contract to 2027', interested: true,
+      next: { home: 'Union Berlin', away: '1. FSV Mainz', homeShort: 'UNB', awayShort: 'MAI', side: 'home', comp: 'Bundesliga', round: 'Matchday 29', date: 'MON 14 APR', time: '21:30', venue: 'Stadion An der Alten Försterei, Berlin' },
+      stats: { apps: 30, goals: 2, assists: 1, minutes: 2700 },
+      spark: [5, 5, 6, 6, 7, 6, 7, 8, 7, 8, 8, 8],
+      docs: [
+        { name: 'Representation Agreement', meta: 'PDF · signed 2021', tag: 'ACTIVE' },
+        { name: 'Work Permit · Germany', meta: 'DOC · exp 2027', tag: 'CURRENT' },
+        { name: 'Passport · Israel', meta: 'ID · exp 2028', tag: 'VERIFIED' }
+      ],
+      notes: [
+        { who: 'Union Medical', when: 'YDAY', text: 'Return cleared — full training from Monday. @lior all green.' }
+      ],
+      similar: [4, 0, 3],
+      highlights: ['Goal-line clearance', 'Header vs Mainz', 'Clean sheet reel'],
+      marketLine: [{ y: '2022', v: '€4.5M' }, { y: '2023', v: '€6.2M' }, { y: '2024', v: '€7.6M' }, { y: 'NOW', v: '€8.0M' }]
+    },
+    {
+      name: 'Petar Ilic', pos: 'Playmaker', club: 'Hajduk Split', clubShort: 'HAJ',
+      age: 22, height: '1.80 m', foot: 'Left', nat: 'Croatia', jersey: 10,
+      value: '€5.1M', valuePeak: '€5.1M', clause: '€9.0M', contract: 'June 2026',
+      agent: 'T. Varga · Adriatic Reps', status: 'target', statusLabel: 'SCOUT FLAG',
+      league: 'HNL', standing: '1st · 54 pts',
+      note: 'Scout flag · rising', interested: true,
+      next: { home: 'HNK Rijeka', away: 'Hajduk Split', homeShort: 'RIJ', awayShort: 'HAJ', side: 'away', comp: 'HNL', round: 'Adriatic Derby', date: 'WED 16 APR', time: '19:00', venue: 'Stadion Rujevica, Rijeka' },
+      stats: { apps: 26, goals: 9, assists: 13, minutes: 2210 },
+      spark: [2, 3, 4, 5, 6, 7, 7, 9, 10, 11, 12, 13],
+      docs: [
+        { name: 'Scouting Dossier', meta: 'PDF · AI Scout 92%', tag: 'FLAGGED' },
+        { name: 'Passport · Croatia', meta: 'EU · exp 2030', tag: 'VERIFIED' }
+      ],
+      notes: [
+        { who: 'AI Scout', when: 'YDAY', text: '92% style match for the No.10 mandate. @lior worth a formal approach.' }
+      ],
+      similar: [0, 1, 4],
+      highlights: ['Free-kick vs Dinamo', 'Through-ball reel', 'Derby masterclass'],
+      marketLine: [{ y: '2022', v: '€1.2M' }, { y: '2023', v: '€2.6M' }, { y: '2024', v: '€4.0M' }, { y: 'NOW', v: '€5.1M' }]
+    },
+    {
+      name: 'Tomer Mizrahi', pos: 'Goalkeeper', club: 'APOEL', clubShort: 'APO',
+      age: 29, height: '1.93 m', foot: 'Right', nat: 'Israel', jersey: 1,
+      value: '€2.8M', valuePeak: '€3.4M', clause: '—', contract: 'June 2025',
+      agent: 'D. Shay · Elite XI', status: 'expiring', statusLabel: 'EXPIRING',
+      league: 'Cyprus League', standing: '3rd · 47 pts',
+      note: 'Captain · clean sheets', interested: true,
+      next: { home: 'APOEL', away: 'Omonia Nicosia', homeShort: 'APO', awayShort: 'OMO', side: 'home', comp: 'Cyprus Cup', round: 'Semi-final', date: 'FRI 18 APR', time: '20:45', venue: 'GSP Stadium, Nicosia' },
+      stats: { apps: 31, goals: 0, assists: 0, minutes: 2790 },
+      spark: [7, 8, 7, 9, 8, 10, 9, 11, 10, 12, 11, 13],
+      docs: [
+        { name: 'Representation Agreement', meta: 'PDF · exp Jun 2025', tag: 'EXPIRING' },
+        { name: 'Passport · Israel', meta: 'ID · exp 2027', tag: 'VERIFIED' }
+      ],
+      notes: [
+        { who: 'Lior', when: '5 DAYS', text: 'Captain, 13 clean sheets. Mandate expiring — line up a renewal call.' }
+      ],
+      similar: [2, 0, 3],
+      highlights: ['Triple save vs AEK', 'Penalty stop · Cup', 'Clean sheet run'],
+      marketLine: [{ y: '2022', v: '€3.4M' }, { y: '2023', v: '€3.1M' }, { y: '2024', v: '€3.0M' }, { y: 'NOW', v: '€2.8M' }]
+    },
+    {
+      name: 'Gabriel Mendes', pos: 'Full-Back', club: 'Famalicão', clubShort: 'FAM',
+      age: 20, height: '1.75 m', foot: 'Right', nat: 'Brazil', jersey: 22,
+      value: '€3.6M', valuePeak: '€3.6M', clause: '€8.0M', contract: 'June 2028',
+      agent: 'M. Katz · Gestifute Line', status: 'target', statusLabel: 'TRIAL',
+      league: 'Primeira Liga', standing: '11th · 29 pts',
+      note: 'Trial invite · 10 days', interested: false,
+      next: { home: 'Famalicão', away: 'Vitória SC', homeShort: 'FAM', awayShort: 'VIT', side: 'home', comp: 'Primeira Liga', round: 'Round 27', date: 'SAT 12 APR', time: '15:30', venue: 'Estádio Municipal, Famalicão' },
+      stats: { apps: 22, goals: 1, assists: 4, minutes: 1760 },
+      spark: [1, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 9],
+      docs: [{ name: 'Trial Invitation', meta: 'DOC · 10 days', tag: 'PENDING' }],
+      notes: [{ who: 'Lior', when: 'TODAY', text: 'Trial invite from Famalicão — @agents coordinate flights.' }],
+      similar: [1, 3, 0],
+      highlights: ['Overlap reel', 'Cross-assist vs Boavista'],
+      marketLine: [{ y: '2023', v: '€1.4M' }, { y: '2024', v: '€2.5M' }, { y: 'NOW', v: '€3.6M' }]
+    },
+    {
+      name: 'Idan Vermouth', pos: 'Midfielder', club: 'Hapoel Be’er Sheva', clubShort: 'HBS',
+      age: 25, height: '1.82 m', foot: 'Both', nat: 'Israel', jersey: 8,
+      value: '€4.2M', valuePeak: '€4.2M', clause: '€7.5M', contract: 'June 2026',
+      agent: 'R. Peled · BRIT In-House', status: 'active', statusLabel: 'ACTIVE',
+      league: 'Ligat ha’Al', standing: '1st · 52 pts',
+      note: 'Extension on table', interested: true,
+      next: { home: 'Hapoel Be’er Sheva', away: 'Maccabi Tel Aviv', homeShort: 'HBS', awayShort: 'MTA', side: 'home', comp: 'Ligat ha’Al', round: 'Round 24', date: 'SUN 13 APR', time: '20:15', venue: 'Turner Stadium, Be’er Sheva' },
+      stats: { apps: 29, goals: 6, assists: 9, minutes: 2520 },
+      spark: [3, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 11],
+      docs: [{ name: 'Representation Agreement', meta: 'PDF · signed 2022', tag: 'ACTIVE' }, { name: 'Extension Draft', meta: 'PDF · 2 years', tag: 'DRAFT' }],
+      notes: [{ who: 'Lior', when: '2 DAYS', text: 'Contract extension — 2 years on the table. @board approve terms.' }],
+      similar: [3, 0, 2],
+      highlights: ['Long-range vs Haifa', 'Assist double · derby'],
+      marketLine: [{ y: '2022', v: '€2.4M' }, { y: '2023', v: '€3.3M' }, { y: '2024', v: '€3.9M' }, { y: 'NOW', v: '€4.2M' }]
+    }
+  ];
+
+  var POSITIONS = ['All', 'Striker', 'Winger', 'Playmaker', 'Midfielder', 'Centre-Back', 'Full-Back', 'Goalkeeper'];
+  var CONTRACT_FILTERS = ['Any', 'Active', 'Expiring', 'On Loan', 'Target'];
+  var MANDATE_TYPES = ['Exclusive', 'Non-Exclusive'];
+  var MANDATE_DURATIONS = ['6 Months', '12 Months', '24 Months'];
+  var MANDATE_TERRITORIES = ['Worldwide', 'Europe', 'Israel', 'Portugal', 'Germany'];
+  var MANDATE_COMMISSIONS = ['5%', '7.5%', '10%'];
+
   var FIXTURES = [
     { who: 'Barkai', opp: 'vs Beitar', comp: 'Ligat ha’Al', ha: 'H', cd: '2D', when: 'SAT 20:00', next: true },
     { who: 'Oliveira', opp: 'at Porto', comp: 'Primeira', ha: 'A', cd: '3D', when: 'SUN 18:30' },
@@ -146,7 +299,8 @@
     platform: 'men',
     authed: false,
     stack: ['dashboard'],      // screen history stack
-    reduced: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    reduced: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    rosterFilter: { pos: 'All', contract: 'Any', q: '' }
   };
 
   var root = document.getElementById('app');
@@ -292,12 +446,18 @@
     // next frame → animate in
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
-        node.classList.remove('enter-push');
         node.classList.add('active');
-        if (current) { current.classList.remove('active'); current.classList.add('leave-under'); }
+        node.classList.remove('enter-push');
+        // Demote the outgoing screen to the under-layer. Done after the new
+        // node is active so the slide reads correctly.
+        if (current && current !== node) {
+          current.classList.remove('active');
+          current.classList.add('leave-under');
+        }
       });
     });
-    cleanupAfter(current);
+    // NOTE: keep the previous screen in the DOM (as .leave-under) so popScreen
+    // can slide it back — do NOT cleanupAfter here, or the back-stack breaks.
     updateChrome();
   }
 
@@ -325,7 +485,8 @@
     if (state.stack.length === 1 && state.stack[0] === name) return;
     state.stack = [name];
     var s = stack();
-    var current = s.querySelector('.screen.active');
+    // Remove every stacked screen (active + any leave-under left by pushes).
+    var existing = Array.prototype.slice.call(s.querySelectorAll('.screen'));
     var node = renderScreenNode(name);
     node.classList.add('enter-fade');
     s.appendChild(node);
@@ -333,10 +494,10 @@
       requestAnimationFrame(function () {
         node.classList.remove('enter-fade');
         node.classList.add('active');
-        if (current) { current.classList.remove('active'); current.classList.add('leave-fade'); }
+        existing.forEach(function (el) { el.classList.remove('active'); el.classList.add('leave-fade'); });
       });
     });
-    cleanupAfter(current);
+    existing.forEach(function (el) { cleanupAfter(el); });
     updateChrome();
   }
 
@@ -559,42 +720,300 @@
     return '<div class="brit-module-head"><h2><span class="g">' + a + '</span> ' + b + '</h2>' + right + '</div>';
   }
 
-  // Players roster screen (lightweight but real).
-  SCREENS.players = function () {
-    return '<p class="brit-kicker">UNDER REPRESENTATION</p>' +
-      '<h1 style="margin:0 0 20px;font:500 44px/0.8 var(--display);letter-spacing:-0.045em;text-transform:uppercase">OUR <span style="color:var(--gold)">ROSTER</span></h1>' +
-      ASSETS.map(function (a, i) {
-        return '<button class="roster-row" data-dossier="' + i + '" style="width:100%;text-align:left">' +
-          '<div class="thumb">' + photo(a.name) + '</div>' +
-          '<div><h3>' + esc(a.name) + '</h3><p>' + esc(a.club) + '</p></div>' +
-          '<span class="pos">' + esc(a.role.split(' · ')[0]) + '</span>' +
-        '</button>';
-      }).join('') +
-      '<p class="stub-note">The full roster — filters, positions, contract clocks and the dossier tabs — arrives with a <b>later feature</b>. Tap any name to preview the dossier.</p>';
+  // Players / Our Roster screen — editorial list + filter sheet + search + FAB.
+  var STATUS_PILL = {
+    active: 'ACTIVE', loan: 'ON LOAN', target: 'TARGET', expiring: 'EXPIRING'
   };
 
-  // Player dossier (opened from assets / roster).
-  SCREENS.dossier = function (idx) {
-    var a = ASSETS[Number(idx)] || ASSETS[0];
-    var facts = [
-      ['POSITION', a.role.split(' · ')[0]], ['AGE', a.role.split(' · ')[1] || '—'],
-      ['CLUB', a.club], ['STATUS', 'ACTIVE'], ['FOOT', 'RIGHT'], ['CONTRACT', '2027']
-    ];
-    return '<div style="margin:0 -20px 20px;position:relative;height:240px" class="phopo">' + SILH +
-        '<span class="initials" style="font-size:56px">' + initials(a.name) + '</span>' +
-        '<div style="position:absolute;left:20px;right:20px;bottom:16px;z-index:2;color:var(--paper)">' +
-          '<p style="margin:0;color:var(--gold-soft);font:9px/1 var(--mono);letter-spacing:0.14em;text-transform:uppercase">' + esc(a.club) + '</p>' +
-          '<h1 style="margin:8px 0 0;font:500 42px/0.82 var(--display);letter-spacing:-0.045em;text-transform:uppercase">' + esc(a.name) + '</h1>' +
+  function filteredPlayers() {
+    var f = state.rosterFilter;
+    var q = f.q.trim().toLowerCase();
+    return PLAYERS.map(function (p, i) { return { p: p, i: i }; }).filter(function (o) {
+      var p = o.p;
+      if (f.pos !== 'All' && p.pos !== f.pos) return false;
+      if (f.contract === 'Active' && p.status !== 'active') return false;
+      if (f.contract === 'Expiring' && p.status !== 'expiring') return false;
+      if (f.contract === 'On Loan' && p.status !== 'loan') return false;
+      if (f.contract === 'Target' && p.status !== 'target') return false;
+      if (q && (p.name + ' ' + p.club + ' ' + p.pos).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+
+  function rosterRowsHtml() {
+    var rows = filteredPlayers();
+    if (!rows.length) {
+      return '<div class="roster-empty"><p>NO PLAYERS MATCH</p><button class="roster-reset" data-roster-reset="1">CLEAR FILTERS</button></div>';
+    }
+    return rows.map(function (o) {
+      var p = o.p;
+      return '<button class="roster-row-ed" data-dossier="' + o.i + '">' +
+        '<div class="rr-thumb phopo">' + SILH + '<span class="initials">' + initials(p.name) + '</span><span class="rr-jersey">' + p.jersey + '</span></div>' +
+        '<div class="rr-body">' +
+          '<h3>' + esc(p.name) + '</h3>' +
+          '<p class="rr-meta">' + esc(p.pos) + ' · ' + esc(p.club) + ' · ' + p.age + '</p>' +
+          '<span class="rr-pill rr-' + p.status + '">' + STATUS_PILL[p.status] + '</span>' +
         '</div>' +
-        '<div style="position:absolute;inset:40% 0 0;background:linear-gradient(180deg,transparent,rgba(17,17,15,0.9))"></div>' +
+        '<span class="rr-chev">' + svg('arrow', 1.8) + '</span>' +
+      '</button>';
+    }).join('');
+  }
+
+  SCREENS.players = function () {
+    var count = filteredPlayers().length;
+    return '<div class="roster-head">' +
+        '<p class="brit-kicker">UNDER REPRESENTATION · ' + PLATFORM_LABEL[state.platform] + '</p>' +
+        '<h1 class="roster-mast">OUR <span>ROSTER</span></h1>' +
       '</div>' +
-      '<div class="brit-signals" style="margin-top:0">' +
-        facts.slice(0, 3).map(function (f) { return '<div class="brit-signal"><label>' + f[0] + '</label><strong style="font-size:26px">' + esc(f[1]) + '</strong></div>'; }).join('') +
+      '<div class="roster-sticky" id="rosterSticky">' +
+        '<div class="roster-search"><span class="rs-ic">' + svg('marketRadar', 1.6) + '</span>' +
+          '<input type="text" id="rosterSearch" placeholder="SEARCH NAME · CLUB · POSITION" value="' + esc(state.rosterFilter.q) + '" autocomplete="off" />' +
+        '</div>' +
+        '<div class="roster-barline"><span class="rb-count" id="rosterCount">' + count + ' PLAYERS</span>' +
+          '<button class="rb-filter" id="rosterFilterBtn">' + svg('clubChanges', 1.6) + ' FILTER' +
+            ((state.rosterFilter.pos !== 'All' || state.rosterFilter.contract !== 'Any') ? '<span class="rb-dot"></span>' : '') +
+          '</button>' +
+        '</div>' +
       '</div>' +
-      '<section class="brit-module" style="margin-top:28px">' + moduleHead('PLAYER', 'FACTS', null) +
-        facts.map(function (f) { return '<div class="brit-deadline" style="grid-template-columns:1fr auto"><span style="font:9px/1 var(--mono);color:var(--muted);text-transform:uppercase">' + f[0] + '</span><strong style="font:500 18px/0.9 var(--display);text-transform:uppercase">' + esc(f[1]) + '</strong></div>'; }).join('') +
-      '</section>' +
-      '<p class="stub-note">Full dossier tabs — timeline, media, agreements, matchday poster generator — land in a <b>later feature</b>.</p>';
+      '<div class="roster-list" id="rosterList">' + rosterRowsHtml() + '</div>' +
+      // Floating ADD PLAYER
+      '<button class="roster-fab" id="rosterFab">' + svg('players', 2) + '<span>ADD PLAYER</span></button>';
+  };
+
+  function openFilterSheet() {
+    var f = state.rosterFilter;
+    var el = document.createElement('div');
+    el.className = 'flow-overlay';
+    el.id = 'filterFlow';
+    el.innerHTML =
+      '<div class="flow-backdrop" data-close="1"></div>' +
+      '<div class="bsheet filter-sheet">' +
+        '<div class="sheet-handle"></div>' +
+        '<div class="bsheet-head"><h2>FILTER ROSTER</h2><button class="bsheet-x" data-close="1">' + svg('close', 2) + '</button></div>' +
+        '<div class="bsheet-body">' +
+          '<p class="fs-label">POSITION</p>' +
+          '<div class="chip-row">' + POSITIONS.map(function (p) {
+            return '<button class="chip' + (f.pos === p ? ' on' : '') + '" data-fpos="' + esc(p) + '">' + esc(p) + '</button>';
+          }).join('') + '</div>' +
+          '<p class="fs-label">CONTRACT STATUS</p>' +
+          '<div class="chip-row">' + CONTRACT_FILTERS.map(function (c) {
+            return '<button class="chip' + (f.contract === c ? ' on' : '') + '" data-fcon="' + esc(c) + '">' + esc(c) + '</button>';
+          }).join('') + '</div>' +
+        '</div>' +
+        '<div class="bsheet-foot">' +
+          '<button class="btn-ghost" data-freset="1">RESET</button>' +
+          '<button class="btn-gold" data-close="1">APPLY</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('open'); });
+    el.addEventListener('click', function (e) {
+      var pos = e.target.closest('[data-fpos]');
+      var con = e.target.closest('[data-fcon]');
+      if (pos) { f.pos = pos.getAttribute('data-fpos'); el.querySelectorAll('[data-fpos]').forEach(function (b) { b.classList.toggle('on', b === pos); }); refreshRoster(); return; }
+      if (con) { f.contract = con.getAttribute('data-fcon'); el.querySelectorAll('[data-fcon]').forEach(function (b) { b.classList.toggle('on', b === con); }); refreshRoster(); return; }
+      if (e.target.closest('[data-freset]')) { f.pos = 'All'; f.contract = 'Any'; el.querySelectorAll('.chip').forEach(function (b) { b.classList.remove('on'); }); el.querySelector('[data-fpos="All"]').classList.add('on'); el.querySelector('[data-fcon="Any"]').classList.add('on'); refreshRoster(); return; }
+      if (e.target.closest('[data-close]')) closeFlow(el);
+    });
+  }
+
+  function refreshRoster() {
+    var list = document.getElementById('rosterList');
+    var cnt = document.getElementById('rosterCount');
+    if (list) list.innerHTML = rosterRowsHtml();
+    if (cnt) cnt.textContent = filteredPlayers().length + ' PLAYERS';
+    var fbtn = document.getElementById('rosterFilterBtn');
+    if (fbtn) {
+      var active = state.rosterFilter.pos !== 'All' || state.rosterFilter.contract !== 'Any';
+      var existing = fbtn.querySelector('.rb-dot');
+      if (active && !existing) fbtn.insertAdjacentHTML('beforeend', '<span class="rb-dot"></span>');
+      if (!active && existing) existing.remove();
+    }
+  }
+
+  function openAddPlayerSheet() {
+    var mode = 'manual';
+    var el = document.createElement('div');
+    el.className = 'flow-overlay';
+    el.id = 'addFlow';
+    function body() {
+      if (mode === 'link') {
+        return '<p class="fs-label">PASTE TRANSFERMARKT / PROFILE LINK</p>' +
+          '<div class="ed-field"><input type="text" placeholder="https://transfermarkt…/profil" autocomplete="off" /></div>' +
+          '<p class="ed-hint">We resolve name, club, position and market value from the link.</p>';
+      }
+      return '<div class="ed-field"><label>FULL NAME</label><input type="text" placeholder="e.g. Noam Baskin" autocomplete="off" /></div>' +
+        '<div class="ed-field"><label>POSITION</label><input type="text" placeholder="e.g. Striker" autocomplete="off" /></div>' +
+        '<div class="ed-field"><label>CURRENT CLUB</label><input type="text" placeholder="e.g. Maccabi Netanya" autocomplete="off" /></div>';
+    }
+    function render() {
+      el.innerHTML =
+        '<div class="flow-backdrop" data-close="1"></div>' +
+        '<div class="bsheet add-sheet">' +
+          '<div class="sheet-handle"></div>' +
+          '<div class="bsheet-head"><h2>ADD PLAYER</h2><button class="bsheet-x" data-close="1">' + svg('close', 2) + '</button></div>' +
+          '<div class="seg">' +
+            '<button class="seg-btn' + (mode === 'manual' ? ' on' : '') + '" data-mode="manual">MANUAL</button>' +
+            '<button class="seg-btn' + (mode === 'link' ? ' on' : '') + '" data-mode="link">ADD FROM LINK</button>' +
+          '</div>' +
+          '<div class="bsheet-body">' + body() + '</div>' +
+          '<div class="bsheet-foot">' +
+            '<button class="btn-ghost" data-close="1">CANCEL</button>' +
+            '<button class="btn-gold" data-add-submit="1">' + (mode === 'link' ? 'RESOLVE & ADD' : 'ADD TO ROSTER') + '</button>' +
+          '</div>' +
+        '</div>';
+    }
+    render();
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('open'); });
+    el.addEventListener('click', function (e) {
+      var m = e.target.closest('[data-mode]');
+      if (m) { mode = m.getAttribute('data-mode'); render(); el.classList.add('open'); return; }
+      if (e.target.closest('[data-add-submit]')) { closeFlow(el); toast('Player queued — resolving profile'); return; }
+      if (e.target.closest('[data-close]')) closeFlow(el);
+    });
+  }
+
+  function closeFlow(el) {
+    el.classList.remove('open');
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, state.reduced ? 0 : 360);
+  }
+
+  // Player Dossier (hero #2) — cinematic header + sticky tab bar + panels.
+  var DOSSIER_TABS = ['OVERVIEW', 'PERFORMANCE', 'MARKET', 'DOCUMENTS', 'NOTES', 'SIMILAR', 'HIGHLIGHTS', 'CLUB INTEL'];
+
+  function crestSvg(label, accent) {
+    return '<svg class="crest" viewBox="0 0 48 54" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M4 4h40v30c0 10-11 15-20 20C15 49 4 44 4 34V4z" fill="none" stroke="' + (accent || 'currentColor') + '" stroke-width="1.6"/>' +
+      '<path d="M4 18h40M24 4v46" stroke="' + (accent || 'currentColor') + '" stroke-width="0.8" opacity="0.4"/>' +
+      '<text x="24" y="15" text-anchor="middle" font-family="Oswald,Impact,sans-serif" font-weight="600" font-size="10" fill="' + (accent || 'currentColor') + '">' + esc(label) + '</text>' +
+      '</svg>';
+  }
+
+  function sparkSvg(data) {
+    var max = Math.max.apply(null, data);
+    var w = 100, h = 36;
+    var pts = data.map(function (v, i) {
+      var x = (i / (data.length - 1)) * w;
+      var y = h - (v / max) * (h - 4) - 2;
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' +
+      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--gold)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>' +
+      '<polygon points="0,' + h + ' ' + pts.join(' ') + ' ' + w + ',' + h + '" fill="url(#sparkFill)" opacity="0.5"/>' +
+      '<defs><linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--gold)" stop-opacity="0.3"/><stop offset="100%" stop-color="var(--gold)" stop-opacity="0"/></linearGradient></defs>' +
+      '</svg>';
+  }
+
+  function statBar(label, val, pct) {
+    return '<div class="statbar"><div class="sb-top"><span class="sb-label">' + label + '</span><strong class="sb-val">' + val + '</strong></div>' +
+      '<div class="sb-track"><span class="sb-fill" style="width:' + pct + '%"></span></div></div>';
+  }
+
+  function dossierPanel(tab, p, idx) {
+    if (tab === 'OVERVIEW') {
+      var facts = [
+        ['AGE', p.age], ['HEIGHT', p.height], ['FOOT', p.foot],
+        ['CONTRACT', p.contract], ['MARKET VALUE', p.value], ['AGENT', p.agent]
+      ];
+      return '<div class="brit-facts">' + facts.map(function (f) {
+          return '<div class="bf-row"><label>' + f[0] + '</label><span>' + esc(String(f[1])) + '</span></div>';
+        }).join('') + '</div>' +
+        '<div class="next-match">' +
+          '<div class="nm-head"><span class="nm-kick">NEXT MATCH</span><span class="nm-comp">' + esc(p.next.comp) + ' · ' + esc(p.next.round) + '</span></div>' +
+          '<div class="nm-fixture">' +
+            '<div class="nm-team">' + crestSvg(p.next.homeShort) + '<span>' + esc(p.next.home) + '</span></div>' +
+            '<span class="nm-vs">VS</span>' +
+            '<div class="nm-team">' + crestSvg(p.next.awayShort) + '<span>' + esc(p.next.away) + '</span></div>' +
+          '</div>' +
+          '<div class="nm-foot"><span>' + esc(p.next.date) + ' · ' + esc(p.next.time) + '</span><span>' + esc(p.next.venue) + '</span></div>' +
+        '</div>';
+    }
+    if (tab === 'PERFORMANCE') {
+      var s = p.stats;
+      return '<div class="perf-spark"><div class="ps-head"><span>FORM · LAST 12</span><strong>' + s.goals + ' G · ' + s.assists + ' A</strong></div>' + sparkSvg(p.spark) + '</div>' +
+        statBar('APPEARANCES', s.apps, Math.min(100, s.apps / 34 * 100)) +
+        statBar('GOALS', s.goals, Math.min(100, s.goals / 25 * 100)) +
+        statBar('ASSISTS', s.assists, Math.min(100, s.assists / 20 * 100)) +
+        statBar('MINUTES', s.minutes, Math.min(100, s.minutes / 2900 * 100));
+    }
+    if (tab === 'MARKET') {
+      return '<div class="market-hero"><span class="mh-kick">CURRENT VALUE</span><strong class="mh-val">' + esc(p.value) + '</strong><span class="mh-peak">PEAK ' + esc(p.valuePeak) + '</span></div>' +
+        '<div class="market-trend">' + p.marketLine.map(function (m, i) {
+          return '<div class="mt-col"><span class="mt-bar" style="height:' + (28 + i * 18) + '%"></span><span class="mt-y">' + esc(m.y) + '</span><span class="mt-v">' + esc(m.v) + '</span></div>';
+        }).join('') + '</div>' +
+        '<div class="brit-facts"><div class="bf-row"><label>RELEASE CLAUSE</label><span>' + esc(p.clause) + '</span></div>' +
+          '<div class="bf-row"><label>CONTRACT END</label><span>' + esc(p.contract) + '</span></div>' +
+          '<div class="bf-row"><label>LEAGUE</label><span>' + esc(p.league) + '</span></div></div>';
+    }
+    if (tab === 'DOCUMENTS') {
+      return '<div class="doc-list">' + p.docs.map(function (d) {
+        return '<div class="doc-row"><span class="doc-ic">' + svg('requests', 1.6) + '</span>' +
+          '<div><h4>' + esc(d.name) + '</h4><p>' + esc(d.meta) + '</p></div>' +
+          '<span class="doc-tag">' + esc(d.tag) + '</span></div>';
+      }).join('') + '</div>';
+    }
+    if (tab === 'NOTES') {
+      return '<div class="note-compose"><textarea placeholder="Add a note… use @ to mention"></textarea>' +
+          '<button class="btn-gold note-save" data-note-save="1">POST NOTE</button></div>' +
+        '<div class="note-list">' + p.notes.map(function (n) {
+          return '<div class="note-card"><div class="nc-top"><span class="nc-who">' + esc(n.who) + '</span><span class="nc-when">' + esc(n.when) + '</span></div>' +
+            '<p>' + noteText(n.text) + '</p></div>';
+        }).join('') + '</div>';
+    }
+    if (tab === 'SIMILAR') {
+      return '<div class="sim-grid">' + p.similar.map(function (si) {
+        var sp = PLAYERS[si];
+        return '<button class="sim-card" data-dossier="' + si + '"><div class="phopo">' + SILH + '<span class="initials">' + initials(sp.name) + '</span></div>' +
+          '<h4>' + esc(sp.name) + '</h4><p>' + esc(sp.pos) + ' · ' + esc(sp.club) + '</p></button>';
+      }).join('') + '</div>';
+    }
+    if (tab === 'HIGHLIGHTS') {
+      return '<div class="hl-grid">' + p.highlights.map(function (h) {
+        return '<div class="hl-card"><div class="phopo"><span class="hl-play">▶</span></div><p>' + esc(h) + '</p></div>';
+      }).join('') + '</div>';
+    }
+    if (tab === 'CLUB INTEL') {
+      return '<div class="club-intel"><div class="ci-crest">' + crestSvg(p.clubShort) + '</div>' +
+        '<h3>' + esc(p.club) + '</h3>' +
+        '<div class="brit-facts"><div class="bf-row"><label>LEAGUE</label><span>' + esc(p.league) + '</span></div>' +
+          '<div class="bf-row"><label>STANDING</label><span>' + esc(p.standing) + '</span></div>' +
+          '<div class="bf-row"><label>PLAYER NO.</label><span>#' + p.jersey + '</span></div>' +
+          '<div class="bf-row"><label>INT. IN ISRAEL</label><span>' + (p.interested ? 'YES' : 'NO') + '</span></div></div></div>';
+    }
+    return '';
+  }
+
+  function noteText(t) {
+    return esc(t).replace(/(@[A-Za-z]+)/g, '<span class="mention">$1</span>');
+  }
+
+  SCREENS.dossier = function (idx) {
+    var i = Number(idx) || 0;
+    var p = PLAYERS[i] || PLAYERS[0];
+    return '<div class="dossier" data-pidx="' + i + '">' +
+      '<div class="dh">' +
+        '<div class="dh-photo phopo">' + SILH +
+          '<span class="dh-jersey">' + p.jersey + '</span>' +
+          '<div class="dh-scrim"></div>' +
+          '<div class="dh-copy">' +
+            '<p class="dh-kick">' + esc(p.nat) + ' · ' + esc(p.club) + '</p>' +
+            '<h1 class="dh-name">' + esc(p.name) + '</h1>' +
+            '<p class="dh-sub">' + esc(p.pos) + ' · ' + esc(p.value) + ' · ' + STATUS_PILL[p.status] + '</p>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="dtabs" id="dtabs">' + DOSSIER_TABS.map(function (t, ti) {
+        return '<button class="dtab' + (ti === 0 ? ' on' : '') + '" data-dtab="' + ti + '">' + t + '</button>';
+      }).join('') + '</div>' +
+      '<div class="dpanel" id="dpanel">' + dossierPanel('OVERVIEW', p, i) + '</div>' +
+      '<div class="dossier-actions">' +
+        '<button class="da-primary" data-flow="mandate">' + 'GENERATE MANDATE' + '</button>' +
+        '<button class="da-primary" data-flow="matchday">' + 'MATCHDAY POSTER' + '</button>' +
+        '<button class="da-secondary" data-shortlist="1">ADD TO SHORTLIST</button>' +
+        '<button class="da-secondary" data-addnote="1">ADD NOTE</button>' +
+      '</div>' +
+    '</div>';
   };
 
   // Generic rich-ish stub for the breadth screens.
@@ -626,6 +1045,212 @@
       '<button class="login-enter" style="margin-top:24px;background:var(--gold);color:var(--black)" data-nav="dashboard">' + svg('back', 2) + ' BACK TO DASHBOARD</button>';
   };
 
+  /* ──────────────────────────────────────────────────────────────────────
+     MATCHDAY POSTER generator (staged progress → cinematic poster)
+     ────────────────────────────────────────────────────────────────────── */
+  var MATCHDAY_STEPS = [
+    'RESOLVE FIXTURE', 'VERIFY PHOTO', 'FETCH CRESTS', 'RENDER', 'QUALITY CHECK'
+  ];
+
+  function openMatchday(pidx) {
+    var p = PLAYERS[pidx] || PLAYERS[0];
+    var el = document.createElement('div');
+    el.className = 'flow-overlay matchday-flow';
+    el.id = 'matchdayFlow';
+    el.innerHTML =
+      '<div class="flow-backdrop"></div>' +
+      '<div class="flow-sheet matchday-sheet">' +
+        '<div class="sheet-handle"></div>' +
+        '<div class="bsheet-head"><h2>MATCHDAY</h2><button class="bsheet-x" data-close="1">' + svg('close', 2) + '</button></div>' +
+        '<div class="matchday-stage" id="matchdayStage"></div>' +
+      '</div>';
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('open'); });
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-close]')) closeFlow(el);
+      if (e.target.closest('[data-md-regen]')) runMatchday(p);
+      if (e.target.closest('[data-md-share]')) toast('Poster copied to share sheet');
+    });
+    runMatchday(p);
+  }
+
+  function runMatchday(p) {
+    var stage = document.getElementById('matchdayStage');
+    if (!stage) return;
+    stage.innerHTML = '<div class="md-progress">' +
+      '<div class="md-rings"><span class="r1"></span><span class="r2"></span><span class="r3"></span><span class="core"></span></div>' +
+      '<ul class="md-steps">' + MATCHDAY_STEPS.map(function (s, i) {
+        return '<li data-step="' + i + '"><span class="md-dot"></span><span class="md-slabel">' + s + '</span><span class="md-time"></span></li>';
+      }).join('') + '</ul></div>';
+    var steps = stage.querySelectorAll('.md-steps li');
+    var i = 0;
+    var fast = state.reduced;
+    function tick() {
+      if (i > 0) {
+        var prev = steps[i - 1];
+        prev.classList.remove('active'); prev.classList.add('done');
+        prev.querySelector('.md-time').textContent = stamp();
+      }
+      if (i < steps.length) {
+        steps[i].classList.add('active');
+        i++;
+        setTimeout(tick, fast ? 60 : 520);
+      } else {
+        setTimeout(function () { revealPoster(p); }, fast ? 60 : 420);
+      }
+    }
+    tick();
+  }
+
+  function stamp() {
+    var d = new Date();
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+  }
+
+  function revealPoster(p) {
+    var stage = document.getElementById('matchdayStage');
+    if (!stage) return;
+    var n = p.next;
+    stage.innerHTML =
+      '<div class="poster-wrap">' +
+        '<article class="poster">' +
+          '<div class="poster-sheen"></div>' +
+          '<header class="poster-top"><span class="pt-brit">BRIT SPORT GROUP</span><span class="pt-comp">' + esc(n.comp) + ' · ' + esc(n.round) + '</span></header>' +
+          '<div class="poster-figure phopo">' + SILH + '<span class="initials">' + initials(p.name) + '</span><span class="poster-jersey">' + p.jersey + '</span><div class="poster-fig-scrim"></div></div>' +
+          '<h2 class="poster-matchday">MATCHDAY</h2>' +
+          '<div class="poster-player"><span class="pp-name">' + esc(p.name) + '</span><span class="pp-pos">' + esc(p.pos) + '</span></div>' +
+          '<div class="poster-teams">' +
+            '<div class="pteam">' + crestSvg(n.homeShort, '#f3f0e8') + '<span>' + esc(n.home) + '</span></div>' +
+            '<span class="pt-vs">VS</span>' +
+            '<div class="pteam">' + crestSvg(n.awayShort, '#f3f0e8') + '<span>' + esc(n.away) + '</span></div>' +
+          '</div>' +
+          '<footer class="poster-foot"><span>' + esc(n.date) + ' · ' + esc(n.time) + '</span><span>' + esc(n.venue) + '</span></footer>' +
+        '</article>' +
+        '<div class="poster-actions">' +
+          '<button class="btn-ghost" data-md-regen="1">REGENERATE</button>' +
+          '<button class="btn-gold" data-md-share="1">SHARE · DOWNLOAD</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     GENERATE MANDATE wizard (TERMS → SCOPE → REVIEW → MANDATE PREVIEW)
+     ────────────────────────────────────────────────────────────────────── */
+  function openMandate(pidx) {
+    var p = PLAYERS[pidx] || PLAYERS[0];
+    var step = 0;
+    var sel = { type: 'Exclusive', duration: '12 Months', territory: 'Worldwide', commission: '10%', clubs: [], objectives: '' };
+    var CLUB_OPTS = ['Top-5 Europe', 'Portugal', 'Germany', 'Israel', 'Scandinavia', 'Gulf'];
+    var el = document.createElement('div');
+    el.className = 'flow-overlay mandate-flow';
+    el.id = 'mandateFlow';
+
+    function chipGroup(opts, cur, key) {
+      return '<div class="chip-row">' + opts.map(function (o) {
+        return '<button class="chip' + (cur === o ? ' on' : '') + '" data-mset="' + key + '" data-val="' + esc(o) + '">' + esc(o) + '</button>';
+      }).join('') + '</div>';
+    }
+
+    function stepBody() {
+      if (step === 0) {
+        return '<p class="fs-label">MANDATE TYPE</p>' + chipGroup(MANDATE_TYPES, sel.type, 'type') +
+          '<p class="fs-label">DURATION</p>' + chipGroup(MANDATE_DURATIONS, sel.duration, 'duration') +
+          '<p class="fs-label">TERRITORY</p>' + chipGroup(MANDATE_TERRITORIES, sel.territory, 'territory') +
+          '<p class="fs-label">COMMISSION</p>' + chipGroup(MANDATE_COMMISSIONS, sel.commission, 'commission');
+      }
+      if (step === 1) {
+        return '<p class="fs-label">TARGET CLUBS / LEAGUES</p>' +
+          '<div class="chip-row">' + CLUB_OPTS.map(function (c) {
+            return '<button class="chip' + (sel.clubs.indexOf(c) > -1 ? ' on' : '') + '" data-mclub="' + esc(c) + '">' + esc(c) + '</button>';
+          }).join('') + '</div>' +
+          '<p class="fs-label">OBJECTIVES</p>' +
+          '<div class="ed-field"><textarea id="mandObj" placeholder="e.g. Secure a permanent transfer to a top-5 league club by the summer window.">' + esc(sel.objectives) + '</textarea></div>';
+      }
+      // Step 2 — review summary
+      return '<div class="mand-review">' +
+        '<div class="mr-row"><label>PLAYER</label><span>' + esc(p.name) + '</span></div>' +
+        '<div class="mr-row"><label>TYPE</label><span>' + esc(sel.type) + '</span></div>' +
+        '<div class="mr-row"><label>DURATION</label><span>' + esc(sel.duration) + '</span></div>' +
+        '<div class="mr-row"><label>TERRITORY</label><span>' + esc(sel.territory) + '</span></div>' +
+        '<div class="mr-row"><label>COMMISSION</label><span>' + esc(sel.commission) + '</span></div>' +
+        '<div class="mr-row"><label>TARGETS</label><span>' + (sel.clubs.length ? esc(sel.clubs.join(', ')) : '—') + '</span></div>' +
+        '</div>';
+    }
+
+    var TITLES = ['TERMS', 'SCOPE', 'REVIEW'];
+    function render() {
+      el.innerHTML =
+        '<div class="flow-backdrop"></div>' +
+        '<div class="flow-sheet mandate-sheet">' +
+          '<div class="sheet-handle"></div>' +
+          '<div class="bsheet-head"><h2>GENERATE MANDATE</h2><button class="bsheet-x" data-close="1">' + svg('close', 2) + '</button></div>' +
+          '<div class="mand-steps">' + TITLES.map(function (ti, k) {
+            return '<div class="mstep' + (k === step ? ' on' : '') + (k < step ? ' done' : '') + '"><span class="ms-no">' + (k + 1) + '</span><span class="ms-lab">' + ti + '</span></div>';
+          }).join('') + '<div class="mand-progress"><span style="width:' + ((step) / 2 * 100) + '%"></span></div></div>' +
+          '<div class="bsheet-body mand-body">' + stepBody() + '</div>' +
+          '<div class="bsheet-foot">' +
+            (step > 0 ? '<button class="btn-ghost" data-mback="1">BACK</button>' : '<button class="btn-ghost" data-close="1">CANCEL</button>') +
+            '<button class="btn-gold" data-mnext="1">' + (step < 2 ? 'CONTINUE' : 'GENERATE PREVIEW') + '</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    function renderPreview() {
+      var now = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+      el.innerHTML =
+        '<div class="flow-backdrop"></div>' +
+        '<div class="flow-sheet mandate-sheet preview-sheet">' +
+          '<div class="sheet-handle"></div>' +
+          '<div class="bsheet-head"><h2>MANDATE PREVIEW</h2><button class="bsheet-x" data-close="1">' + svg('close', 2) + '</button></div>' +
+          '<div class="bsheet-body">' +
+            '<article class="mandate-doc">' +
+              '<div class="md-rule"></div>' +
+              '<header class="mdoc-head"><div class="mdoc-seal">' + MARK + '</div>' +
+                '<div class="mdoc-id"><span class="mdoc-kick">BRIT SPORT GROUP</span><span class="mdoc-title">REPRESENTATION MANDATE</span></div></header>' +
+              '<p class="mdoc-intro">This instrument confirms the exclusive engagement of <strong>BRIT Sport Group</strong> as representative of the undersigned Player, under the terms set out below.</p>' +
+              '<div class="mdoc-party"><span>PLAYER</span><strong>' + esc(p.name) + '</strong><small>' + esc(p.pos) + ' · ' + esc(p.club) + ' · ' + esc(p.nat) + '</small></div>' +
+              '<table class="mdoc-terms"><tbody>' +
+                '<tr><td>Mandate Type</td><td>' + esc(sel.type) + '</td></tr>' +
+                '<tr><td>Duration</td><td>' + esc(sel.duration) + '</td></tr>' +
+                '<tr><td>Territory</td><td>' + esc(sel.territory) + '</td></tr>' +
+                '<tr><td>Commission</td><td>' + esc(sel.commission) + ' of gross transfer</td></tr>' +
+                '<tr><td>Targets</td><td>' + (sel.clubs.length ? esc(sel.clubs.join(', ')) : 'Open market') + '</td></tr>' +
+                '<tr><td>Issued</td><td>' + now + '</td></tr>' +
+              '</tbody></table>' +
+              (sel.objectives ? '<p class="mdoc-obj"><span>OBJECTIVES</span>' + esc(sel.objectives) + '</p>' : '') +
+              '<div class="mdoc-signs"><div class="sign-line"><span></span><label>PLAYER SIGNATURE</label></div>' +
+                '<div class="sign-line"><span></span><label>BRIT SPORT GROUP</label></div></div>' +
+            '</article>' +
+          '</div>' +
+          '<div class="bsheet-foot">' +
+            '<button class="btn-ghost" data-medit="1">EDIT</button>' +
+            '<button class="btn-gold" data-msign="1">SIGN & ISSUE</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    render();
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('open'); });
+
+    el.addEventListener('click', function (e) {
+      var set = e.target.closest('[data-mset]');
+      var club = e.target.closest('[data-mclub]');
+      if (set) { sel[set.getAttribute('data-mset')] = set.getAttribute('data-val'); el.querySelectorAll('[data-mset="' + set.getAttribute('data-mset') + '"]').forEach(function (b) { b.classList.toggle('on', b === set); }); return; }
+      if (club) { var c = club.getAttribute('data-mclub'); var k = sel.clubs.indexOf(c); if (k > -1) sel.clubs.splice(k, 1); else sel.clubs.push(c); club.classList.toggle('on'); return; }
+      if (e.target.closest('[data-mnext]')) {
+        if (step === 1) { var ob = document.getElementById('mandObj'); if (ob) sel.objectives = ob.value; }
+        if (step < 2) { step++; render(); el.classList.add('open'); }
+        else { renderPreview(); el.classList.add('open'); }
+        return;
+      }
+      if (e.target.closest('[data-mback]')) { if (step === 1) { var ob2 = document.getElementById('mandObj'); if (ob2) sel.objectives = ob2.value; } step--; render(); el.classList.add('open'); return; }
+      if (e.target.closest('[data-medit]')) { step = 0; render(); el.classList.add('open'); return; }
+      if (e.target.closest('[data-msign]')) { closeFlow(el); toast('Mandate issued for ' + p.name.split(' ')[0]); return; }
+      if (e.target.closest('[data-close]')) closeFlow(el);
+    });
+  }
+
   function bindScreen(node, name, arg) {
     node.addEventListener('click', function (e) {
       var nav = e.target.closest('[data-nav]');
@@ -633,6 +1258,45 @@
       var approve = e.target.closest('[data-approve]');
       var wish = e.target.closest('[data-wish]');
       var fixture = e.target.closest('[data-fixture]');
+      var dtab = e.target.closest('[data-dtab]');
+      var flow = e.target.closest('[data-flow]');
+
+      // Dossier tab switching (animated panel swap)
+      if (dtab) {
+        var ti = Number(dtab.getAttribute('data-dtab'));
+        var tabbar = node.querySelector('#dtabs');
+        var panel = node.querySelector('#dpanel');
+        var pidx = Number(node.querySelector('.dossier').getAttribute('data-pidx'));
+        tabbar.querySelectorAll('.dtab').forEach(function (b) { b.classList.toggle('on', b === dtab); });
+        dtab.scrollIntoView({ inline: 'center', block: 'nearest', behavior: state.reduced ? 'auto' : 'smooth' });
+        panel.classList.add('swapping');
+        setTimeout(function () {
+          panel.innerHTML = dossierPanel(DOSSIER_TABS[ti], PLAYERS[pidx], pidx);
+          panel.classList.remove('swapping');
+        }, state.reduced ? 0 : 160);
+        return;
+      }
+
+      // Dossier action bar → flows
+      if (flow) {
+        var pi = Number(node.querySelector('.dossier').getAttribute('data-pidx'));
+        if (flow.getAttribute('data-flow') === 'matchday') openMatchday(pi);
+        else openMandate(pi);
+        return;
+      }
+      if (e.target.closest('[data-shortlist]')) { toast('Added to shortlist'); return; }
+      if (e.target.closest('[data-addnote]')) {
+        var tabsEl = node.querySelector('#dtabs');
+        if (tabsEl) { var nb = tabsEl.querySelector('[data-dtab="4"]'); if (nb) nb.click(); setTimeout(function () { var ta = node.querySelector('.note-compose textarea'); if (ta) ta.focus(); }, 220); }
+        return;
+      }
+      if (e.target.closest('[data-note-save]')) { toast('Note posted'); return; }
+
+      // Roster controls
+      if (e.target.closest('#rosterFilterBtn')) { openFilterSheet(); return; }
+      if (e.target.closest('#rosterFab')) { openAddPlayerSheet(); return; }
+      if (e.target.closest('[data-roster-reset]')) { state.rosterFilter = { pos: 'All', contract: 'Any', q: '' }; var si = node.querySelector('#rosterSearch'); if (si) si.value = ''; refreshRoster(); return; }
+
       if (approve) {
         e.stopPropagation();
         var btn = approve;
@@ -641,9 +1305,20 @@
       }
       if (wish) { toast('Birthday wish sent to ' + wish.getAttribute('data-wish').split(' ')[0]); return; }
       if (dossier) { pushScreen('dossier', dossier.getAttribute('data-dossier')); return; }
-      if (fixture) { pushScreen('dossier', FIXTURES[Number(fixture.getAttribute('data-fixture'))] ? Number(fixture.getAttribute('data-fixture')) % ASSETS.length : 0); return; }
+      if (fixture) { pushScreen('dossier', Number(fixture.getAttribute('data-fixture')) % PLAYERS.length); return; }
       if (nav) { pushScreen(nav.getAttribute('data-nav')); return; }
     });
+
+    // Roster live search
+    if (name === 'players') {
+      var searchInput = node.querySelector('#rosterSearch');
+      if (searchInput) {
+        searchInput.addEventListener('input', function () {
+          state.rosterFilter.q = searchInput.value;
+          refreshRoster();
+        });
+      }
+    }
   }
 
   /* ──────────────────────────────────────────────────────────────────────
