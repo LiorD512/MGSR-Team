@@ -121,11 +121,9 @@ import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.features.players.ui.RosterEmptyState
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
-import com.liordahan.mgsrteam.ui.components.WomenGradientFab
-import com.liordahan.mgsrteam.ui.components.WomenRosterEmptyState
+
+import com.liordahan.mgsrteam.ui.theme.BritTokens
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
-import com.liordahan.mgsrteam.ui.theme.PlatformWomenAccent
-import com.liordahan.mgsrteam.ui.theme.PlatformWomenSecondary
 import com.liordahan.mgsrteam.ui.theme.PlatformYouthAccent
 import com.liordahan.mgsrteam.ui.theme.PlatformYouthSecondary
 import com.liordahan.mgsrteam.features.players.filters.FootFilterOption
@@ -135,7 +133,6 @@ import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
-import com.liordahan.mgsrteam.transfermarket.SoccerDonnaSearch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import android.view.HapticFeedbackConstants
@@ -145,13 +142,25 @@ import androidx.compose.ui.text.style.TextAlign
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.ui.utils.combinedClickWithNoRipple
 
-private val MenRosterBg = Color(0xFF0A121E)
-private val MenRosterCard = Color(0xFF152131)
-private val MenRosterCardAlt = Color(0xFF1A2A3D)
-private val MenRosterBorder = Color(0x55C7A35A)
-private val MenRosterGold = Color(0xFFC7A35A)
-private val MenRosterGoldSoft = Color(0xFFDDC187)
-private val MenRosterBronze = Color(0xFFAE8A4A)
+// ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
+// The mock's SCREENS.players roster is the ".brit-room" paper editorial look
+// ("OUR ROSTER" Oswald masthead on cream). The screen's former dark-navy "Men
+// roster" constants are re-bound to BritTokens so the roster, search, filter
+// chips, stat strip, sort menu, banners and FAB adopt the paper look while every
+// PlayersViewModel filter/sort/search call and the row-tap -> dossier navigation
+// stay intact. Youth continues to use PlatformColors.palette (teal) via its
+// existing branches; the gold here is the Men default. White badge/avatar text
+// sits on coloured gradients/accents, so it stays legible on cream.
+private val MenRosterBg = BritTokens.paper
+private val MenRosterCard = BritTokens.card
+private val MenRosterCardAlt = BritTokens.paper2
+private val MenRosterBorder = BritTokens.line
+private val MenRosterGold = BritTokens.gold
+// Former light-gold (used for the roster title + back arrow + accents on the
+// old dark bg). On cream the pale goldSoft would be too low-contrast, so it maps
+// to the darker, readable editorial gold.
+private val MenRosterGoldSoft = BritTokens.gold
+private val MenRosterBronze = BritTokens.gold
 private val MenRosterTextSubtle = Color(0xFFBDAE8C)
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -254,7 +263,6 @@ fun PlayersScreen(
                 mandate = playersState.mandateCount,
                 expiring = playersState.expiringCount,
                 free = playersState.freeAgentCount,
-                isWomen = currentPlatform == Platform.WOMEN,
                 isYouth = currentPlatform == Platform.YOUTH,
                 platform = currentPlatform
             )
@@ -270,7 +278,6 @@ fun PlayersScreen(
                     searchQuery = ""
                     viewModel.updateSearchQuery("")
                 },
-                isWomen = currentPlatform == Platform.WOMEN,
                 platform = currentPlatform
             )
 
@@ -281,7 +288,7 @@ fun PlayersScreen(
                 platform = currentPlatform
             )
 
-            // ── Quick Filter Chips (hidden for Women & Youth) ─────────────
+            // ── Quick Filter Chips (hidden for Youth) ─────────────
             if (currentPlatform == Platform.MEN) {
             QuickFilterChips(
                 freeAgentsSelected = playersState.quickFilterFreeAgents,
@@ -323,23 +330,13 @@ fun PlayersScreen(
                 }
 
                 showEmptyState -> {
-                    if (currentPlatform == Platform.WOMEN) {
-                        WomenRosterEmptyState(
-                            onAddPlayerClick = { navController.navigate("${Screens.AddPlayerScreen.route}/") },
-                            onResetFiltersClicked = {
-                                searchQuery = ""
-                                viewModel.removeAllFilters()
-                            }
-                        )
-                    } else {
-                        RosterEmptyState(
-                            onAddPlayerClick = { navController.navigate("${Screens.AddPlayerScreen.route}/") },
-                            onResetFiltersClicked = {
-                                searchQuery = ""
-                                viewModel.removeAllFilters()
-                            }
-                        )
-                    }
+                    RosterEmptyState(
+                        onAddPlayerClick = { navController.navigate("${Screens.AddPlayerScreen.route}/") },
+                        onResetFiltersClicked = {
+                            searchQuery = ""
+                            viewModel.removeAllFilters()
+                        }
+                    )
                 }
 
                 else -> {
@@ -414,30 +411,21 @@ fun PlayersScreen(
         }
 
         // ── FAB ──────────────────────────────────────────────────────────
-        if (currentPlatform == Platform.WOMEN) {
-            WomenGradientFab(
-                onClick = { navController.navigate("${Screens.AddPlayerScreen.route}/") },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 20.dp, bottom = 56.dp)
+        FloatingActionButton(
+            onClick = { navController.navigate("${Screens.AddPlayerScreen.route}/") },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 20.dp, bottom = 56.dp),
+            shape = RoundedCornerShape(18.dp),
+            containerColor = if (currentPlatform == Platform.MEN) MenRosterGold else currentPlatform.accent,
+            contentColor = if (currentPlatform == Platform.MEN) MenRosterBg else PlatformColors.palette.background
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PersonAdd,
+                contentDescription = stringResource(R.string.players_add_player),
+                modifier = Modifier.size(24.dp),
+                tint = if (currentPlatform == Platform.MEN) MenRosterBg else Color.White
             )
-        } else {
-            FloatingActionButton(
-                onClick = { navController.navigate("${Screens.AddPlayerScreen.route}/") },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 20.dp, bottom = 56.dp),
-                shape = RoundedCornerShape(18.dp),
-                containerColor = if (currentPlatform == Platform.MEN) MenRosterGold else currentPlatform.accent,
-                contentColor = if (currentPlatform == Platform.MEN) MenRosterBg else PlatformColors.palette.background
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.PersonAdd,
-                    contentDescription = stringResource(R.string.players_add_player),
-                    modifier = Modifier.size(24.dp),
-                    tint = if (currentPlatform == Platform.MEN) MenRosterBg else Color.White
-                )
-            }
         }
 
         // ── Snackbar for add-player errors ────────────────────────────────
@@ -548,13 +536,12 @@ private fun PlayersHeader(
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = when (platform) {
-                Platform.WOMEN -> stringResource(R.string.women_roster_title)
                 Platform.YOUTH -> stringResource(R.string.youth_roster_title)
                 else -> stringResource(R.string.players_roster_title)
             },
             style = boldTextStyle(if (isMen) MenRosterGoldSoft else PlatformColors.palette.textPrimary, 26.sp)
         )
-        // ── Platform badge (only show for Women/Youth) ──
+        // ── Platform badge (only show for Youth) ──
         if (platform != Platform.MEN) {
             Spacer(modifier = Modifier.width(8.dp))
             Box(
@@ -683,7 +670,6 @@ private fun StatsStrip(
     mandate: Int,
     expiring: Int,
     free: Int,
-    isWomen: Boolean = false,
     isYouth: Boolean = false,
     platform: Platform = Platform.MEN
 ) {
@@ -705,7 +691,7 @@ private fun StatsStrip(
             labelColor = if (isMen) MenRosterTextSubtle else PlatformColors.palette.textSecondary,
             modifier = Modifier.weight(1f)
         )
-        if (!isWomen && !isYouth) {
+        if (!isYouth) {
             StatsStripDivider(isMen = isMen)
             StatsStripItem(
                 value = mandate.toString(),
@@ -788,7 +774,6 @@ private fun PlayersSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
-    isWomen: Boolean = false,
     platform: Platform = Platform.MEN
 ) {
     val isMen = platform == Platform.MEN
@@ -805,9 +790,7 @@ private fun PlayersSearchBar(
             .border(1.dp, if (isMen) MenRosterBorder else PlatformColors.palette.cardBorder, RoundedCornerShape(14.dp)),
         placeholder = {
             Text(
-                text = stringResource(
-                    if (isWomen) R.string.women_players_screen_hint else R.string.players_screen_hint
-                ),
+                text = stringResource(R.string.players_screen_hint),
                 style = regularTextStyle(
                     if (isMen) MenRosterTextSubtle.copy(alpha = 0.72f) else PlatformColors.palette.textSecondary.copy(alpha = 0.5f),
                     13.sp
@@ -909,10 +892,7 @@ private fun PositionFilterChips(
             Text(
                 text = when (position) {
                     "All" -> stringResource(R.string.players_filter_all)
-                    "GK" -> stringResource(
-                        if (platform == Platform.WOMEN) R.string.women_filter_position_gk
-                        else R.string.players_filter_position_gk
-                    )
+                    "GK" -> stringResource(R.string.players_filter_position_gk)
                     "CB" -> stringResource(R.string.players_filter_position_cb)
                     "RB" -> stringResource(R.string.players_filter_position_rb)
                     "LB" -> stringResource(R.string.players_filter_position_lb)
@@ -1881,45 +1861,7 @@ private fun PlayerCardVariantA(
             ) {
                 // Avatar with status dot
                 Box(contentAlignment = Alignment.BottomEnd) {
-                    if (platform == Platform.WOMEN) {
-                        // Women: show image with beautiful initials fallback
-                        var showFallback by remember { mutableStateOf(player.profileImage.isNullOrBlank()) }
-                        if (showFallback) {
-                            // Gradient initials placeholder
-                            Box(
-                                modifier = Modifier
-                                    .size(52.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        Brush.linearGradient(
-                                            colors = listOf(PlatformWomenAccent, PlatformWomenSecondary)
-                                        )
-                                    )
-                                    .border(2.dp, PlatformWomenAccent.copy(alpha = 0.4f), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = player.fullName
-                                        ?.split(" ")
-                                        ?.mapNotNull { it.firstOrNull()?.uppercase() }
-                                        ?.take(2)
-                                        ?.joinToString("") ?: "?",
-                                    style = boldTextStyle(Color.White, 18.sp)
-                                )
-                            }
-                        } else {
-                            AsyncImage(
-                                model = player.profileImage,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(52.dp)
-                                    .clip(CircleShape)
-                                    .border(2.dp, PlatformWomenAccent.copy(alpha = 0.4f), CircleShape),
-                                contentScale = ContentScale.Crop,
-                                onError = { showFallback = true }
-                            )
-                        }
-                    } else if (platform == Platform.YOUTH) {
+                    if (platform == Platform.YOUTH) {
                         // Youth: initials fallback on cyan→violet gradient
                         var showFallback by remember { mutableStateOf(player.profileImage.isNullOrBlank()) }
                         if (showFallback) {
@@ -2085,7 +2027,7 @@ private fun PlayerCardVariantA(
                     ) {
                         if (!player.age.isNullOrBlank()) {
                             PlayerTag(text = stringResource(
-                                if (platform == Platform.WOMEN) R.string.women_players_age_format else R.string.players_age_format,
+                                R.string.players_age_format,
                                 player.age.trim()
                             ), platform = platform)
                         }
@@ -2111,14 +2053,6 @@ private fun PlayerCardVariantA(
                             }
                         }
 
-                        // Women-specific indicator
-                        if (platform == Platform.WOMEN && !player.soccerDonnaUrl.isNullOrBlank()) {
-                            PlayerTag(
-                                text = "SD",
-                                tagColor = PlatformWomenAccent.copy(alpha = 0.15f),
-                                textColor = PlatformWomenAccent
-                            )
-                        }
                     }
                 }
 
@@ -2132,9 +2066,7 @@ private fun PlayerCardVariantA(
                         valueTrend < 0 -> PlatformColors.palette.red
                         else -> PlatformColors.palette.textPrimary
                     }
-                    val displayValue = player.marketValue.takeIf { !it.isNullOrBlank() }?.let {
-                        if (platform == Platform.WOMEN) SoccerDonnaSearch.normalizeSoccerDonnaMarketValue(it) else it
-                    } ?: "--"
+                    val displayValue = player.marketValue.takeIf { !it.isNullOrBlank() } ?: "--"
                     Text(
                         text = displayValue,
                         style = boldTextStyle(valueColor, 14.sp)

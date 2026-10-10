@@ -12,7 +12,7 @@ import kotlinx.coroutines.tasks.await
  * Central Firestore accessor.
  * Collection names are now **dynamic** — they read from [PlatformManager]
  * so every repository automatically targets the correct collection when
- * the user switches between Men / Women / Youth.
+ * the user switches between Men / Youth.
  */
 class FirebaseHandler(
     private val platformManager: PlatformManager

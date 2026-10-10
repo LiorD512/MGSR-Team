@@ -148,6 +148,8 @@ import com.liordahan.mgsrteam.localization.CountryNameTranslator
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
+import com.liordahan.mgsrteam.ui.theme.britDisplay
+import com.liordahan.mgsrteam.ui.theme.britMono
 import com.liordahan.mgsrteam.ui.components.SkeletonContactList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -816,6 +818,7 @@ private fun TabChip(
 
 @Composable
 private fun ContactsHeader(onAddClick: () -> Unit, onBackClicked: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -833,14 +836,15 @@ private fun ContactsHeader(onAddClick: () -> Unit, onBackClicked: () -> Unit) {
         Spacer(modifier = Modifier.width(8.dp))
 
         Column(modifier = Modifier.weight(1f)) {
+            // Editorial kicker (DM Mono) + Oswald masthead per SCREENS.contacts.
             Text(
-                text = stringResource(R.string.contacts_title),
-                style = boldTextStyle(PlatformColors.palette.textPrimary, 26.sp)
+                text = stringResource(R.string.contacts_subtitle).uppercase(),
+                style = britMono(PlatformColors.palette.accent, 9.sp, letterSpacing = 1.6.sp)
             )
+            Spacer(Modifier.height(2.dp))
             Text(
-                text = stringResource(R.string.contacts_subtitle),
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
-                modifier = Modifier.padding(top = 4.dp)
+                text = stringResource(R.string.contacts_title).uppercase(),
+                style = britDisplay(PlatformColors.palette.textPrimary, 26.sp, weight = 600, letterSpacing = 0.5.sp)
             )
         }
         IconButton(
@@ -853,6 +857,15 @@ private fun ContactsHeader(onAddClick: () -> Unit, onBackClicked: () -> Unit) {
                 tint = PlatformColors.palette.accent
             )
         }
+    }
+        // Gold editorial hairline rule under the masthead.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .height(1.dp)
+                .background(PlatformColors.palette.accent.copy(alpha = 0.5f))
+        )
     }
 }
 

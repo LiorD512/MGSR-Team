@@ -121,6 +121,7 @@ import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
+import com.liordahan.mgsrteam.ui.theme.BritTokens
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.theme.PlatformYouthAccent
 import com.liordahan.mgsrteam.ui.theme.PlatformYouthSecondary
@@ -158,16 +159,25 @@ private val shortlistPositionCodes = mapOf(
     "SS"  to setOf("SS", "SECOND STRIKER")
 )
 
-private val MenShortlistBg = Color(0xFF0A121E)
-private val MenShortlistCard = Color(0xFF152131)
-private val MenShortlistCardAlt = Color(0xFF1A2A3D)
-private val MenShortlistBorder = Color(0x55C7A35A)
-private val MenShortlistGold = Color(0xFFC7A35A)
-private val MenShortlistGoldSoft = Color(0xFFDDC187)
-private val MenShortlistBronze = Color(0xFFAE8A4A)
-private val MenShortlistTextSubtle = Color(0xFFBDAE8C)
+// ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
+// The mock's SCREENS.shortlist (board/ledger editorial cards) + SCREENS.empty
+// CTA use the ".brit-room" paper look. The former dark-navy "Men shortlist"
+// constants are re-bound to BritTokens so the shortlist boards, cards, notes,
+// outreach and empty-state adopt the paper editorial look while ShortlistViewModel
+// add/remove/notes/outreach wiring stays intact. Youth keeps PlatformColors
+// (teal). Light-gold / subtle-gold text roles map to the readable editorial gold
+// and muted so they stay legible on cream; white badge/avatar text sits on
+// coloured accents.
+private val MenShortlistBg = BritTokens.paper
+private val MenShortlistCard = BritTokens.card
+private val MenShortlistCardAlt = BritTokens.paper2
+private val MenShortlistBorder = BritTokens.line
+private val MenShortlistGold = BritTokens.gold
+private val MenShortlistGoldSoft = BritTokens.gold
+private val MenShortlistBronze = BritTokens.gold
+private val MenShortlistTextSubtle = BritTokens.muted
 
-private fun shortlistIsMen(): Boolean = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+private fun shortlistIsMen(): Boolean = !PlatformColors.palette.isYouth
 private fun shortlistCardColor(): Color = if (shortlistIsMen()) MenShortlistCard else PlatformColors.palette.card
 private fun shortlistCardAltColor(): Color = if (shortlistIsMen()) MenShortlistCardAlt else PlatformColors.palette.card
 private fun shortlistBorderColor(): Color = if (shortlistIsMen()) MenShortlistBorder else PlatformColors.palette.cardBorder
@@ -242,7 +252,6 @@ fun ShortlistScreen(
     val state by viewModel.shortlistFlow.collectAsStateWithLifecycle()
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
     val isMen = currentPlatform == Platform.MEN
-    val isWomen = currentPlatform == Platform.WOMEN
     val context = LocalContext.current
     val oneWeekAgo = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000)
     val thisWeekCount = state.entries.count { it.addedAt >= oneWeekAgo }
@@ -473,7 +482,6 @@ fun ShortlistScreen(
                 .fillMaxSize()
         ) {
             ShortlistHeader(
-                isWomen = isWomen,
                 isYouth = currentPlatform == Platform.YOUTH,
                 sortOption = sortOption,
                 onSortOptionSelected = { viewModel.setSortOption(it) },
@@ -604,7 +612,6 @@ fun ShortlistScreen(
                             ShortlistCard(
                                 context = context,
                                 entry = entry,
-                                isWomen = isWomen,
                                 isYouth = currentPlatform == Platform.YOUTH,
                                 rosterTeammates = teammatesCache[playerUrl],
                                 isLoadingTeammates = loadingPlayerUrl == playerUrl,
@@ -637,8 +644,8 @@ fun ShortlistScreen(
                                     viewModel.deleteNote(entry.tmProfileUrl, noteIndex)
                                 },
                                 onAddToAgency = {
-                                    if (isWomen || currentPlatform == Platform.YOUTH) {
-                                        // Women/Youth: navigate to full AddPlayerScreen with pre-filled data
+                                    if (currentPlatform == Platform.YOUTH) {
+                                        // Youth: navigate to full AddPlayerScreen with pre-filled data
                                         navController.navigate(
                                             Screens.addPlayerWithTmProfileRoute(Uri.encode(entry.tmProfileUrl))
                                         )
@@ -785,7 +792,6 @@ fun ShortlistScreen(
 
 @Composable
 private fun ShortlistHeader(
-    isWomen: Boolean = false,
     isYouth: Boolean = false,
     sortOption: SortOption = SortOption.DEFAULT,
     onSortOptionSelected: (SortOption) -> Unit = {},
@@ -793,7 +799,7 @@ private fun ShortlistHeader(
     onBackClicked: () -> Unit
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
-    val isMen = !isWomen && !isYouth
+    val isMen = !isYouth
     val platformAccent = if (isMen) MenShortlistGold else PlatformColors.palette.accent
 
     Row(
@@ -818,11 +824,8 @@ private fun ShortlistHeader(
             )
             Text(
                 text = stringResource(
-                    when {
-                        isYouth -> R.string.youth_shortlist_subtitle
-                        isWomen -> R.string.women_shortlist_subtitle
-                        else -> R.string.shortlist_subtitle
-                    }
+                    if (isYouth) R.string.youth_shortlist_subtitle
+                    else R.string.shortlist_subtitle
                 ),
                 style = regularTextStyle(if (isMen) MenShortlistTextSubtle else PlatformColors.palette.textSecondary, 12.sp),
                 modifier = Modifier.padding(top = 4.dp)
@@ -1103,7 +1106,6 @@ private fun parseShortlistMarketValue(s: String?): Long {
 private fun ShortlistCard(
     context: Context,
     entry: ShortlistEntry,
-    isWomen: Boolean = false,
     isYouth: Boolean = false,
     rosterTeammates: List<RosterTeammateMatch>? = null,
     isLoadingTeammates: Boolean = false,
@@ -1433,7 +1435,7 @@ private fun ShortlistCard(
             }
 
             // Roster teammates section (same as Releases) — men only
-            if (!isWomen && !isYouth) {
+            if (!isYouth) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1513,7 +1515,7 @@ private fun ShortlistCard(
                     }
                 }
             }
-            } // end if (!isWomen)
+            } // end if (!isYouth)
 
             // ── Instagram "sent" badge ──
             if (entry.instagramSentAt != null) {

@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.sp
  *  Celebrates young talent with a palette inspired by
  *  potential (cyan), ambition (violet), and energy (electric lime).
  *
- *  Key differentiators from Men's / Women's platform:
+ *  Key differentiators from the Men's platform:
  *  • Vertical-sweep gradients (bottom-to-top = "rising")
  *  • Neon-glow border effects (electric, youthful)
  *  • 16dp rounded shapes (sharp but modern)

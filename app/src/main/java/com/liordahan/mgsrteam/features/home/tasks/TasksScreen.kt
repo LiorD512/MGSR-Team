@@ -78,6 +78,7 @@ import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
+import com.liordahan.mgsrteam.ui.theme.britDisplay
 import com.liordahan.mgsrteam.utils.daysBetweenCalendarDays
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -124,8 +125,8 @@ fun TasksScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = stringResource(R.string.tasks_title),
-                        style = boldTextStyle(PlatformColors.palette.textPrimary, 20.sp)
+                        text = stringResource(R.string.tasks_title).uppercase(),
+                        style = britDisplay(PlatformColors.palette.textPrimary, 20.sp, weight = 600, letterSpacing = 0.5.sp)
                     )
                 },
                 navigationIcon = {

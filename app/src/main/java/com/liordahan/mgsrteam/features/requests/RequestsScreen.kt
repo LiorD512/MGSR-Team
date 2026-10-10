@@ -165,6 +165,8 @@ import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.RecordingWaveform
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
+import com.liordahan.mgsrteam.ui.theme.britDisplay
+import com.liordahan.mgsrteam.ui.theme.britMono
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
 import com.liordahan.mgsrteam.firebase.SharedCallables
 import com.liordahan.mgsrteam.ui.components.SkeletonRequestList
@@ -196,7 +198,6 @@ fun RequestsScreen(
 ) {
     val platformManager: PlatformManager = koinInject()
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
-    val isWomen = currentPlatform == Platform.WOMEN
     val state by viewModel.requestsState.collectAsStateWithLifecycle()
     val positions by viewModel.positions.collectAsStateWithLifecycle()
     var showAddSheet by remember { mutableStateOf(false) }
@@ -256,8 +257,7 @@ fun RequestsScreen(
                     onAddClick = { showAddSheet = true },
                     onBackClick = { navController.popBackStack() },
                     onShareClick = { showShareDialog = true },
-                    canShare = state.requestsByPositionCountry.isNotEmpty(),
-                    isWomen = isWomen
+                    canShare = state.requestsByPositionCountry.isNotEmpty()
                 )
 
                 if (showShareDialog) {
@@ -477,7 +477,6 @@ fun RequestsScreen(
                                     shortlistUrls = shortlistUrls,
                                     justAddedUrls = justAddedUrls,
                                     shortlistPendingUrls = shortlistPendingUrls,
-                                    isWomen = isWomen,
                                     onToggleExpand = {
                                         val id = request.id ?: return@RequestCard
                                         expandedRequestIds = if (isRequestExpanded) expandedRequestIds - id else expandedRequestIds + id
@@ -678,9 +677,9 @@ private fun RequestsHeader(
     onAddClick: () -> Unit,
     onBackClick: () -> Unit,
     onShareClick: () -> Unit,
-    canShare: Boolean,
-    isWomen: Boolean = false
+    canShare: Boolean
 ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -697,11 +696,16 @@ private fun RequestsHeader(
         )
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.requests_title), style = boldTextStyle(PlatformColors.palette.textPrimary, 26.sp))
+            // Editorial kicker (DM Mono, uppercase) + Oswald masthead per the
+            // mock's SCREENS.requests brit-room header.
             Text(
-                if (isWomen) stringResource(R.string.women_requests_subtitle) else stringResource(R.string.requests_subtitle),
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
-                modifier = Modifier.padding(top = 4.dp)
+                text = stringResource(R.string.requests_subtitle).uppercase(),
+                style = britMono(PlatformColors.palette.accent, 9.sp, letterSpacing = 1.6.sp)
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = stringResource(R.string.requests_title).uppercase(),
+                style = britDisplay(PlatformColors.palette.textPrimary, 26.sp, weight = 600, letterSpacing = 0.5.sp)
             )
         }
         if (canShare) {
@@ -712,6 +716,15 @@ private fun RequestsHeader(
         IconButton(onClick = onAddClick, modifier = Modifier.size(40.dp)) {
             Icon(Icons.Default.Add, contentDescription = stringResource(R.string.requests_add), tint = PlatformColors.palette.accent)
         }
+    }
+        // Gold editorial hairline rule under the masthead.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .height(1.dp)
+                .background(PlatformColors.palette.accent.copy(alpha = 0.5f))
+        )
     }
 }
 
@@ -937,7 +950,6 @@ private fun RequestCard(
     shortlistUrls: Set<String>,
     justAddedUrls: Set<String>,
     shortlistPendingUrls: Set<String> = emptySet(),
-    isWomen: Boolean = false,
     modifier: Modifier = Modifier,
     onToggleExpand: () -> Unit,
     onToggleMandateExpand: () -> Unit,
@@ -1295,9 +1307,9 @@ private fun RequestCard(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = if (totalMatchCount == 1) {
-                        stringResource(if (isWomen) R.string.women_requests_matching_players_one else R.string.requests_matching_players_one, totalMatchCount)
+                        stringResource(R.string.requests_matching_players_one, totalMatchCount)
                     } else {
-                        stringResource(if (isWomen) R.string.women_requests_matching_players else R.string.requests_matching_players, totalMatchCount)
+                        stringResource(R.string.requests_matching_players, totalMatchCount)
                     },
                     style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
                 )
@@ -1339,7 +1351,7 @@ private fun RequestCard(
                     }
                 } else if (matchingPlayers.isEmpty()) {
                     Text(
-                        text = stringResource(if (isWomen) R.string.women_requests_no_match else R.string.requests_no_match),
+                        text = stringResource(R.string.requests_no_match),
                         style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1420,8 +1432,7 @@ private fun RequestCard(
                     }
                 }
             }
-            // Row 3: Find players from TM (expandable, loader + list inside) — hidden for Women
-            if (!isWomen) {
+            // Row 3: Find players from TM (expandable, loader + list inside)
             Spacer(Modifier.height(6.dp))
             Row(
                 modifier = Modifier
@@ -1442,7 +1453,7 @@ private fun RequestCard(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    stringResource(if (isWomen) R.string.women_requests_find_players_online else R.string.requests_find_players_online),
+                    stringResource(R.string.requests_find_players_online),
                     style = regularTextStyle(PlatformColors.palette.textPrimary, 12.sp),
                     modifier = Modifier.weight(1f)
                 )
@@ -1478,7 +1489,7 @@ private fun RequestCard(
                             )
                             Spacer(Modifier.width(12.dp))
                             Text(
-                                stringResource(if (isWomen) R.string.women_requests_online_players_loading else R.string.requests_online_players_loading),
+                                stringResource(R.string.requests_online_players_loading),
                                 style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                             )
                         }
@@ -1490,7 +1501,7 @@ private fun RequestCard(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                stringResource(if (isWomen) R.string.women_requests_online_players_empty else R.string.requests_online_players_empty),
+                                stringResource(R.string.requests_online_players_empty),
                                 style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                             )
                             TextButton(
@@ -1517,7 +1528,7 @@ private fun RequestCard(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    stringResource(if (isWomen) R.string.women_requests_online_results_count else R.string.requests_online_results_count, onlinePlayers.size),
+                                    stringResource(R.string.requests_online_results_count, onlinePlayers.size),
                                     style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
                                 )
                             }
@@ -1556,7 +1567,6 @@ private fun RequestCard(
                     }
                 }
             }
-            } // end if (!isWomen) — hide AI Scout online search
         }
     }
 }

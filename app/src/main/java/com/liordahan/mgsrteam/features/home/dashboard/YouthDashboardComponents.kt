@@ -143,7 +143,7 @@ private fun YouthStatCard(
     accentColor: Color,
     glowColor: Color
 ) {
-    // Neon pulsing glow animation — faster/brighter than women for youthful energy
+    // Neon pulsing glow animation — bright and fast for youthful energy
     val infiniteTransition = rememberInfiniteTransition(label = "youth_stat_glow")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.10f,

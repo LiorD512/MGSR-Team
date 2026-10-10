@@ -63,14 +63,7 @@ import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
-import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.BritTokens
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -78,6 +71,24 @@ import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+
+// ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
+// This screen was built in the old dark navy theme via the shared Home* colour
+// constants. To restyle it to the mock's ".brit-room" paper/editorial look
+// without touching any of the ~40 existing call sites or the data wiring, the
+// former Home* names are re-bound here to BritTokens. Semantic roles are kept:
+// background -> paper, card -> card, border -> hairline, accents -> gold/green/
+// amber, primary text -> ink, secondary text -> muted. Contract Finisher is a
+// platform-agnostic Transfermarkt list (no Platform branch), so it uses the
+// default editorial gold accent.
+private val HomeDarkBackground = BritTokens.paper
+private val HomeDarkCard = BritTokens.card
+private val HomeDarkCardBorder = BritTokens.line
+private val HomeGreenAccent = BritTokens.green
+private val HomeOrangeAccent = BritTokens.amber
+private val HomeTealAccent = BritTokens.gold
+private val HomeTextPrimary = BritTokens.ink
+private val HomeTextSecondary = BritTokens.muted
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

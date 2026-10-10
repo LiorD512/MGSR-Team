@@ -65,7 +65,6 @@ object SharedCallables {
 
     fun Platform.callableName(): String = when (this) {
         Platform.MEN -> "men"
-        Platform.WOMEN -> "women"
         Platform.YOUTH -> "youth"
     }
 

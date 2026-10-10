@@ -77,18 +77,26 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.Screens
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.BritTokens
+
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+
+// ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
+// Restyle the shadow-team chrome (scaffold / cards / text / accent) to the
+// mock's paper editorial look by re-binding the old Home* names to BritTokens.
+// The football pitch itself keeps its green (GrassDark/GrassLight + white
+// PitchLine) — that is the intended formation-builder surface in the mock.
+private val HomeDarkBackground = BritTokens.paper
+private val HomeDarkCard = BritTokens.card
+private val HomeDarkCardBorder = BritTokens.line
+private val HomeTealAccent = BritTokens.gold
+private val HomeTextPrimary = BritTokens.ink
+private val HomeTextSecondary = BritTokens.muted
 
 private val GrassDark = Color(0xFF2d5a27)
 private val GrassLight = Color(0xFF3a7041)

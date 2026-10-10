@@ -18,7 +18,7 @@ class PlayersRepository(
 
     /**
      * Emits the full player list. Automatically re-subscribes when the
-     * active platform changes (Men → Women → Youth) so the snapshot
+     * active platform changes (Men → Youth) so the snapshot
      * listener always points at the correct Firestore collection.
      */
     override fun playersFlow(): Flow<List<Player>> =

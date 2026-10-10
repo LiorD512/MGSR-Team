@@ -98,15 +98,8 @@ import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
-import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
-import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.BritTokens
+
 import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -120,6 +113,23 @@ import java.util.Calendar
 import java.util.Date
 import java.text.SimpleDateFormat
 import java.util.Locale
+
+// ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
+// Restyle the Releases list from the old dark navy theme to the mock's
+// ".brit-room" paper/editorial look by re-binding the former shared Home*
+// colour names to BritTokens, leaving every call site + data wiring intact.
+// Releases is a platform-agnostic Transfermarkt list (JSoup), so it uses the
+// default editorial gold accent. The WhatsApp brand green (0xFF25D366) is left
+// as-is on its action button.
+private val HomeDarkBackground = BritTokens.paper
+private val HomeDarkCard = BritTokens.card
+private val HomeDarkCardBorder = BritTokens.line
+private val HomeGreenAccent = BritTokens.green
+private val HomeOrangeAccent = BritTokens.amber
+private val HomePurpleAccent = BritTokens.blue
+private val HomeTealAccent = BritTokens.gold
+private val HomeTextPrimary = BritTokens.ink
+private val HomeTextSecondary = BritTokens.muted
 
 /** Roster player who played with the release/returnee player, with match count from Transfermarkt. */
 data class RosterTeammateMatch(val player: Player, val matchesPlayedTogether: Int)

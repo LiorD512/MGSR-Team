@@ -64,12 +64,13 @@ import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 
 private val WhatsAppGreen = Color(0xFF25D366)
-private val MenBirthdayBg = Color(0xFF152131)
-private val MenBirthdaySurface = Color(0xFF101A28)
-private val MenBirthdayBorder = Color(0x55C7A35A)
-private val MenBirthdayGold = Color(0xFFC7A35A)
-private val MenBirthdayGoldSoft = Color(0xFFDDC187)
-private val MenBirthdaySubtle = Color(0xFFBDAE8C)
+// Men birthdays — aligned to the website "Light Management Room" palette.
+private val MenBirthdayBg = Color(0xFFFBF9F3)       // web --card
+private val MenBirthdaySurface = Color(0xFFE4DED1)  // web --paper-2
+private val MenBirthdayBorder = Color(0x2E161613)   // web --line (ink hairline)
+private val MenBirthdayGold = Color(0xFFA47D43)     // web --gold
+private val MenBirthdayGoldSoft = Color(0xFF161613) // web --ink (primary text)
+private val MenBirthdaySubtle = Color(0xFF77736A)   // web --muted (secondary text)
 
 data class BirthdayPlayer(
     val id: String,
@@ -274,7 +275,6 @@ fun BirthdaysSection(
                 BirthdayPlayerRow(
                     player = player,
                     accent = accent,
-                    isWomen = platform == Platform.WOMEN,
                     isMen = isMen,
                     rowBackground = rowBg,
                     rowBorder = if (isMen) MenBirthdayBorder else HomeDarkCardBorder.copy(alpha = 0.4f),
@@ -382,7 +382,6 @@ fun BirthdaysSection(
 private fun BirthdayPlayerRow(
     player: BirthdayPlayer,
     accent: Color,
-    isWomen: Boolean,
     isMen: Boolean,
     rowBackground: Color,
     rowBorder: Color,
@@ -453,7 +452,7 @@ private fun BirthdayPlayerRow(
                     Text(" · ", style = regularTextStyle(secondaryText, 11.sp))
                 }
                 Text(
-                    text = "${stringResource(if (isWomen) R.string.birthdays_turns_female else R.string.birthdays_turns_male)} ${player.turnsAge}",
+                    text = "${stringResource(R.string.birthdays_turns_male)} ${player.turnsAge}",
                     style = boldTextStyle(accent, 10.sp),
                     modifier = Modifier
                         .background(accent.copy(alpha = 0.12f), RoundedCornerShape(4.dp))

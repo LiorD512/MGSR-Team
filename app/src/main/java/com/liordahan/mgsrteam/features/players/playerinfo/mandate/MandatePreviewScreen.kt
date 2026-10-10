@@ -50,14 +50,20 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.navigation.NavController
 import com.liordahan.mgsrteam.R
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.theme.BritTokens
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+
+// BRIT editorial palette (FEAT-005): re-bind the mandate-preview chrome to the
+// paper editorial look. The rendered PDF page cards stay on Color.White (that
+// is the document surface). Data wiring (PDF render + share intent) is intact.
+private val HomeDarkBackground = BritTokens.paper
+private val HomeDarkCardBorder = BritTokens.line
+private val HomeTealAccent = BritTokens.gold
+private val HomeTextPrimary = BritTokens.ink
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -181,13 +187,13 @@ fun MandatePreviewScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = HomeDarkCardBorder),
+                colors = ButtonDefaults.buttonColors(containerColor = BritTokens.paper2),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
                     stringResource(R.string.mandate_cancel),
                     style = com.liordahan.mgsrteam.ui.utils.regularTextStyle(
-                        com.liordahan.mgsrteam.ui.theme.HomeTextPrimary, 14.sp
+                        HomeTextPrimary, 14.sp
                     )
                 )
             }

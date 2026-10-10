@@ -1,15 +1,15 @@
 package com.liordahan.mgsrteam.features.platform
 
 import androidx.annotation.StringRes
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.liordahan.mgsrteam.R
 
 /**
- * MGSR tri-platform enum.
+ * MGSR platform enum (Men + Youth).
  * Each platform uses **completely separate** Firestore collections —
- * no data is shared between men, women and youth.
+ * no data is shared between men and youth. (The Women platform was
+ * removed from Android; the web app keeps it.)
  */
 enum class Platform(
     @StringRes val labelRes: Int,
@@ -46,22 +46,6 @@ enum class Platform(
         requestMatchResultsCollection = "RequestMatchResults",
         playerMatchResultsCollection = "PlayerMatchResults",
     ),
-    WOMEN(
-        labelRes = R.string.platform_women,
-        emoji = "👑",
-        accent = Color(0xFFB24BF3),           // ATHENA deep orchid — power & creativity
-        accentSecondary = Color(0xFFF5A623),   // ATHENA warm gold — excellence & achievement
-        playersCollection = "PlayersWomen",
-        clubRequestsCollection = "ClubRequestsWomen",
-        shortlistsCollection = "ShortlistsWomen",
-        contactsCollection = "ContactsWomen",
-        feedEventsCollection = "FeedEventsWomen",
-        agentTasksCollection = "AgentTasksWomen",
-        playerDocumentsCollection = "PlayerDocumentsWomen",
-        shadowTeamsCollection = "ShadowTeamsWomen",
-        requestMatchResultsCollection = "RequestMatchResultsWomen",
-        playerMatchResultsCollection = "PlayerMatchResultsWomen",
-    ),
     YOUTH(
         labelRes = R.string.platform_youth,
         emoji = "⚡",
@@ -80,33 +64,23 @@ enum class Platform(
     );
 
     /** Horizontal gradient from [accent] → [accentSecondary].
-     *  Women uses a diagonal gradient, Youth uses a vertical gradient. */
+     *  Youth uses a vertical gradient; Men uses a horizontal sweep. */
     val gradient: Brush
         get() = when (this) {
-            WOMEN -> Brush.linearGradient(
-                colors = listOf(accent, accentSecondary),
-                start = Offset(0f, 0f),
-                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-            )
             YOUTH -> Brush.verticalGradient(
                 colors = listOf(accentSecondary, accent)
             )
-            else -> Brush.horizontalGradient(listOf(accent, accentSecondary))
+            MEN -> Brush.horizontalGradient(listOf(accent, accentSecondary))
         }
 
     /** Soft background-tinted gradient for card surfaces.
-     *  Women uses a diagonal shimmer, Youth uses a vertical sweep. */
+     *  Youth uses a vertical sweep; Men uses a horizontal sweep. */
     val surfaceGradient: Brush
         get() = when (this) {
-            WOMEN -> Brush.linearGradient(
-                listOf(accent.copy(alpha = 0.15f), accentSecondary.copy(alpha = 0.08f)),
-                start = Offset(0f, 0f),
-                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-            )
             YOUTH -> Brush.verticalGradient(
                 listOf(accentSecondary.copy(alpha = 0.12f), accent.copy(alpha = 0.08f))
             )
-            else -> Brush.horizontalGradient(
+            MEN -> Brush.horizontalGradient(
                 listOf(accent.copy(alpha = 0.15f), accentSecondary.copy(alpha = 0.08f))
             )
         }

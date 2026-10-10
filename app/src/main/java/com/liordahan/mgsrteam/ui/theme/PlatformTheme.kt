@@ -13,12 +13,11 @@ import com.liordahan.mgsrteam.features.platform.Platform
  *  Platform-aware color palette via CompositionLocal.
  * ═══════════════════════════════════════════════════════════════════
  *
- *  Instead of branching `if (isWomen)` in every screen file,
+ *  Instead of branching per platform in every screen file,
  *  all Home* colors resolve through [PlatformPalette].
  *
  *  Men  → roster-aligned premium black / gold / bronze
- *  Women→ ATHENA orchid / gold / rose coral on deep purple background
- *  Youth→ keeps the standard (men) palette for now
+ *  Youth→ NOVA cyan / violet on deep night background
  *
  *  Usage:  val palette = LocalPlatformPalette.current
  *          Box(Modifier.background(palette.background))
@@ -61,97 +60,82 @@ data class PlatformPalette(
     val filterSelectedText: Color,
 
     // ── Platform identity ──────────────────────────────────────
-    val isWomen: Boolean = false,
     val isYouth: Boolean = false,
 )
 
 // ── Default (Men) palette ──────────────────────────────────────────
+//
+//  Migrated to the .brit-room cream editorial tokens (BritTokens). The data
+//  class shape is unchanged so no call site breaks; only the resolved colours
+//  flip from the old dark Home* constants to the paper/gold editorial look.
+//  Surfaces are now paper/card/paper-2; primary text = ink; secondary = muted;
+//  accent = editorial gold. Semantic hues (green/amber/blue/red) use BritTokens.
 
 private val MenPalette = PlatformPalette(
-    background = HomeDarkBackground,
-    card = HomeDarkCard,
-    cardAlt = HomeDarkCard,
-    cardBorder = HomeDarkCardBorder,
-    textPrimary = HomeTextPrimary,
-    textSecondary = HomeTextSecondary,
-    accent = HomeTealAccent,
-    accentSecondary = HomeTealAccent,
-    green = HomeGreenAccent,
-    orange = HomeOrangeAccent,
-    red = HomeRedAccent,
-    blue = HomeBlueAccent,
-    purple = HomePurpleAccent,
-    rose = HomeRoseAccent,
-    amber = HomeAmberAccent,
-    accentGradient = Brush.horizontalGradient(listOf(HomeTealAccent, HomeTealAccent)),
+    background = BritTokens.paper,
+    card = BritTokens.card,
+    cardAlt = BritTokens.paper2,
+    cardBorder = BritTokens.line,
+    textPrimary = BritTokens.ink,
+    textSecondary = BritTokens.muted,
+    accent = BritTokens.gold,
+    accentSecondary = BritTokens.goldSoft,
+    green = BritTokens.green,
+    orange = BritTokens.amber,
+    red = BritTokens.red,
+    blue = BritTokens.blue,
+    purple = BritTokens.gold,
+    rose = BritTokens.goldSoft,
+    amber = BritTokens.amber,
+    accentGradient = Brush.horizontalGradient(listOf(BritTokens.gold, BritTokens.goldSoft)),
     surfaceGradient = Brush.horizontalGradient(
-        listOf(HomeTealAccent.copy(alpha = 0.15f), HomeTealAccent.copy(alpha = 0.08f))
+        listOf(BritTokens.gold.copy(alpha = 0.12f), BritTokens.goldSoft.copy(alpha = 0.06f))
     ),
-    cardGradient = Brush.horizontalGradient(listOf(HomeDarkCard, HomeDarkCard)),
-    filterSelectedBg = HomeTealAccent,
-    filterSelectedText = HomeDarkBackground,
-)
-
-// ── ATHENA Women palette ──────────────────────────────────────────
-
-private val WomenPalette = PlatformPalette(
-    background = WomenColors.Background,
-    card = WomenColors.CardSurface,
-    cardAlt = WomenColors.CardSurfaceAlt,
-    cardBorder = WomenColors.CardBorder,
-    textPrimary = WomenColors.TextPrimary,
-    textSecondary = WomenColors.TextSecondary,
-    accent = WomenColors.Orchid,
-    accentSecondary = WomenColors.Gold,
-    green = WomenColors.Success,
-    orange = WomenColors.Gold,
-    red = WomenColors.RoseCoral,
-    blue = WomenColors.Info,
-    purple = WomenColors.OrchidLight,
-    rose = WomenColors.RoseCoralLight,
-    amber = WomenColors.GoldDark,
-    accentGradient = WomenDesignSystem.AthenaGradient,
-    surfaceGradient = WomenDesignSystem.StatShimmerGradient,
-    cardGradient = WomenDesignSystem.CardGradient,
-    filterSelectedBg = WomenColors.Orchid,
-    filterSelectedText = WomenColors.Background,
-    isWomen = true,
+    cardGradient = Brush.horizontalGradient(listOf(BritTokens.card, BritTokens.paper2)),
+    filterSelectedBg = BritTokens.gold,
+    filterSelectedText = BritTokens.paper,
 )
 
 // ── CompositionLocal ───────────────────────────────────────────────
 
 val LocalPlatformPalette = compositionLocalOf { MenPalette }
 
-// ── NOVA Youth palette ────────────────────────────────────────────
+// ── Youth palette ──────────────────────────────────────────────────
+//
+//  The mock treats Youth as the SAME paper editorial look as Men, only the
+//  accent retints to pitch teal (BritTokens.goldYouth / goldSoftYouth). Cream
+//  surfaces + ink/muted text are shared with Men; isYouth stays true so the
+//  existing `!palette.isYouth` / `isYouth` branches keep working.
 
 private val YouthPalette = PlatformPalette(
-    background = YouthColors.Background,
-    card = YouthColors.CardSurface,
-    cardAlt = YouthColors.CardSurfaceAlt,
-    cardBorder = YouthColors.CardBorder,
-    textPrimary = YouthColors.TextPrimary,
-    textSecondary = YouthColors.TextSecondary,
-    accent = YouthColors.Cyan,
-    accentSecondary = YouthColors.Violet,
-    green = YouthColors.Success,
-    orange = YouthColors.Warning,
-    red = YouthColors.Error,
-    blue = YouthColors.Info,
-    purple = YouthColors.VioletLight,
-    rose = YouthColors.Lime,
-    amber = YouthColors.LimeDark,
-    accentGradient = YouthDesignSystem.NovaHorizontalGradient,
-    surfaceGradient = YouthDesignSystem.StatShimmerGradient,
-    cardGradient = YouthDesignSystem.CardGradient,
-    filterSelectedBg = YouthColors.Cyan,
-    filterSelectedText = YouthColors.Background,
+    background = BritTokens.paper,
+    card = BritTokens.card,
+    cardAlt = BritTokens.paper2,
+    cardBorder = BritTokens.line,
+    textPrimary = BritTokens.ink,
+    textSecondary = BritTokens.muted,
+    accent = BritTokens.goldYouth,
+    accentSecondary = BritTokens.goldSoftYouth,
+    green = BritTokens.green,
+    orange = BritTokens.amber,
+    red = BritTokens.red,
+    blue = BritTokens.blue,
+    purple = BritTokens.goldYouth,
+    rose = BritTokens.goldSoftYouth,
+    amber = BritTokens.amber,
+    accentGradient = Brush.horizontalGradient(listOf(BritTokens.goldYouth, BritTokens.goldSoftYouth)),
+    surfaceGradient = Brush.horizontalGradient(
+        listOf(BritTokens.goldYouth.copy(alpha = 0.12f), BritTokens.goldSoftYouth.copy(alpha = 0.06f))
+    ),
+    cardGradient = Brush.horizontalGradient(listOf(BritTokens.card, BritTokens.paper2)),
+    filterSelectedBg = BritTokens.goldYouth,
+    filterSelectedText = BritTokens.paper,
     isYouth = true,
 )
 
 fun paletteFor(platform: Platform): PlatformPalette = when (platform) {
-    Platform.WOMEN -> WomenPalette
     Platform.YOUTH -> YouthPalette
-    else -> MenPalette
+    Platform.MEN -> MenPalette
 }
 
 /**

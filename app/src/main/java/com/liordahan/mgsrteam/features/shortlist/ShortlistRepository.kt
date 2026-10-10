@@ -267,7 +267,7 @@ class ShortlistRepository(
     }
 
     /**
-     * Add a player to the shortlist from form data (Women / Youth).
+     * Add a player to the shortlist from form data (Youth).
      * Uses the provided URL as the tmProfileUrl identifier.
      * Checks for duplicates in shortlist and optionally in roster.
      */

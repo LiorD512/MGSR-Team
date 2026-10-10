@@ -66,11 +66,6 @@ data class Player(
     val agency: String? = null,
     val agencyUrl: String? = null,
     val pinnedHighlights: List<PinnedHighlight>? = null,
-    // ── Women-specific fields ──
-    val soccerDonnaUrl: String? = null,
-    val wosostatId: String? = null,
-    val fmInsideId: String? = null,
-    val fmInsideUrl: String? = null,
     // ── Youth-specific fields ──
     val academy: String? = null,
     val dateOfBirth: String? = null,

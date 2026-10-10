@@ -74,6 +74,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.liordahan.mgsrteam.ui.theme.BritTokens
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -128,18 +129,26 @@ private val SyneFamily = FontFamily(Font(R.font.takeaway_sans_bold, FontWeight.B
 //  COLOR SYSTEM — matches web mgsr-web/tailwind.config.ts exactly
 // ═══════════════════════════════════════════════════════════════════════════════
 
-private val WDark = Color(0xFF0F1923)       // mgsr-dark
-private val WCard = Color(0xFF1A2736)       // mgsr-card
-private val WBorder = Color(0xFF253545)     // mgsr-border
-private val WTeal = Color(0xFF4DB6AC)       // mgsr-teal
-private val WText = Color(0xFFE8EAED)       // mgsr-text
-private val WMuted = Color(0xFF8C999B)      // mgsr-muted
-private val WAmber = Color(0xFFF59E0B)      // amber-500
-private val WPurple = Color(0xFFA855F7)     // purple-500
-private val WIndigo = Color(0xFF6366F1)     // indigo-500
-private val WGreen = Color(0xFF22C55E)      // green-500
-private val WRed = Color(0xFFE53935)        // mgsr-red
-private val WCyan = Color(0xFF22D3EE)       // cyan-400
+// ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
+// The mock renders AI Scout in the ".brit-room" paper editorial look. The old
+// "mgsr-dark" web-mirror palette (W*) is re-bound to BritTokens so surfaces move
+// to paper/card, primary/secondary text to ink/muted, and the vivid accents to
+// the editorial gold/blue/amber/green/red set. The query/interpretation/
+// progressive-results CTA keeps a gold→blue gradient (dark enough that its white
+// icon + label stay legible). AiScoutViewModel + MgsrWebApiClient
+// (aiScoutSearch / find_next) wiring is untouched.
+private val WDark = BritTokens.paper        // was mgsr-dark
+private val WCard = BritTokens.card         // was mgsr-card
+private val WBorder = BritTokens.line       // was mgsr-border
+private val WTeal = BritTokens.gold         // was mgsr-teal (editorial gold)
+private val WText = BritTokens.ink          // was mgsr-text
+private val WMuted = BritTokens.muted       // was mgsr-muted
+private val WAmber = BritTokens.amber       // amber
+private val WPurple = BritTokens.gold       // was purple accent
+private val WIndigo = BritTokens.blue       // was indigo accent
+private val WGreen = BritTokens.green       // green
+private val WRed = BritTokens.red           // red
+private val WCyan = BritTokens.blue         // was cyan accent
 
 
 private enum class AiScoutTab { SCOUT, FIND_NEXT }

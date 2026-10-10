@@ -24,6 +24,11 @@ sealed class Screens(val route: String) {
     data object AiScoutScreen : Screens(ScreenName.AI_SCOUT)
     data object WarRoomScreen : Screens(ScreenName.WAR_ROOM)
     data object ChatRoomScreen : Screens(ScreenName.CHAT_ROOM)
+    // "More" sheet destinations backed by real screens: Market Radar mirrors
+    // the web's /api/market-radar feed, and Club Changes reads CLUB_CHANGE
+    // FeedEvents from the same source as the web page.
+    data object MarketRadarScreen : Screens(ScreenName.MARKET_RADAR)
+    data object ClubChangesScreen : Screens(ScreenName.CLUB_CHANGES)
     data object WarRoomReportScreen : Screens("${ScreenName.WAR_ROOM_REPORT}/{tmUrl}/{playerName}")
 
     companion object {
@@ -63,4 +68,6 @@ object ScreenName {
     const val WAR_ROOM = "war_room"
     const val WAR_ROOM_REPORT = "war_room_report"
     const val CHAT_ROOM = "chat_room"
+    const val MARKET_RADAR = "market_radar"
+    const val CLUB_CHANGES = "club_changes"
 }

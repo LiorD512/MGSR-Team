@@ -32,13 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.localization.LocaleManager
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
-import com.liordahan.mgsrteam.ui.utils.boldTextStyle
-import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.ui.theme.BritTokens
+import com.liordahan.mgsrteam.ui.theme.britBody
+import com.liordahan.mgsrteam.ui.theme.britDisplay
+import com.liordahan.mgsrteam.ui.theme.britMono
 import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,14 +51,14 @@ fun NotificationCenterSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = HomeDarkBackground,
+        containerColor = BritTokens.card,
         dragHandle = {
             Box(
                 modifier = Modifier
                     .padding(top = 12.dp, bottom = 8.dp)
                     .size(40.dp, 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(HomeTextSecondary.copy(alpha = 0.3f))
+                    .background(BritTokens.line)
             )
         }
     ) {
@@ -79,17 +76,25 @@ fun NotificationCenterSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.notification_center_title),
-                    style = boldTextStyle(HomeTextPrimary, 18.sp)
+                    text = stringResource(R.string.notification_center_title).uppercase(),
+                    style = britDisplay(BritTokens.ink, 20.sp, weight = 600, letterSpacing = 0.5.sp)
                 )
                 if (state.unreadCount > 0) {
                     Text(
-                        text = stringResource(R.string.notification_center_mark_all_read),
-                        style = boldTextStyle(HomeTealAccent, 13.sp),
+                        text = stringResource(R.string.notification_center_mark_all_read).uppercase(),
+                        style = britMono(BritTokens.gold, 11.sp, letterSpacing = 1.sp),
                         modifier = Modifier.clickable { onMarkAllRead() }
                     )
                 }
             }
+            // Gold hairline rule under the masthead (editorial).
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .height(1.dp)
+                    .background(BritTokens.line)
+            )
 
             if (state.notifications.isEmpty()) {
                 // Empty state
@@ -101,12 +106,12 @@ fun NotificationCenterSheet(
                 ) {
                     Text(
                         text = "🔔",
-                        style = regularTextStyle(HomeTextSecondary, 40.sp)
+                        style = britBody(BritTokens.muted, 40.sp)
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
                         text = stringResource(R.string.notification_center_empty),
-                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                        style = britBody(BritTokens.muted, 14.sp)
                     )
                 }
             } else {
@@ -135,7 +140,7 @@ private fun NotificationRow(
     val context = LocalContext.current
     val isHebrew = LocaleManager.isHebrew(context)
     val bgColor = if (!notification.read) {
-        HomeTealAccent.copy(alpha = 0.06f)
+        BritTokens.gold.copy(alpha = 0.08f)
     } else {
         Color.Transparent
     }
@@ -158,7 +163,7 @@ private fun NotificationRow(
         ) {
             Text(
                 text = getTypeIcon(notification.type),
-                style = regularTextStyle(Color.White, 16.sp)
+                style = britBody(BritTokens.ink, 16.sp)
             )
         }
 
@@ -169,23 +174,23 @@ private fun NotificationRow(
             Text(
                 text = notification.title,
                 style = if (!notification.read) {
-                    boldTextStyle(HomeTextPrimary, 13.sp)
+                    britDisplay(BritTokens.ink, 14.sp, weight = 600, letterSpacing = 0.sp)
                 } else {
-                    regularTextStyle(HomeTextPrimary.copy(alpha = 0.8f), 13.sp)
+                    britBody(BritTokens.ink.copy(alpha = 0.8f), 13.sp)
                 },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = notification.body,
-                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                style = britBody(BritTokens.muted, 12.sp),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 2.dp)
             )
             Text(
                 text = formatRelativeTime(notification.timestamp, isHebrew),
-                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 11.sp),
+                style = britMono(BritTokens.muted2, 10.sp, letterSpacing = 0.6.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -198,7 +203,7 @@ private fun NotificationRow(
                     .padding(top = 6.dp)
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(HomeTealAccent)
+                    .background(BritTokens.gold)
             )
         }
     }

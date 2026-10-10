@@ -148,8 +148,13 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
     // ── private helpers ──
 
     /**
-     * Fetch FM Intelligence data for a player.
-     * Primary: Vercel /api/fminside/women-player (proven reliable, returns both genders).
+     * Fetch FM Intelligence data for a player (Men + Youth).
+     *
+     * Primary: Vercel /api/fminside/women-player. Despite its name, this is
+     * the web-mirrored FM-intelligence endpoint used for men/youth players —
+     * it is proven reliable on Vercel and returns data for both genders. It
+     * is NOT a Women-platform feature (the Women platform was removed from
+     * Android), so there is no platform gating around this call.
      * Fallback 1: Vercel /api/fminside/player (men's dedicated endpoint).
      * Fallback 2: Scout server /fm_intelligence (cached DB).
      * Returns null if no data is found.
@@ -159,22 +164,24 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
         club: String? = null,
         age: String? = null
     ): JSONObject? {
-        // Primary: women-player endpoint (works for both genders, proven on Vercel)
+        // Primary: the "women-player" endpoint (web-mirrored men/youth FM
+        // fallback — works for both genders, proven on Vercel; not gated to
+        // any platform).
         try {
             val params = buildList {
                 add("name=${encode(playerName)}")
                 club?.takeIf { it.isNotBlank() }?.let { add("club=${encode(it)}") }
                 age?.takeIf { it.isNotBlank() }?.let { add("age=${encode(it)}") }
             }
-            val womenUrl = "$VERCEL_BASE_URL/api/fminside/women-player?${params.joinToString("&")}"
-            Log.d(TAG, "getFmIntelligence (women-player): $womenUrl")
-            val json = fetch(womenUrl)
+            val fmFallbackUrl = "$VERCEL_BASE_URL/api/fminside/women-player?${params.joinToString("&")}"
+            Log.d(TAG, "getFmIntelligence (women-player fallback): $fmFallbackUrl")
+            val json = fetch(fmFallbackUrl)
             if (json.optBoolean("found", false) && json.optInt("ca", 0) > 0) {
                 // Normalize to expected FM intelligence format
                 return json
             }
         } catch (e: Exception) {
-            Log.w(TAG, "getFmIntelligence women-player failed for $playerName", e)
+            Log.w(TAG, "getFmIntelligence women-player fallback failed for $playerName", e)
         }
         // Fallback 1: men's dedicated endpoint
         try {
