@@ -115,6 +115,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.runtime.DisposableEffect
+import androidx.core.view.WindowCompat
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -181,32 +185,41 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-private val MenDashboardBg = Color(0xFF0A121E)
-private val MenDashboardGold = Color(0xFFC7A35A)
-private val MenDashboardGoldSoft = Color(0xFFDDC187)
-private val MenDashboardCyan = Color(0xFF5BC7BA)
-private val MenDashboardCyanSoft = Color(0xFF89DCD2)
-private val MenDashboardCard = Color(0xFF152131)
-private val MenDashboardCardAlt = Color(0xFF1A2A3D)
-private val MenDashboardBorder = Color(0x33C7A35A)
-private val MenDashboardDanger = Color(0xFFD88989)
-private val MenDashboardBronze = Color(0xFFAE8A4A)
-private val MenChipPlayers = Color(0xFFE3C78F)
-private val MenChipShortlist = Color(0xFFCCAA6A)
-private val MenChipReleases = Color(0xFFD7B57A)
-private val MenChipContracts = Color(0xFFBE995B)
-private val MenChipReturnees = Color(0xFFA8834C)
-private val MenChipWarRoom = Color(0xFFF0DAB0)
-private val MenChipContacts = Color(0xFFC39B68)
-private val MenChipRequests = Color(0xFFD1AE79)
-private val MenChipTasks = Color(0xFFB78E57)
-private val MenChipSand = Color(0xFFEAD8B6)
-private val MenChipCopper = Color(0xFF9B6D45)
-private val MenChipAmber = Color(0xFFD9A75D)
+// ── Men dashboard palette — aligned to the website "Light Management Room"
+//    (mgsr-web .brit-room): paper / gold / ink editorial light theme.
+//    NOTE on text roles: GoldSoft & CyanSoft are used across the screen as the
+//    PRIMARY / SECONDARY TEXT colors, so on the light paper they map to ink and
+//    muted-ink (NOT lighter gold/cyan). Cyan (a secondary accent) maps to the
+//    web green. Every men composable reads these, so flipping them re-skins the
+//    whole men dashboard to match the site. ──
+private val MenDashboardBg = Color(0xFFF3F0E8)        // web --paper
+private val MenDashboardBgDark = Color(0xFF0F1923)    // app dark bg (women/youth system bars + restore)
+private val MenDashboardGold = Color(0xFFA47D43)      // web --gold
+private val MenDashboardGoldSoft = Color(0xFF161613)  // web --ink  (PRIMARY TEXT role)
+private val MenDashboardCyan = Color(0xFF5C6F4A)      // web --green (secondary accent)
+private val MenDashboardCyanSoft = Color(0xFF77736A)  // web --muted (SECONDARY TEXT role)
+private val MenDashboardCard = Color(0xFFFBF9F3)      // web --card
+private val MenDashboardCardAlt = Color(0xFFE4DED1)   // web --paper-2
+private val MenDashboardBorder = Color(0x2E161613)    // web --line (ink hairline ~18%)
+private val MenDashboardDanger = Color(0xFFB64235)    // web --red
+private val MenDashboardBronze = Color(0xFFA47D43)    // web --gold ("Free" accent)
+// Quick-action chip tints — gold family, read as icon/border tints on paper fills.
+private val MenChipPlayers = Color(0xFFA47D43)
+private val MenChipShortlist = Color(0xFFB08A4A)
+private val MenChipReleases = Color(0xFFA47D43)
+private val MenChipContracts = Color(0xFF9A7B2E)
+private val MenChipReturnees = Color(0xFF8F6E3A)
+private val MenChipWarRoom = Color(0xFFC9A66B)
+private val MenChipContacts = Color(0xFFA47D43)
+private val MenChipRequests = Color(0xFFB08A4A)
+private val MenChipTasks = Color(0xFF9A7B2E)
+private val MenChipSand = Color(0xFFC9A66B)
+private val MenChipCopper = Color(0xFF8F6E3A)
+private val MenChipAmber = Color(0xFFB07A2B)
 private val MenChipOliveGold = Color(0xFF8F7A4F)
-private val MenChipRoseGold = Color(0xFFB88973)
-private val MenChipBrass = Color(0xFFA8854E)
-private val MenChipHoney = Color(0xFFD6B06E)
+private val MenChipRoseGold = Color(0xFFA47D43)
+private val MenChipBrass = Color(0xFF9A7B2E)
+private val MenChipHoney = Color(0xFFC9A66B)
 private val MenChipTaupeGold = Color(0xFFB59A72)
 
 private fun mapAccentForMen(base: Color): Color = when (base) {
@@ -289,11 +302,54 @@ fun DashboardScreen(
     }
     val sweepAccentColor = if (currentPlatform == Platform.MEN) MenDashboardGold else currentPlatform.accent
 
+    // ── System bars follow the platform ─────────────────────────────────
+    // The men dashboard is the light "Light Management Room" look, so its
+    // status/nav bars go paper with dark icons. Women/Youth stay dark. The
+    // bars are restored to dark on leave so other (dark) screens are unaffected.
+    val view = LocalView.current
+    DisposableEffect(currentPlatform) {
+        val window = (view.context as? android.app.Activity)?.window
+            ?: run {
+                var c: android.content.Context? = view.context
+                var w: android.view.Window? = null
+                while (c is android.content.ContextWrapper) {
+                    if (c is android.app.Activity) { w = c.window; break }
+                    c = c.baseContext
+                }
+                w
+            }
+        if (window != null) {
+            val men = currentPlatform == Platform.MEN
+            val barColor = if (men) MenDashboardBg else MenDashboardBgDark
+            window.statusBarColor = barColor.toArgb()
+            window.navigationBarColor = barColor.toArgb()
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = men
+                isAppearanceLightNavigationBars = men
+            }
+        }
+        onDispose {
+            // Restore dark bars when leaving the dashboard.
+            if (window != null) {
+                window.statusBarColor = MenDashboardBgDark.toArgb()
+                window.navigationBarColor = MenDashboardBgDark.toArgb()
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = false
+                    isAppearanceLightNavigationBars = false
+                }
+            }
+        }
+    }
+
     if (state.isLoading) {
         SkeletonDashboardLayout(
             modifier = Modifier
                 .fillMaxSize()
-                .background(dashboardBg)
+                .background(dashboardBg),
+            // Light skeleton for the men "Light Management Room" look so the
+            // loading state matches the (now light) men dashboard.
+            cardColor = if (currentPlatform == Platform.MEN) MenDashboardCard else HomeDarkCard,
+            shimmerColor = if (currentPlatform == Platform.MEN) MenDashboardBorder else HomeDarkCardBorder
         )
         return
     }
@@ -1134,7 +1190,7 @@ private fun StatCard(
     accentColor: Color,
     useMenPalette: Boolean = false
 ) {
-    val cardBg = if (useMenPalette) Color(0xFF152131) else HomeDarkCard
+    val cardBg = if (useMenPalette) MenDashboardCard else HomeDarkCard
     val cardBorder = if (useMenPalette) MenDashboardGold.copy(alpha = 0.42f) else HomeDarkCardBorder
     val valueColor = if (useMenPalette) MenDashboardGoldSoft else HomeTextPrimary
     val labelColor = if (useMenPalette) MenDashboardGoldSoft.copy(alpha = 0.84f) else HomeTextSecondary
