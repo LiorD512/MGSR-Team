@@ -24,6 +24,24 @@
     <string name="splash_tagline">גיוס שחקנים בפשטות</string>
     <string name="login_cd_toggle_password">הצג/הסתר סיסמא</string>
     <string name="login_cd_language_toggle">החלף שפה</string>
+    <!-- Web Management Room login (matched to mgsr-web) -->
+    <string name="login_wordmark">BRIT Sport Group</string>
+    <string name="login_wordmark_sub">חדר ניהול</string>
+    <string name="login_brand_eyebrow">סוכנות כדורגל · גישה פרטית</string>
+    <string name="login_brand_line1">חדר</string>
+    <string name="login_brand_line2">הניהול</string>
+    <string name="login_brand_line3"> </string>
+    <string name="login_brand_tagline">סגל, סקאוטינג, מנדטים וקשרי מועדונים — שולחן עריכה אחד לכל הסוכנות.</string>
+    <string name="login_kicker">ברוך שובך</string>
+    <string name="login_heading">כניסה</string>
+    <string name="login_subtitle">התחבר למרחב הניהול שלך</string>
+    <string name="login_email_label">אימייל</string>
+    <string name="login_password_label">סיסמה</string>
+    <string name="login_email_placeholder">you@britsport.com</string>
+    <string name="login_show">הצג</string>
+    <string name="login_hide">הסתר</string>
+    <string name="login_hint">השתמש באותם פרטי התחברות כמו באתר הניהול</string>
+    <string name="login_secure">כניסה מאובטחת</string>
 
     <!-- Search -->
     <string name="players_screen_hint">חפש שחקן לפי שם</string>

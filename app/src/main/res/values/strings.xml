@@ -24,6 +24,24 @@
     <string name="login_cd_app_logo">BRIT Sport Group logo</string>
     <string name="login_cd_toggle_password">Toggle password visibility</string>
     <string name="login_cd_language_toggle">Switch language</string>
+    <!-- Web Management Room login (matched to mgsr-web) -->
+    <string name="login_wordmark">BRIT Sport Group</string>
+    <string name="login_wordmark_sub">Management Room</string>
+    <string name="login_brand_eyebrow">Football agency · Private access</string>
+    <string name="login_brand_line1">The</string>
+    <string name="login_brand_line2">Management</string>
+    <string name="login_brand_line3">Room</string>
+    <string name="login_brand_tagline">Roster, scouting, mandates and club relationships — one editorial desk for the whole agency.</string>
+    <string name="login_kicker">Welcome back</string>
+    <string name="login_heading">Sign in</string>
+    <string name="login_subtitle">Sign in to your management workspace</string>
+    <string name="login_email_label">Email</string>
+    <string name="login_password_label">Password</string>
+    <string name="login_email_placeholder">you@britsport.com</string>
+    <string name="login_show">Show</string>
+    <string name="login_hide">Hide</string>
+    <string name="login_hint">Use the same credentials as the web Management Room</string>
+    <string name="login_secure">Secure sign-in</string>
 
     <!-- Search -->
     <string name="players_screen_hint">Search players or note by keyword</string>
