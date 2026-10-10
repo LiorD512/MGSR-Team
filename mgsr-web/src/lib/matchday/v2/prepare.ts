@@ -76,14 +76,23 @@ async function keyOutMagenta(buf: Buffer): Promise<Buffer | null> {
       data[i + 3] = Math.min(data[i + 3], a);
     }
 
-    // Magenta DE-SPILL on every surviving pixel: the pink fringe is pixels where
-    // red & blue are high but green is suppressed. Whenever green is the
-    // minority channel and R/B are both elevated, lift green toward their
-    // average to neutralise the magenta cast — this kills the pink border.
+    // Magenta DE-SPILL — the purple/pink halo (worst on dark curly hair) is any
+    // pixel where GREEN is the minority channel while red & blue are elevated
+    // relative to it. The previous version only fired on BRIGHT pixels (r,b>90),
+    // so it missed dark hair strands — exactly where the glow showed. Now it
+    // fires on ANY magenta-cast pixel, bright or dark, and both lifts green AND
+    // pulls red/blue down toward green so the cast is fully neutralised.
     const avgRB = (r + b) / 2;
-    if (g < avgRB && r > 90 && b > 90) {
-      // Pull green most of the way up to avg (0.85) → near-grey neutralisation.
-      data[i + 1] = Math.round(g + (avgRB - g) * 0.85);
+    const magentaCast = avgRB - g; // how much more red/blue than green
+    if (magentaCast > 18) {
+      // Neutralise toward grey: green up, red & blue down, proportional to cast.
+      const target = Math.round(g + magentaCast * 0.5); // common mid value
+      data[i + 1] = Math.min(255, Math.round(g + (target - g) * 0.9)); // lift green
+      data[i] = Math.round(r - (r - target) * 0.6); // pull red down
+      data[i + 2] = Math.round(b - (b - target) * 0.6); // pull blue down
+      // Fringe pixels that are strongly magenta-cast are almost always edge
+      // spill, not real detail — fade their alpha a touch to thin the halo.
+      if (magentaCast > 60) data[i + 3] = Math.round(data[i + 3] * 0.6);
     }
   }
   // If almost nothing was keyed, the model didn't give us a magenta field —
@@ -107,6 +116,8 @@ async function toMono(pngWithAlpha: Buffer): Promise<Buffer> {
 
 export async function prepareLayers(opts: {
   playerPhoto: Buffer;
+  /** Optional SECOND real photo — becomes a real secondary figure. */
+  playerPhoto2?: Buffer | null;
   kitPhoto?: Buffer | null;
   squadNumber?: string | null;
   needHero: boolean;
@@ -122,16 +133,29 @@ export async function prepareLayers(opts: {
   const cutRaw = await cutoutPlayer(source);
   const cutAction = cutRaw ? await keyOutMagenta(cutRaw.bytes) : null;
 
-  // 3) SECONDARY FIGURE — the real cutout reused, NEVER an AI-generated pose.
-  //    An alternate-pose generation re-paints the whole player, including the
-  //    FACE, producing a different person (the exact failure this feature must
-  //    never do). So `hero` is simply the same real cutout; the renderer styles
-  //    it (mirror + darken) into a silhouette echo, which reads as a design
-  //    element, not a second person. `heroIsDistinct` stays false by design.
-  const hero = cutAction;
-  const heroIsDistinct = false;
+  // 3) SECONDARY FIGURE.
+  //    PREFERRED: a SECOND REAL photo the operator uploaded — cut out the same
+  //    way. This is a genuine second pose of the real player (how posters are
+  //    really made), never AI-invented, so it is marked distinct and rendered
+  //    sharp. FALLBACK (no 2nd photo): reuse the same cutout as a dark
+  //    silhouette echo (handled in the renderer); NOT a generated pose.
+  let hero = cutAction;
+  let heroIsDistinct = false;
+  if (opts.playerPhoto2) {
+    let src2 = opts.playerPhoto2;
+    if (opts.kitPhoto) {
+      const swapped2 = await swapKit(src2, opts.kitPhoto, opts.squadNumber ?? null);
+      if (swapped2) src2 = swapped2.bytes;
+    }
+    const raw2 = await cutoutPlayer(src2);
+    const cut2 = raw2 ? await keyOutMagenta(raw2.bytes) : null;
+    if (cut2) {
+      hero = cut2; // a real second pose
+      heroIsDistinct = true;
+    }
+  }
 
-  // 4) Monochrome backdrop from the real cutout — only if we have one.
+  // 4) Monochrome backdrop from the primary cutout.
   const backdropMono = cutAction ? await toMono(cutAction) : null;
 
   return { cutAction, hero, backdropMono, heroIsDistinct, usedGemini: Boolean(cutAction) };

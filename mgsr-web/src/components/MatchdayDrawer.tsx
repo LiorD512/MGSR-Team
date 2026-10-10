@@ -57,11 +57,12 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
 
   // Curated assets.
   const [playerPhotoUrl, setPlayerPhotoUrl] = useState<string | null>(null);
+  const [playerPhoto2Url, setPlayerPhoto2Url] = useState<string | null>(null);
   const [stadiumPhotoUrl, setStadiumPhotoUrl] = useState<string | null>(null);
   const [kitPhotoUrl, setKitPhotoUrl] = useState<string | null>(null);
   const [squadNumber, setSquadNumber] = useState('');
   const [assetsLoading, setAssetsLoading] = useState(true);
-  const [uploading, setUploading] = useState<'player' | 'stadium' | 'kit' | null>(null);
+  const [uploading, setUploading] = useState<'player' | 'player2' | 'stadium' | 'kit' | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Generation.
@@ -98,6 +99,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
         ]);
         if (!active) return;
         setPlayerPhotoUrl((player?.data()?.matchdayPhotoUrl as string | undefined) ?? seed.playerImage ?? null);
+        setPlayerPhoto2Url((player?.data()?.matchdayPhoto2Url as string | undefined) ?? null);
         setStadiumPhotoUrl((club?.data()?.stadiumPhotoUrl as string | undefined) ?? null);
         setKitPhotoUrl((player?.data()?.matchdayKitUrl as string | undefined) ?? null);
 
@@ -121,7 +123,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     };
   }, [seed.playerId, seed.club, seed.playerImage, user?.email]);
 
-  const handleUpload = async (kind: 'player' | 'stadium' | 'kit', file: File) => {
+  const handleUpload = async (kind: 'player' | 'player2' | 'stadium' | 'kit', file: File) => {
     setUploadError(null);
     if (file.size > MAX_UPLOAD_BYTES) {
       setUploadError(t('matchday_upload_too_large'));
@@ -146,6 +148,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
         return;
       }
       if (kind === 'player') setPlayerPhotoUrl(data.url);
+      else if (kind === 'player2') setPlayerPhoto2Url(data.url);
       else if (kind === 'stadium') setStadiumPhotoUrl(data.url);
       else setKitPhotoUrl(data.url);
     } catch (err) {
@@ -181,6 +184,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
           clubLogo: seed.clubLogo ?? null,
           fixture: seed.fixture ?? null,
           playerPhotoUrl,
+          playerPhoto2Url,
           stadiumPhotoUrl,
           kitPhotoUrl,
           squadNumber: squadNumber.trim() || null,
@@ -203,7 +207,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
       setError(err instanceof Error ? err.message : t('matchday_error_generic'));
       setPhase('error');
     }
-  }, [seed, playerPhotoUrl, stadiumPhotoUrl, kitPhotoUrl, squadNumber, design, t]);
+  }, [seed, playerPhotoUrl, playerPhoto2Url, stadiumPhotoUrl, kitPhotoUrl, squadNumber, design, t]);
 
   const handleDownload = () => {
     if (!result?.imageDataUrl) return;
@@ -324,6 +328,18 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                   uploadLabel={t('matchday_upload')}
                   missingLabel={t('matchday_photo_missing')}
                   onPick={(f) => void handleUpload('player', f)}
+                />
+                <AssetRow
+                  label={t('matchday_v2_player2_photo')}
+                  url={playerPhoto2Url}
+                  required={false}
+                  loading={assetsLoading}
+                  busy={uploading === 'player2'}
+                  hint={t('matchday_v2_player2_hint')}
+                  replaceLabel={t('matchday_replace')}
+                  uploadLabel={t('matchday_upload')}
+                  missingLabel={t('matchday_optional')}
+                  onPick={(f) => void handleUpload('player2', f)}
                 />
                 <AssetRow
                   label={t('matchday_v2_kit_photo')}

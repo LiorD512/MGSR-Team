@@ -68,6 +68,9 @@ export interface MatchdayV2Input {
 
   /** Curated player photograph (required). */
   playerPhotoUrl?: string | null;
+  /** Optional SECOND real player photo — used as the secondary figure (a real
+   *  second pose, never AI-generated). */
+  playerPhoto2Url?: string | null;
   /** Optional curated stadium photograph. */
   stadiumPhotoUrl?: string | null;
   /** Optional official kit reference image — enables the kit swap. */

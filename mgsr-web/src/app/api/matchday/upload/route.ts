@@ -8,8 +8,8 @@ export const maxDuration = 60;
 const MAX_BYTES = 15 * 1024 * 1024;
 
 interface UploadBody {
-  kind: 'player' | 'stadium' | 'kit';
-  /** Player document id — required for `kind: 'player'` and `'kit'`. */
+  kind: 'player' | 'player2' | 'stadium' | 'kit';
+  /** Player document id — required for `kind: 'player'`, `'player2'` and `'kit'`. */
   playerId?: string | null;
   /** Club name — required for `kind: 'stadium'`; keys the stored asset. */
   club?: string | null;
@@ -57,13 +57,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (body?.kind !== 'player' && body?.kind !== 'stadium' && body?.kind !== 'kit') {
-    return NextResponse.json({ error: "kind must be 'player', 'stadium' or 'kit'" }, { status: 400 });
+  if (body?.kind !== 'player' && body?.kind !== 'player2' && body?.kind !== 'stadium' && body?.kind !== 'kit') {
+    return NextResponse.json({ error: "kind must be 'player', 'player2', 'stadium' or 'kit'" }, { status: 400 });
   }
   if (!body.imageDataUrl) {
     return NextResponse.json({ error: 'imageDataUrl is required' }, { status: 400 });
   }
-  if ((body.kind === 'player' || body.kind === 'kit') && !body.playerId) {
+  if ((body.kind === 'player' || body.kind === 'player2' || body.kind === 'kit') && !body.playerId) {
     return NextResponse.json({ error: 'playerId is required for a player/kit photo' }, { status: 400 });
   }
   if (body.kind === 'stadium' && !body.club?.trim()) {
@@ -82,7 +82,8 @@ export async function POST(request: NextRequest) {
   // Player cutouts genuinely need resolution for a clean edge, so keep that
   // floor strict. The stadium is only an atmospheric, blurred backdrop in v2,
   // so use a lenient floor and let the renderer upscale it to fill the canvas.
-  const floor = body.kind === 'player' ? PLAYER_FLOOR : body.kind === 'kit' ? KIT_FLOOR : STADIUM_FLOOR;
+  const floor =
+    body.kind === 'player' || body.kind === 'player2' ? PLAYER_FLOOR : body.kind === 'kit' ? KIT_FLOOR : STADIUM_FLOOR;
   let width = 0;
   let height = 0;
   try {
@@ -126,9 +127,11 @@ export async function POST(request: NextRequest) {
     const storagePath =
       body.kind === 'player'
         ? `matchday-assets/players/${body.playerId}.${stored.ext}`
-        : body.kind === 'kit'
-          ? `matchday-assets/kits/${body.playerId}.${stored.ext}`
-          : `matchday-assets/clubs/${clubKey(body.club!)}.${stored.ext}`;
+        : body.kind === 'player2'
+          ? `matchday-assets/players/${body.playerId}-2.${stored.ext}`
+          : body.kind === 'kit'
+            ? `matchday-assets/kits/${body.playerId}.${stored.ext}`
+            : `matchday-assets/clubs/${clubKey(body.club!)}.${stored.ext}`;
 
     const bucket = await adminBucket();
     const file = bucket.file(storagePath);
@@ -143,6 +146,11 @@ export async function POST(request: NextRequest) {
         .collection('Players')
         .doc(body.playerId!)
         .set({ matchdayPhotoUrl: url }, { merge: true });
+    } else if (body.kind === 'player2') {
+      await adminDb()
+        .collection('Players')
+        .doc(body.playerId!)
+        .set({ matchdayPhoto2Url: url }, { merge: true });
     } else if (body.kind === 'kit') {
       await adminDb()
         .collection('Players')

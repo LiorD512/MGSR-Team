@@ -729,17 +729,29 @@ async function themedPoster(i: RenderV2Input, theme: Theme): Promise<Buffer> {
   );
   const rimHero = await rimGlow(heroSheet, theme.scene.rim);
 
-  // 3) Secondary = the SAME cutout, mirrored and pushed to a dark silhouette so
-  //    it's unmistakably a stylistic echo (not a second person). Tinted toward
-  //    the scene's rim colour at low strength for depth.
-  const secSheet = twoFigures
-    ? await placeLayer(
-        await silhouette(i.layers.cutAction!, theme.scene.bottom),
-        Math.round(V2_H * 0.54),
-        (w) => ({ left: Math.round(V2_W * 0.24 - w / 2), top: Math.round(V2_H * 0.33) }),
-        { flip: true, fade: true, fadeStart: 76 }
-      )
-    : await emptySheet();
+  // 3) Secondary figure.
+  //    - If a REAL second photo exists (heroIsDistinct), render it SHARP as a
+  //      genuine second pose (slightly smaller/dimmer, behind the hero).
+  //    - Otherwise reuse the SAME cutout as a dark SILHOUETTE ECHO (never a
+  //      generated pose), so it's clearly a design element, not a 2nd person.
+  let secSheet: Buffer;
+  if (!twoFigures) {
+    secSheet = await emptySheet();
+  } else if (i.layers.heroIsDistinct && i.layers.hero) {
+    secSheet = await placeLayer(
+      i.layers.hero,
+      Math.round(V2_H * 0.56),
+      (w) => ({ left: Math.round(V2_W * 0.26 - w / 2), top: Math.round(V2_H * 0.32) }),
+      { mod: { brightness: 0.9, saturation: 0.95 }, fade: true, fadeStart: 80 }
+    );
+  } else {
+    secSheet = await placeLayer(
+      await silhouette(i.layers.cutAction!, theme.scene.bottom),
+      Math.round(V2_H * 0.54),
+      (w) => ({ left: Math.round(V2_W * 0.24 - w / 2), top: Math.round(V2_H * 0.33) }),
+      { flip: true, fade: true, fadeStart: 76 }
+    );
+  }
 
   // 4) Contact shadow grounding the hero (sits on the fixture band).
   const shadow = contactShadow(Math.round(heroCx), Math.round(V2_H * 0.78), Math.round(heroH * 0.42));

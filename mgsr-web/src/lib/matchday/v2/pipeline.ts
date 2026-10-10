@@ -81,21 +81,23 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   const playerBytes = await fetchBytes(input.playerPhotoUrl);
   if (!playerBytes) throw new MatchdayError('The MATCHDAY photo could not be downloaded.', 'NO_PLAYER_PHOTO');
 
-  // Optional kit reference + stadium.
+  // Optional SECOND real player photo (a genuine second pose) + kit reference.
+  const player2Bytes = input.playerPhoto2Url?.trim() ? await fetchBytes(input.playerPhoto2Url) : null;
   const kitBytes = input.kitPhotoUrl?.trim() ? await fetchBytes(input.kitPhotoUrl) : null;
 
   // ── Stage 3: AI-assisted layer prep (face preserved) ──
   // Only the two-figure designs need a genuinely different second pose. For the
   // single-figure designs the backdrop reuses the action cutout (greyscaled),
-  // which avoids a wasted alt-pose generation.
+  // Two-figure styles always want a secondary; and ANY design benefits from a
+  // real second photo when one was uploaded.
   const needHero =
-    input.design === 'golden' ||
-    input.design === 'storm' ||
+    Boolean(player2Bytes) ||
     input.design === 'inferno' ||
     input.design === 'frost' ||
     input.design === 'electric';
   const layers = await prepareLayers({
     playerPhoto: playerBytes,
+    playerPhoto2: player2Bytes,
     kitPhoto: kitBytes,
     squadNumber: input.squadNumber ?? null,
     needHero,
