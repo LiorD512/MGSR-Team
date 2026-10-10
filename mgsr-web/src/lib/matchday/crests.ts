@@ -64,10 +64,46 @@ async function fetchImage(url: string, source: string): Promise<ResolvedCrest | 
     const height = meta.height ?? 0;
     if (!width || !height) return null;
 
+    // Crests are roughly square. A strongly non-square image is almost never a
+    // crest — it's a photo (e.g. a Wikipedia town article's church picture that
+    // a loose search can match). Reject it so a wrong photo can't win on size.
+    const ratio = Math.max(width, height) / Math.min(width, height);
+    if (ratio > 1.6) return null;
+
     const bytes = await pipeline.png().toBuffer();
     return { bytes, width, height, source, url };
   } catch {
     return null;
+  }
+}
+
+/**
+ * Find a club's Transfermarkt crest by NAME (not by a URL we already hold).
+ * This is how we get a proper crest for the opponent, whose Transfermarkt id we
+ * never learn from the fixture feed. TM's quick-search returns the club's crest
+ * image, whose numeric id we lift and rebuild at `original`/`big` resolution.
+ * TM search is club-specific, so it is far less error-prone than a fuzzy
+ * Wikipedia name search (which returned Viktoria Plzeň for "FC Ballkani").
+ */
+async function transfermarktSearchCrestUrls(clubName: string): Promise<string[]> {
+  try {
+    const url = `https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=${encodeURIComponent(clubName)}`;
+    const res = await fetch(url, {
+      headers: { ...HEADERS, 'accept-language': 'en' },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    // The first club crest in the results carries the club id we need.
+    const id = html.match(/\/wappen\/(?:head|normal|verysmall|small|medium|big)\/(\d+)\.png/)?.[1];
+    if (!id) return [];
+    return [
+      `https://img.a.transfermarkt.technology/wappen/original/${id}.png`,
+      `https://img.a.transfermarkt.technology/wappen/big/${id}.png`,
+    ];
+  } catch {
+    return [];
   }
 }
 
@@ -91,11 +127,34 @@ async function wikipediaCrestUrl(clubName: string): Promise<string | null> {
   try {
     const search = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(
       `${clubName} football club`
-    )}&gsrlimit=1&prop=info&format=json&redirects=1`;
+    )}&gsrlimit=3&prop=info&format=json&redirects=1`;
     const found = await fetch(search, { headers: HEADERS, signal: AbortSignal.timeout(FETCH_TIMEOUT) });
     if (!found.ok) return null;
     const payload = (await found.json()) as { query?: { pages?: Record<string, { title?: string }> } };
-    const title = Object.values(payload?.query?.pages ?? {})[0]?.title;
+    const titles = Object.values(payload?.query?.pages ?? {})
+      .map((p) => p?.title)
+      .filter((t): t is string => Boolean(t));
+
+    // Wikipedia ranks by relevance, NOT "is this the exact club" — searching
+    // "FC Ballkani" returns "FC Viktoria Plzeň" first. So don't take the first
+    // club-like title; pick the one that best MATCHES the requested club name.
+    const isClubTitle = (t: string) => {
+      if (/^list of/i.test(t) || /\bfootball in\b/i.test(t) || /\bseason\b/i.test(t)) return false;
+      if (/,\s/.test(t)) return false; // place pages like "Acre, Israel"
+      return /(\bF\.?C\.?\b|\bF\.?K\.?\b|\bC\.?F\.?\b|\bS\.?C\.?\b|\bA\.?C\.?\b|\bK\.?F\.?\b|football|soccer|\bunited\b|\bathletic\b|\bsporting\b)/i.test(
+        t
+      );
+    };
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const GENERIC = new Set(['fc', 'fk', 'cf', 'sc', 'ac', 'kf', 'football', 'club', 'the', 'united', 'city', 'sporting', 'athletic']);
+    const keyTokens = norm(clubName).split(' ').filter((w) => w.length > 2 && !GENERIC.has(w));
+    const scored = titles
+      .filter(isClubTitle)
+      .map((t) => ({ t, matched: keyTokens.filter((k) => norm(t).includes(k)).length }))
+      .sort((a, b) => b.matched - a.matched);
+    // Require a distinctive token to match; otherwise return nothing (and fall
+    // back to the supplied crest) rather than hand back a different club.
+    const title = scored.find((s) => s.matched > 0)?.t ?? (keyTokens.length === 0 ? scored[0]?.t : undefined);
     if (!title) return null;
 
     const page = await fetch(`https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`, {
@@ -123,7 +182,20 @@ async function wikipediaCrestUrl(clubName: string): Promise<string | null> {
     if (!best) return null;
 
     const absolute = best.startsWith('//') ? `https:${best}` : best;
-    return absolute.replace(/&amp;/g, '&');
+    const resolved = absolute.replace(/&amp;/g, '&');
+
+    // Final safety net: a crest's file is a logo/badge, not a photograph. Reject
+    // obvious photo filenames (jpg photos, or names signalling a building/place
+    // like a church, stadium, town hall) so a town article's lead image can
+    // never masquerade as a crest.
+    const fileName = decodeURIComponent(resolved.split('/').pop() ?? '').toLowerCase();
+    const looksLikePhoto =
+      /\.jpe?g($|\?)/.test(fileName) ||
+      /(church|cathedral|trej|bažny|stadium|arena|town|hall|panorama|aerial|street|square|building|view)/.test(fileName);
+    const looksLikeCrest = /(logo|crest|badge|emblem|wappen|fc|fk|\.svg)/.test(fileName);
+    if (looksLikePhoto && !looksLikeCrest) return null;
+
+    return resolved;
   } catch {
     return null;
   }
@@ -137,18 +209,37 @@ export async function resolveCrest(
   clubName: string,
   logoUrl: string | null | undefined
 ): Promise<ResolvedCrest | null> {
-  const cacheKey = `matchday-crest-${sanitizeKey(clubName.toLowerCase())}`;
+  // Cache key is VERSIONED: bumping the version invalidates every crest cached
+  // under older (buggy) resolution. v3 clears entries that could hold the WRONG
+  // CLUB (e.g. "FC Ballkani" cached as Viktoria Plzeň) from before the
+  // Transfermarkt-search + name-scoring fixes.
+  const cacheKey = `matchday-crest-v3-${sanitizeKey(clubName.toLowerCase())}`;
+
+  // Only these sources are trusted enough to serve straight from cache. A
+  // cached Wikipedia/as-supplied result is NOT trusted on hit — we re-resolve,
+  // so one weak or wrong cached entry can never block the better TM source.
+  const TRUSTED = new Set(['transfermarkt-id', 'transfermarkt-search']);
   const cachedUrl = await getCached<{ url: string; source: string }>(cacheKey, CACHE_TTL_MS);
-  if (cachedUrl?.url) {
+  if (cachedUrl?.url && TRUSTED.has(cachedUrl.source)) {
     const hit = await fetchImage(cachedUrl.url, cachedUrl.source);
     if (hit && Math.min(hit.width, hit.height) >= DECENT_MIN) return hit;
   }
 
   const attempts: Array<{ url: string; source: string }> = [];
+
+  // 1) Transfermarkt variants of the URL we already hold (our own club — the
+  //    stored clubLogo carries the TM id, so this is the biggest, cheapest win).
   if (logoUrl) {
     for (const url of transfermarktVariants(logoUrl)) {
-      attempts.push({ url, source: 'transfermarkt-original' });
+      attempts.push({ url, source: 'transfermarkt-id' });
     }
+  }
+
+  // 2) Transfermarkt SEARCH BY NAME — the primary route for the opponent, whose
+  //    TM id we never get from the fixture feed. Club-specific, so far more
+  //    reliable than a fuzzy Wikipedia name search.
+  for (const url of await transfermarktSearchCrestUrls(clubName)) {
+    attempts.push({ url, source: 'transfermarkt-search' });
   }
 
   let best: ResolvedCrest | null = null;
@@ -159,8 +250,8 @@ export async function resolveCrest(
     if (Math.min(hit.width, hit.height) >= DECENT_MIN) break;
   }
 
-  // Wikipedia is the only route to a usable opponent crest, since the fixture
-  // feed only ever gives us a 30×30 badge.
+  // 3) Wikipedia infobox crest — last resort when Transfermarkt has nothing
+  //    usable (name-scored so it can't hand back a different club).
   if (!best || Math.min(best.width, best.height) < DECENT_MIN) {
     const wikiUrl = await wikipediaCrestUrl(clubName);
     if (wikiUrl) {
@@ -171,9 +262,12 @@ export async function resolveCrest(
     }
   }
 
-  // Fall back to the URL we were handed, however small.
+  // 4) Fall back to the URL we were handed, however small.
   if (!best && logoUrl) best = await fetchImage(logoUrl, 'as-supplied');
 
-  if (best) void setCache(cacheKey, { url: best.url, source: best.source });
+  // Persist ONLY trusted Transfermarkt results. Caching a Wikipedia/as-supplied
+  // result risks pinning a weak-or-wrong crest for 30 days and blocking the
+  // better source on later runs — so those are recomputed every time instead.
+  if (best && TRUSTED.has(best.source)) void setCache(cacheKey, { url: best.url, source: best.source });
   return best;
 }

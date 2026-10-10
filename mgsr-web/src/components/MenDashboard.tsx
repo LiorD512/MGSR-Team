@@ -23,7 +23,8 @@ import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import { openWhatsAppWithMessage } from '@/lib/whatsapp';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
-import MatchdayGeneratorModal, { type MatchdaySeed } from '@/components/MatchdayGeneratorModal';
+import { type MatchdaySeed } from '@/components/MatchdayGeneratorModal';
+import MatchdayDrawer from '@/components/MatchdayDrawer';
 import NotificationPrompt from '@/components/NotificationPrompt';
 import GlobalPlayerSearch, { type ShortlistSearchItem } from '@/components/GlobalPlayerSearch';
 import { db } from '@/lib/firebase';
@@ -1537,28 +1538,56 @@ export default function MenDashboard({
                 </label>
               </div>
             )}
-            {/* Generate matchday image — temporarily hidden (kept for future use).
-            {!isUnder19Dossier && dossier.playerId && (
-              <button
-                type="button"
-                className="brit-matchday-btn"
-                onClick={() =>
-                  setMatchdaySeed({
-                    playerId: dossier.playerId,
-                    playerName: dossier.name,
-                    playerImage: dossier.profileImage,
-                    tmProfile: dossier.tmProfile,
-                    club: dossier.club,
-                    clubCountry: dossier.clubCountry,
-                    clubLogo: dossier.clubLogo,
-                    instagramHandle: dossier.instagramHandle,
-                  })
-                }
-              >
-                {t('matchday_generate_button')}
-              </button>
-            )}
-            */}
+            {!isUnder19Dossier && dossier.playerId && (() => {
+              // Build the fixture from the dossier's confirmed next match. The
+              // generator REQUIRES this (it never scrape-guesses), so the button
+              // is only enabled once the next match has loaded with a side.
+              const nm = nextMatchState === 'ready' ? nextMatch : null;
+              const fixture =
+                nm && nm.homeAway
+                  ? {
+                      homeTeam: nm.homeAway === 'home' ? dossier.club : nm.opponent,
+                      awayTeam: nm.homeAway === 'home' ? nm.opponent : dossier.club,
+                      playerSide: nm.homeAway,
+                      homeLogo: nm.homeAway === 'home' ? dossier.clubLogo ?? null : nm.opponentLogo ?? null,
+                      awayLogo: nm.homeAway === 'home' ? nm.opponentLogo ?? null : dossier.clubLogo ?? null,
+                      date: nm.date,
+                      time: nm.time,
+                      competition: nm.competition,
+                      round: nm.round,
+                      venue: nm.venue,
+                    }
+                  : null;
+              const ready = Boolean(fixture);
+              return (
+                <button
+                  type="button"
+                  className="brit-matchday-btn"
+                  disabled={!ready}
+                  title={ready ? undefined : t('matchday_wait_fixture')}
+                  onClick={() => {
+                    if (!fixture) return;
+                    setMatchdaySeed({
+                      playerId: dossier.playerId,
+                      playerName: dossier.name,
+                      playerImage: dossier.profileImage,
+                      tmProfile: dossier.tmProfile,
+                      club: dossier.club,
+                      clubCountry: dossier.clubCountry,
+                      clubLogo: dossier.clubLogo,
+                      instagramHandle: dossier.instagramHandle,
+                      fixture,
+                    });
+                  }}
+                >
+                  <span className="brit-matchday-btn-mark" aria-hidden>◈</span>
+                  <span className="brit-matchday-btn-label">
+                    {ready ? t('matchday_generate_button') : t('matchday_wait_fixture')}
+                  </span>
+                  <span className="brit-matchday-btn-arrow" aria-hidden>→</span>
+                </button>
+              );
+            })()}
             {!isUnder19Dossier && <section className="bam-nm" aria-live="polite">
               <div className="bam-nm-top">
                 <span className="lbl"><span className="pulse" />{t('room_next_match')}</span>
@@ -1757,7 +1786,7 @@ export default function MenDashboard({
       </aside>
 
       {matchdaySeed && (
-        <MatchdayGeneratorModal seed={matchdaySeed} onClose={() => setMatchdaySeed(null)} />
+        <MatchdayDrawer seed={matchdaySeed} onClose={() => setMatchdaySeed(null)} />
       )}
       {searchOpen && (
         <GlobalPlayerSearch
