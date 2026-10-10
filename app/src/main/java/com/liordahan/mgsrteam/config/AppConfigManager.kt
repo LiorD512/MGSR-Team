@@ -159,10 +159,10 @@ object AppConfigManager {
     private val FALLBACK_TASK_TEMPLATES = TaskTemplatesConfig(
         templates = listOf(
             TaskTemplate("talk_month_status", "Talk in {month} to check status", "לדבר בחודש {month} לבדוק סטטוס", hasMonthPlaceholder = true),
-            TaskTemplate("call_agent", "Call player's agent", "להתקשר לסוכן השחקן", "Call athlete's agent", "להתקשר לסוכן השחקנית"),
+            TaskTemplate("call_agent", "Call player's agent", "להתקשר לסוכן השחקן"),
             TaskTemplate("check_contract", "Check contract / expiry date", "לבדוק חוזה / תאריך סיום"),
             TaskTemplate("send_documents", "Send documents (mandate, etc.)", "לשלוח מסמכים (מנדט וכו')"),
-            TaskTemplate("meeting_player", "Meeting / call with player", "פגישה / שיחה עם השחקן", "Meeting / call with athlete", "פגישה / שיחה עם השחקנית"),
+            TaskTemplate("meeting_player", "Meeting / call with player", "פגישה / שיחה עם השחקן"),
             TaskTemplate("follow_match", "Follow match / performance", "מעקב אחרי משחק / ביצועים")
         ),
         monthsEN = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"),
