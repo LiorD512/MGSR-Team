@@ -176,7 +176,7 @@
     <div class="screen">
       <!-- dark topbar: BRIT / Dashboard / date  (web .brit-topbar) -->
       <div class="topbar">
-        <button class="burger" aria-label="Menu"><span></span><span></span><span></span></button>
+        <button class="burger" aria-label="Menu" onclick="document.getElementById('drawer').classList.add('open')"><span></span><span></span><span></span></button>
         <div class="crumb">BRIT / <strong>Dashboard</strong> / October 10, 2026</div>
         <span class="pill"><b class="on">MEN</b><b class="off">YOUTH</b></span>
         <span class="avatar">LD</span>
@@ -287,8 +287,8 @@
     </div>
 
     <!-- rail drawer (opened by the hamburger) -->
-    <div class="drawer open" id="drawer">
-      <div class="scrim"></div>
+    <div class="drawer" id="drawer">
+      <div class="scrim" onclick="document.getElementById('drawer').classList.remove('open')"></div>
       <div class="panel">
         <div class="lockup">
           <span class="mk">B</span>
