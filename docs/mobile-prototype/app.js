@@ -1262,12 +1262,16 @@
 
   function warAlphaHtml() {
     return '<div class="war-alpha">' + WAR_ALPHA.map(function (a) {
-      return '<button class="alpha-card" data-dossier="' + (PLAYERS.map(function (p) { return p.name; }).indexOf(a.name)) + '">' +
+      // Only roster players own a dossier; off-roster targets stay non-tappable
+      // (same guard Returnees/Contract Finisher use for pidx == null).
+      var pi = PLAYERS.map(function (p) { return p.name; }).indexOf(a.name);
+      var tappable = pi >= 0;
+      return '<' + (tappable ? 'button' : 'div') + ' class="alpha-card' + (tappable ? '' : ' is-offroster') + '"' + (tappable ? ' data-dossier="' + pi + '"' : '') + '>' +
         '<div class="ac-left"><span class="ac-code">' + a.code + '</span>' + fitRing(a.fit, 46) + '</div>' +
         '<div class="ac-body"><div class="ac-top"><h3>' + esc(a.name) + '</h3><span class="ac-state ac-' + a.tone + '">' + a.state + '</span></div>' +
           '<p class="ac-ctx">' + esc(a.ctx) + '</p>' +
-          '<p class="ac-move">' + svg('arrow', 1.6) + ' ' + esc(a.move) + '</p></div>' +
-      '</button>';
+          '<p class="ac-move">' + svg('arrow', 1.6) + ' ' + esc(a.move) + (tappable ? '' : ' · OFF-ROSTER TARGET') + '</p></div>' +
+      '</' + (tappable ? 'button' : 'div') + '>';
     }).join('') + '</div>';
   }
 
