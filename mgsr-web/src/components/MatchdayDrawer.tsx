@@ -290,94 +290,76 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
   const canGenerate = !assetsLoading && !!playerPhotoUrl && uploading === null;
   const stepIndex = (['assets', 'design', 'generate', 'deliver'] as Step[]).indexOf(step);
 
+  const nameParts = seed.playerName.trim().split(/\s+/);
+  const firstName = nameParts.slice(0, -1).join(' ') || seed.playerName;
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+  const railSteps: { id: Step; label: string }[] = [
+    { id: 'assets', label: t('matchday_v2_tab_assets') },
+    { id: 'design', label: t('matchday_v2_tab_design') },
+    { id: 'generate', label: t('matchday_v2_tab_generate') },
+    { id: 'deliver', label: t('matchday_v2_tab_deliver') },
+  ];
+
   return (
     <div
-      className="brit-drawer-overlay matchday-drawer-overlay"
+      className="md2-overlay"
       role="dialog"
       aria-modal="true"
       aria-label={t('matchday_title')}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && phase !== 'running') onClose();
-      }}
     >
-      <div className="matchday-drawer-panel">
-        <button className="brit-close" onClick={onClose} aria-label={t('room_close')} disabled={phase === 'running'}>
-          ×
-        </button>
-
-        {/* Header */}
-        <div className="matchday-drawer-head">
-          <h2>{t('matchday_title')}</h2>
-          <div className="matchday-seed">
-            <span className="matchday-seed-player">{seed.playerName}</span>
-            <span className="matchday-seed-club">{seed.club}</span>
-          </div>
+      <div className="md2">
+        {/* breadcrumb bar */}
+        <div className="md2-topbar">
+          <span className="md2-crumb">BRIT / <b>MATCHDAY</b></span>
+          <span className="md2-sp" />
+          <span className="md2-platform">{seed.club}</span>
+          <button className="md2-x" onClick={onClose} aria-label={t('room_close')} disabled={phase === 'running'}>✕</button>
         </div>
 
-        {/* Stepper */}
-        <ol className="matchday-steps">
-          {(['assets', 'design', 'generate', 'deliver'] as Step[]).map((s, i) => (
-            <li key={s} className={i < stepIndex ? 'done' : i === stepIndex ? 'active' : 'pending'}>
-              <span className="n">{i + 1}</span>
-              <span className="lbl">{t(`matchday_v2_tab_${s}`)}</span>
-            </li>
-          ))}
-        </ol>
+        <div className="md2-shell">
+          {/* left step rail */}
+          <nav className="md2-rail">
+            <p className="md2-seg">{t('matchday_title')}</p>
+            <ol>
+              {railSteps.map((s, i) => (
+                <li key={s.id} className={i < stepIndex ? 'done' : i === stepIndex ? 'active' : ''}>
+                  <span className="i">{i < stepIndex ? '✓' : `0${i + 1}`}</span>
+                  <span className="t">{s.label}</span>
+                </li>
+              ))}
+            </ol>
+          </nav>
 
-        <div className="matchday-drawer-body">
+          {/* main content */}
+          <div className="md2-main">
           {/* ── Step 1: Assets ── */}
           {step === 'assets' && (
-            <div className="matchday-setup">
-              <p className="matchday-hint">{t('matchday_v2_intro')}</p>
-              <div className="matchday-config">
-                <AssetRow
-                  label={t('matchday_player_photo')}
-                  url={playerPhotoUrl}
-                  required
-                  loading={assetsLoading}
-                  busy={uploading === 'player'}
-                  hint={t('matchday_player_photo_hint')}
-                  replaceLabel={t('matchday_replace')}
-                  uploadLabel={t('matchday_upload')}
-                  missingLabel={t('matchday_photo_missing')}
-                  onPick={(f) => void handleUpload('player', f)}
-                />
-                <AssetRow
-                  label={t('matchday_v2_player2_photo')}
-                  url={playerPhoto2Url}
-                  required={false}
-                  loading={assetsLoading}
-                  busy={uploading === 'player2'}
-                  hint={t('matchday_v2_player2_hint')}
-                  replaceLabel={t('matchday_replace')}
-                  uploadLabel={t('matchday_upload')}
-                  missingLabel={t('matchday_optional')}
-                  onPick={(f) => void handleUpload('player2', f)}
-                />
-                <AssetRow
-                  label={t('matchday_v2_kit_photo')}
-                  url={kitPhotoUrl}
-                  required={false}
-                  loading={assetsLoading}
-                  busy={uploading === 'kit'}
-                  hint={t('matchday_v2_kit_hint')}
-                  replaceLabel={t('matchday_replace')}
-                  uploadLabel={t('matchday_upload')}
-                  missingLabel={t('matchday_optional')}
-                  onPick={(f) => void handleUpload('kit', f)}
-                />
-                <AssetRow
-                  label={t('matchday_stadium_photo')}
-                  url={stadiumPhotoUrl}
-                  required={false}
-                  loading={assetsLoading}
-                  busy={uploading === 'stadium'}
-                  hint={t('matchday_stadium_photo_hint')}
-                  replaceLabel={t('matchday_replace')}
-                  uploadLabel={t('matchday_upload')}
-                  missingLabel={t('matchday_optional')}
-                  onPick={(f) => void handleUpload('stadium', f)}
-                />
+            <>
+              <p className="md2-eyebrow">{t('matchday_generate_button')} · <b>{seed.club}</b></p>
+              <h1 className="md2-h1">{firstName} {lastName && <span className="g">{lastName}.</span>}</h1>
+              <p className="md2-dek">{t('matchday_v2_intro')}</p>
+
+              <div className="md2-assets">
+                <AssetRow idx="01" label={t('matchday_player_photo')} url={playerPhotoUrl} required
+                  loading={assetsLoading} busy={uploading === 'player'}
+                  hint={t('matchday_player_photo_hint')} missingLabel={t('matchday_photo_missing')}
+                  uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
+                  onPick={(f) => void handleUpload('player', f)} />
+                <AssetRow idx="02" label={t('matchday_v2_player2_photo')} url={playerPhoto2Url} required={false}
+                  loading={assetsLoading} busy={uploading === 'player2'}
+                  hint={t('matchday_v2_player2_hint')} missingLabel={t('matchday_optional')}
+                  uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
+                  onPick={(f) => void handleUpload('player2', f)} />
+                <AssetRow idx="03" label={t('matchday_v2_kit_photo')} url={kitPhotoUrl} required={false}
+                  loading={assetsLoading} busy={uploading === 'kit'}
+                  hint={t('matchday_v2_kit_hint')} missingLabel={t('matchday_optional')}
+                  uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
+                  onPick={(f) => void handleUpload('kit', f)} />
+                <AssetRow idx="04" label={t('matchday_stadium_photo')} url={stadiumPhotoUrl} required={false}
+                  loading={assetsLoading} busy={uploading === 'stadium'}
+                  hint={t('matchday_stadium_photo_hint')} missingLabel={t('matchday_optional')}
+                  uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
+                  onPick={(f) => void handleUpload('stadium', f)} />
               </div>
 
               <label className="matchday-number-field">
@@ -392,152 +374,140 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                 />
               </label>
 
-              {uploadError && <p className="matchday-upload-error">{uploadError}</p>}
-              {!assetsLoading && !playerPhotoUrl && <p className="matchday-blocked">{t('matchday_blocked_no_photo')}</p>}
+              {uploadError && <p className="md2-blocked">{uploadError}</p>}
+              {!assetsLoading && !playerPhotoUrl ? (
+                <p className="md2-blocked">{t('matchday_blocked_no_photo')}</p>
+              ) : (
+                <p className="md2-safe"><b>◆</b> {t('matchday_v2_face_safe')}</p>
+              )}
 
-              <div className="matchday-drawer-actions">
-                <button className="brit-modal-action" disabled={!canGenerate} onClick={() => setStep('design')}>
-                  {t('matchday_v2_next_design')}
+              <div className="md2-actions">
+                <button className={`md2-lead${!canGenerate ? ' disabled' : ''}`} disabled={!canGenerate} onClick={() => setStep('design')}>
+                  {t('matchday_v2_next_design')} →
                 </button>
               </div>
-            </div>
+            </>
           )}
 
           {/* ── Step 2: Design ── */}
           {step === 'design' && (
-            <div className="matchday-design-pick">
-              <p className="matchday-hint">{t('matchday_v2_pick_design')}</p>
-              <div className="matchday-design-grid">
+            <>
+              <p className="md2-eyebrow">{t('matchday_generate_button')} · <b>{t('matchday_v2_pick_mood')}</b></p>
+              <h1 className="md2-h1">{t('matchday_v2_the')} <span className="g">{t('matchday_v2_style')}.</span></h1>
+              <p className="md2-dek">{t('matchday_v2_pick_design')}</p>
+              <div className="md2-styles">
                 {MATCHDAY_DESIGNS.map((d) => (
                   <button
                     key={d.id}
                     type="button"
-                    className={`matchday-design-card${design === d.id ? ' selected' : ''} md-${d.id}`}
+                    className={`md2-sc md-${d.id}${design === d.id ? ' sel' : ''}`}
                     onClick={() => setDesign(d.id)}
                     aria-pressed={design === d.id}
                   >
-                    <span className="md-swatch" aria-hidden />
-                    <span className="md-name">{d.name}</span>
-                    <span className="md-blurb">{d.blurb}</span>
+                    <span className="md2-mk">{t('matchday_v2_selected')}</span>
+                    <span className="md2-pv" aria-hidden />
+                    <span className="md2-cap">
+                      <span className="n">{d.name}</span>
+                      <span className="d">{d.blurb}</span>
+                    </span>
                   </button>
                 ))}
               </div>
-              <div className="matchday-drawer-actions">
-                <button className="brit-modal-action brit-modal-action-secondary" onClick={() => setStep('assets')}>
-                  {t('matchday_v2_back')}
-                </button>
-                <button className="brit-modal-action" onClick={run}>
-                  {t('matchday_generate')}
-                </button>
+              <div className="md2-actions">
+                <button className="md2-lead" onClick={run}>{t('matchday_generate')} →</button>
+                <button className="md2-text" onClick={() => setStep('assets')}>← {t('matchday_v2_back')}</button>
               </div>
-            </div>
+            </>
           )}
 
           {/* ── Step 3: Generate (progress) ── */}
           {step === 'generate' && phase === 'running' && (
-            <ul className="matchday-progress" aria-live="polite">
-              {PROGRESS_STEPS.map((s, i) => (
-                <li key={s} className={i < activeStep ? 'done' : i === activeStep ? 'active' : 'pending'}>
-                  <span className="matchday-progress-dot" />
-                  {t(s)}
-                </li>
-              ))}
-            </ul>
+            <>
+              <p className="md2-eyebrow">{t('matchday_generate_button')}</p>
+              <h1 className="md2-h1">{t('matchday_v2_building')} <span className="g">{t('matchday_v2_scene')}.</span></h1>
+              <ul className="md2-prog" aria-live="polite">
+                {PROGRESS_STEPS.map((s, i) => (
+                  <li key={s} className={i < activeStep ? 'done' : i === activeStep ? 'active' : ''}>
+                    {t(s)}
+                    <span className="st">{i < activeStep ? t('matchday_v2_done') : i === activeStep ? t('matchday_v2_working') : t('matchday_v2_queued')}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
           {step === 'generate' && phase === 'error' && (
-            <div className="matchday-error">
-              <p>{error}</p>
-              <div className="matchday-drawer-actions">
-                <button className="brit-modal-action brit-modal-action-secondary" onClick={() => setStep('design')}>
-                  {t('matchday_v2_back')}
-                </button>
-                <button className="brit-modal-action" onClick={run}>
-                  {t('matchday_regenerate')}
-                </button>
+            <>
+              <p className="md2-eyebrow">{t('matchday_generate_button')}</p>
+              <h1 className="md2-h1">{t('matchday_v2_couldnt')} <span className="g">{t('matchday_v2_create_word')}.</span></h1>
+              <div className="md2-err">
+                <p>{error}</p>
+                <div className="md2-actions" style={{ marginTop: 0 }}>
+                  <button className="md2-lead" onClick={run}>{t('matchday_regenerate')} →</button>
+                  <button className="md2-text" onClick={() => setStep('design')}>← {t('matchday_v2_back')}</button>
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* ── Step 4: Deliver ── */}
           {step === 'deliver' && result && (
-            <div className="matchday-result">
-              <div className="matchday-canvas matchday-canvas-916">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={result.imageDataUrl} alt={`MATCHDAY ${result.facts.playerName}`} />
-              </div>
+            <>
+              <p className="md2-eyebrow">{t('matchday_generate_button')} · <b>{t('matchday_v2_ready')}</b></p>
+              <h1 className="md2-h1">{t('matchday_v2_send_it')} <span className="g">{t('matchday_v2_out')}.</span></h1>
 
-              <ul className="matchday-checks">
-                {result.qualityChecks.map((c) => (
-                  <li key={c.id} className={`qc-${c.status}`}>
-                    <span className="qc-mark" />
-                    <span className="qc-label">{c.label}</span>
-                    {c.detail && <span className="qc-detail">{c.detail}</span>}
-                  </li>
-                ))}
-              </ul>
+              <div className="md2-result">
+                <div className="md2-canvas">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={result.imageDataUrl} alt={`MATCHDAY ${result.facts.playerName}`} />
+                </div>
 
-              <div className="matchday-deliver">
-                <p className="matchday-deliver-title">{t('matchday_v2_deliver_title')}</p>
+                <div className="md2-rside">
+                  <ul className="md2-checks">
+                    {result.qualityChecks.map((c) => (
+                      <li key={c.id} className={`qc-${c.status}`}>
+                        <span className="m" />
+                        <span className="lab">{c.label}</span>
+                        {c.detail && <span className="d">{c.detail}</span>}
+                      </li>
+                    ))}
+                  </ul>
 
-                {/* Editable recipients, pre-filled from the agent's account.
-                    Shown so delivery works even if auto-detect missed one. */}
-                <div className="matchday-deliver-fields">
-                  <label className="matchday-deliver-field">
+                  <p className="md2-dh">{t('matchday_v2_deliver_title')}</p>
+                  <label className="md2-fld">
                     <span>{t('matchday_v2_email_label')}</span>
-                    <input
-                      type="email"
-                      inputMode="email"
-                      placeholder="you@example.com"
-                      value={agentEmail}
-                      onChange={(e) => setAgentEmail(e.target.value)}
-                    />
+                    <input type="email" inputMode="email" placeholder="you@example.com"
+                      value={agentEmail} onChange={(e) => setAgentEmail(e.target.value)} />
                   </label>
-                  <label className="matchday-deliver-field">
+                  <label className="md2-fld">
                     <span>{t('matchday_v2_phone_label')}</span>
-                    <input
-                      type="tel"
-                      inputMode="tel"
-                      placeholder="05X-XXXXXXX"
-                      value={agentPhone}
-                      onChange={(e) => setAgentPhone(e.target.value)}
-                    />
+                    <input type="tel" inputMode="tel" placeholder="05X-XXXXXXX"
+                      value={agentPhone} onChange={(e) => setAgentPhone(e.target.value)} />
                   </label>
-                </div>
 
-                <div className="matchday-deliver-row">
-                  <button
-                    className="brit-modal-action matchday-wa"
-                    onClick={() => void handleSend('whatsapp')}
-                    disabled={sending !== null || !agentPhone.trim()}
-                    title={agentPhone.trim() ? undefined : t('matchday_v2_no_phone')}
-                  >
-                    {sending === 'whatsapp' ? '…' : t('matchday_v2_send_whatsapp')}
-                  </button>
-                  <button
-                    className="brit-modal-action"
-                    onClick={() => void handleSend('email')}
-                    disabled={sending !== null || !agentEmail.trim()}
-                    title={agentEmail.trim() ? undefined : t('matchday_v2_no_email')}
-                  >
-                    {sending === 'email' ? '…' : t('matchday_v2_send_email')}
-                  </button>
-                </div>
-                {sendMsg && <p className="matchday-deliver-msg">{sendMsg}</p>}
-              </div>
+                  <div className="md2-actions" style={{ marginTop: 20 }}>
+                    <button className="md2-lead" onClick={() => void handleSend('email')}
+                      disabled={sending !== null || !agentEmail.trim()}>
+                      {sending === 'email' ? '…' : t('matchday_v2_send_email')}
+                    </button>
+                    <button className="md2-text g" onClick={() => void handleSend('whatsapp')}
+                      disabled={sending !== null || !agentPhone.trim()}>
+                      {sending === 'whatsapp' ? '…' : t('matchday_v2_send_whatsapp')}
+                    </button>
+                  </div>
+                  {sendMsg && <p className="md2-sent">{sendMsg}</p>}
 
-              <div className="matchday-actions">
-                <button className="brit-modal-action brit-modal-action-secondary" onClick={() => setStep('design')}>
-                  {t('matchday_regenerate')}
-                </button>
-                <button className="brit-modal-action brit-modal-action-secondary" onClick={handleSave} disabled={saved}>
-                  {saved ? t('matchday_saved') : t('matchday_save')}
-                </button>
-                <button className="brit-modal-action" onClick={handleDownload}>
-                  {t('matchday_download')}
-                </button>
+                  <div className="md2-actions" style={{ marginTop: 34 }}>
+                    <button className="md2-text" onClick={handleDownload}>{t('matchday_download')}</button>
+                    <button className="md2-text" onClick={handleSave} disabled={saved}>
+                      {saved ? t('matchday_saved') : t('matchday_save')}
+                    </button>
+                    <button className="md2-text" onClick={() => setStep('design')}>{t('matchday_regenerate')}</button>
+                  </div>
+                </div>
               </div>
-            </div>
+            </>
           )}
+          </div>
         </div>
       </div>
     </div>
@@ -545,6 +515,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
 }
 
 interface AssetRowProps {
+  idx: string;
   label: string;
   url: string | null;
   required: boolean;
@@ -557,25 +528,26 @@ interface AssetRowProps {
   onPick: (file: File) => void;
 }
 
-function AssetRow({ label, url, required, loading, busy, hint, uploadLabel, replaceLabel, missingLabel, onPick }: AssetRowProps) {
+/** One airy hairline asset row — editorial, matches the dashboard. */
+function AssetRow({ idx, label, url, required, loading, busy, hint, uploadLabel, replaceLabel, missingLabel, onPick }: AssetRowProps) {
   const inputId = `matchday-upload-${label.replace(/\s+/g, '-').toLowerCase()}`;
+  const isMissingRequired = required && !url && !loading;
   return (
-    <div className={`matchday-asset-row${required && !url && !loading ? ' missing' : ''}`}>
-      <div className="matchday-asset-thumb">
-        {url ? (
+    <div className={`md2-arow${isMissingRequired ? ' req' : ''}`}>
+      <span className="idx">{idx}</span>
+      <div className={`th${url ? ' ok' : ''}`}>
+        {url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={url} alt="" />
-        ) : (
-          <span className="matchday-asset-empty" aria-hidden />
         )}
       </div>
-      <div className="matchday-asset-copy">
-        <label htmlFor={inputId}>{label}</label>
-        <p>{loading ? '…' : url ? hint : missingLabel}</p>
+      <div className="m">
+        <div className="k">{label}</div>
+        <div className="v">{loading ? '…' : url ? hint : missingLabel}</div>
       </div>
-      <label className="matchday-asset-action" htmlFor={inputId}>
-        {busy ? '…' : url ? replaceLabel : uploadLabel}
-      </label>
+      {isMissingRequired && <span className="req-flag">{/* Required */}●</span>}
+      {url && <span className="set-flag">✓</span>}
+      <label className="go" htmlFor={inputId}>{busy ? '…' : url ? replaceLabel : uploadLabel}</label>
       <input
         id={inputId}
         type="file"
