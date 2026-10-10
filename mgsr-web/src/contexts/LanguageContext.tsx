@@ -246,6 +246,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     matchday_v2_whatsapp_opened: 'WhatsApp opened with the image link.',
     matchday_v2_email_sent: 'Email sent.',
     matchday_v2_send_failed: 'Could not send. Try again.',
+    matchday_wait_fixture: 'Loading next match…',
     room_status_new: 'New',
     room_status_open: 'Open',
     // ── Men players "Light Management Room" redesign ──
@@ -2232,6 +2233,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     matchday_v2_whatsapp_opened: 'וואטסאפ נפתח עם קישור לתמונה.',
     matchday_v2_email_sent: 'המייל נשלח.',
     matchday_v2_send_failed: 'השליחה נכשלה. נסו שוב.',
+    matchday_wait_fixture: 'טוען את המשחק הבא…',
     room_status_new: 'חדש',
     room_status_open: 'פתוח',
     // ── Men players "Light Management Room" redesign ──

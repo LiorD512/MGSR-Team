@@ -187,3 +187,34 @@ export async function generateSky(kind: 'golden' | 'storm'): Promise<GenResult |
         'text. Photorealistic sports-poster background.';
   return generate([{ text: prompt }], `sky-${kind}`);
 }
+
+/**
+ * Generate a full CINEMATIC BACKGROUND scene for the poster — dramatic, dark,
+ * high-contrast, with thick atmospheric smoke and volumetric stadium lighting.
+ * Crucially this contains NO people, NO text and NO logos: the real player
+ * cutout, accurate crests and fixture text are composited on top afterwards, so
+ * the player's face is never generated and the facts can never be garbled.
+ *
+ * When a stadium reference image is supplied, the model stylises THAT venue so
+ * the backdrop is the real ground, dramatised. 9:16, tuned per palette.
+ */
+export async function generateCinematicScene(opts: {
+  palette: string; // e.g. "deep crimson and ember orange"
+  stadiumRef?: Buffer | null;
+}): Promise<GenResult | null> {
+  if (!geminiConfigured()) return null;
+  const prompt =
+    `Create a dramatic, cinematic football poster BACKGROUND in a strict 9:16 vertical ratio. ` +
+    `Mood: dark, high-contrast, mature and premium — like a Champions League key visual. ` +
+    `A moody football stadium at night under volumetric floodlight beams, with THICK rolling ` +
+    `atmospheric smoke and haze drifting across the lower third, deep shadows, subtle ${opts.palette} ` +
+    `colour grade, fine film grain and a strong vignette so the centre stays clear for a player. ` +
+    (opts.stadiumRef
+      ? `Base the stadium on the supplied reference photo, dramatised and darkened. `
+      : ``) +
+    `ABSOLUTELY NO people, NO players, NO text, NO letters, NO logos, NO crests, NO watermarks — ` +
+    `only the empty atmospheric stadium scene. Photorealistic, ultra-detailed, 8K, no borders.`;
+
+  const parts: unknown[] = opts.stadiumRef ? [imagePart(opts.stadiumRef), { text: prompt }] : [{ text: prompt }];
+  return generate(parts, 'cinematic-scene');
+}

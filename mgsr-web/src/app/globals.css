@@ -4573,6 +4573,8 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 8px 22px rgba(124, 83, 27, 0.38);
 }
 .brit-matchday-btn:active { transform: translateY(1px); }
+.brit-matchday-btn:disabled { opacity: 0.5; cursor: progress; filter: grayscale(0.3); box-shadow: none; }
+.brit-matchday-btn:disabled:hover { filter: grayscale(0.3); }
 .brit-matchday-btn-mark {
   font-size: 14px;
   color: #fff6d6;

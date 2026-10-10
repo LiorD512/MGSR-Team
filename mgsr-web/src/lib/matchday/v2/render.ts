@@ -156,6 +156,30 @@ async function crestPng(buf: Buffer | null | undefined, size: number): Promise<B
     .toBuffer();
 }
 
+/**
+ * Crest in a thin SILVER-ringed transparent disc (per the reference brief:
+ * "transparent with thin silver border lines"). The crest keeps its own colours;
+ * only a subtle metallic ring + faint inner glow frames it. Area-normalised via
+ * crestPng so both badges read the same size.
+ */
+async function silverBadge(buf: Buffer | null | undefined, size: number): Promise<Buffer | null> {
+  if (!buf) return null;
+  const crest = await crestPng(buf, Math.round(size * 0.78));
+  const ring = Buffer.from(
+    `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg"><defs>` +
+      `<linearGradient id="sil" x1="0" y1="0" x2="1" y2="1">` +
+      `<stop offset="0%" stop-color="#f4f6f8"/><stop offset="45%" stop-color="#aeb6bf"/>` +
+      `<stop offset="55%" stop-color="#7e868f"/><stop offset="100%" stop-color="#d7dde2"/></linearGradient></defs>` +
+      `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 4}" fill="none" stroke="url(#sil)" stroke-width="2.5" opacity="0.92"/>` +
+      `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 9}" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.18"/>` +
+      `</svg>`
+  );
+  return sharp({ create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: crest!, gravity: 'centre' }, { input: ring, gravity: 'centre' }])
+    .png()
+    .toBuffer();
+}
+
 // ── text layers via satori ──────────────────────────────────────────────────
 
 async function textLayer(node: ReactNode): Promise<Buffer> {
@@ -581,13 +605,21 @@ async function cinematicStadiumBg(
   i: RenderV2Input,
   opts: { wash: string; washOpacity: number; spot: string; smokeTint: string; smokeIntensity?: number; bottom: string }
 ): Promise<Buffer> {
-  // Base: stadium photo (user upload) → else AI sky → else deep gradient.
+  // Base priority: AI-generated cinematic scene (already dark + smoky) → raw
+  // uploaded stadium → deep gradient. When the AI scene is present we grade it
+  // only lightly (it's already dramatic); a raw stadium gets the full dark grade.
   let base: Buffer;
-  const source = i.stadium ?? i.sky ?? null;
-  if (source) {
-    base = await sharp(source)
+  let sceneIsGenerated = false;
+  if (i.sky) {
+    sceneIsGenerated = true;
+    base = await sharp(i.sky)
       .resize(V2_W, V2_H, { fit: 'cover', position: 'centre' })
-      .modulate({ brightness: 0.5, saturation: 0.85 }) // graded dark + cinematic
+      .modulate({ brightness: 0.82, saturation: 1.0 }) // light touch — already cinematic
+      .toBuffer();
+  } else if (i.stadium) {
+    base = await sharp(i.stadium)
+      .resize(V2_W, V2_H, { fit: 'cover', position: 'centre' })
+      .modulate({ brightness: 0.5, saturation: 0.85 }) // full dark grade on a plain photo
       .blur(3)
       .toBuffer();
   } else {
@@ -598,17 +630,18 @@ async function cinematicStadiumBg(
       .toBuffer();
   }
 
-  const smoke = await smokeLayer(opts.smokeTint, opts.smokeIntensity ?? 1);
+  // On a generated scene, go lighter on our own smoke/wash so we don't muddy it.
+  const smoke = await smokeLayer(opts.smokeTint, (opts.smokeIntensity ?? 1) * (sceneIsGenerated ? 0.5 : 1));
   const composed = await sharp(base)
     .composite([
       // colour-wash to unify the scene with the theme palette
       {
         input: Buffer.from(
-          `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><rect width="${V2_W}" height="${V2_H}" fill="${opts.wash}" opacity="${opts.washOpacity}"/></svg>`
+          `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><rect width="${V2_W}" height="${V2_H}" fill="${opts.wash}" opacity="${sceneIsGenerated ? opts.washOpacity * 0.5 : opts.washOpacity}"/></svg>`
         ),
         blend: 'over',
       },
-      { input: spotlight(opts.spot, 0.5), blend: 'screen' },
+      { input: spotlight(opts.spot, sceneIsGenerated ? 0.3 : 0.5), blend: 'screen' },
       { input: smoke, blend: 'screen' },
       { input: cinematicVignette(opts.bottom), blend: 'over' },
     ])
@@ -749,7 +782,7 @@ async function themedPoster(i: RenderV2Input, theme: Theme): Promise<Buffer> {
   );
 
   const bs = 170;
-  const [cH, cA] = await Promise.all([crestPng(i.homeCrest, bs), crestPng(i.awayCrest, bs)]);
+  const [cH, cA] = await Promise.all([silverBadge(i.homeCrest, bs), silverBadge(i.awayCrest, bs)]);
   const crestY = V2_H - 188;
   const vs = await textLayer(
     div({ width: `${V2_W}px`, height: `${V2_H}px`, position: 'relative' }, [

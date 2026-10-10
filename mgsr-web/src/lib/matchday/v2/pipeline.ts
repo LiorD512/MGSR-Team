@@ -9,17 +9,28 @@
 
 import { randomUUID } from 'crypto';
 import type { MatchdayMatchFacts, MatchdayQualityCheck } from '../types';
-import { gatherMatchFacts } from '../facts';
-import { fetchAndValidate } from '../assets';
 import { resolveCrest } from '../crests';
 import { buildMatchKey, recordDesign } from '../designMemory';
 import { MatchdayError } from '../pipeline';
 import { prepareLayers } from './prepare';
 import { renderV2, V2_W, V2_H } from './render';
-import { generateSky, geminiConfigured } from './gemini';
-import type { MatchdayV2Input, MatchdayV2Result } from './types';
+import { generateCinematicScene, geminiConfigured } from './gemini';
+import type { MatchdayDesignId, MatchdayV2Input, MatchdayV2Result } from './types';
 
 const TM_SILHOUETTE = /\/default\.(jpg|png)(\?|$)/i;
+
+/** Colour-grade words for the AI cinematic scene, per style. */
+const SCENE_PALETTES: Record<MatchdayDesignId, string> = {
+  inferno: 'deep crimson and ember orange',
+  frost: 'icy cyan and steel blue',
+  prestige: 'black and antique gold',
+  electric: 'neon teal and electric violet',
+  // legacy styles (no longer in the picker) fall back sensibly
+  midnight: 'black and warm gold',
+  golden: 'warm amber sunset',
+  storm: 'stormy grey and gold',
+  marble: 'cool neutral grey',
+};
 
 async function fetchBytes(url: string): Promise<Buffer | null> {
   try {
@@ -35,36 +46,33 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   const generationId = randomUUID();
 
   // ── Stage 1: facts (required) ──
-  // Prefer the fixture the dossier already resolved and showed the operator
-  // (correct teams + the exact logos). Only fall back to scraping when the UI
-  // didn't have a ready fixture — this is what stops wrong crests like "LASK".
-  let facts: MatchdayMatchFacts | null;
-  if (input.fixture) {
-    const f = input.fixture;
-    facts = {
-      playerName: input.playerName,
-      homeTeam: f.homeTeam,
-      awayTeam: f.awayTeam,
-      playerSide: f.playerSide,
-      country: input.clubCountry ?? null,
-      competition: f.competition,
-      round: f.round,
-      date: f.date,
-      time: f.time,
-      venue: f.venue,
-      homeLogo: f.homeLogo,
-      awayLogo: f.awayLogo,
-    };
-  } else {
-    facts = await gatherMatchFacts({
-      playerName: input.playerName,
-      club: input.club,
-      clubCountry: input.clubCountry,
-      clubLogo: input.clubLogo,
-      tmProfile: input.tmProfile,
-    });
+  // CORRECTNESS RULE: use ONLY the fixture the dossier already resolved and
+  // showed the operator (correct teams, date, competition and the exact logos).
+  // We deliberately do NOT fall back to scraping by player name here: that
+  // produced CONFIDENTLY WRONG fixtures (e.g. Bawa shown Bnei Yehuda's match)
+  // because an obscure name matches the wrong player. For a scouting product a
+  // wrong fixture is worse than no poster — so refuse instead of inventing one.
+  if (!input.fixture) {
+    throw new MatchdayError(
+      'No confirmed next match for this player yet. Open the player card and wait for the "Next match" to load, then generate.',
+      'NO_MATCH'
+    );
   }
-  if (!facts) throw new MatchdayError('No upcoming fixture found for this player.', 'NO_MATCH');
+  const f = input.fixture;
+  const facts: MatchdayMatchFacts = {
+    playerName: input.playerName,
+    homeTeam: f.homeTeam,
+    awayTeam: f.awayTeam,
+    playerSide: f.playerSide,
+    country: input.clubCountry ?? null,
+    competition: f.competition,
+    round: f.round,
+    date: f.date,
+    time: f.time,
+    venue: f.venue,
+    homeLogo: f.homeLogo,
+    awayLogo: f.awayLogo,
+  };
 
   // ── Stage 2: curated player photo (required) ──
   if (!input.playerPhotoUrl?.trim() || TM_SILHOUETTE.test(input.playerPhotoUrl)) {
@@ -106,15 +114,18 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   const homeCrest = homeRes?.bytes ?? (facts.homeLogo ? await fetchBytes(facts.homeLogo) : null);
   const awayCrest = awayRes?.bytes ?? (facts.awayLogo ? await fetchBytes(facts.awayLogo) : null);
 
-  // ── Stage 5: background sky for sky-based designs ──
-  let sky: Buffer | null = null;
-  if (input.design === 'golden' || input.design === 'storm') {
-    const gen = await generateSky(input.design === 'golden' ? 'golden' : 'storm');
-    if (gen) sky = gen.bytes;
-  }
-
-  // Optional stadium photo (used only as a fallback band in some designs).
+  // Optional stadium photo — used as a REFERENCE for the generated scene, and
+  // as a deterministic fallback background if generation is unavailable.
   const stadium = input.stadiumPhotoUrl?.trim() ? await fetchBytes(input.stadiumPhotoUrl) : null;
+
+  // ── Stage 5: AI cinematic background scene (no people/text/logos) ──
+  // The generative "wow" lever: Gemini paints a dramatic dark stadium scene with
+  // thick smoke, graded to the style palette. The player, crests and text are
+  // composited ON TOP afterwards, so the face is never generated. Falls back to
+  // the deterministic stadium/gradient background when Gemini is unavailable.
+  const scenePalette = SCENE_PALETTES[input.design] ?? 'cinematic steel blue';
+  const generatedScene = await generateCinematicScene({ palette: scenePalette, stadiumRef: stadium });
+  const sky: Buffer | null = generatedScene?.bytes ?? null;
 
   // ── Stage 6: render ──
   const rendered = await renderV2({
