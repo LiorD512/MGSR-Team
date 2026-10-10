@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>BRIT SPORT GROUP — Login (web-matched mock)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* Tokens copied verbatim from the web .brit-login (globals.css) */
+  :root{
+    --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+    --gold:#a47d43;--gold-soft:#c9a66b;--gold-bright:#e4c98b;
+    --red:#b64235;--green:#5c6f4a;--muted:#77736a;
+    --line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+    --l-display:'Oswald',Impact,sans-serif;
+    --l-body:'Manrope',Helvetica,sans-serif;
+    --l-mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(ellipse at 30% 0%,#2a2419,#121009 70%);
+    font:14px/1.5 var(--l-body);-webkit-font-smoothing:antialiased;
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:22px;padding:34px 16px 60px;
+  }
+  .intro{text-align:center;color:var(--paper);max-width:430px}
+  .intro .kick{color:var(--gold-bright);font:9px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.2em}
+  .intro h1{margin:11px 0 7px;font:500 28px/.95 var(--l-display);text-transform:uppercase}
+  .intro p{margin:0;color:#b7b1a5;font:10px/1.6 var(--l-mono);text-transform:uppercase;letter-spacing:.05em}
+
+  /* Phone frame */
+  .phone{position:relative;width:390px;max-width:100%;height:844px;background:var(--paper);color:var(--ink);
+    border-radius:46px;border:11px solid #0c0b09;overflow:hidden;
+    box-shadow:0 50px 110px rgba(0,0,0,.55),inset 0 0 0 2px rgba(201,166,107,.15)}
+  .phone:before{content:'';position:absolute;inset:0;z-index:60;pointer-events:none;opacity:.045;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+  .screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
+  .screen::-webkit-scrollbar{width:0}
+
+  /* ═══ BRAND PANEL (web .bl-brand) — top portion on mobile ═══ */
+  .brand{position:relative;background:var(--black);color:var(--paper);overflow:hidden;
+    padding:52px 28px 40px;flex:none}
+  .brand .bg{position:absolute;inset:0;background:
+    radial-gradient(ellipse at 24% 18%,rgba(228,201,139,.16) 0%,transparent 48%),
+    radial-gradient(ellipse at 78% 82%,rgba(228,201,139,.08) 0%,transparent 46%),
+    linear-gradient(135deg,#2a2419,#121009)}
+  .brand .ghost{position:absolute;top:-70px;right:-20px;font:500 300px/.8 var(--l-display);
+    color:rgba(201,166,107,.07);letter-spacing:-.05em;user-select:none;pointer-events:none}
+  .brand .top,.brand .mid{position:relative;z-index:1}
+  /* sys status */
+  .sys{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;
+    margin:-30px -6px 24px;color:var(--paper);font:600 11px/1 var(--l-mono)}
+  .sys .r{display:flex;gap:6px;align-items:center}
+  .brand .crest{display:flex;align-items:center;gap:14px}
+  .brand .crest .mark{width:48px;height:48px;flex:none;border-radius:50%;
+    border:1.5px solid var(--gold-soft);display:grid;place-items:center;
+    color:var(--gold-bright);font:500 20px/1 var(--l-display);
+    background:radial-gradient(circle at 35% 30%,#3a3220,#191610)}
+  .brand .crest .wordmark{font:500 14px/1 var(--l-display);letter-spacing:.14em;text-transform:uppercase}
+  .brand .crest .wordmark small{display:block;margin-top:6px;color:var(--gold-soft);
+    font:8px/1 var(--l-mono);letter-spacing:.18em}
+  .brand .mid{margin-top:34px;max-width:300px}
+  .brand .eyebrow{color:var(--gold-bright);font:9px/1 var(--l-mono);text-transform:uppercase;
+    letter-spacing:.22em;margin:0 0 18px}
+  .brand h1{margin:0;font:500 clamp(44px,13vw,56px)/.86 var(--l-display);
+    text-transform:uppercase;letter-spacing:-.02em}
+  .brand .tagline{margin:18px 0 0;color:#c9c3b6;font:12px/1.6 var(--l-body);max-width:300px}
+
+  /* ═══ SIGN-IN PANE (web .bl-pane / .bl-form) ═══ */
+  .pane{position:relative;flex:1 1 auto;padding:32px 28px 36px;background:var(--paper)}
+  .lang{position:absolute;top:22px;right:24px;border:1px solid var(--line);padding:8px 12px;
+    color:var(--muted);font:8px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.08em}
+  .form{width:100%;max-width:376px;margin:0 auto}
+  .kicker{color:var(--gold);font:9px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.18em;margin:14px 0 16px}
+  .form h2{margin:0;font:500 42px/.9 var(--l-display);text-transform:uppercase;letter-spacing:-.01em}
+  .sub{margin:14px 0 0;color:var(--muted);font:12px/1.6 var(--l-body)}
+  .rule{height:1px;background:linear-gradient(90deg,transparent,var(--gold-soft),transparent);margin:30px 0}
+
+  .field{margin-bottom:20px}
+  .field label{display:block;color:var(--muted);font:9px/1 var(--l-mono);text-transform:uppercase;
+    letter-spacing:.1em;margin-bottom:10px}
+  .inputwrap{position:relative;display:flex;align-items:center}
+  .inputwrap input{width:100%;border:1px solid var(--line);background:var(--card);padding:14px 15px;
+    color:var(--ink);font:14px/1.2 var(--l-body);outline:none;transition:border-color .15s}
+  .inputwrap input::placeholder{color:rgba(22,22,19,.34);font-family:var(--l-mono);font-size:12px}
+  .inputwrap input:focus{border-color:var(--gold-soft)}
+  .peek{position:absolute;right:12px;color:var(--muted);font:8px/1 var(--l-mono);
+    text-transform:uppercase;letter-spacing:.06em;padding:6px}
+
+  .submit{width:100%;background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold);
+    padding:15px;font:10px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.14em;
+    display:flex;align-items:center;justify-content:center;gap:10px;transition:.15s}
+  .submit:hover{background:var(--gold);color:var(--paper)}
+  .submit .arrow{font-family:var(--l-body);font-size:14px;line-height:1}
+  .hint{margin:26px 0 0;text-align:center;color:var(--muted);font:9px/1.5 var(--l-mono);
+    text-transform:uppercase;letter-spacing:.06em}
+
+  .secure{position:relative;z-index:1;margin-top:26px;display:flex;align-items:center;
+    color:#8c877c;font:8px/1 var(--l-mono);text-transform:uppercase;letter-spacing:.1em}
+  .secure .dot{width:5px;height:5px;border-radius:50%;background:var(--gold-soft);
+    display:inline-block;margin-right:8px}
+</style>
+</head>
+<body>
+
+  <div class="intro">
+    <div class="kick">BRIT Sport Group · Android · login mock</div>
+    <h1>Sign in</h1>
+    <p>Matched to the web Management Room login</p>
+  </div>
+
+  <div class="phone">
+    <div class="screen">
+
+      <!-- ═══ BRAND PANEL ═══ -->
+      <section class="brand">
+        <div class="bg"></div>
+        <div class="ghost">B</div>
+
+        <div class="sys">
+          <span>9:41</span>
+          <span class="r">
+            <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="7" width="2.5" height="4"/><rect x="4" y="5" width="2.5" height="6"/><rect x="8" y="2.5" width="2.5" height="8.5"/><rect x="12" y="0" width="2.5" height="11"/></svg>
+            <svg width="22" height="11" viewBox="0 0 22 11" fill="none" stroke="currentColor" stroke-width="1"><rect x="1" y="1" width="18" height="9" rx="2"/><rect x="3" y="3" width="12" height="5" rx="1" fill="currentColor"/><rect x="20" y="4" width="1.5" height="3" rx="1" fill="currentColor"/></svg>
+          </span>
+        </div>
+
+        <div class="top">
+          <div class="crest">
+            <span class="mark">B</span>
+            <span class="wordmark">BRIT Sport Group<small>Management Room</small></span>
+          </div>
+        </div>
+
+        <div class="mid">
+          <p class="eyebrow">Football agency · Private access</p>
+          <h1>The<br>Management<br>Room</h1>
+          <p class="tagline">Roster, scouting, mandates and club relationships — one editorial desk for the whole agency.</p>
+        </div>
+      </section>
+
+      <!-- ═══ SIGN-IN PANE ═══ -->
+      <section class="pane">
+        <button class="lang" type="button">עברית</button>
+
+        <form class="form" onsubmit="return false">
+          <p class="kicker">Welcome back</p>
+          <h2>Sign in</h2>
+          <p class="sub">Sign in to your management workspace</p>
+          <div class="rule"></div>
+
+          <div class="field">
+            <label for="email">Email</label>
+            <div class="inputwrap">
+              <input id="email" type="email" placeholder="you@britsport.com" autocomplete="username" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="pw">Password</label>
+            <div class="inputwrap">
+              <input id="pw" type="password" placeholder="••••••••" autocomplete="current-password" />
+              <button class="peek" type="button">Show</button>
+            </div>
+          </div>
+
+          <button class="submit" type="submit">
+            <span class="label">Sign in</span>
+            <span class="arrow">→</span>
+          </button>
+
+          <p class="hint">Use the same credentials as the web Management Room</p>
+
+          <div class="secure"><span class="dot"></span>Secure sign-in · © BRIT Sport Group</div>
+        </form>
+      </section>
+
+    </div>
+  </div>
+
+</body>
+</html>
