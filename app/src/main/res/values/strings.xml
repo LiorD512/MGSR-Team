@@ -445,6 +445,7 @@
 
     <!-- MEN Dashboard -->
     <string name="men_dashboard_greeting_tagline">The Scouting Command Center</string>
+    <string name="men_dashboard_kicker">Private client office / Men platform</string>
 
     <!-- ATHENA Women Dashboard — Empowering Language -->
     <string name="women_dashboard_greeting_tagline">Empowering the game</string>

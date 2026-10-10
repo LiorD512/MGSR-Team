@@ -1046,20 +1046,29 @@ private fun GreetingHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "${stringResource(state.greetingRes)},",
-                    style = regularTextStyle(
-                        if (platform == Platform.MEN) MenDashboardGold.copy(alpha = 0.82f) else HomeTextSecondary,
-                        16.sp
+                if (platform == Platform.MEN) {
+                    // Web masthead: DM Mono kicker + big Oswald name (ink).
+                    Text(
+                        text = stringResource(R.string.men_dashboard_kicker),
+                        style = menMono(MenDashboardGold, 10.sp, letterSpacing = 1.6.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                )
-                Text(
-                    text = userName,
-                    style = boldTextStyle(
-                        if (platform == Platform.MEN) MenDashboardGoldSoft else HomeTextPrimary,
-                        26.sp
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "${stringResource(state.greetingRes).uppercase()} ${userName.uppercase()}.",
+                        style = menDisplay(MenDashboardGoldSoft, 30.sp, weight = 600, letterSpacing = (-1).sp)
                     )
-                )
+                } else {
+                    Text(
+                        text = "${stringResource(state.greetingRes)},",
+                        style = regularTextStyle(HomeTextSecondary, 16.sp)
+                    )
+                    Text(
+                        text = userName,
+                        style = boldTextStyle(HomeTextPrimary, 26.sp)
+                    )
+                }
             }
 
             Text(
@@ -1118,14 +1127,19 @@ private fun GreetingHeader(
             )
         }
 
-        Text(
-            text = dateStr,
-            style = regularTextStyle(
-                if (platform == Platform.MEN) MenDashboardGoldSoft.copy(alpha = 0.76f) else HomeTextSecondary,
-                13.sp
-            ),
-            modifier = Modifier.padding(top = 4.dp)
-        )
+        if (platform == Platform.MEN) {
+            Text(
+                text = dateStr.uppercase(),
+                style = menMono(MenDashboardCyanSoft, 10.sp, letterSpacing = 1.2.sp),
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        } else {
+            Text(
+                text = dateStr,
+                style = regularTextStyle(HomeTextSecondary, 13.sp),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
     }
 }
 
@@ -1191,9 +1205,9 @@ private fun StatCard(
     useMenPalette: Boolean = false
 ) {
     val cardBg = if (useMenPalette) MenDashboardCard else HomeDarkCard
-    val cardBorder = if (useMenPalette) MenDashboardGold.copy(alpha = 0.42f) else HomeDarkCardBorder
+    val cardBorder = if (useMenPalette) MenDashboardBorder else HomeDarkCardBorder
     val valueColor = if (useMenPalette) MenDashboardGoldSoft else HomeTextPrimary
-    val labelColor = if (useMenPalette) MenDashboardGoldSoft.copy(alpha = 0.84f) else HomeTextSecondary
+    val labelColor = if (useMenPalette) MenDashboardCyanSoft else HomeTextSecondary
 
     Card(
         modifier = modifier,
@@ -1214,14 +1228,27 @@ private fun StatCard(
                 modifier = Modifier.size(20.dp)
             )
             Spacer(Modifier.height(6.dp))
-            Text(
-                text = value,
-                style = boldTextStyle(valueColor, 20.sp)
-            )
-            Text(
-                text = label,
-                style = regularTextStyle(labelColor, 11.sp)
-            )
+            if (useMenPalette) {
+                // Web signal: big Oswald number + DM Mono uppercase label.
+                Text(
+                    text = value,
+                    style = menDisplay(valueColor, 26.sp, weight = 600, letterSpacing = (-0.5).sp)
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = label.uppercase(),
+                    style = menMono(labelColor, 8.sp, letterSpacing = 1.0.sp, textAlign = TextAlign.Center)
+                )
+            } else {
+                Text(
+                    text = value,
+                    style = boldTextStyle(valueColor, 20.sp)
+                )
+                Text(
+                    text = label,
+                    style = regularTextStyle(labelColor, 11.sp)
+                )
+            }
         }
     }
 }
