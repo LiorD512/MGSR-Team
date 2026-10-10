@@ -407,8 +407,8 @@ fun LoginScreen(
                     // Error
                     AnimatedVisibility(
                         visible = displayError != null,
-                        enter = fadeIn(tween(200)) + slideInVertically({ -it / 2 }, tween(200)),
-                        exit = fadeOut(tween(150)) + slideOutVertically({ -it / 2 }, tween(150))
+                        enter = fadeIn(tween(200)) + slideInVertically(animationSpec = tween(200)) { -it / 2 },
+                        exit = fadeOut(tween(150)) + slideOutVertically(animationSpec = tween(150)) { -it / 2 }
                     ) {
                         Row(
                             modifier = Modifier
