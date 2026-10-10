@@ -10,6 +10,21 @@ const nextConfig = {
       'generative-bayesian-network',
       'satori',
     ],
+    // Marking satori external (above) stops it being bundled, but Vercel's
+    // output file tracing then does NOT follow the HarfBuzz .wasm into the
+    // serverless function — so at runtime satori aborts with
+    // "ENOENT ... harfbuzzjs/hb.wasm". Force-include the wasm + its package
+    // (and satori) into the matchday routes that render with it.
+    outputFileTracingIncludes: {
+      '/api/matchday/generate-v2': [
+        './node_modules/harfbuzzjs/**',
+        './node_modules/satori/**',
+      ],
+      '/api/matchday/generate': [
+        './node_modules/harfbuzzjs/**',
+        './node_modules/satori/**',
+      ],
+    },
   },
   async headers() {
     return [
