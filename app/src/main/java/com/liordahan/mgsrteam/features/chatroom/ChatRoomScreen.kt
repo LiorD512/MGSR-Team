@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.liordahan.mgsrteam.ui.theme.BritTokens
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -87,15 +88,21 @@ import java.util.Locale
 //  NOIR EDITORIAL DESIGN — matches web
 // ═══════════════════════════════════════════════════════════════
 
-private val NoirBg = Color(0xFF06070A)
-private val NoirSurface = Color(0xFF0C0D12)
-private val NoirElevated = Color(0xFF13141A)
-private val NoirBorder = Color(0xFF1A1B22)
-private val NoirText = Color(0xFFE8EAED)
-private val NoirMuted = Color(0xFF5A5B66)
-private val NoirGold = Color(0xFFC9A84C)
-private val MgsrTeal = Color(0xFF4DB6AC)
-private val HighlightColor = Color(0xFFF59E0B)
+// BRIT editorial palette (FEAT-005): the mock's SCREENS.tunnel renders The
+// Tunnel in the ".brit-room" paper/editorial look (pageHead + var(--line) /
+// var(--muted) / var(--gold) / var(--black)), not a dark noir surface. The old
+// Noir* names are re-bound here to BritTokens so chat rows, threads, and the
+// composer adopt the paper look while every ChatRoomViewModel call (send/edit/
+// delete, mentions, replies) and the per-sender accent scheme stay intact.
+private val NoirBg = BritTokens.paper
+private val NoirSurface = BritTokens.card
+private val NoirElevated = BritTokens.paper2
+private val NoirBorder = BritTokens.line
+private val NoirText = BritTokens.ink
+private val NoirMuted = BritTokens.muted
+private val NoirGold = BritTokens.gold
+private val MgsrTeal = BritTokens.gold
+private val HighlightColor = BritTokens.amber
 
 private data class SenderColorScheme(val accent: Color, val bg: Color, val border: Color)
 

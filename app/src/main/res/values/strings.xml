@@ -103,21 +103,7 @@
     <!-- Shortlist Screen -->
     <string name="shortlist_title">Shortlist</string>
     <string name="shortlist_subtitle">Profiles to follow - add to agency when ready</string>
-    <string name="women_shortlist_subtitle">Players to follow in the coming weeks</string>
     <string name="youth_shortlist_subtitle">Profiles to follow in the near future</string>
-    <string name="women_player_info_title">Player Info</string>
-    <string name="women_player_info_subtitle">View and manage player details</string>
-    <string name="women_add_player_title">Add Player</string>
-    <string name="women_requests_subtitle">Player requests from clubs by position</string>
-    <string name="women_requests_matching_players_one">%d matching player</string>
-    <string name="women_requests_matching_players">%d matching players</string>
-    <string name="women_requests_find_players_sheet_title">Players for this request</string>
-    <string name="women_requests_find_players_online">Find players online</string>
-    <string name="women_requests_online_players_sheet_title">Players from the market</string>
-    <string name="women_requests_online_players_loading">Searching players…</string>
-    <string name="women_requests_online_players_empty">No matching players found online</string>
-    <string name="women_requests_online_results_count">%d players found</string>
-    <string name="women_requests_no_match">No roster players match this request</string>
     <string name="shortlist_add_player">Add player</string>
     <string name="shortlist_stat_this_week">This Week</string>
     <string name="shortlist_could_not_load">Could not load player. They may already be in your roster.</string>
@@ -233,44 +219,8 @@
 
     <!-- Platform Switcher -->
     <string name="platform_men">Men</string>
-    <string name="platform_women">Women</string>
     <string name="platform_youth">Youth</string>
     <string name="platform_switch_label">Platform</string>
-
-    <!-- Women Platform -->
-    <string name="women_roster_title">Our Squad</string>
-    <string name="women_add_player">Add Player</string>
-    <string name="women_add_title">Add Player</string>
-    <string name="women_search_hint">Search by name (e.g. Lauren James)</string>
-    <string name="women_search_subtitle">Search SoccerDonna or add manually</string>
-    <string name="women_data_sources">SoccerDonna · FMInside</string>
-    <string name="women_or_add_manually">Or add manually</string>
-    <string name="women_paste_url">Paste SoccerDonna URL</string>
-    <string name="women_load_url">Load from URL</string>
-    <string name="women_full_name">Full Name *</string>
-    <string name="women_positions">Positions</string>
-    <string name="women_club">Club</string>
-    <string name="women_age">Age</string>
-    <string name="women_nationality">Nationality</string>
-    <string name="women_market_value">Market Value</string>
-    <string name="women_soccerdonna_url">SoccerDonna URL</string>
-    <string name="women_profile_image_url">Profile Image URL</string>
-    <string name="women_player_phone">Player Phone</string>
-    <string name="women_agent_phone">Agent Phone</string>
-    <string name="women_notes">Notes</string>
-    <string name="women_save_player">Save Player</string>
-    <string name="women_section_links">Women\'s Football Links</string>
-    <string name="women_players_screen_hint">Search player by name</string>
-    <string name="women_players_age_format">%s yrs</string>
-    <string name="women_filter_position_gk">GK</string>
-    <string name="women_filter_position_def">DEF</string>
-    <string name="women_filter_position_mid">MID</string>
-    <string name="women_filter_position_fwd">FWD</string>
-    <string name="women_soccerdonna_profile">SoccerDonna Profile</string>
-    <string name="women_fminside_profile">FMInside Profile</string>
-    <string name="women_free_agent">Free Agent</string>
-    <string name="women_player_added">Player added</string>
-
     <!-- Youth Platform -->
     <string name="youth_roster_title">Youth Players</string>
     <string name="youth_add_player">Add Youth Player</string>
@@ -441,56 +391,9 @@
     <string name="my_hub_upcoming_tasks">Upcoming Tasks</string>
     <string name="my_hub_view_all_tasks">View All</string>
     <string name="my_hub_view_my_players">My Players</string>
-    <string name="women_my_hub_view_my_players">My Athletes</string>
-
     <!-- MEN Dashboard -->
     <string name="men_dashboard_greeting_tagline">The Scouting Command Center</string>
     <string name="men_dashboard_kicker">Private client office / Men platform</string>
-
-    <!-- ATHENA Women Dashboard — Empowering Language -->
-    <string name="women_dashboard_greeting_tagline">Empowering the game</string>
-    <string name="women_stat_athletes">Athletes</string>
-    <string name="women_stat_represented">Represented</string>
-    <string name="women_stat_available">Available</string>
-    <string name="women_stat_inquiries">Inquiries</string>
-    <string name="women_quick_athletes">Our Athletes</string>
-    <string name="women_quick_watchlist">Watchlist</string>
-    <string name="women_quick_connections">Connections</string>
-    <string name="women_quick_inquiries">Club Inquiries</string>
-    <string name="women_quick_goals">Goals &amp; Tasks</string>
-    <string name="women_hub_title">My Command Center</string>
-    <string name="women_hub_athletes">Athletes</string>
-    <string name="women_hub_represented">Represented</string>
-    <string name="women_hub_available">Available</string>
-    <string name="women_hub_expiring">Expiring</string>
-    <string name="women_hub_tasks_completed">Completed</string>
-    <string name="women_hub_upcoming_goals">Upcoming Goals</string>
-    <string name="women_hub_view_all">View All</string>
-    <string name="women_feed_title">Activity Feed</string>
-    <string name="women_feed_empty">No recent activity — time to make moves! 💪</string>
-
-    <!-- Women Feed — feminine Hebrew overrides (English identical to default) -->
-    <string name="feed_women_became_free_agent">Became Free Agent</string>
-    <string name="feed_women_new_release">New Free Agent (Releases)</string>
-    <string name="feed_women_player_added">Player Added</string>
-    <string name="feed_women_player_deleted">Player Deleted</string>
-    <string name="feed_women_player_offered_to_club">Player Offered</string>
-    <string name="feed_women_shortlist_added">Added to Shortlist</string>
-    <string name="feed_women_shortlist_removed">Removed from Shortlist</string>
-    <string name="feed_women_released_from">Released from %1$s</string>
-    <string name="feed_women_moved_from_to">Moved from %1$s to %2$s</string>
-    <string name="feed_women_added_by">Added by %1$s</string>
-    <string name="feed_women_deleted_by">Deleted by %1$s</string>
-    <string name="feed_women_removed_by">Removed by %1$s</string>
-    <string name="feed_women_offered_to">Offered to %1$s</string>
-    <string name="feed_women_offered_by">Offered by %1$s</string>
-    <string name="feed_women_player_deleted_error">This player was deleted from the database</string>
-    <string name="women_empty_state_title">Your roster awaits</string>
-    <string name="women_empty_state_subtitle">Add your first athlete to start building your women\'s football empire</string>
-    <string name="women_inspire_quote_1">Breaking barriers, building legacies</string>
-    <string name="women_inspire_quote_2">Every champion was once a contender who refused to give up</string>
-    <string name="women_inspire_quote_3">The future of football is here</string>
-
     <!-- ═══ NOVA — Youth Platform Strings ═══ -->
     <string name="youth_dashboard_greeting_tagline">Rising stars start here ⚡</string>
     <string name="youth_stat_prospects">Prospects</string>
@@ -922,7 +825,6 @@
     <string name="add_player_title">Add Player</string>
     <string name="add_player_search_roster">Search Transfermarkt to add to roster</string>
     <string name="add_player_search_shortlist">Search Transfermarkt to add to shortlist</string>
-    <string name="women_search_shortlist_subtitle">Search SoccerDonna to add to shortlist</string>
     <string name="youth_search_shortlist_subtitle">Search player to add to shortlist</string>
     <string name="add_player_from_link_title">Add player from link</string>
     <string name="add_player_from_link_roster">Add to roster (with contact info)</string>
@@ -1115,10 +1017,7 @@
     <string name="player_info_market_value">Market Value</string>
     <string name="player_info_updating">Updating…</string>
     <string name="player_info_player_label">Player</string>
-    <string name="player_info_player_label_women">Player</string>
     <string name="player_info_agent_label">Agent</string>
-    <string name="women_profile_sd_short">SD</string>
-    <string name="women_profile_fmi_short">FMI</string>
     <string name="player_info_message_whatsapp">Message on WhatsApp</string>
     <string name="player_info_edit_number">Edit Number</string>
     <string name="player_info_remove_number">Remove Number</string>

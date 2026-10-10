@@ -47,24 +47,32 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.liordahan.mgsrteam.R
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
-import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
-import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
-import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
+import com.liordahan.mgsrteam.ui.theme.BritTokens
+
+// ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
+// The War Room report is restyled to the mock's paper editorial look. The old
+// dark "report" theme (Home* + ReportPurple) is re-bound to BritTokens: the
+// purple report accent becomes editorial gold, surfaces move to paper/card, and
+// the ambient glows become faint gold/ink washes on cream. WarRoomViewModel /
+// MgsrWebApiClient (/api/war-room/report) wiring is untouched.
+private val HomeDarkBackground = BritTokens.paper
+private val HomeDarkCard = BritTokens.card
+private val HomeDarkCardBorder = BritTokens.line
+private val HomeTealAccent = BritTokens.gold
+private val HomePurpleAccent = BritTokens.gold
+private val HomeTextPrimary = BritTokens.ink
+private val HomeTextSecondary = BritTokens.muted
+private val HomeBlueAccent = BritTokens.blue
+private val HomeOrangeAccent = BritTokens.amber
+private val HomeGreenAccent = BritTokens.green
+private val HomeRedAccent = BritTokens.red
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import org.koin.androidx.compose.koinViewModel
 
-private val ReportPurple = Color(0xFFA855F7)
-private val ReportPurpleBg = Color(0x1AA855F7)
-private val ReportPurpleBorder = Color(0x40A855F7)
+private val ReportPurple = BritTokens.gold
+private val ReportPurpleBg = BritTokens.gold.copy(alpha = 0.10f)
+private val ReportPurpleBorder = BritTokens.gold.copy(alpha = 0.25f)
 
 @Composable
 fun WarRoomReportScreen(
@@ -112,7 +120,7 @@ fun WarRoomReportScreen(
                     brush = Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color(0xFF0D1117).copy(alpha = 0.6f)
+                            BritTokens.ink.copy(alpha = 0.05f)
                         ),
                         startY = size.height * 0.75f,
                         endY = size.height

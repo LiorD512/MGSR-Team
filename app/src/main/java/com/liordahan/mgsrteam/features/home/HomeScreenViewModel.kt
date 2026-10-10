@@ -149,7 +149,7 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract val dashboardState: StateFlow<HomeDashboardState>
     /** Checks if player exists in DB; calls onResult(true) if exists, onResult(false) if deleted. */
     abstract fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit)
-    /** Finds a Women/Youth player by name and returns its document ID, or null if not found. */
+    /** Finds a Youth player by name and returns its document ID, or null if not found. */
     abstract fun findPlayerDocIdByName(playerName: String, onResult: (String?) -> Unit)
     abstract fun selectFeedFilter(filter: FeedFilter)
     abstract fun toggleFeedExpanded()
@@ -161,9 +161,9 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract fun toggleTransferWindowGroup(confederation: Confederation)
     abstract fun toggleTeamOverview()
     abstract fun refreshTransferWindows()
-    /** Called from UI when user switches MGSR platform (Men / Women / Youth). */
+    /** Called from UI when user switches MGSR platform (Men / Youth). */
     abstract fun reloadForPlatformSwitch()
-    /** Resolves a Firestore doc ID to the correct nav ID for PlayerInfoScreen (tmProfile for Men, doc ID for Women/Youth). */
+    /** Resolves a Firestore doc ID to the correct nav ID for PlayerInfoScreen (tmProfile for Men, doc ID for Youth). */
     abstract fun resolvePlayerNavId(docId: String, onResult: (String?) -> Unit)
     /** Update the dashboard search query and recompute results. */
     abstract fun updateDashboardSearch(query: String)
@@ -373,7 +373,7 @@ class HomeScreenViewModel(
             val navId = try {
                 val isNonMen = platformManager.current.value != com.liordahan.mgsrteam.features.platform.Platform.MEN
                 if (isNonMen) {
-                    // Women/Youth — doc ID is the nav ID
+                    // Youth — doc ID is the nav ID
                     docId
                 } else {
                     // Men — look up the doc and get tmProfile
@@ -394,7 +394,7 @@ class HomeScreenViewModel(
             val exists = try {
                 val isNonMen = platformManager.current.value != com.liordahan.mgsrteam.features.platform.Platform.MEN
                 if (isNonMen) {
-                    // Women / Youth — tmProfile is actually the Firestore document ID
+                    // Youth — tmProfile is actually the Firestore document ID
                     firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
                         .document(tmProfile).get().await().exists()
                 } else {
@@ -539,7 +539,7 @@ class HomeScreenViewModel(
                     .mapNotNull { it.playerTmProfile }.toSet()
             } catch (_: Exception) { emptySet() }
 
-            // For Women/Youth, mandate docs store Firestore doc ID as playerTmProfile,
+            // For Youth, mandate docs store Firestore doc ID as playerTmProfile,
             // so also match by player.id (Firestore doc ID).
             val mandateCount = players.count { it.haveMandate || it.tmProfile in profilesWithMandateDoc || it.id in profilesWithMandateDoc }
 

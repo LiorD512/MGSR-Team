@@ -32,7 +32,7 @@ import com.liordahan.mgsrteam.features.add.AddPlayerScreen
 import com.liordahan.mgsrteam.features.contacts.ContactsScreen
 import com.liordahan.mgsrteam.features.contractfinisher.ContractFinisherScreen
 import com.liordahan.mgsrteam.features.home.IHomeScreenViewModel
-import com.liordahan.mgsrteam.features.home.dashboard.DashboardScreen
+import com.liordahan.mgsrteam.features.home.dashboard.BritDashboardScreen
 import com.liordahan.mgsrteam.features.home.tasks.TaskDetailScreen
 import com.liordahan.mgsrteam.features.home.tasks.TasksScreen
 import com.liordahan.mgsrteam.features.players.PlayersScreen
@@ -45,6 +45,8 @@ import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.warroom.WarRoomTab
 import com.liordahan.mgsrteam.features.chatroom.ChatRoomScreen
+import com.liordahan.mgsrteam.features.clubchanges.ClubChangesScreen
+import com.liordahan.mgsrteam.features.marketradar.MarketRadarScreen
 import com.liordahan.mgsrteam.features.shadowteams.ShadowTeamsScreen
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
 import com.liordahan.mgsrteam.features.warroom.WarRoomScreen
@@ -214,7 +216,7 @@ fun HomeScreen(
         ) {
 
             composable(route = Screens.DashboardScreen.route) {
-                DashboardScreen(navController = navController, viewModel = homeViewModel, onSignOut = { mainViewModel.signOut() })
+                BritDashboardScreen(navController = navController, viewModel = homeViewModel, onSignOut = { mainViewModel.signOut() })
             }
 
             if (FeatureFlags.TASKS_ENABLED) {
@@ -432,6 +434,16 @@ fun HomeScreen(
             ) { backStackEntry ->
                 val highlight = backStackEntry.arguments?.getString("highlight")?.takeIf { it.isNotBlank() }
                 ChatRoomScreen(navController = navController, highlightMessageId = highlight)
+            }
+
+            // ── Additive screens the mock introduces (FEAT-006): Market Radar
+            //    (web /api/market-radar) + Club Changes (CLUB_CHANGE FeedEvents).
+            //    These replace the FEAT-004 More-sheet placeholders. ──
+            composable(route = Screens.MarketRadarScreen.route) {
+                MarketRadarScreen(navController = navController)
+            }
+            composable(route = Screens.ClubChangesScreen.route) {
+                ClubChangesScreen(navController = navController)
             }
         }
         } // PlatformThemeProvider

@@ -57,17 +57,7 @@ import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.localization.LocaleManager
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
-import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
-import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
-import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
-import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
+import com.liordahan.mgsrteam.ui.theme.BritTokens
 import com.liordahan.mgsrteam.utils.datePickerMillisToLocalMidnight
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -76,6 +66,22 @@ import com.liordahan.mgsrteam.features.contacts.models.Contact
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+// ── BRIT editorial remap ────────────────────────────────────────────
+//  Old dark Home* constants re-bound to the .brit-room cream tokens so this
+//  sheet matches the restyled cream Tasks screen (semantic roles preserved;
+//  no data/VM/callable wiring touched).
+private val HomeDarkBackground = BritTokens.paper
+private val HomeDarkCard = BritTokens.card
+private val HomeDarkCardBorder = BritTokens.line
+private val HomeTealAccent = BritTokens.gold
+private val HomeTextPrimary = BritTokens.ink
+private val HomeTextSecondary = BritTokens.muted
+private val HomeGreenAccent = BritTokens.green
+private val HomeOrangeAccent = BritTokens.amber
+private val HomeRedAccent = BritTokens.red
+private val HomeBlueAccent = BritTokens.blue
+private val HomePurpleAccent = BritTokens.gold
 
 private val agentAccentColors = listOf(
     HomeTealAccent, HomeBlueAccent, HomeOrangeAccent,

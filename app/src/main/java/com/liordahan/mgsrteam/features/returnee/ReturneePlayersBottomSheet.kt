@@ -57,9 +57,13 @@ import com.liordahan.mgsrteam.features.releases.ReleaseListItem
 import com.liordahan.mgsrteam.features.returnee.model.Leagues
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.theme.BritTokens
+
+// BRIT editorial palette (FEAT-005): re-bind the former dark-theme Home* names
+// to BritTokens so this returnee bottom sheet matches the paper/editorial look.
+private val HomeDarkCard = BritTokens.card
+private val HomeDarkCardBorder = BritTokens.line
+private val HomeTextPrimary = BritTokens.ink
 import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import kotlinx.coroutines.launch

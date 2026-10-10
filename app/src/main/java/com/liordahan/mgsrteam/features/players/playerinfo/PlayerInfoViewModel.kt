@@ -201,7 +201,7 @@ class PlayerInfoViewModel(
     private val _playerDocumentIdFlow = MutableStateFlow<String?>(null)
     override val playerDocumentIdFlow: StateFlow<String?> = _playerDocumentIdFlow
 
-    /** True when the active platform is Women or Youth. */
+    /** True when the active platform is Youth (i.e. not Men). */
     private val isNonMenPlatform: Boolean
         get() = platformManager.current.value != Platform.MEN
 
@@ -437,7 +437,7 @@ class PlayerInfoViewModel(
                 }
             }
         }
-        // Start GPS listener when player info loaded (keyed on tmProfile for men, docId for women/youth)
+        // Start GPS listener when player info loaded (keyed on tmProfile for men, docId for youth)
         viewModelScope.launch {
             combine(_playerInfoFlow, _playerDocumentIdFlow) { player, docId ->
                 if (platformManager.current.value != Platform.MEN) docId else player?.tmProfile
@@ -527,7 +527,7 @@ class PlayerInfoViewModel(
         playerListenerRegistration?.remove()
 
         if (isNonMenPlatform) {
-            // Women / Youth — playerId IS the Firestore document ID
+            // Youth — playerId IS the Firestore document ID
             playerListenerRegistration = firebaseHandler.firebaseStore
                 .collection(firebaseHandler.playersTable)
                 .document(playerId)
@@ -869,7 +869,7 @@ class PlayerInfoViewModel(
 
             val player = _playerInfoFlow.value ?: return@launch
 
-            // Women / Youth players have no Transfermarkt profile — nothing to refresh
+            // Youth players have no Transfermarkt profile — nothing to refresh
             if (isNonMenPlatform) {
                 _updatePlayerFlow.update { UiResult.Success("Player data is up to date") }
                 return@launch
@@ -978,7 +978,7 @@ class PlayerInfoViewModel(
     override fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?) {
         viewModelScope.launch {
             val player = _playerInfoFlow.value ?: return@launch
-            // For Men, document storage key is tmProfile; for Women/Youth, use Firestore doc ID
+            // For Men, document storage key is tmProfile; for Youth, use Firestore doc ID
             val storageKey = if (isNonMenPlatform) {
                 _playerDocumentIdFlow.value ?: return@launch
             } else {
@@ -1659,7 +1659,6 @@ class PlayerInfoViewModel(
 
             val mandateUrl = mandateDoc?.storageUrl?.takeIf { it.isNotBlank() }
             val platformStr = when (platformManager.current.value) {
-                Platform.WOMEN -> "women"
                 Platform.YOUTH -> "youth"
                 else -> "men"
             }
@@ -1761,7 +1760,6 @@ class PlayerInfoViewModel(
     private fun fetchShareScoutReport(player: Player, lang: String): String? {
         return try {
             val platform = when (platformManager.current.value) {
-                Platform.WOMEN -> "women"
                 Platform.YOUTH -> "youth"
                 else -> "men"
             }

@@ -119,9 +119,12 @@ import java.util.Locale
 private const val MAX_NOTE_LENGTH = 500
 private const val PREVIEW_NOTE_COUNT = 3
 
-private fun notesIsMenPalette(): Boolean = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
-private fun notesActionColor(): Color = if (notesIsMenPalette()) Color(0xFFC7A35A) else PlatformColors.palette.accent
-private fun notesActionTextOnFill(): Color = if (notesIsMenPalette()) Color(0xFF0E1219) else Color.White
+private fun notesIsMenPalette(): Boolean = !PlatformColors.palette.isYouth
+private fun notesActionColor(): Color = PlatformColors.palette.accent
+// The action colour is the editorial gold/teal accent (dark enough for white
+// glyphs). Text/icons that sit on that filled accent stay white on both
+// platforms now that the surface is cream.
+private fun notesActionTextOnFill(): Color = Color.White
 
 private fun appendToNote(current: String, addition: String): String {
     val trimmed = addition.trim()

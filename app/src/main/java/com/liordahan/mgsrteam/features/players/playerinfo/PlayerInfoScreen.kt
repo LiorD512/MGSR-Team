@@ -166,6 +166,7 @@ import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
+import com.liordahan.mgsrteam.ui.theme.BritTokens
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
 import com.liordahan.mgsrteam.ui.theme.redErrorColor
@@ -182,9 +183,6 @@ import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.features.players.playerinfo.highlights.YouthHighlightsSection
 import com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence.FmIntelligenceSection
 import com.liordahan.mgsrteam.utils.EuCountries
-import com.liordahan.mgsrteam.ui.components.WomenGlowPhotoRing
-import com.liordahan.mgsrteam.ui.components.WomenSectionHeader
-import com.liordahan.mgsrteam.ui.theme.PlatformWomenAccent
 import com.liordahan.mgsrteam.ui.theme.PlatformYouthAccent
 import com.liordahan.mgsrteam.ui.theme.PlatformYouthSecondary
 import java.text.SimpleDateFormat
@@ -192,16 +190,32 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-private val MenInfoBg = Color(0xFF0A121E)
-private val MenInfoCard = Color(0xFF152131)
-private val MenInfoCardAlt = Color(0xFF1A2A3D)
-private val MenInfoBorder = Color(0x55C7A35A)
-private val MenInfoGold = Color(0xFFC7A35A)
-private val MenInfoGoldSoft = Color(0xFFDDC187)
-private val MenInfoTextSubtle = Color(0xFFBFAF8A)
-private val MenInfoBronze = Color(0xFFAE8A4A)
+// ── BRIT editorial migration ────────────────────────────────────────
+//  These file-local MenInfo* constants used to describe the old dark-navy
+//  dossier. They are re-bound to the .brit-room cream tokens (BritTokens) so
+//  the Men dossier now matches the shared cream palette:
+//    Bg      → paper (cream page)
+//    Card    → card  (lighter cream surface)
+//    CardAlt → paper2 (deeper cream)
+//    Border  → gold-tinted hairline
+//    Gold    → editorial gold (dark enough to read as text on cream)
+//    GoldSoft→ a readable gold for text accents (NOT the light goldSoft, which
+//              is too light on cream — use the darker editorial gold for text)
+//    TextSubtle → muted ink
+//    Bronze  → amber (semantic warm accent)
+//  Every Color.White that previously sat on the dark MenInfo surfaces has been
+//  audited and moved to ink/muted; whites that remain sit on a filled accent,
+//  a gradient, or a photo scrim.
+private val MenInfoBg = BritTokens.paper
+private val MenInfoCard = BritTokens.card
+private val MenInfoCardAlt = BritTokens.paper2
+private val MenInfoBorder = Color(0x55A47D43)
+private val MenInfoGold = BritTokens.gold
+private val MenInfoGoldSoft = BritTokens.gold
+private val MenInfoTextSubtle = BritTokens.muted
+private val MenInfoBronze = BritTokens.amber
 
-private fun isMenPalette(): Boolean = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+private fun isMenPalette(): Boolean = !PlatformColors.palette.isYouth
 private fun playerInfoAccentColor(): Color = if (isMenPalette()) MenInfoGold else PlatformColors.palette.accent
 private fun playerInfoMutedColor(): Color = if (isMenPalette()) MenInfoTextSubtle else PlatformColors.palette.textSecondary
 private fun playerInfoBorderColor(): Color = if (isMenPalette()) MenInfoBorder else PlatformColors.palette.cardBorder
@@ -608,6 +622,24 @@ fun PlayerInfoScreen(
                             )
                             .padding(top = 4.dp)
                     ) {
+            // BRIT cinematic dossier hero (grayscale photo + name overlay +
+            // nationality kicker) — the mock's signature dossier element. It is
+            // purely presentational; all existing sections/actions below are
+            // unchanged and keep their own data wiring.
+            playerToPresent?.let { player ->
+                val (dossierAccent, _) = com.liordahan.mgsrteam.ui.theme.BritTokens.accentFor(currentPlatform)
+                com.liordahan.mgsrteam.ui.components.BritDossierHero(
+                    name = player.fullName ?: "",
+                    imageUrl = player.profileImage,
+                    nationality = player.nationalities?.firstOrNull() ?: player.nationality,
+                    club = player.currentClub?.clubName,
+                    positionLine = player.positions?.filterNotNull()?.joinToString(" · "),
+                    marketValue = player.marketValue,
+                    statusLabel = if (player.haveMandate) "MANDATE" else null,
+                    accent = dossierAccent,
+                )
+            }
+
             // Hero Card
             playerToPresent?.let { player ->
                 val mandateDocs = documentsList
@@ -957,9 +989,7 @@ fun PlayerInfoScreen(
                     InfoRow(
                         stringResource(R.string.player_info_market_value),
                         playerToPresent?.marketValue?.let { value ->
-                            val displayValue = if (currentPlatform == Platform.WOMEN) {
-                                com.liordahan.mgsrteam.transfermarket.SoccerDonnaSearch.normalizeSoccerDonnaMarketValue(value)
-                            } else value
+                            val displayValue = value
                             val trend = playerToPresent?.let { playerInfoComputeValueTrend(it.marketValueHistory) } ?: 0
                             when {
                                 trend > 0 -> "$displayValue ↑"
@@ -1366,18 +1396,7 @@ private fun PlayerInfoHeroCard(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = if (isMen) MenInfoCard else PlatformColors.palette.card),
-        border = if (currentPlatform == Platform.WOMEN) {
-            BorderStroke(
-                1.dp,
-                Brush.linearGradient(
-                    listOf(
-                        com.liordahan.mgsrteam.ui.theme.WomenColors.Orchid.copy(alpha = 0.4f),
-                        com.liordahan.mgsrteam.ui.theme.WomenColors.Gold.copy(alpha = 0.2f),
-                        com.liordahan.mgsrteam.ui.theme.WomenColors.RoseCoral.copy(alpha = 0.3f)
-                    )
-                )
-            )
-        } else if (isMen) {
+        border = if (isMen) {
             BorderStroke(1.dp, MenInfoBorder)
         } else {
             BorderStroke(1.dp, PlatformColors.palette.cardBorder)
@@ -1389,47 +1408,7 @@ private fun PlayerInfoHeroCard(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (currentPlatform == Platform.WOMEN) {
-                var showFallback by remember { mutableStateOf(player.profileImage.isNullOrBlank()) }
-                WomenGlowPhotoRing(modifier = Modifier.size(100.dp)) {
-                    if (showFallback) {
-                        // Gradient initials placeholder
-                        Box(
-                            modifier = Modifier
-                                .size(92.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.linearGradient(
-                                        colors = listOf(
-                                            com.liordahan.mgsrteam.ui.theme.WomenColors.Orchid,
-                                            com.liordahan.mgsrteam.ui.theme.WomenColors.Gold
-                                        )
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = player.fullName
-                                    ?.split(" ")
-                                    ?.mapNotNull { it.firstOrNull()?.uppercase() }
-                                    ?.take(2)
-                                    ?.joinToString("") ?: "?",
-                                style = boldTextStyle(Color.White, 28.sp)
-                            )
-                        }
-                    } else {
-                        AsyncImage(
-                            model = player.profileImage,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(92.dp)
-                                .clip(CircleShape),
-                            onError = { showFallback = true }
-                        )
-                    }
-                }
-            } else if (currentPlatform == Platform.YOUTH) {
+            if (currentPlatform == Platform.YOUTH) {
                 // Youth: initials fallback on cyan→violet gradient
                 var showFallback by remember { mutableStateOf(player.profileImage.isNullOrBlank()) }
                 if (showFallback) {
@@ -1536,11 +1515,7 @@ private fun PlayerInfoHeroCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (currentPlatform == Platform.WOMEN) {
-                            player.marketValue?.let { com.liordahan.mgsrteam.transfermarket.SoccerDonnaSearch.normalizeSoccerDonnaMarketValue(it) } ?: "—"
-                        } else {
-                            player.marketValue ?: "—"
-                        },
+                        text = player.marketValue ?: "—",
                         style = boldTextStyle(
                             when {
                                 valueTrend > 0 -> PlatformColors.palette.green
@@ -2027,7 +2002,7 @@ private fun PlayerInfoHeroCard(
 
 @Composable
 private fun PlayerInfoOnLoanPill(text: String) {
-    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+    val isMen = !PlatformColors.palette.isYouth
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
@@ -2064,8 +2039,6 @@ private fun PlayerInfoQuickActions(
     val playerPhone = player.getPlayerPhoneNumber()
     val agentPhone = if (platform == Platform.YOUTH) player.parentContact?.parentPhoneNumber else player.getAgentPhoneNumber()
     val hasTmProfile = player.tmProfile != null
-    val hasSoccerDonna = platform == Platform.WOMEN && !player.soccerDonnaUrl.isNullOrBlank()
-    val hasFmInside = platform == Platform.WOMEN && !player.fmInsideUrl.isNullOrBlank()
 
     Card(
         modifier = Modifier
@@ -2085,7 +2058,7 @@ private fun PlayerInfoQuickActions(
             // Player phone action
             PlayerInfoPhoneAction(
                 modifier = Modifier.weight(1f),
-                label = if (platform == Platform.WOMEN) stringResource(R.string.player_info_player_label_women) else stringResource(R.string.player_info_player_label),
+                label = stringResource(R.string.player_info_player_label),
                 phone = playerPhone,
                 context = context,
                 onEditNumber = onEditPlayerNumber,
@@ -2136,53 +2109,6 @@ private fun PlayerInfoQuickActions(
                 )
             }
 
-            if (hasSoccerDonna) {
-                Box(
-                    modifier = Modifier
-                        .width(1.dp)
-                        .height(32.dp)
-                        .background(playerInfoBorderColor())
-                )
-                ContactActionChip(
-                    modifier = Modifier.weight(1f),
-                    icon = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = PlatformWomenAccent
-                        )
-                    },
-                    label = stringResource(R.string.women_profile_sd_short),
-                    onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(player.soccerDonnaUrl)))
-                    }
-                )
-            }
-
-            if (hasFmInside) {
-                Box(
-                    modifier = Modifier
-                        .width(1.dp)
-                        .height(32.dp)
-                        .background(playerInfoBorderColor())
-                )
-                ContactActionChip(
-                    modifier = Modifier.weight(1f),
-                    icon = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = PlatformWomenAccent
-                        )
-                    },
-                    label = stringResource(R.string.women_profile_fmi_short),
-                    onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(player.fmInsideUrl)))
-                    }
-                )
-            }
         }
     }
 }
@@ -3037,7 +2963,6 @@ private fun PlayerTasksSection(
 
 @Composable
 private fun PlayerInfoSectionHeader(title: String) {
-    val isWomen = PlatformColors.palette.isWomen
     val lineAccent = playerInfoAccentColor()
     Row(
         modifier = Modifier
@@ -3050,17 +2975,13 @@ private fun PlayerInfoSectionHeader(title: String) {
             text = title,
             style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
         )
-        if (isWomen) {
-            com.liordahan.mgsrteam.ui.components.WomenSectionAccentBar()
-        } else {
-            Box(
-                modifier = Modifier
-                    .width(40.dp)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(lineAccent)
-            )
-        }
+        Box(
+            modifier = Modifier
+                .width(40.dp)
+                .height(3.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(lineAccent)
+        )
     }
 }
 
@@ -3474,11 +3395,11 @@ fun PlayerInfoHeader(onBackClicked: () -> Unit, currentPlatform: Platform = Plat
             Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (currentPlatform == Platform.WOMEN) stringResource(R.string.women_player_info_title) else stringResource(R.string.player_info_title),
+                    text = stringResource(R.string.player_info_title),
                     style = boldTextStyle(if (isMen) MenInfoGoldSoft else PlatformColors.palette.textPrimary, 26.sp)
                 )
                 Text(
-                    text = if (currentPlatform == Platform.WOMEN) stringResource(R.string.women_player_info_subtitle) else stringResource(R.string.player_info_subtitle),
+                    text = stringResource(R.string.player_info_subtitle),
                     style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp),
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -4017,98 +3938,6 @@ private fun PlayerInfoYouthSection(player: Player) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Women-specific section
-// ═════════════════════════════════════════════════════════════════════════════
-
-@Composable
-private fun PlayerInfoWomenSection(player: Player, context: Context) {
-    val hasAnyLink = !player.soccerDonnaUrl.isNullOrBlank() ||
-            !player.fmInsideUrl.isNullOrBlank()
-    if (!hasAnyLink) return
-
-    PlayerInfoSectionHeader("🌸 " + stringResource(R.string.women_section_links))
-    PlayerInfoCard(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        if (!player.soccerDonnaUrl.isNullOrBlank()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable {
-                        val intent = Intent(Intent.ACTION_VIEW, player.soccerDonnaUrl.orEmpty().toUri())
-                        context.startActivity(intent)
-                    }
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                    contentDescription = null,
-                    tint = PlatformWomenAccent,
-                    modifier = Modifier.size(20.dp)
-                )
-                Column {
-                    Text(
-                        text = stringResource(R.string.women_soccerdonna_profile),
-                        style = boldTextStyle(PlatformWomenAccent, 13.sp)
-                    )
-                    Text(
-                        text = player.soccerDonnaUrl.orEmpty(),
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-
-        if (!player.soccerDonnaUrl.isNullOrBlank() && !player.fmInsideUrl.isNullOrBlank()) {
-            HorizontalDivider(
-                color = PlatformColors.palette.cardBorder,
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(vertical = 6.dp)
-            )
-        }
-
-        if (!player.fmInsideUrl.isNullOrBlank()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable {
-                        val intent = Intent(Intent.ACTION_VIEW, player.fmInsideUrl.orEmpty().toUri())
-                        context.startActivity(intent)
-                    }
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                    contentDescription = null,
-                    tint = PlatformWomenAccent,
-                    modifier = Modifier.size(20.dp)
-                )
-                Column {
-                    Text(
-                        text = stringResource(R.string.women_fminside_profile),
-                        style = boldTextStyle(PlatformWomenAccent, 13.sp)
-                    )
-                    Text(
-                        text = player.fmInsideUrl.orEmpty(),
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
 
 private fun playerInfoFormatLastRefreshed(resources: android.content.res.Resources, timestampMs: Long): String {
     val diff = System.currentTimeMillis() - timestampMs
@@ -4264,7 +4093,7 @@ private fun AgentTransferResolvedBanner(
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account>,
     isHebrew: Boolean
 ) {
-    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+    val isMen = !PlatformColors.palette.isYouth
     val fromName = resolveAgentDisplayName(resolvedTransfer.fromAgentId, resolvedTransfer.fromAgentName, allAccounts, isHebrew)
     val toName = resolveAgentDisplayName(resolvedTransfer.toAgentId, resolvedTransfer.toAgentName, allAccounts, isHebrew)
     val isApproved = resolvedTransfer.status == com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest.STATUS_APPROVED
@@ -4369,7 +4198,7 @@ private fun AgentTransferResolvedBanner(
 
 @Composable
 private fun AgentTransferRequestButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+    val isMen = !PlatformColors.palette.isYouth
     val actionColor = if (isMen) MenInfoGold else PlatformColors.palette.accent
     val actionText = if (isMen) MenInfoTextSubtle else PlatformColors.palette.accent
     Box(
@@ -4413,7 +4242,7 @@ private fun AgentTransferPendingBanner(
     currentAgentName: String,
     onCancel: () -> Unit
 ) {
-    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+    val isMen = !PlatformColors.palette.isYouth
     val amberColor = if (isMen) MenInfoGold else Color(0xFFF59E0B)
     val amberSoft = if (isMen) MenInfoBronze else Color(0xFFFBBF24)
     val redColor = PlatformColors.palette.red
@@ -4519,7 +4348,7 @@ private fun AgentTransferApprovalBanner(
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
-    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+    val isMen = !PlatformColors.palette.isYouth
     val blueColor = if (isMen) MenInfoGold else Color(0xFF5B8AF5)
     val blueSoft = if (isMen) MenInfoBronze else Color(0xFF8B5CF6)
     val emeraldColor = if (isMen) MenInfoBronze else Color(0xFF34D399)
@@ -4613,13 +4442,14 @@ private fun AgentTransferApprovalBanner(
                     if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            color = if (isMen) MenInfoBg else Color(0xFF080B12),
+                            // sits on the filled emeraldColor accent → white
+                            color = Color.White,
                             strokeWidth = 2.dp
                         )
                     } else {
                         Text(
                             text = stringResource(R.string.agent_transfer_approve),
-                            style = boldTextStyle(if (isMen) MenInfoBg else Color(0xFF080B12), 12.sp)
+                            style = boldTextStyle(Color.White, 12.sp)
                         )
                     }
                 }
@@ -4659,7 +4489,7 @@ private fun AgentTransferConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val isMen = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
+    val isMen = !PlatformColors.palette.isYouth
     val blueColor = if (isMen) MenInfoGold else Color(0xFF5B8AF5)
     val blueSoft = if (isMen) MenInfoBronze else Color(0xFF8B5CF6)
     val tealColor = if (isMen) MenInfoBronze else Color(0xFF38E8C6)
@@ -4672,7 +4502,7 @@ private fun AgentTransferConfirmDialog(
                 .background(PlatformColors.palette.card)
                 .border(
                     width = 1.dp,
-                    color = Color.White.copy(alpha = 0.06f),
+                    color = PlatformColors.palette.cardBorder,
                     shape = RoundedCornerShape(24.dp)
                 )
         ) {
@@ -4761,8 +4591,10 @@ private fun AgentTransferConfirmDialog(
                         )
                     ) {
                         Text(
+                            // Confirm button text sits on the filled tealColor
+                            // accent → white on both platforms (cream surface).
                             text = stringResource(R.string.agent_transfer_send_request),
-                            style = boldTextStyle(if (isMen) MenInfoBg else Color(0xFF080B12), 14.sp)
+                            style = boldTextStyle(Color.White, 14.sp)
                         )
                     }
                 }

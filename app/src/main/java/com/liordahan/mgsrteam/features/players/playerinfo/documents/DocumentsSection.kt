@@ -53,9 +53,11 @@ import java.util.Locale
 
 private val DATE_FORMAT = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
 
-private fun docsIsMenPalette(): Boolean = !PlatformColors.palette.isWomen && !PlatformColors.palette.isYouth
-private fun docsActionColor(): Color = if (docsIsMenPalette()) Color(0xFFC7A35A) else PlatformColors.palette.accent
-private fun docsActionTextOnFill(): Color = if (docsIsMenPalette()) Color(0xFF0E1219) else Color.White
+private fun docsIsMenPalette(): Boolean = !PlatformColors.palette.isYouth
+private fun docsActionColor(): Color = PlatformColors.palette.accent
+// Text/icons sit on the filled editorial accent (gold/teal) → white on both
+// platforms now that the surface is cream.
+private fun docsActionTextOnFill(): Color = Color.White
 
 @Composable
 fun DocumentsSection(

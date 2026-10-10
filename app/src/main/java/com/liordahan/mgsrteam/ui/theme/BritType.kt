@@ -1,4 +1,4 @@
-package com.liordahan.mgsrteam.features.home.dashboard
+package com.liordahan.mgsrteam.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -12,33 +12,33 @@ import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.R
 
 /**
- * Typography for the MEN dashboard, matching the website "Light Management Room"
- * (mgsr-web .brit-room):
+ * App-wide editorial typography for the "Light Management Room"
+ * (mgsr-web .brit-room design system):
  *   --display : Oswald   → masthead + big numbers (condensed, uppercase)
  *   --body    : Manrope  → running copy
  *   --mono    : DM Mono  → uppercase micro-labels (kicker, signal labels)
  *
- * These are men-only helpers so the shared boldTextStyle/regularTextStyle
- * (takeaway_sans, used app-wide) stays untouched for Women/Youth and the rest
- * of the app. Oswald/Manrope are variable fonts; weight is selected via
- * FontVariation (supported from minSdk 28).
+ * Oswald/Manrope are variable fonts; weight is selected via FontVariation
+ * (supported from minSdk 28). These helpers were promoted from the former
+ * men-only features/home/dashboard/MenDashboardType.kt (now deleted) so every
+ * restyled screen reuses one app-wide source of truth.
  */
 
-private fun oswald(weight: Int) = FontFamily(
+internal fun oswald(weight: Int) = FontFamily(
     Font(R.font.oswald_variable, variationSettings = FontVariation.Settings(FontVariation.weight(weight)))
 )
 
-private fun manrope(weight: Int) = FontFamily(
+internal fun manrope(weight: Int) = FontFamily(
     Font(R.font.manrope_variable, variationSettings = FontVariation.Settings(FontVariation.weight(weight)))
 )
 
-private val DmMono = FontFamily(
+internal val DmMono = FontFamily(
     Font(R.font.dm_mono_regular, FontWeight.Normal),
     Font(R.font.dm_mono_medium, FontWeight.Medium),
 )
 
 /** Oswald display — masthead, section titles, stat numbers. */
-fun menDisplay(
+fun britDisplay(
     color: Color,
     fontSize: TextUnit,
     weight: Int = 500,
@@ -53,7 +53,7 @@ fun menDisplay(
 )
 
 /** Manrope body — running copy. */
-fun menBody(
+fun britBody(
     color: Color,
     fontSize: TextUnit,
     weight: Int = 500,
@@ -66,7 +66,7 @@ fun menBody(
 )
 
 /** DM Mono micro-label — kicker, signal labels, chip captions (usually UPPERCASE). */
-fun menMono(
+fun britMono(
     color: Color,
     fontSize: TextUnit,
     weight: FontWeight = FontWeight.Normal,

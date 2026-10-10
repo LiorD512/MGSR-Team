@@ -86,16 +86,27 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.aiscout.AiScoutContentBody
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.localization.CountryNameTranslator
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
-import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
-import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
-import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
+import com.liordahan.mgsrteam.ui.theme.BritTokens
+
+// ── BRIT editorial palette (FEAT-005) ────────────────────────────────────────
+// The mock renders the War Room in the ".brit-room" paper editorial look (its
+// four sub-modes Alpha Board / Ask / Scout Agents / Successors use pageHead +
+// var(--line)/var(--gold)/var(--black)). The old "Mission Control" dark theme
+// (Home* + Wr* surfaces, below) is re-bound to BritTokens so the whole screen
+// adopts the paper look. All WarRoomViewModel + MgsrWebApiClient wiring and the
+// off-roster-target non-tappable behaviour are left untouched. Status/score
+// accents (gem/match/agent/score) keep their vivid hues — they read correctly
+// as accent text/borders on the light paper surface.
+private val HomeDarkBackground = BritTokens.paper
+private val HomeDarkCard = BritTokens.card
+private val HomeDarkCardBorder = BritTokens.line
+private val HomeTealAccent = BritTokens.gold
+private val HomeTextPrimary = BritTokens.ink
+private val HomeTextSecondary = BritTokens.muted
+private val HomeBlueAccent = BritTokens.blue
+private val HomeOrangeAccent = BritTokens.amber
+private val HomeGreenAccent = BritTokens.green
+private val HomeRedAccent = BritTokens.red
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -114,27 +125,32 @@ import java.util.Locale
 //  COLOR SYSTEM — War Room "Mission Control" palette
 // ═══════════════════════════════════════════════════════════════════════════════
 
-private val WrIndigo = Color(0xFF6366F1)
-private val WrIndigoLight = Color(0xFF93A0FF)
-private val WrIndigoDim = Color(0xFF4F46E5)
-private val WrIndigoBg = Color(0x1A6366F1)
-private val WrIndigoBorder = Color(0x406366F1)
+// War-room accent + surface palette, retinted for the BRIT paper look.
+// Surfaces move to paper/card; the indigo "mission control" accent becomes the
+// editorial blue (dark enough to read as text on paper); gem/match/agent and
+// the score ramp keep readable, slightly deepened hues so coloured chips still
+// pop against cream without the former white-on-dark contrast.
+private val WrIndigo = BritTokens.blue
+private val WrIndigoLight = BritTokens.blue
+private val WrIndigoDim = Color(0xFF3A4C5A)
+private val WrIndigoBg = BritTokens.blue.copy(alpha = 0.10f)
+private val WrIndigoBorder = BritTokens.blue.copy(alpha = 0.30f)
 
-private val WrSurface = Color(0xFF111827)
-private val WrSurfaceElevated = Color(0xFF1A2235)
-private val WrSurfaceBorder = Color(0xFF283044)
+private val WrSurface = BritTokens.card
+private val WrSurfaceElevated = BritTokens.paper2
+private val WrSurfaceBorder = BritTokens.line
 
-private val WrGem = Color(0xFFF59E0B)
-private val WrGemBg = Color(0x1AF59E0B)
-private val WrMatch = Color(0xFF10B981)
-private val WrMatchBg = Color(0x1A10B981)
-private val WrAgent = Color(0xFF8B5CF6)
-private val WrAgentBg = Color(0x1A8B5CF6)
+private val WrGem = BritTokens.amber
+private val WrGemBg = BritTokens.amber.copy(alpha = 0.12f)
+private val WrMatch = BritTokens.green
+private val WrMatchBg = BritTokens.green.copy(alpha = 0.12f)
+private val WrAgent = BritTokens.blue
+private val WrAgentBg = BritTokens.blue.copy(alpha = 0.12f)
 
-private val WrScoreExcellent = Color(0xFF10B981)
-private val WrScoreGood = Color(0xFF3B82F6)
-private val WrScoreMedium = Color(0xFFF59E0B)
-private val WrScoreLow = Color(0xFFEF4444)
+private val WrScoreExcellent = BritTokens.green
+private val WrScoreGood = BritTokens.blue
+private val WrScoreMedium = BritTokens.amber
+private val WrScoreLow = BritTokens.red
 
 private const val TM_IMAGE_BASE = "https://img.a.transfermarkt.technology/portrait/medium/"
 private const val TM_DEFAULT_IMAGE = "https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1"

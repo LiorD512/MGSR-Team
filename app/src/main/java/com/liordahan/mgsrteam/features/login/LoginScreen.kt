@@ -83,10 +83,14 @@ import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.components.AppTextField
+import com.liordahan.mgsrteam.ui.components.BritMark
 import com.liordahan.mgsrteam.ui.components.PrimaryButtonNewDesign
+import com.liordahan.mgsrteam.ui.theme.BritTokens
 import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.britDisplay
+import com.liordahan.mgsrteam.ui.theme.britMono
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import org.koin.androidx.compose.koinViewModel
@@ -99,13 +103,17 @@ import kotlin.math.roundToInt
 private const val ENTRANCE_DURATION_MS = 800
 private const val SHAKE_DURATION_MS = 400
 
-private val LoginLogoGold = Color(0xFFC7A35A)
-private val LoginLogoGoldSoft = Color(0xFFDEC287)
-private val LoginBackgroundTop = Color(0xFF070D16)
-private val LoginBackgroundBottom = Color(0xFF101A28)
-private val LoginCardBackground = Color(0xFF162131)
-private val LoginCardBorder = Color(0x33C7A35A)
-private val LoginToggleIdle = Color(0xFF141F2E)
+// ── Cinematic editorial login palette (mock .login) ──
+// Dark "stadium night" background with the gold/paper .brit-room accents.
+private val LoginLogoGold = BritTokens.gold          // --gold #a47d43
+private val LoginLogoGoldSoft = BritTokens.goldSoft  // --gold-soft #c9a66b
+private val LoginBackgroundTop = Color(0xFF16160F)   // near --black warm ink
+private val LoginBackgroundBottom = Color(0xFF0B0B09)// deep black foot of gradient
+private val LoginCardBackground = Color(0x14F3F0E8)  // paper @ ~8% over dark
+private val LoginCardBorder = Color(0x33C9A66B)      // gold-soft hairline
+private val LoginToggleIdle = Color(0x12F3F0E8)
+private val LoginPaper = BritTokens.paper            // --paper text on dark
+private val LoginMuted = Color(0xFF8E8B82)           // mock --muted on dark
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  LOGIN SCREEN
@@ -244,52 +252,62 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                // ── Logo ─────────────────────────────────────────────────
-                Image(
-                    painter = painterResource(R.drawable.for_app_logo),
-                    contentDescription = stringResource(R.string.login_cd_app_logo),
+                // ── BRIT circle mark ─────────────────────────────────────
+                Box(
                     modifier = Modifier
-                        .size(95.dp)
+                        .size(64.dp)
+                        .alpha(logoAlpha)
+                        .offset { IntOffset(0, (logoOffsetY * density).roundToInt()) }
+                ) {
+                    BritMark(accent = LoginLogoGoldSoft, modifier = Modifier.size(64.dp))
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // ── Kicker ───────────────────────────────────────────────
+                Text(
+                    text = "BRIT SPORT GROUP · MANAGEMENT ROOM",
+                    style = britMono(LoginLogoGoldSoft, 9.sp, letterSpacing = 2.2.sp),
+                    modifier = Modifier
                         .alpha(logoAlpha)
                         .offset { IntOffset(0, (logoOffsetY * density).roundToInt()) }
                 )
 
                 Spacer(Modifier.height(16.dp))
 
-                // ── Gradient accent line ─────────────────────────────────
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(3.dp)
-                        .alpha(logoAlpha)
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    LoginLogoGold.copy(alpha = 0.35f),
-                                    LoginLogoGoldSoft,
-                                    LoginLogoGold.copy(alpha = 0.35f)
-                                )
-                            ),
-                            shape = RoundedCornerShape(2.dp)
-                        )
-                )
-
-                Spacer(Modifier.height(20.dp))
-
-                // ── Welcome text ─────────────────────────────────────────
+                // ── Oswald masthead ──────────────────────────────────────
                 Text(
                     text = stringResource(R.string.login_welcome_title),
-                    style = boldTextStyle(HomeTextPrimary, 22.sp),
+                    style = britDisplay(LoginPaper, 46.sp, weight = 600, letterSpacing = (-2).sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center),
                     modifier = Modifier
                         .alpha(titleAlpha)
                         .offset { IntOffset(0, (titleOffsetY * density).roundToInt()) }
                 )
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(10.dp))
+
+                // ── Gold hairline rule ───────────────────────────────────
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .alpha(titleAlpha)
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    LoginLogoGold.copy(alpha = 0.5f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                Spacer(Modifier.height(10.dp))
 
                 Text(
                     text = stringResource(R.string.login_welcome_subtitle),
-                    style = regularTextStyle(HomeTextSecondary, 14.sp),
+                    style = britMono(LoginMuted, 10.sp, letterSpacing = 1.4.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center),
                     modifier = Modifier
                         .alpha(titleAlpha)
                         .offset { IntOffset(0, (titleOffsetY * density).roundToInt()) }

@@ -37,8 +37,6 @@ object AppConfigManager {
         val id: String,
         val titleEn: String,
         val titleHe: String,
-        val titleEnWomen: String? = null,
-        val titleHeWomen: String? = null,
         val hasMonthPlaceholder: Boolean = false
     )
 
@@ -298,8 +296,6 @@ object AppConfigManager {
                     id = m["id"] as? String ?: "",
                     titleEn = m["titleEn"] as? String ?: "",
                     titleHe = m["titleHe"] as? String ?: "",
-                    titleEnWomen = m["titleEnWomen"] as? String,
-                    titleHeWomen = m["titleHeWomen"] as? String,
                     hasMonthPlaceholder = m["hasMonthPlaceholder"] as? Boolean ?: false
                 )
             }

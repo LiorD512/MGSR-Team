@@ -308,7 +308,7 @@ fun SkeletonRequestList(
 @Composable
 fun SkeletonDashboardLayout(
     modifier: Modifier = Modifier,
-    // Defaults keep the dark skeleton for Women/Youth/other callers; the MEN
+    // Defaults keep the dark skeleton for Youth/other callers; the MEN
     // dashboard passes its light "Light Management Room" colors so the loading
     // state doesn't flash dark before the (now light) men dashboard appears.
     cardColor: Color = HomeDarkCard,
