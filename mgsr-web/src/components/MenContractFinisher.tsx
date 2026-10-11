@@ -13,8 +13,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, memo, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
+import BritFilterSheetPortal from '@/components/BritFilterSheetPortal';
 import type { Confederation } from '@/lib/api';
 
 type FootSide = 'left' | 'right' | 'both' | null;
@@ -143,6 +145,27 @@ export default function MenContractFinisher(props: MenContractFinisherProps) {
 
   const { t, lang, setLang, isRtl } = useLanguage();
 
+  // Mobile: the filter tray collapses into a bottom sheet (portaled to <body>
+  // so its fixed positioning anchors to the viewport, not the scrollable room).
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const isMobileSheet = useMediaQuery('(max-width: 900px)');
+  const activeFilterCount =
+    (positionFilter ? 1 : 0) +
+    (ageFilter !== 'all' ? 1 : 0) +
+    (regionFilter ? 1 : 0) +
+    (footFilter !== 'all' ? 1 : 0) +
+    (valueFilter !== 'all' ? 1 : 0) +
+    (rosterOnly ? 1 : 0);
+  const clearAllFilters = () => {
+    setPositionFilter(null);
+    setAgeFilter('all');
+    setRegionFilter(null);
+    setFootFilter('all');
+    setValueFilter('all');
+    setRosterOnly(false);
+    setSearch('');
+  };
+
   const dateStr = new Date().toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
   const timeStr = new Date().toLocaleTimeString(isRtl ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' });
   const windowText = windowLabel === 'Summer' ? t('contract_finisher_subtitle_summer') : t('contract_finisher_subtitle_winter');
@@ -174,10 +197,8 @@ export default function MenContractFinisher(props: MenContractFinisherProps) {
                 <p className="brit-cf-sub">{windowText}</p>
               </div>
               <div className="brit-cf-mast">
-                <div className="brit-cf-window">
-                  <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                  <span>{windowText}</span>
-                </div>
+                {/* The window label is already shown in the subtitle above, so the
+                    duplicate golden "window" box was removed. */}
                 <button className={`brit-cf-reload${loadingList ? ' spin' : ''}`} onClick={onReload} disabled={loadingList}>
                   <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 3v6h-6" /></svg>
                   <span>{t('contract_finisher_retry')}</span>
@@ -204,8 +225,30 @@ export default function MenContractFinisher(props: MenContractFinisherProps) {
               </div>
             </section>
 
-            {/* Filters */}
-            <section className="brit-tray">
+            {/* Mobile filter bar — search + a Filter button that opens the tray
+                as a bottom sheet. Hidden on desktop (the tray shows inline). */}
+            <div className="brit-mfilter">
+              <label className="brit-search brit-mfilter-search">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('contract_finisher_search')} aria-label={t('contract_finisher_search')} />
+                {search && <button type="button" className="brit-search-clear" onClick={() => setSearch('')} aria-label={t('players_clear_filters')}>×</button>}
+              </label>
+              <button type="button" className="brit-mfilter-btn" onClick={() => setFilterSheetOpen(true)} aria-expanded={filterSheetOpen}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4h18M6 12h12M10 20h4" /></svg>
+                <span>{t('filters')}</span>
+                {activeFilterCount > 0 && <span className="brit-mfilter-count">{activeFilterCount}</span>}
+              </button>
+            </div>
+
+            {/* Filters — inline on desktop; portals to <body> on mobile as a
+                bottom sheet (see BritFilterSheetPortal). */}
+            <BritFilterSheetPortal active={isMobileSheet} isRtl={isRtl}>
+            <div className={`brit-tray-scrim${filterSheetOpen ? ' open' : ''}`} onClick={() => setFilterSheetOpen(false)} aria-hidden />
+            <section className="brit-tray" aria-label={t('filters')} data-sheet-open={filterSheetOpen ? 'true' : 'false'}>
+              <div className="brit-tray-sheet-head">
+                <h3>{t('filters')}</h3>
+                <button type="button" onClick={() => setFilterSheetOpen(false)} aria-label={t('common_close') || 'Close'}>×</button>
+              </div>
               <label className="brit-search">
                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('contract_finisher_search')} />
@@ -266,7 +309,18 @@ export default function MenContractFinisher(props: MenContractFinisherProps) {
                 </button>
                 <span className="brit-cf-foot-note">{t('contract_finisher_room_foot_note')}</span>
               </div>
+
+              {/* Sticky sheet footer (mobile only) */}
+              <div className="brit-tray-sheet-foot">
+                {activeFilterCount > 0 && (
+                  <button type="button" className="reset" onClick={clearAllFilters}>{t('players_clear_filters')}</button>
+                )}
+                <button type="button" className="apply" onClick={() => setFilterSheetOpen(false)}>
+                  {t('contract_finisher_room_showing').replace('{n}', String(filteredCount)).replace('{total}', String(totalCount))}
+                </button>
+              </div>
             </section>
+            </BritFilterSheetPortal>
 
             <p className="brit-result-count">
               {t('contract_finisher_room_showing').replace('{n}', String(filteredCount)).replace('{total}', String(totalCount))}

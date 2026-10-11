@@ -285,6 +285,10 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     players_clear_filters: 'Clear filters',
     players_showing: 'Showing {n} of {total} assets',
     players_filters_active: '{n} filters active',
+    // Mobile filter-sheet section headings
+    filter_section_position: 'Position',
+    filter_section_attributes: 'Attributes',
+    filter_section_sort: 'Sort by',
     players_th_age: 'Age',
     players_th_agent: 'Agent',
     players_th_signals: 'Signals',
@@ -2291,6 +2295,10 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     players_clear_filters: 'נקה סינון',
     players_showing: 'מוצג {n} מתוך {total} נכסים',
     players_filters_active: '{n} סינונים פעילים',
+    // Mobile filter-sheet section headings
+    filter_section_position: 'עמדה',
+    filter_section_attributes: 'מאפיינים',
+    filter_section_sort: 'מיין לפי',
     players_th_age: 'גיל',
     players_th_agent: 'סוכן',
     players_th_signals: 'סימונים',

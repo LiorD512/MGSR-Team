@@ -35,6 +35,28 @@ export function useDeviceType(): DeviceType {
 }
 
 /**
+ * Generic media-query hook. Returns true when the given CSS media query
+ * currently matches. SSR-safe (defaults to false until mounted).
+ *
+ * Use this when a component needs to mirror a specific CSS breakpoint exactly
+ * (e.g. the men "Light Management Room" filter sheet uses `max-width: 900px`,
+ * which does not line up with the phone/tablet/desktop buckets above).
+ */
+export function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(false); // SSR default
+
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const update = () => setMatches(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, [query]);
+
+  return matches;
+}
+
+/**
  * Backward-compatible: returns true when viewport < 768px.
  */
 export function useIsMobile(): boolean {

@@ -21,6 +21,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { getConfederation } from '@/lib/nationToConfederation';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { openWhatsAppWithMessage } from '@/lib/whatsapp';
@@ -28,6 +29,7 @@ import type { Confederation } from '@/lib/api';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
+import BritFilterSheetPortal from '@/components/BritFilterSheetPortal';
 import MenAddPlayerDrawer from '@/components/MenAddPlayerDrawer';
 import { isPlayerOurAsset } from '@/lib/transfermarkt-utils';
 import { callPlayersUpdate } from '@/lib/callables';
@@ -233,6 +235,13 @@ export default function MenPlayers() {
   // "Filter" button so the roster grid is visible immediately. Desktop ignores
   // this (the tray always renders inline via CSS).
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  // On mobile the filter tray renders as a bottom sheet. It MUST be portaled to
+  // <body>: the .brit-room shell is `position:fixed; overflow-y:auto`, which makes
+  // it the containing block for any fixed descendant — so a `position:fixed`
+  // sheet left inside it anchors to the (tall, scrollable) room content instead
+  // of the viewport and lands off-screen once the user scrolls. Mirrors the
+  // CSS breakpoint (max-width:900px) exactly so the two never disagree.
+  const isMobileSheet = useMediaQuery('(max-width: 900px)');
 
   const [drawer, setDrawer] = useState<Player | null>(null);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
@@ -672,6 +681,10 @@ export default function MenPlayers() {
               </button>
             </div>
 
+            {/* Filter tray — inline on desktop; on mobile it portals to <body>
+                (see BritFilterSheetPortal) so the fixed bottom sheet anchors to
+                the viewport instead of the scrollable .brit-room. */}
+            <BritFilterSheetPortal active={isMobileSheet} isRtl={isRtl}>
             {/* Scrim behind the open filter sheet (mobile only) */}
             <div
               className={`brit-tray-scrim${filterSheetOpen ? ' open' : ''}`}
@@ -679,13 +692,13 @@ export default function MenPlayers() {
               aria-hidden
             />
 
-            {/* Filter tray — inline on desktop, bottom sheet on mobile */}
             <section className="brit-tray" aria-label={t('filters')} data-sheet-open={filterSheetOpen ? 'true' : 'false'}>
               <div className="brit-tray-sheet-head">
                 <h3>{t('filters')}</h3>
                 <button type="button" onClick={() => setFilterSheetOpen(false)} aria-label={t('common_close') || 'Close'}>×</button>
               </div>
               <div className="brit-tray-top">
+                <span className="brit-sheet-label">{t('filter_section_position')}</span>
                 <label className="brit-search">
                   <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round">
                     <circle cx="11" cy="11" r="7" />
@@ -764,6 +777,7 @@ export default function MenPlayers() {
                   </select>
                 </label>
               </div>
+              <span className="brit-sheet-label">{t('filter_section_attributes')}</span>
               <div className="brit-chips">
                 {chips.map((c) => (
                   <button
@@ -827,6 +841,7 @@ export default function MenPlayers() {
                 </button>
               </div>
             </section>
+            </BritFilterSheetPortal>
 
             <p className="brit-result-count">
               {t('players_showing')
