@@ -2,7 +2,6 @@ package com.liordahan.mgsrteam.features.players.playerinfo.documents
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Description
@@ -24,12 +22,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -45,19 +38,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
-import com.liordahan.mgsrteam.ui.utils.boldTextStyle
-import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.ui.theme.BritTokens
+import com.liordahan.mgsrteam.ui.theme.britDisplay
+import com.liordahan.mgsrteam.ui.theme.britMono
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 private val DATE_FORMAT = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-
-private fun docsIsMenPalette(): Boolean = !PlatformColors.palette.isYouth
-private fun docsActionColor(): Color = PlatformColors.palette.accent
-// Text/icons sit on the filled editorial accent (gold/teal) → white on both
-// platforms now that the surface is cream.
-private fun docsActionTextOnFill(): Color = Color.White
 
 @Composable
 fun DocumentsSection(
@@ -68,64 +59,50 @@ fun DocumentsSection(
     onDeleteDocument: (PlayerDocument) -> Unit
 ) {
     val context = LocalContext.current
-    val actionColor = docsActionColor()
 
-    Card(
+    // Editorial document list (mock `.doc` rows). No Material Card / elevation.
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+            .padding(horizontal = 20.dp, vertical = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            if (isUploading) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = actionColor,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = stringResource(R.string.player_info_uploading),
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
-                    )
-                }
-                Spacer(Modifier.height(16.dp))
+        if (isUploading) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = BritTokens.gold,
+                    strokeWidth = 2.dp
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = stringResource(R.string.player_info_uploading).uppercase(),
+                    style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.8.sp)
+                )
             }
+        }
 
-            if (documents.isEmpty() && !isUploading) {
-                DocumentsEmptyState(onAddDocument = onAddDocument)
-            } else {
-                documents.forEachIndexed { index, doc ->
-                    if (index > 0) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            color = PlatformColors.palette.cardBorder,
-                            thickness = 1.dp
-                        )
-                    }
-                    DocumentCard(
-                        document = doc,
-                        isDeleting = deletingDocId == doc.id,
-                        onOpen = {
-                            doc.storageUrl?.let { url ->
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                            }
-                        },
-                        onDelete = { onDeleteDocument(doc) }
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
+        if (documents.isEmpty() && !isUploading) {
+            DocumentsEmptyState(onAddDocument = onAddDocument)
+        } else {
+            documents.forEach { doc ->
+                DocumentCard(
+                    document = doc,
+                    isDeleting = deletingDocId == doc.id,
+                    onOpen = {
+                        doc.storageUrl?.let { url ->
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        }
+                    },
+                    onDelete = { onDeleteDocument(doc) }
+                )
+                Spacer(Modifier.height(12.dp))
             }
-
-            if (!documents.isEmpty() || isUploading) {
-                AddDocumentButton(onClick = onAddDocument)
-            }
+            AddDocumentButton(onClick = onAddDocument)
         }
     }
 }
@@ -141,18 +118,18 @@ private fun DocumentsEmptyState(onAddDocument: () -> Unit) {
         Icon(
             imageVector = Icons.Default.PictureAsPdf,
             contentDescription = null,
-            modifier = Modifier.size(48.dp),
-            tint = PlatformColors.palette.textSecondary
+            modifier = Modifier.size(40.dp),
+            tint = BritTokens.muted
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = stringResource(R.string.player_info_no_documents),
-            style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
+            text = stringResource(R.string.player_info_no_documents).uppercase(),
+            style = britDisplay(BritTokens.ink, 16.sp, weight = 600, letterSpacing = 0.3.sp)
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
         Text(
             text = stringResource(R.string.player_info_documents_empty_subtitle),
-            style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
+            style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.6.sp)
         )
         Spacer(Modifier.height(24.dp))
         AddDocumentButton(onClick = onAddDocument)
@@ -161,28 +138,27 @@ private fun DocumentsEmptyState(onAddDocument: () -> Unit) {
 
 @Composable
 private fun AddDocumentButton(onClick: () -> Unit) {
-    val actionColor = docsActionColor()
-    val actionOnFill = docsActionTextOnFill()
-    Button(
-        onClick = onClick,
+    // Editorial gold-fill pill (replaces Material Button).
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = actionColor,
-            contentColor = actionOnFill
-        )
+            .height(48.dp)
+            .border(1.dp, BritTokens.gold)
+            .background(BritTokens.gold)
+            .clickWithNoRipple(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector = Icons.Default.Description,
             contentDescription = null,
-            modifier = Modifier.size(20.dp)
+            tint = BritTokens.paper,
+            modifier = Modifier.size(18.dp)
         )
         Spacer(Modifier.width(8.dp))
         Text(
-            text = stringResource(R.string.player_info_add_document),
-            style = boldTextStyle(actionOnFill, 14.sp)
+            text = stringResource(R.string.player_info_add_document).uppercase(),
+            style = britMono(BritTokens.paper, 10.sp, letterSpacing = 0.8.sp)
         )
     }
 }
@@ -194,104 +170,103 @@ private fun DocumentCard(
     onOpen: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val actionColor = docsActionColor()
     val typeIcon = documentTypeIcon(document.documentType)
     val status = documentStatus(document)
     val dateText = formatDocumentDate(document)
     val alpha = if (isDeleting) 0.4f else 1f
+    val subLine = buildString {
+        append(document.documentType.displayName)
+        append(" · ")
+        append(status.text)
+        if (dateText.isNotEmpty()) {
+            append(" · ")
+            append(dateText)
+        }
+    }
+    val isExpired = document.expired ||
+        (document.expiresAt != null && document.expiresAt < System.currentTimeMillis())
 
+    // Mock `.doc` row: hairline border, gold icon tile, Oswald title, mono sub-line.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp)
-            .then(if (isDeleting) Modifier else Modifier),
+            .border(1.dp, BritTokens.line)
+            .background(BritTokens.card)
+            .padding(horizontal = 15.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Gold icon tile (34x40, hairline border, paper fill).
         Box(
             modifier = Modifier
-                .size(40.dp),
+                .size(width = 34.dp, height = 40.dp)
+                .border(1.dp, BritTokens.line)
+                .background(BritTokens.paper),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = typeIcon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = actionColor.copy(alpha = alpha)
+                modifier = Modifier.size(18.dp),
+                tint = BritTokens.gold.copy(alpha = alpha)
             )
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(13.dp))
         Column(
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = document.name ?: document.documentType.displayName,
-                style = regularTextStyle(PlatformColors.palette.textPrimary.copy(alpha = alpha), 14.sp),
+                text = (document.name ?: document.documentType.displayName).uppercase(),
+                style = britDisplay(BritTokens.ink.copy(alpha = alpha), 13.sp, weight = 600, letterSpacing = 0.3.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = document.documentType.displayName,
-                    style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = alpha), 12.sp)
-                )
-                Text(
-                    text = "·",
-                    style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = alpha), 12.sp)
-                )
-                Text(
-                    text = status.text,
-                    style = regularTextStyle(status.color.copy(alpha = alpha), 12.sp)
-                )
-                if (dateText.isNotEmpty()) {
-                    Text(
-                        text = "·",
-                        style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = alpha), 12.sp)
-                    )
-                    Text(
-                        text = dateText,
-                        style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = alpha), 12.sp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
+            Text(
+                text = subLine.uppercase(),
+                style = britMono(BritTokens.muted.copy(alpha = alpha), 9.sp, letterSpacing = 0.4.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (isExpired) {
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = status.text.uppercase(),
+                style = britMono(BritTokens.red.copy(alpha = alpha), 9.sp, letterSpacing = 0.4.sp)
+            )
         }
         Spacer(Modifier.width(8.dp))
         IconButton(
             onClick = onOpen,
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(40.dp),
             enabled = document.storageUrl != null && !isDeleting
         ) {
             Icon(
                 imageVector = Icons.Default.Link,
                 contentDescription = stringResource(R.string.player_info_cd_open_link),
-                tint = actionColor.copy(alpha = alpha)
+                tint = BritTokens.gold.copy(alpha = alpha)
             )
         }
         if (isDeleting) {
             Box(
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(40.dp),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    color = PlatformColors.palette.textSecondary,
+                    modifier = Modifier.size(16.dp),
+                    color = BritTokens.muted,
                     strokeWidth = 2.dp
                 )
             }
         } else {
             IconButton(
                 onClick = onDelete,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(40.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = stringResource(R.string.player_info_cd_delete_document),
-                    tint = PlatformColors.palette.textSecondary
+                    tint = BritTokens.muted
                 )
             }
         }

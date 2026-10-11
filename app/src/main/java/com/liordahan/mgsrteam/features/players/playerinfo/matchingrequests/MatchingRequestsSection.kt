@@ -6,7 +6,6 @@ import androidx.core.net.toUri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,8 +28,6 @@ import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -61,6 +58,11 @@ import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.requests.models.PositionDisplayNames
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
+import com.liordahan.mgsrteam.ui.theme.BritTokens
+import com.liordahan.mgsrteam.ui.theme.britDisplay
+import com.liordahan.mgsrteam.ui.theme.britBody
+import com.liordahan.mgsrteam.ui.theme.britMono
+import androidx.compose.foundation.border
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -125,45 +127,33 @@ fun MatchingRequestsSection(
 
 @Composable
 private fun MatchingRequestsEmptyState() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+    // Editorial hairline surround (no Material Card / elevation).
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, BritTokens.line)
+            .background(BritTokens.card)
+            .padding(40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(48.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(PlatformColors.palette.cardBorder),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Handshake,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    tint = PlatformColors.palette.textSecondary.copy(alpha = 0.6f)
-                )
-            }
-            Spacer(Modifier.height(20.dp))
-            Text(
-                stringResource(R.string.player_info_matching_requests_empty),
-                style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.player_info_matching_requests_empty_subtitle),
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
-                textAlign = TextAlign.Center
-            )
-        }
+        Icon(
+            Icons.Default.Handshake,
+            contentDescription = null,
+            modifier = Modifier.size(32.dp),
+            tint = BritTokens.muted
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            stringResource(R.string.player_info_matching_requests_empty).uppercase(),
+            style = britDisplay(BritTokens.ink, 16.sp, weight = 600, letterSpacing = 0.3.sp)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.player_info_matching_requests_empty_subtitle),
+            style = britBody(BritTokens.muted, 13.sp),
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -182,11 +172,12 @@ private fun MatchingRequestCard(
     val positionName = PositionDisplayNames.toLongName(request.position ?: "")
     val detailsText = buildRequestDetailsText(context.resources, request)
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+    // Editorial hairline surround (no Material Card / elevation).
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, BritTokens.line)
+            .background(BritTokens.card)
     ) {
         Column(
             modifier = Modifier
@@ -230,8 +221,8 @@ private fun MatchingRequestCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            request.clubName ?: "",
-                            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                            (request.clubName ?: "").uppercase(),
+                            style = britDisplay(BritTokens.ink, 15.sp, weight = 600, letterSpacing = 0.3.sp)
                         )
                         if (offer != null) {
                             Row(
@@ -341,15 +332,17 @@ private fun MatchingRequestCard(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Button(
-                                onClick = onMarkAsOffered,
-                                colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.accent.copy(alpha = 0.2f)),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = ButtonDefaults.ContentPadding
+                            Box(
+                                modifier = Modifier
+                                    .border(1.dp, BritTokens.gold)
+                                    .background(BritTokens.paper)
+                                    .clickWithNoRipple { onMarkAsOffered() }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    stringResource(R.string.player_info_matching_requests_mark_offered),
-                                    style = boldTextStyle(PlatformColors.palette.accent, 13.sp)
+                                    stringResource(R.string.player_info_matching_requests_mark_offered).uppercase(),
+                                    style = britMono(BritTokens.gold, 10.sp, letterSpacing = 0.8.sp)
                                 )
                             }
                             if (hasValidContact) {

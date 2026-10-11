@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -104,6 +106,10 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
+import com.liordahan.mgsrteam.ui.theme.BritTokens
+import com.liordahan.mgsrteam.ui.theme.britBody
+import com.liordahan.mgsrteam.ui.theme.britDisplay
+import com.liordahan.mgsrteam.ui.theme.britMono
 import com.liordahan.mgsrteam.ui.components.RecordingWaveform
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -171,84 +177,62 @@ fun NotesSection(
     val sortedNotes = noteList?.sortedByDescending { it.createdAt }.orEmpty()
     val noteCount = sortedNotes.size
     val previewNotes = sortedNotes.take(PREVIEW_NOTE_COUNT)
-    val actionColor = notesActionColor()
-    val actionOnFill = notesActionTextOnFill()
+    // Editorial notes list (mock gold-left-ruled `.note` cards). The module
+    // header is now rendered by the Overview pane (BritDossierModuleHeader).
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+        if (sortedNotes.isEmpty()) {
+            NotesEmptyState(onAddNoteClicked = onAddNoteClicked)
+        } else {
+            previewNotes.forEach { note ->
+                NoteCard(
+                    notesModel = note,
+                    onDeleteNote = onDeleteNote
+                )
+                Spacer(Modifier.height(12.dp))
+            }
 
-    Card(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
-    ) {
-        Column(modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 20.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            if (noteCount > PREVIEW_NOTE_COUNT) {
                 Text(
-                    text = if (noteCount > 0) {
-                        "${stringResource(R.string.player_info_notes)} ($noteCount)"
-                    } else {
-                        stringResource(R.string.player_info_notes)
-                    },
-                    style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp),
-                    modifier = Modifier.weight(1f)
+                    text = stringResource(R.string.player_info_view_all_notes, noteCount).uppercase(),
+                    style = britMono(BritTokens.gold, 10.sp, letterSpacing = 0.8.sp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(onClick = onViewAllClicked)
+                        .padding(vertical = 12.dp),
+                    textAlign = TextAlign.Center
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            if (sortedNotes.isEmpty()) {
-                NotesEmptyState(onAddNoteClicked = onAddNoteClicked)
-            } else {
-                previewNotes.forEach { note ->
-                    NoteCard(
-                        notesModel = note,
-                        onDeleteNote = onDeleteNote
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
-
-                if (noteCount > PREVIEW_NOTE_COUNT) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.player_info_view_all_notes, noteCount),
-                        style = boldTextStyle(actionColor, 14.sp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .combinedClickable(onClick = onViewAllClicked)
-                            .padding(vertical = 12.dp),
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                Button(
-                    onClick = onAddNoteClicked,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = actionColor,
-                        contentColor = actionOnFill
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.player_info_add_note),
-                        style = boldTextStyle(actionOnFill, 14.sp)
-                    )
-                }
-            }
+            Spacer(Modifier.height(4.dp))
+            NotesAddButton(onAddNoteClicked = onAddNoteClicked)
         }
+    }
+}
+
+/** Editorial gold-fill add-note pill (replaces Material Button). */
+@Composable
+private fun NotesAddButton(onAddNoteClicked: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .border(1.dp, BritTokens.gold)
+            .background(BritTokens.gold)
+            .clickWithNoRipple(onClick = onAddNoteClicked),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            tint = BritTokens.paper,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.player_info_add_note).uppercase(),
+            style = britMono(BritTokens.paper, 10.sp, letterSpacing = 0.8.sp)
+        )
     }
 }
 
@@ -256,8 +240,6 @@ fun NotesSection(
 
 @Composable
 private fun NotesEmptyState(onAddNoteClicked: () -> Unit) {
-    val actionColor = notesActionColor()
-    val actionOnFill = notesActionTextOnFill()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -267,43 +249,22 @@ private fun NotesEmptyState(onAddNoteClicked: () -> Unit) {
         Icon(
             imageVector = Icons.Default.NoteAdd,
             contentDescription = null,
-            modifier = Modifier.size(48.dp),
-            tint = PlatformColors.palette.textSecondary.copy(alpha = 0.5f)
+            modifier = Modifier.size(40.dp),
+            tint = BritTokens.muted
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
         Text(
-            text = stringResource(R.string.player_info_no_notes_title),
-            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+            text = stringResource(R.string.player_info_no_notes_title).uppercase(),
+            style = britDisplay(BritTokens.ink, 15.sp, weight = 600, letterSpacing = 0.3.sp)
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
         Text(
             text = stringResource(R.string.player_info_no_notes_subtitle),
-            style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
+            style = britBody(BritTokens.muted, 13.sp),
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(20.dp))
-        Button(
-            onClick = onAddNoteClicked,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = actionColor,
-                contentColor = actionOnFill
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.player_info_add_note),
-                style = boldTextStyle(actionOnFill, 14.sp)
-            )
-        }
+        NotesAddButton(onAddNoteClicked = onAddNoteClicked)
     }
 }
 
@@ -320,36 +281,30 @@ fun NoteCard(
     val clipboardManager = LocalClipboardManager.current
     val sdf = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
-    Card(
+    // Mock `.note`: hairline border + 2.dp gold left-rule, mono top row, prose body.
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .height(IntrinsicSize.Min)
+            .border(1.dp, BritTokens.line)
+            .background(BritTokens.card)
             .combinedClickable(
                 onClick = {},
                 onLongClick = { showMenu = true }
-            ),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = PlatformColors.palette.cardBorder.copy(alpha = 0.5f)
-        )
+            )
     ) {
+        Box(
+            modifier = Modifier
+                .width(2.dp)
+                .fillMaxHeight()
+                .background(BritTokens.gold)
+        )
         Box {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(14.dp)
+                    .padding(horizontal = 15.dp, vertical = 13.dp)
             ) {
-                Text(
-                    text = notesModel.notes ?: "",
-                    style = regularTextStyle(
-                        PlatformColors.palette.textPrimary,
-                        14.sp,
-                        direction = TextDirection.ContentOrRtl
-                    ),
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -359,23 +314,24 @@ fun NoteCard(
                             val isHebrew = com.liordahan.mgsrteam.localization.LocaleManager.isHebrew(LocalContext.current)
                             if (isHebrew) notesModel.createByHe ?: notesModel.createBy ?: ""
                             else notesModel.createBy ?: ""
-                        },
-                        style = regularTextStyle(
-                            PlatformColors.palette.textSecondary,
-                            12.sp,
-                            direction = TextDirection.ContentOrRtl
-                        ),
+                        }.uppercase(),
+                        style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.6.sp),
                         modifier = Modifier.weight(1f)
                     )
                     Text(
                         text = notesModel.createdAt?.let { sdf.format(it) } ?: "",
-                        style = regularTextStyle(
-                            PlatformColors.palette.textSecondary,
-                            12.sp,
-                            direction = TextDirection.Ltr
-                        )
+                        style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.6.sp)
                     )
                 }
+                Spacer(Modifier.height(9.dp))
+                Text(
+                    text = notesModel.notes ?: "",
+                    style = britBody(BritTokens.ink, 13.sp).copy(
+                        textDirection = TextDirection.ContentOrRtl
+                    ),
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             DropdownMenu(

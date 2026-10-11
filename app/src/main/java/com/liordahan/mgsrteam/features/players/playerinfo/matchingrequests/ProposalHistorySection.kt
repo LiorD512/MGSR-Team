@@ -22,11 +22,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -51,20 +48,18 @@ import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.requests.models.PositionDisplayNames
-import com.liordahan.mgsrteam.ui.theme.PlatformColors
-import com.liordahan.mgsrteam.ui.utils.boldTextStyle
+import com.liordahan.mgsrteam.ui.theme.BritTokens
+import com.liordahan.mgsrteam.ui.theme.britBody
+import com.liordahan.mgsrteam.ui.theme.britDisplay
+import com.liordahan.mgsrteam.ui.theme.britMono
+import androidx.compose.foundation.border
+import androidx.compose.ui.text.font.FontWeight
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
-import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 private const val COLLAPSED_MAX = 3
-
-private val HistoryPurple = Color(0xFFA855F7)
-private val StatusDeletedAmber = Color(0xFFF59E0B)
-private val StatusFulfilledBlue = Color(0xFF3B82F6)
-private val StatusActiveGreen = Color(0xFF22C55E)
 
 @Composable
 fun ProposalHistorySection(
@@ -78,44 +73,16 @@ fun ProposalHistorySection(
     var expanded by remember { mutableStateOf(false) }
     val visibleOffers = if (expanded) offers else offers.take(COLLAPSED_MAX)
 
+    // The module header is now rendered by the Overview pane
+    // (BritDossierModuleHeader). This body renders the editorial timeline only.
     Column(modifier = modifier.padding(horizontal = 16.dp)) {
 
-        // Section Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(HistoryPurple.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.History,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = HistoryPurple
-                )
-            }
-            Text(
-                stringResource(R.string.proposal_history_title),
-                style = boldTextStyle(PlatformColors.palette.textPrimary, 15.sp),
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                "${offers.size}",
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(PlatformColors.palette.cardBorder.copy(alpha = 0.5f))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-            )
-        }
+        // Count line (mono, editorial) — replaces the old purple icon-tile header.
+        Text(
+            text = stringResource(R.string.proposal_history_show_all, offers.size).uppercase(),
+            style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.6.sp),
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
 
         Spacer(Modifier.height(4.dp))
 
@@ -138,23 +105,24 @@ fun ProposalHistorySection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(HistoryPurple.copy(alpha = 0.08f))
+                    .border(1.dp, BritTokens.line, RoundedCornerShape(10.dp))
+                    .background(BritTokens.gold.copy(alpha = 0.06f))
                     .clickWithNoRipple { expanded = !expanded }
                     .padding(vertical = 10.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    if (expanded) stringResource(R.string.proposal_history_show_less)
-                    else stringResource(R.string.proposal_history_show_all, offers.size),
-                    style = regularTextStyle(HistoryPurple, 12.sp)
+                    (if (expanded) stringResource(R.string.proposal_history_show_less)
+                    else stringResource(R.string.proposal_history_show_all, offers.size)).uppercase(),
+                    style = britMono(BritTokens.gold, 10.sp, letterSpacing = 0.6.sp)
                 )
                 Spacer(Modifier.width(4.dp))
                 Icon(
                     Icons.Default.ExpandMore,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = HistoryPurple
+                    tint = BritTokens.gold
                 )
             }
         }
@@ -193,18 +161,19 @@ private fun ProposalHistoryTimelineItem(
                     modifier = Modifier
                         .width(2.dp)
                         .weight(1f)
-                        .background(PlatformColors.palette.cardBorder)
+                        .background(BritTokens.line)
                 )
             }
         }
 
         Spacer(Modifier.width(8.dp))
 
-        // Card
-        Card(
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        // Editorial hairline surround (no Material Card / elevation).
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .border(1.dp, BritTokens.line)
+                .background(BritTokens.card)
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
 
@@ -218,7 +187,7 @@ private fun ProposalHistoryTimelineItem(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .background(PlatformColors.palette.cardBorder.copy(alpha = 0.3f))
+                                .background(BritTokens.paper2.copy(alpha = 0.6f))
                                 .padding(2.dp),
                             contentScale = ContentScale.Fit
                         )
@@ -231,18 +200,19 @@ private fun ProposalHistoryTimelineItem(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                offer.clubName ?: "",
-                                style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                                (offer.clubName ?: "").uppercase(),
+                                style = britDisplay(BritTokens.ink, 15.sp, weight = 600, letterSpacing = 0.3.sp)
                             )
 
                             // Position badge
                             offer.position?.takeIf { it.isNotBlank() }?.let { pos ->
                                 Text(
-                                    PositionDisplayNames.toLongName(pos).takeIf { it.isNotBlank() } ?: pos,
-                                    style = boldTextStyle(HistoryPurple, 10.sp),
+                                    (PositionDisplayNames.toLongName(pos).takeIf { it.isNotBlank() } ?: pos).uppercase(),
+                                    style = britMono(BritTokens.gold, 9.sp, letterSpacing = 0.4.sp),
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(HistoryPurple.copy(alpha = 0.15f))
+                                        .border(1.dp, BritTokens.line, RoundedCornerShape(6.dp))
+                                        .background(BritTokens.gold.copy(alpha = 0.08f))
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
@@ -263,11 +233,12 @@ private fun ProposalHistoryTimelineItem(
                     ) {
                         snapshot.split(" • ").forEach { chip ->
                             Text(
-                                chip,
-                                style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
+                                chip.uppercase(),
+                                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.4.sp),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(PlatformColors.palette.cardBorder.copy(alpha = 0.4f))
+                                    .border(1.dp, BritTokens.line2, RoundedCornerShape(6.dp))
+                                    .background(BritTokens.paper2.copy(alpha = 0.5f))
                                     .padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
@@ -281,23 +252,24 @@ private fun ProposalHistoryTimelineItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(PlatformColors.palette.cardBorder.copy(alpha = 0.25f))
+                        .border(1.dp, BritTokens.line2, RoundedCornerShape(8.dp))
+                        .background(BritTokens.paper.copy(alpha = 0.6f))
                         .padding(10.dp)
                 ) {
                     Text(
-                        stringResource(R.string.proposal_history_feedback),
-                        style = regularTextStyle(HistoryPurple, 10.sp)
+                        stringResource(R.string.proposal_history_feedback).uppercase(),
+                        style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.6.sp)
                     )
                     Spacer(Modifier.height(2.dp))
                     if (hasFeedback) {
                         Text(
                             "\"${offer.clubFeedback}\"",
-                            style = regularTextStyle(PlatformColors.palette.textPrimary, 12.sp)
+                            style = britBody(BritTokens.ink, 12.sp)
                         )
                     } else {
                         Text(
                             stringResource(R.string.proposal_history_no_feedback),
-                            style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 11.sp)
+                            style = britBody(BritTokens.muted2, 11.sp)
                         )
                     }
                 }
@@ -314,7 +286,7 @@ private fun ProposalHistoryTimelineItem(
                 // Meta row: agent + date
                 Spacer(Modifier.height(8.dp))
                 HorizontalDivider(
-                    color = PlatformColors.palette.cardBorder.copy(alpha = 0.4f),
+                    color = BritTokens.line2,
                     thickness = 0.5.dp
                 )
                 Spacer(Modifier.height(6.dp))
@@ -335,17 +307,17 @@ private fun ProposalHistoryTimelineItem(
                                 modifier = Modifier
                                     .size(18.dp)
                                     .clip(CircleShape)
-                                    .background(PlatformColors.palette.accent.copy(alpha = 0.15f)),
+                                    .background(BritTokens.gold.copy(alpha = 0.12f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    agentDisplay.take(1),
-                                    style = boldTextStyle(PlatformColors.palette.accent, 9.sp)
+                                    agentDisplay.take(1).uppercase(),
+                                    style = britMono(BritTokens.gold, 9.sp, letterSpacing = 0.sp)
                                 )
                             }
                             Text(
                                 stringResource(R.string.proposal_history_by_agent, agentDisplay),
-                                style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp)
+                                style = britBody(BritTokens.muted, 10.sp)
                             )
                         }
                     }
@@ -355,11 +327,11 @@ private fun ProposalHistoryTimelineItem(
                         offer.offeredAt?.let { ts ->
                             Text(
                                 formatHistoryDate(ts),
-                                style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp)
+                                style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.sp)
                             )
                             Text(
                                 formatTimeAgo(ts, context),
-                                style = regularTextStyle(HistoryPurple, 10.sp)
+                                style = britMono(BritTokens.gold, 10.sp, letterSpacing = 0.sp)
                             )
                         }
                     }
@@ -372,10 +344,10 @@ private fun ProposalHistoryTimelineItem(
 @Composable
 private fun StatusBadge(requestStatus: String?) {
     val (label, color) = when (requestStatus) {
-        "deleted" -> stringResource(R.string.proposal_history_status_deleted) to StatusDeletedAmber
-        "fulfilled" -> stringResource(R.string.proposal_history_status_fulfilled) to StatusFulfilledBlue
-        "active" -> stringResource(R.string.proposal_history_status_active) to StatusActiveGreen
-        else -> stringResource(R.string.proposal_history_status_legacy) to PlatformColors.palette.textSecondary
+        "deleted" -> stringResource(R.string.proposal_history_status_deleted) to BritTokens.red
+        "fulfilled" -> stringResource(R.string.proposal_history_status_fulfilled) to BritTokens.green
+        "active" -> stringResource(R.string.proposal_history_status_active) to BritTokens.gold
+        else -> stringResource(R.string.proposal_history_status_legacy) to BritTokens.muted
     }
     val icon = when (requestStatus) {
         "deleted" -> "⊘ "
@@ -384,16 +356,15 @@ private fun StatusBadge(requestStatus: String?) {
         else -> ""
     }
     Text(
-        icon + label,
-        style = boldTextStyle(color, 12.sp),
+        (icon + label).uppercase(),
+        style = britMono(color, 10.sp, weight = FontWeight.Medium, letterSpacing = 0.6.sp),
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(color.copy(alpha = 0.15f))
+            .border(1.dp, color.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+            .background(color.copy(alpha = 0.10f))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     )
 }
-
-private val SummaryOrange = Color(0xFFE8913A)
 
 @Composable
 private fun AgentSummaryBlock(
@@ -409,7 +380,8 @@ private fun AgentSummaryBlock(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(SummaryOrange.copy(alpha = 0.10f))
+            .border(1.dp, BritTokens.line, RoundedCornerShape(8.dp))
+            .background(BritTokens.gold.copy(alpha = 0.06f))
             .padding(10.dp)
     ) {
         Row(
@@ -417,8 +389,8 @@ private fun AgentSummaryBlock(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                stringResource(R.string.proposal_history_summary),
-                style = regularTextStyle(SummaryOrange, 10.sp),
+                stringResource(R.string.proposal_history_summary).uppercase(),
+                style = britMono(BritTokens.gold, 9.sp, letterSpacing = 0.6.sp),
                 modifier = Modifier.weight(1f)
             )
             Icon(
@@ -427,7 +399,7 @@ private fun AgentSummaryBlock(
                 modifier = Modifier
                     .size(14.dp)
                     .clickWithNoRipple { editing = !editing },
-                tint = SummaryOrange.copy(alpha = 0.7f)
+                tint = BritTokens.gold.copy(alpha = 0.7f)
             )
         }
         Spacer(Modifier.height(4.dp))
@@ -439,10 +411,11 @@ private fun AgentSummaryBlock(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(6.dp))
-                    .background(PlatformColors.palette.cardBorder.copy(alpha = 0.3f))
+                    .border(1.dp, BritTokens.line, RoundedCornerShape(6.dp))
+                    .background(BritTokens.paper.copy(alpha = 0.8f))
                     .padding(8.dp),
-                textStyle = regularTextStyle(PlatformColors.palette.textPrimary, 12.sp).copy(),
-                cursorBrush = SolidColor(SummaryOrange),
+                textStyle = britBody(BritTokens.ink, 12.sp),
+                cursorBrush = SolidColor(BritTokens.gold),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = {
                     focusManager.clearFocus()
@@ -454,7 +427,7 @@ private fun AgentSummaryBlock(
                         if (draft.isBlank()) {
                             Text(
                                 stringResource(R.string.proposal_history_summary_hint),
-                                style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.5f), 11.sp)
+                                style = britBody(BritTokens.muted2, 11.sp)
                             )
                         }
                         innerTextField()
@@ -463,12 +436,13 @@ private fun AgentSummaryBlock(
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                stringResource(R.string.proposal_history_summary_save),
-                style = boldTextStyle(SummaryOrange, 11.sp),
+                stringResource(R.string.proposal_history_summary_save).uppercase(),
+                style = britMono(BritTokens.gold, 10.sp, weight = FontWeight.Medium, letterSpacing = 0.6.sp),
                 modifier = Modifier
                     .align(Alignment.End)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(SummaryOrange.copy(alpha = 0.15f))
+                    .border(1.dp, BritTokens.line, RoundedCornerShape(6.dp))
+                    .background(BritTokens.gold.copy(alpha = 0.10f))
                     .clickWithNoRipple {
                         focusManager.clearFocus()
                         onSave(draft.takeIf { it.isNotBlank() })
@@ -479,12 +453,12 @@ private fun AgentSummaryBlock(
         } else if (hasSummary) {
             Text(
                 "\"$currentSummary\"",
-                style = regularTextStyle(PlatformColors.palette.textPrimary, 12.sp)
+                style = britBody(BritTokens.ink, 12.sp)
             )
         } else {
             Text(
                 stringResource(R.string.proposal_history_add_summary),
-                style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 11.sp),
+                style = britBody(BritTokens.muted2, 11.sp),
                 modifier = Modifier.clickWithNoRipple { editing = true }
             )
         }
@@ -492,10 +466,10 @@ private fun AgentSummaryBlock(
 }
 
 private fun statusColor(requestStatus: String?): Color = when (requestStatus) {
-    "deleted" -> StatusDeletedAmber
-    "fulfilled" -> StatusFulfilledBlue
-    "active" -> StatusActiveGreen
-    else -> Color(0xFF8C999B)
+    "deleted" -> BritTokens.red
+    "fulfilled" -> BritTokens.green
+    "active" -> BritTokens.gold
+    else -> BritTokens.muted2
 }
 
 private fun resolveAgentName(

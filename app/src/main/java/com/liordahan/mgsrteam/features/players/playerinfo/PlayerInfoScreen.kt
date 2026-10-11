@@ -10,7 +10,6 @@ import android.net.Uri
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -22,6 +21,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,12 +53,12 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PersonAddAlt
@@ -86,8 +87,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
@@ -222,19 +221,12 @@ import java.util.Locale
 //  audited and moved to ink/muted; whites that remain sit on a filled accent,
 //  a gradient, or a photo scrim.
 private val MenInfoBg = BritTokens.paper
-private val MenInfoCard = BritTokens.card
-private val MenInfoCardAlt = BritTokens.paper2
-private val MenInfoBorder = Color(0x55A47D43)
 private val MenInfoGold = BritTokens.gold
 private val MenInfoGoldSoft = BritTokens.gold
 private val MenInfoTextSubtle = BritTokens.muted
-private val MenInfoBronze = BritTokens.amber
 
 private fun isMenPalette(): Boolean = !PlatformColors.palette.isYouth
 private fun playerInfoAccentColor(): Color = if (isMenPalette()) MenInfoGold else PlatformColors.palette.accent
-private fun playerInfoMutedColor(): Color = if (isMenPalette()) MenInfoTextSubtle else PlatformColors.palette.textSecondary
-private fun playerInfoBorderColor(): Color = if (isMenPalette()) MenInfoBorder else PlatformColors.palette.cardBorder
-private fun playerInfoCardColor(): Color = if (isMenPalette()) MenInfoCard else PlatformColors.palette.card
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -733,20 +725,18 @@ fun PlayerInfoScreen(
             // Men only (AI similar-players + add-to-shortlist flow). Kept intact.
             if (selectedTab == 0 && currentPlatform == Platform.MEN) {
                 playerToPresent?.let { player ->
-                    BritDossierModuleHeader(
-                        title = stringResource(R.string.player_info_similar_players),
-                        actLabel = stringResource(R.string.player_info_ai_helper),
-                        actGold = true,
-                        accent = dossierAccent,
-                    )
                     PlayerInfoAiHelperSection(
                         player = player,
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        accent = dossierAccent,
+                        navController = navController,
                     )
                 }
             }
 
-            // Hero Card
+            // ── OVERVIEW · Player details (editorial) ─────────────────── Overview pane
+            // Owns ONLY the editable fields the cinematic hero / signals row do NOT:
+            // mandate, interested-in-Israel, family status, English level.
             if (selectedTab == 0) playerToPresent?.let { player ->
                 val mandateDocs = documentsList
                     .filter { it.documentType == DocumentType.MANDATE }
@@ -756,34 +746,37 @@ fun PlayerInfoScreen(
                 val mandateLeagues = mandateDocs
                     .flatMap { it.validLeagues.orEmpty() }
                     .distinct()
-                val heroResolvedTransfer by viewModel.resolvedTransferFlow.collectAsStateWithLifecycle()
-                val heroSavingFields by viewModel.savingFieldsFlow.collectAsStateWithLifecycle()
-                PlayerInfoHeroCard(
+                val detailsSavingFields by viewModel.savingFieldsFlow.collectAsStateWithLifecycle()
+                BritDossierModuleHeader(
+                    title = stringResource(R.string.player_info_player_details),
+                    accent = dossierAccent,
+                )
+                PlayerDetailsModule(
                     player = player,
+                    currentPlatform = currentPlatform,
+                    accent = dossierAccent,
                     mandateExpiryAt = mandateExpiry,
                     mandateValidLeagues = mandateLeagues,
-                    currentPlatform = currentPlatform,
-                    allAccounts = allAccounts,
-                    resolvedTransfer = heroResolvedTransfer,
-                    savingFields = heroSavingFields,
+                    savingFields = detailsSavingFields,
                     onMandateChanged = { viewModel.updateHaveMandate(it) },
                     onInterestedInIsraelChanged = { viewModel.updateInterestedInIsrael(it) },
                     onMarriedChanged = { viewModel.updateIsMarried(it) },
                     onKidsCountChanged = { viewModel.updateKidsCount(it) },
                     onEnglishLevelChanged = { viewModel.updateEnglishLevel(it) },
-                    onSalaryTransferFeeClicked = { showSalaryTransferFeeSheet = true },
-                    onClearSalaryAndTransferFee = {
-                        viewModel.updateSalaryRange(null)
-                        viewModel.updateTransferFee(null)
-                    }
                 )
             }
 
-            // Quick Actions
+            // ── OVERVIEW · Contact (editorial) ────────────────────────── Overview pane
             if (selectedTab == 0) playerToPresent?.let { player ->
-                PlayerInfoQuickActions(
+                BritDossierModuleHeader(
+                    title = stringResource(R.string.player_info_contact_header),
+                    accent = dossierAccent,
+                )
+                PlayerContactModule(
                     player = player,
                     context = context,
+                    accent = dossierAccent,
+                    platform = currentPlatform,
                     onEditPlayerNumber = {
                         launchPlayerContactPicker(
                             context,
@@ -800,7 +793,6 @@ fun PlayerInfoScreen(
                         )
                     },
                     onRemoveAgentNumber = { viewModel.updateAgentNumber("") },
-                    platform = currentPlatform
                 )
             }
 
@@ -868,7 +860,10 @@ fun PlayerInfoScreen(
             if (selectedTab == 0) playerToPresent?.let { player ->
                 val matchingRequests by viewModel.matchingRequestsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
                 val allAccounts by viewModel.allAccountsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-                PlayerInfoSectionHeader(stringResource(R.string.player_info_matching_requests))
+                BritDossierModuleHeader(
+                    title = stringResource(R.string.player_info_matching_requests),
+                    accent = dossierAccent,
+                )
                 MatchingRequestsSection(
                     matchingRequests = matchingRequests,
                     player = player,
@@ -878,6 +873,10 @@ fun PlayerInfoScreen(
 
                 // Section: Proposal History (persists after request deletion)
                 val proposalHistory by viewModel.proposalHistoryFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+                BritDossierModuleHeader(
+                    title = stringResource(R.string.proposal_history_title),
+                    accent = dossierAccent,
+                )
                 ProposalHistorySection(
                     offers = proposalHistory,
                     allAccounts = allAccounts,
@@ -887,234 +886,22 @@ fun PlayerInfoScreen(
                 )
             }
 
-            // Section: General Info (hidden for Youth — integrated into Youth section) — Overview pane
+            // ── OVERVIEW · General info (editorial) ───────────────────── Overview pane
+            // (hidden for Youth — integrated into Youth section)
             if (selectedTab == 0 && currentPlatform != Platform.YOUTH) {
-            PlayerInfoSectionHeader(stringResource(R.string.player_info_general_info))
-            PlayerInfoCard(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                val infoMuted = playerInfoMutedColor()
-                val infoBorder = playerInfoBorderColor()
-                InfoRow(
-                        stringResource(R.string.player_info_height),
-                        playerToPresent?.height?.replace(",", "."),
-                        darkTheme = true,
-                        icon = {
-                            Icon(
-                                modifier = Modifier.size(24.dp),
-                                painter = painterResource(R.drawable.ic_height),
-                                contentDescription = null,
-                                tint = infoMuted
-                            )
-                        })
-                    HorizontalDivider(
-                        color = infoBorder,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
+                playerToPresent?.let { player ->
+                    BritDossierModuleHeader(
+                        title = stringResource(R.string.player_info_general_info),
+                        accent = dossierAccent,
                     )
-                    InfoRow(
-                        stringResource(R.string.player_info_age),
-                        playerToPresent?.age,
-                        darkTheme = true,
-                        icon = {
-                            Icon(
-                                modifier = Modifier.size(24.dp),
-                                imageVector = Icons.Default.CalendarMonth,
-                                contentDescription = null,
-                                tint = infoMuted
-                            )
-                        })
-                    HorizontalDivider(
-                        color = infoBorder,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
+                    PlayerGeneralInfoModule(
+                        player = player,
+                        currentPlatform = currentPlatform,
+                        accent = dossierAccent,
+                        onClearAgency = { viewModel.clearAgency() },
                     )
-
-                    InfoRow(
-                        stringResource(R.string.player_info_positions),
-                        playerToPresent?.positions?.filterNotNull()?.joinToString(", "),
-                        darkTheme = true,
-                        icon = {
-                            Icon(
-                                modifier = Modifier.size(24.dp),
-                                painter = painterResource(R.drawable.ic_soccer),
-                                contentDescription = null,
-                                tint = infoMuted
-                            )
-                        }
-                    )
-                    HorizontalDivider(
-                        color = infoBorder,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    val localizedFoot = when (playerToPresent?.foot?.lowercase()) {
-                        "right" -> stringResource(R.string.player_info_foot_right)
-                        "left" -> stringResource(R.string.player_info_foot_left)
-                        "both" -> stringResource(R.string.player_info_foot_both)
-                        else -> playerToPresent?.foot
-                    }
-                    InfoRow(
-                        stringResource(R.string.player_info_foot),
-                        localizedFoot,
-                        darkTheme = true,
-                        icon = {
-                            Icon(
-                                modifier = Modifier.size(24.dp),
-                                painter = painterResource(R.drawable.ic_foot),
-                                contentDescription = null,
-                                tint = infoMuted
-                            )
-                        }
-                    )
-                    HorizontalDivider(
-                        color = infoBorder,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    NationalityInfoRow(
-                        stringResource(R.string.player_info_nationality),
-                        nationalities = playerToPresent?.nationalities,
-                        nationalityFlags = playerToPresent?.nationalityFlags,
-                        fallbackNationality = playerToPresent?.nationality,
-                        fallbackFlag = playerToPresent?.nationalityFlag,
-                        darkTheme = true
-                    )
-
-                    if (currentPlatform == Platform.MEN && EuCountries.isEuNational(playerToPresent?.nationalities, playerToPresent?.nationality)) {
-                        val euBadgeBg = MenInfoGold
-                        val euBadgeText = Color(0xFF0E1219)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 2.dp),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(R.string.eu_nat_badge),
-                                style = boldTextStyle(euBadgeText, 9.sp),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(euBadgeBg)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-
-                    HorizontalDivider(
-                        color = infoBorder,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    InfoRow(
-                        stringResource(R.string.player_info_contract_expiry_date),
-                        getContractStatus(
-                            LocalContext.current.resources,
-                            playerToPresent?.contractExpired?.replace("/", ".") ?: ""
-                        ),
-                        darkTheme = true,
-                        icon = {
-                            Icon(
-                                modifier = Modifier.size(24.dp),
-                                painter = painterResource(R.drawable.ic_contract),
-                                contentDescription = null,
-                                tint = infoMuted
-                            )
-                        })
-
-                    HorizontalDivider(
-                        color = infoBorder,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    ClubInfoRow(
-                        stringResource(R.string.player_info_current_club),
-                        playerToPresent?.currentClub?.clubName,
-                        playerToPresent?.currentClub?.clubLogo,
-                        darkTheme = true
-                    )
-
-                    HorizontalDivider(
-                        color = infoBorder,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-
-                    AgencyInfoRow(
-                        title = stringResource(R.string.player_info_agency),
-                        agencyName = playerToPresent?.agency,
-                        agencyUrl = playerToPresent?.agencyUrl,
-                        onRemoveAgency = if (playerToPresent?.agency != null || playerToPresent?.agencyUrl != null) {
-                            { viewModel.clearAgency() }
-                        } else null
-                    )
-
-                    // Date added row — men only
-                    if (currentPlatform == Platform.MEN && (playerToPresent?.createdAt ?: 0L) > 0L) {
-                        HorizontalDivider(
-                            color = infoBorder,
-                            thickness = 0.5.dp,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                        InfoRow(
-                            stringResource(R.string.player_info_date_added),
-                            java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(playerToPresent!!.createdAt!!)),
-                            darkTheme = true,
-                            icon = {
-                                Icon(
-                                    modifier = Modifier.size(24.dp),
-                                    imageVector = Icons.Default.CalendarMonth,
-                                    contentDescription = null,
-                                    tint = infoMuted
-                                )
-                            }
-                        )
-                    }
-
-                    HorizontalDivider(
-                        color = infoBorder,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-
-                    InfoRow(
-                        stringResource(R.string.player_info_market_value),
-                        playerToPresent?.marketValue?.let { value ->
-                            val displayValue = value
-                            val trend = playerToPresent?.let { playerInfoComputeValueTrend(it.marketValueHistory) } ?: 0
-                            when {
-                                trend > 0 -> "$displayValue ↑"
-                                trend < 0 -> "$displayValue ↓"
-                                else -> displayValue
-                            }
-                        },
-                        darkTheme = true,
-                        icon = {
-                            Icon(
-                                modifier = Modifier.size(24.dp),
-                                painter = painterResource(R.drawable.ic_euro),
-                                contentDescription = null,
-                                tint = infoMuted
-                            )
-                        }
-                    )
-
-                    playerToPresent?.marketValueHistory?.takeIf { it.size > 1 }?.let { history ->
-                        val previous = history.sortedByDescending { it.date }.getOrNull(1)
-                        previous?.let {
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(R.string.player_info_previously, it.value ?: "", SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(it.date ?: 0))),
-                                style = regularTextStyle(infoMuted, 12.sp),
-                                modifier = Modifier.padding(start = 28.dp)
-                            )
-                        }
-                    }
-
                 }
-            } // end General Info
-            // Contact Info section removed - edit/delete moved to Quick Actions long-press
+            }
 
             // ── Platform-specific sections ─────────────────────────────── Overview pane
             if (selectedTab == 0 && currentPlatform == Platform.YOUTH) {
@@ -1161,7 +948,10 @@ fun PlayerInfoScreen(
                 val gpsDocs = remember(documentsList) {
                     documentsList.filter { it.documentType == DocumentType.GPS_DATA }
                 }
-                PlayerInfoSectionHeader(stringResource(R.string.player_info_documents))
+                BritDossierModuleHeader(
+                    title = stringResource(R.string.player_info_documents),
+                    accent = dossierAccent,
+                )
                 DocumentsSection(
                     documents = nonGpsDocs,
                     isUploading = isUploadingDocument,
@@ -1178,7 +968,10 @@ fun PlayerInfoScreen(
                 }
 
                 if (FeatureFlags.TASKS_ENABLED) {
-                    PlayerInfoSectionHeader(stringResource(R.string.player_tasks_section))
+                    BritDossierModuleHeader(
+                        title = stringResource(R.string.player_tasks_section),
+                        accent = dossierAccent,
+                    )
                     PlayerTasksSection(
                         tasks = playerTasksList,
                         onAddTaskClick = { showAddPlayerTaskSheet = true },
@@ -1190,7 +983,10 @@ fun PlayerInfoScreen(
 
             // ── Notes ──────────────────────────────────────────────────── Notes pane
             if (selectedTab == 3) {
-                PlayerInfoSectionHeader(stringResource(R.string.player_info_notes))
+                BritDossierModuleHeader(
+                    title = stringResource(R.string.player_info_notes),
+                    accent = dossierAccent,
+                )
                 NotesSection(
                     noteList = playerToPresent?.noteList,
                     onAddNoteClicked = { showAddNoteSheet = true },
@@ -1478,803 +1274,622 @@ private fun SalaryTransferFeeBottomSheet(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+// ═════════════════════════════════════════════════════════════════════════════
+// Editorial Overview modules (.brit-room) — replace the old Material hero /
+// quick-actions / general-info Cards. Hairline rows on BritTokens.paper with
+// britMono uppercase labels + britDisplay/britBody values, editorial toggles
+// (gold-filled pill when ON, hairline border when OFF — never a Material Switch).
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Editorial PLAYER DETAILS module. Owns ONLY the editable fields the cinematic
+ * hero / signals row do NOT already present: mandate (MEN+YOUTH),
+ * interested-in-Israel (MEN), family status (MEN), English level (MEN+YOUTH).
+ * Salary / transfer fee stay on the signals row and are NOT duplicated here.
+ */
 @Composable
-private fun PlayerInfoHeroCard(
+private fun PlayerDetailsModule(
     player: Player,
-    mandateExpiryAt: Long? = null,
-    mandateValidLeagues: List<String> = emptyList(),
-    currentPlatform: Platform = Platform.MEN,
-    allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account> = emptyList(),
-    resolvedTransfer: com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest? = null,
-    savingFields: Set<String> = emptySet(),
+    currentPlatform: Platform,
+    accent: Color,
+    mandateExpiryAt: Long?,
+    mandateValidLeagues: List<String>,
+    savingFields: Set<String>,
     onMandateChanged: (Boolean) -> Unit,
     onInterestedInIsraelChanged: (Boolean) -> Unit,
     onMarriedChanged: (Boolean) -> Unit,
     onKidsCountChanged: (Int) -> Unit,
     onEnglishLevelChanged: (String?) -> Unit,
-    onSalaryTransferFeeClicked: () -> Unit = {},
-    onClearSalaryAndTransferFee: () -> Unit = {},
 ) {
     val isMen = currentPlatform == Platform.MEN
-    val context = LocalContext.current
-    val resources = context.resources
-    val valueTrend = remember(player.marketValueHistory) {
-        playerInfoComputeValueTrend(player.marketValueHistory)
-    }
-    val contractCountdown = remember(player.contractExpired, resources) {
-        playerInfoGetContractCountdown(resources, player.contractExpired)
-    }
-
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = if (isMen) MenInfoCard else PlatformColors.palette.card),
-        border = if (isMen) {
-            BorderStroke(1.dp, MenInfoBorder)
-        } else {
-            BorderStroke(1.dp, PlatformColors.palette.cardBorder)
-        }
+            .padding(horizontal = 20.dp, vertical = 18.dp)
+            .border(1.dp, BritTokens.line)
+            .background(BritTokens.paper),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (currentPlatform == Platform.YOUTH) {
-                // Youth: initials fallback on cyan→violet gradient
-                var showFallback by remember { mutableStateOf(player.profileImage.isNullOrBlank()) }
-                if (showFallback) {
-                    Box(
-                        modifier = Modifier
-                            .size(96.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(PlatformYouthAccent, PlatformYouthSecondary)
-                                )
-                            )
-                            .border(2.dp, PlatformYouthAccent.copy(alpha = 0.4f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = player.fullName
-                                ?.split(" ")
-                                ?.mapNotNull { it.firstOrNull()?.uppercase() }
-                                ?.take(2)
-                                ?.joinToString("") ?: "?",
-                            style = boldTextStyle(Color.White, 28.sp)
-                        )
-                    }
-                } else {
-                    AsyncImage(
-                        model = player.profileImage,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(96.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, PlatformYouthAccent.copy(alpha = 0.4f), CircleShape),
-                        onError = { showFallback = true }
-                    )
-                }
-            } else {
-                AsyncImage(
-                    model = player.profileImage ?: "",
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder, CircleShape)
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = player.fullName ?: stringResource(R.string.player_info_unknown),
-                style = boldTextStyle(if (isMen) MenInfoGoldSoft else PlatformColors.palette.textPrimary, 22.sp)
-            )
-            if (player.isOnLoan) {
-                Spacer(Modifier.height(6.dp))
-                val loanText = player.onLoanFromClub?.let { club ->
-                    stringResource(R.string.players_on_loan_from, club)
-                } ?: stringResource(R.string.players_on_loan)
-                PlayerInfoOnLoanPill(text = loanText)
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = buildString {
-                    player.positions?.firstOrNull()?.let { append(it) }
-                    player.age?.let { append(" • ${it.trim()} ${stringResource(R.string.player_info_years_short)}") }
-                    player.currentClub?.clubName?.let { append(" • $it") }
-                }.ifEmpty { "—" },
-                style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 13.sp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(2.dp))
-            val addedByName = resolveAgentDisplayName(
-                player.originalAgentId ?: resolvedTransfer?.fromAgentId ?: player.agentInChargeId,
-                player.originalAgentName ?: resolvedTransfer?.fromAgentName ?: player.agentInChargeName,
-                allAccounts,
-                LocaleManager.isHebrew(context)
-            )
-            Text(
-                text = stringResource(R.string.player_info_added_by, addedByName),
-                style = regularTextStyle(if (isMen) MenInfoTextSubtle.copy(alpha = 0.85f) else PlatformColors.palette.textSecondary.copy(alpha = 0.8f), 11.sp)
-            )
-
-            if (currentPlatform == Platform.MEN && (player.createdAt ?: 0L) > 0L) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = stringResource(
-                        R.string.player_info_added_on,
-                        java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(player.createdAt!!))
-                    ),
-                    style = regularTextStyle(if (isMen) MenInfoTextSubtle.copy(alpha = 0.72f) else PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 11.sp)
-                )
-            }
-            player.lastRefreshedAt?.takeIf { it > 0 }?.let { ts ->
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = playerInfoFormatLastRefreshed(resources, ts),
-                    style = regularTextStyle(if (isMen) MenInfoTextSubtle.copy(alpha = 0.76f) else PlatformColors.palette.textSecondary.copy(alpha = 0.7f), 11.sp)
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = player.marketValue ?: "—",
-                        style = boldTextStyle(
-                            when {
-                                valueTrend > 0 -> PlatformColors.palette.green
-                                valueTrend < 0 -> PlatformColors.palette.red
-                                else -> if (isMen) MenInfoGold else PlatformColors.palette.accent
-                            },
-                            14.sp
-                        )
-                    )
-                    if (valueTrend != 0) {
-                        Icon(
-                            imageVector = if (valueTrend > 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = if (valueTrend > 0) PlatformColors.palette.green else PlatformColors.palette.red
-                        )
-                    }
-                }
-                Box(modifier = Modifier.width(1.dp).height(14.dp).background(if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder))
-                Text(
-                    text = player.height?.replace(",", ".") ?: "—",
-                    style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp)
-                )
-                Box(modifier = Modifier.width(1.dp).height(14.dp).background(if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder))
-                Text(
-                    text = player.nationality ?: "—",
-                    style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp)
-                )
-                AsyncImage(
-                    model = player.nationalityFlag,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp).clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            contractCountdown?.let { text ->
-                Spacer(Modifier.height(8.dp))
-                val isExpired = text == resources.getString(R.string.player_info_expired)
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (isExpired) PlatformColors.palette.red.copy(alpha = 0.15f)
-                            else if (isMen) MenInfoBronze.copy(alpha = 0.18f) else PlatformColors.palette.orange.copy(alpha = 0.15f)
-                        )
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.player_info_contract, text),
-                        style = boldTextStyle(
-                            if (isExpired) PlatformColors.palette.red else if (isMen) MenInfoGold else PlatformColors.palette.orange,
-                            11.sp
-                        )
-                    )
-                }
-            }
-            if (currentPlatform != Platform.YOUTH) {
-            val infoToggleContainer = if (isMen) MenInfoCard else PlatformColors.palette.background
-            val infoToggleBorder = if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder
-            val infoToggleAccent = if (isMen) MenInfoGold else PlatformColors.palette.blue
-            val infoToggleMuted = if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(infoToggleContainer)
-                    .border(1.dp, infoToggleBorder, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                var isMandateOn by remember(player.haveMandate) { mutableStateOf(player.haveMandate) }
-                LaunchedEffect(player.haveMandate) { isMandateOn = player.haveMandate }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.VerifiedUser,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = if (isMandateOn) infoToggleAccent else infoToggleMuted
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = stringResource(R.string.player_info_mandate),
-                            style = boldTextStyle(
-                                if (isMandateOn) infoToggleAccent else infoToggleMuted,
-                                16.sp
-                            )
-                        )
-                        if (isMandateOn && mandateExpiryAt != null) {
-                            val mandateExpiryStr = SimpleDateFormat("dd/MM/yyyy", Locale.US).format(
-                                Date(mandateExpiryAt)
-                            )
-                            Text(
-                                text = mandateExpiryStr,
-                                style = regularTextStyle(
-                                    if (isMandateOn) infoToggleAccent else infoToggleMuted,
-                                    11.sp
-                                )
-                            )
-                        }
-                        if (isMandateOn && mandateValidLeagues.isNotEmpty()) {
-                            Text(
-                                text = mandateValidLeagues.joinToString(", "),
-                                style = regularTextStyle(
-                                    infoToggleAccent.copy(alpha = 0.7f),
-                                    10.sp
-                                ),
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                }
-                Switch(
+        // ── Mandate (MEN + YOUTH) ──
+        var isMandateOn by remember(player.haveMandate) { mutableStateOf(player.haveMandate) }
+        LaunchedEffect(player.haveMandate) { isMandateOn = player.haveMandate }
+        BritDetailRow(
+            label = stringResource(R.string.player_info_mandate),
+            saving = "haveMandate" in savingFields,
+            accent = accent,
+            trailing = {
+                BritEditorialToggle(
                     checked = isMandateOn,
-                    onCheckedChange = {
+                    accent = accent,
+                    onLabel = stringResource(R.string.toggle_on),
+                    offLabel = stringResource(R.string.toggle_off),
+                    onToggle = {
                         isMandateOn = it
                         onMandateChanged(it)
                     },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = infoToggleAccent,
-                        uncheckedThumbColor = infoToggleMuted,
-                        uncheckedTrackColor = infoToggleBorder
-                    )
                 )
-            }
-            Spacer(Modifier.height(8.dp))
-
-            // ── Interested in Israel toggle ──
-            if (currentPlatform == Platform.MEN) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(infoToggleContainer)
-                    .border(1.dp, infoToggleBorder, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                var isInterestedInIsrael by remember(player.interestedInIsrael) { mutableStateOf(player.interestedInIsrael) }
-                LaunchedEffect(player.interestedInIsrael) { isInterestedInIsrael = player.interestedInIsrael }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "\uD83C\uDDEE\uD83C\uDDF1",
-                        fontSize = 18.sp,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.player_info_interested_in_israel),
-                        style = boldTextStyle(
-                            if (isInterestedInIsrael) infoToggleAccent else infoToggleMuted,
-                            16.sp
-                        )
-                    )
-                }
-                Switch(
-                    checked = isInterestedInIsrael,
-                    onCheckedChange = {
-                        isInterestedInIsrael = it
-                        onInterestedInIsraelChanged(it)
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = infoToggleAccent,
-                        uncheckedThumbColor = infoToggleMuted,
-                        uncheckedTrackColor = infoToggleBorder
-                    )
-                )
-            }
-            }
-
-            // ── Family Status ──
-            if (currentPlatform == Platform.MEN) {
-            Spacer(Modifier.height(8.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(infoToggleContainer)
-                    .border(1.dp, infoToggleBorder, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
-            ) {
-                // Section title
-                Text(
-                    text = stringResource(R.string.player_info_family_status),
-                    style = boldTextStyle(infoToggleMuted, 12.sp),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                // Married row
-                var isMarried by remember(player.isMarried) { mutableStateOf(player.isMarried) }
-                LaunchedEffect(player.isMarried) { isMarried = player.isMarried }
-                val isSavingMarried = "isMarried" in savingFields
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "\uD83D\uDC8D",
-                            fontSize = 18.sp,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.player_info_married),
-                            style = boldTextStyle(
-                                if (isMarried) infoToggleAccent else infoToggleMuted,
-                                16.sp
-                            )
-                        )
-                        if (isSavingMarried) {
-                            Spacer(Modifier.width(6.dp))
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                strokeWidth = 2.dp,
-                                color = infoToggleAccent
-                            )
-                        }
+            },
+            subtext = if (isMandateOn) {
+                buildString {
+                    mandateExpiryAt?.let {
+                        append(SimpleDateFormat("dd/MM/yyyy", Locale.US).format(Date(it)))
                     }
-                    Switch(
+                    if (mandateValidLeagues.isNotEmpty()) {
+                        if (isNotEmpty()) append("  ·  ")
+                        append(mandateValidLeagues.joinToString(", "))
+                    }
+                }.takeIf { it.isNotBlank() }
+            } else null,
+        )
+
+        // ── Interested in Israel (MEN only) ──
+        if (isMen) {
+            BritDetailDivider()
+            var isInterested by remember(player.interestedInIsrael) { mutableStateOf(player.interestedInIsrael) }
+            LaunchedEffect(player.interestedInIsrael) { isInterested = player.interestedInIsrael }
+            BritDetailRow(
+                label = stringResource(R.string.player_info_interested_in_israel),
+                saving = "interestedInIsrael" in savingFields,
+                accent = accent,
+                trailing = {
+                    BritEditorialToggle(
+                        checked = isInterested,
+                        accent = accent,
+                        onLabel = stringResource(R.string.toggle_yes),
+                        offLabel = stringResource(R.string.toggle_no),
+                        onToggle = {
+                            isInterested = it
+                            onInterestedInIsraelChanged(it)
+                        },
+                    )
+                },
+            )
+        }
+
+        // ── Family status: Married + Kids (MEN only) ──
+        if (isMen) {
+            BritDetailDivider()
+            var isMarried by remember(player.isMarried) { mutableStateOf(player.isMarried) }
+            LaunchedEffect(player.isMarried) { isMarried = player.isMarried }
+            BritDetailRow(
+                label = stringResource(R.string.player_info_married),
+                saving = "isMarried" in savingFields,
+                accent = accent,
+                trailing = {
+                    BritEditorialToggle(
                         checked = isMarried,
-                        onCheckedChange = {
+                        accent = accent,
+                        onLabel = stringResource(R.string.toggle_yes),
+                        offLabel = stringResource(R.string.toggle_no),
+                        onToggle = {
                             isMarried = it
                             onMarriedChanged(it)
                         },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = infoToggleAccent,
-                            uncheckedThumbColor = infoToggleMuted,
-                            uncheckedTrackColor = infoToggleBorder
-                        )
                     )
-                }
+                },
+            )
 
-                Spacer(Modifier.height(4.dp))
-                HorizontalDivider(color = infoToggleBorder)
-                Spacer(Modifier.height(4.dp))
-
-                // Kids row
-                var kidsCount by remember(player.kidsCount) { mutableIntStateOf(player.kidsCount) }
-                LaunchedEffect(player.kidsCount) { kidsCount = player.kidsCount }
-                val isSavingKids = "kidsCount" in savingFields
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+            BritDetailDivider()
+            var kidsCount by remember(player.kidsCount) { mutableIntStateOf(player.kidsCount) }
+            LaunchedEffect(player.kidsCount) { kidsCount = player.kidsCount }
+            BritDetailRow(
+                label = stringResource(R.string.player_info_kids),
+                saving = "kidsCount" in savingFields,
+                accent = accent,
+                trailing = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "\uD83D\uDC76",
-                            fontSize = 18.sp,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.player_info_kids),
-                            style = boldTextStyle(
-                                if (kidsCount > 0) infoToggleAccent else infoToggleMuted,
-                                16.sp
-                            )
-                        )
-                        if (isSavingKids) {
-                            Spacer(Modifier.width(6.dp))
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                strokeWidth = 2.dp,
-                                color = infoToggleAccent
-                            )
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
+                        BritStepperButton(
+                            icon = Icons.Default.Remove,
+                            tint = if (kidsCount > 0) accent else BritTokens.muted2,
+                            enabled = kidsCount > 0,
                             onClick = {
                                 if (kidsCount > 0) {
                                     kidsCount--
                                     onKidsCountChanged(kidsCount)
                                 }
                             },
-                            modifier = Modifier.size(32.dp),
-                            enabled = kidsCount > 0
-                        ) {
-                            Icon(
-                                Icons.Default.Remove,
-                                contentDescription = "Minus",
-                                tint = if (kidsCount > 0) infoToggleAccent else infoToggleMuted.copy(alpha = 0.3f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                        )
                         Text(
                             text = "$kidsCount",
-                            style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp),
-                            modifier = Modifier.padding(horizontal = 8.dp)
+                            style = britDisplay(BritTokens.ink, 20.sp, weight = 600),
+                            modifier = Modifier.padding(horizontal = 14.dp),
                         )
-                        IconButton(
+                        BritStepperButton(
+                            icon = Icons.Default.Add,
+                            tint = accent,
+                            enabled = true,
                             onClick = {
                                 kidsCount++
                                 onKidsCountChanged(kidsCount)
                             },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Plus",
-                                tint = infoToggleAccent,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                        )
                     }
+                },
+            )
+        }
+
+        // ── English level (MEN + YOUTH) ──
+        BritDetailDivider()
+        val isSavingEnglish = "englishLevel" in savingFields
+        var selectedEnglishLevel by remember(player.englishLevel) {
+            mutableStateOf(EnglishLevel.fromFirestore(player.englishLevel))
+        }
+        LaunchedEffect(player.englishLevel) {
+            selectedEnglishLevel = EnglishLevel.fromFirestore(player.englishLevel)
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.player_info_english_level).uppercase(),
+                    style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.8.sp),
+                )
+                if (isSavingEnglish) {
+                    Spacer(Modifier.width(8.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        strokeWidth = 2.dp,
+                        color = accent,
+                    )
                 }
             }
-            }
-
-            // ── English Level ──
-            Spacer(Modifier.height(8.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(infoToggleContainer)
-                    .border(1.dp, infoToggleBorder, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                val currentEnglishLevel = remember(player.englishLevel) {
-                    EnglishLevel.fromFirestore(player.englishLevel)
-                }
-                var selectedEnglishLevel by remember(player.englishLevel) { mutableStateOf(currentEnglishLevel) }
-                LaunchedEffect(player.englishLevel) {
-                    selectedEnglishLevel = EnglishLevel.fromFirestore(player.englishLevel)
-                }
-                val isSavingEnglish = "englishLevel" in savingFields
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "\uD83C\uDDEC\uD83C\uDDE7",
-                            fontSize = 18.sp,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.player_info_english_level),
-                            style = boldTextStyle(
-                                if (selectedEnglishLevel != null) infoToggleAccent else infoToggleMuted,
-                                16.sp
-                            )
-                        )
-                        if (isSavingEnglish) {
-                            Spacer(Modifier.width(6.dp))
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                strokeWidth = 2.dp,
-                                color = infoToggleAccent
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    EnglishLevel.entries.forEach { level ->
-                        val isSelected = selectedEnglishLevel == level
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    if (isSelected) infoToggleAccent
-                                    else infoToggleBorder.copy(alpha = 0.5f)
-                                )
-                                .clickable {
-                                    if (isSelected) {
-                                        selectedEnglishLevel = null
-                                        onEnglishLevelChanged(null)
-                                    } else {
-                                        selectedEnglishLevel = level
-                                        onEnglishLevelChanged(level.firestoreValue)
-                                    }
+                EnglishLevel.entries.forEach { level ->
+                    val isSelected = selectedEnglishLevel == level
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(if (isSelected) accent else BritTokens.paper)
+                            .border(1.dp, if (isSelected) accent else BritTokens.line)
+                            .clickWithNoRipple {
+                                if (isSelected) {
+                                    selectedEnglishLevel = null
+                                    onEnglishLevelChanged(null)
+                                } else {
+                                    selectedEnglishLevel = level
+                                    onEnglishLevelChanged(level.firestoreValue)
                                 }
-                                .padding(vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = level.displayName,
-                                style = boldTextStyle(
-                                    if (isSelected) Color.White else infoToggleMuted,
-                                    11.sp
-                                ),
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            val hasSalaryOrFee = player.salaryRange?.isNotBlank() == true || player.transferFee?.isNotBlank() == true
-            var showClearSalaryMenu by remember { mutableStateOf(false) }
-            Box {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(infoToggleContainer)
-                        .border(1.dp, infoToggleBorder, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                        .combinedClickable(
-                            onClick = onSalaryTransferFeeClicked,
-                            onLongClick = { if (hasSalaryOrFee) showClearSalaryMenu = true }
-                        ),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.player_info_salary_transfer_fee),
-                            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
-                        )
-                        val salaryStr = player.salaryRange?.takeIf { it.isNotBlank() } ?: "—"
-                        val feeDisplay = when (player.transferFee) {
-                            "Free/Free loan" -> stringResource(R.string.requests_transfer_fee_free_loan)
-                            "<200" -> stringResource(R.string.requests_transfer_fee_lt200)
-                            else -> player.transferFee?.takeIf { it.isNotBlank() } ?: "—"
-                        }
-                        Text(
-                            text = "$salaryStr • $feeDisplay",
-                            style = regularTextStyle(if (isMen) MenInfoGold else PlatformColors.palette.accent, 11.sp),
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = if (isMen) MenInfoGold else PlatformColors.palette.accent
-                    )
-                }
-                DropdownMenu(
-                    expanded = showClearSalaryMenu,
-                    onDismissRequest = { showClearSalaryMenu = false },
-                    containerColor = PlatformColors.palette.card
-                ) {
-                    DropdownMenuItem(
-                        text = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = PlatformColors.palette.red
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    stringResource(R.string.player_info_remove_salary_transfer_fee),
-                                    style = regularTextStyle(PlatformColors.palette.red, 14.sp)
-                                )
                             }
-                        },
-                        onClick = {
-                            showClearSalaryMenu = false
-                            onClearSalaryAndTransferFee()
-                        }
-                    )
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = level.displayName.uppercase(),
+                            style = britMono(
+                                if (isSelected) BritTokens.paper else BritTokens.muted,
+                                9.sp,
+                                letterSpacing = 0.5.sp,
+                                textAlign = TextAlign.Center,
+                            ),
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
-            } // end if != YOUTH (mandate + salary)
         }
     }
 }
 
+/** One hairline detail row: britMono uppercase label (optional saving spinner) + trailing editorial control, with optional subtext under the label. */
 @Composable
-private fun PlayerInfoOnLoanPill(text: String) {
-    val isMen = !PlatformColors.palette.isYouth
-    Box(
+private fun BritDetailRow(
+    label: String,
+    accent: Color,
+    saving: Boolean = false,
+    subtext: String? = null,
+    trailing: @Composable () -> Unit,
+) {
+    Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = if (isMen) {
-                        listOf(MenInfoBronze, MenInfoGold)
-                    } else {
-                        listOf(PlatformColors.palette.purple, Color(0xFF7B1FA2))
-                    }
-                )
-            )
-            .padding(horizontal = 12.dp, vertical = 5.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(
-            text = text,
-            style = boldTextStyle(Color.White, 11.sp),
-            maxLines = 1
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = label.uppercase(),
+                    style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.8.sp),
+                )
+                if (saving) {
+                    Spacer(Modifier.width(8.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        strokeWidth = 2.dp,
+                        color = accent,
+                    )
+                }
+            }
+            if (!subtext.isNullOrBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = subtext,
+                    style = britBody(accent, 11.sp),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        trailing()
     }
 }
 
 @Composable
-private fun PlayerInfoQuickActions(
+private fun BritDetailDivider() {
+    HorizontalDivider(color = BritTokens.line2, thickness = 1.dp)
+}
+
+/**
+ * Editorial boolean toggle — NOT a Material Switch. A small hairline pill that
+ * is accent-filled with paper text when ON, and transparent with a hairline
+ * border + muted text when OFF.
+ */
+@Composable
+private fun BritEditorialToggle(
+    checked: Boolean,
+    accent: Color,
+    onLabel: String,
+    offLabel: String,
+    onToggle: (Boolean) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .background(if (checked) accent else BritTokens.paper)
+            .border(1.dp, if (checked) accent else BritTokens.line)
+            .clickWithNoRipple { onToggle(!checked) }
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = (if (checked) onLabel else offLabel).uppercase(),
+            style = britMono(
+                if (checked) BritTokens.paper else BritTokens.muted,
+                10.sp,
+                letterSpacing = 0.8.sp,
+            ),
+            maxLines = 1,
+        )
+    }
+}
+
+/** Editorial stepper affordance (minus / plus) — a hairline box, accent icon. */
+@Composable
+private fun BritStepperButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tint: Color,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(30.dp)
+            .border(1.dp, BritTokens.line)
+            .then(if (enabled) Modifier.clickWithNoRipple(onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+/**
+ * Editorial GENERAL info module (non-Youth). Hairline label/value rows on
+ * BritTokens.paper: height, age, positions, foot, nationality (+EU tag),
+ * contract expiry, current club, agency (with clear affordance), date added
+ * (MEN), market value with trend. No Material Card.
+ */
+@Composable
+private fun PlayerGeneralInfoModule(
+    player: Player,
+    currentPlatform: Platform,
+    accent: Color,
+    onClearAgency: () -> Unit,
+) {
+    val resources = LocalContext.current.resources
+    val localizedFoot = when (player.foot?.lowercase()) {
+        "right" -> stringResource(R.string.player_info_foot_right)
+        "left" -> stringResource(R.string.player_info_foot_left)
+        "both" -> stringResource(R.string.player_info_foot_both)
+        else -> player.foot
+    }
+    val isEu = currentPlatform == Platform.MEN &&
+        EuCountries.isEuNational(player.nationalities, player.nationality)
+    val valueTrend = remember(player.marketValueHistory) {
+        playerInfoComputeValueTrend(player.marketValueHistory)
+    }
+    val marketValueText = player.marketValue?.let { value ->
+        when {
+            valueTrend > 0 -> "$value ↑"
+            valueTrend < 0 -> "$value ↓"
+            else -> value
+        }
+    }
+    val marketValueColor = when {
+        valueTrend > 0 -> BritTokens.green
+        valueTrend < 0 -> BritTokens.red
+        else -> BritTokens.ink
+    }
+    val previousValue = player.marketValueHistory
+        ?.takeIf { it.size > 1 }
+        ?.sortedByDescending { it.date }
+        ?.getOrNull(1)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 18.dp)
+            .border(1.dp, BritTokens.line)
+            .background(BritTokens.paper),
+    ) {
+        BritInfoRow(stringResource(R.string.player_info_height), player.height?.replace(",", "."))
+        BritDetailDivider()
+        BritInfoRow(stringResource(R.string.player_info_age), player.age?.trim())
+        BritDetailDivider()
+        BritInfoRow(
+            stringResource(R.string.player_info_positions),
+            player.positions?.filterNotNull()?.joinToString(", "),
+        )
+        BritDetailDivider()
+        BritInfoRow(stringResource(R.string.player_info_foot), localizedFoot)
+        BritDetailDivider()
+        BritInfoRow(
+            label = stringResource(R.string.player_info_nationality),
+            value = player.nationalities?.filterNotNull()?.takeIf { it.isNotEmpty() }?.joinToString(", ")
+                ?: player.nationality,
+            valueBadge = if (isEu) stringResource(R.string.eu_nat_badge) else null,
+            accent = accent,
+        )
+        BritDetailDivider()
+        BritInfoRow(
+            stringResource(R.string.player_info_contract_expiry_date),
+            getContractStatus(resources, player.contractExpired?.replace("/", ".") ?: ""),
+        )
+        BritDetailDivider()
+        BritInfoRow(stringResource(R.string.player_info_current_club), player.currentClub?.clubName)
+        BritDetailDivider()
+        // Agency row with editorial clear (✕) affordance
+        val hasAgency = player.agency != null || player.agencyUrl != null
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(R.string.player_info_agency).uppercase(),
+                style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.8.sp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = player.agency ?: "—",
+                    style = britDisplay(BritTokens.ink, 15.sp, weight = 600, textAlign = TextAlign.End),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (hasAgency) {
+                    Spacer(Modifier.width(10.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .border(1.dp, BritTokens.line)
+                            .clickWithNoRipple(onClick = onClearAgency),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            tint = BritTokens.red,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                }
+            }
+        }
+        if (currentPlatform == Platform.MEN && (player.createdAt ?: 0L) > 0L) {
+            BritDetailDivider()
+            BritInfoRow(
+                stringResource(R.string.player_info_date_added),
+                SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(player.createdAt!!)),
+            )
+        }
+        BritDetailDivider()
+        BritInfoRow(
+            label = stringResource(R.string.player_info_market_value),
+            value = marketValueText,
+            valueColor = marketValueColor,
+        )
+        previousValue?.let {
+            Text(
+                text = stringResource(
+                    R.string.player_info_previously,
+                    it.value ?: "",
+                    SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(it.date ?: 0)),
+                ),
+                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.4.sp),
+                modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp),
+            )
+        }
+    }
+}
+
+/** Hairline label/value info row for the editorial GENERAL module. */
+@Composable
+private fun BritInfoRow(
+    label: String,
+    value: String?,
+    valueColor: Color = BritTokens.ink,
+    valueBadge: String? = null,
+    accent: Color = BritTokens.gold,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.8.sp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End,
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(
+                text = value?.takeIf { it.isNotBlank() } ?: "—",
+                style = britDisplay(valueColor, 15.sp, weight = 600, textAlign = TextAlign.End),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (!valueBadge.isNullOrBlank()) {
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = valueBadge.uppercase(),
+                    style = britMono(BritTokens.paper, 8.sp, letterSpacing = 0.6.sp),
+                    modifier = Modifier
+                        .background(accent)
+                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Editorial CONTACT module (option A). Hairline tappable rows for player
+ * WhatsApp, agent/parent WhatsApp, and the TM profile link — no Material Card,
+ * no ContactActionChip. Tapping a WhatsApp row with a number launches wa.me;
+ * long-press opens the edit / remove menu; tapping an empty row starts the
+ * contact picker.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PlayerContactModule(
     player: Player,
     context: Context,
+    accent: Color,
+    platform: Platform,
     onEditPlayerNumber: () -> Unit,
     onRemovePlayerNumber: () -> Unit,
     onEditAgentNumber: () -> Unit,
     onRemoveAgentNumber: () -> Unit,
-    platform: Platform = Platform.MEN
 ) {
-    val isMen = platform == Platform.MEN
     val playerPhone = player.getPlayerPhoneNumber()
     val agentPhone = if (platform == Platform.YOUTH) player.parentContact?.parentPhoneNumber else player.getAgentPhoneNumber()
-    val hasTmProfile = player.tmProfile != null
+    val agentLabel = if (platform == Platform.YOUTH) {
+        stringResource(R.string.youth_parent_phone)
+    } else {
+        stringResource(R.string.player_info_agent_label)
+    }
 
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = if (isMen) MenInfoCard else PlatformColors.palette.card),
-        border = BorderStroke(1.dp, if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder)
+            .padding(horizontal = 20.dp, vertical = 18.dp)
+            .border(1.dp, BritTokens.line)
+            .background(BritTokens.paper),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 64.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Player phone action
-            PlayerInfoPhoneAction(
-                modifier = Modifier.weight(1f),
-                label = stringResource(R.string.player_info_player_label),
-                phone = playerPhone,
-                context = context,
-                onEditNumber = onEditPlayerNumber,
-                onRemoveNumber = onRemovePlayerNumber
-            )
-
-            Box(
+        BritContactRow(
+            label = stringResource(R.string.player_info_player_label),
+            phone = playerPhone,
+            accent = accent,
+            context = context,
+            onEditNumber = onEditPlayerNumber,
+            onRemoveNumber = onRemovePlayerNumber,
+        )
+        BritDetailDivider()
+        BritContactRow(
+            label = agentLabel,
+            phone = agentPhone,
+            accent = accent,
+            context = context,
+            onEditNumber = onEditAgentNumber,
+            onRemoveNumber = onRemoveAgentNumber,
+        )
+        player.tmProfile?.takeIf { it.isNotBlank() }?.let { url ->
+            BritDetailDivider()
+            Row(
                 modifier = Modifier
-                    .width(1.dp)
-                    .height(32.dp)
-                    .background(playerInfoBorderColor())
-            )
-
-            // Agent / Parent phone action
-            PlayerInfoPhoneAction(
-                modifier = Modifier.weight(1f),
-                label = if (platform == Platform.YOUTH) stringResource(R.string.youth_parent_phone) else stringResource(R.string.player_info_agent_label),
-                phone = agentPhone,
-                context = context,
-                onEditNumber = onEditAgentNumber,
-                onRemoveNumber = onRemoveAgentNumber
-            )
-
-            if (hasTmProfile) {
-                Box(
-                    modifier = Modifier
-                        .width(1.dp)
-                        .height(32.dp)
-                        .background(playerInfoBorderColor())
-                )
-                ContactActionChip(
-                    modifier = Modifier.weight(1f),
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Default.Link,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = playerInfoAccentColor()
-                        )
-                    },
-                    label = stringResource(R.string.player_info_tm_short),
-                    onClick = {
-                        val url = player.tmProfile
-                        if (url != null) {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        }
+                    .fillMaxWidth()
+                    .clickWithNoRipple {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     }
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = stringResource(R.string.player_info_tm_profile).uppercase(),
+                    style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.8.sp),
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(18.dp),
                 )
             }
-
         }
     }
 }
 
-@Composable
-private fun ContactActionChip(
-    modifier: Modifier = Modifier,
-    icon: @Composable () -> Unit,
-    label: String,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickWithNoRipple(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(
-            modifier = Modifier.size(28.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            icon()
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = label,
-            style = boldTextStyle(playerInfoMutedColor(), 11.sp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
+/** One editorial contact row: WhatsApp launch on tap, edit/remove on long-press, picker when empty. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PlayerInfoPhoneAction(
-    modifier: Modifier = Modifier,
+private fun BritContactRow(
     label: String,
     phone: String?,
+    accent: Color,
     context: Context,
     onEditNumber: () -> Unit,
-    onRemoveNumber: () -> Unit
+    onRemoveNumber: () -> Unit,
 ) {
     val hasPhone = !phone.isNullOrBlank()
     var showMenu by remember { mutableStateOf(false) }
-
-    Box(modifier = modifier.fillMaxWidth()) {
+    Box {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2286,45 +1901,29 @@ private fun PlayerInfoPhoneAction(
                             onClick = {
                                 val clean = phone.orEmpty().filter { it.isDigit() }
                                 context.startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
-                                        Uri.parse("https://wa.me/$clean")
-                                    )
+                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean"))
                                 )
                             },
-                            onLongClick = { showMenu = true }
+                            onLongClick = { showMenu = true },
                         )
                     } else {
                         Modifier.clickWithNoRipple { onEditNumber() }
                     }
                 )
-                .padding(vertical = 12.dp, horizontal = 8.dp),
+                .padding(horizontal = 14.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column(
-                modifier = Modifier.wrapContentWidth(Alignment.CenterHorizontally),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Box(
-                    modifier = Modifier.size(28.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (hasPhone) Icons.Default.Whatsapp else Icons.Default.PersonAddAlt,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = playerInfoAccentColor()
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = label,
-                    style = boldTextStyle(playerInfoMutedColor(), 11.sp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
+            Text(
+                text = label.uppercase(),
+                style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.8.sp),
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasPhone) Icons.Default.Whatsapp else Icons.Default.PersonAddAlt,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
@@ -2332,15 +1931,13 @@ private fun PlayerInfoPhoneAction(
         DropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
-            containerColor = PlatformColors.palette.card,
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, playerInfoBorderColor())
+            containerColor = BritTokens.card,
         ) {
             DropdownMenuItem(
                 text = {
                     Text(
                         text = stringResource(R.string.player_info_message_whatsapp),
-                        style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                        style = britBody(BritTokens.ink, 14.sp),
                     )
                 },
                 leadingIcon = {
@@ -2348,7 +1945,7 @@ private fun PlayerInfoPhoneAction(
                         imageVector = Icons.Default.Whatsapp,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = playerInfoAccentColor()
+                        tint = accent,
                     )
                 },
                 onClick = {
@@ -2357,18 +1954,14 @@ private fun PlayerInfoPhoneAction(
                     context.startActivity(
                         Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean"))
                     )
-                }
+                },
             )
-            HorizontalDivider(
-                color = playerInfoBorderColor(),
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
+            HorizontalDivider(color = BritTokens.line2, thickness = 1.dp)
             DropdownMenuItem(
                 text = {
                     Text(
                         text = stringResource(R.string.player_info_edit_number),
-                        style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                        style = britBody(BritTokens.ink, 14.sp),
                     )
                 },
                 leadingIcon = {
@@ -2376,24 +1969,20 @@ private fun PlayerInfoPhoneAction(
                         imageVector = Icons.Default.Edit,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = playerInfoAccentColor()
+                        tint = accent,
                     )
                 },
                 onClick = {
                     showMenu = false
                     onEditNumber()
-                }
+                },
             )
-            HorizontalDivider(
-                color = playerInfoBorderColor(),
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
+            HorizontalDivider(color = BritTokens.line2, thickness = 1.dp)
             DropdownMenuItem(
                 text = {
                     Text(
                         text = stringResource(R.string.player_info_remove_number),
-                        style = regularTextStyle(PlatformColors.palette.red, 14.sp)
+                        style = britBody(BritTokens.red, 14.sp),
                     )
                 },
                 leadingIcon = {
@@ -2401,553 +1990,278 @@ private fun PlayerInfoPhoneAction(
                         imageVector = Icons.Default.Delete,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = PlatformColors.palette.red
+                        tint = BritTokens.red,
                     )
                 },
                 onClick = {
                     showMenu = false
                     onRemoveNumber()
-                }
+                },
             )
         }
     }
 }
 
+/**
+ * Editorial 'SIMILAR PLAYERS' module — the mock's grayscale `.rail` of `.scard`
+ * cards (docs/mobile-prototype/player-dossier-mock.html ~136-146 / 271-277).
+ *
+ * Renders a [BritDossierModuleHeader] whose act label is dynamic ('AI · N found'
+ * when suggestions exist, else 'AI SCOUT'), a small editorial '↻ REFRESH'
+ * affordance, then a horizontal [LazyRow] of 130×160 grayscale [SimilarPlayerCard]s.
+ * There is NO expandable Material search Card and NO visible options form.
+ *
+ * The sanctioned add-to-shortlist flow for SUGGESTED players is preserved
+ * (ShortlistRepository + shortlist/justAdded/pending state + ShortlistPillButton),
+ * surfaced as a compact pill under each card. The DOSSIER (roster) player gets
+ * no shortlist control. Men-only (gated at the call site).
+ */
 @Composable
 private fun PlayerInfoAiHelperSection(
     player: Player,
     viewModel: IPlayerInfoViewModel,
+    accent: Color,
+    navController: NavController,
     shortlistRepository: ShortlistRepository = koinInject()
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val accent = playerInfoAccentColor()
-    val muted = playerInfoMutedColor()
-    val border = playerInfoBorderColor()
-    val card = playerInfoCardColor()
     val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
         .collectAsStateWithLifecycle(initialValue = emptySet())
-    var isFindSimilarExpanded by remember { mutableStateOf(false) }
-    var expandedSimilarIndex by remember { mutableStateOf<Int?>(null) }
-    var similarPlayersOptions by remember { mutableStateOf(SimilarPlayersOptions()) }
+    // Options stay a hidden default — no visible options form in the editorial rail.
+    val similarPlayersOptions = remember { SimilarPlayersOptions() }
     val similarPlayers by viewModel.similarPlayersFlow.collectAsStateWithLifecycle()
     val isSimilarLoading by viewModel.isSimilarPlayersLoading.collectAsStateWithLifecycle()
 
-    PlayerInfoSectionHeader(stringResource(R.string.player_info_ai_helper))
-    Column(
+    // Auto-populate the rail on first composition when empty and idle.
+    LaunchedEffect(player.tmProfile) {
+        if (similarPlayers.isEmpty() && !isSimilarLoading) {
+            viewModel.findSimilarPlayers(player, LocaleManager.getSavedLanguage(context), similarPlayersOptions)
+        }
+    }
+
+    val refresh: () -> Unit = {
+        val currentNames = similarPlayers.mapNotNull { it.name.takeIf(String::isNotBlank) }
+        viewModel.findSimilarPlayers(
+            player,
+            LocaleManager.getSavedLanguage(context),
+            similarPlayersOptions,
+            excludeNames = currentNames,
+        )
+    }
+
+    val actLabel = if (similarPlayers.isNotEmpty()) {
+        stringResource(R.string.player_info_ai_found, similarPlayers.size)
+    } else {
+        stringResource(R.string.player_info_ai_helper)
+    }
+
+    BritDossierModuleHeader(
+        title = stringResource(R.string.player_info_similar_players),
+        actLabel = actLabel,
+        actGold = true,
+        accent = accent,
+    )
+
+    // Small editorial refresh affordance under the header (not a dropdown form).
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 10.dp),
+        horizontalArrangement = Arrangement.End,
     ) {
-        // Expandable: Find Similar Players
-        Card(
+        Text(
+            text = stringResource(R.string.player_info_ai_rail_refresh).uppercase(),
+            style = britMono(accent, 10.sp, letterSpacing = 0.6.sp),
             modifier = Modifier
-                .fillMaxWidth()
-                .clickWithNoRipple {
-                    isFindSimilarExpanded = !isFindSimilarExpanded
-                    if (isFindSimilarExpanded && similarPlayers.isEmpty() && !isSimilarLoading) {
-                        viewModel.findSimilarPlayers(player, LocaleManager.getSavedLanguage(context), similarPlayersOptions)
-                    }
-                },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = card),
-            border = BorderStroke(1.dp, border)
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .drawBehind {
-                            drawRect(
-                                color = accent,
-                                topLeft = Offset.Zero,
-                                size = Size(3.dp.toPx(), size.height)
-                            )
-                        }
-                        .padding(start = 3.dp)
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.player_info_ai_find_similar_players),
-                        style = boldTextStyle(PlatformColors.palette.textPrimary, 15.sp),
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (similarPlayers.isNotEmpty()) {
-                        Text(
-                            "(${similarPlayers.size})",
-                            style = regularTextStyle(muted, 12.sp),
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                    }
-                    Icon(
-                        Icons.Default.ExpandMore,
-                        contentDescription = if (isFindSimilarExpanded) "Collapse" else "Expand",
-                        tint = muted,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .graphicsLayer { rotationZ = if (isFindSimilarExpanded) 180f else 0f }
-                    )
-                }
-                AnimatedVisibility(visible = isFindSimilarExpanded) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 17.dp, end = 12.dp, bottom = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        // Refresh button
-                        if (similarPlayers.isNotEmpty()) {
-                            TextButton(
-                                onClick = {
-                                    val currentNames = similarPlayers.mapNotNull { it.name.takeIf(String::isNotBlank) }
-                                    viewModel.findSimilarPlayers(
-                                        player,
-                                        LocaleManager.getSavedLanguage(context),
-                                        similarPlayersOptions,
-                                        excludeNames = currentNames
-                                    )
-                                }
-                            ) {
-                                Text(stringResource(R.string.player_info_ai_refresh), color = accent)
-                            }
-                        }
-                        if (isSimilarLoading) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = accent,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    stringResource(R.string.player_info_updating),
-                                    style = regularTextStyle(muted, 13.sp)
-                                )
-                            }
-                        } else if (similarPlayers.isEmpty()) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    stringResource(R.string.player_info_ai_no_similar_players),
-                                    style = regularTextStyle(muted, 12.sp)
-                                )
-                                TextButton(
-                                    onClick = { viewModel.findSimilarPlayers(player, LocaleManager.getSavedLanguage(context), similarPlayersOptions) }
-                                ) {
-                                    Text(stringResource(R.string.player_info_ai_refresh), color = accent)
-                                }
-                            }
-                        } else {
-                            similarPlayers.forEachIndexed { index, suggestion ->
-                                val url = suggestion.transfermarktUrl
-                                SimilarPlayerSuggestionRow(
-                                    suggestion = suggestion,
-                                    isExpanded = expandedSimilarIndex == index,
-                                    onToggleExpand = { expandedSimilarIndex = if (expandedSimilarIndex == index) null else index },
-                                    onTmLinkClick = {
-                                        url?.let { urlVal ->
-                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlVal)))
-                                        }
-                                    },
-                                    onAddToShortlistClick = url?.let { urlVal ->
-                                        {
-                                            scope.launch {
-                                                val isInShortlist = urlVal in shortlistUrls || urlVal in justAddedUrls
-                                                if (isInShortlist) {
-                                                    shortlistRepository.removeFromShortlist(urlVal)
-                                                    justAddedUrls = justAddedUrls - urlVal
-                                                } else {
-                                                    val model = LatestTransferModel(
-                                                        playerName = suggestion.name,
-                                                        playerUrl = urlVal,
-                                                        playerPosition = suggestion.position,
-                                                        playerAge = suggestion.age,
-                                                        marketValue = suggestion.marketValue
-                                                    )
-                                                    when (shortlistRepository.addToShortlist(model)) {
-                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.Added ->
-                                                            justAddedUrls = justAddedUrls + urlVal
-                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
-                                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
-                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
-                                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    },
-                                    isInShortlist = url?.let { urlVal ->
-                                        urlVal in shortlistUrls || urlVal in justAddedUrls
-                                    } ?: false,
-                                    isShortlistPending = url != null && url in shortlistPendingUrls
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
+                .clip(RoundedCornerShape(0.dp))
+                .clickWithNoRipple { refresh() }
+                .padding(vertical = 4.dp, horizontal = 2.dp),
+        )
     }
-}
 
-@Composable
-private fun SimilarPlayerSuggestionRow(
-    suggestion: AiHelperService.SimilarPlayerSuggestion,
-    isExpanded: Boolean,
-    onToggleExpand: () -> Unit,
-    onTmLinkClick: () -> Unit,
-    onAddToShortlistClick: (() -> Unit)? = null,
-    isInShortlist: Boolean = false,
-    isShortlistPending: Boolean = false
-) {
-    val accent = playerInfoAccentColor()
-    val muted = playerInfoMutedColor()
-    val border = playerInfoBorderColor()
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(PlatformColors.palette.background)
-                .border(1.dp, border, RoundedCornerShape(10.dp))
-        ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickWithNoRipple { onToggleExpand() }
-                .padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    when {
+        isSimilarLoading && similarPlayers.isEmpty() -> {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(border),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .padding(top = 16.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    suggestion.name.take(2).uppercase(),
-                    style = boldTextStyle(muted, 12.sp)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(26.dp),
+                    color = accent,
+                    strokeWidth = 2.dp,
                 )
             }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        suggestion.name,
-                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    suggestion.matchPercent?.let { pct ->
-                        val matchColor = when {
-                            pct >= 80 -> PlatformColors.palette.green
-                            pct >= 60 -> accent
-                            else -> PlatformColors.palette.orange
-                        }
-                        Text(
-                            "${pct}%",
-                            style = boldTextStyle(matchColor, 11.sp),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(matchColor.copy(alpha = 0.15f))
-                                .padding(horizontal = 5.dp, vertical = 1.dp)
-                        )
-                    }
-                }
-                Text(
-                    "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
-                    style = regularTextStyle(muted, 11.sp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-            }
-            if (suggestion.transfermarktUrl != null) {
-                Spacer(Modifier.width(8.dp))
-            }
-            Icon(
-                Icons.Default.ExpandMore,
-                contentDescription = if (isExpanded) "Collapse" else "Expand",
-                tint = muted,
-                modifier = Modifier
-                    .size(20.dp)
-                    .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
+        }
+
+        similarPlayers.isEmpty() -> {
+            Text(
+                text = stringResource(R.string.player_info_ai_no_similar_players).uppercase(),
+                style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.6.sp),
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp),
             )
         }
-        // --- Expanded scout analysis section ---
-        val hasAnalysis = !suggestion.scoutAnalysis.isNullOrBlank()
-                || !suggestion.playingStyle.isNullOrBlank()
-                || !suggestion.similarityReason.isNullOrBlank()
-        AnimatedVisibility(visible = isExpanded && hasAnalysis) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(playerInfoCardColor())
-                    .border(1.dp, border, RoundedCornerShape(8.dp))
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+
+        else -> {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Playing style badge + match %
-                val hasStyleOrMatch = !suggestion.playingStyle.isNullOrBlank() || suggestion.matchPercent != null
-                if (hasStyleOrMatch) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        suggestion.playingStyle?.takeIf { it.isNotBlank() }?.let { style ->
-                            Text(
-                                text = style,
-                                style = boldTextStyle(accent, 12.sp),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(accent.copy(alpha = 0.12f))
-                                    .border(1.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                        suggestion.matchPercent?.let { pct ->
-                            val matchColor = when {
-                                pct >= 80 -> PlatformColors.palette.green
-                                pct >= 60 -> accent
-                                else -> PlatformColors.palette.orange
+                itemsIndexed(
+                    items = similarPlayers,
+                    key = { index, suggestion -> suggestion.transfermarktUrl ?: "${suggestion.name}-$index" },
+                ) { _, suggestion ->
+                    val url = suggestion.transfermarktUrl
+                    val isInShortlist = url != null && (url in shortlistUrls || url in justAddedUrls)
+                    val isShortlistPending = url != null && url in shortlistPendingUrls
+                    SimilarPlayerCard(
+                        suggestion = suggestion,
+                        accent = accent,
+                        isInShortlist = isInShortlist,
+                        isShortlistPending = isShortlistPending,
+                        onOpenPlayer = url?.let {
+                            {
+                                navController.navigate(
+                                    "${Screens.PlayerInfoScreen.route}/${Uri.encode(it)}"
+                                )
                             }
-                            Text(
-                                text = "Match: $pct%",
-                                style = boldTextStyle(matchColor, 12.sp),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(matchColor.copy(alpha = 0.12f))
-                                    .border(1.dp, matchColor.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
-
-                // Scout analysis — structured bullet display
-                suggestion.scoutAnalysis?.takeIf { it.isNotBlank() }?.let { analysis ->
-                    val parts = analysis.split(". ").filter { it.isNotBlank() }
-
-                    // Separate stat lines from profile lines
-                    val statLines = parts.filter { it.contains("/90") || it.contains("/shot") || it.contains("/שער") || it.contains("/בעיטה") }
-                    val profileLines = parts.filter { it !in statLines }
-
-                    // Profile info bullets (position, age, foot, build, value, style)
-                    if (profileLines.isNotEmpty()) {
-                        profileLines.forEach { part ->
-                            val cleanPart = part.trimEnd('.').trim()
-                            if (cleanPart.isNotBlank()) {
-                                val icon = when {
-                                    cleanPart.contains("position", ignoreCase = true) || cleanPart.contains("תפקיד") -> "🏟"
-                                    cleanPart.contains("age", ignoreCase = true) || cleanPart.contains("גיל") -> "📅"
-                                    cleanPart.contains("build", ignoreCase = true) || cleanPart.contains("height", ignoreCase = true) || cleanPart.contains("מבנה") -> "📏"
-                                    cleanPart.contains("foot", ignoreCase = true) || cleanPart.contains("רגל") -> "🦶"
-                                    cleanPart.contains("value", ignoreCase = true) || cleanPart.contains("שווי") -> "💰"
-                                    cleanPart.contains("style", ignoreCase = true) || cleanPart.contains("סגנון") -> "🎨"
-                                    cleanPart.contains("match", ignoreCase = true) || cleanPart.contains("התאמ") -> "✅"
-                                    else -> "•"
-                                }
-                                Row(
-                                    verticalAlignment = Alignment.Top,
-                                    modifier = Modifier.padding(vertical = 1.dp)
-                                ) {
-                                    Text(
-                                        "$icon ",
-                                        style = regularTextStyle(muted, 12.sp)
-                                    )
-                                    Text(
-                                        cleanPart,
-                                        style = regularTextStyle(PlatformColors.palette.textPrimary, 12.sp),
-                                        lineHeight = 18.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Stat comparison section with divider
-                    if (statLines.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(border)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        statLines.forEach { stat ->
-                            val cleanStat = stat.trimEnd('.').trim()
-                            if (cleanStat.isNotBlank()) {
-                                // Parse "Label: value vs value" format
-                                val hasVs = cleanStat.contains(" vs ")
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(PlatformColors.palette.background.copy(alpha = 0.5f))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        "⚡ ",
-                                        style = regularTextStyle(accent, 11.sp)
-                                    )
-                                    if (hasVs) {
-                                        val colonIdx = cleanStat.indexOf(":")
-                                        if (colonIdx > 0) {
-                                            val statName = cleanStat.substring(0, colonIdx).trim()
-                                            val values = cleanStat.substring(colonIdx + 1).trim()
-                                            Text(
-                                                "$statName: ",
-                                                style = boldTextStyle(muted, 11.sp)
-                                            )
-                                            Text(
-                                                values,
-                                                style = regularTextStyle(accent, 11.sp)
-                                            )
-                                        } else {
-                                            Text(
-                                                cleanStat,
-                                                style = regularTextStyle(PlatformColors.palette.textPrimary, 11.sp)
-                                            )
-                                        }
+                        },
+                        onAddToShortlistClick = url?.let { urlVal ->
+                            {
+                                scope.launch {
+                                    val alreadyIn = urlVal in shortlistUrls || urlVal in justAddedUrls
+                                    if (alreadyIn) {
+                                        shortlistRepository.removeFromShortlist(urlVal)
+                                        justAddedUrls = justAddedUrls - urlVal
                                     } else {
-                                        Text(
-                                            cleanStat,
-                                            style = regularTextStyle(PlatformColors.palette.textPrimary, 11.sp)
+                                        val model = LatestTransferModel(
+                                            playerName = suggestion.name,
+                                            playerUrl = urlVal,
+                                            playerPosition = suggestion.position,
+                                            playerAge = suggestion.age,
+                                            marketValue = suggestion.marketValue
                                         )
+                                        when (shortlistRepository.addToShortlist(model)) {
+                                            is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.Added ->
+                                                justAddedUrls = justAddedUrls + urlVal
+                                            is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
+                                                ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                            is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                                ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
+                                        }
                                     }
                                 }
                             }
-                        }
-                    }
-                }
-
-                // Fallback: show raw reason if no structured analysis
-                if (suggestion.scoutAnalysis.isNullOrBlank() && !suggestion.similarityReason.isNullOrBlank()) {
-                    Text(
-                        text = suggestion.similarityReason,
-                        style = regularTextStyle(muted, 12.sp),
-                        lineHeight = 18.sp
+                        },
                     )
                 }
-
-                // Action buttons: Add to shortlist (IconButton) + Open Transfermarkt (teal link)
-                if (suggestion.transfermarktUrl != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        onAddToShortlistClick?.let { onAdd ->
-                            ShortlistPillButton(
-                                state = shortlistPillState(isInShortlist, isShortlistPending),
-                                onClick = { onAdd() },
-                            )
-                        }
-                        TextButton(
-                            onClick = { onTmLinkClick() },
-                            modifier = Modifier.height(36.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                            colors = ButtonDefaults.textButtonColors(contentColor = accent)
-                        ) {
-                            Icon(
-                                Icons.Default.Link,
-                                contentDescription = null,
-                                tint = accent,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = stringResource(R.string.shortlist_open_tm),
-                                style = regularTextStyle(accent, 13.sp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-        if (isShortlistPending) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    color = accent,
-                    modifier = Modifier.size(28.dp),
-                    strokeWidth = 2.dp
-                )
             }
         }
     }
 }
 
+/**
+ * The mock's `.scard`: a 130×160 grayscale card. Box on [BritTokens.black] with a
+ * [GrayscalePlayerPhoto] (imageUrl = null → ink + initials silhouette, matching
+ * the mock's gradient placeholder), a top-right match-% badge (accent fill, paper
+ * text) when [AiHelperService.SimilarPlayerSuggestion.matchPercent] != null, and a
+ * bottom caption: goldSoft mono 'pos · club · age', britDisplay name, mono value.
+ * Tapping opens the player (when [onOpenPlayer] != null). A compact
+ * [ShortlistPillButton] sits beneath the card for the sanctioned add flow.
+ */
 @Composable
-private fun AiHelperActionItem(
-    title: String,
-    onClick: () -> Unit
+private fun SimilarPlayerCard(
+    suggestion: AiHelperService.SimilarPlayerSuggestion,
+    accent: Color,
+    isInShortlist: Boolean,
+    isShortlistPending: Boolean,
+    onOpenPlayer: (() -> Unit)?,
+    onAddToShortlistClick: (() -> Unit)?,
 ) {
-    val accent = playerInfoAccentColor()
-    val muted = playerInfoMutedColor()
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickWithNoRipple { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-        border = BorderStroke(1.dp, playerInfoBorderColor())
+    val goldSoft = BritTokens.goldSoft
+    val captionParts = listOfNotNull(
+        suggestion.position?.takeIf { it.isNotBlank() },
+        suggestion.club?.takeIf { it.isNotBlank() },
+        suggestion.age?.takeIf { it.isNotBlank() },
+    )
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .drawBehind {
-                    drawRect(
-                        color = accent,
-                        topLeft = Offset.Zero,
-                        size = Size(3.dp.toPx(), size.height)
+                .width(130.dp)
+                .height(160.dp)
+                .clip(RoundedCornerShape(0.dp))
+                .background(BritTokens.black)
+                .then(
+                    if (onOpenPlayer != null) Modifier.clickWithNoRipple { onOpenPlayer() } else Modifier
+                ),
+        ) {
+            GrayscalePlayerPhoto(
+                imageUrl = null,
+                name = suggestion.name,
+                scrimAlpha = 0.9f,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            suggestion.matchPercent?.let { pct ->
+                Text(
+                    text = "${pct}%",
+                    style = britMono(BritTokens.paper, 9.sp, letterSpacing = 0.4.sp),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 9.dp, end = 9.dp)
+                        .background(accent)
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
+            ) {
+                if (captionParts.isNotEmpty()) {
+                    Text(
+                        text = captionParts.joinToString(" · ").uppercase(),
+                        style = britMono(goldSoft, 9.sp, letterSpacing = 0.4.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                .padding(start = 3.dp)
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                style = boldTextStyle(PlatformColors.palette.textPrimary, 15.sp),
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = muted,
-                modifier = Modifier.size(22.dp)
-            )
+                Text(
+                    text = suggestion.name.uppercase(),
+                    style = britDisplay(BritTokens.paper, 15.sp, weight = 600),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 5.dp, bottom = 2.dp),
+                )
+                suggestion.marketValue?.takeIf { it.isNotBlank() }?.let { value ->
+                    Text(
+                        text = value.uppercase(),
+                        style = britMono(BritTokens.paper.copy(alpha = 0.75f), 9.sp, letterSpacing = 0.4.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+
+        // Sanctioned add-to-shortlist affordance for the SUGGESTED player.
+        if (onAddToShortlistClick != null) {
+            Box(modifier = Modifier.width(130.dp)) {
+                ShortlistPillButton(
+                    state = shortlistPillState(isInShortlist, isShortlistPending),
+                    onClick = { onAddToShortlistClick() },
+                )
+            }
         }
     }
 }
@@ -2960,160 +2274,127 @@ private fun PlayerTasksSection(
     onTaskClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val accent = playerInfoAccentColor()
-    val muted = playerInfoMutedColor()
-    val border = playerInfoBorderColor()
-    Card(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = playerInfoCardColor()),
-        border = BorderStroke(1.dp, border)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = stringResource(R.string.player_tasks_section),
-                    style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
-                )
-                TextButton(onClick = onAddTaskClick) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp), tint = accent)
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = stringResource(R.string.player_tasks_add),
-                        style = boldTextStyle(accent, 14.sp)
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            if (tasks.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(PlatformColors.palette.background)
-                        .clickable(onClick = onAddTaskClick)
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.player_tasks_empty),
-                        style = regularTextStyle(muted, 14.sp)
-                    )
-                }
-            } else {
-                tasks.forEach { task ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(PlatformColors.palette.background)
-                            .clickable(onClick = onTaskClick)
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = task.isCompleted,
-                            onCheckedChange = { onToggleComplete(task) },
-                            colors = CheckboxDefaults.colors(checkedColor = accent, uncheckedColor = muted)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = task.title.ifEmpty { "—" },
-                                style = if (task.isCompleted) regularTextStyle(muted, 14.sp).copy(textDecoration = TextDecoration.LineThrough) else boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
-                            )
-                            // "Opened by X"
-                            if (task.createdByAgentName.isNotBlank()) {
-                                Text(
-                                    text = context.getString(R.string.tasks_opened_by) + " " + task.createdByAgentName,
-                                    style = regularTextStyle(accent, 11.sp)
-                                )
-                            }
-                            if (task.agentName.isNotBlank()) {
-                                Text(
-                                    text = context.getString(R.string.tasks_assigned_to_label) + ": " + task.agentName,
-                                    style = regularTextStyle(muted, 12.sp)
-                                )
-                            }
-                            // Created + Due dates
-                            val metaLine = buildString {
-                                if (task.createdAt > 0L) {
-                                    append(context.getString(R.string.tasks_created_on) + " " + SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(task.createdAt)))
-                                }
-                                if (task.dueDate > 0L) {
-                                    if (isNotBlank()) append(" • ")
-                                    append(context.getString(R.string.tasks_due_label) + ": " + SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(task.dueDate)))
-                                }
-                            }
-                            if (metaLine.isNotBlank()) {
-                                Spacer(Modifier.height(2.dp))
-                                Text(
-                                    text = metaLine,
-                                    style = regularTextStyle(muted, 11.sp)
-                                )
-                            }
-                            // Linked agent contact
-                            if (task.linkedAgentContactName.isNotBlank()) {
-                                Spacer(Modifier.height(2.dp))
-                                Text(
-                                    text = context.getString(R.string.tasks_linked_agent) + ": " + task.linkedAgentContactName +
-                                        if (task.linkedAgentContactPhone.isNotBlank()) " · ${task.linkedAgentContactPhone}" else "",
-                                    style = regularTextStyle(muted, 11.sp)
-                                )
-                            }
-                        }
-                        IconButton(onClick = onTaskClick) {
-                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = muted, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlayerInfoSectionHeader(title: String) {
-    val lineAccent = playerInfoAccentColor()
-    Row(
+    val accent = if (PlatformColors.palette.isYouth) BritTokens.goldYouth else BritTokens.gold
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = 20.dp, vertical = 18.dp)
+            .border(1.dp, BritTokens.line)
+            .background(BritTokens.paper),
     ) {
-        Text(
-            text = title,
-            style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
-        )
-        Box(
+        // Editorial add affordance (replaces the Material TextButton).
+        Row(
             modifier = Modifier
-                .width(40.dp)
-                .height(3.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(lineAccent)
-        )
-    }
-}
-
-@Composable
-private fun PlayerInfoCard(
-    modifier: Modifier = Modifier,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = playerInfoCardColor()),
-        border = BorderStroke(1.dp, playerInfoBorderColor())
-    ) {
-        Column(modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 20.dp)) {
-            content()
+                .fillMaxWidth()
+                .clickWithNoRipple(onClick = onAddTaskClick)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End,
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = accent)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = stringResource(R.string.player_tasks_add).uppercase(),
+                style = britMono(accent, 10.sp, letterSpacing = 0.8.sp),
+            )
+        }
+        if (tasks.isEmpty()) {
+            BritDetailDivider()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickWithNoRipple(onClick = onAddTaskClick)
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.player_tasks_empty).uppercase(),
+                    style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.8.sp),
+                )
+            }
+        } else {
+            tasks.forEach { task ->
+                BritDetailDivider()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickWithNoRipple(onClick = onTaskClick)
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Editorial completion toggle (hairline box, accent check when done).
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .border(1.dp, if (task.isCompleted) accent else BritTokens.line)
+                            .background(if (task.isCompleted) accent else BritTokens.paper)
+                            .clickWithNoRipple { onToggleComplete(task) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (task.isCompleted) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = BritTokens.paper,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = task.title.ifEmpty { "—" },
+                            style = if (task.isCompleted) {
+                                britBody(BritTokens.muted, 14.sp).copy(textDecoration = TextDecoration.LineThrough)
+                            } else {
+                                britDisplay(BritTokens.ink, 15.sp, weight = 600)
+                            }
+                        )
+                        if (task.createdByAgentName.isNotBlank()) {
+                            Text(
+                                text = (context.getString(R.string.tasks_opened_by) + " " + task.createdByAgentName).uppercase(),
+                                style = britMono(accent, 9.sp, letterSpacing = 0.4.sp),
+                            )
+                        }
+                        if (task.agentName.isNotBlank()) {
+                            Text(
+                                text = (context.getString(R.string.tasks_assigned_to_label) + ": " + task.agentName).uppercase(),
+                                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.4.sp),
+                            )
+                        }
+                        val metaLine = buildString {
+                            if (task.createdAt > 0L) {
+                                append(context.getString(R.string.tasks_created_on) + " " + SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(task.createdAt)))
+                            }
+                            if (task.dueDate > 0L) {
+                                if (isNotBlank()) append(" • ")
+                                append(context.getString(R.string.tasks_due_label) + ": " + SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(task.dueDate)))
+                            }
+                        }
+                        if (metaLine.isNotBlank()) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = metaLine.uppercase(),
+                                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.4.sp),
+                            )
+                        }
+                        if (task.linkedAgentContactName.isNotBlank()) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = (context.getString(R.string.tasks_linked_agent) + ": " + task.linkedAgentContactName +
+                                    if (task.linkedAgentContactPhone.isNotBlank()) " · ${task.linkedAgentContactPhone}" else "").uppercase(),
+                                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.4.sp),
+                            )
+                        }
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.OpenInNew,
+                        contentDescription = null,
+                        tint = BritTokens.muted,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -3135,325 +2416,9 @@ fun WhatsAppIcon(phoneNumber: String) {
 }
 
 
-@Composable
-fun InfoRow(
-    title: String,
-    value: String?,
-    darkTheme: Boolean = false,
-    icon: @Composable (() -> Unit)? = null
-) {
-    val labelColor = if (darkTheme) playerInfoMutedColor() else contentDefault
-    val valueColor = if (darkTheme) PlatformColors.palette.textPrimary else contentDefault
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (icon != null) {
-            icon()
-            Spacer(Modifier.width(4.dp))
-        }
-
-        Text(
-            text = title,
-            style = regularTextStyle(labelColor, 14.sp),
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            text = value ?: "--",
-            style = boldTextStyle(valueColor, 14.sp),
-            textAlign = TextAlign.End
-        )
-    }
-}
-
-@Composable
-fun ClubInfoRow(
-    title: String,
-    value: String?,
-    clubLogo: String?,
-    darkTheme: Boolean = false
-) {
-    val labelColor = if (darkTheme) playerInfoMutedColor() else contentDefault
-    val valueColor = if (darkTheme) {
-        if (isFreeAgentClub(value)) PlatformColors.palette.red else PlatformColors.palette.textPrimary
-    } else {
-        if (isFreeAgentClub(value)) redErrorColor else contentDefault
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Image(
-            modifier = Modifier.size(24.dp),
-            painter = painterResource(R.drawable.ic_club_badge),
-            contentDescription = null
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = title,
-            style = regularTextStyle(labelColor, 14.sp),
-        )
-        Spacer(Modifier.width(8.dp))
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End
-        ) {
-            Text(
-                text = value ?: "--",
-                style = boldTextStyle(valueColor, 14.sp),
-                textAlign = TextAlign.End,
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 1,
-                modifier = Modifier.weight(1f, fill = false)
-            )
-            Spacer(Modifier.width(6.dp))
-            AsyncImage(
-                model = clubLogo,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun AgencyInfoRow(
-    title: String,
-    agencyName: String?,
-    agencyUrl: String?,
-    onRemoveAgency: (() -> Unit)? = null
-) {
-    val context = LocalContext.current
-    val url = agencyUrl?.takeIf { it.isNotBlank() }
-    val hasAgency = agencyName != null || agencyUrl != null
-    var showMenu by remember { mutableStateOf(false) }
-    val muted = playerInfoMutedColor()
-    val accent = playerInfoAccentColor()
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp)
-            .then(
-                when {
-                    hasAgency && onRemoveAgency != null -> Modifier.combinedClickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            if (url != null) {
-                                val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                                context.startActivity(intent)
-                            } else {
-                                showMenu = true
-                            }
-                        },
-                        onLongClick = { showMenu = true }
-                    )
-                    url != null -> Modifier.clickWithNoRipple {
-                        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                        context.startActivity(intent)
-                    }
-                    else -> Modifier
-                }
-            ),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            modifier = Modifier.size(24.dp),
-            painter = painterResource(R.drawable.ic_agency),
-            contentDescription = null,
-            tint = muted
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = title,
-            style = regularTextStyle(muted, 14.sp),
-            modifier = Modifier.weight(1f)
-        )
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = agencyName ?: "--",
-                style = boldTextStyle(
-                    if (url != null) accent else PlatformColors.palette.textPrimary,
-                    14.sp
-                ),
-                textAlign = TextAlign.End,
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 1
-            )
-            if (url != null) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                    contentDescription = stringResource(R.string.player_info_cd_open_link),
-                    modifier = Modifier.size(16.dp),
-                    tint = accent
-                )
-            }
-        }
-    }
-
-    if (onRemoveAgency != null) {
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            containerColor = PlatformColors.palette.card,
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, playerInfoBorderColor())
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = stringResource(R.string.player_info_remove_agency),
-                        style = regularTextStyle(PlatformColors.palette.red, 14.sp)
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = PlatformColors.palette.red
-                    )
-                },
-                onClick = {
-                    showMenu = false
-                    onRemoveAgency()
-                }
-            )
-        }
-    }
-}
-
-@Composable
-fun NationalityInfoRow(
-    title: String,
-    nationalities: List<String>? = null,
-    nationalityFlags: List<String>? = null,
-    fallbackNationality: String? = null,
-    fallbackFlag: String? = null,
-    darkTheme: Boolean = false
-) {
-    val labelColor = if (darkTheme) playerInfoMutedColor() else contentDefault
-    val valueColor = if (darkTheme) PlatformColors.palette.textPrimary else contentDefault
-    val names = nationalities?.filter { it.isNotBlank() }.orEmpty()
-    val rawFlags = nationalityFlags?.filter { it.isNotBlank() }.orEmpty()
-    // Fall back: if we have dual names but no flag URLs, use the single fallbackFlag
-    val flags = rawFlags.ifEmpty { listOfNotNull(fallbackFlag) }
-    val hasDual = names.size > 1
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = if (hasDual) Alignment.Top else Alignment.CenterVertically
-    ) {
-        Icon(
-            modifier = Modifier.size(24.dp),
-            painter = painterResource(R.drawable.ic_world),
-            contentDescription = null,
-            tint = if (darkTheme) playerInfoMutedColor() else contentDefault
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = title,
-            style = regularTextStyle(labelColor, 14.sp),
-            modifier = Modifier.weight(1f)
-        )
-        if (hasDual) {
-            // Dual citizenship — stacked names + overlapping rectangle flags
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Names stacked on the left
-                Column(
-                    horizontalAlignment = Alignment.End
-                ) {
-                    names.forEach { name ->
-                        Text(
-                            text = name,
-                            style = boldTextStyle(valueColor, 13.sp),
-                            textAlign = TextAlign.End
-                        )
-                    }
-                }
-                Spacer(Modifier.width(8.dp))
-                if (flags.size >= 2) {
-                    // Two overlapping rounded-rectangle flags
-                    Box(modifier = Modifier.size(width = 38.dp, height = 28.dp)) {
-                        // Back flag (second nationality) — offset to the right
-                        AsyncImage(
-                            model = flags.getOrNull(1),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(width = 26.dp, height = 18.dp)
-                                .align(Alignment.BottomEnd)
-                                .clip(RoundedCornerShape(3.dp))
-                                .border(1.dp, playerInfoBorderColor(), RoundedCornerShape(3.dp))
-                        )
-                        // Front flag (first nationality) — top-left
-                        AsyncImage(
-                            model = flags.getOrNull(0),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(width = 26.dp, height = 18.dp)
-                                .align(Alignment.TopStart)
-                                .clip(RoundedCornerShape(3.dp))
-                                .border(1.dp, playerInfoBorderColor(), RoundedCornerShape(3.dp))
-                        )
-                    }
-                } else if (flags.size == 1) {
-                    // Only one flag URL available — show single rounded flag
-                    AsyncImage(
-                        model = flags[0],
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(width = 26.dp, height = 18.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                            .border(1.dp, playerInfoBorderColor(), RoundedCornerShape(3.dp))
-                    )
-                }
-            }
-        } else {
-            // Single nationality
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = names.firstOrNull() ?: fallbackNationality ?: "--",
-                    style = boldTextStyle(valueColor, 14.sp),
-                    textAlign = TextAlign.End
-                )
-                Spacer(Modifier.width(8.dp))
-                AsyncImage(
-                    model = flags.firstOrNull() ?: fallbackFlag,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(25.dp)
-                        .clip(CircleShape)
-                )
-            }
-        }
-    }
-}
-
-// PhoneInfoRow and TransfermarketRow removed - functionality moved to Quick Actions
+// InfoRow / ClubInfoRow / AgencyInfoRow / NationalityInfoRow / PlayerInfoCard /
+// PlayerInfoSectionHeader removed — the Overview general-info + Youth sections
+// now render as editorial BritDossier modules (FEAT-002/FEAT-004).
 
 @Composable
 fun UpdatePlayerUi(modifier: Modifier, message: String, useDarkTheme: Boolean = false) {
@@ -3853,266 +2818,104 @@ private fun getContractStatus(resources: android.content.res.Resources, expiryDa
 
 @Composable
 private fun PlayerInfoYouthSection(player: Player) {
-    PlayerInfoSectionHeader("⚡ " + stringResource(R.string.youth_section_details))
-    PlayerInfoCard(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+    val (youthAccent, _) = BritTokens.accentFor(Platform.YOUTH)
+    val context = LocalContext.current
+    BritDossierModuleHeader(
+        title = stringResource(R.string.youth_section_details),
+        accent = youthAccent,
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 18.dp)
+            .border(1.dp, BritTokens.line)
+            .background(BritTokens.paper),
     ) {
-        // Positions (from General Info)
-        InfoRow(
+        BritInfoRow(
             stringResource(R.string.player_info_positions),
             player.positions?.filterNotNull()?.joinToString(", "),
-            darkTheme = true,
-            icon = {
-                Icon(
-                    modifier = Modifier.size(24.dp),
-                    painter = painterResource(R.drawable.ic_soccer),
-                    contentDescription = null,
-                    tint = PlatformYouthAccent
-                )
-            }
         )
-        HorizontalDivider(
-            color = PlatformColors.palette.cardBorder,
-            thickness = 0.5.dp,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-
-        // Nationality (text only — no flag for youth)
-        InfoRow(
-            stringResource(R.string.player_info_nationality),
-            player.nationality,
-            darkTheme = true,
-            icon = {
-                Text(
-                    text = "🌍",
-                    fontSize = 18.sp,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        )
-        HorizontalDivider(
-            color = PlatformColors.palette.cardBorder,
-            thickness = 0.5.dp,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-
-        // Current Club (text only — no logo for youth)
-        InfoRow(
-            stringResource(R.string.player_info_current_club),
-            player.currentClub?.clubName,
-            darkTheme = true,
-            icon = {
-                Text(
-                    text = "🏟",
-                    fontSize = 18.sp,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        )
-        HorizontalDivider(
-            color = PlatformColors.palette.cardBorder,
-            thickness = 0.5.dp,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-
-        // Hebrew Name
+        BritDetailDivider()
+        BritInfoRow(stringResource(R.string.player_info_nationality), player.nationality)
+        BritDetailDivider()
+        BritInfoRow(stringResource(R.string.player_info_current_club), player.currentClub?.clubName)
         if (!player.fullNameHe.isNullOrBlank()) {
-            InfoRow(
-                stringResource(R.string.youth_hebrew_name),
-                player.fullNameHe,
-                darkTheme = true,
-                icon = {
-                    Text(
-                        text = "🇮🇱",
-                        fontSize = 18.sp,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            )
-            HorizontalDivider(
-                color = PlatformColors.palette.cardBorder,
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+            BritDetailDivider()
+            BritInfoRow(stringResource(R.string.youth_hebrew_name), player.fullNameHe)
         }
         if (!player.ageGroup.isNullOrBlank()) {
-            InfoRow(
-                stringResource(R.string.youth_age_group),
-                player.ageGroup,
-                darkTheme = true,
-                icon = {
-                    Icon(
-                        modifier = Modifier.size(24.dp),
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        tint = PlatformYouthAccent
-                    )
-                }
-            )
-            HorizontalDivider(
-                color = PlatformColors.palette.cardBorder,
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+            BritDetailDivider()
+            BritInfoRow(stringResource(R.string.youth_age_group), player.ageGroup)
         }
-
         if (!player.dateOfBirth.isNullOrBlank()) {
-            InfoRow(
-                stringResource(R.string.youth_date_of_birth),
-                player.dateOfBirth,
-                darkTheme = true,
-                icon = {
-                    Icon(
-                        modifier = Modifier.size(24.dp),
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = null,
-                        tint = PlatformYouthAccent
-                    )
-                }
-            )
-            HorizontalDivider(
-                color = PlatformColors.palette.cardBorder,
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+            BritDetailDivider()
+            BritInfoRow(stringResource(R.string.youth_date_of_birth), player.dateOfBirth)
         }
         if (!player.ifaUrl.isNullOrBlank()) {
-            val context = LocalContext.current
+            BritDetailDivider()
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                PlatformYouthAccent.copy(alpha = 0.15f),
-                                PlatformYouthSecondary.copy(alpha = 0.10f)
-                            )
-                        )
-                    )
-                    .clickable {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse(player.ifaUrl))
-                        )
+                    .clickWithNoRipple {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(player.ifaUrl)))
                     }
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Icon(
-                    modifier = Modifier.size(20.dp),
-                    imageVector = Icons.Default.Link,
-                    contentDescription = null,
-                    tint = PlatformYouthAccent
-                )
-                Spacer(Modifier.width(8.dp))
                 Text(
-                    text = stringResource(R.string.youth_ifa_profile),
-                    style = boldTextStyle(PlatformYouthAccent, 13.sp)
+                    text = stringResource(R.string.youth_ifa_profile).uppercase(),
+                    style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.8.sp),
                 )
-                Spacer(Modifier.width(6.dp))
                 Icon(
-                    modifier = Modifier.size(16.dp),
-                    imageVector = Icons.Default.OpenInNew,
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = null,
-                    tint = PlatformYouthAccent.copy(alpha = 0.7f)
+                    tint = youthAccent,
+                    modifier = Modifier.size(18.dp),
                 )
             }
-            HorizontalDivider(
-                color = PlatformColors.palette.cardBorder,
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
         }
 
-        // Parent / Guardian contact
+        // Parent / Guardian sub-group
         player.parentContact?.let { parent ->
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "👨‍👦 " + stringResource(R.string.youth_parent_guardian),
-                style = boldTextStyle(PlatformYouthSecondary, 13.sp),
-                modifier = Modifier.padding(bottom = 6.dp)
-            )
-            if (!parent.parentName.isNullOrBlank()) {
-                InfoRow(stringResource(R.string.youth_detail_name), parent.parentName, darkTheme = true)
-                HorizontalDivider(
-                    color = PlatformColors.palette.cardBorder,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 6.dp)
+            val hasParent = !parent.parentName.isNullOrBlank() ||
+                !parent.parentRelationship.isNullOrBlank() ||
+                !parent.parentPhoneNumber.isNullOrBlank() ||
+                !parent.parentEmail.isNullOrBlank()
+            if (hasParent) {
+                BritDetailDivider()
+                Text(
+                    text = stringResource(R.string.youth_parent_guardian).uppercase(),
+                    style = britMono(youthAccent, 9.sp, letterSpacing = 0.8.sp),
+                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 2.dp),
                 )
-            }
-            if (!parent.parentRelationship.isNullOrBlank()) {
-                val localizedRelationship = when (parent.parentRelationship.lowercase()) {
-                    "father" -> stringResource(R.string.youth_relationship_father)
-                    "mother" -> stringResource(R.string.youth_relationship_mother)
-                    "guardian" -> stringResource(R.string.youth_relationship_guardian)
-                    else -> parent.parentRelationship
+                if (!parent.parentName.isNullOrBlank()) {
+                    BritInfoRow(stringResource(R.string.youth_detail_name), parent.parentName)
                 }
-                InfoRow(stringResource(R.string.youth_parent_relationship), localizedRelationship, darkTheme = true)
-                HorizontalDivider(
-                    color = PlatformColors.palette.cardBorder,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 6.dp)
-                )
-            }
-            if (!parent.parentPhoneNumber.isNullOrBlank()) {
-                InfoRow(stringResource(R.string.youth_detail_phone), parent.parentPhoneNumber, darkTheme = true)
-                HorizontalDivider(
-                    color = PlatformColors.palette.cardBorder,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 6.dp)
-                )
-            }
-            if (!parent.parentEmail.isNullOrBlank()) {
-                InfoRow(stringResource(R.string.youth_detail_email), parent.parentEmail, darkTheme = true)
+                if (!parent.parentRelationship.isNullOrBlank()) {
+                    val localizedRelationship = when (parent.parentRelationship.lowercase()) {
+                        "father" -> stringResource(R.string.youth_relationship_father)
+                        "mother" -> stringResource(R.string.youth_relationship_mother)
+                        "guardian" -> stringResource(R.string.youth_relationship_guardian)
+                        else -> parent.parentRelationship
+                    }
+                    BritDetailDivider()
+                    BritInfoRow(stringResource(R.string.youth_parent_relationship), localizedRelationship)
+                }
+                if (!parent.parentPhoneNumber.isNullOrBlank()) {
+                    BritDetailDivider()
+                    BritInfoRow(stringResource(R.string.youth_detail_phone), parent.parentPhoneNumber)
+                }
+                if (!parent.parentEmail.isNullOrBlank()) {
+                    BritDetailDivider()
+                    BritInfoRow(stringResource(R.string.youth_detail_email), parent.parentEmail)
+                }
             }
         }
     }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-
-private fun playerInfoFormatLastRefreshed(resources: android.content.res.Resources, timestampMs: Long): String {
-    val diff = System.currentTimeMillis() - timestampMs
-    val minutes = diff / (60 * 1000)
-    val hours = diff / (60 * 60 * 1000)
-    val days = diff / (24 * 60 * 60 * 1000)
-    return when {
-        minutes < 60 -> resources.getString(R.string.player_info_synced_minutes, minutes.toInt())
-        hours < 24 -> resources.getString(R.string.player_info_synced_hours, hours.toInt())
-        days < 7 -> resources.getString(R.string.player_info_synced_days, days.toInt())
-        else -> resources.getString(R.string.player_info_synced_date, SimpleDateFormat("dd.MM", Locale.getDefault()).format(Date(timestampMs)))
-    }
-}
-
-private fun playerInfoGetContractCountdown(resources: android.content.res.Resources, contractExpired: String?): String? {
-    if (contractExpired.isNullOrBlank() || contractExpired == "-") return null
-    return try {
-        val formatters = listOf(
-            java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.getDefault()),
-            java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH),
-            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.getDefault())
-        )
-        var expiryDate: java.time.LocalDate? = null
-        for (fmt in formatters) {
-            try {
-                expiryDate = java.time.LocalDate.parse(contractExpired, fmt)
-                break
-            } catch (_: Exception) { }
-        }
-        if (expiryDate == null) return null
-        val now = java.time.LocalDate.now()
-        when {
-            !expiryDate.isAfter(now) -> resources.getString(R.string.player_info_expired)
-            else -> {
-                val months = java.time.temporal.ChronoUnit.MONTHS.between(now, expiryDate)
-                resources.getString(R.string.player_info_expires_in_months, months.toInt())
-            }
-        }
-    } catch (_: Exception) {
-        null
-    }
-}
 
 private fun playerInfoComputeValueTrend(history: List<com.liordahan.mgsrteam.features.players.models.MarketValueEntry>?): Int {
     if (history.isNullOrEmpty() || history.size < 2) return 0
@@ -4220,130 +3023,129 @@ private fun AgentTransferSection(
     }
 }
 
+/**
+ * Editorial resolved-transfer banner — a hairline box on BritTokens.card with a
+ * 2.dp gold (approved) / red (rejected) left-rule, like the mock `.note`.
+ * Title in britDisplay uppercase, body in britBody, timestamp in britMono muted.
+ */
 @Composable
 private fun AgentTransferResolvedBanner(
     resolvedTransfer: com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest,
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account>,
     isHebrew: Boolean
 ) {
-    val isMen = !PlatformColors.palette.isYouth
     val fromName = resolveAgentDisplayName(resolvedTransfer.fromAgentId, resolvedTransfer.fromAgentName, allAccounts, isHebrew)
     val toName = resolveAgentDisplayName(resolvedTransfer.toAgentId, resolvedTransfer.toAgentName, allAccounts, isHebrew)
     val isApproved = resolvedTransfer.status == com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest.STATUS_APPROVED
-    val accentColor = if (isApproved) {
-        if (isMen) MenInfoGold else Color(0xFF10B981)
-    } else {
-        PlatformColors.palette.red
-    }
-    val icon = if (isApproved) "✓" else "✕"
+    val ruleColor = if (isApproved) BritTokens.gold else BritTokens.red
+    val titleColor = if (isApproved) BritTokens.green else BritTokens.red
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        accentColor.copy(alpha = 0.08f),
-                        accentColor.copy(alpha = 0.03f)
-                    ),
-                    start = Offset.Zero,
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                )
-            )
-            .border(
-                width = 1.dp,
-                color = accentColor.copy(alpha = 0.15f),
-                shape = RoundedCornerShape(16.dp)
-            )
-    ) {
-        // Glow effect
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(96.dp)
-                .graphicsLayer { alpha = 0.20f }
-                .blur(40.dp)
-                .background(
-                    color = accentColor.copy(alpha = 0.3f),
-                    shape = androidx.compose.foundation.shape.CircleShape
-                )
+    AgentTransferEditorialBanner(ruleColor = ruleColor) {
+        Text(
+            text = stringResource(
+                if (isApproved) R.string.agent_transfer_resolved_approved
+                else R.string.agent_transfer_resolved_rejected
+            ).uppercase(),
+            style = britDisplay(titleColor, 15.sp, weight = 600, letterSpacing = 0.3.sp),
         )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Icon badge
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(
-                            color = accentColor.copy(alpha = 0.12f),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = accentColor.copy(alpha = 0.20f),
-                            shape = RoundedCornerShape(8.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = icon, style = boldTextStyle(accentColor, 14.sp))
-                }
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = stringResource(
-                        if (isApproved) R.string.agent_transfer_resolved_approved
-                        else R.string.agent_transfer_resolved_rejected
-                    ),
-                    style = boldTextStyle(accentColor, 12.sp).copy(
-                        letterSpacing = 0.5.sp
-                    )
-                )
-            }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = if (isApproved) {
+                stringResource(R.string.agent_transfer_resolved_approved_desc, fromName, toName)
+            } else {
+                stringResource(R.string.agent_transfer_resolved_rejected_desc, fromName, toName)
+            },
+            style = britBody(BritTokens.ink, 13.sp),
+        )
+        resolvedTransfer.resolvedAt?.let { ts ->
             Spacer(Modifier.height(8.dp))
             Text(
-                text = if (isApproved) {
-                    stringResource(R.string.agent_transfer_resolved_approved_desc,
-                        fromName,
-                        toName)
-                } else {
-                    stringResource(R.string.agent_transfer_resolved_rejected_desc,
-                        fromName,
-                        toName)
-                },
-                style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp).copy(
-                    lineHeight = 18.sp
-                )
+                text = java.text.SimpleDateFormat("d MMM yyyy, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(ts)),
+                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.4.sp),
             )
-            resolvedTransfer.resolvedAt?.let { ts ->
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = java.text.SimpleDateFormat("d MMM yyyy, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(ts)),
-                    style = regularTextStyle((if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary).copy(alpha = 0.5f), 10.sp)
-                )
-            }
         }
     }
 }
 
+/**
+ * Shared editorial banner frame for the agent-transfer status cards: a hairline
+ * box on BritTokens.card with an optional gold/red left-rule (mock `.note`).
+ */
+@Composable
+private fun AgentTransferEditorialBanner(
+    ruleColor: Color = BritTokens.gold,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, BritTokens.line)
+            .background(BritTokens.card),
+    ) {
+        Box(
+            modifier = Modifier
+                .width(2.dp)
+                .fillMaxHeight()
+                .background(ruleColor),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 15.dp, vertical = 13.dp),
+            content = content,
+        )
+    }
+}
+
+/** Editorial action pill — gold/accent fill primary, hairline secondary, red reject. */
+@Composable
+private fun AgentTransferActionPill(
+    label: String,
+    modifier: Modifier = Modifier,
+    filled: Boolean = false,
+    fillColor: Color = BritTokens.gold,
+    outlineColor: Color = BritTokens.line,
+    textColor: Color = BritTokens.ink,
+    isLoading: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .background(if (filled) fillColor else BritTokens.paper)
+            .border(1.dp, if (filled) fillColor else outlineColor)
+            .then(if (enabled) Modifier.clickWithNoRipple(onClick = onClick) else Modifier)
+            .padding(horizontal = 18.dp, vertical = 11.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                color = if (filled) BritTokens.paper else textColor,
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Text(
+                text = label.uppercase(),
+                style = britMono(
+                    if (filled) BritTokens.paper else textColor,
+                    10.sp,
+                    letterSpacing = 0.8.sp,
+                ),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/** Editorial request-transfer affordance — a full-width hairline pill with a gold icon. */
 @Composable
 private fun AgentTransferRequestButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val isMen = !PlatformColors.palette.isYouth
-    val actionColor = if (isMen) MenInfoGold else PlatformColors.palette.accent
-    val actionText = if (isMen) MenInfoTextSubtle else PlatformColors.palette.accent
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(actionColor.copy(alpha = 0.07f))
-            .border(
-                width = 0.5.dp,
-                color = actionColor.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(16.dp)
-            )
+            .border(1.dp, BritTokens.line)
+            .background(BritTokens.paper)
             .clickWithNoRipple(onClick = onClick)
             .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center
@@ -4355,124 +3157,47 @@ private fun AgentTransferRequestButton(modifier: Modifier = Modifier, onClick: (
             Icon(
                 imageVector = Icons.Filled.PersonAddAlt,
                 contentDescription = null,
-                tint = actionColor,
+                tint = BritTokens.gold,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = stringResource(R.string.agent_transfer_request_button),
-                style = boldTextStyle(actionText, 12.sp).copy(
-                    letterSpacing = 0.5.sp
-                )
+                text = stringResource(R.string.agent_transfer_request_button).uppercase(),
+                style = britMono(BritTokens.ink, 10.sp, letterSpacing = 0.8.sp),
             )
         }
     }
 }
 
+/** Editorial pending-transfer banner — amber (gold) left-rule, mono status label, red cancel pill. */
 @Composable
 private fun AgentTransferPendingBanner(
     modifier: Modifier = Modifier,
     currentAgentName: String,
     onCancel: () -> Unit
 ) {
-    val isMen = !PlatformColors.palette.isYouth
-    val amberColor = if (isMen) MenInfoGold else Color(0xFFF59E0B)
-    val amberSoft = if (isMen) MenInfoBronze else Color(0xFFFBBF24)
-    val redColor = PlatformColors.palette.red
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        amberColor.copy(alpha = 0.08f),
-                        amberSoft.copy(alpha = 0.03f)
-                    ),
-                    start = Offset.Zero,
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                )
-            )
-            .border(
-                width = 1.dp,
-                color = amberColor.copy(alpha = 0.15f),
-                shape = RoundedCornerShape(16.dp)
-            )
-    ) {
-        // Glow effect
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(96.dp)
-                .graphicsLayer { alpha = 0.25f }
-                .blur(40.dp)
-                .background(
-                    color = amberColor.copy(alpha = 0.3f),
-                    shape = androidx.compose.foundation.shape.CircleShape
-                )
+    AgentTransferEditorialBanner(ruleColor = BritTokens.amber) {
+        Text(
+            text = stringResource(R.string.agent_transfer_pending_title).uppercase(),
+            style = britDisplay(BritTokens.amber, 15.sp, weight = 600, letterSpacing = 0.3.sp),
         )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Icon badge
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(
-                            color = amberColor.copy(alpha = 0.10f),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = amberColor.copy(alpha = 0.15f),
-                            shape = RoundedCornerShape(8.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "⏳", fontSize = 14.sp)
-                }
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.agent_transfer_pending_title),
-                    style = boldTextStyle(amberColor, 12.sp).copy(
-                        letterSpacing = 0.5.sp
-                    )
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.agent_transfer_pending_desc, currentAgentName),
-                style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp).copy(
-                    lineHeight = 18.sp
-                )
-            )
-            Spacer(Modifier.height(12.dp))
-            // Cancel button — small outlined red pill
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(redColor.copy(alpha = 0.05f))
-                    .border(
-                        width = 1.dp,
-                        color = redColor.copy(alpha = 0.20f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .clickWithNoRipple(onClick = onCancel)
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.agent_transfer_cancel),
-                    style = boldTextStyle(redColor, 12.sp)
-                )
-            }
-        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.agent_transfer_pending_desc, currentAgentName),
+            style = britBody(BritTokens.ink, 13.sp),
+        )
+        Spacer(Modifier.height(12.dp))
+        AgentTransferActionPill(
+            label = stringResource(R.string.agent_transfer_cancel),
+            modifier = modifier,
+            outlineColor = BritTokens.red,
+            textColor = BritTokens.red,
+            onClick = onCancel,
+        )
     }
 }
 
+/** Editorial approval banner — gold left-rule, mono title, gold-fill Approve + hairline-red Reject pills. */
 @Composable
 private fun AgentTransferApprovalBanner(
     modifier: Modifier = Modifier,
@@ -4481,140 +3206,44 @@ private fun AgentTransferApprovalBanner(
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
-    val isMen = !PlatformColors.palette.isYouth
-    val blueColor = if (isMen) MenInfoGold else Color(0xFF5B8AF5)
-    val blueSoft = if (isMen) MenInfoBronze else Color(0xFF8B5CF6)
-    val emeraldColor = if (isMen) MenInfoBronze else Color(0xFF34D399)
-    val redColor = PlatformColors.palette.red
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        blueColor.copy(alpha = 0.10f),
-                        blueSoft.copy(alpha = 0.05f)
-                    ),
-                    start = Offset.Zero,
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                )
-            )
-            .border(
-                width = 1.dp,
-                color = blueColor.copy(alpha = 0.20f),
-                shape = RoundedCornerShape(16.dp)
-            )
-    ) {
-        // Glow effect
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(96.dp)
-                .graphicsLayer { alpha = 0.30f }
-                .blur(40.dp)
-                .background(
-                    color = blueColor.copy(alpha = 0.3f),
-                    shape = androidx.compose.foundation.shape.CircleShape
-                )
+    AgentTransferEditorialBanner(ruleColor = BritTokens.gold) {
+        Text(
+            text = stringResource(R.string.agent_transfer_approval_title).uppercase(),
+            style = britDisplay(BritTokens.ink, 15.sp, weight = 600, letterSpacing = 0.3.sp),
         )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.agent_transfer_approval_desc, requesterName),
+            style = britBody(BritTokens.ink, 13.sp),
+        )
+        Spacer(Modifier.height(14.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Icon badge
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(
-                            color = blueColor.copy(alpha = 0.12f),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = blueColor.copy(alpha = 0.20f),
-                            shape = RoundedCornerShape(8.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "📨", fontSize = 14.sp)
-                }
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.agent_transfer_approval_title),
-                    style = boldTextStyle(blueColor, 12.sp).copy(
-                        letterSpacing = 0.5.sp
-                    )
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = stringResource(R.string.agent_transfer_approval_desc, requesterName),
-                style = regularTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp).copy(
-                    lineHeight = 18.sp
-                )
+            AgentTransferActionPill(
+                label = stringResource(R.string.agent_transfer_approve),
+                modifier = Modifier.weight(1f),
+                filled = true,
+                fillColor = BritTokens.gold,
+                isLoading = isLoading,
+                enabled = !isLoading,
+                onClick = onApprove,
             )
-            Spacer(Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                // Approve button — emerald green
-                Button(
-                    onClick = onApprove,
-                    modifier = Modifier.weight(1f),
-                    enabled = !isLoading,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = emeraldColor
-                    )
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            // sits on the filled emeraldColor accent → white
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.agent_transfer_approve),
-                            style = boldTextStyle(Color.White, 12.sp)
-                        )
-                    }
-                }
-                // Reject button — outlined red
-                Button(
-                    onClick = onReject,
-                    modifier = Modifier.weight(1f),
-                    enabled = !isLoading,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = redColor.copy(alpha = 0.06f)
-                    ),
-                    border = BorderStroke(1.dp, redColor.copy(alpha = 0.25f))
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = redColor,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.agent_transfer_reject),
-                            style = boldTextStyle(redColor, 12.sp)
-                        )
-                    }
-                }
-            }
+            AgentTransferActionPill(
+                label = stringResource(R.string.agent_transfer_reject),
+                modifier = Modifier.weight(1f),
+                outlineColor = BritTokens.red,
+                textColor = BritTokens.red,
+                isLoading = isLoading,
+                enabled = !isLoading,
+                onClick = onReject,
+            )
         }
     }
 }
 
+/** Editorial confirm dialog — a hairline card on BritTokens.card, gold top-rule, mono/display text, editorial pills. */
 @Composable
 private fun AgentTransferConfirmDialog(
     playerName: String,
@@ -4622,114 +3251,56 @@ private fun AgentTransferConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val isMen = !PlatformColors.palette.isYouth
-    val blueColor = if (isMen) MenInfoGold else Color(0xFF5B8AF5)
-    val blueSoft = if (isMen) MenInfoBronze else Color(0xFF8B5CF6)
-    val tealColor = if (isMen) MenInfoBronze else Color(0xFF38E8C6)
-
     Dialog(onDismissRequest = onDismiss) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(PlatformColors.palette.card)
-                .border(
-                    width = 1.dp,
-                    color = PlatformColors.palette.cardBorder,
-                    shape = RoundedCornerShape(24.dp)
-                )
+                .border(1.dp, BritTokens.line)
+                .background(BritTokens.card)
         ) {
-            // Top glow effect
+            // Gold top-rule (editorial accent, replaces the old glow/gradient).
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .size(192.dp)
-                    .graphicsLayer { alpha = 0.20f }
-                    .blur(60.dp)
-                    .background(
-                        color = blueColor.copy(alpha = 0.4f),
-                        shape = androidx.compose.foundation.shape.CircleShape
-                    )
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(BritTokens.gold)
             )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(32.dp),
+                    .padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Icon badge with gradient
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    blueColor.copy(alpha = 0.10f),
-                                    blueSoft.copy(alpha = 0.08f)
-                                ),
-                                start = Offset.Zero,
-                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                            ),
-                            shape = RoundedCornerShape(18.dp)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = blueColor.copy(alpha = 0.15f),
-                            shape = RoundedCornerShape(18.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "🔄", fontSize = 28.sp)
-                }
-                Spacer(Modifier.height(20.dp))
                 Text(
-                    text = stringResource(R.string.agent_transfer_confirm_title),
-                    style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
+                    text = stringResource(R.string.agent_transfer_confirm_title).uppercase(),
+                    style = britDisplay(BritTokens.ink, 20.sp, weight = 600, letterSpacing = 0.3.sp),
+                    textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 Text(
                     text = stringResource(R.string.agent_transfer_confirm_body, playerName, currentAgentName),
-                    style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp).copy(
-                        lineHeight = 20.sp
-                    ),
+                    style = britBody(BritTokens.muted, 13.sp),
                     textAlign = TextAlign.Center
                 )
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(24.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Cancel button — subtle/transparent
-                    Button(
+                    AgentTransferActionPill(
+                        label = stringResource(R.string.cancel),
+                        modifier = Modifier.weight(1f),
+                        outlineColor = BritTokens.line,
+                        textColor = BritTokens.muted,
                         onClick = onDismiss,
+                    )
+                    AgentTransferActionPill(
+                        label = stringResource(R.string.agent_transfer_send_request),
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isMen) MenInfoCardAlt.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.02f)
-                        ),
-                        border = BorderStroke(1.dp, if (isMen) MenInfoBorder else Color.White.copy(alpha = 0.06f))
-                    ) {
-                        Text(
-                            text = stringResource(R.string.cancel),
-                            style = boldTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 14.sp)
-                        )
-                    }
-                    // Confirm button — teal
-                    Button(
+                        filled = true,
+                        fillColor = BritTokens.gold,
                         onClick = onConfirm,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = tealColor
-                        )
-                    ) {
-                        Text(
-                            // Confirm button text sits on the filled tealColor
-                            // accent → white on both platforms (cream surface).
-                            text = stringResource(R.string.agent_transfer_send_request),
-                            style = boldTextStyle(Color.White, 14.sp)
-                        )
-                    }
+                    )
                 }
             }
         }

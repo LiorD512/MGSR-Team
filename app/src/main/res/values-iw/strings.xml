@@ -906,6 +906,11 @@
     <string name="player_info_delete_player_confirm">האם אתה בטוח שברצונך למחוק את השחקן?</string>
     <string name="player_info_delete_note_confirm">האם אתה בטוח שברצונך למחוק את ההערה?</string>
     <string name="player_info_delete_doc_confirm">האם אתה בטוח שברצונך למחוק את \"%s\"?</string>
+    <string name="player_info_player_details">פרטי שחקן</string>
+    <string name="toggle_on">פעיל</string>
+    <string name="toggle_off">כבוי</string>
+    <string name="toggle_yes">כן</string>
+    <string name="toggle_no">לא</string>
     <string name="player_info_contact_header">פרטי קשר</string>
     <string name="player_info_player_phone">טלפון שחקן</string>
     <string name="player_info_agent_phone">טלפון סוכן</string>
@@ -1055,6 +1060,8 @@
     <string name="player_info_ai_no_similar_players">לא נמצאו שחקנים דומים</string>
     <string name="player_info_ai_options">הגדרות</string>
     <string name="player_info_ai_refresh">רענן</string>
+    <string name="player_info_ai_found">AI · נמצאו %d</string>
+    <string name="player_info_ai_rail_refresh">↻ רענן</string>
     <string name="player_info_ai_similarity_style">סגנון משחק</string>
     <string name="player_info_ai_similarity_value">שווי שוק</string>
     <string name="player_info_ai_similarity_position">עמדה</string>
