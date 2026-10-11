@@ -1616,6 +1616,11 @@
     <string name="releases_all">הכל</string>
     <string name="search_placeholder">חפש לפי שם, עמדה או מועדון...</string>
     <string name="players_clear_filters">נקה סינון</string>
+    <string name="players_filters_button">סינון</string>
+    <string name="players_filters_sheet_title">סינון ומיון</string>
+    <string name="players_filter_section_position">עמדה</string>
+    <string name="players_filter_section_quick">סינון מהיר</string>
+    <string name="players_filters_apply">הצג {n} שחקנים</string>
     <string name="players_sort_label">מיון</string>
     <string name="players_sort_default">תאריך הוספה</string>
     <string name="players_showing">מוצג {n} מתוך {total} נכסים</string>

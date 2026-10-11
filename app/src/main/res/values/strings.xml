@@ -1630,6 +1630,11 @@
     <string name="releases_all">All</string>
     <string name="search_placeholder">Search by name, position or club...</string>
     <string name="players_clear_filters">Clear filters</string>
+    <string name="players_filters_button">Filters</string>
+    <string name="players_filters_sheet_title">Filters &amp; sort</string>
+    <string name="players_filter_section_position">Position</string>
+    <string name="players_filter_section_quick">Quick filters</string>
+    <string name="players_filters_apply">Show {n} players</string>
     <string name="players_sort_label">Sort</string>
     <string name="players_sort_default">Date Added</string>
     <string name="players_showing">Showing {n} of {total} assets</string>

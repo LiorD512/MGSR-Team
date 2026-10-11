@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.BasicTextField
@@ -40,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
@@ -147,6 +149,7 @@ fun PlayersScreen(
     // Web roster defaults to 'gallery'. Pure UI state (presentation only).
     var view by remember { mutableStateOf(RosterView.GALLERY) }
     var showAddPlayerBottomSheet by remember { mutableStateOf(false) }
+    var showFilterSheet by remember { mutableStateOf(false) }
     var addPlayerTmUrl by remember { mutableStateOf<String?>(null) }
     var notesPreviewPlayer by remember { mutableStateOf<Player?>(null) }
 
@@ -272,36 +275,18 @@ fun PlayersScreen(
                 )
             }
 
-            // (c) filter tray ───────────────────────────────────────────
-            item(key = "tray") {
-                RosterFilterTray(
-                    state = playersState,
+            // (c) search + Filters button (Concept A) — the full filter tray
+            //     lives in a bottom sheet now, keeping the roster screen clean.
+            item(key = "searchbar") {
+                RosterSearchBar(
                     searchQuery = searchQuery,
+                    activeFilterCount = activeFilterCount,
                     accent = accent,
-                    accentSoft = accentSoft,
-                    hasActiveFilters = hasActiveFilters,
                     onSearchChange = { q ->
                         searchQuery = q
                         viewModel.updateSearchQuery(q)
                     },
-                    onPositionGroup = { viewModel.setPositionFilterByChip(it) },
-                    onToggleMyPlayers = { viewModel.toggleQuickFilterMyPlayersOnly() },
-                    onToggleEuNational = { viewModel.toggleQuickFilterEuNational() },
-                    onToggleWithMandate = { viewModel.toggleQuickFilterWithMandate() },
-                    onToggleFreeAgents = { viewModel.toggleQuickFilterFreeAgents() },
-                    onToggleContractExpiring = { viewModel.toggleQuickFilterContractExpiring() },
-                    onToggleLoanPlayers = { viewModel.toggleQuickFilterLoanPlayersOnly() },
-                    onToggleWithNotes = { viewModel.toggleQuickFilterWithNotesOnly() },
-                    onToggleWithoutAgent = { viewModel.toggleQuickFilterWithoutRegisteredAgent() },
-                    onToggleFoot = { viewModel.setFootFilterOption(it) },
-                    onToggleOfferedNoFeedback = { viewModel.toggleQuickFilterOfferedNoFeedback() },
-                    onToggleInterestedInIsrael = { viewModel.toggleQuickFilterInterestedInIsrael() },
-                    onToggleTaggedInNotes = { viewModel.toggleQuickFilterTaggedInNotes() },
-                    onSort = { viewModel.setSortOption(it) },
-                    onClearFilters = {
-                        searchQuery = ""
-                        viewModel.removeAllFilters()
-                    }
+                    onOpenFilters = { showFilterSheet = true }
                 )
             }
 
@@ -443,6 +428,50 @@ fun PlayersScreen(
                 }
             }
         }
+
+        // ── Filters & sort bottom sheet (Concept A) ────────────────────
+        if (showFilterSheet) {
+            val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = { showFilterSheet = false },
+                sheetState = filterSheetState,
+                containerColor = BritTokens.paper,
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                tonalElevation = 0.dp,
+                dragHandle = { BritSheetGrabber() },
+                properties = ModalBottomSheetProperties(
+                    isAppearanceLightStatusBars = true,
+                    isAppearanceLightNavigationBars = true
+                )
+            ) {
+                RosterFilterSheetContent(
+                    state = playersState,
+                    accent = accent,
+                    accentSoft = accentSoft,
+                    hasActiveFilters = hasActiveFilters,
+                    visibleCount = playersState.visibleList.size,
+                    onPositionGroup = { viewModel.setPositionFilterByChip(it) },
+                    onToggleMyPlayers = { viewModel.toggleQuickFilterMyPlayersOnly() },
+                    onToggleEuNational = { viewModel.toggleQuickFilterEuNational() },
+                    onToggleWithMandate = { viewModel.toggleQuickFilterWithMandate() },
+                    onToggleFreeAgents = { viewModel.toggleQuickFilterFreeAgents() },
+                    onToggleContractExpiring = { viewModel.toggleQuickFilterContractExpiring() },
+                    onToggleLoanPlayers = { viewModel.toggleQuickFilterLoanPlayersOnly() },
+                    onToggleWithNotes = { viewModel.toggleQuickFilterWithNotesOnly() },
+                    onToggleWithoutAgent = { viewModel.toggleQuickFilterWithoutRegisteredAgent() },
+                    onToggleFoot = { viewModel.setFootFilterOption(it) },
+                    onToggleOfferedNoFeedback = { viewModel.toggleQuickFilterOfferedNoFeedback() },
+                    onToggleInterestedInIsrael = { viewModel.toggleQuickFilterInterestedInIsrael() },
+                    onToggleTaggedInNotes = { viewModel.toggleQuickFilterTaggedInNotes() },
+                    onSort = { viewModel.setSortOption(it) },
+                    onClearFilters = {
+                        searchQuery = ""
+                        viewModel.removeAllFilters()
+                    },
+                    onApply = { showFilterSheet = false }
+                )
+            }
+        }
     }
 }
 
@@ -568,7 +597,7 @@ private fun ViewToggleButton(
             text = label.uppercase(),
             style = britMono(
                 if (active) accentSoft else BritTokens.muted,
-                9.sp,
+                 11.sp,
                 letterSpacing = 1.2.sp
             ),
             textAlign = TextAlign.Center,
@@ -678,6 +707,247 @@ private fun VerticalHairline() {
 // ═════════════════════════════════════════════════════════════════════════════
 //  FILTER TRAY
 // ═════════════════════════════════════════════════════════════════════════════
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  CONCEPT A — SEARCH BAR + FILTERS BUTTON  (brit fonts throughout)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** Compact row on the main roster: search field + a "Filters" button carrying a
+ *  live active-count badge. The full filter tray lives in the bottom sheet. */
+@Composable
+private fun RosterSearchBar(
+    searchQuery: String,
+    activeFilterCount: Int,
+    accent: Color,
+    onSearchChange: (String) -> Unit,
+    onOpenFilters: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(modifier = Modifier.weight(1f)) {
+            TraySearchField(query = searchQuery, accent = accent, onQueryChange = onSearchChange)
+        }
+        // Filters button (+ active-count badge).
+        Box {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, if (activeFilterCount > 0) accent else BritTokens.line, RoundedCornerShape(8.dp))
+                    .clickWithNoRipple { onOpenFilters() }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.FilterList,
+                    contentDescription = null,
+                    tint = if (activeFilterCount > 0) accent else BritTokens.ink,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = stringResource(R.string.players_filters_button).uppercase(),
+                    style = britDisplay(
+                        if (activeFilterCount > 0) accent else BritTokens.ink,
+                        13.sp, weight = 600, letterSpacing = 0.5.sp
+                    )
+                )
+            }
+            if (activeFilterCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 6.dp, y = (-6).dp)
+                        .size(17.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(accent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = activeFilterCount.toString(),
+                        style = britMono(BritTokens.paper, 11.sp, letterSpacing = 0.sp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Editorial drag handle for the filter sheet. */
+@Composable
+private fun BritSheetGrabber() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .width(40.dp)
+                .height(4.dp)
+                .clip(RoundedCornerShape(50))
+                .background(BritTokens.line)
+        )
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  CONCEPT A — FILTERS & SORT BOTTOM SHEET CONTENT
+// ═════════════════════════════════════════════════════════════════════════════
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RosterFilterSheetContent(
+    state: PlayersUiState,
+    accent: Color,
+    accentSoft: Color,
+    hasActiveFilters: Boolean,
+    visibleCount: Int,
+    onPositionGroup: (String) -> Unit,
+    onToggleMyPlayers: () -> Unit,
+    onToggleEuNational: () -> Unit,
+    onToggleWithMandate: () -> Unit,
+    onToggleFreeAgents: () -> Unit,
+    onToggleContractExpiring: () -> Unit,
+    onToggleLoanPlayers: () -> Unit,
+    onToggleWithNotes: () -> Unit,
+    onToggleWithoutAgent: () -> Unit,
+    onToggleFoot: (FootFilterOption) -> Unit,
+    onToggleOfferedNoFeedback: () -> Unit,
+    onToggleInterestedInIsrael: () -> Unit,
+    onToggleTaggedInNotes: () -> Unit,
+    onSort: (SortOption) -> Unit,
+    onClearFilters: () -> Unit,
+    onApply: () -> Unit
+) {
+    DarkSystemBarsForBottomSheet()
+    val selectedGroups = state.selectedPositions.mapNotNull { it.name }
+    val footLeft = state.footFilterOption == FootFilterOption.LEFT
+    val footRight = state.footFilterOption == FootFilterOption.RIGHT
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // ── Header: title + Clear all ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 4.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.players_filters_sheet_title),
+                style = britDisplay(BritTokens.ink, 24.sp, weight = 600, letterSpacing = 0.3.sp),
+                modifier = Modifier.weight(1f)
+            )
+            if (hasActiveFilters) {
+                Text(
+                    text = stringResource(R.string.players_clear_filters).uppercase(),
+                    style = britMono(accent, 11.sp, letterSpacing = 0.8.sp),
+                    modifier = Modifier.clickWithNoRipple { onClearFilters() }
+                )
+            }
+        }
+        HorizontalDivider(thickness = 1.dp, color = BritTokens.line)
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(top = 18.dp, bottom = 20.dp)
+        ) {
+            // Position
+            SheetLabel(stringResource(R.string.players_filter_section_position))
+            Spacer(Modifier.height(11.dp))
+            PositionGroupSegment(
+                selectedGroups = selectedGroups,
+                accentSoft = accentSoft,
+                onGroup = onPositionGroup
+            )
+
+            Spacer(Modifier.height(22.dp))
+
+            // Quick filters
+            SheetLabel(stringResource(R.string.players_filter_section_quick))
+            Spacer(Modifier.height(11.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                FilterChip(stringResource(R.string.players_filter_my_players_only), state.quickFilterMyPlayersOnly, accentSoft, state.currentUserName != null, onToggleMyPlayers)
+                FilterChip("\uD83C\uDDEA\uD83C\uDDFA " + stringResource(R.string.players_filter_eu_national), state.quickFilterEuNational, accentSoft, true, onToggleEuNational)
+                FilterChip(stringResource(R.string.players_filter_with_mandate), state.quickFilterWithMandate, accentSoft, true, onToggleWithMandate)
+                FilterChip(stringResource(R.string.players_filter_free_agents), state.quickFilterFreeAgents, accentSoft, true, onToggleFreeAgents)
+                FilterChip(stringResource(R.string.players_filter_contract_expiring), state.quickFilterContractExpiring, accentSoft, true, onToggleContractExpiring)
+                FilterChip(stringResource(R.string.players_filter_loan_players_only), state.quickFilterLoanPlayersOnly, accentSoft, true, onToggleLoanPlayers)
+                FilterChip(stringResource(R.string.players_filter_with_notes), state.isWithNotesChecked, accentSoft, true, onToggleWithNotes)
+                FilterChip(stringResource(R.string.players_filter_without_registered_agent), state.quickFilterWithoutRegisteredAgent, accentSoft, true, onToggleWithoutAgent)
+                FilterChip(stringResource(R.string.players_filter_foot_left), footLeft, accentSoft, true) { onToggleFoot(if (footLeft) FootFilterOption.NONE else FootFilterOption.LEFT) }
+                FilterChip(stringResource(R.string.players_filter_foot_right), footRight, accentSoft, true) { onToggleFoot(if (footRight) FootFilterOption.NONE else FootFilterOption.RIGHT) }
+                FilterChip(stringResource(R.string.players_filter_offered_no_feedback), state.quickFilterOfferedNoFeedback, accentSoft, true, onToggleOfferedNoFeedback)
+                FilterChip("\uD83C\uDDEE\uD83C\uDDF1 " + stringResource(R.string.players_filter_interested_in_israel), state.quickFilterInterestedInIsrael, accentSoft, true, onToggleInterestedInIsrael)
+                FilterChip(stringResource(R.string.players_filter_tagged_in_notes), state.quickFilterTaggedInNotes, accentSoft, state.currentUserAccountId != null, onToggleTaggedInNotes)
+            }
+
+            Spacer(Modifier.height(22.dp))
+
+            // Sort
+            SheetLabel(stringResource(R.string.players_sort_label))
+            Spacer(Modifier.height(11.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SortButton(stringResource(R.string.players_sort_default), state.sortOption == SortOption.DEFAULT, accent) { onSort(SortOption.DEFAULT) }
+                SortButton(stringResource(R.string.players_sort_age), state.sortOption == SortOption.AGE, accent) { onSort(SortOption.AGE) }
+                SortButton(stringResource(R.string.players_sort_market_value), state.sortOption == SortOption.MARKET_VALUE, accent) { onSort(SortOption.MARKET_VALUE) }
+                SortButton(stringResource(R.string.players_sort_name), state.sortOption == SortOption.NAME, accent) { onSort(SortOption.NAME) }
+            }
+        }
+
+        // ── Apply bar ──
+        HorizontalDivider(thickness = 1.dp, color = BritTokens.line)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(BritTokens.paper)
+                .padding(horizontal = 20.dp)
+                .padding(top = 14.dp, bottom = 22.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(0.dp))
+                    .background(accentSoft)
+                    .border(1.dp, accent, RoundedCornerShape(0.dp))
+                    .clickWithNoRipple { onApply() }
+                    .padding(vertical = 15.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.players_filters_apply).replace("{n}", visibleCount.toString()).uppercase(),
+                    style = britMono(BritTokens.ink, 11.sp, letterSpacing = 1.4.sp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SheetLabel(text: String) {
+    Text(
+        text = text.uppercase(),
+        style = britMono(BritTokens.muted, 11.sp, letterSpacing = 1.2.sp)
+    )
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -1003,7 +1273,7 @@ private fun SegmentButton(
             text = label.uppercase(),
             style = britMono(
                 if (active) BritTokens.ink else BritTokens.muted,
-                9.sp,
+                 11.sp,
                 letterSpacing = 1.sp
             ),
             maxLines = 1
@@ -1048,7 +1318,7 @@ private fun FilterChip(
             text = label,
             style = britMono(
                 if (active) accentSoft.copy(alpha = alpha) else BritTokens.muted.copy(alpha = alpha),
-                9.sp,
+                 11.sp,
                 letterSpacing = 0.6.sp
             ),
             maxLines = 1
@@ -1067,7 +1337,7 @@ private fun SortButton(
         text = label,
         style = britMono(
             if (active) accent else BritTokens.muted,
-            9.sp,
+             11.sp,
             letterSpacing = 0.6.sp
         ),
         maxLines = 1,
