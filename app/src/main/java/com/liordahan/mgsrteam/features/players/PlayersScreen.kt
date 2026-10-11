@@ -26,6 +26,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.BasicTextField
@@ -862,18 +864,14 @@ private fun RosterFilterSheetContent(
                 .padding(horizontal = 20.dp)
                 .padding(top = 18.dp, bottom = 20.dp)
         ) {
-            // Position
+            // Position — mock .posrow (Oswald, boxed, hairline dividers)
             SheetLabel(stringResource(R.string.players_filter_section_position))
             Spacer(Modifier.height(11.dp))
-            PositionGroupSegment(
-                selectedGroups = selectedGroups,
-                accentSoft = accentSoft,
-                onGroup = onPositionGroup
-            )
+            SheetPositionSegment(selectedGroups = selectedGroups, onGroup = onPositionGroup)
 
             Spacer(Modifier.height(22.dp))
 
-            // Quick filters
+            // Quick filters — mock .chip (DM Mono, square, ink-fill when on)
             SheetLabel(stringResource(R.string.players_filter_section_quick))
             Spacer(Modifier.height(11.dp))
             FlowRow(
@@ -881,35 +879,35 @@ private fun RosterFilterSheetContent(
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                FilterChip(stringResource(R.string.players_filter_my_players_only), state.quickFilterMyPlayersOnly, accentSoft, state.currentUserName != null, onToggleMyPlayers)
-                FilterChip("\uD83C\uDDEA\uD83C\uDDFA " + stringResource(R.string.players_filter_eu_national), state.quickFilterEuNational, accentSoft, true, onToggleEuNational)
-                FilterChip(stringResource(R.string.players_filter_with_mandate), state.quickFilterWithMandate, accentSoft, true, onToggleWithMandate)
-                FilterChip(stringResource(R.string.players_filter_free_agents), state.quickFilterFreeAgents, accentSoft, true, onToggleFreeAgents)
-                FilterChip(stringResource(R.string.players_filter_contract_expiring), state.quickFilterContractExpiring, accentSoft, true, onToggleContractExpiring)
-                FilterChip(stringResource(R.string.players_filter_loan_players_only), state.quickFilterLoanPlayersOnly, accentSoft, true, onToggleLoanPlayers)
-                FilterChip(stringResource(R.string.players_filter_with_notes), state.isWithNotesChecked, accentSoft, true, onToggleWithNotes)
-                FilterChip(stringResource(R.string.players_filter_without_registered_agent), state.quickFilterWithoutRegisteredAgent, accentSoft, true, onToggleWithoutAgent)
-                FilterChip(stringResource(R.string.players_filter_foot_left), footLeft, accentSoft, true) { onToggleFoot(if (footLeft) FootFilterOption.NONE else FootFilterOption.LEFT) }
-                FilterChip(stringResource(R.string.players_filter_foot_right), footRight, accentSoft, true) { onToggleFoot(if (footRight) FootFilterOption.NONE else FootFilterOption.RIGHT) }
-                FilterChip(stringResource(R.string.players_filter_offered_no_feedback), state.quickFilterOfferedNoFeedback, accentSoft, true, onToggleOfferedNoFeedback)
-                FilterChip("\uD83C\uDDEE\uD83C\uDDF1 " + stringResource(R.string.players_filter_interested_in_israel), state.quickFilterInterestedInIsrael, accentSoft, true, onToggleInterestedInIsrael)
-                FilterChip(stringResource(R.string.players_filter_tagged_in_notes), state.quickFilterTaggedInNotes, accentSoft, state.currentUserAccountId != null, onToggleTaggedInNotes)
+                SheetChip(stringResource(R.string.players_filter_my_players_only), state.quickFilterMyPlayersOnly, state.currentUserName != null, onToggleMyPlayers)
+                SheetChip("\uD83C\uDDEA\uD83C\uDDFA " + stringResource(R.string.players_filter_eu_national), state.quickFilterEuNational, true, onToggleEuNational)
+                SheetChip(stringResource(R.string.players_filter_with_mandate), state.quickFilterWithMandate, true, onToggleWithMandate)
+                SheetChip(stringResource(R.string.players_filter_free_agents), state.quickFilterFreeAgents, true, onToggleFreeAgents)
+                SheetChip(stringResource(R.string.players_filter_contract_expiring), state.quickFilterContractExpiring, true, onToggleContractExpiring)
+                SheetChip(stringResource(R.string.players_filter_loan_players_only), state.quickFilterLoanPlayersOnly, true, onToggleLoanPlayers)
+                SheetChip(stringResource(R.string.players_filter_with_notes), state.isWithNotesChecked, true, onToggleWithNotes)
+                SheetChip(stringResource(R.string.players_filter_without_registered_agent), state.quickFilterWithoutRegisteredAgent, true, onToggleWithoutAgent)
+                SheetChip(stringResource(R.string.players_filter_foot_left), footLeft, true) { onToggleFoot(if (footLeft) FootFilterOption.NONE else FootFilterOption.LEFT) }
+                SheetChip(stringResource(R.string.players_filter_foot_right), footRight, true) { onToggleFoot(if (footRight) FootFilterOption.NONE else FootFilterOption.RIGHT) }
+                SheetChip(stringResource(R.string.players_filter_offered_no_feedback), state.quickFilterOfferedNoFeedback, true, onToggleOfferedNoFeedback)
+                SheetChip("\uD83C\uDDEE\uD83C\uDDF1 " + stringResource(R.string.players_filter_interested_in_israel), state.quickFilterInterestedInIsrael, true, onToggleInterestedInIsrael)
+                SheetChip(stringResource(R.string.players_filter_tagged_in_notes), state.quickFilterTaggedInNotes, state.currentUserAccountId != null, onToggleTaggedInNotes)
             }
 
             Spacer(Modifier.height(22.dp))
 
-            // Sort
+            // Sort — mock .chip (DM Mono, square, ink-fill when on)
             SheetLabel(stringResource(R.string.players_sort_label))
             Spacer(Modifier.height(11.dp))
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                SortButton(stringResource(R.string.players_sort_default), state.sortOption == SortOption.DEFAULT, accent) { onSort(SortOption.DEFAULT) }
-                SortButton(stringResource(R.string.players_sort_age), state.sortOption == SortOption.AGE, accent) { onSort(SortOption.AGE) }
-                SortButton(stringResource(R.string.players_sort_market_value), state.sortOption == SortOption.MARKET_VALUE, accent) { onSort(SortOption.MARKET_VALUE) }
-                SortButton(stringResource(R.string.players_sort_name), state.sortOption == SortOption.NAME, accent) { onSort(SortOption.NAME) }
+                SheetChip(stringResource(R.string.players_sort_default), state.sortOption == SortOption.DEFAULT, true) { onSort(SortOption.DEFAULT) }
+                SheetChip(stringResource(R.string.players_sort_age), state.sortOption == SortOption.AGE, true) { onSort(SortOption.AGE) }
+                SheetChip(stringResource(R.string.players_sort_market_value), state.sortOption == SortOption.MARKET_VALUE, true) { onSort(SortOption.MARKET_VALUE) }
+                SheetChip(stringResource(R.string.players_sort_name), state.sortOption == SortOption.NAME, true) { onSort(SortOption.NAME) }
             }
         }
 
@@ -947,6 +945,86 @@ private fun SheetLabel(text: String) {
         text = text.uppercase(),
         style = britMono(BritTokens.muted, 11.sp, letterSpacing = 1.2.sp)
     )
+}
+
+/** Mock .chip — square, 1px hairline, DM Mono; active = ink fill + paper text.
+ *  Used for the sheet's quick-filter chips AND the sort options. */
+@Composable
+private fun SheetChip(
+    label: String,
+    active: Boolean,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    val alpha = if (enabled) 1f else 0.4f
+    Box(
+        modifier = Modifier
+            .background(if (active) BritTokens.ink else BritTokens.card)
+            .border(1.dp, if (active) BritTokens.ink else BritTokens.line)
+            .then(if (enabled) Modifier.clickWithNoRipple { onClick() } else Modifier)
+            .padding(horizontal = 12.dp, vertical = 9.dp)
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = britMono(
+                (if (active) BritTokens.paper else BritTokens.muted).copy(alpha = alpha),
+                11.sp,
+                weight = androidx.compose.ui.text.font.FontWeight.Medium,
+                letterSpacing = 0.4.sp
+            ),
+            maxLines = 1
+        )
+    }
+}
+
+/** Mock .posrow — boxed row, hairline dividers, Oswald labels; active = paper-2 fill. */
+@Composable
+private fun SheetPositionSegment(
+    selectedGroups: List<String>,
+    onGroup: (String) -> Unit
+) {
+    val groups = listOf("GK", "DEF", "MID", "FWD")
+    val isAll = selectedGroups.isEmpty()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, BritTokens.line)
+    ) {
+        @Composable
+        fun cell(label: String, active: Boolean, last: Boolean, onClick: () -> Unit) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .then(
+                        if (!last) Modifier.drawBehind {
+                            drawLine(
+                                color = BritTokens.line,
+                                start = Offset(size.width, 0f),
+                                end = Offset(size.width, size.height),
+                                strokeWidth = 1.dp.toPx()
+                            )
+                        } else Modifier
+                    )
+                    .background(if (active) BritTokens.paper2 else Color.Transparent)
+                    .clickWithNoRipple { onClick() }
+                    .padding(vertical = 11.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label.uppercase(),
+                    style = britDisplay(
+                        if (active) BritTokens.ink else BritTokens.muted,
+                        13.sp, weight = 600, letterSpacing = 0.6.sp
+                    ),
+                    maxLines = 1
+                )
+            }
+        }
+        cell(stringResource(R.string.releases_all), isAll, false) { onGroup("All") }
+        groups.forEachIndexed { i, g ->
+            cell(g, selectedGroups.any { it.equals(g, ignoreCase = true) }, i == groups.lastIndex) { onGroup(g) }
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
