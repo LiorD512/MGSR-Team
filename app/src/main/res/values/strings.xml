@@ -1063,6 +1063,42 @@
     <string name="player_info_salary_transfer_fee_sheet_title">Set match criteria</string>
     <string name="player_info_remove_salary_transfer_fee">Remove salary &amp; transfer fee</string>
 
+    <!-- Dossier (cinematic rebuild) -->
+    <string name="player_info_tab_overview">Overview</string>
+    <string name="player_info_tab_performance">Performance</string>
+    <string name="player_info_tab_documents">Docs</string>
+    <string name="player_info_tab_notes">Notes</string>
+    <string name="player_info_market_value_label">Market value</string>
+    <string name="player_info_salary">Salary</string>
+    <string name="player_info_transfer_fee">Transfer fee</string>
+    <string name="player_info_contract_short">Contract</string>
+    <string name="player_info_tag_our_asset">◆ Our asset</string>
+    <string name="player_info_tag_eu_nat">EU nat</string>
+    <string name="player_info_eu_eligible">EU eligible</string>
+    <string name="player_info_on_loan_from">On loan: %s</string>
+
+    <!-- Dossier Overview modules (editorial) -->
+    <string name="player_info_value_history">Value history</string>
+    <string name="player_info_value_points">%1$d points</string>
+    <string name="player_info_value_low">Low</string>
+    <string name="player_info_value_peak">Peak</string>
+    <string name="player_info_value_change">Change</string>
+    <string name="player_info_this_season">This season</string>
+    <string name="player_info_per_90_apps">Per 90 · %1$d apps</string>
+    <string name="player_info_per_90">Per 90</string>
+    <string name="player_info_stats_unavailable">Stats not available</string>
+    <string name="player_info_similar_players">Similar players</string>
+    <string name="player_info_attributes">Attributes</string>
+    <string name="player_info_gps_last_match">GPS · last match</string>
+    <string name="player_info_stat_goals_90">Goals /90</string>
+    <string name="player_info_stat_assists_90">Assists /90</string>
+    <string name="player_info_stat_shots_90">Shots /90</string>
+    <string name="player_info_stat_key_passes_90">Key passes</string>
+    <string name="player_info_stat_dribbles_90">Dribbles</string>
+    <string name="player_info_stat_rating">Avg rating</string>
+    <string name="player_info_stat_ga_90">G+A /90</string>
+    <string name="player_info_stat_apps">Apps</string>
+
     <!-- AI Helper -->
     <string name="player_info_highlights">Highlights</string>
     <string name="player_info_ai_helper">AI Scout</string>

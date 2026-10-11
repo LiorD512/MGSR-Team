@@ -1007,6 +1007,42 @@
     <string name="player_info_salary_transfer_fee_sheet_title">הגדר קריטריוני התאמה</string>
     <string name="player_info_remove_salary_transfer_fee">הסר שכר ודמי העברה</string>
 
+    <!-- Dossier (cinematic rebuild) -->
+    <string name="player_info_tab_overview">סקירה</string>
+    <string name="player_info_tab_performance">ביצועים</string>
+    <string name="player_info_tab_documents">מסמכים</string>
+    <string name="player_info_tab_notes">הערות</string>
+    <string name="player_info_market_value_label">שווי שוק</string>
+    <string name="player_info_salary">שכר</string>
+    <string name="player_info_transfer_fee">דמי העברה</string>
+    <string name="player_info_contract_short">חוזה</string>
+    <string name="player_info_tag_our_asset">◆ נכס שלנו</string>
+    <string name="player_info_tag_eu_nat">אזרחות EU</string>
+    <string name="player_info_eu_eligible">זכאי EU</string>
+    <string name="player_info_on_loan_from">בהשאלה: %s</string>
+
+    <!-- Dossier Overview modules (editorial) -->
+    <string name="player_info_value_history">היסטוריית שווי</string>
+    <string name="player_info_value_points">%1$d נקודות</string>
+    <string name="player_info_value_low">נמוך</string>
+    <string name="player_info_value_peak">שיא</string>
+    <string name="player_info_value_change">שינוי</string>
+    <string name="player_info_this_season">העונה</string>
+    <string name="player_info_per_90_apps">לכל 90 · %1$d הופעות</string>
+    <string name="player_info_per_90">לכל 90</string>
+    <string name="player_info_stats_unavailable">סטטיסטיקות לא זמינות</string>
+    <string name="player_info_similar_players">שחקנים דומים</string>
+    <string name="player_info_attributes">תכונות</string>
+    <string name="player_info_gps_last_match">GPS · משחק אחרון</string>
+    <string name="player_info_stat_goals_90">שערים /90</string>
+    <string name="player_info_stat_assists_90">בישולים /90</string>
+    <string name="player_info_stat_shots_90">בעיטות /90</string>
+    <string name="player_info_stat_key_passes_90">מסירות מפתח</string>
+    <string name="player_info_stat_dribbles_90">כדרורים</string>
+    <string name="player_info_stat_rating">דירוג ממוצע</string>
+    <string name="player_info_stat_ga_90">שערים+בישולים /90</string>
+    <string name="player_info_stat_apps">הופעות</string>
+
     <!-- AI Helper -->
     <string name="player_info_highlights">היילייטס</string>
     <string name="player_info_ai_helper">סקאוט AI</string>

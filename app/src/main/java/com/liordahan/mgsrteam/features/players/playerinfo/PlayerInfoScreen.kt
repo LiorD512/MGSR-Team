@@ -12,6 +12,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +21,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,9 +32,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -40,7 +45,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -57,6 +61,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PersonAddAlt
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
@@ -89,7 +94,9 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -106,6 +113,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -167,6 +177,11 @@ import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.theme.BritTokens
+import com.liordahan.mgsrteam.ui.theme.britBody
+import com.liordahan.mgsrteam.ui.theme.britDisplay
+import com.liordahan.mgsrteam.ui.theme.britMono
+import com.liordahan.mgsrteam.ui.components.GrayscalePlayerPhoto
+import com.liordahan.mgsrteam.ui.components.initialsOf
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
 import com.liordahan.mgsrteam.ui.theme.redErrorColor
@@ -221,7 +236,7 @@ private fun playerInfoMutedColor(): Color = if (isMenPalette()) MenInfoTextSubtl
 private fun playerInfoBorderColor(): Color = if (isMenPalette()) MenInfoBorder else PlatformColors.palette.cardBorder
 private fun playerInfoCardColor(): Color = if (isMenPalette()) MenInfoCard else PlatformColors.palette.card
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun PlayerInfoScreen(
     viewModel: IPlayerInfoViewModel = koinViewModel(),
@@ -241,9 +256,6 @@ fun PlayerInfoScreen(
     var playerToPresent by remember {
         mutableStateOf<Player?>(null)
     }
-
-    val scrollState = rememberScrollState()
-
 
     var showLoader by remember {
         mutableStateOf(true)
@@ -320,6 +332,9 @@ fun PlayerInfoScreen(
     val isRefreshingPlayer by viewModel.updatePlayerFlow.collectAsStateWithLifecycle(initialValue = UiResult.UnInitialized)
 
     var showDeletePlayerIcon by remember { mutableStateOf(false) }
+
+    // Dossier tab state: 0 Overview · 1 Performance · 2 Documents · 3 Notes
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSalaryTransferFeeSheet by remember { mutableStateOf(false) }
@@ -595,15 +610,34 @@ fun PlayerInfoScreen(
 
         val isRefreshing = isRefreshingPlayer is UiResult.Loading
 
+        // Status-bar icons: the dossier top is the DARK cinematic hero, so use
+        // LIGHT status-bar icons while it is visible; restore the app-wide dark
+        // (paper) default on dispose. Mirrors LoginScreen's DisposableEffect.
+        // This runs only on the main dossier — the showAllNotes short-circuit
+        // above returns early (AllNotesScreen keeps its own light bars), so this
+        // effect never competes with it.
+        val dossierView = LocalView.current
+        DisposableEffect(Unit) {
+            val window = (dossierView.context as? android.app.Activity)?.window
+            val controller = window?.let {
+                androidx.core.view.WindowCompat.getInsetsController(it, dossierView)
+            }
+            controller?.isAppearanceLightStatusBars = false
+            onDispose { controller?.isAppearanceLightStatusBars = true }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-            PlayerInfoHeader(
-                onBackClicked = { navController.popBackStack() },
-                currentPlatform = currentPlatform
-            )
+            val (dossierAccent, dossierAccentSoft) = BritTokens.accentFor(currentPlatform)
+            val dossierListState = rememberLazyListState()
+            // Non-GPS document count for the Docs tab badge.
+            val docsTabCount = remember(documentsList) {
+                documentsList.count { it.documentType != DocumentType.GPS_DATA }
+            }
+            val notesTabCount = playerToPresent?.noteList?.size ?: 0
 
             Box(modifier = Modifier.weight(1f)) {
                 PullToRefreshBox(
@@ -612,36 +646,108 @@ fun PlayerInfoScreen(
                     modifier = Modifier.fillMaxSize(),
                     indicator = { } // Use custom overlay instead
                 ) {
-                    Column(
+                    LazyColumn(
+                        state = dossierListState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .verticalScroll(scrollState)
                             .then(
                                 if (isRefreshing) Modifier.blur(16.dp)
                                 else Modifier
                             )
+                    ) {
+                        // ── (1) Cinematic hero ──
+                        item(key = "dossier_hero") {
+                            playerToPresent?.let { player ->
+                                BritDossierCinematicHero(
+                                    player = player,
+                                    documentsList = documentsList,
+                                    currentPlatform = currentPlatform,
+                                    accent = dossierAccent,
+                                    accentSoft = dossierAccentSoft,
+                                    onBack = { navController.popBackStack() },
+                                    onRefresh = { viewModel.refreshPlayerInfo() },
+                                    onShare = shareAction,
+                                )
+                            }
+                        }
+
+                        // ── (2) Signals row (editable costs) ──
+                        item(key = "dossier_signals") {
+                            playerToPresent?.let { player ->
+                                PlayerInfoSignalsRow(
+                                    player = player,
+                                    currentPlatform = currentPlatform,
+                                    accent = dossierAccent,
+                                    onEditCosts = { showSalaryTransferFeeSheet = true },
+                                )
+                            }
+                        }
+
+                        // ── (3) Sticky tab strip ──
+                        stickyHeader(key = "dossier_tabs") {
+                            PlayerInfoDossierTabs(
+                                selectedTab = selectedTab,
+                                docsCount = docsTabCount,
+                                notesCount = notesTabCount,
+                                accent = dossierAccent,
+                                onTabSelected = { selectedTab = it },
+                            )
+                        }
+
+                        // ── (4) Pane body (sections gated by selectedTab) ──
+                        item(key = "dossier_pane") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
                             .padding(top = 4.dp)
                     ) {
-            // BRIT cinematic dossier hero (grayscale photo + name overlay +
-            // nationality kicker) — the mock's signature dossier element. It is
-            // purely presentational; all existing sections/actions below are
-            // unchanged and keep their own data wiring.
-            playerToPresent?.let { player ->
-                val (dossierAccent, _) = com.liordahan.mgsrteam.ui.theme.BritTokens.accentFor(currentPlatform)
-                com.liordahan.mgsrteam.ui.components.BritDossierHero(
-                    name = player.fullName ?: "",
-                    imageUrl = player.profileImage,
-                    nationality = player.nationalities?.firstOrNull() ?: player.nationality,
-                    club = player.currentClub?.clubName,
-                    positionLine = player.positions?.filterNotNull()?.joinToString(" · "),
-                    marketValue = player.marketValue,
-                    statusLabel = if (player.haveMandate) "MANDATE" else null,
+
+            // ── OVERVIEW · Value history (editorial) ──────────────────── Overview pane
+            if (selectedTab == 0) playerToPresent?.let { player ->
+                DossierValueHistoryModule(
+                    history = player.marketValueHistory,
+                    accent = dossierAccent,
+                    accentSoft = dossierAccentSoft,
+                )
+            }
+
+            // ── OVERVIEW · Per-90 key stats (editorial) ───────────────── Overview pane
+            if (selectedTab == 0) playerToPresent?.let { player ->
+                val playerStats by viewModel.playerStatsFlow.collectAsStateWithLifecycle()
+                val isPlayerStatsLoading by viewModel.isPlayerStatsLoading.collectAsStateWithLifecycle()
+                val playerStatsError by viewModel.playerStatsError.collectAsStateWithLifecycle()
+                player.tmProfile?.takeIf { it.isNotBlank() }?.let { tmProfile ->
+                    LaunchedEffect(tmProfile) {
+                        viewModel.fetchPlayerStats(tmProfile)
+                    }
+                }
+                DossierKeyStatsModule(
+                    data = playerStats,
+                    isLoading = isPlayerStatsLoading,
+                    error = playerStatsError,
                     accent = dossierAccent,
                 )
             }
 
+            // ── OVERVIEW · Similar players (AI) ───────────────────────── Overview pane
+            // Men only (AI similar-players + add-to-shortlist flow). Kept intact.
+            if (selectedTab == 0 && currentPlatform == Platform.MEN) {
+                playerToPresent?.let { player ->
+                    BritDossierModuleHeader(
+                        title = stringResource(R.string.player_info_similar_players),
+                        actLabel = stringResource(R.string.player_info_ai_helper),
+                        actGold = true,
+                        accent = dossierAccent,
+                    )
+                    PlayerInfoAiHelperSection(
+                        player = player,
+                        viewModel = viewModel
+                    )
+                }
+            }
+
             // Hero Card
-            playerToPresent?.let { player ->
+            if (selectedTab == 0) playerToPresent?.let { player ->
                 val mandateDocs = documentsList
                     .filter { it.documentType == DocumentType.MANDATE }
                 val mandateExpiry = mandateDocs
@@ -674,7 +780,7 @@ fun PlayerInfoScreen(
             }
 
             // Quick Actions
-            playerToPresent?.let { player ->
+            if (selectedTab == 0) playerToPresent?.let { player ->
                 PlayerInfoQuickActions(
                     player = player,
                     context = context,
@@ -698,8 +804,8 @@ fun PlayerInfoScreen(
                 )
             }
 
-            // Section: Agent Transfer (men only)
-            if (currentPlatform == Platform.MEN) {
+            // Section: Agent Transfer (men only) — Overview pane (management action)
+            if (selectedTab == 0 && currentPlatform == Platform.MEN) {
                 playerToPresent?.let { player ->
                     val pendingTransfer by viewModel.pendingTransferFlow.collectAsStateWithLifecycle()
                     val resolvedTransfer by viewModel.resolvedTransferFlow.collectAsStateWithLifecycle()
@@ -738,32 +844,18 @@ fun PlayerInfoScreen(
                 }
             }
 
-            // Section: AI Helper (men only)
-            if (currentPlatform == Platform.MEN) {
-                playerToPresent?.let { player ->
-                    PlayerInfoAiHelperSection(
-                        player = player,
-                        viewModel = viewModel
-                    )
-                }
-            }
-
-            // Section: Highlights (all platforms — manual URL input)
-            playerToPresent?.let { player ->
-                YouthHighlightsSection(
-                    pinnedHighlights = player.pinnedHighlights ?: emptyList(),
-                    onSave = { highlights -> viewModel.saveYouthHighlights(highlights) },
-                    isSaving = isHighlightsSaving
-                )
-            }
-
-            // Section: FM Intelligence (men only)
-            if (currentPlatform == Platform.MEN) {
+            // Section: FM Intelligence (men only) — Performance pane (mock order: first)
+            if (selectedTab == 1 && currentPlatform == Platform.MEN) {
                 playerToPresent?.let { player ->
                     LaunchedEffect(player.fullName) {
                         viewModel.fetchFmIntelligence(player)
                     }
-                    PlayerInfoSectionHeader(stringResource(R.string.fm_section_title))
+                    BritDossierModuleHeader(
+                        title = stringResource(R.string.player_info_attributes),
+                        actLabel = stringResource(R.string.fm_section_title),
+                        actGold = true,
+                        accent = dossierAccent,
+                    )
                     FmIntelligenceSection(
                         data = fmIntelligenceData,
                         isLoading = isFmIntelligenceLoading,
@@ -772,8 +864,8 @@ fun PlayerInfoScreen(
                 }
             }
 
-            // Section: Matching Requests
-            playerToPresent?.let { player ->
+            // Section: Matching Requests — Overview pane
+            if (selectedTab == 0) playerToPresent?.let { player ->
                 val matchingRequests by viewModel.matchingRequestsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
                 val allAccounts by viewModel.allAccountsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
                 PlayerInfoSectionHeader(stringResource(R.string.player_info_matching_requests))
@@ -795,8 +887,8 @@ fun PlayerInfoScreen(
                 )
             }
 
-            // Section: General Info (hidden for Youth — integrated into Youth section)
-            if (currentPlatform != Platform.YOUTH) {
+            // Section: General Info (hidden for Youth — integrated into Youth section) — Overview pane
+            if (selectedTab == 0 && currentPlatform != Platform.YOUTH) {
             PlayerInfoSectionHeader(stringResource(R.string.player_info_general_info))
             PlayerInfoCard(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -1024,19 +1116,23 @@ fun PlayerInfoScreen(
             } // end General Info
             // Contact Info section removed - edit/delete moved to Quick Actions long-press
 
-            // ── Platform-specific sections ───────────────────────────────
-            if (currentPlatform == Platform.YOUTH) {
+            // ── Platform-specific sections ─────────────────────────────── Overview pane
+            if (selectedTab == 0 && currentPlatform == Platform.YOUTH) {
                 playerToPresent?.let { player ->
                     PlayerInfoYouthSection(player = player)
                 }
             }
-            // ── GPS Performance Section ───────────────────────────────
+            // ── GPS Performance Section ─────────────────────────────── Performance pane
             val gpsSummary by viewModel.gpsSummaryFlow.collectAsStateWithLifecycle()
             val gpsInsights by viewModel.gpsInsightsFlow.collectAsStateWithLifecycle()
             val isGpsLoading by viewModel.isGpsLoading.collectAsStateWithLifecycle()
 
-            if (gpsSummary != null || isGpsLoading) {
-                PlayerInfoSectionHeader(stringResource(R.string.gps_section_title))
+            if (selectedTab == 1 && (gpsSummary != null || isGpsLoading)) {
+                BritDossierModuleHeader(
+                    title = stringResource(R.string.player_info_gps_last_match),
+                    actLabel = stringResource(R.string.gps_section_title),
+                    accent = dossierAccent,
+                )
                 com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPerformanceSection(
                     summary = gpsSummary,
                     insights = gpsInsights,
@@ -1044,48 +1140,68 @@ fun PlayerInfoScreen(
                 )
             }
 
-            // ── Documents (GPS files in expandable group) ────────────────
-            val nonGpsDocs = remember(documentsList) {
-                documentsList.filter { it.documentType != DocumentType.GPS_DATA }
+            // ── Highlights (all platforms) ─────────────────────────────── Performance pane
+            if (selectedTab == 1) playerToPresent?.let { player ->
+                BritDossierModuleHeader(
+                    title = stringResource(R.string.player_info_highlights),
+                    accent = dossierAccent,
+                )
+                YouthHighlightsSection(
+                    pinnedHighlights = player.pinnedHighlights ?: emptyList(),
+                    onSave = { highlights -> viewModel.saveYouthHighlights(highlights) },
+                    isSaving = isHighlightsSaving
+                )
             }
-            val gpsDocs = remember(documentsList) {
-                documentsList.filter { it.documentType == DocumentType.GPS_DATA }
-            }
-            PlayerInfoSectionHeader(stringResource(R.string.player_info_documents))
-            DocumentsSection(
-                documents = nonGpsDocs,
-                isUploading = isUploadingDocument,
-                deletingDocId = deletingDocId,
-                onAddDocument = { documentPickerLauncher.launch("*/*") },
-                onDeleteDocument = { docToDelete = it }
-            )
-            if (gpsDocs.isNotEmpty()) {
-                com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsDocumentsExpandable(
-                    gpsDocuments = gpsDocs,
+
+            // ── Documents (GPS files in expandable group) ──────────────── Documents pane
+            if (selectedTab == 2) {
+                val nonGpsDocs = remember(documentsList) {
+                    documentsList.filter { it.documentType != DocumentType.GPS_DATA }
+                }
+                val gpsDocs = remember(documentsList) {
+                    documentsList.filter { it.documentType == DocumentType.GPS_DATA }
+                }
+                PlayerInfoSectionHeader(stringResource(R.string.player_info_documents))
+                DocumentsSection(
+                    documents = nonGpsDocs,
+                    isUploading = isUploadingDocument,
                     deletingDocId = deletingDocId,
+                    onAddDocument = { documentPickerLauncher.launch("*/*") },
                     onDeleteDocument = { docToDelete = it }
                 )
+                if (gpsDocs.isNotEmpty()) {
+                    com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsDocumentsExpandable(
+                        gpsDocuments = gpsDocs,
+                        deletingDocId = deletingDocId,
+                        onDeleteDocument = { docToDelete = it }
+                    )
+                }
+
+                if (FeatureFlags.TASKS_ENABLED) {
+                    PlayerInfoSectionHeader(stringResource(R.string.player_tasks_section))
+                    PlayerTasksSection(
+                        tasks = playerTasksList,
+                        onAddTaskClick = { showAddPlayerTaskSheet = true },
+                        onToggleComplete = { viewModel.togglePlayerTaskCompleted(it) },
+                        onTaskClick = { navController.navigate(Screens.TasksScreen.route) }
+                    )
+                }
             }
 
-            if (FeatureFlags.TASKS_ENABLED) {
-                PlayerInfoSectionHeader(stringResource(R.string.player_tasks_section))
-                PlayerTasksSection(
-                    tasks = playerTasksList,
-                    onAddTaskClick = { showAddPlayerTaskSheet = true },
-                    onToggleComplete = { viewModel.togglePlayerTaskCompleted(it) },
-                    onTaskClick = { navController.navigate(Screens.TasksScreen.route) }
+            // ── Notes ──────────────────────────────────────────────────── Notes pane
+            if (selectedTab == 3) {
+                PlayerInfoSectionHeader(stringResource(R.string.player_info_notes))
+                NotesSection(
+                    noteList = playerToPresent?.noteList,
+                    onAddNoteClicked = { showAddNoteSheet = true },
+                    onDeleteNote = { viewModel.onDeleteNoteClicked(it) },
+                    onViewAllClicked = { showAllNotes = true }
                 )
             }
-
-            PlayerInfoSectionHeader(stringResource(R.string.player_info_notes))
-            NotesSection(
-                noteList = playerToPresent?.noteList,
-                onAddNoteClicked = { showAddNoteSheet = true },
-                onDeleteNote = { viewModel.onDeleteNoteClicked(it) },
-                onViewAllClicked = { showAllNotes = true }
-            )
-            }
-                    }
+                    } // end pane Column
+                        } // end item(dossier_pane)
+                    } // end LazyColumn
+                } // end PullToRefreshBox
                 if (isRefreshing) {
                     Box(
                         modifier = Modifier
@@ -3419,95 +3535,112 @@ private fun PlayerInfoBottomBar(
     onGenerateMandateClicked: () -> Unit,
     currentPlatform: Platform = Platform.MEN
 ) {
-    val isMen = currentPlatform == Platform.MEN
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        colors = CardDefaults.cardColors(containerColor = if (isMen) MenInfoCard else PlatformColors.palette.card),
-        border = BorderStroke(1.dp, if (isMen) MenInfoBorder else PlatformColors.palette.cardBorder)
+    // Mock `.actionbar`: sticky-bottom opaque paper bar with a hairline top
+    // rule, navigation-bar padding, a gold primary Mandate pill, a dark Share
+    // pill and (optionally) a Delete pill. NO shortlist control lives here —
+    // the only add-to-shortlist flow is in the AI similar-players section.
+    val (accent, _) = BritTokens.accentFor(currentPlatform)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(BritTokens.paper.copy(alpha = 0.97f)),
     ) {
+        HorizontalDivider(color = BritTokens.line, thickness = 1.dp)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .navigationBarsPadding()
+                .padding(horizontal = 18.dp, top = 12.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             if (hasPassportDetails) {
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .then(
-                            if (hasValidMandate) Modifier
-                            else Modifier.clickWithNoRipple { onGenerateMandateClicked() }
-                        ),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.VerifiedUser,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = if (hasValidMandate) {
-                            (if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary).copy(alpha = 0.5f)
-                        } else {
-                            if (isMen) MenInfoGold else PlatformColors.palette.accent
-                        }
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.player_info_generate_mandate),
-                        style = boldTextStyle(
-                            if (hasValidMandate) {
-                                (if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary).copy(alpha = 0.5f)
-                            } else {
-                                if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary
-                            },
-                            12.sp
-                        )
-                    )
-                }
-            }
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickWithNoRipple { onShareClicked() },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = if (isMen) MenInfoGold else PlatformColors.palette.accent
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.player_info_share),
-                    style = boldTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp)
+                DossierActionButton(
+                    label = stringResource(R.string.player_info_generate_mandate),
+                    icon = Icons.Default.VerifiedUser,
+                    kind = DossierActionKind.PRIMARY,
+                    accent = accent,
+                    enabled = !hasValidMandate,
+                    onClick = { if (!hasValidMandate) onGenerateMandateClicked() },
+                    modifier = Modifier.weight(1f),
                 )
             }
+            DossierActionButton(
+                label = stringResource(R.string.player_info_share),
+                icon = Icons.Default.Share,
+                kind = DossierActionKind.DARK,
+                accent = accent,
+                enabled = true,
+                onClick = onShareClicked,
+                modifier = Modifier.weight(1f),
+            )
             if (showDeletePlayerIcon) {
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickWithNoRipple { onDeletePlayerClicked() },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = if (isMen) MenInfoGold else PlatformColors.palette.accent
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.player_info_delete),
-                        style = boldTextStyle(if (isMen) MenInfoTextSubtle else PlatformColors.palette.textSecondary, 12.sp)
-                    )
-                }
+                DossierActionButton(
+                    label = stringResource(R.string.player_info_delete),
+                    icon = Icons.Default.Delete,
+                    kind = DossierActionKind.NEUTRAL,
+                    accent = accent,
+                    enabled = true,
+                    onClick = onDeletePlayerClicked,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
+    }
+}
+
+private enum class DossierActionKind { PRIMARY, DARK, NEUTRAL }
+
+/** A single `.actionbar .btn` pill: square-edged, mono uppercase label + icon. */
+@Composable
+private fun DossierActionButton(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    kind: DossierActionKind,
+    accent: Color,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bg = when {
+        !enabled -> BritTokens.paper2
+        kind == DossierActionKind.PRIMARY -> accent
+        kind == DossierActionKind.DARK -> BritTokens.ink
+        else -> BritTokens.card
+    }
+    val fg = when {
+        !enabled -> BritTokens.muted2
+        kind == DossierActionKind.PRIMARY -> BritTokens.ink
+        kind == DossierActionKind.DARK -> BritTokens.paper
+        else -> BritTokens.ink
+    }
+    val borderColor = when (kind) {
+        DossierActionKind.PRIMARY -> if (enabled) accent else BritTokens.line
+        DossierActionKind.DARK -> BritTokens.ink
+        else -> BritTokens.line
+    }
+    Row(
+        modifier = modifier
+            .background(bg)
+            .border(1.dp, borderColor)
+            .clickWithNoRipple { if (enabled) onClick() }
+            .padding(vertical = 13.dp, horizontal = 8.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = fg,
+            modifier = Modifier.size(15.dp),
+        )
+        Spacer(Modifier.width(7.dp))
+        Text(
+            text = label.uppercase(),
+            style = britMono(fg, 10.sp, letterSpacing = 1.0.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -4600,5 +4733,864 @@ private fun AgentTransferConfirmDialog(
                 }
             }
         }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// BRIT cinematic dossier — hero, signals row, sticky tab strip
+// (FEAT-001: rebuilt to match docs/mobile-prototype/player-dossier-mock.html)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * The mock's `.hero`: a ~430dp dark cinematic header built over
+ * [GrayscalePlayerPhoto]. Layers (back-to-front): grayscale portrait + bottom
+ * scrim (from GrayscalePlayerPhoto), a subtle nationality flag-wash, a gold
+ * radial glow, a translucent ghost initial, the floating top chrome
+ * (back / refresh / share), a floating market-value plaque with a ▲/▼ delta,
+ * and the bottom copy block (flag kicker · name · pos/age/club · status tags).
+ * Presentation only — all data comes from the already-loaded [player].
+ */
+@Composable
+private fun BritDossierCinematicHero(
+    player: Player,
+    documentsList: List<PlayerDocument>,
+    currentPlatform: Platform,
+    accent: Color,
+    accentSoft: Color,
+    onBack: () -> Unit,
+    onRefresh: () -> Unit,
+    onShare: () -> Unit,
+) {
+    val name = player.fullName ?: ""
+    val isEu = EuCountries.isEuNational(player.nationalities, player.nationality)
+    val nationality = player.nationalities?.firstOrNull() ?: player.nationality
+    val valueTrend = playerInfoComputeValueTrend(player.marketValueHistory)
+    val ghost = initialsOf(name).firstOrNull()?.toString().orEmpty()
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(430.dp)
+            .background(BritTokens.black)
+    ) {
+        // Grayscale portrait + scrim.
+        GrayscalePlayerPhoto(
+            imageUrl = player.profileImage,
+            name = name,
+            modifier = Modifier.fillMaxSize(),
+            scrimAlpha = 0.95f,
+        )
+
+        // Nationality flag-wash (teal/gold split, screen-blend feel via low alpha).
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        0.0f to accentSoft.copy(alpha = 0.14f),
+                        0.5f to accentSoft.copy(alpha = 0.14f),
+                        0.5f to accent.copy(alpha = 0.14f),
+                        1.0f to accent.copy(alpha = 0.14f),
+                    )
+                )
+        )
+
+        // Gold radial glow (top-right).
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(accentSoft.copy(alpha = 0.22f), Color.Transparent),
+                        center = Offset(900f, 120f),
+                        radius = 650f,
+                    )
+                )
+        )
+
+        // Translucent ghost initial.
+        if (ghost.isNotBlank()) {
+            Text(
+                text = ghost,
+                style = britDisplay(accentSoft.copy(alpha = 0.08f), 260.sp, weight = 600, letterSpacing = (-8).sp),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 4.dp),
+            )
+        }
+
+        // Floating top chrome: back / refresh / share.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DossierChromeIcon(
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                tint = BritTokens.paper,
+                borderColor = BritTokens.paper.copy(alpha = 0.18f),
+                onClick = onBack,
+            )
+            Spacer(Modifier.weight(1f))
+            DossierChromeIcon(
+                icon = Icons.Default.Refresh,
+                tint = BritTokens.paper,
+                borderColor = BritTokens.paper.copy(alpha = 0.18f),
+                onClick = onRefresh,
+            )
+            Spacer(Modifier.width(10.dp))
+            DossierChromeIcon(
+                icon = Icons.Default.Share,
+                tint = accentSoft,
+                borderColor = accentSoft,
+                onClick = onShare,
+            )
+        }
+
+        // Floating market-value plaque (top-right, below chrome).
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 118.dp, end = 22.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
+            Text(
+                text = player.marketValue.orEmpty(),
+                style = britDisplay(accentSoft, 34.sp, weight = 600, letterSpacing = (-1).sp),
+                textAlign = TextAlign.End,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.player_info_market_value_label).uppercase(),
+                style = britMono(BritTokens.muted2, 8.sp, letterSpacing = 1.4.sp, textAlign = TextAlign.End),
+            )
+            if (valueTrend != 0) {
+                Spacer(Modifier.height(7.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (valueTrend > 0) Icons.AutoMirrored.Filled.TrendingUp
+                        else Icons.AutoMirrored.Filled.TrendingDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(13.dp),
+                        tint = if (valueTrend > 0) BritTokens.green else BritTokens.red,
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "${if (valueTrend > 0) "+" else ""}$valueTrend%",
+                        style = britMono(
+                            if (valueTrend > 0) BritTokens.green else BritTokens.red,
+                            10.sp,
+                            letterSpacing = 0.8.sp,
+                        ),
+                    )
+                }
+            }
+        }
+
+        // Bottom copy block.
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 22.dp, end = 22.dp, bottom = 22.dp),
+        ) {
+            // Flag kicker: nationality · EU eligible
+            val kickerParts = listOfNotNull(
+                nationality?.takeIf { it.isNotBlank() },
+                if (isEu) stringResource(R.string.player_info_eu_eligible) else null,
+            )
+            if (kickerParts.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .width(16.dp)
+                            .height(11.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    0.0f to accent,
+                                    0.5f to accent,
+                                    0.5f to accentSoft,
+                                    1.0f to accentSoft,
+                                )
+                            )
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = kickerParts.joinToString(" · ").uppercase(),
+                        style = britMono(accentSoft, 9.sp, letterSpacing = 1.8.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+            }
+
+            // Name (big Oswald).
+            Text(
+                text = name,
+                style = britDisplay(BritTokens.paper, 48.sp, weight = 600, letterSpacing = (-1.5).sp),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            // Sub-line: POS · AGEy + club with crest.
+            val posLine = player.positions?.filterNotNull()?.joinToString(" · ")
+            val ageText = player.age?.takeIf { it.isNotBlank() }?.let { "${it}y" }
+            val posAge = listOfNotNull(posLine, ageText).joinToString(" · ")
+            Spacer(Modifier.height(12.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                if (posAge.isNotBlank()) {
+                    Text(
+                        text = posAge.uppercase(),
+                        style = britMono(BritTokens.paper.copy(alpha = 0.85f), 11.sp, letterSpacing = 1.2.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                player.currentClub?.clubName?.takeIf { it.isNotBlank() }?.let { club ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (!player.currentClub?.clubLogo.isNullOrBlank()) {
+                            AsyncImage(
+                                model = player.currentClub?.clubLogo,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .border(1.dp, accentSoft, CircleShape),
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(BritTokens.ink)
+                                    .border(1.dp, accentSoft, CircleShape)
+                            )
+                        }
+                        Spacer(Modifier.width(7.dp))
+                        Text(
+                            text = club.uppercase(),
+                            style = britMono(BritTokens.paper.copy(alpha = 0.85f), 11.sp, letterSpacing = 1.0.sp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+
+            // Status tags.
+            val tags = buildList {
+                if (player.isOurAsset == true) add(stringResource(R.string.player_info_tag_our_asset) to true)
+                if (player.haveMandate) add(stringResource(R.string.player_info_mandate) to true)
+                if (isEu) add("\uD83C\uDDEA\uD83C\uDDFA " + stringResource(R.string.player_info_tag_eu_nat) to false)
+                if (player.isOnLoan && !player.onLoanFromClub.isNullOrBlank()) {
+                    add(stringResource(R.string.player_info_on_loan_from, player.onLoanFromClub!!) to false)
+                }
+            }
+            if (tags.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    tags.forEach { (label, gold) ->
+                        Text(
+                            text = label,
+                            style = britMono(
+                                if (gold) accentSoft else BritTokens.paper.copy(alpha = 0.9f),
+                                8.sp,
+                                letterSpacing = 0.8.sp,
+                            ),
+                            modifier = Modifier
+                                .border(
+                                    1.dp,
+                                    if (gold) accentSoft else BritTokens.paper.copy(alpha = 0.18f),
+                                )
+                                .padding(horizontal = 8.dp, vertical = 5.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A single floating top-chrome icon button over the dossier hero. */
+@Composable
+private fun DossierChromeIcon(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tint: Color,
+    borderColor: Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .background(BritTokens.black.copy(alpha = 0.3f))
+            .border(1.dp, borderColor)
+            .clickWithNoRipple { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(17.dp),
+        )
+    }
+}
+
+/**
+ * The mock's `.sig` strip: Age · Height · Foot · Contract cells plus a
+ * full-width editable costs row (Salary / Transfer fee) with a ✎ pencil that
+ * opens the existing SalaryTransferFeeBottomSheet via [onEditCosts]. Values use
+ * gold Oswald on cream; labels use mono uppercase on hairline dividers.
+ */
+@Composable
+private fun PlayerInfoSignalsRow(
+    player: Player,
+    currentPlatform: Platform,
+    accent: Color,
+    onEditCosts: () -> Unit,
+) {
+    val footLabel = when (player.foot?.lowercase()) {
+        "right" -> stringResource(R.string.player_info_foot_right)
+        "left" -> stringResource(R.string.player_info_foot_left)
+        "both" -> stringResource(R.string.player_info_foot_both)
+        else -> player.foot
+    }
+    val contractValue = player.contractExpired?.takeIf { it.isNotBlank() }?.let {
+        getContractStatus(LocalContext.current.resources, it.replace("/", "."))
+    } ?: "--"
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(BritTokens.paper),
+    ) {
+        // Top row: Age · Height · Foot · Contract
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            SignalCell(
+                label = stringResource(R.string.player_info_age),
+                value = player.age?.takeIf { it.isNotBlank() } ?: "--",
+                modifier = Modifier.weight(1f),
+            )
+            SignalDivider()
+            SignalCell(
+                label = stringResource(R.string.player_info_height),
+                value = player.height?.replace(",", ".")?.takeIf { it.isNotBlank() } ?: "--",
+                modifier = Modifier.weight(1f),
+            )
+            SignalDivider()
+            SignalCell(
+                label = stringResource(R.string.player_info_foot),
+                value = footLabel ?: "--",
+                modifier = Modifier.weight(1f),
+            )
+            SignalDivider()
+            SignalCell(
+                label = stringResource(R.string.player_info_contract_short),
+                value = contractValue,
+                modifier = Modifier.weight(1.4f),
+            )
+        }
+        HorizontalDivider(color = BritTokens.line2, thickness = 1.dp)
+        // Costs row: Salary / Transfer fee (editable).
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .clickWithNoRipple { onEditCosts() },
+        ) {
+            CostsCell(
+                label = stringResource(R.string.player_info_salary),
+                value = player.salaryRange?.takeIf { it.isNotBlank() } ?: "--",
+                accent = accent,
+                showPencil = true,
+                modifier = Modifier.weight(1f),
+            )
+            SignalDivider()
+            CostsCell(
+                label = stringResource(R.string.player_info_transfer_fee),
+                value = player.transferFee?.takeIf { it.isNotBlank() } ?: "--",
+                accent = accent,
+                showPencil = false,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        HorizontalDivider(color = BritTokens.line, thickness = 1.dp)
+    }
+}
+
+@Composable
+private fun SignalCell(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.padding(horizontal = 12.dp, vertical = 14.dp)) {
+        Text(
+            text = label.uppercase(),
+            style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.8.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = value,
+            style = britDisplay(BritTokens.ink, 19.sp, weight = 600, letterSpacing = 0.2.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun CostsCell(
+    label: String,
+    value: String,
+    accent: Color,
+    showPencil: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.padding(horizontal = 12.dp, vertical = 14.dp)) {
+        Column {
+            Text(
+                text = label.uppercase(),
+                style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.8.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(7.dp))
+            Text(
+                text = value,
+                style = britDisplay(accent, 15.sp, weight = 600),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (showPencil) {
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = null,
+                tint = BritTokens.muted2,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(14.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SignalDivider() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .fillMaxHeight()
+            .background(BritTokens.line2)
+    )
+}
+
+/**
+ * The mock's sticky `.tabs`: four equal-width tabs (Overview · Performance ·
+ * Docs · Notes) with Oswald uppercase labels, a gold underline under the active
+ * tab, and mono count badges next to Docs and Notes.
+ */
+@Composable
+private fun PlayerInfoDossierTabs(
+    selectedTab: Int,
+    docsCount: Int,
+    notesCount: Int,
+    accent: Color,
+    onTabSelected: (Int) -> Unit,
+) {
+    val tabs = listOf(
+        stringResource(R.string.player_info_tab_overview) to null,
+        stringResource(R.string.player_info_tab_performance) to null,
+        stringResource(R.string.player_info_tab_documents) to docsCount,
+        stringResource(R.string.player_info_tab_notes) to notesCount,
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(BritTokens.paper),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp),
+        ) {
+            tabs.forEachIndexed { index, (label, count) ->
+                val selected = index == selectedTab
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickWithNoRipple { onTabSelected(index) }
+                        .padding(top = 15.dp, bottom = 11.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Row(verticalAlignment = Alignment.Top) {
+                        Text(
+                            text = label.uppercase(),
+                            style = britDisplay(
+                                if (selected) BritTokens.ink else BritTokens.muted,
+                                12.sp,
+                                weight = 600,
+                                letterSpacing = 0.5.sp,
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (count != null && count > 0) {
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = count.toString(),
+                                style = britMono(accent, 8.sp, letterSpacing = 0.4.sp),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .padding(horizontal = 14.dp)
+                            .background(if (selected) accent else Color.Transparent)
+                    )
+                }
+            }
+        }
+        HorizontalDivider(color = BritTokens.line, thickness = 1.dp)
+    }
+}
+
+/**
+ * The mock's `.mod .mh` module header: an Oswald uppercase title with an
+ * optional mono "act" label on the trailing side, sitting over a hairline rule.
+ */
+@Composable
+private fun BritDossierModuleHeader(
+    title: String,
+    actLabel: String? = null,
+    actGold: Boolean = false,
+    accent: Color = BritTokens.gold,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, top = 22.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                text = title.uppercase(),
+                style = britDisplay(BritTokens.ink, 20.sp, weight = 600, letterSpacing = 0.3.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (!actLabel.isNullOrBlank()) {
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = actLabel.uppercase(),
+                    style = britMono(
+                        if (actGold) accent else BritTokens.muted,
+                        9.sp,
+                        letterSpacing = 0.6.sp,
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        HorizontalDivider(color = BritTokens.line, thickness = 1.dp)
+    }
+}
+
+/**
+ * The mock's `.chart` value-history module: a Compose-Canvas polyline + area
+ * fill drawn from [history] market-value entries, plus a Low / Peak / Change
+ * stats strip. Change uses the ▲/▼ % from [playerInfoComputeValueTrend].
+ * Renders nothing meaningful when there are fewer than two priced points.
+ */
+@Composable
+private fun DossierValueHistoryModule(
+    history: List<com.liordahan.mgsrteam.features.players.models.MarketValueEntry>?,
+    accent: Color,
+    accentSoft: Color,
+) {
+    val priced = remember(history) {
+        history.orEmpty()
+            .sortedBy { it.date ?: 0L }
+            .mapNotNull { entry ->
+                entry.value?.takeIf { it.isNotBlank() }?.let { raw -> raw to raw.toMarketValueDouble() }
+            }
+            .filter { it.second > 0.0 }
+    }
+    if (priced.size < 2) return
+
+    val values = priced.map { it.second }
+    val minVal = values.min()
+    val maxVal = values.max()
+    val lowLabelValue = priced.first { it.second == minVal }.first
+    val peakLabelValue = priced.last { it.second == maxVal }.first
+    val trend = playerInfoComputeValueTrend(history)
+
+    BritDossierModuleHeader(
+        title = stringResource(R.string.player_info_value_history),
+        actLabel = stringResource(R.string.player_info_value_points, priced.size),
+        actGold = true,
+        accent = accent,
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 6.dp),
+    ) {
+        val range = (maxVal - minVal).takeIf { it > 0.0 } ?: 1.0
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp),
+        ) {
+            val w = size.width
+            val h = size.height
+            val padV = h * 0.12f
+            val usableH = h - padV * 2
+            val stepX = if (values.size > 1) w / (values.size - 1) else w
+            val points = values.mapIndexed { index, v ->
+                val x = stepX * index
+                val norm = ((v - minVal) / range).toFloat().coerceIn(0f, 1f)
+                val y = padV + (1f - norm) * usableH
+                Offset(x, y)
+            }
+
+            // Area fill under the line.
+            val areaPath = Path().apply {
+                moveTo(points.first().x, h)
+                points.forEach { lineTo(it.x, it.y) }
+                lineTo(points.last().x, h)
+                close()
+            }
+            drawPath(
+                path = areaPath,
+                brush = Brush.verticalGradient(
+                    colors = listOf(accent.copy(alpha = 0.14f), accent.copy(alpha = 0.0f)),
+                ),
+            )
+
+            // Line.
+            val linePath = Path().apply {
+                moveTo(points.first().x, points.first().y)
+                for (i in 1 until points.size) lineTo(points[i].x, points[i].y)
+            }
+            drawPath(
+                path = linePath,
+                color = accent,
+                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
+            )
+
+            // Endpoint dot.
+            drawCircle(
+                color = accent,
+                radius = 3.dp.toPx(),
+                center = points.last(),
+            )
+        }
+
+        Spacer(Modifier.height(14.dp))
+        HorizontalDivider(color = BritTokens.line2, thickness = 1.dp)
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            ValueStatCell(
+                label = stringResource(R.string.player_info_value_low),
+                value = lowLabelValue,
+                valueColor = BritTokens.ink,
+                modifier = Modifier.weight(1f),
+            )
+            SignalDivider()
+            ValueStatCell(
+                label = stringResource(R.string.player_info_value_peak),
+                value = peakLabelValue,
+                valueColor = accent,
+                modifier = Modifier.weight(1f),
+            )
+            SignalDivider()
+            ValueStatCell(
+                label = stringResource(R.string.player_info_value_change),
+                value = when {
+                    trend > 0 -> "▲ $trend%"
+                    trend < 0 -> "▼ ${-trend}%"
+                    else -> "—"
+                },
+                valueColor = when {
+                    trend > 0 -> BritTokens.green
+                    trend < 0 -> BritTokens.red
+                    else -> BritTokens.ink
+                },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ValueStatCell(
+    label: String,
+    value: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.padding(horizontal = 4.dp, vertical = 12.dp)) {
+        Text(
+            text = label.uppercase(),
+            style = britMono(BritTokens.muted, 8.sp, letterSpacing = 0.6.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(7.dp))
+        Text(
+            text = value,
+            style = britDisplay(valueColor, 18.sp, weight = 600),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** A single per-90 stat tile value + label (mock `.kstats .k`). */
+private data class DossierStatTile(val value: String, val label: String, val gold: Boolean)
+
+/**
+ * The mock's `.kstats` per-90 key-stats grid: a 3-column grid of hairline
+ * tiles with Oswald hero numbers (key ones in gold) and mono labels, driven by
+ * the real [data] fields. Handles the loading / unavailable states.
+ */
+@Composable
+private fun DossierKeyStatsModule(
+    data: com.liordahan.mgsrteam.features.players.playerinfo.playerstats.PlayerStatsData?,
+    isLoading: Boolean,
+    error: String?,
+    accent: Color,
+) {
+    val fmt = { v: Double -> String.format(Locale.US, "%.2f", v) }
+
+    val tiles = remember(data) {
+        if (data == null) emptyList()
+        else buildList {
+            data.apiGoalsPer90?.let { add(DossierStatTile(fmt(it), "stat_goals_90", true)) }
+            data.apiAssistsPer90?.let { add(DossierStatTile(fmt(it), "stat_assists_90", false)) }
+            data.apiShotsPer90?.let { add(DossierStatTile(fmt(it), "stat_shots_90", false)) }
+            data.apiKeyPassesPer90?.let { add(DossierStatTile(fmt(it), "stat_key_passes_90", false)) }
+            data.apiDribblesSuccessPer90?.let { add(DossierStatTile(fmt(it), "stat_dribbles_90", false)) }
+            data.apiRating?.let { add(DossierStatTile(String.format(Locale.US, "%.1f", it), "stat_rating", true)) }
+            if (none { it.label == "stat_rating" }) {
+                data.apiGoalContributionsPer90?.let { add(DossierStatTile(fmt(it), "stat_ga_90", true)) }
+            }
+        }
+    }
+
+    val apps = data?.apiAppearances
+    val actLabel = if (apps != null && apps > 0) {
+        stringResource(R.string.player_info_per_90_apps, apps)
+    } else {
+        stringResource(R.string.player_info_per_90)
+    }
+
+    BritDossierModuleHeader(
+        title = stringResource(R.string.player_info_this_season),
+        actLabel = actLabel,
+    )
+
+    when {
+        isLoading && data == null -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 20.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp,
+                    color = accent,
+                )
+            }
+        }
+        tiles.isEmpty() -> {
+            Text(
+                text = stringResource(R.string.player_info_stats_unavailable),
+                style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.6.sp),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            )
+        }
+        else -> {
+            // Pad to a multiple of 3 so the grid border stays rectangular.
+            val rows = tiles.chunked(3)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
+                    .border(1.dp, BritTokens.line),
+            ) {
+                rows.forEachIndexed { rowIndex, row ->
+                    if (rowIndex > 0) HorizontalDivider(color = BritTokens.line, thickness = 1.dp)
+                    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                        for (col in 0 until 3) {
+                            if (col > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(1.dp)
+                                        .fillMaxHeight()
+                                        .background(BritTokens.line)
+                                )
+                            }
+                            val tile = row.getOrNull(col)
+                            Box(modifier = Modifier.weight(1f)) {
+                                if (tile != null) {
+                                    DossierStatTileCell(tile = tile, accent = accent)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DossierStatTileCell(tile: DossierStatTile, accent: Color) {
+    val labelText = when (tile.label) {
+        "stat_goals_90" -> stringResource(R.string.player_info_stat_goals_90)
+        "stat_assists_90" -> stringResource(R.string.player_info_stat_assists_90)
+        "stat_shots_90" -> stringResource(R.string.player_info_stat_shots_90)
+        "stat_key_passes_90" -> stringResource(R.string.player_info_stat_key_passes_90)
+        "stat_dribbles_90" -> stringResource(R.string.player_info_stat_dribbles_90)
+        "stat_rating" -> stringResource(R.string.player_info_stat_rating)
+        "stat_ga_90" -> stringResource(R.string.player_info_stat_ga_90)
+        else -> tile.label
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(BritTokens.paper)
+            .padding(horizontal = 10.dp, vertical = 15.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = tile.value,
+            style = britDisplay(if (tile.gold) accent else BritTokens.ink, 26.sp, weight = 600, letterSpacing = (-0.5).sp),
+            maxLines = 1,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = labelText.uppercase(),
+            style = britMono(BritTokens.muted, 8.sp, letterSpacing = 0.4.sp, textAlign = TextAlign.Center),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
