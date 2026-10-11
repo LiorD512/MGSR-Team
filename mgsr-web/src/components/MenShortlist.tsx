@@ -18,6 +18,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { getCurrentAccountForShortlist, getAllAccounts, type AccountForShortlist } from '@/lib/accounts';
 import {
   callShortlistRemove,
@@ -36,6 +37,7 @@ import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import NoteTextarea, { type NoteAccount } from '@/components/NoteTextarea';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
+import BritFilterSheetPortal from '@/components/BritFilterSheetPortal';
 import MenAddPlayerDrawer from '@/components/MenAddPlayerDrawer';
 import MenShortlistDrawer, { type ShortlistDrawerEntry } from '@/components/MenShortlistDrawer';
 import type { RosterPlayer, ClubRequest } from '@/lib/requestMatcher';
@@ -124,6 +126,10 @@ export default function MenShortlist() {
   const [view, setView] = useState<'board' | 'ledger'>(cached?.view ?? 'board');
   // Mobile-only: collapse the filter tray into a bottom sheet (see MenPlayers).
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  // On mobile the tray must portal to <body> so its fixed bottom-sheet styles
+  // anchor to the viewport, not the scrollable .brit-room. Mirrors the CSS
+  // breakpoint (max-width:900px). See BritFilterSheetPortal for the full why.
+  const isMobileSheet = useMediaQuery('(max-width: 900px)');
   const [withNotesOnly, setWithNotesOnly] = useState(false);
   const [euOnly, setEuOnly] = useState(false);
 
@@ -484,9 +490,11 @@ export default function MenShortlist() {
               </button>
             </div>
 
+            {/* Filter tray — inline on desktop; portals to <body> on mobile so the
+                fixed bottom sheet anchors to the viewport (see BritFilterSheetPortal). */}
+            <BritFilterSheetPortal active={isMobileSheet} isRtl={isRtl}>
             <div className={`brit-tray-scrim${filterSheetOpen ? ' open' : ''}`} onClick={() => setFilterSheetOpen(false)} aria-hidden />
 
-            {/* Filter tray — inline on desktop, bottom sheet on mobile */}
             <section className="brit-tray" aria-label={t('filters')} data-sheet-open={filterSheetOpen ? 'true' : 'false'}>
               <div className="brit-tray-sheet-head">
                 <h3>{t('filters')}</h3>
@@ -531,6 +539,7 @@ export default function MenShortlist() {
                 </button>
               </div>
             </section>
+            </BritFilterSheetPortal>
 
             <p className="brit-result-count">
               {t('shortlist_showing').replace('{n}', String(list.length)).replace('{total}', String(entries.length))}
