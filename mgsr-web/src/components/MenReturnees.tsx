@@ -14,8 +14,10 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
+import BritFilterSheetPortal from '@/components/BritFilterSheetPortal';
 
 interface RosterPlayerLike {
   id: string;
@@ -137,6 +139,16 @@ export default function MenReturnees(props: MenReturneesProps) {
 
   const { t, lang, setLang, isRtl } = useLanguage();
 
+  // Mobile: the filter tray collapses into a bottom sheet (portaled to <body>
+  // so its fixed positioning anchors to the viewport, not the scrollable room).
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const isMobileSheet = useMediaQuery('(max-width: 900px)');
+  const activeFilterCount = (positionFilter ? 1 : 0) + (valueFilter !== 'all' ? 1 : 0);
+  const clearAllFilters = () => {
+    setPositionFilter(null);
+    setValueFilter('all');
+  };
+
   const dateStr = new Date().toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
   const timeStr = new Date().toLocaleTimeString(isRtl ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' });
   const leaguePct = totalLeagues > 0 ? Math.min(100, Math.round((loadedLeagues / totalLeagues) * 100)) : 0;
@@ -201,8 +213,25 @@ export default function MenReturnees(props: MenReturneesProps) {
               </div>
             </section>
 
-            {/* Filters */}
-            <section className="brit-tray">
+            {/* Mobile filter bar — just a Filter button (this screen has no
+                search). Opens the tray as a bottom sheet. Hidden on desktop. */}
+            <div className="brit-mfilter brit-mfilter-nosearch">
+              <button type="button" className="brit-mfilter-btn" onClick={() => setFilterSheetOpen(true)} aria-expanded={filterSheetOpen}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4h18M6 12h12M10 20h4" /></svg>
+                <span>{t('filters')}</span>
+                {activeFilterCount > 0 && <span className="brit-mfilter-count">{activeFilterCount}</span>}
+              </button>
+            </div>
+
+            {/* Filters — inline on desktop; portals to <body> on mobile as a
+                bottom sheet (see BritFilterSheetPortal). */}
+            <BritFilterSheetPortal active={isMobileSheet} isRtl={isRtl}>
+            <div className={`brit-tray-scrim${filterSheetOpen ? ' open' : ''}`} onClick={() => setFilterSheetOpen(false)} aria-hidden />
+            <section className="brit-tray" aria-label={t('filters')} data-sheet-open={filterSheetOpen ? 'true' : 'false'}>
+              <div className="brit-tray-sheet-head">
+                <h3>{t('filters')}</h3>
+                <button type="button" onClick={() => setFilterSheetOpen(false)} aria-label={t('common_close') || 'Close'}>×</button>
+              </div>
               <div className="brit-req-filterrow">
                 <span className="brit-req-flabel">{t('releases_position')}</span>
                 <div className="brit-req-chipset">
@@ -234,7 +263,18 @@ export default function MenReturnees(props: MenReturneesProps) {
                   ))}
                 </div>
               </div>
+
+              {/* Sticky sheet footer (mobile only) */}
+              <div className="brit-tray-sheet-foot">
+                {activeFilterCount > 0 && (
+                  <button type="button" className="reset" onClick={clearAllFilters}>{t('players_clear_filters')}</button>
+                )}
+                <button type="button" className="apply" onClick={() => setFilterSheetOpen(false)}>
+                  {t('returnee_room_showing').replace('{n}', String(filteredCount)).replace('{total}', String(totalCount))}
+                </button>
+              </div>
             </section>
+            </BritFilterSheetPortal>
 
             <p className="brit-result-count">
               {t('returnee_room_showing').replace('{n}', String(filteredCount)).replace('{total}', String(totalCount))}

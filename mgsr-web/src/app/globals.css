@@ -4441,9 +4441,20 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-ln-mates-load .sp{width:18px;height:18px;border:2px solid rgba(201,166,107,.35);border-top-color:var(--gold-soft);border-radius:50%;animation:brit-ra-spin .9s linear infinite}
 
 @media(max-width:900px){
-  .brit-room .brit-ln-mast{align-items:stretch}
-  .brit-room .brit-ln-loadbar{width:100%}
   .brit-room .brit-ln-feed{grid-template-columns:1fr}
+
+  /* ── Masthead: load-bar on its own line, compact reload button right-aligned
+     (like desktop), not a full-width bar. ── */
+  .brit-room .brit-ln-mast{flex-direction:column;align-items:stretch;gap:12px;margin-top:16px}
+  .brit-room .brit-ln-loadbar{width:100%}
+  .brit-room .brit-ln-reload{align-self:flex-end;width:auto;padding:11px 15px;white-space:nowrap}
+  [dir=rtl] .brit-room .brit-ln-reload{align-self:flex-start}
+  .brit-room .brit-ln-sub{font-size:11px}
+
+  /* ── Filter sheet: the .brit-req-filterrow / .brit-req-chipset sections are
+     styled by the shared sheet rules. This screen's filter bar has no search —
+     just a right-aligned Filter button. ── */
+  .brit-room .brit-mfilter-nosearch{justify-content:flex-end}
 }
 
 /* ═══════════════════════════════════════════════════════
