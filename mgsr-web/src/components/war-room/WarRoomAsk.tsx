@@ -20,6 +20,7 @@ import { aiScoutSearch, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { appendSeenKeys, appendStoredKeys, getSeenKeys, getStoredKeys } from '@/lib/searchNoveltyMemory';
 import { buildPlayerKey, type DiversityMode } from '@/lib/discoveryDiversity';
 import { parseInterpretation } from '@/lib/parseInterpretation';
+import WarRoomRefineSheet from '@/components/war-room/WarRoomRefineSheet';
 
 const MEMORY_SCOPE = 'war-room-ai-scout';
 const FRESHNESS_SCOPE = 'war-room-ai-scout:freshness';
@@ -216,6 +217,13 @@ export default function WarRoomAsk() {
 
   const brief = useMemo(() => parseInterpretation(interpretation), [interpretation]);
 
+  // One-line summary of the active refine params (shown on the mobile trigger).
+  const refineSummary = useMemo(() => {
+    const mode = he ? MODE_LABELS[diversityMode].he : MODE_LABELS[diversityMode].en;
+    const val = `${valueMin > 0 ? valueLabel(valueMin, he) : (he ? 'כל ערך' : 'Any')} – ${valueMax > 0 ? valueLabel(valueMax, he) : (he ? 'ללא הגבלה' : 'No limit')}`;
+    return `${mode} · ${val}`;
+  }, [diversityMode, valueMin, valueMax, he]);
+
   const visibleResults = useMemo(() => {
     return results.filter((s) => {
       const url = s.transfermarktUrl;
@@ -262,55 +270,64 @@ export default function WarRoomAsk() {
               {searching ? '…' : (he ? 'חפש' : 'Search')}
             </button>
           </div>
-          <div className="divmode">
-            <span className="dl">{he ? 'מצב גיוון' : 'Diversity'}</span>
-            {(['strict', 'balanced', 'discovery'] as DiversityMode[]).map((m) => (
-              <button
-                key={m}
-                className={`brit-wr-chip${diversityMode === m ? ' on' : ''}`}
-                onClick={() => setDiversityMode(m)}
-                disabled={searching || searchingOther}
-              >
-                {he ? MODE_LABELS[m].he : MODE_LABELS[m].en}
-                <span className="cx">{he ? MODE_LABELS[m].subHe : MODE_LABELS[m].subEn}</span>
-              </button>
-            ))}
-          </div>
-          <div className="valrow">
-            <span className="vl">{he ? 'שווי שוק' : 'Market value'}</span>
-            <span className="vfield">
-              <span className="vk">{he ? 'מינ' : 'Min'}</span>
-              <span className="valsel">
-                <select value={valueMin} onChange={(e) => handleValueMin(Number(e.target.value))} disabled={searching || searchingOther}>
-                  {VALUE_PRESETS.filter((p) => p.value > 0).map((p) => (
-                    <option key={`min-${p.value}`} value={p.value}>{he && p.labelHe ? p.labelHe : p.label}</option>
-                  ))}
-                </select>
+          {/* Secondary params → inline on desktop, Refine bottom sheet on mobile. */}
+          <WarRoomRefineSheet
+            title={he ? 'כיוונון חיפוש' : 'Refine search'}
+            summary={refineSummary}
+            resetLabel={he ? 'איפוס' : 'Reset'}
+            applyLabel={he ? 'החל' : 'Apply'}
+            onReset={() => { setDiversityMode('balanced'); setValueMin(0); setValueMax(0); }}
+          >
+            <div className="divmode">
+              <span className="dl">{he ? 'מצב גיוון' : 'Diversity'}</span>
+              {(['strict', 'balanced', 'discovery'] as DiversityMode[]).map((m) => (
+                <button
+                  key={m}
+                  className={`brit-wr-chip${diversityMode === m ? ' on' : ''}`}
+                  onClick={() => setDiversityMode(m)}
+                  disabled={searching || searchingOther}
+                >
+                  {he ? MODE_LABELS[m].he : MODE_LABELS[m].en}
+                  <span className="cx">{he ? MODE_LABELS[m].subHe : MODE_LABELS[m].subEn}</span>
+                </button>
+              ))}
+            </div>
+            <div className="valrow">
+              <span className="vl">{he ? 'שווי שוק' : 'Market value'}</span>
+              <span className="vfield">
+                <span className="vk">{he ? 'מינ' : 'Min'}</span>
+                <span className="valsel">
+                  <select value={valueMin} onChange={(e) => handleValueMin(Number(e.target.value))} disabled={searching || searchingOther}>
+                    {VALUE_PRESETS.filter((p) => p.value > 0).map((p) => (
+                      <option key={`min-${p.value}`} value={p.value}>{he && p.labelHe ? p.labelHe : p.label}</option>
+                    ))}
+                  </select>
+                </span>
               </span>
-            </span>
-            <span className="vdash">—</span>
-            <span className="vfield">
-              <span className="vk">{he ? 'מקס' : 'Max'}</span>
-              <span className="valsel">
-                <select value={valueMax} onChange={(e) => handleValueMax(Number(e.target.value))} disabled={searching || searchingOther}>
-                  {VALUE_PRESETS.map((p) => (
-                    <option key={`max-${p.value}`} value={p.value}>{he && p.labelHe ? p.labelHe : p.label}</option>
-                  ))}
-                </select>
+              <span className="vdash">—</span>
+              <span className="vfield">
+                <span className="vk">{he ? 'מקס' : 'Max'}</span>
+                <span className="valsel">
+                  <select value={valueMax} onChange={(e) => handleValueMax(Number(e.target.value))} disabled={searching || searchingOther}>
+                    {VALUE_PRESETS.map((p) => (
+                      <option key={`max-${p.value}`} value={p.value}>{he && p.labelHe ? p.labelHe : p.label}</option>
+                    ))}
+                  </select>
+                </span>
               </span>
-            </span>
-            <span className="vsummary">
-              {valueMin > 0 ? valueLabel(valueMin, he) : (he ? 'כל ערך' : 'Any')}
-              {' – '}
-              {valueMax > 0 ? valueLabel(valueMax, he) : (he ? 'ללא הגבלה' : 'No limit')}
-            </span>
-          </div>
-          <p className="exlabel">{he ? 'נסה בריף' : 'Try a brief'}</p>
-          <div className="examples">
-            {(he ? EXAMPLES_HE : EXAMPLES_EN).map((ex) => (
-              <button key={ex} className="ex" onClick={() => setQuery(ex)} disabled={searching}>{ex}</button>
-            ))}
-          </div>
+              <span className="vsummary">
+                {valueMin > 0 ? valueLabel(valueMin, he) : (he ? 'כל ערך' : 'Any')}
+                {' – '}
+                {valueMax > 0 ? valueLabel(valueMax, he) : (he ? 'ללא הגבלה' : 'No limit')}
+              </span>
+            </div>
+            <p className="exlabel">{he ? 'נסה בריף' : 'Try a brief'}</p>
+            <div className="examples">
+              {(he ? EXAMPLES_HE : EXAMPLES_EN).map((ex) => (
+                <button key={ex} className="ex" onClick={() => setQuery(ex)} disabled={searching}>{ex}</button>
+              ))}
+            </div>
+          </WarRoomRefineSheet>
         </div>
 
         {/* Structured brief — the parsed interpretation */}
