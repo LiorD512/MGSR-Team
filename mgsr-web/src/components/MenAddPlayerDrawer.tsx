@@ -20,6 +20,7 @@ import { callPlayersCreate, callShortlistAdd } from '@/lib/callables';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
 import { isContactPickerSupported, pickPhoneFromDevice } from '@/lib/deviceContacts';
+import { useBackDismiss } from '@/hooks/useBackDismiss';
 
 const DEBOUNCE_MS = 350;
 const MIN_SEARCH_LEN = 2;
@@ -130,6 +131,9 @@ export default function MenAddPlayerDrawer({
       else setPlayerPhone(picked.phone);
     }
   }, []);
+
+  // Android/browser Back button closes the drawer instead of leaving the page.
+  useBackDismiss(open, onClose);
 
   const resetAll = useCallback(() => {
     setStep(1);
@@ -617,8 +621,12 @@ export default function MenAddPlayerDrawer({
                       className="btn p"
                       type="button"
                       onClick={() => {
-                        if (isShortlist) { router.push('/shortlist'); return; }
-                        if (savedId) router.push(`/players/${savedId}?from=/players`);
+                        // Close first so the Back-dismiss sentinel is popped cleanly,
+                        // then navigate on the next tick to avoid a history race.
+                        const go = isShortlist ? '/shortlist' : (savedId ? `/players/${savedId}?from=/players` : null);
+                        if (!go) return;
+                        onClose();
+                        setTimeout(() => router.push(go), 0);
                       }}
                     >
                       {isShortlist ? t('add_player_room_view_shortlist') : t('add_player_room_open_profile')}
