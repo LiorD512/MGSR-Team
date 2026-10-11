@@ -2,6 +2,10 @@ package com.liordahan.mgsrteam.ui.components
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.liordahan.mgsrteam.R
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +16,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -112,6 +118,7 @@ fun BritTopHeader(
     showBack: Boolean = false,
     onBackClick: () -> Unit = {},
     onMenuClick: (() -> Unit)? = null,
+    showBell: Boolean = true,
 ) {
     val (accent, _) = BritTokens.accentFor(platform)
     Row(
@@ -178,29 +185,31 @@ fun BritTopHeader(
             }
         }
 
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) { onBellClick() },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = BritIcons.Bell,
-                contentDescription = "Notifications",
-                tint = BritTokens.ink,
-                modifier = Modifier.size(22.dp),
-            )
-            if (hasUnreadNotifications) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(BritTokens.red)
+        if (showBell) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onBellClick() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = BritIcons.Bell,
+                    contentDescription = "Notifications",
+                    tint = BritTokens.ink,
+                    modifier = Modifier.size(22.dp),
                 )
+                if (hasUnreadNotifications) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(BritTokens.red)
+                    )
+                }
             }
         }
 
@@ -210,20 +219,17 @@ fun BritTopHeader(
     }
 }
 
-/** BRIT circle logo mark — a hairline ring with a centred "B". */
+/** BRIT Sport Group circle logo — the real black+gold crest (same asset the
+ *  web uses, /brit_circle_black_gold.svg). [accent] is kept for call-site
+ *  compatibility but the vector carries its own colours. */
 @Composable
 fun BritMark(accent: Color, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .border(1.2.dp, accent.copy(alpha = 0.5f), CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "B",
-            style = britDisplay(accent, 16.sp, weight = 600, letterSpacing = 0.5.sp),
-        )
-    }
+    Image(
+        painter = painterResource(R.drawable.brit_circle_black_gold),
+        contentDescription = "BRIT Sport Group",
+        contentScale = ContentScale.Fit,
+        modifier = modifier.clip(CircleShape),
+    )
 }
 
 // ── 2-way platform switch (editorial) ────────────────────────────────────────
@@ -242,7 +248,7 @@ fun BritPlatformSwitch(
 ) {
     val platforms = Platform.entries
     val density = LocalDensity.current
-    val segmentWidth = 34.dp
+    val segmentWidth = 78.dp
     val height = 30.dp
     val selectedIndex = platforms.indexOf(platform)
     val (accent, _) = BritTokens.accentFor(platform)
@@ -256,50 +262,56 @@ fun BritPlatformSwitch(
         label = "brit_plat_thumb",
     )
 
+    // Web .brit-platform-switch: rounded dark pill, sliding gold/teal thumb,
+    // each option = a dot + uppercase label; active text goes ink.
     Box(
         modifier = modifier
             .width(segmentWidth * platforms.size)
             .height(height)
-            .clip(RoundedCornerShape(8.dp))
-            .background(BritTokens.ink.copy(alpha = 0.06f))
-            .border(1.dp, BritTokens.line, RoundedCornerShape(8.dp)),
+            .clip(RoundedCornerShape(999.dp))
+            .background(BritTokens.black.copy(alpha = 0.6f))
+            .border(1.dp, BritTokens.line, RoundedCornerShape(999.dp))
+            .padding(3.dp),
     ) {
-        // Sliding thumb.
+        // Sliding thumb (half the pill).
         Box(
             modifier = Modifier
                 .offset { IntOffset(with(density) { thumbOffset.roundToPx() }, 0) }
-                .width(segmentWidth)
-                .height(height)
-                .padding(2.dp)
-                .clip(RoundedCornerShape(6.dp))
+                .width(segmentWidth - 6.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(999.dp))
                 .background(accent)
         )
-        Row(modifier = Modifier.fillMaxWidth().height(height)) {
+        Row(modifier = Modifier.fillMaxSize()) {
             platforms.forEach { p ->
                 val isSelected = p == platform
-                // Short glyph per mock: M (men) / A (academy/youth).
-                val glyph = when (p) {
-                    Platform.MEN -> "M"
-                    Platform.YOUTH -> "A"
+                val label = when (p) {
+                    Platform.MEN -> "MEN"
+                    Platform.YOUTH -> "ACADEMY"
                 }
-                Box(
+                val content = if (isSelected) BritTokens.ink else BritTokens.muted2
+                Row(
                     modifier = Modifier
                         .width(segmentWidth)
-                        .height(height)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(999.dp))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                         ) { if (!isSelected) onSwitch(p) },
-                    contentAlignment = Alignment.Center,
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(content.copy(alpha = if (isSelected) 1f else 0.5f)),
+                    )
+                    Spacer(Modifier.width(7.dp))
                     Text(
-                        text = glyph,
-                        style = britMono(
-                            if (isSelected) BritTokens.paper else BritTokens.muted,
-                            12.sp,
-                            letterSpacing = 0.5.sp,
-                            textAlign = TextAlign.Center,
-                        ),
+                        text = label,
+                        style = britDisplay(content, 11.sp, weight = 600, letterSpacing = 0.7.sp),
                     )
                 }
             }

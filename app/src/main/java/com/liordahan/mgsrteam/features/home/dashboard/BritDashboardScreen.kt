@@ -143,8 +143,9 @@ fun BritDashboardScreen(
                     platformManager.switchTo(target)
                     viewModel.reloadForPlatformSwitch()
                 },
-                // No bottom nav on the dashboard — the overflow menu in the
-                // header opens the "More" sheet (destinations + sign out).
+                // Bell removed from the dashboard header per request; the
+                // overflow menu opens the "More" sheet (destinations + sign out).
+                showBell = false,
                 onMenuClick = { showMoreSheet = true },
             )
 
@@ -334,8 +335,9 @@ private fun MastheadGreeting(state: HomeDashboardState, platform: Platform) {
         else -> "GOOD EVENING"
     }
     val name = (state.currentUserAccount?.name ?: "").trim().uppercase()
+    // e.g. "SUNDAY 11 OCTOBER" (no comma) — replaces the old desk-open eyebrow.
     val dateStr = remember {
-        SimpleDateFormat("EEEE, d MMMM", Locale.ENGLISH).format(Date()).uppercase()
+        SimpleDateFormat("EEEE d MMMM", Locale.ENGLISH).format(Date()).uppercase()
     }
     val (accent, _) = BritTokens.accentFor(platform)
     Column(
@@ -344,34 +346,26 @@ private fun MastheadGreeting(state: HomeDashboardState, platform: Platform) {
             .padding(horizontal = 20.dp)
             .padding(top = 18.dp, bottom = 20.dp),
     ) {
+        // Eyebrow is now the date (Sunday 11 October).
         Text(
-            text = "THE ${britRoomDesk(platform)} · DESK OPEN",
+            text = dateStr,
             style = britMono(accent, 10.sp, letterSpacing = 1.4.sp),
         )
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
         // Very tight line-height so "GOOD MORNING," hugs the name (web
-        // .brit-masthead h1 is line-height .78 ≈ 34sp at this size).
+        // .brit-masthead h1 line-height .78). One Text (two lines) so there's
+        // no inter-Text gap; the name line is accent-coloured via a span.
         Text(
-            text = "$greet,",
+            text = androidx.compose.ui.text.buildAnnotatedString {
+                append("$greet,\n")
+                pushStyle(androidx.compose.ui.text.SpanStyle(color = accent))
+                append(if (name.isNotBlank()) "$name." else "WELCOME.")
+                pop()
+            },
             style = britDisplay(BritTokens.ink, 44.sp, weight = 600, letterSpacing = (-2).sp)
-                .copy(lineHeight = 36.sp),
-        )
-        Text(
-            text = if (name.isNotBlank()) "$name." else "WELCOME.",
-            style = britDisplay(accent, 44.sp, weight = 600, letterSpacing = (-2).sp)
-                .copy(lineHeight = 36.sp),
-        )
-        Spacer(Modifier.height(14.dp))
-        Text(
-            text = "$dateStr · ${state.totalPlayers} PLAYERS UNDER REPRESENTATION",
-            style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.8.sp),
+                .copy(lineHeight = 34.sp),
         )
     }
-}
-
-private fun britRoomDesk(platform: Platform): String = when (platform) {
-    Platform.MEN -> "MANAGEMENT ROOM"
-    Platform.YOUTH -> "ACADEMY DESK"
 }
 
 // Editorial signals strip — matches the web .brit-signals: three equal-height,
