@@ -698,6 +698,7 @@ export default function MenPlayers() {
                 <button type="button" onClick={() => setFilterSheetOpen(false)} aria-label={t('common_close') || 'Close'}>×</button>
               </div>
               <div className="brit-tray-top">
+                <span className="brit-sheet-label">{t('filter_section_position')}</span>
                 <label className="brit-search">
                   <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round">
                     <circle cx="11" cy="11" r="7" />
@@ -776,6 +777,7 @@ export default function MenPlayers() {
                   </select>
                 </label>
               </div>
+              <span className="brit-sheet-label">{t('filter_section_attributes')}</span>
               <div className="brit-chips">
                 {chips.map((c) => (
                   <button
