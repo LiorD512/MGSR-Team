@@ -11,7 +11,7 @@ import { auth, db, storage } from '@/lib/firebase';
 import { callOffersCreate, callOffersUpdateFeedback, callTasksToggleComplete, callPlayersUpdate, callPlayersToggleMandate, callPlayersAddNote, callPlayersDeleteNote, callPlayersDelete, callPlayerDocumentsCreate, callPlayerDocumentsDelete, callPlayerDocumentsMarkExpired, callPortfolioUpsert } from '@/lib/callables';
 import { getPlayerDetails, PlayerDetails } from '@/lib/api';
 import MenPlayerProfile from '@/components/MenPlayerProfile';
-import BritContactPicker from '@/components/BritContactPicker';
+import { isContactPickerSupported, pickPhoneFromDevice } from '@/lib/deviceContacts';
 import BritLoader from '@/components/BritLoader';
 import BritRail from '@/components/BritRail';
 import Link from 'next/link';
@@ -299,8 +299,10 @@ export default function PlayerInfoPage() {
   const [editingPhoneValue, setEditingPhoneValue] = useState('');
   const [savingPhone, setSavingPhone] = useState(false);
   const [confirmDeletePhone, setConfirmDeletePhone] = useState<'agent' | 'player' | null>(null);
-  // When set, the "pick a phone from contacts" sheet is open for this field.
-  const [phonePickerFor, setPhonePickerFor] = useState<'agent' | 'player' | null>(null);
+  // "From phone contacts" only shows where the native Contact Picker API exists
+  // (Android Chromium over HTTPS); hidden on iOS / desktop.
+  const [canPickDeviceContact, setCanPickDeviceContact] = useState(false);
+  useEffect(() => { setCanPickDeviceContact(isContactPickerSupported()); }, []);
   const [showPortfolioLanguageModal, setShowPortfolioLanguageModal] = useState(false);
   const [portfolioTargetClub, setPortfolioTargetClub] = useState<{ name: string; position?: string; salaryRange?: string; transferFee?: string; dominateFoot?: string } | null>(null);
   const [showSalaryFeeModal, setShowSalaryFeeModal] = useState(false);
@@ -1046,6 +1048,17 @@ export default function PlayerInfoPage() {
     }
   }, [id, player]);
 
+  // Open the native phone contact picker and drop the chosen number into the
+  // edit input for the field being edited (Android Chromium only; the button
+  // that calls this is hidden where unsupported).
+  const pickDevicePhone = useCallback(async (type: 'agent' | 'player') => {
+    const picked = await pickPhoneFromDevice();
+    if (picked?.phone) {
+      setEditingPhoneType(type);
+      setEditingPhoneValue(picked.phone);
+    }
+  }, []);
+
   const deletePhone = useCallback(async (type: 'agent' | 'player') => {
     if (!id) return;
     setSavingPhone(true);
@@ -1674,9 +1687,11 @@ export default function PlayerInfoPage() {
                     if (e.key === 'Escape') { setEditingPhoneType(null); setEditingPhoneValue(''); }
                   }}
                 />
-                <button className="bp-toolbtn" title={t('contact_pick_from_contacts')} onClick={() => setPhonePickerFor(type)}>
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                </button>
+                {canPickDeviceContact && (
+                  <button className="bp-toolbtn" title={t('contact_pick_from_contacts')} onClick={() => pickDevicePhone(type)}>
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                  </button>
+                )}
                 <button className="bp-toolbtn" disabled={savingPhone} onClick={() => savePhone(type, editingPhoneValue)}>{t('save')}</button>
                 <button className="bp-toolbtn" onClick={() => { setEditingPhoneType(null); setEditingPhoneValue(''); }}>{t('cancel')}</button>
               </span>
@@ -1713,18 +1728,6 @@ export default function PlayerInfoPage() {
         </div>
       )}
 
-      {/* Pick a phone number from existing contacts (fills the edit input). */}
-      <BritContactPicker
-        open={phonePickerFor !== null}
-        kind={phonePickerFor ?? 'player'}
-        onClose={() => setPhonePickerFor(null)}
-        onPick={(num) => {
-          const type = phonePickerFor;
-          if (!type) return;
-          setEditingPhoneType(type);
-          setEditingPhoneValue(num);
-        }}
-      />
     </div>
   );
 
