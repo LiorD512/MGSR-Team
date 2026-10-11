@@ -67,6 +67,7 @@ import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.components.BritIcons
 import com.liordahan.mgsrteam.ui.components.BritLoader
 import com.liordahan.mgsrteam.ui.components.BritMoreItem
+import com.liordahan.mgsrteam.ui.components.BritPlatformSwitch
 import com.liordahan.mgsrteam.ui.components.BritMoreSheetContent
 
 import com.liordahan.mgsrteam.ui.components.BritTopHeader
@@ -164,6 +165,19 @@ fun BritDashboardScreen(
                 ) {
                     // (a) masthead greeting
                     item { MastheadGreeting(state = state, platform = platform) }
+
+                    // (a2) platform switch — editorial underline tabs, full-width
+                    //      row under the masthead (Men / Academy).
+                    item {
+                        BritPlatformSwitch(
+                            platform = platform,
+                            onSwitch = { target ->
+                                platformManager.switchTo(target)
+                                viewModel.reloadForPlatformSwitch()
+                            },
+                            modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 18.dp),
+                        )
+                    }
 
                     // (b) signals strip
                     item { SignalsStrip(state = state) }

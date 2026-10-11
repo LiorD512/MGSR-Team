@@ -1,12 +1,9 @@
 package com.liordahan.mgsrteam.ui.components
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import com.liordahan.mgsrteam.R
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,12 +13,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -31,18 +25,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.config.FeatureFlags
@@ -213,9 +205,8 @@ fun BritTopHeader(
             }
         }
 
-        Spacer(Modifier.width(8.dp))
-
-        BritPlatformSwitch(platform = platform, onSwitch = onPlatformSwitch)
+        // Platform switch moved out of the header into the dashboard masthead
+        // row (editorial underline tabs). The header no longer renders it.
     }
 }
 
@@ -232,13 +223,13 @@ fun BritMark(accent: Color, modifier: Modifier = Modifier) {
     )
 }
 
-// ── 2-way platform switch (editorial) ────────────────────────────────────────
+// ── 2-way platform switch — editorial underline tabs ─────────────────────────
 
 /**
- * Editorial 2-segment platform switch (Men / Youth) matching the mock's
- * `.plat-switch`. The mock renders a 3-way M/A/W control, but the delivered
- * Android is Men + Youth only (Women was removed in FEAT-002), so this is a
- * strict 2-segment control with a sliding gold (teal for Youth) thumb.
+ * Editorial platform switch (Men / Academy) styled as flat underline tabs on
+ * the light paper surface: uppercase Oswald labels sharing a bottom hairline,
+ * the active one inked with a gold (teal for Youth/Academy) underline. Meant
+ * to sit as a full-width row under the dashboard masthead, above the signals.
  */
 @Composable
 fun BritPlatformSwitch(
@@ -247,77 +238,60 @@ fun BritPlatformSwitch(
     modifier: Modifier = Modifier,
 ) {
     val platforms = Platform.entries
-    val density = LocalDensity.current
-    val segmentWidth = 78.dp
-    val height = 30.dp
-    val selectedIndex = platforms.indexOf(platform)
     val (accent, _) = BritTokens.accentFor(platform)
 
-    val thumbOffset: Dp by animateDpAsState(
-        targetValue = segmentWidth * selectedIndex,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "brit_plat_thumb",
-    )
-
-    // Web .brit-platform-switch: rounded dark pill, sliding gold/teal thumb,
-    // each option = a dot + uppercase label; active text goes ink.
-    Box(
+    Row(
         modifier = modifier
-            .width(segmentWidth * platforms.size)
-            .height(height)
-            .clip(RoundedCornerShape(999.dp))
-            .background(BritTokens.black.copy(alpha = 0.6f))
-            .border(1.dp, BritTokens.line, RoundedCornerShape(999.dp))
-            .padding(3.dp),
+            .fillMaxWidth()
+            .drawBehind {
+                // Baseline hairline under the whole row.
+                val y = size.height - 1.dp.toPx()
+                drawLine(
+                    color = britLineColor,
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            },
     ) {
-        // Sliding thumb (half the pill).
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(with(density) { thumbOffset.roundToPx() }, 0) }
-                .width(segmentWidth - 6.dp)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(999.dp))
-                .background(accent)
-        )
-        Row(modifier = Modifier.fillMaxSize()) {
-            platforms.forEach { p ->
-                val isSelected = p == platform
-                val label = when (p) {
-                    Platform.MEN -> "MEN"
-                    Platform.YOUTH -> "ACADEMY"
-                }
-                val content = if (isSelected) BritTokens.ink else BritTokens.muted2
-                Row(
-                    modifier = Modifier
-                        .width(segmentWidth)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(999.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                        ) { if (!isSelected) onSwitch(p) },
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(content.copy(alpha = if (isSelected) 1f else 0.5f)),
-                    )
-                    Spacer(Modifier.width(7.dp))
-                    Text(
-                        text = label,
-                        style = britDisplay(content, 11.sp, weight = 600, letterSpacing = 0.7.sp),
-                    )
-                }
+        platforms.forEachIndexed { index, p ->
+            val isSelected = p == platform
+            val label = when (p) {
+                Platform.MEN -> "MEN"
+                Platform.YOUTH -> "ACADEMY"
             }
+            val content = if (isSelected) BritTokens.ink else BritTokens.muted
+            // Each tab = label (with its own active underline) + a gap after it.
+            Box(
+                modifier = Modifier
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { if (!isSelected) onSwitch(p) }
+                    .drawBehind {
+                        if (isSelected) {
+                            val y = size.height - 1.dp.toPx()
+                            drawLine(
+                                color = accent,
+                                start = Offset(0f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = 2.dp.toPx(),
+                            )
+                        }
+                    }
+                    .padding(bottom = 12.dp),
+            ) {
+                Text(
+                    text = label,
+                    style = britDisplay(content, 16.sp, weight = 600, letterSpacing = 0.5.sp),
+                )
+            }
+            if (index < platforms.size - 1) Spacer(Modifier.width(26.dp))
         }
     }
 }
+
+private val britLineColor = Color(0x2E161613) // BritTokens.line as a drawscope color
 
 // ── Bottom tab bar ───────────────────────────────────────────────────────────
 
