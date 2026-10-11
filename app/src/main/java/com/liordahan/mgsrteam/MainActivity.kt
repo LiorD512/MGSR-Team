@@ -20,7 +20,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.core.content.PermissionChecker
-import androidx.core.graphics.toColorInt
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.liordahan.mgsrteam.deeplink.PendingShareHolder
 import com.liordahan.mgsrteam.config.FeatureFlags
@@ -66,10 +65,15 @@ class MainActivity : AppCompatActivity() {
         // Keep native splash until app is ready — avoids empty screen; matches Compose overlay
         splashScreen.setKeepOnScreenCondition { !isAppReady }
 
-        val darkBg = "#0F1923".toColorInt()
+        // True edge-to-edge: transparent system bars so each screen's own
+        // background flows under the status/nav bars. Icon contrast is managed
+        // per-screen (and globally defaulted to dark icons for the light
+        // "paper" theme) in MGSRTeamTheme. SystemBarStyle.light with a
+        // transparent scrim keeps the bars see-through with dark icons.
+        val transparent = android.graphics.Color.TRANSPARENT
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(darkBg, darkBg),
-            navigationBarStyle = SystemBarStyle.light(darkBg, darkBg)
+            statusBarStyle = SystemBarStyle.light(transparent, transparent),
+            navigationBarStyle = SystemBarStyle.light(transparent, transparent)
         )
         // Process intent immediately — critical for share deep link on cold start
         handleDeepLink(intent)

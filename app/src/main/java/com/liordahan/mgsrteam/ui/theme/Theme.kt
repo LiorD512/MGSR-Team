@@ -42,8 +42,6 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
-private const val DARK_APP_BG = 0xFF0F1923.toInt()
-
 @Composable
 fun MGSRTeamTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -55,11 +53,16 @@ fun MGSRTeamTheme(
     DisposableEffect(Unit) {
         val window = view.context.findWindow()
         if (window != null) {
-            window.statusBarColor = DARK_APP_BG
-            window.navigationBarColor = DARK_APP_BG
+            // True edge-to-edge: transparent bars so each screen's own
+            // background shows through. The app's editorial screens are light
+            // "paper", so default the bar ICONS to dark (light appearance).
+            // Screens with a dark top (login brand panel, player dossier hero)
+            // flip the status-bar icon appearance themselves while visible.
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = false
-                isAppearanceLightNavigationBars = false
+                isAppearanceLightStatusBars = true
+                isAppearanceLightNavigationBars = true
             }
         }
         onDispose { }
