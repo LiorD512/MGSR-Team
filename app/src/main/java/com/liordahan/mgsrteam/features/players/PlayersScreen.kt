@@ -476,7 +476,7 @@ private fun RosterMasthead(
         // brit-kicker (mono, accent)
         Text(
             text = stringResource(R.string.room_kicker),
-            style = britMono(accent, 10.sp, letterSpacing = 1.4.sp),
+            style = britMono(accent, 11.sp, letterSpacing = 1.4.sp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -517,7 +517,7 @@ private fun RosterMasthead(
             ) {
                 Text(
                     text = "+ ${stringResource(R.string.players_add)}",
-                    style = britMono(accentSoft, 10.sp, letterSpacing = 1.sp)
+                    style = britMono(accentSoft, 11.sp, letterSpacing = 1.sp)
                 )
             }
         }
@@ -663,7 +663,7 @@ private fun SignalColumn(
     ) {
         Text(
             text = label.uppercase(),
-            style = britMono(BritTokens.muted, 8.sp, letterSpacing = 0.6.sp),
+            style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.6.sp),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -676,7 +676,7 @@ private fun SignalColumn(
         Spacer(Modifier.height(8.dp))
         Text(
             text = note.uppercase(),
-            style = britMono(BritTokens.muted, 7.sp, letterSpacing = 0.5.sp),
+            style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.5.sp),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -859,7 +859,7 @@ private fun RosterFilterTray(
             ) {
                 Text(
                     text = stringResource(R.string.players_sort_label).uppercase(),
-                    style = britMono(BritTokens.muted, 9.sp, letterSpacing = 1.sp)
+                    style = britMono(BritTokens.muted, 11.sp, letterSpacing = 1.sp)
                 )
                 SortButton(
                     label = stringResource(R.string.players_sort_default),
@@ -890,7 +890,7 @@ private fun RosterFilterTray(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = stringResource(R.string.players_clear_filters) + " ×",
-                    style = britMono(BritTokens.red, 9.sp, letterSpacing = 0.8.sp),
+                    style = britMono(BritTokens.red, 11.sp, letterSpacing = 0.8.sp),
                     modifier = Modifier.clickWithNoRipple { onClearFilters() }
                 )
             }
@@ -1114,7 +1114,7 @@ private fun RosterResultCount(
     }
     Text(
         text = text.uppercase(),
-        style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.8.sp),
+        style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.8.sp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
@@ -1227,7 +1227,7 @@ private fun GalleryCard(
             ) {
                 Text(
                     text = (index + 1).toString().padStart(2, '0'),
-                    style = britMono(accentSoft, 10.sp, letterSpacing = 1.sp)
+                    style = britMono(accentSoft, 11.sp, letterSpacing = 1.sp)
                 )
                 Spacer(Modifier.weight(1f))
                 FlowRow(
@@ -1237,7 +1237,7 @@ private fun GalleryCard(
                     flags.forEach { f ->
                         Text(
                             text = f.label,
-                            style = britMono(flagColor(f.kind, accent), 7.sp, letterSpacing = 0.6.sp)
+                            style = britMono(flagColor(f.kind, accent), 11.sp, letterSpacing = 0.6.sp)
                         )
                     }
                 }
@@ -1261,12 +1261,12 @@ private fun GalleryCard(
                     ) {
                         Text(
                             text = agentName.first().uppercase(),
-                            style = britMono(BritTokens.paper, 7.sp, letterSpacing = 0.sp)
+                            style = britMono(BritTokens.paper, 11.sp, letterSpacing = 0.sp)
                         )
                     }
                     Text(
                         text = agentName,
-                        style = britMono(BritTokens.paper.copy(alpha = 0.85f), 7.sp, letterSpacing = 0.4.sp),
+                        style = britMono(BritTokens.paper.copy(alpha = 0.85f), 11.sp, letterSpacing = 0.4.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1281,7 +1281,7 @@ private fun GalleryCard(
             ) {
                 Text(
                     text = "$club / $positions".uppercase(),
-                    style = britMono(accentSoft, 8.sp, letterSpacing = 0.8.sp),
+                    style = britMono(accentSoft, 11.sp, letterSpacing = 0.8.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1298,7 +1298,7 @@ private fun GalleryCard(
                         append(player.marketValue?.takeIf { it.isNotBlank() } ?: "—")
                         player.age?.takeIf { it.isNotBlank() }?.let { append(" · $it") }
                     },
-                    style = britMono(BritTokens.paper.copy(alpha = 0.8f), 9.sp, letterSpacing = 0.6.sp),
+                    style = britMono(BritTokens.paper.copy(alpha = 0.8f), 11.sp, letterSpacing = 0.6.sp),
                     maxLines = 1
                 )
             }
@@ -1341,7 +1341,7 @@ private fun LedgerHeaderRow() {
 private fun RowScope.LedgerHeaderCell(label: String, weight: Float, end: Boolean = false) {
     Text(
         text = label.uppercase(),
-        style = britMono(BritTokens.muted, 8.sp, letterSpacing = 0.8.sp),
+        style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.8.sp),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = if (end) TextAlign.End else TextAlign.Start,
@@ -1399,7 +1399,7 @@ private fun LedgerRow(
                     )
                     Text(
                         text = (player.nationality ?: "—").uppercase(),
-                        style = britMono(BritTokens.muted, 7.sp, letterSpacing = 0.5.sp),
+                        style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.5.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1420,12 +1420,12 @@ private fun LedgerRow(
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 if (positions.isEmpty()) {
-                    Text("—", style = britMono(BritTokens.muted, 8.sp))
+                    Text("—", style = britMono(BritTokens.muted, 11.sp))
                 } else {
                     positions.forEach { pos ->
                         Text(
                             text = pos.uppercase(),
-                            style = britMono(BritTokens.ink, 7.sp, letterSpacing = 0.4.sp),
+                            style = britMono(BritTokens.ink, 11.sp, letterSpacing = 0.4.sp),
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
                                 .border(1.dp, BritTokens.line, RoundedCornerShape(4.dp))
@@ -1452,7 +1452,7 @@ private fun LedgerRow(
             // Agent
             Text(
                 text = agentName.ifBlank { "—" },
-                style = britBody(BritTokens.muted, 10.sp),
+                style = britBody(BritTokens.muted, 11.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(W_AGENT)
@@ -1464,12 +1464,12 @@ private fun LedgerRow(
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 if (flags.isEmpty()) {
-                    Text("—", style = britMono(BritTokens.muted, 8.sp))
+                    Text("—", style = britMono(BritTokens.muted, 11.sp))
                 } else {
                     flags.forEach { f ->
                         Text(
                             text = f.label,
-                            style = britMono(flagColor(f.kind, accent), 7.sp, letterSpacing = 0.4.sp),
+                            style = britMono(flagColor(f.kind, accent), 11.sp, letterSpacing = 0.4.sp),
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
                                 .border(1.dp, flagColor(f.kind, accent).copy(alpha = 0.5f), RoundedCornerShape(4.dp))
@@ -1563,7 +1563,7 @@ private fun NotesPreviewBottomSheet(
                                 append(it)
                             }
                         },
-                        style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.6.sp),
+                        style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.6.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1604,7 +1604,7 @@ private fun NotesPreviewBottomSheet(
                             Spacer(Modifier.width(3.dp))
                             Text(
                                 text = note.createBy,
-                                style = britMono(BritTokens.muted, 8.sp, letterSpacing = 0.4.sp),
+                                style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.4.sp),
                                 modifier = Modifier.weight(1f, fill = false)
                             )
                             Spacer(Modifier.width(8.dp))
@@ -1612,7 +1612,7 @@ private fun NotesPreviewBottomSheet(
                         note.createdAt?.takeIf { it > 0 }?.let {
                             Text(
                                 text = sdf.format(java.util.Date(it)),
-                                style = britMono(BritTokens.muted, 8.sp, letterSpacing = 0.4.sp)
+                                style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.4.sp)
                             )
                         }
                     }

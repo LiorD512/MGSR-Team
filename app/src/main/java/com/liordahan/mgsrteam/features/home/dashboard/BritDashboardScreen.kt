@@ -363,7 +363,7 @@ private fun MastheadGreeting(state: HomeDashboardState, platform: Platform) {
         // Eyebrow is now the date (Sunday 11 October).
         Text(
             text = dateStr,
-            style = britMono(accent, 10.sp, letterSpacing = 1.4.sp),
+            style = britMono(accent, 11.sp, letterSpacing = 1.4.sp),
         )
         Spacer(Modifier.height(12.dp))
         // Very tight line-height so "GOOD MORNING," hugs the name (web
@@ -441,7 +441,7 @@ private fun SignalColumn(
             .fillMaxHeight()
             .padding(vertical = 18.dp, horizontal = 16.dp),
     ) {
-        Text(text = label, style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.8.sp))
+        Text(text = label, style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.8.sp))
         Spacer(Modifier.height(14.dp))
         Text(
             text = value,
@@ -449,7 +449,7 @@ private fun SignalColumn(
             maxLines = 1,
         )
         Spacer(Modifier.height(10.dp))
-        Text(text = note, style = britMono(BritTokens.muted, 8.sp, letterSpacing = 0.6.sp))
+        Text(text = note, style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.6.sp))
     }
 }
 
@@ -494,7 +494,7 @@ private fun ModuleHead(
         if (onViewAll != null) {
             Text(
                 text = "VIEW ALL",
-                style = britMono(accent, 9.sp, letterSpacing = 1.2.sp),
+                style = britMono(accent, 11.sp, letterSpacing = 1.2.sp),
                 modifier = Modifier
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -527,7 +527,7 @@ private fun FocusCard(name: String, subtitle: String, imageUrl: String?, onClick
                 if (subtitle.isNotBlank()) {
                     Text(
                         text = subtitle.uppercase(),
-                        style = britMono(BritTokens.goldSoft, 8.sp, letterSpacing = 1.sp),
+                        style = britMono(BritTokens.goldSoft, 11.sp, letterSpacing = 1.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -577,7 +577,7 @@ private fun PendingDecisionsModule(state: HomeDashboardState) {
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = "Agent transfer · ${tr.fromAgentName ?: "—"} → ${tr.toAgentName ?: "—"}",
-                        style = britMono(BritTokens.muted2, 9.sp, letterSpacing = 0.6.sp),
+                        style = britMono(BritTokens.muted2, 11.sp, letterSpacing = 0.6.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -588,7 +588,7 @@ private fun PendingDecisionsModule(state: HomeDashboardState) {
                         .background(BritTokens.gold)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
-                    Text(text = "REVIEW", style = britMono(BritTokens.black, 9.sp, letterSpacing = 1.sp))
+                    Text(text = "REVIEW", style = britMono(BritTokens.black, 11.sp, letterSpacing = 1.sp))
                 }
             }
         }
@@ -621,7 +621,7 @@ private fun MandateWatchModule(state: HomeDashboardState, accent: androidx.compo
                     Text(
                         text = if (r.isMissing || days == null) "MISSING"
                         else "CLOSES ${days}D",
-                        style = britMono(BritTokens.red, 9.sp, letterSpacing = 1.sp),
+                        style = britMono(BritTokens.red, 11.sp, letterSpacing = 1.sp),
                     )
                 }
                 Spacer(Modifier.height(4.dp))
@@ -679,12 +679,12 @@ private fun FeedRow(event: FeedEvent, onClick: () -> Unit) {
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = feedDateLabel(event.timestamp),
-                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.6.sp),
+                style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.6.sp),
             )
             Spacer(Modifier.height(5.dp))
             Text(
                 text = feedHourLabel(event.timestamp),
-                style = britMono(BritTokens.muted2, 9.sp, letterSpacing = 0.6.sp),
+                style = britMono(BritTokens.muted2, 11.sp, letterSpacing = 0.6.sp),
             )
         }
     }
@@ -783,7 +783,7 @@ private fun QuickActionsGrid(navController: NavController, accent: androidx.comp
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(text = a.sub, style = britMono(BritTokens.muted, 8.sp, letterSpacing = 0.6.sp))
+                Text(text = a.sub, style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.6.sp))
             }
         }
     }
@@ -842,7 +842,7 @@ private fun BritBirthdaysModule(
             )
             Text(
                 text = "${rows.size} IN THE NEXT 30 DAYS",
-                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 1.sp),
+                style = britMono(BritTokens.muted, 11.sp, letterSpacing = 1.sp),
             )
         }
         // top hairline
@@ -862,7 +862,7 @@ private fun BritBirthdaysModule(
                 // (1) date code column
                 Text(
                     text = if (isToday) "TODAY" else p.dateLabel.uppercase(),
-                    style = britMono(accent, 10.sp, letterSpacing = 0.6.sp),
+                    style = britMono(accent, 11.sp, letterSpacing = 0.6.sp),
                     modifier = Modifier.width(54.dp),
                 )
                 Spacer(Modifier.width(14.dp))
@@ -880,15 +880,15 @@ private fun BritBirthdaysModule(
                             p.club?.takeIf { it.isNotBlank() },
                             "TURNS ${p.turnsAge}",
                         ).joinToString(" / ").uppercase(),
-                        style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.4.sp),
+                        style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.4.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     p.agentInChargeName?.takeIf { it.isNotBlank() }?.let { agent ->
                         Spacer(Modifier.height(3.dp))
                         Row {
-                            Text("AGENT ", style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.4.sp))
-                            Text(agent.uppercase(), style = britMono(accent, 9.sp, letterSpacing = 0.4.sp))
+                            Text("AGENT ", style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.4.sp))
+                            Text(agent.uppercase(), style = britMono(accent, 11.sp, letterSpacing = 0.4.sp))
                         }
                     }
                 }
@@ -899,7 +899,7 @@ private fun BritBirthdaysModule(
                         isToday && hasPhone && !alreadySent -> {
                             Text(
                                 text = stringResource(R.string.birthdays_send_wishes).uppercase(),
-                                style = britMono(BritTokens.ink, 9.sp, letterSpacing = 0.6.sp),
+                                style = britMono(BritTokens.ink, 11.sp, letterSpacing = 0.6.sp),
                                 modifier = Modifier
                                     .background(accent)
                                     .clickable(
@@ -915,13 +915,13 @@ private fun BritBirthdaysModule(
                         isToday && hasPhone && alreadySent -> {
                             Text(
                                 text = stringResource(R.string.birthdays_wish_sent).uppercase(),
-                                style = britMono(BritTokens.green, 9.sp, letterSpacing = 0.6.sp),
+                                style = britMono(BritTokens.green, 11.sp, letterSpacing = 0.6.sp),
                             )
                         }
                         isToday && !hasPhone -> {
                             Text(
                                 text = "NO NUMBER",
-                                style = britMono(BritTokens.red, 8.sp, letterSpacing = 0.6.sp),
+                                style = britMono(BritTokens.red, 11.sp, letterSpacing = 0.6.sp),
                             )
                         }
                     }

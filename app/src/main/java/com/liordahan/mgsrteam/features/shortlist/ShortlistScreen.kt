@@ -1030,7 +1030,7 @@ private fun ShortlistMasthead(
     ) {
         Text(
             text = stringResource(R.string.shortlist_room_kicker),
-            style = com.liordahan.mgsrteam.ui.theme.britMono(accent, 10.sp, letterSpacing = 1.4.sp),
+            style = com.liordahan.mgsrteam.ui.theme.britMono(accent, 11.sp, letterSpacing = 1.4.sp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -1067,7 +1067,7 @@ private fun ShortlistMasthead(
             ) {
                 Text(
                     text = "+ ${stringResource(R.string.players_add)}",
-                    style = com.liordahan.mgsrteam.ui.theme.britMono(accentSoft, 10.sp, letterSpacing = 1.sp)
+                    style = com.liordahan.mgsrteam.ui.theme.britMono(accentSoft, 11.sp, letterSpacing = 1.sp)
                 )
             }
         }
@@ -1199,7 +1199,7 @@ private fun ShortlistSignalColumn(
     ) {
         Text(
             text = label.uppercase(),
-            style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 8.sp, letterSpacing = 0.6.sp),
+            style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 11.sp, letterSpacing = 0.6.sp),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -1212,7 +1212,7 @@ private fun ShortlistSignalColumn(
         Spacer(Modifier.height(8.dp))
         Text(
             text = note.uppercase(),
-            style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 7.sp, letterSpacing = 0.5.sp),
+            style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 11.sp, letterSpacing = 0.5.sp),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -1323,7 +1323,7 @@ private fun ShortlistFilterTray(
             ) {
                 Text(
                     text = stringResource(R.string.players_sort_label).uppercase(),
-                    style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 9.sp, letterSpacing = 1.sp)
+                    style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 11.sp, letterSpacing = 1.sp)
                 )
                 ShortlistSortButton(stringResource(R.string.shortlist_sort_added), sortOption == SortOption.DEFAULT, accent) { onSort(SortOption.DEFAULT) }
                 ShortlistSortButton(stringResource(R.string.shortlist_sort_market_value), sortOption == SortOption.MARKET_VALUE, accent) { onSort(SortOption.MARKET_VALUE) }
@@ -1334,7 +1334,7 @@ private fun ShortlistFilterTray(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = stringResource(R.string.players_clear_filters) + " ×",
-                    style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.red, 9.sp, letterSpacing = 0.8.sp),
+                    style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.red, 11.sp, letterSpacing = 0.8.sp),
                     modifier = Modifier.clickWithNoRipple { onClearFilters() }
                 )
             }
@@ -1546,7 +1546,7 @@ private fun ShortlistResultCount(
     } else base
     Text(
         text = text.uppercase(),
-        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 9.sp, letterSpacing = 0.8.sp),
+        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 11.sp, letterSpacing = 0.8.sp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
@@ -1617,7 +1617,7 @@ private fun ShortlistBoardCard(
                 ) {
                     Text(
                         text = (index + 1).toString().padStart(2, '0'),
-                        style = com.liordahan.mgsrteam.ui.theme.britMono(accentSoft, 10.sp, letterSpacing = 1.sp)
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(accentSoft, 11.sp, letterSpacing = 1.sp)
                     )
                     Spacer(Modifier.weight(1f))
                     FlowRow(
@@ -1627,13 +1627,13 @@ private fun ShortlistBoardCard(
                         if (isEu) {
                             Text(
                                 text = stringResource(R.string.eu_nat_tag),
-                                style = com.liordahan.mgsrteam.ui.theme.britMono(accent, 7.sp, letterSpacing = 0.6.sp)
+                                style = com.liordahan.mgsrteam.ui.theme.britMono(accent, 11.sp, letterSpacing = 0.6.sp)
                             )
                         }
                         if (isFree) {
                             Text(
                                 text = stringResource(R.string.shortlist_free_tag),
-                                style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.green, 7.sp, letterSpacing = 0.6.sp)
+                                style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.green, 11.sp, letterSpacing = 0.6.sp)
                             )
                         }
                     }
@@ -1645,7 +1645,7 @@ private fun ShortlistBoardCard(
                 ) {
                     Text(
                         text = "$club / $position".uppercase(),
-                        style = com.liordahan.mgsrteam.ui.theme.britMono(accentSoft, 8.sp, letterSpacing = 0.8.sp),
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(accentSoft, 11.sp, letterSpacing = 0.8.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1678,13 +1678,13 @@ private fun ShortlistBoardCard(
                 ) {
                     Text(
                         text = agentName.firstOrNull()?.uppercase() ?: "?",
-                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.paper, 7.sp, letterSpacing = 0.sp)
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.paper, 11.sp, letterSpacing = 0.sp)
                     )
                 }
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = "$agentName · ${formatRelativeDate(entry.addedAt)}",
-                    style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 8.sp, letterSpacing = 0.4.sp),
+                    style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 11.sp, letterSpacing = 0.4.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1709,7 +1709,7 @@ private fun ShortlistBoardCard(
                 ) {
                     Text(
                         text = "TM ↗",
-                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.ink, 9.sp, letterSpacing = 0.8.sp),
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.ink, 11.sp, letterSpacing = 0.8.sp),
                         modifier = Modifier.clickWithNoRipple {
                             context.startActivity(
                                 Intent(Intent.ACTION_VIEW, entry.tmProfileUrl.toUri())
@@ -1718,7 +1718,7 @@ private fun ShortlistBoardCard(
                     )
                     Text(
                         text = stringResource(R.string.shortlist_share_whatsapp),
-                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.green, 9.sp, letterSpacing = 0.8.sp),
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.green, 11.sp, letterSpacing = 0.8.sp),
                         modifier = Modifier.clickWithNoRipple {
                             val text = "${entry.tmProfileUrl}\n\n$shareMessage"
                             val uri = "https://api.whatsapp.com/send?text=${Uri.encode(text)}".toUri()
@@ -1771,7 +1771,7 @@ private fun ShortlistLedgerHeader() {
 private fun RowScope.ShortlistLedgerHeaderCell(label: String, weight: Float, end: Boolean = false) {
     Text(
         text = label.uppercase(),
-        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 8.sp, letterSpacing = 0.8.sp),
+        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 11.sp, letterSpacing = 0.8.sp),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = if (end) TextAlign.End else TextAlign.Start,
@@ -1842,7 +1842,7 @@ private fun ShortlistLedgerRow(
                             append((entry.playerNationality ?: "—"))
                             entry.playerAge?.takeIf { it.isNotBlank() }?.let { append(" · $it") }
                         }.uppercase(),
-                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 7.sp, letterSpacing = 0.5.sp),
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 11.sp, letterSpacing = 0.5.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1872,13 +1872,13 @@ private fun ShortlistLedgerRow(
             // Change column — no value history on Android ShortlistEntry (deferred).
             Text(
                 text = "—",
-                style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 8.sp),
+                style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 11.sp),
                 maxLines = 1,
                 modifier = Modifier.weight(SL_W_CHANGE)
             )
             Text(
                 text = "$agentName · ${formatRelativeDate(entry.addedAt)}",
-                style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 7.sp, letterSpacing = 0.3.sp),
+                style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 11.sp, letterSpacing = 0.3.sp),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(SL_W_SCOUT)
@@ -1891,13 +1891,13 @@ private fun ShortlistLedgerRow(
                 if (isEu) {
                     Text(
                         text = stringResource(R.string.eu_nat_tag),
-                        style = com.liordahan.mgsrteam.ui.theme.britMono(accent, 6.sp, letterSpacing = 0.4.sp)
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(accent, 11.sp, letterSpacing = 0.4.sp)
                     )
                 }
                 if (isFree) {
                     Text(
                         text = stringResource(R.string.shortlist_free_tag),
-                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.green, 6.sp, letterSpacing = 0.4.sp)
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.green, 11.sp, letterSpacing = 0.4.sp)
                     )
                 }
                 Text(
@@ -2110,7 +2110,7 @@ private fun ShortlistStatItem(
         )
         Text(
             text = label,
-            style = regularTextStyle(if (isMen) MenShortlistTextSubtle else PlatformColors.palette.textSecondary, 9.sp)
+            style = regularTextStyle(if (isMen) MenShortlistTextSubtle else PlatformColors.palette.textSecondary, 11.sp)
         )
     }
 }
@@ -2391,7 +2391,7 @@ private fun ShortlistCard(
                             ) {
                                 Text(
                                     text = pos,
-                                    style = boldTextStyle(accent, 10.sp)
+                                    style = boldTextStyle(accent, 11.sp)
                                 )
                             }
                         }
@@ -2404,7 +2404,7 @@ private fun ShortlistCard(
                             ) {
                                 Text(
                                     text = "$age${stringResource(R.string.shortlist_years_suffix)}",
-                                    style = regularTextStyle(muted, 10.sp)
+                                    style = regularTextStyle(muted, 11.sp)
                                 )
                             }
                         }
@@ -2431,7 +2431,7 @@ private fun ShortlistCard(
                                     if (nat.isNotBlank()) {
                                         Text(
                                             text = nat,
-                                            style = regularTextStyle(muted, 10.sp),
+                                            style = regularTextStyle(muted, 11.sp),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -2465,13 +2465,13 @@ private fun ShortlistCard(
                     }
                     Text(
                         text = formatRelativeDate(entry.addedAt),
-                        style = regularTextStyle(muted, 10.sp),
+                        style = regularTextStyle(muted, 11.sp),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                     entry.getAddedByDisplayName(context)?.let { agentName ->
                         Text(
                             text = stringResource(R.string.shortlist_added_by, agentName),
-                            style = regularTextStyle(muted, 9.sp),
+                            style = regularTextStyle(muted, 11.sp),
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -2668,7 +2668,7 @@ private fun ShortlistCard(
                                 R.string.shortlist_ig_sent,
                                 formatBareRelativeDate(entry.instagramSentAt)
                             ),
-                            style = boldTextStyle(Color(0xFFE1306C), 10.sp)
+                            style = boldTextStyle(Color(0xFFE1306C), 11.sp)
                         )
                     }
                 }
@@ -2690,7 +2690,7 @@ private fun ShortlistCard(
                 ) {
                     Text(
                         text = stringResource(R.string.shortlist_badge),
-                            style = boldTextStyle(accent, 10.sp)
+                            style = boldTextStyle(accent, 11.sp)
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -2957,7 +2957,7 @@ private fun ShortlistNoteItem(
                     if (authorName.isNotBlank()) append("$authorName · ")
                     append(timeLabel)
                 },
-                style = regularTextStyle(muted, 10.sp),
+                style = regularTextStyle(muted, 11.sp),
                 modifier = Modifier.weight(1f)
             )
             Box(

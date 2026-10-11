@@ -143,7 +143,7 @@ fun BritTopHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "BRIT · ${britPlatformLabel(platform)}",
-                style = britMono(accent, 9.sp, letterSpacing = 1.6.sp),
+                style = britMono(accent, 11.sp, letterSpacing = 1.6.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -371,7 +371,7 @@ private fun BritTabCell(
         Spacer(Modifier.height(4.dp))
         Text(
             text = label,
-            style = britMono(tint, 9.sp, letterSpacing = 0.5.sp, textAlign = TextAlign.Center),
+            style = britMono(tint, 11.sp, letterSpacing = 0.5.sp, textAlign = TextAlign.Center),
             maxLines = 1,
         )
     }
@@ -423,7 +423,7 @@ fun BritMoreSheetContent(
             Spacer(Modifier.weight(1f))
             Text(
                 text = britDeskLabel(platform),
-                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 1.4.sp),
+                style = britMono(BritTokens.muted, 11.sp, letterSpacing = 1.4.sp),
             )
         }
 
@@ -462,14 +462,14 @@ fun BritMoreSheetContent(
         ) {
             Text(
                 text = userEmail,
-                style = britMono(BritTokens.muted, 10.sp, letterSpacing = 0.6.sp),
+                style = britMono(BritTokens.muted, 11.sp, letterSpacing = 0.6.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 text = "SIGN OUT",
-                style = britMono(BritTokens.red, 10.sp, letterSpacing = 1.sp),
+                style = britMono(BritTokens.red, 11.sp, letterSpacing = 1.sp),
                 modifier = Modifier
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -509,7 +509,7 @@ private fun BritMoreCell(
         Spacer(Modifier.height(8.dp))
         Text(
             text = item.label,
-            style = britMono(BritTokens.ink, 9.sp, letterSpacing = 0.5.sp, textAlign = TextAlign.Center),
+            style = britMono(BritTokens.ink, 11.sp, letterSpacing = 0.5.sp, textAlign = TextAlign.Center),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
