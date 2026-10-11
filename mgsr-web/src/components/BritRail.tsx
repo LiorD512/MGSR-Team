@@ -49,6 +49,12 @@ export default function BritRail({ active }: BritRailProps) {
     active === 'war-room' || active === 'war-room-alpha' || active === 'war-room-agents' || active === 'war-room-ask' || active === 'war-room-successors';
   const [warRoomOpen, setWarRoomOpen] = useState(warRoomActive);
 
+  // Mobile nav drawer open/closed. Desktop ignores this (the rail is always
+  // visible via CSS); on phones/tablets the nav is collapsed behind a toggle so
+  // page content starts at the top instead of below a full-height menu.
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const closeMobile = () => setMobileOpen(false);
+
   const isRoster = pathname === '/players' || pathname.startsWith('/players/');
   const isShortlist = pathname === '/shortlist';
   const isRelease = pathname === '/release-notifications';
@@ -61,8 +67,33 @@ export default function BritRail({ active }: BritRailProps) {
   const isWarSucc = pathname === '/war-room/successors';
 
   return (
-    <aside className="brit-rail">
-      <Link className="brit-lockup" href="/dashboard" aria-label="BRIT Sport Group home">
+    <aside className="brit-rail" data-mobile-open={mobileOpen ? 'true' : 'false'}>
+      {/* Mobile bar — logo + hamburger. Hidden on desktop via CSS. */}
+      <div className="brit-rail-mobilebar">
+        <Link className="brit-lockup" href="/dashboard" aria-label="BRIT Sport Group home" onClick={closeMobile}>
+          <img src="/brit_circle_black_gold.svg" alt="BRIT Sport Group logo" />
+          <div>
+            <strong>BRIT SPORT GROUP</strong>
+            <small>{t('room_lockup_sub')}</small>
+          </div>
+        </Link>
+        <button
+          type="button"
+          className="brit-rail-burger"
+          aria-expanded={mobileOpen}
+          aria-label="Menu"
+          onClick={() => setMobileOpen((v) => !v)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+      </div>
+
+      {/* Tap-away scrim behind the open mobile drawer */}
+      <div className="brit-rail-scrim" onClick={closeMobile} aria-hidden />
+
+      <Link className="brit-lockup brit-lockup-desktop" href="/dashboard" aria-label="BRIT Sport Group home">
         <img src="/brit_circle_black_gold.svg" alt="BRIT Sport Group logo" />
         <div>
           <strong>BRIT SPORT GROUP</strong>
@@ -70,7 +101,7 @@ export default function BritRail({ active }: BritRailProps) {
         </div>
       </Link>
 
-      <nav className="brit-nav" aria-label="Navigation">
+      <nav className="brit-nav" aria-label="Navigation" onClick={closeMobile}>
         <Link href="/dashboard" className={active === 'dashboard' ? 'active' : ''}>
           <span>{t('nav_dashboard')}</span>
         </Link>
@@ -80,7 +111,7 @@ export default function BritRail({ active }: BritRailProps) {
           type="button"
           className={`brit-nav-group${playersActive ? ' active' : ''}`}
           aria-expanded={playersOpen}
-          onClick={() => setPlayersOpen((v) => !v)}
+          onClick={(e) => { e.stopPropagation(); setPlayersOpen((v) => !v); }}
         >
           <span>{isYouth ? t('nav_players_youth') : t('nav_players')}</span>
           <em>{playersOpen ? '−' : '+'}</em>
@@ -113,7 +144,7 @@ export default function BritRail({ active }: BritRailProps) {
               type="button"
               className={`brit-nav-group${signalsActive ? ' active' : ''}`}
               aria-expanded={signalsOpen}
-              onClick={() => setSignalsOpen((v) => !v)}
+              onClick={(e) => { e.stopPropagation(); setSignalsOpen((v) => !v); }}
             >
               <span>{t('nav_signals')}</span>
               <em>{signalsOpen ? '−' : '+'}</em>
@@ -144,7 +175,7 @@ export default function BritRail({ active }: BritRailProps) {
               type="button"
               className={`brit-nav-group${warRoomActive ? ' active' : ''}`}
               aria-expanded={warRoomOpen}
-              onClick={() => setWarRoomOpen((v) => !v)}
+              onClick={(e) => { e.stopPropagation(); setWarRoomOpen((v) => !v); }}
             >
               <span>{t('nav_war_room')}</span>
               <em>{warRoomOpen ? '−' : '+'}</em>

@@ -1362,6 +1362,10 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   background: var(--black);
   color: var(--paper);
 }
+/* Mobile-only rail chrome — hidden on desktop; activated in the ≤900px block. */
+.brit-rail-mobilebar { display: none; }
+.brit-rail-burger { display: none; }
+.brit-rail-scrim { display: none; }
 .brit-lockup {
   display: flex;
   align-items: center;
@@ -2813,66 +2817,197 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 /* Actions */
 .brit-asset-modal .bam-actions{margin-top:20px}
 
-/* ── Mobile ── */
+/* ── Mobile ──
+   The men "Management Room" rail becomes a compact sticky top bar (logo +
+   hamburger). The full nav is hidden behind the burger and slides in as an
+   overlay drawer, so page content starts at the very top of the screen
+   instead of below a full-height menu. */
 @media (max-width: 900px) {
   .brit-app {
     display: block;
   }
+
+  /* Rail → sticky compact top bar; its nav is now an off-canvas drawer. */
   .brit-rail {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 60;
     height: auto;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 18px;
-    flex-wrap: wrap;
-    gap: 12px;
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+    overflow: visible;
   }
-  .brit-lockup {
+
+  /* The visible mobile bar (logo + burger) */
+  .brit-rail-mobilebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px;
+    background: var(--black);
+    border-bottom: 1px solid var(--dark-line);
+  }
+  .brit-rail .brit-lockup {
     border: 0;
     padding: 0;
+    min-width: 0;
   }
-  .brit-lockup img {
-    width: 36px;
-    height: 36px;
+  .brit-rail .brit-lockup img {
+    width: 34px;
+    height: 34px;
+    flex: none;
   }
-  .brit-lockup strong {
+  .brit-rail .brit-lockup strong {
     font-size: 13px;
   }
+  .brit-rail .brit-lockup small {
+    display: none;
+  }
+  /* The standalone desktop lockup is redundant on mobile (bar has its own). */
+  .brit-lockup-desktop {
+    display: none;
+  }
+
+  /* Hamburger button → animated X when open */
+  .brit-rail-burger {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 42px;
+    height: 42px;
+    flex: none;
+    padding: 10px;
+    border: 1px solid var(--dark-line);
+    background: transparent;
+    cursor: pointer;
+  }
+  .brit-rail-burger span {
+    display: block;
+    height: 1.5px;
+    width: 100%;
+    background: var(--gold-soft);
+    transition: transform 0.25s ease, opacity 0.2s ease;
+  }
+  .brit-rail[data-mobile-open='true'] .brit-rail-burger span:nth-child(1) {
+    transform: translateY(6.5px) rotate(45deg);
+  }
+  .brit-rail[data-mobile-open='true'] .brit-rail-burger span:nth-child(2) {
+    opacity: 0;
+  }
+  .brit-rail[data-mobile-open='true'] .brit-rail-burger span:nth-child(3) {
+    transform: translateY(-6.5px) rotate(-45deg);
+  }
+
+  /* Nav → off-canvas drawer, hidden by default */
+  .brit-rail .brit-nav {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    inset-inline-start: 0;
+    z-index: 70;
+    width: min(300px, 86vw);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 20px 22px calc(28px + env(safe-area-inset-bottom, 0px));
+    background: var(--black);
+    border-inline-end: 1px solid var(--dark-line);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: translateX(-104%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  [dir='rtl'] .brit-rail .brit-nav {
+    transform: translateX(104%);
+  }
+  .brit-rail[data-mobile-open='true'] .brit-nav {
+    transform: none;
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
+  }
+  .brit-rail .brit-nav a,
+  .brit-rail .brit-nav .brit-nav-group {
+    justify-content: space-between;
+    padding: 14px 0;
+    font-size: 12px;
+  }
+  /* Keep the label anchored to the start; the active underline marker shouldn't
+     stretch the row across the full drawer width. */
+  .brit-rail .brit-nav a > span,
+  .brit-rail .brit-nav .brit-nav-group > span {
+    order: -1;
+  }
+  .brit-rail .brit-nav a.active::before,
+  .brit-rail .brit-nav .brit-nav-group.active::before {
+    order: 0;
+    margin-inline: 10px 0;
+  }
+  .brit-rail .brit-nav a em {
+    display: inline;
+  }
+
+  /* Tap-away scrim */
+  .brit-rail-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    background: rgba(17, 17, 15, 0.55);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .brit-rail[data-mobile-open='true'] .brit-rail-scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .brit-rail-label,
   .brit-rail-footer {
     display: none;
   }
-  .brit-nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    margin: 0;
-  }
-  .brit-nav a {
-    padding: 6px 0;
-  }
-  .brit-nav a em {
-    display: none;
-  }
-  .brit-nav a.active::before {
-    display: none;
-  }
+
+  /* Topbar → tidy single scrollable row (no ragged wrapping) */
   .brit-topbar {
     height: auto;
-    padding: 12px 18px;
-    flex-wrap: wrap;
-    gap: 10px;
+    padding: 10px 18px;
+    gap: 14px;
+  }
+  .brit-topbar > div:first-child {
+    flex: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .brit-actions {
+    gap: 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex: none;
+  }
+  .brit-actions::-webkit-scrollbar {
+    display: none;
+  }
+  .brit-actions > * {
+    white-space: nowrap;
+    flex: none;
   }
   .brit-canvas {
-    padding: 28px 18px 60px;
+    padding: 24px 18px 72px;
   }
   .brit-masthead {
     display: block;
     margin-bottom: 34px;
   }
   .brit-masthead h1 {
-    font-size: 64px;
+    font-size: clamp(44px, 13vw, 64px);
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   .brit-mast-note {
     margin-top: 22px;
