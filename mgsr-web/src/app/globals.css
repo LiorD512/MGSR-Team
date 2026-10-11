@@ -4017,7 +4017,12 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-mast-actions{display:flex;align-items:center;gap:10px}
 .brit-room .brit-mast-add{padding:11px 16px;background:var(--gold-soft);border:1px solid var(--gold-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;transition:.15s;white-space:nowrap}
 .brit-room .brit-mast-add:hover{background:var(--gold);color:var(--paper)}
-@media(max-width:900px){.brit-room .brit-mast-actions{margin-top:16px;flex-wrap:wrap}}
+@media(max-width:900px){
+  /* Keep the view toggle at the start and push the "+ Add player" button to
+     the right end of the masthead actions row. */
+  .brit-room .brit-mast-actions{margin-top:16px;flex-wrap:wrap;justify-content:space-between;width:100%}
+  .brit-room .brit-mast-actions .brit-mast-add{margin-inline-start:auto}
+}
 
 /* Masthead actions (mirror requests) */
 .brit-room .brit-ct-mast-actions{display:flex;gap:10px}
