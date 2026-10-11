@@ -4160,6 +4160,11 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 
 /* Sort row (inline, under signals) */
 .brit-room .brit-ra-sortrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 2px 16px}
+/* The sort row now lives inside the filter tray so it can join the mobile
+   sheet. On desktop, detach it visually as a divided row within the tray. */
+.brit-room .brit-tray .brit-ra-sortrow-sheet{margin:0;padding:12px 20px;border-top:1px solid var(--line)}
+/* Value presets block only appears inside the mobile sheet. */
+.brit-room .brit-ra-presets{display:none}
 .brit-room .brit-ra-sortrow .lbl{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
 .brit-room .brit-ra-sortrow button{padding:9px 13px;border:1px solid var(--line);font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);transition:.15s}
 .brit-room .brit-ra-sortrow button:hover{color:var(--ink)}
@@ -4235,9 +4240,40 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-ra-mates-load .sp{width:18px;height:18px;border:2px solid rgba(201,166,107,.35);border-top-color:var(--gold-soft);border-radius:50%;animation:brit-ra-spin .9s linear infinite}
 
 @media(max-width:900px){
-  .brit-room .brit-ra-mast{align-items:stretch}
   .brit-room .brit-ra-ticker-stats{grid-template-columns:1fr 1fr}
   .brit-room .brit-ra-feed{grid-template-columns:1fr}
+
+  /* ── Masthead: compact refresh button on the right (like desktop), not a
+     full-width bar. The value presets move into the filter sheet. ── */
+  .brit-room .brit-ra-mast{flex-direction:row;align-items:center;justify-content:flex-end;gap:0;margin-top:16px}
+  [dir=rtl] .brit-room .brit-ra-mast{justify-content:flex-start}
+  .brit-room .brit-ra-mast .brit-ra-sortrow{display:none}
+  .brit-room .brit-ra-refresh{width:auto;padding:11px 15px;white-space:nowrap}
+  .brit-room .brit-ra-sub{font-size:11px}
+
+  /* ── Filter sheet: this screen uses .brit-req-filterrow + .brit-ra-sortrow
+     + value presets instead of the roster's segment/chips. Style them as the
+     same readable, sectioned pill layout. ── */
+  /* The tray's own inline search is redundant in the sheet (the bar has one). */
+  .brit-room .brit-tray[data-sheet-open] > .brit-search{display:none}
+
+  /* Value presets → labelled pill row */
+  .brit-room .brit-tray[data-sheet-open] .brit-ra-presets{display:flex;flex-wrap:wrap;gap:9px;padding:0 var(--sheet-pad,20px) 18px;border-bottom:1px solid var(--line)}
+  .brit-room .brit-tray[data-sheet-open] .brit-ra-presets button{height:40px;padding:0 15px;border:1px solid var(--line);border-radius:20px;font:600 12px/1 var(--mono);letter-spacing:.03em;color:var(--ink);background:#fff}
+  .brit-room .brit-tray[data-sheet-open] .brit-ra-presets button.on{background:var(--gold-soft);color:var(--ink);border-color:var(--gold-soft)}
+
+  /* Filter rows (position / age / region / source) → labelled pill sections */
+  .brit-room .brit-tray[data-sheet-open] .brit-req-filterrow{display:block;border:0;border-bottom:1px solid var(--line);padding:18px var(--sheet-pad,20px)}
+  .brit-room .brit-tray[data-sheet-open] .brit-req-flabel{display:block;padding:0 0 12px;border:0;font:600 11px/1 var(--mono);letter-spacing:.14em;color:var(--muted)}
+  .brit-room .brit-tray[data-sheet-open] .brit-req-chipset{display:flex;flex-wrap:wrap;gap:9px}
+  .brit-room .brit-tray[data-sheet-open] .brit-req-chipset button{height:40px;padding:0 15px;border:1px solid var(--line);border-radius:20px;font:600 12px/1 var(--mono);letter-spacing:.03em;color:var(--ink);background:#fff}
+  .brit-room .brit-tray[data-sheet-open] .brit-req-chipset button.on{background:var(--gold-soft);color:var(--ink);border-color:var(--gold-soft)}
+
+  /* Sort row inside the sheet → labelled pills */
+  .brit-room .brit-tray[data-sheet-open] .brit-ra-sortrow-sheet{display:flex;flex-wrap:wrap;gap:9px;margin:0;padding:18px var(--sheet-pad,20px);border-top:0;border-bottom:1px solid var(--line)}
+  .brit-room .brit-tray[data-sheet-open] .brit-ra-sortrow-sheet .lbl{flex:0 0 100%;margin-bottom:3px;font:600 11px/1 var(--mono);letter-spacing:.14em;color:var(--muted)}
+  .brit-room .brit-tray[data-sheet-open] .brit-ra-sortrow-sheet button{height:40px;padding:0 16px;border:1px solid var(--line);border-radius:20px;font:600 12px/1 var(--mono);letter-spacing:.03em;color:var(--ink);background:#fff}
+  .brit-room .brit-tray[data-sheet-open] .brit-ra-sortrow-sheet button.on{background:var(--gold-soft);color:var(--ink);border-color:var(--gold-soft)}
 }
 
 /* ═══════════════════════════════════════════════════════

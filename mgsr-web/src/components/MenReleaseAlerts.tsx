@@ -12,8 +12,10 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
+import BritFilterSheetPortal from '@/components/BritFilterSheetPortal';
 import type { Confederation } from '@/lib/api';
 
 // ── Structural types (mirror the page; kept local to avoid cross-imports) ──
@@ -213,6 +215,25 @@ export default function MenReleaseAlerts(props: MenReleaseAlertsProps) {
 
   const { t, lang, setLang, isRtl } = useLanguage();
 
+  // Mobile: the filter tray + sort collapse into a bottom sheet (portaled to
+  // <body> so its fixed positioning anchors to the viewport, not .brit-room).
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const isMobileSheet = useMediaQuery('(max-width: 900px)');
+  const activeFilterCount =
+    (positionFilter ? 1 : 0) +
+    (ageFilter !== 'all' ? 1 : 0) +
+    (regionFilter ? 1 : 0) +
+    (rosterOnly ? 1 : 0) +
+    (preset !== 0 ? 1 : 0);
+  const clearAllFilters = () => {
+    setPositionFilter(null);
+    setAgeFilter('all');
+    setRegionFilter(null);
+    setRosterOnly(false);
+    setPreset(0);
+    setSearch('');
+  };
+
   const dateStr = new Date().toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
   const timeStr = new Date().toLocaleTimeString(isRtl ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' });
 
@@ -337,8 +358,40 @@ export default function MenReleaseAlerts(props: MenReleaseAlertsProps) {
               </div>
             </section>
 
-            {/* Filters */}
-            <section className="brit-tray">
+            {/* Mobile filter bar — search + a Filter button that opens the tray
+                (and the sort row) as a bottom sheet. Hidden on desktop. */}
+            <div className="brit-mfilter">
+              <label className="brit-search brit-mfilter-search">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('release_notifications_search')} aria-label={t('release_notifications_search')} />
+                {search && <button type="button" className="brit-search-clear" onClick={() => setSearch('')} aria-label={t('players_clear_filters')}>×</button>}
+              </label>
+              <button type="button" className="brit-mfilter-btn" onClick={() => setFilterSheetOpen(true)} aria-expanded={filterSheetOpen}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4h18M6 12h12M10 20h4" /></svg>
+                <span>{t('filters')}</span>
+                {activeFilterCount > 0 && <span className="brit-mfilter-count">{activeFilterCount}</span>}
+              </button>
+            </div>
+
+            {/* Filters — inline on desktop; portals to <body> on mobile as a
+                bottom sheet (see BritFilterSheetPortal). */}
+            <BritFilterSheetPortal active={isMobileSheet} isRtl={isRtl}>
+            <div className={`brit-tray-scrim${filterSheetOpen ? ' open' : ''}`} onClick={() => setFilterSheetOpen(false)} aria-hidden />
+            <section className="brit-tray" aria-label={t('filters')} data-sheet-open={filterSheetOpen ? 'true' : 'false'}>
+              <div className="brit-tray-sheet-head">
+                <h3>{t('filters')}</h3>
+                <button type="button" onClick={() => setFilterSheetOpen(false)} aria-label={t('common_close') || 'Close'}>×</button>
+              </div>
+              {/* Value presets (desktop shows these in the masthead; the sheet
+                  surfaces them here on mobile where the masthead row is hidden). */}
+              <span className="brit-sheet-label">{t('releases_value_filter')}</span>
+              <div className="brit-ra-presets">
+                {VALUE_PRESETS.map((vp, i) => (
+                  <button key={i} className={preset === i ? 'on' : ''} onClick={() => setPreset(i)}>
+                    {vp.isAll ? t('releases_all') : (isRtl ? vp.labelHe : vp.label)}
+                  </button>
+                ))}
+              </div>
               <label className="brit-search">
                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('release_notifications_search')} />
@@ -382,15 +435,27 @@ export default function MenReleaseAlerts(props: MenReleaseAlertsProps) {
                   <button className={rosterOnly ? 'on' : ''} onClick={() => setRosterOnly(!rosterOnly)}>{t('release_notifications_filter_roster')}</button>
                 </div>
               </div>
-            </section>
 
-            {/* Sort row */}
-            <div className="brit-ra-sortrow">
-              <span className="lbl">{t('releases_sort')}</span>
-              {SORT_OPTIONS.map((o) => (
-                <button key={o.value} className={sortBy === o.value ? 'on' : ''} onClick={() => setSortBy(o.value)}>{t(o.labelKey)}</button>
-              ))}
-            </div>
+              {/* Sort row — lives inside the tray so it's part of the mobile
+                  sheet; desktop CSS detaches it to look like a standalone row. */}
+              <div className="brit-ra-sortrow brit-ra-sortrow-sheet">
+                <span className="lbl">{t('releases_sort')}</span>
+                {SORT_OPTIONS.map((o) => (
+                  <button key={o.value} className={sortBy === o.value ? 'on' : ''} onClick={() => setSortBy(o.value)}>{t(o.labelKey)}</button>
+                ))}
+              </div>
+
+              {/* Sticky sheet footer (mobile only) */}
+              <div className="brit-tray-sheet-foot">
+                {activeFilterCount > 0 && (
+                  <button type="button" className="reset" onClick={clearAllFilters}>{t('players_clear_filters')}</button>
+                )}
+                <button type="button" className="apply" onClick={() => setFilterSheetOpen(false)}>
+                  {t('release_notifications_room_showing').replace('{n}', String(filteredCount)).replace('{total}', String(resolvedCount))}
+                </button>
+              </div>
+            </section>
+            </BritFilterSheetPortal>
 
             <p className="brit-result-count">
               {t('release_notifications_room_showing').replace('{n}', String(filteredCount)).replace('{total}', String(resolvedCount))}
