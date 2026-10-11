@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BRIT — Platform Switcher concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+    --gold:#a47d43;--gold-soft:#c9a66b;--gold-bright:#e4c98b;
+    --teal:#2f7d6e;--teal-soft:#5fa391;
+    --red:#b64235;--muted:#77736a;--muted-2:#aba69b;
+    --line:rgba(22,22,19,.18);--line-2:rgba(22,22,19,.07);
+    --display:'Oswald',sans-serif;--body:'Manrope',sans-serif;--mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(ellipse at 30% 0%,#2a2419,#121009 70%);
+    font:14px/1.5 var(--body);color:var(--ink);padding:34px 16px 80px;display:flex;flex-direction:column;align-items:center;gap:26px}
+  .intro{text-align:center;color:var(--paper);max-width:560px}
+  .intro .kick{color:var(--gold-bright);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.2em}
+  .intro h1{margin:11px 0 7px;font:500 28px/.95 var(--display);text-transform:uppercase}
+  .intro p{margin:0;color:#b7b1a5;font:11px/1.6 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+
+  .lab{color:var(--gold-bright);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.18em;margin:8px 0 2px;align-self:flex-start;max-width:430px;width:100%}
+  .labsub{color:#9a948a;font:9px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.04em;margin:0 0 10px;align-self:flex-start;max-width:430px;width:100%}
+
+  /* paper panel each concept sits on (phone-width light surface) */
+  .panel{width:430px;max-width:100%;background:var(--paper);border-radius:22px;overflow:hidden;
+    box-shadow:0 30px 70px rgba(0,0,0,.45);position:relative}
+  .panel:before{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;opacity:.045;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+  .panel .inner{position:relative;z-index:6;padding:16px 18px}
+
+  /* mini header mock */
+  .mh{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+  .mh .mk{width:34px;height:34px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,#2a2217,#11100b);border:1.5px solid var(--gold-soft);display:grid;place-items:center;color:var(--gold-bright);font:600 14px/1 var(--display)}
+  .mh .t .k{font:500 8px/1 var(--mono);color:var(--gold);letter-spacing:1.4px;text-transform:uppercase}
+  .mh .t .n{margin-top:4px;font:600 13px/1 var(--display);letter-spacing:.5px;text-transform:uppercase}
+  .mh .sp{flex:1}
+  .mh .mi{width:30px;height:30px;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);font:14px/1 var(--body)}
+
+  .masthead .date{font:500 10px/1 var(--mono);color:var(--gold);letter-spacing:1.4px;text-transform:uppercase}
+  .masthead h2{margin:10px 0 0;font:600 34px/.82 var(--display);letter-spacing:-1.5px;text-transform:uppercase}
+  .masthead h2 em{color:var(--gold);font-style:normal}
+
+  .divider{height:1px;background:var(--line);margin:16px 0}
+
+  /* ══════════ SWITCHER VARIANTS ══════════ */
+
+  /* V1 — Light pill (paper-tuned web switch): hairline pill, gold thumb, dot+label */
+  .sw-pill{display:inline-flex;align-items:center;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--paper-2);position:relative}
+  .sw-pill .thumb{position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:999px;background:var(--gold);transition:.4s cubic-bezier(.2,.75,.2,1)}
+  .sw-pill.youth .thumb{transform:translateX(100%);background:var(--teal)}
+  .sw-pill button{position:relative;z-index:1;display:flex;align-items:center;gap:7px;padding:8px 18px;border:0;background:transparent;cursor:pointer;color:var(--muted);font:600 11px/1 var(--display);letter-spacing:.7px;text-transform:uppercase}
+  .sw-pill button .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.45}
+  .sw-pill button.on{color:#fff}
+  .sw-pill button.on .dot{opacity:1}
+
+  /* V2 — Underline tabs (editorial, flat): labels with a gold underline on active */
+  .sw-tabs{display:inline-flex;gap:26px;border-bottom:1px solid var(--line)}
+  .sw-tabs button{border:0;background:transparent;cursor:pointer;padding:0 0 12px;position:relative;color:var(--muted);font:600 15px/1 var(--display);letter-spacing:.5px;text-transform:uppercase}
+  .sw-tabs button.on{color:var(--ink)}
+  .sw-tabs button.on:after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--gold)}
+  .sw-tabs.youth button.on:after{background:var(--teal)}
+
+  /* V3 — Segmented hairline (boxed, equal halves) */
+  .sw-seg{display:inline-flex;border:1px solid var(--line);background:var(--card)}
+  .sw-seg button{border:0;background:transparent;cursor:pointer;padding:10px 22px;color:var(--muted);font:600 11px/1 var(--display);letter-spacing:.8px;text-transform:uppercase;border-right:1px solid var(--line)}
+  .sw-seg button:last-child{border-right:0}
+  .sw-seg button.on{background:var(--ink);color:var(--paper)}
+  .sw-seg.youth button.on{background:var(--teal)}
+
+  /* V4 — Toggle switch (single control, physical toggle) */
+  .sw-toggle{display:inline-flex;align-items:center;gap:12px}
+  .sw-toggle .side{font:600 11px/1 var(--display);letter-spacing:.7px;text-transform:uppercase;color:var(--muted)}
+  .sw-toggle .side.on{color:var(--ink)}
+  .sw-toggle .track{width:52px;height:28px;border-radius:999px;background:var(--paper-2);border:1px solid var(--line);position:relative;cursor:pointer}
+  .sw-toggle .knob{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:var(--gold);transition:.35s cubic-bezier(.2,.75,.2,1)}
+  .sw-toggle.youth .knob{transform:translateX(24px);background:var(--teal)}
+
+  /* V5 — Minimal breadcrumb (text + chevron, opens a tiny menu) */
+  .sw-crumb{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+  .sw-crumb .cur{font:600 13px/1 var(--display);letter-spacing:.6px;text-transform:uppercase;color:var(--ink)}
+  .sw-crumb .cur em{color:var(--gold);font-style:normal}
+  .sw-crumb .ch{color:var(--muted);font-size:11px}
+  .sw-crumb .pop{display:flex;gap:6px}
+  .sw-crumb .pop b{font:500 9px/1 var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);padding:5px 9px;cursor:pointer}
+  .sw-crumb .pop b.on{color:var(--ink);border-color:var(--gold);background:rgba(164,125,67,.08)}
+
+  /* V6 — Icon chips (crest + letter) */
+  .sw-chips{display:inline-flex;gap:8px}
+  .sw-chips .chip{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);padding:7px 13px 7px 7px;cursor:pointer}
+  .sw-chips .chip .ic{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:600 11px/1 var(--display);background:var(--paper-2);color:var(--muted)}
+  .sw-chips .chip .cl{font:600 11px/1 var(--display);letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+  .sw-chips .chip.on{border-color:var(--ink)}
+  .sw-chips .chip.on .ic{background:var(--gold);color:#fff}
+  .sw-chips .chip.on .cl{color:var(--ink)}
+  .sw-chips.youth .chip.on{border-color:var(--teal)}
+  .sw-chips.youth .chip.on .ic{background:var(--teal)}
+
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .center{display:flex;justify-content:center}
+  .note{font:9px/1.4 var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:10px}
+
+  .toggle-hint{color:#8a847a;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;margin-top:6px;align-self:flex-start;max-width:430px}
+</style>
+</head>
+<body>
+  <div class="intro">
+    <div class="kick">BRIT · Android · platform switcher concepts</div>
+    <h1>Switcher — pick a direction</h1>
+    <p>Tuned for the light paper dashboard · tap any to see the Men↔Academy state · each shows a suggested placement</p>
+  </div>
+
+  <!-- V1 — Light pill, placed in the header actions row -->
+  <div class="lab">Option 1 · Light pill (paper-tuned web switch)</div>
+  <div class="labsub">Placement: top-right of the header, replacing the dark pill</div>
+  <div class="panel"><div class="inner">
+    <div class="mh">
+      <span class="mk">B</span>
+      <div class="t"><div class="k">BRIT · MANAGEMENT ROOM</div><div class="n">Dashboard</div></div>
+      <span class="sp"></span>
+      <div class="sw-pill" id="p1" onclick="tog('p1')">
+        <span class="thumb"></span>
+        <button class="on"><span class="dot"></span>MEN</button>
+        <button><span class="dot"></span>ACADEMY</button>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- V2 — Underline tabs, under the masthead -->
+  <div class="lab">Option 2 · Editorial underline tabs</div>
+  <div class="labsub">Placement: a full-width row under the masthead (above the signals)</div>
+  <div class="panel"><div class="inner">
+    <div class="masthead">
+      <div class="date">Sunday 11 October</div>
+      <h2>Good morning<br><em>Lior Dahan.</em></h2>
+    </div>
+    <div class="divider"></div>
+    <div class="sw-tabs" id="p2" onclick="tog('p2')">
+      <button class="on">Men</button>
+      <button>Academy</button>
+    </div>
+  </div></div>
+
+  <!-- V3 — Segmented hairline, centered under header -->
+  <div class="lab">Option 3 · Segmented hairline (boxed halves)</div>
+  <div class="labsub">Placement: centered strip directly under the header</div>
+  <div class="panel"><div class="inner">
+    <div class="mh">
+      <span class="mk">B</span>
+      <div class="t"><div class="k">BRIT · MANAGEMENT ROOM</div><div class="n">Dashboard</div></div>
+      <span class="sp"></span>
+      <div class="mi">⋯</div>
+    </div>
+    <div class="center">
+      <div class="sw-seg" id="p3" onclick="tog('p3')">
+        <button class="on">Men</button>
+        <button>Academy</button>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- V4 — Physical toggle, in header -->
+  <div class="lab">Option 4 · Physical toggle (Men ⇄ Academy)</div>
+  <div class="labsub">Placement: top-right of the header — compact, playful</div>
+  <div class="panel"><div class="inner">
+    <div class="mh">
+      <span class="mk">B</span>
+      <div class="t"><div class="k">BRIT · MANAGEMENT ROOM</div><div class="n">Dashboard</div></div>
+      <span class="sp"></span>
+      <div class="sw-toggle" id="p4" onclick="tog('p4')">
+        <span class="side on">MEN</span>
+        <span class="track"><span class="knob"></span></span>
+        <span class="side">ACAD</span>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- V5 — Breadcrumb w/ inline options, under header -->
+  <div class="lab">Option 5 · Minimal label + chips</div>
+  <div class="labsub">Placement: a quiet line under the header kicker</div>
+  <div class="panel"><div class="inner">
+    <div class="mh">
+      <span class="mk">B</span>
+      <div class="t"><div class="k">BRIT · MANAGEMENT ROOM</div><div class="n">Dashboard</div></div>
+      <span class="sp"></span>
+      <div class="mi">⋯</div>
+    </div>
+    <div class="sw-crumb" id="p5">
+      <div class="pop" onclick="togCrumb(event)">
+        <b class="on">Men</b>
+        <b>Academy</b>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- V6 — Icon chips, centered under header -->
+  <div class="lab">Option 6 · Crest icon chips</div>
+  <div class="labsub">Placement: centered under the header</div>
+  <div class="panel"><div class="inner">
+    <div class="mh">
+      <span class="mk">B</span>
+      <div class="t"><div class="k">BRIT · MANAGEMENT ROOM</div><div class="n">Dashboard</div></div>
+      <span class="sp"></span>
+      <div class="mi">⋯</div>
+    </div>
+    <div class="center">
+      <div class="sw-chips" id="p6" onclick="tog('p6')">
+        <div class="chip on"><span class="ic">M</span><span class="cl">Men</span></div>
+        <div class="chip"><span class="ic">A</span><span class="cl">Academy</span></div>
+      </div>
+    </div>
+  </div></div>
+
+<script>
+  // Generic 2-button toggle: flips .on between the two children & adds .youth to the control when 2nd active.
+  function tog(id){
+    const el=document.getElementById(id);
+    const btns=el.querySelectorAll('button, .chip, .side');
+    // find the two "option" nodes (ignore thumb/knob/track)
+    let opts=[...el.querySelectorAll('button')];
+    if(opts.length===0) opts=[...el.querySelectorAll('.chip')];
+    if(id==='p4'){ // toggle has two .side labels + track
+      const sides=el.querySelectorAll('.side');
+      const youth=el.classList.toggle('youth');
+      sides[0].classList.toggle('on',!youth);
+      sides[1].classList.toggle('on',youth);
+      return;
+    }
+    const firstOn=opts[0].classList.contains('on');
+    opts[0].classList.toggle('on',!firstOn);
+    opts[1].classList.toggle('on',firstOn);
+    el.classList.toggle('youth',firstOn); // youth when 2nd becomes active
+  }
+  function togCrumb(e){
+    const pop=e.currentTarget;const bs=pop.querySelectorAll('b');
+    const firstOn=bs[0].classList.contains('on');
+    bs[0].classList.toggle('on',!firstOn);
+    bs[1].classList.toggle('on',firstOn);
+  }
+</script>
+</body>
+</html>
