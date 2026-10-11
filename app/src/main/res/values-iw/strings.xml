@@ -130,6 +130,9 @@
     <string name="shortlist_add_to_agency">הוסף לסוכנות</string>
     <string name="shortlist_open_tm">פתח TM</string>
     <string name="shortlist_remove">הסר</string>
+    <string name="shortlist_free_tag">חופשי</string>
+    <string name="shortlist_share_whatsapp">WA</string>
+    <string name="shortlist_share_message">הוספתי אותו לרשימת מעקב, תבדקו אם יש לנו איך להגיע אליו.</string>
     <string name="shortlist_remove_confirm">להסיר את השחקן מרשימת המעקב?</string>
     <string name="shortlist_no_players">אין שחקנים ברשימת מעקב</string>
     <string name="shortlist_empty_hint">הוסף שחקנים משחרורים או בהשאלה כדי לשמור אותם להמשך. כשמוכן, הוסף אותם לסוכנות שלך.</string>
@@ -1583,4 +1586,71 @@
 
     <!-- Dashboard Search -->
     <string name="dashboard_search_hint">חפש שחקן, מועדון או עמדה…</string>
+
+    <!-- Roster + Shortlist web-parity (brit-room) -->
+    <!-- Masthead / chrome -->
+    <string name="room_kicker">משרד לקוחות פרטי / פלטפורמת גברים</string>
+    <string name="players_room_head_a">הסגל</string>
+    <string name="players_room_head_b">שלנו.</string>
+    <string name="players_view_ledger">טבלה</string>
+    <string name="shortlist_view_board">לוח</string>
+    <string name="players_add">הוסף שחקן</string>
+    <string name="nav_players">שחקנים</string>
+    <string name="nav_shortlist">רשימת מעקב</string>
+
+    <!-- Roster signals -->
+    <string name="room_signals">אותות תיק</string>
+    <string name="room_signal_roster">נכסי סגל</string>
+    <string name="room_signal_roster_note">{n} דרכונים אירופיים</string>
+    <string name="players_signal_value">שווי מנוהל</string>
+    <string name="players_signal_value_note">על פני {n} מוערכים</string>
+    <string name="players_signal_mandate">עם מנדט</string>
+    <string name="players_signal_mandate_note">{n} ללא</string>
+    <string name="players_signal_free">שחקנים חופשיים</string>
+    <string name="players_signal_free_note">זמינים כעת</string>
+
+    <!-- Roster filter tray -->
+    <string name="players_position_main">עמדה ראשית</string>
+    <string name="players_position_secondary">משחק גם</string>
+    <string name="players_position_any">הכל</string>
+    <string name="releases_all">הכל</string>
+    <string name="search_placeholder">חפש לפי שם, עמדה או מועדון...</string>
+    <string name="players_clear_filters">נקה סינון</string>
+    <string name="players_sort_label">מיון</string>
+    <string name="players_sort_default">תאריך הוספה</string>
+    <string name="players_showing">מוצג {n} מתוך {total} נכסים</string>
+    <string name="players_filters_active">{n} סינונים פעילים</string>
+    <string name="players_empty_filtered">אין שחקנים שתואמים לסינון</string>
+
+    <!-- Roster table (ledger) + flags -->
+    <string name="room_th_player">שחקן</string>
+    <string name="room_th_club">מועדון</string>
+    <string name="room_th_position">עמדה</string>
+    <string name="room_th_value">שווי</string>
+    <string name="room_th_action">פעולה</string>
+    <string name="players_th_age">גיל</string>
+    <string name="players_th_agent">סוכן</string>
+    <string name="players_th_signals">סימונים</string>
+    <string name="eu_nat_tag">אזרח EU</string>
+
+    <!-- Shortlist -->
+    <string name="shortlist_room_kicker">משרד לקוחות פרטי / לוח סקאוטינג</string>
+    <string name="shortlist_room_head_a">רשימת</string>
+    <string name="shortlist_room_head_b">המעקב.</string>
+    <string name="shortlist_signals">אותות רשימת מעקב</string>
+    <string name="shortlist_signal_targets">יעדים במעקב</string>
+    <string name="shortlist_signal_targets_note">{n} נוספו החודש</string>
+    <string name="shortlist_signal_value">שווי מצטבר</string>
+    <string name="shortlist_signal_free">שחקנים חופשיים</string>
+    <string name="shortlist_filter_free_agent">Free Agent</string>
+    <string name="shortlist_filter_contract_expiring">חוזה מסתיים</string>
+    <string name="shortlist_sort_added">תאריך הוספה</string>
+    <string name="shortlist_sort_market_value">ערך שוק</string>
+    <string name="shortlist_sort_name">שם</string>
+    <string name="shortlist_sort_age">גיל</string>
+    <string name="shortlist_showing">מוצג {n} מתוך {total} יעדים</string>
+    <string name="shortlist_empty">רשימת המעקב ריקה</string>
+    <string name="shortlist_th_target">יעד</string>
+    <string name="shortlist_th_change">Δ</string>
+    <string name="shortlist_th_scout">סקאוט</string>
 </resources>

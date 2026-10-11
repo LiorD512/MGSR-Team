@@ -121,6 +121,12 @@ import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
+import com.liordahan.mgsrteam.ui.components.GrayscalePlayerPhoto
+import com.liordahan.mgsrteam.ui.theme.PaperGrainOverlay
+import com.liordahan.mgsrteam.utils.EuCountries
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import com.liordahan.mgsrteam.ui.theme.BritTokens
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.theme.PlatformYouthAccent
@@ -233,6 +239,30 @@ private fun ShortlistEntry.getAddedByDisplayName(context: Context): String? {
     }
 }
 
+/** View mode for the MEN shortlist — mirrors the web `view: 'board' | 'ledger'`. */
+private enum class ShortlistView { BOARD, LEDGER }
+
+/**
+ * Free-agent detection mirroring shortlistIntelligence.isFreeAgent: no club or
+ * "Without Club" / "Vereinslos" / "ללא מועדון".
+ */
+private fun shortlistIsFreeAgent(clubName: String?): Boolean {
+    val c = clubName?.trim()
+    if (c.isNullOrEmpty()) return true
+    val lower = c.lowercase()
+    return lower == "without club" || lower == "vereinslos" || c == "ללא מועדון"
+}
+
+/** Compact euro money formatting mirroring the web `fmtValue`. */
+private fun fmtShortlistValue(v: Long): String = when {
+    v >= 1_000_000L -> {
+        val m = v / 1_000_000.0
+        if (v % 1_000_000L == 0L) "€${m.toInt()}M" else "€${(Math.round(m * 10) / 10.0)}M"
+    }
+    v > 0L -> "€${Math.round(v / 1000.0)}K"
+    else -> "€0"
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  SHORTLIST SCREEN
 // ═════════════════════════════════════════════════════════════════════════════
@@ -301,7 +331,16 @@ fun ShortlistScreen(
         } catch (_: Exception) { }
     }
 
-    val filteredEntries = remember(state.entries, state.removingUrls, myPlayersOnly, selectedAgentFilter, currentUserName, selectedPosition, withNotesOnly, sortOption, searchQuery) {
+    // Board view is the shortlist default (mirrors the web `view: 'board'`).
+    var view by remember { mutableStateOf(ShortlistView.BOARD) }
+
+    // Local derived-only filter chips (mirror the web useMemo filters — NOT store
+    // state). EU-only applies EuCountries.isEuNational; free-only mirrors
+    // shortlistIntelligence.isFreeAgent. No VM / data-layer change.
+    var euOnly by remember { mutableStateOf(false) }
+    var freeOnly by remember { mutableStateOf(false) }
+
+    val filteredEntries = remember(state.entries, state.removingUrls, myPlayersOnly, selectedAgentFilter, currentUserName, selectedPosition, withNotesOnly, sortOption, searchQuery, euOnly, freeOnly) {
         var result = when {
             myPlayersOnly && !currentUserName.isNullOrBlank() ->
                 state.entries.filter { it.addedByAgentName.equals(currentUserName, ignoreCase = true) }
@@ -336,6 +375,14 @@ fun ShortlistScreen(
             result = result.filter { it.notes.isNotEmpty() }
         }
 
+        // Derived-only (local) chips — EU nationality + free agent.
+        if (euOnly) {
+            result = result.filter { EuCountries.isEuNational(it.playerNationality) }
+        }
+        if (freeOnly) {
+            result = result.filter { shortlistIsFreeAgent(it.clubJoinedName) }
+        }
+
         // Sort
         when (sortOption) {
             SortOption.NAME -> result.sortedBy { it.playerName?.lowercase() ?: "" }
@@ -344,6 +391,25 @@ fun ShortlistScreen(
             else -> result // default: by addedAt (already ordered from repo)
         }
     }
+
+    // ── Derived signals (computed in the Compose layer, mirroring MenShortlist.tsx) ──
+    val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+    val monthAdds = remember(state.entries) { state.entries.count { it.addedAt >= thirtyDaysAgo } }
+    val totalValueEuros = remember(state.entries) {
+        state.entries.sumOf { parseShortlistMarketValue(it.marketValue) }
+    }
+    val valuedCount = remember(state.entries) {
+        state.entries.count { parseShortlistMarketValue(it.marketValue) > 0 }
+    }
+    val freeCount = remember(state.entries) {
+        state.entries.count { shortlistIsFreeAgent(it.clubJoinedName) }
+    }
+    val activeFilterCount = (if (selectedPosition != null) 1 else 0) +
+        (if (myPlayersOnly || selectedAgentFilter != null) 1 else 0) +
+        (if (euOnly) 1 else 0) +
+        (if (freeOnly) 1 else 0) +
+        (if (withNotesOnly) 1 else 0)
+    val hasActiveFilters = activeFilterCount > 0 || searchQuery.isNotBlank()
 
     val listState = rememberLazyListState()
     // Track whether the initial highlight scroll has happened
@@ -477,223 +543,216 @@ fun ShortlistScreen(
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            ShortlistHeader(
+        if (isMen) PaperGrainOverlay()
+        // A fully-wired shortlist card (notes + roster-teammates + Instagram
+        // outreach + add/remove). Reused by both the editorial MEN board and the
+        // Youth list so ALL existing behaviour is preserved in one place.
+        val boundCard: @Composable (ShortlistEntry) -> Unit = { entry ->
+            val playerUrl = entry.tmProfileUrl
+            val isExpanded = playerUrl == expandedPlayerUrl
+            ShortlistCard(
+                context = context,
+                entry = entry,
                 isYouth = currentPlatform == Platform.YOUTH,
-                sortOption = sortOption,
-                onSortOptionSelected = { viewModel.setSortOption(it) },
-                onResetSort = { viewModel.setSortOption(SortOption.DEFAULT) },
-                onBackClicked = {
-                    if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
-                        navController.popBackStack()
+                rosterTeammates = teammatesCache[playerUrl],
+                isLoadingTeammates = loadingPlayerUrl == playerUrl,
+                isTeammatesExpanded = isExpanded,
+                onToggleTeammatesExpand = {
+                    expandedPlayerUrl = if (isExpanded) null else playerUrl
+                },
+                onRosterTeammateClick = { player ->
+                    player.tmProfile?.let { profile ->
+                        navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
                     }
-                }
+                },
+                isNotesExpanded = playerUrl == expandedNotesUrl,
+                onToggleNotesExpand = {
+                    expandedNotesUrl = if (playerUrl == expandedNotesUrl) null else playerUrl
+                },
+                onAddNote = {
+                    noteDialogEntry = entry
+                    noteDialogMode = "add"
+                    noteDialogText = ""
+                    noteDialogEditIndex = -1
+                },
+                onEditNote = { noteIndex, currentText ->
+                    noteDialogEntry = entry
+                    noteDialogMode = "edit"
+                    noteDialogText = currentText
+                    noteDialogEditIndex = noteIndex
+                },
+                onDeleteNote = { noteIndex ->
+                    viewModel.deleteNote(entry.tmProfileUrl, noteIndex)
+                },
+                onAddToAgency = {
+                    if (currentPlatform == Platform.YOUTH) {
+                        navController.navigate(
+                            Screens.addPlayerWithTmProfileRoute(Uri.encode(entry.tmProfileUrl))
+                        )
+                    } else {
+                        addPlayerTmUrl = entry.tmProfileUrl
+                        addPlayerFallbackName = entry.playerName
+                        showAddPlayerBottomSheet = true
+                    }
+                },
+                onOpenTm = {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, entry.tmProfileUrl.toUri())
+                    )
+                },
+                onRemove = { entryToDelete = entry },
+                igConfirmUrl = igConfirmUrl,
+                onInstagramOutreach = { handleInstagramOutreach(entry) },
+                onConfirmIgSent = {
+                    viewModel.markInstagramSent(entry.tmProfileUrl)
+                    igConfirmUrl = null
+                },
+                onDismissIgConfirm = { igConfirmUrl = null }
             )
+        }
 
-            ShortlistStatsStrip(
-                total = state.entries.size,
-                thisWeek = thisWeekCount
-            )
-
-            // ── Search bar (men only) ─────────────────────────────────
-            if (currentPlatform == Platform.MEN) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
-                        .height(48.dp),
-                    placeholder = {
-                        Text(
-                            text = stringResource(R.string.shortlist_search_placeholder),
-                            style = regularTextStyle(shortlistMutedTextColor().copy(alpha = 0.6f), 13.sp)
+        when (currentPlatform) {
+            // ── MEN: editorial .brit-room shortlist (web MenShortlist parity) ──
+            Platform.MEN -> {
+                MenShortlistBody(
+                    listState = listState,
+                    state = state,
+                    filteredEntries = filteredEntries,
+                    view = view,
+                    onViewChange = { view = it },
+                    searchQuery = searchQuery,
+                    onSearchChange = { searchQuery = it },
+                    selectedPosition = selectedPosition,
+                    onPositionGroup = { group ->
+                        viewModel.setSelectedPosition(
+                            if (group == "All" || group == selectedPosition) null else group
                         )
                     },
-                    textStyle = regularTextStyle(if (isMen) MenShortlistGoldSoft else PlatformColors.palette.textPrimary, 13.sp),
-                    singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = shortlistAccentColor(),
-                        unfocusedBorderColor = shortlistBorderColor(),
-                        cursorColor = shortlistAccentColor(),
-                        focusedContainerColor = shortlistCardColor(),
-                        unfocusedContainerColor = shortlistCardColor()
-                    ),
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null,
-                            tint = shortlistMutedTextColor(),
-                            modifier = Modifier.size(20.dp)
-                        )
+                    myPlayersOnly = myPlayersOnly,
+                    canFilterMyPlayers = !currentUserName.isNullOrBlank(),
+                    onToggleMyPlayers = { viewModel.setMyPlayersOnly(!myPlayersOnly) },
+                    euOnly = euOnly,
+                    onToggleEu = { euOnly = !euOnly },
+                    freeOnly = freeOnly,
+                    onToggleFree = { freeOnly = !freeOnly },
+                    withNotesOnly = withNotesOnly,
+                    onToggleWithNotes = { viewModel.setWithNotesOnly(!withNotesOnly) },
+                    sortOption = sortOption,
+                    onSort = { viewModel.setSortOption(it) },
+                    hasActiveFilters = hasActiveFilters,
+                    activeFilterCount = activeFilterCount,
+                    onClearFilters = {
+                        searchQuery = ""
+                        euOnly = false
+                        freeOnly = false
+                        viewModel.setSelectedPosition(null)
+                        viewModel.setWithNotesOnly(false)
+                        viewModel.setMyPlayersOnly(false)
+                        viewModel.setSelectedAgentFilter(null)
                     },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(20.dp)) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.filter_clear),
-                                    tint = shortlistMutedTextColor()
-                                )
-                            }
+                    monthAdds = monthAdds,
+                    totalValue = totalValueEuros,
+                    valuedCount = valuedCount,
+                    freeCount = freeCount,
+                    context = context,
+                    removingUrls = state.removingUrls,
+                    onBack = {
+                        if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
+                            navController.popBackStack()
                         }
-                    }
+                    },
+                    onPlatformSwitch = { target -> platformManager.switchTo(target) },
+                    onAdd = { navController.navigate(Screens.addToShortlistRoute()) },
+                    onOpenTarget = { entry -> expandedPlayerUrl = if (expandedPlayerUrl == entry.tmProfileUrl) null else entry.tmProfileUrl },
+                    onRemove = { entry -> entryToDelete = entry },
+                    boundCard = boundCard
                 )
             }
 
-            // ── Position filter chips ─────────────────────────────────
-            ShortlistPositionFilterChips(
-                selectedPosition = selectedPosition,
-                onChipClick = { pos ->
-                    viewModel.setSelectedPosition(if (pos == "All" || pos == selectedPosition) null else pos)
-                }
-            )
-
-            // ── Quick filter chips ────────────────────────────────────
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.padding(vertical = 4.dp)
-            ) {
-                if (currentPlatform == Platform.MEN) {
-                    item(key = "my_players") {
-                        ShortlistQuickFilterChip(
-                            label = stringResource(R.string.shortlist_filter_my_players),
-                            isSelected = myPlayersOnly,
-                            onClick = { viewModel.setMyPlayersOnly(!myPlayersOnly) }
-                        )
-                    }
-                }
-                item(key = "with_notes") {
-                    ShortlistQuickFilterChip(
-                        label = stringResource(R.string.shortlist_filter_with_notes),
-                        isSelected = withNotesOnly,
-                        onClick = { viewModel.setWithNotesOnly(!withNotesOnly) }
-                    )
-                }
-                if (currentPlatform == Platform.MEN) {
-                    item(key = "agent_filter") {
-                        ShortlistAgentFilterChip(
-                            selectedAgentFilter = selectedAgentFilter,
-                            allAccounts = allAccounts,
-                            currentUserName = currentUserName,
-                            onAgentSelected = { agent ->
-                                viewModel.setSelectedAgentFilter(agent)
+            // ── YOUTH: existing card list (teal accent), fully preserved ──
+            Platform.YOUTH -> {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    ShortlistHeader(
+                        isYouth = true,
+                        sortOption = sortOption,
+                        onSortOptionSelected = { viewModel.setSortOption(it) },
+                        onResetSort = { viewModel.setSortOption(SortOption.DEFAULT) },
+                        onBackClicked = {
+                            if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
+                                navController.popBackStack()
                             }
-                        )
-                    }
-                }
-            }
-
-            when {
-                state.isLoading -> {
-                    SkeletonPlayerCardList(modifier = Modifier.fillMaxSize())
-                }
-                state.entries.isEmpty() -> {
-                    ShortlistEmptyState(
-                        onBrowseReleases = { navController.navigate(Screens.ReleasesScreen.route) },
-                        onBrowseReturnees = { navController.navigate(Screens.ReturneeScreen.route) }
+                        }
                     )
-                }
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 100.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+
+                    ShortlistStatsStrip(
+                        total = state.entries.size,
+                        thisWeek = thisWeekCount
+                    )
+
+                    ShortlistPositionFilterChips(
+                        selectedPosition = selectedPosition,
+                        onChipClick = { pos ->
+                            viewModel.setSelectedPosition(if (pos == "All" || pos == selectedPosition) null else pos)
+                        }
+                    )
+
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(vertical = 4.dp)
                     ) {
-                        items(filteredEntries, key = { it.tmProfileUrl }) { entry ->
-                            val playerUrl = entry.tmProfileUrl
-                            val isExpanded = playerUrl == expandedPlayerUrl
-                            ShortlistCard(
-                                context = context,
-                                entry = entry,
-                                isYouth = currentPlatform == Platform.YOUTH,
-                                rosterTeammates = teammatesCache[playerUrl],
-                                isLoadingTeammates = loadingPlayerUrl == playerUrl,
-                                isTeammatesExpanded = isExpanded,
-                                onToggleTeammatesExpand = {
-                                    expandedPlayerUrl = if (isExpanded) null else playerUrl
-                                },
-                                onRosterTeammateClick = { player ->
-                                    player.tmProfile?.let { profile ->
-                                        navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
-                                    }
-                                },
-                                isNotesExpanded = playerUrl == expandedNotesUrl,
-                                onToggleNotesExpand = {
-                                    expandedNotesUrl = if (playerUrl == expandedNotesUrl) null else playerUrl
-                                },
-                                onAddNote = {
-                                    noteDialogEntry = entry
-                                    noteDialogMode = "add"
-                                    noteDialogText = ""
-                                    noteDialogEditIndex = -1
-                                },
-                                onEditNote = { noteIndex, currentText ->
-                                    noteDialogEntry = entry
-                                    noteDialogMode = "edit"
-                                    noteDialogText = currentText
-                                    noteDialogEditIndex = noteIndex
-                                },
-                                onDeleteNote = { noteIndex ->
-                                    viewModel.deleteNote(entry.tmProfileUrl, noteIndex)
-                                },
-                                onAddToAgency = {
-                                    if (currentPlatform == Platform.YOUTH) {
-                                        // Youth: navigate to full AddPlayerScreen with pre-filled data
-                                        navController.navigate(
-                                            Screens.addPlayerWithTmProfileRoute(Uri.encode(entry.tmProfileUrl))
-                                        )
-                                    } else {
-                                        addPlayerTmUrl = entry.tmProfileUrl
-                                        addPlayerFallbackName = entry.playerName
-                                        showAddPlayerBottomSheet = true
-                                    }
-                                },
-                                onOpenTm = {
-                                    context.startActivity(
-                                        Intent(
-                                            Intent.ACTION_VIEW,
-                                            entry.tmProfileUrl.toUri()
-                                        )
-                                    )
-                                },
-                                onRemove = { entryToDelete = entry },
-                                igConfirmUrl = igConfirmUrl,
-                                onInstagramOutreach = { handleInstagramOutreach(entry) },
-                                onConfirmIgSent = {
-                                    viewModel.markInstagramSent(entry.tmProfileUrl)
-                                    igConfirmUrl = null
-                                },
-                                onDismissIgConfirm = { igConfirmUrl = null }
+                        item(key = "with_notes") {
+                            ShortlistQuickFilterChip(
+                                label = stringResource(R.string.shortlist_filter_with_notes),
+                                isSelected = withNotesOnly,
+                                onClick = { viewModel.setWithNotesOnly(!withNotesOnly) }
                             )
                         }
                     }
+
+                    when {
+                        state.isLoading -> {
+                            SkeletonPlayerCardList(modifier = Modifier.fillMaxSize())
+                        }
+                        state.entries.isEmpty() -> {
+                            ShortlistEmptyState(
+                                onBrowseReleases = { navController.navigate(Screens.ReleasesScreen.route) },
+                                onBrowseReturnees = { navController.navigate(Screens.ReturneeScreen.route) }
+                            )
+                        }
+                        else -> {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 100.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(filteredEntries, key = { it.tmProfileUrl }) { entry ->
+                                    boundCard(entry)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Youth add FAB (preserved).
+                FloatingActionButton(
+                    onClick = { navController.navigate(Screens.addToShortlistRoute()) },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 20.dp, bottom = 56.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    containerColor = currentPlatform.accent,
+                    contentColor = PlatformColors.palette.background
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PersonAdd,
+                        contentDescription = stringResource(R.string.shortlist_add_player),
+                        modifier = Modifier.size(24.dp),
+                        tint = Color.White
+                    )
                 }
             }
-        } // end Column
-
-        // ── FAB ──────────────────────────────────────────────────────────
-        FloatingActionButton(
-            onClick = { navController.navigate(Screens.addToShortlistRoute()) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 56.dp),
-            shape = RoundedCornerShape(18.dp),
-            containerColor = if (isMen) MenShortlistGold else currentPlatform.accent,
-            contentColor = if (isMen) MenShortlistBg else PlatformColors.palette.background
-        ) {
-            Icon(
-                imageVector = Icons.Filled.PersonAdd,
-                contentDescription = stringResource(R.string.shortlist_add_player),
-                modifier = Modifier.size(24.dp),
-                tint = if (isMen) MenShortlistBg else Color.White
-            )
         }
         } // end Box
 
@@ -782,6 +841,1079 @@ fun ShortlistScreen(
                     noteDialogEditIndex = -1
                 }
             )
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  MEN EDITORIAL BODY (.brit-room) — web MenShortlist parity
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun MenShortlistBody(
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    state: ShortlistUiState,
+    filteredEntries: List<ShortlistEntry>,
+    view: ShortlistView,
+    onViewChange: (ShortlistView) -> Unit,
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    selectedPosition: String?,
+    onPositionGroup: (String) -> Unit,
+    myPlayersOnly: Boolean,
+    canFilterMyPlayers: Boolean,
+    onToggleMyPlayers: () -> Unit,
+    euOnly: Boolean,
+    onToggleEu: () -> Unit,
+    freeOnly: Boolean,
+    onToggleFree: () -> Unit,
+    withNotesOnly: Boolean,
+    onToggleWithNotes: () -> Unit,
+    sortOption: SortOption,
+    onSort: (SortOption) -> Unit,
+    hasActiveFilters: Boolean,
+    activeFilterCount: Int,
+    onClearFilters: () -> Unit,
+    monthAdds: Int,
+    totalValue: Long,
+    valuedCount: Int,
+    freeCount: Int,
+    context: Context,
+    removingUrls: Set<String>,
+    onBack: () -> Unit,
+    onPlatformSwitch: (Platform) -> Unit,
+    onAdd: () -> Unit,
+    onOpenTarget: (ShortlistEntry) -> Unit,
+    onRemove: (ShortlistEntry) -> Unit,
+    boundCard: @Composable (ShortlistEntry) -> Unit
+) {
+    val accent = BritTokens.gold
+    val accentSoft = BritTokens.goldSoft
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 48.dp)
+    ) {
+        item(key = "chrome") {
+            com.liordahan.mgsrteam.ui.components.BritTopHeader(
+                platform = Platform.MEN,
+                pageTitle = stringResource(R.string.shortlist_title),
+                hasUnreadNotifications = false,
+                onBellClick = {},
+                onPlatformSwitch = onPlatformSwitch,
+                showBack = true,
+                onBackClick = onBack,
+                showBell = false
+            )
+        }
+
+        item(key = "masthead") {
+            ShortlistMasthead(
+                accent = accent,
+                accentSoft = accentSoft,
+                view = view,
+                onViewChange = onViewChange,
+                onAdd = onAdd
+            )
+        }
+
+        item(key = "signals") {
+            ShortlistSignals(
+                targetCount = state.entries.size,
+                monthAdds = monthAdds,
+                totalValue = totalValue,
+                valuedCount = valuedCount,
+                freeCount = freeCount,
+                accent = accent
+            )
+        }
+
+        item(key = "tray") {
+            ShortlistFilterTray(
+                searchQuery = searchQuery,
+                onSearchChange = onSearchChange,
+                selectedPosition = selectedPosition,
+                onPositionGroup = onPositionGroup,
+                myPlayersOnly = myPlayersOnly,
+                canFilterMyPlayers = canFilterMyPlayers,
+                onToggleMyPlayers = onToggleMyPlayers,
+                euOnly = euOnly,
+                onToggleEu = onToggleEu,
+                freeOnly = freeOnly,
+                onToggleFree = onToggleFree,
+                withNotesOnly = withNotesOnly,
+                onToggleWithNotes = onToggleWithNotes,
+                sortOption = sortOption,
+                onSort = onSort,
+                hasActiveFilters = hasActiveFilters,
+                onClearFilters = onClearFilters,
+                accent = accent,
+                accentSoft = accentSoft
+            )
+        }
+
+        item(key = "result_count") {
+            ShortlistResultCount(
+                visibleCount = filteredEntries.size,
+                total = state.entries.size,
+                activeFilterCount = activeFilterCount
+            )
+        }
+
+        when {
+            state.isLoading -> {
+                item(key = "loader") {
+                    SkeletonPlayerCardList(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(600.dp)
+                    )
+                }
+            }
+            filteredEntries.isEmpty() -> {
+                item(key = "empty") { ShortlistFilteredEmpty() }
+            }
+            view == ShortlistView.BOARD -> {
+                itemsIndexed(
+                    items = filteredEntries,
+                    key = { _, e -> e.tmProfileUrl }
+                ) { index, entry ->
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                        ShortlistBoardCard(
+                            index = index,
+                            entry = entry,
+                            accent = accent,
+                            accentSoft = accentSoft,
+                            context = context,
+                            boundCard = boundCard
+                        )
+                    }
+                }
+            }
+            else -> {
+                item(key = "ledger_head") { ShortlistLedgerHeader() }
+                items(
+                    items = filteredEntries,
+                    key = { it.tmProfileUrl }
+                ) { entry ->
+                    ShortlistLedgerRow(
+                        entry = entry,
+                        accent = accent,
+                        context = context,
+                        isRemoving = entry.tmProfileUrl in removingUrls,
+                        onClick = { onOpenTarget(entry) },
+                        onRemove = { onRemove(entry) },
+                        expandedContent = { boundCard(entry) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Masthead ─────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ShortlistMasthead(
+    accent: Color,
+    accentSoft: Color,
+    view: ShortlistView,
+    onViewChange: (ShortlistView) -> Unit,
+    onAdd: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 20.dp, bottom = 18.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.shortlist_room_kicker),
+            style = com.liordahan.mgsrteam.ui.theme.britMono(accent, 10.sp, letterSpacing = 1.4.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = androidx.compose.ui.text.buildAnnotatedString {
+                append(stringResource(R.string.shortlist_room_head_a))
+                append(" ")
+                pushStyle(androidx.compose.ui.text.SpanStyle(color = accent))
+                append(stringResource(R.string.shortlist_room_head_b))
+                pop()
+            },
+            style = com.liordahan.mgsrteam.ui.theme.britDisplay(BritTokens.ink, 44.sp, weight = 600, letterSpacing = (-2).sp)
+                .copy(lineHeight = 44.sp)
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ShortlistViewToggle(
+                view = view,
+                accentSoft = accentSoft,
+                onViewChange = onViewChange,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(BritTokens.black)
+                    .clickWithNoRipple { onAdd() }
+                    .padding(horizontal = 14.dp, vertical = 9.dp)
+            ) {
+                Text(
+                    text = "+ ${stringResource(R.string.players_add)}",
+                    style = com.liordahan.mgsrteam.ui.theme.britMono(accentSoft, 10.sp, letterSpacing = 1.sp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShortlistViewToggle(
+    view: ShortlistView,
+    accentSoft: Color,
+    onViewChange: (ShortlistView) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, BritTokens.line, RoundedCornerShape(8.dp))
+            .padding(2.dp)
+    ) {
+        ShortlistViewToggleButton(
+            label = stringResource(R.string.shortlist_view_board),
+            active = view == ShortlistView.BOARD,
+            accentSoft = accentSoft,
+            onClick = { onViewChange(ShortlistView.BOARD) },
+            modifier = Modifier.weight(1f)
+        )
+        ShortlistViewToggleButton(
+            label = stringResource(R.string.players_view_ledger),
+            active = view == ShortlistView.LEDGER,
+            accentSoft = accentSoft,
+            onClick = { onViewChange(ShortlistView.LEDGER) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun ShortlistViewToggleButton(
+    label: String,
+    active: Boolean,
+    accentSoft: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (active) BritTokens.black else Color.Transparent)
+            .clickWithNoRipple { onClick() }
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = com.liordahan.mgsrteam.ui.theme.britMono(
+                if (active) accentSoft else BritTokens.muted,
+                9.sp,
+                letterSpacing = 1.2.sp
+            ),
+            textAlign = TextAlign.Center,
+            maxLines = 1
+        )
+    }
+}
+
+// ── Signals (3 equal hairline columns) ─────────────────────────────────────────
+
+@Composable
+private fun ShortlistSignals(
+    targetCount: Int,
+    monthAdds: Int,
+    totalValue: Long,
+    valuedCount: Int,
+    freeCount: Int,
+    accent: Color
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 22.dp)
+    ) {
+        HorizontalDivider(thickness = 1.dp, color = BritTokens.line)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(androidx.compose.foundation.layout.IntrinsicSize.Min)
+        ) {
+            ShortlistSignalColumn(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.shortlist_signal_targets),
+                value = targetCount.toString().padStart(2, '0'),
+                valueColor = BritTokens.ink,
+                note = stringResource(R.string.shortlist_signal_targets_note).replace("{n}", monthAdds.toString())
+            )
+            ShortlistVerticalHairline()
+            ShortlistSignalColumn(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.shortlist_signal_value),
+                value = fmtShortlistValue(totalValue),
+                valueColor = accent,
+                note = stringResource(R.string.players_signal_value_note).replace("{n}", valuedCount.toString())
+            )
+            ShortlistVerticalHairline()
+            ShortlistSignalColumn(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.shortlist_signal_free),
+                value = freeCount.toString().padStart(2, '0'),
+                valueColor = if (freeCount > 0) accent else BritTokens.ink,
+                note = stringResource(R.string.players_signal_free_note)
+            )
+        }
+        HorizontalDivider(thickness = 1.dp, color = BritTokens.line)
+    }
+}
+
+@Composable
+private fun ShortlistSignalColumn(
+    modifier: Modifier,
+    label: String,
+    value: String,
+    valueColor: Color,
+    note: String
+) {
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .padding(vertical = 16.dp, horizontal = 10.dp)
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 8.sp, letterSpacing = 0.6.sp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = value,
+            style = com.liordahan.mgsrteam.ui.theme.britDisplay(valueColor, 28.sp, weight = 500, letterSpacing = (-1).sp),
+            maxLines = 1
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = note.uppercase(),
+            style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 7.sp, letterSpacing = 0.5.sp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun ShortlistVerticalHairline() {
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(1.dp)
+            .background(BritTokens.line)
+    )
+}
+
+// ── Filter tray ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun ShortlistFilterTray(
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    selectedPosition: String?,
+    onPositionGroup: (String) -> Unit,
+    myPlayersOnly: Boolean,
+    canFilterMyPlayers: Boolean,
+    onToggleMyPlayers: () -> Unit,
+    euOnly: Boolean,
+    onToggleEu: () -> Unit,
+    freeOnly: Boolean,
+    onToggleFree: () -> Unit,
+    withNotesOnly: Boolean,
+    onToggleWithNotes: () -> Unit,
+    sortOption: SortOption,
+    onSort: (SortOption) -> Unit,
+    hasActiveFilters: Boolean,
+    onClearFilters: () -> Unit,
+    accent: Color,
+    accentSoft: Color
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, BritTokens.line, RoundedCornerShape(12.dp))
+            .padding(14.dp)
+    ) {
+        ShortlistTraySearch(query = searchQuery, accent = accent, onQueryChange = onSearchChange)
+
+        Spacer(Modifier.height(12.dp))
+
+        ShortlistPositionSegment(
+            selected = selectedPosition,
+            accentSoft = accentSoft,
+            onGroup = onPositionGroup
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            ShortlistEditorialChip(
+                label = stringResource(R.string.shortlist_filter_my_players),
+                active = myPlayersOnly,
+                accentSoft = accentSoft,
+                enabled = canFilterMyPlayers,
+                onClick = onToggleMyPlayers
+            )
+            ShortlistEditorialChip(
+                label = "\uD83C\uDDEA\uD83C\uDDFA " + stringResource(R.string.players_filter_eu_national),
+                active = euOnly,
+                accentSoft = accentSoft,
+                onClick = onToggleEu
+            )
+            ShortlistEditorialChip(
+                label = stringResource(R.string.shortlist_filter_free_agent),
+                active = freeOnly,
+                accentSoft = accentSoft,
+                onClick = onToggleFree
+            )
+            ShortlistEditorialChip(
+                label = stringResource(R.string.shortlist_filter_with_notes),
+                active = withNotesOnly,
+                accentSoft = accentSoft,
+                onClick = onToggleWithNotes
+            )
+        }
+
+        Spacer(Modifier.height(14.dp))
+        HorizontalDivider(thickness = 1.dp, color = BritTokens.line2)
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState()),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.players_sort_label).uppercase(),
+                    style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 9.sp, letterSpacing = 1.sp)
+                )
+                ShortlistSortButton(stringResource(R.string.shortlist_sort_added), sortOption == SortOption.DEFAULT, accent) { onSort(SortOption.DEFAULT) }
+                ShortlistSortButton(stringResource(R.string.shortlist_sort_market_value), sortOption == SortOption.MARKET_VALUE, accent) { onSort(SortOption.MARKET_VALUE) }
+                ShortlistSortButton(stringResource(R.string.shortlist_sort_name), sortOption == SortOption.NAME, accent) { onSort(SortOption.NAME) }
+                ShortlistSortButton(stringResource(R.string.shortlist_sort_age), sortOption == SortOption.AGE, accent) { onSort(SortOption.AGE) }
+            }
+            if (hasActiveFilters) {
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.players_clear_filters) + " ×",
+                    style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.red, 9.sp, letterSpacing = 0.8.sp),
+                    modifier = Modifier.clickWithNoRipple { onClearFilters() }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShortlistTraySearch(
+    query: String,
+    accent: Color,
+    onQueryChange: (String) -> Unit
+) {
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, BritTokens.line, RoundedCornerShape(8.dp))
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Search,
+            contentDescription = null,
+            tint = BritTokens.muted,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Box(modifier = Modifier.weight(1f)) {
+            if (query.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.search_placeholder),
+                    style = com.liordahan.mgsrteam.ui.theme.britBody(BritTokens.muted2, 13.sp)
+                )
+            }
+            androidx.compose.foundation.text.BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                singleLine = true,
+                textStyle = com.liordahan.mgsrteam.ui.theme.britBody(BritTokens.ink, 13.sp),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(accent),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Text
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onDone = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                    }
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        if (query.isNotEmpty()) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = stringResource(R.string.players_clear_filters),
+                tint = BritTokens.muted,
+                modifier = Modifier
+                    .size(16.dp)
+                    .clickWithNoRipple {
+                        onQueryChange("")
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                    }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ShortlistPositionSegment(
+    selected: String?,
+    accentSoft: Color,
+    onGroup: (String) -> Unit
+) {
+    val groups = listOf("GK", "DEF", "MID", "FWD")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, BritTokens.line, RoundedCornerShape(8.dp))
+            .padding(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        ShortlistSegmentButton(
+            label = stringResource(R.string.releases_all),
+            active = selected == null,
+            accentSoft = accentSoft,
+            onClick = { onGroup("All") },
+            modifier = Modifier.weight(1f)
+        )
+        groups.forEach { g ->
+            ShortlistSegmentButton(
+                label = g,
+                active = selected.equals(g, ignoreCase = true),
+                accentSoft = accentSoft,
+                onClick = { onGroup(g) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ShortlistSegmentButton(
+    label: String,
+    active: Boolean,
+    accentSoft: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (active) accentSoft else Color.Transparent)
+            .clickWithNoRipple { onClick() }
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = com.liordahan.mgsrteam.ui.theme.britMono(
+                if (active) BritTokens.ink else BritTokens.muted,
+                9.sp,
+                letterSpacing = 1.sp
+            ),
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun ShortlistEditorialChip(
+    label: String,
+    active: Boolean,
+    accentSoft: Color,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    val alpha = if (enabled) 1f else 0.4f
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (active) BritTokens.black else Color.Transparent)
+            .border(
+                1.dp,
+                if (active) BritTokens.black else BritTokens.line,
+                RoundedCornerShape(20.dp)
+            )
+            .then(if (enabled) Modifier.clickWithNoRipple { onClick() } else Modifier)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(5.dp)
+                .clip(CircleShape)
+                .background(accentSoft.copy(alpha = if (active) 1f else 0.5f * alpha))
+        )
+        Text(
+            text = label,
+            style = com.liordahan.mgsrteam.ui.theme.britMono(
+                if (active) accentSoft.copy(alpha = alpha) else BritTokens.muted.copy(alpha = alpha),
+                9.sp,
+                letterSpacing = 0.6.sp
+            ),
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun ShortlistSortButton(
+    label: String,
+    active: Boolean,
+    accent: Color,
+    onClick: () -> Unit
+) {
+    Text(
+        text = label,
+        style = com.liordahan.mgsrteam.ui.theme.britMono(
+            if (active) accent else BritTokens.muted,
+            9.sp,
+            letterSpacing = 0.6.sp
+        ),
+        maxLines = 1,
+        modifier = Modifier.clickWithNoRipple { onClick() }
+    )
+}
+
+// ── Result count + empty ──────────────────────────────────────────────────────
+
+@Composable
+private fun ShortlistResultCount(
+    visibleCount: Int,
+    total: Int,
+    activeFilterCount: Int
+) {
+    val base = stringResource(R.string.shortlist_showing)
+        .replace("{n}", visibleCount.toString())
+        .replace("{total}", total.toString())
+    val text = if (activeFilterCount > 0) {
+        base + "  /  " + stringResource(R.string.players_filters_active).replace("{n}", activeFilterCount.toString())
+    } else base
+    Text(
+        text = text.uppercase(),
+        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 9.sp, letterSpacing = 0.8.sp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 12.dp)
+    )
+}
+
+@Composable
+private fun ShortlistFilteredEmpty() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 60.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = stringResource(R.string.shortlist_empty),
+            style = com.liordahan.mgsrteam.ui.theme.britBody(BritTokens.muted, 14.sp, weight = 500),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+// ── Board card (grayscale media + value + foot + actions, expandable detail) ──
+
+@Composable
+private fun ShortlistBoardCard(
+    index: Int,
+    entry: ShortlistEntry,
+    accent: Color,
+    accentSoft: Color,
+    context: Context,
+    boundCard: @Composable (ShortlistEntry) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val club = entry.clubJoinedName?.takeIf { it.isNotBlank() && !shortlistIsFreeAgent(it) }
+        ?: stringResource(R.string.players_filter_without_club)
+    val position = entry.playerPosition?.takeIf { it.isNotBlank() } ?: "—"
+    val isEu = EuCountries.isEuNational(entry.playerNationality)
+    val isFree = shortlistIsFreeAgent(entry.clubJoinedName)
+    val agentName = entry.getAddedByDisplayName(context) ?: "—"
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, BritTokens.line, RoundedCornerShape(12.dp))
+    ) {
+        // Media area
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(170.dp)
+                .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                .clickWithNoRipple { expanded = !expanded }
+        ) {
+            GrayscalePlayerPhoto(
+                imageUrl = entry.playerImage,
+                name = entry.playerName ?: "—",
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .fillMaxWidth()
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text(
+                        text = (index + 1).toString().padStart(2, '0'),
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(accentSoft, 10.sp, letterSpacing = 1.sp)
+                    )
+                    Spacer(Modifier.weight(1f))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (isEu) {
+                            Text(
+                                text = stringResource(R.string.eu_nat_tag),
+                                style = com.liordahan.mgsrteam.ui.theme.britMono(accent, 7.sp, letterSpacing = 0.6.sp)
+                            )
+                        }
+                        if (isFree) {
+                            Text(
+                                text = stringResource(R.string.shortlist_free_tag),
+                                style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.green, 7.sp, letterSpacing = 0.6.sp)
+                            )
+                        }
+                    }
+                }
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = "$club / $position".uppercase(),
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(accentSoft, 8.sp, letterSpacing = 0.8.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = (entry.playerName ?: "—").uppercase(),
+                        style = com.liordahan.mgsrteam.ui.theme.britDisplay(BritTokens.paper, 18.sp, weight = 600),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        // Body: value row + watcher foot
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(
+                text = entry.marketValue?.takeIf { it.isNotBlank() } ?: "—",
+                style = com.liordahan.mgsrteam.ui.theme.britDisplay(BritTokens.ink, 20.sp, weight = 600, letterSpacing = (-0.5).sp),
+                maxLines = 1
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(accent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = agentName.firstOrNull()?.uppercase() ?: "?",
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.paper, 7.sp, letterSpacing = 0.sp)
+                    )
+                }
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = "$agentName · ${formatRelativeDate(entry.addedAt)}",
+                    style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 8.sp, letterSpacing = 0.4.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = if (expanded) "−" else "+",
+                    style = com.liordahan.mgsrteam.ui.theme.britMono(accent, 14.sp, letterSpacing = 0.sp),
+                    modifier = Modifier.clickWithNoRipple { expanded = !expanded }
+                )
+            }
+
+            // Actions row — mirrors the web `.brit-sl-actions` TM ↗ / WA pair,
+            // shown only for a transfermarkt link (same guard as the web
+            // `shareToTeam` / card actions). TM opens the profile; WA shares the
+            // TM link to the team via WhatsApp using the existing Intent path.
+            if (entry.tmProfileUrl.contains("transfermarkt")) {
+                val shareMessage = stringResource(R.string.shortlist_share_message)
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "TM ↗",
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.ink, 9.sp, letterSpacing = 0.8.sp),
+                        modifier = Modifier.clickWithNoRipple {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, entry.tmProfileUrl.toUri())
+                            )
+                        }
+                    )
+                    Text(
+                        text = stringResource(R.string.shortlist_share_whatsapp),
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.green, 9.sp, letterSpacing = 0.8.sp),
+                        modifier = Modifier.clickWithNoRipple {
+                            val text = "${entry.tmProfileUrl}\n\n$shareMessage"
+                            val uri = "https://api.whatsapp.com/send?text=${Uri.encode(text)}".toUri()
+                            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                        }
+                    )
+                }
+            }
+        }
+
+        // Expanded detail = the fully-wired card (notes + teammates + outreach + actions)
+        if (expanded) {
+            HorizontalDivider(thickness = 1.dp, color = BritTokens.line)
+            Box(modifier = Modifier.padding(10.dp)) {
+                boundCard(entry)
+            }
+        }
+    }
+}
+
+// ── Ledger (hairline table) ───────────────────────────────────────────────────
+
+private const val SL_W_TARGET = 2.4f
+private const val SL_W_CLUB = 1.5f
+private const val SL_W_POS = 1.2f
+private const val SL_W_VALUE = 1.2f
+private const val SL_W_CHANGE = 0.8f
+private const val SL_W_SCOUT = 1.6f
+private const val SL_W_ACTION = 1.1f
+
+@Composable
+private fun ShortlistLedgerHeader() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = 4.dp, bottom = 8.dp)
+    ) {
+        ShortlistLedgerHeaderCell(stringResource(R.string.shortlist_th_target), SL_W_TARGET)
+        ShortlistLedgerHeaderCell(stringResource(R.string.room_th_club), SL_W_CLUB)
+        ShortlistLedgerHeaderCell(stringResource(R.string.room_th_position), SL_W_POS)
+        ShortlistLedgerHeaderCell(stringResource(R.string.room_th_value), SL_W_VALUE)
+        ShortlistLedgerHeaderCell(stringResource(R.string.shortlist_th_change), SL_W_CHANGE)
+        ShortlistLedgerHeaderCell(stringResource(R.string.shortlist_th_scout), SL_W_SCOUT)
+        ShortlistLedgerHeaderCell(stringResource(R.string.room_th_action), SL_W_ACTION, end = true)
+    }
+}
+
+@Composable
+private fun RowScope.ShortlistLedgerHeaderCell(label: String, weight: Float, end: Boolean = false) {
+    Text(
+        text = label.uppercase(),
+        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 8.sp, letterSpacing = 0.8.sp),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = if (end) TextAlign.End else TextAlign.Start,
+        modifier = Modifier.weight(weight)
+    )
+}
+
+@Composable
+private fun ShortlistLedgerRow(
+    entry: ShortlistEntry,
+    accent: Color,
+    context: Context,
+    isRemoving: Boolean,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+    expandedContent: @Composable () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val club = entry.clubJoinedName?.takeIf { it.isNotBlank() && !shortlistIsFreeAgent(it) }
+        ?: stringResource(R.string.players_filter_without_club)
+    val position = entry.playerPosition?.takeIf { it.isNotBlank() } ?: "—"
+    val isEu = EuCountries.isEuNational(entry.playerNationality)
+    val isFree = shortlistIsFreeAgent(entry.clubJoinedName)
+    val agentName = entry.getAddedByDisplayName(context) ?: "—"
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickWithNoRipple {
+                expanded = !expanded
+                onClick()
+            }
+    ) {
+        HorizontalDivider(thickness = 1.dp, color = BritTokens.line)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Target (thumb + name over nationality + age)
+            Row(
+                modifier = Modifier.weight(SL_W_TARGET),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                ) {
+                    GrayscalePlayerPhoto(
+                        imageUrl = entry.playerImage,
+                        name = entry.playerName ?: "?",
+                        modifier = Modifier.fillMaxSize(),
+                        scrimAlpha = 0.3f
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = entry.playerName ?: "—",
+                        style = com.liordahan.mgsrteam.ui.theme.britBody(BritTokens.ink, 12.sp, weight = 700),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = buildString {
+                            append((entry.playerNationality ?: "—"))
+                            entry.playerAge?.takeIf { it.isNotBlank() }?.let { append(" · $it") }
+                        }.uppercase(),
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 7.sp, letterSpacing = 0.5.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Text(
+                text = club,
+                style = com.liordahan.mgsrteam.ui.theme.britBody(BritTokens.muted, 11.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(SL_W_CLUB)
+            )
+            Text(
+                text = position,
+                style = com.liordahan.mgsrteam.ui.theme.britBody(BritTokens.ink, 11.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(SL_W_POS)
+            )
+            Text(
+                text = entry.marketValue?.takeIf { it.isNotBlank() } ?: "—",
+                style = com.liordahan.mgsrteam.ui.theme.britBody(BritTokens.ink, 11.sp, weight = 600),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(SL_W_VALUE)
+            )
+            // Change column — no value history on Android ShortlistEntry (deferred).
+            Text(
+                text = "—",
+                style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 8.sp),
+                maxLines = 1,
+                modifier = Modifier.weight(SL_W_CHANGE)
+            )
+            Text(
+                text = "$agentName · ${formatRelativeDate(entry.addedAt)}",
+                style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.muted, 7.sp, letterSpacing = 0.3.sp),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(SL_W_SCOUT)
+            )
+            FlowRow(
+                modifier = Modifier.weight(SL_W_ACTION),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                if (isEu) {
+                    Text(
+                        text = stringResource(R.string.eu_nat_tag),
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(accent, 6.sp, letterSpacing = 0.4.sp)
+                    )
+                }
+                if (isFree) {
+                    Text(
+                        text = stringResource(R.string.shortlist_free_tag),
+                        style = com.liordahan.mgsrteam.ui.theme.britMono(BritTokens.green, 6.sp, letterSpacing = 0.4.sp)
+                    )
+                }
+                Text(
+                    text = "✕",
+                    style = com.liordahan.mgsrteam.ui.theme.britMono(
+                        if (isRemoving) BritTokens.muted2 else BritTokens.red,
+                        10.sp
+                    ),
+                    modifier = if (isRemoving) Modifier else Modifier.clickWithNoRipple { onRemove() }
+                )
+            }
+        }
+        if (expanded) {
+            Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                expandedContent()
+            }
         }
     }
 }
@@ -1895,25 +3027,42 @@ private fun NoteDialog(
         }
     }
 
+    val isMen = shortlistIsMen()
+    val modalSurface = if (isMen) BritTokens.card else PlatformColors.palette.card
+    val modalBorder = if (isMen) BritTokens.line else PlatformColors.palette.cardBorder
+    val modalTitleColor = if (isMen) BritTokens.ink else PlatformColors.palette.textPrimary
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(if (isMen) 14.dp else 20.dp),
             elevation = CardDefaults.cardElevation(8.dp),
-            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+            colors = CardDefaults.cardColors(containerColor = modalSurface),
+            border = BorderStroke(1.dp, modalBorder)
         ) {
+            // Editorial 4px gold top border (web .brit-sl-modal) for MEN.
+            if (isMen) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(BritTokens.gold)
+                )
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Title
+                // Title — Oswald display for MEN, bold for Youth.
                 Text(
                     text = stringResource(
                         if (mode == "edit") R.string.shortlist_notes_edit_title
                         else R.string.shortlist_notes_add_title
                     ),
-                    style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
+                    style = if (isMen)
+                        com.liordahan.mgsrteam.ui.theme.britDisplay(modalTitleColor, 22.sp, weight = 600, letterSpacing = (-0.5).sp)
+                    else
+                        boldTextStyle(modalTitleColor, 18.sp)
                 )
                 Spacer(Modifier.height(12.dp))
 

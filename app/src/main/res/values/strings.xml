@@ -130,6 +130,9 @@
     <string name="shortlist_add_to_agency">Add to agency</string>
     <string name="shortlist_open_tm">Open TM</string>
     <string name="shortlist_remove">Remove</string>
+    <string name="shortlist_free_tag">Free</string>
+    <string name="shortlist_share_whatsapp">WA</string>
+    <string name="shortlist_share_message">Added to the shortlist \u2014 check if we can reach him.</string>
     <string name="shortlist_remove_confirm">Remove this player from your shortlist?</string>
     <string name="shortlist_no_players">No players in shortlist</string>
     <string name="shortlist_empty_hint">Add players from Releases or On Loan to save them for later. When ready, add them to your agency.</string>
@@ -1597,4 +1600,71 @@
 
     <!-- Dashboard Search -->
     <string name="dashboard_search_hint">Search player, club or position…</string>
+
+    <!-- Roster + Shortlist web-parity (brit-room) -->
+    <!-- Masthead / chrome -->
+    <string name="room_kicker">Private client office / Men platform</string>
+    <string name="players_room_head_a">The</string>
+    <string name="players_room_head_b">roster.</string>
+    <string name="players_view_ledger">Ledger</string>
+    <string name="shortlist_view_board">Board</string>
+    <string name="players_add">Add Player</string>
+    <string name="nav_players">Players</string>
+    <string name="nav_shortlist">Shortlist</string>
+
+    <!-- Roster signals -->
+    <string name="room_signals">Portfolio signals</string>
+    <string name="room_signal_roster">Roster assets</string>
+    <string name="room_signal_roster_note">{n} EU passports</string>
+    <string name="players_signal_value">Managed value</string>
+    <string name="players_signal_value_note">Across {n} valued</string>
+    <string name="players_signal_mandate">Under mandate</string>
+    <string name="players_signal_mandate_note">{n} without</string>
+    <string name="players_signal_free">Free agents</string>
+    <string name="players_signal_free_note">Available now</string>
+
+    <!-- Roster filter tray -->
+    <string name="players_position_main">Main position</string>
+    <string name="players_position_secondary">Also plays</string>
+    <string name="players_position_any">Any</string>
+    <string name="releases_all">All</string>
+    <string name="search_placeholder">Search by name, position or club...</string>
+    <string name="players_clear_filters">Clear filters</string>
+    <string name="players_sort_label">Sort</string>
+    <string name="players_sort_default">Date Added</string>
+    <string name="players_showing">Showing {n} of {total} assets</string>
+    <string name="players_filters_active">{n} filters active</string>
+    <string name="players_empty_filtered">No players match these filters</string>
+
+    <!-- Roster table (ledger) + flags -->
+    <string name="room_th_player">Player</string>
+    <string name="room_th_club">Club</string>
+    <string name="room_th_position">Position</string>
+    <string name="room_th_value">Value</string>
+    <string name="room_th_action">Action</string>
+    <string name="players_th_age">Age</string>
+    <string name="players_th_agent">Agent</string>
+    <string name="players_th_signals">Signals</string>
+    <string name="eu_nat_tag">EU Nat</string>
+
+    <!-- Shortlist -->
+    <string name="shortlist_room_kicker">Private client office / Scouting board</string>
+    <string name="shortlist_room_head_a">The</string>
+    <string name="shortlist_room_head_b">shortlist.</string>
+    <string name="shortlist_signals">Shortlist signals</string>
+    <string name="shortlist_signal_targets">Targets watched</string>
+    <string name="shortlist_signal_targets_note">{n} added this month</string>
+    <string name="shortlist_signal_value">Combined value</string>
+    <string name="shortlist_signal_free">Free agents</string>
+    <string name="shortlist_filter_free_agent">Free agent</string>
+    <string name="shortlist_filter_contract_expiring">Contract expiring</string>
+    <string name="shortlist_sort_added">Date added</string>
+    <string name="shortlist_sort_market_value">Market value</string>
+    <string name="shortlist_sort_name">Name</string>
+    <string name="shortlist_sort_age">Age</string>
+    <string name="shortlist_showing">Showing {n} of {total} targets</string>
+    <string name="shortlist_empty">Your shortlist is empty</string>
+    <string name="shortlist_th_target">Target</string>
+    <string name="shortlist_th_change">Δ</string>
+    <string name="shortlist_th_scout">Scout</string>
 </resources>
