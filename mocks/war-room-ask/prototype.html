@@ -6477,9 +6477,13 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 </style>
 <style>
   :root{--font-oswald:Impact;--font-manrope:Helvetica;--font-dm-mono:monospace;--font-heebo:'Segoe UI';}
-  html,body{margin:0;background:var(--paper)}
-  /* Neutralise the fixed shell so it fills whatever viewport (real phone or tab) */
-  .brit-room{position:absolute !important;inset:0 !important;z-index:auto !important}
+  html,body{margin:0;background:#f3f0e8 !important}
+  /* Kill the app's global dark aurora/dot overlays so they don't wash out the mock */
+  body::before,body::after{display:none !important}
+  /* Keep the brit-room shell fixed and ON TOP with a solid paper background */
+  .brit-room{position:fixed !important;inset:0 !important;z-index:100 !important;background:#f3f0e8 !important}
+  /* Leave room for the fixed prototype banner */
+  .brit-room .brit-canvas{padding-top:46px !important}
 
   /* Compact Ask console */
   .brit-room .brit-wr-console{padding:16px}
