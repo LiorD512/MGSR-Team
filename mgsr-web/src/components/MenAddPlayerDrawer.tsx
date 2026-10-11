@@ -19,6 +19,7 @@ import { searchPlayers, getPlayerDetails, type SearchPlayer, type PlayerDetails 
 import { callPlayersCreate, callShortlistAdd } from '@/lib/callables';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
+import BritContactPicker from '@/components/BritContactPicker';
 
 const DEBOUNCE_MS = 350;
 const MIN_SEARCH_LEN = 2;
@@ -118,6 +119,8 @@ export default function MenAddPlayerDrawer({
   const [searchFocused, setSearchFocused] = useState(false);
   const [playerPhone, setPlayerPhone] = useState('');
   const [agentPhone, setAgentPhone] = useState('');
+  // Which phone field (if any) is currently picking a number from contacts.
+  const [contactPickerFor, setContactPickerFor] = useState<'player' | 'agent' | null>(null);
 
   const resetAll = useCallback(() => {
     setStep(1);
@@ -545,11 +548,23 @@ export default function MenAddPlayerDrawer({
                       <>
                         <div className="brit-add-field">
                           <label>{t('player_info_player_phone')}</label>
-                          <input type="tel" value={playerPhone} onChange={(e) => setPlayerPhone(e.target.value)} placeholder="+972 50 123 4567" />
+                          <div className="brit-add-phonerow">
+                            <input type="tel" value={playerPhone} onChange={(e) => setPlayerPhone(e.target.value)} placeholder="+972 50 123 4567" />
+                            <button type="button" className="brit-add-pickbtn" onClick={() => setContactPickerFor('player')}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                              <span>{t('contact_pick_from_contacts')}</span>
+                            </button>
+                          </div>
                         </div>
                         <div className="brit-add-field">
                           <label>{t('player_info_agent_phone')}</label>
-                          <input type="tel" value={agentPhone} onChange={(e) => setAgentPhone(e.target.value)} placeholder="+972 50 987 6543" />
+                          <div className="brit-add-phonerow">
+                            <input type="tel" value={agentPhone} onChange={(e) => setAgentPhone(e.target.value)} placeholder="+972 50 987 6543" />
+                            <button type="button" className="brit-add-pickbtn" onClick={() => setContactPickerFor('agent')}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                              <span>{t('contact_pick_from_contacts')}</span>
+                            </button>
+                          </div>
                         </div>
                       </>
                     )}
@@ -602,6 +617,16 @@ export default function MenAddPlayerDrawer({
           </div>
         </div>
       </aside>
+
+      <BritContactPicker
+        open={contactPickerFor !== null}
+        kind={contactPickerFor ?? 'player'}
+        onClose={() => setContactPickerFor(null)}
+        onPick={(num) => {
+          if (contactPickerFor === 'agent') setAgentPhone(num);
+          else setPlayerPhone(num);
+        }}
+      />
     </>
   );
 }
