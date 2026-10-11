@@ -68,8 +68,7 @@ import com.liordahan.mgsrteam.ui.components.BritIcons
 import com.liordahan.mgsrteam.ui.components.BritLoader
 import com.liordahan.mgsrteam.ui.components.BritMoreItem
 import com.liordahan.mgsrteam.ui.components.BritMoreSheetContent
-import com.liordahan.mgsrteam.ui.components.BritTab
-import com.liordahan.mgsrteam.ui.components.BritTabBar
+
 import com.liordahan.mgsrteam.ui.components.BritTopHeader
 import com.liordahan.mgsrteam.ui.components.GrayscalePlayerPhoto
 import com.liordahan.mgsrteam.ui.theme.BritTokens
@@ -144,6 +143,9 @@ fun BritDashboardScreen(
                     platformManager.switchTo(target)
                     viewModel.reloadForPlatformSwitch()
                 },
+                // No bottom nav on the dashboard — the overflow menu in the
+                // header opens the "More" sheet (destinations + sign out).
+                onMenuClick = { showMoreSheet = true },
             )
 
             if (state.isLoading) {
@@ -244,22 +246,8 @@ fun BritDashboardScreen(
                 }
             }
 
-            // ── Shared bottom tab bar ────────────────────────────────────
-            BritTabBar(
-                platform = platform,
-                selectedTab = BritTab.DASHBOARD,
-                onTabClick = { tab ->
-                    when (tab) {
-                        BritTab.DASHBOARD -> Unit
-                        BritTab.PLAYERS -> navController.navigate(Screens.playersRoute())
-                        BritTab.WAR_ROOM -> navController.navigate(Screens.WarRoomScreen.route)
-                        BritTab.TASKS -> if (FeatureFlags.TASKS_ENABLED) {
-                            navController.navigate(Screens.TasksScreen.route)
-                        }
-                    }
-                },
-                onMoreClick = { showMoreSheet = true },
-            )
+            // Bottom tab bar removed from the dashboard per product direction;
+            // navigation is via the quick-actions grid + the header overflow menu.
         }
     }
 
@@ -361,16 +349,17 @@ private fun MastheadGreeting(state: HomeDashboardState, platform: Platform) {
             style = britMono(accent, 10.sp, letterSpacing = 1.4.sp),
         )
         Spacer(Modifier.height(14.dp))
-        // Tight line-height so "GOOD MORNING," sits right above the name (web .brit-masthead h1 is line-height .78).
+        // Very tight line-height so "GOOD MORNING," hugs the name (web
+        // .brit-masthead h1 is line-height .78 ≈ 34sp at this size).
         Text(
             text = "$greet,",
             style = britDisplay(BritTokens.ink, 44.sp, weight = 600, letterSpacing = (-2).sp)
-                .copy(lineHeight = 42.sp),
+                .copy(lineHeight = 36.sp),
         )
         Text(
             text = if (name.isNotBlank()) "$name." else "WELCOME.",
             style = britDisplay(accent, 44.sp, weight = 600, letterSpacing = (-2).sp)
-                .copy(lineHeight = 42.sp),
+                .copy(lineHeight = 36.sp),
         )
         Spacer(Modifier.height(14.dp))
         Text(
@@ -658,50 +647,77 @@ private fun FeedRow(event: FeedEvent, onClick: () -> Unit) {
                 scrimAlpha = 0.4f,
             )
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(13.dp))
+        // (web .brit-feed-activity): short type label on top, player NAME below.
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = feedText(event),
-                style = britBody(BritTokens.ink, 13.sp, weight = 500),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = (event.playerName ?: "").uppercase(),
-                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.8.sp),
+                text = feedTypeLabel(event.type),
+                style = britBody(BritTokens.muted, 12.sp, weight = 500),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            event.playerName?.takeIf { it.isNotBlank() }?.let { nm ->
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = nm.uppercase(),
+                    style = britDisplay(BritTokens.ink, 15.sp, weight = 500, letterSpacing = 0.2.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
-        Text(
-            text = feedTag(event),
-            style = britMono(BritTokens.gold, 8.sp, letterSpacing = 1.sp),
-        )
+        Spacer(Modifier.width(12.dp))
+        // Right: date over hour, mono (web .brit-feed-time).
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = feedDateLabel(event.timestamp),
+                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.6.sp),
+            )
+            Spacer(Modifier.height(5.dp))
+            Text(
+                text = feedHourLabel(event.timestamp),
+                style = britMono(BritTokens.muted2, 9.sp, letterSpacing = 0.6.sp),
+            )
+        }
     }
 }
 
-private fun feedText(event: FeedEvent): String = when (event.type) {
-    FeedEvent.TYPE_MARKET_VALUE_CHANGE -> "Market value changed ${event.oldValue ?: ""} → ${event.newValue ?: ""}".trim()
-    FeedEvent.TYPE_CLUB_CHANGE -> "Transferred ${event.oldValue ?: ""} → ${event.newValue ?: ""}".trim()
-    FeedEvent.TYPE_CONTRACT_EXPIRING -> "Contract expiring soon"
-    FeedEvent.TYPE_NOTE_ADDED -> "New note added by ${event.extraInfo ?: event.agentName ?: "an agent"}"
-    FeedEvent.TYPE_PLAYER_ADDED -> "Added to the roster"
-    FeedEvent.TYPE_BECAME_FREE_AGENT -> "Became a free agent"
-    FeedEvent.TYPE_MANDATE_UPLOADED -> "Mandate document uploaded"
+/** Short event-type label — mirrors the web translateType(..., 'men') map. */
+private fun feedTypeLabel(type: String?): String = when (type) {
+    FeedEvent.TYPE_MARKET_VALUE_CHANGE -> "Market value change"
+    FeedEvent.TYPE_CLUB_CHANGE -> "Club change"
+    FeedEvent.TYPE_CONTRACT_EXPIRING -> "Contract expiring"
+    FeedEvent.TYPE_NOTE_ADDED -> "Note added"
+    FeedEvent.TYPE_NOTE_DELETED -> "Note deleted"
+    FeedEvent.TYPE_PLAYER_ADDED -> "Player added"
+    FeedEvent.TYPE_PLAYER_DELETED -> "Player deleted"
+    FeedEvent.TYPE_BECAME_FREE_AGENT -> "Free agent"
+    FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB -> "New release from club"
     FeedEvent.TYPE_MANDATE_EXPIRED -> "Mandate expired"
-    else -> event.newValue ?: event.type?.replace('_', ' ')?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Activity"
+    FeedEvent.TYPE_MANDATE_UPLOADED -> "Mandate uploaded"
+    FeedEvent.TYPE_MANDATE_SWITCHED_ON -> "Mandate switched on"
+    FeedEvent.TYPE_MANDATE_SWITCHED_OFF -> "Mandate switched off"
+    FeedEvent.TYPE_SHORTLIST_ADDED -> "Shortlist added"
+    FeedEvent.TYPE_SHORTLIST_REMOVED -> "Shortlist removed"
+    FeedEvent.TYPE_REQUEST_ADDED -> "Request added"
+    FeedEvent.TYPE_REQUEST_DELETED -> "Request deleted"
+    FeedEvent.TYPE_PLAYER_OFFERED_TO_CLUB -> "Player offered"
+    else -> type?.replace('_', ' ')?.lowercase()
+        ?.replaceFirstChar { it.uppercase() } ?: "Activity"
 }
 
-private fun feedTag(event: FeedEvent): String = when (event.type) {
-    FeedEvent.TYPE_MARKET_VALUE_CHANGE -> "VALUE"
-    FeedEvent.TYPE_CLUB_CHANGE -> "TRANSFER"
-    FeedEvent.TYPE_CONTRACT_EXPIRING -> "CONTRACT"
-    FeedEvent.TYPE_NOTE_ADDED, FeedEvent.TYPE_NOTE_DELETED -> "NOTE"
-    FeedEvent.TYPE_PLAYER_ADDED -> "ROSTER"
-    FeedEvent.TYPE_BECAME_FREE_AGENT -> "FREE"
-    FeedEvent.TYPE_MANDATE_UPLOADED, FeedEvent.TYPE_MANDATE_EXPIRED -> "MANDATE"
-    else -> "FEED"
+/** Date like "NOV 10" (web toLocaleDateString day/short-month, uppercased). */
+private fun feedDateLabel(ts: Long?): String {
+    if (ts == null) return "—"
+    return java.text.SimpleDateFormat("dd MMM", java.util.Locale.ENGLISH)
+        .format(java.util.Date(ts)).uppercase()
+}
+
+/** Time like "05:12 AM" (web toLocaleTimeString hour/minute). */
+private fun feedHourLabel(ts: Long?): String {
+    if (ts == null) return ""
+    return java.text.SimpleDateFormat("hh:mm a", java.util.Locale.ENGLISH)
+        .format(java.util.Date(ts))
 }
 
 // ── Quick actions grid ───────────────────────────────────────────────────────

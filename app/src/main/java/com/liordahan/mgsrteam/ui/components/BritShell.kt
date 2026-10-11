@@ -111,6 +111,7 @@ fun BritTopHeader(
     modifier: Modifier = Modifier,
     showBack: Boolean = false,
     onBackClick: () -> Unit = {},
+    onMenuClick: (() -> Unit)? = null,
 ) {
     val (accent, _) = BritTokens.accentFor(platform)
     Row(
@@ -157,6 +158,25 @@ fun BritTopHeader(
         }
 
         Spacer(Modifier.width(8.dp))
+
+        if (onMenuClick != null) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onMenuClick() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = BritIcons.More,
+                    contentDescription = "Menu",
+                    tint = BritTokens.ink,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
 
         Box(
             modifier = Modifier
