@@ -229,6 +229,10 @@ export default function MenPlayers() {
   }, [highlightParam, ready, players, router]);
   const [taggedInNotes, setTaggedInNotes] = useState(cached?.taggedInNotes ?? false);
   const [view, setView] = useState<'table' | 'gallery'>(cached?.view ?? 'gallery');
+  // Mobile-only: the filter tray is collapsed into a bottom sheet behind a
+  // "Filter" button so the roster grid is visible immediately. Desktop ignores
+  // this (the tray always renders inline via CSS).
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const [drawer, setDrawer] = useState<Player | null>(null);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
@@ -641,8 +645,46 @@ export default function MenPlayers() {
               </div>
             </section>
 
-            {/* Filter tray */}
-            <section className="brit-tray" aria-label={t('filters')}>
+            {/* Mobile filter bar — search + a Filter button that opens the tray
+                as a bottom sheet. Hidden on desktop (the tray shows inline). */}
+            <div className="brit-mfilter">
+              <label className="brit-search brit-mfilter-search">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t('search_placeholder')}
+                  aria-label={t('search_placeholder')}
+                />
+                {search && (
+                  <button type="button" className="brit-search-clear" onClick={() => setSearch('')} aria-label={t('players_clear_filters')}>×</button>
+                )}
+              </label>
+              <button type="button" className="brit-mfilter-btn" onClick={() => setFilterSheetOpen(true)} aria-expanded={filterSheetOpen}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 4h18M6 12h12M10 20h4" />
+                </svg>
+                <span>{t('filters')}</span>
+                {activeFilterCount > 0 && <span className="brit-mfilter-count">{activeFilterCount}</span>}
+              </button>
+            </div>
+
+            {/* Scrim behind the open filter sheet (mobile only) */}
+            <div
+              className={`brit-tray-scrim${filterSheetOpen ? ' open' : ''}`}
+              onClick={() => setFilterSheetOpen(false)}
+              aria-hidden
+            />
+
+            {/* Filter tray — inline on desktop, bottom sheet on mobile */}
+            <section className="brit-tray" aria-label={t('filters')} data-sheet-open={filterSheetOpen ? 'true' : 'false'}>
+              <div className="brit-tray-sheet-head">
+                <h3>{t('filters')}</h3>
+                <button type="button" onClick={() => setFilterSheetOpen(false)} aria-label={t('common_close') || 'Close'}>×</button>
+              </div>
               <div className="brit-tray-top">
                 <label className="brit-search">
                   <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round">
@@ -769,6 +811,20 @@ export default function MenPlayers() {
                     {t('players_clear_filters')} ×
                   </button>
                 )}
+              </div>
+
+              {/* Sticky sheet footer (mobile only) */}
+              <div className="brit-tray-sheet-foot">
+                {activeFilterCount > 0 && (
+                  <button type="button" className="reset" onClick={clearFilters}>
+                    {t('players_clear_filters')}
+                  </button>
+                )}
+                <button type="button" className="apply" onClick={() => setFilterSheetOpen(false)}>
+                  {t('players_showing')
+                    .replace('{n}', String(displayList.length))
+                    .replace('{total}', String(players.length))}
+                </button>
               </div>
             </section>
 

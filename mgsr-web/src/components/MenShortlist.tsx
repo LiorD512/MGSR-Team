@@ -122,6 +122,8 @@ export default function MenShortlist() {
   const [filterBy, setFilterBy] = useState<FilterOption>(cached?.filterBy ?? 'all');
   const [sortOption, setSortOption] = useState<SortOption>(cached?.sortOption ?? 'added');
   const [view, setView] = useState<'board' | 'ledger'>(cached?.view ?? 'board');
+  // Mobile-only: collapse the filter tray into a bottom sheet (see MenPlayers).
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [withNotesOnly, setWithNotesOnly] = useState(false);
   const [euOnly, setEuOnly] = useState(false);
 
@@ -468,8 +470,28 @@ export default function MenShortlist() {
               </div>
             </section>
 
-            {/* Filter tray */}
-            <section className="brit-tray" aria-label={t('filters')}>
+            {/* Mobile filter bar — search + Filter button (opens tray as sheet) */}
+            <div className="brit-mfilter">
+              <label className="brit-search brit-mfilter-search">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('search_placeholder')} aria-label={t('search_placeholder')} />
+                {search && <button type="button" className="brit-search-clear" onClick={() => setSearch('')} aria-label={t('players_clear_filters')}>×</button>}
+              </label>
+              <button type="button" className="brit-mfilter-btn" onClick={() => setFilterSheetOpen(true)} aria-expanded={filterSheetOpen}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4h18M6 12h12M10 20h4" /></svg>
+                <span>{t('filters')}</span>
+                {activeFilterCount > 0 && <span className="brit-mfilter-count">{activeFilterCount}</span>}
+              </button>
+            </div>
+
+            <div className={`brit-tray-scrim${filterSheetOpen ? ' open' : ''}`} onClick={() => setFilterSheetOpen(false)} aria-hidden />
+
+            {/* Filter tray — inline on desktop, bottom sheet on mobile */}
+            <section className="brit-tray" aria-label={t('filters')} data-sheet-open={filterSheetOpen ? 'true' : 'false'}>
+              <div className="brit-tray-sheet-head">
+                <h3>{t('filters')}</h3>
+                <button type="button" onClick={() => setFilterSheetOpen(false)} aria-label={t('common_close') || 'Close'}>×</button>
+              </div>
               <div className="brit-tray-top">
                 <label className="brit-search">
                   <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
@@ -497,6 +519,16 @@ export default function MenShortlist() {
                   ))}
                 </div>
                 {activeFilterCount > 0 && <button className="brit-clear" onClick={clearFilters}>{t('players_clear_filters')} ×</button>}
+              </div>
+
+              {/* Sticky sheet footer (mobile only) */}
+              <div className="brit-tray-sheet-foot">
+                {activeFilterCount > 0 && (
+                  <button type="button" className="reset" onClick={clearFilters}>{t('players_clear_filters')}</button>
+                )}
+                <button type="button" className="apply" onClick={() => setFilterSheetOpen(false)}>
+                  {t('shortlist_showing').replace('{n}', String(list.length)).replace('{total}', String(entries.length))}
+                </button>
               </div>
             </section>
 

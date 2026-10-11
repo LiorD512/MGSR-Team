@@ -3090,6 +3090,11 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 
 /* Filter tray */
 .brit-room .brit-tray{border:1px solid var(--line);margin-bottom:16px}
+/* Mobile filter bar + sheet chrome — hidden on desktop (tray shows inline). */
+.brit-room .brit-mfilter{display:none}
+.brit-room .brit-tray-scrim{display:none}
+.brit-room .brit-tray-sheet-head{display:none}
+.brit-room .brit-tray-sheet-foot{display:none}
 .brit-room .brit-tray-top{display:grid;grid-template-columns:1fr auto;border-bottom:1px solid var(--line)}
 .brit-room .brit-search{display:flex;align-items:center;gap:14px;padding:0 20px}
 .brit-room .brit-search svg{width:16px;height:16px;stroke:var(--muted);flex:none}
@@ -3260,6 +3265,43 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   .brit-room .brit-players-table td{padding:0;border:0}
   .brit-room .brit-cell-player{grid-column:1/-1}
   .brit-room .brit-flags{justify-content:flex-start}
+
+  /* ── Roster gallery → 2 cards per row (was 1 via the 228px floor) ── */
+  .brit-room .brit-players-gallery{grid-template-columns:1fr 1fr;gap:10px}
+  .brit-room .brit-player-card,
+  .brit-room .brit-player-card img,
+  .brit-room .brit-player-card-ph{min-height:0}
+  .brit-room .brit-player-card{aspect-ratio:3/4}
+  .brit-room .brit-player-card img,
+  .brit-room .brit-player-card-ph{position:absolute;inset:0;width:100%;height:100%}
+  .brit-room .brit-player-card-copy h3{font-size:18px}
+  .brit-room .brit-player-card-copy small{font-size:7.5px}
+  .brit-room .brit-ct-flags b{font-size:7px;padding:3px 4px}
+  .brit-room .brit-card-agent{font-size:7px;max-width:60%}
+
+  /* ── Mobile filter bar (search + Filter button) ── */
+  .brit-room .brit-mfilter{display:flex;gap:8px;align-items:stretch;margin-bottom:10px}
+  .brit-room .brit-mfilter-search{flex:1;min-width:0;border:1px solid var(--line);background:#fff;padding:0 13px}
+  .brit-room .brit-mfilter-btn{flex:none;display:flex;align-items:center;gap:8px;padding:0 15px;border:1px solid var(--line);background:#fff;color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
+  .brit-room .brit-mfilter-btn svg{width:15px;height:15px}
+  .brit-room .brit-mfilter-btn:active{background:var(--gold-soft)}
+  .brit-room .brit-mfilter-count{min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--gold-soft);color:var(--ink);font:700 9px/17px var(--body);text-align:center}
+
+  /* ── Filter tray → bottom sheet ── */
+  .brit-room .brit-tray-scrim{display:block;position:fixed;inset:0;z-index:75;background:rgba(17,17,15,.55);opacity:0;pointer-events:none;transition:opacity .25s}
+  .brit-room .brit-tray-scrim.open{opacity:1;pointer-events:auto}
+  .brit-room .brit-tray{position:fixed;left:0;right:0;bottom:0;z-index:80;margin:0;max-height:88vh;display:flex;flex-direction:column;overflow-y:auto;border:0;border-top:3px solid var(--gold);background:var(--paper);
+    transform:translateY(100%);transition:transform .32s cubic-bezier(.16,1,.3,1)}
+  .brit-room .brit-tray[data-sheet-open='true']{transform:none;box-shadow:0 -20px 60px rgba(0,0,0,.4)}
+  .brit-room .brit-tray-sheet-head{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:2;background:var(--paper);padding:14px 18px 12px;border-bottom:1px solid var(--line)}
+  .brit-room .brit-tray-sheet-head h3{margin:0;font:500 20px/1 var(--display);text-transform:uppercase}
+  .brit-room .brit-tray-sheet-head button{border:0;background:transparent;color:var(--ink);font:24px/1 var(--display);cursor:pointer;padding:0 4px}
+  .brit-room .brit-tray-sheet-foot{display:flex;gap:10px;position:sticky;bottom:0;z-index:2;background:var(--paper);padding:12px 18px calc(16px + env(safe-area-inset-bottom,0));border-top:1px solid var(--line)}
+  .brit-room .brit-tray-sheet-foot button{flex:1;padding:14px;font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;cursor:pointer;border:1px solid var(--ink)}
+  .brit-room .brit-tray-sheet-foot .reset{flex:0 0 auto;padding:14px 18px;background:transparent;color:var(--muted);border-color:var(--line)}
+  .brit-room .brit-tray-sheet-foot .apply{background:var(--black);color:var(--gold-soft);border-color:var(--black)}
+  /* The tray's own inline search is redundant on mobile (the bar has one). */
+  .brit-room .brit-tray > .brit-tray-top > .brit-search{display:none}
 }
 
 
@@ -3812,7 +3854,17 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-sl-modal-actions button.primary:disabled{opacity:.5}
 
 @media(max-width:900px){
-  .brit-room .brit-sl-board{grid-template-columns:1fr}
+  /* Shortlist board → 2 cards per row (was 1) with compact internals. */
+  .brit-room .brit-sl-board{grid-template-columns:1fr 1fr;gap:10px}
+  .brit-room .brit-sl-media{height:118px}
+  .brit-room .brit-sl-copy h3{font-size:16px}
+  .brit-room .brit-sl-copy small{font-size:7.5px}
+  .brit-room .brit-sl-cardflags b{font-size:7px;padding:3px 4px}
+  .brit-room .brit-sl-body{padding:10px 11px 11px;gap:9px}
+  .brit-room .brit-sl-vrow .v{font-size:16px}
+  .brit-room .brit-sl-foot .watcher{font-size:7.5px}
+  .brit-room .brit-sl-actions{gap:9px}
+  .brit-room .brit-sl-actions button,.brit-room .brit-sl-actions a{font-size:7.5px}
 }
 
 /* ═══════════════════════════════════════════════════════
