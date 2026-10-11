@@ -11,6 +11,7 @@ import { callShortlistAdd } from '@/lib/callables';
 import Link from 'next/link';
 import { appendSeenKeys, appendStoredKeys, getSeenKeys, getStoredKeys } from '@/lib/searchNoveltyMemory';
 import { buildPlayerKey, diversifyCandidates, type DiversityMode } from '@/lib/discoveryDiversity';
+import WarRoomRefineSheet from '@/components/war-room/WarRoomRefineSheet';
 
 const FIND_NEXT_MEMORY_SCOPE = 'find-next';
 const FIND_NEXT_FRESHNESS_SCOPE = 'find-next:freshness';
@@ -694,6 +695,16 @@ export default function FindNextTab() {
 
   const isHe = lang === 'he';
 
+  // One-line summary of the active refine params (shown on the mobile trigger).
+  const DIVERSITY_LABELS: Record<DiversityMode, { en: string; he: string }> = {
+    strict: { en: 'Strict', he: 'מדויק' },
+    balanced: { en: 'Balanced', he: 'מאוזן' },
+    discovery: { en: 'Discovery', he: 'תגלית' },
+  };
+  const valLabel = (v: number) =>
+    v > 0 ? (VALUE_PRESETS.find((p) => p.value === v)?.label ?? `€${v}`) : (isHe ? 'ללא הגבלה' : 'No limit');
+  const refineSummary = `${isHe ? DIVERSITY_LABELS[diversityMode].he : DIVERSITY_LABELS[diversityMode].en} · ${isHe ? 'גיל' : 'Age'} ${ageMin}–${ageMax} · ${valLabel(valueMin)}–${valLabel(valueMax)}`;
+
   return (
     <>
       {/* Masthead */}
@@ -735,6 +746,14 @@ export default function FindNextTab() {
             {searching ? (isHe ? 'מחפש…' : 'Searching…') : (isHe ? 'מצא את הבא' : 'Find the next')}
           </button>
         </div>
+        {/* Examples + filters → inline on desktop, Refine bottom sheet on mobile. */}
+        <WarRoomRefineSheet
+          title={isHe ? 'כיוונון חיפוש' : 'Refine search'}
+          summary={refineSummary}
+          resetLabel={isHe ? 'איפוס' : 'Reset'}
+          applyLabel={isHe ? 'החל' : 'Apply'}
+          onReset={() => { setAgeMin(17); setAgeMax(23); setValueMin(100000); setValueMax(3000000); setDiversityMode('balanced'); }}
+        >
         <div className="cfg-chips">
           {examples.slice(0, 10).map((name) => (
             <button key={name} className="cfg-chip" onClick={() => setPlayerName(name)} disabled={searching}>{name}</button>
@@ -790,6 +809,7 @@ export default function FindNextTab() {
             </div>
           </div>
         </div>
+        </WarRoomRefineSheet>
       </div>
 
       {/* Error */}

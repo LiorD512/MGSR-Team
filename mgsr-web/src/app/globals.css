@@ -6179,6 +6179,111 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 }
 
 /* ═══════════════════════════════════════════════════════
+   WAR ROOM — mobile "Refine" bottom sheet (Ask + Successors)
+   Keeps the search console short on phones: the query/input stays
+   on the main screen, secondary params move into an on-demand sheet.
+   Desktop (>700px) is untouched — WarRoomRefineSheet renders inline.
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 700px) {
+  /* ── Ask: query console → full-width textarea + full-width Search ── */
+  .brit-room .brit-wr-console { padding: 16px; }
+  .brit-room .brit-wr-console .askwrap { display: block; }
+  .brit-room .brit-wr-console .askwrap textarea { width: 100%; min-height: 112px; font-size: 15px; padding: 14px; }
+  .brit-room .brit-wr-console .askwrap .go { width: 100%; align-self: auto; margin-top: 10px; height: 52px; padding: 0; font-size: 11px; }
+
+  /* ── Successors: reference input → stacked full-width + full-width Find ── */
+  .brit-room .brit-wr-cfg { padding: 16px; }
+  .brit-room .brit-wr-cfg .cfg-search { flex-wrap: wrap; }
+  .brit-room .brit-wr-cfg .cfg-search input { flex: 1 0 100%; font-size: 15px; }
+  .brit-room .brit-wr-cfg .cfg-search .cfg-go { flex: 1; height: 50px; padding: 0; }
+  .brit-room .brit-wr-cfg .cfg-search .cfg-stop { height: 50px; }
+
+  /* ── Refine summary trigger bar (shown on the main screen) ── */
+  .brit-room .wr-refine-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; margin-top: 14px; padding: 13px 14px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+  .brit-room .wr-refine-bar .l { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brit-room .wr-refine-bar .l svg { width: 16px; height: 16px; flex: none; color: var(--gold); }
+  .brit-room .wr-refine-bar .l .sum { display: flex; flex-direction: column; gap: 3px; min-width: 0; text-align: start; }
+  .brit-room .wr-refine-bar .l .sum b { font: 600 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  .brit-room .wr-refine-bar .l .sum small { font: 9px/1.2 var(--mono); color: var(--muted); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 68vw; }
+  .brit-room .wr-refine-bar .chev { flex: none; color: var(--gold); font-size: 15px; }
+}
+
+/* ── Refine bottom sheet (portaled to <body>; always mobile-only in practice) ── */
+.brit-room.wr-refine-portal .wr-rf-scrim { position: fixed; inset: 0; z-index: 1200; background: rgba(17,17,15,.55); opacity: 0; pointer-events: none; transition: opacity .25s; }
+.brit-room.wr-refine-portal .wr-rf-scrim.open { opacity: 1; pointer-events: auto; }
+.brit-room.wr-refine-portal .wr-rf-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1210; max-height: 88vh; display: flex; flex-direction: column; background: var(--paper); border-top: 3px solid var(--gold); border-radius: 18px 18px 0 0; box-shadow: 0 -20px 60px rgba(0,0,0,.4); transform: translateY(100%); transition: transform .32s cubic-bezier(.16,1,.3,1); }
+.brit-room.wr-refine-portal .wr-rf-sheet.open { transform: none; }
+.brit-room.wr-refine-portal .wr-rf-sheet::before { content: ''; display: block; width: 40px; height: 4px; border-radius: 3px; background: rgba(22,22,19,.22); margin: 10px auto 0; flex: none; }
+.brit-room.wr-refine-portal .wr-rf-head { display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 2; background: var(--paper); padding: 12px 20px 14px; border-bottom: 1px solid var(--line); }
+.brit-room.wr-refine-portal .wr-rf-head h3 { margin: 0; font: 500 22px/1 var(--display); text-transform: uppercase; }
+.brit-room.wr-refine-portal .wr-rf-head button { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--ink); font: 20px/1 var(--display); cursor: pointer; padding: 0; }
+.brit-room.wr-refine-portal .wr-rf-body { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.brit-room.wr-refine-portal .wr-rf-foot { display: flex; gap: 12px; position: sticky; bottom: 0; z-index: 2; background: var(--paper); padding: 14px 20px calc(16px + env(safe-area-inset-bottom, 0)); border-top: 1px solid var(--line); }
+.brit-room.wr-refine-portal .wr-rf-foot .reset { flex: 0 0 auto; padding: 0 18px; height: 50px; border: 1px solid var(--line); background: transparent; color: var(--muted); font: 600 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; cursor: pointer; border-radius: 10px; }
+.brit-room.wr-refine-portal .wr-rf-foot .apply { flex: 1; height: 50px; border: 1px solid var(--black); background: var(--black); color: var(--gold-soft); font: 600 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; cursor: pointer; border-radius: 10px; }
+
+/* Each param group inside the sheet becomes a padded, labelled section. */
+.brit-room.wr-refine-portal .wr-rf-body > * { padding: 18px 20px; border-bottom: 1px solid var(--line); margin: 0; }
+.brit-room.wr-refine-portal .wr-rf-body > *:last-child { border-bottom: 0; }
+
+/* ── Ask params inside the sheet ── */
+.brit-room.wr-refine-portal .divmode { display: block; }
+.brit-room.wr-refine-portal .divmode .dl { display: block; color: var(--muted); font: 600 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 12px; }
+.brit-room.wr-refine-portal .divmode { display: flex; flex-wrap: wrap; gap: 8px; }
+.brit-room.wr-refine-portal .divmode .dl { flex: 0 0 100%; }
+.brit-room.wr-refine-portal .divmode .brit-wr-chip { flex: 1; min-width: 0; padding: 11px 4px; border-radius: 10px; text-align: center; overflow: hidden; }
+.brit-room.wr-refine-portal .divmode .brit-wr-chip .cx { display: block; margin-top: 4px; font-size: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .7; }
+.brit-room.wr-refine-portal .valrow { position: relative; display: block; }
+.brit-room.wr-refine-portal .valrow .vl { display: block; color: var(--muted); font: 600 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 12px; }
+.brit-room.wr-refine-portal .valrow .vsummary { position: absolute; top: 0; inset-inline-end: 0; margin: 0; color: var(--gold); font: 500 13px/1 var(--display); }
+.brit-room.wr-refine-portal .valrow .vdash { display: none; }
+.brit-room.wr-refine-portal .valrow .vfield { display: flex; align-items: center; width: 100%; }
+.brit-room.wr-refine-portal .valrow .vfield + .vfield { margin-top: 10px; }
+.brit-room.wr-refine-portal .valrow .vfield .vk { flex: 0 0 42px; color: var(--muted); font: 10px/1 var(--mono); text-transform: uppercase; }
+.brit-room.wr-refine-portal .valrow .valsel { flex: 1; min-width: 0; }
+.brit-room.wr-refine-portal .valrow .valsel select { width: 100%; height: 50px; border-radius: 10px; font-size: 14px; padding: 0 36px 0 14px; }
+.brit-room.wr-refine-portal .valrow .valsel::after { inset-inline-end: 14px; }
+.brit-room.wr-refine-portal .exlabel { margin: 0 0 10px; color: var(--muted); font: 600 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.brit-room.wr-refine-portal .examples { display: block; }
+.brit-room.wr-refine-portal .examples .ex { display: flex; width: 100%; padding: 14px; font: 10px/1.3 var(--mono); text-transform: uppercase; border-radius: 10px; text-align: start; }
+.brit-room.wr-refine-portal .examples .ex + .ex { margin-top: 8px; }
+
+/* ── Successors params inside the sheet ──
+   The base .cfg-* styles are scoped under .brit-wr-cfg; inside the portal the
+   controls are reparented out of it, so re-declare the essential look here. */
+.brit-room.wr-refine-portal .cfg-fh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.brit-room.wr-refine-portal .cfg-fh .k { color: var(--muted); font: 600 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.brit-room.wr-refine-portal .cfg-fh .v { color: var(--gold); font: 500 14px/1 var(--display); }
+.brit-room.wr-refine-portal .cfg-range { display: flex; align-items: center; gap: 10px; }
+.brit-room.wr-refine-portal .cfg-range span { color: var(--muted-2); font: 9px/1 var(--mono); text-transform: uppercase; min-width: 30px; }
+.brit-room.wr-refine-portal .cfg-range input[type=range] { flex: 1; accent-color: var(--gold); height: 4px; }
+.brit-room.wr-refine-portal .cfg-range b { color: var(--ink); font: 500 13px/1 var(--display); min-width: 22px; text-align: end; }
+.brit-room.wr-refine-portal .cfg-selrow { display: flex; align-items: center; gap: 8px; }
+.brit-room.wr-refine-portal .cfg-dash { color: var(--muted-2); font: 10px/1 var(--mono); }
+.brit-room.wr-refine-portal .cfg-sel { position: relative; flex: 1; min-width: 0; }
+.brit-room.wr-refine-portal .cfg-sel::after { content: '▾'; position: absolute; inset-inline-end: 14px; top: 50%; transform: translateY(-50%); color: var(--gold); font-size: 10px; pointer-events: none; }
+.brit-room.wr-refine-portal .cfg-sel select { width: 100%; height: 50px; appearance: none; -webkit-appearance: none; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); padding: 0 36px 0 14px; color: var(--ink); font: 13px/1 var(--mono); text-transform: uppercase; outline: none; cursor: pointer; }
+.brit-room.wr-refine-portal .cfg-modes { display: flex; gap: 8px; }
+.brit-room.wr-refine-portal .cfg-mode { flex: 1; min-width: 0; padding: 11px 6px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); background: transparent; font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em; cursor: pointer; text-align: center; overflow: hidden; }
+.brit-room.wr-refine-portal .cfg-mode.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.brit-room.wr-refine-portal .cfg-mode .cx { display: block; margin-top: 4px; font-size: 7px; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .7; }
+.brit-room.wr-refine-portal .cfg-chip { border: 1px solid var(--line); color: var(--muted); background: transparent; font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: .03em; cursor: pointer; }
+.brit-room.wr-refine-portal .cfg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.brit-room.wr-refine-portal .cfg-chips .cfg-chip { border-radius: 20px; padding: 10px 14px; }
+.brit-room.wr-refine-portal .cfg-filters { display: block; border: 0; margin: 0; }
+.brit-room.wr-refine-portal .cfg-filters .cfg-f { padding: 0; border: 0; gap: 12px; }
+.brit-room.wr-refine-portal .cfg-filters .cfg-f + .cfg-f { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+.brit-room.wr-refine-portal .cfg-filters .cfg-fh .k { font-size: 11px; letter-spacing: .14em; }
+.brit-room.wr-refine-portal .cfg-filters .cfg-fh .v { font-size: 14px; }
+.brit-room.wr-refine-portal .cfg-filters .cfg-range input[type=range] { height: 4px; }
+.brit-room.wr-refine-portal .cfg-filters .cfg-selrow .cfg-sel select { height: 50px; border-radius: 10px; font-size: 13px; }
+.brit-room.wr-refine-portal .cfg-filters .cfg-modes { gap: 8px; }
+.brit-room.wr-refine-portal .cfg-filters .cfg-mode { flex: 1; min-width: 0; padding: 11px 6px; border-radius: 10px; overflow: hidden; }
+.brit-room.wr-refine-portal .cfg-filters .cfg-mode .cx { display: block; margin-top: 4px; font-size: 7px; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .7; }
+.brit-room.wr-refine-portal .cfg-filters .cfg-fh { margin-bottom: 2px; }
+.brit-room.wr-refine-portal .cfg-filters .cfg-range span { min-width: 30px; }
+
+/* ═══════════════════════════════════════════════════════
    ALPHA BOARD — HUNT chooser + draggable range + card metric
    ═══════════════════════════════════════════════════════ */
 
