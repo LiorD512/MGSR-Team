@@ -4541,8 +4541,23 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-cf-mates-load .sp{width:18px;height:18px;border:2px solid rgba(201,166,107,.35);border-top-color:var(--gold-soft);border-radius:50%;animation:brit-ra-spin .9s linear infinite}
 
 @media(max-width:900px){
-  .brit-room .brit-cf-mast{align-items:stretch}
   .brit-room .brit-cf-feed{grid-template-columns:1fr}
+
+  /* ── Masthead: compact reload button on the right (like desktop), not a
+     full-width bar. ── */
+  .brit-room .brit-cf-mast{flex-direction:row;align-items:center;justify-content:flex-end;gap:0;margin-top:16px}
+  [dir=rtl] .brit-room .brit-cf-mast{justify-content:flex-start}
+  .brit-room .brit-cf-reload{width:auto;padding:11px 15px;white-space:nowrap}
+  .brit-room .brit-cf-sub{font-size:11px}
+
+  /* ── Filter sheet: the .brit-req-filterrow / .brit-req-chipset sections are
+     already styled by the Release Alerts rules (shared, generic). Just handle
+     this screen's extras: hide the inline search and lay out the roster-only
+     toggle row as its own padded sheet section. ── */
+  .brit-room .brit-tray[data-sheet-open] > .brit-search{display:none}
+  .brit-room .brit-tray[data-sheet-open] .brit-cf-toggle-row{flex-direction:column;align-items:flex-start;gap:12px;padding:18px var(--sheet-pad,20px);border-bottom:1px solid var(--line)}
+  .brit-room .brit-tray[data-sheet-open] .brit-cf-roster-toggle{font-size:12px;letter-spacing:.04em}
+  .brit-room .brit-tray[data-sheet-open] .brit-cf-foot-note{font-size:10px;line-height:1.4}
 }
 
 /* ═══════════════════════════════════════════════════════
