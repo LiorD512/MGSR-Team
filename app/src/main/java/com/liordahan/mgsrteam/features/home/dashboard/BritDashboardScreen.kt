@@ -25,16 +25,24 @@ import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.google.firebase.firestore.FirebaseFirestore
+import com.liordahan.mgsrteam.firebase.SharedCallables
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -139,7 +147,10 @@ fun BritDashboardScreen(
             if (state.isLoading) {
                 Box(modifier = Modifier.weight(1f)) { BritLoader() }
             } else {
-                val assetPlayers = remember(state.feedEvents) { distinctAssetPlayers(state.feedEvents) }
+                // OUR ASSETS = roster players flagged as BRIT Sport Group assets
+                // (same rule + value-sort as the web), surfaced from the VM — NOT
+                // the recent-activity feed. Cap at 8 like the web marquee.
+                val assetPlayers = state.assetPlayers.take(8)
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -152,13 +163,15 @@ fun BritDashboardScreen(
                     // (b) signals strip
                     item { SignalsStrip(state = state) }
 
-                    // (c) birthdays / deadlines — reuse the existing section + data
+                    // (c) PLAYER BIRTHDAYS — editorial module matched to the web
+                    //     (.brit-deadline rows: date code | name + club/turns +
+                    //      agent | SEND WISHES / NO NUMBER + day count).
                     item {
-                        BirthdaysSection(
-                            todayBirthdays = state.todayBirthdays,
-                            upcomingBirthdays = state.upcomingBirthdays,
+                        BritBirthdaysModule(
+                            today = state.todayBirthdays,
+                            upcoming = state.upcomingBirthdays,
                             senderName = state.currentUserAccount?.name.orEmpty(),
-                            platform = platform,
+                            accent = accent,
                         )
                     }
 
@@ -175,13 +188,18 @@ fun BritDashboardScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 items(assetPlayers) { p ->
+                                    val navId = p.tmProfile?.takeIf { it.isNotBlank() }
+                                        ?: p.id.orEmpty()
                                     FocusCard(
-                                        name = p.name,
-                                        subtitle = p.club,
-                                        imageUrl = p.image,
+                                        name = (p.fullName ?: "").ifBlank { "—" },
+                                        subtitle = listOfNotNull(
+                                            p.currentClub?.clubName?.takeIf { it.isNotBlank() },
+                                            p.positions?.firstOrNull()?.takeIf { !it.isNullOrBlank() }
+                                        ).joinToString(" · "),
+                                        imageUrl = p.profileImage,
                                         onClick = {
-                                            if (p.navId.isNotBlank()) {
-                                                navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(p.navId)}")
+                                            if (navId.isNotBlank()) {
+                                                navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(navId)}")
                                             }
                                         },
                                     )
@@ -341,10 +359,16 @@ private fun MastheadGreeting(state: HomeDashboardState, platform: Platform) {
             style = britMono(accent, 10.sp, letterSpacing = 1.4.sp),
         )
         Spacer(Modifier.height(14.dp))
-        Text(text = "$greet,", style = britDisplay(BritTokens.ink, 44.sp, weight = 600, letterSpacing = (-2).sp))
+        // Tight line-height so "GOOD MORNING," sits right above the name (web .brit-masthead h1 is line-height .78).
+        Text(
+            text = "$greet,",
+            style = britDisplay(BritTokens.ink, 44.sp, weight = 600, letterSpacing = (-2).sp)
+                .copy(lineHeight = 42.sp),
+        )
         Text(
             text = if (name.isNotBlank()) "$name." else "WELCOME.",
-            style = britDisplay(accent, 44.sp, weight = 600, letterSpacing = (-2).sp),
+            style = britDisplay(accent, 44.sp, weight = 600, letterSpacing = (-2).sp)
+                .copy(lineHeight = 42.sp),
         )
         Spacer(Modifier.height(14.dp))
         Text(
@@ -685,20 +709,145 @@ private fun QuickActionsGrid(navController: NavController, accent: androidx.comp
     }
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+//  PLAYER BIRTHDAYS — editorial module (web .brit-module + .brit-deadline rows)
+// ═════════════════════════════════════════════════════════════════════════════
 
-private data class AssetPlayer(val name: String, val club: String, val image: String?, val navId: String)
+@Composable
+private fun BritBirthdaysModule(
+    today: List<com.liordahan.mgsrteam.features.home.dashboard.BirthdayPlayer>,
+    upcoming: List<com.liordahan.mgsrteam.features.home.dashboard.BirthdayPlayer>,
+    senderName: String,
+    accent: androidx.compose.ui.graphics.Color,
+) {
+    if (today.isEmpty() && upcoming.isEmpty()) return
 
-/** Distinct players surfaced in the feed, used for the OUR ASSETS marquee. */
-private fun distinctAssetPlayers(feed: List<FeedEvent>): List<AssetPlayer> =
-    feed.filter { !it.playerName.isNullOrBlank() }
-        .distinctBy { it.playerName }
-        .take(8)
-        .map {
-            AssetPlayer(
-                name = it.playerName ?: "",
-                club = it.newValue?.takeIf { v -> it.type == FeedEvent.TYPE_CLUB_CHANGE } ?: "",
-                image = it.playerImage,
-                navId = it.playerTmProfile ?: "",
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val year = remember { java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString() }
+
+    // Which players already got a wish this year (live from Firestore).
+    val sentWishes = remember { mutableStateOf<Set<String>>(emptySet()) }
+    DisposableEffect(year) {
+        val reg = FirebaseFirestore.getInstance()
+            .collection("BirthdayWishesSent").document(year)
+            .addSnapshotListener { snap, _ ->
+                if (snap != null && snap.exists()) sentWishes.value = snap.data?.keys ?: emptySet()
+            }
+        onDispose { reg.remove() }
+    }
+
+    val rows = (today + upcoming)
+
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp)) {
+        // ── Module head: hairline rule + "PLAYER BIRTHDAYS" + count note ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 12.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                text = "PLAYER BIRTHDAYS",
+                style = britDisplay(BritTokens.ink, 22.sp, weight = 600, letterSpacing = 0.5.sp),
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "${rows.size} IN THE NEXT 30 DAYS",
+                style = britMono(BritTokens.muted, 9.sp, letterSpacing = 1.sp),
             )
         }
+        // top hairline
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), thickness = 1.dp, color = BritTokens.line)
+
+        rows.forEach { p ->
+            val isToday = p.daysUntil == 0
+            val hasPhone = p.phone.isNotBlank()
+            val alreadySent = p.id in sentWishes.value
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // (1) date code column
+                Text(
+                    text = if (isToday) "TODAY" else p.dateLabel.uppercase(),
+                    style = britMono(accent, 10.sp, letterSpacing = 0.6.sp),
+                    modifier = Modifier.width(54.dp),
+                )
+                Spacer(Modifier.width(14.dp))
+                // (2) name + club/turns + agent
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = p.fullName.uppercase(),
+                        style = britDisplay(BritTokens.ink, 20.sp, weight = 500, letterSpacing = 0.3.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = listOfNotNull(
+                            p.club?.takeIf { it.isNotBlank() },
+                            "TURNS ${p.turnsAge}",
+                        ).joinToString(" / ").uppercase(),
+                        style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.4.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    p.agentInChargeName?.takeIf { it.isNotBlank() }?.let { agent ->
+                        Spacer(Modifier.height(3.dp))
+                        Row {
+                            Text("AGENT ", style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.4.sp))
+                            Text(agent.uppercase(), style = britMono(accent, 9.sp, letterSpacing = 0.4.sp))
+                        }
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                // (3) action + day count (right-aligned)
+                Column(horizontalAlignment = Alignment.End) {
+                    when {
+                        isToday && hasPhone && !alreadySent -> {
+                            Text(
+                                text = stringResource(R.string.birthdays_send_wishes).uppercase(),
+                                style = britMono(BritTokens.ink, 9.sp, letterSpacing = 0.6.sp),
+                                modifier = Modifier
+                                    .background(accent)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                    ) {
+                                        sendBirthdayWish(context, p, senderName)
+                                        scope.launch { SharedCallables.birthdayWishSend(year, p.id, senderName) }
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                            )
+                        }
+                        isToday && hasPhone && alreadySent -> {
+                            Text(
+                                text = stringResource(R.string.birthdays_wish_sent).uppercase(),
+                                style = britMono(BritTokens.green, 9.sp, letterSpacing = 0.6.sp),
+                            )
+                        }
+                        isToday && !hasPhone -> {
+                            Text(
+                                text = "NO NUMBER",
+                                style = britMono(BritTokens.red, 8.sp, letterSpacing = 0.6.sp),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(if (isToday) 8.dp else 0.dp))
+                    Text(
+                        text = if (isToday) "TODAY" else "${p.daysUntil} DAYS",
+                        style = britDisplay(if (isToday) BritTokens.red else accent, 16.sp, weight = 500),
+                    )
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), thickness = 1.dp, color = BritTokens.line)
+        }
+    }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────

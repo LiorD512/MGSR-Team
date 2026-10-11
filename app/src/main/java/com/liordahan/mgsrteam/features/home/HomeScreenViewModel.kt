@@ -95,6 +95,10 @@ data class HomeDashboardState(
     val todayBirthdays: List<BirthdayPlayer> = emptyList(),
     val upcomingBirthdays: List<BirthdayPlayer> = emptyList(),
 
+    // "Our assets" — roster players that are BRIT Sport Group assets, sorted by
+    // market value desc (mirrors the web MenDashboard assetPlayers/marquee).
+    val assetPlayers: List<Player> = emptyList(),
+
     // chat unread
     val chatUnreadCount: Int = 0,
 
@@ -497,6 +501,12 @@ class HomeScreenViewModel(
                     val currentPlatform = platformManager.current.value
                     val (today, upcoming) = buildBirthdayPlayers(players, currentPlatform)
 
+                    // "Our assets" — same rule the web uses (isPlayerOurAsset):
+                    // isOurAsset flag, else agencyUrl == BRIT Sport Group. Sorted
+                    // by market value desc, like the web marquee.
+                    val assets = players
+                        .filter { isPlayerOurAsset(it) }
+                        .sortedByDescending { parseMarketValueToEuros(it.marketValue) }
 
                     val mandateStatusByTmProfile = players
                         .filter { it.tmProfile != null }
@@ -509,7 +519,8 @@ class HomeScreenViewModel(
                             agentSummaries = summaries,
                             mandateStatusByTmProfile = mandateStatusByTmProfile,
                             todayBirthdays = today,
-                            upcomingBirthdays = upcoming
+                            upcomingBirthdays = upcoming,
+                            assetPlayers = assets
                         )
                     }
                     recomputeMyOverview()
@@ -1013,5 +1024,38 @@ class HomeScreenViewModel(
             catch (_: DateTimeParseException) { }
         }
         return null
+    }
+
+    // ── "Our assets" rule — mirrors the web lib/transfermarkt-utils.ts ──
+    private val britSportGroupAgencyUrl =
+        "https://www.transfermarkt.com/brit-sport-group/beraterfirma/berater/6448"
+
+    private fun normalizeAgencyUrl(value: String?): String {
+        if (value.isNullOrBlank()) return ""
+        return value.trim().lowercase()
+            .removePrefix("https://").removePrefix("http://")
+            .removeSuffix("/")
+    }
+
+    /** Same semantics as the web isPlayerOurAsset(): explicit flag wins, else
+     *  the agency URL must match BRIT Sport Group. */
+    private fun isPlayerOurAsset(player: Player): Boolean {
+        when (player.isOurAsset) {
+            true -> return true
+            false -> return false
+            null -> {}
+        }
+        return normalizeAgencyUrl(player.agencyUrl) == normalizeAgencyUrl(britSportGroupAgencyUrl)
+    }
+
+    private fun parseMarketValueToEuros(value: String?): Double {
+        if (value.isNullOrBlank()) return 0.0
+        val cleaned = value.replace("€", "").replace(",", "").trim().lowercase()
+        val num = cleaned.replace(Regex("[^\\d.]"), "").toDoubleOrNull() ?: return 0.0
+        return when {
+            cleaned.contains("m") -> num * 1_000_000
+            cleaned.contains("k") -> num * 1_000
+            else -> num
+        }
     }
 }

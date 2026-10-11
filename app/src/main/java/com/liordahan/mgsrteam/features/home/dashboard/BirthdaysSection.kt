@@ -140,7 +140,9 @@ fun buildBirthdayPlayers(players: List<Player>, platform: Platform): Pair<List<B
     val thisYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
 
     for (p in players) {
-        val phone = p.getPlayerPhoneNumber() ?: continue
+        // The web surfaces birthdays even when we don't hold the player's own
+        // phone number (it shows a "NO NUMBER" indicator), so DON'T skip here.
+        val phone = p.getPlayerPhoneNumber().orEmpty()
         // Try direct dateOfBirth, then passportDetails.dateOfBirth
         val dob = p.dateOfBirth ?: p.passportDetails?.dateOfBirth
         val parsed = parseDob(dob) ?: continue
@@ -166,8 +168,9 @@ fun buildBirthdayPlayers(players: List<Player>, platform: Platform): Pair<List<B
         )
     }
 
-    val today = all.filter { it.daysUntil == 0 }
-    val upcoming = all.filter { it.daysUntil in 1..7 }.sortedBy { it.daysUntil }
+    // Web parity: today + next 30 days (not just 7).
+    val today = all.filter { it.daysUntil == 0 }.sortedBy { it.fullName }
+    val upcoming = all.filter { it.daysUntil in 1..30 }.sortedBy { it.daysUntil }
     return today to upcoming
 }
 
@@ -178,7 +181,13 @@ private fun normalizePhoneForWhatsApp(phone: String): String {
     } else digits
 }
 
-private fun sendBirthdayWishes(context: Context, player: BirthdayPlayer, senderName: String) {
+private fun sendBirthdayWishes(context: Context, player: BirthdayPlayer, senderName: String) =
+    sendBirthdayWish(context, player, senderName)
+
+/** Opens WhatsApp with a birthday message for [player]. Public so the editorial
+ *  dashboard birthdays module can reuse the exact same send logic. */
+fun sendBirthdayWish(context: Context, player: BirthdayPlayer, senderName: String) {
+    if (player.phone.isBlank()) return
     val firstName = player.fullName.split(" ").firstOrNull() ?: player.fullName
     val msg = "Happy Birthday $firstName!\nWishing you a wonderful year ahead, full of success on and off the pitch!\n$senderName"
     val normalized = normalizePhoneForWhatsApp(player.phone)
