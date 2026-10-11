@@ -56,7 +56,7 @@ data class HomeDashboardState(
     val portfolioValue: Double = 0.0,   // Σ market value across the roster (€)
     val valuedCount: Int = 0,           // roster players with a market value > 0
     val euCount: Int = 0,               // roster players with an EU passport
-    val mandatesUnder30d: Int = 0,      // mandates/contracts expiring within 30 days
+    val mandatesUnder30d: Int = 0,      // AGENCY MANDATE docs expiring within 30 days (not player contract)
 
     // activity feed
     val feedEvents: List<FeedEvent> = emptyList(),
@@ -521,8 +521,9 @@ class HomeScreenViewModel(
                     val euCount = players.count {
                         com.liordahan.mgsrteam.utils.EuCountries.isEuNational(it.nationalities, it.nationality)
                     }
-                    // Mandates under 30 days (contract expiry within ~1 month).
-                    val under30d = players.count { isContractExpiringWithinMonths(it.contractExpired, 1) }
+                    // NOTE: "mandates under 30d" is computed from PlayerDocuments
+                    // (MANDATE expiresAt), not from the player contract — see
+                    // countMandates(). It is NOT derived from players here.
 
                     val mandateStatusByTmProfile = players
                         .filter { it.tmProfile != null }
@@ -539,8 +540,8 @@ class HomeScreenViewModel(
                             assetPlayers = assets,
                             portfolioValue = portfolioValue,
                             valuedCount = valuedCount,
-                            euCount = euCount,
-                            mandatesUnder30d = under30d
+                            euCount = euCount
+                            // mandatesUnder30d is set by countMandates() from MANDATE docs
                         )
                     }
                     recomputeMyOverview()
@@ -556,6 +557,11 @@ class HomeScreenViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             // Query mandate documents; fall back to empty set so haveMandate still counts
             val now = System.currentTimeMillis()
+            val thirtyDaysCutoff = now + 30L * 24 * 60 * 60 * 1000
+            // "Mandates under 30d" (web parity): MANDATE docs whose mandate
+            // expiresAt is within the next 30 days (not expired). This is the
+            // AGENCY MANDATE expiry — distinct from the player's contract date.
+            var mandatesUnder30d = 0
             val profilesWithMandateDoc: Set<String> = try {
                 // Query all mandate docs and filter client-side.
                 // Firestore whereEqualTo("expired", false) skips docs where 'expired' field
@@ -565,6 +571,14 @@ class HomeScreenViewModel(
                     .whereEqualTo("type", DocumentType.MANDATE.name)
                     .get().await()
                 val docs = docsSnap.toObjects(PlayerDocument::class.java)
+
+                mandatesUnder30d = docs
+                    .filter { !it.expired && it.expiresAt != null }
+                    .filter { it.expiresAt!! in now..thirtyDaysCutoff }
+                    .mapNotNull { it.playerTmProfile }
+                    .distinct()
+                    .size
+
                 docs.filter { !it.expired && (it.expiresAt == null || it.expiresAt >= now) }
                     .filter { it.playerTmProfile != null }
                     .mapNotNull { it.playerTmProfile }.toSet()
@@ -574,7 +588,13 @@ class HomeScreenViewModel(
             // so also match by player.id (Firestore doc ID).
             val mandateCount = players.count { it.haveMandate || it.tmProfile in profilesWithMandateDoc || it.id in profilesWithMandateDoc }
 
-            _state.update { it.copy(withMandate = mandateCount, mandateDocProfiles = profilesWithMandateDoc) }
+            _state.update {
+                it.copy(
+                    withMandate = mandateCount,
+                    mandateDocProfiles = profilesWithMandateDoc,
+                    mandatesUnder30d = mandatesUnder30d
+                )
+            }
 
             // Update agent summaries with mandate info
             val agentGroups = players.groupBy { it.agentInChargeName ?: "Unassigned" }
