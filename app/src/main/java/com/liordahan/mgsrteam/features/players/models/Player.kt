@@ -56,6 +56,13 @@ data class Player(
     @PropertyName("onLoan") val isOnLoan: Boolean = false,
     @PropertyName("onLoanFromClub") val onLoanFromClub: String? = null,
     val interestedInIsrael: Boolean = false,
+    // The web writes this flag literally as "isOurAsset" (the "mark as our
+    // asset" toggle). Without @PropertyName, Firestore's bean convention strips
+    // the `is` prefix and reads a non-existent "ourAsset" field, leaving this
+    // null — so the dashboard "OUR ASSETS" rule fell back to only the agency
+    // URL. Pin the literal name so the boolean is honoured (true includes,
+    // false excludes) exactly like the web isPlayerOurAsset().
+    @field:PropertyName("isOurAsset") @get:PropertyName("isOurAsset")
     val isOurAsset: Boolean? = null,
     @field:PropertyName("isMarried") @get:PropertyName("isMarried")
     val isMarried: Boolean = false,
