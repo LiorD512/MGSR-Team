@@ -199,12 +199,6 @@ fun PlayersScreen(
             EuCountries.isEuNational(it.nationalities, it.nationality)
         }
     }
-    val valuedCount = remember(playersState.playersList) {
-        playersState.playersList.count { parseMarketValue(it.marketValue) > 0 }
-    }
-    val totalValue = remember(playersState.playersList) {
-        playersState.playersList.sumOf { parseMarketValue(it.marketValue) }
-    }
     // Mandate signal derived in the Compose layer (haveMandate field only), to
     // mirror the web exactly: MenPlayers.tsx computes
     // mandateCount = players.filter(p => p.haveMandate).length. The VM's
@@ -272,8 +266,6 @@ fun PlayersScreen(
                 RosterSignals(
                     rosterCount = playersState.playersList.size,
                     euCount = euCount,
-                    totalValue = totalValue,
-                    valuedCount = valuedCount,
                     mandateCount = mandateCount,
                     freeCount = playersState.freeAgentCount,
                     accent = accent
@@ -593,8 +585,6 @@ private fun ViewToggleButton(
 private fun RosterSignals(
     rosterCount: Int,
     euCount: Int,
-    totalValue: Double,
-    valuedCount: Int,
     mandateCount: Int,
     freeCount: Int,
     accent: Color
@@ -617,14 +607,6 @@ private fun RosterSignals(
                 value = rosterCount.toString().padStart(2, '0'),
                 valueColor = BritTokens.ink,
                 note = stringResource(R.string.room_signal_roster_note).replace("{n}", euCount.toString())
-            )
-            VerticalHairline()
-            SignalColumn(
-                modifier = Modifier.weight(1f),
-                label = stringResource(R.string.players_signal_value),
-                value = formatValue(totalValue),
-                valueColor = accent,
-                note = stringResource(R.string.players_signal_value_note).replace("{n}", valuedCount.toString())
             )
             VerticalHairline()
             SignalColumn(
@@ -1681,30 +1663,6 @@ private fun agentDisplayName(name: String?): String {
     val n = name?.trim()
     if (n.isNullOrBlank() || n.equals("unknown", ignoreCase = true)) return ""
     return n
-}
-
-/** Compact euro market-value label — mirrors MenPlayers.tsx fmtValue. */
-private fun formatValue(v: Double): String = when {
-    v >= 1_000_000 -> {
-        val m = v / 1_000_000
-        if (v % 1_000_000.0 == 0.0) "€${m.toInt()}M" else "€%.2fM".format(m)
-    }
-    v > 0 -> "€${Math.round(v / 1000.0)}K"
-    else -> "€0"
-}
-
-/** Market-value parser mirroring MenPlayers.tsx parseMarketValue (handles the
- *  k/m suffix + currency/comma stripping). */
-private fun parseMarketValue(value: String?): Double {
-    if (value.isNullOrBlank()) return 0.0
-    val cleaned = value.replace(Regex("[€\$£,\\s]"), "").lowercase()
-    val match = Regex("^([\\d.]+)(k|m)?\$").find(cleaned) ?: return 0.0
-    val num = match.groupValues[1].toDoubleOrNull() ?: return 0.0
-    return when (match.groupValues[2]) {
-        "m" -> num * 1_000_000
-        "k" -> num * 1_000
-        else -> num
-    }
 }
 
 /** Contract-expiry check within 6 months — mirrors the web + VM predicate,

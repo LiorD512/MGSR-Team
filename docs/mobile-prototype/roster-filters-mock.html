@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BRIT — Roster filters placement concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+    --gold:#a47d43;--gold-soft:#c9a66b;--gold-bright:#e4c98b;--teal:#2f7d6e;
+    --red:#b64235;--green:#5c6f4a;--muted:#77736a;--muted-2:#aba69b;
+    --line:rgba(22,22,19,.18);--line-2:rgba(22,22,19,.07);
+    --display:'Oswald',sans-serif;--body:'Manrope',sans-serif;--mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(ellipse at 30% 0%,#2a2419,#121009 70%);
+    font:14px/1.5 var(--body);color:var(--ink);padding:34px 16px 80px;display:flex;flex-direction:column;align-items:center;gap:26px}
+  .intro{text-align:center;color:var(--paper);max-width:600px}
+  .intro .kick{color:var(--gold-bright);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.2em}
+  .intro h1{margin:11px 0 7px;font:500 28px/.95 var(--display);text-transform:uppercase}
+  .intro p{margin:0;color:#b7b1a5;font:12px/1.6 var(--body);letter-spacing:.02em}
+  .lab{color:var(--gold-bright);font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.16em;margin:8px 0 2px;align-self:center;max-width:430px;width:100%}
+  .labsub{color:#9a948a;font:11px/1.5 var(--body);margin:0 0 6px;align-self:center;max-width:430px;width:100%;text-align:center}
+
+  /* phone */
+  .phone{position:relative;width:390px;max-width:100%;height:720px;background:var(--paper);color:var(--ink);
+    border-radius:40px;border:10px solid #0c0b09;overflow:hidden;box-shadow:0 40px 90px rgba(0,0,0,.5)}
+  .phone:before{content:'';position:absolute;inset:0;z-index:50;pointer-events:none;opacity:.045;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+  .scr{position:absolute;inset:0;overflow:hidden;display:flex;flex-direction:column}
+
+  /* header */
+  .hd{display:flex;align-items:center;gap:11px;padding:14px 18px 8px}
+  .hd .mk{width:34px;height:34px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,#2a2217,#11100b);border:1.5px solid var(--gold-soft);display:grid;place-items:center;color:var(--gold-bright);font:600 14px/1 var(--display)}
+  .hd .t .k{font:500 10px/1 var(--mono);color:var(--gold);letter-spacing:1.4px;text-transform:uppercase}
+  .hd .t .n{margin-top:4px;font:600 14px/1 var(--display);letter-spacing:.5px;text-transform:uppercase}
+  .hd .sp{flex:1}
+  .hd .mi{width:30px;height:30px;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);font:14px/1 var(--body)}
+
+  .mast{padding:4px 18px 0}
+  .mast .date{font:500 11px/1 var(--mono);color:var(--gold);letter-spacing:1.4px;text-transform:uppercase}
+  .mast h2{margin:9px 0 0;font:600 36px/.82 var(--display);letter-spacing:-1.5px;text-transform:uppercase}
+  .mast h2 em{color:var(--gold);font-style:normal}
+
+  /* view toggle + add + filters row */
+  .acts{display:flex;align-items:center;gap:8px;padding:14px 18px 10px}
+  .seg{display:inline-flex;border:1px solid var(--line);background:var(--card)}
+  .seg button{border:0;background:transparent;cursor:pointer;padding:8px 14px;color:var(--muted);font:600 11px/1 var(--display);letter-spacing:.6px;text-transform:uppercase;border-right:1px solid var(--line)}
+  .seg button:last-child{border-right:0}
+  .seg button.on{background:var(--ink);color:var(--paper)}
+  .acts .sp{flex:1}
+  .add{border:1px solid var(--gold);background:transparent;color:var(--gold);cursor:pointer;padding:8px 13px;font:600 11px/1 var(--display);letter-spacing:.6px;text-transform:uppercase}
+
+  /* 3-col signals (value box removed) */
+  .sig{display:flex;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:4px 18px 0}
+  .sig .c{flex:1;padding:14px 12px}
+  .sig .c + .c{border-left:1px solid var(--line)}
+  .sig .l{font:500 11px/1 var(--mono);color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+  .sig .v{margin-top:10px;font:600 30px/.8 var(--display);letter-spacing:-1px}
+  .sig .v.gold{color:var(--gold)}
+  .sig .n{margin-top:8px;font:500 11px/1.2 var(--mono);color:var(--muted-2);letter-spacing:.3px;text-transform:uppercase}
+
+  /* search + filter trigger row (the KEY idea) */
+  .findrow{display:flex;gap:8px;padding:14px 18px 6px;align-items:stretch}
+  .search{flex:1;display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--card);padding:11px 13px}
+  .search svg{width:15px;height:15px;color:var(--muted)}
+  .search span{color:var(--muted-2);font:12px/1 var(--mono)}
+  .fbtn{display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--card);padding:0 14px;cursor:pointer;color:var(--ink);font:600 11px/1 var(--display);letter-spacing:.5px;text-transform:uppercase;position:relative}
+  .fbtn .ic{font-size:14px}
+  .fbtn .badge{position:absolute;top:-7px;right:-7px;min-width:17px;height:17px;border-radius:9px;background:var(--gold);color:#fff;font:600 10px/17px var(--mono);text-align:center;padding:0 3px}
+  .fbtn.alt{border-color:var(--gold);color:var(--gold)}
+
+  .count{padding:10px 18px 0;font:500 11px/1 var(--mono);color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+  .count b{color:var(--ink)}
+  .count .active{color:var(--gold)}
+
+  /* player cards grid preview */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 18px}
+  .pcard{position:relative;height:140px;overflow:hidden;background:var(--black)}
+  .pcard .im{position:absolute;inset:0;background:linear-gradient(160deg,#2a2a24,#11110f);opacity:.7}
+  .pcard:after{content:'';position:absolute;inset:48% 0 0;background:rgba(17,17,15,.78)}
+  .pcard .cp{position:absolute;left:11px;right:11px;bottom:11px;z-index:1;color:var(--paper)}
+  .pcard .cp small{color:var(--gold-soft);font:9px/1.2 var(--mono);text-transform:uppercase}
+  .pcard .cp h3{margin:6px 0 3px;font:600 17px/.9 var(--display);text-transform:uppercase}
+  .pcard .cp p{margin:0;color:#c4bfb3;font:9px/1 var(--mono);text-transform:uppercase}
+
+  /* ─── Bottom-sheet filter panel (Concept A) ─── */
+  .sheet-wrap{position:absolute;inset:0;z-index:60;display:none}
+  .sheet-wrap.open{display:block}
+  .scrim{position:absolute;inset:0;background:rgba(17,17,15,.5)}
+  .sheet{position:absolute;left:0;right:0;bottom:0;max-height:86%;overflow:auto;background:var(--paper);border-radius:20px 20px 0 0;box-shadow:0 -20px 50px rgba(0,0,0,.4)}
+  .sheet .grab{width:40px;height:4px;border-radius:3px;background:var(--line);margin:12px auto 4px}
+  .sheet .shd{display:flex;align-items:center;padding:8px 20px 14px;border-bottom:1px solid var(--line)}
+  .sheet .shd h3{margin:0;flex:1;font:600 22px/1 var(--display);text-transform:uppercase;letter-spacing:.3px}
+  .sheet .shd .clr{border:0;background:transparent;color:var(--gold);font:600 10px/1 var(--mono);letter-spacing:.8px;text-transform:uppercase;cursor:pointer}
+  .sheet .body{padding:18px 20px 10px}
+  .flab{font:500 10px/1 var(--mono);color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin:0 0 11px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:22px}
+  .chip{border:1px solid var(--line);background:var(--card);padding:9px 12px;font:500 11px/1 var(--mono);letter-spacing:.4px;text-transform:uppercase;color:var(--muted);cursor:pointer}
+  .chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .chip .dot{display:none}
+  .posrow{display:flex;gap:0;border:1px solid var(--line);margin-bottom:22px}
+  .posrow button{flex:1;border:0;background:transparent;padding:11px 0;color:var(--muted);font:600 11px/1 var(--display);letter-spacing:.6px;text-transform:uppercase;border-right:1px solid var(--line);cursor:pointer}
+  .posrow button:last-child{border-right:0}
+  .posrow button.on{background:var(--paper-2);color:var(--ink)}
+  .sortrow{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+  .applybar{position:sticky;bottom:0;background:var(--paper);border-top:1px solid var(--line);padding:14px 20px;display:flex;gap:10px}
+  .applybar .apply{flex:1;border:1px solid var(--gold);background:var(--gold-soft);color:var(--ink);padding:14px;font:600 11px/1 var(--mono);letter-spacing:1.4px;text-transform:uppercase;cursor:pointer}
+
+  .note{color:#b7b1a5;font:11px/1.5 var(--body);max-width:430px;text-align:center;margin-top:4px}
+  .btnrow{display:flex;gap:8px;justify-content:center;margin-top:4px}
+  .btnrow button{background:transparent;border:1px solid var(--gold-soft);color:var(--gold-bright);font:600 9px/1 var(--mono);letter-spacing:1px;text-transform:uppercase;padding:7px 11px;cursor:pointer}
+</style>
+</head>
+<body>
+  <div class="intro">
+    <div class="kick">BRIT · Android · roster filters placement</div>
+    <h1>Where to put the filters</h1>
+    <p>The inline tray crowds the screen. Three concepts move it off — tap the <b>FILTERS</b> button on each phone to see the panel. Value box is removed (3 signals).</p>
+  </div>
+
+  <!-- ══════ CONCEPT A — Bottom sheet (recommended) ══════ -->
+  <div class="lab">Concept A · Filters bottom-sheet (recommended)</div>
+  <div class="labsub">Main screen shows only Search + a “Filters” button (with an active-count badge) + Sort. Tap it → a drag-up sheet with everything.</div>
+  <div class="phone"><div class="scr">
+    <div class="hd"><span class="mk">B</span><div class="t"><div class="k">BRIT · MANAGEMENT ROOM</div><div class="n">Players</div></div><span class="sp"></span><span class="mi">⋯</span></div>
+    <div class="mast"><div class="date">Private client office</div><h2>The <em>roster.</em></h2></div>
+    <div class="acts">
+      <div class="seg"><button class="on">Gallery</button><button>Ledger</button></div>
+      <span class="sp"></span>
+      <button class="add">+ Add</button>
+    </div>
+    <div class="sig">
+      <div class="c"><div class="l">Roster assets</div><div class="v">1534</div><div class="n">882 EU passports</div></div>
+      <div class="c"><div class="l">Under mandate</div><div class="v">02</div><div class="n">1532 without</div></div>
+      <div class="c"><div class="l">Free agents</div><div class="v gold">144</div><div class="n">Needs placement</div></div>
+    </div>
+    <div class="findrow">
+      <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span>Search name, position or club…</span></div>
+      <button class="fbtn" onclick="document.getElementById('shA').classList.add('open')"><span class="ic">⚑</span>Filters<span class="badge">3</span></button>
+    </div>
+    <div class="count">Showing <b>128</b> of 1534 · <span class="active">3 filters active</span></div>
+    <div class="grid">
+      <div class="pcard"><div class="im"></div><div class="cp"><small>CF · Maccabi · 23</small><h3>A. Pop</h3><p>€2.4M</p></div></div>
+      <div class="pcard"><div class="im"></div><div class="cp"><small>MF · Bnei Reineh · 24</small><h3>G. Diomande</h3><p>€1.1M</p></div></div>
+      <div class="pcard"><div class="im"></div><div class="cp"><small>CB · Hapoel · 27</small><h3>D. Mensah</h3><p>€900K</p></div></div>
+      <div class="pcard"><div class="im"></div><div class="cp"><small>RB · Netanya · 21</small><h3>R. Azoulay</h3><p>€650K</p></div></div>
+    </div>
+
+    <div class="sheet-wrap" id="shA">
+      <div class="scrim" onclick="this.parentElement.classList.remove('open')"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="shd"><h3>Filters &amp; sort</h3><button class="clr">Clear all</button></div>
+        <div class="body">
+          <p class="flab">Position</p>
+          <div class="posrow"><button class="on">All</button><button>GK</button><button>DEF</button><button>MID</button><button>FWD</button></div>
+          <p class="flab">Quick filters</p>
+          <div class="chips">
+            <span class="chip on">My players</span><span class="chip on">🇪🇺 EU national</span><span class="chip">With mandate</span>
+            <span class="chip on">Free agents</span><span class="chip">Contract expiring</span><span class="chip">On loan</span>
+            <span class="chip">With notes</span><span class="chip">No agent</span><span class="chip">Left foot</span>
+            <span class="chip">Right foot</span><span class="chip">Offered · no feedback</span><span class="chip">🇮🇱 Interested in Israel</span><span class="chip">Tagged in notes</span>
+          </div>
+          <p class="flab">Sort by</p>
+          <div class="sortrow"><span class="chip on">Default</span><span class="chip">Age</span><span class="chip">Value</span><span class="chip">Name A–Z</span><span class="chip">Contract</span></div>
+        </div>
+        <div class="applybar"><button class="apply" onclick="document.getElementById('shA').classList.remove('open')">Show 128 players</button></div>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- ══════ CONCEPT B — Collapsible drawer under the search ══════ -->
+  <div class="lab">Concept B · Inline collapse (expand/collapse under search)</div>
+  <div class="labsub">Filters stay on-screen but hidden by default behind a “Filters (3)” toggle; expands a compact panel in place. No sheet.</div>
+  <div class="phone"><div class="scr">
+    <div class="hd"><span class="mk">B</span><div class="t"><div class="k">BRIT · MANAGEMENT ROOM</div><div class="n">Players</div></div><span class="sp"></span><span class="mi">⋯</span></div>
+    <div class="mast"><div class="date">Private client office</div><h2>The <em>roster.</em></h2></div>
+    <div class="acts"><div class="seg"><button class="on">Gallery</button><button>Ledger</button></div><span class="sp"></span><button class="add">+ Add</button></div>
+    <div class="sig">
+      <div class="c"><div class="l">Roster assets</div><div class="v">1534</div><div class="n">882 EU passports</div></div>
+      <div class="c"><div class="l">Under mandate</div><div class="v">02</div><div class="n">1532 without</div></div>
+      <div class="c"><div class="l">Free agents</div><div class="v gold">144</div><div class="n">Needs placement</div></div>
+    </div>
+    <div class="findrow">
+      <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span>Search name, position or club…</span></div>
+      <button class="fbtn alt" id="btnB" onclick="var p=document.getElementById('inlB');p.style.display=p.style.display==='block'?'none':'block';">⚑ 3 ▾</button>
+    </div>
+    <div id="inlB" style="display:none;padding:4px 18px 0">
+      <div class="posrow" style="margin-bottom:12px"><button class="on">All</button><button>GK</button><button>DEF</button><button>MID</button><button>FWD</button></div>
+      <div class="chips" style="margin-bottom:12px">
+        <span class="chip on">My players</span><span class="chip on">🇪🇺 EU</span><span class="chip">Mandate</span><span class="chip on">Free</span><span class="chip">On loan</span><span class="chip">Notes</span><span class="chip">+ more</span>
+      </div>
+      <div class="sortrow"><span class="chip on">Default</span><span class="chip">Age</span><span class="chip">Value</span><span class="chip">A–Z</span></div>
+    </div>
+    <div class="count">Showing <b>128</b> of 1534 · <span class="active">3 filters active</span></div>
+    <div class="grid">
+      <div class="pcard"><div class="im"></div><div class="cp"><small>CF · Maccabi · 23</small><h3>A. Pop</h3><p>€2.4M</p></div></div>
+      <div class="pcard"><div class="im"></div><div class="cp"><small>MF · Bnei Reineh · 24</small><h3>G. Diomande</h3><p>€1.1M</p></div></div>
+    </div>
+  </div></div>
+
+  <!-- ══════ CONCEPT C — Chips bar + Sort menu ══════ -->
+  <div class="lab">Concept C · Horizontal chips bar + Sort button</div>
+  <div class="labsub">Position + quick filters live in one horizontally-scrolling chip row right under the search; a separate small “Sort” opens a tiny menu. Everything else goes to the Filters sheet via “More”.</div>
+  <div class="phone"><div class="scr">
+    <div class="hd"><span class="mk">B</span><div class="t"><div class="k">BRIT · MANAGEMENT ROOM</div><div class="n">Players</div></div><span class="sp"></span><span class="mi">⋯</span></div>
+    <div class="mast"><div class="date">Private client office</div><h2>The <em>roster.</em></h2></div>
+    <div class="acts"><div class="seg"><button class="on">Gallery</button><button>Ledger</button></div><span class="sp"></span><button class="add">+ Add</button></div>
+    <div class="sig">
+      <div class="c"><div class="l">Roster assets</div><div class="v">1534</div><div class="n">882 EU passports</div></div>
+      <div class="c"><div class="l">Under mandate</div><div class="v">02</div><div class="n">1532 without</div></div>
+      <div class="c"><div class="l">Free agents</div><div class="v gold">144</div><div class="n">Needs placement</div></div>
+    </div>
+    <div class="findrow">
+      <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span>Search…</span></div>
+      <button class="fbtn">↕ Sort</button>
+    </div>
+    <div style="display:flex;gap:7px;overflow:hidden;padding:10px 18px 2px">
+      <span class="chip on" style="white-space:nowrap">All</span>
+      <span class="chip" style="white-space:nowrap">GK</span>
+      <span class="chip" style="white-space:nowrap">DEF</span>
+      <span class="chip on" style="white-space:nowrap">🇪🇺 EU</span>
+      <span class="chip on" style="white-space:nowrap">Free</span>
+      <span class="chip" style="white-space:nowrap">More…</span>
+    </div>
+    <div class="count">Showing <b>128</b> of 1534 · <span class="active">3 active</span></div>
+    <div class="grid">
+      <div class="pcard"><div class="im"></div><div class="cp"><small>CF · Maccabi · 23</small><h3>A. Pop</h3><p>€2.4M</p></div></div>
+      <div class="pcard"><div class="im"></div><div class="cp"><small>MF · Bnei Reineh · 24</small><h3>G. Diomande</h3><p>€1.1M</p></div></div>
+    </div>
+  </div></div>
+
+  <div class="note"><b style="color:#e4c98b">Recommendation:</b> Concept A (bottom-sheet). The roster screen stays clean — just a search field + a “Filters” button carrying a live active-count badge — and all 13 chips, the position segment and sort live in one calm drag-up sheet with a “Show N players” apply bar. It scales as filters grow and matches the editorial look.</div>
+</body>
+</html>
