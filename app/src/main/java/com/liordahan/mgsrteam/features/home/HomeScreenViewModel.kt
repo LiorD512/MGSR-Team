@@ -52,6 +52,12 @@ data class HomeDashboardState(
     val freeAgents: Int = 0,
     val requestsCount: Int = 0,
 
+    // ── Web "signals" strip (3 editorial columns) ──
+    val portfolioValue: Double = 0.0,   // Σ market value across the roster (€)
+    val valuedCount: Int = 0,           // roster players with a market value > 0
+    val euCount: Int = 0,               // roster players with an EU passport
+    val mandatesUnder30d: Int = 0,      // mandates/contracts expiring within 30 days
+
     // activity feed
     val feedEvents: List<FeedEvent> = emptyList(),
     val selectedFeedFilter: FeedFilter = FeedFilter.ALL,
@@ -508,6 +514,16 @@ class HomeScreenViewModel(
                         .filter { isPlayerOurAsset(it) }
                         .sortedByDescending { parseMarketValueToEuros(it.marketValue) }
 
+                    // ── Web "signals" strip values ──
+                    // Managed portfolio = Σ market value; valued = players with value>0.
+                    val portfolioValue = players.sumOf { parseMarketValueToEuros(it.marketValue) }
+                    val valuedCount = players.count { parseMarketValueToEuros(it.marketValue) > 0.0 }
+                    val euCount = players.count {
+                        com.liordahan.mgsrteam.utils.EuCountries.isEuNational(it.nationalities, it.nationality)
+                    }
+                    // Mandates under 30 days (contract expiry within ~1 month).
+                    val under30d = players.count { isContractExpiringWithinMonths(it.contractExpired, 1) }
+
                     val mandateStatusByTmProfile = players
                         .filter { it.tmProfile != null }
                         .associate { it.tmProfile!! to it.haveMandate }
@@ -520,7 +536,11 @@ class HomeScreenViewModel(
                             mandateStatusByTmProfile = mandateStatusByTmProfile,
                             todayBirthdays = today,
                             upcomingBirthdays = upcoming,
-                            assetPlayers = assets
+                            assetPlayers = assets,
+                            portfolioValue = portfolioValue,
+                            valuedCount = valuedCount,
+                            euCount = euCount,
+                            mandatesUnder30d = under30d
                         )
                     }
                     recomputeMyOverview()

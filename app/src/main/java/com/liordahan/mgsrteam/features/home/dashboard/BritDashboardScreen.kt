@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -383,41 +385,95 @@ private fun britRoomDesk(platform: Platform): String = when (platform) {
     Platform.YOUTH -> "ACADEMY DESK"
 }
 
+// Editorial signals strip — matches the web .brit-signals: three equal-height,
+// hairline-separated columns (Managed portfolio / Roster assets / Mandates
+// under 30d) framed by a top and bottom gold-ink hairline. No pill boxes.
 @Composable
 private fun SignalsStrip(state: HomeDashboardState) {
-    data class Signal(val label: String, val value: Int, val note: String, val red: Boolean)
-    val signals = listOf(
-        Signal("PLAYERS", state.totalPlayers, "Under representation", false),
-        Signal("MANDATES", state.withMandate, "Open briefs", false),
-        Signal("EXPIRING", state.expiringSoon, "Needs attention", state.expiringSoon > 0),
-        Signal("FREE", state.freeAgents, "Needs placement", state.freeAgents > 0),
-        Signal("REQUESTS", state.requestsCount, "Club briefs", false),
-    )
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.padding(bottom = 20.dp),
+    val mandatesRed = state.mandatesUnder30d > 0
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 24.dp),
     ) {
-        items(signals) { s ->
-            Column(
-                modifier = Modifier
-                    .width(104.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(BritTokens.card)
-                    .border(1.dp, BritTokens.line, RoundedCornerShape(10.dp))
-                    .padding(12.dp),
-            ) {
-                Text(text = s.label, style = britMono(BritTokens.muted, 9.sp, letterSpacing = 1.2.sp))
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = s.value.toString().padStart(2, '0'),
-                    style = britDisplay(if (s.red) BritTokens.red else BritTokens.ink, 32.sp, weight = 600),
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(text = s.note, style = britBody(BritTokens.muted, 10.sp, weight = 500))
-            }
+        HorizontalDivider(thickness = 1.dp, color = BritTokens.line)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+        ) {
+            SignalColumn(
+                modifier = Modifier.weight(1.6f),
+                label = "MANAGED PORTFOLIO",
+                value = formatPortfolio(state.portfolioValue),
+                note = "ACROSS ${state.valuedCount} VALUED ASSETS",
+                red = false,
+            )
+            VerticalHairline()
+            SignalColumn(
+                modifier = Modifier.weight(1f),
+                label = "ROSTER ASSETS",
+                value = state.totalPlayers.toString(),
+                note = "${state.euCount} EU PASSPORTS",
+                red = false,
+            )
+            VerticalHairline()
+            SignalColumn(
+                modifier = Modifier.weight(1f),
+                label = "MANDATES UNDER 30D",
+                value = state.mandatesUnder30d.toString().padStart(2, '0'),
+                note = if (mandatesRed) "ACTION REQUIRED" else "ALL CLEAR",
+                red = mandatesRed,
+            )
         }
+        HorizontalDivider(thickness = 1.dp, color = BritTokens.line)
     }
+}
+
+@Composable
+private fun SignalColumn(
+    modifier: Modifier,
+    label: String,
+    value: String,
+    note: String,
+    red: Boolean,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .padding(vertical = 18.dp, horizontal = 16.dp),
+    ) {
+        Text(text = label, style = britMono(BritTokens.muted, 9.sp, letterSpacing = 0.8.sp))
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = value,
+            style = britDisplay(if (red) BritTokens.red else BritTokens.ink, 34.sp, weight = 500, letterSpacing = (-1).sp),
+            maxLines = 1,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(text = note, style = britMono(BritTokens.muted, 8.sp, letterSpacing = 0.6.sp))
+    }
+}
+
+@Composable
+private fun VerticalHairline() {
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(1.dp)
+            .background(BritTokens.line),
+    )
+}
+
+/** Compact euro market-value label, e.g. €1043.9M / €820K (mirrors the web
+ *  formatMarketValue used by the signals portfolio total). */
+private fun formatPortfolio(euros: Double): String = when {
+    euros >= 1_000_000_000 -> "€%.1fB".format(euros / 1_000_000_000)
+    euros >= 1_000_000 -> "€%.1fM".format(euros / 1_000_000)
+    euros >= 1_000 -> "€%.0fK".format(euros / 1_000)
+    euros > 0 -> "€%.0f".format(euros)
+    else -> "€0"
 }
 
 @Composable
@@ -737,7 +793,14 @@ private fun BritBirthdaysModule(
         onDispose { reg.remove() }
     }
 
-    val rows = (today + upcoming)
+    // Web cap rule (MenDashboard birthdays): soonest-first; show 5 in general,
+    // but if MORE than 5 players share today's date, show ALL of today's (and
+    // nothing else) so none are hidden. Otherwise take the soonest 5.
+    val rows = remember(today, upcoming) {
+        val sorted = (today + upcoming).sortedBy { it.daysUntil }
+        val todayOnly = sorted.filter { it.daysUntil == 0 }
+        if (todayOnly.size > 5) todayOnly else sorted.take(5)
+    }
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp)) {
         // ── Module head: hairline rule + "PLAYER BIRTHDAYS" + count note ──
