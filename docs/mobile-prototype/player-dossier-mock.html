@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>BRIT — Player Dossier (concept)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+    --gold:#a47d43;--gold-soft:#c9a66b;--gold-bright:#e4c98b;--teal:#2f7d6e;
+    --red:#b64235;--green:#5c6f4a;--muted:#77736a;--muted-2:#aba69b;
+    --line:rgba(22,22,19,.16);--line-2:rgba(22,22,19,.07);--dark-line:rgba(243,240,232,.18);
+    --display:'Oswald',sans-serif;--body:'Manrope',sans-serif;--mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(ellipse at 30% 0%,#2a2419,#121009 70%);
+    font:14px/1.5 var(--body);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:22px;padding:34px 16px 70px}
+  .intro{text-align:center;color:var(--paper);max-width:460px}
+  .intro .kick{color:var(--gold-bright);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.2em}
+  .intro h1{margin:11px 0 7px;font:500 28px/.95 var(--display);text-transform:uppercase}
+  .intro p{margin:0;color:#b7b1a5;font:11px/1.6 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+
+  .phone{position:relative;width:390px;max-width:100%;height:844px;background:var(--paper);color:var(--ink);
+    border-radius:46px;border:11px solid #0c0b09;overflow:hidden;box-shadow:0 50px 110px rgba(0,0,0,.55)}
+  .phone:before{content:'';position:absolute;inset:0;z-index:80;pointer-events:none;opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+  .scr{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden}
+  .scr::-webkit-scrollbar{width:0}
+
+  /* ═══ CINEMATIC HERO ═══ */
+  .hero{position:relative;height:430px;background:var(--black);color:var(--paper);overflow:hidden}
+  /* grayscale "portrait" (gradient stand-in) + nationality wash */
+  .hero .bg{position:absolute;inset:0;background:
+     radial-gradient(ellipse at 60% 25%,#4a4335 0%,transparent 55%),
+     linear-gradient(160deg,#2a2a24 0%,#15140f 60%,#0c0b08 100%)}
+  .hero .flagwash{position:absolute;inset:0;opacity:.14;mix-blend-mode:screen;
+     background:linear-gradient(100deg,#2f7d6e 0%,#2f7d6e 50%,#c9a66b 50%,#c9a66b 100%)}
+  .hero .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(17,17,15,.35) 0%,transparent 32%,rgba(17,17,15,.55) 70%,rgba(17,17,15,.95) 100%)}
+  .hero .ghost{position:absolute;right:-26px;bottom:-54px;font:600 300px/.72 var(--display);color:rgba(201,166,107,.07);letter-spacing:-.06em}
+
+  /* top chrome over hero */
+  .sys{position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:12px 20px 0;color:var(--paper);font:600 11px/1 var(--mono)}
+  .sys .r{display:flex;gap:6px;align-items:center}
+  .topnav{position:relative;z-index:3;display:flex;align-items:center;gap:12px;padding:14px 18px 0}
+  .topnav .ic{width:34px;height:34px;border:1px solid var(--dark-line);display:grid;place-items:center;color:var(--paper);font:16px/1 var(--body);background:rgba(17,17,15,.3)}
+  .topnav .sp{flex:1}
+  .topnav .ic.gold{border-color:var(--gold-soft);color:var(--gold-bright)}
+
+  .hero .copy{position:absolute;left:22px;right:22px;bottom:22px;z-index:2}
+  .hero .kick{display:flex;align-items:center;gap:8px;color:var(--gold-bright);font:9px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase}
+  .hero .kick .flag{width:16px;height:11px;background:linear-gradient(90deg,#2f7d6e 50%,#c9a66b 50%);display:inline-block}
+  .hero h1{margin:10px 0 0;font:600 clamp(40px,12vw,52px)/.86 var(--display);letter-spacing:-1.5px;text-transform:uppercase}
+  .hero .sub{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+  .hero .sub .pos{font:500 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#d8d2c6}
+  .hero .sub .club{display:flex;align-items:center;gap:7px;font:500 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:#d8d2c6}
+  .hero .sub .club .crest{width:16px;height:16px;border-radius:50%;background:#3a3528;border:1px solid var(--gold-soft)}
+  .hero .tags{margin-top:12px;display:flex;gap:7px;flex-wrap:wrap}
+  .hero .tag{font:500 8px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;border:1px solid var(--dark-line);color:#e8e2d6}
+  .hero .tag.gold{border-color:var(--gold-soft);color:var(--gold-bright)}
+  /* floating value plaque */
+  .hero .value{position:absolute;right:22px;top:120px;z-index:3;text-align:right}
+  .hero .value .v{font:600 34px/.85 var(--display);color:var(--gold-bright);letter-spacing:-1px}
+  .hero .value .l{margin-top:6px;font:500 8px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#aaa49a}
+  .hero .value .delta{margin-top:7px;font:500 10px/1 var(--mono);color:#8fc9a0}
+
+  /* ═══ SIGNALS row (age/height/foot/contract/costs) ═══ */
+  .sig{display:flex;flex-wrap:wrap;background:var(--paper);border-bottom:1px solid var(--line)}
+  .sig .c{flex:1 1 20%;min-width:20%;padding:14px 12px;border-right:1px solid var(--line-2);border-bottom:1px solid var(--line-2)}
+  .sig .c .l{font:500 11px/1 var(--mono);color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+  .sig .c .v{margin-top:8px;font:600 19px/1 var(--display);letter-spacing:.2px}
+  .sig .costs{flex:1 1 100%;min-width:100%;display:flex;gap:0;align-items:stretch}
+  .sig .costs .cc{flex:1;padding:14px 12px}
+  .sig .costs .cc + .cc{border-left:1px solid var(--line-2)}
+  .sig .costs .l{font:500 11px/1 var(--mono);color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+  .sig .costs .v{margin-top:7px;font:600 15px/1 var(--display);color:var(--gold)}
+  .sig .costs .pen{float:right;color:var(--muted-2);font-size:12px}
+
+  /* ═══ STICKY TABS ═══ */
+  .tabs{position:sticky;top:0;z-index:40;display:flex;background:var(--paper);border-bottom:1px solid var(--line);padding:0 10px}
+  .tabs button{flex:1;border:0;background:transparent;cursor:pointer;padding:15px 0 13px;position:relative;color:var(--muted);font:600 12px/1 var(--display);letter-spacing:.5px;text-transform:uppercase}
+  .tabs button.on{color:var(--ink)}
+  .tabs button.on:after{content:'';position:absolute;left:14px;right:14px;bottom:-1px;height:2px;background:var(--gold)}
+  .tabs button .c{font:500 8px/1 var(--mono);color:var(--gold);margin-left:4px;vertical-align:top}
+
+  .pane{padding:4px 0 20px}
+  .pane[hidden]{display:none}
+
+  /* module */
+  .mod{padding:22px 20px 4px}
+  .mod .mh{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--line)}
+  .mod .mh h2{margin:0;font:600 20px/1 var(--display);text-transform:uppercase;letter-spacing:.3px}
+  .mod .mh .act{font:500 9px/1 var(--mono);color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+  .mod .mh .act.gold{color:var(--gold)}
+
+  /* value chart */
+  .chart{padding:18px 2px 6px}
+  .chart svg{width:100%;height:120px;display:block}
+  .chart .stats{display:flex;gap:0;margin-top:14px;border-top:1px solid var(--line-2)}
+  .chart .stats .s{flex:1;padding:12px 4px}
+  .chart .stats .s + .s{border-left:1px solid var(--line-2)}
+  .chart .stats .l{font:500 8px/1 var(--mono);color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+  .chart .stats .v{margin-top:7px;font:600 18px/1 var(--display)}
+  .chart .stats .v.up{color:var(--green)}.chart .stats .v.gold{color:var(--gold)}
+
+  /* next match card */
+  .nextmatch{margin:18px 20px 0;background:var(--black);color:var(--paper);padding:16px 18px;position:relative;overflow:hidden}
+  .nextmatch .lab{font:500 8px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--gold-bright)}
+  .nextmatch .vs{margin-top:12px;display:flex;align-items:center;gap:12px}
+  .nextmatch .vs .t{display:flex;align-items:center;gap:8px;font:600 14px/1 var(--display);letter-spacing:.4px;text-transform:uppercase}
+  .nextmatch .vs .crest{width:26px;height:26px;border-radius:50%;background:#2a2518;border:1px solid var(--gold-soft)}
+  .nextmatch .vs .mid{color:var(--muted-2);font:500 9px/1 var(--mono)}
+  .nextmatch .meta{margin-top:12px;display:flex;justify-content:space-between;color:#aaa49a;font:500 9px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase}
+  .nextmatch .cd{color:var(--gold-bright)}
+
+  /* key stats grid (per-90) */
+  .kstats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);margin:18px 2px 0}
+  .kstats .k{background:var(--paper);padding:15px 10px;text-align:center}
+  .kstats .k .v{font:600 26px/.85 var(--display);color:var(--ink)}
+  .kstats .k .v em{font-style:normal;color:var(--gold)}
+  .kstats .k .l{margin-top:8px;font:500 8px/1.2 var(--mono);color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
+
+  /* radar placeholder */
+  .radar{display:flex;align-items:center;gap:16px;padding:18px 2px 2px}
+  .radar .ring{width:120px;height:120px;flex:none;border-radius:50%;position:relative;
+     background:conic-gradient(from -90deg,var(--gold) 0 72%,var(--line-2) 72% 100%);
+     -webkit-mask:radial-gradient(circle 42px at center,transparent 41px,#000 42px);mask:radial-gradient(circle 42px at center,transparent 41px,#000 42px)}
+  .radar .legend .row{display:flex;align-items:center;gap:9px;padding:6px 0}
+  .radar .legend .bar{width:70px;height:4px;background:var(--line-2);position:relative}
+  .radar .legend .bar i{position:absolute;inset:0 auto 0 0;background:var(--gold)}
+  .radar .legend .nm{font:500 9px/1 var(--mono);letter-spacing:.4px;text-transform:uppercase;color:var(--muted);width:62px}
+  .radar .legend .vv{font:600 12px/1 var(--display);color:var(--ink)}
+
+  /* similar players rail */
+  .rail{display:flex;gap:12px;overflow-x:auto;padding:16px 20px 4px}
+  .rail::-webkit-scrollbar{height:0}
+  .scard{flex:none;width:130px;position:relative;height:160px;overflow:hidden;background:var(--black)}
+  .scard .im{position:absolute;inset:0;background:linear-gradient(160deg,#2a2a24,#11110f);opacity:.7}
+  .scard:after{content:'';position:absolute;inset:52% 0 0;background:rgba(17,17,15,.8)}
+  .scard .cp{position:absolute;left:10px;right:10px;bottom:10px;z-index:1;color:var(--paper)}
+  .scard .cp small{color:var(--gold-soft);font:9px/1.2 var(--mono);text-transform:uppercase}
+  .scard .cp h3{margin:5px 0 2px;font:600 15px/.9 var(--display);text-transform:uppercase}
+  .scard .cp p{margin:0;color:#c4bfb3;font:9px/1 var(--mono);text-transform:uppercase}
+  .scard .match{position:absolute;top:9px;right:9px;z-index:1;background:var(--gold);color:#fff;font:600 9px/1 var(--mono);padding:4px 6px}
+
+  /* highlights */
+  .hl{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 20px 4px}
+  .hl .v{position:relative;height:92px;background:linear-gradient(160deg,#23221d,#0e0d09);display:grid;place-items:center}
+  .hl .v .play{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--gold-bright);display:grid;place-items:center;color:var(--gold-bright);font-size:13px}
+  .hl .v .dur{position:absolute;bottom:7px;right:8px;font:500 8px/1 var(--mono);color:#d8d2c6}
+
+  /* notes */
+  .note{margin:14px 20px 0;border:1px solid var(--line);border-left:2px solid var(--gold);background:var(--card);padding:13px 15px}
+  .note .top{display:flex;justify-content:space-between;color:var(--muted);font:500 8px/1 var(--mono);letter-spacing:.6px;text-transform:uppercase}
+  .note p{margin:9px 0 0;font:400 13px/1.5 var(--body);color:var(--ink)}
+
+  /* docs */
+  .doc{margin:12px 20px 0;display:flex;align-items:center;gap:13px;border:1px solid var(--line);background:var(--card);padding:13px 15px}
+  .doc .ic{width:34px;height:40px;border:1px solid var(--line);display:grid;place-items:center;color:var(--gold);font-size:15px;background:var(--paper)}
+  .doc .m{flex:1}
+  .doc .m .t{font:600 13px/1 var(--display);text-transform:uppercase;letter-spacing:.3px}
+  .doc .m .s{margin-top:4px;font:500 9px/1 var(--mono);color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
+  .doc .exp{font:500 9px/1 var(--mono);color:var(--red);letter-spacing:.4px;text-transform:uppercase}
+
+  /* sticky action bar */
+  .actionbar{position:sticky;bottom:0;z-index:45;display:flex;gap:10px;background:rgba(243,240,232,.95);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:12px 18px 20px}
+  .actionbar .btn{flex:1;text-align:center;border:1px solid var(--line);background:var(--card);padding:13px;font:600 10px/1 var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--ink);cursor:pointer}
+  .actionbar .btn.pri{background:var(--gold-soft);border-color:var(--gold);color:var(--ink)}
+  .actionbar .btn.dark{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+
+  .foot{text-align:center;color:var(--muted-2);font:8px/1.6 var(--mono);text-transform:uppercase;letter-spacing:.1em;padding:22px}
+</style>
+</head>
+<body>
+  <div class="intro">
+    <div class="kick">BRIT · Android · player dossier concept</div>
+    <h1>The dossier</h1>
+    <p>Cinematic hero · sticky tabs · editorial intelligence modules</p>
+  </div>
+
+  <div class="phone"><div class="scr">
+    <!-- ═══ HERO ═══ -->
+    <section class="hero">
+      <div class="bg"></div><div class="flagwash"></div><div class="ghost">D</div><div class="scrim"></div>
+      <div class="sys"><span>9:41</span><span class="r">
+        <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><rect x="0" y="7" width="2.5" height="4"/><rect x="4" y="5" width="2.5" height="6"/><rect x="8" y="2.5" width="2.5" height="8.5"/><rect x="12" y="0" width="2.5" height="11"/></svg>
+        <svg width="22" height="11" viewBox="0 0 22 11" fill="none" stroke="currentColor" stroke-width="1"><rect x="1" y="1" width="18" height="9" rx="2"/><rect x="3" y="3" width="12" height="5" rx="1" fill="currentColor"/><rect x="20" y="4" width="1.5" height="3" rx="1" fill="currentColor"/></svg>
+      </span></div>
+      <div class="topnav"><span class="ic">←</span><span class="sp"></span><span class="ic">↻</span><span class="ic gold">↗</span></div>
+      <div class="value"><div class="v">€2.4M</div><div class="l">Market value</div><div class="delta">▲ 14.3%</div></div>
+      <div class="copy">
+        <div class="kick"><span class="flag"></span>Ghana · EU eligible</div>
+        <h1>Gontie Junior<br>Diomande</h1>
+        <div class="sub">
+          <span class="pos">CF · ST · 24y</span>
+          <span class="club"><span class="crest"></span>Maccabi Bnei Reineh · ISR</span>
+        </div>
+        <div class="tags">
+          <span class="tag gold">◆ Our asset</span>
+          <span class="tag gold">Mandate</span>
+          <span class="tag">🇪🇺 EU nat</span>
+          <span class="tag">On loan: Hapoel TA</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ SIGNALS ═══ -->
+    <section class="sig">
+      <div class="c"><div class="l">Age</div><div class="v">24</div></div>
+      <div class="c"><div class="l">Height</div><div class="v">1.86m</div></div>
+      <div class="c"><div class="l">Foot</div><div class="v">Right</div></div>
+      <div class="c" style="flex-basis:40%;min-width:40%"><div class="l">Contract</div><div class="v">30 Jun 27</div></div>
+      <div class="costs">
+        <div class="cc"><span class="pen">✎</span><div class="l">Salary</div><div class="v">€420K / yr</div></div>
+        <div class="cc"><div class="l">Transfer fee</div><div class="v">€2.5M</div></div>
+      </div>
+    </section>
+
+    <!-- ═══ STICKY TABS ═══ -->
+    <div class="tabs" id="tabs">
+      <button class="on" data-t="overview">Overview</button>
+      <button data-t="performance">Performance</button>
+      <button data-t="documents">Docs<span class="c">2</span></button>
+      <button data-t="notes">Notes<span class="c">3</span></button>
+    </div>
+
+    <!-- ═══ OVERVIEW ═══ -->
+    <div class="pane" data-pane="overview">
+      <!-- Value history -->
+      <section class="mod">
+        <div class="mh"><h2>Value history</h2><span class="act gold">9 points</span></div>
+        <div class="chart">
+          <svg viewBox="0 0 300 120" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#a47d43" stroke-width="2" points="0,95 40,88 80,70 120,74 160,52 200,40 240,30 300,18"/>
+            <polygon fill="rgba(164,125,67,.10)" points="0,95 40,88 80,70 120,74 160,52 200,40 240,30 300,18 300,120 0,120"/>
+          </svg>
+          <div class="stats">
+            <div class="s"><div class="l">Low</div><div class="v">€700K</div></div>
+            <div class="s"><div class="l">Peak</div><div class="v gold">€2.4M</div></div>
+            <div class="s"><div class="l">Change</div><div class="v up">▲ 243%</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Next match (wow) -->
+      <div class="nextmatch">
+        <div class="lab">Matchweek · next fixture</div>
+        <div class="vs">
+          <span class="t"><span class="crest"></span>Bnei Reineh</span>
+          <span class="mid">VS</span>
+          <span class="t">Akko<span class="crest"></span></span>
+        </div>
+        <div class="meta"><span>Liga Leumit · Round 8</span><span class="cd">Tomorrow 19:00 · 1D</span></div>
+      </div>
+
+      <!-- Key stats -->
+      <section class="mod">
+        <div class="mh"><h2>This season</h2><span class="act">Per 90 · 14 apps</span></div>
+      </section>
+      <div class="kstats" style="margin:0 20px">
+        <div class="k"><div class="v"><em>0.62</em></div><div class="l">Goals /90</div></div>
+        <div class="k"><div class="v">0.31</div><div class="l">Assists /90</div></div>
+        <div class="k"><div class="v">3.4</div><div class="l">Shots /90</div></div>
+        <div class="k"><div class="v">1.9</div><div class="l">Key passes</div></div>
+        <div class="k"><div class="v">2.1</div><div class="l">Dribbles</div></div>
+        <div class="k"><div class="v"><em>7.4</em></div><div class="l">Avg rating</div></div>
+      </div>
+
+      <!-- Similar players -->
+      <section class="mod"><div class="mh"><h2>Similar players</h2><span class="act gold">AI · 6 found</span></div></section>
+      <div class="rail">
+        <div class="scard"><span class="match">92%</span><div class="im"></div><div class="cp"><small>CF · Hapoel · 22</small><h3>N. Shviro</h3><p>€1.8M</p></div></div>
+        <div class="scard"><span class="match">88%</span><div class="im"></div><div class="cp"><small>ST · M. Haifa · 25</small><h3>D. Mensah</h3><p>€2.1M</p></div></div>
+        <div class="scard"><span class="match">84%</span><div class="im"></div><div class="cp"><small>CF · Ashdod · 23</small><h3>A. Pop</h3><p>€1.4M</p></div></div>
+      </div>
+    </div>
+
+    <!-- ═══ PERFORMANCE ═══ -->
+    <div class="pane" data-pane="performance" hidden>
+      <section class="mod"><div class="mh"><h2>Attributes</h2><span class="act gold">FM intelligence</span></div></section>
+      <div class="radar">
+        <div class="ring"></div>
+        <div class="legend">
+          <div class="row"><span class="nm">Finishing</span><span class="bar"><i style="right:12%"></i></span><span class="vv">16</span></div>
+          <div class="row"><span class="nm">Pace</span><span class="bar"><i style="right:6%"></i></span><span class="vv">17</span></div>
+          <div class="row"><span class="nm">Dribbling</span><span class="bar"><i style="right:22%"></i></span><span class="vv">14</span></div>
+          <div class="row"><span class="nm">Physical</span><span class="bar"><i style="right:30%"></i></span><span class="vv">13</span></div>
+        </div>
+      </div>
+      <section class="mod"><div class="mh"><h2>GPS · last match</h2><span class="act">Catapult</span></div></section>
+      <div class="kstats" style="margin:0 20px">
+        <div class="k"><div class="v"><em>11.2</em></div><div class="l">Dist km</div></div>
+        <div class="k"><div class="v">34.1</div><div class="l">Top km/h</div></div>
+        <div class="k"><div class="v">22</div><div class="l">Sprints</div></div>
+      </div>
+      <section class="mod"><div class="mh"><h2>Highlights</h2><span class="act gold">4 clips</span></div></section>
+      <div class="hl">
+        <div class="v"><span class="play">▶</span><span class="dur">0:42</span></div>
+        <div class="v"><span class="play">▶</span><span class="dur">1:08</span></div>
+      </div>
+    </div>
+
+    <!-- ═══ DOCUMENTS ═══ -->
+    <div class="pane" data-pane="documents" hidden>
+      <div class="doc"><div class="ic">▣</div><div class="m"><div class="t">Representation mandate</div><div class="s">Signed · valid all leagues</div></div><span class="exp">Exp 24d</span></div>
+      <div class="doc"><div class="ic">▣</div><div class="m"><div class="t">Passport · Ghana</div><div class="s">EU eligible · verified</div></div></div>
+    </div>
+
+    <!-- ═══ NOTES ═══ -->
+    <div class="pane" data-pane="notes" hidden>
+      <div class="note"><div class="top"><span>Lior Dahan</span><span>Oct 09</span></div><p>Spoke with the agent — open to a summer move to a mid-table European club. Wants assurances on minutes.</p></div>
+      <div class="note"><div class="top"><span>Rev Dapfilaner</span><span>Oct 02</span></div><p>Scouted vs Akko. Sharp movement in the box, two clear chances. Pressing work-rate improved.</p></div>
+      <div class="note"><div class="top"><span>Lior Dahan</span><span>Sep 20</span></div><p>Market value trending up fast after the Maccabi loan spell — good window to field offers.</p></div>
+    </div>
+
+    <!-- sticky actions -->
+    <div class="actionbar">
+      <button class="btn">◷ Mandate</button>
+      <button class="btn">+ Shortlist</button>
+      <button class="btn dark">↗ Share</button>
+    </div>
+    <div class="foot">BRIT Sport Group · Dossier concept · mock data</div>
+  </div></div>
+
+<script>
+  const tabs=document.getElementById('tabs');
+  tabs.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b)return;
+    tabs.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    const t=b.dataset.t;
+    document.querySelectorAll('.pane').forEach(p=>p.hidden=p.dataset.pane!==t);
+  });
+</script>
+</body>
+</html>
