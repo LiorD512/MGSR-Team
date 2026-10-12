@@ -174,10 +174,55 @@ function extractDobFromTmPage($) {
   return parseDobText(birthText);
 }
 
-// ── Backfill loop — mirrors the Cloud Function exactly ───────────────────────
-const BATCH_SIZE = 5;
-const BATCH_DELAY = 2000;
+// ── Backfill loop ────────────────────────────────────────────────────────────
+const BATCH_SIZE = 5;          // concurrent TM fetches
+const BATCH_DELAY = 2000;      // pause between TM batches (polite to TM)
+const PAGE_SIZE = 300;         // Firestore docs read per page (avoids one huge .get())
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Collect the players that need a DOB. For a single --player we read just that
+ * one doc. Otherwise we PAGE through the collection ordered by document id
+ * (startAfter) so we never issue a single unbounded .get() that can time out
+ * on large collections.
+ */
+async function collectCandidates(collName) {
+  const candidates = [];
+
+  if (ONLY_PLAYER) {
+    const doc = await db.collection(collName).doc(ONLY_PLAYER).get();
+    if (doc.exists) {
+      const d = doc.data();
+      if (d.tmProfile && !d.dateOfBirth) {
+        candidates.push({ ref: doc.ref, tmProfile: d.tmProfile, name: d.fullName || doc.id });
+      }
+    }
+    return { candidates, scanned: doc.exists ? 1 : 0 };
+  }
+
+  let scanned = 0;
+  let last = null;
+  // Order by __name__ (document id) so pagination is stable and index-free.
+  const base = db.collection(collName).orderBy("__name__").limit(PAGE_SIZE);
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const q = last ? base.startAfter(last) : base;
+    const snap = await q.get();
+    if (snap.empty) break;
+    for (const doc of snap.docs) {
+      scanned++;
+      const d = doc.data();
+      if (d.tmProfile && !d.dateOfBirth) {
+        candidates.push({ ref: doc.ref, tmProfile: d.tmProfile, name: d.fullName || doc.id });
+      }
+    }
+    last = snap.docs[snap.docs.length - 1];
+    if (snap.size < PAGE_SIZE) break; // last page
+    process.stdout.write(`\r  …scanned ${scanned} docs`);
+  }
+  if (scanned > PAGE_SIZE) process.stdout.write("\n");
+  return { candidates, scanned };
+}
 
 async function run() {
   const collections = ONLY_COLLECTION
@@ -193,20 +238,11 @@ async function run() {
   );
 
   for (const collName of collections) {
-    console.log(`[${collName}] reading…`);
-    const snap = await db.collection(collName).get();
-
-    const candidates = [];
-    snap.forEach((doc) => {
-      if (ONLY_PLAYER && doc.id !== ONLY_PLAYER) return;
-      const d = doc.data();
-      if (d.tmProfile && !d.dateOfBirth) {
-        candidates.push({ ref: doc.ref, tmProfile: d.tmProfile, name: d.fullName || doc.id });
-      }
-    });
+    console.log(`[${collName}] reading (paged, ${PAGE_SIZE}/page)…`);
+    const { candidates, scanned } = await collectCandidates(collName);
 
     console.log(
-      `[${collName}] ${candidates.length} player(s) need DOB (of ${snap.size} total)`
+      `[${collName}] ${candidates.length} player(s) need DOB (of ${scanned} scanned)`
     );
 
     for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
