@@ -392,13 +392,22 @@ async function processSuccessfulUpdate(player, data, docRef, feedRef, tmProfile)
     isOnLoan: data.isOnLoan,
     onLoanFromClub: data.onLoanFromClub,
     foot: data.foot || player.foot,
-    // Agency reflects what TM currently lists (Option B, matches web refresh).
-    // This runs only on a verified successful scrape of the correct player, so
-    // a null here means TM genuinely shows no agent → clear the stale value
-    // instead of resurrecting player.agency. A failed/mismatched scrape never
-    // reaches here, so we don't wipe on transient errors.
-    agency: data.agency || null,
-    agencyUrl: data.agencyUrl || null,
+    // Agency (Option B-safe, matches web refresh). TM serves partial pages, so
+    // a missing agent is only trusted when the info-table clearly rendered
+    // (data.agentInfoReliable):
+    //   - agent found         → write it
+    //   - none + reliable     → clear the stale value (player left agency)
+    //   - none + unreliable   → keep existing agency (partial page; don't wipe)
+    agency: data.agency
+      ? data.agency
+      : data.agentInfoReliable
+        ? null
+        : (player.agency || null),
+    agencyUrl: data.agency
+      ? (data.agencyUrl || null)
+      : data.agentInfoReliable
+        ? null
+        : (player.agencyUrl || null),
   };
 
   // Strip any remaining undefined values — Firestore Admin SDK rejects them

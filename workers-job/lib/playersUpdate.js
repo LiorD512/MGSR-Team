@@ -196,20 +196,39 @@ async function updatePlayerByTmProfile(tmProfile) {
       }
     });
 
+    // Agency from the info-table. TM serves inconsistent/partial HTML, so a
+    // missing agent is only trustworthy when the info-table clearly rendered.
+    // `agentInfoReliable` reports that, letting the writer clear a stale agency
+    // safely (Option B-safe) without wiping on a partial page. Match only the
+    // real "Player agent:" row — not the "Player agents" recommendation widget.
     let agency = null;
     let agencyUrl = null;
+    const regularLabels = [];
     $("span.info-table__content--regular").each((i, el) => {
       const label = $(el).text().trim().toLowerCase();
-      if (label.includes("player agent") || label.includes("agent")) {
+      regularLabels.push(label);
+      if (label.includes("player agent") || label === "agent:") {
         const next = $(el).next();
         const link = next.find("a").first();
-        agency = link.text().trim() || next.text().trim();
+        const rawName = (link.text().trim() || next.text().trim()) || "";
+        const isEmptyMarker =
+          !rawName || /^[-–—]$/.test(rawName) || rawName.toLowerCase() === "unknown";
+        agency = isEmptyMarker ? null : rawName;
         const href = link.attr("href");
-        if (href) {
+        if (!isEmptyMarker && href) {
           agencyUrl = href.startsWith("http") ? href : TRANSFERMARKT_BASE_URL + href;
         }
+        return false;
       }
     });
+    const INFO_TABLE_SIGNALS = [
+      "date of birth", "place of birth", "height", "citizenship",
+      "position", "foot", "current club",
+    ];
+    const matchedSignals = INFO_TABLE_SIGNALS.filter((s) =>
+      regularLabels.some((l) => l.includes(s))
+    ).length;
+    const agentInfoReliable = matchedSignals >= 3;
 
     return {
       success: true,
@@ -235,6 +254,7 @@ async function updatePlayerByTmProfile(tmProfile) {
         foot,
         agency,
         agencyUrl,
+        agentInfoReliable,
         instagramHandle,
         instagramUrl,
       },

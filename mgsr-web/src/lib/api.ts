@@ -61,6 +61,9 @@ export interface PlayerDetails {
   foot?: string;
   agency?: string | null;
   agencyUrl?: string | null;
+  /** True when the TM info-table clearly rendered, so a null `agency` is a
+   *  trustworthy "no agent" and not a partial-page miss. */
+  agentInfoReliable?: boolean;
   instagramHandle?: string;
   instagramUrl?: string;
 }

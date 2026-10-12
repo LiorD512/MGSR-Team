@@ -986,16 +986,18 @@ export default function PlayerInfoPage() {
       if (details.currentClub) updates.currentClub = details.currentClub;
       if (details.isOnLoan !== undefined) updates.isOnLoan = details.isOnLoan;
       if (details.onLoanFromClub) updates.onLoanFromClub = details.onLoanFromClub;
-      // Agency: a successful refresh reflects Transfermarkt. If TM lists an
-      // agent, write it; if TM shows none, CLEAR the stored agency so a player
-      // who left their agency doesn't keep a stale value (Option B). Clearing
-      // only happens on a successful scrape — a failed fetch throws above and
-      // never reaches here, so we never wipe on a transient error.
+      // Agency (Option B-safe): a refresh reflects Transfermarkt, but TM serves
+      // inconsistent/partial HTML, so a missing agent is only trustworthy when
+      // the info-table actually rendered (details.agentInfoReliable).
+      //  - agent found           → write it
+      //  - no agent + reliable   → CLEAR the stale value (player left agency)
+      //  - no agent + unreliable → leave the existing agency untouched (the
+      //                            page was partial; don't wipe a valid value)
       const deleteFields: string[] = [];
       if (details.agency) {
         updates.agency = details.agency;
         updates.agencyUrl = details.agencyUrl ?? null;
-      } else {
+      } else if (details.agentInfoReliable) {
         deleteFields.push('agency', 'agencyUrl');
       }
       updates.lastRefreshedAt = Date.now();
