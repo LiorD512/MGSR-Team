@@ -59,6 +59,8 @@ export interface PlayerDetails {
   isOnLoan?: boolean;
   onLoanFromClub?: string;
   foot?: string;
+  agency?: string | null;
+  agencyUrl?: string | null;
   instagramHandle?: string;
   instagramUrl?: string;
 }
