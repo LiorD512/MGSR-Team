@@ -16,33 +16,32 @@
  * ──────────────────────────────────────────────────────────────────────────
  * HOW TO RUN
  *
- *   1. Get a service-account key JSON:
- *      Firebase console → Project settings → Service accounts →
- *      "Generate new private key". Save it somewhere safe.
+ *   Recommended — Google Cloud Shell, NO service-account key needed:
  *
- *   2. From the repo root:
- *        cd functions
- *        npm install            # if you haven't already
- *        GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/serviceAccount.json \
- *          node scripts/backfill-dob-local.js
+ *     git clone https://github.com/LiorD512/MGSR-Team.git
+ *     cd MGSR-Team/functions
+ *     npm install
+ *     gcloud auth application-default login     # one-time; uses YOUR identity
+ *     gcloud config set project mgsr-64e4b
+ *     node scripts/backfill-dob-local.js --dry-run   # preview, writes nothing
+ *     node scripts/backfill-dob-local.js             # for real
+ *
+ *   (The project id is auto-detected from gcloud / GOOGLE_CLOUD_PROJECT. Pass
+ *    --project=mgsr-64e4b to override.)
+ *
+ *   Alternative — with a service-account key file instead of ADC:
+ *     GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/serviceAccount.json \
+ *       node scripts/backfill-dob-local.js
  *
  *   Optional flags:
  *     --dry-run                 Show what WOULD change, write nothing.
  *     --collection=Players      Only one collection (Players | PlayersWomen | PlayersYouth).
  *     --player=<docId>          Only one specific player document id.
- *     --project=mgsr-64e4b      Override project id (defaults to the key's project).
+ *     --project=mgsr-64e4b      Override the auto-detected project id.
  *
  *   Examples:
- *     # whole roster, for real
- *     GOOGLE_APPLICATION_CREDENTIALS=./sa.json node scripts/backfill-dob-local.js
- *
- *     # preview only, men collection
- *     GOOGLE_APPLICATION_CREDENTIALS=./sa.json \
- *       node scripts/backfill-dob-local.js --dry-run --collection=Players
- *
- *     # just one player
- *     GOOGLE_APPLICATION_CREDENTIALS=./sa.json \
- *       node scripts/backfill-dob-local.js --player=<amadou-doc-id>
+ *     node scripts/backfill-dob-local.js --dry-run --collection=Players
+ *     node scripts/backfill-dob-local.js --player=<amadou-doc-id>
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -62,20 +61,31 @@ const ONLY_COLLECTION = getArg("collection");
 const ONLY_PLAYER = getArg("player");
 const PROJECT_ID = getArg("project");
 
-// ── Init Admin SDK (uses GOOGLE_APPLICATION_CREDENTIALS) ─────────────────────
-if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+// ── Init Admin SDK — Application Default Credentials ─────────────────────────
+// Works with EITHER:
+//   (a) a service-account key file  → set GOOGLE_APPLICATION_CREDENTIALS, or
+//   (b) your own gcloud identity    → run `gcloud auth application-default login`
+//       (recommended in Cloud Shell — NO key file needed).
+// The project id is taken from --project, then GOOGLE_CLOUD_PROJECT /
+// GCLOUD_PROJECT, so you don't have to pass it explicitly in Cloud Shell.
+const resolvedProjectId =
+  PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || undefined;
+
+try {
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    ...(resolvedProjectId ? { projectId: resolvedProjectId } : {}),
+  });
+} catch (err) {
   console.error(
-    "\n✖ GOOGLE_APPLICATION_CREDENTIALS is not set.\n" +
-      "  Point it at your service-account key JSON, e.g.:\n" +
-      "    GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccount.json \\\n" +
-      "      node scripts/backfill-dob-local.js\n"
+    "\n✖ Could not initialise credentials.\n" +
+      "  Use ONE of:\n" +
+      "    • gcloud auth application-default login   (no key file — recommended)\n" +
+      "    • GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccount.json\n\n" +
+      `  Underlying error: ${err.message}\n`
   );
   process.exit(1);
 }
-admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
-  ...(PROJECT_ID ? { projectId: PROJECT_ID } : {}),
-});
 const db = admin.firestore();
 
 // ── Bulletproof DOB extractor — kept in sync with functions/index.js ─────────
