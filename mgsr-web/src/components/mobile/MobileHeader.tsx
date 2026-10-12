@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { PlatformSwitcher } from '@/components/PlatformSwitcher';
+import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import NotificationBell from '@/components/NotificationBell';
 import { WEB_TASKS_ENABLED } from '@/lib/featureFlags';
 
@@ -100,7 +100,7 @@ export default function MobileHeader() {
         {/* Right: notification bell + platform switch + language */}
         <div className="flex items-center gap-1 shrink-0">
           <NotificationBell variant="header" />
-          <PlatformSwitcher variant="compact" />
+          <BritPlatformSwitch variant="compact" />
           <button
             onClick={() => setLang(isRtl ? 'en' : 'he')}
             className="w-10 h-10 flex items-center justify-center rounded-lg text-xs font-medium text-mgsr-muted hover:text-[var(--mgsr-accent)] hover:bg-mgsr-dark/50 transition"

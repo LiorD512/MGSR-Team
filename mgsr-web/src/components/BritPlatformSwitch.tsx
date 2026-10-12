@@ -14,13 +14,16 @@ import { useLanguage } from '@/contexts/LanguageContext';
  *
  * Selecting a platform updates the shared PlatformContext (persisted to localStorage
  * and mirrored to `data-platform` by PlatformSync) and returns to the dashboard —
- * switching to Youth unmounts this men shell and mounts the youth workspace, exactly
- * like the existing PlatformSwitcher.
+ * switching to Youth unmounts this men shell and mounts the youth workspace.
+ *
+ * This is the single, canonical platform switch used across the whole web app
+ * (feature screens + the AppLayout sidebar, MobileHeader, and dashboard header).
+ * The optional `variant` applies a styling modifier for tighter shell contexts.
  */
 
 const OPTIONS: Platform[] = ['men', 'youth'];
 
-export default function BritPlatformSwitch() {
+export default function BritPlatformSwitch({ variant = 'default' }: { variant?: 'default' | 'compact' } = {}) {
   const { platform, setPlatform } = usePlatform();
   const { t } = useLanguage();
   const router = useRouter();
@@ -52,7 +55,7 @@ export default function BritPlatformSwitch() {
 
   return (
     <div
-      className={`brit-platform-switch${active === 'youth' ? ' is-youth' : ''}`}
+      className={`brit-platform-switch${active === 'youth' ? ' is-youth' : ''}${variant === 'compact' ? ' is-compact' : ''}`}
       role="tablist"
       aria-label={t('platform_switch_aria')}
       tabIndex={0}

@@ -35,7 +35,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { usePlatform } from '@/contexts/PlatformContext';
-import { PlatformSwitcher } from '@/components/PlatformSwitcher';
+import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import NotificationBell from '@/components/NotificationBell';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
 import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
@@ -1024,7 +1024,7 @@ export default function DashboardPage() {
             <div className={`hidden lg:flex items-center gap-2 p-1.5 rounded-2xl brit-filter-tray relative ${isWomen ? 'border-[var(--women-rose)]/20' : isYouth ? 'border-[var(--youth-cyan)]/20' : 'border-white/10'}`}>
               <NotificationBell variant="header" />
               <span className={`w-px h-6 ${isYouth ? 'bg-[var(--youth-cyan)]/30' : isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
-              <PlatformSwitcher variant="grouped" />
+              <BritPlatformSwitch />
               <span className={`w-px h-6 ${isYouth ? 'bg-[var(--youth-cyan)]/30' : isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
               <button
                 onClick={() => setLang(lang === 'en' ? 'he' : 'en')}
