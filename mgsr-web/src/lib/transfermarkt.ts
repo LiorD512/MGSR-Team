@@ -517,22 +517,43 @@ export async function handlePlayer(urlParam: string) {
     }
   });
 
-  // Extract agency from info table
+  // Extract agency from info table.
+  //
+  // TM serves inconsistent / partial profile HTML: sometimes the info-table
+  // (and its "Player agent" row) renders fully, sometimes rows are missing.
+  // A plain "no agent found" is therefore ambiguous — it can mean "player has
+  // no agent" OR "this response didn't render the row". To let callers clear a
+  // stale agency safely (Option B) WITHOUT wiping on a partial page, we also
+  // report whether the info-table actually rendered: `agentInfoReliable` is
+  // true only when we parsed several known info-table rows, which proves the
+  // block loaded. When reliable AND no agent → it's a genuine "no agent".
   let agency: string | null = null;
   let agencyUrl: string | null = null;
+  const regularLabels: string[] = [];
   $('span.info-table__content--regular').each((_: number, el: cheerio.Element) => {
     const labelText = $(el).text().trim().toLowerCase();
+    regularLabels.push(labelText);
+    // Match the real info-table "Player agent:" row — NOT the "Player agents"
+    // recommendation widget (that is not an info-table__content--regular span).
     if (labelText.includes('player agent') || labelText === 'agent:') {
       const valueEl = $(el).next('.info-table__content--bold');
       const link = valueEl.find('a').first();
-      agency = (link.text().trim() || valueEl.text().trim()) || null;
+      const rawName = (link.text().trim() || valueEl.text().trim()) || '';
+      // TM renders a genuinely agent-less player as "-" / "unknown" / blank.
+      const isEmptyMarker = !rawName || /^[-–—]$/.test(rawName) || rawName.toLowerCase() === 'unknown';
+      agency = isEmptyMarker ? null : rawName;
       const href = link.attr('href') || '';
-      if (href) {
+      if (!isEmptyMarker && href) {
         agencyUrl = href.startsWith('http') ? href : TRANSFERMARKT_BASE + href;
       }
       return false;
     }
   });
+  // The info-table is considered rendered if we saw a handful of its known
+  // rows. Partial / blocked pages have few or none of these.
+  const INFO_TABLE_SIGNALS = ['date of birth', 'place of birth', 'height', 'citizenship', 'position', 'foot', 'current club'];
+  const matchedSignals = INFO_TABLE_SIGNALS.filter((s) => regularLabels.some((l) => l.includes(s))).length;
+  const agentInfoReliable = matchedSignals >= 3;
 
   return {
     tmProfile: url,
@@ -558,6 +579,9 @@ export async function handlePlayer(urlParam: string) {
     foot: foot || null,
     agency,
     agencyUrl,
+    // True only when the info-table clearly rendered, so a null `agency` can be
+    // trusted as "genuinely no agent" rather than a partial-page miss.
+    agentInfoReliable,
     instagramHandle,
     instagramUrl,
   };
