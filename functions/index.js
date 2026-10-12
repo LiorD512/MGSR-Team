@@ -1351,51 +1351,167 @@ exports.onAgentTransferResolved = onDocumentUpdated(
 
 // ─── Backfill DOB from TransferMarkt ────────────────────────────────────────
 
+// Month names → 1-based index, across the languages TM localizes into
+// (EN/DE/ES/FR/IT/PT/NL), including common 3-letter abbreviations.
+const MONTH_NAME_TO_NUM = (() => {
+  const m = {};
+  const add = (num, ...names) => names.forEach((n) => (m[n.toLowerCase()] = num));
+  add(1, "jan", "january", "januar", "jänner", "janvier", "enero", "ene", "gennaio", "gen", "janeiro", "januari");
+  add(2, "feb", "february", "februar", "février", "fevrier", "febrero", "febbraio", "fevereiro", "fev", "februari");
+  add(3, "mar", "march", "märz", "maerz", "mars", "marzo", "março", "marco", "maart", "mrt");
+  add(4, "apr", "april", "avril", "abril", "abr", "aprile", "aprilie");
+  add(5, "may", "mai", "mayo", "maggio", "mag", "maio", "mei");
+  add(6, "jun", "june", "juni", "juin", "junio", "giugno", "giu", "junho");
+  add(7, "jul", "july", "juli", "juillet", "julio", "luglio", "lug", "julho");
+  add(8, "aug", "august", "août", "aout", "agosto", "ago", "augustus");
+  add(9, "sep", "sept", "september", "septembre", "septiembre", "settembre", "set", "setembro", "sett");
+  add(10, "oct", "october", "oktober", "octobre", "octubre", "ottobre", "ott", "outubro", "out", "okt");
+  add(11, "nov", "november", "novembre", "noviembre", "novembro");
+  add(12, "dec", "december", "dezember", "décembre", "decembre", "diciembre", "dic", "dicembre", "dezembro", "dez");
+  return m;
+})();
+
+/** Validate (year, month, day) is a real calendar date within a sane range. */
+function isValidYmd(y, mo, d) {
+  if (!Number.isInteger(y) || !Number.isInteger(mo) || !Number.isInteger(d)) return false;
+  const currentYear = new Date().getFullYear();
+  if (y < 1900 || y > currentYear) return false;
+  if (mo < 1 || mo > 12) return false;
+  if (d < 1 || d > 31) return false;
+  // Reject impossible days (e.g. 31 April, 29 Feb on a non-leap year).
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return (
+    dt.getUTCFullYear() === y &&
+    dt.getUTCMonth() === mo - 1 &&
+    dt.getUTCDate() === d
+  );
+}
+
+/** Format a validated (y, mo, d) as an ISO YYYY-MM-DD string, or null if invalid. */
+function toIsoDob(y, mo, d) {
+  if (!isValidYmd(y, mo, d)) return null;
+  return `${String(y).padStart(4, "0")}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 /**
  * Extract ISO DOB (YYYY-MM-DD) from a TM profile page's cheerio document.
- * Priority order:
- *  1. datum/ link anywhere on page: datum/YYYY-MM-DD (unambiguous ISO)
- *  2. Named-month text from birthDate span: "Jul 4, 1997" (parsed by JS Date)
- *  3. Returns null if nothing reliable found
  *
- * NEVER assumes DD/MM vs MM/DD from numeric slash dates — only uses unambiguous sources.
+ * Bulletproof strategy — tries every representation TM can emit, ordered from
+ * most to least machine-unambiguous. It NEVER guesses day/month order from a
+ * numeric slash date: a numeric date is only accepted when it is self-evidently
+ * unambiguous (one component > 12, so it must be the day) OR when a month name /
+ * ISO source already resolved it. If a numeric date is genuinely ambiguous
+ * (both components ≤ 12) and no unambiguous source exists, it returns null
+ * rather than risk writing a wrong birthday.
+ *
+ * Sources, in priority order:
+ *  1. JSON-LD <script type="application/ld+json"> birthDate (schema.org, ISO)
+ *  2. <meta itemprop="birthDate" content="YYYY-MM-DD"> or any content= attr (ISO)
+ *  3. datum/YYYY-MM-DD link href — TM's locale-independent "on this day" link
+ *  4. ISO YYYY-MM-DD text inside the birthDate span
+ *  5. Named-month text ("Oct 12, 2002", "12 October 2002") — month word = unambiguous
+ *  6. Numeric D/D/YYYY (or with . / -) — accepted ONLY when unambiguous
  */
 function extractDobFromTmPage($) {
-  // 1. Find the datum/ link near the DOB section — this contains unambiguous ISO date
-  //    TM puts this in the info-table section as <a href="/aktuell/.../datum/YYYY-MM-DD">
-  const datumLinks = $('a[href*="datum/"]');
-  for (let i = 0; i < datumLinks.length; i++) {
-    const href = $(datumLinks[i]).attr("href") || "";
-    const isoMatch = href.match(/datum\/(\d{4})-(\d{2})-(\d{2})/);
-    if (isoMatch) {
-      return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  // ── 1. JSON-LD structured data (most reliable, locale-independent) ──────────
+  const ldNodes = $('script[type="application/ld+json"]');
+  for (let i = 0; i < ldNodes.length; i++) {
+    const raw = $(ldNodes[i]).contents().text();
+    if (!raw || !raw.includes("birthDate")) continue;
+    const iso = raw.match(/"birthDate"\s*:\s*"(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      const dob = toIsoDob(+iso[1], +iso[2], +iso[3]);
+      if (dob) return dob;
     }
   }
 
-  // 2. Try content attribute on birthDate span
-  const birthSpan = $("span[itemprop=birthDate]").first();
-  if (birthSpan.length) {
-    const contentAttr = birthSpan.attr("content") || "";
-    const isoFromContent = contentAttr.match(/(\d{4})-(\d{2})-(\d{2})/);
-    if (isoFromContent) {
-      return `${isoFromContent[1]}-${isoFromContent[2]}-${isoFromContent[3]}`;
+  // ── 2. microdata content= attribute on any birthDate node (ISO) ─────────────
+  const birthNodes = $("[itemprop=birthDate]");
+  for (let i = 0; i < birthNodes.length; i++) {
+    const contentAttr = $(birthNodes[i]).attr("content") || "";
+    const iso = contentAttr.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      const dob = toIsoDob(+iso[1], +iso[2], +iso[3]);
+      if (dob) return dob;
     }
+  }
 
-    // 3. Fallback: parse named-month text like "Jul 4, 1997 (28)"
-    const birthText = birthSpan.text().trim();
-    if (birthText) {
-      const dateStr = birthText.replace(/\s*\(\d+\)\s*$/, "").trim();
-      // Only trust named-month formats (e.g. "Jun 15, 2000") — NOT numeric DD/MM or MM/DD
-      if (/[a-zA-Z]/.test(dateStr)) {
-        const parsed = new Date(dateStr);
-        if (!isNaN(parsed.getTime())) {
-          const yyyy = parsed.getFullYear();
-          const mm = String(parsed.getMonth() + 1).padStart(2, "0");
-          const dd = String(parsed.getDate()).padStart(2, "0");
-          return `${yyyy}-${mm}-${dd}`;
-        }
-      }
+  // ── 3. datum/YYYY-MM-DD link — ISO in the href regardless of page language ──
+  //    TM renders DOB as <a href="/aktuell/.../datum/YYYY-MM-DD">12/10/2002 (24)</a>
+  const datumLinks = $('a[href*="datum/"]');
+  for (let i = 0; i < datumLinks.length; i++) {
+    const href = $(datumLinks[i]).attr("href") || "";
+    const iso = href.match(/datum\/(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      const dob = toIsoDob(+iso[1], +iso[2], +iso[3]);
+      if (dob) return dob;
     }
+  }
+
+  // ── 4-6. fall back to the human-readable birthDate span text ────────────────
+  const birthSpan = $("span[itemprop=birthDate]").first();
+  const birthText = (birthSpan.length ? birthSpan.text() : "").trim();
+  return parseDobText(birthText);
+}
+
+/**
+ * Parse a free-text date-of-birth string into ISO YYYY-MM-DD, or null.
+ * Handles ISO, named-month (multi-language), and unambiguous numeric dates.
+ * Exported logic kept pure so it is independently testable.
+ */
+function parseDobText(text) {
+  if (!text) return null;
+  // Strip a trailing age in parentheses, e.g. "Oct 12, 2002 (24)".
+  const str = text.replace(/\s*\(\s*\d+\s*\)\s*$/, "").trim();
+  if (!str) return null;
+
+  // 4. ISO date embedded in the text.
+  const iso = str.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  if (iso) {
+    const dob = toIsoDob(+iso[1], +iso[2], +iso[3]);
+    if (dob) return dob;
+  }
+
+  // 5. Named-month formats — the month word removes all ambiguity.
+  //    "Oct 12, 2002" | "12 October 2002" | "12. Okt. 2002" | "October 12, 2002"
+  const monthWord = str.match(/[a-zA-Zà-üÀ-Ü]{3,}/);
+  if (monthWord) {
+    const nums = str.match(/\d+/g) || [];
+    const year = nums.find((n) => n.length === 4);
+    const dayCand = nums.find((n) => n.length <= 2 && +n >= 1 && +n <= 31);
+    const mo = MONTH_NAME_TO_NUM[monthWord[0].toLowerCase()];
+    if (year && dayCand && mo) {
+      const dob = toIsoDob(+year, mo, +dayCand);
+      if (dob) return dob;
+    }
+  }
+
+  // 6. Numeric slash/dot/dash date — accept ONLY when unambiguous.
+  //    A component > 12 can only be the day, which pins the order with certainty.
+  const num = str.match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{4})\b/);
+  if (num) {
+    const a = +num[1]; // first component (day in TM .com, month in US formats)
+    const b = +num[2]; // second component
+    const y = +num[3];
+    let day = null;
+    let month = null;
+    if (a > 12 && b <= 12) {
+      day = a; month = b; // a must be the day
+    } else if (b > 12 && a <= 12) {
+      month = a; day = b; // b must be the day
+    }
+    // If both ≤ 12 the order is genuinely ambiguous → refuse to guess.
+    if (day !== null && month !== null) {
+      const dob = toIsoDob(y, month, day);
+      if (dob) return dob;
+    }
+  }
+
+  // 7. Year-first numeric with a non-ISO separator: YYYY/MM/DD or YYYY.MM.DD
+  const yFirst = str.match(/\b(\d{4})[./](\d{1,2})[./](\d{1,2})\b/);
+  if (yFirst) {
+    const dob = toIsoDob(+yFirst[1], +yFirst[2], +yFirst[3]);
+    if (dob) return dob;
   }
 
   return null;
