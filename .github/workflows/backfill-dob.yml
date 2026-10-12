@@ -1,0 +1,57 @@
+name: Backfill Player DOB
+
+# One-off / on-demand backfill of player date-of-birth from Transfermarkt.
+# For every player with a `tmProfile` but no `dateOfBirth`, scrapes the TM
+# profile and writes an ISO `dateOfBirth` (YYYY-MM-DD) using the bulletproof
+# extractor. Runs on a GitHub Actions runner and fetches TM via the shared HTML
+# proxy (TM blocks Google/Cloud Shell IPs with HTTP 202). Manual trigger only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (print what would change, write nothing)'
+        type: boolean
+        default: true
+      collection:
+        description: 'Limit to one collection (Players | PlayersWomen | PlayersYouth). Leave blank for all.'
+        type: string
+        default: ''
+      player:
+        description: 'Limit to a single player document id (optional).'
+        type: string
+        default: ''
+
+jobs:
+  backfill-dob:
+    runs-on: ubuntu-latest
+    # Per-player profile fetches, rate-limited — budget generously.
+    timeout-minutes: 300
+    defaults:
+      run:
+        working-directory: mgsr-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mgsr-web/package-lock.json
+
+      - run: npm ci
+
+      - name: Run DOB backfill
+        run: >-
+          npx tsx _backfill_dob.ts
+          ${{ inputs.dry_run && '--dry-run' || '' }}
+          ${{ inputs.collection != '' && format('--collection={0}', inputs.collection) || '' }}
+          ${{ inputs.player != '' && format('--player={0}', inputs.player) || '' }}
+        env:
+          CI: true
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          # TM blocks plain requests from GH Actions (HTTP 202), so fetch through
+          # the shared HTML proxy. Override via repo secret/var if the proxy moves.
+          TM_HTML_PROXY_URL: ${{ vars.TM_HTML_PROXY_URL || 'https://management.britsportgroup.com/api/transfermarkt/html-proxy' }}
