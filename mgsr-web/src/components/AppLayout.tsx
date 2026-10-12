@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
-import { PlatformSwitcher } from '@/components/PlatformSwitcher';
+import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import { useIsMobileOrTablet } from '@/hooks/useMediaQuery';
 import { useChatUnread } from '@/hooks/useChatUnread';
 import MobileHeader from '@/components/mobile/MobileHeader';
@@ -306,7 +306,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           signOut={signOut}
           platform={platform}
           sections={currentSections}
-          platformSwitcher={<PlatformSwitcher variant="compact" />}
+          platformSwitcher={<BritPlatformSwitch variant="compact" />}
           chatUnreadCount={chatUnreadCount}
         />
       </aside>

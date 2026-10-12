@@ -1570,6 +1570,16 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-platform-switch:hover button:not(.is-on) {
   color: #c4c0b6;
 }
+/* Compact modifier for tighter shell contexts (sidebar, mobile header) */
+.brit-platform-switch.is-compact button {
+  padding: 5px 11px;
+  font-size: 10px;
+  gap: 5px;
+}
+.brit-platform-switch.is-compact .brit-ps-dot {
+  width: 5px;
+  height: 5px;
+}
 
 .brit-canvas {
   max-width: 1540px;
