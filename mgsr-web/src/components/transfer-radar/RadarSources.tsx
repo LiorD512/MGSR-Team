@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { TRANSFER_RADAR_SOURCES_VISIBLE } from '@/lib/featureFlags';
-import { radarFetch, RadarApiError, timeAgo, type SourceItem } from '@/lib/transferRadar/client';
+import { radarFetch, RadarApiError, type SourceItem } from '@/lib/transferRadar/client';
+import { ago } from '@/lib/transferRadar/model';
 import { useRadarT } from '@/lib/transferRadar/i18n';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 
@@ -77,7 +78,7 @@ export default function RadarSources() {
               <td className="tr-hide-m">{s.itemsCollected}</td>
               <td className="tr-hide-m">{s.relevantReports}</td>
               <td><span className={`tr-st ${s.status}`} />{s.status}{s.failures > 0 ? <div className="tr-sm">{s.failures} {tr('src_failures')}</div> : null}{s.lastError ? <div className="tr-sm" title={s.lastError}>{s.lastError.slice(0, 40)}</div> : null}</td>
-              <td className="tr-hide-m tr-sm">{timeAgo(s.lastSuccessAt)} · {tr('src_every')} {s.intervalMin} {tr('min')}</td>
+              <td className="tr-hide-m tr-sm">{ago(tr, s.lastSuccessAt)} · {tr('src_every')} {s.intervalMin} {tr('min')}</td>
               {isAdmin && (
                 <td>
                   {(s.status === 'PROBATION') && <button className="tr-mini" disabled={busy === s.id} onClick={() => act(s.id, 'approve')}>{tr('src_approve')}</button>}

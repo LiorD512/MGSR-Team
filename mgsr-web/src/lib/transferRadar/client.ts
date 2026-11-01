@@ -1,12 +1,13 @@
 'use client';
 
 import { auth } from '@/lib/firebase';
+import type { Situation } from './situations';
 
 export class RadarApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
 }
 
-/** fetch wrapper: adds the Firebase ID token; errors carry the server code (e.g. RADAR_NOT_CONFIGURED). */
+/** fetch wrapper: adds the Firebase ID token; errors carry the server code (e.g. RADAR_NOT_CONFIGURED, RADAR_FORBIDDEN). */
 export async function radarFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await auth.currentUser?.getIdToken();
   const res = await fetch(`/api/transfer-radar/${path}`, {
@@ -21,55 +22,50 @@ export async function radarFetch<T>(path: string, init: RequestInit = {}): Promi
 
 export type Level = 'Exceptional' | 'High priority' | 'Potential' | 'Monitor' | 'Low priority' | 'Closed';
 export type Verification = 'CONFIRMED' | 'REPORTED' | 'RUMOR';
+export type Tier = 'A' | 'B' | 'C' | 'D';
+export interface FlagInfo { by: string | null; at: number; reason?: string | null }
+export interface Flags { watch?: FlagInfo; contacted?: FlagInfo; hidden?: FlagInfo }
 
 export interface Opportunity {
-  playerId: string; displayName: string; clubName: string | null; country: string | null; league: string | null; score: number; rawScore: number; level: Level; closed: boolean;
-  scoreDelta7d: number; urgency: 'High' | 'Medium' | 'Low' | 'Closed'; urgencyScore: number; categories: string[]; loanAvailable: boolean; transferAvailable: boolean;
-  topHeadline: string | null; topOutlet: string | null; topTier: string | null; bestVerification: Verification; bestTier: string; reportCount: number; independentOrigins: number;
-  action: string | null; firstSeenAt: number; lastReportAt: number; lastChangeAt: number; contractExpires: number | null; onShortlist: boolean; inRoster: boolean;
+  playerId: string; displayName: string; writtenAs: string | null; clubName: string | null; country: string | null; countryIsClub: boolean;
+  score: number; rawScore: number; level: Level; closed: boolean; situations: Situation[]; mainSituation: Situation; loanAvailable: boolean;
+  topHeadline: string | null; topOutlet: string | null; topTier: Tier | null; bestVerification: Verification; bestTier: Tier; reportCount: number; independentOrigins: number;
+  action: string | null; firstSeenAt: number; lastReportAt: number; lastChangeAt: number; flags: Flags;
 }
-export interface OpportunitiesResponse { items: Opportunity[]; countries: { country: string; n: number }[]; generatedAt: number }
+export interface OpportunitiesResponse { items: Opportunity[]; generatedAt: number }
 
 export interface SummaryResponse {
   kpi: Record<string, number>;
   leads: { id: string; outlet: string; url: string; published_at: number; title_orig: string; headline_en: string | null; club_raw: string | null; country: string | null }[];
   removed: { id: string; outlet: string; url: string; published_at: number; headline_en: string | null; title_orig: string; player_raw: string | null; club_raw: string | null; drop_reason: string }[];
-  recent: { player_id: string; display_name: string; club_name: string | null; score: number; level: string; last_change_at: number }[];
-  newSources: { id: string; name: string; host: string; country: string | null; status: string; created_at: number }[];
   lastRun: { started_at: number; ended_at: number | null; status: string } | null;
-  budget: { monthUsd: number; capUsd: number; requests: number };
+  nextAnalysisAt: number | null;
+  coverage: { sources: number; countries: number };
   generatedAt: number;
 }
 
 export interface TimelineItem {
-  id: string; at: number; kind: 'REPORT' | 'STATUS_CHANGE'; reportId: string; signals: string[]; verification: Verification; outlet: string; tier: string; url: string;
+  id: string; at: number; kind: 'REPORT' | 'STATUS_CHANGE'; reportId: string; signals: string[]; verification: Verification; outlet: string; tier: Tier; url: string;
   headlineEn: string | null; titleOrig: string; quote: string | null; claim: string | null; evidenceOk: boolean; attributedTo: string | null; headlineOnly: boolean; originKey: string | null;
   feedback: { correct: number; incorrect: number; outdated: number };
 }
 export interface ScoreComponent { key: string; points: number; max: number; signal?: string; outlet?: string; tier?: string; verification?: string; confidence?: number; recency?: number; ageDays?: number; note?: string }
 export interface PlayerResponse {
-  player: { id: string; displayName: string; clubName: string | null; country: string | null; league: string | null; position: string | null; dob: string | null; nationalities: string[]; foot: string | null;
-    heightCm: number | null; contractExpires: number | null; contractVerified: boolean; resolutionStatus: string; onShortlist: boolean };
-  opportunity: null | { score: number; rawScore: number; level: Level; closed: boolean; scoreDelta7d: number; urgency: string; categories: string[]; bestVerification: Verification; bestTier: string; reportCount: number;
-    independentOrigins: number; action: string | null; explanation: { components?: ScoreComponent[]; caps?: string[]; modifiers?: string[]; independentOrigins?: number }; configVersion: number;
-    firstSeenAt: number; lastReportAt: number; lastChangeAt: number; loanAvailable: boolean; transferAvailable: boolean };
+  player: { id: string; displayName: string; writtenAs: string | null; clubName: string | null; country: string | null; countryIsClub: boolean; league: string | null; position: string | null; dob: string | null;
+    nationalities: string[]; foot: string | null; heightCm: number | null; contractExpires: number | null; contractVerified: boolean; resolutionStatus: string };
+  opportunity: null | { score: number; rawScore: number; level: Level; closed: boolean; scoreDelta7d: number; urgency: string; categories: string[]; bestVerification: Verification; bestTier: Tier; reportCount: number;
+    independentOrigins: number; action: string | null; explanation: { components?: ScoreComponent[]; caps?: string[]; modifiers?: string[] }; configVersion: number; firstSeenAt: number; lastReportAt: number; lastChangeAt: number };
   timeline: TimelineItem[];
   history: { at: number; score: number; level: string }[];
+  flags: Flags;
 }
+
+export type FlagAction = 'watch' | 'unwatch' | 'contacted' | 'uncontacted' | 'hide' | 'restore';
+export const postFlag = (playerId: string, action: FlagAction, reason?: string) =>
+  radarFetch<{ ok: boolean }>('flags', { method: 'POST', body: JSON.stringify({ playerId, action, reason }) });
 
 export interface SourceItem {
   id: string; name: string; url: string; host: string; country: string | null; languages: string[]; type: string; access: string; feedUrl: string | null; headlineOnly: boolean; status: string;
   statusReason: string | null; tier: string; reliability: number; intervalMin: number; lastScanAt: number | null; lastSuccessAt: number | null; lastError: string | null; accessLimitation: string | null;
   failures: number; itemsCollected: number; relevantReports: number; lastArticleAt: number | null; createdAt: number;
-}
-
-export function timeAgo(ts: number | null | undefined, now = Date.now()): string {
-  if (!ts) return '-';
-  const h = (now - ts) / 3_600_000;
-  if (h < 1) return '<1h';
-  if (h < 48) return `${Math.round(h)}h`;
-  return `${Math.round(h / 24)}d`;
-}
-export function fmtDateTime(ts: number, lang: 'en' | 'he'): string {
-  return new Date(ts).toLocaleString(lang === 'he' ? 'he-IL' : 'en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) + ' UTC';
 }

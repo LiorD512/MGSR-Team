@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticate, failure, isResponse, parseJson, q, q1 } from '@/lib/transferRadar/server';
+import { authenticate, ensureFlags, failure, foldFlags, isResponse, parseJson, q, q1 } from '@/lib/transferRadar/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const user = await authenticate(req);
   if (isResponse(user)) return user;
   try {
+    await ensureFlags();
     const id = params.id;
     const player = await q1<Record<string, unknown>>('SELECT * FROM players WHERE id = ?', [id]);
     if (!player) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -15,12 +16,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const timeline = await q<Record<string, unknown>>(
       `SELECT t.*, r.claim_type AS claim, r.evidence_ok, r.attributed_to, r.fb_correct, r.fb_incorrect, r.fb_outdated, r.headline_only, r.origin_key
        FROM timeline t LEFT JOIN reports r ON r.id = t.report_id WHERE t.player_id = ? ORDER BY t.at DESC LIMIT 100`, [id]);
+    const flags = foldFlags(await q('SELECT player_id, flag, reason, by_email, at FROM player_flags WHERE player_id = ?', [id])).get(id) ?? {};
     const history = await q<{ at: number; score: number; level: string }>('SELECT at, score, level FROM score_history WHERE player_id = ? ORDER BY at ASC LIMIT 120', [id]);
     return NextResponse.json({
       player: {
         id: player.id, displayName: player.display_name, clubName: player.club_name, country: player.country, league: player.league, position: player.position, dob: player.dob,
         nationalities: parseJson<string[]>(player.nationalities, []), foot: player.foot, heightCm: player.height_cm, contractExpires: player.contract_expires, contractVerified: !!player.contract_verified,
         resolutionStatus: player.resolution_status, onShortlist: !!player.on_shortlist, rosterPlayerId: player.roster_player_id,
+        writtenAs: parseJson<string[]>(player.aliases, [])[0] ?? null, countryIsClub: player.country_source === 'CLUB',
       },
       opportunity: opp ? {
         score: opp.score, rawScore: opp.raw_score, level: opp.level, closed: !!opp.closed, scoreDelta7d: opp.score_delta_7d, urgency: opp.urgency, categories: parseJson<string[]>(opp.categories, []),
@@ -33,7 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         headlineEn: t.headline_en, titleOrig: t.title_orig, quote: t.quote, claim: t.claim, evidenceOk: !!t.evidence_ok, attributedTo: t.attributed_to, headlineOnly: !!t.headline_only, originKey: t.origin_key,
         feedback: { correct: t.fb_correct, incorrect: t.fb_incorrect, outdated: t.fb_outdated },
       })),
-      history,
+      history, flags,
     });
   } catch (e) { return failure(e); }
 }

@@ -101,4 +101,14 @@ export const MIGRATIONS: { id: number; name: string; sql: string[] }[] = [
       `UPDATE config SET json = json_set(json, '$.paidMaxRequestsPerRun', 250), version = version + 1, updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE key = 'llm'`,
     ],
   },
+  {
+    // UI redesign: shared agency marks (hidden / watchlist / contacted), club-vs-outlet country, run trigger.
+    id: 3,
+    name: 'ui_flags_country_source_trigger',
+    sql: [
+      `CREATE TABLE IF NOT EXISTS player_flags (player_id TEXT NOT NULL, flag TEXT NOT NULL, reason TEXT, by_email TEXT, at INTEGER NOT NULL, PRIMARY KEY (player_id, flag))`,
+      `ALTER TABLE players ADD COLUMN country_source TEXT`,
+      `ALTER TABLE run_log ADD COLUMN trigger TEXT`,
+    ],
+  },
 ];

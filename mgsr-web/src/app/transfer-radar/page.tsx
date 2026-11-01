@@ -1,12 +1,12 @@
 'use client';
 
 import TransferRadarShell from '@/components/transfer-radar/TransferRadarShell';
-import RadarDashboard from '@/components/transfer-radar/RadarDashboard';
+import RadarWorkspace from '@/components/transfer-radar/RadarWorkspace';
 
 export default function TransferRadarPage() {
   return (
     <TransferRadarShell active="transfer-radar">
-      <RadarDashboard />
+      <RadarWorkspace />
     </TransferRadarShell>
   );
 }

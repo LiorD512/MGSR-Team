@@ -37,7 +37,8 @@ export async function runPipeline(db: Db, opt: RunOptions = {}) {
   if (!got) { log.warn('another pipeline run still holds the lease after 15 min - exiting'); return null; }
   const started = now();
   const deadline = started + cfg.pipeline.runBudgetMinutes * 60_000;
-  const logId = (await run(db, 'INSERT INTO run_log (job, started_at, status) VALUES (?,?,?)', ['pipeline', started, 'RUNNING'])).lastInsertRowid;
+  const trigger = process.env.GITHUB_EVENT_NAME || 'manual'; // 'schedule' for the 3-day timer, 'push'/'workflow_dispatch' for tests and manual runs
+  const logId = (await run(db, 'INSERT INTO run_log (job, started_at, status, trigger) VALUES (?,?,?,?)', ['pipeline', started, 'RUNNING', trigger])).lastInsertRowid;
   const quota = new Quota(db, cfg);
   const llm = new Llm(cfg, quota);
   const http = new Http(db, cfg);

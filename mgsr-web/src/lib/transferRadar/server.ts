@@ -32,6 +32,29 @@ export async function exec(sql: string, args: InValue[] = []) {
   return db.execute({ sql, args });
 }
 
+let flagsReady: Promise<void> | null = null;
+/** Agency-wide marks (watchlist / contacted / hidden-as-not-relevant). Created lazily so the web app works even before the pipeline's migration 3 ran. */
+export function ensureFlags(): Promise<void> {
+  if (!flagsReady) {
+    flagsReady = exec('CREATE TABLE IF NOT EXISTS player_flags (player_id TEXT NOT NULL, flag TEXT NOT NULL, reason TEXT, by_email TEXT, at INTEGER NOT NULL, PRIMARY KEY (player_id, flag))')
+      .then(() => undefined)
+      .catch((e) => { flagsReady = null; throw e; });
+  }
+  return flagsReady;
+}
+
+export interface FlagInfo { by: string | null; at: number; reason?: string | null }
+export type FlagMap = { watch?: FlagInfo; contacted?: FlagInfo; hidden?: FlagInfo };
+const FLAG_KEY: Record<string, keyof FlagMap> = { WATCH: 'watch', CONTACTED: 'contacted', HIDDEN: 'hidden' };
+export function foldFlags(rows: { player_id: string; flag: string; reason: string | null; by_email: string | null; at: number }[]): Map<string, FlagMap> {
+  const out = new Map<string, FlagMap>();
+  for (const r of rows) {
+    const k = FLAG_KEY[r.flag]; if (!k) continue;
+    const m = out.get(r.player_id) ?? {}; m[k] = { by: r.by_email, at: Number(r.at), reason: r.reason }; out.set(r.player_id, m);
+  }
+  return out;
+}
+
 export interface RadarUser { uid: string; email: string; isAdmin: boolean }
 
 /** Verifies the Firebase ID token. Admin = listed in RADAR_ADMIN_EMAILS; if that variable is empty every signed-in agent is an admin (matches the rest of the app, which has no roles). */

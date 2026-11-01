@@ -79,16 +79,19 @@ export async function resolvePlayer(db: Db, o: { name: string; nameLatin?: strin
   const id = `pl-${shortHash(`${nameKey}|${ck}`, 12)}`;
   const exists = await one(db, 'SELECT 1 FROM players WHERE id = ?', [id]);
   if (!exists) {
-    await run(db, `INSERT INTO players (id, display_name, name_key, surname_key, club_name, club_key, country, resolution_status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      [id, o.name || rawName, nameKey, surname, o.club || null, ck || null, o.country ?? null, parts.length > 1 ? 'NAME_ONLY' : 'SURNAME_ONLY', now(), now()]);
+    const shown = (o.nameLatin || o.name || rawName).trim();
+    const aliases = o.name && o.name.trim() !== shown ? JSON.stringify([o.name.trim()]) : null; // original spelling (e.g. Cyrillic) kept for display next to the Latin name
+    await run(db, `INSERT INTO players (id, display_name, name_key, surname_key, aliases, club_name, club_key, country, country_source, resolution_status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, shown, nameKey, surname, aliases, (o.clubLatin || o.club) || null, ck || null, o.country ?? null, o.countryCertain ? 'CLUB' : 'OUTLET', parts.length > 1 ? 'NAME_ONLY' : 'SURNAME_ONLY', now(), now()]);
   }
   return { playerId: id, status: 'CREATED', confidence: 0.6 };
 }
 
 async function touch(db: Db, id: string, o: { club?: string; country?: string | null; countryCertain?: boolean }, ck: string) {
   // a club-country the model is certain about overrides the outlet's country
-  await run(db, `UPDATE players SET club_name=COALESCE(club_name, ?), club_key=COALESCE(club_key, ?), country=CASE WHEN ? = 1 THEN ? ELSE COALESCE(country, ?) END, updated_at=? WHERE id=?`,
-    [o.club || null, ck || null, o.countryCertain ? 1 : 0, o.country ?? null, o.country ?? null, now(), id]);
+  await run(db, `UPDATE players SET club_name=COALESCE(club_name, ?), club_key=COALESCE(club_key, ?), country=CASE WHEN ? = 1 THEN ? ELSE COALESCE(country, ?) END,
+      country_source=CASE WHEN ? = 1 THEN 'CLUB' ELSE COALESCE(country_source, 'OUTLET') END, updated_at=? WHERE id=?`,
+    [o.club || null, ck || null, o.countryCertain ? 1 : 0, o.country ?? null, o.country ?? null, o.countryCertain ? 1 : 0, now(), id]);
 }
 function commonPrefix(a: string, b: string): number { let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++; return i; }
 

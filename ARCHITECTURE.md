@@ -370,7 +370,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/tasks` | Tasks | Agent task management (route currently shows disabled state while tasks feature flag is off) |
 | `/portfolio` | Portfolio | Player portfolio management |
 | `/market-radar` | Early Market Radar | Real-time market disruption intelligence (out-of-plans, collapsed deals, contract standoffs across 35+ leagues, max 14 days) |
-| `/transfer-radar` | Transfer Radar | **Men web only.** Morning Brief: players who may become available, scored from multilingual local-media reports (see §21). Filters, sort, search, leads that need a name, rule-removed items |
+| `/transfer-radar` | Transfer Radar | **Men web only.** Master-detail workspace: tabs (Active, New 24h, On loan, Moved, Needs a name, Not relevant), filters, search, player list on one side and the full story (situation, score meter, reasons, sources, timeline) on the other. `/transfer-radar/players/[id]` is the same screen with a player pre-selected (see §21) |
 | `/transfer-radar/players/[id]` | Radar player profile | Score breakdown, evidence timeline (original headline + English summary + quote + link), facts vs reported vs rumor vs AI assessment, feedback buttons |
 | `/transfer-radar/sources` | Radar Source Center | **Hidden for now** (`TRANSFER_RADAR_SOURCES_VISIBLE=false`: no menu entry, route redirects to `/transfer-radar`). Source registry health; approve / disable / remove / add (admin) || `/news` | News | Redirects to `/market-radar` |
 | `/jewish-finder` | Jewish Finder | Discover Jewish/Israeli heritage players |
@@ -1364,10 +1364,13 @@ Vercel env: `TURSO_URL`, `TURSO_TOKEN` (read/write), optional `RADAR_ADMIN_EMAIL
 CLI: `cd radar && npx tsx src/cli.ts <migrate|seed|run [--no-analyze]|score|sweep|import-poc|status>` (uses local `radar-local.db` when `TURSO_URL` is unset).
 
 ### Turso tables
-`config, sources, source_events, articles, article_bodies, reports, players, opportunities, score_history, timeline, entity_review, host_state, jobs, quota_ledger, run_log, alert_rules, alerts` (migrations in `radar/src/schema.ts`).
+`config, sources, source_events, articles, article_bodies, reports, players, opportunities, score_history, timeline, entity_review, host_state, jobs, quota_ledger, run_log, alert_rules, alerts, player_flags` (migrations in `radar/src/schema.ts`). Migration 3 adds `player_flags` (agency-wide marks, PK player_id+flag), `players.country_source` (CLUB = the club's country; OUTLET = only where the story was published) and `run_log.trigger` (schedule/manual, used to show the next analysis date). The web API also creates `player_flags` lazily if migration 3 has not run yet.
 
 ### API routes (`/api/transfer-radar/`, all require a Firebase ID token)
-`opportunities` (filters: country, show=all|monitor|loan|transfer|low|closed, days, q, minScore, tier, verification, sort=score|new|reliable|urgent), `players/[id]`, `summary`, `sources` (GET; POST admin: add/approve/disable/enable/remove/set-tier/set-interval), `feedback` (correct|incorrect|outdated), `alerts`.
+`opportunities`, `players/[id]`, `flags` (POST), `feedback` (POST), `summary` (last run, next analysis, coverage, queue, leads, rule-removed items), `sources` (GET; POST admin: add/approve/disable/enable/remove/set-tier/set-interval), `feedback` (correct|incorrect|outdated), `alerts`.
+
+### Radar screen behaviour (UX v2)
+`opportunities` returns every scored player (max 400) with plain-language `situations`; the client does tabs, filters, sorting and search. Detail data comes from `players/[id]` (cached per player); the list row already carries the header, glance and next step. Polling every 60 s. **Marks are shared by the whole agency** via `POST flags` {playerId, action: watch|unwatch|contacted|uncontacted|hide|restore, reason}: *Add to watchlist* (radar-side list, NOT the Transfermarkt Shortlist, because radar players have no Transfermarkt URL), *Contacted*, and *Not relevant* (hidden with a reason star/coach/sport/person/old/other; also counts as incorrect feedback on the newest report and suppresses alerts). A country is shown as the club's only when `country_source='CLUB'`, otherwise as "Reported in X". "Early signal" = one independent source and 72 hours or less.
 
 ### Safety rules
 Never bypasses logins/paywalls/CAPTCHAs; hosts that answer 403/429/503 are backed off. Paid LLM calls stop at the monthly cap and a daily sub-cap (cap/20), with a kill-switch (`config.llm.enabled`). Claims need an evidence quote that exists in the source text; verification status is assigned by rules (CONFIRMED / REPORTED / RUMOR); AI text is labelled AI. Player photos are not shown (licensing).
