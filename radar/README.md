@@ -21,3 +21,5 @@ Without `TURSO_URL` the CLI uses a local SQLite file, so nothing touches product
 
 ## Cost controls
 `config.llm`: `monthlyCapUsd` (5), `ceilingUsd` (6), `dailyCapDivisor` (20), `enabled` (kill switch), `paidMaxRequestsPerRun`. Spend is computed from token counts returned by the API and stored in `quota_ledger`. Free-tier key is used first when present.
+
+<!-- first run: 2026-11-01T08:14:08Z -->
