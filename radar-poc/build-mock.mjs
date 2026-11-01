@@ -80,12 +80,12 @@ function scoreOf(p, reps) {
   let total = Object.values(comps).reduce((a, c) => a + c.pts, 0) + indep;
   const caps = [];
   const bestTier = live.some((r) => r.tier === 'A') ? 'A' : live.some((r) => r.tier === 'B') ? 'B' : 'C';
-  if (origins.size < 2 && bestTier !== 'A' && total > 59) { total = 59; caps.push('Single independent origin → capped at 59'); }
-  if (origins.size < 2 && ['C', 'D'].includes(bestTier)) { caps.push('Single origin, tier C source → needs a 2nd independent source to rise'); }
+  if (origins.size < 2 && bestTier !== 'A' && total > 59) { total = 59; caps.push('Single independent origin -> capped at 59'); }
+  if (origins.size < 2 && ['C', 'D'].includes(bestTier)) { caps.push('Single origin, tier C source -> needs a 2nd independent source to rise'); }
   const closed = reps.some((r) => r.completed);
   const raw = Math.round(total);
   let score = raw;
-  if (closed) { score = Math.min(raw, 12); caps.push('Transfer confirmed in later reports → opportunity likely closed (score set low, archived)'); }
+  if (closed) { score = Math.min(raw, 12); caps.push('Transfer confirmed in later reports -> opportunity likely closed (score set low, archived)'); }
   return { score, raw, comps, indep, origins: origins.size, caps, closed };
 }
 const level = (s) => (s >= 85 ? 'Exceptional' : s >= 70 ? 'High priority' : s >= 50 ? 'Potential' : s >= 30 ? 'Monitor' : 'Low');

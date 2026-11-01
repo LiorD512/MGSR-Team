@@ -63,7 +63,7 @@ tr.row{cursor:pointer}tr.row:hover td{background:var(--panel)}tr.closed td{opaci
 .cap{margin-top:10px;padding:9px 11px;border:1px dashed var(--amber);color:var(--amber);font:10.5px/1.4 var(--mono)}
 .tl{position:relative;padding-inline-start:20px;border-inline-start:1px solid var(--line2);margin-inline-start:4px}
 .ev{position:relative;padding:0 0 18px}.ev:before{content:'';position:absolute;inset-inline-start:-25px;top:4px;width:9px;height:9px;background:var(--gold);border-radius:50%}
-.ev.sc:before{background:var(--red)}.ev .d{font:10px var(--mono);color:var(--mut);text-transform:uppercase}.ev .d b{color:var(--ink);font-weight:400}
+.ev.chg:before{background:var(--red)}.ev .d{font:10px var(--mono);color:var(--mut);text-transform:uppercase}.ev .d b{color:var(--ink);font-weight:400}
 .ev h4{margin:6px 0 3px;font:600 13px/1.35 var(--body)}.ev .o{color:var(--mut);font-size:12px;margin-bottom:5px}.ev q{display:block;margin:6px 0;padding-inline-start:10px;border-inline-start:2px solid var(--gold2);color:#cfc9bb;font-size:12px;quotes:none}
 .ev a{font:10px var(--mono);color:var(--gold);text-transform:uppercase}
 .kv{display:grid;grid-template-columns:120px 1fr;gap:6px 10px;font-size:12px}.kv span{color:var(--mut2);font:10px var(--mono);text-transform:uppercase;padding-top:2px}.unk{color:var(--mut2);font-style:italic}
@@ -81,7 +81,7 @@ tr.row{cursor:pointer}tr.row:hover td{background:var(--panel)}tr.closed td{opaci
     <div class="lock"><div class="mark">B</div><div><b>BRIT SPORT GROUP</b><small>Men · Management</small></div></div>
     <nav class="nav">
       <a class="dim">Dashboard</a><a class="dim">Roster</a><a class="dim">Shortlist</a><a class="dim">Club Requirements</a><a class="dim">Contacts</a>
-      <div class="g" style="color:var(--gold)">Signals ▾</div>
+      <div class="g" style="color:var(--gold)">Signals</div>
       <div class="sub"><a href="#" data-v="dash" id="n-dash">Transfer Radar</a><a href="#" data-v="src" id="n-src">Sources (admin)</a><a class="dim">Market Radar</a><a class="dim">Release alerts</a><a class="dim">Club changes</a></div>
       <a class="dim">War Room</a>
     </nav>
@@ -107,7 +107,7 @@ function dash(){
  const key={score:(a,b)=>(a.closed-b.closed)||b.score-a.score,new:(a,b)=>b.last-a.last,rel:(a,b)=>(a.bestTier>b.bestTier?1:-1)||b.score-a.score,urg:(a,b)=>['High','Medium','Low','Closed'].indexOf(a.urgency)-['High','Medium','Low','Closed'].indexOf(b.urgency)||b.score-a.score}[S.sort];
  list=list.sort(key);
  const rows=list.map(p=>`<tr class="row ${p.closed?'closed':''}" data-p="${p.id}"><td><div class="sc"><b>${p.score}</b><i><u style="width:${p.score}%"></u></i></div><span class="lv ${lvCls(p.level)}">${p.level}</span></td>
- <td class="nm"><b>${esc(p.name)}</b><small>${esc(p.club)}</small></td><td>${p.flag} ${esc(p.country)}</td>
+ <td class="nm"><b>${esc(p.name)}</b><small>${esc(p.club)}</small></td><td>${esc(p.country)}</td>
  <td>${p.cats.map(c=>`<span class="tag">${c}</span>`).join('')}${p.loan?'<span class="tag">Loan</span>':''}</td>
  <td class="what">${esc(p.top.en)}<small>${esc(p.top.host)} · tier ${p.top.tier} · ${ago(p.last)}</small></td>
  <td>${p.reports.length} report${p.reports.length>1?'s':''}<br><small style="color:var(--mut2);font:10px var(--mono)">${p.origins} independent origin${p.origins>1?'s':''}</small></td>
@@ -122,7 +122,7 @@ function dash(){
  <input class="search" placeholder="Search player or club…" value="${esc(S.q)}" id="q"></div>
  <table><thead><tr><th>Score</th><th>Player</th><th>Country</th><th class="hide-m">Signal type</th><th>What happened</th><th>Sources</th><th>Status</th><th>Urgency</th></tr></thead><tbody>${rows||'<tr><td colspan=8 style="padding:30px;color:var(--mut)">No players match the filters.</td></tr>'}</tbody></table>
  <div class="grid3">
-  <div class="pan"><h3>Leads needing a name · ${D.leads.length}</h3>${D.leads.map(l=>`<div class="it"><a href="${esc(l.link)}" target="_blank">${esc(l.en||l.title)}</a><small>${esc(l.host)} · ${esc(l.club||'club n/a')} · ${ago(l.ts)} · player not named in headline → article read needed</small></div>`).join('')}</div>
+  <div class="pan"><h3>Leads needing a name · ${D.leads.length}</h3>${D.leads.map(l=>`<div class="it"><a href="${esc(l.link)}" target="_blank">${esc(l.en||l.title)}</a><small>${esc(l.host)} · ${esc(l.club||'club n/a')} · ${ago(l.ts)} · player not named in headline · article read needed</small></div>`).join('')}</div>
   <div class="pan"><h3>Opportunities by country</h3>${Object.entries(byC).sort((a,b)=>b[1]-a[1]).map(([c,n])=>`<div class="cbar"><span style="width:130px">${esc(c)}</span><i style="width:${n/mx*120}px"></i>${n}</div>`).join('')}
    <h3 style="margin-top:18px">New sources (examples)</h3><div class="it">sportacentrs.com <small>Latvia · feed found · 41 items</small></div><div class="it">sport.err.ee <small>Estonia · feed found · 50 items</small></div><div class="it">sport24.gr <small>Greece · no feed (limitation recorded)</small></div></div>
   <div class="pan"><h3>Removed by review · ${D.removed.length}</h3>${D.removed.slice(0,9).map(r=>`<div class="it">${esc(r.player||'')} — ${esc(r.title).slice(0,70)}<small>${esc(r.why)} · ${esc(r.host)}</small></div>`).join('')}<div class="it"><small>The AI proposed these; rules and review dropped them (stars, national teams, other sports, coaches). Shown for transparency.</small></div></div>
@@ -133,8 +133,8 @@ function profile(){const p=D.players.find(x=>x.id===S.pid);
  const conf=p.reports.filter(r=>r.ver==='CONFIRMED'),rep=p.reports.filter(r=>r.ver==='REPORTED'),rum=p.reports.filter(r=>r.ver==='RUMOR');
  const ai=p.closed?`Earlier reports (club open to sell, player not in matchday squad) were followed within hours by statements that a transfer is confirmed/announced. Treat as likely moved; the open question is only whether the deal completes.`:
  `${p.cats.length>1?'Signals from more than one category ('+p.cats.map(c=>c.split(' · ')[1]).join(', ')+') point the same way. ':''}${p.origins>1?p.origins+' independent origins report it. ':'Only one independent origin so far — not enough to treat as established. '}Not confirmed by the club${conf.length?' except where marked':''}. Contract expiry is unknown; if it ends within 6 months this would move up.`;
- return `<a class="back" href="#" data-v="dash">← Morning Brief</a>
- <div class="ph"><div><p class="kick">${p.flag} ${esc(p.country)} · Player intelligence profile</p><h1>${esc(p.name)}</h1><p class="sub">${esc(p.club)}${p.unresolvedClub?' — <span class="unk">club not stated in the headline (entity resolution pending)</span>':''} ${p.note?'· '+esc(p.note):''}</p>
+ return `<a class="back" href="#" data-v="dash">&lt; Back to Morning Brief</a>
+ <div class="ph"><div><p class="kick">${esc(p.country)} · Player intelligence profile</p><h1>${esc(p.name)}</h1><p class="sub">${esc(p.club)}${p.unresolvedClub?' — <span class="unk">club not stated in the headline (entity resolution pending)</span>':''} ${p.note?'· '+esc(p.note):''}</p>
  <div style="margin-top:12px"><span class="vb ${p.bestVer}">${p.bestVer}</span> <span class="tag">${p.reports.length} reports</span><span class="tag">${p.origins} independent origin${p.origins>1?'s':''}</span><span class="tag">Urgency: ${p.urgency}</span>${p.closed?'<span class="tag" style="color:var(--red);border-color:var(--red)">Status change: transfer confirmed</span>':''}</div></div>
  <div class="bigscore"><b>${p.score}</b><small>/ 100 · ${p.level}</small></div></div>
  <div class="cols"><div>
@@ -142,8 +142,8 @@ function profile(){const p=D.players.find(x=>x.id===S.pid);
    <div class="comp"><div>Independent sources</div><div class="bb"><u style="width:${p.indep/10*100}%"></u></div><div class="n">${p.indep}/10</div><small>${p.origins} distinct origin(s). Duplicate/rewritten reports are not counted as confirmation.</small></div>
    <div class="comp"><div>Contract situation</div><div class="bb"></div><div class="n unk">?/10</div><small>Unknown — needs football-database join (Phase 1/2).</small></div>
    <div class="comp"><div>Club finance · replacement · other</div><div class="bb"></div><div class="n">0/15</div><small>No reports found.</small></div>
-   ${p.caps.map(c=>`<div class="cap">⚑ ${esc(c)}</div>`).join('')}</div>
-  <div class="sec"><h3>Intelligence timeline · newest first</h3><div class="tl">${p.reports.map(r=>`<div class="ev ${r.completed?'sc':''}"><div class="d"><b>${fmtD(r.ts)}</b> · ${esc(r.host)} · tier ${r.tier} · <span class="vb ${r.ver}">${r.ver}</span>${r.completed?' · <span style="color:var(--red)">STATUS CHANGE</span>':''}</div>
+   ${p.caps.map(c=>`<div class="cap">! ${esc(c)}</div>`).join('')}</div>
+  <div class="sec"><h3>Intelligence timeline · newest first</h3><div class="tl">${p.reports.map(r=>`<div class="ev ${r.completed?'chg':''}"><div class="d"><b>${fmtD(r.ts)}</b> · ${esc(r.host)} · tier ${r.tier} · <span class="vb ${r.ver}">${r.ver}</span>${r.completed?' · <span style="color:var(--red)">STATUS CHANGE</span>':''}</div>
    <h4>${esc(r.en||r.title)}</h4><div class="o">Original: ${esc(r.title)}</div>${r.quote?`<q>“${esc(r.quote)}”</q>`:''}<div class="d">${r.signals.length?r.signals.join(' · ')+' · ':''}claim: ${r.claim} <a href="${esc(r.link)}" target="_blank" style="margin-inline-start:8px">Open source ↗</a></div></div>`).join('')}</div></div>
  </div><div>
   <div class="act"><small>Recommended next action · rule-based</small>${esc(p.action)}<div class="btns"><span class="btn pri">Add to shortlist</span><span class="btn">WhatsApp share</span><span class="btn">Mark contacted</span><span class="btn">Dismiss</span></div></div>
