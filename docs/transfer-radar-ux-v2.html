@@ -146,6 +146,8 @@ html[dir=rtl] .ticks span{transform:translateX(50%)}
 .pts{font-size:14px;font-weight:700;text-align:end;font-variant-numeric:tabular-nums}.pts small{display:inline;color:var(--muted);font-weight:500}
 .why-row.zero .pts{color:var(--muted)}
 .total{display:flex;justify-content:space-between;padding:12px 0 0;border-top:2px solid var(--ink);margin-top:6px;font-weight:800;font-size:15px}
+.total.adj{border-top:1px solid var(--line);margin-top:0;padding-top:8px;color:var(--red)}
+.mrow{display:flex;gap:10px;align-items:flex-start;margin:9px 0}.mrow .ev,.mrow .dots{margin-top:3px}.mrow .txt{flex:1;font-size:13.5px;color:var(--ink2)}
 .raise{margin-top:14px;padding:12px 14px;background:var(--paper);border-radius:6px;border:1px dashed var(--line)}
 .raise b{font-size:13px;display:block;margin-bottom:4px}.raise ul{margin:0;padding-inline-start:18px;font-size:13.5px;color:var(--ink2)}.raise li{margin:2px 0}
 .note{margin-top:12px;padding:10px 14px;border-radius:6px;font-size:13.5px;background:var(--amberbg);color:var(--amber);font-weight:600}
@@ -261,7 +263,7 @@ en: {
  s_why:'Why it scores {n}', s_why_l:'How the radar reached this number. Rules decide the score; AI only reads the articles.', by_rule:'Rule-based',
  c_availability:'Move signals', c_availability_d:'The player or the club points to a move', c_exclusion:'Left out of the squad', c_exclusion_d:'Reported as out of the matchday squad', c_relationship:'Friction with coach or club', c_relationship_d:'Conflict or a disciplinary problem',
  c_contract:'Contract end date', c_contract_d:'Not in the radar yet', c_independence:'Independent sources', c_independence_d:'Different newsrooms reporting separately', c_other:'Other signals', c_other_d:'Playing time, club finances, replacement signing: none found',
- total:'Total', raise_h:'What would raise this score', raise_src:'A {n}nd independent outlet reporting it: up to +{p}', raise_src3:'Another independent outlet: up to +{p}', raise_contract:'A verified contract end date within 6 months: up to +10', raise_official:'Official confirmation from the club or the player',
+ total:'Total from the evidence', adjusted:'Final score after the move was confirmed', raise_h:'What would raise this score', raise_src:'A {n}nd independent outlet reporting it: up to +{p}', raise_src3:'Another independent outlet: up to +{p}', raise_contract:'A verified contract end date within 6 months: up to +10', raise_official:'Official confirmation from the club or the player',
  closed_note:'Later reports say the move is agreed or announced, so the score was reduced to {s} and the player moved out of the active list.',
  s_who:'Who reported it', s_who_l:'Each card is one independent newsroom. Copies and rewrites count once.', same:'{n} articles from the same newsroom - counted as one source.', quote_l:'Quote from the article (original language)', claim:'Stated as', cl_FACT:'fact', cl_RUMOR:'rumor', cl_SPECULATION:'speculation', cl_OPINION:'opinion', headline_only:'headline only',
  s_time:'Timeline', s_time_l:'Newest first. Red = the situation changed.', status_change:'Status change',
@@ -315,7 +317,7 @@ he: {
  s_why:'למה הציון {n}', s_why_l:'איך הרדאר הגיע למספר הזה. כללים קובעים את הציון; ה-AI רק קורא את הכתבות.', by_rule:'מבוסס כללים',
  c_availability:'אותות למעבר', c_availability_d:'השחקן או המועדון מצביעים על מעבר', c_exclusion:'מחוץ לסגל', c_exclusion_d:'דווח כמי שמחוץ לסגל המשחק', c_relationship:'חיכוך עם המאמן או המועדון', c_relationship_d:'סכסוך או בעיית משמעת',
  c_contract:'סיום החוזה', c_contract_d:'עדיין לא ברדאר', c_independence:'מקורות עצמאיים', c_independence_d:'מערכות חדשות שונות שמדווחות בנפרד', c_other:'אותות אחרים', c_other_d:'זמן משחק, כספי המועדון, חיזוק בעמדה: לא נמצא',
- total:'סה״כ', raise_h:'מה יעלה את הציון', raise_src:'אתר עצמאי נוסף שמדווח על כך: עד +{p}', raise_src3:'אתר עצמאי נוסף: עד +{p}', raise_contract:'תאריך סיום חוזה מאומת בתוך 6 חודשים: עד +10', raise_official:'אישור רשמי מהמועדון או מהשחקן',
+ total:'סה״כ מהראיות', adjusted:'ציון סופי לאחר אישור המעבר', raise_h:'מה יעלה את הציון', raise_src:'אתר עצמאי נוסף שמדווח על כך: עד +{p}', raise_src3:'אתר עצמאי נוסף: עד +{p}', raise_contract:'תאריך סיום חוזה מאומת בתוך 6 חודשים: עד +10', raise_official:'אישור רשמי מהמועדון או מהשחקן',
  closed_note:'דיווחים מאוחרים אומרים שהמעבר סוכם או הוכרז, ולכן הציון הופחת ל-{s} והשחקן הועבר מהרשימה הפעילה.',
  s_who:'מי דיווח', s_who_l:'כל כרטיס הוא מערכת חדשות עצמאית אחת. העתקות וכתיבה מחדש נספרות פעם אחת.', same:'{n} כתבות מאותה מערכת - נספרות כמקור אחד.', quote_l:'ציטוט מהכתבה (בשפת המקור)', claim:'מוצג כ', cl_FACT:'עובדה', cl_RUMOR:'שמועה', cl_SPECULATION:'השערה', cl_OPINION:'דעה', headline_only:'כותרת בלבד',
  s_time:'ציר זמן', s_time_l:'מהחדש לישן. אדום = המצב השתנה.', status_change:'שינוי סטטוס',
@@ -472,6 +474,7 @@ function detail(p){
     if(k==='independence')sub=`${p.origins===1?t('g_ev_s1',{n:1}):t('g_ev_sn',{n:p.origins})} · ${t('c_independence_d')}`;
     return `<div class="why-row ${pts>0?'':'zero'}"><span class="ck">${pts>0?ico('check'):'—'}</span><div><b>${t('c_'+k)}</b><small>${sub}</small></div><div class="pbar"><u style="width:${max?pts/max*100:0}%"></u></div><div class="pts">${pts.toString().replace(/\.0$/,'')}<small> / ${max}</small></div></div>`;}).join('')+
     `<div class="why-row zero"><span class="ck">—</span><div><b>${t('c_other')}</b><small>${t('c_other_d')}</small></div><div class="pbar"><u style="width:0"></u></div><div class="pts">0<small> / 25</small></div></div>`;
+  const sumRows=Math.round(p.components.reduce((a,c)=>a+(c.points||0),0));
   const IT={1:0,2:5,3:8,4:10};const nextP=p.origins<4?(IT[p.origins+1]??10)-(IT[p.origins]??0):0;
   const raise=[];if(!p.closed){if(nextP>0)raise.push(p.origins<2?t('raise_src',{n:2,p:nextP}).replace('2nd','2nd'):t('raise_src3',{p:nextP}));raise.push(t('raise_contract'));if(p.verification!=='CONFIRMED')raise.push(t('raise_official'));}
   /* sources grouped by independent origin */
@@ -509,7 +512,7 @@ function detail(p){
      <div class="happened"><div class="m"><b style="color:var(--ink)">${esc(lt.outlet)}</b> ${dots(tier)} <span>${t('rel_'+tier)}</span> · ${fmt(lt.at)}</div>
        <div class="t">${esc(lt.headline||lt.orig)}</div><div class="o"><b>${t('original')}:</b> ${esc(lt.orig)}</div><a class="lnk" href="${esc(lt.url)}" target="_blank" rel="noopener">${t('open')} ${ico('ext')}</a></div></div>
    <div class="sec"><h3>${t('s_why',{n:p.score})} <span class="by">${t('by_rule')}</span></h3><p class="lead">${t('s_why_l')}</p>${rows}
-     <div class="total"><span>${t('total')}</span><span>${p.score} / 100</span></div>
+     <div class="total"><span>${t('total')}</span><span>${sumRows} / 100</span></div>${p.closed&&sumRows!==p.score?`<div class="total adj"><span>${t('adjusted')}</span><span>${p.score} / 100</span></div>`:''}
      ${p.closed?`<div class="note">${t('closed_note',{s:p.score})}</div>`:''}
      ${raise.length?`<div class="raise"><b>${t('raise_h')}</b><ul>${raise.map(r=>`<li>${r}</li>`).join('')}</ul></div>`:''}</div>
    <div class="sec"><h3>${t('s_who')} <span class="by">${t('by_source')}</span></h3><p class="lead">${t('s_who_l')}</p>${cards}</div>
@@ -534,11 +537,12 @@ function render(keepScroll){
   document.body.classList.toggle('open',!!S.openMobile&&!!S.sel);
 }
 function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2200);}
+const cap=x=>x.charAt(0).toUpperCase()+x.slice(1);
 function helpModal(){
   document.getElementById('mbox').innerHTML=`<button class="x" id="mx" aria-label="close">${ico('x')}</button><h2>${t('m_h')}</h2><div style="color:var(--muted);font-size:13px">${t('m_sub')}</div>
    <div class="hgrid"><div class="hbox wide"><h4>${t('m_score_h')}</h4>${meter(39,false)}<p>${t('m_score_p')}</p><p>${t('m_score_p2')}</p></div>
-   <div class="hbox"><h4>${t('m_ev_h')}</h4><p>${evBadge('CONFIRMED')} ${t('m_ev_c').replace(/^[^:]+:/,'')}</p><p>${evBadge('REPORTED')} ${t('m_ev_r').replace(/^[^:]+:/,'')}</p><p>${evBadge('RUMOR')} ${t('m_ev_u').replace(/^[^:]+:/,'')}</p></div>
-   <div class="hbox"><h4>${t('m_rel_h')}</h4><p>${dots('A')} ${t('rel_A')}</p><p>${dots('B')} ${t('rel_B')}</p><p>${dots('C')} ${t('rel_C')}</p><p>${dots('D')} ${t('rel_D')}</p></div>
+   <div class="hbox"><h4>${t('m_ev_h')}</h4><div class="mrow">${evBadge('CONFIRMED')}<span class="txt">${cap(t('m_ev_c').replace(/^[^:]+:\s*/,''))}</span></div><div class="mrow">${evBadge('REPORTED')}<span class="txt">${cap(t('m_ev_r').replace(/^[^:]+:\s*/,''))}</span></div><div class="mrow">${evBadge('RUMOR')}<span class="txt">${cap(t('m_ev_u').replace(/^[^:]+:\s*/,''))}</span></div></div>
+   <div class="hbox"><h4>${t('m_rel_h')}</h4>${['A','B','C','D'].map(k=>`<div class="mrow">${dots(k)}<span class="txt">${t('rel_'+k)}</span></div>`).join('')}</div>
    <div class="hbox"><h4>${t('m_ind_h')}</h4><p>${t('m_ind_p')}</p></div><div class="hbox"><h4>${t('m_lab_h')}</h4><p>${t('m_lab_p')}</p></div>
    <div class="hbox wide"><h4>${t('m_miss_h')}</h4><p>${t('m_miss_p')}</p></div></div>`;
   document.getElementById('modal').classList.add('show');
