@@ -23,6 +23,10 @@
 .brit-room .tr3-count{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .brit-room .tr3-count button{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;text-decoration:underline;text-underline-offset:3px}
 .brit-room .tr3-section{margin-bottom:38px}
+.brit-room .tr3-main .brit-ra-feed{align-items:start}
+.brit-room .tr3-arr{display:inline-block;width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2;vertical-align:-1px}
+[dir=rtl] .brit-room .tr3-arr.flip{transform:scaleX(-1)}
+.brit-room .brit-ra-who .orig{margin-top:5px;color:var(--gold-soft);font:12px/1 var(--body)}
 .brit-room .tr3-section .brit-ct-flag.mono{width:auto;padding:0 6px;min-width:26px}
 
 /* card = the Release-alert card (brit-ra-alert) + a "story" block */
@@ -255,7 +259,7 @@
      <button id="langBtn">HE / EN</button><span>TLV 14:00</span>
     </div>
    </header>
-   <main class="brit-canvas" id="canvas"></main>
+   <main class="brit-canvas tr3-main" id="canvas"></main>
   </div>
  </div>
  <div class="tr3-scrim" id="scrim"></div>
@@ -360,6 +364,7 @@ const ago = (ts) => { const h = (NOW - ts) / H; return h < 48 ? t('ago_h', { n: 
 const months = (d) => { if (!d) return null; const [dd, mm, yy] = d.split('/').map(Number); return (yy - 2026) * 12 + (mm - 11) + (dd >= 1 ? 0 : 0); };
 const contractNote = (p) => { const m = months(p.contract); if (m == null) return null; return m <= 0 ? t('ends_soon') : m <= 6 ? t('ends_in', { n: m }) : null; };
 const valueNum = (v) => { if (!v || v === '-') return 0; const n = parseFloat(v.replace(/[€,]/g, '')); return /M/.test(v) ? n * 1e6 : /K/.test(v) ? n * 1e3 : n; };
+const ARR = { ext: '<svg class="tr3-arr" viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>', fwd: '<svg class="tr3-arr flip" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>', down: '<svg class="tr3-arr" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg>' };
 const ico = {
  ok: '<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>', warn: '<svg viewBox="0 0 24 24"><path d="M12 8v5M12 17h.01M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
  ext: '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
@@ -384,7 +389,7 @@ function filtered() {
   if (S.country !== 'all') a = a.filter((p) => p.country === S.country);
   if (S.q) { const q = S.q.toLowerCase(); a = a.filter((p) => [p.name, p.full, p.club, p.league, p.country, cn(p.country), ...(p.written || []).map((w) => w[0])].join(' ').toLowerCase().includes(q)); }
   const by = { new: (x, y) => y.last - x.last, contract: (x, y) => (months(x.contract) ?? 999) - (months(y.contract) ?? 999), value: (x, y) => valueNum(y.value) - valueNum(x.value) };
-  return a.sort(by[S.sort]);
+  return a.sort((x, y) => (x.sit === 'moved') - (y.sit === 'moved') || by[S.sort](x, y));
 }
 
 /* ---------------- page ---------------- */
@@ -448,7 +453,7 @@ function card(p) {
       <span class="brit-ra-badge idb">${t('check_badge')}</span>
       <div class="brit-ra-top" onclick="openFile('${p.id}')">${bg ? `<img class="brit-ra-flagbg" src="${bg}" alt="">` : '<div class="brit-ra-flagbg-ph"></div>'}
         <div class="brit-ra-portrait"><div class="tr3-ph">?</div></div>
-        <div class="brit-ra-who"><div class="nm">${esc(p.written[0][0])}</div>
+        <div class="brit-ra-who"><div class="nm">${esc(p.latin || p.written[0][0])}</div>${p.latin ? `<div class="orig">${esc(p.written[0][0])}</div>` : ''}
           <div class="meta"><span class="pos">${t('s_' + p.sit)}</span><span class="age">${t('possible', { n: p.cands.length })}</span></div>
           <div class="tr3-clubrow"><img src="${p.crest}" alt="" onerror="this.remove()"><b>${esc(p.club)}</b>· ${esc(p.league)}</div></div></div>
       ${story}
@@ -468,20 +473,20 @@ function card(p) {
     <div class="tr3-facts"><div><label>${t('value')}</label><b>${esc(p.value || '-')}</b></div>
       <div><label>${t('contract')}</label><b class="${note ? 'soon' : ''}">${esc(p.contract && p.contract !== '-' ? p.contract : t('no_contract'))}</b>${note ? `<small class="soon">${note}</small>` : p.loan ? `<small>${t('on_loan', { c: esc(p.loan) })}</small>` : ''}</div></div>
     <div class="brit-ra-value"><div class="tr3-idline ${p.id_status === 'probable' ? 'prob' : ''}" style="border:0;padding:0">${p.id_status === 'probable' ? ico.warn + t('id_prob') : ico.ok + t('id_ok')}</div>
-      <div class="brit-ra-acts">${p.sit === 'moved' ? '' : sl ? `<span class="saved">${ico.save}${t('saved')}</span>` : `<button class="save" onclick="addShort('${p.id}')">${ico.save}${t('shortlist')}</button>`}<button class="open" onclick="openFile('${p.id}')">${t('open_file')} ${S.lang === 'he' ? '←' : '→'}</button></div></div>
+      <div class="brit-ra-acts">${p.sit === 'moved' ? '' : sl ? `<span class="saved">${ico.save}${t('saved')}</span>` : `<button class="save" onclick="addShort('${p.id}')">${ico.save}${t('shortlist')}</button>`}<button class="open" onclick="openFile('${p.id}')">${t('open_file')} ${ARR.fwd}</button></div></div>
   </article>`;
 }
 function cand(p, c, i) {
   return `<div class="tr3-cand ${i === 0 ? 'best' : ''}">${c.photo ? `<img class="im" src="${c.photo}" alt="">` : `<span class="ini">${esc(c.name[0])}</span>`}
     <div><div class="n">${esc(c.name)}</div><div class="d">${esc(c.pos)} · ${t('f_age')} ${c.age} · ${esc(c.club)}${c.value && c.value !== '-' ? ' · ' + esc(c.value) : ''}</div><div class="w">${esc(c.why)}</div>
-      <a href="${c.tm}" target="_blank" rel="noopener">${t('tm')} ↗</a></div>
+      <a href="${c.tm}" target="_blank" rel="noopener">${t('tm')} ${ARR.ext}</a></div>
     <button onclick="pick('${p.id}',${i})">${i === 0 ? t('best') + ' · ' : ''}${t('this_one')}</button></div>`;
 }
 function ledger(list) {
   return `<div class="tr3-ledger"><div class="tr3-lrow tr3-lhead"><div>${t('l_player')}</div><div>${t('l_sit')}</div><div>${t('l_club')}</div><div>${t('l_age')}</div><div>${t('l_value')}</div><div>${t('l_contract')}</div><div>${t('l_latest')}</div><div>${t('l_id')}</div></div>
    ${list.map((p) => { const lt = p.sources.slice().sort((a, b) => b.at - a.at)[0], chk = p.id_status === 'check', note = contractNote(p);
      return `<div class="tr3-lrow" onclick="openFile('${p.id}')">
-      <div class="tr3-lp">${!chk && p.photo ? `<img src="${p.photo}" alt="">` : `<span class="ini">${chk ? '?' : esc(p.name[0])}</span>`}<div style="min-width:0"><b>${esc(chk ? p.written[0][0] : p.name)}</b><small>${chk ? t('possible', { n: p.cands.length }) : esc((p.nat || []).map(cn).join(' / '))}</small></div></div>
+      <div class="tr3-lp">${!chk && p.photo ? `<img src="${p.photo}" alt="">` : `<span class="ini">${chk ? '?' : esc(p.name[0])}</span>`}<div style="min-width:0"><b>${esc(chk ? (p.latin || p.written[0][0]) : p.name)}</b><small>${chk ? t('possible', { n: p.cands.length }) : esc((p.nat || []).map(cn).join(' / '))}</small></div></div>
       <div><span class="tr3-pill s-${SIT[p.sit]}">${t('s_' + p.sit)}</span></div>
       <div>${esc(p.club)}<span class="tr3-sub">${esc(p.league)} · ${esc(cn(p.country))}</span></div>
       <div>${chk ? '-' : esc(p.pos)}<span class="tr3-sub">${chk ? '' : t('f_age') + ' ' + p.age}</span></div>
@@ -517,7 +522,7 @@ function renderFile() {
     <div class="tr3-fbar"><span class="crumb">${t('nav_radar')} / ${t('file')}</span><button onclick="closeFile()">✕ ${t('back')}</button></div>
     <div class="tr3-fwho">${chk ? '<div class="pt tr3-ph" style="width:112px;height:140px">?</div>' : p.photo ? `<img class="pt" src="${p.photo}" alt="">` : `<div class="pt tr3-ph" style="width:112px;height:140px">${esc(p.name[0])}</div>`}
       <div style="min-width:0"><span class="tr3-pill tag s-${SIT[p.sit]}">${t('s_' + p.sit)}</span>${chk ? ` <span class="tr3-pill tag idc">${t('check_badge')}</span>` : ''}
-        <h2>${esc(chk ? p.written[0][0] : p.name)}</h2>${!chk && p.full && p.full !== p.name ? `<div class="full">${esc(p.full)}</div>` : ''}
+        <h2>${esc(chk ? (p.latin || p.written[0][0]) : p.name)}</h2>${!chk && p.full && p.full !== p.name ? `<div class="full">${esc(p.full)}</div>` : ''}
         <div class="wr">${t('written')} ${w}</div></div></div>
     ${chk ? '' : `<div class="tr3-facts6">
       <div><label>${t('f_club')}</label><b><img src="${p.crest}" alt="" onerror="this.remove()">${esc(p.club)}</b>${p.loan ? `<small>${t('on_loan', { c: esc(p.loan) })}</small>` : ''}</div>
@@ -534,7 +539,7 @@ function renderFile() {
       : `<div class="tr3-fsec"><h3>${t('how_h')}</h3><p class="lead">${t('how_l')}</p><ul class="tr3-checks">${checks}</ul>${p.picked ? '' : `<button class="tr3-wrong" onclick="toast('${esc(t('wrong'))}')">${t('wrong')}</button>`}</div>`}
     <div class="tr3-fsec"><h3>${t('tl_h')} <small>${srcs.length === 1 ? t('one_src') : t('n_src', { n: srcs.length })}</small></h3><p class="lead">${t('tl_l')}</p>
      <div class="tr3-tl">${p.events.slice().sort((a, b) => a.at - b.at).map((e) => `<div class="tr3-ev s-${SIT[e.sit] || 'gold'}"><div class="d">${fmt(e.at)} · ${t('s_' + e.sit)}</div><div class="t">${esc(e.title)}</div>
-       <div class="s">${e.src.map((i) => { const so = p.sources[i]; return `<button onclick="jump('${p.id}-${srcs.indexOf(so)}')">${esc(so.outlet)} ↓</button>`; }).join('')}</div></div>`).join('')}</div>
+       <div class="s">${e.src.map((i) => { const so = p.sources[i]; return `<button onclick="jump('${p.id}-${srcs.indexOf(so)}')">${esc(so.outlet)} ${ARR.down}</button>`; }).join('')}</div></div>`).join('')}</div>
      ${p.sit === 'moved' ? `<p class="lead" style="color:var(--red)">${t('moved_note')}</p>` : ''}</div>
     <div class="tr3-fsec"><h3>${t('src_h')}</h3><p class="lead">${t('src_l')}</p>
      ${srcs.map((s, i) => `<article class="tr3-src" id="src-${p.id}-${i}"><div class="tr3-src-h"><span class="brit-ct-flag mono">${CC[s.country] || '··'}</span><span><span class="o">${esc(s.outlet)}</span><br><span class="m">${esc(cn(s.country))} · ${esc(s.lang)} · ${fmt(s.at)}</span></span><span class="rel">${t('rel_' + s.tier)} ${relBars(s.tier)}</span></div>
@@ -549,7 +554,7 @@ function jump(id) { const el = document.getElementById('src-' + id); if (!el) re
 function openFiltered() {
   const m = document.getElementById('modal');
   m.innerHTML = `<div class="tr3-mbox"><header><div><h3>${t('m_h')}</h3><p>${t('m_p')}</p></div><button onclick="document.getElementById('modal').classList.remove('open')">✕</button></header>
-   ${D.filtered.map((f) => `<div class="tr3-frow"><b>${esc(f.name)}</b><span class="tr3-pill s-black">${t('r_' + f.why)}</span><p>${esc(f.note)}</p>${f.src[0] ? `<a href="${f.src[0].url}" target="_blank" rel="noopener">${esc(f.src[0].outlet)} · ${t('open_article')} ↗</a>` : ''}</div>`).join('')}</div>`;
+   ${D.filtered.map((f) => `<div class="tr3-frow"><b>${esc(f.name)}</b><span class="tr3-pill s-black">${t('r_' + f.why)}</span><p>${esc(f.note)}</p>${f.src[0] ? `<a href="${f.src[0].url}" target="_blank" rel="noopener">${esc(f.src[0].outlet)} · ${t('open_article')} ${ARR.ext}</a>` : ''}</div>`).join('')}</div>`;
   m.classList.add('open');
 }
 let tt; function toast(s) { const el = document.getElementById('toast'); el.textContent = s; el.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 2400); }
