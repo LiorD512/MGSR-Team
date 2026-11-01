@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
-import { callRequestsCreate } from '@/lib/callables';
+import { callRequestsCreate, callRequestsUpdate } from '@/lib/callables';
 import { appConfig } from '@/lib/appConfig';
 
 const POSITIONS = appConfig.positions.filterList;
@@ -44,16 +44,37 @@ const DEFAULT_CFG: PositionConfig = {
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
+export interface MenEditRequest {
+  id: string;
+  clubTmProfile?: string;
+  clubName?: string;
+  clubLogo?: string;
+  clubCountry?: string;
+  clubCountryFlag?: string;
+  position?: string;
+  notes?: string;
+  minAge?: number;
+  maxAge?: number;
+  ageDoesntMatter?: boolean;
+  salaryRange?: string;
+  transferFee?: string;
+  dominateFoot?: string;
+  euOnly?: boolean;
+}
+
 interface MenAddRequestDrawerProps {
   open: boolean;
   onClose: () => void;
   onSaved?: () => void;
+  /** When set, the drawer runs the same flow pre-loaded with this request (single position, saves via update). */
+  editRequest?: MenEditRequest | null;
 }
 
-export default function MenAddRequestDrawer({ open, onClose, onSaved }: MenAddRequestDrawerProps) {
+export default function MenAddRequestDrawer({ open, onClose, onSaved, editRequest = null }: MenAddRequestDrawerProps) {
   const { t, isRtl, lang } = useLanguage();
   const { user } = useAuth();
   const isHebrew = lang === 'he';
+  const isEditing = !!editRequest;
 
   const [step, setStep] = useState<Step>(1);
   const [clubQuery, setClubQuery] = useState('');
@@ -78,7 +99,40 @@ export default function MenAddRequestDrawer({ open, onClose, onSaved }: MenAddRe
     setSaving(false); setProgress({ current: 0, total: 0 }); setCreatedCount(0); setError(null);
   }, []);
 
-  useEffect(() => { if (open) resetAll(); }, [open, resetAll]);
+  useEffect(() => {
+    if (!open) return;
+    resetAll();
+    if (editRequest) {
+      const pos = editRequest.position || '';
+      setSelectedClub({
+        clubName: editRequest.clubName || '',
+        clubLogo: editRequest.clubLogo || '',
+        clubCountry: editRequest.clubCountry || '',
+        clubCountryFlag: editRequest.clubCountryFlag || '',
+        clubTmProfile: editRequest.clubTmProfile || '',
+      });
+      if (pos) {
+        setSelectedPositions([pos]);
+        setActiveTab(pos);
+        setPositionConfigs({
+          [pos]: {
+            ageDoesntMatter: editRequest.ageDoesntMatter !== false,
+            minAge: editRequest.minAge ? String(editRequest.minAge) : '',
+            maxAge: editRequest.maxAge ? String(editRequest.maxAge) : '',
+            selectedFoot: editRequest.dominateFoot || 'any',
+            selectedSalary: editRequest.salaryRange || null,
+            selectedFee: editRequest.transferFee || null,
+            euOnly: editRequest.euOnly === true,
+            notes: editRequest.notes || '',
+          },
+        });
+        setStep(4);
+      } else {
+        setStep(2);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editRequest?.id, resetAll]);
 
   // Debounced club search.
   useEffect(() => {
@@ -101,6 +155,15 @@ export default function MenAddRequestDrawer({ open, onClose, onSaved }: MenAddRe
   }, [clubQuery, open]);
 
   const togglePosition = (pos: string) => {
+    if (isEditing) {
+      // Edit = one request: switch position, carrying over the current config.
+      const prevPos = selectedPositions[0];
+      const cfg = (prevPos && positionConfigs[prevPos]) || { ...DEFAULT_CFG };
+      setSelectedPositions([pos]);
+      setPositionConfigs({ [pos]: cfg });
+      setActiveTab(pos);
+      return;
+    }
     setSelectedPositions((prev) => {
       if (prev.includes(pos)) {
         const next = prev.filter((p) => p !== pos);
@@ -146,6 +209,31 @@ export default function MenAddRequestDrawer({ open, onClose, onSaved }: MenAddRe
     setSaving(true);
     setError(null);
     try {
+      if (isEditing && editRequest) {
+        const pos = selectedPositions[0];
+        const cfg = positionConfigs[pos] || DEFAULT_CFG;
+        await callRequestsUpdate({
+          platform: 'men',
+          requestId: editRequest.id,
+          clubTmProfile: selectedClub.clubTmProfile || '',
+          clubName: selectedClub.clubName || '',
+          clubLogo: selectedClub.clubLogo || '',
+          clubCountry: selectedClub.clubCountry || '',
+          clubCountryFlag: selectedClub.clubCountryFlag || '',
+          position: pos,
+          notes: cfg.notes.trim() || '',
+          minAge: cfg.minAge ? parseInt(cfg.minAge, 10) : 0,
+          maxAge: cfg.maxAge ? parseInt(cfg.maxAge, 10) : 0,
+          ageDoesntMatter: cfg.ageDoesntMatter,
+          salaryRange: cfg.selectedSalary ?? undefined,
+          transferFee: cfg.selectedFee ?? undefined,
+          dominateFoot: cfg.selectedFoot === 'any' ? '' : cfg.selectedFoot,
+          euOnly: cfg.euOnly || false,
+        });
+        onSaved?.();
+        onClose();
+        return;
+      }
       const account = user ? await getCurrentAccountForShortlist(user) : null;
       const clubFields = {
         platform: 'men',
@@ -294,11 +382,11 @@ export default function MenAddRequestDrawer({ open, onClose, onSaved }: MenAddRe
   return (
     <>
       <div className={`brit-scrim${open ? ' open' : ''}`} onClick={onClose} aria-hidden={!open} />
-      <aside className={`brit-drawer brit-add-drawer${open ? ' open' : ''}`} dir={isRtl ? 'rtl' : 'ltr'} aria-label={t('requests_add_title')}>
+      <aside className={`brit-drawer brit-add-drawer${open ? ' open' : ''}`} dir={isRtl ? 'rtl' : 'ltr'} aria-label={isEditing ? t('requests_edit_title') : t('requests_add_title')}>
         <div className="brit-add-head">
           <button className="close" onClick={onClose} aria-label={t('room_close')}>×</button>
           <div className="eyebrow">{t('add_request_room_eyebrow')}</div>
-          <h2>{t('add_request_room_title')}</h2>
+          <h2>{isEditing ? t('requests_edit_title') : t('add_request_room_title')}</h2>
           <div className="brit-add-prog">
             <i className={step >= 1 ? 'on' : ''} />
             <i className={step >= 2 ? 'on' : ''} />

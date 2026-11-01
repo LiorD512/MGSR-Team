@@ -5,8 +5,8 @@
  *
  * Self-contained full-bleed light layout (shared BritRail + .brit-room), men only.
  * Owns its Firestore subscriptions and reproduces the real matching / actions.
- * Women & youth keep the standard requests screen. Add/Edit reuse the existing
- * platform-aware AddRequestSheet; Delete uses callRequestsDelete; Share posts to
+ * Women & youth keep the standard requests screen. Add/Edit share the
+ * MenAddRequestDrawer (pre-loaded); Delete uses callRequestsDelete; Share posts to
  * /api/shared-requests/create like the original.
  */
 
@@ -26,7 +26,6 @@ import { matchRequestToPlayers, type RosterPlayer, type ClubRequest } from '@/li
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
-import AddRequestSheet from '@/app/requests/AddRequestSheet';
 import MenAddRequestDrawer from '@/components/MenAddRequestDrawer';
 
 interface Request {
@@ -122,7 +121,6 @@ export default function MenRequests() {
   const [positionFilter, setPositionFilter] = useState<string>(cached?.positionFilter ?? 'all');
   const [countryFilter, setCountryFilter] = useState<string>(cached?.countryFilter ?? 'all');
 
-  const [showAddSheet, setShowAddSheet] = useState(false);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Request | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Request | null>(null);
@@ -510,7 +508,7 @@ export default function MenRequests() {
                             {isRtl ? 'נפתח ע"י' : 'Opened by'} <b>{agentName(r)}</b>
                           </span>
                           <span className="ops">
-                            <button title={t('requests_edit')} onClick={() => { setEditingRequest(r); setShowAddSheet(true); }}>✎</button>
+                            <button title={t('requests_edit')} onClick={() => setEditingRequest(r)}>✎</button>
                             <button className="del" title={t('requests_delete')} onClick={() => setDeleteConfirm(r)}>🗑</button>
                           </span>
                         </div>
@@ -526,14 +524,10 @@ export default function MenRequests() {
         </div>
       </div>
 
-      {/* Add: guided drawer (bulk). Edit: existing platform-aware wizard. */}
-      <MenAddRequestDrawer open={showAddDrawer} onClose={() => setShowAddDrawer(false)} />
-      <AddRequestSheet
-        open={showAddSheet}
-        onClose={() => { setShowAddSheet(false); setEditingRequest(null); }}
-        onSaved={() => setEditingRequest(null)}
-        isWomen={false}
-        isYouth={false}
+      {/* Add / Edit: same guided drawer (edit is pre-loaded with the request) */}
+      <MenAddRequestDrawer
+        open={showAddDrawer || !!editingRequest}
+        onClose={() => { setShowAddDrawer(false); setEditingRequest(null); }}
         editRequest={editingRequest}
       />
 
