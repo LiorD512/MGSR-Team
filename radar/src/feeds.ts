@@ -29,7 +29,8 @@ export function parseFeed(xml: string): FeedItem[] {
 export async function discoverFeeds(http: Http, host: string): Promise<string[]> {
   const found: string[] = [];
   try {
-    const home = await http.get(`https://${host}/`);
+    // a homepage refusal (403) must not put the whole host into back-off: some sites block the homepage for bots but serve /feed
+    const home = await http.get(`https://${host}/`, { trackBlocks: false });
     for (const lm of home.text.matchAll(/<link[^>]+type=["']application\/(?:rss|atom)\+xml["'][^>]*>/gi)) {
       const h = lm[0].match(/href=["']([^"']+)["']/i);
       if (h) found.push(new URL(h[1], `https://${host}/`).href);

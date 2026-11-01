@@ -1,9 +1,10 @@
-name: Transfer Radar collect-only (optional, free)
+name: Transfer Radar collect-only (free, no AI)
 
 # OPTIONAL. Why it exists: most outlet feeds only keep the last 1-22 hours of articles. If the radar only reads them every 3 days
 # it misses most of what they publish. This job ONLY collects headlines into the database (no AI, no money). The 3-day pipeline
 # then analyses everything that accumulated.
-# OFF by default: runs only when the repository variable RADAR_COLLECT_ENABLED is exactly 'true' (and the file is on main).
+# ON by default once this file is on the default branch (GitHub only schedules workflows from main). It costs nothing (no AI).
+# Kill switch: set the repository variable RADAR_COLLECT_DISABLED to 'true'.
 on:
   schedule:
     - cron: '7 */3 * * *'   # every 3 hours at minute 07 (UTC); never overlaps the 01:30 UTC main run
@@ -18,7 +19,7 @@ concurrency:
 
 jobs:
   collect:
-    if: github.event_name == 'workflow_dispatch' || vars.RADAR_COLLECT_ENABLED == 'true'
+    if: github.event_name == 'workflow_dispatch' || vars.RADAR_COLLECT_DISABLED != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:

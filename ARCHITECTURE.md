@@ -514,6 +514,9 @@ Separate Gradle module for HTML scraping via JSoup:
 | Match Recalc (6×) | Players*/ClubRequests*/PlayerDocuments* | onWrite | Matching-field-aware recalculation on every relevant write (no cooldown skip) |
 | `onGpsMatchDataWritten` | GpsMatchData | onWrite | Recompute GPS performance insights (3s debounce) |
 
+### Coverage (seed registry in `radar/src/sources.ts`)
+~46 direct outlets + ~30 native-language news searches. Direct: Romania, Croatia, Cyprus, Serbia, Greece, Poland, Bulgaria, Turkey, Portugal (3), Lithuania, Latvia, Estonia, plus Bosnia, Montenegro, Kosovo, Hungary, Czech Republic (2), Slovakia, Belgium (2), Netherlands (2), England (official EFL feed), France, South Africa, Nigeria. News search adds France (Ligue 1 / Ligue 2 / National), Portugal (Liga Portugal / Liga Portugal 2), Belgium (Pro League / Challenger), England (Championship / League One / League Two), South Africa and the earlier country list. Tested and excluded: nemzetisport.hu (robots.txt forbids its feed), footballghana.com (blocks/redirects), sport24.gr (feed returns 403). The radar is outlet/country based; the league field is not populated until the football-database link exists.
+
 ### Scheduled Functions
 
 | Function | Schedule | Purpose |
@@ -661,7 +664,7 @@ Android app calls Render **directly** for performance-critical endpoints:
 | `daily-releases-refresh.yml` | Manual only (disabled) | Legacy workflow kept for reference; production releases refresh now runs via Cloud Run Job + Cloud Scheduler (`releases-refresh-job`, `releases-refresh-daily`) |
 | `test-tm-scraping.yml` | Manual only | Test Transfermarkt fetch logic |
 | `radar-pipeline.yml` | **Every 3rd day, early morning** (cron daily 01:30 UTC = 03:30 Israel in winter; a `gate` job lets only every 3rd calendar day through) **only if repo variable `RADAR_ENABLED=true`** and only once the file is on `main`; `workflow_dispatch`; or push to `feat/transfer-radar` with `[radar-run]` in the commit message | Transfer Radar: collect -> gate -> AI -> resolve -> score -> alerts, then cleanup (see §21) |
-| `radar-collect.yml` | Every 3 hours **only if repo variable `RADAR_COLLECT_ENABLED=true`** (off by default) | Optional, free: collects headlines only (no AI) so articles do not fall off short outlet feeds between the 3-day runs |
+| `radar-collect.yml` | Every 3 hours; **ON by default once the file is on `main`** (kill switch: repo variable `RADAR_COLLECT_DISABLED=true`) | Free, no AI: collects headlines + original article URLs into the database so articles do not fall off the outlets' short feeds (1-22 h deep) between the 3-day AI runs |
 | `radar-sweep.yml` | Manual only | Cleanup by hand (it normally runs as the last step of the 3-day pipeline) |
 **Pattern:** All workflows use GitHub API for file updates (not git push). Secrets include `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
 
@@ -1352,11 +1355,11 @@ All parsers handle: `€300k`, `€1.50m`, `€300K`, `€1.50M` (case-insensiti
 | LLM | Gemini (`gemini-2.5-flash-lite`) via REST. Free-first: `RADAR_GEMINI_FREE_KEY` (optional, free tier) then `RADAR_GEMINI_KEY` (existing paid key) under the dollar cap |
 
 ### Secrets / env
-GitHub Actions secrets: `TURSO_URL`, `TURSO_TOKEN`, `RADAR_GEMINI_KEY`, optional `RADAR_GEMINI_FREE_KEY`. Repo variable `RADAR_ENABLED=true` turns on the 3-day scheduled run (off by default = nothing spends money). Optional `RADAR_COLLECT_ENABLED=true` turns on the free 3-hourly collect-only job.
+GitHub Actions secrets: `TURSO_URL`, `TURSO_TOKEN`, `RADAR_GEMINI_KEY`, optional `RADAR_GEMINI_FREE_KEY`. Repo variable `RADAR_ENABLED=true` turns on the 3-day scheduled run (off by default = nothing spends money). The free 3-hourly collect-only job needs no variable (kill switch `RADAR_COLLECT_DISABLED=true`).
 Vercel env: `TURSO_URL`, `TURSO_TOKEN` (read/write), optional `RADAR_ADMIN_EMAILS` (comma-separated; if empty every signed-in agent can manage sources, like the rest of the app), optional `RADAR_ALLOWED_EMAILS` (private-testing lock: while set, ONLY these emails can use Transfer Radar; others get a 403 "private testing" screen; remove it to open the radar to all agents).
 
 ### Pipeline stages (`radar/src/`)
-`collect` (RSS/Atom + native-language news-search feeds; robots.txt, 5 s/host, conditional GET, 403/429 back-off; **30-day intake window**, publication-date integrity, URL/title dedupe, football gate) -> `enrich` (reads the article page only for strong leads whose headline does not name the player) -> `analyze` (batches of 8, strict prompt `v3`, JSON-schema output; rules in `rules.ts` decide - the AI can propose but never override; evidence quote must appear in the text) -> `resolve` (entity resolution: transliteration keys, club/surname matching, review queue) -> `correlate` (independent-origin clustering) -> `score` (`scoring.ts`, pure deterministic engine, weights in DB `config`) -> alerts. `sweep` (runs at the end of every pipeline run): decay, signal expiry (R22), archive after 45 days, retention (non-final reports 14 d, excerpts 30 d, articles 31 d) to stay inside the free 500 MB.
+`collect` (RSS/Atom + native-language news-search feeds; robots.txt, 5 s/host, conditional GET, 403/429 back-off; **30-day intake window**, publication-date integrity, URL/title dedupe, football gate) -> `enrich` (reads the article page only for strong leads whose headline does not name the player) -> `analyze` (batches of 8, strict prompt `v3`, JSON-schema output; rules in `rules.ts` decide - the AI can propose but never override; evidence quote must appear in the text) -> `resolve` (entity resolution: transliteration keys, club/surname matching, review queue) -> `correlate` (independent-origin clustering) -> `score` (`scoring.ts`, pure deterministic engine, weights in DB `config`) -> alerts. `sweep` (runs at the end of every pipeline run): decay, signal expiry (R22), archive after 45 days, retention to stay inside the free storage: non-final reports 14 d, excerpts 30 d, **article archive (headline + original URL + outlet + date, no text) 180 d** with a 300k-row guard (`config.retention`). Direct outlets store the publisher URL; items found through news search store Google's redirect link (it opens the real article).
 
 CLI: `cd radar && npx tsx src/cli.ts <migrate|seed|run [--no-analyze]|score|sweep|import-poc|status>` (uses local `radar-local.db` when `TURSO_URL` is unset).
 

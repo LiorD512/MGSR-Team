@@ -20,10 +20,18 @@ export async function sweep(db: Db, cfg: RadarConfig) {
 
   // retention (free-storage defaults, spec R19.3)
   out.deletedRawBodies = (await run(db, 'DELETE FROM article_bodies WHERE expires_at < ?', [t])).rowsAffected;
+  const R = cfg.retention;
   out.deletedNonFinalReports = (await run(db, `DELETE FROM reports WHERE final = 0 AND published_at < ? AND signals NOT LIKE '%TRANSFER_COMPLETED%' AND signals NOT LIKE '%RETURNED_TO_SQUAD%'
-      AND signals NOT LIKE '%RENEWED_CONTRACT%' AND signals NOT LIKE '%DENIED_BY_CLUB%' AND signals NOT LIKE '%INJURED%'`, [t - 14 * DAY])).rowsAffected;
-  out.clearedExcerpts = (await run(db, 'UPDATE articles SET excerpt = NULL WHERE excerpt IS NOT NULL AND published_at < ?', [t - 30 * DAY])).rowsAffected;
-  out.deletedArticles = (await run(db, `DELETE FROM articles WHERE published_at < ? AND id NOT IN (SELECT article_id FROM reports WHERE final = 1)`, [t - (cfg.pipeline.intakeDays + 1) * DAY])).rowsAffected;
+      AND signals NOT LIKE '%RENEWED_CONTRACT%' AND signals NOT LIKE '%DENIED_BY_CLUB%' AND signals NOT LIKE '%INJURED%'`, [t - R.nonFinalReportDays * DAY])).rowsAffected;
+  out.clearedExcerpts = (await run(db, 'UPDATE articles SET excerpt = NULL WHERE excerpt IS NOT NULL AND published_at < ?', [t - R.excerptDays * DAY])).rowsAffected;
+  // The article archive (headline + original URL + outlet + date, NO text) is kept R.articleDays so articles can be re-analysed later.
+  out.deletedArticles = (await run(db, `DELETE FROM articles WHERE published_at < ? AND id NOT IN (SELECT article_id FROM reports WHERE final = 1)`, [t - Math.max(R.articleDays, cfg.pipeline.intakeDays + 1) * DAY])).rowsAffected;
+  // storage guard for the free database: if the archive grows past maxArticleRows, drop the oldest rows (never ones backing a scored report)
+  const total = Number((await all<{ n: number }>(db, 'SELECT COUNT(*) AS n FROM articles'))[0]?.n ?? 0);
+  out.articleRows = total;
+  if (total > R.maxArticleRows) {
+    out.trimmedOldest = (await run(db, `DELETE FROM articles WHERE id IN (SELECT id FROM articles WHERE id NOT IN (SELECT article_id FROM reports WHERE final = 1) ORDER BY published_at ASC LIMIT ?)`, [total - R.maxArticleRows])).rowsAffected;
+  }
   out.deletedAlerts = (await run(db, 'DELETE FROM alerts WHERE created_at < ?', [t - 90 * DAY])).rowsAffected;
   out.deletedScoreHistory = (await run(db, 'DELETE FROM score_history WHERE at < ?', [t - 365 * DAY])).rowsAffected;
   out.deletedPlayersWithoutData = (await run(db, `DELETE FROM players WHERE id NOT IN (SELECT DISTINCT player_id FROM reports WHERE player_id IS NOT NULL) AND created_at < ?`, [t - 7 * DAY])).rowsAffected;

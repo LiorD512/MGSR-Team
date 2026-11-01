@@ -20,6 +20,7 @@ export interface RadarConfig {
     enabled: boolean; monthlyCapUsd: number; ceilingUsd: number; dailyCapDivisor: number; warnAt: number;
     model: string; price: Record<string, { in: number; out: number }>; freeDailyRequests: number; paidMaxRequestsPerRun: number;
   };
+  retention: { articleDays: number; excerptDays: number; nonFinalReportDays: number; maxArticleRows: number };
   http: { perHostDelayMs: number; timeoutMs: number; userAgent: string; concurrency: number };
 }
 
@@ -48,6 +49,8 @@ export const DEFAULT_CONFIG: RadarConfig = {
     freeDailyRequests: 200,
     paidMaxRequestsPerRun: 250,
   },
+  // article rows (headline + URL + outlet + date, no text) are kept 180 days so they can be re-analysed later; excerpts are cleared after 30 days
+  retention: { articleDays: 180, excerptDays: 30, nonFinalReportDays: 14, maxArticleRows: 300000 },
   http: { perHostDelayMs: 5000, timeoutMs: 12000, userAgent: 'Mozilla/5.0 (compatible; BSG-Radar/1.0; +https://github.com/LiorD512/MGSR-Team)', concurrency: 8 },
 };
 
@@ -72,7 +75,7 @@ export async function loadConfig(db: Db): Promise<RadarConfig> {
 }
 
 export async function seedConfig(db: Db, force = false): Promise<void> {
-  for (const key of ['scoring', 'pipeline', 'llm', 'http'] as const) {
+  for (const key of ['scoring', 'pipeline', 'llm', 'retention', 'http'] as const) {
     const exists = await all(db, 'SELECT 1 FROM config WHERE key = ?', [key]);
     if (exists.length && !force) continue;
     await run(db, 'INSERT INTO config (key, version, json, updated_at) VALUES (?,?,?,?) ON CONFLICT(key) DO UPDATE SET json=excluded.json, version=config.version+1, updated_at=excluded.updated_at', [

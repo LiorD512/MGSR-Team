@@ -34,10 +34,29 @@ export const SEED_SITES: SeedSite[] = [
   { host: '15min.lt', name: '15min', country: 'Lithuania', lang: 'lt', tier: 'B', type: 'NATIONAL_MEDIA' },
   { host: 'sportacentrs.com', name: 'Sportacentrs', country: 'Latvia', lang: 'lv', tier: 'C', type: 'LOCAL_PORTAL' },
   { host: 'sport.err.ee', name: 'ERR Sport', country: 'Estonia', lang: 'et', tier: 'B', type: 'NATIONAL_MEDIA' },
+  // ---- added after the coverage review (feeds verified 2026-11-01) ----
+  { host: 'sportsport.ba', name: 'SportSport.ba', country: 'Bosnia and Herzegovina', lang: 'bs', tier: 'C', type: 'LOCAL_PORTAL' },
+  { host: 'vijesti.me', name: 'Vijesti', country: 'Montenegro', lang: 'sr', tier: 'B', type: 'NATIONAL_MEDIA' },
+  { host: 'telegrafi.com', name: 'Telegrafi', country: 'Kosovo', lang: 'sq', tier: 'C', type: 'NATIONAL_MEDIA' },
+  // nemzetisport.hu (feed disallowed by its robots.txt) and footballghana.com (blocks bots / redirects) were tested and are intentionally NOT included
+  { host: 'csakfoci.hu', name: 'Csakfoci', country: 'Hungary', lang: 'hu', tier: 'C', type: 'LOCAL_PORTAL' },
+  { host: 'isport.blesk.cz', name: 'iSport', country: 'Czech Republic', lang: 'cs', tier: 'B', type: 'NATIONAL_MEDIA' },
+  { host: 'sport.cz', name: 'Sport.cz', country: 'Czech Republic', lang: 'cs', tier: 'B', type: 'NATIONAL_MEDIA' },
+  { host: 'sportnet.sme.sk', name: 'Sportnet SME', country: 'Slovakia', lang: 'sk', tier: 'B', type: 'NATIONAL_MEDIA' },
+  { host: 'voetbalkrant.com', name: 'Voetbalkrant', country: 'Belgium', lang: 'nl', tier: 'B', type: 'NATIONAL_MEDIA' },
+  { host: 'walfoot.be', name: 'Walfoot', country: 'Belgium', lang: 'fr', tier: 'B', type: 'NATIONAL_MEDIA' },
+  { host: 'voetbalzone.nl', name: 'Voetbalzone', country: 'Netherlands', lang: 'nl', tier: 'B', type: 'NATIONAL_MEDIA' },
+  { host: 'vi.nl', name: 'Voetbal International', country: 'Netherlands', lang: 'nl', tier: 'B', type: 'NATIONAL_MEDIA' },
+  { host: 'abola.pt', name: 'A Bola', country: 'Portugal', lang: 'pt', tier: 'B', type: 'NATIONAL_MEDIA' },
+  { host: 'record.pt', name: 'Record', country: 'Portugal', lang: 'pt', tier: 'B', type: 'NATIONAL_MEDIA' },
+  { host: 'efl.com', name: 'EFL (official)', country: 'England', lang: 'en', tier: 'A', type: 'LEAGUE_SITE' },
+  { host: 'maxifoot.fr', name: 'Maxifoot', country: 'France', lang: 'fr', tier: 'C', type: 'NATIONAL_MEDIA' },
+  { host: 'kickoff.com', name: 'Kickoff', country: 'South Africa', lang: 'en', tier: 'B', type: 'NATIONAL_MEDIA' },
+  { host: 'completesportsnigeria.com', name: 'Complete Sports Nigeria', country: 'Nigeria', lang: 'en', tier: 'C', type: 'LOCAL_PORTAL' },
 ];
 
 /** Native-language news searches (Google News RSS). Treated as headline-only aggregator sources: claims from them are capped (R4.6). */
-export const GN_QUERIES: { cc: string; country: string; lang: string; q: string }[] = [
+export const GN_QUERIES: { key?: string; cc: string; country: string; league?: string; lang: string; q: string }[] = [
   { cc: 'RS', country: 'Serbia', lang: 'sr', q: 'fudbaler ("na transfer listi" OR "ne računa na njega" OR "raskid ugovora" OR "želi da napusti" OR "otpisan")' },
   { cc: 'HR', country: 'Croatia', lang: 'hr', q: 'nogometaš ("otpisan" OR "nije u planovima" OR "raskid ugovora" OR "želi napustiti" OR "na posudbu")' },
   { cc: 'SI', country: 'Slovenia', lang: 'sl', q: 'nogometaš ("odpisan" OR "ni v načrtih" OR "prekinitev pogodbe" OR "želi zapustiti")' },
@@ -51,11 +70,23 @@ export const GN_QUERIES: { cc: string; country: string; lang: string; q: string 
   { cc: 'HU', country: 'Hungary', lang: 'hu', q: 'labdarúgó ("kikerült a keretből" OR "szerződésbontás" OR "távozhat" OR "kölcsönbe")' },
   { cc: 'CZ', country: 'Czech Republic', lang: 'cs', q: 'fotbalista ("nepočítá s ním" OR "vyřazen z kádru" OR "ukončení smlouvy" OR "hostování")' },
   { cc: 'SK', country: 'Slovakia', lang: 'sk', q: 'futbalista ("nepočíta s ním" OR "vyradený z kádra" OR "rozviazanie zmluvy" OR "hosťovanie")' },
-  { cc: 'PT', country: 'Portugal', lang: 'pt', q: 'futebolista Liga 2 ("fora dos planos" OR "rescisão" OR "quer sair" OR "afastado do plantel")' },
+  { cc: 'PT', country: 'Portugal', league: 'Liga Portugal', lang: 'pt', q: 'futebolista Liga Portugal ("fora dos planos" OR "rescisão" OR "quer sair" OR "afastado do plantel" OR "lista de transferências" OR "emprestado")' },
+  { key: 'pt2', cc: 'PT', country: 'Portugal', league: 'Liga Portugal 2', lang: 'pt', q: 'Liga Portugal 2 jogador ("fora dos planos" OR rescisão OR "quer sair" OR afastado OR emprestado)' },
   { cc: 'NL', country: 'Netherlands', lang: 'nl', q: 'voetballer ("buiten de selectie" OR "contract ontbonden" OR "mag vertrekken" OR "op een zijspoor")' },
   { cc: 'SE', country: 'Sweden', lang: 'sv', q: 'fotbollsspelare ("petad" OR "inte i planerna" OR "får lämna" OR "bryter kontraktet")' },
   { cc: 'LT', country: 'Lithuania', lang: 'lt', q: 'futbolininkas ("nepriklauso planams" OR "nutraukė sutartį" OR "palieka klubą")' },
   { cc: 'DK', country: 'Denmark', lang: 'da', q: 'fodboldspiller ("ikke i planerne" OR "ophæver kontrakten" OR "må forlade" OR "kan forlade")' },
+  // France: Ligue 1 + Ligue 2 + National (queries use the simple wording that returned results)
+  { key: 'fr1', cc: 'FR', country: 'France', league: 'Ligue 1', lang: 'fr', q: 'Ligue 1 joueur (écarté OR "veut partir" OR "liste des transferts" OR "résiliation" OR indésirable OR prêté)' },
+  { key: 'fr2', cc: 'FR', country: 'France', league: 'Ligue 2', lang: 'fr', q: 'Ligue 2 joueur (écarté OR "veut partir" OR "liste des transferts" OR "résiliation" OR indésirable OR prêté)' },
+  { key: 'fr3', cc: 'FR', country: 'France', league: 'National', lang: 'fr', q: 'National 1 joueur (écarté OR "veut partir" OR "résiliation" OR indésirable OR prêté)' },
+  // Belgium
+  { key: 'be1', cc: 'BE', country: 'Belgium', league: 'Pro League', lang: 'nl', q: 'voetballer Jupiler Pro League ("buiten de selectie" OR "contract ontbonden" OR "mag vertrekken" OR "op een zijspoor" OR transferlijst)' },
+  { key: 'be2', cc: 'BE', country: 'Belgium', league: 'Challenger Pro League', lang: 'nl', q: 'Challenger Pro League speler ("buiten de selectie" OR "mag vertrekken" OR "contract ontbonden" OR zijspoor)' },
+  // England (league words are only weak hints in news search; the official EFL feed is the main source)
+  { key: 'gb', cc: 'GB', country: 'England', league: 'Championship / League One / League Two', lang: 'en', q: 'footballer (Championship OR "League One" OR "League Two") ("frozen out" OR "transfer listed" OR "wants to leave" OR "available on loan" OR "contract terminated" OR released)' },
+  // Africa
+  { key: 'za', cc: 'ZA', country: 'South Africa', league: 'PSL', lang: 'en', q: 'PSL player ("frozen out" OR "transfer listed" OR "wants to leave" OR "released" OR "contract terminated")' },
   { cc: 'NO', country: 'Norway', lang: 'no', q: 'fotballspiller ("ikke i planene" OR "får forlate" OR "vraket" OR "kontraktsbrudd")' },
   { cc: 'AL', country: 'Albania', lang: 'sq', q: 'futbollist ("jashtë planeve" OR "zgjidhje kontrate" OR "do të largohet" OR "huazim")' },
 ];
@@ -76,13 +107,17 @@ export async function seedSources(db: Db): Promise<{ added: number }> {
     added += r.rowsAffected;
   }
   for (const g of GN_QUERIES) {
-    const id = `gn-${g.cc.toLowerCase()}`;
+    const id = `gn-${(g.key ?? g.cc).toLowerCase()}`;
+    const name = `News search (${g.country}${g.league ? ', ' + g.league : ''}, ${g.lang})`;
+    const prov = JSON.stringify({ by: 'SEED', kind: 'GNEWS', q: g.q, cc: g.cc, lang: g.lang, key: g.key });
     const r = await run(db, `INSERT OR IGNORE INTO sources (id, name, url, host, country, languages, type, access_chosen, headline_only, status, status_reason, status_changed_at, status_changed_by, tier, reliability,
         base_interval_min, next_scan_at, provenance, created_at, updated_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
-      id, `News search (${g.country}, ${g.lang})`, 'https://news.google.com/', 'news.google.com', g.country, JSON.stringify([g.lang]), 'AGGREGATOR', 'SEARCH_RSS', 1, 'APPROVED',
-      'Curated seed: native-language search', ts, 'system', 'C', 45, 180, 0, JSON.stringify({ by: 'SEED', kind: 'GNEWS', q: g.q, cc: g.cc, lang: g.lang }), ts, ts]);
+      id, name, 'https://news.google.com/', 'news.google.com', g.country, JSON.stringify([g.lang]), 'AGGREGATOR', 'SEARCH_RSS', 1, 'APPROVED',
+      'Curated seed: native-language search', ts, 'system', 'C', 45, 180, 0, prov, ts, ts]);
     added += r.rowsAffected;
+    // keep curated seed queries up to date (never touches sources an admin created or edited elsewhere)
+    await run(db, `UPDATE sources SET name = ?, provenance = ? WHERE id = ? AND json_extract(provenance, '$.by') = 'SEED'`, [name, prov, id]);
   }
   return { added };
 }

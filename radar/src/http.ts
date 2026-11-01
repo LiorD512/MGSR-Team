@@ -61,7 +61,7 @@ export class Http {
     return !dis.some((d) => d && path.startsWith(d));
   }
 
-  private async raw(url: string, o: { timeoutMs?: number; headers?: Record<string, string> }, host: string, skipRobots = false): Promise<HttpResult> {
+  private async raw(url: string, o: { timeoutMs?: number; headers?: Record<string, string>; trackBlocks?: boolean }, host: string, skipRobots = false): Promise<HttpResult> {
     if (!skipRobots && (await this.isBlocked(host))) throw new Error(`host ${host} is in back-off`);
     await this.slot(host, this.cfg.http.perHostDelayMs);
     const ctl = new AbortController();
@@ -72,19 +72,19 @@ export class Http {
         signal: ctl.signal, redirect: 'follow',
       });
       const text = r.status === 304 ? '' : (await r.text()).slice(0, 2_500_000);
-      if (!skipRobots) await this.noteStatus(host, r.status);
+      if (!skipRobots && o.trackBlocks !== false) await this.noteStatus(host, r.status);
       return { status: r.status, text, url: r.url, etag: r.headers.get('etag') ?? undefined, lastModified: r.headers.get('last-modified') ?? undefined, notModified: r.status === 304 };
     } finally { clearTimeout(t); }
   }
 
   /** GET with robots check. Throws on robots denial or active back-off. */
-  async get(url: string, o: { timeoutMs?: number; etag?: string | null; lastModified?: string | null; ignoreRobots?: boolean } = {}): Promise<HttpResult> {
+  async get(url: string, o: { timeoutMs?: number; etag?: string | null; lastModified?: string | null; ignoreRobots?: boolean; trackBlocks?: boolean } = {}): Promise<HttpResult> {
     const host = hostOf(url);
     if (!o.ignoreRobots && !(await this.robotsAllows(url))) throw new Error(`robots.txt disallows ${url}`);
     const headers: Record<string, string> = {};
     if (o.etag) headers['If-None-Match'] = o.etag;
     if (o.lastModified) headers['If-Modified-Since'] = o.lastModified;
-    return this.raw(url, { timeoutMs: o.timeoutMs, headers }, host);
+    return this.raw(url, { timeoutMs: o.timeoutMs, headers, trackBlocks: o.trackBlocks }, host);
   }
 }
 
