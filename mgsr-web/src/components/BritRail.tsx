@@ -45,7 +45,7 @@ export default function BritRail({ active }: BritRailProps) {
   const [playersOpen, setPlayersOpen] = useState(playersActive);
 
   const signalsActive =
-    active === 'transfer-radar' || active === 'transfer-radar-sources' || active === 'release' || active === 'club-change' || active === 'returnees' || active === 'contract-finisher';
+    active === 'release' || active === 'club-change' || active === 'returnees' || active === 'contract-finisher';
   const [signalsOpen, setSignalsOpen] = useState(signalsActive);
 
   const warRoomActive =
@@ -61,7 +61,6 @@ export default function BritRail({ active }: BritRailProps) {
   const isRoster = pathname === '/players' || pathname.startsWith('/players/');
   const isShortlist = pathname === '/shortlist';
   const isRadar = pathname === '/transfer-radar' || pathname.startsWith('/transfer-radar/players');
-  const isRadarSources = pathname === '/transfer-radar/sources';
   const isRelease = pathname === '/release-notifications';
   const isClubChange = pathname === '/club-change-notifications';
   const isReturnees = pathname === '/returnees';
@@ -156,16 +155,6 @@ export default function BritRail({ active }: BritRailProps) {
             </button>
             {signalsOpen && (
               <div className="brit-nav-sub">
-                {TRANSFER_RADAR_ENABLED && (
-                  <>
-                    <Link href="/transfer-radar" className={active === 'transfer-radar' || isRadar ? 'active' : ''}>
-                      <span>{t('nav_transfer_radar')}</span>
-                    </Link>
-                    <Link href="/transfer-radar/sources" className={active === 'transfer-radar-sources' || isRadarSources ? 'active' : ''}>
-                      <span>{t('nav_radar_sources')}</span>
-                    </Link>
-                  </>
-                )}
                 <Link href="/release-notifications" className={active === 'release' || isRelease ? 'active' : ''}>
                   <span>{t('nav_release_notifications')}</span>
                 </Link>
@@ -214,6 +203,13 @@ export default function BritRail({ active }: BritRailProps) {
               </div>
             )}
           </>
+        )}
+
+        {/* Transfer Radar — its own top-level entry below War Room (men-only) */}
+        {!isYouth && TRANSFER_RADAR_ENABLED && (
+          <Link href="/transfer-radar" className={active === 'transfer-radar' || active === 'transfer-radar-sources' || isRadar ? 'active' : ''}>
+            <span>{t('nav_transfer_radar')}</span>
+          </Link>
         )}
       </nav>
     </aside>

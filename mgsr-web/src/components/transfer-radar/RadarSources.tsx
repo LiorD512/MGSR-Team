@@ -1,12 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { TRANSFER_RADAR_SOURCES_VISIBLE } from '@/lib/featureFlags';
 import { radarFetch, RadarApiError, timeAgo, type SourceItem } from '@/lib/transferRadar/client';
 import { useRadarT } from '@/lib/transferRadar/i18n';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 
 export default function RadarSources() {
   const { tr, lang } = useRadarT();
+  const router = useRouter();
+  useEffect(() => { if (!TRANSFER_RADAR_SOURCES_VISIBLE) router.replace('/transfer-radar'); }, [router]);
   const [items, setItems] = useState<SourceItem[] | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [err, setErr] = useState<{ code: string; message: string } | null>(null);
@@ -15,6 +19,7 @@ export default function RadarSources() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!TRANSFER_RADAR_SOURCES_VISIBLE) return; // hidden screen: do not even call the API
     try { const r = await radarFetch<{ items: SourceItem[]; isAdmin: boolean }>('sources'); setItems(r.items); setIsAdmin(r.isAdmin); setErr(null); }
     catch (e) { setErr(e instanceof RadarApiError ? { code: e.code, message: e.message } : { code: 'ERROR', message: String(e) }); }
   }, []);
@@ -27,6 +32,8 @@ export default function RadarSources() {
     catch (e) { setMsg(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(null); }
   };
+
+  if (!TRANSFER_RADAR_SOURCES_VISIBLE) return <div className="tr-state"><p>{tr('loading')}</p></div>;
 
   const head = (
     <header className="brit-masthead">

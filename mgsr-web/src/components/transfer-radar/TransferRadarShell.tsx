@@ -33,7 +33,7 @@ export default function TransferRadarShell({ active, crumb, children }: { active
   if (loading || !user || platform !== 'men' || !TRANSFER_RADAR_ENABLED) return <BritLoader fullPage />;
 
   return (
-    <div className="brit-room tr-dark" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
+    <div className="brit-room tr-root" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
       <div className="brit-app">
         <BritRail active={active} />
         <div className="brit-main">

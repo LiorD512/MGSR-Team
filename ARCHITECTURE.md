@@ -372,7 +372,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/market-radar` | Early Market Radar | Real-time market disruption intelligence (out-of-plans, collapsed deals, contract standoffs across 35+ leagues, max 14 days) |
 | `/transfer-radar` | Transfer Radar | **Men web only.** Morning Brief: players who may become available, scored from multilingual local-media reports (see §21). Filters, sort, search, leads that need a name, rule-removed items |
 | `/transfer-radar/players/[id]` | Radar player profile | Score breakdown, evidence timeline (original headline + English summary + quote + link), facts vs reported vs rumor vs AI assessment, feedback buttons |
-| `/transfer-radar/sources` | Radar Source Center | Source registry health; approve / disable / remove / add (admin) || `/news` | News | Redirects to `/market-radar` |
+| `/transfer-radar/sources` | Radar Source Center | **Hidden for now** (`TRANSFER_RADAR_SOURCES_VISIBLE=false`: no menu entry, route redirects to `/transfer-radar`). Source registry health; approve / disable / remove / add (admin) || `/news` | News | Redirects to `/market-radar` |
 | `/jewish-finder` | Jewish Finder | Discover Jewish/Israeli heritage players |
 | `/p/[token]` | Shared Player | Public share page (no auth required) |
 | `/shared/requests` | Shared Requests | Public requests page (no auth required) |
@@ -625,7 +625,9 @@ Android app calls Render **directly** for performance-critical endpoints:
 - **Schedule:** Daily at 02:00 Israel time
 - **Runtime:** Node.js + Firebase Admin + Cheerio + impit
 - **Timeout:** 4 hours
-- **Purpose:** Update all player data from Transfermarkt (market values, club changes, contract dates)
+- **UI:** uses the site's light `brit-room` theme (cream canvas, black rail, same fonts/chips); menu entry is a top-level link under War Room.
+
+**Purpose:** Update all player data from Transfermarkt (market values, club changes, contract dates)
 - **Flow:** Query all Players from Firestore → Scrape TM profiles → Update Firestore
 - **Intelligence:** Exponential backoff (12s-300s delays), block detection, progress tracking
 
@@ -1370,4 +1372,4 @@ Never bypasses logins/paywalls/CAPTCHAs; hosts that answer 403/429/503 are backe
 No football-database join yet: age, position, contract expiry, photo show "Unknown". Star/target-profile filtering uses an elite-club list as a stand-in for value/league tiers. Instagram/X/Facebook are not monitored (no free compliant access). Scores skew low until contract and squad data exist (calibration is a config change).
 
 ### Files
-`radar/` (pipeline, README), `.github/workflows/radar-*.yml`, `mgsr-web/src/app/transfer-radar/**`, `mgsr-web/src/app/api/transfer-radar/**`, `mgsr-web/src/components/transfer-radar/**`, `mgsr-web/src/lib/transferRadar/**` (own EN/HE dictionary), `BritRail.tsx` (Signals menu), `featureFlags.ts` (`TRANSFER_RADAR_ENABLED`), the feasibility PoC and the UI mock are kept on branch `feat/transfer-radar-poc` (reference only, not part of this feature).
+`radar/` (pipeline, README), `.github/workflows/radar-*.yml`, `mgsr-web/src/app/transfer-radar/**`, `mgsr-web/src/app/api/transfer-radar/**`, `mgsr-web/src/components/transfer-radar/**`, `mgsr-web/src/lib/transferRadar/**` (own EN/HE dictionary), `BritRail.tsx` (top-level menu entry below War Room), `featureFlags.ts` (`TRANSFER_RADAR_ENABLED`), the feasibility PoC and the UI mock are kept on branch `feat/transfer-radar-poc` (reference only, not part of this feature).
