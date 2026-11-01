@@ -66,7 +66,9 @@ export function failure(e: unknown): NextResponse {
   const msg = e instanceof Error ? e.message : String(e);
   if (msg === 'RADAR_NOT_CONFIGURED') return notConfigured();
   console.error('[transfer-radar]', msg);
-  return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  // Show the reason (sanitised: tokens/URLs stripped) so a misconfigured database is diagnosable from the screen itself.
+  const detail = msg.replace(/eyJ[\w-]+\.[\w-]+\.[\w-]+/g, '***').replace(/(libsql|https?|wss?):\/\/[^\s"']+/g, '<url>').slice(0, 240);
+  return NextResponse.json({ error: 'Internal error', message: `Internal error: ${detail}` }, { status: 500 });
 }
 
 export const parseJson = <T,>(s: unknown, fallback: T): T => {
