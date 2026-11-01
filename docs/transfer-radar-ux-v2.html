@@ -31,7 +31,7 @@ svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .top button{color:#ece8de;display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:6px 10px;border:1px solid rgba(236,232,222,.25);border-radius:999px}
 .top button:hover{border-color:var(--gold2);color:var(--gold2)}
 .lang{display:inline-flex;border:1px solid rgba(236,232,222,.25);border-radius:999px;overflow:hidden}
-.lang button{border:0;border-radius:0;padding:6px 11px}.lang button.on{background:var(--gold2);color:var(--black)}
+.lang button{border:0;border-radius:0;padding:6px 11px}.lang button[data-lang=he]{font-family:'Heebo','Segoe UI',Arial,sans-serif;font-weight:700}.lang button.on{background:var(--gold2);color:var(--black)}
 .mockflag{border:1px solid var(--gold);color:var(--gold2);padding:4px 10px;border-radius:999px;font-size:11px}
 
 .page{padding:24px 32px 28px;max-width:1560px}
@@ -51,7 +51,7 @@ html[dir=rtl] h1{font-weight:800;text-transform:none;letter-spacing:0}
 .search{margin-inline-start:auto;display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:7px 14px;min-width:260px}
 .search input{border:0;outline:0;background:none;font:inherit;width:100%;color:var(--ink)}.search svg{color:var(--muted)}
 
-.filters{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:14px 0 16px}
+.filters{padding:14px 0 10px}.frow{display:flex;gap:10px 22px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .fl{display:flex;align-items:center;gap:8px}.fl>span{font-size:12px;color:var(--muted);font-weight:600}
 select.sel{appearance:none;background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236d695f' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;border:1px solid var(--line);border-radius:999px;padding:7px 30px 7px 14px;font:inherit;font-weight:600;color:var(--ink);cursor:pointer}
 html[dir=rtl] select.sel{background-position:left 10px center;padding:7px 14px 7px 30px}
@@ -63,7 +63,7 @@ html[dir=rtl] select.sel{background-position:left 10px center;padding:7px 14px 7
 .seg button{padding:6px 13px;font-size:13px;font-weight:600;color:var(--ink2)}.seg button.on{background:var(--black);color:var(--gold2)}
 .clear{font-size:13px;font-weight:700;color:var(--gold);text-decoration:underline}
 
-.split{display:grid;grid-template-columns:minmax(360px,430px) minmax(0,1fr);gap:20px;height:calc(100vh - 292px);min-height:560px}
+.split{display:grid;grid-template-columns:minmax(360px,430px) minmax(0,1fr);gap:20px;height:calc(100vh - 262px);min-height:560px}
 .list,.detail{overflow:auto;min-height:0}
 .list{padding-inline-end:6px}
 .count{font-size:12.5px;color:var(--muted);margin:2px 2px 10px}
@@ -111,7 +111,7 @@ html[dir=rtl] .ticks span{transform:translateX(50%)}
 .glance{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line)}
 .glance>div{padding:14px 20px;border-inline-end:1px solid var(--line)}.glance>div:last-child{border:0}
 .glance small{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:5px}
-.glance b{display:block;font-size:15px;line-height:1.3}.glance span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+.glance b{display:block;font-size:15px;line-height:1.3}.glance>div>span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.4}.glance>div>span .dots{margin-inline-start:4px}
 
 .next{margin:20px 24px 0;padding:16px 18px;border:1px solid var(--gold);background:var(--goldbg);border-radius:6px}
 .next.closed{border-color:var(--red);background:var(--redbg)}
@@ -260,7 +260,7 @@ en: {
  latest_from:'Latest report',
  s_why:'Why it scores {n}', s_why_l:'How the radar reached this number. Rules decide the score; AI only reads the articles.', by_rule:'Rule-based',
  c_availability:'Move signals', c_availability_d:'The player or the club points to a move', c_exclusion:'Left out of the squad', c_exclusion_d:'Reported as out of the matchday squad', c_relationship:'Friction with coach or club', c_relationship_d:'Conflict or a disciplinary problem',
- c_contract:'Contract end date', c_contract_d:'Not in the radar yet', c_independence:'Independent sources', c_independence_d:'Different newsrooms reporting separately', c_other:'Other signals', c_other_d:'Club finances, replacement signing: none found',
+ c_contract:'Contract end date', c_contract_d:'Not in the radar yet', c_independence:'Independent sources', c_independence_d:'Different newsrooms reporting separately', c_other:'Other signals', c_other_d:'Playing time, club finances, replacement signing: none found',
  total:'Total', raise_h:'What would raise this score', raise_src:'A {n}nd independent outlet reporting it: up to +{p}', raise_src3:'Another independent outlet: up to +{p}', raise_contract:'A verified contract end date within 6 months: up to +10', raise_official:'Official confirmation from the club or the player',
  closed_note:'Later reports say the move is agreed or announced, so the score was reduced to {s} and the player moved out of the active list.',
  s_who:'Who reported it', s_who_l:'Each card is one independent newsroom. Copies and rewrites count once.', same:'{n} articles from the same newsroom - counted as one source.', quote_l:'Quote from the article (original language)', claim:'Stated as', cl_FACT:'fact', cl_RUMOR:'rumor', cl_SPECULATION:'speculation', cl_OPINION:'opinion', headline_only:'headline only',
@@ -303,7 +303,7 @@ he: {
  club_unknown:'המועדון לא צוין בכותרת', written:'נכתב כ', free:'שחקן חופשי',
  back:'חזרה לרשימה', score_of:'/ 100', lv_Exceptional:'יוצא דופן', 'lv_High priority':'עדיפות גבוהה', lv_Potential:'פוטנציאל', lv_Monitor:'מעקב', 'lv_Low priority':'עדיפות נמוכה', lv_Closed:'נסגר (המעבר אושר)',
  g_sit:'מצב', g_ev:'עד כמה זה מבוסס', g_when:'עדכון אחרון', g_time:'דחיפות',
- g_ev_s1:'מקור עצמאי אחד', g_ev_sn:'{n} מקורות עצמאיים', g_when_s:'נראה לראשונה {t}', time_high:'גבוהה', time_med:'בינונית', time_low:'נמוכה', time_closed:'סגור',
+ g_ev_s1:'מקור עצמאי {n}', g_ev_sn:'{n} מקורות עצמאיים', g_when_s:'נראה לראשונה {t}', time_high:'גבוהה', time_med:'בינונית', time_low:'נמוכה', time_closed:'סגור',
  time_high_s:'דווח ב-48 השעות האחרונות', time_med_s:'דווח בשבוע האחרון', time_low_s:'דווח לפני יותר משבוע', time_closed_s:'נראה שהמעבר הושלם',
  next_h:'הצעד הבא המומלץ', next_closed_h:'כנראה כבר עבר',
  why_early:'למה עכשיו: רק אתר אחד דיווח על כך עד כה, ולכן סוכנויות אחרות אולי עדיין לא יודעות.', why_known:'למה עכשיו: {n} אתרים כבר מדווחים על כך, ולכן המתחרים כנראה יודעים.', why_old:'למה עכשיו: הדיווח היה לפני {d} ימים - כדאי לוודא שהמצב עדיין עדכני.', why_closed:'למה: הדיווחים המאוחרים אומרים שנסגרה עסקה או הוכרזה.',
@@ -314,7 +314,7 @@ he: {
  s_happened:'מה קרה', s_happened_l:'הדיווח האחרון', by_source:'מהמקור', by_ai:'תרגום לאנגלית על ידי AI', original:'כותרת המקור', open:'פתח כתבה', latest_from:'דיווח אחרון',
  s_why:'למה הציון {n}', s_why_l:'איך הרדאר הגיע למספר הזה. כללים קובעים את הציון; ה-AI רק קורא את הכתבות.', by_rule:'מבוסס כללים',
  c_availability:'אותות למעבר', c_availability_d:'השחקן או המועדון מצביעים על מעבר', c_exclusion:'מחוץ לסגל', c_exclusion_d:'דווח כמי שמחוץ לסגל המשחק', c_relationship:'חיכוך עם המאמן או המועדון', c_relationship_d:'סכסוך או בעיית משמעת',
- c_contract:'סיום החוזה', c_contract_d:'עדיין לא ברדאר', c_independence:'מקורות עצמאיים', c_independence_d:'מערכות חדשות שונות שמדווחות בנפרד', c_other:'אותות אחרים', c_other_d:'כספי המועדון, חיזוק בעמדה: לא נמצא',
+ c_contract:'סיום החוזה', c_contract_d:'עדיין לא ברדאר', c_independence:'מקורות עצמאיים', c_independence_d:'מערכות חדשות שונות שמדווחות בנפרד', c_other:'אותות אחרים', c_other_d:'זמן משחק, כספי המועדון, חיזוק בעמדה: לא נמצא',
  total:'סה״כ', raise_h:'מה יעלה את הציון', raise_src:'אתר עצמאי נוסף שמדווח על כך: עד +{p}', raise_src3:'אתר עצמאי נוסף: עד +{p}', raise_contract:'תאריך סיום חוזה מאומת בתוך 6 חודשים: עד +10', raise_official:'אישור רשמי מהמועדון או מהשחקן',
  closed_note:'דיווחים מאוחרים אומרים שהמעבר סוכם או הוכרז, ולכן הציון הופחת ל-{s} והשחקן הועבר מהרשימה הפעילה.',
  s_who:'מי דיווח', s_who_l:'כל כרטיס הוא מערכת חדשות עצמאית אחת. העתקות וכתיבה מחדש נספרות פעם אחת.', same:'{n} כתבות מאותה מערכת - נספרות כמקור אחד.', quote_l:'ציטוט מהכתבה (בשפת המקור)', claim:'מוצג כ', cl_FACT:'עובדה', cl_RUMOR:'שמועה', cl_SPECULATION:'השערה', cl_OPINION:'דעה', headline_only:'כותרת בלבד',
@@ -352,7 +352,6 @@ const ico=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</sv
 /* ------------------------------------------------------------------ data prep */
 const SIGMAP={PLAYER_SEEKING_CLUB:'wants_leave',REQUESTED_TO_LEAVE:'wants_leave',CLUB_WANTS_TO_SELL:'club_sell',CLUB_NEEDS_TO_SELL:'club_sell',CLUB_WANTS_TO_RELEASE:'released',CLUB_OPEN_TO_TERMINATE:'terminate',CONTRACT_TALKS_FAILED:'terminate',
  AVAILABLE_ON_LOAN:'loan',EXCLUDED_FROM_SQUAD:'out_squad',NOT_PLAYING:'out_squad',OUT_OF_FAVOR:'out_squad',NOT_REGISTERED:'out_squad',CONFLICT_WITH_COACH:'conflict',DISAGREEMENT_WITH_MANAGEMENT:'conflict',DISCIPLINARY_ISSUE:'conflict',UNPAID_SALARY:'unpaid',TRANSFER_COMPLETED:'moved'};
-const NRMAP={star:'nr_star',coach:'nr_coach',other_sport:'nr_sport',not_signal:'nr_other'};
 const PRI=['moved','wants_leave','released','club_sell','terminate','loan','conflict','out_squad','unpaid','other'];
 const COLOR={wants_leave:'c-gold',club_sell:'c-gold',released:'c-gold',terminate:'c-gold',loan:'c-blue',out_squad:'c-amber',conflict:'c-amber',unpaid:'c-amber',moved:'c-red',other:'c-grey'};
 const ACTKEY={'Verify with a local contact today, then approach the agent.':'act_verify','Single report: verify with a local contact before outreach.':'act_single','Ask the club or agent about loan terms; verify before outreach.':'act_loan','Rumor only: verify before any outreach.':'act_rumor',
@@ -426,11 +425,11 @@ function renderFilters(){
   const active=S.country!=='all'||S.sits.size||S.days!==30||S.q;
   const sitOrder=['wants_leave','club_sell','released','terminate','loan','conflict','out_squad','unpaid'].filter(k=>sc[k]);
   document.getElementById('filters').innerHTML=
-   `<div class="fl"><span>${t('f_country')}</span><select class="sel" id="fc"><option value="all">${t('f_all')} (${base.length})</option>${Object.entries(cs).sort((a,b)=>b[1]-a[1]).map(([c,n])=>`<option value="${esc(c)}" ${S.country===c?'selected':''}>${esc(c)} (${n})</option>`).join('')}</select></div>`+
-   `<div class="fl"><span>${t('f_sit')}</span><div class="chips">${sitOrder.map(k=>`<button class="chip ${S.sits.has(k)?'on':''}" data-sit="${k}">${t('sit_'+k)} <em>${sc[k]}</em></button>`).join('')}</div></div>`+
+   `<div class="frow"><div class="fl"><span>${t('f_country')}</span><select class="sel" id="fc"><option value="all">${t('f_all')} (${base.length})</option>${Object.entries(cs).sort((a,b)=>b[1]-a[1]).map(([c,n])=>`<option value="${esc(c)}" ${S.country===c?'selected':''}>${esc(c)} (${n})</option>`).join('')}</select></div>`+
    `<div class="fl"><span>${t('f_period')}</span><div class="seg">${[7,14,30].map(d=>`<button class="${S.days===d?'on':''}" data-days="${d}">${t('d'+d)}</button>`).join('')}</div></div>`+
    `<div class="fl"><span>${t('f_sort')}</span><select class="sel" id="fs">${['score','new','rel','urg'].map(k=>`<option value="${k}" ${S.sort===k?'selected':''}>${t('so_'+k)}</option>`).join('')}</select></div>`+
-   (active?`<button class="clear" id="clr">${t('f_clear')}</button>`:'');
+   (active?`<button class="clear" id="clr">${t('f_clear')}</button>`:'')+`</div>`+
+   `<div class="frow"><div class="fl"><span>${t('f_sit')}</span><div class="chips">${sitOrder.map(k=>`<button class="chip ${S.sits.has(k)?'on':''}" data-sit="${k}">${t('sit_'+k)} <em>${sc[k]}</em></button>`).join('')}</div></div></div>`;
   document.getElementById('filters').style.display=(S.tab==='leads')?'none':'';
 }
 function item(p){
@@ -439,7 +438,7 @@ function item(p){
    <div class="irow"><div>
      <div><span class="sit"><i></i>${t('sit_'+p.main)}</span><span class="when">${ago(p.last)}</span></div>
      <div class="nm">${esc(p.name)}</div><div class="cl">${place(p)}</div></div>
-     <div class="ringwrap">${ring(p.score,p.closed)}<small>${t('lv_'+level(p.score,p.closed)).split(' (')[0]}</small></div></div>
+     <div class="ringwrap">${ring(p.score,p.closed)}${(p.score>=30||p.closed)?`<small>${t('lv_'+level(p.score,p.closed)).split(' (')[0]}</small>`:''}</div></div>
    <div class="hl">${esc(p.latest.headline||p.latest.orig)}</div>
    <div class="meta">${evBadge(p.verification)}<span class="src">${dots(p.bestTier)} ${srcCount(p)}</span>${p.early?`<span class="early">${ico('bolt')}${t('early')}</span>`:''}${p.stale?`<span class="old">${t('older')}</span>`:''}</div></button>`;
 }
@@ -470,9 +469,9 @@ function detail(p){
   const rows=['availability','exclusion','relationship','contract','independence'].map(k=>{const c=comp(k);const pts=c?c.points:0,max=c?c.max:({availability:25,exclusion:15,relationship:15,contract:10,independence:10}[k]);
     let sub=t('c_'+k+'_d');
     if(c&&c.signal&&SIGMAP[c.signal])sub=`${t('sit_'+SIGMAP[c.signal])} · ${esc(c.outlet||'')} (${t('ev_'+String(c.verification).toLowerCase())})`;
-    if(k==='independence')sub=pts>0?`${p.origins} · ${t('c_independence_d')}`:`${p.origins} · ${t('c_independence_d')}`;
+    if(k==='independence')sub=`${p.origins===1?t('g_ev_s1',{n:1}):t('g_ev_sn',{n:p.origins})} · ${t('c_independence_d')}`;
     return `<div class="why-row ${pts>0?'':'zero'}"><span class="ck">${pts>0?ico('check'):'—'}</span><div><b>${t('c_'+k)}</b><small>${sub}</small></div><div class="pbar"><u style="width:${max?pts/max*100:0}%"></u></div><div class="pts">${pts.toString().replace(/\.0$/,'')}<small> / ${max}</small></div></div>`;}).join('')+
-    `<div class="why-row zero"><span class="ck">—</span><div><b>${t('c_other')}</b><small>${t('c_other_d')}</small></div><div class="pbar"><u style="width:0"></u></div><div class="pts">0<small> / 10</small></div></div>`;
+    `<div class="why-row zero"><span class="ck">—</span><div><b>${t('c_other')}</b><small>${t('c_other_d')}</small></div><div class="pbar"><u style="width:0"></u></div><div class="pts">0<small> / 25</small></div></div>`;
   const IT={1:0,2:5,3:8,4:10};const nextP=p.origins<4?(IT[p.origins+1]??10)-(IT[p.origins]??0):0;
   const raise=[];if(!p.closed){if(nextP>0)raise.push(p.origins<2?t('raise_src',{n:2,p:nextP}).replace('2nd','2nd'):t('raise_src3',{p:nextP}));raise.push(t('raise_contract'));if(p.verification!=='CONFIRMED')raise.push(t('raise_official'));}
   /* sources grouped by independent origin */
@@ -486,7 +485,7 @@ function detail(p){
      ${g.length>1?`<div class="same">${t('same',{n:g.length})}</div>`:''}</div>`;}).join('');
   const tl=p.timeline.map(e=>{const k=e.signals.map(s=>SIGMAP[s]).find(Boolean)||'other';const chg=e.kind==='STATUS_CHANGE';
     return `<div class="tle ${chg?'red':''}"><div class="d">${fmt(e.at)} · ${esc(e.outlet)}</div><b>${t('sit_'+k)}</b> ${chg?`<span class="tag red">${t('status_change')}</span>`:''}</div>`;}).join('');
-  const hid=hidden?`<div class="next" style="border-color:var(--muted);background:var(--paper2)"><h4 style="color:var(--ink2)">${ico('ban')} ${t('hid_why')}</h4><p class="act">${S.hiddenNow.get(p.id)?t('nr_'+S.hiddenNow.get(p.id)):p.hideKey?t(NRMAP[p.hideKey]):t('nr_other')}</p><div class="btns"><button class="btn pri" data-act="restore">${ico('undo')} ${t('b_restore')}</button></div></div>`:'';
+  const hid=hidden?`<div class="next" style="border-color:var(--muted);background:var(--paper2)"><h4 style="color:var(--ink2)">${ico('ban')} ${t('hid_why')}</h4><p class="act">${esc(p.hideWhy||t('nr_other'))}</p><div class="btns"><button class="btn pri" data-act="restore">${ico('undo')} ${t('b_restore')}</button></div></div>`:'';
   const nextBox=hidden?'':`<div class="next ${p.closed?'closed':''}"><h4>${ico(p.closed?'flag':'bolt')} ${p.closed?t('next_closed_h'):t('next_h')}</h4><p class="act">${actText}</p><p class="why">${whyNow}</p>
     <div class="btns">${p.closed?'':`<button class="btn pri ${S.shortlist.has(p.id)?'done':''}" data-act="short">${ico('star')} ${S.shortlist.has(p.id)?t('b_short_done'):t('b_short')}</button>`}
     <button class="btn" data-act="wa">${ico('share')} ${t('b_wa')}</button>
@@ -555,7 +554,7 @@ document.addEventListener('click',e=>{
   if(b=q('[data-sit]')){const k=b.dataset.sit;S.sits.has(k)?S.sits.delete(k):S.sits.add(k);render();return;}
   if(b=q('[data-days]')){S.days=+b.dataset.days;render();return;}
   if(q('#clr')){S.country='all';S.sits.clear();S.days=30;S.q='';render();return;}
-  if(b=q('[data-nr]')){const p=PL.find(x=>x.id===S.sel);if(p){S.hiddenNow.set(p.id,b.dataset.nr);S.menu=false;S.sel=null;S.openMobile=false;toast(t('t_hidden'));render();}return;}
+  if(b=q('[data-nr]')){const p=PL.find(x=>x.id===S.sel);if(p){S.hiddenNow.set(p.id,b.dataset.nr);p.hideWhy=t('nr_'+b.dataset.nr);S.menu=false;S.sel=null;S.openMobile=false;toast(t('t_hidden'));render();}return;}
   if(b=q('[data-fb]')){S.fb.add(S.sel);toast(t('fb_thanks'));render(true);return;}
   if(b=q('[data-act]')){const a=b.dataset.act;
     if(a==='short'){S.shortlist.add(S.sel);toast(t('t_shortlist'));}
