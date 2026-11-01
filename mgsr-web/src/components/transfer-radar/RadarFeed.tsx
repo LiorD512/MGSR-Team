@@ -177,6 +177,7 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
         </div>
       </header>
 
+      {pending ? <Empty title={t('pending_h')} text={t('pending_p')} /> : <>
       <section className="brit-signals tr3-signals">
         <Signal on={kpi === 'radar'} onClick={() => setKpi(kpi === 'radar' ? null : 'radar')} label={t('k_radar')} value={pad(k.radar)} note={t('k_radar_s')} />
         <Signal on={kpi === 'new'} onClick={() => setKpi(kpi === 'new' ? null : 'new')} label={t('k_new')} value={pad(k.nw)} note={t('k_new_s')} />
@@ -210,6 +211,7 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
         {!!filteredCount && <button onClick={() => setFilteredOpen(true)}>{t('filtered', { n: filteredCount })}</button>}
       </div>
       {body}
+      </>}
 
       {openId && (
         <RadarFile id={openId} onClose={closeFile} shortIds={shortIds} adding={adding === openId} onShort={addShort} say={say}

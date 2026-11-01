@@ -29,3 +29,5 @@ club squad -> name search -> transfer history -> AI tie-break; stars above `iden
 Google News redirect links are resolved to the publisher's article URL (`src/stages/links.ts`).
 - Needs `TM_HTML_PROXY_URL` (defaults to the production html-proxy; set in `radar-pipeline.yml`).
 - Backfill / re-run on existing data: `npx tsx src/cli.ts identify` (add `--reset` to retry UNIDENTIFIED players now).
+- On the `feat/transfer-radar` branch a push runs the pipeline only when the commit message contains `[radar-run]` (and the change touches `radar/**` or the workflow).
+  The first run after the v3 upgrade applies migration 4 and identifies the existing players; until then the web screen shows "Identifying players".
