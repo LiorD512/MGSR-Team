@@ -157,7 +157,7 @@ async function identifyOne(db: Db, cfg: RadarConfig, tm: TmClient, llm: Llm, p: 
   // candidates with club evidence; a close rival (same club, similar name) forces the AI tie-break instead of a guess
   const clubbed = all_.filter((c) => (c.squad || c.link) && c.s >= 0.7);
   const strong = clubbed.filter((c) => c.s >= 0.8);
-  const candidatesJson = all_.slice(0, 4).map((c) => ({ tmId: c.row.tmId, tmUrl: c.row.tmUrl, name: c.row.name, position: c.row.position, age: c.row.age, club: c.row.club, value: c.row.value, photo: c.row.photo,
+  const candidatesJson = [...all_].sort((a, b) => Number(!!(b.squad || b.link)) - Number(!!(a.squad || a.link)) || b.s - a.s).slice(0, 4).map((c) => ({ tmId: c.row.tmId, tmUrl: c.row.tmUrl, name: c.row.name, position: c.row.position, age: c.row.age, club: c.row.club, value: c.row.value, photo: c.row.photo,
     nationalities: c.row.nationalities, s: Math.round(c.s * 100), link: c.link ?? (c.squad ? { club: c.squad.clubName, dir: 'squad', date: null } : null) }));
   let pick: Cand | null = null; let status: 'CONFIRMED' | 'PROBABLE' = 'CONFIRMED'; const checks: Check[] = [];
   let aiWhy: string | null = null;

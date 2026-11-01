@@ -93,6 +93,20 @@ export async function writeSummary(db: Db, out: Record<string, any>, ms: number)
     for (const c of cov) L.push(`| ${c.country ?? '?'} | ${c.sources} | ${c.articles} | ${c.analyzed} | ${c.stories} | ${c.shown} |`);
     const ident = await all<any>(db, `SELECT identity_status AS s, COALESCE(excluded_reason, '') AS r, COUNT(*) AS n FROM players WHERE identity_status IS NOT NULL GROUP BY 1, 2 ORDER BY 1, 3 DESC`);
     L.push(`\n**Identification:** ${ident.map((x) => `${x.s}${x.r ? ` (${x.r})` : ''}: ${x.n}`).join(' · ')}`);
+    // players the identify stage could not match: the evidence, so matching can be improved
+    const un = await all<any>(db, `SELECT p.id, p.excluded_reason AS reason, p.identity_candidates AS cands, p.tm_attempts AS attempts,
+        r.player_raw, r.player_latin, r.club_raw, r.club_latin, r.outlet, r.country, r.published_at, r.title_orig, r.headline_en, COALESCE(r.publisher_url, r.url) AS url
+      FROM players p JOIN reports r ON r.id = (SELECT id FROM reports x WHERE x.player_id = p.id AND x.final = 1 ORDER BY x.published_at DESC LIMIT 1)
+      WHERE p.identity_status = 'UNIDENTIFIED' ORDER BY r.published_at DESC LIMIT 40`);
+    if (un.length) {
+      L.push(`\n## Not matched to Transfermarkt (${un.length})\n| Name as written | Club as written | Country / outlet | Date | Headline (EN) | Original | Reason | Closest TM candidates | Link |\n|---|---|---|---|---|---|---|---|---|`);
+      const cell = (v: unknown) => String(v ?? '').replace(/\|/g, '/').replace(/\s+/g, ' ').slice(0, 140);
+      for (const u of un) {
+        let c: any[] = []; try { c = JSON.parse(u.cands || '[]'); } catch { /* */ }
+        const cs = c.slice(0, 3).map((x) => `${x.name} (${x.position ?? '?'}, ${x.age ?? '?'}, ${x.club ?? 'no club'}, ${x.s})`).join('; ') || '-';
+        L.push(`| ${cell(u.player_raw)}${u.player_latin && u.player_latin !== u.player_raw ? ` / ${cell(u.player_latin)}` : ''} | ${cell(u.club_raw)}${u.club_latin && u.club_latin !== u.club_raw ? ` / ${cell(u.club_latin)}` : ''} | ${cell(u.country)} / ${cell(u.outlet)} | ${new Date(u.published_at).toISOString().slice(0, 10)} | ${cell(u.headline_en)} | ${cell(u.title_orig)} | ${u.reason} | ${cell(cs)} | ${u.url} |`);
+      }
+    }
   } catch (e) { L.push(`\n(coverage table failed: ${(e as Error).message})`); }
   const md = L.join('\n');
   console.log(md);
