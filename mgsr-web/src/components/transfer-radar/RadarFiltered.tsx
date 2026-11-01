@@ -7,7 +7,7 @@ import { fmtDate, fmtEur } from '@/lib/transferRadar/format';
 import { Arr } from './RadarIcons';
 
 const MAX_VALUE_EUR = 5_000_000;
-const ORDER = ['star', 'other_sport', 'staff', 'retired', 'ambiguous', 'no_club_link', 'not_on_tm', 'hidden'];
+const ORDER = ['star', 'other_sport', 'not_player', 'staff', 'retired', 'ambiguous', 'no_club_link', 'not_on_tm', 'hidden'];
 
 /** "Filtered out automatically": what the feed does not show and why (nothing is deleted; hidden players can be restored). */
 export default function RadarFiltered({ onClose, onChanged, say }: { onClose: () => void; onChanged: () => void; say: (m: string) => void }) {
@@ -26,6 +26,7 @@ export default function RadarFiltered({ onClose, onChanged, say }: { onClose: ()
       case 'other_sport': return t('f_other_sport');
       case 'staff': return t('f_staff', { n: f.staff ?? f.name });
       case 'retired': return t('f_retired');
+      case 'not_player': return t('f_not_player');
       case 'ambiguous': return t('f_ambiguous');
       case 'no_club_link': return f.club ? t('f_no_club_link', { c: f.club }) : t('f_ambiguous');
       case 'not_on_tm': return t('f_not_on_tm');

@@ -4,7 +4,7 @@ import type { RadarConfig } from '../config.js';
 import type { Llm } from '../llm.js';
 import { BudgetExhausted } from '../llm.js';
 import {
-  TmClient, clubTokens, dateToMs, isReserveTeam, latinName, nameScore, sameClub, valueToEur,
+  TmClient, dateToMs, isReserveTeam, latinName, nameScore, notAClub, sameClub, valueToEur,
   type NameHow, type TmClub, type TmPlayerRow, type TmProfile, type TmSquad,
 } from '../tm.js';
 import { DAY, log, now } from '../util.js';
@@ -22,7 +22,9 @@ import { DAY, log, now } from '../util.js';
  * Other sports (URL section / AI), coaches & officials, retired players and players above the market ceiling are EXCLUDED.
  */
 
-const OTHER_SPORT_URL = /\/(siatkowka|siatkówka|volley(ball)?|odbojka|odbojkа|voleibol|pallavolo|basket(ball)?|kosarka|koszykowka|koszykówka|basquet|pallacanestro|handball|hazena|házená|pilka-reczna|rukomet|balonmano|hockey|hokej|tenis|tennis|zuzel|speedway|f1|formula-?1|moto|rugby|futsal|esport|cycling|kolarstvi|athletics|atletika)(\/|-|$)/i;
+const OTHER_SPORT_URL = /\/(siatkowka|siatkówka|volley(ball)?|voleybol|volei|odbojka|voleibol|pallavolo|basket(ball)?|baschet|basketbol|basquete|kosarka|kosarlabda|koszykowka|koszykówka|basquet|pallacanestro|handball|handbal|handebol|hentbol|hazena|házená|pilka-reczna|rukomet|balonmano|hockey|hokej|tenis|tennis|zuzel|speedway|f1|formula-?1|moto|rugby|futsal|esport|cycling|kolarstvi|athletics|atletika|waterpolo|vaterpolo)(\/|-|$)/i;
+// other-sport words in the headline itself (any language the radar reads)
+const OTHER_SPORT_WORDS = /\b(rugby|rugbi|top 14|pro d2|baschet|basketball|basketbol|kosarka|košarka|koszykówk\w*|handbal\w*|handball|rukomet|hentbol|volei\w*|volleyball|voleybol|siatkówk\w*|siatkark\w*|odbojk\w*|futsal|hockey|hokej|waterpolo|vaterpolo|euroleague|eurocup|nba|ehf)\b/i;
 
 export interface IdentifyStats { checked: number; confirmed: number; probable: number; unidentified: number; excluded: number; merged: number; aiTieBreaks: number; tmRequests: number; tmCacheHits: number; stopReason: string }
 interface RepRow { id: string; player_raw: string | null; player_latin: string | null; club_raw: string | null; club_latin: string | null; country: string | null; url: string; publisher_url: string | null; title_orig: string; headline_en: string | null; evidence_quote: string | null; sport: string | null; published_at: number }
@@ -41,6 +43,9 @@ export async function identify(db: Db, cfg: RadarConfig, llm: Llm, deadline: num
   if (!I.enabled) { st.stopReason = 'disabled'; return st; }
   const tm = new TmClient(db, { minGapMs: I.tmGapMs, maxRequests: I.maxTmRequestsPerRun });
   const t = now();
+  // RADAR_REIDENTIFY=1 (commit message [radar-reidentify]): retry every unidentified / not-on-TM player now, ignoring the 3-day wait and attempt cap
+  const again = process.env.RADAR_REIDENTIFY === '1';
+  if (again) await run(db, `UPDATE players SET tm_attempts = 0, tm_checked_at = 0 WHERE identity_status = 'UNIDENTIFIED'`);
   const todo = await all<PlayerRow>(db, `SELECT p.id, p.display_name, p.aliases, p.country, p.country_source, p.identity_status, p.tm_id, p.tm_attempts FROM players p
       WHERE EXISTS (SELECT 1 FROM reports r WHERE r.player_id = p.id AND r.final = 1 AND r.published_at >= ?)
         AND (p.identity_status IS NULL OR (p.identity_status = 'UNIDENTIFIED' AND p.tm_attempts < ? AND COALESCE(p.tm_checked_at,0) < ?)
@@ -86,14 +91,42 @@ async function identifyOne(db: Db, cfg: RadarConfig, tm: TmClient, llm: Llm, p: 
   }
   names.sort((a, b) => latinName(b.q).split(' ').length - latinName(a.q).split(' ').length);
   const clubs: string[] = [];
-  for (const r of reps) { const c = (r.club_latin || r.club_raw || '').replace(/["„“”«»]/g, '').trim(); if (c && clubTokens(c).length && !clubs.some((x) => sameClub(x, c))) clubs.push(c); }
+  // clubs as written; "unknown", league names ("Ekstraklasa") and national teams are not clubs. Generic names ("Sporting") are kept.
+  for (const r of reps) for (const v of [r.club_latin, r.club_raw]) {
+    const c = (v || '').replace(/["„“”«»]/g, '').trim();
+    if (c && latinName(c).length >= 3 && !notAClub(c) && !clubs.some((x) => sameClub(x, c) || latinName(x) === latinName(c))) clubs.push(c);
+  }
   const countryHint = (p.country_source === 'CLUB' && p.country) || mode(reps.map((r) => r.country).filter(Boolean) as string[]);
 
   // 0) other sport: the outlet's own URL section says so (e.g. sportowefakty.wp.pl/siatkowka/...) or the AI said so
   const pathOf = (u: string) => { try { return new URL(u).pathname; } catch { return ''; } };
   const sportUrl = reps.find((r) => OTHER_SPORT_URL.test(pathOf(r.publisher_url || r.url)));
-  if (sportUrl || reps.every((r) => r.sport && r.sport !== 'FOOTBALL')) {
-    return exclude(db, p, 'other_sport', [{ k: 'other_sport', url: sportUrl ? (sportUrl.publisher_url || sportUrl.url) : null }], names);
+  const sportWord = reps.find((r) => OTHER_SPORT_WORDS.test(`${r.title_orig} ${r.headline_en ?? ''}`));
+  if (sportUrl || sportWord || reps.every((r) => r.sport && r.sport !== 'FOOTBALL')) {
+    return exclude(db, p, 'other_sport', [{ k: 'other_sport', url: sportUrl ? (sportUrl.publisher_url || sportUrl.url) : sportWord ? (sportWord.publisher_url || sportWord.url) : null }], names);
+  }
+  // the "player" is really a club ("Fenerbahçe" as player and club)
+  if (names.length && names.every((n) => clubs.some((c) => sameClub(c, n.q)) || notAClub(n.q))) return exclude(db, p, 'not_player', [{ k: 'not_player', n: names[0].q }], names);
+
+  // 0b) already on the radar: the same name in the same country as a player we identified before ("Cordea" at FCSB = Andrei Cordea of CFR Cluj,
+  //     "Chorý" with another club named in the text = Tomas Chory). One unique known player only.
+  {
+    const known = await all<{ id: string; display_name: string; full_name: string | null; country: string | null }>(db,
+      `SELECT id, display_name, full_name, country FROM players WHERE identity_status IN ('CONFIRMED','PROBABLE') AND tm_id IS NOT NULL AND id <> ?`, [p.id]);
+    const countries = new Set([countryHint, ...reps.map((r) => r.country)].filter(Boolean).map((c) => latinName(c as string)));
+    const hits = known.filter((k) => {
+      if (!k.country || !countries.has(latinName(k.country))) return false;
+      return names.some((n) => {
+        const full = latinName(n.q).split(' ').length >= 2;
+        const m = Math.max(nameScore(n.q, k.display_name).s, k.full_name ? nameScore(n.q, k.full_name).s : 0);
+        const surname = latinName(n.q).split(' ').pop() ?? '';
+        return full ? m >= 0.9 : (m >= 0.9 && surname.length >= 4) || (m >= 0.85 && surname.length >= 5);
+      });
+    });
+    if (hits.length === 1) {
+      await mergeInto(db, p.id, hits[0].id, st);
+      return 'CONFIRMED';
+    }
   }
 
   const cands = new Map<string, Cand>();
@@ -163,7 +196,7 @@ async function identifyOne(db: Db, cfg: RadarConfig, tm: TmClient, llm: Llm, p: 
   let aiWhy: string | null = null;
 
   if (strong.length && (clubbed.length === 1 || strong[0].s - clubbed[1].s >= 0.12)) pick = strong[0];
-  else if (strong.length) { const r = await tieBreak(llm, reps, clubbed.slice(0, 4), st); if (r) { pick = r.c; aiWhy = r.why; } }
+  else if (clubbed.length) { const r = await tieBreak(llm, reps, clubbed.slice(0, 4), st); if (r) { pick = r.c; aiWhy = r.why; } }
   else if (!clubs.length) {
     // the article names no club: one TM player with that full name, or the AI decides from the text (e.g. "El Clasico ... Real Madrid")
     const full = all_.filter((c) => c.s >= 0.95 && latinName(c.written).split(' ').length >= 2);
@@ -171,6 +204,15 @@ async function identifyOne(db: Db, cfg: RadarConfig, tm: TmClient, llm: Llm, p: 
     else {
       const pool = all_.filter((c) => c.s >= 0.85).slice(0, 4);
       if (pool.length) { const r = await tieBreak(llm, reps, pool, st); if (r) { pick = r.c; aiWhy = r.why; status = 'PROBABLE'; } }
+    }
+  }
+  // the only realistic match is a star above the market ceiling (e.g. "Endrick", Roma wants to sign him): filtered as a star either way
+  if (!pick) {
+    const top = all_.filter((c) => c.s >= 0.9);
+    const valued = top.filter((c) => (valueToEur(c.row.value) ?? 0) >= 1_000_000);
+    if (valued.length === 1 && (valueToEur(valued[0].row.value) ?? 0) > cfg.identify.maxValueEur) {
+      await run(db, 'UPDATE players SET market_value = ?, market_value_eur = ?, tm_url = ?, club_name = COALESCE(?, club_name) WHERE id = ?', [valued[0].row.value, valueToEur(valued[0].row.value), valued[0].row.tmUrl, valued[0].row.club, p.id]);
+      return exclude(db, p, 'star', [{ k: 'star', n: valued[0].row.name, v: valued[0].row.value }], names, candidatesJson);
     }
   }
   // a coach/official with that name, and no PLAYER with that name connected to the club -> staff (e.g. Estoril's coach Vasco Matos)
@@ -248,8 +290,16 @@ async function saveProfile(db: Db, playerId: string, prof: TmProfile, identity: 
 
 /** Two radar players that turn out to be the same TM player (e.g. "Chorý" + "Chorého") are merged into the older one. Returns the id that is kept. */
 async function mergeByTmId(db: Db, playerId: string, tmId: string, st: IdentifyStats): Promise<string> {
-  const other = await one<{ id: string; aliases: string | null }>(db, 'SELECT id, aliases FROM players WHERE tm_id = ? AND id <> ? ORDER BY created_at LIMIT 1', [tmId, playerId]);
+  const other = await one<{ id: string }>(db, 'SELECT id FROM players WHERE tm_id = ? AND id <> ? ORDER BY created_at LIMIT 1', [tmId, playerId]);
   if (!other) return playerId;
+  await mergeInto(db, playerId, other.id, st);
+  return other.id;
+}
+
+/** Moves every report / mark of radar player `playerId` to `intoId` (aliases kept) and removes the duplicate. */
+async function mergeInto(db: Db, playerId: string, intoId: string, st: IdentifyStats): Promise<void> {
+  const other = await one<{ id: string; aliases: string | null }>(db, 'SELECT id, aliases FROM players WHERE id = ?', [intoId]);
+  if (!other) return;
   const dup = await one<{ aliases: string | null; display_name: string }>(db, 'SELECT aliases, display_name FROM players WHERE id = ?', [playerId]);
   await run(db, 'UPDATE reports SET player_id = ? WHERE player_id = ?', [other.id, playerId]);
   await run(db, 'INSERT OR IGNORE INTO player_flags (player_id, flag, reason, by_email, at) SELECT ?, flag, reason, by_email, at FROM player_flags WHERE player_id = ?', [other.id, playerId]);
@@ -260,7 +310,6 @@ async function mergeByTmId(db: Db, playerId: string, tmId: string, st: IdentifyS
   await run(db, `UPDATE players SET aliases = ?, merge_log = json_insert(COALESCE(merge_log,'[]'), '$[#]', json(?)) WHERE id = ?`, [JSON.stringify(a.slice(0, 12)), JSON.stringify({ at: now(), kind: 'TM_MERGE', from: playerId }), other.id]);
   await run(db, 'DELETE FROM players WHERE id = ?', [playerId]);
   st.merged++;
-  return other.id;
 }
 
 function mode(a: string[]): string | null {

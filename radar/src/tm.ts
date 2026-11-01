@@ -174,6 +174,8 @@ const GRK: Record<string, string> = { α: 'a', β: 'v', γ: 'g', δ: 'd', ε: 'e
 /** Latin, lower-case, no diacritics, letters/digits/spaces only; Cyrillic + Greek transliterated. Keeps the spelling otherwise (TM search is spelling-sensitive). */
 export function latinName(s: string): string {
   let out = '';
+  // Greek digraphs first: γκ/γγ -> g, μπ -> b, ντ -> d, ου -> ou ("Γκρίλις" -> grilis)
+  s = String(s || '').toLowerCase().replace(/γκ|γγ/g, 'g').replace(/μπ/g, 'b').replace(/ντ/g, 'd').replace(/ου/g, 'ou');
   for (const ch of norm(String(s || '').split('').map((c) => EXTRA[c.toLowerCase()] ?? c).join(''))) out += CYR[ch] ?? GRK[ch] ?? ch;
   return out.replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -185,27 +187,47 @@ function lev(a: string, b: string): number {
 }
 const stem = (w: string) => w.replace(/(ego|emu|om|em|ovi|ova|ho|mu|ym|im|a|u|e|y|i)$/, '');
 export type NameHow = 'exact' | 'translit' | 'inflect' | 'fuzzy';
-/** 0..1 similarity between a name as written in the press and a TM name. Surname-only mentions are allowed but score lower than full names. */
+/**
+ * 0..1 similarity between a name as written in the press and a TM name. Handles:
+ *  - transliteration (Cyrillic / Greek), diacritics
+ *  - grammatical endings: "Chorého" ~ Chorý, "Adua" ~ Adu (Czech genitive), "Grealishom" ~ Grealish
+ *  - short first names / nicknames: "Alex Pașcanu" ~ Alexandru Pașcanu
+ *  - extra or missing middle names: "Dion Drena Beljo" ~ Dion Beljo
+ *  - small spelling differences ("Wjunnyk" ~ Viunnyk)
+ * The surname (last written token) must always match. Surname-only mentions score lower than full names.
+ */
 export function nameScore(written: string, tmName: string): { s: number; how: NameHow } {
   const w = latinName(written).split(' ').filter(Boolean), t = latinName(tmName).split(' ').filter(Boolean);
   if (!w.length || !t.length) return { s: 0, how: 'fuzzy' };
   let how: NameHow = /[^\u0000-\u024f]/.test(written) ? 'translit' : 'exact';
-  const tok = (a: string) => Math.max(...t.map((b) => {
+  const mark = (h: NameHow) => { if (how === 'exact') how = h; };
+  const pair = (a: string, b: string, isSurname: boolean): number => {
     if (a === b) return 1;
-    if (a.length >= 4 && stem(a) === stem(b)) { if (how === 'exact') how = 'inflect'; return 0.95; }
+    if (a.length >= 4 && stem(a) === stem(b)) { mark('inflect'); return 0.95; }
+    if (b.length >= 3 && (stem(a) === b || stem(b) === a)) { mark('inflect'); return 0.92; }
     const k = Math.max(4, Math.min(a.length, b.length) - 1);
-    if (a.length >= 4 && b.length >= 4 && a.slice(0, k - 1) === b.slice(0, k - 1) && Math.abs(a.length - b.length) <= 3) { if (how === 'exact') how = 'inflect'; return 0.9; }
+    if (a.length >= 4 && b.length >= 4 && a.slice(0, k - 1) === b.slice(0, k - 1) && Math.abs(a.length - b.length) <= 3) { mark('inflect'); return 0.9; }
+    // first names: "alex" ~ "alexandru", "dani" ~ "daniel" (never for the surname)
+    if (!isSurname && Math.min(a.length, b.length) >= 3 && (a.startsWith(b) || b.startsWith(a))) { mark('fuzzy'); return 0.85; }
     const dist = lev(a, b), m = Math.max(a.length, b.length);
-    if (dist <= 1 && m >= 4) { if (how === 'exact') how = 'fuzzy'; return 0.85; }
-    if (dist <= 2 && m >= 7) { if (how === 'exact') how = 'fuzzy'; return 0.75; }
+    if (dist <= 1 && m >= 4) { mark('fuzzy'); return 0.85; }
+    if (dist <= 2 && m >= 7) { mark('fuzzy'); return 0.75; }
     return 0;
-  }));
-  const sc = w.map(tok);
-  const hit = sc.filter((x) => x > 0).length;
-  if (!hit) return { s: 0, how };
-  const avg = sc.reduce((a, b) => a + b, 0) / w.length;
-  // every written token matched: full name gets a bonus, a surname-only mention a small penalty
-  const s = hit === w.length ? Math.min(1, avg + (w.length >= 2 ? 0.05 : -0.08)) : avg * 0.6;
+  };
+  const best = (a: string, pool: string[], isSurname: boolean) => Math.max(0, ...pool.map((b) => pair(a, b, isSurname)));
+  // the surname must match one of the TM name parts (TM sometimes lists a player by first name only: "Heverton", "Endrick")
+  const sur = best(w[w.length - 1], t, true);
+  if (!sur) return { s: 0, how };
+  if (w.length === 1) return { s: Math.max(0, sur - 0.08), how };
+  // written -> TM coverage (every word in the article found in the TM name) and TM -> written coverage (every TM name part in the article)
+  const wScores = w.map((a, i) => (i === w.length - 1 ? sur : best(a, t, false)));
+  const tScores = t.map((b) => Math.max(0, ...w.map((a, i) => pair(a, b, i === w.length - 1))));
+  const cover = (xs: number[]) => xs.filter((x) => x > 0).length / xs.length;
+  const avg = (xs: number[]) => { const hit = xs.filter((x) => x > 0); return hit.reduce((p, c) => p + c, 0) / Math.max(1, hit.length); };
+  let s = 0;
+  if (cover(wScores) === 1) s = Math.min(1, avg(wScores) + 0.05);           // all written words matched
+  else if (cover(tScores) === 1 && t.length >= 2) s = Math.min(0.95, avg(tScores));  // article adds a middle name: "Dion Drena Beljo" ~ "Dion Beljo"
+  else s = avg(wScores) * cover(wScores) * 0.9;                             // partial (first name differs completely)
   return { s, how };
 }
 
@@ -215,7 +237,18 @@ export const clubTokens = (s: string) => latinName(s).split(' ').filter((t) => t
 export function sameClub(a: string | null | undefined, b: string | null | undefined): boolean {
   if (!a || !b) return false;
   const A = clubTokens(a), B = clubTokens(b);
+  if (!A.length || !B.length) {
+    // names made only of generic words ("Sporting", "Real", "Athletic"): whole-word containment
+    const x = ` ${latinName(a)} `, y = ` ${latinName(b)} `;
+    return x.trim().length >= 4 && y.trim().length >= 4 && (x.includes(y) || y.includes(x));
+  }
   return A.some((x) => B.some((y) => x === y || (x.length >= 5 && y.length >= 5 && (x.startsWith(y.slice(0, 5)) || y.startsWith(x.slice(0, 5))))));
+}
+/** Values the AI sometimes puts into "club" that are not a club. */
+export function notAClub(c: string): boolean {
+  const v = latinName(c);
+  if (!v || /^(unknown|n a|na|none|null|no club|free agent|without club|bez kluba|bez klubu|-)$/.test(v)) return true;
+  return /\b(liga|league|ligue|ekstraklasa|superliga|super lig|bundesliga|eredivisie|serie a|serie b|premiership|championship|division|primeira|segunda|allsvenskan|eliteserien|superettan|veikkausliiga|efbet|chance liga|fortuna liga|nb i|otp bank liga|prva liga|hnl|super league|national team|nationalmannschaft|reprezentac\w*)\b/.test(v);
 }
 export const isReserveTeam = (name: string) => /\b(ii|b|u\d{2}|youth|reserves?|jugend|juniors?|academy)\b/i.test(name);
 

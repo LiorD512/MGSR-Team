@@ -78,6 +78,8 @@ jobs:
           TM_HTML_PROXY_URL: ${{ vars.TM_HTML_PROXY_URL || 'https://management.britsportgroup.com/api/transfermarkt/html-proxy' }}
           # one-time 30-day re-read of the news searches (commit message on the branch contains [radar-backfill])
           RADAR_BACKFILL: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[radar-backfill]') && '1' || '0' }}
+          # one-time retry of every unmatched player now (commit message contains [radar-reidentify])
+          RADAR_REIDENTIFY: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[radar-reidentify]') && '1' || '0' }}
         run: npx tsx src/cli.ts run ${{ inputs.no_analyze && '--no-analyze' || '' }}
       - name: Cleanup (decay, expiry, retention)
         env:
