@@ -1,12 +1,15 @@
 name: Transfer Radar pipeline
 
-# Collect -> gate -> AI (free-first, hard-capped paid overflow) -> resolve -> score -> alerts.
-# SAFETY: scheduled runs only happen when the repository variable RADAR_ENABLED is exactly 'true'
-# (Settings -> Secrets and variables -> Actions -> Variables). Until then nothing spends money.
-# Manual / branch-test runs: workflow_dispatch (default branch only) or a push whose commit message contains [radar-run].
+# Collect -> gate -> AI (free-first, hard-capped paid overflow) -> resolve -> score -> alerts -> cleanup.
+# SCHEDULE: every 3rd day, early morning. GitHub cron has no "every 3 days", so it fires daily at 01:30 UTC
+# (03:30 Israel in winter, 04:30 in summer) and the `gate` job lets only every 3rd calendar day through
+# (days since 1970-01-01 divisible by 3).
+# SAFETY: scheduled runs only happen when the repository variable RADAR_ENABLED is exactly 'true', and only once this
+# workflow is on the default branch (GitHub only schedules workflows from main). Until then nothing spends money.
+# Manual runs: workflow_dispatch (default branch only) or a push to feat/transfer-radar whose commit message contains [radar-run].
 on:
   schedule:
-    - cron: '17 * * * *'
+    - cron: '30 1 * * *'
   workflow_dispatch:
     inputs:
       no_analyze:
@@ -25,13 +28,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  run:
-    if: >-
-      (github.event_name == 'schedule' && vars.RADAR_ENABLED == 'true') ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && contains(github.event.head_commit.message, '[radar-run]'))
+  gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 2
+    outputs:
+      go: ${{ steps.decide.outputs.go }}
+    steps:
+      - id: decide
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "${{ vars.RADAR_ENABLED }}" != "true" ]; then echo "RADAR_ENABLED is not 'true' - skipping"; echo "go=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          DAY=$(( $(date -u +%s) / 86400 ))
+          if [ $(( DAY % 3 )) -eq 0 ]; then echo "go=true" >> "$GITHUB_OUTPUT"; else echo "Not a 3-day run day (day $DAY) - skipping"; echo "go=false" >> "$GITHUB_OUTPUT"; fi
+
+  run:
+    needs: gate
+    if: >-
+      needs.gate.outputs.go == 'true' &&
+      (github.event_name != 'push' || contains(github.event.head_commit.message, '[radar-run]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
     defaults:
       run:
         working-directory: radar
@@ -59,3 +75,8 @@ jobs:
           RADAR_GEMINI_KEY: ${{ secrets.RADAR_GEMINI_KEY }}
           RADAR_GEMINI_FREE_KEY: ${{ secrets.RADAR_GEMINI_FREE_KEY }}
         run: npx tsx src/cli.ts run ${{ inputs.no_analyze && '--no-analyze' || '' }}
+      - name: Cleanup (decay, expiry, retention)
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_TOKEN: ${{ secrets.TURSO_TOKEN }}
+        run: npx tsx src/cli.ts sweep

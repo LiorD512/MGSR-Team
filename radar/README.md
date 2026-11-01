@@ -7,7 +7,7 @@ Runs on GitHub Actions, stores to Turso (libSQL). Spec: `../.kiro/specs/transfer
 2. **GitHub -> Settings -> Secrets and variables -> Actions -> Secrets**: `TURSO_URL`, `TURSO_TOKEN`, `RADAR_GEMINI_KEY` (the existing Gemini key); optional `RADAR_GEMINI_FREE_KEY`.
 3. **Vercel -> Environment Variables**: `TURSO_URL`, `TURSO_TOKEN`. Recommended for the first weeks: `RADAR_ALLOWED_EMAILS=your@email` (only listed emails can open the radar; delete it to open to everyone). Optional `RADAR_ADMIN_EMAILS`. Redeploy.
 4. Run the **Transfer Radar pipeline** workflow once (Actions tab -> Run workflow). Check the run summary.
-5. When happy, set the repository **variable** `RADAR_ENABLED=true` to enable the hourly schedule and the nightly sweep.
+5. When happy, merge the PR (GitHub only runs schedules from `main`), then set the repository **variable** `RADAR_ENABLED=true`: the pipeline then runs every 3rd day at 01:30 UTC and cleans up at the end of each run. Recommended: also set `RADAR_COLLECT_ENABLED=true` (free, no AI) so articles are not lost between runs.
 
 ## Local development
 ```bash

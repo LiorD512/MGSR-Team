@@ -43,7 +43,8 @@ async function scanSource(db: Db, cfg: RadarConfig, http: Http, s: SourceRow, st
     const prov = s.provenance ? JSON.parse(s.provenance) : {};
     if (prov.kind === 'GNEWS') {
       const g = GN_QUERIES.find((x) => x.cc === prov.cc);
-      const days = s.last_success_at ? 3 : cfg.pipeline.intakeDays; // first scan covers the intake window only (R22.2)
+      // first scan covers the intake window only (R22.2); later scans look back one run-interval plus 2 days of overlap (dedupe makes overlap free)
+      const days = s.last_success_at ? cfg.pipeline.runEveryDays + 2 : cfg.pipeline.intakeDays;
       feedUrl = gnUrl(prov.q, prov.cc, prov.lang, Math.min(days, 30));
       const r = await http.get(feedUrl, { ignoreRobots: true });
       if (r.status !== 200) throw new Error(`HTTP ${r.status}`);

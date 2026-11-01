@@ -91,4 +91,14 @@ export const MIGRATIONS: { id: number; name: string; sql: string[] }[] = [
       `CREATE UNIQUE INDEX IF NOT EXISTS ux_alerts_dedupe ON alerts(user_id, dedupe_key)`,
     ],
   },
+  {
+    // 3-day cadence: bigger runs, longer queue life. Updates DBs that were seeded with the old hourly-run defaults.
+    id: 2,
+    name: 'three_day_cadence',
+    sql: [
+      `UPDATE config SET json = json_set(json, '$.runEveryDays', 3, '$.maxItemsPerRun', 1500, '$.maxBodyReads', 30, '$.analysisExpiryDays', 7, '$.runBudgetMinutes', 40),
+         version = version + 1, updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE key = 'pipeline'`,
+      `UPDATE config SET json = json_set(json, '$.paidMaxRequestsPerRun', 250), version = version + 1, updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE key = 'llm'`,
+    ],
+  },
 ];

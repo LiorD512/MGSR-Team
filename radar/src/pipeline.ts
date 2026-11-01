@@ -9,7 +9,7 @@ import { collect, expireQueue, queueDepth } from './stages/collect.js';
 import { enrichUnnamed } from './stages/enrich.js';
 import { analyze } from './stages/analyze.js';
 import { scoreAll } from './stages/score.js';
-import { log, now } from './util.js';
+import { log, now, sleep } from './util.js';
 import { seedSources } from './sources.js';
 import { migrate } from './db.js';
 
@@ -30,7 +30,11 @@ export async function runPipeline(db: Db, opt: RunOptions = {}) {
   await seedSources(db);
   const cfg = await loadConfig(db);
   const owner = opt.owner ?? `run-${process.env.GITHUB_RUN_ID ?? process.pid}`;
-  if (!(await takeLease(db, 'pipeline', owner, cfg.pipeline.runBudgetMinutes + 15))) { log.warn('another pipeline run holds the lease - exiting'); return null; }
+  // another run (e.g. the free collect-only job) may hold the lease: wait for it instead of silently skipping this run
+  let got = await takeLease(db, 'pipeline', owner, cfg.pipeline.runBudgetMinutes + 15);
+  const giveUp = Date.now() + 15 * 60_000;
+  while (!got && Date.now() < giveUp) { log.info('pipeline lease is held by another run - waiting 30 s'); await sleep(30_000); got = await takeLease(db, 'pipeline', owner, cfg.pipeline.runBudgetMinutes + 15); }
+  if (!got) { log.warn('another pipeline run still holds the lease after 15 min - exiting'); return null; }
   const started = now();
   const deadline = started + cfg.pipeline.runBudgetMinutes * 60_000;
   const logId = (await run(db, 'INSERT INTO run_log (job, started_at, status) VALUES (?,?,?)', ['pipeline', started, 'RUNNING'])).lastInsertRowid;

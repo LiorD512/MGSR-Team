@@ -1,10 +1,8 @@
-name: Transfer Radar nightly sweep
+name: Transfer Radar cleanup (manual)
 
-# Re-scores everyone (decay / signal expiry / archiving), flags silent sources, applies the free-storage retention policy.
-# Runs on schedule only when the repository variable RADAR_ENABLED is 'true'.
+# The cleanup (score decay, signal expiry, archiving, retention) now runs as the last step of the 3-day pipeline run.
+# This workflow is only for running it by hand.
 on:
-  schedule:
-    - cron: '40 2 * * *'
   workflow_dispatch:
 
 permissions:
@@ -16,7 +14,6 @@ concurrency:
 
 jobs:
   sweep:
-    if: github.event_name == 'workflow_dispatch' || vars.RADAR_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:

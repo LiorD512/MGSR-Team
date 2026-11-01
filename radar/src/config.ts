@@ -15,7 +15,7 @@ export interface RadarConfig {
     caps: { singleOriginMax: number; antiRumorMax: number; closedScore: number };
     levels: { exceptional: number; high: number; potential: number; monitor: number };
   };
-  pipeline: { intakeDays: number; archiveAfterDays: number; batchSize: number; maxItemsPerRun: number; maxBodyReads: number; analysisExpiryDays: number; runBudgetMinutes: number; perCountryShare: number };
+  pipeline: { runEveryDays: number; intakeDays: number; archiveAfterDays: number; batchSize: number; maxItemsPerRun: number; maxBodyReads: number; analysisExpiryDays: number; runBudgetMinutes: number; perCountryShare: number };
   llm: {
     enabled: boolean; monthlyCapUsd: number; ceilingUsd: number; dailyCapDivisor: number; warnAt: number;
     model: string; price: Record<string, { in: number; out: number }>; freeDailyRequests: number; paidMaxRequestsPerRun: number;
@@ -38,14 +38,15 @@ export const DEFAULT_CONFIG: RadarConfig = {
     caps: { singleOriginMax: 59, antiRumorMax: 69, closedScore: 12 },
     levels: { exceptional: 85, high: 70, potential: 50, monitor: 30 },
   },
-  pipeline: { intakeDays: 30, archiveAfterDays: 45, batchSize: 8, maxItemsPerRun: 400, maxBodyReads: 15, analysisExpiryDays: 3, runBudgetMinutes: 25, perCountryShare: 0.25 },
+  // The AI pipeline runs every 3 days (early morning). One run therefore handles ~3 days of accumulated articles.
+  pipeline: { runEveryDays: 3, intakeDays: 30, archiveAfterDays: 45, batchSize: 8, maxItemsPerRun: 1500, maxBodyReads: 30, analysisExpiryDays: 7, runBudgetMinutes: 40, perCountryShare: 0.25 },
   llm: {
     enabled: true,
     monthlyCapUsd: 5, ceilingUsd: 6, dailyCapDivisor: 20, warnAt: 0.8,
     model: 'gemini-2.5-flash-lite',
     price: { 'gemini-2.5-flash-lite': { in: 0.10, out: 0.40 } }, // USD per 1M tokens - verify current price
     freeDailyRequests: 200,
-    paidMaxRequestsPerRun: 60,
+    paidMaxRequestsPerRun: 250,
   },
   http: { perHostDelayMs: 5000, timeoutMs: 12000, userAgent: 'Mozilla/5.0 (compatible; BSG-Radar/1.0; +https://github.com/LiorD512/MGSR-Team)', concurrency: 8 },
 };
