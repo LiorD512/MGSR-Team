@@ -1,0 +1,39 @@
+name: Transfer Radar nightly sweep
+
+# Re-scores everyone (decay / signal expiry / archiving), flags silent sources, applies the free-storage retention policy.
+# Runs on schedule only when the repository variable RADAR_ENABLED is 'true'.
+on:
+  schedule:
+    - cron: '40 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: radar-pipeline
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    if: github.event_name == 'workflow_dispatch' || vars.RADAR_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: radar/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Sweep
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_TOKEN: ${{ secrets.TURSO_TOKEN }}
+        run: |
+          [ -n "$TURSO_URL" ] || { echo "::error::TURSO_URL secret missing"; exit 1; }
+          npx tsx src/cli.ts sweep

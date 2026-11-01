@@ -27,7 +27,7 @@
 18. [Callable Inventory — Cloud Functions](#18-callable-inventory)
 19. [Transfermarkt Scraping](#19-transfermarkt-scraping)
 20. [Landing Site](#20-landing-site)
-
+21. [Transfer Radar (men, web)](#21-transfer-radar)
 ---
 
 ## 1. System Overview
@@ -370,7 +370,9 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/tasks` | Tasks | Agent task management (route currently shows disabled state while tasks feature flag is off) |
 | `/portfolio` | Portfolio | Player portfolio management |
 | `/market-radar` | Early Market Radar | Real-time market disruption intelligence (out-of-plans, collapsed deals, contract standoffs across 35+ leagues, max 14 days) |
-| `/news` | News | Redirects to `/market-radar` |
+| `/transfer-radar` | Transfer Radar | **Men web only.** Morning Brief: players who may become available, scored from multilingual local-media reports (see §21). Filters, sort, search, leads that need a name, rule-removed items |
+| `/transfer-radar/players/[id]` | Radar player profile | Score breakdown, evidence timeline (original headline + English summary + quote + link), facts vs reported vs rumor vs AI assessment, feedback buttons |
+| `/transfer-radar/sources` | Radar Source Center | Source registry health; approve / disable / remove / add (admin) || `/news` | News | Redirects to `/market-radar` |
 | `/jewish-finder` | Jewish Finder | Discover Jewish/Israeli heritage players |
 | `/p/[token]` | Shared Player | Public share page (no auth required) |
 | `/shared/requests` | Shared Requests | Public requests page (no auth required) |
@@ -656,7 +658,9 @@ Android app calls Render **directly** for performance-critical endpoints:
 | `weekly-scout-images.yml` | Tuesday 00:00 UTC (3am Israel) | Enrich scout profile images via `_enrich_images.ts` |
 | `daily-releases-refresh.yml` | Manual only (disabled) | Legacy workflow kept for reference; production releases refresh now runs via Cloud Run Job + Cloud Scheduler (`releases-refresh-job`, `releases-refresh-daily`) |
 | `test-tm-scraping.yml` | Manual only | Test Transfermarkt fetch logic |
-
+| `radar-pipeline.yml` | Hourly **only if repo variable `RADAR_ENABLED=true`**; `workflow_dispatch`; or push to `feat/transfer-radar-poc` with `[radar-run]` in the commit message | Transfer Radar: collect -> gate -> AI -> resolve -> score -> alerts (see §21) |
+| `radar-sweep.yml` | Nightly 02:40 UTC, same `RADAR_ENABLED` guard | Transfer Radar maintenance: re-score/decay/archive, silent-source flags, retention |
+| `radar-poc.yml` | Push to `feat/transfer-radar-poc` touching `radar-poc/**` | Throwaway feasibility PoC (kept for reference; spends Gemini quota - do not trigger casually) |
 **Pattern:** All workflows use GitHub API for file updates (not git push). Secrets include `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
 
 **Deployment guardrails (Vercel):** `mgsr-web/vercel.json` defines `ignoreCommand` (`scripts/vercel-ignored-build.sh`) to skip web production builds when commits are not web-relevant or when only `mgsr-web/public/transfer-windows.json` changed. Override token in commit message: `[force vercel build]`.
@@ -1327,3 +1331,44 @@ All parsers handle: `€300k`, `€1.50m`, `€300K`, `€1.50M` (case-insensiti
 | `scripts/convert-logo.js` | Logo conversion (prebuild) |
 | `scripts/test-scout-direct.js` | Test scout server directly |
 | `scripts/freesearch-proxy.py` | Free search proxy |
+
+---
+
+## 21. Transfer Radar
+
+**Scope:** men platform, web only. Spec: `.kiro/specs/transfer-radar/` (requirements, design, tasks). Budget rule: free services first; the only paid usage is the existing Gemini key under a software cap (**$5/month, ceiling $6**). Article text is English only (UI chrome EN+HE).
+
+**Purpose:** continuously read local football media in many languages, extract transfer-opportunity signals with AI, correlate them per player, score them (0-100) with visible reasons, and show them in a dashboard.
+
+### Where it runs (no new billable infrastructure)
+
+| Part | Location |
+|---|---|
+| Pipeline (TypeScript, Node 22, `tsx`) | `radar/` run by **GitHub Actions** (`radar-pipeline.yml`, `radar-sweep.yml`; public repo = free minutes) |
+| Database | **Turso (libSQL/SQLite)** free plan. NOT Firestore (Firestore is only used by existing features; Radar adds ~0 Firestore reads/writes) |
+| Web UI + API | `mgsr-web` on Vercel: `/transfer-radar*` pages and `/api/transfer-radar/*` routes (Firebase ID token verified server-side; the browser never sees DB credentials) |
+| LLM | Gemini (`gemini-2.5-flash-lite`) via REST. Free-first: `RADAR_GEMINI_FREE_KEY` (optional, free tier) then `RADAR_GEMINI_KEY` (existing paid key) under the dollar cap |
+
+### Secrets / env
+GitHub Actions secrets: `TURSO_URL`, `TURSO_TOKEN`, `RADAR_GEMINI_KEY`, optional `RADAR_GEMINI_FREE_KEY`. Repo variable `RADAR_ENABLED=true` turns on scheduled runs (off by default = nothing spends money).
+Vercel env: `TURSO_URL`, `TURSO_TOKEN` (read/write), optional `RADAR_ADMIN_EMAILS` (comma-separated; if empty every signed-in agent can manage sources, like the rest of the app).
+
+### Pipeline stages (`radar/src/`)
+`collect` (RSS/Atom + native-language news-search feeds; robots.txt, 5 s/host, conditional GET, 403/429 back-off; **30-day intake window**, publication-date integrity, URL/title dedupe, football gate) -> `enrich` (reads the article page only for strong leads whose headline does not name the player) -> `analyze` (batches of 8, strict prompt `v3`, JSON-schema output; rules in `rules.ts` decide - the AI can propose but never override; evidence quote must appear in the text) -> `resolve` (entity resolution: transliteration keys, club/surname matching, review queue) -> `correlate` (independent-origin clustering) -> `score` (`scoring.ts`, pure deterministic engine, weights in DB `config`) -> alerts. `sweep`: decay, signal expiry (R22), archive after 45 days, retention (non-final reports 14 d, excerpts 30 d, articles 31 d) to stay inside the free 500 MB.
+
+CLI: `cd radar && npx tsx src/cli.ts <migrate|seed|run [--no-analyze]|score|sweep|import-poc|status>` (uses local `radar-local.db` when `TURSO_URL` is unset).
+
+### Turso tables
+`config, sources, source_events, articles, article_bodies, reports, players, opportunities, score_history, timeline, entity_review, host_state, jobs, quota_ledger, run_log, alert_rules, alerts` (migrations in `radar/src/schema.ts`).
+
+### API routes (`/api/transfer-radar/`, all require a Firebase ID token)
+`opportunities` (filters: country, show=all|monitor|loan|transfer|low|closed, days, q, minScore, tier, verification, sort=score|new|reliable|urgent), `players/[id]`, `summary`, `sources` (GET; POST admin: add/approve/disable/enable/remove/set-tier/set-interval), `feedback` (correct|incorrect|outdated), `alerts`.
+
+### Safety rules
+Never bypasses logins/paywalls/CAPTCHAs; hosts that answer 403/429/503 are backed off. Paid LLM calls stop at the monthly cap and a daily sub-cap (cap/20), with a kill-switch (`config.llm.enabled`). Claims need an evidence quote that exists in the source text; verification status is assigned by rules (CONFIRMED / REPORTED / RUMOR); AI text is labelled AI. Player photos are not shown (licensing).
+
+### Known limits (documented, not hidden)
+No football-database join yet: age, position, contract expiry, photo show "Unknown". Star/target-profile filtering uses an elite-club list as a stand-in for value/league tiers. Instagram/X/Facebook are not monitored (no free compliant access). Scores skew low until contract and squad data exist (calibration is a config change).
+
+### Files
+`radar/` (pipeline, README), `.github/workflows/radar-*.yml`, `mgsr-web/src/app/transfer-radar/**`, `mgsr-web/src/app/api/transfer-radar/**`, `mgsr-web/src/components/transfer-radar/**`, `mgsr-web/src/lib/transferRadar/**` (own EN/HE dictionary), `BritRail.tsx` (Signals menu), `featureFlags.ts` (`TRANSFER_RADAR_ENABLED`), `radar-poc/` + `docs/transfer-radar-mock*` (feasibility PoC + UI mock, reference only).

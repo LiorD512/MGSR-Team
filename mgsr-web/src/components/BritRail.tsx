@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
+import { TRANSFER_RADAR_ENABLED } from '@/lib/featureFlags';
 
 export type BritRailActive =
   | 'dashboard'
@@ -19,6 +20,8 @@ export type BritRailActive =
   | 'shortlist'
   | 'requests'
   | 'contacts'
+  | 'transfer-radar'
+  | 'transfer-radar-sources'
   | 'release'
   | 'club-change'
   | 'returnees'
@@ -42,7 +45,7 @@ export default function BritRail({ active }: BritRailProps) {
   const [playersOpen, setPlayersOpen] = useState(playersActive);
 
   const signalsActive =
-    active === 'release' || active === 'club-change' || active === 'returnees' || active === 'contract-finisher';
+    active === 'transfer-radar' || active === 'transfer-radar-sources' || active === 'release' || active === 'club-change' || active === 'returnees' || active === 'contract-finisher';
   const [signalsOpen, setSignalsOpen] = useState(signalsActive);
 
   const warRoomActive =
@@ -57,6 +60,8 @@ export default function BritRail({ active }: BritRailProps) {
 
   const isRoster = pathname === '/players' || pathname.startsWith('/players/');
   const isShortlist = pathname === '/shortlist';
+  const isRadar = pathname === '/transfer-radar' || pathname.startsWith('/transfer-radar/players');
+  const isRadarSources = pathname === '/transfer-radar/sources';
   const isRelease = pathname === '/release-notifications';
   const isClubChange = pathname === '/club-change-notifications';
   const isReturnees = pathname === '/returnees';
@@ -151,6 +156,16 @@ export default function BritRail({ active }: BritRailProps) {
             </button>
             {signalsOpen && (
               <div className="brit-nav-sub">
+                {TRANSFER_RADAR_ENABLED && (
+                  <>
+                    <Link href="/transfer-radar" className={active === 'transfer-radar' || isRadar ? 'active' : ''}>
+                      <span>{t('nav_transfer_radar')}</span>
+                    </Link>
+                    <Link href="/transfer-radar/sources" className={active === 'transfer-radar-sources' || isRadarSources ? 'active' : ''}>
+                      <span>{t('nav_radar_sources')}</span>
+                    </Link>
+                  </>
+                )}
                 <Link href="/release-notifications" className={active === 'release' || isRelease ? 'active' : ''}>
                   <span>{t('nav_release_notifications')}</span>
                 </Link>
