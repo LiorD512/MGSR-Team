@@ -1,12 +1,13 @@
 'use client';
 
+import { Suspense } from 'react';
 import TransferRadarShell from '@/components/transfer-radar/TransferRadarShell';
-import RadarWorkspace from '@/components/transfer-radar/RadarWorkspace';
+import RadarFeed from '@/components/transfer-radar/RadarFeed';
 
 export default function TransferRadarPage() {
   return (
     <TransferRadarShell active="transfer-radar">
-      <RadarWorkspace />
+      <Suspense><RadarFeed /></Suspense>
     </TransferRadarShell>
   );
 }

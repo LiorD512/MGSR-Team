@@ -20,44 +20,43 @@ export async function radarFetch<T>(path: string, init: RequestInit = {}): Promi
   return json as T;
 }
 
-export type Level = 'Exceptional' | 'High priority' | 'Potential' | 'Monitor' | 'Low priority' | 'Closed';
-export type Verification = 'CONFIRMED' | 'REPORTED' | 'RUMOR';
-export type Tier = 'A' | 'B' | 'C' | 'D';
 export interface FlagInfo { by: string | null; at: number; reason?: string | null }
 export interface Flags { watch?: FlagInfo; contacted?: FlagInfo; hidden?: FlagInfo }
+export type Identity = 'CONFIRMED' | 'PROBABLE';
 
-export interface Opportunity {
-  playerId: string; displayName: string; writtenAs: string | null; clubName: string | null; country: string | null; countryIsClub: boolean;
-  score: number; rawScore: number; level: Level; closed: boolean; situations: Situation[]; mainSituation: Situation; loanAvailable: boolean;
-  topHeadline: string | null; topOutlet: string | null; topTier: Tier | null; bestVerification: Verification; bestTier: Tier; reportCount: number; independentOrigins: number;
-  action: string | null; firstSeenAt: number; lastReportAt: number; lastChangeAt: number; flags: Flags;
+/** One player in the feed: his Transfermarkt identity + the plain situation + the newest original source. */
+export interface FeedItem {
+  id: string; name: string; fullName: string | null; writtenAs: string[]; tmUrl: string | null; photo: string | null; position: string | null; age: number | null; dob: string | null;
+  nationalities: string[]; club: string | null; crest: string | null; league: string | null; country: string | null; contractEnd: number | null; loanFrom: string | null;
+  value: string | null; valueEur: number | null; identity: Identity; closed: boolean; situation: Situation; situations: Situation[];
+  firstAt: number; lastAt: number; sources: number; latest: { outlet: string; country: string | null; at: number; en: string; orig: string } | null; inRoster: boolean; flags: Flags;
 }
-export interface OpportunitiesResponse { items: Opportunity[]; generatedAt: number }
+export interface FeedResponse { items: FeedItem[]; pending: boolean; generatedAt: number }
+
+export interface IdentityCheck { k: string; [v: string]: string | number | null }
+export interface Candidate { tmId: string; tmUrl: string; name: string; position: string | null; age: number | null; club: string | null; value: string | null; photo: string | null; nationalities: string[]; s: number }
+export interface FileSource { id: string; outlet: string; country: string | null; lang: string | null; tier: string; at: number; orig: string; en: string | null; quote: string | null; url: string; viaGoogle: boolean; writtenAs: string | null; situation: Situation }
+export interface PlayerFile {
+  player: {
+    id: string; name: string; fullName: string | null; writtenAs: string[]; tmUrl: string | null; photo: string | null; position: string | null; age: number | null; dob: string | null; nationalities: string[];
+    foot: string | null; height: string | null; club: string | null; crest: string | null; league: string | null; country: string | null; contractEnd: number | null; loanFrom: string | null;
+    value: string | null; valueEur: number | null; identity: string | null; excludedReason: string | null; checks: IdentityCheck[]; candidates: Candidate[]; inRoster: boolean;
+  };
+  closed: boolean; firstAt: number | null; lastAt: number | null;
+  events: { at: number; situation: Situation; title: string; sources: string[] }[];
+  sources: FileSource[]; flags: Flags;
+}
+
+export interface FilteredItem {
+  id: string; name: string; reason: string; status: string | null; value: string | null; club: string | null; tmUrl: string | null; hiddenBy: string | null; staff: string | null;
+  article: { outlet: string; url: string; at: number; en: string } | null;
+}
 
 export interface SummaryResponse {
-  kpi: Record<string, number>;
-  leads: { id: string; outlet: string; url: string; published_at: number; title_orig: string; headline_en: string | null; club_raw: string | null; country: string | null }[];
-  removed: { id: string; outlet: string; url: string; published_at: number; headline_en: string | null; title_orig: string; player_raw: string | null; club_raw: string | null; drop_reason: string }[];
   lastRun: { started_at: number; ended_at: number | null; status: string } | null;
   nextAnalysisAt: number | null;
   coverage: { sources: number; countries: number };
   generatedAt: number;
-}
-
-export interface TimelineItem {
-  id: string; at: number; kind: 'REPORT' | 'STATUS_CHANGE'; reportId: string; signals: string[]; verification: Verification; outlet: string; tier: Tier; url: string;
-  headlineEn: string | null; titleOrig: string; quote: string | null; claim: string | null; evidenceOk: boolean; attributedTo: string | null; headlineOnly: boolean; originKey: string | null;
-  feedback: { correct: number; incorrect: number; outdated: number };
-}
-export interface ScoreComponent { key: string; points: number; max: number; signal?: string; outlet?: string; tier?: string; verification?: string; confidence?: number; recency?: number; ageDays?: number; note?: string }
-export interface PlayerResponse {
-  player: { id: string; displayName: string; writtenAs: string | null; clubName: string | null; country: string | null; countryIsClub: boolean; league: string | null; position: string | null; dob: string | null;
-    nationalities: string[]; foot: string | null; heightCm: number | null; contractExpires: number | null; contractVerified: boolean; resolutionStatus: string };
-  opportunity: null | { score: number; rawScore: number; level: Level; closed: boolean; scoreDelta7d: number; urgency: string; categories: string[]; bestVerification: Verification; bestTier: Tier; reportCount: number;
-    independentOrigins: number; action: string | null; explanation: { components?: ScoreComponent[]; caps?: string[]; modifiers?: string[] }; configVersion: number; firstSeenAt: number; lastReportAt: number; lastChangeAt: number };
-  timeline: TimelineItem[];
-  history: { at: number; score: number; level: string }[];
-  flags: Flags;
 }
 
 export type FlagAction = 'watch' | 'unwatch' | 'contacted' | 'uncontacted' | 'hide' | 'restore';

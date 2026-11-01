@@ -98,3 +98,15 @@ export const parseJson = <T,>(s: unknown, fallback: T): T => {
   if (typeof s !== 'string' || !s) return fallback;
   try { return JSON.parse(s) as T; } catch { return fallback; }
 };
+
+let identityCols = false;
+/** True once the pipeline's migration 4 (Transfermarkt identity) ran. Before that the feed is empty and the UI says "identifying players". */
+export async function identityReady(): Promise<boolean> {
+  if (identityCols) return true;
+  const cols = await q<{ name: string }>('PRAGMA table_info(players)');
+  identityCols = cols.some((c) => c.name === 'identity_status');
+  return identityCols;
+}
+
+/** Reports that belong in the story: final signals + status changes (moved, returned, renewed...). */
+export const STORY_REPORTS = `(r.final = 1 OR r.signals LIKE '%TRANSFER_COMPLETED%' OR r.signals LIKE '%RETURNED_TO_SQUAD%' OR r.signals LIKE '%RENEWED_CONTRACT%' OR r.signals LIKE '%DENIED_BY_CLUB%')`;

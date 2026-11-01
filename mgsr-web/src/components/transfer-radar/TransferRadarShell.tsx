@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Transfer Radar page shell: men-only guard + the shared "brit-room" chrome (BritRail, top bar) with the dark radar canvas.
+ * Transfer Radar page shell: men-only guard + the shared "brit-room" chrome (BritRail, top bar), same as Roster / Contacts / Requests.
  * Unauthenticated -> /login. Women/Youth -> /dashboard (same rule as War Room).
  */
 import { useEffect, useMemo } from 'react';
@@ -38,7 +38,7 @@ export default function TransferRadarShell({ active, crumb, children }: { active
         <BritRail active={active} />
         <div className="brit-main">
           <header className="brit-topbar">
-            <div>BRIT / <strong>{tr('crumb')}</strong> / {crumb ?? tr('nav')} / {dateStr}</div>
+            <div>BRIT / <strong>{tr('nav')}</strong> / {crumb ? `${crumb} / ` : ''}{dateStr}</div>
             <div className="brit-actions">
               <BritPlatformSwitch />
               <button onClick={() => setLang(lang === 'en' ? 'he' : 'en')}>{lang === 'en' ? 'HE / EN' : 'EN / HE'}</button>

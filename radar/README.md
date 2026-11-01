@@ -22,3 +22,10 @@ Without `TURSO_URL` the CLI uses a local SQLite file, so nothing touches product
 ## Cost controls
 `config.llm`: `monthlyCapUsd` (5), `ceilingUsd` (6), `dailyCapDivisor` (20), `enabled` (kill switch), `paidMaxRequestsPerRun`. Spend is computed from token counts returned by the API and stored in `quota_ledger`. Free-tier key is used first when present.
 
+
+## Transfermarkt identification (v3)
+Every player is matched to ONE Transfermarkt profile automatically (`src/stages/identify.ts`, `src/tm.ts`) before he can appear on the radar:
+club squad -> name search -> transfer history -> AI tie-break; stars above `identify.maxValueEur` (EUR 5M), other sports, coaches and retired players are filtered out with a reason.
+Google News redirect links are resolved to the publisher's article URL (`src/stages/links.ts`).
+- Needs `TM_HTML_PROXY_URL` (defaults to the production html-proxy; set in `radar-pipeline.yml`).
+- Backfill / re-run on existing data: `npx tsx src/cli.ts identify` (add `--reset` to retry UNIDENTIFIED players now).

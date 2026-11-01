@@ -9,6 +9,8 @@ import { collect, expireQueue, queueDepth } from './stages/collect.js';
 import { enrichUnnamed } from './stages/enrich.js';
 import { analyze } from './stages/analyze.js';
 import { scoreAll } from './stages/score.js';
+import { resolveLinks } from './stages/links.js';
+import { identify } from './stages/identify.js';
 import { log, now, sleep } from './util.js';
 import { seedSources } from './sources.js';
 import { migrate } from './db.js';
@@ -47,6 +49,8 @@ export async function runPipeline(db: Db, opt: RunOptions = {}) {
     if (!opt.skipCollect) { out.collect = await collect(db, cfg, http, deadline); out.expired = await expireQueue(db, cfg); }
     if (!opt.skipEnrich) out.enrich = await enrichUnnamed(db, cfg, http, deadline);
     if (!opt.skipAnalyze) out.analyze = await analyze(db, cfg, llm, deadline);
+    out.links = await resolveLinks(db, cfg, deadline);
+    out.identify = await identify(db, cfg, llm, deadline);
     out.score = await scoreAll(db, cfg);
     out.queueDepth = await queueDepth(db);
     out.quota = await quota.summary();
@@ -71,7 +75,7 @@ export async function writeSummary(db: Db, out: Record<string, any>, ms: number)
   const L: string[] = [];
   L.push(`# Transfer Radar pipeline run`, `Duration ${(ms / 1000).toFixed(0)}s · LLM spend this month **$${(q?.monthUsd ?? 0).toFixed(4)} of $${q?.cap ?? 0}** cap`);
   L.push(`\n| Stage | Result |\n|---|---|`);
-  for (const k of ['collect', 'enrich', 'analyze', 'score'] as const) if (out[k]) L.push(`| ${k} | \`${JSON.stringify(out[k])}\` |`);
+  for (const k of ['collect', 'enrich', 'analyze', 'links', 'identify', 'score'] as const) if (out[k]) L.push(`| ${k} | \`${JSON.stringify(out[k])}\` |`);
   L.push(`| queue depth | ${out.queueDepth} |`);
   L.push(`\n**Database:** ${JSON.stringify(counts)}`);
   L.push(`\n## Top opportunities\n| Score | Level | Player | Club | Country | Origins | Latest headline |\n|---|---|---|---|---|---|---|`);

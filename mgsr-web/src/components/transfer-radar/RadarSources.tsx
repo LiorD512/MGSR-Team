@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { TRANSFER_RADAR_SOURCES_VISIBLE } from '@/lib/featureFlags';
 import { radarFetch, RadarApiError, type SourceItem } from '@/lib/transferRadar/client';
-import { ago } from '@/lib/transferRadar/model';
+import { ago } from '@/lib/transferRadar/format';
 import { useRadarT } from '@/lib/transferRadar/i18n';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 

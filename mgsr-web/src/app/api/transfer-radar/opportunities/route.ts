@@ -1,41 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticate, ensureFlags, failure, foldFlags, isResponse, parseJson, q } from '@/lib/transferRadar/server';
+import { authenticate, ensureFlags, failure, foldFlags, identityReady, isResponse, parseJson, q, STORY_REPORTS } from '@/lib/transferRadar/server';
 import { situationsOf } from '@/lib/transferRadar/situations';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/transfer-radar/opportunities
- * Returns every scored player (active, closed and hidden-as-not-relevant) with his plain-language situations and the agency marks.
- * The workspace does tabs / filters / sorting on this list in the browser (a few hundred rows at most).
+ * GET /api/transfer-radar/opportunities - the feed.
+ * Only players the pipeline identified on Transfermarkt (CONFIRMED / PROBABLE), not excluded (stars above the ceiling, other sports,
+ * staff, retired) and not hidden by the agency. Filters / sorting / sections happen in the browser (a few hundred rows at most).
  */
 export async function GET(req: NextRequest) {
   const user = await authenticate(req);
   if (isResponse(user)) return user;
   try {
+    if (!(await identityReady())) return NextResponse.json({ items: [], pending: true, generatedAt: Date.now() });
     await ensureFlags();
-    const limit = Math.min(500, Math.max(1, Number(req.nextUrl.searchParams.get('limit') || 400)));
-    const rows = await q<Record<string, unknown>>('SELECT * FROM opportunities ORDER BY closed ASC, score DESC, last_report_at DESC LIMIT ?', [limit]);
+    const rows = await q<Record<string, unknown>>(`SELECT o.player_id, o.closed, o.loan_available, o.first_seen_at, o.last_report_at,
+        p.display_name, p.full_name, p.aliases, p.tm_url, p.photo_url, p.position, p.age, p.dob, p.nationalities, p.club_name, p.club_crest, p.league, p.country, p.contract_expires,
+        p.loan_from, p.market_value, p.market_value_eur, p.identity_status, p.on_shortlist, p.roster_player_id
+      FROM opportunities o JOIN players p ON p.id = o.player_id
+      WHERE p.identity_status IN ('CONFIRMED','PROBABLE') AND o.player_id NOT IN (SELECT player_id FROM player_flags WHERE flag = 'HIDDEN')
+      ORDER BY o.last_report_at DESC LIMIT 500`);
+    const ids = rows.map((r) => String(r.player_id));
+    const reps = ids.length ? await q<Record<string, unknown>>(`SELECT r.player_id, r.signals, r.outlet, r.country, r.published_at, r.title_orig, r.headline_en FROM reports r
+      WHERE r.player_id IN (${ids.map(() => '?').join(',')}) AND ${STORY_REPORTS} ORDER BY r.published_at DESC`, ids) : [];
+    const by = new Map<string, Record<string, unknown>[]>();
+    for (const r of reps) { const k = String(r.player_id); const l = by.get(k) ?? []; l.push(r); by.set(k, l); }
     const flags = foldFlags(await q('SELECT player_id, flag, reason, by_email, at FROM player_flags'));
-    const timeline = await q<{ player_id: string; signals: string }>('SELECT player_id, signals FROM timeline WHERE player_id IN (SELECT player_id FROM opportunities)');
-    const sigs = new Map<string, string[][]>();
-    for (const t of timeline) { const l = sigs.get(t.player_id) ?? []; l.push(parseJson<string[]>(t.signals, [])); sigs.set(t.player_id, l); }
-    const aliases = new Map((await q<{ id: string; aliases: string | null }>('SELECT id, aliases FROM players WHERE id IN (SELECT player_id FROM opportunities)')).map((p) => [p.id, parseJson<string[]>(p.aliases, [])[0] ?? null]));
-    let source = new Map<string, string | null>();
-    try { source = new Map((await q<{ id: string; country_source: string | null }>('SELECT id, country_source FROM players WHERE id IN (SELECT player_id FROM opportunities)')).map((p) => [p.id, p.country_source])); } catch { /* migration 3 not applied yet: treat every country as "reported in" */ }
 
     const items = rows.map((r) => {
       const id = String(r.player_id);
-      const all = situationsOf(sigs.get(id) ?? []);
-      const live = all.filter((k) => k !== 'moved');
+      const rs = by.get(id) ?? [];
+      const sits = situationsOf(rs.map((x) => parseJson<string[]>(x.signals, [])));
+      const live = sits.filter((k) => k !== 'moved');
+      const latest = rs[0];
       return {
-        playerId: id, displayName: r.display_name, writtenAs: aliases.get(id) ?? null, clubName: r.club_name, country: r.country, countryIsClub: source.get(id) === 'CLUB',
-        score: r.score, rawScore: r.raw_score, level: r.level, closed: !!r.closed, situations: live, mainSituation: r.closed ? 'moved' : (live[0] ?? 'other'),
-        loanAvailable: !!r.loan_available, topHeadline: r.top_headline, topOutlet: r.top_outlet, topTier: r.top_tier, bestVerification: r.best_verification, bestTier: r.best_tier,
-        reportCount: r.report_count, independentOrigins: r.independent_origins, action: r.action, firstSeenAt: r.first_seen_at, lastReportAt: r.last_report_at, lastChangeAt: r.last_change_at,
-        flags: flags.get(id) ?? {},
+        id, name: r.display_name, fullName: r.full_name, writtenAs: parseJson<string[]>(r.aliases, []).filter((a) => a !== r.display_name).slice(0, 3),
+        tmUrl: r.tm_url, photo: r.photo_url, position: r.position, age: r.age, dob: r.dob, nationalities: parseJson<string[]>(r.nationalities, []),
+        club: r.club_name, crest: r.club_crest, league: r.league, country: r.country, contractEnd: r.contract_expires, loanFrom: r.loan_from,
+        value: r.market_value, valueEur: r.market_value_eur, identity: r.identity_status, closed: !!r.closed,
+        situation: r.closed ? 'moved' : (live[0] ?? (r.loan_available ? 'loan' : 'other')), situations: live,
+        firstAt: r.first_seen_at, lastAt: Number(latest?.published_at ?? r.last_report_at), sources: rs.length,
+        latest: latest ? { outlet: latest.outlet, country: latest.country, at: latest.published_at, en: latest.headline_en || latest.title_orig, orig: latest.title_orig } : null,
+        inRoster: !!r.roster_player_id, flags: flags.get(id) ?? {},
       };
     });
-    return NextResponse.json({ items, generatedAt: Date.now() });
+    return NextResponse.json({ items, pending: false, generatedAt: Date.now() });
   } catch (e) { return failure(e); }
 }

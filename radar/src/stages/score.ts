@@ -86,7 +86,8 @@ export async function scoreOne(db: Db, cfg: RadarConfig, playerId: string): Prom
 /** Dashboard alerts (global feed, user_id='*'): new Monitor+ player, High priority, big jump, closed. Per-user rules + FCM come next. */
 async function makeAlerts(db: Db, cfg: RadarConfig): Promise<number> {
   const rows = await all<{ player_id: string; display_name: string; club_name: string | null; score: number; level: string; closed: number; score_delta_7d: number; top_headline: string | null; last_change_at: number; first_seen_at: number }>(
-    db, `SELECT player_id, display_name, club_name, score, level, closed, score_delta_7d, top_headline, last_change_at, first_seen_at FROM opportunities WHERE last_change_at >= ? AND player_id NOT IN (SELECT player_id FROM player_flags WHERE flag = 'HIDDEN')`, [now() - 2 * DAY]);
+    db, `SELECT player_id, display_name, club_name, score, level, closed, score_delta_7d, top_headline, last_change_at, first_seen_at FROM opportunities WHERE last_change_at >= ? AND player_id NOT IN (SELECT player_id FROM player_flags WHERE flag = 'HIDDEN')
+      AND player_id IN (SELECT id FROM players WHERE COALESCE(identity_status, 'CONFIRMED') IN ('CONFIRMED', 'PROBABLE'))`, [now() - 2 * DAY]);
   let n = 0;
   for (const r of rows) {
     const events: { type: string; key: string; title: string }[] = [];

@@ -4,6 +4,9 @@ import { loadConfig, seedConfig } from './config.js';
 import { seedSources } from './sources.js';
 import { runPipeline } from './pipeline.js';
 import { scoreAll } from './stages/score.js';
+import { resolveLinks } from './stages/links.js';
+import { identify } from './stages/identify.js';
+import { Llm } from './llm.js';
 import { importPoc } from './import-poc.js';
 import { sweep } from './stages/sweep.js';
 import { Quota } from './quota.js';
@@ -19,6 +22,16 @@ async function main() {
     case 'run': {
       const out = await runPipeline(db, { skipCollect: rest.includes('--no-collect'), skipAnalyze: rest.includes('--no-analyze'), skipEnrich: rest.includes('--no-enrich') });
       if (!out) process.exitCode = 0;
+      break;
+    }
+    case 'identify': {
+      // backfill / re-run: original links + Transfermarkt identity for existing players, then rescore
+      await migrate(db); await seedConfig(db); const cfg = await loadConfig(db);
+      const deadline = Date.now() + cfg.pipeline.runBudgetMinutes * 60_000;
+      if (rest.includes('--reset')) await db.execute(`UPDATE players SET identity_status = NULL, tm_attempts = 0 WHERE identity_status IN ('UNIDENTIFIED')`);
+      log.info('links', await resolveLinks(db, cfg, deadline));
+      log.info('identify', await identify(db, cfg, new Llm(cfg, new Quota(db, cfg)), deadline));
+      log.info('scored', await scoreAll(db, cfg));
       break;
     }
     case 'score': { await migrate(db); const cfg = await loadConfig(db); log.info('scored', await scoreAll(db, cfg)); break; }
@@ -43,7 +56,7 @@ async function main() {
       break;
     }
     default:
-      console.log('usage: radar <migrate|seed [--force]|run [--no-collect --no-analyze --no-enrich]|score|sweep|import-poc [file]|status>');
+      console.log('usage: radar <migrate|seed [--force]|identify [--reset]|run [--no-collect --no-analyze --no-enrich]|score|sweep|import-poc [file]|status>');
   }
 }
 main().then(() => process.exit(process.exitCode ?? 0)).catch((e) => { log.error(e instanceof Error ? e.stack ?? e.message : String(e)); process.exit(1); });

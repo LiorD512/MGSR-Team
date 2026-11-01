@@ -40,13 +40,19 @@ export class Llm {
 
   /** One batched call. Returns parsed items (may be fewer than inputs if the model dropped some). */
   async analyze(userPrompt: string): Promise<AiItem[]> {
+    const arr = await this.json<unknown>(SYSTEM_PROMPT, userPrompt, RESPONSE_SCHEMA);
+    return Array.isArray(arr) ? (arr as AiItem[]) : [];
+  }
+
+  /** Generic structured call (same free-first routing, budget caps and cost ledger as analyze). Returns null if the reply is not valid JSON. */
+  async json<T>(system: string, userPrompt: string, schema: unknown): Promise<T | null> {
     const model = this.cfg.llm.model;
     for (let attempt = 0; attempt < 3; attempt++) {
       const p = await this.pick();
       const body = {
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: RESPONSE_SCHEMA },
+        generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: schema },
       };
       let res: Response;
       try {
@@ -70,11 +76,8 @@ export class Llm {
       if (p.paid) { this.paidRequestsThisRun++; this.stats.paid++; } else this.stats.free++;
       this.stats.usd += usd; this.stats.tokensIn += tin; this.stats.tokensOut += tout;
 
-      const txt = j.candidates?.[0]?.content?.parts?.map((x: any) => x.text).join('') ?? '[]';
-      try {
-        const arr = JSON.parse(txt);
-        return Array.isArray(arr) ? (arr as AiItem[]) : [];
-      } catch { this.stats.failures++; return []; }
+      const txt = j.candidates?.[0]?.content?.parts?.map((x: any) => x.text).join('') ?? '';
+      try { return JSON.parse(txt) as T; } catch { this.stats.failures++; return null; }
     }
     throw new Error('LLM failed after retries');
   }
