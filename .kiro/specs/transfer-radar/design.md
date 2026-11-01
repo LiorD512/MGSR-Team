@@ -327,6 +327,7 @@ Evaluate rules after scoring; store in `alerts`; `DashboardChannel` (bell + feed
 4. **Noise is high:** in a quick manual read of ~48 returned headlines, roughly a quarter to a third looked plausibly actionable; the rest were global stars (not recruitable for this agency), national-team call-ups, other sports, or non-player news ⇒ new requirement **R23** and an LLM-based relevance/target-profile filter.
 5. **Not yet proven:** extraction accuracy of the cheap model on minor languages, entity resolution on lower-league players, GDELT coverage (sandbox IP was rate-limited), and real cost per 1,000 articles. These are the pass/fail items of the next PoC (tasks 0.P1–0.P3).
 *(Caveat: items 2–4 are small-sample observations, not measured precision/recall.)*
+6. **PoC round 2 (2026-11-01):** strict prompt + rules ⇒ ≈ 54 % item-level precision on 26 final flags (manual grade; target ≥ 70 %), cost ≈ $0.075 per 1,000 headline-level items. **Scoring finding:** with only headline-level reports and no contract/squad data, a single explicit report from a decent source scores ≈ 15–21/100 and only multi-signal cases reach "Monitor" (Chorý 41). The weights make 50+ unreachable without contract and squad data (up to 20 points) ⇒ recalibrate weights/levels against known cases in Phase 1 (task 1.26) — decision for the owner. **Name resolution finding:** ~1 in 4 strong leads do not name the player in the headline (e.g. "Player worth €750K out of Raków's squad") ⇒ the pipeline needs a body read for flagged-but-unnamed items (cheap: only those items).
 
 ---
 
