@@ -113,7 +113,7 @@
 [dir=rtl] .brit-room .tr3-file{transform:translateX(-105%)}
 .brit-room .tr3-file.open{transform:none!important}
 .brit-room .tr3-fhead{position:relative;background:var(--black);color:var(--paper);padding:22px 26px 22px;overflow:hidden}
-.brit-room .tr3-fhead .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.45}
+.brit-room .tr3-fhead .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.16}
 .brit-room .tr3-fhead:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(17,17,15,.4),rgba(17,17,15,.92))}
 .brit-room .tr3-fhead > *{position:relative;z-index:1}
 .brit-room .tr3-fbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
@@ -365,6 +365,7 @@ const months = (d) => { if (!d) return null; const [dd, mm, yy] = d.split('/').m
 const contractNote = (p) => { const m = months(p.contract); if (m == null) return null; return m <= 0 ? t('ends_soon') : m <= 6 ? t('ends_in', { n: m }) : null; };
 const valueNum = (v) => { if (!v || v === '-') return 0; const n = parseFloat(v.replace(/[€,]/g, '')); return /M/.test(v) ? n * 1e6 : /K/.test(v) ? n * 1e3 : n; };
 const ARR = { ext: '<svg class="tr3-arr" viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>', fwd: '<svg class="tr3-arr flip" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>', down: '<svg class="tr3-arr" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg>' };
+const XI = '<svg class="tr3-arr" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>', OKI = '<svg class="tr3-arr" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>';
 const ico = {
  ok: '<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>', warn: '<svg viewBox="0 0 24 24"><path d="M12 8v5M12 17h.01M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
  ext: '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
@@ -395,7 +396,7 @@ function filtered() {
 /* ---------------- page ---------------- */
 function render() {
   const room = document.getElementById('room');
-  room.dir = S.lang === 'he' ? 'rtl' : 'ltr'; room.lang = S.lang;
+  room.dir = S.lang === 'he' ? 'rtl' : 'ltr'; room.lang = S.lang; document.documentElement.dir = room.dir; document.documentElement.lang = S.lang;
   document.querySelectorAll('[data-t]').forEach((el) => (el.textContent = t(el.dataset.t)));
   document.getElementById('date').textContent = new Date(NOW).toLocaleDateString(S.lang === 'he' ? 'he-IL' : 'en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
   document.getElementById('langBtn').textContent = S.lang === 'en' ? 'HE / EN' : 'EN / HE';
@@ -493,7 +494,7 @@ function ledger(list) {
       <div class="tr3-mono">${chk ? '-' : esc(p.value)}</div>
       <div class="tr3-mono ${note ? 'soon' : ''}">${chk ? '-' : esc(p.contract && p.contract !== '-' ? p.contract : t('no_contract'))}${note ? `<span class="tr3-sub" style="color:var(--red)">${note}</span>` : ''}</div>
       <div>${esc(lt.outlet)}<span class="tr3-sub">${fmt(lt.at)} · ${p.sources.length === 1 ? t('one_src') : t('n_src', { n: p.sources.length })}</span></div>
-      <div>${chk ? `<span class="tr3-pill idc">${t('check_badge')}</span>` : p.id_status === 'probable' ? `<span class="tr3-warn">${t('id_prob')}</span>` : `<span class="tr3-ok">✓ ${t('i_ok')}</span>`}</div></div>`; }).join('')}</div>`;
+      <div>${chk ? `<span class="tr3-pill idc">${t('check_badge')}</span>` : p.id_status === 'probable' ? `<span class="tr3-warn">${t('id_prob')}</span>` : `<span class="tr3-ok">${OKI} ${t('i_ok')}</span>`}</div></div>`; }).join('')}</div>`;
 }
 
 /* ---------------- player file ---------------- */
@@ -519,7 +520,7 @@ function renderFile() {
   }).join('')) : '';
   el.innerHTML = `
    <div class="tr3-fhead">${bg ? `<img class="bg" src="${bg}" alt="">` : ''}
-    <div class="tr3-fbar"><span class="crumb">${t('nav_radar')} / ${t('file')}</span><button onclick="closeFile()">✕ ${t('back')}</button></div>
+    <div class="tr3-fbar"><span class="crumb">${t('nav_radar')} / ${t('file')}</span><button onclick="closeFile()">${XI} ${t('back')}</button></div>
     <div class="tr3-fwho">${chk ? '<div class="pt tr3-ph" style="width:112px;height:140px">?</div>' : p.photo ? `<img class="pt" src="${p.photo}" alt="">` : `<div class="pt tr3-ph" style="width:112px;height:140px">${esc(p.name[0])}</div>`}
       <div style="min-width:0"><span class="tr3-pill tag s-${SIT[p.sit]}">${t('s_' + p.sit)}</span>${chk ? ` <span class="tr3-pill tag idc">${t('check_badge')}</span>` : ''}
         <h2>${esc(chk ? (p.latin || p.written[0][0]) : p.name)}</h2>${!chk && p.full && p.full !== p.name ? `<div class="full">${esc(p.full)}</div>` : ''}
@@ -553,7 +554,7 @@ function closeFile() { S.open = null; document.getElementById('file').classList.
 function jump(id) { const el = document.getElementById('src-' + id); if (!el) return; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
 function openFiltered() {
   const m = document.getElementById('modal');
-  m.innerHTML = `<div class="tr3-mbox"><header><div><h3>${t('m_h')}</h3><p>${t('m_p')}</p></div><button onclick="document.getElementById('modal').classList.remove('open')">✕</button></header>
+  m.innerHTML = `<div class="tr3-mbox"><header><div><h3>${t('m_h')}</h3><p>${t('m_p')}</p></div><button onclick="document.getElementById('modal').classList.remove('open')">${XI}</button></header>
    ${D.filtered.map((f) => `<div class="tr3-frow"><b>${esc(f.name)}</b><span class="tr3-pill s-black">${t('r_' + f.why)}</span><p>${esc(f.note)}</p>${f.src[0] ? `<a href="${f.src[0].url}" target="_blank" rel="noopener">${esc(f.src[0].outlet)} · ${t('open_article')} ${ARR.ext}</a>` : ''}</div>`).join('')}</div>`;
   m.classList.add('open');
 }
