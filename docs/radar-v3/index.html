@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Transfer Radar · mock v3 · BRIT Sport Group</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>:root{--font-oswald:'Oswald';--font-manrope:'Manrope';--font-dm-mono:'DM Mono';--font-heebo:'Heebo'}body{margin:0}</style>
+<!-- The site's real stylesheet (mgsr-web/src/app/globals.css without the 3 Tailwind lines) -->
+<link rel="stylesheet" href="brit.css">
+<style>
+/* ===== Transfer Radar additions. Everything else on this page is the site's own brit-room CSS. ===== */
+.brit-room .tr3-mast-r{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+.brit-room .tr3-scan{color:var(--muted);font:9px/1.6 var(--mono);text-transform:uppercase;letter-spacing:.06em;text-align:end}
+.brit-room .tr3-scan b{color:var(--ink);font-weight:500}
+.brit-room .tr3-scan i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-inline-end:6px;vertical-align:1px}
+.brit-room .tr3-signals{grid-template-columns:repeat(4,1fr)}
+.brit-room .tr3-signals .brit-signal{cursor:pointer;transition:background .15s}
+.brit-room .tr3-signals .brit-signal:hover{background:rgba(201,166,107,.08)}
+.brit-room .tr3-signals .brit-signal.on{background:rgba(201,166,107,.14)}
+.brit-room .tr3-amber{color:var(--amber)}
+.brit-room .tr3-count{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brit-room .tr3-count button{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;text-decoration:underline;text-underline-offset:3px}
+.brit-room .tr3-section{margin-bottom:38px}
+.brit-room .tr3-section .brit-ct-flag.mono{width:auto;padding:0 6px;min-width:26px}
+
+/* card = the Release-alert card (brit-ra-alert) + a "story" block */
+.brit-room .tr3-card .brit-ra-badge{background:var(--black);border-inline-start:1px solid var(--dark-line);border-bottom:1px solid var(--dark-line)}
+.brit-room .tr3-card .brit-ra-badge.s-gold{background:var(--gold);color:var(--paper)}
+.brit-room .tr3-card .brit-ra-badge.s-green{background:var(--green);color:var(--paper)}
+.brit-room .tr3-card .brit-ra-badge.s-blue{background:#8794a3;color:var(--ink)}
+.brit-room .tr3-card .brit-ra-badge.s-red{background:var(--red);color:var(--paper)}
+.brit-room .tr3-card .brit-ra-badge.s-black{background:#2a2a25;color:#c9c3b6}
+.brit-room .tr3-card .brit-ra-top{cursor:pointer;padding-top:22px}
+.brit-room .tr3-card.moved .brit-ra-portrait img.p{filter:grayscale(1)}
+.brit-room .tr3-clubrow{margin-top:9px;display:flex;align-items:center;gap:7px;color:#c9c3b6;font:8px/1.2 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+.brit-room .tr3-clubrow img{width:16px;height:16px;object-fit:contain;background:#fff;padding:1px}
+.brit-room .tr3-clubrow b{color:var(--paper);font-weight:500}
+.brit-room .tr3-ph{display:grid;place-items:center;width:64px;height:64px;background:#1d1d19;border:1px dashed rgba(243,240,232,.35);color:var(--gold-soft);font:500 28px/1 var(--display)}
+.brit-room .tr3-story{padding:14px 16px 12px;cursor:pointer}
+.brit-room .tr3-story .when{color:var(--muted);font:8px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.06em;display:flex;gap:6px;flex-wrap:wrap}
+.brit-room .tr3-story .when b{color:var(--ink);font-weight:500}
+.brit-room .tr3-story .hl{margin:7px 0 0;font:600 14px/1.38 var(--body);color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.brit-room .tr3-story .more{margin-top:8px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.brit-room .tr3-story .more b{color:var(--gold);font-weight:500}
+.brit-room .tr3-facts{display:grid;grid-template-columns:repeat(2,1fr);border-top:1px solid var(--line)}
+.brit-room .tr3-facts div{padding:10px 16px;border-inline-end:1px solid var(--line)}
+.brit-room .tr3-facts div:last-child{border-inline-end:0}
+.brit-room .tr3-facts label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .tr3-facts b{display:block;margin-top:6px;font:500 15px/1 var(--mono);color:var(--ink)}
+.brit-room .tr3-facts b.soon{color:var(--red)}
+.brit-room .tr3-facts small{display:block;margin-top:4px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .tr3-facts small.soon{color:var(--red)}
+.brit-room .tr3-idline{display:flex;align-items:center;gap:7px;padding:10px 16px;border-top:1px solid var(--line);font:8px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--green)}
+.brit-room .tr3-idline svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;flex:none}
+.brit-room .tr3-idline.prob{color:var(--amber)}
+.brit-room .tr3-idline .sp{margin-inline-start:auto;color:var(--muted)}
+.brit-room .tr3-card .brit-ra-value{margin-top:auto}
+
+/* identity check card */
+.brit-room .tr3-card.check{border-color:rgba(176,122,43,.55)}
+.brit-room .tr3-card.check .brit-ra-badge.idb{background:var(--amber);color:var(--paper)}
+.brit-room .tr3-pick{padding:4px 16px 14px}
+.brit-room .tr3-pick h5{margin:4px 0 8px;color:var(--amber);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.brit-room .tr3-cand{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line-2)}
+.brit-room .tr3-cand .im{width:38px;height:38px;object-fit:cover;background:var(--black);filter:grayscale(.2)}
+.brit-room .tr3-cand .ini{width:38px;height:38px;display:grid;place-items:center;background:var(--black);color:var(--gold-soft);font:500 15px/1 var(--display)}
+.brit-room .tr3-cand .n{font:500 15px/1 var(--display);text-transform:uppercase}
+.brit-room .tr3-cand .d{margin-top:4px;color:var(--muted);font:8px/1.35 var(--mono);text-transform:uppercase}
+.brit-room .tr3-cand .w{margin-top:3px;color:var(--ink);font:10px/1.35 var(--body)}
+.brit-room .tr3-cand button{padding:8px 10px;border:1px solid var(--gold-soft);color:var(--ink);font:8px/1 var(--mono);text-transform:uppercase;white-space:nowrap}
+.brit-room .tr3-cand button:hover{background:var(--gold-soft)}
+.brit-room .tr3-cand.best button{background:var(--gold-soft)}
+.brit-room .tr3-cand a{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;text-decoration:underline;text-underline-offset:2px}
+.brit-room .tr3-hint{margin:10px 0 0;padding:9px 10px;background:rgba(176,122,43,.08);border-inline-start:2px solid var(--amber);font:11px/1.45 var(--body);color:var(--ink)}
+.brit-room .tr3-hint em{font-style:normal;color:var(--amber);font:8px/1 var(--mono);text-transform:uppercase;margin-inline-end:6px}
+.brit-room .tr3-none{margin-top:10px;display:flex;gap:14px}
+.brit-room .tr3-none button{color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;text-decoration:underline;text-underline-offset:2px}
+.brit-room .tr3-none button:hover{color:var(--red)}
+
+/* ledger */
+.brit-room .tr3-ledger{border:1px solid var(--line);background:var(--card);overflow-x:auto}
+.brit-room .tr3-lrow{display:grid;grid-template-columns:2.2fr 1.2fr 1.8fr .9fr .9fr 1fr 1.6fr 1fr;align-items:center;min-width:1060px;border-bottom:1px solid var(--line-2);cursor:pointer}
+.brit-room .tr3-lrow:hover{background:rgba(201,166,107,.07)}
+.brit-room .tr3-lrow > div{padding:11px 12px;font:12px/1.3 var(--body);min-width:0}
+.brit-room .tr3-lhead{background:var(--black);cursor:default}
+.brit-room .tr3-lhead:hover{background:var(--black)}
+.brit-room .tr3-lhead > div{color:var(--gold-soft);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:12px}
+.brit-room .tr3-lp{display:flex;align-items:center;gap:10px}
+.brit-room .tr3-lp img,.brit-room .tr3-lp .ini{width:34px;height:34px;object-fit:cover;flex:none;background:var(--black);filter:grayscale(.25)}
+.brit-room .tr3-lp .ini{display:grid;place-items:center;color:var(--gold-soft);font:500 14px/1 var(--display);filter:none}
+.brit-room .tr3-lp b{display:block;font:500 15px/1 var(--display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brit-room .tr3-lp small{display:block;margin-top:3px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .tr3-pill{display:inline-block;padding:4px 7px;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.brit-room .tr3-pill.s-gold{background:var(--gold);color:var(--paper)}.brit-room .tr3-pill.s-green{background:var(--green);color:var(--paper)}
+.brit-room .tr3-pill.s-blue{background:#8794a3;color:var(--ink)}.brit-room .tr3-pill.s-red{background:var(--red);color:var(--paper)}
+.brit-room .tr3-pill.s-black{background:#2a2a25;color:#c9c3b6}.brit-room .tr3-pill.idc{background:var(--amber);color:var(--paper)}
+.brit-room .tr3-mono{font:500 12px/1 var(--mono)!important}
+.brit-room .tr3-mono.soon{color:var(--red)}
+.brit-room .tr3-sub{display:block;margin-top:4px;color:var(--muted);font:8px/1.2 var(--mono);text-transform:uppercase}
+.brit-room .tr3-ok{color:var(--green);font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .tr3-warn{color:var(--amber);font:8px/1 var(--mono);text-transform:uppercase}
+
+/* file drawer */
+.brit-room .tr3-scrim{position:fixed;inset:0;background:rgba(17,17,15,.55);z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
+.brit-room .tr3-scrim.open{opacity:1;pointer-events:auto}
+.brit-room .tr3-file{position:fixed;top:0;bottom:0;inset-inline-end:0;width:min(780px,100%);background:var(--paper);z-index:91;overflow-y:auto;transform:translateX(105%);transition:transform .25s ease;border-inline-start:1px solid var(--ink)}
+[dir=rtl] .brit-room .tr3-file{transform:translateX(-105%)}
+.brit-room .tr3-file.open{transform:none!important}
+.brit-room .tr3-fhead{position:relative;background:var(--black);color:var(--paper);padding:22px 26px 22px;overflow:hidden}
+.brit-room .tr3-fhead .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1);opacity:.45}
+.brit-room .tr3-fhead:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(17,17,15,.4),rgba(17,17,15,.92))}
+.brit-room .tr3-fhead > *{position:relative;z-index:1}
+.brit-room .tr3-fbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.brit-room .tr3-fbar .crumb{color:#c9c3b6;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+.brit-room .tr3-fbar button{color:var(--paper);font:9px/1 var(--mono);text-transform:uppercase;border:1px solid var(--dark-line);padding:8px 11px}
+.brit-room .tr3-fbar button:hover{border-color:var(--gold-soft);color:var(--gold-soft)}
+.brit-room .tr3-fwho{display:flex;gap:20px;align-items:flex-end}
+.brit-room .tr3-fwho .pt{width:112px;height:140px;object-fit:cover;border:1px solid var(--dark-line);background:#1d1d19;flex:none}
+.brit-room .tr3-fwho .tag{display:inline-block;margin-bottom:10px}
+.brit-room .tr3-fwho h2{margin:0;font:500 clamp(34px,4.6vw,54px)/.86 var(--display);text-transform:uppercase;letter-spacing:-.02em}
+[dir=rtl] .brit-room .tr3-fwho h2{font-weight:800;letter-spacing:normal}
+.brit-room .tr3-fwho .full{margin-top:9px;color:#c9c3b6;font:12px/1.4 var(--body)}
+.brit-room .tr3-fwho .wr{margin-top:6px;color:#c9c3b6;font:8px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.brit-room .tr3-fwho .wr b{color:var(--gold-soft);font-weight:500;text-transform:none;font-family:var(--body);font-size:12px}
+.brit-room .tr3-facts6{display:grid;grid-template-columns:repeat(3,1fr);margin-top:20px;border:1px solid var(--dark-line)}
+.brit-room .tr3-facts6 div{padding:11px 12px;border-inline-end:1px solid var(--dark-line);border-bottom:1px solid var(--dark-line)}
+.brit-room .tr3-facts6 div:nth-child(3n){border-inline-end:0}
+.brit-room .tr3-facts6 div:nth-last-child(-n+3){border-bottom:0}
+.brit-room .tr3-facts6 label{display:block;color:#a8a294;font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .tr3-facts6 b{display:flex;align-items:center;gap:7px;margin-top:7px;font:500 14px/1.1 var(--mono);color:var(--paper)}
+.brit-room .tr3-facts6 b img{width:18px;height:18px;object-fit:contain;background:#fff;padding:1px}
+.brit-room .tr3-facts6 b.soon{color:#ef8e80}
+.brit-room .tr3-facts6 small{display:block;margin-top:4px;color:#a8a294;font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .tr3-facts6 small.soon{color:#ef8e80}
+.brit-room .tr3-factions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.brit-room .tr3-factions a,.brit-room .tr3-factions button{display:inline-flex;align-items:center;gap:7px;padding:10px 13px;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--dark-line);color:var(--paper);transition:.15s}
+.brit-room .tr3-factions a:hover,.brit-room .tr3-factions button:hover{border-color:var(--gold-soft);color:var(--gold-soft)}
+.brit-room .tr3-factions .gold{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}
+.brit-room .tr3-factions .gold:hover{background:var(--gold);color:var(--paper)}
+.brit-room .tr3-factions .gold.done{background:transparent;color:var(--gold-soft)}
+.brit-room .tr3-factions svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8}
+.brit-room .tr3-fbody{padding:8px 26px 40px}
+.brit-room .tr3-fsec{padding:24px 0 6px;border-bottom:1px solid var(--line)}
+.brit-room .tr3-fsec:last-child{border-bottom:0}
+.brit-room .tr3-fsec h3{margin:0 0 4px;font:500 22px/1 var(--display);text-transform:uppercase;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+[dir=rtl] .brit-room .tr3-fsec h3{font-weight:800;letter-spacing:normal}
+.brit-room .tr3-fsec h3 small{color:var(--muted);font:9px/1 var(--mono);letter-spacing:.06em}
+.brit-room .tr3-fsec .lead{margin:0 0 14px;color:var(--muted);font:12px/1.5 var(--body)}
+.brit-room .tr3-checks{list-style:none;margin:0 0 16px;padding:0;border:1px solid var(--line);background:var(--card)}
+.brit-room .tr3-checks li{display:flex;gap:11px;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--line-2);font:13px/1.45 var(--body)}
+.brit-room .tr3-checks li:last-child{border-bottom:0}
+.brit-room .tr3-checks svg{width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2.4;flex:none;margin-top:3px}
+.brit-room .tr3-checks li.warn svg{stroke:var(--amber)}
+.brit-room .tr3-checks b{font-weight:700}
+.brit-room .tr3-checks .meta{margin-inline-start:auto;color:var(--muted);font:8px/1.4 var(--mono);text-transform:uppercase;white-space:nowrap;padding-top:4px}
+.brit-room .tr3-wrong{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;text-decoration:underline;text-underline-offset:3px;margin-bottom:16px;display:inline-block}
+.brit-room .tr3-wrong:hover{color:var(--red)}
+.brit-room .tr3-tl{position:relative;margin:4px 0 18px;padding-inline-start:26px}
+.brit-room .tr3-tl:before{content:'';position:absolute;top:6px;bottom:6px;inset-inline-start:6px;width:1px;background:var(--line)}
+.brit-room .tr3-ev{position:relative;padding:0 0 18px}
+.brit-room .tr3-ev:last-child{padding-bottom:0}
+.brit-room .tr3-ev:before{content:'';position:absolute;top:4px;inset-inline-start:-25px;width:11px;height:11px;background:var(--paper);border:2px solid var(--gold);box-sizing:border-box}
+.brit-room .tr3-ev.s-red:before{border-color:var(--red)}.brit-room .tr3-ev.s-green:before{border-color:var(--green)}.brit-room .tr3-ev.s-blue:before{border-color:#8794a3}.brit-room .tr3-ev.s-black:before{background:var(--ink);border-color:var(--ink)}
+.brit-room .tr3-ev .d{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.brit-room .tr3-ev .t{margin-top:6px;font:600 15px/1.35 var(--body);color:var(--ink)}
+.brit-room .tr3-ev .s{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.brit-room .tr3-ev .s button{padding:4px 7px;border:1px solid var(--line);font:8px/1 var(--mono);text-transform:uppercase;color:var(--ink)}
+.brit-room .tr3-ev .s button:hover{border-color:var(--gold-soft);color:var(--gold)}
+.brit-room .tr3-src{border:1px solid var(--line);background:var(--card);margin-bottom:12px;scroll-margin-top:16px}
+.brit-room .tr3-src.flash{animation:tr3flash 1.4s ease}
+@keyframes tr3flash{0%,40%{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,166,107,.35)}100%{border-color:var(--line);box-shadow:none}}
+.brit-room .tr3-src-h{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line-2)}
+.brit-room .tr3-src-h .o{font:500 16px/1 var(--display);text-transform:uppercase}
+.brit-room .tr3-src-h .m{color:var(--muted);font:8px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.brit-room .tr3-src-h .rel{margin-inline-start:auto;display:flex;align-items:center;gap:6px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .tr3-src-h .rel i{display:inline-block;width:5px;height:12px;background:var(--line);margin-inline-start:2px}
+.brit-room .tr3-src-h .rel i.on{background:var(--gold)}
+.brit-room .tr3-src-b{padding:12px 14px 14px}
+.brit-room .tr3-orig{font:700 15px/1.4 var(--body);color:var(--ink);margin:0}
+.brit-room .tr3-orig small{display:block;margin-bottom:5px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;font-weight:400}
+.brit-room .tr3-tr{margin:10px 0 0;font:13px/1.45 var(--body);color:var(--ink2,#3a3833)}
+.brit-room .tr3-tr small{display:block;margin-bottom:4px;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.brit-room .tr3-quote{margin:10px 0 0;padding:8px 11px;border-inline-start:2px solid var(--gold-soft);background:rgba(201,166,107,.08);font:italic 12px/1.45 var(--body);color:var(--ink)}
+.brit-room .tr3-src-f{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid var(--line-2)}
+.brit-room .tr3-src-f .u{color:var(--muted);font:8px/1.3 var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.brit-room .tr3-src-f a{flex:none;display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border:1px solid var(--green);color:var(--green);font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .tr3-src-f a:hover{background:var(--green);color:var(--paper)}
+.brit-room .tr3-src-f a svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2}
+.brit-room .tr3-fb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;padding:18px 0 4px}
+.brit-room .tr3-fb button{padding:8px 11px;border:1px solid var(--line);font:9px/1 var(--mono);text-transform:uppercase;color:var(--ink)}
+.brit-room .tr3-fb button:hover{border-color:var(--gold-soft);color:var(--gold)}
+
+/* filtered-out modal */
+.brit-room .tr3-modal{position:fixed;inset:0;z-index:95;display:none;place-items:center;background:rgba(17,17,15,.55);padding:20px}
+.brit-room .tr3-modal.open{display:grid}
+.brit-room .tr3-mbox{width:min(640px,100%);max-height:86vh;overflow:auto;background:var(--paper);border:1px solid var(--ink)}
+.brit-room .tr3-mbox header{background:var(--black);color:var(--paper);padding:18px 22px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.brit-room .tr3-mbox header h3{margin:0;font:500 26px/.95 var(--display);text-transform:uppercase}
+.brit-room .tr3-mbox header p{margin:8px 0 0;color:#c9c3b6;font:12px/1.45 var(--body)}
+.brit-room .tr3-mbox header button{color:var(--paper);border:1px solid var(--dark-line);padding:7px 10px;font:9px/1 var(--mono)}
+.brit-room .tr3-frow{display:grid;grid-template-columns:1fr auto;gap:6px 14px;padding:13px 22px;border-bottom:1px solid var(--line-2)}
+.brit-room .tr3-frow b{font:500 16px/1 var(--display);text-transform:uppercase}
+.brit-room .tr3-frow p{grid-column:1/-1;margin:0;color:var(--muted);font:12px/1.45 var(--body)}
+.brit-room .tr3-frow a{color:var(--gold);font:8px/1 var(--mono);text-transform:uppercase;text-decoration:underline}
+.brit-room .tr3-frow .tr3-pill{align-self:start}
+.brit-room .tr3-toast{position:fixed;bottom:22px;inset-inline-start:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--paper);font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:13px 18px;z-index:99;opacity:0;transition:.2s;pointer-events:none;border:1px solid var(--gold-soft)}
+[dir=rtl] .brit-room .tr3-toast{transform:translateX(50%) translateY(20px)}
+.brit-room .tr3-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+[dir=rtl] .brit-room .tr3-toast.show{transform:translateX(50%) translateY(0)}
+.mock-note{position:fixed;bottom:12px;inset-inline-end:12px;z-index:200;background:#11110f;color:#c9a66b;font:10px/1.4 'DM Mono',monospace;text-transform:uppercase;padding:8px 11px;border:1px solid #c9a66b;max-width:280px}
+
+@media(max-width:900px){
+  .brit-room .tr3-signals{grid-template-columns:repeat(2,1fr)}
+  .brit-room .tr3-mast-r{align-items:flex-start;margin-top:18px}
+  .brit-room .tr3-scan{text-align:start}
+  .brit-room .tr3-fhead{padding:16px 18px}
+  .brit-room .tr3-fbody{padding:4px 18px 40px}
+  .brit-room .tr3-fwho .pt{width:84px;height:106px}
+  .brit-room .tr3-facts6{grid-template-columns:repeat(2,1fr)}
+  .brit-room .tr3-facts6 div:nth-child(3n){border-inline-end:1px solid var(--dark-line)}
+  .brit-room .tr3-facts6 div:nth-child(2n){border-inline-end:0}
+  .brit-room .tr3-facts6 div:nth-last-child(-n+3){border-bottom:1px solid var(--dark-line)}
+  .brit-room .tr3-facts6 div:nth-last-child(-n+2){border-bottom:0}
+  .mock-note{display:none}
+}
+</style>
+</head>
+<body>
+<div class="brit-room" id="room" dir="ltr" lang="en">
+ <div class="brit-app">
+  <aside class="brit-rail" data-mobile-open="false">
+   <div class="brit-rail-mobilebar">
+    <a class="brit-lockup" href="#"><img src="brit_circle_black_gold.svg" alt=""><div><strong>BRIT SPORT GROUP</strong><small data-t="lockup">Management room</small></div></a>
+    <button type="button" class="brit-rail-burger" aria-label="Menu" onclick="this.closest('.brit-rail').dataset.mobileOpen=this.closest('.brit-rail').dataset.mobileOpen==='true'?'false':'true'"><span></span><span></span><span></span></button>
+   </div>
+   <div class="brit-rail-scrim" onclick="this.closest('.brit-rail').dataset.mobileOpen='false'"></div>
+   <a class="brit-lockup brit-lockup-desktop" href="#"><img src="brit_circle_black_gold.svg" alt=""><div><strong>BRIT SPORT GROUP</strong><small data-t="lockup">Management room</small></div></a>
+   <nav class="brit-nav">
+    <a href="#"><span data-t="nav_dash">Dashboard</span></a>
+    <button type="button" class="brit-nav-group"><span data-t="nav_players">Players</span><em>+</em></button>
+    <a href="#"><span data-t="nav_req">Club requirements</span></a>
+    <a href="#"><span data-t="nav_contacts">Contacts</span></a>
+    <button type="button" class="brit-nav-group"><span data-t="nav_signals">Signals</span><em>+</em></button>
+    <button type="button" class="brit-nav-group"><span data-t="nav_war">War room</span><em>+</em></button>
+    <a href="#" class="active"><span data-t="nav_radar">Transfer Radar</span></a>
+   </nav>
+  </aside>
+  <div class="brit-main">
+   <header class="brit-topbar">
+    <div>BRIT / <strong data-t="nav_radar">Transfer Radar</strong> / <span id="date"></span></div>
+    <div class="brit-actions">
+     <div class="brit-platform-switch" role="radiogroup"><span class="brit-ps-thumb" aria-hidden="true"></span><button class="is-on"><span class="brit-ps-dot"></span>Men</button><button><span class="brit-ps-dot"></span>Youth</button></div>
+     <button id="langBtn">HE / EN</button><span>TLV 14:00</span>
+    </div>
+   </header>
+   <main class="brit-canvas" id="canvas"></main>
+  </div>
+ </div>
+ <div class="tr3-scrim" id="scrim"></div>
+ <aside class="tr3-file" id="file" aria-hidden="true"></aside>
+ <div class="tr3-modal" id="modal"></div>
+ <div class="tr3-toast" id="toast"></div>
+ <div class="mock-note">Mock v3 · real articles + real Transfermarkt matches · buttons are simulated</div>
+</div>
+<script src="data.js"></script>
+<script>
+const D = window.RADAR, NOW = D.now, H = 36e5, DAY = 864e5;
+const S = { lang: 'en', view: 'feed', q: '', sit: 'all', country: 'all', ident: 'all', sort: 'new', kpi: null, open: null, short: new Set(), picked: {}, hidden: new Set(), fb: new Set() };
+
+/* ---------------- strings (interface only; article text stays English + original language) ---------------- */
+const T = {
+ en: {
+  lockup: 'Management room', nav_dash: 'Dashboard', nav_players: 'Players', nav_req: 'Club requirements', nav_contacts: 'Contacts', nav_signals: 'Signals', nav_war: 'War room', nav_radar: 'Transfer Radar',
+  kicker: 'Private client office / Local media', h_a: 'Transfer', h_b: 'radar.',
+  sub: 'Players the local press says may become available. Every name is checked against Transfermarkt, so you see who it really is.',
+  scan: 'Reading {s} outlets in {c} countries', last: 'Last scan', next: 'Next', view_feed: 'Feed', view_ledger: 'Ledger',
+  k_radar: 'On the radar', k_radar_s: 'Confirmed on Transfermarkt', k_new: 'New this week', k_new_s: 'First reported in the last 7 days',
+  k_check: 'Needs your check', k_check_s: 'Name fits more than one player', k_contract: 'Contract ending', k_contract_s: 'Within 6 months',
+  search: 'Search player, club, league or country…', f_sit: 'Situation', f_country: 'Country', f_ident: 'Identity', all: 'All',
+  i_ok: 'Confirmed', i_check: 'Needs your check', sort: 'Sort', so_new: 'Newest', so_contract: 'Contract ending', so_value: 'Market value',
+  showing: 'Showing {n} of {t} players', filtered: '{n} filtered out automatically. See why',
+  sec_48: 'Last 48 hours', sec_7: 'This week', sec_30: 'Earlier this month', players: 'players', player: 'player',
+  s_wants_leave: 'Wants to leave', s_club_sell: 'Club will sell', s_terminate: 'Contract termination', s_released: 'Released', s_loan: 'Loan exit', s_out_squad: 'Out of the squad', s_moved: 'Already moved', s_coach: 'Coach comment',
+  value: 'Market value', contract: 'Contract until', ends_in: 'Ends in {n} months', ends_soon: 'Ends this month', no_contract: 'Unknown', on_loan: 'On loan from {c}',
+  more_src: '+{n} more sources', one_src: '1 source', n_src: '{n} sources', id_ok: 'Confirmed on Transfermarkt', id_prob: 'Probable match. Please confirm',
+  shortlist: 'Shortlist', saved: 'Saved', open_file: 'Open file', check_badge: 'Check identity', possible: '{n} possible players on Transfermarkt',
+  pick_h: 'Which player is it?', this_one: 'This one', best: 'Best fit', none: 'None of these', not_player: 'Not a player', tm: 'Transfermarkt',
+  hint: 'AI hint', written: 'Written in the press as', back: 'Close', file: 'Player file',
+  f_club: 'Club', f_league: 'League', f_pos: 'Position', f_age: 'Age', f_value: 'Market value', f_contract: 'Contract until', born: 'Born {d}',
+  add_sl: 'Add to shortlist', in_sl: 'In shortlist', wa: 'WhatsApp', hide: 'Not relevant',
+  how_h: 'Is it really him?', how_l: 'How the radar matched the name in the article to this Transfermarkt profile.',
+  c_name: 'The article says <b>{w}</b>, which is the same name as <b>{n}</b>.',
+  c_translit: 'The article spells it <b>{w}</b> ({l}). In Latin letters that is <b>{n}</b>.',
+  c_inflect: 'The article says <b>{w}</b>, a grammatical form of <b>{n}</b>.',
+  c_squad: 'He is in the current <b>{c}</b> squad on Transfermarkt, the club named in the article.',
+  c_club: 'His Transfermarkt club is <b>{c}</b>, the club named in the article.',
+  c_unique: 'Nobody else in that squad has a similar name.',
+  c_only: 'He is the only player on Transfermarkt with this name.',
+  c_noclub: 'The article does not name his club, so please confirm.',
+  wrong: 'Wrong player? Pick another one',
+  tl_h: 'What happened', tl_l: 'The story in order, oldest first. Tap a source to read it.',
+  src_h: 'Original sources', src_l: 'Exactly as published, in the original language, with an English translation.',
+  as_pub: 'As published · {l}', en_tr: 'English translation', read: 'Read the original',
+  rel_A: 'Very reliable', rel_B: 'Reliable', rel_C: 'Less reliable', rel_D: 'Unverified',
+  fb_q: 'Is this story right?', fb_y: 'Yes', fb_n: 'No, wrong', fb_o: 'Old news', fb_t: 'Thanks, noted.',
+  m_h: 'Filtered out automatically', m_p: 'These stories were read but not shown, so the list stays clean. Nothing is deleted.',
+  r_other_sport: 'Other sport', r_coach: 'Coach / staff', r_star: 'Above your market', close: 'Close', open_article: 'Open article',
+  t_sl: 'Added to the shortlist', t_pick: 'Identity confirmed: {n}', t_hide: 'Hidden. The radar learns from this.', t_fb: 'Thanks. Feedback saved.',
+  ago_h: '{n}h ago', ago_d: '{n}d ago', empty: 'No players match these filters.', moved_note: 'Already moved. Kept for reference.',
+  l_player: 'Player', l_sit: 'Situation', l_club: 'Club · League', l_age: 'Pos · Age', l_value: 'Value', l_contract: 'Contract', l_latest: 'Latest report', l_id: 'Identity'
+ },
+ he: {
+  lockup: 'חדר ניהול', nav_dash: 'דשבורד', nav_players: 'שחקנים', nav_req: 'דרישות מועדונים', nav_contacts: 'אנשי קשר', nav_signals: 'התראות', nav_war: 'חדר מלחמה', nav_radar: 'רדאר העברות',
+  kicker: 'משרד לקוחות פרטי / תקשורת מקומית', h_a: 'רדאר', h_b: 'העברות.',
+  sub: 'שחקנים שהעיתונות המקומית מדווחת שעשויים להתפנות. כל שם נבדק מול טרנספרמרקט כדי שתדעו בדיוק מי השחקן.',
+  scan: 'קורא {s} כלי תקשורת ב-{c} מדינות', last: 'סריקה אחרונה', next: 'הבאה', view_feed: 'פיד', view_ledger: 'טבלה',
+  k_radar: 'על הרדאר', k_radar_s: 'מאומתים בטרנספרמרקט', k_new: 'חדשים השבוע', k_new_s: 'דווחו לראשונה ב-7 ימים', k_check: 'דורש בדיקה שלך', k_check_s: 'השם מתאים ליותר משחקן אחד',
+  k_contract: 'חוזה מסתיים', k_contract_s: 'תוך 6 חודשים',
+  search: 'חיפוש שחקן, מועדון, ליגה או מדינה…', f_sit: 'מצב', f_country: 'מדינה', f_ident: 'זיהוי', all: 'הכול', i_ok: 'מאומת', i_check: 'דורש בדיקה',
+  sort: 'מיון', so_new: 'החדש ביותר', so_contract: 'חוזה מסתיים', so_value: 'שווי שוק',
+  showing: 'מוצגים {n} מתוך {t} שחקנים', filtered: '{n} סוננו אוטומטית. למה?',
+  sec_48: '48 השעות האחרונות', sec_7: 'השבוע', sec_30: 'מוקדם יותר החודש', players: 'שחקנים', player: 'שחקן',
+  s_wants_leave: 'רוצה לעזוב', s_club_sell: 'המועדון ימכור', s_terminate: 'סיום חוזה', s_released: 'שוחרר', s_loan: 'יציאה בהשאלה', s_out_squad: 'מחוץ לסגל', s_moved: 'כבר עבר', s_coach: 'דברי המאמן',
+  value: 'שווי שוק', contract: 'חוזה עד', ends_in: 'מסתיים בעוד {n} חודשים', ends_soon: 'מסתיים החודש', no_contract: 'לא ידוע', on_loan: 'בהשאלה מ-{c}',
+  more_src: '+{n} מקורות נוספים', one_src: 'מקור אחד', n_src: '{n} מקורות', id_ok: 'מאומת בטרנספרמרקט', id_prob: 'התאמה סבירה. נא לאשר',
+  shortlist: 'שורטליסט', saved: 'נשמר', open_file: 'פתח תיק', check_badge: 'בדיקת זהות', possible: '{n} שחקנים אפשריים בטרנספרמרקט',
+  pick_h: 'איזה שחקן זה?', this_one: 'זה הוא', best: 'הכי מתאים', none: 'אף אחד מאלה', not_player: 'לא שחקן', tm: 'טרנספרמרקט',
+  hint: 'רמז AI', written: 'נכתב בעיתונות כ-', back: 'סגור', file: 'תיק שחקן',
+  f_club: 'מועדון', f_league: 'ליגה', f_pos: 'עמדה', f_age: 'גיל', f_value: 'שווי שוק', f_contract: 'חוזה עד', born: 'נולד {d}',
+  add_sl: 'הוסף לשורטליסט', in_sl: 'בשורטליסט', wa: 'וואטסאפ', hide: 'לא רלוונטי',
+  how_h: 'זה באמת הוא?', how_l: 'כך הרדאר התאים את השם בכתבה לפרופיל בטרנספרמרקט.',
+  c_name: 'בכתבה כתוב <b>{w}</b>, אותו שם כמו <b>{n}</b>.', c_translit: 'בכתבה כתוב <b>{w}</b> ({l}). באותיות לטיניות: <b>{n}</b>.',
+  c_inflect: 'בכתבה כתוב <b>{w}</b>, צורה דקדוקית של <b>{n}</b>.', c_squad: 'הוא בסגל הנוכחי של <b>{c}</b> בטרנספרמרקט, המועדון שבכתבה.',
+  c_club: 'המועדון שלו בטרנספרמרקט הוא <b>{c}</b>, המועדון שבכתבה.', c_unique: 'אין בסגל אף שחקן אחר עם שם דומה.', c_only: 'הוא השחקן היחיד בטרנספרמרקט עם השם הזה.',
+  c_noclub: 'הכתבה לא מציינת מועדון, לכן נא לאשר.', wrong: 'שחקן לא נכון? בחרו אחר',
+  tl_h: 'מה קרה', tl_l: 'הסיפור לפי הסדר, מהישן לחדש. לחצו על מקור כדי לקרוא.', src_h: 'מקורות מקוריים', src_l: 'בדיוק כפי שפורסם, בשפת המקור, עם תרגום לאנגלית.',
+  as_pub: 'כפי שפורסם · {l}', en_tr: 'תרגום לאנגלית', read: 'לכתבה המקורית',
+  rel_A: 'אמין מאוד', rel_B: 'אמין', rel_C: 'פחות אמין', rel_D: 'לא מאומת',
+  fb_q: 'הסיפור נכון?', fb_y: 'כן', fb_n: 'לא, שגוי', fb_o: 'ישן', fb_t: 'תודה, נרשם.',
+  m_h: 'סוננו אוטומטית', m_p: 'הכתבות האלה נקראו אך לא מוצגות, כדי שהרשימה תישאר נקייה. שום דבר לא נמחק.',
+  r_other_sport: 'ענף אחר', r_coach: 'מאמן / צוות', r_star: 'מעל השוק שלכם', close: 'סגור', open_article: 'לכתבה',
+  t_sl: 'נוסף לשורטליסט', t_pick: 'הזהות אושרה: {n}', t_hide: 'הוסתר. הרדאר לומד מזה.', t_fb: 'תודה. המשוב נשמר.',
+  ago_h: 'לפני {n} ש׳', ago_d: 'לפני {n} ימים', empty: 'אין שחקנים שמתאימים לסינון.', moved_note: 'כבר עבר. נשמר לתיעוד.',
+  l_player: 'שחקן', l_sit: 'מצב', l_club: 'מועדון · ליגה', l_age: 'עמדה · גיל', l_value: 'שווי', l_contract: 'חוזה', l_latest: 'דיווח אחרון', l_id: 'זיהוי'
+ }
+};
+const t = (k, v) => { let s = (T[S.lang][k] ?? T.en[k] ?? k); if (v) for (const [a, b] of Object.entries(v)) s = s.split('{' + a + '}').join(b); return s; };
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SIT = { wants_leave: 'gold', club_sell: 'gold', terminate: 'green', released: 'green', loan: 'blue', out_squad: 'red', moved: 'black', coach: 'gold' };
+const SIT_ORDER = ['wants_leave', 'club_sell', 'terminate', 'released', 'loan', 'out_squad', 'moved'];
+const ISO = { Romania: 'ro', Bulgaria: 'bg', Colombia: 'co', 'Czech Republic': 'cz', England: 'gb-eng', Sweden: 'se', Ukraine: 'ua', Denmark: 'dk', Portugal: 'pt', Brazil: 'br', 'Bosnia-Herzegovina': 'ba', Poland: 'pl', France: 'fr', Comoros: 'km' };
+const flag = (c) => ISO[c] ? `https://flagcdn.com/w640/${ISO[c]}.png` : null;
+const CC = { Romania: 'RO', Bulgaria: 'BG', 'Czech Republic': 'CZ', Slovakia: 'SK', England: 'EN', Sweden: 'SE', Poland: 'PL', Portugal: 'PT', 'Bosnia-Herzegovina': 'BA', Serbia: 'RS' };
+const HE_COUNTRY = { Romania: 'רומניה', Bulgaria: 'בולגריה', 'Czech Republic': "צ'כיה", Slovakia: 'סלובקיה', England: 'אנגליה', Sweden: 'שוודיה', Poland: 'פולין', Portugal: 'פורטוגל', 'Bosnia-Herzegovina': 'בוסניה', Colombia: 'קולומביה', Ukraine: 'אוקראינה', Denmark: 'דנמרק', Brazil: 'ברזיל', Serbia: 'סרביה' };
+const cn = (c) => (S.lang === 'he' ? HE_COUNTRY[c] || c : c);
+const fmt = (ts, time = true) => new Date(ts).toLocaleString(S.lang === 'he' ? 'he-IL' : 'en-GB', { day: '2-digit', month: 'short', ...(time ? { hour: '2-digit', minute: '2-digit' } : {}), timeZone: 'UTC' });
+const ago = (ts) => { const h = (NOW - ts) / H; return h < 48 ? t('ago_h', { n: Math.max(1, Math.round(h)) }) : t('ago_d', { n: Math.round(h / 24) }); };
+const months = (d) => { if (!d) return null; const [dd, mm, yy] = d.split('/').map(Number); return (yy - 2026) * 12 + (mm - 11) + (dd >= 1 ? 0 : 0); };
+const contractNote = (p) => { const m = months(p.contract); if (m == null) return null; return m <= 0 ? t('ends_soon') : m <= 6 ? t('ends_in', { n: m }) : null; };
+const valueNum = (v) => { if (!v || v === '-') return 0; const n = parseFloat(v.replace(/[€,]/g, '')); return /M/.test(v) ? n * 1e6 : /K/.test(v) ? n * 1e3 : n; };
+const ico = {
+ ok: '<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>', warn: '<svg viewBox="0 0 24 24"><path d="M12 8v5M12 17h.01M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+ ext: '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+ save: '<svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>',
+ search: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>'
+};
+const identified = (p) => p.id_status !== 'check' || S.picked[p.id];
+const view = (p) => { // apply a human pick to a "check" player
+  if (p.id_status !== 'check' || !S.picked[p.id]) return p;
+  const c = p.cands[S.picked[p.id]];
+  return { ...p, id_status: 'verified', picked: true, name: c.name, full: c.name, photo: c.photo, tm: c.tm, pos: c.pos, age: c.age, value: c.value, nat: c.nat ? c.nat.split(' / ') : [], club: c.club === 'Without club' || c.club === 'Retired' ? p.club : c.club, match: { conf: 100, how: ['human'] } };
+};
+const all = () => D.players.filter((p) => !S.hidden.has(p.id)).map(view);
+
+function filtered() {
+  let a = all();
+  if (S.kpi === 'new') a = a.filter((p) => NOW - p.first <= 7 * DAY);
+  if (S.kpi === 'check' || S.ident === 'check') a = a.filter((p) => p.id_status === 'check');
+  if (S.kpi === 'radar' || S.ident === 'ok') a = a.filter((p) => p.id_status !== 'check');
+  if (S.kpi === 'contract') a = a.filter((p) => { const m = months(p.contract); return m != null && m <= 6; });
+  if (S.sit !== 'all') a = a.filter((p) => p.sit === S.sit);
+  if (S.country !== 'all') a = a.filter((p) => p.country === S.country);
+  if (S.q) { const q = S.q.toLowerCase(); a = a.filter((p) => [p.name, p.full, p.club, p.league, p.country, cn(p.country), ...(p.written || []).map((w) => w[0])].join(' ').toLowerCase().includes(q)); }
+  const by = { new: (x, y) => y.last - x.last, contract: (x, y) => (months(x.contract) ?? 999) - (months(y.contract) ?? 999), value: (x, y) => valueNum(y.value) - valueNum(x.value) };
+  return a.sort(by[S.sort]);
+}
+
+/* ---------------- page ---------------- */
+function render() {
+  const room = document.getElementById('room');
+  room.dir = S.lang === 'he' ? 'rtl' : 'ltr'; room.lang = S.lang;
+  document.querySelectorAll('[data-t]').forEach((el) => (el.textContent = t(el.dataset.t)));
+  document.getElementById('date').textContent = new Date(NOW).toLocaleDateString(S.lang === 'he' ? 'he-IL' : 'en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+  document.getElementById('langBtn').textContent = S.lang === 'en' ? 'HE / EN' : 'EN / HE';
+  const ps = all(), list = filtered();
+  const k = { radar: ps.filter((p) => p.id_status !== 'check').length, nw: ps.filter((p) => NOW - p.first <= 7 * DAY).length, check: ps.filter((p) => p.id_status === 'check').length,
+    contract: ps.filter((p) => { const m = months(p.contract); return m != null && m <= 6; }).length };
+  const countries = [...new Set(ps.map((p) => p.country))].sort();
+  const sits = SIT_ORDER.filter((s) => ps.some((p) => p.sit === s));
+  const chip = (cur, v, label, fn) => `<button class="${cur === v ? 'on' : ''}" onclick="${fn}('${v}')">${label}</button>`;
+  const pad = (n) => String(n).padStart(2, '0');
+  let body;
+  if (!list.length) body = `<div class="brit-empty">${t('empty')}</div>`;
+  else if (S.view === 'ledger') body = ledger(list);
+  else if (S.sort !== 'new') body = `<div class="brit-ra-feed">${list.map(card).join('')}</div>`;
+  else {
+    const groups = [['48H', 'sec_48', (p) => NOW - p.last <= 2 * DAY], ['7D', 'sec_7', (p) => NOW - p.last > 2 * DAY && NOW - p.last <= 7 * DAY], ['30D', 'sec_30', (p) => NOW - p.last > 7 * DAY]];
+    body = groups.map(([code, key, f]) => { const g = list.filter(f); if (!g.length) return '';
+      return `<section class="tr3-section"><div class="brit-ct-country"><span class="brit-ct-flag mono">${code}</span><h2>${t(key)}</h2><span class="cnt"><b>${g.length}</b> ${g.length === 1 ? t('player') : t('players')}</span></div><div class="brit-ra-feed">${g.map(card).join('')}</div></section>`; }).join('');
+  }
+  document.getElementById('canvas').innerHTML = `
+   <header class="brit-masthead">
+     <div><p class="brit-kicker">${t('kicker')}</p><h1>${t('h_a')} <span>${t('h_b')}</span></h1><p class="brit-ra-sub">${t('sub')}</p></div>
+     <div class="tr3-mast-r">
+       <div class="brit-ct-viewtoggle"><button class="${S.view === 'feed' ? 'active' : ''}" onclick="setView('feed')">${t('view_feed')}</button><button class="${S.view === 'ledger' ? 'active' : ''}" onclick="setView('ledger')">${t('view_ledger')}</button></div>
+       <div class="tr3-scan"><i></i>${t('scan', { s: D.coverage.sources, c: D.coverage.countries })}<br>${t('last')} <b>${fmt(D.lastScan)}</b> · ${t('next')} <b>${fmt(D.lastScan + 3 * H)}</b></div>
+     </div>
+   </header>
+   <section class="brit-signals tr3-signals">
+     <div class="brit-signal ${S.kpi === 'radar' ? 'on' : ''}" onclick="setKpi('radar')"><label>${t('k_radar')}</label><strong>${pad(k.radar)}</strong><small>${t('k_radar_s')}</small></div>
+     <div class="brit-signal ${S.kpi === 'new' ? 'on' : ''}" onclick="setKpi('new')"><label>${t('k_new')}</label><strong>${pad(k.nw)}</strong><small>${t('k_new_s')}</small></div>
+     <div class="brit-signal ${S.kpi === 'check' ? 'on' : ''}" onclick="setKpi('check')"><label>${t('k_check')}</label><strong class="tr3-amber">${pad(k.check)}</strong><small>${t('k_check_s')}</small></div>
+     <div class="brit-signal ${S.kpi === 'contract' ? 'on' : ''}" onclick="setKpi('contract')"><label>${t('k_contract')}</label><strong class="brit-red">${pad(k.contract)}</strong><small>${t('k_contract_s')}</small></div>
+   </section>
+   <section class="brit-tray">
+     <label class="brit-search">${ico.search}<input id="q" value="${esc(S.q)}" placeholder="${t('search')}" oninput="setQ(this.value)"></label>
+     <div class="brit-req-filterrow"><span class="brit-req-flabel">${t('f_sit')}</span><div class="brit-req-chipset">${chip(S.sit, 'all', t('all'), 'setSit')}${sits.map((s) => chip(S.sit, s, t('s_' + s), 'setSit')).join('')}</div></div>
+     <div class="brit-req-filterrow"><span class="brit-req-flabel">${t('f_country')}</span><div class="brit-req-chipset">${chip(S.country, 'all', t('all'), 'setCountry')}${countries.map((c) => chip(S.country, c, esc(cn(c)), 'setCountry')).join('')}</div></div>
+     <div class="brit-req-filterrow"><span class="brit-req-flabel">${t('f_ident')}</span><div class="brit-req-chipset">${chip(S.ident, 'all', t('all'), 'setIdent')}${chip(S.ident, 'ok', t('i_ok'), 'setIdent')}${chip(S.ident, 'check', t('i_check'), 'setIdent')}</div></div>
+   </section>
+   <div class="brit-ra-sortrow"><span class="lbl">${t('sort')}</span>${['new', 'contract', 'value'].map((s) => `<button class="${S.sort === s ? 'on' : ''}" onclick="setSort('${s}')">${t('so_' + s)}</button>`).join('')}</div>
+   <div class="brit-result-count tr3-count"><span>${t('showing', { n: list.length, t: ps.length })}</span><button onclick="openFiltered()">${t('filtered', { n: D.filtered.length })}</button></div>
+   ${body}`;
+  const qi = document.getElementById('q'); if (S._focusQ) { qi.focus(); qi.setSelectionRange(qi.value.length, qi.value.length); }
+  if (S.open) renderFile();
+}
+
+function card(p) {
+  const s = p.sources.slice().sort((a, b) => b.at - a.at), lt = s[0];
+  const nat = (p.nat || [])[0], bg = flag(nat) || flag(p.country);
+  const head = `<span class="brit-ra-badge s-${SIT[p.sit]}">${t('s_' + p.sit)}</span>`;
+  const story = `<div class="tr3-story" onclick="openFile('${p.id}')"><div class="when"><b>${fmt(lt.at)}</b>·<span>${esc(lt.outlet)}</span>·<span>${esc(cn(lt.country))}</span></div>
+     <p class="hl">${esc(lt.en)}</p>${s.length > 1 ? `<div class="more"><b>${t('more_src', { n: s.length - 1 })}</b></div>` : ''}</div>`;
+  if (p.id_status === 'check') {
+    return `<article class="brit-ra-alert tr3-card check">
+      <span class="brit-ra-badge idb">${t('check_badge')}</span>
+      <div class="brit-ra-top" onclick="openFile('${p.id}')">${bg ? `<img class="brit-ra-flagbg" src="${bg}" alt="">` : '<div class="brit-ra-flagbg-ph"></div>'}
+        <div class="brit-ra-portrait"><div class="tr3-ph">?</div></div>
+        <div class="brit-ra-who"><div class="nm">${esc(p.written[0][0])}</div>
+          <div class="meta"><span class="pos">${t('s_' + p.sit)}</span><span class="age">${t('possible', { n: p.cands.length })}</span></div>
+          <div class="tr3-clubrow"><img src="${p.crest}" alt="" onerror="this.remove()"><b>${esc(p.club)}</b>· ${esc(p.league)}</div></div></div>
+      ${story}
+      <div class="tr3-pick"><h5>${t('pick_h')}</h5>${p.cands.map((c, i) => cand(p, c, i)).join('')}
+        <p class="tr3-hint"><em>${t('hint')}</em>${esc(p.hint)}</p>
+        <div class="tr3-none"><button onclick="hidePlayer('${p.id}')">${t('none')}</button><button onclick="hidePlayer('${p.id}')">${t('not_player')}</button></div></div>
+    </article>`;
+  }
+  const note = contractNote(p), sl = S.short.has(p.id);
+  return `<article class="brit-ra-alert tr3-card ${p.sit === 'moved' ? 'moved' : ''}">${head}
+    <div class="brit-ra-top" onclick="openFile('${p.id}')">${bg ? `<img class="brit-ra-flagbg" src="${bg}" alt="">` : '<div class="brit-ra-flagbg-ph"></div>'}
+      <div class="brit-ra-portrait">${p.photo ? `<img class="p" src="${p.photo}" alt="">` : `<div class="tr3-ph">${esc(p.name[0])}</div>`}</div>
+      <div class="brit-ra-who"><div class="nm" title="${esc(p.name)}">${esc(p.name)}</div>
+        <div class="meta"><span class="pos">${esc(p.pos)}</span><span class="age">${t('f_age')} ${p.age}</span>${nat ? `<span class="nat">${esc(cn(nat))}</span>` : ''}</div>
+        <div class="tr3-clubrow"><img src="${p.crest}" alt="" onerror="this.remove()"><b>${esc(p.club)}</b>· ${esc(p.league)}</div></div></div>
+    ${story}
+    <div class="tr3-facts"><div><label>${t('value')}</label><b>${esc(p.value || '-')}</b></div>
+      <div><label>${t('contract')}</label><b class="${note ? 'soon' : ''}">${esc(p.contract && p.contract !== '-' ? p.contract : t('no_contract'))}</b>${note ? `<small class="soon">${note}</small>` : p.loan ? `<small>${t('on_loan', { c: esc(p.loan) })}</small>` : ''}</div></div>
+    <div class="brit-ra-value"><div class="tr3-idline ${p.id_status === 'probable' ? 'prob' : ''}" style="border:0;padding:0">${p.id_status === 'probable' ? ico.warn + t('id_prob') : ico.ok + t('id_ok')}</div>
+      <div class="brit-ra-acts">${p.sit === 'moved' ? '' : sl ? `<span class="saved">${ico.save}${t('saved')}</span>` : `<button class="save" onclick="addShort('${p.id}')">${ico.save}${t('shortlist')}</button>`}<button class="open" onclick="openFile('${p.id}')">${t('open_file')} ${S.lang === 'he' ? '←' : '→'}</button></div></div>
+  </article>`;
+}
+function cand(p, c, i) {
+  return `<div class="tr3-cand ${i === 0 ? 'best' : ''}">${c.photo ? `<img class="im" src="${c.photo}" alt="">` : `<span class="ini">${esc(c.name[0])}</span>`}
+    <div><div class="n">${esc(c.name)}</div><div class="d">${esc(c.pos)} · ${t('f_age')} ${c.age} · ${esc(c.club)}${c.value && c.value !== '-' ? ' · ' + esc(c.value) : ''}</div><div class="w">${esc(c.why)}</div>
+      <a href="${c.tm}" target="_blank" rel="noopener">${t('tm')} ↗</a></div>
+    <button onclick="pick('${p.id}',${i})">${i === 0 ? t('best') + ' · ' : ''}${t('this_one')}</button></div>`;
+}
+function ledger(list) {
+  return `<div class="tr3-ledger"><div class="tr3-lrow tr3-lhead"><div>${t('l_player')}</div><div>${t('l_sit')}</div><div>${t('l_club')}</div><div>${t('l_age')}</div><div>${t('l_value')}</div><div>${t('l_contract')}</div><div>${t('l_latest')}</div><div>${t('l_id')}</div></div>
+   ${list.map((p) => { const lt = p.sources.slice().sort((a, b) => b.at - a.at)[0], chk = p.id_status === 'check', note = contractNote(p);
+     return `<div class="tr3-lrow" onclick="openFile('${p.id}')">
+      <div class="tr3-lp">${!chk && p.photo ? `<img src="${p.photo}" alt="">` : `<span class="ini">${chk ? '?' : esc(p.name[0])}</span>`}<div style="min-width:0"><b>${esc(chk ? p.written[0][0] : p.name)}</b><small>${chk ? t('possible', { n: p.cands.length }) : esc((p.nat || []).map(cn).join(' / '))}</small></div></div>
+      <div><span class="tr3-pill s-${SIT[p.sit]}">${t('s_' + p.sit)}</span></div>
+      <div>${esc(p.club)}<span class="tr3-sub">${esc(p.league)} · ${esc(cn(p.country))}</span></div>
+      <div>${chk ? '-' : esc(p.pos)}<span class="tr3-sub">${chk ? '' : t('f_age') + ' ' + p.age}</span></div>
+      <div class="tr3-mono">${chk ? '-' : esc(p.value)}</div>
+      <div class="tr3-mono ${note ? 'soon' : ''}">${chk ? '-' : esc(p.contract && p.contract !== '-' ? p.contract : t('no_contract'))}${note ? `<span class="tr3-sub" style="color:var(--red)">${note}</span>` : ''}</div>
+      <div>${esc(lt.outlet)}<span class="tr3-sub">${fmt(lt.at)} · ${p.sources.length === 1 ? t('one_src') : t('n_src', { n: p.sources.length })}</span></div>
+      <div>${chk ? `<span class="tr3-pill idc">${t('check_badge')}</span>` : p.id_status === 'probable' ? `<span class="tr3-warn">${t('id_prob')}</span>` : `<span class="tr3-ok">✓ ${t('i_ok')}</span>`}</div></div>`; }).join('')}</div>`;
+}
+
+/* ---------------- player file ---------------- */
+function renderFile() {
+  const p = all().find((x) => x.id === S.open); const el = document.getElementById('file');
+  if (!p) { closeFile(); return; }
+  const chk = p.id_status === 'check', nat = (p.nat || [])[0], bg = flag(nat) || flag(p.country), note = contractNote(p), sl = S.short.has(p.id);
+  const srcs = p.sources.slice().sort((a, b) => a.at - b.at);
+  const w = p.written.map((x) => `<b>${esc(x[0])}</b> (${esc(x[1])})`).join(', ');
+  const relBars = (tier) => [1, 2, 3, 4].map((i) => `<i class="${i <= { A: 4, B: 3, C: 2, D: 1 }[tier] ? 'on' : ''}"></i>`).join('');
+  const checks = !chk ? (p.match.how.map((h) => {
+    const wr = p.written[0];
+    if (h === 'human') return `<li>${ico.ok}<span>${S.lang === 'he' ? 'אושר ידנית על ידי הצוות' : 'Confirmed by your team'}</span></li>`;
+    if (h === 'name') return `<li>${ico.ok}<span>${t('c_name', { w: esc(wr[0]), n: esc(p.name) })}</span></li>`;
+    if (h === 'translit') return `<li>${ico.ok}<span>${t('c_translit', { w: esc(wr[0]), l: esc(wr[1]), n: esc(p.name) })}</span></li>`;
+    if (h === 'inflect') return `<li>${ico.ok}<span>${t('c_inflect', { w: esc(p.written[p.written.length - 1][0]), n: esc(p.name) })}</span></li>`;
+    if (h === 'squad') return `<li>${ico.ok}<span>${t('c_squad', { c: esc(p.club) })}</span></li>`;
+    if (h === 'club') return `<li>${ico.ok}<span>${t('c_club', { c: esc(p.club) })}</span></li>`;
+    if (h === 'unique') return `<li>${ico.ok}<span>${t('c_unique')}</span></li>`;
+    if (h === 'only_one') return `<li>${ico.ok}<span>${t('c_only')}</span></li>`;
+    if (h === 'no_club') return `<li class="warn">${ico.warn}<span>${t('c_noclub')}</span></li>`;
+    return '';
+  }).join('')) : '';
+  el.innerHTML = `
+   <div class="tr3-fhead">${bg ? `<img class="bg" src="${bg}" alt="">` : ''}
+    <div class="tr3-fbar"><span class="crumb">${t('nav_radar')} / ${t('file')}</span><button onclick="closeFile()">✕ ${t('back')}</button></div>
+    <div class="tr3-fwho">${chk ? '<div class="pt tr3-ph" style="width:112px;height:140px">?</div>' : p.photo ? `<img class="pt" src="${p.photo}" alt="">` : `<div class="pt tr3-ph" style="width:112px;height:140px">${esc(p.name[0])}</div>`}
+      <div style="min-width:0"><span class="tr3-pill tag s-${SIT[p.sit]}">${t('s_' + p.sit)}</span>${chk ? ` <span class="tr3-pill tag idc">${t('check_badge')}</span>` : ''}
+        <h2>${esc(chk ? p.written[0][0] : p.name)}</h2>${!chk && p.full && p.full !== p.name ? `<div class="full">${esc(p.full)}</div>` : ''}
+        <div class="wr">${t('written')} ${w}</div></div></div>
+    ${chk ? '' : `<div class="tr3-facts6">
+      <div><label>${t('f_club')}</label><b><img src="${p.crest}" alt="" onerror="this.remove()">${esc(p.club)}</b>${p.loan ? `<small>${t('on_loan', { c: esc(p.loan) })}</small>` : ''}</div>
+      <div><label>${t('f_league')}</label><b>${esc(p.league)}</b><small>${esc(cn(p.country))}</small></div>
+      <div><label>${t('f_pos')}</label><b>${esc(p.pos)}</b>${p.foot ? `<small>${esc(p.foot)} · ${esc(p.height || '')}</small>` : ''}</div>
+      <div><label>${t('f_age')}</label><b>${p.age}</b>${p.dob ? `<small>${t('born', { d: p.dob })}</small>` : ''}</div>
+      <div><label>${t('f_value')}</label><b>${esc(p.value)}</b><small>${esc((p.nat || []).map(cn).join(' / '))}</small></div>
+      <div><label>${t('f_contract')}</label><b class="${note ? 'soon' : ''}">${esc(p.contract && p.contract !== '-' ? p.contract : t('no_contract'))}</b>${note ? `<small class="soon">${note}</small>` : ''}</div></div>
+     <div class="tr3-factions">${p.sit === 'moved' ? '' : `<button class="gold ${sl ? 'done' : ''}" onclick="addShort('${p.id}')">${ico.save}${sl ? t('in_sl') : t('add_sl')}</button>`}
+      <a href="${p.tm}" target="_blank" rel="noopener">${t('tm')} ${ico.ext}</a><button onclick="toast('WhatsApp')">${t('wa')}</button><button onclick="hidePlayer('${p.id}')">${t('hide')}</button></div>`}
+   </div>
+   <div class="tr3-fbody">
+    ${chk ? `<div class="tr3-fsec"><h3>${t('pick_h')}</h3><p class="lead">${t('possible', { n: p.cands.length })}</p><div class="tr3-pick" style="padding:0;border:1px solid var(--line);background:var(--card);padding:4px 14px 14px">${p.cands.map((c, i) => cand(p, c, i)).join('')}<p class="tr3-hint"><em>${t('hint')}</em>${esc(p.hint)}</p><div class="tr3-none"><button onclick="hidePlayer('${p.id}')">${t('none')}</button><button onclick="hidePlayer('${p.id}')">${t('not_player')}</button></div></div></div>`
+      : `<div class="tr3-fsec"><h3>${t('how_h')}</h3><p class="lead">${t('how_l')}</p><ul class="tr3-checks">${checks}</ul>${p.picked ? '' : `<button class="tr3-wrong" onclick="toast('${esc(t('wrong'))}')">${t('wrong')}</button>`}</div>`}
+    <div class="tr3-fsec"><h3>${t('tl_h')} <small>${srcs.length === 1 ? t('one_src') : t('n_src', { n: srcs.length })}</small></h3><p class="lead">${t('tl_l')}</p>
+     <div class="tr3-tl">${p.events.slice().sort((a, b) => a.at - b.at).map((e) => `<div class="tr3-ev s-${SIT[e.sit] || 'gold'}"><div class="d">${fmt(e.at)} · ${t('s_' + e.sit)}</div><div class="t">${esc(e.title)}</div>
+       <div class="s">${e.src.map((i) => { const so = p.sources[i]; return `<button onclick="jump('${p.id}-${srcs.indexOf(so)}')">${esc(so.outlet)} ↓</button>`; }).join('')}</div></div>`).join('')}</div>
+     ${p.sit === 'moved' ? `<p class="lead" style="color:var(--red)">${t('moved_note')}</p>` : ''}</div>
+    <div class="tr3-fsec"><h3>${t('src_h')}</h3><p class="lead">${t('src_l')}</p>
+     ${srcs.map((s, i) => `<article class="tr3-src" id="src-${p.id}-${i}"><div class="tr3-src-h"><span class="brit-ct-flag mono">${CC[s.country] || '··'}</span><span><span class="o">${esc(s.outlet)}</span><br><span class="m">${esc(cn(s.country))} · ${esc(s.lang)} · ${fmt(s.at)}</span></span><span class="rel">${t('rel_' + s.tier)} ${relBars(s.tier)}</span></div>
+       <div class="tr3-src-b"><p class="tr3-orig" dir="auto"><small>${t('as_pub', { l: esc(s.lang) })}</small>${esc(s.orig)}</p><p class="tr3-tr"><small>${t('en_tr')}</small>${esc(s.en)}</p>${s.quote && s.quote !== s.orig ? `<p class="tr3-quote" dir="auto">“${esc(s.quote)}”</p>` : ''}</div>
+       <div class="tr3-src-f"><span class="u">${esc(s.gn ? s.outlet.toLowerCase().replace(/\s+/g, '') + ' · via Google News' : s.url.replace(/^https?:\/\//, ''))}</span><a href="${s.url}" target="_blank" rel="noopener">${t('read')} ${ico.ext}</a></div></article>`).join('')}
+     <div class="tr3-fb">${S.fb.has(p.id) ? t('fb_t') : `${t('fb_q')} <button onclick="fb('${p.id}')">${t('fb_y')}</button><button onclick="fb('${p.id}')">${t('fb_n')}</button><button onclick="fb('${p.id}')">${t('fb_o')}</button>`}</div></div>
+   </div>`;
+}
+function openFile(id) { S.open = id; renderFile(); document.getElementById('file').classList.add('open'); document.getElementById('scrim').classList.add('open'); document.getElementById('file').scrollTop = 0; }
+function closeFile() { S.open = null; document.getElementById('file').classList.remove('open'); document.getElementById('scrim').classList.remove('open'); }
+function jump(id) { const el = document.getElementById('src-' + id); if (!el) return; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+function openFiltered() {
+  const m = document.getElementById('modal');
+  m.innerHTML = `<div class="tr3-mbox"><header><div><h3>${t('m_h')}</h3><p>${t('m_p')}</p></div><button onclick="document.getElementById('modal').classList.remove('open')">✕</button></header>
+   ${D.filtered.map((f) => `<div class="tr3-frow"><b>${esc(f.name)}</b><span class="tr3-pill s-black">${t('r_' + f.why)}</span><p>${esc(f.note)}</p>${f.src[0] ? `<a href="${f.src[0].url}" target="_blank" rel="noopener">${esc(f.src[0].outlet)} · ${t('open_article')} ↗</a>` : ''}</div>`).join('')}</div>`;
+  m.classList.add('open');
+}
+let tt; function toast(s) { const el = document.getElementById('toast'); el.textContent = s; el.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 2400); }
+function addShort(id) { S.short.has(id) ? S.short.delete(id) : (S.short.add(id), toast(t('t_sl'))); render(); }
+function pick(id, i) { S.picked[id] = i; const c = D.players.find((p) => p.id === id).cands[i]; toast(t('t_pick', { n: c.name })); render(); }
+function hidePlayer(id) { S.hidden.add(id); if (S.open === id) closeFile(); toast(t('t_hide')); render(); }
+function fb(id) { S.fb.add(id); toast(t('t_fb')); renderFile(); }
+const setView = (v) => { S.view = v; render(); }, setKpi = (k) => { S.kpi = S.kpi === k ? null : k; render(); }, setSit = (v) => { S.sit = v; render(); }, setCountry = (v) => { S.country = v; render(); },
+  setIdent = (v) => { S.ident = v; render(); }, setSort = (v) => { S.sort = v; render(); };
+function setQ(v) { S.q = v; S._focusQ = true; render(); S._focusQ = false; }
+document.getElementById('scrim').onclick = closeFile;
+document.getElementById('langBtn').onclick = () => { S.lang = S.lang === 'en' ? 'he' : 'en'; render(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeFile(); document.getElementById('modal').classList.remove('open'); } });
+const qs = new URLSearchParams(location.search); if (qs.get('lang') === 'he') S.lang = 'he'; if (qs.get('view')) S.view = qs.get('view');
+render(); if (qs.get('open')) openFile(qs.get('open')); if (qs.get('filtered')) openFiltered();
+</script>
+</body>
+</html>
