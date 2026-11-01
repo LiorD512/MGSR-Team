@@ -105,6 +105,7 @@ html[dir=rtl] .dname{font-weight:800;text-transform:none;letter-spacing:0}
 .meter{position:relative;height:9px;border-radius:999px;margin:10px 0 4px;background:linear-gradient(90deg,#d8d3c7 0 30%,#e6d3ad 30% 50%,#d9b977 50% 70%,#c39a52 70% 85%,#a47d43 85% 100%)}
 .meter .mk{position:absolute;top:-4px;width:4px;height:17px;border-radius:2px;background:var(--black);transform:translateX(-2px)}
 html[dir=rtl] .meter .mk{transform:translateX(2px)}
+html[dir=rtl] .meter{background:linear-gradient(270deg,#d8d3c7 0 30%,#e6d3ad 30% 50%,#d9b977 50% 70%,#c39a52 70% 85%,#a47d43 85% 100%)}
 .ticks{position:relative;height:14px;font-size:10.5px;color:var(--muted)}.ticks span{position:absolute;transform:translateX(-50%)}
 html[dir=rtl] .ticks span{transform:translateX(50%)}
 .lvl{font-size:13px;font-weight:700;margin-top:2px}
@@ -504,7 +505,7 @@ function detail(p){
      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="tag ${p.closed?'red':'gold'}">${t('sit_'+p.main)}</span>${p.sits.filter(k=>k!==p.main).slice(0,2).map(k=>`<span class="tag">${t('sit_'+k)}</span>`).join('')}${p.early?`<span class="early">${ico('bolt')}${t('early')}</span>`:''}</div>
      <h2 class="dname">${esc(p.name)}</h2>
      <div class="dsub">${placeTxt}${p.written?` <small>· ${t('written')} ${esc(p.written)}</small>`:''}</div></div>
-     <div class="scorebox"><div class="big"><b>${p.score}</b><span>${t('score_of')}</span></div>${meter(p.score,p.closed)}</div></div>
+     <div class="scorebox"><div class="big"><b>${p.score}</b><span><bdi dir="ltr">${t('score_of')}</bdi></span></div>${meter(p.score,p.closed)}</div></div>
    <div class="glance">
      <div><small>${t('g_sit')}</small><b>${t('sit_'+p.main)}</b><span>${p.sits.filter(k=>k!==p.main).map(k=>t('sit_'+k)).join(' · ')||'&nbsp;'}</span></div>
      <div><small>${t('g_ev')}</small><b>${evBadge(p.verification)}</b><span>${p.origins===1?t('g_ev_s1',{n:1}):t('g_ev_sn',{n:p.origins})} · ${dots(p.bestTier)}</span></div>
@@ -515,7 +516,7 @@ function detail(p){
      <div class="happened"><div class="m"><b style="color:var(--ink)">${esc(lt.outlet)}</b> ${dots(tier)} <span>${t('rel_'+tier)}</span> · ${fmt(lt.at)}</div>
        <div class="t">${esc(lt.headline||lt.orig)}</div><div class="o"><b>${t('original')}:</b> ${esc(lt.orig)}</div><a class="lnk" href="${esc(lt.url)}" target="_blank" rel="noopener">${t('open')} ${ico('ext')}</a></div></div>
    <div class="sec"><h3>${t('s_why',{n:p.score})} <span class="by">${t('by_rule')}</span></h3><p class="lead">${t('s_why_l')}</p>${rows}
-     <div class="total"><span>${t('total')}</span><span>${sumRows} / 100</span></div>${p.closed&&sumRows!==p.score?`<div class="total adj"><span>${t('adjusted')}</span><span>${p.score} / 100</span></div>`:''}
+     <div class="total"><span>${t('total')}</span><span><bdi dir="ltr">${sumRows} / 100</bdi></span></div>${p.closed&&sumRows!==p.score?`<div class="total adj"><span>${t('adjusted')}</span><span><bdi dir="ltr">${p.score} / 100</bdi></span></div>`:''}
      ${p.closed?`<div class="note">${t('closed_note',{s:p.score})}</div>`:''}
      ${raise.length?`<div class="raise"><b>${t('raise_h')}</b><ul>${raise.map(r=>`<li>${r}</li>`).join('')}</ul></div>`:''}</div>
    <div class="sec"><h3>${t('s_who')} <span class="by">${t('by_source')}</span></h3><p class="lead">${t('s_who_l')}</p>${cards}</div>
