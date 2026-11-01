@@ -23,3 +23,8 @@ node_modules/
 .next/
 out/
 app/release/app-release.aab
+
+# Transfer Radar local dev databases
+radar/*.db
+radar/*.db-*
+radar/radar-local.db*
