@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BRIT Sport Group - Transfer Radar (UX redesign mock, real PoC data)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Heebo:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f3f0e8;--paper2:#ebe6da;--card:#fbf9f3;--white:#fff;--ink:#161613;--ink2:#3a3833;--muted:#6d695f;--line:rgba(22,22,19,.15);--line2:rgba(22,22,19,.08);
+--gold:#a47d43;--gold2:#c9a66b;--goldbg:rgba(164,125,67,.11);--black:#11110f;--green:#41703a;--greenbg:#e4eedd;--amber:#94651a;--amberbg:#f6ebd3;--red:#b0392c;--redbg:#f6e0dc;--blue:#3a5f7a;--bluebg:#e0eaf1;
+--display:'Oswald',Impact,sans-serif;--body:'Manrope',system-ui,sans-serif;--mono:'DM Mono',ui-monospace,monospace}
+html[dir=rtl]{--display:'Heebo','Segoe UI',sans-serif;--body:'Heebo','Segoe UI',sans-serif;--mono:'Heebo','Segoe UI',sans-serif}
+*{box-sizing:border-box}html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+button{border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0}a{color:inherit;text-decoration:none}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
+.rail{position:sticky;top:0;height:100vh;padding:22px 20px;background:var(--black);color:#ece8de;display:flex;flex-direction:column}
+.lock{display:flex;gap:11px;align-items:center;padding-bottom:20px;border-bottom:1px solid rgba(236,232,222,.18)}
+.mark{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#d9bd8a,var(--gold));color:var(--black);font:600 14px var(--display)}
+.lock b{display:block;font:500 14px/1 var(--display);letter-spacing:.08em;color:var(--gold2)}.lock small{display:block;margin-top:5px;font-size:11px;color:#9b968b}
+.nav{margin-top:20px;display:grid;gap:2px}.nav a,.nav .g{display:flex;justify-content:space-between;padding:10px 0;font-size:13px;color:#aaa59a}
+.nav a.on{color:var(--gold2);font-weight:700}.nav .dim{opacity:.5;pointer-events:none}
+.rail-f{margin-top:auto;border-top:1px solid rgba(236,232,222,.18);padding-top:14px;font-size:11px;line-height:1.6;color:#8d887d}
+
+.top{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 32px;background:var(--black);color:#aaa59a;font-size:12px}
+.top b{color:#ece8de;font-weight:600}.top .r{display:flex;align-items:center;gap:16px}
+.top button{color:#ece8de;display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:6px 10px;border:1px solid rgba(236,232,222,.25);border-radius:999px}
+.top button:hover{border-color:var(--gold2);color:var(--gold2)}
+.lang{display:inline-flex;border:1px solid rgba(236,232,222,.25);border-radius:999px;overflow:hidden}
+.lang button{border:0;border-radius:0;padding:6px 11px}.lang button.on{background:var(--gold2);color:var(--black)}
+.mockflag{border:1px solid var(--gold);color:var(--gold2);padding:4px 10px;border-radius:999px;font-size:11px}
+
+.page{padding:24px 32px 28px;max-width:1560px}
+.phead{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:18px}
+.kick{margin:0 0 6px;color:var(--gold);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+html[dir=rtl] .kick{letter-spacing:0}
+h1{margin:0;font:500 44px/1 var(--display);text-transform:uppercase;letter-spacing:-.01em}h1 span{color:var(--gold)}
+html[dir=rtl] h1{font-weight:800;text-transform:none;letter-spacing:0}
+.status{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.status div{display:flex;flex-direction:column;gap:2px}.status b{color:var(--ink);font-size:14px}
+
+.tabs{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tab{padding:11px 14px;font-size:14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px;display:inline-flex;gap:8px;align-items:center}
+.tab:hover{color:var(--ink)}.tab.on{color:var(--ink);border-bottom-color:var(--gold)}
+.tab .n{font-size:12px;font-weight:700;background:var(--paper2);color:var(--ink2);border-radius:999px;padding:1px 8px;min-width:24px;text-align:center}
+.tab.on .n{background:var(--black);color:var(--gold2)}
+.search{margin-inline-start:auto;display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:7px 14px;min-width:260px}
+.search input{border:0;outline:0;background:none;font:inherit;width:100%;color:var(--ink)}.search svg{color:var(--muted)}
+
+.filters{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding:14px 0 16px}
+.fl{display:flex;align-items:center;gap:8px}.fl>span{font-size:12px;color:var(--muted);font-weight:600}
+select.sel{appearance:none;background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236d695f' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;border:1px solid var(--line);border-radius:999px;padding:7px 30px 7px 14px;font:inherit;font-weight:600;color:var(--ink);cursor:pointer}
+html[dir=rtl] select.sel{background-position:left 10px center;padding:7px 14px 7px 30px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:600;color:var(--ink2);display:inline-flex;gap:7px;align-items:center}
+.chip:hover{border-color:var(--gold)}.chip.on{background:var(--black);color:var(--gold2);border-color:var(--black)}
+.chip em{font-style:normal;font-size:11.5px;opacity:.7}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--white)}
+.seg button{padding:6px 13px;font-size:13px;font-weight:600;color:var(--ink2)}.seg button.on{background:var(--black);color:var(--gold2)}
+.clear{font-size:13px;font-weight:700;color:var(--gold);text-decoration:underline}
+
+.split{display:grid;grid-template-columns:minmax(360px,430px) minmax(0,1fr);gap:20px;height:calc(100vh - 292px);min-height:560px}
+.list,.detail{overflow:auto;min-height:0}
+.list{padding-inline-end:6px}
+.count{font-size:12.5px;color:var(--muted);margin:2px 2px 10px}
+.zone{margin:16px 2px 8px;display:flex;flex-direction:column;gap:1px}.zone:first-of-type{margin-top:4px}
+.zone b{font-size:13px;letter-spacing:.01em}.zone small{font-size:12px;color:var(--muted)}
+
+.item{display:block;width:100%;text-align:start;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:13px 14px 12px;margin-bottom:8px;position:relative;overflow:hidden;transition:.12s}
+.item::before{content:'';position:absolute;inset-block:0;inset-inline-start:0;width:5px;background:var(--bar,var(--gold2))}
+.item:hover{border-color:var(--gold);background:var(--white)}.item.sel{background:var(--white);border-color:var(--gold);box-shadow:0 2px 0 var(--gold),0 8px 22px rgba(22,22,19,.08)}
+.item.closed{opacity:.8}
+.irow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}
+.sit{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700}.sit i{width:9px;height:9px;border-radius:50%;background:var(--bar)}
+.when{font-size:12px;color:var(--muted);margin-inline-start:8px;font-weight:500}
+.nm{font:700 17px/1.25 var(--body);margin:5px 0 1px}.cl{font-size:13px;color:var(--muted)}
+.hl{font-size:13.5px;line-height:1.4;margin:8px 0 9px;color:var(--ink2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ring{width:46px;height:46px}.ringwrap{text-align:center}.ringwrap small{display:block;font-size:10.5px;color:var(--muted);margin-top:1px;font-weight:600}
+.c-gold{--bar:var(--gold)}.c-amber{--bar:#c58a24}.c-blue{--bar:var(--blue)}.c-red{--bar:var(--red)}.c-grey{--bar:#9d988c}
+
+.ev{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.ev.conf{background:var(--greenbg);color:var(--green)}.ev.rep{background:var(--goldbg);color:var(--amber);box-shadow:inset 0 0 0 1px rgba(164,125,67,.45)}
+.ev.rum{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1px var(--muted);border-style:dashed}
+.early{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--blue);background:var(--bluebg);padding:3px 9px;border-radius:999px}
+.old{font-size:12px;color:var(--muted);font-weight:600}
+.dots{display:inline-flex;gap:3px;vertical-align:middle}.dots i{width:7px;height:7px;border-radius:50%;background:var(--line);display:block}.dots i.on{background:var(--gold)}
+.src{font-size:12.5px;color:var(--ink2);display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--paper2);color:var(--ink2)}
+.tag.red{background:var(--redbg);color:var(--red)}.tag.gold{background:var(--goldbg);color:var(--amber)}
+
+/* ------------ detail ------------- */
+.detail{background:var(--card);border:1px solid var(--line);border-radius:6px}
+.dhead{padding:20px 24px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.back{display:none;align-items:center;gap:6px;font-weight:700;font-size:13px;color:var(--gold);margin-bottom:10px}
+.dname{margin:8px 0 2px;font:500 38px/1.05 var(--display);text-transform:uppercase;letter-spacing:-.01em}
+html[dir=rtl] .dname{font-weight:800;text-transform:none;letter-spacing:0}
+.dsub{font-size:14.5px;color:var(--ink2)}.dsub small{color:var(--muted)}
+.scorebox{min-width:230px}.scorebox .big{display:flex;align-items:baseline;gap:6px}.scorebox .big b{font:500 52px/1 var(--display);color:var(--ink)}.scorebox .big span{font-size:13px;color:var(--muted)}
+.meter{position:relative;height:9px;border-radius:999px;margin:10px 0 4px;background:linear-gradient(90deg,#d8d3c7 0 30%,#e6d3ad 30% 50%,#d9b977 50% 70%,#c39a52 70% 85%,#a47d43 85% 100%)}
+.meter .mk{position:absolute;top:-4px;width:4px;height:17px;border-radius:2px;background:var(--black);transform:translateX(-2px)}
+html[dir=rtl] .meter .mk{transform:translateX(2px)}
+.ticks{position:relative;height:14px;font-size:10.5px;color:var(--muted)}.ticks span{position:absolute;transform:translateX(-50%)}
+html[dir=rtl] .ticks span{transform:translateX(50%)}
+.lvl{font-size:13px;font-weight:700;margin-top:2px}
+
+.glance{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.glance>div{padding:14px 20px;border-inline-end:1px solid var(--line)}.glance>div:last-child{border:0}
+.glance small{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.glance b{display:block;font-size:15px;line-height:1.3}.glance span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+
+.next{margin:20px 24px 0;padding:16px 18px;border:1px solid var(--gold);background:var(--goldbg);border-radius:6px}
+.next.closed{border-color:var(--red);background:var(--redbg)}
+.next h4{margin:0 0 4px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);display:flex;align-items:center;gap:7px}
+.next.closed h4{color:var(--red)}
+.next .act{font-size:16.5px;font-weight:700;line-height:1.35;margin:0}.next .why{font-size:13.5px;color:var(--ink2);margin:6px 0 0}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;position:relative}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border:1px solid var(--line);background:var(--white);border-radius:999px;font-weight:700;font-size:13.5px;color:var(--ink)}
+.btn:hover{border-color:var(--gold)}.btn.pri{background:var(--black);color:var(--gold2);border-color:var(--black)}.btn.pri:hover{background:#2a2a25}
+.btn.done{background:var(--greenbg);color:var(--green);border-color:transparent}
+.menu{position:absolute;top:calc(100% + 6px);inset-inline-start:0;z-index:20;background:var(--white);border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 30px rgba(22,22,19,.18);padding:6px;min-width:250px}
+.menu button{display:block;width:100%;text-align:start;padding:9px 12px;border-radius:6px;font-size:13.5px;font-weight:600}.menu button:hover{background:var(--paper2)}
+
+.sec{padding:22px 24px 0}.sec:last-child{padding-bottom:26px}
+.sec h3{margin:0 0 4px;font-size:16px;font-weight:800;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sec h3 .by{font-size:11.5px;font-weight:700;color:var(--muted);background:var(--paper2);padding:2px 9px;border-radius:999px;letter-spacing:.02em}
+.sec h3 .by.ai{background:var(--bluebg);color:var(--blue)}
+.sec>p.lead{margin:0 0 12px;font-size:13.5px;color:var(--muted)}
+.happened{background:var(--white);border:1px solid var(--line);border-radius:6px;padding:16px 18px}
+.happened .t{font:700 20px/1.3 var(--body);margin:2px 0 8px}
+.happened .o{font-size:13.5px;color:var(--muted)}.happened .o b{color:var(--ink2)}
+.happened .m{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:6px}
+.lnk{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:13px;color:var(--gold);margin-top:10px}.lnk:hover{text-decoration:underline}
+
+.why-row{display:grid;grid-template-columns:28px minmax(0,1fr) 150px 64px;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--line2)}
+.why-row:first-of-type{border-top:0}
+.why-row .ck{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--greenbg);color:var(--green)}
+.why-row.zero .ck{background:var(--paper2);color:var(--muted)}
+.why-row b{display:block;font-size:14px}.why-row small{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+.why-row.zero b{color:var(--muted);font-weight:600}
+.pbar{height:7px;border-radius:999px;background:var(--paper2);overflow:hidden}.pbar u{display:block;height:100%;background:var(--gold);border-radius:999px;text-decoration:none}
+.pts{font-size:14px;font-weight:700;text-align:end;font-variant-numeric:tabular-nums}.pts small{display:inline;color:var(--muted);font-weight:500}
+.why-row.zero .pts{color:var(--muted)}
+.total{display:flex;justify-content:space-between;padding:12px 0 0;border-top:2px solid var(--ink);margin-top:6px;font-weight:800;font-size:15px}
+.raise{margin-top:14px;padding:12px 14px;background:var(--paper);border-radius:6px;border:1px dashed var(--line)}
+.raise b{font-size:13px;display:block;margin-bottom:4px}.raise ul{margin:0;padding-inline-start:18px;font-size:13.5px;color:var(--ink2)}.raise li{margin:2px 0}
+.note{margin-top:12px;padding:10px 14px;border-radius:6px;font-size:13.5px;background:var(--amberbg);color:var(--amber);font-weight:600}
+
+.scard{background:var(--white);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:10px}
+.scard .top2{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.scard .on{font-weight:800;font-size:14.5px}.scard .rl{font-size:12.5px;color:var(--muted);display:inline-flex;gap:7px;align-items:center;margin-inline-start:10px}
+.scard .t{font-weight:600;font-size:14.5px;margin:8px 0 3px}.scard .o{font-size:13px;color:var(--muted)}
+.scard blockquote{margin:9px 0 0;padding:6px 12px;border-inline-start:3px solid var(--gold2);background:var(--paper);font-size:13.5px;color:var(--ink2)}
+.scard blockquote small{display:block;color:var(--muted);font-size:11.5px;margin-bottom:2px}
+.scard .same{font-size:12.5px;color:var(--muted);margin-top:8px;font-style:italic}
+.tl{position:relative;margin:4px 0 0;padding-inline-start:22px}
+.tl::before{content:'';position:absolute;inset-block:6px;inset-inline-start:5px;width:2px;background:var(--line)}
+.tle{position:relative;padding:5px 0 13px}.tle::before{content:'';position:absolute;inset-inline-start:-22px;top:9px;width:12px;height:12px;border-radius:50%;background:var(--white);border:3px solid var(--gold)}
+.tle.red::before{border-color:var(--red)}.tle .d{font-size:12px;color:var(--muted)}.tle b{font-size:14px}.tle span{font-size:13px;color:var(--ink2)}
+.fb{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13.5px;color:var(--muted);padding-top:6px}
+.fb button{padding:5px 13px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-weight:700;font-size:13px;color:var(--ink2)}.fb button:hover{border-color:var(--gold)}
+.missing{margin:20px 24px 0;font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:flex-start;padding:10px 14px;background:var(--paper);border-radius:6px}
+
+.simple{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 16px;margin-bottom:8px;display:grid;gap:3px}
+.simple .t{font-weight:700;font-size:14.5px}.simple .m{font-size:12.5px;color:var(--muted)}
+.simple .row{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.help-card{padding:34px 30px;text-align:center;color:var(--ink2)}.help-card h3{font:500 24px/1.1 var(--display);text-transform:uppercase;margin:0 0 10px}
+html[dir=rtl] .help-card h3{text-transform:none;font-weight:800}
+.help-card p{max-width:480px;margin:8px auto;font-size:14px}
+.empty{padding:50px 20px;text-align:center;color:var(--muted)}.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}
+
+.modal{position:fixed;inset:0;background:rgba(17,17,15,.55);z-index:60;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+.modal.show{display:flex}.mbox{background:var(--card);border-radius:10px;max-width:760px;width:100%;padding:26px 28px;box-shadow:0 30px 80px rgba(0,0,0,.4);position:relative}
+.mbox h2{margin:0 0 4px;font:500 28px/1.1 var(--display);text-transform:uppercase}html[dir=rtl] .mbox h2{text-transform:none;font-weight:800}
+.mbox .x{position:absolute;top:16px;inset-inline-end:16px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--paper2)}
+.hgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.hbox{background:var(--white);border:1px solid var(--line);border-radius:8px;padding:14px 16px}.hbox h4{margin:0 0 6px;font-size:14px}.hbox p{margin:4px 0;font-size:13.5px;color:var(--ink2)}
+.hbox.wide{grid-column:1/-1}
+.toast{position:fixed;top:70px;inset-inline-start:50%;transform:translateX(-50%);background:var(--black);color:#fff;padding:11px 20px;border-radius:999px;font-weight:700;font-size:13.5px;z-index:80;opacity:0;pointer-events:none;transition:.25s}
+.toast.show{opacity:1}
+
+@media(max-width:1180px){.split{grid-template-columns:minmax(330px,380px) minmax(0,1fr)}.glance{grid-template-columns:repeat(2,1fr)}.glance>div:nth-child(2){border-inline-end:0}.glance>div:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+@media(max-width:900px){
+ .app{grid-template-columns:1fr}.rail{display:none}.top{padding:0 16px}.page{padding:16px 14px 20px}h1{font-size:34px}
+ .split{display:block;height:auto}.list{overflow:visible;padding:0}
+ .detail{position:fixed;inset:0;z-index:50;border-radius:0;border:0;transform:translateX(100%);transition:.22s;overflow:auto;background:var(--card)}
+ html[dir=rtl] .detail{transform:translateX(-100%)}body.open .detail{transform:none}
+ .back{display:inline-flex}.dhead{padding:16px}.dname{font-size:30px}.scorebox{min-width:0;width:100%}
+ .glance{grid-template-columns:1fr 1fr}.glance>div{padding:12px 14px}.sec{padding:20px 16px 0}.next{margin:16px 16px 0}.missing{margin:16px 16px 0}
+ .why-row{grid-template-columns:26px minmax(0,1fr) 56px}.why-row .pbar{display:none}
+ .search{min-width:0;width:100%;margin:6px 0 4px}.hgrid{grid-template-columns:1fr}.tabs{overflow-x:auto;flex-wrap:nowrap}.tab{white-space:nowrap}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="lock"><div class="mark">B</div><div><b>BRIT SPORT GROUP</b><small id="rail-sub">Management room</small></div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="rail-f" id="rail-f"></div>
+  </aside>
+  <div>
+    <header class="top">
+      <div id="crumb"></div>
+      <div class="r"><span class="mockflag" id="mockflag"></span>
+        <button id="helpBtn"></button>
+        <div class="lang"><button data-lang="en" class="on">EN</button><button data-lang="he">עב</button></div>
+      </div>
+    </header>
+    <main class="page">
+      <div class="phead"><div><p class="kick" id="kick"></p><h1 id="h1"></h1></div><div class="status" id="status"></div></div>
+      <nav class="tabs" id="tabs"></nav>
+      <div class="filters" id="filters"></div>
+      <div class="split"><section class="list" id="list" aria-label="list"></section><section class="detail" id="detail" aria-live="polite"></section></div>
+    </main>
+  </div>
+</div>
+<div class="modal" id="modal"><div class="mbox" id="mbox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const DATA={"now": 1793520000000, "coverage": {"sources": 73, "direct": 45, "searches": 28, "countries": 29}, "queued": 1224, "players": [{"id": "pl-64134801a783", "name": "Chorý", "written": null, "club": "Slavia Prague", "country": "Czech Republic", "note": null, "score": 39, "level": "Monitor", "closed": false, "categories": ["Sporting status", "Relationship issues", "Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 2, "origins": 2, "action": "Verify with a local contact today, then approach the agent.", "first": 1792566000000, "last": 1792587632000, "components": [{"key": "exclusion", "points": 8.7, "max": 15, "signal": "EXCLUDED_FROM_SQUAD", "reportId": "d58ef77e6650df05", "outlet": "Flashscore.sk", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.79, "ageDays": 10.8}, {"key": "relationship", "points": 9.8, "max": 15, "signal": "DISCIPLINARY_ISSUE", "reportId": "d58ef77e6650df05", "outlet": "Flashscore.sk", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.89, "ageDays": 10.8}, {"key": "availability", "points": 15.5, "max": 25, "signal": "PLAYER_SEEKING_CLUB", "reportId": "5fbbe08a5cd80d36", "outlet": "Ruik", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.85, "ageDays": 11}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 5, "max": 10, "note": "2 independent origin(s)"}], "caps": [], "timeline": [{"at": 1792587632000, "kind": "REPORT", "signals": ["EXCLUDED_FROM_SQUAD", "DISCIPLINARY_ISSUE"], "verification": "REPORTED", "outlet": "Flashscore.sk", "tier": "C", "url": "https://news.google.com/rss/articles/CBMiswFBVV95cUxNeVFaY2dodTdWN2MzWWtKeW04R1JBLTZMRG15UTkzVzFVOHJnZ2tBQWgxX3J0TDBHOGk1LXo2bzBTendhbXFHenViUUpIandIV2steXVZbUVFWXBOaTNDQnJwTUVFMDVzTUNJWDd2NlE0Ymx6cUdnOThDMDRsNXkxZTE5LUoxY2l0QjlXalhVX3g1MU0wR0pOdFVRTkd0bEZQMTYxS2VUejg1dnAyN3UyZGl5NA?oc=5", "headline": "End for Chory in Slavia? Player received harsh punishment and was excluded from squad", "orig": "Koniec Chorého v Slavii? Hráč dostal tvrdý trest a bol vyradený z kádra", "quote": "Hráč dostal tvrdý trest a bol vyradený z kádra", "claim": "FACT", "origin": "o-d58ef77e66", "headlineOnly": true}, {"at": 1792566000000, "kind": "REPORT", "signals": ["PLAYER_SEEKING_CLUB"], "verification": "REPORTED", "outlet": "Ruik", "tier": "C", "url": "https://news.google.com/rss/articles/CBMilAFBVV95cUxObUhFU0R0RDJuV1RQT3VPOXpOYi0wVi02UF9MXzBhMVprZUw0d1JVZkZtaHBWVnVNcGtmdTNPZ0Z3d0p2cHpVbk5zZ2NKY2JKc3dMMFhyYm9JS0RFZmZMbWhSUnM2Z2tRaUtFMmZDYlFpMm9zMHY0cFNlZUdyN3U5VEVSZlRtVm1BYzhkbDN6V0djSkJ5?oc=5", "headline": "Chorý reacts to harsh punishment. Striker requests immediate contract termination", "orig": "Chorý reaguje na tvrdý trest. Útočník žádá o okamžité ukončení smlouvy", "quote": "Útočník žádá o okamžité ukončení smlouvy", "claim": "FACT", "origin": "o-5fbbe08a5c", "headlineOnly": true}]}, {"id": "pl-8bd734324fbb", "name": "Hakim Abdallah", "written": null, "club": "Dinamo Bucharest", "country": "Romania", "note": null, "score": 21, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "B", "reports": 1, "origins": 1, "action": "Single report: verify with a local contact before outreach.", "first": 1793459445000, "last": 1793459445000, "components": [{"key": "availability", "points": 20.6, "max": 25, "signal": "CLUB_WANTS_TO_RELEASE", "reportId": "fd601022c2a52999", "outlet": "fanatik.ro", "tier": "B", "verification": "REPORTED", "confidence": 0.83, "recency": 0.99, "ageDays": 0.7}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1793459445000, "kind": "REPORT", "signals": ["CLUB_WANTS_TO_RELEASE"], "verification": "REPORTED", "outlet": "fanatik.ro", "tier": "B", "url": "https://www.fanatik.ro/el-l-a-dat-afara-pe-abdallah-de-la-dinamo-dezvaluiri-inainte-de-meciul-cu-uta-exclusiv-21577582", "headline": "He kicked Abdallah out of Dinamo! Revelations before the match with UTA. Exclusive", "orig": "El l-a dat afară pe Abdallah de la Dinamo! Dezvăluiri înainte de meciul cu UTA. Exclusiv", "quote": "Dezvăluiri înainte de meciul cu UTA. Exclusiv", "claim": "FACT", "origin": "o-fd601022c2", "headlineOnly": false}]}, {"id": "pl-1e3b664843a7", "name": "Johan Bakayoko", "written": null, "club": "RB Leipzig", "country": "Germany", "note": null, "score": 18, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Single report: verify with a local contact before outreach.", "first": 1793344805000, "last": 1793344805000, "components": [{"key": "availability", "points": 17.7, "max": 25, "signal": "CLUB_WANTS_TO_SELL", "reportId": "a1223bde7c4005d4", "outlet": "FCUpdate.nl", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.97, "ageDays": 2}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1793344805000, "kind": "REPORT", "signals": ["CLUB_WANTS_TO_SELL"], "verification": "REPORTED", "outlet": "FCUpdate.nl", "tier": "C", "url": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxQakFoWHAzNkZXampWMHI1QnRQUTZkeGRnNlNDY3J0d3dqTUdCUFhSekU4dUp2Wm5EZ3B1djEtYlZldERjcXFaemNFSXZzcmU0d1V1MkF0U0xTQlF1aVYtamFzdk8wRUNSUXljeXhJUmd2anRFc1NhdFhoR1FLelJPR2l0dUg5M29ZUnlfQjlBeVV6TEpSTkRQUmVEOEx3Tkhnb21aX2NDcVU?oc=5", "headline": "RB Leipzig completely done with Johan Bakayoko (23)", "orig": "RB Leipzig helemaal klaar met Johan Bakayoko (23)", "quote": "RB Leipzig helemaal klaar met Johan Bakayoko (23)", "claim": "FACT", "origin": "o-a1223bde7c", "headlineOnly": true}]}, {"id": "pl-097415bd5050", "name": "Heverton", "written": "Хевертон", "club": "Levski Sofia", "country": "Bulgaria", "note": null, "score": 17, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Single report: verify with a local contact before outreach.", "first": 1793254909000, "last": 1793254909000, "components": [{"key": "availability", "points": 17.4, "max": 25, "signal": "PLAYER_SEEKING_CLUB", "reportId": "08a50fbcfd7dbfd0", "outlet": "Football24.bg", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.95, "ageDays": 3}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1793254909000, "kind": "REPORT", "signals": ["PLAYER_SEEKING_CLUB"], "verification": "REPORTED", "outlet": "Football24.bg", "tier": "C", "url": "https://news.google.com/rss/articles/CBMiwgJBVV95cUxOSmxlZ3lSdUY1M2xDUmZEVUhKSDUzaWhvZU9Sai1rTzdhLWlpM1d0cHRXZ0ZCSW44VG04TDJsOUxZQXdDb3gwZVBXbkVZakptRlFoSERnMnVDQkZPclRaeU9lbktIYzh1VUFOcC1WN1QwYVlha3NZbTV0X05QbmlrQ3dJWkRxUGVZTkpta2xBWjE5MFNsMU1OXzE4bUp5Qk1GLVdMVEpxSko3MVFwcHJueFR4RXdMU1ZHZE5BcWlpbFlRV1p2VkE5RGl3WC1hNENrY0lzbkE2alFxLXlKSlN2dFFxTnF4dV9MWVdzTXUycjBYbDNzMDU4Nm15Wm51dGtJYWpZaDZyX2M2SEpOUEtGUWlFZzhJanBOOUFkUUExRi1BdHBFMGpQX2dZY0RTdGxIU25BY2p3Tnc3emd5cl8xcHJ3?oc=5", "headline": "Julio Velasquez made a decision about Heverton, the Brazilian is about to leave Levski", "orig": "Хулио Веласкес взе решение за Хевертон, бразилецът е пред напускане на Левски", "quote": "бразилецът е пред напускане на Левски", "claim": "FACT", "origin": "o-08a50fbcfd", "headlineOnly": true}]}, {"id": "pl-10ef61e53871", "name": "Perea", "written": "Переа", "club": "Levski Sofia", "country": "Bulgaria", "note": null, "score": 17, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": true, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Ask the club or agent about loan terms; verify before outreach.", "first": 1793262631000, "last": 1793262631000, "components": [{"key": "availability", "points": 17.4, "max": 25, "signal": "AVAILABLE_ON_LOAN", "reportId": "b281423c6b1f1de3", "outlet": "bgdnes.bg", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.95, "ageDays": 3}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1793262631000, "kind": "REPORT", "signals": ["AVAILABLE_ON_LOAN"], "verification": "REPORTED", "outlet": "bgdnes.bg", "tier": "C", "url": "https://news.google.com/rss/articles/CBMiWEFVX3lxTE5qa0ljMlBabW9kRkxuSFVVZlVwNUpmTEJiY2F5d2NiVllPeHBqblV3MzZsM1VqNzduSU1qVFZsS1ZDVzBCQTBSRGFQNVNqOVktM0pwMG1uT1M?oc=5", "headline": "\"Levski\" sends Perea on loan", "orig": "\"Левски\" праща Переа под наем", "quote": "\"Левски\" праща Переа под наем", "claim": "FACT", "origin": "o-b281423c6b", "headlineOnly": true}]}, {"id": "pl-4dfe2b9390c1", "name": "Manasse Kusu", "written": null, "club": null, "country": null, "note": "Club not named in the headline", "score": 16, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Single report: verify with a local contact before outreach.", "first": 1792738800000, "last": 1792738800000, "components": [{"key": "availability", "points": 15.9, "max": 25, "signal": "PLAYER_SEEKING_CLUB", "reportId": "c1a4516258b9c7c4", "outlet": "Nerikes Allehanda", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.87, "ageDays": 9}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1792738800000, "kind": "REPORT", "signals": ["PLAYER_SEEKING_CLUB"], "verification": "REPORTED", "outlet": "Nerikes Allehanda", "tier": "C", "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE5YbnRhS2h6a1BnVXF6SmhiNFRaZVJ5ZUltQlFmUFVnNzFqNWVjaTFNVTVqd2x4T3NhWWQzaTB5Y1pGOGc2bkxVSEhxTGZVZ0hRVFRDRUtsQVgzM3NscG1GVmt2LW8xb1JvcFZvWDZlZTlXdw?oc=5", "headline": "Manasse Kusu breaks contract", "orig": "Avslöjar: Manasse Kusu bryter kontraktet", "quote": "Manasse Kusu bryter kontraktet", "claim": "FACT", "origin": "o-c1a4516258", "headlineOnly": true}]}, {"id": "pl-7a849e37ecdf", "name": "Mikkel Rygaard", "written": null, "club": "Häcken", "country": "Sweden", "note": null, "score": 15, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Single report: verify with a local contact before outreach.", "first": 1792220400000, "last": 1792220400000, "components": [{"key": "availability", "points": 14.7, "max": 25, "signal": "CLUB_WANTS_TO_SELL", "reportId": "4116bdbc39292f5d", "outlet": "Google News", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.8, "ageDays": 15}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1792220400000, "kind": "REPORT", "signals": ["CLUB_WANTS_TO_SELL"], "verification": "REPORTED", "outlet": "Google News", "tier": "C", "url": "https://news.google.com/rss/articles/CBMiygFBVV95cUxNRzFVbDdkOFJQSGFObHRVRFc1YWhkaE1UV01uRzNUZWtZbWZiN0FGUEtrSS1RaDk0R3Q5NDNLYWpZWlJOQ1F2eml6aGhwMkttbko3ZThjbFh2cnA1a3o2UnNjTnZBZDNXeUdsMjJxcnJRTnAxb2hTTnZ5a1pSRWpjOHpIM295TkJoS1U0V3liOGQxdHp0T0NTcmxZcVFqTHZaRUl4OXFOTktQaTB4Z3R5TUhPWGhhZzBEQTloR3FVbHV3MGdaeHlOQnB3?oc=5", "headline": "Mikkel Rygaard to leave Häcken", "orig": "Mikkel Rygaard får lämna Häcken – känner sig missförstådd - Göteborgs-Posten", "quote": "Mikkel Rygaard får lämna Häcken", "claim": "FACT", "origin": "o-4116bdbc39", "headlineOnly": true}]}, {"id": "pl-db0fed324cfe", "name": "Jorge Guzman", "written": null, "club": "Željezničar", "country": "Bosnia and Herzegovina", "note": null, "score": 15, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Single report: verify with a local contact before outreach.", "first": 1792393200000, "last": 1792393200000, "components": [{"key": "availability", "points": 15.1, "max": 25, "signal": "PLAYER_SEEKING_CLUB", "reportId": "78fb8462a7742707", "outlet": "SportSport.ba", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.83, "ageDays": 13}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1792393200000, "kind": "REPORT", "signals": ["PLAYER_SEEKING_CLUB"], "verification": "REPORTED", "outlet": "SportSport.ba", "tier": "C", "url": "https://news.google.com/rss/articles/CBMihAFBVV95cUxNMjVJR0F1a0lMTkY2dzQzQmJMeVhpNWtfOEVQYjBJT0otdWpmb3dpU21zVG96QU9aN3FxTnBEV3NhNE51V3I1QTBWVzJKaGRmT2g3WWEtRjFoRDJHaFFsYUJ6dHozYXVqX21tUmpkd2RPTXpDaFF4Z09wNkt3WFM5LTNLV3nSAVJBVV95cUxPVlBuYnhEbUYzMEpVTTNULU9SUE9GTWt5QUMwWEEtU0JpQVVHM1huNERnMVo2V1U3S0hMYmloVDQwcDBKbDR3OEJjemxIaTBqQlNn?oc=5", "headline": "Jorge Guzman is no longer a Željezničar player, requested contract termination for private reasons", "orig": "Jorge Guzman više nije igrač Željezničara, zatražio raskid ugovora iz privatnih razloga", "quote": "zatražio raskid ugovora iz privatnih razloga", "claim": "FACT", "origin": "o-78fb8462a7", "headlineOnly": true}]}, {"id": "pl-ec1563793f95", "name": "Sérgio Fonseca", "written": null, "club": "AVS", "country": "Portugal", "note": null, "score": 15, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Single report: verify with a local contact before outreach.", "first": 1792479600000, "last": 1792479600000, "components": [{"key": "availability", "points": 15.3, "max": 25, "signal": "PLAYER_SEEKING_CLUB", "reportId": "4e7e7f4961d4795c", "outlet": "Maisfutebol", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.84, "ageDays": 12}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1792479600000, "kind": "REPORT", "signals": ["PLAYER_SEEKING_CLUB"], "verification": "REPORTED", "outlet": "Maisfutebol", "tier": "C", "url": "https://news.google.com/rss/articles/CBMirgFBVV95cUxQam8tUUtTQTBTYTNEUGdKazRFWGk3WFd3UFotMTdOSmxkSmRyTk9jSjhHSVE2MUl5T3pZeUkxaWpfTFBiRVNpaDNwM1Z3OUIxbnFQaks1NUM5NjdzZHRHX3V4TklMblcxS2s0UGZBMlpPallJdGU1RElmcGRXV2dXMmo0eVBRWDJwRDlKN2N6WTNTXzlYUFFYUkxwdE1Lc0NIaXdKalJURy1UZC03YXc?oc=5", "headline": "Second Division: Sérgio Fonseca leaving AVS, Silas in negotiations", "orig": "II Liga: Sérgio Fonseca de saída do AVS, Silas em negociações", "quote": "Sérgio Fonseca de saída do AVS", "claim": "FACT", "origin": "o-4e7e7f4961", "headlineOnly": true}]}, {"id": "pl-423118e276ac", "name": "Mauro Icardi", "written": null, "club": null, "country": null, "note": "Free agent for 4 months (per headline)", "score": 13, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Single report: verify with a local contact before outreach.", "first": 1791270000000, "last": 1791270000000, "components": [{"key": "availability", "points": 13, "max": 25, "signal": "PLAYER_SEEKING_CLUB", "reportId": "94e9e9a89d555119", "outlet": "Antena Sport", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.71, "ageDays": 26}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1791270000000, "kind": "REPORT", "signals": ["PLAYER_SEEKING_CLUB"], "verification": "REPORTED", "outlet": "Antena Sport", "tier": "C", "url": "https://news.google.com/rss/articles/CBMiyAFBVV95cUxNS1F6eW1BWGFVem0zekJRXzFlbmp0NFhaYjgycXVOU2pfQmJTX1RTRnlRUk9naHpvZmVfODJNelBjZFgzVV9yMHBHQ1NKU2ZmOFJ1THJtRW91X2lSWFUtTUJCbkxIbWxFR2J3c19qc19UUFRlQUJCbWliNjF3X281WlBDeXJCU004VHZvTFY2X3NmVl9mN09aakJTTUxVUGdvUWMweVZVWU53SUw4dDJZSTBtdUI4Yl8ybDNVN0FhRVZEZFA5bC1veA?oc=5", "headline": "Free agent for 4 months, Mauro Icardi could make an unexpected transfer", "orig": "Liber de contract de 4 luni, Mauro Icardi ar putea să prindă un transfer neaşteptat", "quote": "Liber de contract de 4 luni", "claim": "FACT", "origin": "o-94e9e9a89d", "headlineOnly": true}]}, {"id": "pl-46a57aa3e333", "name": "Ellis Simms", "written": null, "club": "Coventry City", "country": "England", "note": null, "score": 10, "level": "Low priority", "closed": false, "categories": ["Sporting status"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Watch: wait for a second independent source.", "first": 1793038680000, "last": 1793038680000, "components": [{"key": "exclusion", "points": 9.7, "max": 15, "signal": "EXCLUDED_FROM_SQUAD", "reportId": "15d3446b8a9cf2d8", "outlet": "weszlo.com", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.88, "ageDays": 5.5}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1793038680000, "kind": "REPORT", "signals": ["EXCLUDED_FROM_SQUAD"], "verification": "REPORTED", "outlet": "weszlo.com", "tier": "C", "url": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxPT2pwbGRJS1BnLW9yNjJFaTZFb0VuX0ViZ2xOeVE0ejJVUjRHOHNaVG44TzM0aUhmWXppXzFSZ2hGc3JTemNjTGxFdGljdldoTUkzb2dNYktScE5scnplRlFsaFFCT0x0ZVZTSDBXNmNhS0hwZ2F3cXl4S1ZOMW5ZczVLU3J1VkdH?oc=5", "headline": "Ellis Simms out of Coventry's squad. What about the potential squad member?", "orig": "Ellis Simms poza kadrą Coventry. Co z potencjalnym kadrowiczem?", "quote": "Ellis Simms poza kadrą Coventry", "claim": "FACT", "origin": "o-15d3446b8a", "headlineOnly": true}]}, {"id": "pl-9583ff992233", "name": "Bohdan Wjunnyk", "written": null, "club": "Legia Warsaw", "country": "Poland", "note": null, "score": 8, "level": "Low priority", "closed": false, "categories": ["Sporting status"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Watch: wait for a second independent source.", "first": 1791788400000, "last": 1791788400000, "components": [{"key": "exclusion", "points": 7.5, "max": 15, "signal": "EXCLUDED_FROM_SQUAD", "reportId": "c906b21dacefa2db", "outlet": "Transfery.info", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.69, "ageDays": 20}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1791788400000, "kind": "REPORT", "signals": ["EXCLUDED_FROM_SQUAD"], "verification": "REPORTED", "outlet": "Transfery.info", "tier": "C", "url": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxPR0JoR2RmMF9fLWV3MjlkcnIxZmx6Y3ktZDlCQnBDeUwzV1M4OUVNdUw3Z1hzVEJ0UTdfWXhCXy1IVUhaODg0TF9wLXNPUS1ESkhPaHM0OUQ4REwxdnhOd2tTcUk5TTU0TkdMRHJ3NmxWbzFFb0paUHM3TUFrTi1UXzgtR2pqaWR2LXZkSEI4RUdtLV9WcDFvSmpZZENOcnp0MzMtWUh4cVo?oc=5", "headline": "Bohdan Wjunnyk out of Legia Warsaw squad. Player explains reason", "orig": "Bohdan Wjunnyk poza kadrą Legii Warszawa. Piłkarz wyjaśnia powód", "quote": "Bohdan Wjunnyk poza kadrą Legii Warszawa", "claim": "FACT", "origin": "o-c906b21dac", "headlineOnly": true}]}, {"id": "pl-feefea2f0edd", "name": "Andrei Cordea", "written": null, "club": "CFR Cluj", "country": "Romania", "note": null, "score": 12, "level": "Closed", "closed": true, "categories": ["Transfer availability", "Sporting status"], "loan": false, "verification": "REPORTED", "bestTier": "B", "reports": 2, "origins": 2, "action": "Do not contact: later reports say the move is agreed or announced. Keep archived; re-open only if it collapses.", "first": 1793462488000, "last": 1793488158000, "components": [{"key": "availability", "points": 20.7, "max": 25, "signal": "CLUB_WANTS_TO_SELL", "reportId": "238d0bf348f33d6a", "outlet": "gsp.ro", "tier": "B", "verification": "REPORTED", "confidence": 0.83, "recency": 0.99, "ageDays": 0.5}, {"key": "exclusion", "points": 12.3, "max": 15, "signal": "NOT_PLAYING", "reportId": "9012a1a5f66c6f99", "outlet": "fanatik.ro", "tier": "B", "verification": "REPORTED", "confidence": 0.83, "recency": 0.99, "ageDays": 0.5}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 5, "max": 10, "note": "2 independent origin(s)"}], "caps": ["Later reports say the transfer is agreed/announced: opportunity treated as closed"], "timeline": [{"at": 1793488158000, "kind": "STATUS_CHANGE", "signals": ["TRANSFER_COMPLETED"], "verification": "REPORTED", "outlet": "digisport.ro", "tier": "B", "url": "https://www.digisport.ro/fotbal/liga-1/dupa-ce-sumudica-a-spus-ca-nu-stiu-ce-s-a-intamplat-zavaleanu-a-facut-anuntul-despre-transferul-lui-andrei-cordea-4578061", "headline": "After Șumudică said \"I don't know what happened\", Zăvăleanu made the announcement about Andrei Cordea's transfer", "orig": "După ce Șumudică a spus că ”nu știu ce s-a întâmplat”, Zăvăleanu a făcut anunțul despre transferul lui Andrei Cordea", "quote": "anunțul despre transferul lui Andrei Cordea", "claim": "FACT", "origin": "o-a64c05a080", "headlineOnly": false}, {"at": 1793476194000, "kind": "REPORT", "signals": ["CLUB_WANTS_TO_SELL"], "verification": "REPORTED", "outlet": "gsp.ro", "tier": "B", "url": "https://www.gsp.ro/fotbal/liga-1/razvan-zavaleanu-transfer-andrei-cordea-cfr-cluj-994473.html", "headline": "Announcement about Andrei Cordea's transfer: 'Discussions with a team that wants him very much'", "orig": "Anunț despre transferul lui Andrei Cordea: „Discuții cu o echipă care îl dorește foarte tare”", "quote": "Discuții cu o echipă care îl dorește foarte tare", "claim": "FACT", "origin": "o-238d0bf348", "headlineOnly": false}, {"at": 1793475592000, "kind": "STATUS_CHANGE", "signals": ["TRANSFER_COMPLETED"], "verification": "REPORTED", "outlet": "fanatik.ro", "tier": "B", "url": "https://www.fanatik.ro/cfr-cluj-confirma-transferul-bomba-al-lui-andrei-cordea-dezvaluit-de-fanatik-a-fost-un-om-de-caracter-21577903", "headline": "CFR Cluj confirms Andrei Cordea's bomb transfer revealed by Fanatik: \"He was a man of character\"", "orig": "CFR Cluj confirmă transferul-bombă al lui Andrei Cordea dezvăluit de Fanatik: „A fost un om de caracter”", "quote": "clubul a confirmat informația", "claim": "FACT", "origin": "o-9012a1a5f6", "headlineOnly": false}, {"at": 1793474561000, "kind": "REPORT", "signals": ["NOT_PLAYING", "EXCLUDED_FROM_SQUAD"], "verification": "REPORTED", "outlet": "fanatik.ro", "tier": "B", "url": "https://www.fanatik.ro/lovitura-pentru-marius-sumudica-vedeta-lui-cfr-cluj-nu-e-in-lot-la-meciul-cu-petrolul-exclusiv-21577597", "headline": "Marius Șumudică, new details after Andrei Cordea did not play in Petrolul – CFR Cluj 1-1: “I will have a discussion with the management”. Update", "orig": "Marius Șumudică, noi detalii după ce Andrei Cordea nu a jucat în Petrolul – CFR Cluj 1-1: „O să am o discuție cu conducerea”. Update", "quote": "Andrei Cordea nu va fi nici măcar pe banca de rezerve.", "claim": "FACT", "origin": "o-9012a1a5f6", "headlineOnly": false}]}], "hiddenPlayers": [{"id": "pl-4421e47c39c1", "name": "Jack Grealish", "written": null, "club": "Everton", "country": "Turkey", "note": null, "score": 26, "level": "Low priority", "closed": false, "categories": ["Sporting status", "Relationship issues"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 2, "origins": 2, "action": "Watch: wait for a second independent source.", "first": 1793084400000, "last": 1793371568000, "components": [{"key": "exclusion", "points": 10.4, "max": 15, "signal": "EXCLUDED_FROM_SQUAD", "reportId": "17b92d61ee0edcd1", "outlet": "Vietnam.vn", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.95, "ageDays": 2.3}, {"key": "relationship", "points": 10.4, "max": 15, "signal": "DISCIPLINARY_ISSUE", "reportId": "5519b820e3b9b0d8", "outlet": "Flashscore.sk", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.95, "ageDays": 5}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 5, "max": 10, "note": "2 independent origin(s)"}], "caps": [], "timeline": [{"at": 1793323526000, "kind": "REPORT", "signals": ["EXCLUDED_FROM_SQUAD"], "verification": "REPORTED", "outlet": "Vietnam.vn", "tier": "C", "url": "https://news.google.com/rss/articles/CBMiZEFVX3lxTFBtVVBKdUR5b2dQUUkwQUlBVlo2NTRDc1lKejl0RjIwbHZTYjRTQ2JhNXl5ZlpLZElfc1RMakRUakxuUndvNkZjX0xPeWdVTVlidUNTVExJWF9BR3VQZ25ZQVFfWlc?oc=5", "headline": "Grealish has been left out of the Everton squad.", "orig": "Grealish is buiten de selectie van Everton gelaten.", "quote": "Grealish is buiten de selectie van Everton gelaten.", "claim": "FACT", "origin": "o-17b92d61ee", "headlineOnly": true}, {"at": 1793084400000, "kind": "REPORT", "signals": ["EXCLUDED_FROM_SQUAD", "DISCIPLINARY_ISSUE"], "verification": "REPORTED", "outlet": "Flashscore.sk", "tier": "C", "url": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxPVUU5OWJ3MTEyRWR2cHpFanlHWG9qa0hnQkFrSUhvejFwNHVZelJ4QTUxZVNEc1R3UVVmRXM5MkxYaWVwaXZhc21vT0dBRTFOSzRyTXJfX19uTHliRklIWTBON2xSNnZPZDdid19ETjJ2cnZNVVJfeGtaSk1wam1sZUVTZGtETVZzQlg4QVJ4eGNWdlJ4UnpWcDlSbTFPSHh4U083b1h4OHRESGNwZVNTMXlqbVFla0ZDSGtRdGE5ejYwOXUzSXFwejRuSHN2VXNPV0FUM3Z5NVp2U0huV3NF?oc=5", "headline": "What will happen to Grealish? Everton excluded him from the squad, Englishman broke club rules", "orig": "Čo bude s Grealishom? Everton ho vyradil z kádra, Angličan porušil klubové pravidlá", "quote": "Everton ho vyradil z kádra, Angličan porušil klubové pravidlá", "claim": "FACT", "origin": "o-5519b820e3", "headlineOnly": true}], "hideKey": "star", "hideWhy": "Well-known star, outside the usual target range"}, {"id": "pl-d7b8983e90ba", "name": "Kamil Semeniuk", "written": null, "club": "Sir Susa Scai Perugia", "country": "Poland", "note": null, "score": 21, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "B", "reports": 1, "origins": 1, "action": "Single report: verify with a local contact before outreach.", "first": 1793510833000, "last": 1793510833000, "components": [{"key": "availability", "points": 20.8, "max": 25, "signal": "PLAYER_SEEKING_CLUB", "reportId": "689dfe063e8ad9cb", "outlet": "sportowefakty.wp.pl", "tier": "B", "verification": "REPORTED", "confidence": 0.83, "recency": 1, "ageDays": 0.1}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1793510833000, "kind": "REPORT", "signals": ["PLAYER_SEEKING_CLUB"], "verification": "REPORTED", "outlet": "sportowefakty.wp.pl", "tier": "B", "url": "https://sportowefakty.wp.pl/siatkowka/1282033/semeniuk-chce-odejsc-jest-potwierdzenie", "headline": "It will be a hit. The president says it directly: Semeniuk wants to leave", "orig": "Będzie hit. Prezes mówi wprost: Semeniuk chce odejść", "quote": "Semeniuk chce odejść", "claim": "FACT", "origin": "o-689dfe063e", "headlineOnly": false}], "hideKey": "other_sport", "hideWhy": "Plays for a volleyball club, not football"}, {"id": "pl-a3e5475c9820", "name": "Vasco Matos", "written": null, "club": "Estoril", "country": "Portugal", "note": null, "score": 18, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Single report: verify with a local contact before outreach.", "first": 1793373000000, "last": 1793374726000, "components": [{"key": "availability", "points": 17.8, "max": 25, "signal": "CLUB_WANTS_TO_RELEASE", "reportId": "b1ea2a82f022237c", "outlet": "Flashscore.pt", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.97, "ageDays": 1.7}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1793374726000, "kind": "REPORT", "signals": ["CLUB_WANTS_TO_RELEASE"], "verification": "REPORTED", "outlet": "Flashscore.pt", "tier": "C", "url": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxNc1Q3NkJoTFdKT2hlU0VTOVBpWDJwRTVMY0tJczQ0X0lGdmR3RDg5VjJfSlFvVGxONF91UnRRZzlLMHBaMVNkdU5uQjNSR3FQbVZKUUNacmRfSUVBN1hZenBHSVJaYnM3UXl2OEF4ZS1HMXg1eGV3MENkNl8zdGR3ZEszd2VSRHJFY2w3V2dzNjgxNURhQ3NjZTFBU1E4c0tKbEp4aFVhcDdtaE1RZjFQT1hzWVFPOFl4b1VGS0JydWtrY3d3Q2tLQmdNYkNMYlZxUHY0bkxkQQ?oc=5", "headline": "Estoril and Vasco Matos reach agreement for contract termination", "orig": "Estoril e Vasco Matos chegam a acordo para a rescisão de contrato", "quote": "Estoril e Vasco Matos chegam a acordo para a rescisão de contrato", "claim": "FACT", "origin": "o-31aa21e783", "headlineOnly": true}, {"at": 1793373000000, "kind": "STATUS_CHANGE", "signals": ["TRANSFER_COMPLETED"], "verification": "REPORTED", "outlet": "A Bola", "tier": "C", "url": "https://news.google.com/rss/articles/CBMipgFBVV95cUxNYWFhQzJGRnRWMlp6cmF1azR2eUJ1aHI4UDRNdDQ3eXRRZGpwWUZ5WklOUmlySWVGQTM4WEF0NmdaeS1wbmNqRGFnZzBweTN5Z0I2bFdlNENCbWdmeFlKVU9WdnZFX0wtMlZCQXJTbXRkSjIxY3FxUkFwc3o3VkFOcTRkS3FKMS0weDNiX3hDVEtQakJOV2pKWVUxbm5NZEs0a3ZKdURR?oc=5", "headline": "Vasco Matos and Estoril agree termination", "orig": "Vasco Matos e Estoril acertam rescisão 15 dias depois", "quote": "Vasco Matos e Estoril acertam rescisão", "claim": "FACT", "origin": "o-31aa21e783", "headlineOnly": true}], "hideKey": "coach", "hideWhy": "Vasco Matos is a coach, not a player"}, {"id": "pl-b4b0637cc39e", "name": "Alejandro Garnacho", "written": null, "club": null, "country": "Poland", "note": null, "score": 16, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Single report: verify with a local contact before outreach.", "first": 1792762156000, "last": 1792762156000, "components": [{"key": "availability", "points": 16, "max": 25, "signal": "CLUB_WANTS_TO_SELL", "reportId": "3e076f4b6f37a711", "outlet": "Angielskie Espresso", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.87, "ageDays": 8.7}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1792762156000, "kind": "REPORT", "signals": ["CLUB_WANTS_TO_SELL"], "verification": "REPORTED", "outlet": "Angielskie Espresso", "tier": "C", "url": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxQcWRNem51WVB6ZllMUWdUVzYzYnFpZkY1WldqVm9tMVFkbl9hR2NsREFYZG9SSlBEZklFZTFLOTBDS09CaS1zaVprekc5aTNhWWlpX1FCV3FETXF3SGlqeFM1MVFWV1NNbVZFTXRNVjJHT2Nyc3JGRjZ1eTBDLVZqamJ4ZDFQUGVRQm5CdlUzTlQ1aXZXdnJrTUhrVzdIVzJvWjJfNy1rTW9HcU1QQy16SEItOFVlbVY2LUlXeHAwVUdDSnhsX1NTNW1WOUNNSzRBWnROOHFIYw?oc=5", "headline": "Alejandro Garnacho leaving the club! Aston Villa does not want to pay a huge fortune", "orig": "Alejandro Garnacho na wylocie z klubu! Aston Villa nie chce płacić gigantycznej fortuny", "quote": "Alejandro Garnacho na wylocie z klubu! Aston Villa nie chce płacić", "claim": "FACT", "origin": "o-3e076f4b6f", "headlineOnly": true}], "hideKey": "star", "hideWhy": "Well-known star, outside the usual target range"}, {"id": "pl-c0849f0eda63", "name": "Šín", "written": null, "club": "Den Haag", "country": "Czech Republic", "note": null, "score": 15, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": true, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Ask the club or agent about loan terms; verify before outreach.", "first": 1792220400000, "last": 1792220400000, "components": [{"key": "availability", "points": 14.7, "max": 25, "signal": "AVAILABLE_ON_LOAN", "reportId": "1ada478519bae09d", "outlet": "Livesport", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.8, "ageDays": 15}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1792220400000, "kind": "REPORT", "signals": ["AVAILABLE_ON_LOAN"], "verification": "REPORTED", "outlet": "Livesport", "tier": "C", "url": "https://news.google.com/rss/articles/CBMi5AFBVV95cUxOemh4czJjX3JEOFRJX084cFBmU1FOb3dsYTNtWXg4MlNaZFdhZHhxMG9rMTJlX3huRUFQOGRRRWdfMEtpcUJBX3lEQ0ZuOUZfVk5rV2xRMGdSekVpWnVRUm9HdHFfZFBrR1ZpSjFsT2FfVFFsbW02WVpLX2xXY1dRU2huaFpvZC1tSm5hU2E3MmdZN0Fuc3JxZmpDTmFtOGpRaWM2WFNqR2lwU1N2dnYzMDYyVExHdzhueVh0czZsY2FNWUlLVndQNXRBa0RIaklRU05veEszUEhpR0hRYlFuT2RidUU?oc=5", "headline": "Šín hero of The Hague. Beat Kovář and decided master's scalp with first goal on loan", "orig": "Šín hrdinou Den Haagu. Překonal Kováře a první brankou na hostování rozhodl o skalpu mistra", "quote": "První brankou na hostování rozhodl o skalpu mistra", "claim": "FACT", "origin": "o-1ada478519", "headlineOnly": true}], "hideKey": "not_signal", "hideWhy": "Article is about a goal scored, not about availability"}, {"id": "pl-9c4387ca9d0e", "name": "Perisic", "written": null, "club": "PSV", "country": "Netherlands", "note": null, "score": 11, "level": "Low priority", "closed": false, "categories": ["Transfer availability"], "loan": false, "verification": "RUMOR", "bestTier": "C", "reports": 1, "origins": 1, "action": "Rumor only: verify before any outreach.", "first": 1791270000000, "last": 1791270000000, "components": [{"key": "availability", "points": 10.6, "max": 25, "signal": "CLUB_WANTS_TO_SELL", "reportId": "40d9eb1b55a733de", "outlet": "de Stentor", "tier": "C", "verification": "RUMOR", "confidence": 0.59, "recency": 0.71, "ageDays": 26}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1791270000000, "kind": "STATUS_CHANGE", "signals": ["SUSPENDED"], "verification": "REPORTED", "outlet": "Brabants Dagblad", "tier": "C", "url": "https://news.google.com/rss/articles/CBMidkFVX3lxTE9mUm56VWhCYnBzdF9YYy1tbmJpYkxWRS1jTmpScjAtZUw3N0c1UElSa0o4U1YzV2h0WW9WOTVQQ1lwaW9MVmRaM1otdC1JUUlmajd4akVmVWhjTV9VWWpqNmdoWDBmc2l6bFJPdlNZMml4V2ZMUnc?oc=5", "headline": "Perisic gets second yellow card against Spain and can leave", "orig": "PSV'er Perisic pakt tweede gele kaart tegen Spanje en mag vertrekken", "quote": "segunda gele kaart tegen Spanje en mag vertrekken", "claim": null, "origin": null, "headlineOnly": false}, {"at": 1791270000000, "kind": "REPORT", "signals": ["CLUB_WANTS_TO_SELL"], "verification": "RUMOR", "outlet": "de Stentor", "tier": "C", "url": "https://news.google.com/rss/articles/CBMilwFBVV95cUxOeGd6LWV5QVZQMmw3S1YweU1sWUJGR0hJZVhoQnhneWo4dm40WnVGb1cxS1hTVXkyYUI0TlNEeFJtZGFINXc4aXNUM3RsM3JGcGsyMlVVWXZ6Y1ZGUHNKZkpKUktSeWczZzdnb0Mxc0psdFd6dnhQU1M2N1dhdXRRS1c0SUt3VjRPOUdJMG5KZkZZNU1aTWZF?oc=5", "headline": "PSV player Perisic gets second yellow card against Spain and can leave", "orig": "PSV'er Perisic pakt tweede gele kaart tegen Spanje en mag vertrekken", "quote": "PSV'er Perisic pakt tweede gele kaart tegen Spanje en mag vertrekken", "claim": "RUMOR", "origin": "o-40d9eb1b55", "headlineOnly": true}], "hideKey": "star", "hideWhy": "Veteran international, outside the usual target range"}, {"id": "pl-ccc71caf9a59", "name": "Courtois", "written": null, "club": null, "country": "Hungary", "note": null, "score": 9, "level": "Low priority", "closed": false, "categories": ["Sporting status"], "loan": false, "verification": "REPORTED", "bestTier": "C", "reports": 1, "origins": 1, "action": "Watch: wait for a second independent source.", "first": 1792929410000, "last": 1792929410000, "components": [{"key": "exclusion", "points": 9.4, "max": 15, "signal": "EXCLUDED_FROM_SQUAD", "reportId": "60806bca868deb35", "outlet": "Nemzeti Sport Online", "tier": "C", "verification": "REPORTED", "confidence": 0.73, "recency": 0.86, "ageDays": 6.8}, {"key": "contract", "points": 0, "max": 10, "note": "Contract expiry unknown"}, {"key": "independence", "points": 0, "max": 10, "note": "1 independent origin(s)"}], "caps": [], "timeline": [{"at": 1792929410000, "kind": "REPORT", "signals": ["EXCLUDED_FROM_SQUAD"], "verification": "REPORTED", "outlet": "Nemzeti Sport Online", "tier": "C", "url": "https://news.google.com/rss/articles/CBMiwgFBVV95cUxQbzhUbm1Eall2LW9USzluME9aLVZjZk03VjRNNjRpSUxSS1EwR3VncGZfN0doZVdXNldkbjF3aVdvTW5qLXVqS3ZsbjI4ZU1QUzl5NXh0cmUtZXNCUm5JY0hlMmY5QldNWEhzVGw5MlNDQlBFQm9vdTViNnY0VEZVeThHNkhpWXo3VFgtc2dPc0lkRkFZZEwxU3NpUGNRRXh0WHMtYTNsTDhoOXRyODRWV1BXOU9zZERPOHFhdTU4c09XZw?oc=5", "headline": "El Clásico: Courtois left out of the squad, will not play against Barcelona", "orig": "El Clásico: Courtois kikerült a keretből, nem játszik a Barcelona ellen", "quote": "Courtois kikerült a keretből", "claim": "FACT", "origin": "o-60806bca86", "headlineOnly": true}], "hideKey": "star", "hideWhy": "Elite goalkeeper, outside the usual target range"}], "leads": [{"outlet": "Headliner.nl", "url": "https://news.google.com/rss/articles/CBMizAFBVV95cUxOeGRyN21raHpaUDFiN2tNOWw0QXJiZF9rTExXSnRvMnIyYXpiQm9WTHFVd05QbE1ha3VJZk5Cc3RCWTg1ODBSeXp2QkdGaU8xYUJEbURmMGhZc1A0RG15cmI2S2pPcVRsN21Ya1BuTVlyRFBZZ3A1ZTZ1Rm9CQjhNeUhHYjBpNU1TSXFmRm9jekxwWmxrUHBJcjZhSUtPM3JhVzFkWVhDVDJ2MHN4ZmlpOXlmOXoybDFRNnVPdDJNNktEbWxJcUwtYUhvSk0?oc=5", "at": 1793312220000, "headline": "Former PSV player worth eighteen million euros becomes fourth choice and allowed to leave", "orig": "'Voormalig PSV'er van achttien miljoen euro wordt vierde keuze en mag vertrekken'", "club": "PSV", "country": "Netherlands", "signals": ["CLUB_WANTS_TO_SELL"]}, {"outlet": "Flashscore.pt", "url": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxOcWFnakZNa2hWelFobWw4elJGZUNZOTNSUWtUNFJLOUg4NV9sM1BaR29BMHE4WG5sYlA1c0RnaENLOFVodkVER1NzNVY0MFlJUFNKRTcyREp4dHZZOUIzeFBLV0tDdTNYY0FmdDY2bXRmQzRHX3Y5TmV3NlQzZXFMZGNhYmVFZkVzSWFKZlRyMnJDMlZyM182Qi1ZM0xsTWttc2dWQXZ1MW40SlBiUE92S21hZjhOX1VveUJ6NFVHaGJlZDJwbjBEdzkwSlBKLWE0eGZhSlNMb0V3MU1td1Fn?oc=5", "at": 1792758780000, "headline": "Exclusive! English international out of Ruben Amorim's options", "orig": "Exclusivo! Internacional inglês fora das opções de Ruben Amorim", "club": "Sporting", "country": "Portugal", "signals": ["OUT_OF_FAVOR"]}, {"outlet": "Sportnet", "url": "https://news.google.com/rss/articles/CBMingFBVV95cUxOcWpraFlWRTI5WkQ0bGJxUXN2V0M2dTNjcXRVbE00UTBrb3h5OHBuWm5RZzVXQmdXVGVjZm1xS01CbkNrZ1NBTGhtd3NHUmpmbXRTYTU0OVVQYzVZb2FkRVh6bGtpSWdsTWduUjdUczdpSFpvTHdZWG9OM1dTNTRwdW5KcWczbENIenpPLU0tODBWMHotZXh6RFgwYnpJUQ?oc=5", "at": 1792566000000, "headline": "Problematic Slavia player excluded from squad. Showed referee middle finger in last match", "orig": "Problémový hráč Slavie bol vyradený z kádra. V poslednom dueli ukázal rozhodcovi prostredník", "club": "Slavia", "country": "Slovakia", "signals": ["EXCLUDED_FROM_SQUAD", "DISCIPLINARY_ISSUE"]}, {"outlet": "Takvim", "url": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPOU9aeXBUSk5mc0l3SjF0aWlnWFVmNlVIWkQ4WDNYZFBSNVhnaUtIY1ZoYW0zQnpjVVpRVHlEdHJUajhXbzJQN3c0UFc0X0NHNFpwanMzQlMxbjlRLUhiLV9YRXBLalE5UWJlRFBwbGdKRU9RVEZsVUVjQUJPMldzYm53d1J1Q19DLXl2amhhRkRwMVNDdFMtbTRRZWpRNWUtM2xjdA?oc=5", "at": 1792393200000, "headline": "Potentially historic transfer at Fenerbahçe! Could leave without playing", "orig": "Fenerbahçe’de tarihe geçebilecek transfer! Süre almadan ayrılabilir", "club": "Fenerbahçe", "country": "Turkey", "signals": ["PLAYER_SEEKING_CLUB"]}, {"outlet": "ge", "url": "https://news.google.com/rss/articles/CBMi_AFBVV95cUxQMjVkZkkwdEw1WHBtZkRtSjQ4Y05XTkVXRS12M25Rc3kyZVhFbTMyNTlNOFlwcTdWbFFCd0J6clBZYlRDZ01aWnRESmV5c0lxaUZ2T1MtMVlCNWhIS01rRm5WZWRfRUFBX3ozNFdUeUNVdE5wSUMtejdXMTU2OFRkSHZPN3VxU2RFUFJoZG42Tk1FZmtkT2s4MVVHM1FIU08zUV93WG1zMHFxdGs3bTItSkZxVVF4ZlRxTGowZG1Pb3Y2ZFhGUy15ZTR2djJkcVM2SVFUaE1UN21NczAyVGpCamxDWEM4LThOZ09MZWgzSzRRbkRRNmtaZExvRzjSAYsCQVVfeXFMTlNNbVM1ZHlHWmVCbXJlU0tFSzVhMXZleU1HR00wSGo0VkNoeWh4UkVBV3BZZDJZblZkZjFuM0xocTdRUllrX182ejFxN0s5aHNVUmxDWDJWcXRERVZsMTdJenpXSVRxbmhaSUZidlVQTTNEeUZOdjZTYmZEU0xPTDRVWkhhaklRRkV5QmFfYjRmNklLVldDb2wwNWRtVEZUTFNsNzZtRHMzM0tzVW9GZ1dyRzQ3eTl4ZGh3S3B1ODFydVp3dHRHYlFTbHpIR2hUMlFPVTc0N3FXNjhaRWZCRnNzcGZNLThTSTdLamVkdHBKUjF1N1RBUkZqUVRKb1pJcXN2NnBaUGxlQ21j?oc=5", "at": 1792393200000, "headline": "Two more players sue Guarani; the claims total over R$ 2 million", "orig": "Mais dois jogadores processam o Guarani; somadas, cobranças passam de R$ 2 milhões", "club": "Guarani", "country": "Portugal", "signals": ["UNPAID_SALARY"]}], "dropped": [{"outlet": "novasports.gr", "url": "https://www.novasports.gr/sport/podosfairo/event/laliga-division/article/15205583/real-madritis-ta-dedomena-gia-to-mellon-tou-entrik-kai-to-endiaferon-apo-tin-premier-league/", "at": 1793487120000, "headline": "Real Madrid: The data on Endrick's future and the interest from the Premier League", "player": "Έντρικ", "club": "Ρεάλ Μαδρίτης", "why": "elite club (outside target profile); signal only implied"}, {"outlet": "protathlima.com", "url": "https://protathlima.cyprustimes.com/podosfairo/diethni/ispania/bartselona-oi-afstiroi-kanones-tou-chansi-flik-prokaloun-dysareskeia-sta-apodytiria-oi-paiktes-zitoun-perissotero-chrono-me-tis-oikogeneies-tous/", "at": 1793482981000, "headline": "Barcelona: Hansi Flick's strict rules cause dissatisfaction in the locker room - players ask for more time with their families", "player": null, "club": "Μπαρτσελόνα", "why": "no named player; elite club (outside target profile); signal only implied; no strict signal"}, {"outlet": "sportacentrs.com", "url": "http://sportacentrs.com/futbols/anglija/31102026-martiness_noklust_krustugunis_pec_karteja", "at": 1793482119000, "headline": "Martínez gets into crosshairs after another 'United' failure: 'Unacceptable'", "player": "Lisandro Martínez", "club": "Manchester United", "why": "elite club (outside target profile); no strict signal"}, {"outlet": "mondo.rs", "url": "https://mondo.rs/Sport/Fudbal/a2304622/kosta-runjaic-dobija-otkaz-u-italiji.html", "at": 1793479142000, "headline": "The only Serb in the Top 5 leagues is close to dismissal", "player": "Nemanja Gudelj", "club": "Sevilla", "why": "no strict signal"}, {"outlet": "sportnet.hr", "url": "https://sportnet.hr/vijesti/nogomet-supersport-hnl/navijaci-su-svoje-rekli-kovacevicu-palac-dolje-strpljenja-vise-nema/634611/", "at": 1793476984000, "headline": "Fans have had their say: Kovačević thumbs down, no more patience", "player": "Kovačević", "club": null, "why": "signal only implied; no strict signal"}, {"outlet": "sportske.jutarnji.hr", "url": "https://www.jutarnji.hr/sportske/nogomet/video-nevjerojatna-glupost-dinamovca-dobio-izravan-crveni-karton-nakon-samo-pet-minuta-na-terenu-15761213", "at": 1793472662000, "headline": "VIDEO Incredible stupidity from Dinamo player: Received a direct red card after only five minutes on the field!", "player": "Iker Almena", "club": "Dinamo", "why": "no strict signal; evidence quote not in text"}, {"outlet": "digisport.ro", "url": "https://www.digisport.ro/fotbal/liga-1/ce-lovitura-pentru-sumudica-si-cfr-cluj-andrei-cordea-out-4577579", "at": 1793462488000, "headline": "What a blow for Șumudică and CFR Cluj: Andrei Cordea, OUT!", "player": "Andrei Cordea", "club": "CFR Cluj", "why": "no strict signal"}, {"outlet": "fanatik.ro", "url": "https://www.fanatik.ro/avem-cifrele-oficiale-wyscout-cum-s-a-descurcat-andrei-sucu-la-primul-meci-ca-titular-pentru-rapid-in-superliga-exclusiv-21577527", "at": 1793461757000, "headline": "Wyscout figures of Andrei Șucu in his first match as a starter for Rapid", "player": "Andrei Șucu", "club": "Rapid", "why": "no strict signal"}, {"outlet": "Meczyki.pl", "url": "https://news.google.com/rss/articles/CBMiswFBVV95cUxOUFhzTXUwRzVXSzl6RF9Jd2hSUUtwTnVfTGUyZnA1Y0c3YVlqRlVzeWU1Tlg5Vno0aXhSQzRmVjNYYmx0UXl4WVR0eXBJTE5ZeExNLVpGQnhUOG15TXdIMHdHQV9rUzFfT3M0dlRuOW42Y0ROR25pcDVFV2ZiRW5oVDEtSGl4dUlUSFRZUGtReGZxeVl3U3JIQWtKaW50WnRBQ2p6bnJ4dU9fQmVOdUxRb09HYw?oc=5", "at": 1793405552000, "headline": "Two players are leaving Widzew. Masłowski didn't mince words", "player": null, "club": "Widzew", "why": "no named player; evidence quote not in text"}, {"outlet": "Ajansspor", "url": "https://news.google.com/rss/articles/CBMilwFBVV95cUxNV3FNTl9ISS1uVy1idE0tbGpFRXJRbWZSN09sZlRYVmoxaURrTXlQZFhmaHlKQ21nVW5OZ29rMW9hLW1jWW9qOXlKU2hEZFFzR0VSa3djNzkxM2lXSXVWeDZTR0pHN2R6eFVrT2ZmWVVONG0wQ2JJZEJyWUQzUXk3UUYweFlRUzRISXIwWGxxaG85bmw1RUo0?oc=5", "at": 1793371568000, "headline": "Reason for Jack Grealish's exclusion from the squad revealed", "player": "Jack Grealish", "club": null, "why": "evidence quote not in text"}, {"outlet": "Naslovi.net", "url": "https://news.google.com/rss/articles/CBMisAFBVV95cUxNNDRySEZvTTMzYjVfYlRFWGNlWmhYUFkwcTMwb1BWWHZsRXo3cHpOLWxmZzlOTVlNZUNkaEZGendHY1Bwd1JLZ2hkbXBLbndzY2xQckFlTHJXNF9FcWMyeS1kbks0ZklrWTBUUWJCcWdyX2VpdmdzM3Mwb2lWelBTSHUtRk5PRVdtZ3AwbWFhZjRZb0laWDJtWldTVWtNTExlZWxMNEQ5NkM0M1VGNV9xVA?oc=5", "at": 1793365112000, "headline": "Trent 'written off' in Madrid: Return to England in sight, club also known", "player": "Trent", "club": "Real Madrid", "why": "elite club (outside target profile); signal only implied"}, {"outlet": "N Gazete", "url": "https://news.google.com/rss/articles/CBMiygFBVV95cUxNZzZkVzlfdXB2ckpneWwzeGJqaHprTmh5THB6OEZuMkRPQjh5UjJZUU1TMVY0UFZfaUxZZ2FCTkF0cTVCSTRGcTB2R1FFWXRGTGtLRnRVcVNDcUZPWjZaWGo4M01sX1BjUnZoWjZSLVR3dHJXYVgyMm5JanM0NjB6cmUzQTY3TkgwU1Q3LTU1c3oxdUpNQlZRWnM2MFctdWEwOWJYUlFXWERBZGhhZmlPMVgzdTZZNXRWTmVIX09QWndQTFp3Skw2M3V30gHKAUFVX3lxTE1nNmRXOV91cHZySmd5bDN4YmpoemtOaHlMcHo4Rm4yRE9COHlSMllRTVMxVjRQVl9pTFlnYUJOQXRxNUJJNEZxMHZHUUVZdEZMa0tGdFVxU0NxRk9aNlpYajgzTWxfUGNSdmhaNlItVHd0cldhWDIybklqczQ2MHpyZTNBNjdOSDBTVDctNTVzejF1Sk1CVlFaczYwVy11YTA5YlhSUVdYREFkaGFmaU8xWDN1Nlk1dFZOZUhfT1Bad1BMWndKTDYzdXc?oc=5", "at": 1793356549000, "headline": "Claim: Amedspor excluded Umut Meraş due to Oct 29 post! Truth revealed!", "player": "Umut Meraş", "club": "Amedspor", "why": "no strict signal"}, {"outlet": "Fociclub", "url": "https://news.google.com/rss/articles/CBMikAFBVV95cUxNdWNldnNWLWlWQzlxcXRmS1pmbktrY2JZMDJHY1lySEhBcjZVVWpRZWFuRFcxZmNFNnN5bHpOMVJhWjRoanB6UzJsX1BoaGNwNnVUaHVWVmI4UnkxNmtuX205UjFRUXNYS3pqaEJVcmVTSFpLMDVMenJidG9NZktqWVhVcW40Ylotb3g0ZXB6OXk?oc=5", "at": 1793336801000, "headline": "Szoboszlai's rival may leave in January", "player": "Szoboszlai's rival", "club": null, "why": "no named player; signal only implied"}, {"outlet": "Haberler", "url": "https://news.google.com/rss/articles/CBMiggFBVV95cUxQbVNHbzkxc3E5ZEpuc3EzRDJ1MnVtLVJkaWxaQ0oxcVVWZ0otNzZRd0RfS1k3MEVjcFdraTdqUGFFRGtJSnlwb0ItTnFuYjVnb1JpakxwTDdMVTFzOE0tQk5RWFdxQ1BjcVFDUllOcGl1TnktRkFYYjd5TGhOcVVVOTJ3?oc=5", "at": 1793303100000, "headline": "Has Umut Meraş been excluded from the squad?", "player": "Umut Meraş", "club": null, "why": "signal only implied; no strict signal"}]};
+const D = DATA, NOW = D.now, H = 36e5, DAY = 864e5;
+
+/* ------------------------------------------------------------------ i18n (interface only; article text stays English) */
+const TX = {
+en: {
+ mock:'Mock UI · real PoC data · not production', help:'How to read this', crumb:'BRIT / Signals / Transfer Radar', rail_sub:'Management room',
+ nav_dash:'Dashboard', nav_players:'Players', nav_req:'Club Requirements', nav_contacts:'Contacts', nav_signals:'Signals', nav_war:'War Room', nav_radar:'Transfer Radar',
+ rail_f:'Mock: real analysed articles from the feasibility run.<br>Not your live database.',
+ kicker:'Signals', title_a:'Transfer', title_b:'Radar',
+ st_updated:'Last run', st_next:'Next analysis', st_cov:'Coverage', st_queue:'Waiting for analysis', cov:'{s} sources · {c} countries', queue_v:'{n} articles',
+ tab_active:'Active', tab_new:'New (24h)', tab_loan:'On loan', tab_moved:'Moved', tab_leads:'Needs a name', tab_hidden:'Not relevant',
+ search:'Search player, club or country', f_country:'Country', f_all:'All countries', f_sit:'Situation', f_period:'Last', f_sort:'Sort by', f_clear:'Clear filters',
+ d7:'7 days', d14:'14 days', d30:'30 days',
+ so_score:'Best opportunity', so_new:'Newest first', so_rel:'Most reliable', so_urg:'Most time-sensitive',
+ sit_wants_leave:'Wants to leave', sit_club_sell:'Club wants to sell', sit_released:'Being released', sit_terminate:'Contract termination', sit_loan:'Available on loan', sit_out_squad:'Out of the squad', sit_conflict:'Conflict or discipline', sit_unpaid:'Unpaid wages', sit_moved:'Move confirmed', sit_other:'Other signal',
+ ev_confirmed:'Confirmed', ev_reported:'Reported', ev_rumor:'Rumor',
+ rel_A:'Official source', rel_B:'Established outlet', rel_C:'Local or smaller outlet', rel_D:'Unverified source',
+ n_players:'{n} players', n_player:'1 player', zone_watch:'Worth watching', zone_watch_s:'Score 30 and above', zone_early:'Early signals', zone_early_s:'Low priority: one report or little evidence so far',
+ src_n:'{n} sources', src_1:'1 source', early:'Early signal', older:'older news',
+ ago_m:'{n}m ago', ago_h:'{n}h ago', ago_d:'{n}d ago', lt1:'<1h ago',
+ club_unknown:'Club not named in the headline', written:'Written as', free:'Free agent',
+ /* detail */
+ back:'Back to the list', score_of:'/ 100', lv_Exceptional:'Exceptional', 'lv_High priority':'High priority', lv_Potential:'Potential', lv_Monitor:'Monitor', 'lv_Low priority':'Low priority', lv_Closed:'Closed (move confirmed)',
+ g_sit:'Situation', g_ev:'How solid is it', g_when:'Last update', g_time:'Time-sensitivity',
+ g_ev_s1:'{n} independent source', g_ev_sn:'{n} independent sources', g_when_s:'First seen {t}', time_high:'High', time_med:'Medium', time_low:'Low', time_closed:'Closed',
+ time_high_s:'Reported in the last 48 hours', time_med_s:'Reported in the last week', time_low_s:'Reported more than a week ago', time_closed_s:'The move looks completed',
+ next_h:'Recommended next step', next_closed_h:'Likely already moved',
+ why_early:'Why now: only one outlet has reported this so far, so other agencies may not know yet.', why_known:'Why now: {n} outlets already report it, so competitors probably know.', why_old:'Why now: this was reported {d} days ago - check that the situation is still current.', why_closed:'Why: the later reports say a deal is agreed or announced.',
+ act_verify:'Verify with a local contact today, then approach the agent.', act_single:'Single report: verify with a local contact before outreach.', act_loan:'Ask the club or agent about loan terms; verify before outreach.', act_rumor:'Rumor only: verify before any outreach.', act_closed:'Do not contact: later reports say the move is agreed or announced. Keep archived; re-open only if it collapses.', act_watch:'Watch: wait for a second independent source.', act_contact:"Contact the player's agent now.", act_free:'Approach now: contract ends within 6 months (free-agent route).',
+ b_short:'Add to shortlist', b_short_done:'In shortlist', b_wa:'Share on WhatsApp', b_contact:'Mark as contacted', b_contacted:'Contacted', b_nr:'Not relevant', b_restore:'Restore to the list',
+ nr_star:'Star player, outside our range', nr_coach:'Coach, not a player', nr_sport:'Other sport', nr_person:'Wrong person or club', nr_old:'Old news', nr_other:'Not a transfer signal',
+ hid_why:'Hidden as not relevant', 
+ s_happened:'What happened', s_happened_l:'The most recent report', by_source:'From the source', by_ai:'English translation by AI', original:'Original headline', open:'Open article',
+ latest_from:'Latest report',
+ s_why:'Why it scores {n}', s_why_l:'How the radar reached this number. Rules decide the score; AI only reads the articles.', by_rule:'Rule-based',
+ c_availability:'Move signals', c_availability_d:'The player or the club points to a move', c_exclusion:'Left out of the squad', c_exclusion_d:'Reported as out of the matchday squad', c_relationship:'Friction with coach or club', c_relationship_d:'Conflict or a disciplinary problem',
+ c_contract:'Contract end date', c_contract_d:'Not in the radar yet', c_independence:'Independent sources', c_independence_d:'Different newsrooms reporting separately', c_other:'Other signals', c_other_d:'Club finances, replacement signing: none found',
+ total:'Total', raise_h:'What would raise this score', raise_src:'A {n}nd independent outlet reporting it: up to +{p}', raise_src3:'Another independent outlet: up to +{p}', raise_contract:'A verified contract end date within 6 months: up to +10', raise_official:'Official confirmation from the club or the player',
+ closed_note:'Later reports say the move is agreed or announced, so the score was reduced to {s} and the player moved out of the active list.',
+ s_who:'Who reported it', s_who_l:'Each card is one independent newsroom. Copies and rewrites count once.', same:'{n} articles from the same newsroom - counted as one source.', quote_l:'Quote from the article (original language)', claim:'Stated as', cl_FACT:'fact', cl_RUMOR:'rumor', cl_SPECULATION:'speculation', cl_OPINION:'opinion', headline_only:'headline only',
+ s_time:'Timeline', s_time_l:'Newest first. Red = the situation changed.', status_change:'Status change',
+ miss:'Not in the radar yet: age, position, contract end date and photo. These arrive with the football-database link, and will raise the score when known.',
+ fb_q:'Is this report correct?', fb_yes:'Yes', fb_no:'No', fb_old:'Outdated', fb_thanks:'Thanks - noted. This trains the radar.',
+ /* lists */
+ leads_h:'Strong stories that do not name the player', leads_p:'The headline describes a situation but not who it is about. The radar reads the article text next and adds the player automatically.', leads_none:'Nothing waiting.',
+ hid_h:'Hidden as not relevant', hid_s:'Hidden players. Restore any of them.', rej_h:'Rejected automatically by the rules', rej_s:'The AI suggested these; the rules dropped them.',
+ rj_elite:'Star or elite club', rj_signal:'Not a transfer signal', rj_implied:'Only implied, not stated', rj_noname:'No player named', rj_quote:'Quote not found in the text', rj_nat:'National team, not a club', rj_hist:'Old news', rj_done:'Transfer already completed', rj_other:'Rejected by rules',
+ empty_h:'No players match these filters', empty_p:'Try a longer period or clear the filters.',
+ help_tab_h:'Pick a player on the left', help_tab_p:'The full story opens here: what happened, why it scores what it does, who reported it, and what to do next.',
+ /* modal */
+ m_h:'How to read this page', m_sub:'Short guide - 1 minute',
+ m_score_h:'The score (0-100)', m_score_p:'Higher means stronger evidence that the player may become available. The marker sits on the meter; the zones are Low priority (below 30), Monitor (30), Potential (50), High priority (70) and Exceptional (85).', m_score_p2:'Most stories start low because there is usually one outlet and no contract data yet. A low score is an early signal, not a mistake.',
+ m_ev_h:'Evidence labels', m_ev_c:'Confirmed: said by the club, the player, or an official source.', m_ev_r:'Reported: a credible outlet states it as fact.', m_ev_u:'Rumor: unattributed or speculative.',
+ m_rel_h:'Source reliability', m_rel_p:'The dots show how much we trust the outlet: four = official, three = established, two = local or smaller, one = unverified.',
+ m_ind_h:'Independent sources', m_ind_p:'Different newsrooms reporting on their own. If one outlet copies another, it still counts as one.',
+ m_lab_h:'Who writes what', m_lab_p:'"AI" marks a translation or summary made by AI. "Rule-based" marks anything calculated by fixed rules. Everything else is taken from the source.',
+ m_miss_h:'What is not known yet', m_miss_p:'Age, position, contract end date and photo come with the football-database link. Until then they are left out rather than guessed.',
+ t_shortlist:'Added to the shortlist (mock)', t_contact:'Marked as contacted (mock)', t_hidden:'Hidden. The radar learns from this.', t_restored:'Restored to the list',
+ wa_text:'Transfer Radar',
+},
+he: {
+ mock:'מוק · נתוני ניסוי אמיתיים · לא פרודקשן', help:'איך קוראים את זה', crumb:'BRIT / אותות / רדאר העברות', rail_sub:'חדר ניהול',
+ nav_dash:'דשבורד', nav_players:'שחקנים', nav_req:'דרישות מועדונים', nav_contacts:'אנשי קשר', nav_signals:'אותות', nav_war:'חדר מלחמה', nav_radar:'רדאר העברות',
+ rail_f:'מוק: כתבות אמיתיות שנותחו בריצת הניסוי.<br>לא מסד הנתונים החי שלך.',
+ kicker:'אותות', title_a:'רדאר', title_b:'העברות',
+ st_updated:'ריצה אחרונה', st_next:'ניתוח הבא', st_cov:'כיסוי', st_queue:'ממתינות לניתוח', cov:'{s} מקורות · {c} מדינות', queue_v:'{n} כתבות',
+ tab_active:'פעילים', tab_new:'חדשים (24 ש׳)', tab_loan:'בהשאלה', tab_moved:'עברו', tab_leads:'דורשים שם', tab_hidden:'לא רלוונטי',
+ search:'חיפוש שחקן, קבוצה או מדינה', f_country:'מדינה', f_all:'כל המדינות', f_sit:'מצב', f_period:'תקופה', f_sort:'מיון לפי', f_clear:'נקה סינון',
+ d7:'7 ימים', d14:'14 יום', d30:'30 יום',
+ so_score:'ההזדמנות הטובה ביותר', so_new:'החדשים קודם', so_rel:'האמינים ביותר', so_urg:'הדחופים ביותר',
+ sit_wants_leave:'רוצה לעזוב', sit_club_sell:'המועדון רוצה למכור', sit_released:'משוחרר', sit_terminate:'סיום חוזה', sit_loan:'זמין להשאלה', sit_out_squad:'מחוץ לסגל', sit_conflict:'סכסוך או משמעת', sit_unpaid:'שכר שלא שולם', sit_moved:'המעבר אושר', sit_other:'אות אחר',
+ ev_confirmed:'מאומת', ev_reported:'דווח', ev_rumor:'שמועה',
+ rel_A:'מקור רשמי', rel_B:'אתר מבוסס', rel_C:'אתר מקומי או קטן', rel_D:'מקור לא מאומת',
+ n_players:'{n} שחקנים', n_player:'שחקן אחד', zone_watch:'שווה מעקב', zone_watch_s:'ציון 30 ומעלה', zone_early:'אותות ראשונים', zone_early_s:'עדיפות נמוכה: דיווח אחד או מעט ראיות עד כה',
+ src_n:'{n} מקורות', src_1:'מקור אחד', early:'אות מוקדם', older:'חדשות ישנות',
+ ago_m:'לפני {n} דק׳', ago_h:'לפני {n} ש׳', ago_d:'לפני {n} ימים', lt1:'לפני פחות משעה',
+ club_unknown:'המועדון לא צוין בכותרת', written:'נכתב כ', free:'שחקן חופשי',
+ back:'חזרה לרשימה', score_of:'/ 100', lv_Exceptional:'יוצא דופן', 'lv_High priority':'עדיפות גבוהה', lv_Potential:'פוטנציאל', lv_Monitor:'מעקב', 'lv_Low priority':'עדיפות נמוכה', lv_Closed:'נסגר (המעבר אושר)',
+ g_sit:'מצב', g_ev:'עד כמה זה מבוסס', g_when:'עדכון אחרון', g_time:'דחיפות',
+ g_ev_s1:'מקור עצמאי אחד', g_ev_sn:'{n} מקורות עצמאיים', g_when_s:'נראה לראשונה {t}', time_high:'גבוהה', time_med:'בינונית', time_low:'נמוכה', time_closed:'סגור',
+ time_high_s:'דווח ב-48 השעות האחרונות', time_med_s:'דווח בשבוע האחרון', time_low_s:'דווח לפני יותר משבוע', time_closed_s:'נראה שהמעבר הושלם',
+ next_h:'הצעד הבא המומלץ', next_closed_h:'כנראה כבר עבר',
+ why_early:'למה עכשיו: רק אתר אחד דיווח על כך עד כה, ולכן סוכנויות אחרות אולי עדיין לא יודעות.', why_known:'למה עכשיו: {n} אתרים כבר מדווחים על כך, ולכן המתחרים כנראה יודעים.', why_old:'למה עכשיו: הדיווח היה לפני {d} ימים - כדאי לוודא שהמצב עדיין עדכני.', why_closed:'למה: הדיווחים המאוחרים אומרים שנסגרה עסקה או הוכרזה.',
+ act_verify:'לוודא מול איש קשר מקומי היום, ואז לפנות לסוכן.', act_single:'דיווח יחיד: לוודא מול איש קשר מקומי לפני פנייה.', act_loan:'לשאול את המועדון או הסוכן על תנאי השאלה; לוודא לפני פנייה.', act_rumor:'שמועה בלבד: לוודא לפני כל פנייה.', act_closed:'לא לפנות: דיווחים מאוחרים אומרים שהמעבר סוכם או הוכרז. להשאיר בארכיון; לפתוח מחדש רק אם העסקה קורסת.', act_watch:'לעקוב: להמתין למקור עצמאי שני.', act_contact:'לפנות לסוכן של השחקן עכשיו.', act_free:'לפנות עכשיו: החוזה מסתיים בתוך 6 חודשים (מסלול שחקן חופשי).',
+ b_short:'הוסף לשורטליסט', b_short_done:'בשורטליסט', b_wa:'שתף בוואטסאפ', b_contact:'סמן כנוצר קשר', b_contacted:'נוצר קשר', b_nr:'לא רלוונטי', b_restore:'החזר לרשימה',
+ nr_star:'שחקן כוכב, מחוץ לטווח שלנו', nr_coach:'מאמן ולא שחקן', nr_sport:'ענף ספורט אחר', nr_person:'שחקן או קבוצה שגויים', nr_old:'חדשות ישנות', nr_other:'לא אות להעברה',
+ hid_why:'הוסתר כלא רלוונטי',
+ s_happened:'מה קרה', s_happened_l:'הדיווח האחרון', by_source:'מהמקור', by_ai:'תרגום לאנגלית על ידי AI', original:'כותרת המקור', open:'פתח כתבה', latest_from:'דיווח אחרון',
+ s_why:'למה הציון {n}', s_why_l:'איך הרדאר הגיע למספר הזה. כללים קובעים את הציון; ה-AI רק קורא את הכתבות.', by_rule:'מבוסס כללים',
+ c_availability:'אותות למעבר', c_availability_d:'השחקן או המועדון מצביעים על מעבר', c_exclusion:'מחוץ לסגל', c_exclusion_d:'דווח כמי שמחוץ לסגל המשחק', c_relationship:'חיכוך עם המאמן או המועדון', c_relationship_d:'סכסוך או בעיית משמעת',
+ c_contract:'סיום החוזה', c_contract_d:'עדיין לא ברדאר', c_independence:'מקורות עצמאיים', c_independence_d:'מערכות חדשות שונות שמדווחות בנפרד', c_other:'אותות אחרים', c_other_d:'כספי המועדון, חיזוק בעמדה: לא נמצא',
+ total:'סה״כ', raise_h:'מה יעלה את הציון', raise_src:'אתר עצמאי נוסף שמדווח על כך: עד +{p}', raise_src3:'אתר עצמאי נוסף: עד +{p}', raise_contract:'תאריך סיום חוזה מאומת בתוך 6 חודשים: עד +10', raise_official:'אישור רשמי מהמועדון או מהשחקן',
+ closed_note:'דיווחים מאוחרים אומרים שהמעבר סוכם או הוכרז, ולכן הציון הופחת ל-{s} והשחקן הועבר מהרשימה הפעילה.',
+ s_who:'מי דיווח', s_who_l:'כל כרטיס הוא מערכת חדשות עצמאית אחת. העתקות וכתיבה מחדש נספרות פעם אחת.', same:'{n} כתבות מאותה מערכת - נספרות כמקור אחד.', quote_l:'ציטוט מהכתבה (בשפת המקור)', claim:'מוצג כ', cl_FACT:'עובדה', cl_RUMOR:'שמועה', cl_SPECULATION:'השערה', cl_OPINION:'דעה', headline_only:'כותרת בלבד',
+ s_time:'ציר זמן', s_time_l:'מהחדש לישן. אדום = המצב השתנה.', status_change:'שינוי סטטוס',
+ miss:'עדיין לא ברדאר: גיל, עמדה, סיום חוזה ותמונה. אלה יגיעו עם החיבור למאגר הכדורגל, ויעלו את הציון כשיהיו ידועים.',
+ fb_q:'האם הדיווח נכון?', fb_yes:'כן', fb_no:'לא', fb_old:'לא עדכני', fb_thanks:'תודה - נרשם. זה מאמן את הרדאר.',
+ leads_h:'סיפורים חזקים שלא מציינים את שם השחקן', leads_p:'הכותרת מתארת מצב אבל לא את מי. הרדאר יקרא את טקסט הכתבה בהמשך ויוסיף את השחקן אוטומטית.', leads_none:'אין דבר ממתין.',
+ hid_h:'הוסתרו כלא רלוונטיים', hid_s:'שחקנים מוסתרים. אפשר להחזיר כל אחד.', rej_h:'נדחו אוטומטית לפי כללים', rej_s:'ה-AI הציע אותם והכללים דחו.',
+ rj_elite:'כוכב או מועדון עילית', rj_signal:'לא אות להעברה', rj_implied:'משתמע בלבד, לא נאמר', rj_noname:'לא צוין שם שחקן', rj_quote:'הציטוט לא נמצא בטקסט', rj_nat:'נבחרת ולא מועדון', rj_hist:'חדשות ישנות', rj_done:'ההעברה כבר הושלמה', rj_other:'נדחה לפי כללים',
+ empty_h:'אין שחקנים התואמים לסינון', empty_p:'נסה תקופה ארוכה יותר או נקה את הסינון.',
+ help_tab_h:'בחר שחקן מהרשימה', help_tab_p:'הסיפור המלא נפתח כאן: מה קרה, למה הציון כזה, מי דיווח ומה עושים עכשיו.',
+ m_h:'איך קוראים את הדף', m_sub:'מדריך קצר - דקה אחת',
+ m_score_h:'הציון (0-100)', m_score_p:'ציון גבוה יותר אומר ראיות חזקות יותר שהשחקן עשוי להתפנות. הסמן מופיע על המדד; האזורים הם עדיפות נמוכה (מתחת ל-30), מעקב (30), פוטנציאל (50), עדיפות גבוהה (70) ויוצא דופן (85).', m_score_p2:'רוב הסיפורים מתחילים נמוך כי בדרך כלל יש אתר אחד ועדיין אין נתוני חוזה. ציון נמוך הוא אות מוקדם, לא טעות.',
+ m_ev_h:'תוויות ראיות', m_ev_c:'מאומת: נאמר על ידי המועדון, השחקן או מקור רשמי.', m_ev_r:'דווח: אתר אמין מציג זאת כעובדה.', m_ev_u:'שמועה: ללא ייחוס או בגדר השערה.',
+ m_rel_h:'אמינות המקור', m_rel_p:'הנקודות מראות כמה אנחנו סומכים על האתר: ארבע = רשמי, שלוש = מבוסס, שתיים = מקומי או קטן, אחת = לא מאומת.',
+ m_ind_h:'מקורות עצמאיים', m_ind_p:'מערכות חדשות שונות שמדווחות בעצמן. אם אתר אחד מעתיק מאחר, זה עדיין נספר כאחד.',
+ m_lab_h:'מי כתב מה', m_lab_p:'"AI" מסמן תרגום או סיכום שנעשו על ידי AI. "מבוסס כללים" מסמן כל מה שחושב לפי כללים קבועים. כל השאר לקוח מהמקור.',
+ m_miss_h:'מה עדיין לא ידוע', m_miss_p:'גיל, עמדה, סיום חוזה ותמונה יגיעו עם החיבור למאגר הכדורגל. עד אז הם מושמטים ולא מנוחשים.',
+ t_shortlist:'נוסף לשורטליסט (מוק)', t_contact:'סומן כנוצר קשר (מוק)', t_hidden:'הוסתר. הרדאר לומד מזה.', t_restored:'הוחזר לרשימה',
+ wa_text:'רדאר העברות',
+}};
+let LANG='en';
+const t=(k,v)=>{let s=(TX[LANG][k]??TX.en[k]??k);if(v)for(const a in v)s=s.split('{'+a+'}').join(v[a]);return s;};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ------------------------------------------------------------------ icons */
+const IC={ext:'<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',check:'<path d="M5 12l5 5 9-10"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',bolt:'<path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/>',search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+ help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01"/>',back:'<path d="M15 5l-7 7 7 7"/>',
+ star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',share:'<path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v14"/>',
+ phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',ban:'<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+ chev:'<path d="M6 9l6 6 6-6"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>',flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',undo:'<path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/>'};
+const ico=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
+
+/* ------------------------------------------------------------------ data prep */
+const SIGMAP={PLAYER_SEEKING_CLUB:'wants_leave',REQUESTED_TO_LEAVE:'wants_leave',CLUB_WANTS_TO_SELL:'club_sell',CLUB_NEEDS_TO_SELL:'club_sell',CLUB_WANTS_TO_RELEASE:'released',CLUB_OPEN_TO_TERMINATE:'terminate',CONTRACT_TALKS_FAILED:'terminate',
+ AVAILABLE_ON_LOAN:'loan',EXCLUDED_FROM_SQUAD:'out_squad',NOT_PLAYING:'out_squad',OUT_OF_FAVOR:'out_squad',NOT_REGISTERED:'out_squad',CONFLICT_WITH_COACH:'conflict',DISAGREEMENT_WITH_MANAGEMENT:'conflict',DISCIPLINARY_ISSUE:'conflict',UNPAID_SALARY:'unpaid',TRANSFER_COMPLETED:'moved'};
+const NRMAP={star:'nr_star',coach:'nr_coach',other_sport:'nr_sport',not_signal:'nr_other'};
+const PRI=['moved','wants_leave','released','club_sell','terminate','loan','conflict','out_squad','unpaid','other'];
+const COLOR={wants_leave:'c-gold',club_sell:'c-gold',released:'c-gold',terminate:'c-gold',loan:'c-blue',out_squad:'c-amber',conflict:'c-amber',unpaid:'c-amber',moved:'c-red',other:'c-grey'};
+const ACTKEY={'Verify with a local contact today, then approach the agent.':'act_verify','Single report: verify with a local contact before outreach.':'act_single','Ask the club or agent about loan terms; verify before outreach.':'act_loan','Rumor only: verify before any outreach.':'act_rumor',
+ 'Do not contact: later reports say the move is agreed or announced. Keep archived; re-open only if it collapses.':'act_closed','Watch: wait for a second independent source.':'act_watch',"Contact the player's agent now.":'act_contact','Approach now: contract ends within 6 months (free-agent route).':'act_free'};
+const TIERDOTS={A:4,B:3,C:2,D:1};
+const prep=p=>{
+  const all=[];for(const e of p.timeline)for(const s of e.signals){const k=SIGMAP[s];if(k&&!all.includes(k))all.push(k);}
+  all.sort((a,b)=>PRI.indexOf(a)-PRI.indexOf(b));
+  p.sits=all.filter(k=>k!=='moved');p.main=p.closed?'moved':(p.sits[0]||'other');
+  p.latest=p.closed?p.timeline[0]:(p.timeline.find(e=>e.kind==='REPORT')||p.timeline[0]);
+  p.isNew=!p.closed&&p.first>=NOW-DAY;p.early=!p.closed&&p.origins<2&&(NOW-p.last)<=72*H;p.stale=(NOW-p.last)>14*DAY;p.isLoan=p.sits.includes('loan');
+  return p;};
+const PL=D.players.map(prep), HID=D.hiddenPlayers.map(prep);
+const S={tab:'active',country:'all',sits:new Set(),days:30,sort:'score',q:'',sel:null,restored:new Set(),shortlist:new Set(),contacted:new Set(),fb:new Set(),hiddenNow:new Map(),menu:false};
+
+/* ------------------------------------------------------------------ helpers */
+const ago=ts=>{const m=Math.max(0,(NOW-ts)/6e4);if(m<60)return m<1?t('lt1'):t('ago_m',{n:Math.round(m)});const h=m/60;if(h<1)return t('lt1');if(h<48)return t('ago_h',{n:Math.round(h)});return t('ago_d',{n:Math.round(h/24)});};
+const fmt=ts=>new Date(ts).toLocaleString(LANG==='he'?'he-IL':'en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+' UTC';
+const dots=tier=>`<span class="dots" title="${esc(t('rel_'+tier))}">${[1,2,3,4].map(i=>`<i class="${i<=TIERDOTS[tier]?'on':''}"></i>`).join('')}</span>`;
+const evKey=v=>({CONFIRMED:'conf',REPORTED:'rep',RUMOR:'rum'}[v]||'rum');
+const evBadge=v=>`<span class="ev ${evKey(v)}">${v==='CONFIRMED'?ico('check'):''}${t('ev_'+v.toLowerCase())}</span>`;
+const level=(s,c)=>c?'Closed':s>=85?'Exceptional':s>=70?'High priority':s>=50?'Potential':s>=30?'Monitor':'Low priority';
+const ring=(s,closed)=>{const r=18,c=2*Math.PI*r,col=closed?'#b0392c':s>=30?'#a47d43':'#9d988c';return `<svg class="ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="${r}" fill="none" stroke="rgba(22,22,19,.1)" stroke-width="4"/><circle cx="22" cy="22" r="${r}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${c*Math.max(0,Math.min(100,s))/100} ${c}" transform="rotate(-90 22 22)"/><text x="22" y="27" text-anchor="middle" font-size="15" font-weight="700" fill="#161613" font-family="Oswald,Heebo,sans-serif">${s}</text></svg>`;};
+const place=p=>p.club?`${esc(p.club)}${p.country?' · '+esc(p.country):''}`:`<span>${esc(p.note?(p.note.startsWith('Free')?t('free')+' · '+p.note.replace(/^Free agent /,''):t('club_unknown')):t('club_unknown'))}</span>`;
+const srcCount=p=>p.origins===1?t('src_1'):t('src_n',{n:p.origins});
+
+/* ------------------------------------------------------------------ chrome (static text) */
+function chrome(){
+  document.documentElement.lang=LANG;document.documentElement.dir=LANG==='he'?'rtl':'ltr';
+  document.getElementById('crumb').innerHTML=t('crumb').replace(/Transfer Radar|רדאר העברות/,m=>`<b>${m}</b>`);
+  document.getElementById('mockflag').textContent=t('mock');document.getElementById('rail-sub').textContent=t('rail_sub');
+  document.getElementById('helpBtn').innerHTML=ico('help')+' '+t('help');
+  document.getElementById('nav').innerHTML=['nav_dash','nav_players','nav_req','nav_contacts','nav_signals','nav_war'].map(k=>`<a class="dim">${t(k)}</a>`).join('')+`<a class="on">${t('nav_radar')}</a>`;
+  document.getElementById('rail-f').innerHTML=t('rail_f');
+  document.getElementById('kick').textContent=t('kicker');
+  document.getElementById('h1').innerHTML=`${t('title_a')} <span>${t('title_b')}</span>`;
+  const nextRun=new Date(Date.UTC(2026,10,3,1,30)).toLocaleDateString(LANG==='he'?'he-IL':'en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'});
+  document.getElementById('status').innerHTML=`<div>${t('st_updated')}<b>${ago(NOW-3*H)}</b></div><div>${t('st_next')}<b>${nextRun}</b></div><div>${t('st_cov')}<b>${t('cov',{s:D.coverage.sources,c:D.coverage.countries})}</b></div><div>${t('st_queue')}<b>${t('queue_v',{n:D.queued.toLocaleString()})}</b></div>`;
+  document.querySelectorAll('.lang button').forEach(b=>b.classList.toggle('on',b.dataset.lang===LANG));
+}
+
+/* ------------------------------------------------------------------ base sets, filters, sort */
+function baseSet(tab){
+  const hid=S.hiddenNow;
+  const act=[...PL.filter(p=>!p.closed&&!hid.has(p.id)),...HID.filter(p=>S.restored.has(p.id))];
+  if(tab==='active')return act;if(tab==='new')return act.filter(p=>p.isNew);if(tab==='loan')return act.filter(p=>p.isLoan);if(tab==='moved')return PL.filter(p=>p.closed);
+  if(tab==='hidden')return [...HID.filter(p=>!S.restored.has(p.id)),...PL.filter(p=>hid.has(p.id))];return [];
+}
+function filtered(){
+  let a=baseSet(S.tab);
+  if(S.country!=='all')a=a.filter(p=>p.country===S.country);
+  if(S.sits.size)a=a.filter(p=>[...S.sits].some(k=>p.sits.includes(k)||(k==='moved'&&p.closed)));
+  a=a.filter(p=>(NOW-p.last)<=S.days*DAY||S.tab==='moved'||S.tab==='hidden');
+  if(S.q){const q=S.q.toLowerCase();a=a.filter(p=>(p.name+' '+(p.club||'')+' '+(p.country||'')+' '+(p.written||'')).toLowerCase().includes(q));}
+  const tr={A:0,B:1,C:2,D:3};
+  const f={score:(x,y)=>y.score-x.score||y.last-x.last,new:(x,y)=>y.last-x.last,rel:(x,y)=>tr[x.bestTier]-tr[y.bestTier]||y.origins-x.origins||y.score-x.score,urg:(x,y)=>(y.last-x.last)};
+  return a.sort(f[S.sort]);
+}
+
+/* ------------------------------------------------------------------ renderers */
+function renderTabs(){
+  const T=[['active'],['new'],['loan'],['moved'],['leads'],['hidden']];
+  document.getElementById('tabs').innerHTML=T.map(([k])=>{const n=k==='leads'?D.leads.length:k==='hidden'?baseSet('hidden').length+D.dropped.length:baseSet(k).length;
+    return `<button class="tab ${S.tab===k?'on':''}" data-tab="${k}">${t('tab_'+k)}<span class="n">${n}</span></button>`;}).join('')+
+    `<label class="search">${ico('search')}<input id="q" value="${esc(S.q)}" placeholder="${esc(t('search'))}"></label>`;
+}
+function renderFilters(){
+  const base=baseSet(S.tab==='leads'?'active':S.tab);
+  const cs={};base.forEach(p=>{if(p.country)cs[p.country]=(cs[p.country]||0)+1;});
+  const sc={};base.forEach(p=>p.sits.forEach(k=>sc[k]=(sc[k]||0)+1));
+  const active=S.country!=='all'||S.sits.size||S.days!==30||S.q;
+  const sitOrder=['wants_leave','club_sell','released','terminate','loan','conflict','out_squad','unpaid'].filter(k=>sc[k]);
+  document.getElementById('filters').innerHTML=
+   `<div class="fl"><span>${t('f_country')}</span><select class="sel" id="fc"><option value="all">${t('f_all')} (${base.length})</option>${Object.entries(cs).sort((a,b)=>b[1]-a[1]).map(([c,n])=>`<option value="${esc(c)}" ${S.country===c?'selected':''}>${esc(c)} (${n})</option>`).join('')}</select></div>`+
+   `<div class="fl"><span>${t('f_sit')}</span><div class="chips">${sitOrder.map(k=>`<button class="chip ${S.sits.has(k)?'on':''}" data-sit="${k}">${t('sit_'+k)} <em>${sc[k]}</em></button>`).join('')}</div></div>`+
+   `<div class="fl"><span>${t('f_period')}</span><div class="seg">${[7,14,30].map(d=>`<button class="${S.days===d?'on':''}" data-days="${d}">${t('d'+d)}</button>`).join('')}</div></div>`+
+   `<div class="fl"><span>${t('f_sort')}</span><select class="sel" id="fs">${['score','new','rel','urg'].map(k=>`<option value="${k}" ${S.sort===k?'selected':''}>${t('so_'+k)}</option>`).join('')}</select></div>`+
+   (active?`<button class="clear" id="clr">${t('f_clear')}</button>`:'');
+  document.getElementById('filters').style.display=(S.tab==='leads')?'none':'';
+}
+function item(p){
+  const c=COLOR[p.main];
+  return `<button class="item ${c} ${S.sel===p.id?'sel':''} ${p.closed?'closed':''}" data-id="${p.id}">
+   <div class="irow"><div>
+     <div><span class="sit"><i></i>${t('sit_'+p.main)}</span><span class="when">${ago(p.last)}</span></div>
+     <div class="nm">${esc(p.name)}</div><div class="cl">${place(p)}</div></div>
+     <div class="ringwrap">${ring(p.score,p.closed)}<small>${t('lv_'+level(p.score,p.closed)).split(' (')[0]}</small></div></div>
+   <div class="hl">${esc(p.latest.headline||p.latest.orig)}</div>
+   <div class="meta">${evBadge(p.verification)}<span class="src">${dots(p.bestTier)} ${srcCount(p)}</span>${p.early?`<span class="early">${ico('bolt')}${t('early')}</span>`:''}${p.stale?`<span class="old">${t('older')}</span>`:''}</div></button>`;
+}
+const rjText=w=>{w=w||'';if(/elite|star/.test(w))return t('rj_elite');if(/no strict|not a transfer/.test(w))return t('rj_signal');if(/implied/.test(w))return t('rj_implied');if(/no named/.test(w))return t('rj_noname');if(/quote/.test(w))return t('rj_quote');if(/national|not a club/.test(w))return t('rj_nat');if(/histor|old/.test(w))return t('rj_hist');if(/completed/.test(w))return t('rj_done');return t('rj_other');};
+function renderList(){
+  const L=document.getElementById('list');
+  if(S.tab==='leads'){L.innerHTML=`<div class="zone"><b>${t('leads_h')}</b><small>${t('leads_p')}</small></div>`+(D.leads.map(l=>`<div class="simple"><div class="t">${esc(l.headline)}</div><div class="row"><span class="m">${esc(l.outlet)} · ${esc(l.club||'-')} · ${ago(l.at)}</span><a class="lnk" style="margin:0" href="${esc(l.url)}" target="_blank" rel="noopener">${t('open')} ${ico('ext')}</a></div></div>`).join('')||`<div class="empty">${t('leads_none')}</div>`);return;}
+  const a=filtered();
+  let html=`<div class="count">${a.length===1?t('n_player'):t('n_players',{n:a.length})}</div>`;
+  if(S.tab==='active'&&S.sort==='score'){
+    const w=a.filter(p=>p.score>=30),e=a.filter(p=>p.score<30);
+    if(w.length)html+=`<div class="zone"><b>${t('zone_watch')} · ${w.length}</b><small>${t('zone_watch_s')}</small></div>`+w.map(item).join('');
+    if(e.length)html+=`<div class="zone"><b>${t('zone_early')} · ${e.length}</b><small>${t('zone_early_s')}</small></div>`+e.map(item).join('');
+  } else html+=a.map(item).join('');
+  if(S.tab==='hidden')html+=`<div class="zone"><b>${t('rej_h')} · ${D.dropped.length}</b><small>${t('rej_s')}</small></div>`+D.dropped.map(d=>`<div class="simple"><div class="t">${esc(d.headline)}</div><div class="row"><span class="m">${esc(d.outlet)} · ${ago(d.at)} · <b>${rjText(d.why)}</b></span><a class="lnk" style="margin:0" href="${esc(d.url)}" target="_blank" rel="noopener">${t('open')} ${ico('ext')}</a></div></div>`).join('');
+  if(!a.length&&S.tab!=='hidden')html=`<div class="empty"><b>${t('empty_h')}</b>${t('empty_p')}</div>`;
+  L.innerHTML=html;
+}
+
+function meter(s,closed){const pos=Math.max(0,Math.min(100,s));return `<div class="meter"><div class="mk" style="inset-inline-start:${pos}%"></div></div><div class="ticks"><span style="inset-inline-start:30%">30</span><span style="inset-inline-start:50%">50</span><span style="inset-inline-start:70%">70</span><span style="inset-inline-start:85%">85</span></div><div class="lvl">${t('lv_'+level(s,closed))}</div>`;}
+function detail(p){
+  const hidden=!!(HID.includes(p)&&!S.restored.has(p.id))||S.hiddenNow.has(p.id);
+  const lt=p.latest, tier=lt.tier||'C';
+  const hrs=(NOW-p.last)/H, urg=p.closed?'closed':hrs<=48?'high':hrs<=168?'med':'low';
+  const actKey=ACTKEY[p.action]||null, actText=actKey?t(actKey):esc(p.action||'');
+  const whyNow=p.closed?t('why_closed'):p.stale||(NOW-p.last)>14*DAY?t('why_old',{d:Math.round((NOW-p.last)/DAY)}):p.origins<2?t('why_early'):t('why_known',{n:p.origins});
+  const comp=k=>p.components.find(c=>c.key===k);
+  const rows=['availability','exclusion','relationship','contract','independence'].map(k=>{const c=comp(k);const pts=c?c.points:0,max=c?c.max:({availability:25,exclusion:15,relationship:15,contract:10,independence:10}[k]);
+    let sub=t('c_'+k+'_d');
+    if(c&&c.signal&&SIGMAP[c.signal])sub=`${t('sit_'+SIGMAP[c.signal])} · ${esc(c.outlet||'')} (${t('ev_'+String(c.verification).toLowerCase())})`;
+    if(k==='independence')sub=pts>0?`${p.origins} · ${t('c_independence_d')}`:`${p.origins} · ${t('c_independence_d')}`;
+    return `<div class="why-row ${pts>0?'':'zero'}"><span class="ck">${pts>0?ico('check'):'—'}</span><div><b>${t('c_'+k)}</b><small>${sub}</small></div><div class="pbar"><u style="width:${max?pts/max*100:0}%"></u></div><div class="pts">${pts.toString().replace(/\.0$/,'')}<small> / ${max}</small></div></div>`;}).join('')+
+    `<div class="why-row zero"><span class="ck">—</span><div><b>${t('c_other')}</b><small>${t('c_other_d')}</small></div><div class="pbar"><u style="width:0"></u></div><div class="pts">0<small> / 10</small></div></div>`;
+  const IT={1:0,2:5,3:8,4:10};const nextP=p.origins<4?(IT[p.origins+1]??10)-(IT[p.origins]??0):0;
+  const raise=[];if(!p.closed){if(nextP>0)raise.push(p.origins<2?t('raise_src',{n:2,p:nextP}).replace('2nd','2nd'):t('raise_src3',{p:nextP}));raise.push(t('raise_contract'));if(p.verification!=='CONFIRMED')raise.push(t('raise_official'));}
+  /* sources grouped by independent origin */
+  const groups=new Map();for(const e of p.timeline){const k=e.origin||e.outlet;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(e);}
+  const cards=[...groups.values()].map(g=>{const e=g[0];const q=e.quote;
+    return `<div class="scard"><div class="top2"><div><span class="on">${esc(e.outlet)}</span><span class="rl">${dots(e.tier||'C')} ${t('rel_'+(e.tier||'C'))}</span></div><div>${evBadge(e.verification)}</div></div>
+     <div class="t">${esc(e.headline||e.orig)} <span class="by ai" style="font-size:11px;font-weight:700;color:var(--blue);background:var(--bluebg);padding:1px 7px;border-radius:999px">AI</span></div>
+     <div class="o">${t('original')}: ${esc(e.orig)}</div>
+     ${q?`<blockquote><small>${t('quote_l')}</small>“${esc(q)}”</blockquote>`:''}
+     <div class="meta" style="margin-top:9px"><span class="old" style="font-weight:500">${fmt(e.at)}${e.claim?' · '+t('claim')+' '+t('cl_'+e.claim):''}${e.headlineOnly?' · '+t('headline_only'):''}</span><a class="lnk" style="margin:0" href="${esc(e.url)}" target="_blank" rel="noopener">${t('open')} ${ico('ext')}</a></div>
+     ${g.length>1?`<div class="same">${t('same',{n:g.length})}</div>`:''}</div>`;}).join('');
+  const tl=p.timeline.map(e=>{const k=e.signals.map(s=>SIGMAP[s]).find(Boolean)||'other';const chg=e.kind==='STATUS_CHANGE';
+    return `<div class="tle ${chg?'red':''}"><div class="d">${fmt(e.at)} · ${esc(e.outlet)}</div><b>${t('sit_'+k)}</b> ${chg?`<span class="tag red">${t('status_change')}</span>`:''}</div>`;}).join('');
+  const hid=hidden?`<div class="next" style="border-color:var(--muted);background:var(--paper2)"><h4 style="color:var(--ink2)">${ico('ban')} ${t('hid_why')}</h4><p class="act">${S.hiddenNow.get(p.id)?t('nr_'+S.hiddenNow.get(p.id)):p.hideKey?t(NRMAP[p.hideKey]):t('nr_other')}</p><div class="btns"><button class="btn pri" data-act="restore">${ico('undo')} ${t('b_restore')}</button></div></div>`:'';
+  const nextBox=hidden?'':`<div class="next ${p.closed?'closed':''}"><h4>${ico(p.closed?'flag':'bolt')} ${p.closed?t('next_closed_h'):t('next_h')}</h4><p class="act">${actText}</p><p class="why">${whyNow}</p>
+    <div class="btns">${p.closed?'':`<button class="btn pri ${S.shortlist.has(p.id)?'done':''}" data-act="short">${ico('star')} ${S.shortlist.has(p.id)?t('b_short_done'):t('b_short')}</button>`}
+    <button class="btn" data-act="wa">${ico('share')} ${t('b_wa')}</button>
+    ${p.closed?'':`<button class="btn ${S.contacted.has(p.id)?'done':''}" data-act="contact">${ico('phone')} ${S.contacted.has(p.id)?t('b_contacted'):t('b_contact')}</button>`}
+    <button class="btn" data-act="menu">${ico('ban')} ${t('b_nr')} ${ico('chev')}</button>
+    ${S.menu?`<div class="menu">${['star','coach','sport','person','old','other'].map(k=>`<button data-nr="${k}">${t('nr_'+k)}</button>`).join('')}</div>`:''}</div></div>`;
+  const placeTxt=p.club?`${esc(p.club)}${p.country?' · '+esc(p.country):''}`:place(p);
+  return `<div class="dhead"><div style="min-width:0;flex:1">
+     <button class="back" data-act="back">${ico('back')} ${t('back')}</button>
+     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="tag ${p.closed?'red':'gold'}">${t('sit_'+p.main)}</span>${p.sits.filter(k=>k!==p.main).slice(0,2).map(k=>`<span class="tag">${t('sit_'+k)}</span>`).join('')}${p.early?`<span class="early">${ico('bolt')}${t('early')}</span>`:''}</div>
+     <h2 class="dname">${esc(p.name)}</h2>
+     <div class="dsub">${placeTxt}${p.written?` <small>· ${t('written')} ${esc(p.written)}</small>`:''}</div></div>
+     <div class="scorebox"><div class="big"><b>${p.score}</b><span>${t('score_of')}</span></div>${meter(p.score,p.closed)}</div></div>
+   <div class="glance">
+     <div><small>${t('g_sit')}</small><b>${t('sit_'+p.main)}</b><span>${p.sits.filter(k=>k!==p.main).map(k=>t('sit_'+k)).join(' · ')||'&nbsp;'}</span></div>
+     <div><small>${t('g_ev')}</small><b>${evBadge(p.verification)}</b><span>${p.origins===1?t('g_ev_s1',{n:1}):t('g_ev_sn',{n:p.origins})} · ${dots(p.bestTier)}</span></div>
+     <div><small>${t('g_when')}</small><b>${ago(p.last)}</b><span>${t('g_when_s',{t:ago(p.first)})}</span></div>
+     <div><small>${t('g_time')}</small><b>${t('time_'+urg)}</b><span>${t('time_'+urg+'_s')}</span></div></div>
+   ${hid}${nextBox}
+   <div class="sec"><h3>${t('s_happened')} <span class="by">${t('by_source')}</span></h3><p class="lead">${t('s_happened_l')}</p>
+     <div class="happened"><div class="m"><b style="color:var(--ink)">${esc(lt.outlet)}</b> ${dots(tier)} <span>${t('rel_'+tier)}</span> · ${fmt(lt.at)}</div>
+       <div class="t">${esc(lt.headline||lt.orig)}</div><div class="o"><b>${t('original')}:</b> ${esc(lt.orig)}</div><a class="lnk" href="${esc(lt.url)}" target="_blank" rel="noopener">${t('open')} ${ico('ext')}</a></div></div>
+   <div class="sec"><h3>${t('s_why',{n:p.score})} <span class="by">${t('by_rule')}</span></h3><p class="lead">${t('s_why_l')}</p>${rows}
+     <div class="total"><span>${t('total')}</span><span>${p.score} / 100</span></div>
+     ${p.closed?`<div class="note">${t('closed_note',{s:p.score})}</div>`:''}
+     ${raise.length?`<div class="raise"><b>${t('raise_h')}</b><ul>${raise.map(r=>`<li>${r}</li>`).join('')}</ul></div>`:''}</div>
+   <div class="sec"><h3>${t('s_who')} <span class="by">${t('by_source')}</span></h3><p class="lead">${t('s_who_l')}</p>${cards}</div>
+   <div class="sec"><h3>${t('s_time')}</h3><p class="lead">${t('s_time_l')}</p><div class="tl">${tl}</div></div>
+   <div class="sec"><div class="fb">${S.fb.has(p.id)?`<span>${t('fb_thanks')}</span>`:`<span>${t('fb_q')}</span><button data-fb="y">${t('fb_yes')}</button><button data-fb="n">${t('fb_no')}</button><button data-fb="o">${t('fb_old')}</button>`}</div></div>
+   <div class="missing">${ico('info')}<span>${t('miss')}</span></div><div style="height:22px"></div>`;
+}
+function renderDetail(){
+  const el=document.getElementById('detail');
+  if(S.tab==='leads'){el.innerHTML=`<div class="help-card"><h3>${t('leads_h')}</h3><p>${t('leads_p')}</p></div>`;return;}
+  const all=[...PL,...HID];const p=all.find(x=>x.id===S.sel);
+  if(!p){el.innerHTML=`<div class="help-card"><h3>${t('help_tab_h')}</h3><p>${t('help_tab_p')}</p></div>`;return;}
+  el.innerHTML=detail(p);
+}
+function render(keepScroll){
+  const ls=document.getElementById('list').scrollTop,ds=document.getElementById('detail').scrollTop;
+  chrome();renderTabs();renderFilters();
+  const a=S.tab==='leads'?[]:filtered();
+  if(S.tab!=='leads'&&!a.find(p=>p.id===S.sel))S.sel=window.innerWidth>900&&a[0]?a[0].id:(window.innerWidth>900?null:S.sel&&a.find(p=>p.id===S.sel)?S.sel:null);
+  renderList();renderDetail();
+  if(keepScroll){document.getElementById('list').scrollTop=ls;document.getElementById('detail').scrollTop=ds;}
+  document.body.classList.toggle('open',!!S.openMobile&&!!S.sel);
+}
+function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2200);}
+function helpModal(){
+  document.getElementById('mbox').innerHTML=`<button class="x" id="mx" aria-label="close">${ico('x')}</button><h2>${t('m_h')}</h2><div style="color:var(--muted);font-size:13px">${t('m_sub')}</div>
+   <div class="hgrid"><div class="hbox wide"><h4>${t('m_score_h')}</h4>${meter(39,false)}<p>${t('m_score_p')}</p><p>${t('m_score_p2')}</p></div>
+   <div class="hbox"><h4>${t('m_ev_h')}</h4><p>${evBadge('CONFIRMED')} ${t('m_ev_c').replace(/^[^:]+:/,'')}</p><p>${evBadge('REPORTED')} ${t('m_ev_r').replace(/^[^:]+:/,'')}</p><p>${evBadge('RUMOR')} ${t('m_ev_u').replace(/^[^:]+:/,'')}</p></div>
+   <div class="hbox"><h4>${t('m_rel_h')}</h4><p>${dots('A')} ${t('rel_A')}</p><p>${dots('B')} ${t('rel_B')}</p><p>${dots('C')} ${t('rel_C')}</p><p>${dots('D')} ${t('rel_D')}</p></div>
+   <div class="hbox"><h4>${t('m_ind_h')}</h4><p>${t('m_ind_p')}</p></div><div class="hbox"><h4>${t('m_lab_h')}</h4><p>${t('m_lab_p')}</p></div>
+   <div class="hbox wide"><h4>${t('m_miss_h')}</h4><p>${t('m_miss_p')}</p></div></div>`;
+  document.getElementById('modal').classList.add('show');
+}
+
+/* ------------------------------------------------------------------ events */
+document.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);let b;
+  if(q('#helpBtn')){helpModal();return;}
+  if(q('#mx')||e.target.id==='modal'){document.getElementById('modal').classList.remove('show');return;}
+  if(b=q('[data-lang]')){LANG=b.dataset.lang;render(true);return;}
+  if(b=q('[data-tab]')){S.tab=b.dataset.tab;S.sel=null;S.menu=false;S.openMobile=false;render();document.getElementById('list').scrollTop=0;return;}
+  if(b=q('[data-sit]')){const k=b.dataset.sit;S.sits.has(k)?S.sits.delete(k):S.sits.add(k);render();return;}
+  if(b=q('[data-days]')){S.days=+b.dataset.days;render();return;}
+  if(q('#clr')){S.country='all';S.sits.clear();S.days=30;S.q='';render();return;}
+  if(b=q('[data-nr]')){const p=PL.find(x=>x.id===S.sel);if(p){S.hiddenNow.set(p.id,b.dataset.nr);S.menu=false;S.sel=null;S.openMobile=false;toast(t('t_hidden'));render();}return;}
+  if(b=q('[data-fb]')){S.fb.add(S.sel);toast(t('fb_thanks'));render(true);return;}
+  if(b=q('[data-act]')){const a=b.dataset.act;
+    if(a==='short'){S.shortlist.add(S.sel);toast(t('t_shortlist'));}
+    else if(a==='contact'){S.contacted.add(S.sel);toast(t('t_contact'));}
+    else if(a==='menu'){S.menu=!S.menu;}
+    else if(a==='wa'){toast('WhatsApp (mock)');}
+    else if(a==='back'){S.openMobile=false;}
+    else if(a==='restore'){S.restored.add(S.sel);S.hiddenNow.delete(S.sel);toast(t('t_restored'));S.tab='active';S.sel=S.sel;}
+    render(true);return;}
+  if(b=q('.item')){S.sel=b.dataset.id;S.menu=false;S.openMobile=true;render(true);document.getElementById('detail').scrollTop=0;return;}
+  if(S.menu&&!q('.menu')){S.menu=false;render(true);}
+});
+document.addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;const pos=e.target.selectionStart;render();const n=document.getElementById('q');n.focus();n.setSelectionRange(pos,pos);}});
+document.addEventListener('change',e=>{if(e.target.id==='fc'){S.country=e.target.value;render();}if(e.target.id==='fs'){S.sort=e.target.value;render();}});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.getElementById('modal').classList.remove('show');S.menu=false;render(true);}
+  if((e.key==='ArrowDown'||e.key==='ArrowUp')&&!/INPUT|SELECT/.test(document.activeElement.tagName)&&S.tab!=='leads'){const a=filtered();const i=a.findIndex(p=>p.id===S.sel);const n=a[Math.max(0,Math.min(a.length-1,i+(e.key==='ArrowDown'?1:-1)))];if(n){S.sel=n.id;render(true);document.querySelector('.item.sel')?.scrollIntoView({block:'nearest'});e.preventDefault();}}
+});
+const hash=location.hash.replace('#','');if(hash==='he'){LANG='he';}
+const hp=hash.match(/^p:(.+)/);if(hp){S.sel=hp[1];S.openMobile=true;}
+const ht=hash.match(/^tab:(\w+)/);if(ht)S.tab=ht[1];
+if(hash==='help'){setTimeout(helpModal,50);}
+render();
+</script>
+</body>
+</html>
