@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run PoC (hard caps: 40 requests, $0.25)
+      - name: "Run PoC (hard caps 40 requests, 0.25 USD)"
         env:
           RADAR_GEMINI_KEY: ${{ secrets.RADAR_GEMINI_KEY }}
           RADAR_MODEL: gemini-2.5-flash-lite
