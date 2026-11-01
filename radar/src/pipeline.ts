@@ -80,6 +80,20 @@ export async function writeSummary(db: Db, out: Record<string, any>, ms: number)
   L.push(`\n**Database:** ${JSON.stringify(counts)}`);
   L.push(`\n## Top opportunities\n| Score | Level | Player | Club | Country | Origins | Latest headline |\n|---|---|---|---|---|---|---|`);
   for (const t of top) L.push(`| ${t.score} | ${t.level} | ${t.display_name} | ${t.club_name ?? ''} | ${t.country ?? ''} | ${t.independent_origins} | ${String(t.top_headline ?? '').replace(/\|/g, '/').slice(0, 90)} |`);
+  // coverage by country: where articles are lost (no articles collected / no transfer story / not identified)
+  try {
+    const t30 = Date.now() - 30 * 86_400_000;
+    const cov = await all<any>(db, `SELECT s.country AS country, COUNT(DISTINCT s.id) AS sources,
+        (SELECT COUNT(*) FROM articles a WHERE a.country = s.country AND a.published_at >= ?) AS articles,
+        (SELECT COUNT(*) FROM articles a WHERE a.country = s.country AND a.published_at >= ? AND a.state = 'ANALYZED') AS analyzed,
+        (SELECT COUNT(*) FROM reports r WHERE r.country = s.country AND r.final = 1 AND r.published_at >= ?) AS stories,
+        (SELECT COUNT(DISTINCT r.player_id) FROM reports r JOIN players p ON p.id = r.player_id WHERE r.country = s.country AND r.final = 1 AND r.published_at >= ? AND p.identity_status IN ('CONFIRMED','PROBABLE')) AS shown
+      FROM sources s WHERE s.status IN ('APPROVED','PROBATION') GROUP BY s.country ORDER BY shown DESC, stories DESC, articles DESC`, [t30, t30, t30, t30]);
+    L.push(`\n## Coverage by country (last 30 days)\n| Country | Sources | Articles | Analyzed | Transfer stories | Players shown |\n|---|---|---|---|---|---|`);
+    for (const c of cov) L.push(`| ${c.country ?? '?'} | ${c.sources} | ${c.articles} | ${c.analyzed} | ${c.stories} | ${c.shown} |`);
+    const ident = await all<any>(db, `SELECT identity_status AS s, COALESCE(excluded_reason, '') AS r, COUNT(*) AS n FROM players WHERE identity_status IS NOT NULL GROUP BY 1, 2 ORDER BY 1, 3 DESC`);
+    L.push(`\n**Identification:** ${ident.map((x) => `${x.s}${x.r ? ` (${x.r})` : ''}: ${x.n}`).join(' · ')}`);
+  } catch (e) { L.push(`\n(coverage table failed: ${(e as Error).message})`); }
   const md = L.join('\n');
   console.log(md);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');

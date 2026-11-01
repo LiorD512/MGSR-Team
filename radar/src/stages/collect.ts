@@ -44,7 +44,8 @@ async function scanSource(db: Db, cfg: RadarConfig, http: Http, s: SourceRow, st
     if (prov.kind === 'GNEWS') {
       const g = GN_QUERIES.find((x) => x.cc === prov.cc);
       // first scan covers the intake window only (R22.2); later scans look back one run-interval plus 2 days of overlap (dedupe makes overlap free)
-      const days = s.last_success_at ? cfg.pipeline.runEveryDays + 2 : cfg.pipeline.intakeDays;
+      // RADAR_BACKFILL=1 (commit message [radar-backfill]) re-reads the whole intake window once, e.g. after new countries were added
+      const days = s.last_success_at && process.env.RADAR_BACKFILL !== '1' ? cfg.pipeline.runEveryDays + 2 : cfg.pipeline.intakeDays;
       feedUrl = gnUrl(prov.q, prov.cc, prov.lang, Math.min(days, 30));
       const r = await http.get(feedUrl, { ignoreRobots: true });
       if (r.status !== 200) throw new Error(`HTTP ${r.status}`);

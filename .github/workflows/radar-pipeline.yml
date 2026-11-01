@@ -76,6 +76,8 @@ jobs:
           RADAR_GEMINI_FREE_KEY: ${{ secrets.RADAR_GEMINI_FREE_KEY }}
           # Transfermarkt blocks GitHub IPs: identification goes through the site's html-proxy, like the other TM workflows
           TM_HTML_PROXY_URL: ${{ vars.TM_HTML_PROXY_URL || 'https://management.britsportgroup.com/api/transfermarkt/html-proxy' }}
+          # one-time 30-day re-read of the news searches (commit message on the branch contains [radar-backfill])
+          RADAR_BACKFILL: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[radar-backfill]') && '1' || '0' }}
         run: npx tsx src/cli.ts run ${{ inputs.no_analyze && '--no-analyze' || '' }}
       - name: Cleanup (decay, expiry, retention)
         env:
