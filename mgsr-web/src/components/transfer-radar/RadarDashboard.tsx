@@ -53,7 +53,6 @@ export default function RadarDashboard() {
   if (error) return <State title="Error" text={error.message} action={<button className="tr-btn pri" onClick={() => { setLoading(true); load(); }}>{tr('retry')}</button>} />;
 
   const k = summary?.kpi;
-  const budget = summary?.budget;
   const items = data?.items ?? [];
   const countryName = (c: string | null) => (c ? getCountryDisplayName(c, lang === 'he') : '-');
   const SHOW: [Show, string][] = [['all', 'f_all'], ['monitor', 'f_monitor'], ['loan', 'f_loan'], ['transfer', 'f_transfer'], ['low', 'f_low'], ['closed', 'f_closed']];
@@ -69,7 +68,6 @@ export default function RadarDashboard() {
           <p className="tr-sub">{tr('subtitle')}</p>
           <div className="tr-meta">
             <span>{tr('last_run')}: <b>{summary?.lastRun ? `${timeAgo(summary.lastRun.started_at)} (${summary.lastRun.status})` : tr('never')}</b></span>
-            {budget && <span>{tr('budget')}: <b>${budget.monthUsd.toFixed(2)} {tr('of')} ${budget.capUsd}</b></span>}
           </div>
         </div>
       </header>
