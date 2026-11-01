@@ -43,12 +43,13 @@ html[dir=rtl] h1{font-weight:800;text-transform:none;letter-spacing:0}
 .status{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
 .status div{display:flex;flex-direction:column;gap:2px}.status b{color:var(--ink);font-size:14px}
 
-.tabs{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tabrow{display:flex;align-items:flex-end;gap:14px;border-bottom:1px solid var(--line)}
+.tabs{display:flex;align-items:center;gap:6px;flex:1;min-width:0;flex-wrap:wrap}
 .tab{padding:11px 14px;font-size:14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px;display:inline-flex;gap:8px;align-items:center}
 .tab:hover{color:var(--ink)}.tab.on{color:var(--ink);border-bottom-color:var(--gold)}
 .tab .n{font-size:12px;font-weight:700;background:var(--paper2);color:var(--ink2);border-radius:999px;padding:1px 8px;min-width:24px;text-align:center}
 .tab.on .n{background:var(--black);color:var(--gold2)}
-.search{margin-inline-start:auto;display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:7px 14px;min-width:260px}
+.search{margin-inline-start:auto;display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:7px 14px;min-width:260px;margin-bottom:6px}
 .search input{border:0;outline:0;background:none;font:inherit;width:100%;color:var(--ink)}.search svg{color:var(--muted)}
 
 .filters{padding:14px 0 10px}.frow{display:flex;gap:10px 22px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
@@ -187,14 +188,15 @@ html[dir=rtl] .help-card h3{text-transform:none;font-weight:800}
 
 @media(max-width:1180px){.split{grid-template-columns:minmax(330px,380px) minmax(0,1fr)}.glance{grid-template-columns:repeat(2,1fr)}.glance>div:nth-child(2){border-inline-end:0}.glance>div:nth-child(-n+2){border-bottom:1px solid var(--line)}}
 @media(max-width:900px){
- .app{grid-template-columns:1fr}.rail{display:none}.top{padding:0 16px}.page{padding:16px 14px 20px}h1{font-size:34px}
+ .app{grid-template-columns:minmax(0,1fr)}.app>div{min-width:0}.rail{display:none}.top{height:auto;min-height:52px;padding:8px 14px;flex-wrap:wrap;gap:8px}.top .r{flex-wrap:wrap;gap:8px}#crumb{display:none}.hl2{display:none}.mockflag{font-size:10.5px;padding:3px 9px}.page{padding:16px 14px 20px}h1{font-size:34px}.status{gap:10px 18px}.phead{gap:12px}
+ .tabrow{display:block}.tabs{overflow-x:auto;flex-wrap:nowrap;border-bottom:0;padding-bottom:0}.tabrow{border-bottom:1px solid var(--line)}
  .split{display:block;height:auto}.list{overflow:visible;padding:0}
  .detail{position:fixed;inset:0;z-index:50;border-radius:0;border:0;transform:translateX(100%);transition:.22s;overflow:auto;background:var(--card)}
  html[dir=rtl] .detail{transform:translateX(-100%)}body.open .detail{transform:none}
  .back{display:inline-flex}.dhead{padding:16px}.dname{font-size:30px}.scorebox{min-width:0;width:100%}
  .glance{grid-template-columns:1fr 1fr}.glance>div{padding:12px 14px}.sec{padding:20px 16px 0}.next{margin:16px 16px 0}.missing{margin:16px 16px 0}
  .why-row{grid-template-columns:26px minmax(0,1fr) 56px}.why-row .pbar{display:none}
- .search{min-width:0;width:100%;margin:6px 0 4px}.hgrid{grid-template-columns:1fr}.tabs{overflow-x:auto;flex-wrap:nowrap}.tab{white-space:nowrap}
+ .search{min-width:0;width:100%;margin:10px 0 12px}.hgrid{grid-template-columns:1fr}.tab{white-space:nowrap}
 }
 </style>
 </head>
@@ -215,7 +217,7 @@ html[dir=rtl] .help-card h3{text-transform:none;font-weight:800}
     </header>
     <main class="page">
       <div class="phead"><div><p class="kick" id="kick"></p><h1 id="h1"></h1></div><div class="status" id="status"></div></div>
-      <nav class="tabs" id="tabs"></nav>
+      <div class="tabrow"><nav class="tabs" id="tabs"></nav><label class="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" autocomplete="off"></label></div>
       <div class="filters" id="filters"></div>
       <div class="split"><section class="list" id="list" aria-label="list"></section><section class="detail" id="detail" aria-live="polite"></section></div>
     </main>
@@ -385,7 +387,7 @@ function chrome(){
   document.documentElement.lang=LANG;document.documentElement.dir=LANG==='he'?'rtl':'ltr';
   document.getElementById('crumb').innerHTML=t('crumb').replace(/Transfer Radar|רדאר העברות/,m=>`<b>${m}</b>`);
   document.getElementById('mockflag').textContent=t('mock');document.getElementById('rail-sub').textContent=t('rail_sub');
-  document.getElementById('helpBtn').innerHTML=ico('help')+' '+t('help');
+  document.getElementById('helpBtn').innerHTML=ico('help')+'<span class="hl2">'+t('help')+'</span>';
   document.getElementById('nav').innerHTML=['nav_dash','nav_players','nav_req','nav_contacts','nav_signals','nav_war'].map(k=>`<a class="dim">${t(k)}</a>`).join('')+`<a class="on">${t('nav_radar')}</a>`;
   document.getElementById('rail-f').innerHTML=t('rail_f');
   document.getElementById('kick').textContent=t('kicker');
@@ -415,10 +417,11 @@ function filtered(){
 
 /* ------------------------------------------------------------------ renderers */
 function renderTabs(){
+  const qi=document.getElementById('q');qi.placeholder=t('search');if(document.activeElement!==qi)qi.value=S.q;
   const T=[['active'],['new'],['loan'],['moved'],['leads'],['hidden']];
   document.getElementById('tabs').innerHTML=T.map(([k])=>{const n=k==='leads'?D.leads.length:k==='hidden'?baseSet('hidden').length+D.dropped.length:baseSet(k).length;
     return `<button class="tab ${S.tab===k?'on':''}" data-tab="${k}">${t('tab_'+k)}<span class="n">${n}</span></button>`;}).join('')+
-    `<label class="search">${ico('search')}<input id="q" value="${esc(S.q)}" placeholder="${esc(t('search'))}"></label>`;
+    '';
 }
 function renderFilters(){
   const base=baseSet(S.tab==='leads'?'active':S.tab);
@@ -571,7 +574,7 @@ document.addEventListener('click',e=>{
   if(b=q('.item')){S.sel=b.dataset.id;S.menu=false;S.openMobile=true;render(true);document.getElementById('detail').scrollTop=0;return;}
   if(S.menu&&!q('.menu')){S.menu=false;render(true);}
 });
-document.addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;const pos=e.target.selectionStart;render();const n=document.getElementById('q');n.focus();n.setSelectionRange(pos,pos);}});
+document.addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;render();}});
 document.addEventListener('change',e=>{if(e.target.id==='fc'){S.country=e.target.value;render();}if(e.target.id==='fs'){S.sort=e.target.value;render();}});
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){document.getElementById('modal').classList.remove('show');S.menu=false;render(true);}
