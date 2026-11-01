@@ -18,7 +18,7 @@ export default function RadarProfile({ id }: { id: string }) {
 
   const load = useCallback(async () => {
     try { setD(await radarFetch<PlayerResponse>(`players/${encodeURIComponent(id)}`)); setErr(null); }
-    catch (e) { setErr(e instanceof RadarApiError ? (e.status === 404 ? 'Not found' : e.message) : String(e)); }
+    catch (e) { setErr(e instanceof RadarApiError ? (e.status === 404 ? 'Not found' : e.code === 'RADAR_FORBIDDEN' ? tr('forbidden_title') : e.message) : String(e)); }
   }, [id]);
   useEffect(() => { load(); }, [load]);
 

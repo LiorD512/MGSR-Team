@@ -38,6 +38,7 @@ export default function RadarSources() {
     </header>
   );
 
+  if (err?.code === 'RADAR_FORBIDDEN') return <>{head}<div className="tr-state"><h3>{tr('forbidden_title')}</h3><p>{tr('forbidden_text')}</p></div></>;
   if (err?.code === 'RADAR_NOT_CONFIGURED') return <>{head}<div className="tr-state"><h3>{tr('not_configured_title')}</h3><p>{tr('not_configured_text')}</p></div></>;
   if (err) return <>{head}<div className="tr-state"><h3>Error</h3><p>{err.message}</p></div></>;
   if (!items) return <>{head}<div className="tr-state"><p>{tr('loading')}</p></div></>;

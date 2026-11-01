@@ -43,8 +43,14 @@ export async function authenticate(req: NextRequest): Promise<RadarUser | NextRe
   try {
     const decoded = await adminAuth().verifyIdToken(token);
     const email = (decoded.email ?? '').toLowerCase();
-    const list = (process.env.RADAR_ADMIN_EMAILS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-    return { uid: decoded.uid, email, isAdmin: list.length === 0 || list.includes(email) };
+    const emails = (v?: string) => (v ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+    // Private testing: while RADAR_ALLOWED_EMAILS is set, only these signed-in agents can use Transfer Radar at all.
+    const allowed = emails(process.env.RADAR_ALLOWED_EMAILS);
+    if (allowed.length && !allowed.includes(email)) {
+      return NextResponse.json({ error: 'RADAR_FORBIDDEN', message: 'Transfer Radar is in private testing.' }, { status: 403 });
+    }
+    const admins = emails(process.env.RADAR_ADMIN_EMAILS);
+    return { uid: decoded.uid, email, isAdmin: admins.length === 0 || admins.includes(email) };
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

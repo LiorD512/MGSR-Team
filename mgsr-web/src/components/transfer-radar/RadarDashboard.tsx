@@ -49,6 +49,7 @@ export default function RadarDashboard() {
   useEffect(() => { const id = setInterval(load, 60_000); return () => clearInterval(id); }, [load]); // near-real-time: poll every 60 s
 
   if (error?.code === 'RADAR_NOT_CONFIGURED') return <State title={tr('not_configured_title')} text={tr('not_configured_text')} />;
+  if (error?.code === 'RADAR_FORBIDDEN') return <State title={tr('forbidden_title')} text={tr('forbidden_text')} />;
   if (error) return <State title="Error" text={error.message} action={<button className="tr-btn pri" onClick={() => { setLoading(true); load(); }}>{tr('retry')}</button>} />;
 
   const k = summary?.kpi;

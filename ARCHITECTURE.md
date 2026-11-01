@@ -1350,7 +1350,7 @@ All parsers handle: `€300k`, `€1.50m`, `€300K`, `€1.50M` (case-insensiti
 
 ### Secrets / env
 GitHub Actions secrets: `TURSO_URL`, `TURSO_TOKEN`, `RADAR_GEMINI_KEY`, optional `RADAR_GEMINI_FREE_KEY`. Repo variable `RADAR_ENABLED=true` turns on scheduled runs (off by default = nothing spends money).
-Vercel env: `TURSO_URL`, `TURSO_TOKEN` (read/write), optional `RADAR_ADMIN_EMAILS` (comma-separated; if empty every signed-in agent can manage sources, like the rest of the app).
+Vercel env: `TURSO_URL`, `TURSO_TOKEN` (read/write), optional `RADAR_ADMIN_EMAILS` (comma-separated; if empty every signed-in agent can manage sources, like the rest of the app), optional `RADAR_ALLOWED_EMAILS` (private-testing lock: while set, ONLY these emails can use Transfer Radar; others get a 403 "private testing" screen; remove it to open the radar to all agents).
 
 ### Pipeline stages (`radar/src/`)
 `collect` (RSS/Atom + native-language news-search feeds; robots.txt, 5 s/host, conditional GET, 403/429 back-off; **30-day intake window**, publication-date integrity, URL/title dedupe, football gate) -> `enrich` (reads the article page only for strong leads whose headline does not name the player) -> `analyze` (batches of 8, strict prompt `v3`, JSON-schema output; rules in `rules.ts` decide - the AI can propose but never override; evidence quote must appear in the text) -> `resolve` (entity resolution: transliteration keys, club/surname matching, review queue) -> `correlate` (independent-origin clustering) -> `score` (`scoring.ts`, pure deterministic engine, weights in DB `config`) -> alerts. `sweep`: decay, signal expiry (R22), archive after 45 days, retention (non-final reports 14 d, excerpts 30 d, articles 31 d) to stay inside the free 500 MB.
