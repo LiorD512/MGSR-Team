@@ -26,13 +26,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: "Run PoC (hard caps 40 requests, 0.25 USD)"
+      - name: "Run PoC (hard caps 60 requests, 0.25 USD)"
         env:
           RADAR_GEMINI_KEY: ${{ secrets.RADAR_GEMINI_KEY }}
           RADAR_MODEL: gemini-2.5-flash-lite
           INTAKE_DAYS: '30'
-          MAX_ITEMS: '240'
+          MAX_ITEMS: '330'
           BATCH: '8'
-          MAX_REQUESTS: '40'
+          MAX_REQUESTS: '60'
           MAX_USD: '0.25'
         run: node radar-poc/run.mjs

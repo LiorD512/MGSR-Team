@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * B.S.G. Transfer Radar — feasibility PoC (throwaway, no database, no UI).
+ * B.S.G. Transfer Radar — feasibility PoC round 2 (throwaway, no database, no UI).
  *
  * Pipeline: local-outlet RSS/Atom feeds -> 30-day window -> football gate -> batched LLM extraction
  * (English only) -> evidence-quote validation -> markdown report in the Actions run summary.
@@ -18,9 +18,9 @@ const MODEL = process.env.RADAR_MODEL || 'gemini-2.5-flash-lite';
 const PRICE_IN = Number(process.env.PRICE_IN_PER_M || 0.10);   // USD / 1M input tokens (verify current price)
 const PRICE_OUT = Number(process.env.PRICE_OUT_PER_M || 0.40); // USD / 1M output tokens
 const INTAKE_DAYS = Number(process.env.INTAKE_DAYS || 30);
-const MAX_ITEMS = Number(process.env.MAX_ITEMS || 240);
+const MAX_ITEMS = Number(process.env.MAX_ITEMS || 330);
 const BATCH = Number(process.env.BATCH || 8);
-const MAX_REQUESTS = Number(process.env.MAX_REQUESTS || 40);
+const MAX_REQUESTS = Number(process.env.MAX_REQUESTS || 60);
 const MAX_USD = Number(process.env.MAX_USD || 0.25);
 const UA = 'Mozilla/5.0 (compatible; BSG-Radar-PoC/0.1; +https://github.com/LiorD512/MGSR-Team)';
 
@@ -137,19 +137,29 @@ const SIGNALS = ['NOT_PLAYING', 'EXCLUDED_FROM_SQUAD', 'LOSING_STARTING_PLACE', 
   'CLUB_FINANCIAL_PROBLEMS', 'SALARY_REDUCTION', 'CLUB_NEEDS_TO_SELL', 'UNPAID_SALARY', 'REPLACEMENT_BEING_RECRUITED', 'SAME_POSITION_SIGNING', 'AGENT_OR_JOURNALIST_DEPARTURE_REPORT',
   'DENIED_BY_CLUB', 'INJURED', 'SUSPENDED', 'RENEWED_CONTRACT', 'RETURNED_TO_SQUAD', 'TRANSFER_COMPLETED'];
 
+// ---- v2: stricter extraction. Signals that can make an item "actionable" (availability / relationship / financial / explicit exclusion)
+const STRICT = new Set(['CLUB_WANTS_TO_SELL', 'CLUB_WANTS_TO_RELEASE', 'AVAILABLE_ON_LOAN', 'CLUB_OPEN_TO_TERMINATE', 'PLAYER_SEEKING_CLUB', 'CONTRACT_TALKS_FAILED',
+  'CONFLICT_WITH_COACH', 'DISAGREEMENT_WITH_MANAGEMENT', 'REQUESTED_TO_LEAVE', 'UNPAID_SALARY', 'EXCLUDED_FROM_SQUAD', 'OUT_OF_FAVOR', 'NOT_REGISTERED', 'CLUB_NEEDS_TO_SELL']);
+const COUNTER = new Set(['DENIED_BY_CLUB', 'INJURED', 'SUSPENDED', 'RENEWED_CONTRACT', 'RETURNED_TO_SQUAD', 'TRANSFER_COMPLETED']);
+// stand-in for the DB-based target-profile filter (value / league tier): elite clubs whose players are out of this agency's range
+const ELITE = ['real madrid', 'barcelona', 'atl[eé]tico madrid', 'manchester united', 'man\\.? united', 'manchester city', 'man\\.? city', 'liverpool', 'chelsea', 'arsenal', 'tottenham', 'newcastle', 'aston villa',
+  'bayern', 'leverkusen', 'borussia dortmund', 'psg', 'paris saint', 'inter', 'milan', 'juventus', 'napoli', 'atalanta', 'al[- ]hilal', 'al[- ]nassr'].map((x) => new RegExp(`(^|[^a-zà-ž])${x}([^a-zà-ž]|$)`, 'i'));
+const isElite = (club) => ELITE.some((re) => re.test(club || ''));
+
 const schema = {
   type: 'ARRAY',
   items: {
     type: 'OBJECT',
     properties: {
       id: { type: 'INTEGER' },
-      football: { type: 'BOOLEAN' },
+      sport: { type: 'STRING', enum: ['FOOTBALL', 'OTHER_SPORT', 'NOT_SPORT'] },
       squadType: { type: 'STRING', enum: ['CLUB', 'NATIONAL_TEAM', 'YOUTH', 'WOMEN', 'UNKNOWN'] },
       role: { type: 'STRING', enum: ['PLAYER', 'COACH', 'OTHER', 'NONE'] },
       player: { type: 'STRING' },
       club: { type: 'STRING' },
       starPlayer: { type: 'BOOLEAN' },
       signals: { type: 'ARRAY', items: { type: 'STRING', enum: SIGNALS } },
+      strength: { type: 'STRING', enum: ['EXPLICIT', 'IMPLIED', 'NONE'] },
       claimType: { type: 'STRING', enum: ['FACT', 'SPECULATION', 'OPINION', 'RUMOR', 'NONE'] },
       evidenceQuote: { type: 'STRING' },
       historical: { type: 'BOOLEAN' },
@@ -157,25 +167,27 @@ const schema = {
       titleEn: { type: 'STRING' },
       why: { type: 'STRING' },
     },
-    required: ['id', 'football', 'squadType', 'role', 'player', 'club', 'starPlayer', 'signals', 'claimType', 'evidenceQuote', 'historical', 'actionable', 'titleEn', 'why'],
+    required: ['id', 'sport', 'squadType', 'role', 'player', 'club', 'starPlayer', 'signals', 'strength', 'claimType', 'evidenceQuote', 'historical', 'actionable', 'titleEn', 'why'],
   },
 };
 
-const SYSTEM = `You analyze football (soccer) news headlines+snippets from local media in many languages for a football AGENCY that recruits MEN'S CLUB players (typically mid-level: not global superstars).
-For EACH input item return one JSON object. Rules:
-- football: true only if the item is about association football.
-- squadType: CLUB for a club squad; NATIONAL_TEAM for national-team call-ups/squads (these are NOT opportunities); YOUTH; WOMEN; UNKNOWN.
-- role: PLAYER if the main subject is a player; COACH; OTHER; NONE.
-- player/club: exactly as written in the item (original script ok); empty string if absent. Never invent.
-- starPlayer: true if the player is a global superstar at an elite club (e.g. top-5-league giants), who an agency like this cannot realistically recruit.
-- signals: choose ONLY codes clearly supported by the text. Do NOT infer "wants to leave" from "not playing". A rumor may still list the signal but must use claimType RUMOR or SPECULATION.
-- claimType: FACT (stated as fact / official), SPECULATION, OPINION, RUMOR (unattributed), NONE.
-- evidenceQuote: a SHORT verbatim fragment (<= 20 words) copied from the item text that supports the signals; empty if none. Never paraphrase here.
-- historical: true if the item describes something that happened long ago (not a current situation).
-- actionable: true ONLY if squadType=CLUB, role=PLAYER, football=true, starPlayer=false, signals non-empty (not only counter-signals like INJURED/RENEWED_CONTRACT/TRANSFER_COMPLETED), and the situation is current.
-- titleEn: short English translation of the headline.
-- why: <= 15 words, English, explaining the decision.
-Return a JSON array with one object per input id, in order.`;
+const SYSTEM = `You screen headlines+snippets from local football media (many languages) for a football AGENCY that recruits MEN'S CLUB footballers (mostly mid-level players, NOT superstars).
+Return one JSON object per input item, same order. Be CONSERVATIVE: when unsure, actionable=false.
+Fields:
+- sport: FOOTBALL only for association football (soccer). Volleyball, handball, basketball, Formula 1, tennis etc => OTHER_SPORT. Check the clubs/competitions named: a player of a volleyball/handball/basketball club is NOT football.
+- squadType: CLUB / NATIONAL_TEAM (call-ups, national squads) / YOUTH / WOMEN / UNKNOWN.
+- role: PLAYER if the main subject is a footballer; COACH; OTHER; NONE.
+- player, club: copy exactly as written; "" if absent. Never invent. If several players, use the main one.
+- starPlayer: true for globally famous stars or regular starters of elite clubs.
+- signals: only codes EXPLICITLY supported by the text. Meanings that DO count: club wants to sell/release/terminate, loan available, player wants to leave / seeking a club, contract talks failed, open conflict with coach or management, explicitly left out of the squad / out of plans / frozen out, unpaid salary, club needs to sell.
+  Things that DO NOT count as signals: a single red card or yellow cards, being on the bench or not in one lineup, a rotation, one defeat, criticism of a performance, injuries (use INJURED), a club merely being interested in a player, a transfer that is already completed/officially announced (use TRANSFER_COMPLETED), retired legends, coaches.
+- strength: EXPLICIT if the text states it directly (even as a rumor); IMPLIED if you had to infer it; NONE if no signal.
+- claimType: FACT only if stated as fact or by the club/player; RUMOR for unattributed; SPECULATION for "could/may"; OPINION for commentary; NONE if no signal.
+- evidenceQuote: shortest verbatim fragment (<= 20 words) copied from the item that proves the signal; "" if none.
+- historical: true if it refers to a past situation, not a current one.
+- actionable: true ONLY if sport=FOOTBALL, squadType=CLUB, role=PLAYER, a named player (or clearly identified), starPlayer=false, strength=EXPLICIT, signals contain at least one meaning from the DO-count list, no TRANSFER_COMPLETED, historical=false.
+- titleEn: English translation of the headline ONLY when signals is non-empty, otherwise "".
+- why: <= 8 words, English.`;
 
 let requests = 0, tokIn = 0, tokOut = 0;
 const cost = () => (tokIn * PRICE_IN + tokOut * PRICE_OUT) / 1e6;
@@ -203,6 +215,43 @@ async function analyze(batch) {
     return JSON.parse(txt);
   }
   throw new Error('Gemini failed after retries');
+}
+
+// ---------------------------------------------------------------- seeds from native-language news searches (to measure recall)
+const GN = [
+  ['RS', 'sr', 'fudbaler ("na transfer listi" OR "ne računa na njega" OR "raskid ugovora" OR "želi da napusti" OR "otpisan")'],
+  ['HR', 'hr', 'nogometaš ("otpisan" OR "nije u planovima" OR "raskid ugovora" OR "želi napustiti" OR "na posudbu")'],
+  ['SI', 'sl', 'nogometaš ("odpisan" OR "ni v načrtih" OR "prekinitev pogodbe" OR "želi zapustiti")'],
+  ['BA', 'bs', 'fudbaler ("raskid ugovora" OR "otpisan" OR "ne računa" OR "želi napustiti")'],
+  ['GR', 'el', 'ποδοσφαιριστής ("εκτός πλάνων" OR "λύση συνεργασίας" OR "δεν υπολογίζει" OR "θέλει να φύγει" OR "διαθέσιμος")'],
+  ['CY', 'el', 'ποδοσφαιριστής Κύπρος ("εκτός πλάνων" OR "λύση συνεργασίας" OR "αποχωρεί" OR "δεν υπολογίζεται")'],
+  ['RO', 'ro', 'fotbalist ("nu mai intră în planurile" OR "exclus din lot" OR "reziliere" OR "vrea să plece" OR "liber de contract")'],
+  ['PL', 'pl', 'piłkarz ("na wylocie" OR "poza kadrą" OR "rozwiązanie kontraktu" OR "chce odejść" OR "lista transferowa")'],
+  ['BG', 'bg', 'футболист ("извън групата" OR "разтрогва" OR "иска да напусне" OR "под наем" OR "свободен агент")'],
+  ['TR', 'tr', 'futbolcu ("kadro dışı" OR "sözleşmesi feshedildi" OR "ayrılmak istiyor" OR "kiralık")'],
+  ['HU', 'hu', 'labdarúgó ("kikerült a keretből" OR "szerződésbontás" OR "távozhat" OR "kölcsönbe")'],
+  ['CZ', 'cs', 'fotbalista ("nepočítá s ním" OR "vyřazen z kádru" OR "ukončení smlouvy" OR "hostování")'],
+  ['SK', 'sk', 'futbalista ("nepočíta s ním" OR "vyradený z kádra" OR "rozviazanie zmluvy" OR "hosťovanie")'],
+  ['PT', 'pt', 'futebolista Liga 2 ("fora dos planos" OR "rescisão" OR "quer sair" OR "afastado do plantel")'],
+  ['NL', 'nl', 'voetballer ("buiten de selectie" OR "contract ontbonden" OR "mag vertrekken" OR "op een zijspoor")'],
+  ['SE', 'sv', 'fotbollsspelare ("petad" OR "inte i planerna" OR "får lämna" OR "bryter kontraktet")'],
+];
+async function collectGN() {
+  const out = [];
+  for (const [cc, lang, q] of GN) {
+    try {
+      const u = `https://news.google.com/rss/search?q=${encodeURIComponent(q + ' when:30d')}&hl=${lang}&gl=${cc}&ceid=${cc}:${lang}`;
+      const r = await get(u, 15000);
+      if (r.status !== 200) continue;
+      const items = parseFeed(r.text).slice(0, 14);
+      for (const it of items) {
+        const srcM = it.title.match(/ - ([^-]+)$/);
+        out.push({ ...it, title: it.title.replace(/ - [^-]+$/, ''), snippet: '', cc, lang, host: (srcM ? srcM[1].trim() : 'Google News'), src: 'gnews' });
+      }
+    } catch { /* ignore */ }
+    await sleep(1500);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------- main
@@ -233,11 +282,18 @@ for (const r of results) {
 // dedupe by link/title
 const seen = new Set();
 pool = pool.filter((x) => { const k = x.link || x.title; if (seen.has(k)) return false; seen.add(k); return true; });
-const footballItems = pool.filter((x) => { const t = norm(`${x.title} ${x.snippet} ${x.link}`); return FOOTBALL.some((k) => t.includes(k)); });
-stats.football = footballItems.length;
+const gn = await collectGN();
+stats.gnRaw = gn.length;
+for (const x of gn) {
+  const ts = Date.parse(x.date); if (!ts || ts < minTs || ts > now + 3600000) continue;
+  const k = x.link || x.title; if (seen.has(k)) continue; seen.add(k);
+  pool.push({ ...x, ts }); stats.gnIn = (stats.gnIn || 0) + 1;
+}
+const footballItems = pool.filter((x) => { if (x.src === 'gnews') return true; const t = norm(`${x.title} ${x.snippet} ${x.link}`); return FOOTBALL.some((k) => t.includes(k)); });
+stats.football = footballItems.length; stats.footballFeed = footballItems.filter((x) => x.src !== 'gnews').length;
 for (const x of footballItems) x.lex = SIGNAL.filter((k) => norm(`${x.title} ${x.snippet}`).includes(k)).length;
-const lexHits = footballItems.filter((x) => x.lex > 0);
-const others = footballItems.filter((x) => !x.lex).sort(() => Math.random() - 0.5);
+const lexHits = footballItems.filter((x) => x.lex > 0 || x.src === 'gnews');
+const others = footballItems.filter((x) => !x.lex && x.src !== 'gnews').sort(() => Math.random() - 0.5);
 const selected = [...lexHits, ...others].slice(0, MAX_ITEMS);
 // balance: ensure no single country dominates the selection beyond 25%
 const perCc = {}; const balanced = [];
@@ -255,32 +311,61 @@ for (let i = 0; i < balanced.length; i += BATCH) {
   await sleep(1200);
 }
 
-// evidence validation
+// evidence validation + deterministic rules (the AI proposes, rules decide)
 const nfc = (s) => norm(s).replace(/[\s\u00a0]+/g, ' ').replace(/[“”„"«»'’`]/g, '').trim();
 for (const a of analyzed) {
   if (!a.ai) continue;
   const q = nfc(a.ai.evidenceQuote || '');
   a.evidenceOk = !q || nfc(`${a.title} ${a.snippet}`).includes(q);
+  const sig = a.ai.signals || [];
+  const reasons = [];
+  if (a.ai.actionable) {
+    if (a.ai.sport !== 'FOOTBALL') reasons.push('not football');
+    if (a.ai.squadType !== 'CLUB') reasons.push('not a club squad');
+    if (a.ai.role !== 'PLAYER') reasons.push('not a player');
+    if (!a.ai.player) reasons.push('no named player');
+    if (a.ai.starPlayer) reasons.push('star player');
+    if (isElite(a.ai.club)) reasons.push('elite club (outside target profile)');
+    if (a.ai.strength !== 'EXPLICIT') reasons.push('signal only implied');
+    if (!sig.some((x) => STRICT.has(x))) reasons.push('no strict signal');
+    if (sig.some((x) => x === 'TRANSFER_COMPLETED')) reasons.push('transfer already completed');
+    if (a.ai.historical) reasons.push('historical');
+    if (!a.evidenceOk) reasons.push('evidence quote not in text');
+  }
+  a.final = !!a.ai.actionable && reasons.length === 0;
+  a.dropReason = reasons.join('; ');
 }
 const ok = analyzed.filter((a) => a.ai);
-const flagged = ok.filter((a) => a.ai.actionable);
+const aiFlagged = ok.filter((a) => a.ai.actionable);
+const finals = ok.filter((a) => a.final);
+const dropped = aiFlagged.filter((a) => !a.final);
 const withSignals = ok.filter((a) => (a.ai.signals || []).length);
-const badEvidence = ok.filter((a) => a.ai.evidenceQuote && !a.evidenceOk);
 const usd = cost();
 
 // ---------------------------------------------------------------- report
-const esc = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ').slice(0, 140);
+const esc = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ').slice(0, 150);
 const L = [];
-L.push(`# Transfer Radar PoC — ${new Date().toISOString().slice(0, 10)}`);
+L.push(`# Transfer Radar PoC round 2 — ${new Date().toISOString().slice(0, 10)}`);
 L.push(`Model \`${MODEL}\` · window ${INTAKE_DAYS} d · requests ${requests}/${MAX_REQUESTS} · tokens in ${tokIn} / out ${tokOut} · **cost ≈ $${usd.toFixed(4)}** · runtime ${Math.round((Date.now() - t0) / 1000)}s${stopReason ? ` · stopped: ${stopReason}` : ''}`);
-L.push(`\n## Funnel\n| Stage | Count |\n|---|---|\n| Sites tried | ${stats.sites} |\n| Sites with working feed | ${stats.withFeed} |\n| Feed items | ${stats.items} |\n| Items with usable date | ${stats.dated} (no date: ${stats.noDate}) |\n| Within ${INTAKE_DAYS}-day window | ${stats.inWindow} (too old: ${stats.tooOld}) |\n| After football gate | ${stats.football} |\n| …with signal-lexicon hit | ${lexHits.length} |\n| Sent to LLM | ${balanced.length} (analyzed ${ok.length}, failed ${failed}) |\n| LLM: has ≥1 signal | ${withSignals.length} |\n| **LLM: actionable** | **${flagged.length}** |\n| Evidence quote not found in text | ${badEvidence.length} |`);
+L.push(`\n## Funnel\n| Stage | Count |\n|---|---|\n| Sites tried / with feed | ${stats.sites} / ${stats.withFeed} |\n| Feed items / in ${INTAKE_DAYS}-day window | ${stats.items} / ${stats.inWindow} |\n| Football-gated feed items | ${stats.footballFeed} |\n| Seed items from native-language news searches | ${stats.gnIn || 0} |\n| Sent to LLM | ${balanced.length} (analyzed ${ok.length}, failed ${failed}) |\n| LLM: has ≥1 signal | ${withSignals.length} |\n| LLM flagged actionable | ${aiFlagged.length} |\n| Dropped by rules | ${dropped.length} |\n| **FINAL actionable** | **${finals.length}** |`);
 L.push(`\nProjected cost per 1,000 analyzed articles ≈ **$${ok.length ? (usd / ok.length * 1000).toFixed(3) : 'n/a'}**`);
-L.push(`\n## Source availability\n| Country | Host | Status | Items | In window |\n|---|---|---|---|---|\n${bySite.join('\n')}`);
-L.push(`\n## A. Flagged ACTIONABLE (label each: ✅ truly actionable / ❌ false positive)\n| # | Ctry | Source | Date | Headline (English) | Player | Club | Signals | Claim | Evidence ok | Why |\n|---|---|---|---|---|---|---|---|---|---|---|`);
-flagged.forEach((a, i) => L.push(`| A${i + 1} | ${a.cc} | ${a.host} | ${a.date.slice(0, 10)} | [${esc(a.ai.titleEn || a.title)}](${a.link}) | ${esc(a.ai.player)} | ${esc(a.ai.club)} | ${(a.ai.signals || []).join(', ')} | ${a.ai.claimType} | ${a.evidenceOk ? 'yes' : 'NO'} | ${esc(a.ai.why)} |`));
-const rest = ok.filter((a) => !a.ai.actionable);
-L.push(`\n## B. NOT flagged (label any that SHOULD have been actionable: 🔴 missed)\n| # | Ctry | Source | Headline (English) | football | squad | role | star | signals | Why not |\n|---|---|---|---|---|---|---|---|---|---|`);
-rest.forEach((a, i) => L.push(`| B${i + 1} | ${a.cc} | ${a.host} | [${esc(a.ai.titleEn || a.title)}](${a.link}) | ${a.ai.football ? 'Y' : 'N'} | ${a.ai.squadType} | ${a.ai.role} | ${a.ai.starPlayer ? 'Y' : ''} | ${(a.ai.signals || []).join(', ')} | ${esc(a.ai.why)} |`));
+const row = (a, i, p) => `| ${p}${i + 1} | ${a.cc} | ${esc(a.host)} | ${(a.date || '').slice(0, 16)} | [${esc(a.ai.titleEn || a.title)}](${a.link}) | ${esc(a.ai.player)} | ${esc(a.ai.club)} | ${(a.ai.signals || []).join(', ')} | ${a.ai.claimType} | ${a.ai.strength} | ${esc(a.ai.why)} |`;
+const head = '| # | Ctry | Source | Date | Headline (English) | Player | Club | Signals | Claim | Strength | Why |\n|---|---|---|---|---|---|---|---|---|---|---|';
+L.push(`\n## A. FINAL actionable (label ✅ / ❌)\n${head}`);
+finals.forEach((a, i) => L.push(row(a, i, 'A')));
+L.push(`\n## A2. AI said actionable but RULES dropped it\n${head.replace('| Why |', '| Dropped because |')}`);
+dropped.forEach((a, i) => L.push(row({ ...a, ai: { ...a.ai, why: a.dropReason } }, i, 'D')));
+const rest = ok.filter((a) => !a.ai.actionable && (a.ai.signals || []).length);
+L.push(`\n## B. Has signals but not flagged (label 🔴 if it SHOULD be actionable)\n${head}`);
+rest.forEach((a, i) => L.push(row(a, i, 'B')));
 const md = L.join('\n');
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
 console.log(md);
+
+// machine-readable dump for the UI mock (public headline data only)
+const dump = { generatedAt: new Date().toISOString(), model: MODEL, usd, requests, tokIn, tokOut, stats,
+  sites: results.map((r) => ({ cc: r.cc, host: r.host, status: r.status, items: r.items.length, feed: r.feed || '' })),
+  items: ok.map((a) => ({ cc: a.cc, host: a.host, src: a.src || 'feed', date: a.date, title: a.title, link: a.link, snippet: (a.snippet || '').slice(0, 220), ai: a.ai, final: a.final, dropReason: a.dropReason, evidenceOk: a.evidenceOk })) };
+console.log('===JSON-START===');
+console.log(Buffer.from(JSON.stringify(dump)).toString('base64').match(/.{1,4000}/g).join('\n'));
+console.log('===JSON-END===');
