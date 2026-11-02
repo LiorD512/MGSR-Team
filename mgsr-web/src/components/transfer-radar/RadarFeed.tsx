@@ -16,6 +16,8 @@ import { DAY, SIT_COLOR, SIT_FILTER, contractNote, flagUrl, fmtDate, fmtDay, mon
 import type { Situation } from '@/lib/transferRadar/situations';
 import RadarFile, { prefetchFile } from './RadarFile';
 import RadarPortal from './RadarPortal';
+import BritFilterSheetPortal from '@/components/BritFilterSheetPortal';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { agencyInBook, isReleased, isRoster, useAgencyLinks, type AgencyLinks } from '@/lib/transferRadar/agencyLinks';
 import RadarFiltered from './RadarFiltered';
 import { Arr, Ico } from './RadarIcons';
@@ -52,6 +54,8 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
   const now = Date.now();
   const cn = useCallback((c: string | null | undefined) => (c ? getCountryDisplayName(c, lang === 'he') : ''), [lang]);
   const links = useAgencyLinks();
+  const isMobileSheet = useMediaQuery('(max-width: 900px)');
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const say = useCallback((m: string) => {
     setToast(m);
@@ -188,7 +192,22 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
         <Signal on={false} onClick={() => undefined} label={t('k_markets')} value={pad(countries.length)} note={t('k_markets_s')} />
       </section>
 
-      <section className="brit-tray">
+      {/* mobile: search + a Filters button that opens the tray as a bottom sheet (same pattern as Release alerts) */}
+      <div className="brit-mfilter">
+        <label className="brit-search brit-mfilter-search"><Ico name="search" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search')} aria-label={t('search')} /></label>
+        <button type="button" className="brit-mfilter-btn" onClick={() => setSheetOpen(true)} aria-expanded={sheetOpen}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4h18M6 12h12M10 20h4" /></svg>
+          <span>{t('filters_btn')}</span>
+          {(sit !== 'all' ? 1 : 0) + (country !== 'all' ? 1 : 0) + (sort !== 'new' ? 1 : 0) > 0 && <span className="brit-mfilter-count">{(sit !== 'all' ? 1 : 0) + (country !== 'all' ? 1 : 0) + (sort !== 'new' ? 1 : 0)}</span>}
+        </button>
+      </div>
+      <BritFilterSheetPortal active={isMobileSheet} isRtl={isRtl}>
+      <div className={`brit-tray-scrim${sheetOpen ? ' open' : ''}`} onClick={() => setSheetOpen(false)} aria-hidden />
+      <section className="brit-tray" aria-label={t('filters_btn')} data-sheet-open={sheetOpen ? 'true' : 'false'}>
+        <div className="brit-tray-sheet-head">
+          <h3>{t('filters_btn')}</h3>
+          <button type="button" onClick={() => setSheetOpen(false)} aria-label={t('close')}>×</button>
+        </div>
         <label className="brit-search"><Ico name="search" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search')} /></label>
         <div className="brit-req-filterrow">
           <span className="brit-req-flabel">{t('f_sit')}</span>
@@ -204,11 +223,16 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
             {countries.map((c) => <button key={c} className={country === c ? 'on' : ''} onClick={() => setCountry(c)}>{cn(c)}</button>)}
           </div>
         </div>
-      </section>
-      <div className="brit-ra-sortrow">
+        <div className="brit-ra-sortrow brit-ra-sortrow-sheet">
         <span className="lbl">{t('sort')}</span>
         {(['new', 'contract', 'value'] as const).map((s) => <button key={s} className={sort === s ? 'on' : ''} onClick={() => setSort(s)}>{t('so_' + s)}</button>)}
-      </div>
+              </div>
+        <div className="brit-tray-sheet-foot">
+          {(sit !== 'all' ? 1 : 0) + (country !== 'all' ? 1 : 0) + (sort !== 'new' ? 1 : 0) > 0 && <button type="button" className="reset" onClick={() => { setSit('all'); setCountry('all'); setSort('new'); }}>{t('f_clear_v4')}</button>}
+          <button type="button" className="apply" onClick={() => setSheetOpen(false)}>{t('showing', { n: list.length, t: all.length })}</button>
+        </div>
+      </section>
+      </BritFilterSheetPortal>
       <div className="brit-result-count tr3-count">
         <span>{t('showing', { n: list.length, t: all.length })}</span>
         {!!filteredCount && <button onClick={() => setFilteredOpen(true)}>{t('filtered', { n: filteredCount })}</button>}
