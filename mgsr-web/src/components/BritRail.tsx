@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
+import { TRANSFER_RADAR_ENABLED } from '@/lib/featureFlags';
 
 export type BritRailActive =
   | 'dashboard'
@@ -19,6 +20,8 @@ export type BritRailActive =
   | 'shortlist'
   | 'requests'
   | 'contacts'
+  | 'transfer-radar'
+  | 'transfer-radar-sources'
   | 'release'
   | 'club-change'
   | 'returnees'
@@ -57,6 +60,7 @@ export default function BritRail({ active }: BritRailProps) {
 
   const isRoster = pathname === '/players' || pathname.startsWith('/players/');
   const isShortlist = pathname === '/shortlist';
+  const isRadar = pathname === '/transfer-radar' || pathname.startsWith('/transfer-radar/players');
   const isRelease = pathname === '/release-notifications';
   const isClubChange = pathname === '/club-change-notifications';
   const isReturnees = pathname === '/returnees';
@@ -199,6 +203,13 @@ export default function BritRail({ active }: BritRailProps) {
               </div>
             )}
           </>
+        )}
+
+        {/* Press Room (formerly Transfer Radar) — its own top-level entry below War Room (men-only) */}
+        {!isYouth && TRANSFER_RADAR_ENABLED && (
+          <Link href="/transfer-radar" className={active === 'transfer-radar' || active === 'transfer-radar-sources' || isRadar ? 'active' : ''}>
+            <span>{t('nav_transfer_radar')}</span>
+          </Link>
         )}
       </nav>
     </aside>

@@ -1,0 +1,36 @@
+name: Transfer Radar cleanup (manual)
+
+# The cleanup (score decay, signal expiry, archiving, retention) now runs as the last step of the 3-day pipeline run.
+# This workflow is only for running it by hand.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: radar-pipeline
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: radar/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Sweep
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_TOKEN: ${{ secrets.TURSO_TOKEN }}
+        run: |
+          [ -n "$TURSO_URL" ] || { echo "::error::TURSO_URL secret missing"; exit 1; }
+          npx tsx src/cli.ts sweep

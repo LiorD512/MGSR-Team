@@ -1,0 +1,88 @@
+name: Transfer Radar pipeline
+
+# Collect -> gate -> AI (free-first, hard-capped paid overflow) -> resolve -> score -> alerts -> cleanup.
+# SCHEDULE: every 3rd day, early morning. GitHub cron has no "every 3 days", so it fires daily at 01:30 UTC
+# (03:30 Israel in winter, 04:30 in summer) and the `gate` job lets only every 3rd calendar day through
+# (days since 1970-01-01 divisible by 3).
+# SAFETY: scheduled runs only happen when the repository variable RADAR_ENABLED is exactly 'true', and only once this
+# workflow is on the default branch (GitHub only schedules workflows from main). Until then nothing spends money.
+# Manual runs: workflow_dispatch (default branch only) or a push to feat/transfer-radar whose commit message contains [radar-run].
+on:
+  schedule:
+    - cron: '30 1 * * *'
+  workflow_dispatch:
+    inputs:
+      no_analyze:
+        description: 'Skip the AI step (collect + score only)'
+        type: boolean
+        default: false
+  push:
+    branches: [feat/transfer-radar]
+    paths: ['radar/**', '.github/workflows/radar-pipeline.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: radar-pipeline
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      go: ${{ steps.decide.outputs.go }}
+    steps:
+      - id: decide
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "${{ vars.RADAR_ENABLED }}" != "true" ]; then echo "RADAR_ENABLED is not 'true' - skipping"; echo "go=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          DAY=$(( $(date -u +%s) / 86400 ))
+          if [ $(( DAY % 3 )) -eq 0 ]; then echo "go=true" >> "$GITHUB_OUTPUT"; else echo "Not a 3-day run day (day $DAY) - skipping"; echo "go=false" >> "$GITHUB_OUTPUT"; fi
+
+  run:
+    needs: gate
+    if: >-
+      needs.gate.outputs.go == 'true' &&
+      (github.event_name != 'push' || contains(github.event.head_commit.message, '[radar-run]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: radar/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Check required secrets
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_TOKEN: ${{ secrets.TURSO_TOKEN }}
+        run: |
+          if [ -z "$TURSO_URL" ] || [ -z "$TURSO_TOKEN" ]; then
+            echo "::error::Secrets TURSO_URL and TURSO_TOKEN must be set (otherwise data would be written to a throw-away local file)."
+            exit 1
+          fi
+      - name: Run pipeline
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_TOKEN: ${{ secrets.TURSO_TOKEN }}
+          RADAR_GEMINI_KEY: ${{ secrets.RADAR_GEMINI_KEY }}
+          RADAR_GEMINI_FREE_KEY: ${{ secrets.RADAR_GEMINI_FREE_KEY }}
+          # Transfermarkt blocks GitHub IPs: identification goes through the site's html-proxy, like the other TM workflows
+          TM_HTML_PROXY_URL: ${{ vars.TM_HTML_PROXY_URL || 'https://management.britsportgroup.com/api/transfermarkt/html-proxy' }}
+          # one-time 30-day re-read of the news searches (commit message on the branch contains [radar-backfill])
+          RADAR_BACKFILL: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[radar-backfill]') && '1' || '0' }}
+          # one-time retry of every unmatched player now (commit message contains [radar-reidentify])
+          RADAR_REIDENTIFY: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[radar-reidentify]') && '1' || '0' }}
+        run: npx tsx src/cli.ts run ${{ inputs.no_analyze && '--no-analyze' || '' }}
+      - name: Cleanup (decay, expiry, retention)
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_TOKEN: ${{ secrets.TURSO_TOKEN }}
+        run: npx tsx src/cli.ts sweep

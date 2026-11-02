@@ -1863,6 +1863,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     // Market Radar & Disruption Intelligence
     nav_market_radar: 'Market Radar',
+    nav_transfer_radar: 'Press Room',
+    nav_radar_sources: 'Radar Sources',
     radar_title: 'Early Market Radar',
     radar_subtitle: 'Secret market intelligence on players facing disputes, exiles (B-Kern, Kadro Dışı), tribunal claims & quota casualties',
     radar_signal_all: 'All Signals',
@@ -3875,6 +3877,8 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
 
     // Market Radar & Disruption Intelligence
     nav_market_radar: 'רדאר שוק והזדמנויות',
+    nav_transfer_radar: 'חדר העיתונות',
+    nav_radar_sources: 'מקורות הרדאר',
     radar_title: 'רדאר שוק והזדמנויות סודיות',
     radar_subtitle: 'מודיעין שוק סודי על שחקנים בסכסוך, מנודים (B-Kern, Kadro Dışı), תביעות בוררות וקורבנות מכסת זרים',
     radar_signal_all: 'כל האיתותים',

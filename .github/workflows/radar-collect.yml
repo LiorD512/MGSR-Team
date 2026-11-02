@@ -1,0 +1,42 @@
+name: Transfer Radar collect-only (free, no AI)
+
+# OPTIONAL. Why it exists: most outlet feeds only keep the last 1-22 hours of articles. If the radar only reads them every 3 days
+# it misses most of what they publish. This job ONLY collects headlines into the database (no AI, no money). The 3-day pipeline
+# then analyses everything that accumulated.
+# ON by default once this file is on the default branch (GitHub only schedules workflows from main). It costs nothing (no AI).
+# Kill switch: set the repository variable RADAR_COLLECT_DISABLED to 'true'.
+on:
+  schedule:
+    - cron: '7 */3 * * *'   # every 3 hours at minute 07 (UTC); never overlaps the 01:30 UTC main run
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: radar-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: github.event_name == 'workflow_dispatch' || vars.RADAR_COLLECT_DISABLED != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: radar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: radar/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Collect headlines (no AI)
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_TOKEN: ${{ secrets.TURSO_TOKEN }}
+        run: |
+          [ -n "$TURSO_URL" ] || { echo "::error::TURSO_URL secret missing"; exit 1; }
+          npx tsx src/cli.ts run --no-analyze --no-enrich

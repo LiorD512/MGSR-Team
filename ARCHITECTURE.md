@@ -27,7 +27,7 @@
 18. [Callable Inventory — Cloud Functions](#18-callable-inventory)
 19. [Transfermarkt Scraping](#19-transfermarkt-scraping)
 20. [Landing Site](#20-landing-site)
-
+21. [Transfer Radar (men, web)](#21-transfer-radar)
 ---
 
 ## 1. System Overview
@@ -370,7 +370,9 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/tasks` | Tasks | Agent task management (route currently shows disabled state while tasks feature flag is off) |
 | `/portfolio` | Portfolio | Player portfolio management |
 | `/market-radar` | Early Market Radar | Real-time market disruption intelligence (out-of-plans, collapsed deals, contract standoffs across 35+ leagues, max 14 days) |
-| `/news` | News | Redirects to `/market-radar` |
+| `/transfer-radar` | Press Room (חדר העיתונות; formerly Transfer Radar) | **Men web only.** Same design as Roster / Contacts / Requests: masthead, KPI strip, filter tray, Feed / Ledger. Every card is a player identified on Transfermarkt (photo, position, age, club, league, value, contract) with the newest original headline. Player file (side panel, `?p=<id>`): "Is it really him?" checks, timeline, original sources (as published + English). Real Shortlist add. `/transfer-radar/players/[id]` opens the same screen with the file open (see §21) |
+| `/transfer-radar/players/[id]` | Radar player profile | Score breakdown, evidence timeline (original headline + English summary + quote + link), facts vs reported vs rumor vs AI assessment, feedback buttons |
+| `/transfer-radar/sources` | Radar Source Center | **Hidden for now** (`TRANSFER_RADAR_SOURCES_VISIBLE=false`: no menu entry, route redirects to `/transfer-radar`). Source registry health; approve / disable / remove / add (admin) || `/news` | News | Redirects to `/market-radar` |
 | `/jewish-finder` | Jewish Finder | Discover Jewish/Israeli heritage players |
 | `/p/[token]` | Shared Player | Public share page (no auth required) |
 | `/shared/requests` | Shared Requests | Public requests page (no auth required) |
@@ -512,6 +514,9 @@ Separate Gradle module for HTML scraping via JSoup:
 | Match Recalc (6×) | Players*/ClubRequests*/PlayerDocuments* | onWrite | Matching-field-aware recalculation on every relevant write (no cooldown skip) |
 | `onGpsMatchDataWritten` | GpsMatchData | onWrite | Recompute GPS performance insights (3s debounce) |
 
+### Coverage (seed registry in `radar/src/sources.ts`)
+~46 direct outlets + ~30 native-language news searches. Direct: Romania, Croatia, Cyprus, Serbia, Greece, Poland, Bulgaria, Turkey, Portugal (3), Lithuania, Latvia, Estonia, plus Bosnia, Montenegro, Kosovo, Hungary, Czech Republic (2), Slovakia, Belgium (2), Netherlands (2), England (official EFL feed), France, South Africa, Nigeria. News search adds France (Ligue 1 / Ligue 2 / National), Portugal (Liga Portugal / Liga Portugal 2), Belgium (Pro League / Challenger), England (Championship / League One / League Two), South Africa and the earlier country list. Tested and excluded: nemzetisport.hu (robots.txt forbids its feed), footballghana.com (blocks/redirects), sport24.gr (feed returns 403). The radar is outlet/country based; the league field is not populated until the football-database link exists.
+
 ### Scheduled Functions
 
 | Function | Schedule | Purpose |
@@ -623,7 +628,9 @@ Android app calls Render **directly** for performance-critical endpoints:
 - **Schedule:** Daily at 02:00 Israel time
 - **Runtime:** Node.js + Firebase Admin + Cheerio + impit
 - **Timeout:** 4 hours
-- **Purpose:** Update all player data from Transfermarkt (market values, club changes, contract dates)
+- **UI:** uses the site's light `brit-room` theme (cream canvas, black rail, same fonts/chips); menu entry is a top-level link under War Room.
+
+**Purpose:** Update all player data from Transfermarkt (market values, club changes, contract dates)
 - **Flow:** Query all Players from Firestore → Scrape TM profiles → Update Firestore
 - **Intelligence:** Exponential backoff (12s-300s delays), block detection, progress tracking
 
@@ -656,7 +663,9 @@ Android app calls Render **directly** for performance-critical endpoints:
 | `weekly-scout-images.yml` | Tuesday 00:00 UTC (3am Israel) | Enrich scout profile images via `_enrich_images.ts` |
 | `daily-releases-refresh.yml` | Manual only (disabled) | Legacy workflow kept for reference; production releases refresh now runs via Cloud Run Job + Cloud Scheduler (`releases-refresh-job`, `releases-refresh-daily`) |
 | `test-tm-scraping.yml` | Manual only | Test Transfermarkt fetch logic |
-
+| `radar-pipeline.yml` | **Every 3rd day, early morning** (cron daily 01:30 UTC = 03:30 Israel in winter; a `gate` job lets only every 3rd calendar day through) **only if repo variable `RADAR_ENABLED=true`** and only once the file is on `main`; `workflow_dispatch`; or push to `feat/transfer-radar` with `[radar-run]` in the commit message | Transfer Radar: collect -> gate -> AI -> resolve -> score -> alerts, then cleanup (see §21) |
+| `radar-collect.yml` | Every 3 hours; **ON by default once the file is on `main`** (kill switch: repo variable `RADAR_COLLECT_DISABLED=true`) | Free, no AI: collects headlines + original article URLs into the database so articles do not fall off the outlets' short feeds (1-22 h deep) between the 3-day AI runs |
+| `radar-sweep.yml` | Manual only | Cleanup by hand (it normally runs as the last step of the 3-day pipeline) |
 **Pattern:** All workflows use GitHub API for file updates (not git push). Secrets include `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
 
 **Deployment guardrails (Vercel):** `mgsr-web/vercel.json` defines `ignoreCommand` (`scripts/vercel-ignored-build.sh`) to skip web production builds when commits are not web-relevant or when only `mgsr-web/public/transfer-windows.json` changed. Override token in commit message: `[force vercel build]`.
@@ -1327,3 +1336,60 @@ All parsers handle: `€300k`, `€1.50m`, `€300K`, `€1.50M` (case-insensiti
 | `scripts/convert-logo.js` | Logo conversion (prebuild) |
 | `scripts/test-scout-direct.js` | Test scout server directly |
 | `scripts/freesearch-proxy.py` | Free search proxy |
+
+---
+
+## 21. Transfer Radar (shown in the app as "Press Room" / "חדר העיתונות")
+
+Display name only: menu, masthead ("THE PRESS ROOM."), breadcrumb and browser tab say Press Room; URL `/transfer-radar`, code, tables and workflows keep the radar names.
+
+**Scope:** men platform, web only. Spec: `.kiro/specs/transfer-radar/` (requirements, design, tasks). Budget rule: free services first; the only paid usage is the existing Gemini key under a software cap (**$5/month, ceiling $6**). Article text is English only (UI chrome EN+HE).
+
+**Purpose:** continuously read local football media in many languages, extract transfer-opportunity signals with AI, correlate them per player, score them (0-100) with visible reasons, and show them in a dashboard.
+
+### Where it runs (no new billable infrastructure)
+
+| Part | Location |
+|---|---|
+| Pipeline (TypeScript, Node 22, `tsx`) | `radar/` run by **GitHub Actions** (`radar-pipeline.yml`, `radar-sweep.yml`; public repo = free minutes) |
+| Database | **Turso (libSQL/SQLite)** free plan. NOT Firestore (Firestore is only used by existing features; Radar adds ~0 Firestore reads/writes) |
+| Web UI + API | `mgsr-web` on Vercel: `/transfer-radar*` pages and `/api/transfer-radar/*` routes (Firebase ID token verified server-side; the browser never sees DB credentials) |
+| LLM | Gemini (`gemini-2.5-flash-lite`) via REST. Free-first: `RADAR_GEMINI_FREE_KEY` (optional, free tier) then `RADAR_GEMINI_KEY` (existing paid key) under the dollar cap |
+
+### Secrets / env
+GitHub Actions secrets: `TURSO_URL`, `TURSO_TOKEN`, `RADAR_GEMINI_KEY`, optional `RADAR_GEMINI_FREE_KEY`. Repo variable `RADAR_ENABLED=true` turns on the 3-day scheduled run (off by default = nothing spends money). The free 3-hourly collect-only job needs no variable (kill switch `RADAR_COLLECT_DISABLED=true`).
+Vercel env: `TURSO_URL`, `TURSO_TOKEN` (read/write), optional `RADAR_ADMIN_EMAILS` (comma-separated; if empty every signed-in agent can manage sources, like the rest of the app), optional `RADAR_ALLOWED_EMAILS` (private-testing lock: while set, ONLY these emails can use Transfer Radar; others get a 403 "private testing" screen; remove it to open the radar to all agents).
+
+### Pipeline stages (`radar/src/`)
+Stage order: collect -> enrich -> analyze -> **links** (Google News redirect -> publisher URL) -> **identify** (Transfermarkt) -> score. `collect` (RSS/Atom + native-language news-search feeds; robots.txt, 5 s/host, conditional GET, 403/429 back-off; **30-day intake window**, publication-date integrity, URL/title dedupe, football gate) -> `enrich` (reads the article page only for strong leads whose headline does not name the player) -> `analyze` (batches of 8, strict prompt `v3`, JSON-schema output; rules in `rules.ts` decide - the AI can propose but never override; evidence quote must appear in the text) -> `resolve` (entity resolution: transliteration keys, club/surname matching, review queue) -> `correlate` (independent-origin clustering) -> `score` (`scoring.ts`, pure deterministic engine, weights in DB `config`) -> alerts. `sweep` (runs at the end of every pipeline run): decay, signal expiry (R22), archive after 45 days, retention to stay inside the free storage: non-final reports 14 d, excerpts 30 d, **article archive (headline + original URL + outlet + date, no text) 180 d** with a 300k-row guard (`config.retention`). Direct outlets store the publisher URL; items found through news search store Google's redirect link (it opens the real article).
+
+CLI: `cd radar && npx tsx src/cli.ts <migrate|seed|run [--no-analyze]|score|sweep|import-poc|status>` (uses local `radar-local.db` when `TURSO_URL` is unset).
+
+### Turso tables
+`config, sources, source_events, articles, article_bodies, reports, players, opportunities, score_history, timeline, entity_review, host_state, jobs, quota_ledger, run_log, alert_rules, alerts, player_flags, tm_cache` (migrations in `radar/src/schema.ts`). Migration 4 adds the Transfermarkt identity to `players` (tm_id/url, full name, photo, age, position, club + crest, league, value + EUR, contract, loan, `identity_status` CONFIRMED|PROBABLE|UNIDENTIFIED|EXCLUDED, `identity_checks`, `identity_candidates`, `excluded_reason`), `reports.publisher_url/publisher_host`, and `tm_cache` (parsed TM results: club search 7d, squads 3d, profiles 7d, transfer history 7d). Migration 3 adds `player_flags` (agency-wide marks, PK player_id+flag), `players.country_source` (CLUB = the club's country; OUTLET = only where the story was published) and `run_log.trigger` (schedule/manual, used to show the next analysis date). The web API also creates `player_flags` lazily if migration 3 has not run yet.
+
+### API routes (`/api/transfer-radar/`, all require a Firebase ID token)
+`opportunities` (the feed: CONFIRMED/PROBABLE players only, not excluded, not hidden), `players/[id]` (player file: identity + checks + candidates, timeline events, original sources with publisher URLs), `filtered` (what the feed does not show and why), `identify` (POST, manual correction), `flags` (POST hide/restore), `feedback` (POST), `summary` (last run, next analysis, coverage), `sources` (GET; POST admin: add/approve/disable/enable/remove/set-tier/set-interval), `feedback` (correct|incorrect|outdated), `alerts`.
+
+### Player identification (v3, `radar/src/stages/identify.ts` + `radar/src/tm.ts`)
+Fully automatic; nothing is shown unless the radar can prove who the player is.
+1. Other sport: the outlet's URL section (e.g. `/siatkowka/`) or the AI says not football -> EXCLUDED `other_sport` (no TM requests).
+2. Club named in the article -> TM club search -> current squad (first team, then the reserve team) -> name match (Cyrillic/Greek transliteration, grammatical endings such as "Chorého" -> Chorý, small spelling differences, surname-only).
+3. Not in the squad -> TM name search; candidates outside the squad get a club link from their current/loan club or their TM transfer history (left/joined the article's club within `identify.historyMonths`, default 24).
+4. Decision: exactly one candidate with club evidence (and no close rival) -> CONFIRMED. Several -> the AI reads the article text + the candidates and picks one (confidence >= 0.75) or refuses -> UNIDENTIFIED. No club in the article -> one TM player with that full name -> PROBABLE (shown with "Probable match"). A coach/official with the name and no linked player -> EXCLUDED `staff`.
+5. Profile (full name, DOB, nationality, position, foot, height, club, league, contract, loan, value, photo). Market value above `identify.maxValueEur` (owner: **EUR 5M**) -> EXCLUDED `star`; retired -> EXCLUDED. Two radar players with the same TM id are merged (reports + flags move to one player).
+   Matching details: short first names ("Alex" ~ Alexandru), extra/missing middle names ("Dion Drena Beljo" ~ Dion Beljo), grammatical endings ("Adua" ~ Adu), Greek digraphs; "unknown", league names and national teams are not clubs; generic club names ("Sporting") are kept. A name already identified on the radar in the same country links to that player ("Cordea" at FCSB = Andrei Cordea). A "player" that is a club is EXCLUDED `not_player`; other-sport words in the headline (basketball, rugby, handball...) count like the URL section; when the only realistic match is above the ceiling the mention is EXCLUDED `star`.
+6. UNIDENTIFIED players are retried every 3 days (max 4 attempts); identified players get their profile refreshed every 14 days. A rare manual correction exists in the player file ("Wrong player?" -> `POST /api/transfer-radar/identify`, reads the profile with `lib/transfermarkt.ts handlePlayer`).
+TM access: every request goes through `TM_HTML_PROXY_URL` (the site's `/api/transfermarkt/html-proxy`, same as the other TM workflows), one at a time with a 2.5-4 s gap, max `identify.maxTmRequestsPerRun` (700), circuit breaker after 3 failures. Measured on the PoC data: 20 players, 73 TM requests, 0 wrong identities.
+
+### Radar screen behaviour (v2 marks, still used)
+`opportunities` returns every scored player (max 400) with plain-language `situations`; the client does tabs, filters, sorting and search. Detail data comes from `players/[id]` (cached per player); the list row already carries the header, glance and next step. Polling every 60 s. **Marks are shared by the whole agency** via `POST flags` {playerId, action: watch|unwatch|contacted|uncontacted|hide|restore, reason}: *Add to watchlist* (radar-side list, NOT the Transfermarkt Shortlist, because radar players have no Transfermarkt URL), *Contacted*, and *Not relevant* (hidden with a reason star/coach/sport/person/old/other; also counts as incorrect feedback on the newest report and suppresses alerts). A country is shown as the club's only when `country_source='CLUB'`, otherwise as "Reported in X". "Early signal" = one independent source and 72 hours or less.
+
+### Safety rules
+Never bypasses logins/paywalls/CAPTCHAs; hosts that answer 403/429/503 are backed off. Paid LLM calls stop at the monthly cap and a daily sub-cap (cap/20), with a kill-switch (`config.llm.enabled`). Claims need an evidence quote that exists in the source text; verification status is assigned by rules (CONFIRMED / REPORTED / RUMOR); AI text is labelled AI. Player photos are not shown (licensing).
+
+### Known limits (documented, not hidden)
+No football-database join yet: age, position, contract expiry, photo show "Unknown". Star/target-profile filtering uses an elite-club list as a stand-in for value/league tiers. Instagram/X/Facebook are not monitored (no free compliant access). Scores skew low until contract and squad data exist (calibration is a config change).
+
+### Files
+`radar/` (pipeline, README), `.github/workflows/radar-*.yml`, `mgsr-web/src/app/transfer-radar/**`, `mgsr-web/src/app/api/transfer-radar/**`, `mgsr-web/src/components/transfer-radar/**`, `mgsr-web/src/lib/transferRadar/**` (own EN/HE dictionary), `BritRail.tsx` (top-level menu entry below War Room), `featureFlags.ts` (`TRANSFER_RADAR_ENABLED`), the feasibility PoC and the UI mock are kept on branch `feat/transfer-radar-poc` (reference only, not part of this feature).
