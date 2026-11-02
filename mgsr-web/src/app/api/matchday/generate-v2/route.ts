@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { guardMatchday } from '@/lib/matchday/v2/guard';
 import { generateMatchdayV2 } from '@/lib/matchday/v2/pipeline';
 import { MatchdayError } from '@/lib/matchday/pipeline';
 import type { MatchdayV2Input } from '@/lib/matchday/v2/types';
@@ -8,6 +9,9 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
+  const caller = await guardMatchday(request, 'generate');
+  if (caller instanceof NextResponse) return caller;
+
   let body: MatchdayV2Input;
   try {
     body = (await request.json()) as MatchdayV2Input;

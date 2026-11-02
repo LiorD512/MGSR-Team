@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { guardMatchday } from '@/lib/matchday/v2/guard';
 import nodemailer from 'nodemailer';
 import { getFirebaseAdmin, adminBucket } from '@/lib/firebaseAdmin';
 
@@ -42,6 +43,9 @@ async function uploadPublic(body: SendBody, buffer: Buffer, mimeType: string): P
 }
 
 export async function POST(request: NextRequest) {
+  const caller = await guardMatchday(request, 'send');
+  if (caller instanceof NextResponse) return caller;
+
   let body: SendBody;
   try {
     body = (await request.json()) as SendBody;
