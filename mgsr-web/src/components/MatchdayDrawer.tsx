@@ -73,8 +73,12 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
   // Player photo library (null = not known yet; false → classic two photo rows).
   const [libConfigured, setLibConfigured] = useState<boolean | null>(null);
   const onLibConfigured = useCallback((c: boolean) => setLibConfigured(c), []);
-  const [aiUrls, setAiUrls] = useState<string[]>([]);
-  const onAiUrls = useCallback((u: string[]) => setAiUrls(u), []);
+  // Stable (the library reloads when this changes).
+  const onLibSelect = useCallback((slot: 1 | 2 | 'kit', url: string | null) => {
+    if (slot === 1) setPlayerPhotoUrl(url);
+    else if (slot === 2) setPlayerPhoto2Url(url);
+    else setKitPhotoUrl(url);
+  }, []);
 
   // Real-player style previews (V3).
   const [previews, setPreviews] = useState<Record<string, string> | null>(null);
@@ -222,8 +226,6 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
           squadNumber: squadNumber.trim() || null,
           design,
           remix: remixOverride ?? remix,
-          // tells the quality checks when an approved AI pose is used
-          aiPhotos: { main: Boolean(playerPhotoUrl && aiUrls.includes(playerPhotoUrl)), second: Boolean(playerPhoto2Url && aiUrls.includes(playerPhoto2Url)) },
         }),
       });
       const data = (await res.json()) as MatchdayV2Result & { error?: string };
@@ -242,7 +244,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
       setError(err instanceof Error ? err.message : t('matchday_error_generic'));
       setPhase('error');
     }
-  }, [seed, playerPhotoUrl, playerPhoto2Url, stadiumPhotoUrl, kitPhotoUrl, squadNumber, design, remix, aiUrls, t]);
+  }, [seed, playerPhotoUrl, playerPhoto2Url, stadiumPhotoUrl, kitPhotoUrl, squadNumber, design, remix, t]);
 
   // Previews depend on the assets: drop stale ones when any of them change.
   useEffect(() => {
@@ -441,9 +443,9 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                   club={seed.club}
                   mainUrl={playerPhotoUrl}
                   secondUrl={playerPhoto2Url}
-                  onSelect={(slot, url) => (slot === 1 ? setPlayerPhotoUrl(url) : setPlayerPhoto2Url(url))}
+                  kitUrl={kitPhotoUrl}
+                  onSelect={onLibSelect}
                   onConfigured={onLibConfigured}
-                  onAiUrls={onAiUrls}
                   t={t}
                 />
               )}
@@ -461,14 +463,14 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                       hint={t('matchday_v2_player2_hint')} missingLabel={t('matchday_optional')}
                       uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
                       onPick={(f) => void handleUpload('player2', f)} />
+                    <AssetRow idx="03" label={t('matchday_v2_kit_photo')} url={kitPhotoUrl} required={false}
+                      loading={assetsLoading} busy={uploading === 'kit'}
+                      hint={t('matchday_v2_kit_hint')} missingLabel={t('matchday_optional')}
+                      uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
+                      onPick={(f) => void handleUpload('kit', f)} />
                   </>
                 ) : null}
-                <AssetRow idx={libConfigured === false || !seed.playerId ? '03' : '01'} label={t('matchday_v2_kit_photo')} url={kitPhotoUrl} required={false}
-                  loading={assetsLoading} busy={uploading === 'kit'}
-                  hint={t('matchday_v2_kit_hint')} missingLabel={t('matchday_optional')}
-                  uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
-                  onPick={(f) => void handleUpload('kit', f)} />
-                <AssetRow idx={libConfigured === false || !seed.playerId ? '04' : '02'} label={t('matchday_stadium_photo')} url={stadiumPhotoUrl} required={false}
+                <AssetRow idx={libConfigured === false || !seed.playerId ? '04' : '01'} label={t('matchday_stadium_photo')} url={stadiumPhotoUrl} required={false}
                   loading={assetsLoading} busy={uploading === 'stadium'}
                   hint={t('matchday_stadium_photo_hint')} missingLabel={t('matchday_optional')}
                   uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}

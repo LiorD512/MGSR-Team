@@ -1,14 +1,20 @@
 /**
- * MATCHDAY player photo LIBRARY (server-only, Firebase Admin).
+ * MATCHDAY player LIBRARY (server-only, Firebase Admin).
  *
- * Every photo uploaded for a player is KEPT (it used to be overwritten on each
- * upload) and can be picked as the main or second photo for any poster. The
- * library can also hold AI-generated poses (see generateLibraryPoses in
- * gemini.ts) — those are always labelled `source: 'ai'`, are created as
- * `status: 'pending'` and can only be used after a person approves them.
+ * Every image uploaded for a player is KEPT (uploads used to overwrite each
+ * other) in one of two categories:
+ *   • 'player' — photos of the player; the operator picks the poster's main
+ *                photo (Players.matchdayPhotoUrl) and optional second photo
+ *                (Players.matchdayPhoto2Url) from them.
+ *   • 'kit'    — official kit references; the operator picks the one used for
+ *                the kit swap (Players.matchdayKitUrl), or none.
  *
  *   Firestore : Players/{playerId}/matchdayLibrary/{imageId}
  *   Storage   : matchday-assets/library/{playerId}/{imageId}.{jpg|png}
+ *
+ * Only REAL photos are used. An experimental AI-pose generator once wrote items
+ * with `source: 'ai'`; it was dropped (the generated faces were not the real
+ * player), so such leftovers are hidden and are un-selected if still in use.
  *
  * Cutouts are cached by the photo's content hash (cache.ts), so each library
  * photo is cut out at most once, however many posters use it.
@@ -17,32 +23,33 @@ import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 import { getFirebaseAdmin, adminDb, adminBucket } from '@/lib/firebaseAdmin';
 
-export type LibrarySource = 'upload' | 'ai';
-export type LibraryStatus = 'approved' | 'pending';
+export type LibraryCategory = 'player' | 'kit';
 
 export interface LibraryItem {
   id: string;
   url: string;
-  source: LibrarySource;
-  status: LibraryStatus;
-  /** Pose / composition label for AI images (e.g. "celebrating, arms wide"). */
-  pose: string | null;
+  category: LibraryCategory;
   width: number;
   height: number;
   /** Transparent PNG cutout (no cutout call needed when used). */
   isCutout: boolean;
   createdAt: number;
   createdBy: string | null;
-  /** Library ids of the real photos an AI image was generated from. */
-  refs: string[];
-  /** True for the player's current main / second photo fields that pre-date the library. */
+  /** The player's selected photo / kit from before the library existed (not deletable here). */
   legacy?: boolean;
 }
 
-const MAX_ITEMS = 60;
+export type LibrarySlot = 1 | 2 | 'kit';
+
+/** Generous caps — the library is meant to grow over a season. */
+const MAX_PLAYER_PHOTOS = 100;
+const MAX_KITS = 50;
 
 function col(playerId: string) {
   return adminDb().collection('Players').doc(playerId).collection('matchdayLibrary');
+}
+function playerDoc(playerId: string) {
+  return adminDb().collection('Players').doc(playerId);
 }
 
 export function libraryConfigured(): boolean {
@@ -63,11 +70,8 @@ async function hasTransparency(buf: Buffer): Promise<boolean> {
 export async function addLibraryImage(o: {
   playerId: string;
   bytes: Buffer;
-  source: LibrarySource;
-  status?: LibraryStatus;
-  pose?: string | null;
+  category: LibraryCategory;
   createdBy?: string | null;
-  refs?: string[];
 }): Promise<LibraryItem> {
   const id = randomUUID();
   const cut = await hasTransparency(o.bytes);
@@ -85,60 +89,95 @@ export async function addLibraryImage(o: {
   const item: LibraryItem = {
     id,
     url: `https://storage.googleapis.com/${bucket.name}/${path}`,
-    source: o.source,
-    status: o.status ?? 'approved',
-    pose: o.pose ?? null,
+    category: o.category,
     width: meta.width ?? 0,
     height: meta.height ?? 0,
     isCutout: cut,
     createdAt: Date.now(),
     createdBy: o.createdBy ?? null,
-    refs: o.refs ?? [],
   };
-  await col(o.playerId).doc(id).set({ ...item, storagePath: path });
+  await col(o.playerId).doc(id).set({ ...item, source: 'upload', storagePath: path });
   return item;
 }
 
+export interface LibraryListing {
+  items: LibraryItem[];
+  kits: LibraryItem[];
+  mainUrl: string | null;
+  secondUrl: string | null;
+  kitUrl: string | null;
+  /** Selections the server just cleared (they pointed at a hidden AI image). */
+  cleared: { main: boolean; second: boolean };
+}
+
 /**
- * The player's library, newest first. The pre-library main / second photo
- * fields are included as `legacy` items when they are not already in it, so
- * nothing uploaded before the library existed disappears.
+ * The player's library, newest first, split into photos and kits. The
+ * pre-library main / second / kit fields are included as `legacy` items when
+ * they are not already in the library, so nothing uploaded earlier disappears.
  */
-export async function listLibrary(playerId: string): Promise<{ items: LibraryItem[]; mainUrl: string | null; secondUrl: string | null }> {
-  const [snap, player] = await Promise.all([col(playerId).orderBy('createdAt', 'desc').limit(MAX_ITEMS).get(), adminDb().collection('Players').doc(playerId).get()]);
-  const items = snap.docs.map((d) => {
-    const x = d.data() as LibraryItem & { storagePath?: string };
-    return { ...x, id: d.id, refs: x.refs ?? [] } as LibraryItem;
+export async function listLibrary(playerId: string): Promise<LibraryListing> {
+  const [snap, player] = await Promise.all([
+    col(playerId).orderBy('createdAt', 'desc').limit(MAX_PLAYER_PHOTOS + MAX_KITS + 20).get(),
+    playerDoc(playerId).get(),
+  ]);
+  const all = snap.docs.map((d) => {
+    const x = d.data() as Partial<LibraryItem> & { source?: string };
+    return {
+      id: d.id,
+      url: x.url ?? '',
+      category: (x.category ?? 'player') as LibraryCategory, // items from before categories were photos
+      width: x.width ?? 0,
+      height: x.height ?? 0,
+      isCutout: Boolean(x.isCutout),
+      createdAt: x.createdAt ?? 0,
+      createdBy: x.createdBy ?? null,
+      source: x.source ?? 'upload',
+    };
   });
+  const aiUrls = new Set(all.filter((it) => it.source === 'ai').map((it) => it.url));
+  const real = all.filter((it) => it.source !== 'ai' && it.url).map(({ source: _s, ...it }) => it as LibraryItem);
+  const items = real.filter((it) => it.category === 'player').slice(0, MAX_PLAYER_PHOTOS);
+  const kits = real.filter((it) => it.category === 'kit').slice(0, MAX_KITS);
+
   const data = player.data() ?? {};
-  const mainUrl = (data.matchdayPhotoUrl as string | undefined) ?? null;
-  const secondUrl = (data.matchdayPhoto2Url as string | undefined) ?? null;
-  for (const [n, url] of [[1, mainUrl], [2, secondUrl]] as const) {
-    if (url && !items.some((it) => it.url === url)) {
-      items.push({ id: `legacy-${n}`, url, source: 'upload', status: 'approved', pose: null, width: 0, height: 0, isCutout: /\.png(\?|$)/i.test(url), createdAt: 0, createdBy: null, refs: [], legacy: true });
-    }
+  let mainUrl = (data.matchdayPhotoUrl as string | undefined) ?? null;
+  let secondUrl = (data.matchdayPhoto2Url as string | undefined) ?? null;
+  const kitUrl = (data.matchdayKitUrl as string | undefined) ?? null;
+
+  // If an AI image is still selected for this player, un-select it so no poster can use it.
+  const cleared = { main: Boolean(mainUrl && aiUrls.has(mainUrl)), second: Boolean(secondUrl && aiUrls.has(secondUrl)) };
+  if (cleared.main || cleared.second) {
+    if (cleared.main) mainUrl = null;
+    if (cleared.second) secondUrl = null;
+    await playerDoc(playerId).set({ matchdayPhotoUrl: mainUrl, matchdayPhoto2Url: secondUrl }, { merge: true });
   }
-  return { items, mainUrl, secondUrl };
+
+  const legacy = (id: string, url: string, category: LibraryCategory): LibraryItem => ({
+    id,
+    url,
+    category,
+    width: 0,
+    height: 0,
+    isCutout: /\.png(\?|$)/i.test(url),
+    createdAt: 0,
+    createdBy: null,
+    legacy: true,
+  });
+  for (const [n, url] of [[1, mainUrl], [2, secondUrl]] as const) {
+    if (url && !items.some((it) => it.url === url)) items.push(legacy(`legacy-${n}`, url, 'player'));
+  }
+  if (kitUrl && !kits.some((it) => it.url === kitUrl)) kits.push(legacy('legacy-kit', kitUrl, 'kit'));
+
+  return { items, kits, mainUrl, secondUrl, kitUrl, cleared };
 }
 
-export async function getLibraryItems(playerId: string, ids: string[]): Promise<LibraryItem[]> {
-  const docs = await Promise.all(ids.map((id) => col(playerId).doc(id).get()));
-  return docs.filter((d) => d.exists).map((d) => ({ ...(d.data() as LibraryItem), id: d.id }));
+/** Select the player's main (1) / second (2) photo or kit ('kit'). `null` clears the slot. */
+export async function selectLibraryPhoto(playerId: string, slot: LibrarySlot, url: string | null): Promise<void> {
+  const field = slot === 1 ? 'matchdayPhotoUrl' : slot === 2 ? 'matchdayPhoto2Url' : 'matchdayKitUrl';
+  await playerDoc(playerId).set({ [field]: url }, { merge: true });
 }
 
-/** Make a library photo the player's main (1) or second (2) MATCHDAY photo. */
-export async function selectLibraryPhoto(playerId: string, slot: 1 | 2, url: string | null): Promise<void> {
-  await adminDb()
-    .collection('Players')
-    .doc(playerId)
-    .set(slot === 1 ? { matchdayPhotoUrl: url } : { matchdayPhoto2Url: url }, { merge: true });
-}
-
-export async function approveLibraryImage(playerId: string, id: string): Promise<void> {
-  await col(playerId).doc(id).set({ status: 'approved' }, { merge: true });
-}
-
-/** Remove a library image (Firestore doc + Storage object). Clears the slot if it was selected. */
+/** Remove a library image (Firestore doc + Storage object). Clears any slot it was selected in. */
 export async function deleteLibraryImage(playerId: string, id: string): Promise<void> {
   const ref = col(playerId).doc(id);
   const doc = await ref.get();
@@ -146,7 +185,8 @@ export async function deleteLibraryImage(playerId: string, id: string): Promise<
   const x = doc.data() as LibraryItem & { storagePath?: string };
   if (x.storagePath) await (await adminBucket()).file(x.storagePath).delete().catch(() => undefined);
   await ref.delete();
-  const player = (await adminDb().collection('Players').doc(playerId).get()).data() ?? {};
+  const player = (await playerDoc(playerId).get()).data() ?? {};
   if (player.matchdayPhotoUrl === x.url) await selectLibraryPhoto(playerId, 1, null);
   if (player.matchdayPhoto2Url === x.url) await selectLibraryPhoto(playerId, 2, null);
+  if (player.matchdayKitUrl === x.url) await selectLibraryPhoto(playerId, 'kit', null);
 }

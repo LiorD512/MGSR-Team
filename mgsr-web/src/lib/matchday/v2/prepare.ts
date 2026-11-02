@@ -57,7 +57,7 @@ async function erodeAlpha(png: Buffer): Promise<Buffer> {
   return sharp(rgb).joinChannel(alpha).png().toBuffer();
 }
 
-export async function keyOutMagenta(buf: Buffer): Promise<Buffer | null> {
+async function keyOutMagenta(buf: Buffer): Promise<Buffer | null> {
   const img = sharp(buf).ensureAlpha();
   const { width, height } = await img.metadata();
   if (!width || !height) return null;

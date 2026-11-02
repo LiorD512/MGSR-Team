@@ -115,8 +115,6 @@ export interface MatchdayV2Input {
 
   /** Which named design to render. */
   design: MatchdayDesignId;
-  /** Which of the chosen photos are approved AI poses from the library (for honest quality checks). */
-  aiPhotos?: { main?: boolean; second?: boolean };
   /** "Remix" counter: changes the seeded texture/particles, same fixture + design. */
   remix?: number;
 }

@@ -15,6 +15,8 @@ interface UploadBody {
   playerId?: string | null;
   /** Club name — required for `kind: 'stadium'`; keys the stored asset. */
   club?: string | null;
+  /** For kind 'library': which section the image belongs to (default 'player'). */
+  category?: 'player' | 'kit';
   /** base64 data URL of the chosen image. */
   imageDataUrl: string;
 }
@@ -88,7 +90,11 @@ export async function POST(request: NextRequest) {
   // floor strict. The stadium is only an atmospheric, blurred backdrop in v2,
   // so use a lenient floor and let the renderer upscale it to fill the canvas.
   const floor =
-    body.kind === 'player' || body.kind === 'player2' || body.kind === 'library' ? PLAYER_FLOOR : body.kind === 'kit' ? KIT_FLOOR : STADIUM_FLOOR;
+    body.kind === 'kit' || (body.kind === 'library' && body.category === 'kit')
+      ? KIT_FLOOR
+      : body.kind === 'player' || body.kind === 'player2' || body.kind === 'library'
+        ? PLAYER_FLOOR
+        : STADIUM_FLOOR;
   let width = 0;
   let height = 0;
   try {
@@ -116,17 +122,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Storage is not configured on this environment' }, { status: 503 });
   }
 
-  // Player photos (main / second / library-only) go into the player's photo
-  // LIBRARY under a unique path, so a new upload never overwrites an older one.
-  // 'player' / 'player2' additionally make the new photo the main / second photo.
-  if (body.kind === 'player' || body.kind === 'player2' || body.kind === 'library') {
+  // Player photos and kit references go into the player's LIBRARY under a
+  // unique path, so a new upload never overwrites an older one.
+  //   'player' / 'player2' / 'kit' → add AND select (main / second / kit)
+  //   'library' (+ category)      → add only
+  if (body.kind === 'player' || body.kind === 'player2' || body.kind === 'kit' || body.kind === 'library') {
     try {
-      const item = await addLibraryImage({ playerId: body.playerId!, bytes: buffer, source: 'upload', createdBy: caller.uid });
+      const category = body.kind === 'kit' || (body.kind === 'library' && body.category === 'kit') ? 'kit' : 'player';
+      const item = await addLibraryImage({ playerId: body.playerId!, bytes: buffer, category, createdBy: caller.uid });
       if (body.kind !== 'library') {
-        await adminDb()
-          .collection('Players')
-          .doc(body.playerId!)
-          .set(body.kind === 'player' ? { matchdayPhotoUrl: item.url } : { matchdayPhoto2Url: item.url }, { merge: true });
+        const field = body.kind === 'player' ? 'matchdayPhotoUrl' : body.kind === 'player2' ? 'matchdayPhoto2Url' : 'matchdayKitUrl';
+        await adminDb().collection('Players').doc(body.playerId!).set({ [field]: item.url }, { merge: true });
       }
       return NextResponse.json({ url: item.url, width, height, item });
     } catch (err) {
@@ -148,11 +154,8 @@ export async function POST(request: NextRequest) {
           ext: 'jpg',
           type: 'image/jpeg',
         };
-    // (player photos returned above via the library — only kit / stadium remain)
-    const storagePath =
-      body.kind === 'kit'
-        ? `matchday-assets/kits/${body.playerId}.${stored.ext}`
-        : `matchday-assets/clubs/${clubKey(body.club!)}.${stored.ext}`;
+    // (player photos and kits were stored in the library above — only the club stadium remains)
+    const storagePath = `matchday-assets/clubs/${clubKey(body.club!)}.${stored.ext}`;
 
     const bucket = await adminBucket();
     const file = bucket.file(storagePath);
@@ -162,17 +165,10 @@ export async function POST(request: NextRequest) {
     });
     const url = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
 
-    if (body.kind === 'kit') {
-      await adminDb()
-        .collection('Players')
-        .doc(body.playerId!)
-        .set({ matchdayKitUrl: url }, { merge: true });
-    } else {
-      await adminDb()
-        .collection('ClubAssets')
-        .doc(clubKey(body.club!))
-        .set({ club: body.club, stadiumPhotoUrl: url }, { merge: true });
-    }
+    await adminDb()
+      .collection('ClubAssets')
+      .doc(clubKey(body.club!))
+      .set({ club: body.club, stadiumPhotoUrl: url }, { merge: true });
 
     return NextResponse.json({ url, width, height, path: storagePath });
   } catch (err) {
