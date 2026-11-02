@@ -37,8 +37,10 @@ export async function analyze(db: Db, cfg: RadarConfig, llm: Llm, deadline: numb
   const arts = await selectBatch(db, cfg);
   st.selected = arts.length;
 
-  for (const batch of chunk(arts, cfg.pipeline.batchSize)) {
-    if (Date.now() > deadline) { st.stopReason = 'run time budget'; break; }
+  // 4 AI requests in flight at a time (Gemini latency, not tokens, was the time limit); results are stored per batch
+  let stop = false;
+  const doBatch = async (batch: ArticleRow[]) => {
+    if (stop || Date.now() > deadline) { if (!stop) st.stopReason = 'run time budget'; stop = true; return; }
     const bodies = new Map<string, string>();
     for (const a of batch) {
       const b = await one<{ body: string }>(db, 'SELECT body FROM article_bodies WHERE article_id = ?', [a.id]);
@@ -52,10 +54,10 @@ export async function analyze(db: Db, cfg: RadarConfig, llm: Llm, deadline: numb
     try {
       out = await llm.analyze(prompt);
     } catch (e) {
-      if (e instanceof BudgetExhausted) { st.stopReason = e.message; break; }
+      if (e instanceof BudgetExhausted) { st.stopReason = e.message; stop = true; return; }
       log.error('LLM batch failed', { msg: (e as Error).message });
       for (const a of batch) await run(db, `UPDATE articles SET attempts=attempts+1, next_attempt_at=?, state=CASE WHEN attempts>=4 THEN 'DEAD' ELSE state END WHERE id=?`, [now() + 30 * 60_000, a.id]);
-      st.failed += batch.length; continue;
+      st.failed += batch.length; return;
     }
     for (let i = 0; i < batch.length; i++) {
       const a = batch[i];
@@ -66,7 +68,8 @@ export async function analyze(db: Db, cfg: RadarConfig, llm: Llm, deadline: numb
       await run(db, `UPDATE articles SET state='ANALYZED', analyzed_at=?, prompt_ver=?, model_id=? WHERE id=?`, [now(), PROMPT_VERSION, cfg.llm.model, a.id]);
       await run(db, 'DELETE FROM article_bodies WHERE article_id = ?', [a.id]);
     }
-  }
+  };
+  await pool(chunk(arts, cfg.pipeline.batchSize), 4, doBatch);
   st.usd = llm.stats.usd; st.freeCalls = llm.stats.free; st.paidCalls = llm.stats.paid;
   return st;
 }
@@ -101,11 +104,13 @@ export async function persistFromAi(db: Db, cfg: RadarConfig, a: ArticleRow, ai:
 export interface TriageStats { selected: number; kept: number; dropped: number; calls: number; failed: number; stopReason: string }
 const TRIAGE_SCHEMA = { type: 'OBJECT', properties: { keep: { type: 'ARRAY', items: { type: 'INTEGER' } } }, required: ['keep'] };
 const TRIAGE_SYSTEM = `You pre-screen local football news headlines (many languages) for a football agency that recruits MEN'S CLUB footballers.
-Return the #ids of items that COULD be about a men's club footballer (named or not) who may become available or whose situation changes:
-wants to leave, club wants to sell / release / terminate, contract ending or not renewed, loan (out or ending), left out of the squad / frozen out / sent to the B team,
-conflict or discipline, unpaid wages, free agent / without club, player close to leaving, a transfer completed or a player returning to the squad.
-Do NOT return: match reports, results, line-ups, previews, goals, statistics, coaches' comments about a game, injuries only, other sports, national teams, women, youth,
-betting, TV listings, general news. When unsure, KEEP the item (recall matters more than precision here).`;
+Return the #ids of items whose headline or snippet is ABOUT a men's club footballer's (named or not) availability or future at his club:
+wants to leave / asks to leave, club wants to sell / release / terminate, contract ending / not renewed / talks failed, loan out or loan ending, left out of the squad /
+frozen out / sent to the B team / not registered, conflict or discipline, unpaid wages, free agent / without club, close to leaving, a completed move of such a player,
+or a player returning to the squad.
+Do NOT return: match reports, results, line-ups, previews, goals and ratings, statistics, tactics and coaches' match comments, praise or criticism of a performance,
+injuries only, interest of big clubs in stars, transfer gossip about clubs buying (not a player leaving), coaches and directors, other sports, national teams,
+women, youth, betting, TV listings, general news. Keep an item when the headline points to one of the situations above even if it is uncertain.`;
 
 /** Cheap first pass: ~60 headlines per request, only the id list comes back. Drops the clear non-stories before the full analysis. */
 export async function triage(db: Db, cfg: RadarConfig, llm: Llm, deadline: number): Promise<TriageStats> {
@@ -115,23 +120,30 @@ export async function triage(db: Db, cfg: RadarConfig, llm: Llm, deadline: numbe
   const rows = await all<{ id: string; title_orig: string; excerpt: string | null; country: string | null; lang: string | null }>(db,
     `SELECT id, title_orig, excerpt, country, lang FROM articles WHERE state = 'COLLECTED' AND triage IS NULL ORDER BY priority DESC, published_at DESC LIMIT ?`, [cfg.triage.maxPerRun]);
   st.selected = rows.length;
-  for (const batch of chunk(rows, cfg.triage.batchSize)) {
-    if (Date.now() > deadline) { st.stopReason = 'run time budget'; break; }
+  let stop = false;
+  await pool(chunk(rows, cfg.triage.batchSize), 4, async (batch) => {
+    if (stop || Date.now() > deadline) { if (!stop) st.stopReason = 'run time budget'; stop = true; return; }
     const prompt = batch.map((a, i) => `#${i} | ${a.country ?? ''} | ${a.title_orig}${a.excerpt ? ` | ${a.excerpt.slice(0, 160)}` : ''}`).join('\n');
     let keep: Set<number>;
     try {
       const r = await llm.json<{ keep: number[] }>(TRIAGE_SYSTEM, prompt, TRIAGE_SCHEMA);
       st.calls++;
-      if (!r || !Array.isArray(r.keep)) { st.failed += batch.length; continue; } // unparsed reply: the batch stays untriaged and is retried next run
+      if (!r || !Array.isArray(r.keep)) { st.failed += batch.length; return; } // unparsed reply: the batch stays untriaged and is retried next run
       keep = new Set(r.keep.filter((n) => Number.isInteger(n)));
     } catch (e) {
-      if (e instanceof BudgetExhausted) { st.stopReason = e.message; break; }
-      log.error('triage batch failed', { msg: (e as Error).message }); st.failed += batch.length; continue;
+      if (e instanceof BudgetExhausted) { st.stopReason = e.message; stop = true; return; }
+      log.error('triage batch failed', { msg: (e as Error).message }); st.failed += batch.length; return;
     }
     for (let i = 0; i < batch.length; i++) {
       if (keep.has(i)) { st.kept++; await run(db, `UPDATE articles SET triage = 1, priority = priority + 2 WHERE id = ?`, [batch[i].id]); }
       else { st.dropped++; await run(db, `UPDATE articles SET triage = 0, state = 'SKIPPED', skip_reason = 'TRIAGE' WHERE id = ?`, [batch[i].id]); }
     }
-  }
+  });
   return st;
+}
+
+/** Runs fn over items with at most n in flight. */
+async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>): Promise<void> {
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) { const x = items[i++]; await fn(x); } }));
 }

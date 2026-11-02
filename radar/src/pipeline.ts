@@ -42,30 +42,35 @@ export async function runPipeline(db: Db, opt: RunOptions = {}) {
   while (!got && Date.now() < giveUp) { log.info('pipeline lease is held by another run - waiting 30 s'); await sleep(30_000); got = await takeLease(db, 'pipeline', owner, cfg.pipeline.runBudgetMinutes + 15); }
   if (!got) { log.warn('another pipeline run still holds the lease after 15 min - exiting'); return null; }
   const started = now();
-  const deadline = started + cfg.pipeline.runBudgetMinutes * 60_000;
+  // the 3-hourly collect-only job has a 50-minute job limit; full runs use runBudgetMinutes (job limit 85)
+  const deadline = started + (opt.skipAnalyze ? Math.min(40, cfg.pipeline.runBudgetMinutes) : cfg.pipeline.runBudgetMinutes) * 60_000;
   const trigger = process.env.GITHUB_EVENT_NAME || 'manual'; // 'schedule' for the 3-day timer, 'push'/'workflow_dispatch' for tests and manual runs
   const logId = (await run(db, 'INSERT INTO run_log (job, started_at, status, trigger) VALUES (?,?,?,?)', ['pipeline', started, 'RUNNING', trigger])).lastInsertRowid;
   const quota = new Quota(db, cfg);
   const llm = new Llm(cfg, quota);
   const http = new Http(db, cfg);
   const out: Record<string, unknown> = {};
+  const times: Record<string, number> = {};
+  const timed = async <T,>(k: string, fn: () => Promise<T>): Promise<T> => { const t0 = Date.now(); try { return await fn(); } finally { times[k] = Math.round((Date.now() - t0) / 1000); } };
   try {
     // club searches are (re)built from the Transfermarkt club lists before collecting (cached 30 days; full runs only)
-    if (!opt.skipAnalyze) out.clubSearches = await clubSearches(db, new TmClient(db, { minGapMs: cfg.identify.tmGapMs, maxRequests: 80 }), started + 8 * 60_000);
-    if (!opt.skipCollect) { out.collect = await collect(db, cfg, http, deadline); out.expired = await expireQueue(db, cfg); }
+    if (!opt.skipAnalyze) out.clubSearches = await timed('clubSearches', () => clubSearches(db, new TmClient(db, { minGapMs: cfg.identify.tmGapMs, maxRequests: 80 }), started + 8 * 60_000));
+    if (!opt.skipCollect) { out.collect = await timed('collect', () => collect(db, cfg, http, deadline)); out.expired = await expireQueue(db, cfg); }
     if (!opt.skipEnrich) out.enrich = await enrichUnnamed(db, cfg, http, deadline);
     if (!opt.skipAnalyze) {
-      out.triage = await triage(db, cfg, llm, deadline);
+      out.triage = await timed('triage', () => triage(db, cfg, llm, deadline));
       // the last ~15 minutes are kept for links + Transfermarkt identification, so new stories always become players in the same run
-      out.bodies = await readBodies(db, cfg, http, deadline - 25 * 60_000);
-      out.analyze = await analyze(db, cfg, llm, deadline - 15 * 60_000);
+      // article reading always gets a slot (5-10 min), even when a big collection used most of the run
+      out.bodies = await timed('bodies', () => readBodies(db, cfg, http, Math.max(Date.now() + 5 * 60_000, Math.min(Date.now() + 10 * 60_000, deadline - 25 * 60_000))));
+      out.analyze = await timed('analyze', () => analyze(db, cfg, llm, Math.max(Date.now() + 10 * 60_000, deadline - 15 * 60_000)));
     }
-    out.links = await resolveLinks(db, cfg, deadline);
-    out.identify = await identify(db, cfg, llm, deadline);
+    out.links = await timed('links', () => resolveLinks(db, cfg, deadline));
+    out.identify = await timed('identify', () => identify(db, cfg, llm, Math.max(Date.now() + 10 * 60_000, deadline)));
     out.score = await scoreAll(db, cfg);
     out.sources = await rateSources(db);
     if (!opt.skipAnalyze) out.notify = await notifyNewPlayers(db);
     out.queueDepth = await queueDepth(db);
+    out.seconds = times;
     out.quota = await quota.summary();
     await run(db, 'UPDATE run_log SET ended_at=?, status=?, summary=? WHERE id=?', [now(), 'OK', JSON.stringify(out).slice(0, 4000), Number(logId)]);
     await releaseLease(db, 'pipeline', 'OK', JSON.stringify(out));
@@ -90,6 +95,7 @@ export async function writeSummary(db: Db, out: Record<string, any>, ms: number)
   L.push(`\n| Stage | Result |\n|---|---|`);
   for (const k of ['clubSearches', 'collect', 'enrich', 'triage', 'bodies', 'analyze', 'links', 'identify', 'score', 'sources', 'notify'] as const) if (out[k]) L.push(`| ${k} | \`${JSON.stringify(out[k])}\` |`);
   L.push(`| queue depth | ${out.queueDepth} |`);
+  if (out.seconds) L.push(`| seconds per stage | \`${JSON.stringify(out.seconds)}\` |`);
   L.push(`\n**Database:** ${JSON.stringify(counts)}`);
   L.push(`\n## Top opportunities\n| Score | Level | Player | Club | Country | Origins | Latest headline |\n|---|---|---|---|---|---|---|`);
   for (const t of top) L.push(`| ${t.score} | ${t.level} | ${t.display_name} | ${t.club_name ?? ''} | ${t.country ?? ''} | ${t.independent_origins} | ${String(t.top_headline ?? '').replace(/\|/g, '/').slice(0, 90)} |`);

@@ -162,4 +162,9 @@ export const MIGRATIONS: { id: number; name: string; sql: string[] }[] = [
       `UPDATE config SET json = json_set(json, '$.maxBodyReads', 150, '$.runBudgetMinutes', 60), version = version + 1, updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE key = 'pipeline'`,
     ],
   },
+  {
+    id: 6,
+    name: 'analysis_batch_10',
+    sql: [`UPDATE config SET json = json_set(json, '$.batchSize', 10), version = version + 1, updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE key = 'pipeline'`],
+  },
 ];

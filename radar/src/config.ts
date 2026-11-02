@@ -45,7 +45,7 @@ export const DEFAULT_CONFIG: RadarConfig = {
     levels: { exceptional: 85, high: 70, potential: 50, monitor: 30 },
   },
   // The AI pipeline runs every 3 days (early morning). One run therefore handles ~3 days of accumulated articles.
-  pipeline: { runEveryDays: 3, intakeDays: 30, archiveAfterDays: 45, batchSize: 8, maxItemsPerRun: 1500, maxBodyReads: 150, analysisExpiryDays: 7, runBudgetMinutes: 60, perCountryShare: 0.25 },
+  pipeline: { runEveryDays: 3, intakeDays: 30, archiveAfterDays: 45, batchSize: 10, maxItemsPerRun: 1500, maxBodyReads: 150, analysisExpiryDays: 7, runBudgetMinutes: 60, perCountryShare: 0.25 },
   llm: {
     enabled: true,
     monthlyCapUsd: 5, ceilingUsd: 6, dailyCapDivisor: 20, warnAt: 0.8,
