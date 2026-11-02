@@ -5321,6 +5321,36 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .md2-sc.md-prestige .md2-pv{background:radial-gradient(circle at 50% 28%,#f0d389,transparent 52%),linear-gradient(180deg,#15120a,#0b0a06 72%,#040302)}
 .md2-sc.md-electric .md2-pv{background:radial-gradient(circle at 50% 32%,#8affd8,transparent 54%),linear-gradient(180deg,#160a30,#3b1d7a 62%,#0a0618)}
 /* V3 graphic styles — CSS miniatures that hint at each layout */
+/* V3 round 3: families, variants, live motion */
+.md2-history{margin:30px 0 6px}
+.md2-history .md2-famh{margin:0 0 12px}
+.md2-history .row{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory}
+.md2-history .item{flex:0 0 96px;scroll-snap-align:start;text-decoration:none;color:var(--muted)}
+.md2-history .item img{display:block;width:96px;aspect-ratio:9/16;object-fit:cover;border:1px solid var(--line);background:#0b0b0d;transition:border-color .15s}
+.md2-history .item:hover img{border-color:var(--gold)}
+.md2-history .cap{display:block;font:500 9px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.md2-family{margin-top:34px}
+.md2-family:first-of-type{margin-top:28px}
+.md2-famh{display:flex;align-items:baseline;gap:12px;font:600 13px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);margin:0 0 -26px}
+.md2-famh span{font:500 10px/1 var(--mono);letter-spacing:.1em;color:var(--muted)}
+.md2-variants{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:22px 0 0}
+.md2-variants .lab{font:500 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+.md2-chip{min-height:36px;padding:0 16px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:500 12px/1 var(--body);cursor:pointer;transition:border-color .15s,background .15s}
+.md2-chip:hover{border-color:var(--gold)}
+.md2-chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.md2-canvas{position:relative}
+.md2-canvas canvas{width:100%;height:100%;display:block}
+.md2-live{position:absolute;top:12px;left:12px;padding:5px 10px;background:rgba(200,30,30,.92);color:#fff;font:600 10px/1 var(--mono);letter-spacing:.14em;border-radius:2px;pointer-events:none}
+.md2-variant{font:600 13px/1.3 var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--ink);margin:0 0 18px}
+.md2-variant span{font:400 12px/1.3 var(--body);letter-spacing:0;text-transform:none;color:var(--muted)}
+.md2-variant b{color:var(--gold);font-weight:600}
+.md2-sc.md-cinema .md2-pv{background:linear-gradient(180deg,#0b3a4a 0 40%,#020a0e 75%),#020a0e}
+.md2-sc.md-blueprint .md2-pv{background:linear-gradient(#9fd4ff22 1px,transparent 1px) 0 0/16px 16px,linear-gradient(90deg,#9fd4ff22 1px,transparent 1px) 0 0/16px 16px,#0b2a5b}
+.md2-sc.md-street .md2-pv{background:linear-gradient(-3deg,transparent 18%,#f1ece2 18% 84%,transparent 84%),#8d8b86}
+.md2-sc.md-glass .md2-pv{background:radial-gradient(circle at 20% 25%,#2150d8,transparent 55%),radial-gradient(circle at 85% 70%,#c4202a,transparent 55%),#140a1e}
+.md2-sc.md-ticket .md2-pv{background:linear-gradient(180deg,#2150d8 0 22%,#efe8d8 22%),#efe8d8}
+.md2-sc.md-card .md2-pv{background:linear-gradient(135deg,#fff0b8,#d8af4e 40%,#8a6420 60%,#f3d27a)}
 /* Real-player previews (V3): thumbnails replace the CSS miniatures */
 .md2-styles.has-previews{grid-template-columns:repeat(3,1fr)}
 @media (max-width:760px){.md2-styles.has-previews{grid-template-columns:repeat(2,1fr)}}

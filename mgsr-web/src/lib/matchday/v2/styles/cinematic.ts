@@ -27,8 +27,10 @@ import {
   text,
   compLine,
   emptySheet,
+  smokeLayer,
 } from '../render';
 import { mix } from '../kit/palette';
+import { relightCutout } from '../kit/relight';
 import { makeRng } from '../kit/prng';
 import { grain } from '../kit/texture';
 import { discBadge } from '../kit/badges';
@@ -83,17 +85,57 @@ async function particles(rng: () => number, color: string, n: number, yMin: numb
   return sharp(halo).composite([{ input: soft }]).png().toBuffer();
 }
 
+// ── Remix variants: one theme per variant (index = remix % length) ──────────
+interface InfernoTheme { wash: string; spot: string; smoke: string; bottom: string; hot: string; accent: string; titleA: string; titleB: string; onAccent: string; rim: string; panel: string; badge: string; venue: string; emberF: string; emberB: string; glowA: string; glowB: string; glowC: string }
+export const INFERNO_THEMES: InfernoTheme[] = [
+  { wash: '#7c1d08', spot: '#ff7a1a', smoke: '#ff6a2a', bottom: '#140502', hot: '#ff9a3a', accent: '#ffcf6b', titleA: '#ffe3a6', titleB: '#ff7a2a', onAccent: '#1a0802', rim: '#ff8a3a', panel: '#0d0301', badge: '#16090a', venue: '#ffb36b', emberF: '#ffb05a', emberB: '#ff6a1a', glowA: 'rgba(255,100,20,0.85)', glowB: 'rgba(255,60,10,0.8)', glowC: 'rgba(255,110,20,0.6)' },
+  { wash: '#5c0614', spot: '#ff2a3a', smoke: '#ff3a4a', bottom: '#120206', hot: '#ff5a5a', accent: '#ffd27a', titleA: '#fff1d6', titleB: '#ff2a3a', onAccent: '#1a0206', rim: '#ff4a5a', panel: '#0d0103', badge: '#16070a', venue: '#ff9aa0', emberF: '#ffc0a8', emberB: '#ff2a3a', glowA: 'rgba(255,40,60,0.85)', glowB: 'rgba(255,20,40,0.8)', glowC: 'rgba(255,60,60,0.6)' },
+  { wash: '#0b2a6e', spot: '#3aa0ff', smoke: '#4ab0ff', bottom: '#020814', hot: '#5ad0ff', accent: '#bff4ff', titleA: '#e8fbff', titleB: '#3aa8ff', onAccent: '#02101e', rim: '#5ac8ff', panel: '#010610', badge: '#06101c', venue: '#9ad8ff', emberF: '#c8f0ff', emberB: '#3a8cff', glowA: 'rgba(60,170,255,0.85)', glowB: 'rgba(40,120,255,0.8)', glowC: 'rgba(80,190,255,0.6)' },
+];
+
+interface FrostTheme { wash: string; spot: string; smoke: string; bottom: string; accent: string; rim: string; title: string; onAccent: string; venue: string; snow: string; glowA: string; glowB: string }
+export const FROST_THEMES: FrostTheme[] = [
+  { wash: '#13395c', spot: '#aee9ff', smoke: '#bfe6ff', bottom: '#05101c', accent: '#8fe3ff', rim: '#7fd8ff', title: '#eaf7ff', onAccent: '#04121e', venue: '#d6f3ff', snow: '#ffffff', glowA: 'rgba(143,227,255,0.55)', glowB: 'rgba(143,227,255,0.6)' },
+  { wash: '#3a5266', spot: '#ffffff', smoke: '#ffffff', bottom: '#0c1620', accent: '#ffffff', rim: '#e6f4ff', title: '#ffffff', onAccent: '#0c1620', venue: '#e6f0f8', snow: '#ffffff', glowA: 'rgba(255,255,255,0.55)', glowB: 'rgba(255,255,255,0.55)' },
+  { wash: '#0c3b3a', spot: '#5cffb0', smoke: '#7a5cff', bottom: '#030c12', accent: '#7dffc4', rim: '#5cffb0', title: '#eafff5', onAccent: '#03140e', venue: '#c8ffe8', snow: '#d8ffee', glowA: 'rgba(92,255,176,0.55)', glowB: 'rgba(122,92,255,0.6)' },
+];
+
+interface PrestigeTheme { gold: string; light: string; deep: string; wash: string; spot: string; smoke: string; bottom: string; rim: string; badge: string; venue: string }
+export const PRESTIGE_THEMES: PrestigeTheme[] = [
+  { gold: '#d8af4e', light: '#ecd28a', deep: '#a9772a', wash: '#1a1407', spot: '#e9c879', smoke: '#d8af4e', bottom: '#050403', rim: '#caa23f', badge: '#0c0a05', venue: '#c9c2ae' },
+  { gold: '#c9d0d8', light: '#eef2f6', deep: '#7d868f', wash: '#0d1014', spot: '#e8eef4', smoke: '#c9d0d8', bottom: '#040506', rim: '#b8c2cc', badge: '#08090b', venue: '#b9bec4' },
+  { gold: '#e0a084', light: '#f6d2c2', deep: '#a8644a', wash: '#1c0f0c', spot: '#f2b8a0', smoke: '#e0a084', bottom: '#060303', rim: '#d89078', badge: '#0d0706', venue: '#d6c0b6' },
+];
+
+interface ElectricTheme { cy: string; mg: string; gr: string; wash: string; spot: string; smoke: string; bottom: string; panel: string; badge: string }
+export const ELECTRIC_THEMES: ElectricTheme[] = [
+  { cy: '#4df2ff', mg: '#ff3df2', gr: '#7cf6c8', wash: '#241158', spot: '#7cf6c8', smoke: '#9f6bff', bottom: '#070314', panel: '#07031a', badge: '#0a0420' },
+  { cy: '#c6ff3a', mg: '#8a3aff', gr: '#c6ff3a', wash: '#1a0c3a', spot: '#c6ff3a', smoke: '#8a3aff', bottom: '#06020f', panel: '#060210', badge: '#0a0418' },
+  { cy: '#ffb03a', mg: '#ff3a7a', gr: '#ffd23a', wash: '#4a0f2a', spot: '#ff8a3a', smoke: '#ff3a7a', bottom: '#12040a', panel: '#14040c', badge: '#18060e' },
+];
+
+/** Colour words for the AI stadium scene, per cinematic design + variant. */
+export const CINEMATIC_SCENE_WORDS: Record<string, string[]> = {
+  inferno: ['deep crimson and ember orange', 'blood red and dark gold', 'electric blue flame and deep navy'],
+  frost: ['icy cyan and steel blue', 'white arctic haze and pale steel', 'aurora green and violet'],
+  prestige: ['black and antique gold', 'black and cool platinum silver', 'black and warm rose gold'],
+  electric: ['neon teal and electric violet', 'acid lime and ultraviolet', 'neon orange and hot pink'],
+};
+
 const lines = (s: string) => s.toUpperCase();
 
 // ═══════════════════════════ INFERNO ═══════════════════════════
 export const INFERNO_BRAND: BrandOptions = { corner: 'top-right', size: 84, margin: 40 };
 
 export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
+  const T = INFERNO_THEMES[(i.variant ?? 0) % INFERNO_THEMES.length];
+  // Grade the real cutout toward the scene light (no pixels are redrawn).
+  const lit = i.layers.cutAction ? await relightCutout(i.layers.cutAction, { tint: T.rim, amount: 0.38, wrap: 0.7 }) : null;
   const f = i.facts;
   const { countdown, dateStr, timeStr, rng } = shared(i);
   const { given, surname } = splitName(i.playerName);
   const bg = await cinematicStadiumBg(i, {
-    wash: '#7c1d08', washOpacity: 0.42, spot: '#ff7a1a', smokeTint: '#ff6a2a', smokeIntensity: 1.15, bottom: '#140502',
+    wash: T.wash, washOpacity: 0.42, spot: T.spot, smokeTint: T.smoke, smokeIntensity: 1.15, bottom: T.bottom,
   });
 
   // diagonal heat streaks
@@ -102,7 +144,7 @@ export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
     const x = rng() * (V2_W + 600) - 300;
     const len = 500 + rng() * 900;
     streaks.push(
-      `<line x1="${x.toFixed(0)}" y1="${(rng() * 900).toFixed(0)}" x2="${(x - len * 0.45).toFixed(0)}" y2="${(len + rng() * 500).toFixed(0)}" stroke="#ff9a3a" stroke-width="${(2 + rng() * 5).toFixed(1)}" opacity="${(0.1 + rng() * 0.25).toFixed(2)}"/>`
+      `<line x1="${x.toFixed(0)}" y1="${(rng() * 900).toFixed(0)}" x2="${(x - len * 0.45).toFixed(0)}" y2="${(len + rng() * 500).toFixed(0)}" stroke="${T.hot}" stroke-width="${(2 + rng() * 5).toFixed(1)}" opacity="${(0.1 + rng() * 0.25).toFixed(2)}"/>`
     );
   }
   const streakLayer = await sharp(Buffer.from(`<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg">${streaks.join('')}</svg>`)).blur(2.5).png().toBuffer();
@@ -110,54 +152,54 @@ export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
   const SUR = lines(surname);
   const title = await textLayer(
     root([
-      text(abs(64, 56, { fontFamily: 'Bebas', fontSize: '38px', letterSpacing: '9px', color: '#ffcf6b' }), lines(compLine(f))),
-      text(abs(134, 46, { fontFamily: 'Anton', fontSize: '262px', lineHeight: 0.9, color: '#ffe3a6', letterSpacing: '2px', textShadow: '0 0 70px rgba(255,100,20,0.85)' }), 'MATCH'),
-      text(abs(368, 46, { fontFamily: 'Anton', fontSize: '262px', lineHeight: 0.9, color: '#ff7a2a', letterSpacing: '2px', textShadow: '0 0 70px rgba(255,60,10,0.8)' }), 'DAY'),
+      text(abs(64, 56, { fontFamily: 'Bebas', fontSize: '38px', letterSpacing: '9px', color: T.accent }), lines(compLine(f))),
+      text(abs(134, 46, { fontFamily: 'Anton', fontSize: '262px', lineHeight: 0.9, color: T.titleA, letterSpacing: '2px', textShadow: `0 0 70px ${T.glowA}` }), 'MATCH'),
+      text(abs(368, 46, { fontFamily: 'Anton', fontSize: '262px', lineHeight: 0.9, color: T.titleB, letterSpacing: '2px', textShadow: `0 0 70px ${T.glowB}` }), 'DAY'),
       text(abs(626, 56, { fontFamily: 'Bebas', fontSize: '66px', letterSpacing: '16px', color: '#ffffff' }), `${lines(given)} ${SUR}`.trim()),
       ...(i.squadNumber
-        ? [text(abs(708, 56, { fontFamily: 'Anton', fontSize: '46px', padding: '6px 22px 2px', background: '#ff7a2a', color: '#1a0802', letterSpacing: '3px' }), `#${i.squadNumber}`)]
+        ? [text(abs(708, 56, { fontFamily: 'Anton', fontSize: '46px', padding: '6px 22px 2px', background: T.titleB, color: T.onAccent, letterSpacing: '3px' }), `#${i.squadNumber}`)]
         : []),
     ])
   );
 
   const cx = 662;
-  const hero = await placeLayer(i.layers.cutAction, 1500, (w) => ({ left: Math.round(cx - w / 2), top: 340 }), {
+  const hero = await placeLayer(lit, 1500, (w) => ({ left: Math.round(cx - w / 2), top: 340 }), {
     mod: { brightness: 1.03, saturation: 1.18 }, fade: true, fadeStart: 94,
   });
-  const rim = await rimGlow(hero, '#ff8a3a');
+  const rim = await rimGlow(hero, T.rim);
   const shadow = contactShadow(cx, 1790, 520);
 
   const panel = Buffer.from(
     `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><defs>` +
-      `<linearGradient id="p" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#0d0301" stop-opacity="0.9"/>` +
-      `<stop offset="62%" stop-color="#0d0301" stop-opacity="0.55"/><stop offset="100%" stop-color="#0d0301" stop-opacity="0"/></linearGradient>` +
+      `<linearGradient id="p" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${T.panel}" stop-opacity="0.9"/>` +
+      `<stop offset="62%" stop-color="${T.panel}" stop-opacity="0.55"/><stop offset="100%" stop-color="${T.panel}" stop-opacity="0"/></linearGradient>` +
       `<linearGradient id="v" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="0.8"/></linearGradient></defs>` +
       `<rect y="1330" width="${V2_W}" height="590" fill="url(#v)"/><rect y="1330" width="760" height="590" fill="url(#p)"/>` +
-      `<rect x="56" y="1352" width="170" height="6" fill="#ff7a2a"/></svg>`
+      `<rect x="56" y="1352" width="170" height="6" fill="${T.titleB}"/></svg>`
   );
 
   const BS = 150;
   const [cH, cA] = await Promise.all([
-    discBadge(i.homeCrest, BS, { ring: '#ff9a3a', ringWidth: 5, fill: '#16090a', fillOpacity: 0.9 }),
-    discBadge(i.awayCrest, BS, { ring: '#ff9a3a', ringWidth: 5, fill: '#16090a', fillOpacity: 0.9 }),
+    discBadge(i.homeCrest, BS, { ring: T.hot, ringWidth: 5, fill: T.badge, fillOpacity: 0.9 }),
+    discBadge(i.awayCrest, BS, { ring: T.hot, ringWidth: 5, fill: T.badge, fillOpacity: 0.9 }),
   ]);
   const nameFit = (n: string) => fitFontSize(n.toUpperCase(), 250, 'Bebas', 38, 22, 3);
   const info = await textLayer(
     root([
       ...(countdown
-        ? [text(abs(1372 - 80, 56, { fontFamily: 'Anton', fontSize: '40px', letterSpacing: '4px', padding: '6px 22px 2px', background: '#ffcf6b', color: '#1a0802' }), countdown)]
+        ? [text(abs(1372 - 80, 56, { fontFamily: 'Anton', fontSize: '40px', letterSpacing: '4px', padding: '6px 22px 2px', background: T.accent, color: T.onAccent }), countdown)]
         : []),
       text(centredAt(1530, 56, 250, { fontFamily: 'Bebas', fontSize: `${nameFit(f.homeTeam)}px`, letterSpacing: '3px', color: '#fff' }), lines(f.homeTeam)),
       text(centredAt(1530, 56 + BS + 70, 250, { fontFamily: 'Bebas', fontSize: `${nameFit(f.awayTeam)}px`, letterSpacing: '3px', color: '#fff' }), lines(f.awayTeam)),
-      text(abs(1372 + BS / 2 - 28, 56 + BS + 8, { fontFamily: 'Anton', fontSize: '44px', color: '#ff9a3a', width: '54px', justifyContent: 'center' }), 'VS'),
+      text(abs(1372 + BS / 2 - 28, 56 + BS + 8, { fontFamily: 'Anton', fontSize: '44px', color: T.hot, width: '54px', justifyContent: 'center' }), 'VS'),
       text(abs(1596, 56, { fontFamily: 'Anton', fontSize: '98px', letterSpacing: '3px', color: '#fff', lineHeight: 1 }), dateStr),
-      text(abs(1696, 56, { fontFamily: 'Anton', fontSize: '150px', letterSpacing: '2px', color: '#ffcf6b', lineHeight: 1, textShadow: '0 0 40px rgba(255,110,20,0.6)' }), timeStr),
-      ...(f.venue ? [text(abs(1856, 56, { fontFamily: 'Bebas', fontSize: '32px', letterSpacing: '7px', color: '#ffb36b', width: '600px' }), lines(f.venue))] : []),
+      text(abs(1696, 56, { fontFamily: 'Anton', fontSize: '150px', letterSpacing: '2px', color: T.accent, lineHeight: 1, textShadow: `0 0 40px ${T.glowC}` }), timeStr),
+      ...(f.venue ? [text(abs(1856, 56, { fontFamily: 'Bebas', fontSize: '32px', letterSpacing: '7px', color: T.venue, width: '600px' }), lines(f.venue))] : []),
     ])
   );
 
-  const embersFront = await particles(rng, '#ffb05a', 120, 300, 1900, 5);
-  const embersBack = await particles(rng, '#ff6a1a', 60, 200, 1700, 8);
+  const embersFront = await particles(rng, T.emberF, 120, 300, 1900, 5);
+  const embersBack = await particles(rng, T.emberB, 60, 200, 1700, 8);
   const comp: sharp.OverlayOptions[] = [
     { input: streakLayer, blend: 'screen' },
     { input: embersBack, blend: 'screen' },
@@ -165,6 +207,7 @@ export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
     { input: rim },
     { input: shadow },
     { input: hero },
+    { input: await frontHaze(T.smoke, 0.9, 1350, 1760), blend: 'screen' },
     { input: panel },
     { input: info },
     { input: embersFront, blend: 'screen' },
@@ -173,6 +216,23 @@ export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
   if (cA) comp.push({ input: cA, left: 56 + BS + 70, top: 1372 });
   comp.push({ input: await grain((i.seed ?? 1) + 5, 0.1), blend: 'overlay' });
   return sharp(bg).composite(comp).png().toBuffer();
+}
+
+/**
+ * Foreground haze: soft smoke drifting IN FRONT of the player's legs (masked to
+ * the lower part of the frame), so the hero sits inside the scene instead of
+ * on top of it.
+ */
+async function frontHaze(tint: string, intensity: number, fromY = 1250, toY = 1700): Promise<Buffer> {
+  const smoke = await smokeLayer(tint, intensity);
+  const mask = Buffer.from(
+    `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="m" x1="0" y1="0" x2="0" y2="1">` +
+      `<stop offset="${(fromY / V2_H).toFixed(3)}" stop-color="#fff" stop-opacity="0"/>` +
+      `<stop offset="${(toY / V2_H).toFixed(3)}" stop-color="#fff" stop-opacity="1"/>` +
+      `<stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient></defs>` +
+      `<rect width="${V2_W}" height="${V2_H}" fill="url(#m)"/></svg>`
+  );
+  return sharp(smoke).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
 }
 
 /** A text box of fixed width centred on its own column (left = column left). */
@@ -201,12 +261,15 @@ async function glassPanel(bg: Buffer, x: number, y: number, w: number, h: number
 }
 
 export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
+  const T = FROST_THEMES[(i.variant ?? 0) % FROST_THEMES.length];
+  // Grade the real cutout toward the scene light (no pixels are redrawn).
+  const lit = i.layers.cutAction ? await relightCutout(i.layers.cutAction, { tint: T.rim, amount: 0.38, wrap: 0.7 }) : null;
   const f = i.facts;
   const { countdown, dateStr, timeStr, rng } = shared(i);
   const bg = await cinematicStadiumBg(i, {
-    wash: '#13395c', washOpacity: 0.44, spot: '#aee9ff', smokeTint: '#bfe6ff', smokeIntensity: 1.0, bottom: '#05101c',
+    wash: T.wash, washOpacity: 0.44, spot: T.spot, smokeTint: T.smoke, smokeIntensity: 1.0, bottom: T.bottom,
   });
-  const ICE = '#8fe3ff';
+  const ICE = T.accent;
 
   const hud = Buffer.from(
     `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="${ICE}">` +
@@ -223,16 +286,16 @@ export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
       `</svg>`
   );
 
-  const hero = await placeLayer(i.layers.cutAction, 1200, (w) => ({ left: Math.round(540 - w / 2), top: 370 }), {
+  const hero = await placeLayer(lit, 1200, (w) => ({ left: Math.round(540 - w / 2), top: 370 }), {
     mod: { brightness: 1.06, saturation: 0.96 }, fade: true, fadeStart: 93,
   });
-  const rim = await rimGlow(hero, '#7fd8ff');
+  const rim = await rimGlow(hero, T.rim);
 
   const panelBg = await sharp(bg).composite([{ input: hud }, { input: rim, blend: 'screen' }]).png().toBuffer();
   const PX = 60, PY = 1462, PW = 960, PH = 384;
   const glass = await glassPanel(panelBg, PX, PY, PW, PH, 40);
 
-  const snow = await particles(rng, '#ffffff', 140, 0, 1900, 3);
+  const snow = await particles(rng, T.snow, 140, 0, 1900, 3);
 
   const BS = 156;
   const [cH, cA] = await Promise.all([
@@ -243,17 +306,17 @@ export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
   const text1 = await textLayer(
     root([
       text(centred(66, { fontFamily: 'Bebas', fontSize: '36px', letterSpacing: '12px', color: ICE }), lines(compLine(f))),
-      text(centred(104, { fontFamily: 'Bebas', fontSize: '196px', letterSpacing: '30px', color: '#eaf7ff', lineHeight: 1, textShadow: '0 0 50px rgba(143,227,255,0.55)' }), 'MATCHDAY'),
+      text(centred(104, { fontFamily: 'Bebas', fontSize: '196px', letterSpacing: '30px', color: T.title, lineHeight: 1, textShadow: `0 0 50px ${T.glowA}` }), 'MATCHDAY'),
       text(centred(312, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '38px', letterSpacing: '16px', color: '#ffffff' }), lines(i.playerName)),
       ...(countdown
-        ? [text(abs(PY - 66, PX, { fontFamily: 'Bebas', fontSize: '42px', letterSpacing: '6px', padding: '6px 22px 2px', background: ICE, color: '#04121e' }), countdown)]
+        ? [text(abs(PY - 66, PX, { fontFamily: 'Bebas', fontSize: '42px', letterSpacing: '6px', padding: '6px 22px 2px', background: ICE, color: T.onAccent }), countdown)]
         : []),
       text(centredAt(PY + 24 + BS + 14, PX + 36 - 32, BS + 64, { fontFamily: 'Bebas', fontSize: `${nameFit(f.homeTeam)}px`, letterSpacing: '3px', color: '#fff' }), lines(f.homeTeam)),
       text(centredAt(PY + 24 + BS + 14, PX + PW - 36 - BS - 32, BS + 64, { fontFamily: 'Bebas', fontSize: `${nameFit(f.awayTeam)}px`, letterSpacing: '3px', color: '#fff' }), lines(f.awayTeam)),
       text(centredAt(PY + 34, PX + 270, 420, { fontFamily: 'Bebas', fontSize: '92px', letterSpacing: '8px', color: '#ffffff', lineHeight: 1 }), dateStr),
-      text(centredAt(PY + 128, PX + 270, 420, { fontFamily: 'Bebas', fontSize: '170px', letterSpacing: '6px', color: ICE, lineHeight: 1, textShadow: '0 0 40px rgba(143,227,255,0.6)' }), timeStr),
+      text(centredAt(PY + 128, PX + 270, 420, { fontFamily: 'Bebas', fontSize: '170px', letterSpacing: '6px', color: ICE, lineHeight: 1, textShadow: `0 0 40px ${T.glowB}` }), timeStr),
       ...(f.venue
-        ? [text(centredAt(PY + 314, PX + 230, 500, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: `${fitFontSize(f.venue.toUpperCase(), 500, 'Montserrat', 24, 16, 5)}px`, letterSpacing: '5px', color: '#d6f3ff' }), lines(f.venue))]
+        ? [text(centredAt(PY + 314, PX + 230, 500, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: `${fitFontSize(f.venue.toUpperCase(), 500, 'Montserrat', 24, 16, 5)}px`, letterSpacing: '5px', color: T.venue }), lines(f.venue))]
         : []),
     ])
   );
@@ -263,6 +326,7 @@ export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
     { input: rim, blend: 'screen' },
     { input: contactShadow(540, 1560, 480) },
     { input: hero },
+    { input: await frontHaze(T.smoke, 1.0, 1150, 1500), blend: 'screen' },
     { input: glass },
     { input: snow, blend: 'screen' },
     { input: text1 },
@@ -278,24 +342,27 @@ export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
 export const PRESTIGE_BRAND: BrandOptions = { corner: 'top-right', size: 76, margin: 70 };
 
 export async function renderPrestigeV3(i: RenderV2Input): Promise<Buffer> {
+  const T = PRESTIGE_THEMES[(i.variant ?? 0) % PRESTIGE_THEMES.length];
+  // Grade the real cutout toward the scene light (no pixels are redrawn).
+  const lit = i.layers.cutAction ? await relightCutout(i.layers.cutAction, { tint: T.rim, amount: 0.38, wrap: 0.7 }) : null;
   const f = i.facts;
   const { pd, countdown, timeStr } = shared(i);
-  const GOLD = '#d8af4e';
-  const GOLD_L = '#ecd28a';
+  const GOLD = T.gold;
+  const GOLD_L = T.light;
   const bg = await cinematicStadiumBg(i, {
-    wash: '#1a1407', washOpacity: 0.5, spot: '#e9c879', smokeTint: '#d8af4e', smokeIntensity: 0.85, bottom: '#050403',
+    wash: T.wash, washOpacity: 0.5, spot: T.spot, smokeTint: T.smoke, smokeIntensity: 0.85, bottom: T.bottom,
   });
   const SUR = lines(splitName(i.playerName).surname);
 
   const frame = Buffer.from(
     `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg" fill="none"><defs>` +
       `<linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${GOLD_L}" stop-opacity="0.22"/><stop offset="100%" stop-color="${GOLD_L}" stop-opacity="0"/></linearGradient>` +
-      `<linearGradient id="gl" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${GOLD_L}"/><stop offset="50%" stop-color="#a9772a"/><stop offset="100%" stop-color="${GOLD_L}"/></linearGradient></defs>` +
+      `<linearGradient id="gl" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${GOLD_L}"/><stop offset="50%" stop-color="${T.deep}"/><stop offset="100%" stop-color="${GOLD_L}"/></linearGradient></defs>` +
       `<polygon points="420,0 660,0 900,1500 180,1500" fill="url(#beam)"/>` +
       `<rect x="34" y="34" width="${V2_W - 68}" height="${V2_H - 68}" stroke="url(#gl)" stroke-width="3"/>` +
       `<rect x="52" y="52" width="${V2_W - 104}" height="${V2_H - 104}" stroke="${GOLD}" stroke-opacity="0.55" stroke-width="1"/>` +
       [[34, 34], [V2_W - 34, 34], [34, V2_H - 34], [V2_W - 34, V2_H - 34]]
-        .map(([x, y]) => `<rect x="${x - 10}" y="${y - 10}" width="20" height="20" transform="rotate(45 ${x} ${y})" fill="${GOLD}" stroke="#050403" stroke-width="3"/>`)
+        .map(([x, y]) => `<rect x="${x - 10}" y="${y - 10}" width="20" height="20" transform="rotate(45 ${x} ${y})" fill="${GOLD}" stroke="${T.bottom}" stroke-width="3"/>`)
         .join('') +
       `<line x1="150" y1="156" x2="380" y2="156" stroke="${GOLD}" stroke-width="2"/><line x1="${V2_W - 380}" y1="156" x2="${V2_W - 150}" y2="156" stroke="${GOLD}" stroke-width="2"/>` +
       `<line x1="150" y1="1486" x2="${V2_W - 150}" y2="1486" stroke="${GOLD}" stroke-width="2" opacity="0.8"/>` +
@@ -312,15 +379,15 @@ export async function renderPrestigeV3(i: RenderV2Input): Promise<Buffer> {
     ])
   );
 
-  const hero = await placeLayer(i.layers.cutAction, 1130, (w) => ({ left: Math.round(560 - w / 2), top: 340 }), {
+  const hero = await placeLayer(lit, 1130, (w) => ({ left: Math.round(560 - w / 2), top: 340 }), {
     mod: { brightness: 1.0, saturation: 1.04 }, fade: true, fadeStart: 92,
   });
-  const rim = await rimGlow(hero, '#caa23f');
+  const rim = await rimGlow(hero, T.rim);
 
   const BS = 150;
   const [cH, cA] = await Promise.all([
-    discBadge(i.homeCrest, BS, { ring: GOLD, ringWidth: 4, fill: '#0c0a05', fillOpacity: 0.92 }),
-    discBadge(i.awayCrest, BS, { ring: GOLD, ringWidth: 4, fill: '#0c0a05', fillOpacity: 0.92 }),
+    discBadge(i.homeCrest, BS, { ring: GOLD, ringWidth: 4, fill: T.badge, fillOpacity: 0.92 }),
+    discBadge(i.awayCrest, BS, { ring: GOLD, ringWidth: 4, fill: T.badge, fillOpacity: 0.92 }),
   ]);
   const longDate = pd ? pd.long : i.facts.date;
   const nameFit = (n: string) => fitFontSize(n.toUpperCase(), 330, 'Cinzel', 26, 16, 2);
@@ -336,7 +403,7 @@ export async function renderPrestigeV3(i: RenderV2Input): Promise<Buffer> {
       text(centred(crestY + 46, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: '40px', color: GOLD, letterSpacing: '4px' }), 'VS'),
       text(centredAt(crestY + 100, 270, 540, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '26px', letterSpacing: '8px', color: GOLD_L }), `KICK-OFF  ·  ${timeStr}`),
       text(centred(1728, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: `${fitFontSize(longDate, 820, 'Cinzel', 56, 30, 2)}px`, color: GOLD_L, letterSpacing: '2px' }), longDate),
-      ...(f.venue ? [text(centred(1798, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: '24px', letterSpacing: '8px', color: '#c9c2ae' }), lines(f.venue))] : []),
+      ...(f.venue ? [text(centred(1798, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: '24px', letterSpacing: '8px', color: T.venue }), lines(f.venue))] : []),
       ...(countdown ? [text(centred(1834, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '22px', letterSpacing: '10px', color: GOLD }), `—  ${countdown}  —`)] : []),
     ])
   );
@@ -347,6 +414,7 @@ export async function renderPrestigeV3(i: RenderV2Input): Promise<Buffer> {
     { input: rim },
     { input: contactShadow(560, 1470, 460) },
     { input: hero },
+    { input: await frontHaze(T.smoke, 0.7, 1250, 1500), blend: 'screen' },
     { input: t },
   ];
   if (cH) comp.push({ input: cH, left: 170, top: crestY - 0 });
@@ -359,13 +427,16 @@ export async function renderPrestigeV3(i: RenderV2Input): Promise<Buffer> {
 export const ELECTRIC_BRAND: BrandOptions = { corner: 'top-right', size: 84, margin: 40 };
 
 export async function renderElectricV3(i: RenderV2Input): Promise<Buffer> {
+  const T = ELECTRIC_THEMES[(i.variant ?? 0) % ELECTRIC_THEMES.length];
+  // Grade the real cutout toward the scene light (no pixels are redrawn).
+  const lit = i.layers.cutAction ? await relightCutout(i.layers.cutAction, { tint: T.cy, amount: 0.38, wrap: 0.7 }) : null;
   const f = i.facts;
   const { countdown, dateStr, timeStr, rng } = shared(i);
-  const CY = '#4df2ff';
-  const MG = '#ff3df2';
-  const GR = '#7cf6c8';
+  const CY = T.cy;
+  const MG = T.mg;
+  const GR = T.gr;
   const bg = await cinematicStadiumBg(i, {
-    wash: '#241158', washOpacity: 0.46, spot: '#7cf6c8', smokeTint: '#9f6bff', smokeIntensity: 1.1, bottom: '#070314',
+    wash: T.wash, washOpacity: 0.46, spot: T.spot, smokeTint: T.smoke, smokeIntensity: 1.1, bottom: T.bottom,
   });
 
   // neon frame + light streaks + scanlines
@@ -393,7 +464,7 @@ export async function renderElectricV3(i: RenderV2Input): Promise<Buffer> {
   const cut = i.layers.cutAction;
   const cyanCopy = cut ? await placeLayer(await tintCutout(cut, CY), H, pos(-15, -3), {}) : await emptySheet();
   const magCopy = cut ? await placeLayer(await tintCutout(cut, MG), H, pos(15, 3), {}) : await emptySheet();
-  const hero = await placeLayer(cut, H, pos(0, 0), { mod: { brightness: 1.05, saturation: 1.14 }, fade: true, fadeStart: 94 });
+  const hero = await placeLayer(lit, H, pos(0, 0), { mod: { brightness: 1.05, saturation: 1.14 }, fade: true, fadeStart: 94 });
 
   // glitch title (3 offset layers)
   const titleStyle = (extra: Sty) => ({ fontFamily: 'Anton', fontSize: '206px', letterSpacing: '8px', lineHeight: 1, ...extra });
@@ -411,7 +482,7 @@ export async function renderElectricV3(i: RenderV2Input): Promise<Buffer> {
   const PX = 56, PY = 1560, PW = 700, PH = 300;
   const panel = Buffer.from(
     `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg" fill="none">` +
-      `<rect x="${PX}" y="${PY}" width="${PW}" height="${PH}" fill="#07031a" fill-opacity="0.82"/>` +
+      `<rect x="${PX}" y="${PY}" width="${PW}" height="${PH}" fill="${T.panel}" fill-opacity="0.82"/>` +
       `<g stroke="${GR}" stroke-width="4"><path d="M${PX} ${PY + 40} V${PY} H${PX + 40}"/><path d="M${PX + PW} ${PY + 40} V${PY} H${PX + PW - 40}"/>` +
       `<path d="M${PX} ${PY + PH - 40} V${PY + PH} H${PX + 40}"/><path d="M${PX + PW} ${PY + PH - 40} V${PY + PH} H${PX + PW - 40}"/></g></svg>`
   );
@@ -435,8 +506,8 @@ export async function renderElectricV3(i: RenderV2Input): Promise<Buffer> {
 
   const BS = 150;
   const [cH, cA] = await Promise.all([
-    discBadge(i.homeCrest, BS, { ring: CY, ringWidth: 4, fill: '#0a0420', fillOpacity: 0.92 }),
-    discBadge(i.awayCrest, BS, { ring: MG, ringWidth: 4, fill: '#0a0420', fillOpacity: 0.92 }),
+    discBadge(i.homeCrest, BS, { ring: CY, ringWidth: 4, fill: T.badge, fillOpacity: 0.92 }),
+    discBadge(i.awayCrest, BS, { ring: MG, ringWidth: 4, fill: T.badge, fillOpacity: 0.92 }),
   ]);
   const comp: sharp.OverlayOptions[] = [
     { input: neonGlow, blend: 'screen' },

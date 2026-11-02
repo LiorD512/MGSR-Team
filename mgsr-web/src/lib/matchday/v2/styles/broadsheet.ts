@@ -42,7 +42,10 @@ export async function renderBroadsheet(i: RenderV2Input): Promise<Buffer> {
   const oppCrest = f.playerSide === 'home' ? i.awayCrest : i.homeCrest;
   const p = i.palette ?? (await matchPalette(playerCrest, oppCrest));
   const seed = i.seed ?? 1;
-  const spot = spotColour(p.home);
+  // Remix variants: 0 Club ink · 1 Red ink (classic) · 2 Late edition (salmon paper, black-only print)
+  const v = (i.variant ?? 0) % 3;
+  const spot = v === 1 ? '#c8281e' : v === 2 ? '#6b5442' : spotColour(p.home);
+  const paperTone = v === 2 ? '#efd2bf' : '#ece4d1';
   const { surname } = splitName(i.playerName);
   const SUR = surname.toUpperCase();
   const pd = posterDate(f.date);
@@ -53,7 +56,7 @@ export async function renderBroadsheet(i: RenderV2Input): Promise<Buffer> {
   const comp = (f.competition ?? '').trim();
 
   // ── 1) paper + rules ─────────────────────────────────────────────────────
-  const base = await paper(seed);
+  const base = await paper(seed, paperTone);
   const rule = (y: number, h: number) => `<rect x="50" y="${y}" width="${V2_W - 100}" height="${h}" fill="${INK}"/>`;
   const rules = Buffer.from(
     `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg">` +
@@ -65,7 +68,8 @@ export async function renderBroadsheet(i: RenderV2Input): Promise<Buffer> {
   );
 
   // ── 2) masthead + date strip + headline ──────────────────────────────────
-  const mastSize = fitFontSize('THE MATCHDAY', 960, 'DMSerif', 176, 90);
+  const MAST = v === 2 ? 'LATE EDITION' : 'THE MATCHDAY';
+  const mastSize = fitFontSize(MAST, 960, 'DMSerif', 176, 90);
   const strip = comp ? `${dateLong}  ·  ${comp.toUpperCase()}` : dateLong;
   const hLines = wrapSurname(SUR, 10);
   const hLongest = hLines.reduce((m, l) => (l.length > m.length ? l : m), '');
@@ -75,7 +79,7 @@ export async function renderBroadsheet(i: RenderV2Input): Promise<Buffer> {
 
   const top = await textLayer(
     div({ width: `${V2_W}px`, height: `${V2_H}px`, position: 'relative' }, [
-      text({ position: 'absolute', top: '70px', left: '0px', width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'DMSerif', fontSize: `${mastSize}px`, lineHeight: 1, color: INK }, 'THE MATCHDAY'),
+      text({ position: 'absolute', top: '70px', left: '0px', width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'DMSerif', fontSize: `${mastSize}px`, lineHeight: 1, color: INK }, MAST),
       text({ position: 'absolute', top: '284px', left: '50px', width: `${V2_W - 100}px`, justifyContent: 'center', fontFamily: 'Bebas', fontSize: `${fitFontSize(strip, 980, 'Bebas', 34, 20, 4)}px`, letterSpacing: '4px', color: INK }, strip),
       ...hLines.map((l, k) =>
         text({ position: 'absolute', top: `${350 + k * Math.round(headS * 0.98)}px`, left: '50px', fontFamily: 'DMSerif', fontSize: `${headS}px`, lineHeight: 1, letterSpacing: '-2px', color: INK }, l)
@@ -99,7 +103,7 @@ export async function renderBroadsheet(i: RenderV2Input): Promise<Buffer> {
     const ht = await halftone(scaled, { cell: 4, angle: 45, ink: INK, contrast: 1.2, gamma: 0.6 });
     // Flat spot-colour plate in the exact silhouette of the cutout.
     const plateAlpha = await sharp(scaled).ensureAlpha().extractChannel(3).toBuffer();
-    const plateRgb = await sharp({ create: { width: w, height: heroH, channels: 3, background: mix(spot, '#ece4d1', 0.28) } }).png().toBuffer();
+    const plateRgb = await sharp({ create: { width: w, height: heroH, channels: 3, background: mix(spot, paperTone, 0.28) } }).png().toBuffer();
     const solid = await sharp(plateRgb).joinChannel(plateAlpha).png().toBuffer();
     const faded = (b: Buffer) => bottomFade(b, 90);
     const place = async (b: Buffer, dx: number, dy: number) => {

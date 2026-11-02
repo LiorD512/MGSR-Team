@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { guardMatchday } from '@/lib/matchday/v2/guard';
 import sharp from 'sharp';
 import { getFirebaseAdmin, adminDb, adminBucket } from '@/lib/firebaseAdmin';
 
@@ -50,6 +51,9 @@ function clubKey(club: string): string {
  * surfacing as a soft, stretched poster later.
  */
 export async function POST(request: NextRequest) {
+  const caller = await guardMatchday(request, 'upload');
+  if (caller instanceof NextResponse) return caller;
+
   let body: UploadBody;
   try {
     body = (await request.json()) as UploadBody;

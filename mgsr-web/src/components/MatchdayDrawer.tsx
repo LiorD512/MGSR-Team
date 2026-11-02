@@ -22,8 +22,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { db } from '@/lib/firebase';
-import { MATCHDAY_DESIGNS, type MatchdayDesignId, type MatchdayV2Result } from '@/lib/matchday/v2/types';
+import { auth, db } from '@/lib/firebase';
+import { MATCHDAY_DESIGNS, designVariant, type MatchdayDesignId, type MatchdayV2Result } from '@/lib/matchday/v2/types';
+import { loadPosterImage, playMotion, recordMotionVideo } from '@/lib/matchday/motionClient';
 import type { MatchdaySeed } from './MatchdayGeneratorModal';
 
 interface Props {
@@ -46,6 +47,12 @@ const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
 function clubKey(club: string): string {
   return club.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 120);
+}
+
+/** JSON headers + the signed-in user's Firebase ID token (MATCHDAY routes verify it). */
+async function apiHeaders(): Promise<Record<string, string>> {
+  const token = await auth.currentUser?.getIdToken().catch(() => null);
+  return token ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } : { 'Content-Type': 'application/json' };
 }
 
 export default function MatchdayDrawer({ seed, onClose }: Props) {
@@ -71,10 +78,16 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [remix, setRemix] = useState(0);
 
-  // Motion prototype (animated WebP of the finished poster).
-  const [anim, setAnim] = useState<string | null>(null);
-  const [animating, setAnimating] = useState(false);
-  const [showAnim, setShowAnim] = useState(false);
+  // Motion (runs in the browser on a <canvas>; see lib/matchday/motionClient.ts).
+  const [motionOn, setMotionOn] = useState(false);
+  const [recording, setRecording] = useState<number | null>(null);
+  const [motionMsg, setMotionMsg] = useState<string | null>(null);
+  const motionCanvas = useRef<HTMLCanvasElement | null>(null);
+
+  // Saved posters for this player (history strip).
+  const [history, setHistory] = useState<
+    Array<{ generationId: string; savedAt: number; design: string | null; variantName: string | null; awayTeam: string | null; homeTeam: string | null; fixtureDate: string | null; thumbUrl: string | null; imageUrl: string }>
+  >([]);
 
   // Generation.
   const [phase, setPhase] = useState<Phase>('idle');
@@ -147,6 +160,21 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     };
   }, [seed.playerId, seed.club, seed.playerImage, user?.email]);
 
+  const loadHistory = useCallback(async () => {
+    if (!seed.playerId) return;
+    try {
+      const res = await fetch(`/api/matchday/history?playerId=${encodeURIComponent(seed.playerId)}`, { headers: await apiHeaders() });
+      if (!res.ok) return;
+      const data = (await res.json()) as { items?: typeof history };
+      setHistory(data.items ?? []);
+    } catch {
+      /* history is optional */
+    }
+  }, [seed.playerId]);
+  useEffect(() => {
+    void loadHistory();
+  }, [loadHistory]);
+
   const handleUpload = async (kind: 'player' | 'player2' | 'stadium' | 'kit', file: File) => {
     setUploadError(null);
     if (file.size > MAX_UPLOAD_BYTES) {
@@ -163,7 +191,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
       });
       const res = await fetch('/api/matchday/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await apiHeaders(),
         body: JSON.stringify({ kind, playerId: seed.playerId ?? null, club: seed.club, imageDataUrl }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
@@ -190,8 +218,8 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     setResult(null);
     setSaved(false);
     setSendMsg(null);
-    setAnim(null);
-    setShowAnim(false);
+    setMotionOn(false);
+    setMotionMsg(null);
     setActiveStep(0);
     stepTimer.current = setInterval(() => {
       setActiveStep((s) => Math.min(s + 1, PROGRESS_STEPS.length - 1));
@@ -200,7 +228,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     try {
       const res = await fetch('/api/matchday/generate-v2', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await apiHeaders(),
         body: JSON.stringify({
           playerId: seed.playerId ?? null,
           playerName: seed.playerName,
@@ -249,7 +277,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     try {
       const res = await fetch('/api/matchday/preview', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await apiHeaders(),
         body: JSON.stringify({
           playerId: seed.playerId ?? null,
           playerName: seed.playerName,
@@ -262,7 +290,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
           stadiumPhotoUrl,
           kitPhotoUrl,
           squadNumber: squadNumber.trim() || null,
-          remix,
+          remix: 0,
         }),
       });
       const data = (await res.json()) as { previews?: Record<string, string>; error?: string };
@@ -277,13 +305,13 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
       setPreviewError(err instanceof Error ? err.message : t('matchday_v3_preview_error'));
       setPreviewPhase('error');
     }
-  }, [seed, playerPhotoUrl, stadiumPhotoUrl, kitPhotoUrl, squadNumber, remix, t]);
+  }, [seed, playerPhotoUrl, stadiumPhotoUrl, kitPhotoUrl, squadNumber, t]);
 
   const handleDownload = () => {
     if (!result?.imageDataUrl) return;
     const a = document.createElement('a');
     a.href = result.imageDataUrl;
-    a.download = `matchday-${seed.playerName.replace(/\s+/g, '-').toLowerCase()}.png`;
+    a.download = `matchday-${seed.playerName.replace(/\s+/g, '-').toLowerCase()}.${result.imageDataUrl.startsWith('data:image/png') ? 'png' : 'jpg'}`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -301,7 +329,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     try {
       const res = await fetch('/api/matchday/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await apiHeaders(),
         body: JSON.stringify({
           channel,
           generationId: result.generationId,
@@ -330,42 +358,43 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     }
   };
 
-  const handleAnimate = async () => {
-    if (!result) return;
-    if (anim) {
-      setShowAnim((v) => !v);
-      return;
-    }
-    setAnimating(true);
-    setSendMsg(null);
-    try {
-      const res = await fetch('/api/matchday/animate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageDataUrl: result.imageDataUrl }),
-      });
-      const data = (await res.json()) as { imageDataUrl?: string; error?: string };
-      if (!res.ok || !data.imageDataUrl) {
-        setSendMsg(data.error || t('matchday_v3_animate_failed'));
-        return;
-      }
-      setAnim(data.imageDataUrl);
-      setShowAnim(true);
-    } catch (err) {
-      setSendMsg(err instanceof Error ? err.message : t('matchday_v3_animate_failed'));
-    } finally {
-      setAnimating(false);
-    }
-  };
+  // Live motion preview: (re)start the canvas loop whenever it is switched on.
+  useEffect(() => {
+    if (!motionOn || !result?.imageDataUrl) return;
+    let stop: (() => void) | null = null;
+    let cancelled = false;
+    void loadPosterImage(result.imageDataUrl)
+      .then((img) => {
+        if (cancelled || !motionCanvas.current) return;
+        stop = playMotion(motionCanvas.current, img, { seed: remix + 7 });
+      })
+      .catch(() => setMotionMsg(t('matchday_v3_video_failed')));
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [motionOn, result?.imageDataUrl, remix, t]);
 
-  const handleDownloadAnim = () => {
-    if (!anim) return;
-    const a = document.createElement('a');
-    a.href = anim;
-    a.download = `matchday-${seed.playerName.replace(/\s+/g, '-').toLowerCase()}.webp`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  const handleDownloadVideo = async () => {
+    if (!result) return;
+    setMotionMsg(null);
+    setRecording(0);
+    try {
+      const img = await loadPosterImage(result.imageDataUrl);
+      const rec = await recordMotionVideo(img, { seconds: 6, width: 720, seed: remix + 7, onProgress: (p) => setRecording(p) });
+      const url = URL.createObjectURL(rec.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `matchday-${seed.playerName.replace(/\s+/g, '-').toLowerCase()}.${rec.ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (err) {
+      setMotionMsg(err instanceof Error ? err.message : t('matchday_v3_video_failed'));
+    } finally {
+      setRecording(null);
+    }
   };
 
   const handleSave = async () => {
@@ -373,10 +402,23 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     try {
       const res = await fetch('/api/matchday/save', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ generationId: result.generationId, playerId: seed.playerId ?? null, imageDataUrl: result.imageDataUrl }),
+        headers: await apiHeaders(),
+        body: JSON.stringify({
+          generationId: result.generationId,
+          playerId: seed.playerId ?? null,
+          imageDataUrl: result.imageDataUrl,
+          playerName: seed.playerName,
+          design: result.design,
+          variantName: result.variant?.name ?? designVariant(result.design, remix).name,
+          homeTeam: result.facts.homeTeam,
+          awayTeam: result.facts.awayTeam,
+          date: result.facts.date,
+        }),
       });
-      if (res.ok) setSaved(true);
+      if (res.ok) {
+        setSaved(true);
+        void loadHistory();
+      }
     } catch {
       /* non-fatal */
     }
@@ -433,6 +475,25 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
               <p className="md2-eyebrow">{t('matchday_generate_button')} · <b>{seed.club}</b></p>
               <h1 className="md2-h1">{firstName} {lastName && <span className="g">{lastName}.</span>}</h1>
               <p className="md2-dek">{t('matchday_v2_intro')}</p>
+
+              {history.length > 0 && (
+                <div className="md2-history">
+                  <p className="md2-famh">{t('matchday_v3_history')}<span>{history.length}</span></p>
+                  <div className="row">
+                    {history.map((h) => (
+                      <a key={h.generationId} href={h.imageUrl} target="_blank" rel="noreferrer" className="item"
+                        title={`${MATCHDAY_DESIGNS.find((d) => d.id === h.design)?.name ?? h.design ?? ''}${h.variantName ? ` · ${h.variantName}` : ''}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={h.thumbUrl ?? h.imageUrl} alt="" loading="lazy" />
+                        <span className="cap">
+                          {(MATCHDAY_DESIGNS.find((d) => d.id === h.design)?.name ?? h.design ?? 'MATCHDAY')}
+                          {h.fixtureDate ? ` · ${h.fixtureDate}` : ''}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="md2-assets">
                 <AssetRow idx="01" label={t('matchday_player_photo')} url={playerPhotoUrl} required
@@ -503,28 +564,62 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                   </>
                 )}
               </div>
-              <div className={`md2-styles${previews ? ' has-previews' : ''}`}>
-                {MATCHDAY_DESIGNS.map((d) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    className={`md2-sc md-${d.id}${design === d.id ? ' sel' : ''}`}
-                    onClick={() => setDesign(d.id)}
-                    aria-pressed={design === d.id}
-                  >
-                    <span className="md2-mk">{t('matchday_v2_selected')}</span>
-                    <span
-                      className={`md2-pv${previews?.[d.id] ? ' has-img' : ''}`}
-                      style={previews?.[d.id] ? { backgroundImage: `url(${previews[d.id]})` } : undefined}
-                      aria-hidden
-                    />
-                    <span className="md2-cap">
-                      <span className="n">{d.name}</span>
-                      <span className="d">{d.blurb}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
+              {(['graphic', 'cinematic'] as const).map((fam) => (
+                <div key={fam} className="md2-family">
+                  <p className="md2-famh">
+                    {fam === 'graphic' ? t('matchday_v3_family_graphic') : t('matchday_v3_family_cinematic')}
+                    <span>{fam === 'graphic' ? t('matchday_v3_family_graphic_note') : t('matchday_v3_family_cinematic_note')}</span>
+                  </p>
+                  <div className={`md2-styles${previews ? ' has-previews' : ''}`}>
+                    {MATCHDAY_DESIGNS.filter((d) => d.family === fam).map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        className={`md2-sc md-${d.id}${design === d.id ? ' sel' : ''}`}
+                        onClick={() => {
+                          setDesign(d.id);
+                          setRemix(0);
+                        }}
+                        aria-pressed={design === d.id}
+                      >
+                        <span className="md2-mk">{t('matchday_v2_selected')}</span>
+                        <span
+                          className={`md2-pv${previews?.[d.id] ? ' has-img' : ''}`}
+                          style={previews?.[d.id] ? { backgroundImage: `url(${previews[d.id]})` } : undefined}
+                          aria-hidden
+                        />
+                        <span className="md2-cap">
+                          <span className="n">{d.name}</span>
+                          <span className="d">{d.blurb}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {(() => {
+                const sel = MATCHDAY_DESIGNS.find((d) => d.id === design);
+                const names = sel?.variants ?? [];
+                if (names.length < 2) return null;
+                const cur = designVariant(design, remix).index;
+                return (
+                  <div className="md2-variants" role="radiogroup" aria-label={t('matchday_v3_variant')}>
+                    <span className="lab">{sel?.name} · {t('matchday_v3_variant')}</span>
+                    {names.map((n, k) => (
+                      <button
+                        key={n}
+                        type="button"
+                        role="radio"
+                        aria-checked={cur === k}
+                        className={`md2-chip${cur === k ? ' on' : ''}`}
+                        onClick={() => setRemix(k)}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
               <div className="md2-actions">
                 <button className="md2-lead" onClick={() => void run()}>{t('matchday_generate')} →</button>
                 <button className="md2-text" onClick={() => setStep('assets')}>← {t('matchday_v2_back')}</button>
@@ -569,11 +664,22 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
 
               <div className="md2-result">
                 <div className="md2-canvas">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={showAnim && anim ? anim : result.imageDataUrl} alt={`MATCHDAY ${result.facts.playerName}`} />
+                  {motionOn ? (
+                    <>
+                      <canvas ref={motionCanvas} width={540} height={960} aria-label={`MATCHDAY ${result.facts.playerName}`} />
+                      <span className="md2-live">● {t('matchday_v3_live')}</span>
+                    </>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={result.imageDataUrl} alt={`MATCHDAY ${result.facts.playerName}`} />
+                  )}
                 </div>
 
                 <div className="md2-rside">
+                  <p className="md2-variant">
+                    {MATCHDAY_DESIGNS.find((d) => d.id === result.design)?.name ?? result.design}
+                    <span> · {t('matchday_v3_variant')}: <b>{designVariant(result.design, remix).name}</b></span>
+                  </p>
                   <ul className="md2-checks">
                     {result.qualityChecks.map((c) => (
                       <li key={c.id} className={`qc-${c.status}`}>
@@ -610,12 +716,12 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
 
                   <div className="md2-actions" style={{ marginTop: 34 }}>
                     <button className="md2-text" onClick={handleDownload}>{t('matchday_download')}</button>
-                    <button className="md2-text g" onClick={() => void handleAnimate()} disabled={animating}>
-                      {animating ? t('matchday_v3_animating') : anim ? (showAnim ? t('matchday_v3_show_still') : `▶ ${t('matchday_v3_animate')}`) : `▶ ${t('matchday_v3_animate')}`}
+                    <button className="md2-text g" onClick={() => setMotionOn((v) => !v)} disabled={recording !== null}>
+                      {motionOn ? `■ ${t('matchday_v3_show_still')}` : `▶ ${t('matchday_v3_animate')}`}
                     </button>
-                    {anim && (
-                      <button className="md2-text" onClick={handleDownloadAnim}>{t('matchday_v3_download_anim')}</button>
-                    )}
+                    <button className="md2-text" onClick={() => void handleDownloadVideo()} disabled={recording !== null}>
+                      {recording !== null ? `${t('matchday_v3_recording')} ${Math.round(recording * 100)}%` : t('matchday_v3_download_video')}
+                    </button>
                     <button className="md2-text" onClick={handleSave} disabled={saved}>
                       {saved ? t('matchday_saved') : t('matchday_save')}
                     </button>
@@ -627,10 +733,11 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                         void run(n);
                       }}
                     >
-                      ↻ {t('matchday_v3_remix')}
+                      ↻ {t('matchday_v3_remix')} → {designVariant(result.design, remix + 1).name}
                     </button>
                     <button className="md2-text" onClick={() => setStep('design')}>{t('matchday_regenerate')}</button>
                   </div>
+                  {motionMsg && <p className="md2-sent">{motionMsg}</p>}
                 </div>
               </div>
             </>

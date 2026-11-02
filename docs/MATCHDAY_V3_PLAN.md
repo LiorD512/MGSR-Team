@@ -25,7 +25,15 @@ Repo rules that constrain this plan (from `.github/copilot-instructions.md`): **
 - [x] Transparent-PNG upload used as-is (no AI); cutout + crest caching; pipeline helpers shared
 - [x] Real-player style previews in the picker (`/api/matchday/preview`), Remix, Animate (beta, animated WebP)
 - [x] Fix: design-memory Firestore write could hang a request forever -> capped at 2.5 s
-- [ ] Later: relight / colour-match the cutout to the scene, foreground smoke, evaluate a free segmentation model, ffmpeg video with real layer parallax, remaining styles (Glass, Blueprint, Street, Cinema Poster, Riso Pop), history gallery, auth + rate-limit on the routes
+- [x] Round 3 (after owner testing: "styles amazing, Animate and Remix do nothing"):
+  - Remix fixed: it only re-seeded invisible grain. Now every style has 3 named, visibly different variants; chips in Design step, "Variant: X" + "Remix → next" on the result.
+  - Animate fixed: moved to the browser (`motionClient.ts`), no upload; live canvas preview + "Download video" (MP4 where supported, else WebM). Old server route removed.
+  - 6 new styles: Cinema, Blueprint, Street, Glass, Ticket, Card (13 total, picker grouped Graphic / Cinematic).
+  - Relight + light-wrap of the cutout, foreground haze (cinematic).
+  - Posters delivered as JPEG q92 (fixes Vercel 4.5 MB limit on generate/save/send).
+  - Auth (Firebase ID token) + per-user rate limit on all MATCHDAY routes.
+  - History: "Saved posters" strip (Save stores thumbnail + metadata).
+- [ ] Later: real layer parallax in video (needs per-style layer export), Riso Pop style, evaluate free in-browser segmentation (e.g. MODNet, Apache-2.0, via transformers.js) to replace the Gemini cutout
 
 ### Test it on localhost
 1. `git fetch && git checkout feat/matchday-v3`

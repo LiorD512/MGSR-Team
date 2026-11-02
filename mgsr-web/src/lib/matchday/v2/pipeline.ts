@@ -8,6 +8,7 @@
  */
 
 import { randomUUID } from 'crypto';
+import sharp from 'sharp';
 import type { MatchdayMatchFacts, MatchdayQualityCheck } from '../types';
 import { resolveCrest } from '../crests';
 import { buildMatchKey, recordDesign } from '../designMemory';
@@ -18,12 +19,13 @@ import { renderV2, V2_W, V2_H } from './render';
 import { generateCinematicScene, geminiConfigured } from './gemini';
 import { matchPalette } from './kit/palette';
 import { hashSeed } from './kit/prng';
-import type { MatchdayDesignId, MatchdayV2Input, MatchdayV2Result } from './types';
+import { MATCHDAY_DESIGNS, designVariant, type MatchdayDesignId, type MatchdayV2Input, type MatchdayV2Result } from './types';
+import { CINEMATIC_SCENE_WORDS } from './styles/cinematic';
 
 const TM_SILHOUETTE = /\/default\.(jpg|png)(\?|$)/i;
 
 /** Colour-grade words for the AI cinematic scene, per style. */
-const SCENE_PALETTES: Record<MatchdayDesignId, string> = {
+const SCENE_PALETTES: Partial<Record<MatchdayDesignId, string>> = {
   inferno: 'deep crimson and ember orange',
   frost: 'icy cyan and steel blue',
   prestige: 'black and antique gold',
@@ -45,7 +47,9 @@ const SCENE_PALETTES: Record<MatchdayDesignId, string> = {
  * Gemini scene and no secondary figure. That makes them faster and removes one
  * paid image-generation call per poster compared with the cinematic styles.
  */
-const GRAPHIC_STYLES: ReadonlySet<MatchdayDesignId> = new Set<MatchdayDesignId>(['gianttype', 'clubcolors', 'broadsheet']);
+const GRAPHIC_STYLES: ReadonlySet<MatchdayDesignId> = new Set<MatchdayDesignId>(
+  MATCHDAY_DESIGNS.filter((d) => d.family === 'graphic').map((d) => d.id)
+);
 
 async function fetchBytes(url: string): Promise<Buffer | null> {
   try {
@@ -157,7 +161,9 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   // thick smoke, graded to the style palette. The player, crests and text are
   // composited ON TOP afterwards, so the face is never generated. Falls back to
   // the deterministic stadium/gradient background when Gemini is unavailable.
-  const scenePalette = SCENE_PALETTES[input.design] ?? 'cinematic steel blue';
+  const variant = designVariant(input.design, input.remix);
+  const scenePalette =
+    CINEMATIC_SCENE_WORDS[input.design]?.[variant.index] ?? SCENE_PALETTES[input.design] ?? 'cinematic steel blue';
   const generatedScene = graphic ? null : await generateCinematicScene({ palette: scenePalette, stadiumRef: stadium });
   const sky: Buffer | null = generatedScene?.bytes ?? null;
 
@@ -171,6 +177,7 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   const rendered = await renderV2({
     palette,
     seed,
+    variant: variant.index,
     design: input.design,
     facts,
     playerName: input.playerName.toUpperCase(),
@@ -200,12 +207,19 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
     new Promise<void>((resolve) => setTimeout(resolve, 2500)),
   ]);
 
+  // Deliver as high-quality JPEG (q92, 4:4:4 chroma): visually identical to the
+  // PNG — even on Broadsheet's fine halftone — but ~5–8× smaller. As a base64
+  // PNG the heaviest styles reached 4.7 MB, over Vercel's 4.5 MB response limit,
+  // and the same payload is posted back by Save / Send.
+  const posterJpeg = await sharp(rendered.bytes).jpeg({ quality: 92, mozjpeg: true, chromaSubsampling: '4:4:4' }).toBuffer();
+
   const qualityChecks = buildChecks(facts, geminiConfigured(), Boolean(layers.cutAction), Boolean(homeCrest), Boolean(awayCrest), Boolean(kitBytes), rendered.width, rendered.height, layers.preCut ? 'your transparent cutout, used as-is (no AI)' : layers.fromCache ? 'clean transparent cutout (cached — no AI call this run)' : null);
 
   return {
     generationId,
     design: input.design,
-    imageDataUrl: `data:image/png;base64,${rendered.bytes.toString('base64')}`,
+    variant: { index: variant.index, name: variant.name },
+    imageDataUrl: `data:image/jpeg;base64,${posterJpeg.toString('base64')}`,
     facts,
     qualityChecks,
   };

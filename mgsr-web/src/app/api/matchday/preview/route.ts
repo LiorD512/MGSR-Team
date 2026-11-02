@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { guardMatchday } from '@/lib/matchday/v2/guard';
 import { generatePreviews, type PreviewInput } from '@/lib/matchday/v2/preview';
 import { MatchdayError } from '@/lib/matchday/pipeline';
 
@@ -8,6 +9,9 @@ export const maxDuration = 300;
 
 /** Real-player thumbnails of every MATCHDAY style (see lib/matchday/v2/preview.ts). */
 export async function POST(request: NextRequest) {
+  const caller = await guardMatchday(request, 'preview');
+  if (caller instanceof NextResponse) return caller;
+
   let body: PreviewInput;
   try {
     body = (await request.json()) as PreviewInput;

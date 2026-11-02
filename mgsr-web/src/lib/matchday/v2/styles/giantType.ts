@@ -36,7 +36,16 @@ export async function renderGiantType(i: RenderV2Input): Promise<Buffer> {
   const f = i.facts;
   const playerCrest = f.playerSide === 'home' ? i.homeCrest : i.awayCrest;
   const oppCrest = f.playerSide === 'home' ? i.awayCrest : i.homeCrest;
-  const p = i.palette ?? (await matchPalette(playerCrest, oppCrest));
+  const base = i.palette ?? (await matchPalette(playerCrest, oppCrest));
+  // Remix variants: 0 Club colour · 1 Opponent colour · 2 Noir (black, club-colour type)
+  const v = (i.variant ?? 0) % 3;
+  const noir = v === 2;
+  const p =
+    v === 1
+      ? { ...base, home: base.away, away: base.home, ink: mix(base.away, '#000000', 0.82), glow: mix(base.away, '#ffffff', 0.35) }
+      : noir
+        ? { ...base, home: '#202024', ink: '#060607', glow: mix(base.home, '#ffffff', 0.2) }
+        : base;
   const seed = i.seed ?? 1;
 
   const { given, surname } = splitName(i.playerName);
@@ -79,7 +88,7 @@ export async function renderGiantType(i: RenderV2Input): Promise<Buffer> {
   const S = fitFontSize(longest, 1010, 'Anton', 640, 120, 2);
   const row = Math.round(S * 0.9);
   const top1 = 300;
-  const solid = mix(p.home, '#ffffff', 0.86);
+  const solid = noir ? mix(base.home, '#ffffff', 0.12) : mix(p.home, '#ffffff', 0.86);
   const rowStyle = (top: number, extra: Record<string, string | number>) => ({
     position: 'absolute',
     top: `${top}px`,

@@ -16,7 +16,7 @@ import { renderV2 } from './render';
 import { matchPalette } from './kit/palette';
 import { hashSeed } from './kit/prng';
 import { buildFacts, requirePlayerBytes, resolveCrests, fetchBytes } from './pipeline';
-import { MATCHDAY_DESIGNS, type MatchdayV2Input } from './types';
+import { MATCHDAY_DESIGNS, designVariant, type MatchdayV2Input } from './types';
 
 const THUMB_W = 360;
 const CONCURRENCY = 3;
@@ -66,6 +66,7 @@ export async function generatePreviews(input: PreviewInput): Promise<Record<stri
           stadium,
           sky: null,
           palette,
+          variant: designVariant(design, input.remix).index,
           seed: hashSeed(facts.playerName, facts.homeTeam, facts.awayTeam, facts.date, design, input.remix ?? 0),
         });
         const jpg = await sharp(r.bytes).resize(THUMB_W).jpeg({ quality: 80 }).toBuffer();

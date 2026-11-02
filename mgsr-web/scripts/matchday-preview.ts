@@ -2,7 +2,7 @@
  * Dev tool: render MATCHDAY v2/v3 posters locally with NO network and NO Gemini.
  *
  *   cd mgsr-web
- *   npx tsx scripts/matchday-preview.ts [designId ...] [--out=/some/dir]
+ *   npx tsx scripts/matchday-preview.ts [designId ...] [--out=/some/dir] [--name="Full Name"] [--variant=N | --all-variants]
  *
  * Uses a real transparent cutout from docs/matchday-poc/results and synthetic
  * crests, so layout / typography / texture work can be reviewed quickly.
@@ -37,6 +37,8 @@ async function main() {
   const outDir = outArg ? outArg.slice(6) : path.join(process.cwd(), '.matchday-preview');
   const nameArg = args.find((a) => a.startsWith('--name='));
   const playerName = nameArg ? nameArg.slice(7) : 'Moses Bawa';
+  const varArg = args.find((a) => a.startsWith('--variant='));
+  const allVariants = args.includes('--all-variants');
   const wanted = args.filter((a) => !a.startsWith('--'));
   const designs = (wanted.length ? wanted : MATCHDAY_DESIGNS.map((d) => d.id)) as MatchdayDesignId[];
   await fs.mkdir(outDir, { recursive: true });
@@ -46,9 +48,16 @@ async function main() {
   const awayCrest = await crest('shield', '#b91c1c', '#ffffff', 'K');
   const palette = await matchPalette(homeCrest, awayCrest);
 
+  const jobs: Array<{ design: MatchdayDesignId; variant: number }> = [];
   for (const design of designs) {
+    const n = MATCHDAY_DESIGNS.find((d) => d.id === design)?.variants?.length ?? 1;
+    const vs = allVariants ? Array.from({ length: n }, (_, k) => k) : [varArg ? Number(varArg.slice(10)) : 0];
+    for (const variant of vs) jobs.push({ design, variant });
+  }
+  for (const { design, variant } of jobs) {
     const t0 = Date.now();
     const out = await renderV2({
+      variant,
       design,
       playerName: playerName.toUpperCase(),
       squadNumber: '57',
@@ -72,13 +81,14 @@ async function main() {
       stadium: null,
       sky: null,
       palette,
-      seed: hashSeed(playerName, design, 0),
+      seed: hashSeed(playerName, design, variant),
     });
-    const file = path.join(outDir, `${design}.png`);
+    const tag = variant ? `${design}-v${variant}` : design;
+    const file = path.join(outDir, `${tag}.png`);
     await fs.writeFile(file, out.bytes);
     // small JPEG for quick viewing
-    await sharp(out.bytes).resize(540).jpeg({ quality: 82 }).toFile(path.join(outDir, `${design}_small.jpg`));
-    console.log(`${design}: ${Date.now() - t0}ms -> ${file}`);
+    await sharp(out.bytes).resize(540).jpeg({ quality: 82 }).toFile(path.join(outDir, `${tag}_small.jpg`));
+    console.log(`${tag}: ${Date.now() - t0}ms -> ${file}`);
   }
 }
 

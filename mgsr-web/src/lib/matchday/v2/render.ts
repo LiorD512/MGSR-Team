@@ -23,6 +23,12 @@ import {
   renderPrestigeV3, PRESTIGE_BRAND,
   renderElectricV3, ELECTRIC_BRAND,
 } from './styles/cinematic';
+import { renderCinema, CINEMA_BRAND } from './styles/cinema';
+import { renderBlueprint, BLUEPRINT_BRAND } from './styles/blueprint';
+import { renderStreet, STREET_BRAND } from './styles/street';
+import { renderGlass, GLASS_BRAND } from './styles/glass';
+import { renderTicket, TICKET_BRAND } from './styles/ticket';
+import { renderCard, CARD_BRAND } from './styles/card';
 
 export const V2_W = 1080;
 export const V2_H = 1920;
@@ -42,6 +48,11 @@ export interface RenderV2Input {
   sky?: Buffer | null;
   /** V3: seed for reproducible procedural texture (hash of fixture+style+remix). */
   seed?: number;
+  /**
+   * V3 "Remix" variant (0, 1, 2 …). Each V3 style defines its own visibly
+   * different variants (palette / composition); styles take `variant % n`.
+   */
+  variant?: number;
   /** V3: club colours (player's club + opponent) for palette-driven styles. */
   palette?: import('./kit/palette').MatchPalette;
 }
@@ -957,6 +968,30 @@ export async function renderV2(input: RenderV2Input): Promise<{ bytes: Buffer; w
     case 'broadsheet':
       bytes = await renderBroadsheet(input);
       brand = BROADSHEET_BRAND;
+      break;
+    case 'cinema':
+      bytes = await renderCinema(input);
+      brand = CINEMA_BRAND;
+      break;
+    case 'blueprint':
+      bytes = await renderBlueprint(input);
+      brand = BLUEPRINT_BRAND;
+      break;
+    case 'street':
+      bytes = await renderStreet(input);
+      brand = STREET_BRAND;
+      break;
+    case 'glass':
+      bytes = await renderGlass(input);
+      brand = GLASS_BRAND;
+      break;
+    case 'ticket':
+      bytes = await renderTicket(input);
+      brand = TICKET_BRAND;
+      break;
+    case 'card':
+      bytes = await renderCard(input);
+      brand = CARD_BRAND;
       break;
     default:
       bytes = await renderMidnight(input);

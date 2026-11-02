@@ -31,7 +31,12 @@ export async function renderClubColors(i: RenderV2Input): Promise<Buffer> {
   const f = i.facts;
   const playerCrest = f.playerSide === 'home' ? i.homeCrest : i.awayCrest;
   const oppCrest = f.playerSide === 'home' ? i.awayCrest : i.homeCrest;
-  const p = i.palette ?? (await matchPalette(playerCrest, oppCrest));
+  const base = i.palette ?? (await matchPalette(playerCrest, oppCrest));
+  // Remix variants: 0 Slash · 1 Reverse (colours swapped, slash mirrored) · 2 Halves (vertical split)
+  const v = (i.variant ?? 0) % 3;
+  const p = v === 1 ? { ...base, home: base.away, away: base.home, ink: mix(base.away, '#000000', 0.82), glow: mix(base.away, '#ffffff', 0.35) } : base;
+  const topCrest = v === 1 ? oppCrest : playerCrest;
+  const bottomCrest = v === 1 ? playerCrest : oppCrest;
   const seed = i.seed ?? 1;
   const { given, surname } = splitName(i.playerName);
   const SUR = surname.toUpperCase();
@@ -39,8 +44,21 @@ export async function renderClubColors(i: RenderV2Input): Promise<Buffer> {
   const countdown = countdownLabel(f.date);
 
   // ── 1) the slashed two-colour field ───────────────────────────────────────
-  const A = `0,0 ${V2_W},0 ${V2_W},640 0,1240`;
-  const B = `0,1240 ${V2_W},640 ${V2_W},${V2_H} 0,${V2_H}`;
+  const HALF = V2_W / 2;
+  const A =
+    v === 2 ? `0,0 ${HALF},0 ${HALF},${V2_H} 0,${V2_H}` : v === 1 ? `0,0 ${V2_W},0 ${V2_W},1240 0,640` : `0,0 ${V2_W},0 ${V2_W},640 0,1240`;
+  const B =
+    v === 2
+      ? `${HALF},0 ${V2_W},0 ${V2_W},${V2_H} ${HALF},${V2_H}`
+      : v === 1
+        ? `0,640 ${V2_W},1240 ${V2_W},${V2_H} 0,${V2_H}`
+        : `0,1240 ${V2_W},640 ${V2_W},${V2_H} 0,${V2_H}`;
+  const EDGE =
+    v === 2
+      ? `${HALF - 8},0 ${HALF + 8},0 ${HALF + 8},${V2_H} ${HALF - 8},${V2_H}`
+      : v === 1
+        ? `0,640 ${V2_W},1240 ${V2_W},1256 0,656`
+        : `0,1240 ${V2_W},640 ${V2_W},656 0,1256`;
   const field = Buffer.from(
     `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><defs>` +
       `<linearGradient id="a" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${mix(p.home, '#ffffff', 0.12)}"/>` +
@@ -56,13 +74,13 @@ export async function renderClubColors(i: RenderV2Input): Promise<Buffer> {
       `<circle cx="560" cy="860" r="330" stroke-width="3"/><circle cx="560" cy="860" r="470" stroke-width="3"/>` +
       `<circle cx="560" cy="860" r="610" stroke-width="3"/></g>` +
       // the slash edge
-      `<polygon points="0,1240 ${V2_W},640 ${V2_W},656 0,1256" fill="#ffffff" opacity="0.9"/>` +
+      `<polygon points="${EDGE}" fill="#ffffff" opacity="0.9"/>` +
       `</svg>`
   );
 
   const [wmA, wmB] = await Promise.all([
-    playerCrest ? crestPng(playerCrest, 780).then((b) => (b ? withOpacity(b, 0.16) : null)) : null,
-    oppCrest ? crestPng(oppCrest, 740).then((b) => (b ? withOpacity(b, 0.16) : null)) : null,
+    topCrest ? crestPng(topCrest, 780).then((b) => (b ? withOpacity(b, 0.16) : null)) : null,
+    bottomCrest ? crestPng(bottomCrest, 740).then((b) => (b ? withOpacity(b, 0.16) : null)) : null,
   ]);
   const overlays: sharp.OverlayOptions[] = [{ input: stripes('#ffffff', 0.05, 18, -35, 3) }];
   if (wmA) overlays.push({ input: wmA, left: -170, top: -90 });
@@ -94,7 +112,7 @@ export async function renderClubColors(i: RenderV2Input): Promise<Buffer> {
   const hero = await placeLayer(
     i.layers.cutAction,
     1400,
-    (w) => ({ left: Math.round(V2_W * 0.56 - w / 2), top: 300 }),
+    (w) => ({ left: Math.round(V2_W * (v === 2 ? 0.5 : 0.56) - w / 2), top: 300 }),
     { mod: { brightness: 1.04, saturation: 1.1 } }
   );
 
