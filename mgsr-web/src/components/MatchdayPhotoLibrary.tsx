@@ -41,6 +41,7 @@ const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 export default function MatchdayPhotoLibrary({ playerId, club, mainUrl, secondUrl, onSelect, onConfigured, onAiUrls, t }: Props) {
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [aiEnabled, setAiEnabled] = useState(false);
+  const [aiStatus, setAiStatus] = useState<'on' | 'off' | 'no_key'>('off');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -49,11 +50,12 @@ export default function MatchdayPhotoLibrary({ playerId, club, mainUrl, secondUr
   const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/matchday/library?playerId=${encodeURIComponent(playerId)}`, { headers: await apiHeaders() });
-      const data = (await res.json()) as { items?: LibraryItem[]; aiEnabled?: boolean; configured?: boolean; mainUrl?: string | null; secondUrl?: string | null };
+      const data = (await res.json()) as { items?: LibraryItem[]; aiEnabled?: boolean; aiStatus?: 'on' | 'off' | 'no_key'; configured?: boolean; mainUrl?: string | null; secondUrl?: string | null };
       if (!res.ok) throw new Error();
       setItems(data.items ?? []);
       onAiUrls?.((data.items ?? []).filter((x) => x.source === 'ai').map((x) => x.url));
       setAiEnabled(Boolean(data.aiEnabled));
+      setAiStatus(data.aiStatus ?? (data.aiEnabled ? 'on' : 'off'));
       onConfigured(data.configured !== false);
     } catch {
       onConfigured(false);
@@ -173,13 +175,24 @@ export default function MatchdayPhotoLibrary({ playerId, club, mainUrl, secondUr
             }}
           />
         </label>
-        {aiEnabled && (
-          <button type="button" className={`md2-lib-tile ai${busy === 'ai' ? ' busy' : ''}`} onClick={() => void generate()} disabled={busy !== null || !realRef}>
-            <span className="plus">✦</span>
-            <span>{busy === 'ai' ? t('matchday_lib_ai_running') : t('matchday_lib_ai')}</span>
-            <small>{t('matchday_lib_ai_cost')}</small>
-          </button>
-        )}
+        {/* Always visible: when it can't be used, it says exactly why. */}
+        <button
+          type="button"
+          className={`md2-lib-tile ai${busy === 'ai' ? ' busy' : ''}${!aiEnabled ? ' off' : ''}`}
+          onClick={() => void generate()}
+          disabled={busy !== null || !aiEnabled || !realRef}
+          title={!aiEnabled ? t(aiStatus === 'no_key' ? 'matchday_lib_ai_no_key' : 'matchday_lib_ai_off') : !realRef ? t('matchday_lib_ai_need_photo') : undefined}
+        >
+          <span className="plus">✦</span>
+          <span>{busy === 'ai' ? t('matchday_lib_ai_running') : t('matchday_lib_ai')}</span>
+          <small>
+            {!aiEnabled
+              ? t(aiStatus === 'no_key' ? 'matchday_lib_ai_no_key' : 'matchday_lib_ai_off')
+              : !realRef
+                ? t('matchday_lib_ai_need_photo')
+                : t('matchday_lib_ai_cost')}
+          </small>
+        </button>
 
         {items.map((it) => {
           const s1 = it.url === mainUrl;

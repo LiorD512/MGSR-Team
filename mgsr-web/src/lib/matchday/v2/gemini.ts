@@ -232,7 +232,14 @@ export async function generateCinematicScene(opts: {
 // The output is on flat magenta so it keys straight into a transparent cutout.
 
 export function aiLibraryEnabled(): boolean {
-  return process.env.MATCHDAY_AI_LIBRARY === 'on' && geminiConfigured();
+  return aiLibraryStatus() === 'on';
+}
+
+/** Why AI poses are (un)available — shown in the UI so a missing setting is obvious. */
+export function aiLibraryStatus(): 'on' | 'off' | 'no_key' {
+  if ((process.env.MATCHDAY_AI_LIBRARY ?? '').trim().toLowerCase() !== 'on') return 'off';
+  if (!geminiConfigured()) return 'no_key';
+  return 'on';
 }
 
 /** Football poses for variety. `framing` controls head-to-toe vs waist-up. */

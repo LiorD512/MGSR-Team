@@ -7,7 +7,7 @@ import {
   listLibrary,
   selectLibraryPhoto,
 } from '@/lib/matchday/v2/library';
-import { aiLibraryEnabled } from '@/lib/matchday/v2/gemini';
+import { aiLibraryEnabled, aiLibraryStatus } from '@/lib/matchday/v2/gemini';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
   if (caller instanceof NextResponse) return caller;
   const playerId = request.nextUrl.searchParams.get('playerId')?.trim();
   if (!playerId) return NextResponse.json({ error: 'playerId is required' }, { status: 400 });
-  if (!libraryConfigured()) return NextResponse.json({ items: [], mainUrl: null, secondUrl: null, aiEnabled: false, configured: false });
+  if (!libraryConfigured()) return NextResponse.json({ items: [], mainUrl: null, secondUrl: null, aiEnabled: false, aiStatus: aiLibraryStatus(), configured: false });
   try {
     const lib = await listLibrary(playerId);
-    return NextResponse.json({ ...lib, aiEnabled: aiLibraryEnabled(), configured: true });
+    return NextResponse.json({ ...lib, aiEnabled: aiLibraryEnabled(), aiStatus: aiLibraryStatus(), configured: true });
   } catch (err) {
     console.error('[matchday library] list error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Library failed' }, { status: 500 });
