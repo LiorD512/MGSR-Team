@@ -18,6 +18,7 @@ import {
   text,
   compLine,
 } from '../render';
+import { hasSecond, secondSheet } from '../kit/second';
 import { matchPalette, mix, readableOn } from '../kit/palette';
 import { grain, stripes } from '../kit/texture';
 import { discBadge, withOpacity } from '../kit/badges';
@@ -161,7 +162,12 @@ export async function renderClubColors(i: RenderV2Input): Promise<Buffer> {
     discBadge(i.homeCrest, cs, { ring: '#ffffff', ringWidth: 4 }),
     discBadge(i.awayCrest, cs, { ring: '#ffffff', ringWidth: 4 }),
   ]);
-  const comp: sharp.OverlayOptions[] = [{ input: behind }, { input: hero }, { input: bar }, { input: front }];
+  // Second real photo: duotoned in the OTHER half's colour, behind the wordmark.
+  const ghost = await secondSheet(i, {
+    height: 1150, cx: 250, top: 600, flip: true, opacity: 0.88, fadeStart: 78,
+    treatment: { kind: 'duotone', dark: mix(p.away, '#000000', 0.7), light: mix(p.away, '#ffffff', 0.4) },
+  });
+  const comp: sharp.OverlayOptions[] = [...(ghost ? [{ input: ghost }] : []), { input: behind }, { input: hero }, { input: bar }, { input: front }];
   if (cH) comp.push({ input: cH, left: 44, top: barTop + 36 });
   if (cA) comp.push({ input: cA, left: V2_W - 44 - cs, top: barTop + 36 });
   return sharp(bg).composite(comp).png().toBuffer();

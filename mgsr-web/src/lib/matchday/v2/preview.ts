@@ -27,10 +27,12 @@ export async function generatePreviews(input: PreviewInput): Promise<Record<stri
   const facts = buildFacts(input);
   const playerBytes = await requirePlayerBytes(input);
   const kitBytes = input.kitPhotoUrl?.trim() ? await fetchBytes(input.kitPhotoUrl) : null;
+  const player2Bytes = input.playerPhoto2Url?.trim() ? await fetchBytes(input.playerPhoto2Url) : null;
   const stadium = input.stadiumPhotoUrl?.trim() ? await fetchBytes(input.stadiumPhotoUrl) : null;
 
   const layers = await prepareLayers({
     playerPhoto: playerBytes,
+    playerPhoto2: player2Bytes,
     kitPhoto: kitBytes,
     squadNumber: input.squadNumber ?? null,
     needHero: false,
@@ -60,7 +62,7 @@ export async function generatePreviews(input: PreviewInput): Promise<Record<stri
           facts,
           playerName: input.playerName.toUpperCase(),
           squadNumber: input.squadNumber ?? null,
-          layers: { cutAction: layers.cutAction, hero: layers.cutAction, backdropMono: null, heroIsDistinct: false },
+          layers: { cutAction: layers.cutAction, hero: layers.hero, backdropMono: null, heroIsDistinct: layers.heroIsDistinct },
           homeCrest,
           awayCrest,
           stadium,

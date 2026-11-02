@@ -5321,6 +5321,23 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .md2-sc.md-prestige .md2-pv{background:radial-gradient(circle at 50% 28%,#f0d389,transparent 52%),linear-gradient(180deg,#15120a,#0b0a06 72%,#040302)}
 .md2-sc.md-electric .md2-pv{background:radial-gradient(circle at 50% 32%,#8affd8,transparent 54%),linear-gradient(180deg,#160a30,#3b1d7a 62%,#0a0618)}
 /* V3 graphic styles — CSS miniatures that hint at each layout */
+/* V3 round 4: style spotlight + built-in examples */
+.md2-spot{display:grid;grid-template-columns:minmax(200px,260px) 1fr;gap:28px;align-items:start;margin:26px 0 6px;padding:18px;border:1px solid var(--line);background:var(--paper)}
+@media (max-width:760px){.md2-spot{grid-template-columns:1fr;gap:16px}.md2-spot-img{max-width:280px;margin:0 auto;width:100%}}
+.md2-spot-img{position:relative;aspect-ratio:9/16;background:#0b0b0d center top/cover no-repeat;border:1px solid var(--line)}
+.md2-spot-img .tag{position:absolute;top:10px;left:10px;padding:5px 9px;background:rgba(0,0,0,.72);color:#fff;font:600 9px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+.md2-spot-img .tag.real{background:var(--gold)}
+.md2-spot-meta .fam{font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:4px 0 10px}
+.md2-spot-meta h3{font:600 26px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--ink);margin:0}
+.md2-spot-meta h3 span{color:var(--gold)}
+.md2-spot-meta .blurb{font:400 14px/1.5 var(--body);color:var(--muted);margin:10px 0 0;max-width:46ch}
+.md2-spot-meta .md2-variants{margin-top:18px}
+.md2-spot-two{display:flex;align-items:center;gap:12px;margin-top:20px}
+.md2-spot-two img{width:56px;aspect-ratio:9/16;object-fit:cover;border:1px solid var(--line)}
+.md2-spot-two span{font:400 12px/1.45 var(--body);color:var(--muted);max-width:30ch}
+.md2-spot-meta .note{font:400 11px/1.5 var(--body);color:var(--muted-2,var(--muted));margin:16px 0 0;max-width:46ch}
+.md2-ex{position:absolute;left:8px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.65);color:#fff;font:600 8px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+.md2-sc .md2-pv.has-img{position:relative}
 /* V3 round 3: families, variants, live motion */
 .md2-history{margin:30px 0 6px}
 .md2-history .md2-famh{margin:0 0 12px}

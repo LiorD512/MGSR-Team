@@ -33,6 +33,9 @@ Repo rules that constrain this plan (from `.github/copilot-instructions.md`): **
   - Posters delivered as JPEG q92 (fixes Vercel 4.5 MB limit on generate/save/send).
   - Auth (Firebase ID token) + per-user rate limit on all MATCHDAY routes.
   - History: "Saved posters" strip (Save stores thumbnail + metadata).
+- [x] Round 4 (owner: "2nd photo is sometimes ignored", "hard to understand the style boxes"):
+  - 2nd photo: root cause was ours (pipeline skipped it for graphic styles; V3 layouts never drew it). Now every style composes it in its own way (`kit/second.ts`); previews include it; quality checks report its status.
+  - Picker: spotlight panel + built-in examples for every style/variant (+ two-photo example), anonymous illustrated player + fake clubs.
 - [ ] Later: real layer parallax in video (needs per-style layer export), Riso Pop style, evaluate free in-browser segmentation (e.g. MODNet, Apache-2.0, via transformers.js) to replace the Gemini cutout
 
 ### Test it on localhost

@@ -20,6 +20,7 @@ import {
   text,
   compLine,
 } from '../render';
+import { hasSecond, secondSheet } from '../kit/second';
 import { matchPalette, mix, readableOn } from '../kit/palette';
 import { grain, stripes } from '../kit/texture';
 import { discBadge } from '../kit/badges';
@@ -189,7 +190,14 @@ export async function renderGiantType(i: RenderV2Input): Promise<Buffer> {
     ])
   );
 
+  // Second real photo: a club-colour duotone ghost BEHIND the giant type, so
+  // it shows through the outlined rows (ghost → type → hero depth sandwich).
+  const ghost = await secondSheet(i, {
+    height: 1560, cx: 800, top: 230, flip: true, opacity: 0.9, fadeStart: 72,
+    treatment: { kind: 'duotone', dark: p.ink, light: mix(noir ? base.home : p.home, '#ffffff', 0.62) },
+  });
   const comp: sharp.OverlayOptions[] = [
+    ...(ghost ? [{ input: ghost }] : []),
     { input: behind },
     { input: band },
     { input: hero },

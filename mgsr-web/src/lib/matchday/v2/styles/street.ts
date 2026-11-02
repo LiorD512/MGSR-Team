@@ -10,6 +10,7 @@
 import sharp from 'sharp';
 import { type RenderV2Input, V2_W, V2_H, placeLayer, textLayer, text, crestPng } from '../render';
 import { abs, root, sheet, flatten, rotateCanvas } from '../kit/compose';
+import { secondCutout } from '../kit/second';
 import { grain } from '../kit/texture';
 import { mix, matchPalette, readableOn } from '../kit/palette';
 import { fitFontSize, splitName, wrapSurname } from '../kit/fit';
@@ -108,7 +109,7 @@ export async function renderStreet(i: RenderV2Input): Promise<Buffer> {
   const paper = await sharp(paperSvg).png().toBuffer();
   const paperBlur = await sharp(sheet(`<polygon points="${tornRect(rng, SX + 10, SY + 14, SW, SH)}" fill="#000" opacity="0.45"/>`)).blur(14).png().toBuffer();
 
-  const hero = await placeLayer(i.layers.cutAction, 1050, (w) => ({ left: Math.round(560 - w / 2), top: SY + 160 }), {
+  const hero = await placeLayer(i.layers.cutAction, 1050, (w) => ({ left: Math.round((i.layers.heroIsDistinct ? 500 : 560) - w / 2), top: SY + 160 }), {
     mod: { brightness: 1.02, saturation: 1.12 },
   });
   // clip the hero to the sheet so nothing hangs off the paper
@@ -145,7 +146,41 @@ export async function renderStreet(i: RenderV2Input): Promise<Buffer> {
       .join('')
   );
 
-  const sheetLayer = await rotateCanvas(await flatten([{ input: paperBlur }, { input: paper }, { input: heroOnSheet }, { input: typeLayer }, { input: tapes }]), -2.2);
+  // Second real photo: a taped polaroid pasted on the sheet, BEHIND the main player.
+  let polaroid: Buffer | null = null;
+  const cut2 = await secondCutout(i, 470, { kind: 'photo', saturation: 1.05 }, true);
+  if (cut2) {
+    const PW = 330, PH = 410, PIW = 290, PIH = 320;
+    const m2 = await sharp(cut2).metadata();
+    // Compose on a canvas big enough for the whole cutout, then crop to the window
+    // (sharp rejects overlays that overflow their base).
+    const cw = Math.max(PIW, m2.width ?? PIW);
+    const chh = Math.max(PIH, 18 + (m2.height ?? PIH));
+    const big = await sharp({ create: { width: cw, height: chh, channels: 4, background: block } })
+      .composite([{ input: cut2, left: Math.round((cw - (m2.width ?? cw)) / 2), top: 18 }])
+      .png()
+      .toBuffer();
+    const photo = await sharp(big).extract({ left: Math.round((cw - PIW) / 2), top: 0, width: PIW, height: PIH }).png().toBuffer();
+    const photoClipped = await sharp(photo).extract({ left: 0, top: 0, width: PIW, height: PIH }).png().toBuffer();
+    const frame = await sharp({ create: { width: PW, height: PH, channels: 4, background: '#fbfaf6' } })
+      .composite([{ input: photoClipped, left: 20, top: 20 }])
+      .png()
+      .toBuffer();
+    const shadow = await sharp({ create: { width: PW + 40, height: PH + 40, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+      .composite([{ input: Buffer.from(`<svg width="${PW + 40}" height="${PH + 40}" xmlns="http://www.w3.org/2000/svg"><rect x="24" y="28" width="${PW}" height="${PH}" fill="#000" opacity="0.45"/></svg>`) }])
+      .blur(8)
+      .png()
+      .toBuffer();
+    const tape = Buffer.from(`<svg width="${PW + 40}" height="${PH + 40}" xmlns="http://www.w3.org/2000/svg"><rect x="${(PW + 40) / 2 - 70}" y="4" width="140" height="44" fill="${T.tape}" opacity="0.85" transform="rotate(-4 ${(PW + 40) / 2} 26)"/></svg>`);
+    const card = await sharp(shadow).composite([{ input: frame, left: 20, top: 20 }, { input: tape }]).png().toBuffer();
+    const rotated = await sharp(card).rotate(7, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer();
+    polaroid = await flatten([{ input: rotated, left: SX + SW - 400, top: SY + 280 }]);
+  }
+
+  const sheetLayer = await rotateCanvas(
+    await flatten([{ input: paperBlur }, { input: paper }, ...(polaroid ? [{ input: polaroid }] : []), { input: heroOnSheet }, { input: typeLayer }, { input: tapes }]),
+    -2.2
+  );
 
   // ── torn date label + stickers (on top, un-rotated for variety) ──────────
   const dateStr = `${pd ? pd.short : f.date}  ·  ${f.time ?? 'TBC'}`;

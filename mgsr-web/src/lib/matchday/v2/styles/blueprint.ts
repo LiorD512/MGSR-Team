@@ -10,6 +10,7 @@
  */
 import sharp from 'sharp';
 import { type RenderV2Input, V2_W, V2_H, textLayer, text, compLine } from '../render';
+import { hasSecond, secondSheet } from '../kit/second';
 import { abs, centred, root, sheet, flatten } from '../kit/compose';
 import { grain } from '../kit/texture';
 import { squareBadge } from '../kit/badges';
@@ -101,7 +102,8 @@ export async function renderBlueprint(i: RenderV2Input): Promise<Buffer> {
     const scaled = await sharp(i.layers.cutAction).resize({ height: 1180 }).png().toBuffer();
     const fig = await blueprintFigure(scaled, T.duo, T.line);
     const fw = (await sharp(fig).metadata()).width ?? 1;
-    figSheet = await flatten([{ input: fig, left: Math.max(0, Math.round(600 - fw / 2)), top: 330 }]);
+    const two = hasSecond(i);
+    figSheet = await flatten([{ input: fig, left: Math.max(0, Math.round((two ? 660 : 600) - fw / 2)), top: 330 }]);
   }
 
   // ── spec sheet text ──────────────────────────────────────────────────────
@@ -138,7 +140,17 @@ export async function renderBlueprint(i: RenderV2Input): Promise<Buffer> {
   ]);
   const vs = await textLayer(root([text(abs(1700, 60 + BS + 14, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '34px', color: T.accent }), 'VS')]));
 
-  const overlays: sharp.OverlayOptions[] = [{ input: figSheet }, { input: box }, { input: t }, { input: vs }];
+  // Second real photo: a second elevation drawing, "VIEW B".
+  let viewB: Buffer | null = null;
+  if (hasSecond(i)) {
+    const s2 = await sharp(i.layers.hero!).resize({ height: 820 }).flop().png().toBuffer();
+    const f2 = await blueprintFigure(s2, T.duo, T.line);
+    const f2o = await sharp(f2).ensureAlpha().linear([1, 1, 1, 0.6], [0, 0, 0, 0]).png().toBuffer();
+    const w2 = (await sharp(f2o).metadata()).width ?? 1;
+    const label = await textLayer(root([text(abs(1395, 120, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '20px', letterSpacing: '4px', color: T.line }), 'VIEW B')]));
+    viewB = await flatten([{ input: f2o, left: Math.max(0, Math.round(270 - w2 / 2)), top: 560 }, { input: label }]);
+  }
+  const overlays: sharp.OverlayOptions[] = [...(viewB ? [{ input: viewB }] : []), { input: figSheet }, { input: box }, { input: t }, { input: vs }];
   if (cH) overlays.push({ input: cH, left: 60, top: 1660 });
   if (cA) overlays.push({ input: cA, left: 60 + BS + 86, top: 1660 });
   overlays.push({ input: await grain((i.seed ?? 1) + 41, 0.07), blend: 'overlay' });

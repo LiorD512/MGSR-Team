@@ -10,6 +10,7 @@
  */
 import sharp from 'sharp';
 import { type RenderV2Input, V2_W, V2_H, placeLayer, textLayer, cinematicStadiumBg, rimGlow, contactShadow, text, div } from '../render';
+import { hasSecond, secondSheet } from '../kit/second';
 import { abs, centred, root, sheet } from '../kit/compose';
 import { relightCutout } from '../kit/relight';
 import { grain } from '../kit/texture';
@@ -38,7 +39,10 @@ export async function renderCinema(i: RenderV2Input): Promise<Buffer> {
   const bg = await cinematicStadiumBg({ ...i, sky: null }, { wash: T.wash, washOpacity: 0.55, spot: T.spot, smokeTint: T.smoke, smokeIntensity: 0.9, bottom: T.bottom });
 
   const lit = i.layers.cutAction ? await relightCutout(i.layers.cutAction, { tint: T.rim, amount: 0.35, wrap: 0.8 }) : null;
-  const hero = await placeLayer(lit, 1330, (w) => ({ left: Math.round(V2_W / 2 - w / 2), top: 250 }), { fade: true, fadeStart: 82 });
+  const two = hasSecond(i);
+  const hero = await placeLayer(lit, 1330, (w) => ({ left: Math.round((two ? 430 : V2_W / 2) - w / 2), top: 250 }), { fade: true, fadeStart: 82 });
+  // Second real photo: the classic one-sheet "giant figure in the sky" behind the lead.
+  const sky = await secondSheet(i, { height: 1480, cx: 790, top: 90, flip: true, opacity: 0.8, fadeStart: 58, treatment: { kind: 'relit', tint: T.rim, amount: 0.55, brightness: 0.62 } });
   const rim = await rimGlow(hero, T.rim);
 
   // Heavy bottom fade so the title + billing sit on near-black, like a real one-sheet.
@@ -84,6 +88,7 @@ export async function renderCinema(i: RenderV2Input): Promise<Buffer> {
     discBadge(i.awayCrest, BS, { ring: T.accent, ringWidth: 3 }),
   ]);
   const overlays: sharp.OverlayOptions[] = [
+    ...(sky ? [{ input: sky }] : []),
     { input: rim, blend: 'screen' },
     { input: contactShadow(540, 1540, 420) },
     { input: hero },

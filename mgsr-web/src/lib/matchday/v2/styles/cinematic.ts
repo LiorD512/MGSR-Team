@@ -31,6 +31,7 @@ import {
 } from '../render';
 import { mix } from '../kit/palette';
 import { relightCutout } from '../kit/relight';
+import { hasSecond, secondSheet } from '../kit/second';
 import { makeRng } from '../kit/prng';
 import { grain } from '../kit/texture';
 import { discBadge } from '../kit/badges';
@@ -203,6 +204,11 @@ export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
   const comp: sharp.OverlayOptions[] = [
     { input: streakLayer, blend: 'screen' },
     { input: embersBack, blend: 'screen' },
+    // Second real photo: a fire-relit, darkened figure rising behind the title.
+    ...(await (async () => {
+      const g = await secondSheet(i, { height: 1380, cx: 250, top: 380, flip: true, opacity: 0.92, fadeStart: 70, treatment: { kind: 'relit', tint: T.rim, amount: 0.65, brightness: 0.75 } });
+      return g ? [{ input: g }] : [];
+    })()),
     { input: title },
     { input: rim },
     { input: shadow },
@@ -286,7 +292,7 @@ export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
       `</svg>`
   );
 
-  const hero = await placeLayer(lit, 1200, (w) => ({ left: Math.round(540 - w / 2), top: 370 }), {
+  const hero = await placeLayer(lit, 1200, (w) => ({ left: Math.round((hasSecond(i) ? 470 : 540) - w / 2), top: 370 }), {
     mod: { brightness: 1.06, saturation: 0.96 }, fade: true, fadeStart: 93,
   });
   const rim = await rimGlow(hero, T.rim);
@@ -323,6 +329,11 @@ export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
 
   const comp: sharp.OverlayOptions[] = [
     { input: hud },
+    // Second real photo: an ice-duotone figure inside the HUD ring.
+    ...(await (async () => {
+      const g = await secondSheet(i, { height: 1000, cx: 840, top: 460, flip: true, opacity: 0.6, fadeStart: 74, treatment: { kind: 'duotone', dark: T.bottom, light: T.accent } });
+      return g ? [{ input: g }] : [];
+    })()),
     { input: rim, blend: 'screen' },
     { input: contactShadow(540, 1560, 480) },
     { input: hero },
@@ -410,6 +421,11 @@ export async function renderPrestigeV3(i: RenderV2Input): Promise<Buffer> {
 
   const comp: sharp.OverlayOptions[] = [
     { input: frame },
+    // Second real photo: a gold duotone portrait receding into the darkness.
+    ...(await (async () => {
+      const g = await secondSheet(i, { height: 1240, cx: 290, top: 300, flip: true, opacity: 0.45, fadeStart: 66, treatment: { kind: 'duotone', dark: '#000000', light: T.gold } });
+      return g ? [{ input: g }] : [];
+    })()),
     { input: watermark },
     { input: rim },
     { input: contactShadow(560, 1470, 460) },
@@ -512,6 +528,11 @@ export async function renderElectricV3(i: RenderV2Input): Promise<Buffer> {
   const comp: sharp.OverlayOptions[] = [
     { input: neonGlow, blend: 'screen' },
     { input: neon },
+    // Second real photo: a neon hologram (duotone, screen-blended) behind the hero.
+    ...(await (async () => {
+      const g = await secondSheet(i, { height: 1180, cx: 860, top: 380, flip: true, opacity: 1, fadeStart: 80, treatment: { kind: 'duotone', dark: '#000000', light: T.cy } });
+      return g ? [{ input: g, blend: 'screen' as const }] : [];
+    })()),
     { input: titleCy, left: -7, top: 0, blend: 'screen' },
     { input: titleMg, left: 7, top: 0, blend: 'screen' },
     { input: cyanCopy, blend: 'screen' },

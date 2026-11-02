@@ -2,7 +2,7 @@
  * Dev tool: render MATCHDAY v2/v3 posters locally with NO network and NO Gemini.
  *
  *   cd mgsr-web
- *   npx tsx scripts/matchday-preview.ts [designId ...] [--out=/some/dir] [--name="Full Name"] [--variant=N | --all-variants]
+ *   npx tsx scripts/matchday-preview.ts [designId ...] [--out=/some/dir] [--name="Full Name"] [--variant=N | --all-variants] [--two]
  *
  * Uses a real transparent cutout from docs/matchday-poc/results and synthetic
  * crests, so layout / typography / texture work can be reviewed quickly.
@@ -39,11 +39,14 @@ async function main() {
   const playerName = nameArg ? nameArg.slice(7) : 'Moses Bawa';
   const varArg = args.find((a) => a.startsWith('--variant='));
   const allVariants = args.includes('--all-variants');
+  const two = args.includes('--two');
   const wanted = args.filter((a) => !a.startsWith('--'));
   const designs = (wanted.length ? wanted : MATCHDAY_DESIGNS.map((d) => d.id)) as MatchdayDesignId[];
   await fs.mkdir(outDir, { recursive: true });
 
   const cutout = await fs.readFile(path.join(process.cwd(), '..', 'docs/matchday-poc/results/cutout_clean.png'));
+  // --two: a genuinely different second pose (the POC's orange-bib cutout).
+  const cutout2 = two ? await fs.readFile(path.join(process.cwd(), '..', 'docs/matchday-poc/results/diomande_cutout.png')) : null;
   const homeCrest = await crest('round', '#1d4ed8', '#fde047', 'G');
   const awayCrest = await crest('shield', '#b91c1c', '#ffffff', 'K');
   const palette = await matchPalette(homeCrest, awayCrest);
@@ -75,7 +78,7 @@ async function main() {
         homeLogo: null,
         awayLogo: null,
       },
-      layers: { cutAction: cutout, hero: cutout, backdropMono: null, heroIsDistinct: false },
+      layers: { cutAction: cutout, hero: cutout2 ?? cutout, backdropMono: null, heroIsDistinct: Boolean(cutout2) },
       homeCrest,
       awayCrest,
       stadium: null,

@@ -126,9 +126,9 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
 
   // Optional SECOND real player photo (a genuine second pose) + kit reference.
   const graphic = GRAPHIC_STYLES.has(input.design);
-  // Graphic styles use a single hero, so the 2nd photo (and its extra Gemini
-  // cutout call) is skipped for them.
-  const player2Bytes = !graphic && input.playerPhoto2Url?.trim() ? await fetchBytes(input.playerPhoto2Url) : null;
+  // Every style composes the 2nd real photo in its own way (kit/second.ts), so
+  // it is always used when supplied. Its cutout is cached like the first one.
+  const player2Bytes = input.playerPhoto2Url?.trim() ? await fetchBytes(input.playerPhoto2Url) : null;
   const kitBytes = input.kitPhotoUrl?.trim() ? await fetchBytes(input.kitPhotoUrl) : null;
 
   // ── Stage 3: AI-assisted layer prep (face preserved) ──
@@ -213,6 +213,19 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   // and the same payload is posted back by Save / Send.
   const posterJpeg = await sharp(rendered.bytes).jpeg({ quality: 92, mozjpeg: true, chromaSubsampling: '4:4:4' }).toBuffer();
 
+  const secondCheck: MatchdayQualityCheck | null = input.playerPhoto2Url?.trim()
+    ? layers.heroIsDistinct
+      ? { id: 'second', label: 'Second photo', status: 'pass', detail: 'used as a second figure' }
+      : {
+          id: 'second',
+          label: 'Second photo',
+          status: 'warn',
+          detail: !player2Bytes
+            ? 'could not be downloaded — poster uses one photo'
+            : 'cutout failed this run — poster uses one photo; try again or upload a transparent PNG',
+        }
+    : null;
+
   const qualityChecks = buildChecks(facts, geminiConfigured(), Boolean(layers.cutAction), Boolean(homeCrest), Boolean(awayCrest), Boolean(kitBytes), rendered.width, rendered.height, layers.preCut ? 'your transparent cutout, used as-is (no AI)' : layers.fromCache ? 'clean transparent cutout (cached — no AI call this run)' : null);
 
   return {
@@ -221,7 +234,7 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
     variant: { index: variant.index, name: variant.name },
     imageDataUrl: `data:image/jpeg;base64,${posterJpeg.toString('base64')}`,
     facts,
-    qualityChecks,
+    qualityChecks: secondCheck ? [...qualityChecks.slice(0, 2), secondCheck, ...qualityChecks.slice(2)] : qualityChecks,
   };
 }
 

@@ -49,6 +49,11 @@ function clubKey(club: string): string {
   return club.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 120);
 }
 
+/** Built-in style example (anonymous illustrated player, fake clubs) — see scripts/matchday-samples.ts. */
+function sampleSrc(id: MatchdayDesignId, v: number | 'two'): string {
+  return `/matchday-samples/${id}-${v === 'two' ? 'two' : `v${v}`}.jpg`;
+}
+
 /** JSON headers + the signed-in user's Firebase ID token (MATCHDAY routes verify it). */
 async function apiHeaders(): Promise<Record<string, string>> {
   const token = await auth.currentUser?.getIdToken().catch(() => null);
@@ -77,6 +82,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
   const [previewPhase, setPreviewPhase] = useState<'idle' | 'loading' | 'error'>('idle');
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [remix, setRemix] = useState(0);
+  const [hoverDesign, setHoverDesign] = useState<MatchdayDesignId | null>(null);
 
   // Motion (runs in the browser on a <canvas>; see lib/matchday/motionClient.ts).
   const [motionOn, setMotionOn] = useState(false);
@@ -269,7 +275,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     setPreviews(null);
     setPreviewPhase('idle');
     setPreviewError(null);
-  }, [playerPhotoUrl, kitPhotoUrl, stadiumPhotoUrl, squadNumber]);
+  }, [playerPhotoUrl, playerPhoto2Url, kitPhotoUrl, stadiumPhotoUrl, squadNumber]);
 
   const loadPreviews = useCallback(async () => {
     setPreviewPhase('loading');
@@ -287,6 +293,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
           clubLogo: seed.clubLogo ?? null,
           fixture: seed.fixture ?? null,
           playerPhotoUrl,
+          playerPhoto2Url,
           stadiumPhotoUrl,
           kitPhotoUrl,
           squadNumber: squadNumber.trim() || null,
@@ -305,7 +312,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
       setPreviewError(err instanceof Error ? err.message : t('matchday_v3_preview_error'));
       setPreviewPhase('error');
     }
-  }, [seed, playerPhotoUrl, stadiumPhotoUrl, kitPhotoUrl, squadNumber, t]);
+  }, [seed, playerPhotoUrl, playerPhoto2Url, stadiumPhotoUrl, kitPhotoUrl, squadNumber, t]);
 
   const handleDownload = () => {
     if (!result?.imageDataUrl) return;
@@ -564,13 +571,55 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                   </>
                 )}
               </div>
+              {(() => {
+                // Spotlight: the hovered (or selected) style, big, at the chosen variant.
+                // Shows the operator's real preview when one exists for that exact
+                // look, otherwise a built-in EXAMPLE (anonymous illustrated player,
+                // fake clubs) from /public/matchday-samples.
+                const shownId = hoverDesign ?? design;
+                const sel = MATCHDAY_DESIGNS.find((d) => d.id === shownId);
+                if (!sel) return null;
+                const v = hoverDesign ? 0 : designVariant(design, remix).index;
+                const real = v === 0 ? previews?.[sel.id] : undefined;
+                const src = real ?? sampleSrc(sel.id, v);
+                const names = sel.variants ?? [];
+                return (
+                  <div className="md2-spot">
+                    <div className="md2-spot-img" style={{ backgroundImage: `url(${src})` }} role="img" aria-label={`${sel.name} — ${names[v] ?? ''}`}>
+                      <span className={`tag${real ? ' real' : ''}`}>{real ? t('matchday_v3_your_player') : t('matchday_v3_example')}</span>
+                    </div>
+                    <div className="md2-spot-meta">
+                      <p className="fam">{sel.family === 'cinematic' ? t('matchday_v3_family_cinematic') : t('matchday_v3_family_graphic')}</p>
+                      <h3>{sel.name}{names[v] ? <span> · {names[v]}</span> : null}</h3>
+                      <p className="blurb">{sel.blurb}</p>
+                      {!hoverDesign && names.length > 1 && (
+                        <div className="md2-variants" role="radiogroup" aria-label={t('matchday_v3_variant')}>
+                          <span className="lab">{t('matchday_v3_variant')}</span>
+                          {names.map((n, k) => (
+                            <button key={n} type="button" role="radio" aria-checked={v === k}
+                              className={`md2-chip${v === k ? ' on' : ''}`} onClick={() => setRemix(k)}>
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <div className="md2-spot-two">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={sampleSrc(sel.id, 'two')} alt="" />
+                        <span>{playerPhoto2Url ? t('matchday_v3_two_has') : t('matchday_v3_two_add')}</span>
+                      </div>
+                      {!real && <p className="note">{t('matchday_v3_example_note')}</p>}
+                    </div>
+                  </div>
+                );
+              })()}
               {(['graphic', 'cinematic'] as const).map((fam) => (
                 <div key={fam} className="md2-family">
                   <p className="md2-famh">
                     {fam === 'graphic' ? t('matchday_v3_family_graphic') : t('matchday_v3_family_cinematic')}
                     <span>{fam === 'graphic' ? t('matchday_v3_family_graphic_note') : t('matchday_v3_family_cinematic_note')}</span>
                   </p>
-                  <div className={`md2-styles${previews ? ' has-previews' : ''}`}>
+                  <div className="md2-styles has-previews">
                     {MATCHDAY_DESIGNS.filter((d) => d.family === fam).map((d) => (
                       <button
                         key={d.id}
@@ -580,14 +629,20 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                           setDesign(d.id);
                           setRemix(0);
                         }}
+                        onMouseEnter={() => setHoverDesign(d.id)}
+                        onMouseLeave={() => setHoverDesign(null)}
+                        onFocus={() => setHoverDesign(d.id)}
+                        onBlur={() => setHoverDesign(null)}
                         aria-pressed={design === d.id}
                       >
                         <span className="md2-mk">{t('matchday_v2_selected')}</span>
                         <span
-                          className={`md2-pv${previews?.[d.id] ? ' has-img' : ''}`}
-                          style={previews?.[d.id] ? { backgroundImage: `url(${previews[d.id]})` } : undefined}
+                          className="md2-pv has-img"
+                          style={{ backgroundImage: `url(${previews?.[d.id] ?? sampleSrc(d.id, 0)})` }}
                           aria-hidden
-                        />
+                        >
+                          {!previews?.[d.id] && <span className="md2-ex">{t('matchday_v3_example')}</span>}
+                        </span>
                         <span className="md2-cap">
                           <span className="n">{d.name}</span>
                           <span className="d">{d.blurb}</span>
@@ -597,29 +652,6 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                   </div>
                 </div>
               ))}
-              {(() => {
-                const sel = MATCHDAY_DESIGNS.find((d) => d.id === design);
-                const names = sel?.variants ?? [];
-                if (names.length < 2) return null;
-                const cur = designVariant(design, remix).index;
-                return (
-                  <div className="md2-variants" role="radiogroup" aria-label={t('matchday_v3_variant')}>
-                    <span className="lab">{sel?.name} · {t('matchday_v3_variant')}</span>
-                    {names.map((n, k) => (
-                      <button
-                        key={n}
-                        type="button"
-                        role="radio"
-                        aria-checked={cur === k}
-                        className={`md2-chip${cur === k ? ' on' : ''}`}
-                        onClick={() => setRemix(k)}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                );
-              })()}
               <div className="md2-actions">
                 <button className="md2-lead" onClick={() => void run()}>{t('matchday_generate')} →</button>
                 <button className="md2-text" onClick={() => setStep('assets')}>← {t('matchday_v2_back')}</button>

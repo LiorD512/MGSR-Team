@@ -18,6 +18,7 @@ import {
   div,
   text,
 } from '../render';
+import { hasSecond, secondSheet } from '../kit/second';
 import { matchPalette, hexToRgb, luminance, mix } from '../kit/palette';
 import { paper, halftone, grain } from '../kit/texture';
 import { squareBadge } from '../kit/badges';
@@ -171,6 +172,11 @@ export async function renderBroadsheet(i: RenderV2Input): Promise<Buffer> {
 
   const overlays: sharp.OverlayOptions[] = [
     { input: rules },
+    // Second real photo: a second, lighter halftone print layered behind (a photo collage).
+    ...(await (async () => {
+      const g = await secondSheet(i, { height: 900, cx: 330, top: 600, flip: true, opacity: 0.42, fadeStart: 86, treatment: { kind: 'halftone', ink: INK, cell: 6 } });
+      return g ? [{ input: g, blend: 'multiply' as const }] : [];
+    })()),
     { input: heroSpot, blend: 'multiply' },
     { input: heroInk },
     { input: boxSvg },

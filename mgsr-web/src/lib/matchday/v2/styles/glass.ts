@@ -9,6 +9,7 @@
  */
 import sharp from 'sharp';
 import { type RenderV2Input, V2_W, V2_H, placeLayer, textLayer, text, contactShadow, compLine } from '../render';
+import { hasSecond, secondSheet } from '../kit/second';
 import { abs, centred, column, root, sheet, orbs, frostedGlass } from '../kit/compose';
 import { relightCutout } from '../kit/relight';
 import { grain } from '../kit/texture';
@@ -49,8 +50,14 @@ export async function renderGlass(i: RenderV2Input): Promise<Buffer> {
   const bg = await sharp(base).composite([{ input: glow }, { input: await grain((i.seed ?? 1) + 51, 0.06), blend: 'overlay' }]).png().toBuffer();
 
   const lit = i.layers.cutAction ? await relightCutout(i.layers.cutAction, { tint: P.key, amount: 0.3, wrap: 0.9 }) : null;
-  const hero = await placeLayer(lit, 1000, (w) => ({ left: Math.round(V2_W / 2 - w / 2), top: 370 }), {});
-  const scene = await sharp(bg).composite([{ input: contactShadow(540, 1362, 380) }, { input: hero }]).png().toBuffer();
+  const two = hasSecond(i);
+  const hero = await placeLayer(lit, 1000, (w) => ({ left: Math.round((two ? 640 : V2_W / 2) - w / 2), top: 370 }), {});
+  // Second real photo: a second, slightly receding figure; the glass card blurs its legs.
+  const second = await secondSheet(i, { height: 900, cx: 290, top: 520, flip: true, opacity: 0.9, treatment: { kind: 'relit', tint: P.key, amount: 0.35, brightness: 0.9 } });
+  const scene = await sharp(bg)
+    .composite([...(second ? [{ input: second }] : []), { input: contactShadow(two ? 640 : 540, 1362, 380) }, { input: hero }])
+    .png()
+    .toBuffer();
 
   // Glass cards (blur the composited scene underneath).
   const top = await frostedGlass(scene, 60, 60, 960, 290, { radius: 44 });

@@ -11,6 +11,7 @@
  */
 import sharp from 'sharp';
 import { type RenderV2Input, V2_W, V2_H, placeLayer, textLayer, text, compLine } from '../render';
+import { hasSecond, secondSheet } from '../kit/second';
 import { abs, column, root, sheet, barcodeSvg } from '../kit/compose';
 import { paper, grain, stripes } from '../kit/texture';
 import { squareBadge } from '../kit/badges';
@@ -71,7 +72,13 @@ export async function renderTicket(i: RenderV2Input): Promise<Buffer> {
     .toBuffer();
 
   // hero: clipped only at the window's bottom edge, so the head breaks out of the top
-  const hero = await placeLayer(i.layers.cutAction, 960, (w) => ({ left: Math.round(TX + TW / 2 - w / 2), top: WY - 70 }), { mod: { brightness: 1.03, saturation: 1.08 } });
+  const two = hasSecond(i);
+  const hero = await placeLayer(i.layers.cutAction, 960, (w) => ({ left: Math.round(TX + TW * (two ? 0.62 : 0.5) - w / 2), top: WY - 70 }), { mod: { brightness: 1.03, saturation: 1.08 } });
+  // Second real photo: a second figure inside the photo window (clipped to it — it never breaks out).
+  const secondRaw = await secondSheet(i, { height: 780, cx: TX + TW * 0.27, top: WY + 70, flip: true, opacity: 0.95, treatment: { kind: 'photo', brightness: 0.92, saturation: 0.95 } });
+  const secondIn = secondRaw
+    ? await sharp(secondRaw).composite([{ input: sheet(`<rect x="${WX}" y="${WY}" width="${WW}" height="${WH}" rx="26" fill="#fff"/>`), blend: 'dest-in' }]).png().toBuffer()
+    : null;
   const heroClip = await sharp(hero).composite([{ input: sheet(`<rect x="0" y="0" width="${V2_W}" height="${WY + WH}" fill="#fff"/>`), blend: 'dest-in' }]).png().toBuffer();
 
   const field = (top: number, left: number, w: number, label: string, value: string, max = 46) => [
@@ -108,6 +115,7 @@ export async function renderTicket(i: RenderV2Input): Promise<Buffer> {
     { input: ticket },
     { input: deco },
     { input: windowStripes },
+    ...(secondIn ? [{ input: secondIn }] : []),
     { input: heroClip },
     { input: t },
   ];

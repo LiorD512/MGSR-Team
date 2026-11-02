@@ -9,7 +9,8 @@
  */
 import sharp from 'sharp';
 import { type RenderV2Input, V2_W, V2_H, placeLayer, textLayer, text, crestPng, compLine } from '../render';
-import { abs, centred, column, root, sheet, orbs } from '../kit/compose';
+import { hasSecond, secondSheet } from '../kit/second';
+import { abs, centred, column, root, sheet, orbs, rotateCanvas } from '../kit/compose';
 import { relightCutout } from '../kit/relight';
 import { grain, stripes } from '../kit/texture';
 import { discBadge } from '../kit/badges';
@@ -54,7 +55,10 @@ export async function renderCard(i: RenderV2Input): Promise<Buffer> {
   const bg = await sharp(bgBase).composite([{ input: bokeh }, { input: await grain((i.seed ?? 1) + 91, 0.08), blend: 'overlay' }]).png().toBuffer();
 
   // card geometry
-  const CX = 110, CY = 110, CW = 860, CH = 1330, R = 44, B = 22;
+  // With a second photo the main card slides right and a second card (with
+  // the other pose) fans out from behind it on the left.
+  const two = hasSecond(i);
+  const CX = two ? 250 : 110, CY = 110, CW = two ? 780 : 860, CH = two ? 1260 : 1330, R = 44, B = 22;
   const IX = CX + B, IY = CY + B, IW = CW - 2 * B, IH = CH - 2 * B;
   const frame = sheet(
     `<rect x="${CX + 10}" y="${CY + 24}" width="${CW}" height="${CH}" rx="${R}" fill="#000" opacity="0.5"/>` +
@@ -126,7 +130,25 @@ export async function renderCard(i: RenderV2Input): Promise<Buffer> {
   const BS = 120;
   const [cH, cA] = await Promise.all([discBadge(i.homeCrest, BS, { ring: accent, ringWidth: 3 }), discBadge(i.awayCrest, BS, { ring: accent, ringWidth: 3 })]);
 
-  const overlays: sharp.OverlayOptions[] = [{ input: frameBlurred }, { input: pattern }];
+  // Second real photo: a second card fanned out behind the main one (left).
+  let fanned: Buffer | null = null;
+  if (two) {
+    const BX = 40, BY = CY + 60, BW = CW, BH = CH;
+    const bArt = `<rect x="${BX + B}" y="${BY + B}" width="${BW - 2 * B}" height="${BH - 2 * B}" rx="${R - 14}" fill="#fff"/>`;
+    const back = sheet(
+      `<rect x="${BX + 8}" y="${BY + 20}" width="${BW}" height="${BH}" rx="${R}" fill="#000" opacity="0.45"/>` +
+        `<rect x="${BX}" y="${BY}" width="${BW}" height="${BH}" rx="${R}" fill="url(#foil)"/>` +
+        `<rect x="${BX + B}" y="${BY + B}" width="${BW - 2 * B}" height="${BH - 2 * B}" rx="${R - 14}" fill="url(#art)"/>`,
+      `<linearGradient id="foil" x1="0" y1="0" x2="1" y2="1">${foil}</linearGradient>` +
+        `<linearGradient id="art" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(art1, '#000000', 0.25)}"/><stop offset="1" stop-color="${mix(art2, '#000000', 0.35)}"/></linearGradient>`
+    );
+    // the other pose sits in the part of the back card that stays visible
+    const s2 = await secondSheet(i, { height: 860, cx: BX + 210, top: BY + 140, treatment: { kind: 'photo', brightness: 0.88, saturation: 0.95 } });
+    const s2In = s2 ? await sharp(s2).composite([{ input: sheet(bArt), blend: 'dest-in' }]).png().toBuffer() : null;
+    const flat = await sharp(await sharp(back).png().toBuffer()).composite(s2In ? [{ input: s2In }] : []).png().toBuffer();
+    fanned = await rotateCanvas(flat, -7);
+  }
+  const overlays: sharp.OverlayOptions[] = [...(fanned ? [{ input: fanned }] : []), { input: frameBlurred }, { input: pattern }];
   if (wm) overlays.push({ input: wm, left: IX + IW - 520, top: IY + 160 });
   overlays.push({ input: heroIn }, { input: plateMasked }, { input: sheen });
   if (corner) overlays.push({ input: corner, left: IX + IW - 160, top: IY + 40 });
