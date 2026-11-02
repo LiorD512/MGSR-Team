@@ -13,6 +13,10 @@ import type { ReactNode } from 'react';
 import { loadV2Fonts } from './fonts';
 import type { MatchdayDesignId } from './types';
 import type { MatchdayMatchFacts } from '../types';
+import { stampBrand, type BrandOptions } from './kit/brand';
+import { renderGiantType, GIANT_TYPE_BRAND } from './styles/giantType';
+import { renderClubColors, CLUB_COLORS_BRAND } from './styles/clubColors';
+import { renderBroadsheet, BROADSHEET_BRAND } from './styles/broadsheet';
 
 export const V2_W = 1080;
 export const V2_H = 1920;
@@ -30,6 +34,10 @@ export interface RenderV2Input {
   awayCrest?: Buffer | null;
   stadium?: Buffer | null;
   sky?: Buffer | null;
+  /** V3: seed for reproducible procedural texture (hash of fixture+style+remix). */
+  seed?: number;
+  /** V3: club colours (player's club + opponent) for palette-driven styles. */
+  palette?: import('./kit/palette').MatchPalette;
 }
 
 // ── small helpers ─────────────────────────────────────────────────────────
@@ -40,7 +48,7 @@ async function sizeOf(buf: Buffer) {
 }
 
 /** Scale a layer to a target height, return buffer + dims. */
-async function scaleH(buf: Buffer, targetH: number, mod?: { brightness?: number; saturation?: number; hue?: number }) {
+export async function scaleH(buf: Buffer, targetH: number, mod?: { brightness?: number; saturation?: number; hue?: number }) {
   const { w, h } = await sizeOf(buf);
   const nh = Math.round(targetH);
   const nw = Math.round((w / h) * nh);
@@ -50,12 +58,12 @@ async function scaleH(buf: Buffer, targetH: number, mod?: { brightness?: number;
 }
 
 /** An empty full-canvas transparent sheet (used when a layer is missing). */
-async function emptySheet(): Promise<Buffer> {
+export async function emptySheet(): Promise<Buffer> {
   return sharp({ create: { width: V2_W, height: V2_H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toBuffer();
 }
 
 /** Place a layer onto a full-canvas transparent sheet, clipping overflow. */
-async function onCanvas(buf: Buffer, w: number, h: number, left: number, top: number): Promise<Buffer> {
+export async function onCanvas(buf: Buffer, w: number, h: number, left: number, top: number): Promise<Buffer> {
   const sheet = sharp({ create: { width: V2_W, height: V2_H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
   const sx = left < 0 ? -left : 0;
   const sy = top < 0 ? -top : 0;
@@ -73,7 +81,7 @@ async function onCanvas(buf: Buffer, w: number, h: number, left: number, top: nu
  * via a positioner. Returns a transparent sheet when the layer is missing, so
  * a failed cutout contributes nothing rather than a raw rectangle.
  */
-async function placeLayer(
+export async function placeLayer(
   buf: Buffer | null,
   targetH: number,
   position: (w: number, h: number) => { left: number; top: number },
@@ -94,7 +102,7 @@ async function placeLayer(
  * (0..100) — a high value (e.g. 82) gives a gentle, natural leg/feet blend; a
  * low value (60) gives the stronger backdrop dissolve.
  */
-async function bottomFade(buf: Buffer, startPct = 60): Promise<Buffer> {
+export async function bottomFade(buf: Buffer, startPct = 60): Promise<Buffer> {
   const { w, h } = await sizeOf(buf);
   const mask = Buffer.from(
     `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><defs>` +
@@ -117,7 +125,7 @@ async function bottomFade(buf: Buffer, startPct = 60): Promise<Buffer> {
  * centre it on a uniform transparent square. Result: visually consistent crests
  * regardless of shape.
  */
-async function crestPng(buf: Buffer | null | undefined, size: number): Promise<Buffer | null> {
+export async function crestPng(buf: Buffer | null | undefined, size: number): Promise<Buffer | null> {
   if (!buf) return null;
   // Trim transparent/flat borders so built-in padding doesn't skew the size.
   let trimmed: Buffer;
@@ -162,7 +170,7 @@ async function crestPng(buf: Buffer | null | undefined, size: number): Promise<B
  * only a subtle metallic ring + faint inner glow frames it. Area-normalised via
  * crestPng so both badges read the same size.
  */
-async function silverBadge(buf: Buffer | null | undefined, size: number): Promise<Buffer | null> {
+export async function silverBadge(buf: Buffer | null | undefined, size: number): Promise<Buffer | null> {
   if (!buf) return null;
   const crest = await crestPng(buf, Math.round(size * 0.78));
   const ring = Buffer.from(
@@ -182,13 +190,13 @@ async function silverBadge(buf: Buffer | null | undefined, size: number): Promis
 
 // ── text layers via satori ──────────────────────────────────────────────────
 
-async function textLayer(node: ReactNode): Promise<Buffer> {
+export async function textLayer(node: ReactNode): Promise<Buffer> {
   const fonts = await loadV2Fonts();
   const svg = await satori(node as never, { width: V2_W, height: V2_H, fonts: fonts as never });
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
-function compLine(facts: MatchdayMatchFacts): string {
+export function compLine(facts: MatchdayMatchFacts): string {
   // The competition string often already carries the country (e.g.
   // "Lithuania: I Lyga"), so only prepend country when it isn't already there —
   // otherwise we get "LITHUANIA • LITHUANIA: I LYGA".
@@ -198,16 +206,16 @@ function compLine(facts: MatchdayMatchFacts): string {
   const parts = compHasCountry ? [comp, facts.round] : [country, comp, facts.round];
   return parts.filter(Boolean).join('  •  ') || 'MATCHDAY';
 }
-function dateLine(facts: MatchdayMatchFacts): string {
+export function dateLine(facts: MatchdayMatchFacts): string {
   return facts.time ? `${facts.date} at ${facts.time}` : facts.date;
 }
 
 // Base div helper (satori needs explicit display:flex on multi-child nodes)
-type Style = Record<string, string | number>;
-function div(style: Style, children?: ReactNode): ReactNode {
+export type Style = Record<string, string | number>;
+export function div(style: Style, children?: ReactNode): ReactNode {
   return { type: 'div', props: { style: { display: 'flex', ...style }, children } } as unknown as ReactNode;
 }
-function text(style: Style, value: string): ReactNode {
+export function text(style: Style, value: string): ReactNode {
   return { type: 'div', props: { style: { display: 'flex', ...style }, children: value } } as unknown as ReactNode;
 }
 
@@ -524,7 +532,7 @@ function rays(color: string, opacity: number): Buffer {
   return Buffer.from(`<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg">${polys}</svg>`);
 }
 
-async function noise(base: Buffer): Promise<Buffer> {
+export async function noise(base: Buffer): Promise<Buffer> {
   // Subtle film grain for cinematic depth.
   const grain = Buffer.from(
     `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg">` +
@@ -548,7 +556,7 @@ async function noise(base: Buffer): Promise<Buffer> {
  * the lower/mid frame and drifting up. Tinted to the scene colour so it reads
  * as volumetric haze, not noise.
  */
-async function smokeLayer(tint: string, intensity = 1): Promise<Buffer> {
+export async function smokeLayer(tint: string, intensity = 1): Promise<Buffer> {
   const blobs: string[] = [];
   const n = 26;
   for (let k = 0; k < n; k++) {
@@ -566,7 +574,7 @@ async function smokeLayer(tint: string, intensity = 1): Promise<Buffer> {
 }
 
 /** A radial spotlight glow (behind the player) in a given colour. */
-function spotlight(color: string, opacity: number, cy = 0.42): Buffer {
+export function spotlight(color: string, opacity: number, cy = 0.42): Buffer {
   return Buffer.from(
     `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><defs>` +
       `<radialGradient id="sp" cx="50%" cy="${(cy * 100).toFixed(0)}%" r="46%">` +
@@ -578,7 +586,7 @@ function spotlight(color: string, opacity: number, cy = 0.42): Buffer {
 }
 
 /** Bottom + top vignette so title and fixture text always sit on darkness. */
-function cinematicVignette(bottom: string): Buffer {
+export function cinematicVignette(bottom: string): Buffer {
   return Buffer.from(
     `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><defs>` +
       `<linearGradient id="cv" x1="0" y1="0" x2="0" y2="1">` +
@@ -655,7 +663,7 @@ async function cinematicStadiumBg(
  * baseline y (both in px). Returned as a full-canvas layer, drawn under the
  * hero so he stops floating.
  */
-function contactShadow(cx: number, baseY: number, width: number): Buffer {
+export function contactShadow(cx: number, baseY: number, width: number): Buffer {
   const rx = Math.round(width * 0.55);
   const ry = Math.round(width * 0.12);
   return Buffer.from(
@@ -672,7 +680,7 @@ function contactShadow(cx: number, baseY: number, width: number): Buffer {
  * Rim-light glow: a blurred, tinted silhouette of the player placed just behind
  * them, so they separate from the smoke with a cinematic edge light.
  */
-async function rimGlow(playerSheet: Buffer, color: string): Promise<Buffer> {
+export async function rimGlow(playerSheet: Buffer, color: string): Promise<Buffer> {
   // Tint the player's alpha into a solid colour, then blur into a halo.
   const alpha = await sharp(playerSheet).ensureAlpha().extractChannel(3).toBuffer();
   const solid = await sharp({
@@ -896,6 +904,9 @@ async function renderElectric(i: RenderV2Input): Promise<Buffer> {
 
 export async function renderV2(input: RenderV2Input): Promise<{ bytes: Buffer; width: number; height: number }> {
   let bytes: Buffer;
+  // Every design is stamped with the small BRIT Sport Group mark; a style may
+  // override the corner/size so it never collides with its own layout.
+  let brand: BrandOptions = {};
   switch (input.design) {
     case 'midnight':
       bytes = await renderMidnight(input);
@@ -921,10 +932,23 @@ export async function renderV2(input: RenderV2Input): Promise<{ bytes: Buffer; w
     case 'electric':
       bytes = await renderElectric(input);
       break;
+    case 'gianttype':
+      bytes = await renderGiantType(input);
+      brand = GIANT_TYPE_BRAND;
+      break;
+    case 'clubcolors':
+      bytes = await renderClubColors(input);
+      brand = CLUB_COLORS_BRAND;
+      break;
+    case 'broadsheet':
+      bytes = await renderBroadsheet(input);
+      brand = BROADSHEET_BRAND;
+      break;
     default:
       bytes = await renderMidnight(input);
   }
   // Guarantee exact 9:16 output dimensions.
   const normalized = await sharp(bytes).resize(V2_W, V2_H, { fit: 'cover' }).png().toBuffer();
-  return { bytes: normalized, width: V2_W, height: V2_H };
+  const branded = await stampBrand(normalized, brand);
+  return { bytes: branded, width: V2_W, height: V2_H };
 }

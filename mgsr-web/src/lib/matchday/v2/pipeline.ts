@@ -15,6 +15,8 @@ import { MatchdayError } from '../pipeline';
 import { prepareLayers } from './prepare';
 import { renderV2, V2_W, V2_H } from './render';
 import { generateCinematicScene, geminiConfigured } from './gemini';
+import { matchPalette } from './kit/palette';
+import { hashSeed } from './kit/prng';
 import type { MatchdayDesignId, MatchdayV2Input, MatchdayV2Result } from './types';
 
 const TM_SILHOUETTE = /\/default\.(jpg|png)(\?|$)/i;
@@ -30,7 +32,19 @@ const SCENE_PALETTES: Record<MatchdayDesignId, string> = {
   golden: 'warm amber sunset',
   storm: 'stormy grey and gold',
   marble: 'cool neutral grey',
+  // V3 graphic styles never request an AI scene (see GRAPHIC_STYLES); entries
+  // exist only to satisfy the exhaustive Record type.
+  gianttype: 'club colours',
+  clubcolors: 'club colours',
+  broadsheet: 'newsprint',
 };
+
+/**
+ * V3 graphic styles are fully procedural (colour fields, type, halftone): no
+ * Gemini scene and no secondary figure. That makes them faster and removes one
+ * paid image-generation call per poster compared with the cinematic styles.
+ */
+const GRAPHIC_STYLES: ReadonlySet<MatchdayDesignId> = new Set<MatchdayDesignId>(['gianttype', 'clubcolors', 'broadsheet']);
 
 async function fetchBytes(url: string): Promise<Buffer | null> {
   try {
@@ -82,7 +96,10 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   if (!playerBytes) throw new MatchdayError('The MATCHDAY photo could not be downloaded.', 'NO_PLAYER_PHOTO');
 
   // Optional SECOND real player photo (a genuine second pose) + kit reference.
-  const player2Bytes = input.playerPhoto2Url?.trim() ? await fetchBytes(input.playerPhoto2Url) : null;
+  const graphic = GRAPHIC_STYLES.has(input.design);
+  // Graphic styles use a single hero, so the 2nd photo (and its extra Gemini
+  // cutout call) is skipped for them.
+  const player2Bytes = !graphic && input.playerPhoto2Url?.trim() ? await fetchBytes(input.playerPhoto2Url) : null;
   const kitBytes = input.kitPhotoUrl?.trim() ? await fetchBytes(input.kitPhotoUrl) : null;
 
   // ── Stage 3: AI-assisted layer prep (face preserved) ──
@@ -126,11 +143,19 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
   // composited ON TOP afterwards, so the face is never generated. Falls back to
   // the deterministic stadium/gradient background when Gemini is unavailable.
   const scenePalette = SCENE_PALETTES[input.design] ?? 'cinematic steel blue';
-  const generatedScene = await generateCinematicScene({ palette: scenePalette, stadiumRef: stadium });
+  const generatedScene = graphic ? null : await generateCinematicScene({ palette: scenePalette, stadiumRef: stadium });
   const sky: Buffer | null = generatedScene?.bytes ?? null;
 
   // ── Stage 6: render ──
+  // Club colours (from the crests) + a reproducible seed: the same fixture and
+  // style always yields the same texture; a different design changes it.
+  const playerCrest = facts.playerSide === 'home' ? homeCrest : awayCrest;
+  const opponentCrest = facts.playerSide === 'home' ? awayCrest : homeCrest;
+  const palette = await matchPalette(playerCrest, opponentCrest);
+  const seed = hashSeed(facts.playerName, facts.homeTeam, facts.awayTeam, facts.date, input.design);
   const rendered = await renderV2({
+    palette,
+    seed,
     design: input.design,
     facts,
     playerName: input.playerName.toUpperCase(),

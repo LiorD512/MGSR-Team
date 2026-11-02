@@ -19,6 +19,10 @@ const nextConfig = {
       '/api/matchday/generate-v2': [
         './node_modules/harfbuzzjs/**',
         './node_modules/satori/**',
+        // fonts + BRIT logo are read from public/ at runtime (dynamic paths that
+        // file tracing cannot see), so include them explicitly.
+        './public/fonts/**',
+        './public/brit_circle_black_gold.svg',
       ],
       '/api/matchday/generate': [
         './node_modules/harfbuzzjs/**',

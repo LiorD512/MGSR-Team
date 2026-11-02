@@ -28,3 +28,6 @@ app/release/app-release.aab
 radar/*.db
 radar/*.db-*
 radar/radar-local.db*
+
+# MATCHDAY dev preview output
+.matchday-preview/

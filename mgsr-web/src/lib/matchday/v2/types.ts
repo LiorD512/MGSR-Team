@@ -22,7 +22,10 @@ export type MatchdayDesignId =
   | 'inferno'
   | 'frost'
   | 'prestige'
-  | 'electric';
+  | 'electric'
+  | 'gianttype'
+  | 'clubcolors'
+  | 'broadsheet';
 
 export interface MatchdayDesign {
   id: MatchdayDesignId;
@@ -36,6 +39,11 @@ export interface MatchdayDesign {
 // dramatic smoke-filled scene (graded dark + spotlight + rim-light + grounding
 // shadow + grain), differing by palette and mood.
 export const MATCHDAY_DESIGNS: MatchdayDesign[] = [
+  // ── V3 graphic styles: each has its OWN layout + typography (no AI scene needed) ──
+  { id: 'gianttype', name: 'Giant Type', blurb: 'The surname towers behind the player — magazine-cover poster in club colours.' },
+  { id: 'clubcolors', name: 'Club Colors', blurb: 'Split in both clubs’ real colours. Every fixture gets its own look.' },
+  { id: 'broadsheet', name: 'Broadsheet', blurb: 'Newspaper front page: halftone print, serif headline, red spot colour.' },
+  // ── Cinematic styles (AI-painted stadium scene) ──
   { id: 'inferno', name: 'Inferno', blurb: 'Fiery red-orange, embers & thick smoke over the stadium.' },
   { id: 'frost', name: 'Frost', blurb: 'Cold cinematic ice-blue with drifting haze and teal rim light.' },
   { id: 'prestige', name: 'Prestige', blurb: 'Luxury black & gold, deep darkness, single-hero editorial.' },

@@ -5320,6 +5320,15 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .md2-sc.md-frost .md2-pv{background:radial-gradient(circle at 50% 34%,#aef0ff,transparent 56%),linear-gradient(180deg,#071826,#1f6b8f 66%,#04101c)}
 .md2-sc.md-prestige .md2-pv{background:radial-gradient(circle at 50% 28%,#f0d389,transparent 52%),linear-gradient(180deg,#15120a,#0b0a06 72%,#040302)}
 .md2-sc.md-electric .md2-pv{background:radial-gradient(circle at 50% 32%,#8affd8,transparent 54%),linear-gradient(180deg,#160a30,#3b1d7a 62%,#0a0618)}
+/* V3 graphic styles — CSS miniatures that hint at each layout */
+.md2-sc.md-gianttype .md2-pv,.md2-sc.md-broadsheet .md2-pv{position:relative;overflow:hidden}
+.md2-sc.md-gianttype .md2-pv{background:linear-gradient(180deg,#2347c4,#0b1a4a 80%)}
+.md2-sc.md-gianttype .md2-pv::after{content:'NAME';position:absolute;left:0;right:0;top:18px;text-align:center;font:900 62px/1 var(--display);letter-spacing:-.02em;color:rgba(255,255,255,.88)}
+.md2-sc.md-gianttype .md2-pv::before{content:'';position:absolute;left:50%;bottom:0;width:46px;height:104px;transform:translateX(-50%);border-radius:24px 24px 0 0;background:rgba(10,14,40,.92);z-index:1}
+.md2-sc.md-clubcolors .md2-pv{background:linear-gradient(118deg,#2150d8 0 47%,#fff 47% 49%,#c4202a 49% 100%)}
+.md2-sc.md-broadsheet .md2-pv{background:#e8dfca}
+.md2-sc.md-broadsheet .md2-pv::after{content:'THE MATCHDAY';position:absolute;left:0;right:0;top:14px;text-align:center;font:700 19px/1 Georgia,serif;color:#1a1713;border-top:3px double #1a1713;border-bottom:3px double #1a1713;padding:6px 0}
+.md2-sc.md-broadsheet .md2-pv::before{content:'';position:absolute;left:50%;bottom:12px;width:44px;height:78px;transform:translateX(-10%);border-radius:22px 22px 0 0;background:radial-gradient(#1a1713 38%,transparent 40%) 0 0/5px 5px,#2150d8;z-index:1}
 .md2-sc .md2-cap{display:block;padding:16px 18px}
 .md2-sc .md2-cap .n{display:block;font:600 17px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
 .md2-sc .md2-cap .d{display:block;font:400 12px/1.5 var(--body);color:var(--muted);margin-top:6px}
