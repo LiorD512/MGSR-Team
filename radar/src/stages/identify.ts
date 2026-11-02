@@ -34,7 +34,8 @@ export interface Check { k: string; [v: string]: string | number | null }
 
 const PICK_SCHEMA = { type: 'OBJECT', properties: { pick: { type: 'INTEGER' }, confidence: { type: 'NUMBER' }, why: { type: 'STRING' } }, required: ['pick', 'confidence', 'why'] };
 const PICK_SYSTEM = `You decide which Transfermarkt player a football news article is about. You get the article headline(s) in the original language with an English translation and short quotes, the name and club exactly as written, and a numbered list of candidate players (position, age, nationality, current club, link to the article's club).
-Use only facts in the text: position words (striker, goalkeeper, winger...), nationality words ("the Brazilian"), age, previous clubs, first names, the club named.
+Use only facts in the text. The SPELLING of the name as printed in the original headline is the strongest evidence (each candidate comes with its name similarity to the printed name): e.g. Bulgarian "Хевертон" is Hevertton, "Евертон" would be Everton.
+Then position words (striker, goalkeeper, winger...), age, previous clubs, first names, the club named. A nationality word ("the Brazilian") only decides when the spelling does not, and only if just one candidate has that nationality.
 Return pick = the candidate number, or -1 when the text does not allow a safe decision. confidence 0..1. why: <= 15 English words citing the deciding fact. Never guess: two equally plausible candidates => pick -1.`;
 
 export async function identify(db: Db, cfg: RadarConfig, llm: Llm, deadline: number): Promise<IdentifyStats> {
@@ -45,7 +46,11 @@ export async function identify(db: Db, cfg: RadarConfig, llm: Llm, deadline: num
   const t = now();
   // RADAR_REIDENTIFY=1 (commit message [radar-reidentify]): retry every unidentified / not-on-TM player now, ignoring the 3-day wait and attempt cap
   const again = process.env.RADAR_REIDENTIFY === '1';
-  if (again) await run(db, `UPDATE players SET tm_attempts = 0, tm_checked_at = 0 WHERE identity_status = 'UNIDENTIFIED'`);
+  if (again) {
+    await run(db, `UPDATE players SET tm_attempts = 0, tm_checked_at = 0 WHERE identity_status = 'UNIDENTIFIED'`);
+    // decisions the AI made are re-checked too (the tie-break prompt improves over time); human corrections are never touched
+    await run(db, `UPDATE players SET identity_status = NULL, tm_attempts = 0 WHERE identity_checks LIKE '%"k":"ai"%' AND identity_checks NOT LIKE '%"k":"human"%'`);
+  }
   const todo = await all<PlayerRow>(db, `SELECT p.id, p.display_name, p.aliases, p.country, p.country_source, p.identity_status, p.tm_id, p.tm_attempts FROM players p
       WHERE EXISTS (SELECT 1 FROM reports r WHERE r.player_id = p.id AND r.final = 1 AND r.published_at >= ?)
         AND (p.identity_status IS NULL OR (p.identity_status = 'UNIDENTIFIED' AND p.tm_attempts < ? AND COALESCE(p.tm_checked_at,0) < ?)
@@ -113,6 +118,7 @@ async function identifyOne(db: Db, cfg: RadarConfig, tm: TmClient, llm: Llm, p: 
     }
   }
   names.sort((a, b) => latinName(b.q).split(' ').length - latinName(a.q).split(' ').length);
+  const printedNames = names.map((n) => n.q).filter((q) => /[^\u0000-\u024f]/.test(q));
   const clubs: string[] = [];
   // clubs as written; "unknown", league names ("Ekstraklasa") and national teams are not clubs. Generic names ("Sporting") are kept.
   for (const r of reps) for (const v of [r.club_latin, r.club_raw]) {
@@ -219,14 +225,14 @@ async function identifyOne(db: Db, cfg: RadarConfig, tm: TmClient, llm: Llm, p: 
   let aiWhy: string | null = null;
 
   if (strong.length && (clubbed.length === 1 || strong[0].s - clubbed[1].s >= 0.12)) pick = strong[0];
-  else if (clubbed.length) { const r = await tieBreak(llm, reps, clubbed.slice(0, 4), st); if (r) { pick = r.c; aiWhy = r.why; } }
+  else if (clubbed.length) { const r = await tieBreak(llm, reps, clubbed.slice(0, 4), st, printedNames); if (r) { pick = r.c; aiWhy = r.why; } }
   else if (!clubs.length) {
     // the article names no club: one TM player with that full name, or the AI decides from the text (e.g. "El Clasico ... Real Madrid")
     const full = all_.filter((c) => c.s >= 0.95 && latinName(c.written).split(' ').length >= 2);
     if (full.length === 1 && all_.filter((c) => c.s >= 0.9).length === 1) { pick = full[0]; status = 'PROBABLE'; }
     else {
       const pool = all_.filter((c) => c.s >= 0.85).slice(0, 4);
-      if (pool.length) { const r = await tieBreak(llm, reps, pool, st); if (r) { pick = r.c; aiWhy = r.why; status = 'PROBABLE'; } }
+      if (pool.length) { const r = await tieBreak(llm, reps, pool, st, printedNames); if (r) { pick = r.c; aiWhy = r.why; status = 'PROBABLE'; } }
     }
   }
   // the only realistic match is a star above the market ceiling (e.g. "Endrick", Roma wants to sign him): filtered as a star either way
@@ -285,11 +291,11 @@ async function sameArticleTwin(db: Db, playerId: string, reps: RepRow[]): Promis
   return null;
 }
 
-async function tieBreak(llm: Llm, reps: RepRow[], cs: Cand[], st: IdentifyStats): Promise<{ c: Cand; why: string } | null> {
+async function tieBreak(llm: Llm, reps: RepRow[], cs: Cand[], st: IdentifyStats, printed: string[] = []): Promise<{ c: Cand; why: string } | null> {
   if (!llm.configured) return null;
   const text = reps.slice(0, 4).map((r) => `- ${r.title_orig}${r.headline_en ? ` (EN: ${r.headline_en})` : ''}${r.evidence_quote ? ` | quote: "${r.evidence_quote}"` : ''}`).join('\n');
-  const list = cs.map((c, i) => `${i}. ${c.row.name} | ${c.row.position || '?'} | age ${c.row.age ?? '?'} | ${c.row.nationalities.join('/') || '?'} | club now: ${c.row.club || '?'} | ${c.squad ? `in ${c.squad.clubName} squad` : c.link ? `${c.link.dir} ${c.link.club} ${c.link.date ?? ''}` : 'no link to the club'}`).join('\n');
-  const user = `ARTICLES:\n${text}\nNAME AS WRITTEN: ${reps[0].player_raw ?? ''}${reps[0].club_raw ? ` | CLUB AS WRITTEN: ${reps[0].club_raw}` : ''}\nCANDIDATES:\n${list}`;
+  const list = cs.map((c, i) => `${i}. ${c.row.name} | name similarity to the printed name ${Math.round(c.s * 100)}% | ${c.row.position || '?'} | age ${c.row.age ?? '?'} | ${c.row.nationalities.join('/') || '?'} | club now: ${c.row.club || '?'} | ${c.squad ? `in ${c.squad.clubName} squad` : c.link ? `${c.link.dir} ${c.link.club} ${c.link.date ?? ''}` : 'no link to the club'}`).join('\n');
+  const user = `ARTICLES:\n${text}\nNAME AS WRITTEN: ${reps[0].player_raw ?? ''}${printed.length ? ` | NAME AS PRINTED IN THE ORIGINAL HEADLINE: ${printed.join(', ')}` : ''}${reps[0].club_raw ? ` | CLUB AS WRITTEN: ${reps[0].club_raw}` : ''}\nCANDIDATES:\n${list}`;
   st.aiTieBreaks++;
   const r = await llm.json<{ pick: number; confidence: number; why: string }>(PICK_SYSTEM, user, PICK_SCHEMA);
   if (!r || r.pick < 0 || r.pick >= cs.length || r.confidence < 0.75) return null;
