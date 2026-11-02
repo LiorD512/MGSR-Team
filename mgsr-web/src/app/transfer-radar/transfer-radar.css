@@ -259,3 +259,21 @@
 .brit-room .tr3-file{overscroll-behavior:contain}
 .brit-room .tr3-fskel .tr3-skrow{height:46px;margin-bottom:8px}
 .brit-room .tr3-fskel h3{color:var(--muted-2)}
+/* more data: badges, agent */
+.brit-room .tr3-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.brit-room .tr3-badges span{font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:4px 6px;border:1px solid var(--dark-line);color:var(--paper)}
+.brit-room .tr3-badges .g{background:var(--green);border-color:var(--green)}
+.brit-room .tr3-badges .r{background:var(--red);border-color:var(--red)}
+.brit-room .tr3-badges .o{border-color:var(--gold-soft);color:var(--gold-soft)}
+.brit-room .tr3-card.roster{border-inline-start:3px solid var(--green)}
+.brit-room .tr3-facts.f3{grid-template-columns:1fr 1.2fr 1.2fr}
+.brit-room .tr3-facts b.txt{font:500 12px/1.25 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brit-room .tr3-agent{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;margin-top:14px;padding:11px 12px;border:1px solid var(--dark-line);color:var(--paper)}
+.brit-room .tr3-agent > div{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.brit-room .tr3-agent label{color:#a8a294;font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .tr3-agent b{font:500 13px/1.2 var(--mono)}
+.brit-room .tr3-agent a{display:inline-flex;align-items:center;gap:5px;color:#c9c3b6;font:8px/1 var(--mono);text-transform:uppercase;text-decoration:underline;text-underline-offset:2px}
+.brit-room .tr3-agent a.ok{color:var(--gold-soft)}
+.brit-room .tr3-agent a.ok .tr3-ico{stroke:var(--gold-soft)}
+.brit-room .tr3-agent .muted{color:#8f8a7f;font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .tr3-agent .tr3-badges{margin-top:0}

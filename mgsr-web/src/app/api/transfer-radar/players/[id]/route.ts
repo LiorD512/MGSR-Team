@@ -42,7 +42,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         tmUrl: p.tm_url, photo: p.photo_url, position: p.position, age: p.age, dob: p.dob, nationalities: parseJson<string[]>(p.nationalities, []), foot: p.foot, height: p.height,
         club: p.club_name, crest: p.club_crest, league: p.league, country: p.country, contractEnd: p.contract_expires, loanFrom: p.loan_from, value: p.market_value, valueEur: p.market_value_eur,
         identity: p.identity_status, excludedReason: p.excluded_reason, checks: parseJson<Record<string, unknown>[]>(p.identity_checks, []), candidates: parseJson<Record<string, unknown>[]>(p.identity_candidates, []),
-        inRoster: !!p.roster_player_id,
+        inRoster: !!p.roster_player_id, agent: (p.agent as string | null) ?? null, agentUrl: (p.agent_url as string | null) ?? null, clubTmId: (p.club_tm_id as string | null) ?? null,
       },
       closed: !!opp?.closed, firstAt: opp?.first_seen_at ?? sources[0]?.at ?? null, lastAt: sources[sources.length - 1]?.at ?? null,
       events, sources, flags: flags.get(String(p.id)) ?? {},

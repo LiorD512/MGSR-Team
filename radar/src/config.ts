@@ -22,8 +22,9 @@ export interface RadarConfig {
   };
   retention: { articleDays: number; excerptDays: number; nonFinalReportDays: number; maxArticleRows: number };
   http: { perHostDelayMs: number; timeoutMs: number; userAgent: string; concurrency: number };
+  triage: { enabled: boolean; batchSize: number; maxPerRun: number };
   identify: {
-    enabled: boolean; maxValueEur: number; maxPlayersPerRun: number; maxTmRequestsPerRun: number; tmGapMs: number;
+    enabled: boolean; maxValueEur: number; minValueEur: number; maxPlayersPerRun: number; maxTmRequestsPerRun: number; tmGapMs: number;
     retryAfterDays: number; maxAttempts: number; historyMonths: number; maxLinkResolvesPerRun: number;
   };
 }
@@ -44,20 +45,22 @@ export const DEFAULT_CONFIG: RadarConfig = {
     levels: { exceptional: 85, high: 70, potential: 50, monitor: 30 },
   },
   // The AI pipeline runs every 3 days (early morning). One run therefore handles ~3 days of accumulated articles.
-  pipeline: { runEveryDays: 3, intakeDays: 30, archiveAfterDays: 45, batchSize: 8, maxItemsPerRun: 1500, maxBodyReads: 30, analysisExpiryDays: 7, runBudgetMinutes: 40, perCountryShare: 0.25 },
+  pipeline: { runEveryDays: 3, intakeDays: 30, archiveAfterDays: 45, batchSize: 10, maxItemsPerRun: 1500, maxBodyReads: 150, analysisExpiryDays: 7, runBudgetMinutes: 60, perCountryShare: 0.25 },
   llm: {
     enabled: true,
-    monthlyCapUsd: 5, ceilingUsd: 6, dailyCapDivisor: 20, warnAt: 0.8,
+    monthlyCapUsd: 5, ceilingUsd: 6, dailyCapDivisor: 10, warnAt: 0.8,
     model: 'gemini-2.5-flash-lite',
     price: { 'gemini-2.5-flash-lite': { in: 0.10, out: 0.40 } }, // USD per 1M tokens - verify current price
     freeDailyRequests: 200,
-    paidMaxRequestsPerRun: 250,
+    paidMaxRequestsPerRun: 700,
   },
   // article rows (headline + URL + outlet + date, no text) are kept 180 days so they can be re-analysed later; excerpts are cleared after 30 days
   retention: { articleDays: 180, excerptDays: 30, nonFinalReportDays: 14, maxArticleRows: 300000 },
   http: { perHostDelayMs: 5000, timeoutMs: 12000, userAgent: 'Mozilla/5.0 (compatible; BSG-Radar/1.0; +https://github.com/LiorD512/MGSR-Team)', concurrency: 8 },
+  // cheap headline-only triage before the full analysis: ~60 headlines per request, only possible transfer stories go on
+  triage: { enabled: true, batchSize: 60, maxPerRun: 15000 },
   // Transfermarkt identification. maxValueEur = the agency's market ceiling (owner: EUR 5M); above it a player is filtered out as "above your market".
-  identify: { enabled: true, maxValueEur: 5_000_000, maxPlayersPerRun: 150, maxTmRequestsPerRun: 700, tmGapMs: 2500, retryAfterDays: 3, maxAttempts: 4, historyMonths: 24, maxLinkResolvesPerRun: 400 },
+  identify: { enabled: true, maxValueEur: 5_000_000, minValueEur: 50_000, maxPlayersPerRun: 150, maxTmRequestsPerRun: 700, tmGapMs: 2500, retryAfterDays: 3, maxAttempts: 4, historyMonths: 24, maxLinkResolvesPerRun: 400 },
 };
 
 function merge<T>(base: T, over: unknown): T {
@@ -81,7 +84,7 @@ export async function loadConfig(db: Db): Promise<RadarConfig> {
 }
 
 export async function seedConfig(db: Db, force = false): Promise<void> {
-  for (const key of ['scoring', 'pipeline', 'llm', 'retention', 'http', 'identify'] as const) {
+  for (const key of ['scoring', 'pipeline', 'llm', 'retention', 'http', 'triage', 'identify'] as const) {
     const exists = await all(db, 'SELECT 1 FROM config WHERE key = ?', [key]);
     if (exists.length && !force) continue;
     await run(db, 'INSERT INTO config (key, version, json, updated_at) VALUES (?,?,?,?) ON CONFLICT(key) DO UPDATE SET json=excluded.json, version=config.version+1, updated_at=excluded.updated_at', [

@@ -20,7 +20,9 @@ export interface TmSearch { players: TmPlayerRow[]; clubs: TmClub[]; staff: { na
 export interface TmProfile {
   tmId: string; tmUrl: string; name: string; fullName: string | null; dob: string | null; age: number | null; nationalities: string[]; position: string | null; foot: string | null; height: string | null;
   club: string | null; clubId: string | null; league: string | null; crest: string | null; contract: string | null; loanFrom: string | null; value: string | null; photo: string | null; retired: boolean; withoutClub: boolean;
+  agent: string | null; agentUrl: string | null;
 }
+export interface TmLeague { code: string; name: string; clubs: { id: string; name: string }[] }
 export interface TmMove { date: string | null; fromId: string | null; from: string | null; toId: string | null; to: string | null }
 
 export class TmClient {
@@ -62,7 +64,11 @@ export class TmClient {
     return this.cached(`squad:${club.id}:${season}`, 3, async () => parseSquad(await this.fetchText(`${TM}/${club.slug}/kader/verein/${club.id}/saison_id/${season}/plus/1`), club));
   }
   profile(tmId: string): Promise<TmProfile> {
-    return this.cached(`profile:${tmId}`, 7, async () => parseProfile(await this.fetchText(`${TM}/-/profil/spieler/${tmId}`), tmId));
+    return this.cached(`profile2:${tmId}`, 7, async () => parseProfile(await this.fetchText(`${TM}/-/profil/spieler/${tmId}`), tmId));
+  }
+  /** Clubs of a competition (Transfermarkt competition code, e.g. RO1). Cached 30 days. */
+  league(code: string): Promise<TmLeague> {
+    return this.cached(`league:${code}`, 30, async () => parseLeague(await this.fetchText(`${TM}/-/startseite/wettbewerb/${code}`), code));
   }
   history(tmId: string): Promise<TmMove[]> {
     return this.cached(`history:${tmId}`, 7, async () => parseHistory(await this.fetchText(`${TM}/ceapi/transferHistory/list/${tmId}`)));
@@ -141,7 +147,20 @@ export function parseSquad(html: string, club: TmClub): TmSquad {
 export function parseProfile(html: string, tmId: string): TmProfile {
   const $ = cheerio.load(html);
   const info: Record<string, string> = {};
-  $('.info-table__content--regular').each((_, e) => { info[clean($(e).text()).replace(/:$/, '')] = clean($(e).next().text()); });
+  let agentHref: string | null = null;
+  $('.info-table__content--regular').each((_, e) => {
+    const k = clean($(e).text()).replace(/:$/, '');
+    info[k] = clean($(e).next().text());
+    if (/agent/i.test(k)) {
+      const a = $(e).next().find('a[href*="/berater"]').first();
+      agentHref = a.attr('href') ?? null;
+      // TM often prints an abbreviation ("OF"); the link title / slug has the full agency name ("Onsidefoot International")
+      const slug = agentHref?.split('/')[1] ?? '';
+      const full = a.attr('title') || (slug ? slug.split('-').map((w) => (w.length <= 3 && /^[a-z]+$/.test(w) && w !== 'and' ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1))).join(' ') : '');
+      if (full && info[k].length <= 4) info[k] = full;
+      else if (/\.\.\.$|…$/.test(info[k])) info[k] = a.attr('title') || info[k].replace(/\s*(\.\.\.|…)$/, '');
+    }
+  });
   const clubA = $('.data-header__club a').first();
   const { dob, age } = parseAge(info['Date of birth/Age'] ?? $('[itemprop=birthDate]').text());
   const clubName = clean(clubA.text()) || info['Current club'] || null;
@@ -156,7 +175,28 @@ export function parseProfile(html: string, tmId: string): TmProfile {
     contract: info['Contract expires'] && info['Contract expires'] !== '-' ? info['Contract expires'] : null, loanFrom: info['On loan from'] || null,
     value: mv && /€/.test(mv) ? mv.replace(/\s/g, '') : null, photo: $('img.data-header__profile-image').attr('src') || null,
     retired: /retired/i.test(clubName ?? '') || /retired/i.test(info['Current club'] ?? ''), withoutClub: /without club/i.test(clubName ?? ''),
+    // "Relatives" / "no agent" are kept as written; only a real agency gets a link
+    agent: (info['Player agent'] || info['Agent'] || '').replace(/\s*Verified\s*$/i, '') || null, agentUrl: abs(agentHref),
   };
+}
+
+export function parseLeague(html: string, code: string): TmLeague {
+  const $ = cheerio.load(html);
+  const clubs: { id: string; name: string }[] = [];
+  $('table.items > tbody > tr').each((_, tr) => {
+    const a = $(tr).find('td.hauptlink a[href*="/verein/"]').first();
+    const id = a.attr('href')?.match(/verein\/(\d+)/)?.[1];
+    const name = (a.attr('title') || a.text()).trim();
+    if (id && name && !clubs.some((c) => c.id === id)) clubs.push({ id, name });
+  });
+  return { code, name: clean($('h1').first().text()), clubs };
+}
+
+/** Name as the press writes it: "FC Rapid 1923" -> "Rapid", "Club Brugge KV" -> "Brugge" (keeps the original when only generic words are left). */
+export function shortClub(name: string): string {
+  const words = name.replace(/[()]/g, ' ').split(/\s+/).filter(Boolean);
+  const keep = words.filter((w) => !GENERIC.has(latinName(w)) && !/^\d{2,4}$/.test(w) && !/^(u\d{2}|ii|b)$/i.test(w));
+  return (keep.length ? keep : words).join(' ').trim();
 }
 
 export function parseHistory(body: string): TmMove[] {

@@ -3,7 +3,8 @@ import { all, run } from '../db.js';
 import type { RadarConfig } from '../config.js';
 import type { Http } from '../http.js';
 import { cleanText } from '../feeds.js';
-import { log, now } from '../util.js';
+import { hostOf, log, now } from '../util.js';
+import { googleNewsTarget } from './links.js';
 
 /** Plain-text article body: <article>/<main> paragraphs only, first ~1800 characters. Text is used for analysis and discarded (72 h TTL); never stored as an archive. */
 export function extractBody(html: string): string {
@@ -43,5 +44,47 @@ export async function enrichUnnamed(db: Db, cfg: RadarConfig, http: Http, deadli
     }
   }
   await run(db, 'DELETE FROM article_bodies WHERE expires_at < ?', [now()]);
+  return st;
+}
+
+export interface BodyStats { candidates: number; resolved: number; fetched: number; failed: number }
+
+/**
+ * Full text for every headline the triage kept (up to maxBodyReads per run): the analysis then sees the article, not just the title,
+ * so names, clubs and evidence quotes are found far more often. News-search links are first resolved to the publisher's own URL.
+ * robots.txt and per-host delays are respected (Http); a page that cannot be read simply stays headline-only.
+ */
+export async function readBodies(db: Db, cfg: RadarConfig, http: Http, deadline: number): Promise<BodyStats> {
+  const st: BodyStats = { candidates: 0, resolved: 0, fetched: 0, failed: 0 };
+  const rows = await all<{ id: string; link: string; publisher_url: string | null }>(db, `SELECT id, link, publisher_url FROM articles
+    WHERE state = 'COLLECTED' AND triage = 1 AND body_read = 0 ORDER BY priority DESC, published_at DESC LIMIT ?`, [cfg.pipeline.maxBodyReads]);
+  st.candidates = rows.length;
+  let gnStreak = 0;
+  // 6 at a time: different publishers run in parallel, Http keeps one request per host every few seconds
+  const one = async (r: { id: string; link: string; publisher_url: string | null }) => {
+    if (Date.now() > deadline) return;
+    let url = r.publisher_url || r.link;
+    try {
+      if (url.startsWith('https://news.google.com/')) {
+        if (gnStreak >= 5) throw new Error('google news resolver unavailable');
+        const u = await googleNewsTarget(url).catch(() => null);
+        if (!u) { gnStreak++; throw new Error('news link not resolved'); }
+        gnStreak = 0; st.resolved++; url = u;
+        await run(db, 'UPDATE articles SET publisher_url = ? WHERE id = ?', [u, r.id]);
+      }
+      const res = await http.get(url);
+      if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
+      const body = extractBody(res.text);
+      if (body.length < 120) throw new Error('no readable body');
+      await run(db, 'INSERT OR REPLACE INTO article_bodies (article_id, body, expires_at) VALUES (?,?,?)', [r.id, body, now() + 72 * 3_600_000]);
+      await run(db, `UPDATE articles SET body_read = 1, headline_only = 0 WHERE id = ?`, [r.id]);
+      st.fetched++;
+    } catch (e) {
+      st.failed++;
+      await run(db, `UPDATE articles SET body_read = 1 WHERE id = ?`, [r.id]);
+      if (st.failed <= 5) log.warn('body read failed', { host: hostOf(url), msg: (e as Error).message });
+    }
+  };
+  for (let i = 0; i < rows.length; i += 6) { if (Date.now() > deadline) break; await Promise.all(rows.slice(i, i + 6).map(one)); }
   return st;
 }

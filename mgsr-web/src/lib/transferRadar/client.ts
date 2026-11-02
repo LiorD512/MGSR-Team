@@ -30,6 +30,7 @@ export interface FeedItem {
   nationalities: string[]; club: string | null; crest: string | null; league: string | null; country: string | null; contractEnd: number | null; loanFrom: string | null;
   value: string | null; valueEur: number | null; identity: Identity; closed: boolean; situation: Situation; situations: Situation[];
   firstAt: number; lastAt: number; sources: number; latest: { outlet: string; country: string | null; at: number; en: string; orig: string } | null; inRoster: boolean; flags: Flags;
+  agent: string | null; agentUrl: string | null; clubTmId: string | null;
 }
 export interface FeedResponse { items: FeedItem[]; pending: boolean; generatedAt: number }
 
@@ -41,6 +42,7 @@ export interface PlayerFile {
     id: string; name: string; fullName: string | null; writtenAs: string[]; tmUrl: string | null; photo: string | null; position: string | null; age: number | null; dob: string | null; nationalities: string[];
     foot: string | null; height: string | null; club: string | null; crest: string | null; league: string | null; country: string | null; contractEnd: number | null; loanFrom: string | null;
     value: string | null; valueEur: number | null; identity: string | null; excludedReason: string | null; checks: IdentityCheck[]; candidates: Candidate[]; inRoster: boolean;
+    agent: string | null; agentUrl: string | null; clubTmId: string | null;
   };
   closed: boolean; firstAt: number | null; lastAt: number | null;
   events: { at: number; situation: Situation; title: string; sources: string[] }[];
