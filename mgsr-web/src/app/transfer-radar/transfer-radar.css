@@ -277,3 +277,29 @@
 .brit-room .tr3-agent a.ok .tr3-ico{stroke:var(--gold-soft)}
 .brit-room .tr3-agent .muted{color:#8f8a7f;font:8px/1 var(--mono);text-transform:uppercase}
 .brit-room .tr3-agent .tr3-badges{margin-top:0}
+
+/* ---- mobile: cards must never be wider than the column ----
+   grid items keep their content width by default (min-width:auto), so a long name / club / headline made some cards 20-30px wider than the screen */
+.brit-room .tr3-main .brit-ra-feed{grid-template-columns:repeat(auto-fill,minmax(min(360px,100%),1fr))}
+.brit-room .tr3-card,.brit-room .tr3-card > *,.brit-room .tr3-card .brit-ra-who,.brit-room .tr3-facts > div{min-width:0}
+.brit-room .tr3-card .tr3-clubrow{min-width:0;flex-wrap:wrap}
+.brit-room .tr3-card .tr3-clubrow b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.brit-room .tr3-facts b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brit-room .tr3-story .hl{overflow-wrap:anywhere}
+@media(max-width:900px){
+  .brit-room .tr3-main .brit-ra-feed{grid-template-columns:minmax(0,1fr)}
+  .brit-room .tr3-facts div{padding:9px 10px}
+  .brit-room .tr3-facts b{font-size:13px}
+  .brit-room .tr3-facts b.txt{font-size:11px}
+  .brit-room .tr3-facts.f3{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr) minmax(0,1.1fr)}
+  /* footer: identity line on its own row, the two buttons side by side */
+  .brit-room .tr3-card .brit-ra-value{flex-wrap:wrap;gap:10px}
+  .brit-room .tr3-card .brit-ra-value .tr3-idline{flex:1 1 100%}
+  .brit-room .tr3-card .brit-ra-acts{flex:1 1 100%;flex-wrap:nowrap;justify-content:stretch}
+  .brit-room .tr3-card .brit-ra-acts > *{flex:1;justify-content:center}
+  .brit-room .tr3-card .brit-ra-badge{max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .brit-room .tr3-card .brit-ra-who .nm{font-size:20px}
+  /* section header + KPI strip */
+  .brit-room .tr3-section .brit-ct-country h2{font-size:20px}
+  .brit-room .tr3-count{flex-direction:column;align-items:flex-start;gap:8px}
+}

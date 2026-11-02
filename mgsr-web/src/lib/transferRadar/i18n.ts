@@ -231,6 +231,8 @@ const EN = {
   "b_free": "Without club",
   "b_book": "Agent in Black Book",
   "l_agent": "Agent",
+  "filters_btn": "Filters",
+  "f_clear_v4": "Clear",
   "r_low_level": "Below your market",
   "f_low_level": "Market value {v}: below the €50K floor or no value on Transfermarkt (amateur level).",
 };
@@ -458,6 +460,8 @@ const HE: Record<Key, string> = {
   "b_free": "ללא קבוצה",
   "b_book": "הסוכן בספר השחור",
   "l_agent": "סוכן",
+  "filters_btn": "סינון",
+  "f_clear_v4": "נקה",
   "r_low_level": "מתחת לשוק שלכם",
   "f_low_level": "שווי שוק {v}: מתחת לרף של €50K או ללא שווי בטרנספרמרקט (רמה חובבנית).",
 };
