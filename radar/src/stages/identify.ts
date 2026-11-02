@@ -298,7 +298,10 @@ async function tieBreak(llm: Llm, reps: RepRow[], cs: Cand[], st: IdentifyStats,
   const list = cs.map((c, i) => `${i}. ${c.row.name} | name similarity to the printed name ${Math.round(c.s * 100)}% | ${c.row.position || '?'} | age ${c.row.age ?? '?'} | ${c.row.nationalities.join('/') || '?'} | club now: ${c.row.club || '?'} | ${c.squad ? `in ${c.squad.clubName} squad` : c.link ? `${c.link.dir} ${c.link.club} ${c.link.date ?? ''}` : 'no link to the club'}`).join('\n');
   const user = `ARTICLES:\n${text}\nNAME AS WRITTEN: ${reps[0].player_raw ?? ''}${printed.length ? ` | NAME AS PRINTED IN THE ORIGINAL HEADLINE: ${printed.join(', ')}` : ''}${reps[0].club_raw ? ` | CLUB AS WRITTEN: ${reps[0].club_raw}` : ''}\nCANDIDATES:\n${list}`;
   st.aiTieBreaks++;
-  const r = await llm.json<{ pick: number; confidence: number; why: string }>(PICK_SYSTEM, user, PICK_SCHEMA);
+  let r: { pick: number; confidence: number; why: string } | null = null;
+  // AI budget used up: no guess - the player stays unmatched and gets the tie-break on the next run
+  try { r = await llm.json<{ pick: number; confidence: number; why: string }>(PICK_SYSTEM, user, PICK_SCHEMA); }
+  catch (e) { if (e instanceof BudgetExhausted) { st.stopReason = st.stopReason || `AI tie-breaks paused: ${e.message}`; return null; } throw e; }
   if (!r || r.pick < 0 || r.pick >= cs.length || r.confidence < 0.75) return null;
   return { c: cs[r.pick], why: String(r.why || '').slice(0, 140) };
 }

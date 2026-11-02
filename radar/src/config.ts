@@ -48,7 +48,7 @@ export const DEFAULT_CONFIG: RadarConfig = {
   pipeline: { runEveryDays: 3, intakeDays: 30, archiveAfterDays: 45, batchSize: 10, maxItemsPerRun: 1500, maxBodyReads: 150, analysisExpiryDays: 7, runBudgetMinutes: 60, perCountryShare: 0.25 },
   llm: {
     enabled: true,
-    monthlyCapUsd: 5, ceilingUsd: 6, dailyCapDivisor: 20, warnAt: 0.8,
+    monthlyCapUsd: 5, ceilingUsd: 6, dailyCapDivisor: 10, warnAt: 0.8,
     model: 'gemini-2.5-flash-lite',
     price: { 'gemini-2.5-flash-lite': { in: 0.10, out: 0.40 } }, // USD per 1M tokens - verify current price
     freeDailyRequests: 200,

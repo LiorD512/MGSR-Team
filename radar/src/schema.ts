@@ -167,4 +167,10 @@ export const MIGRATIONS: { id: number; name: string; sql: string[] }[] = [
     name: 'analysis_batch_10',
     sql: [`UPDATE config SET json = json_set(json, '$.batchSize', 10), version = version + 1, updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE key = 'pipeline'`],
   },
+  {
+    // the AI pipeline runs every 3 days: one run must be able to use 3 days of the daily allowance (monthly cap unchanged)
+    id: 7,
+    name: 'daily_cap_for_3_day_runs',
+    sql: [`UPDATE config SET json = json_set(json, '$.dailyCapDivisor', 10), version = version + 1, updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE key = 'llm'`],
+  },
 ];
