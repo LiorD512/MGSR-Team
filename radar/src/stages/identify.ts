@@ -99,6 +99,19 @@ async function identifyOne(db: Db, cfg: RadarConfig, tm: TmClient, llm: Llm, p: 
     const v = (w || '').trim(); if (!v || names.some((n) => latinName(n.q) === latinName(v))) continue;
     names.push({ q: v, written: r.player_raw || v });
   }
+  // the name exactly as printed in the original headline (Cyrillic / Greek / ...): the AI's own Latin spelling can drift
+  // ("Хевертон" printed, "Heberton" returned) - the printed form transliterated is the better evidence
+  for (const r of reps) {
+    if (!/[^\u0000-\u024f]/.test(r.title_orig)) continue;
+    const words = r.title_orig.match(/[\p{L}'’-]{3,}/gu) ?? [];
+    for (const n of [...names]) {
+      const sur = n.q.split(/\s+/).pop() ?? '';
+      for (const w of words) {
+        if (!/[^\u0000-\u024f]/.test(w) || names.some((x) => x.q === w)) continue;
+        if (Math.max(nameScore(w, sur).s, nameScore(sur, w).s) >= 0.6) names.push({ q: w, written: w });
+      }
+    }
+  }
   names.sort((a, b) => latinName(b.q).split(' ').length - latinName(a.q).split(' ').length);
   const clubs: string[] = [];
   // clubs as written; "unknown", league names ("Ekstraklasa") and national teams are not clubs. Generic names ("Sporting") are kept.

@@ -203,6 +203,8 @@ export function nameScore(written: string, tmName: string): { s: number; how: Na
   const mark = (h: NameHow) => { if (how === 'exact') how = h; };
   const pair = (a: string, b: string, isSurname: boolean): number => {
     if (a === b) return 1;
+    // doubled letters are spelling variants: "heverton" ~ "hevertton"
+    if (a.length >= 4 && a.replace(/(.)\1+/g, '$1') === b.replace(/(.)\1+/g, '$1')) { mark('fuzzy'); return 0.95; }
     if (a.length >= 4 && stem(a) === stem(b)) { mark('inflect'); return 0.95; }
     if (b.length >= 3 && (stem(a) === b || stem(b) === a)) { mark('inflect'); return 0.92; }
     const k = Math.max(4, Math.min(a.length, b.length) - 1);
