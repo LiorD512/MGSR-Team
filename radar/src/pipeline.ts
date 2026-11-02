@@ -73,7 +73,7 @@ export async function writeSummary(db: Db, out: Record<string, any>, ms: number)
     (SELECT COUNT(*) FROM sources WHERE status='BROKEN') AS broken_sources`);
   const q = out.quota as { cap: number; monthUsd: number } | undefined;
   const L: string[] = [];
-  L.push(`# Transfer Radar pipeline run`, `Duration ${(ms / 1000).toFixed(0)}s · LLM spend this month **$${(q?.monthUsd ?? 0).toFixed(4)} of $${q?.cap ?? 0}** cap`);
+  L.push(`# Press Room pipeline run (Transfer Radar)`, `Duration ${(ms / 1000).toFixed(0)}s · LLM spend this month **$${(q?.monthUsd ?? 0).toFixed(4)} of $${q?.cap ?? 0}** cap`);
   L.push(`\n| Stage | Result |\n|---|---|`);
   for (const k of ['collect', 'enrich', 'analyze', 'links', 'identify', 'score'] as const) if (out[k]) L.push(`| ${k} | \`${JSON.stringify(out[k])}\` |`);
   L.push(`| queue depth | ${out.queueDepth} |`);

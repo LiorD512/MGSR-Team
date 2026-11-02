@@ -370,7 +370,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/tasks` | Tasks | Agent task management (route currently shows disabled state while tasks feature flag is off) |
 | `/portfolio` | Portfolio | Player portfolio management |
 | `/market-radar` | Early Market Radar | Real-time market disruption intelligence (out-of-plans, collapsed deals, contract standoffs across 35+ leagues, max 14 days) |
-| `/transfer-radar` | Transfer Radar | **Men web only.** Same design as Roster / Contacts / Requests: masthead, KPI strip, filter tray, Feed / Ledger. Every card is a player identified on Transfermarkt (photo, position, age, club, league, value, contract) with the newest original headline. Player file (side panel, `?p=<id>`): "Is it really him?" checks, timeline, original sources (as published + English). Real Shortlist add. `/transfer-radar/players/[id]` opens the same screen with the file open (see §21) |
+| `/transfer-radar` | Press Room (חדר העיתונות; formerly Transfer Radar) | **Men web only.** Same design as Roster / Contacts / Requests: masthead, KPI strip, filter tray, Feed / Ledger. Every card is a player identified on Transfermarkt (photo, position, age, club, league, value, contract) with the newest original headline. Player file (side panel, `?p=<id>`): "Is it really him?" checks, timeline, original sources (as published + English). Real Shortlist add. `/transfer-radar/players/[id]` opens the same screen with the file open (see §21) |
 | `/transfer-radar/players/[id]` | Radar player profile | Score breakdown, evidence timeline (original headline + English summary + quote + link), facts vs reported vs rumor vs AI assessment, feedback buttons |
 | `/transfer-radar/sources` | Radar Source Center | **Hidden for now** (`TRANSFER_RADAR_SOURCES_VISIBLE=false`: no menu entry, route redirects to `/transfer-radar`). Source registry health; approve / disable / remove / add (admin) || `/news` | News | Redirects to `/market-radar` |
 | `/jewish-finder` | Jewish Finder | Discover Jewish/Israeli heritage players |
@@ -1339,7 +1339,9 @@ All parsers handle: `€300k`, `€1.50m`, `€300K`, `€1.50M` (case-insensiti
 
 ---
 
-## 21. Transfer Radar
+## 21. Transfer Radar (shown in the app as "Press Room" / "חדר העיתונות")
+
+Display name only: menu, masthead ("THE PRESS ROOM."), breadcrumb and browser tab say Press Room; URL `/transfer-radar`, code, tables and workflows keep the radar names.
 
 **Scope:** men platform, web only. Spec: `.kiro/specs/transfer-radar/` (requirements, design, tasks). Budget rule: free services first; the only paid usage is the existing Gemini key under a software cap (**$5/month, ceiling $6**). Article text is English only (UI chrome EN+HE).
 

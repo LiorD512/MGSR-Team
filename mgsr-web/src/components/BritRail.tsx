@@ -205,7 +205,7 @@ export default function BritRail({ active }: BritRailProps) {
           </>
         )}
 
-        {/* Transfer Radar — its own top-level entry below War Room (men-only) */}
+        {/* Press Room (formerly Transfer Radar) — its own top-level entry below War Room (men-only) */}
         {!isYouth && TRANSFER_RADAR_ENABLED && (
           <Link href="/transfer-radar" className={active === 'transfer-radar' || active === 'transfer-radar-sources' || isRadar ? 'active' : ''}>
             <span>{t('nav_transfer_radar')}</span>

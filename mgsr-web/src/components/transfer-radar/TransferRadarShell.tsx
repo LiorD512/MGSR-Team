@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Transfer Radar page shell: men-only guard + the shared "brit-room" chrome (BritRail, top bar), same as Roster / Contacts / Requests.
+ * Press Room (formerly Transfer Radar) page shell: men-only guard + the shared "brit-room" chrome (BritRail, top bar), same as Roster / Contacts / Requests.
  * Unauthenticated -> /login. Women/Youth -> /dashboard (same rule as War Room).
  */
 import { useEffect, useMemo } from 'react';
@@ -26,6 +26,7 @@ export default function TransferRadarShell({ active, crumb, children }: { active
   useEffect(() => { if (!loading && !user) router.replace('/login'); }, [user, loading, router]);
   useEffect(() => { if (platform === 'women' || platform === 'youth') router.replace('/dashboard'); }, [platform, router]);
   useEffect(() => { if (!TRANSFER_RADAR_ENABLED) router.replace('/dashboard'); }, [router]);
+  useEffect(() => { const prev = document.title; document.title = `${tr('nav')} · BRIT Sport Group`; return () => { document.title = prev; }; }, [tr]);
 
   const dateStr = useMemo(() => new Date().toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-GB', { day: '2-digit', month: 'long', year: 'numeric' }), [lang]);
   const timeStr = useMemo(() => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }), []);
