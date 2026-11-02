@@ -173,4 +173,14 @@ export const MIGRATIONS: { id: number; name: string; sql: string[] }[] = [
     name: 'daily_cap_for_3_day_runs',
     sql: [`UPDATE config SET json = json_set(json, '$.dailyCapDivisor', 10), version = version + 1, updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE key = 'llm'`],
   },
+  {
+    // value floor (EUR 50K; no market value = amateur level): players already on the screen are re-checked once
+    id: 8,
+    name: 'value_floor',
+    sql: [
+      `UPDATE config SET json = json_set(json, '$.minValueEur', 50000), version = version + 1, updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE key = 'identify'`,
+      `UPDATE players SET identity_status = 'EXCLUDED', excluded_reason = 'low_level' WHERE identity_status IN ('CONFIRMED','PROBABLE')
+         AND (market_value_eur IS NULL OR market_value_eur < 50000) AND COALESCE(identity_checks, '') NOT LIKE '%"k":"human"%'`,
+    ],
+  },
 ];

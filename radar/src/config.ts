@@ -24,7 +24,7 @@ export interface RadarConfig {
   http: { perHostDelayMs: number; timeoutMs: number; userAgent: string; concurrency: number };
   triage: { enabled: boolean; batchSize: number; maxPerRun: number };
   identify: {
-    enabled: boolean; maxValueEur: number; maxPlayersPerRun: number; maxTmRequestsPerRun: number; tmGapMs: number;
+    enabled: boolean; maxValueEur: number; minValueEur: number; maxPlayersPerRun: number; maxTmRequestsPerRun: number; tmGapMs: number;
     retryAfterDays: number; maxAttempts: number; historyMonths: number; maxLinkResolvesPerRun: number;
   };
 }
@@ -60,7 +60,7 @@ export const DEFAULT_CONFIG: RadarConfig = {
   // cheap headline-only triage before the full analysis: ~60 headlines per request, only possible transfer stories go on
   triage: { enabled: true, batchSize: 60, maxPerRun: 15000 },
   // Transfermarkt identification. maxValueEur = the agency's market ceiling (owner: EUR 5M); above it a player is filtered out as "above your market".
-  identify: { enabled: true, maxValueEur: 5_000_000, maxPlayersPerRun: 150, maxTmRequestsPerRun: 700, tmGapMs: 2500, retryAfterDays: 3, maxAttempts: 4, historyMonths: 24, maxLinkResolvesPerRun: 400 },
+  identify: { enabled: true, maxValueEur: 5_000_000, minValueEur: 50_000, maxPlayersPerRun: 150, maxTmRequestsPerRun: 700, tmGapMs: 2500, retryAfterDays: 3, maxAttempts: 4, historyMonths: 24, maxLinkResolvesPerRun: 400 },
 };
 
 function merge<T>(base: T, over: unknown): T {

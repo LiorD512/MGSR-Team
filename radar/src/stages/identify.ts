@@ -322,12 +322,14 @@ function aliasJson(prev: string | null, names: { q: string; written: string }[])
 /** Writes the TM identity onto the radar player. identity = null => refresh only (keeps status/checks). Applies the market-value ceiling and retired rule. */
 async function saveProfile(db: Db, playerId: string, prof: TmProfile, identity: { status: string; conf: number; checks: Check[]; candidates: unknown[]; country: string | null; league: string | null; names: { q: string; written: string }[] } | null, cfg: RadarConfig) {
   const eur = valueToEur(prof.value);
-  const prev = await one<{ aliases: string | null; identity_status: string | null; excluded_reason: string | null; country: string | null }>(db, 'SELECT aliases, identity_status, excluded_reason, country FROM players WHERE id = ?', [playerId]);
+  const prev = await one<{ aliases: string | null; identity_status: string | null; excluded_reason: string | null; country: string | null; identity_checks: string | null }>(db, 'SELECT aliases, identity_status, excluded_reason, country, identity_checks FROM players WHERE id = ?', [playerId]);
   let status = identity?.status ?? prev?.identity_status ?? 'CONFIRMED';
   let reason: string | null = identity ? null : prev?.excluded_reason ?? null;
   if (prof.retired) { status = 'EXCLUDED'; reason = 'retired'; }
   else if (eur != null && eur > cfg.identify.maxValueEur) { status = 'EXCLUDED'; reason = 'star'; }
-  else if (prev?.identity_status === 'EXCLUDED' && (prev.excluded_reason === 'star' || prev.excluded_reason === 'retired') && !identity) { status = 'CONFIRMED'; reason = null; } // value dropped below the ceiling
+  // no market value on Transfermarkt (amateur / youth level) or below the floor: not the agency's market either
+  else if ((eur == null || eur < cfg.identify.minValueEur) && !(identity?.checks ?? parseChecks(prev?.identity_checks)).some((c) => c.k === 'human')) { status = 'EXCLUDED'; reason = 'low_level'; }
+  else if (prev?.identity_status === 'EXCLUDED' && ['star', 'retired', 'low_level'].includes(prev.excluded_reason ?? '') && !identity) { status = 'CONFIRMED'; reason = null; } // value back inside the range
   await run(db, `UPDATE players SET display_name=?, full_name=?, tm_id=?, tm_url=?, photo_url=?, dob=?, age=?, nationalities=?, position=?, foot=?, height=?, club_name=?, club_tm_id=?, club_crest=?,
       league=COALESCE(?, league), country=COALESCE(?, country), country_source=CASE WHEN ? IS NOT NULL THEN 'CLUB' ELSE country_source END, contract_expires=?, contract_verified=?, contract_source='TM', loan_from=?,
       market_value=?, market_value_eur=?, agent=?, agent_url=?, identity_status=?, excluded_reason=?, identity_conf=COALESCE(?, identity_conf), identity_checks=COALESCE(?, identity_checks), identity_candidates=COALESCE(?, identity_candidates),
@@ -366,3 +368,5 @@ function mode(a: string[]): string | null {
   const m = new Map<string, number>(); a.forEach((x) => m.set(x, (m.get(x) ?? 0) + 1));
   return [...m.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] ?? null;
 }
+
+function parseChecks(s: string | null | undefined): Check[] { try { return JSON.parse(s || '[]') as Check[]; } catch { return []; } }

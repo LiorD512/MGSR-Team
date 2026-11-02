@@ -231,6 +231,8 @@ const EN = {
   "b_free": "Without club",
   "b_book": "Agent in Black Book",
   "l_agent": "Agent",
+  "r_low_level": "Below your market",
+  "f_low_level": "Market value {v}: below the €50K floor or no value on Transfermarkt (amateur level).",
 };
 type Key = keyof typeof EN;
 const HE: Record<Key, string> = {
@@ -456,6 +458,8 @@ const HE: Record<Key, string> = {
   "b_free": "ללא קבוצה",
   "b_book": "הסוכן בספר השחור",
   "l_agent": "סוכן",
+  "r_low_level": "מתחת לשוק שלכם",
+  "f_low_level": "שווי שוק {v}: מתחת לרף של €50K או ללא שווי בטרנספרמרקט (רמה חובבנית).",
 };
 
 export type RadarT = (key: Key | (string & {}), vars?: Record<string, string | number>) => string;
