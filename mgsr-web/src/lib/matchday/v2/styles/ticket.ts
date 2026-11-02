@@ -10,13 +10,13 @@
  * Variants: 0 Classic (cream) · 1 VIP black (gold foil) · 2 Retro (mint + red serif)
  */
 import sharp from 'sharp';
-import { type RenderV2Input, V2_W, V2_H, placeLayer, textLayer, text, compLine } from '../render';
+import { type RenderV2Input, V2_W, V2_H, placeLayer, textLayer, text } from '../render';
 import { hasSecond, secondSheet } from '../kit/second';
 import { abs, column, root, sheet, barcodeSvg } from '../kit/compose';
 import { paper, grain, stripes } from '../kit/texture';
 import { squareBadge } from '../kit/badges';
 import { mix, matchPalette, readableOn } from '../kit/palette';
-import { fitFontSize } from '../kit/fit';
+import { fitFontSize, fitText, compLineFit } from '../kit/fit';
 import { posterDate, countdownLabel } from '../kit/dates';
 import { makeRng } from '../kit/prng';
 import type { BrandOptions } from '../kit/brand';
@@ -88,7 +88,7 @@ export async function renderTicket(i: RenderV2Input): Promise<Buffer> {
   const fy = WY + WH + 34;
   const t = await textLayer(
     root([
-      text(abs(TY + 42, TX + 50, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '22px', letterSpacing: '6px', color: T.onHead, opacity: 0.85 }), compLine(f).toUpperCase()),
+      (() => { const k = compLineFit(f, TW - 330, 'SpaceMono', 22, 12, 6); return text(abs(TY + 42, TX + 50, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: `${k.size}px`, letterSpacing: '6px', color: T.onHead, opacity: 0.85 }), k.text); })(),
       text(abs(TY + 74, TX + 44, { fontFamily: T.title, fontSize: '150px', lineHeight: 1, letterSpacing: v === 2 ? '0px' : '4px', color: T.onHead }), v === 2 ? 'Matchday' : 'MATCHDAY'),
       text(abs(TY + 92, TX + TW - 250, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '20px', letterSpacing: '4px', color: T.onHead, width: '200px', justifyContent: 'flex-end' }), 'MATCH PASS'),
       ...(i.squadNumber ? [text(abs(TY + 124, TX + TW - 250, { fontFamily: T.title, fontSize: '80px', color: T.onHead, width: '200px', justifyContent: 'flex-end', lineHeight: 1 }), `#${i.squadNumber}`)] : []),

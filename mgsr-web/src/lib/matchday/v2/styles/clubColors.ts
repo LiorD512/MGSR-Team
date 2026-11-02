@@ -16,13 +16,12 @@ import {
   crestPng,
   div,
   text,
-  compLine,
 } from '../render';
 import { hasSecond, secondSheet } from '../kit/second';
 import { matchPalette, mix, readableOn } from '../kit/palette';
 import { grain, stripes } from '../kit/texture';
 import { discBadge, withOpacity } from '../kit/badges';
-import { fitFontSize, splitName, wrapSurname } from '../kit/fit';
+import { fitFontSize, splitName, wrapSurname, fitText, compLineFit } from '../kit/fit';
 import { posterDate, countdownLabel } from '../kit/dates';
 import type { BrandOptions } from '../kit/brand';
 
@@ -89,22 +88,36 @@ export async function renderClubColors(i: RenderV2Input): Promise<Buffer> {
   overlays.push({ input: await grain(seed, 0.1), blend: 'overlay' });
   const bg = await sharp(field).composite(overlays).png().toBuffer();
 
+  const sLines = wrapSurname(SUR);
+  const sLongest = sLines.reduce((m, l) => (l.length > m.length ? l : m), '');
+  const S = fitFontSize(sLongest, 940, 'Anton', sLines.length > 1 ? 170 : 250, 80, 2);
+  const sTop = 1390 - (sLines.length - 1) * Math.round(S * 0.95);
   // ── 2) vertical wordmark (behind the player) ─────────────────────────────
   const onA = readableOn(mix(p.home, '#000000', 0.15));
+  // The wordmark is sized to the free column: from under the kicker/countdown
+  // down to just above the given-name line (which moves up for 2-line surnames),
+  // so it can never run into the name.
+  const givenTop = sTop - 74;
+  const kick = compLineFit(f, 860, 'Bebas', 40, 22, 8);
+  const gName = fitText(`${given.toUpperCase()}${i.squadNumber ? `  ·  ${i.squadNumber}` : ''}`.trim(), 940, 'Bebas', 50, 28, 18);
+  const wmTop = countdown ? 196 : 140;
+  const wmLen = Math.max(520, givenTop - 34 - wmTop);
+  const wmSize = fitFontSize('MATCHDAY', wmLen - 30, 'Anton', 210, 90, 18);
+  const wmCy = wmTop + wmLen / 2;
   const behind = await textLayer(
     div({ width: `${V2_W}px`, height: `${V2_H}px`, position: 'relative' }, [
       div(
         {
           position: 'absolute',
-          left: '-350px',
-          top: '780px',
-          width: '900px',
+          left: `${Math.round(100 - wmLen / 2)}px`,
+          top: `${Math.round(wmCy - 110)}px`,
+          width: `${Math.round(wmLen)}px`,
           height: '220px',
           justifyContent: 'center',
           alignItems: 'center',
           transform: 'rotate(-90deg)',
         },
-        text({ fontFamily: 'Anton', fontSize: '210px', letterSpacing: '18px', color: onA, opacity: 0.92, lineHeight: 1 }, 'MATCHDAY')
+        text({ fontFamily: 'Anton', fontSize: `${wmSize}px`, letterSpacing: '18px', color: onA, opacity: 0.92, lineHeight: 1 }, 'MATCHDAY')
       ),
     ])
   );
@@ -129,22 +142,18 @@ export async function renderClubColors(i: RenderV2Input): Promise<Buffer> {
   );
 
   const onB = readableOn(mix(p.away, '#000000', 0.3));
-  const sLines = wrapSurname(SUR);
-  const sLongest = sLines.reduce((m, l) => (l.length > m.length ? l : m), '');
-  const S = fitFontSize(sLongest, 940, 'Anton', sLines.length > 1 ? 170 : 250, 80, 2);
-  const sTop = 1390 - (sLines.length - 1) * Math.round(S * 0.95);
   const teamsLine = `${f.homeTeam.toUpperCase()}  VS  ${f.awayTeam.toUpperCase()}`;
   const timeStr = f.time ?? 'TBC';
   const dateStr = pd ? pd.short : f.date;
 
   const front = await textLayer(
     div({ width: `${V2_W}px`, height: `${V2_H}px`, position: 'relative' }, [
-      text({ position: 'absolute', top: '52px', left: '56px', fontFamily: 'Bebas', fontSize: '40px', letterSpacing: '8px', color: onA }, compLine(f).toUpperCase()),
+      text({ position: 'absolute', top: '52px', left: '56px', fontFamily: 'Bebas', fontSize: `${kick.size}px`, letterSpacing: '8px', color: onA }, kick.text),
       ...(countdown
         ? [text({ position: 'absolute', top: '112px', left: '56px', padding: '8px 24px 4px', fontFamily: 'Anton', fontSize: '44px', letterSpacing: '4px', background: '#ffffff', color: '#0c0c0e' }, countdown)]
         : []),
       // surname over the legs
-      text({ position: 'absolute', top: `${sTop - 74}px`, left: '56px', fontFamily: 'Bebas', fontSize: '50px', letterSpacing: '18px', color: onB, opacity: 0.9 }, `${given.toUpperCase()}${i.squadNumber ? `  ·  ${i.squadNumber}` : ''}`.trim()),
+      text({ position: 'absolute', top: `${givenTop}px`, left: '56px', fontFamily: 'Bebas', fontSize: `${gName.size}px`, letterSpacing: '18px', color: onB, opacity: 0.9 }, gName.text),
       ...sLines.map((l, k) =>
         text({ position: 'absolute', top: `${sTop + k * Math.round(S * 0.95)}px`, left: '50px', fontFamily: 'Anton', fontSize: `${S}px`, lineHeight: 1, letterSpacing: '2px', color: '#ffffff', textShadow: '0 6px 30px rgba(0,0,0,0.55)' }, l)
       ),

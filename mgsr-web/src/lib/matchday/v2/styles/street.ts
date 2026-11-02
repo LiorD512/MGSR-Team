@@ -13,7 +13,7 @@ import { abs, root, sheet, flatten, rotateCanvas } from '../kit/compose';
 import { secondCutout } from '../kit/second';
 import { grain } from '../kit/texture';
 import { mix, matchPalette, readableOn } from '../kit/palette';
-import { fitFontSize, splitName, wrapSurname } from '../kit/fit';
+import { fitFontSize, splitName, wrapSurname, fitText } from '../kit/fit';
 import { posterDate, countdownLabel } from '../kit/dates';
 import { makeRng } from '../kit/prng';
 import type { BrandOptions } from '../kit/brand';
@@ -129,8 +129,8 @@ export async function renderStreet(i: RenderV2Input): Promise<Buffer> {
       ...sLines.map((l, k) =>
         text(abs(SY + TYPE_Y + k * Math.round(supS * 0.98), SX + 40, { fontFamily: 'ArchivoBlack', fontSize: `${supS}px`, lineHeight: 1, color: T.ink, letterSpacing: '-2px' }), l)
       ),
-      text(abs(SY + TYPE_Y + supH + 4, SX + 46, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '28px', letterSpacing: '3px', color: T.ink }), `${f.homeTeam.toUpperCase()} vs ${f.awayTeam.toUpperCase()}`),
-      ...(f.venue ? [text(abs(SY + TYPE_Y + supH + 44, SX + 46, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '22px', letterSpacing: '3px', color: T.ink, opacity: 0.7 }), f.venue.toUpperCase())] : []),
+      (() => { const t2 = fitText(`${f.homeTeam.toUpperCase()} vs ${f.awayTeam.toUpperCase()}`, 840, 'SpaceMono', 28, 14, 3); return text(abs(SY + TYPE_Y + supH + 4, SX + 46, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: `${t2.size}px`, letterSpacing: '3px', color: T.ink }), t2.text); })(),
+      ...(f.venue ? (() => { const v = fitText(f.venue.toUpperCase(), 840, 'SpaceMono', 22, 13, 3); return [text(abs(SY + TYPE_Y + supH + 44, SX + 46, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: `${v.size}px`, letterSpacing: '3px', color: T.ink, opacity: 0.7 }), v.text)]; })() : []),
       ...(i.squadNumber ? [text(abs(SY + 60, SX + SW - 230, { fontFamily: 'ArchivoBlack', fontSize: '130px', color: T.ink, opacity: 0.12 }), `#${i.squadNumber}`)] : []),
     ])
   );

@@ -15,7 +15,7 @@ import { abs, centred, root, sheet } from '../kit/compose';
 import { relightCutout } from '../kit/relight';
 import { grain } from '../kit/texture';
 import { discBadge } from '../kit/badges';
-import { fitFontSize, splitName } from '../kit/fit';
+import { fitFontSize, splitName, fitText, compLineFit } from '../kit/fit';
 import { posterDate, countdownLabel } from '../kit/dates';
 import type { BrandOptions } from '../kit/brand';
 
@@ -71,12 +71,17 @@ export async function renderCinema(i: RenderV2Input): Promise<Buffer> {
       // Title
       text(centred(1250, { fontFamily: 'Anton', fontSize: `${titleSize}px`, lineHeight: 1, letterSpacing: '0px', color: T.title, textShadow: `0 0 60px ${T.glow}` }), 'MATCHDAY'),
       text(centred(1572, { fontFamily: 'Bebas', fontSize: `${fitFontSize(matchup, 960, 'Bebas', 58, 30, 6)}px`, letterSpacing: '6px', color: T.accent }), matchup),
-      ...(comp ? [text(centred(1640, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '20px', letterSpacing: '8px', color: T.sub }), comp)] : []),
+      ...(comp ? (() => { const k = compLineFit(f, 940, 'Montserrat', 20, 12, 8, '  ·  '); return [text(centred(1640, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: `${k.size}px`, letterSpacing: '8px', color: T.sub }), k.text)]; })() : []),
       // Billing block
-      div(abs(1690, 90, { width: '900px', flexDirection: 'column', alignItems: 'center', opacity: 0.82 }), [
-        blockRow([credit('BRIT SPORT GROUP presents'), name(billing), credit('in'), name(f.homeTeam), credit('versus'), name(f.awayTeam)]),
-        blockRow([credit('venue'), name(f.venue ?? 'TBC'), credit('kick-off'), name(timeStr), ...(f.round ? [credit('round'), name(f.round.replace(/^round\s*/i, ''))] : [])]),
-      ]),
+      // Billing block: two fixed rows, each fitted to one line (never wraps into the date).
+      ...(() => {
+        const r1 = fitText(`${billing}   ·   ${f.homeTeam.toUpperCase()}   VS   ${f.awayTeam.toUpperCase()}`, 940, 'Bebas', 40, 18, 1);
+        const r2 = fitText(`${(f.venue ?? 'VENUE TBC').toUpperCase()}   ·   KICK-OFF ${timeStr}`, 940, 'Bebas', 36, 18, 1);
+        return [
+          text(centred(1694, { fontFamily: 'Bebas', fontSize: `${r1.size}px`, letterSpacing: '1px', color: T.sub, opacity: 0.85 }), r1.text),
+          text(centred(1744, { fontFamily: 'Bebas', fontSize: `${r2.size}px`, letterSpacing: '1px', color: T.sub, opacity: 0.85 }), r2.text),
+        ];
+      })(),
       text(centred(1838, { fontFamily: 'Bebas', fontSize: '50px', letterSpacing: '14px', color: T.title }), `IN STADIUMS ${pd ? pd.short : f.date}`),
       ...(countdown ? [text(abs(1846, 60, { fontFamily: 'Bebas', fontSize: '30px', letterSpacing: '4px', color: T.accent }), countdown)] : []),
     ])

@@ -5321,6 +5321,43 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .md2-sc.md-prestige .md2-pv{background:radial-gradient(circle at 50% 28%,#f0d389,transparent 52%),linear-gradient(180deg,#15120a,#0b0a06 72%,#040302)}
 .md2-sc.md-electric .md2-pv{background:radial-gradient(circle at 50% 32%,#8affd8,transparent 54%),linear-gradient(180deg,#160a30,#3b1d7a 62%,#0a0618)}
 /* V3 graphic styles — CSS miniatures that hint at each layout */
+/* V3 round 5: Deliver panel — button groups instead of a text-link row */
+.md2-deliver{display:flex;flex-direction:column;gap:26px}
+.md2-dhead .k{font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.md2-dhead h3{font:600 24px/1.15 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--ink);margin:0}
+.md2-dhead h3 span{color:var(--gold)}
+.md2-dsec .md2-variants{margin:0}
+.md2-dlab{display:flex;align-items:baseline;gap:10px;font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.md2-dlab span{letter-spacing:.02em;text-transform:none;font:400 11px/1 var(--body);color:var(--muted)}
+.md2-btns{display:flex;flex-direction:column;gap:8px}
+.md2-btns.sec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+@media (max-width:420px){.md2-btns.sec{grid-template-columns:1fr}}
+.md2-btn{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;width:100%;min-height:54px;padding:0 18px;text-align:left;cursor:pointer;
+  background:var(--paper);color:var(--ink);border:1px solid var(--line);font:600 14px/1.2 var(--body);letter-spacing:.01em;white-space:nowrap;transition:border-color .15s,background .15s,color .15s,transform .06s}
+.md2-btn .ic{position:relative;flex:0 0 auto}
+.md2-btn .tx{position:relative;display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex:1;min-width:0}
+.md2-btn .tx small{font:500 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);flex:0 0 auto}
+.md2-btn:hover:not(:disabled){border-color:var(--gold)}
+.md2-btn:active:not(:disabled){transform:translateY(1px)}
+.md2-btn:disabled{opacity:.55;cursor:not-allowed}
+.md2-btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.md2-btn.primary .tx small{color:var(--paper);opacity:.65}
+.md2-btn.primary:hover:not(:disabled){background:var(--gold);border-color:var(--gold)}
+.md2-btn.on{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.md2-btn.on .ic{color:var(--gold)}
+.md2-btn.busy{opacity:1;border-color:var(--gold)}
+.md2-btn.busy::before{content:'';position:absolute;inset:0 auto 0 0;width:var(--p,0%);background:rgba(216,175,78,.22);transition:width .25s linear}
+.md2-btn.ghost{min-height:46px;background:transparent;justify-content:center}
+.md2-btn.ghost .tx{flex:0 1 auto}
+.md2-btn.done{color:var(--gold);border-color:var(--gold)}
+.md2-qc{border-top:1px solid var(--line);padding-top:14px}
+.md2-qc summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;font:500 11px/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.md2-qc summary::-webkit-details-marker{display:none}
+.md2-qc summary::after{content:'+';margin-left:auto;font-size:14px}
+.md2-qc[open] summary::after{content:'–'}
+.md2-qc .dot{width:8px;height:8px;border-radius:50%;background:#3d8b5a}
+.md2-qc.warn .dot{background:var(--gold)}
+.md2-qc .md2-checks{margin-top:14px}
 /* V3 round 4: style spotlight + built-in examples */
 .md2-spot{display:grid;grid-template-columns:minmax(200px,260px) 1fr;gap:28px;align-items:start;margin:26px 0 6px;padding:18px;border:1px solid var(--line);background:var(--paper)}
 @media (max-width:760px){.md2-spot{grid-template-columns:1fr;gap:16px}.md2-spot-img{max-width:280px;margin:0 auto;width:100%}}

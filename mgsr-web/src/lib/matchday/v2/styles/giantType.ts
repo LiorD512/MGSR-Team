@@ -18,13 +18,12 @@ import {
   textLayer,
   div,
   text,
-  compLine,
 } from '../render';
 import { hasSecond, secondSheet } from '../kit/second';
 import { matchPalette, mix, readableOn } from '../kit/palette';
 import { grain, stripes } from '../kit/texture';
 import { discBadge } from '../kit/badges';
-import { fitFontSize, splitName, wrapSurname } from '../kit/fit';
+import { fitFontSize, splitName, wrapSurname, fitText, compLineFit } from '../kit/fit';
 import { posterDate, countdownLabel } from '../kit/dates';
 import type { BrandOptions } from '../kit/brand';
 
@@ -88,7 +87,11 @@ export async function renderGiantType(i: RenderV2Input): Promise<Buffer> {
   const longest = lines.reduce((m, l) => (l.length > m.length ? l : m), '');
   const S = fitFontSize(longest, 1010, 'Anton', 640, 120, 2);
   const row = Math.round(S * 0.9);
-  const top1 = 300;
+  // Kicker + given name are fitted first; the giant rows start below them.
+  const kick = compLineFit(f, 760, 'Bebas', 40, 22, 11);
+  const givenLine = `${given.toUpperCase()}${i.squadNumber ? `  ·  ${i.squadNumber}` : ''}`.trim();
+  const gl = fitText(givenLine, 900, 'Bebas', 54, 30, 22);
+  const top1 = 246 + gl.size + 26;
   const solid = noir ? mix(base.home, '#ffffff', 0.12) : mix(p.home, '#ffffff', 0.86);
   const rowStyle = (top: number, extra: Record<string, string | number>) => ({
     position: 'absolute',
@@ -169,9 +172,9 @@ export async function renderGiantType(i: RenderV2Input): Promise<Buffer> {
 
   const front = await textLayer(
     div({ width: `${V2_W}px`, height: `${V2_H}px`, position: 'relative' }, [
-      text({ position: 'absolute', top: '58px', left: '0px', width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Bebas', fontSize: '40px', letterSpacing: '11px', color: p.glow }, compLine(f).toUpperCase()),
+      text({ position: 'absolute', top: '58px', left: '0px', width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Bebas', fontSize: `${kick.size}px`, letterSpacing: '11px', color: p.glow }, kick.text),
       text({ position: 'absolute', top: '104px', left: '0px', width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Anton', fontSize: '100px', letterSpacing: '16px', color: '#ffffff' }, 'MATCHDAY'),
-      text({ position: 'absolute', top: '246px', left: '0px', width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Bebas', fontSize: '54px', letterSpacing: '22px', color: mix(p.home, '#ffffff', 0.8) }, `${given.toUpperCase()}${i.squadNumber ? `  ·  ${i.squadNumber}` : ''}`.trim()),
+      text({ position: 'absolute', top: '246px', left: '0px', width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Bebas', fontSize: `${gl.size}px`, letterSpacing: '22px', color: mix(p.home, '#ffffff', 0.8) }, gl.text),
       ...(countdown
         ? [
             text({ position: 'absolute', top: `${bandTop - 74}px`, left: '56px', padding: '8px 26px 4px', fontFamily: 'Anton', fontSize: '46px', letterSpacing: '4px', background: p.glow, color: readableOn(p.glow) }, countdown),
@@ -183,9 +186,10 @@ export async function renderGiantType(i: RenderV2Input): Promise<Buffer> {
       text({ position: 'absolute', top: `${bandTop + 196}px`, left: '0px', width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Anton', fontSize: '30px', letterSpacing: '10px', color: p.glow }, 'VS'),
       text({ position: 'absolute', top: `${bandTop + 236}px`, left: '0px', width: `${V2_W}px`, justifyContent: 'center', fontFamily: 'Anton', fontSize: '62px', letterSpacing: '5px', color: '#ffffff' }, `${dateStr}  ·  ${timeStr}`),
       ...(f.venue
-        ? [
-            text({ position: 'absolute', top: `${bandTop + 322}px`, left: '320px', width: `${V2_W - 640}px`, justifyContent: 'center', textAlign: 'center', fontFamily: 'Bebas', fontSize: `${fitFontSize(f.venue.toUpperCase(), V2_W - 640, 'Bebas', 34, 22, 5)}px`, letterSpacing: '5px', color: mix(p.home, '#ffffff', 0.55) }, f.venue.toUpperCase()),
-          ]
+        ? (() => {
+            const v = fitText(f.venue.toUpperCase(), V2_W - 600, 'Bebas', 34, 18, 5);
+            return [text({ position: 'absolute', top: `${bandTop + 322}px`, left: '300px', width: `${V2_W - 600}px`, justifyContent: 'center', fontFamily: 'Bebas', fontSize: `${v.size}px`, letterSpacing: '5px', color: mix(p.home, '#ffffff', 0.55) }, v.text)];
+          })()
         : []),
     ])
   );

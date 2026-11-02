@@ -25,7 +25,6 @@ import {
   contactShadow,
   div,
   text,
-  compLine,
   emptySheet,
   smokeLayer,
 } from '../render';
@@ -35,7 +34,7 @@ import { hasSecond, secondSheet } from '../kit/second';
 import { makeRng } from '../kit/prng';
 import { grain } from '../kit/texture';
 import { discBadge } from '../kit/badges';
-import { fitFontSize, splitName } from '../kit/fit';
+import { fitFontSize, splitName, fitText, compLineFit } from '../kit/fit';
 import { posterDate, countdownLabel } from '../kit/dates';
 import type { BrandOptions } from '../kit/brand';
 
@@ -151,15 +150,15 @@ export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
   const streakLayer = await sharp(Buffer.from(`<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg">${streaks.join('')}</svg>`)).blur(2.5).png().toBuffer();
 
   const SUR = lines(surname);
+  const kickI = compLineFit(f, 860, 'Bebas', 38, 22, 9);
+  // Name block sits in FRONT of the hero (legible even where the arm crosses it).
+  const gI = given ? fitText(lines(given), 560, 'Bebas', 46, 28, 12) : null;
+  const sI = fitText(SUR, 560, 'Anton', 92, 44, 3);
   const title = await textLayer(
     root([
-      text(abs(64, 56, { fontFamily: 'Bebas', fontSize: '38px', letterSpacing: '9px', color: T.accent }), lines(compLine(f))),
+      text(abs(64, 56, { fontFamily: 'Bebas', fontSize: `${kickI.size}px`, letterSpacing: '9px', color: T.accent }), kickI.text),
       text(abs(134, 46, { fontFamily: 'Anton', fontSize: '262px', lineHeight: 0.9, color: T.titleA, letterSpacing: '2px', textShadow: `0 0 70px ${T.glowA}` }), 'MATCH'),
       text(abs(368, 46, { fontFamily: 'Anton', fontSize: '262px', lineHeight: 0.9, color: T.titleB, letterSpacing: '2px', textShadow: `0 0 70px ${T.glowB}` }), 'DAY'),
-      text(abs(626, 56, { fontFamily: 'Bebas', fontSize: '66px', letterSpacing: '16px', color: '#ffffff' }), `${lines(given)} ${SUR}`.trim()),
-      ...(i.squadNumber
-        ? [text(abs(708, 56, { fontFamily: 'Anton', fontSize: '46px', padding: '6px 22px 2px', background: T.titleB, color: T.onAccent, letterSpacing: '3px' }), `#${i.squadNumber}`)]
-        : []),
     ])
   );
 
@@ -187,6 +186,11 @@ export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
   const nameFit = (n: string) => fitFontSize(n.toUpperCase(), 250, 'Bebas', 38, 22, 3);
   const info = await textLayer(
     root([
+      ...(gI ? [text(abs(626, 56, { fontFamily: 'Bebas', fontSize: `${gI.size}px`, letterSpacing: '12px', color: '#ffffff', textShadow: '0 2px 14px rgba(0,0,0,0.75)' }), gI.text)] : []),
+      text(abs(gI ? 626 + gI.size + 2 : 626, 52, { fontFamily: 'Anton', fontSize: `${sI.size}px`, letterSpacing: '3px', color: '#ffffff', lineHeight: 1, textShadow: '0 3px 18px rgba(0,0,0,0.8)' }), sI.text),
+      ...(i.squadNumber
+        ? [text(abs((gI ? 626 + gI.size + 2 : 626) + sI.size + 14, 56, { fontFamily: 'Anton', fontSize: '42px', padding: '6px 20px 2px', background: T.titleB, color: T.onAccent, letterSpacing: '3px' }), `#${i.squadNumber}`)]
+        : []),
       ...(countdown
         ? [text(abs(1372 - 80, 56, { fontFamily: 'Anton', fontSize: '40px', letterSpacing: '4px', padding: '6px 22px 2px', background: T.accent, color: T.onAccent }), countdown)]
         : []),
@@ -195,7 +199,7 @@ export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
       text(abs(1372 + BS / 2 - 28, 56 + BS + 8, { fontFamily: 'Anton', fontSize: '44px', color: T.hot, width: '54px', justifyContent: 'center' }), 'VS'),
       text(abs(1596, 56, { fontFamily: 'Anton', fontSize: '98px', letterSpacing: '3px', color: '#fff', lineHeight: 1 }), dateStr),
       text(abs(1696, 56, { fontFamily: 'Anton', fontSize: '150px', letterSpacing: '2px', color: T.accent, lineHeight: 1, textShadow: `0 0 40px ${T.glowC}` }), timeStr),
-      ...(f.venue ? [text(abs(1856, 56, { fontFamily: 'Bebas', fontSize: '32px', letterSpacing: '7px', color: T.venue, width: '600px' }), lines(f.venue))] : []),
+      ...(f.venue ? (() => { const v = fitText(lines(f.venue), 600, 'Bebas', 32, 20, 7); return [text(abs(1856, 56, { fontFamily: 'Bebas', fontSize: `${v.size}px`, letterSpacing: '7px', color: T.venue }), v.text)]; })() : []),
     ])
   );
 
@@ -311,9 +315,9 @@ export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
   const nameFit = (n: string) => fitFontSize(n.toUpperCase(), 230, 'Bebas', 36, 22, 3);
   const text1 = await textLayer(
     root([
-      text(centred(66, { fontFamily: 'Bebas', fontSize: '36px', letterSpacing: '12px', color: ICE }), lines(compLine(f))),
+      (() => { const k = compLineFit(f, 760, 'Bebas', 36, 20, 12); return text(centred(66, { fontFamily: 'Bebas', fontSize: `${k.size}px`, letterSpacing: '12px', color: ICE }), k.text); })(),
       text(centred(104, { fontFamily: 'Bebas', fontSize: '196px', letterSpacing: '30px', color: T.title, lineHeight: 1, textShadow: `0 0 50px ${T.glowA}` }), 'MATCHDAY'),
-      text(centred(312, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '38px', letterSpacing: '16px', color: '#ffffff' }), lines(i.playerName)),
+      (() => { const n = fitText(lines(i.playerName), 900, 'Montserrat', 38, 22, 16); return text(centred(312, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: `${n.size}px`, letterSpacing: '16px', color: '#ffffff' }), n.text); })(),
       ...(countdown
         ? [text(abs(PY - 66, PX, { fontFamily: 'Bebas', fontSize: '42px', letterSpacing: '6px', padding: '6px 22px 2px', background: ICE, color: T.onAccent }), countdown)]
         : []),
@@ -322,7 +326,7 @@ export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
       text(centredAt(PY + 34, PX + 270, 420, { fontFamily: 'Bebas', fontSize: '92px', letterSpacing: '8px', color: '#ffffff', lineHeight: 1 }), dateStr),
       text(centredAt(PY + 128, PX + 270, 420, { fontFamily: 'Bebas', fontSize: '170px', letterSpacing: '6px', color: ICE, lineHeight: 1, textShadow: `0 0 40px ${T.glowB}` }), timeStr),
       ...(f.venue
-        ? [text(centredAt(PY + 314, PX + 230, 500, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: `${fitFontSize(f.venue.toUpperCase(), 500, 'Montserrat', 24, 16, 5)}px`, letterSpacing: '5px', color: T.venue }), lines(f.venue))]
+        ? [(() => { const v = fitText(lines(f.venue), 600, 'Montserrat', 24, 14, 5); return text(centredAt(PY + 314, PX + 180, 600, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: `${v.size}px`, letterSpacing: '5px', color: T.venue }), v.text); })()]
         : []),
     ])
   );
@@ -405,16 +409,16 @@ export async function renderPrestigeV3(i: RenderV2Input): Promise<Buffer> {
   const crestY = 1514;
   const t = await textLayer(
     root([
-      text(centred(84, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '22px', letterSpacing: '9px', color: GOLD_L }), lines(compLine(f))),
+      (() => { const k = compLineFit(f, 700, 'Montserrat', 22, 13, 9); return text(centred(84, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: `${k.size}px`, letterSpacing: '9px', color: GOLD_L }), k.text); })(),
       text(centred(118, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: '84px', letterSpacing: '26px', color: GOLD_L, lineHeight: 1 }), 'MATCHDAY'),
-      text(centred(224, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: '36px', letterSpacing: '14px', color: '#ffffff' }), lines(i.playerName)),
+      (() => { const n = fitText(lines(i.playerName), 860, 'Cinzel', 36, 20, 14); return text(centred(224, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: `${n.size}px`, letterSpacing: '14px', color: '#ffffff' }), n.text); })(),
       ...(i.squadNumber ? [text(centred(278, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '22px', letterSpacing: '10px', color: GOLD }), `No. ${i.squadNumber}`)] : []),
       text(centredAt(crestY + BS + 12, 170 - 90, BS + 180, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: `${nameFit(f.homeTeam)}px`, letterSpacing: '2px', color: '#fff' }), lines(f.homeTeam)),
       text(centredAt(crestY + BS + 12, V2_W - 170 - BS - 90, BS + 180, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: `${nameFit(f.awayTeam)}px`, letterSpacing: '2px', color: '#fff' }), lines(f.awayTeam)),
       text(centred(crestY + 46, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: '40px', color: GOLD, letterSpacing: '4px' }), 'VS'),
       text(centredAt(crestY + 100, 270, 540, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '26px', letterSpacing: '8px', color: GOLD_L }), `KICK-OFF  ·  ${timeStr}`),
       text(centred(1728, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: `${fitFontSize(longDate, 820, 'Cinzel', 56, 30, 2)}px`, color: GOLD_L, letterSpacing: '2px' }), longDate),
-      ...(f.venue ? [text(centred(1798, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: '24px', letterSpacing: '8px', color: T.venue }), lines(f.venue))] : []),
+      ...(f.venue ? (() => { const v = fitText(lines(f.venue), 820, 'Montserrat', 24, 14, 8); return [text(centred(1798, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: `${v.size}px`, letterSpacing: '8px', color: T.venue }), v.text)]; })() : []),
       ...(countdown ? [text(centred(1834, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '22px', letterSpacing: '10px', color: GOLD }), `—  ${countdown}  —`)] : []),
     ])
   );
@@ -488,9 +492,9 @@ export async function renderElectricV3(i: RenderV2Input): Promise<Buffer> {
   const titleMg = await textLayer(root([text(centred(110, titleStyle({ color: MG })), 'MATCHDAY')]));
   const titleW = await textLayer(
     root([
-      text(centred(68, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '26px', letterSpacing: '6px', color: GR }), `// ${lines(compLine(f))}`),
+      (() => { const k = compLineFit(f, 740, 'SpaceMono', 26, 14, 6); return text(centred(68, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: `${k.size}px`, letterSpacing: '6px', color: GR }), `// ${k.text}`); })(),
       text(centred(110, titleStyle({ color: '#ffffff' })), 'MATCHDAY'),
-      text(centred(330, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '40px', letterSpacing: '8px', color: '#ffffff' }), lines(i.playerName) + (i.squadNumber ? `  #${i.squadNumber}` : '')),
+      (() => { const n = fitText(lines(i.playerName) + (i.squadNumber ? `  #${i.squadNumber}` : ''), 940, 'SpaceMono', 40, 20, 8); return text(centred(330, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: `${n.size}px`, letterSpacing: '8px', color: '#ffffff' }), n.text); })(),
     ])
   );
 

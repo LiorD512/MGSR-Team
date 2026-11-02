@@ -8,14 +8,14 @@
  * Variants: 0 Gold · 1 Holo (rainbow foil) · 2 Black (carbon + club accent)
  */
 import sharp from 'sharp';
-import { type RenderV2Input, V2_W, V2_H, placeLayer, textLayer, text, crestPng, compLine } from '../render';
+import { type RenderV2Input, V2_W, V2_H, placeLayer, textLayer, text, crestPng } from '../render';
 import { hasSecond, secondSheet } from '../kit/second';
 import { abs, centred, column, root, sheet, orbs, rotateCanvas } from '../kit/compose';
 import { relightCutout } from '../kit/relight';
 import { grain, stripes } from '../kit/texture';
 import { discBadge } from '../kit/badges';
 import { mix, matchPalette } from '../kit/palette';
-import { fitFontSize, splitName } from '../kit/fit';
+import { fitFontSize, splitName, fitText, compLineFit } from '../kit/fit';
 import { posterDate, countdownLabel } from '../kit/dates';
 import type { BrandOptions } from '../kit/brand';
 
@@ -83,7 +83,7 @@ export async function renderCard(i: RenderV2Input): Promise<Buffer> {
   // name plate
   const PY = IY + IH - 250;
   const plate = sheet(
-    `<rect x="${IX}" y="${PY}" width="${IW}" height="250" fill="url(#pl)"/><rect x="${IX + 40}" y="${PY + 6}" width="${IW - 80}" height="4" fill="url(#foil)"/>`,
+    `<rect x="${IX}" y="${PY}" width="${IW}" height="250" fill="url(#pl)"/><rect x="${IX + 40}" y="${PY + 14}" width="${IW - 80}" height="4" fill="url(#foil)"/>`,
     `<linearGradient id="pl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="0.35" stop-color="#000" stop-opacity="0.7"/><stop offset="1" stop-color="#000" stop-opacity="0.85"/></linearGradient>` +
       `<linearGradient id="foil" x1="0" y1="0" x2="1" y2="0">${foil}</linearGradient>`
   );
@@ -113,12 +113,12 @@ export async function renderCard(i: RenderV2Input): Promise<Buffer> {
         ? [text(abs(IY + 26, IX + 40, { fontFamily: 'Anton', fontSize: '190px', lineHeight: 1, color: accent, textShadow: '0 4px 20px rgba(0,0,0,0.5)' }), i.squadNumber)]
         : []),
       text(abs(IY + (i.squadNumber ? 236 : 40), IX + 46, { fontFamily: 'Bebas', fontSize: '40px', letterSpacing: '8px', color: accent }), 'MATCHDAY'),
-      text(column(PY + 38, IX, IW, { fontFamily: 'Bebas', fontSize: '40px', letterSpacing: '14px', color: '#ffffff', opacity: 0.85 }), given.toUpperCase()),
-      text(column(PY + 80, IX, IW, { fontFamily: 'Anton', fontSize: `${fitFontSize(SUR, IW - 80, 'Anton', 150, 70, 4)}px`, letterSpacing: '4px', color: '#ffffff', lineHeight: 1 }), SUR),
+      (() => { const g = fitText(given.toUpperCase(), IW - 60, 'Bebas', 40, 24, 14); return text(column(PY + 34, IX, IW, { fontFamily: 'Bebas', fontSize: `${g.size}px`, letterSpacing: '14px', color: '#ffffff', opacity: 0.85 }), g.text); })(),
+      text(column(PY + 84, IX, IW, { fontFamily: 'Anton', fontSize: `${fitFontSize(SUR, IW - 80, 'Anton', 150, 70, 4)}px`, letterSpacing: '4px', color: '#ffffff', lineHeight: 1 }), SUR),
       // below the card
-      text(centred(1490, { fontFamily: 'Bebas', fontSize: '30px', letterSpacing: '10px', color: mix(p.home, '#ffffff', 0.6) }), compLine(f).toUpperCase()),
+      (() => { const k = compLineFit(f, 900, 'Bebas', 30, 18, 10); return text(centred(1490, { fontFamily: 'Bebas', fontSize: `${k.size}px`, letterSpacing: '10px', color: mix(p.home, '#ffffff', 0.6) }), k.text); })(),
       text(centred(1712, { fontFamily: 'Anton', fontSize: '76px', letterSpacing: '4px', color: '#ffffff' }), `${pd ? pd.short : f.date}  ·  ${f.time ?? 'TBC'}`),
-      ...(f.venue ? [text(centred(1808, { fontFamily: 'Bebas', fontSize: '32px', letterSpacing: '8px', color: mix(p.home, '#ffffff', 0.55) }), f.venue.toUpperCase())] : []),
+      ...(f.venue ? (() => { const v = fitText(f.venue.toUpperCase(), 900, 'Bebas', 32, 20, 8); return [text(centred(1808, { fontFamily: 'Bebas', fontSize: `${v.size}px`, letterSpacing: '8px', color: mix(p.home, '#ffffff', 0.55) }), v.text)]; })() : []),
       ...(countdown ? [text(abs(CY - 40, CX + CW - 300, { fontFamily: 'Bebas', fontSize: '36px', letterSpacing: '4px', padding: '6px 20px 2px', background: '#ffffff', color: '#0c0c0e', width: '300px', justifyContent: 'center' }), countdown)] : []),
       text(centred(1580, { fontFamily: 'Anton', fontSize: '54px', color: mix(p.home, '#ffffff', 0.4) }), 'VS'),
       text(column(1680 - 30, 90, 330, { fontFamily: 'Bebas', fontSize: `${fitFontSize(f.homeTeam.toUpperCase(), 300, 'Bebas', 30, 18, 2)}px`, letterSpacing: '2px', color: '#ffffff' }), f.homeTeam.toUpperCase()),

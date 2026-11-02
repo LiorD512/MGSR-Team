@@ -11,7 +11,7 @@
  *   2. Design   — pick one of four designed templates.
  *   3. Generate — run the AI-assisted, face-preserving pipeline with a live
  *                 progress log; preview the finished 9:16 poster.
- *   4. Deliver  — send to the logged-in agent by WhatsApp or email, or
+ *   4. Deliver  — switch variant, download the image or a video, animate,
  *                 download / save.
  *
  * The player's FACE is never AI-generated; the pipeline only cuts out, swaps
@@ -19,9 +19,8 @@
  * {seed,onClose} + parent-useState drawer pattern.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { auth, db } from '@/lib/firebase';
 import { MATCHDAY_DESIGNS, designVariant, type MatchdayDesignId, type MatchdayV2Result } from '@/lib/matchday/v2/types';
 import { loadPosterImage, playMotion, recordMotionVideo } from '@/lib/matchday/motionClient';
@@ -62,7 +61,6 @@ async function apiHeaders(): Promise<Record<string, string>> {
 
 export default function MatchdayDrawer({ seed, onClose }: Props) {
   const { t } = useLanguage();
-  const { user } = useAuth();
 
   const [step, setStep] = useState<Step>('assets');
   const [design, setDesign] = useState<MatchdayDesignId>('inferno');
@@ -103,10 +101,6 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
   const stepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Delivery.
-  const [agentEmail, setAgentEmail] = useState<string>('');
-  const [agentPhone, setAgentPhone] = useState<string>('');
-  const [sending, setSending] = useState<'email' | 'whatsapp' | null>(null);
-  const [sendMsg, setSendMsg] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   const clearTimer = () => {
@@ -117,12 +111,12 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
   };
   useEffect(() => () => clearTimer(), []);
 
-  // Load curated assets + the agent's contact details.
+  // Load the curated assets for this player / club.
   useEffect(() => {
     let active = true;
     void (async () => {
       try {
-        const { doc, getDoc, collection, getDocs } = await import('firebase/firestore');
+        const { doc, getDoc } = await import('firebase/firestore');
         const [player, club] = await Promise.all([
           seed.playerId ? getDoc(doc(db, 'Players', seed.playerId)) : Promise.resolve(null),
           seed.club ? getDoc(doc(db, 'ClubAssets', clubKey(seed.club))) : Promise.resolve(null),
@@ -133,28 +127,6 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
         setStadiumPhotoUrl((club?.data()?.stadiumPhotoUrl as string | undefined) ?? null);
         setKitPhotoUrl((player?.data()?.matchdayKitUrl as string | undefined) ?? null);
 
-        // Agent contact — reuse the app's proven account resolver (same one the
-        // shortlist/share features use) so email + phone are found reliably.
-        if (user) {
-          // Email: prefer the account's email, else the auth email.
-          if (user.email) setAgentEmail(user.email);
-          try {
-            const { getCurrentAccountForShortlist } = await import('@/lib/accounts');
-            const acct = await getCurrentAccountForShortlist(user);
-            if (active) {
-              if (acct.phone) setAgentPhone(acct.phone);
-              // Some accounts store the login email only on the Account doc.
-              if (!user.email) {
-                const snap = await getDocs(collection(db, 'Accounts'));
-                const match = snap.docs.find((d) => d.id === acct.id);
-                const em = match?.data()?.email as string | undefined;
-                if (em) setAgentEmail(em);
-              }
-            }
-          } catch {
-            /* fall back to auth email only */
-          }
-        }
       } catch {
         /* absent records just mean nothing is curated yet */
       } finally {
@@ -164,7 +136,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     return () => {
       active = false;
     };
-  }, [seed.playerId, seed.club, seed.playerImage, user?.email]);
+  }, [seed.playerId, seed.club, seed.playerImage]);
 
   const loadHistory = useCallback(async () => {
     if (!seed.playerId) return;
@@ -223,7 +195,6 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     setError(null);
     setResult(null);
     setSaved(false);
-    setSendMsg(null);
     setMotionOn(false);
     setMotionMsg(null);
     setActiveStep(0);
@@ -322,47 +293,6 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
     document.body.appendChild(a);
     a.click();
     a.remove();
-  };
-
-  const handleSend = async (channel: 'email' | 'whatsapp') => {
-    if (!result) return;
-    const to = channel === 'email' ? agentEmail : agentPhone;
-    if (!to) {
-      setSendMsg(channel === 'email' ? t('matchday_v2_no_email') : t('matchday_v2_no_phone'));
-      return;
-    }
-    setSending(channel);
-    setSendMsg(null);
-    try {
-      const res = await fetch('/api/matchday/send', {
-        method: 'POST',
-        headers: await apiHeaders(),
-        body: JSON.stringify({
-          channel,
-          generationId: result.generationId,
-          playerId: seed.playerId ?? null,
-          playerName: seed.playerName,
-          imageDataUrl: result.imageDataUrl,
-          to,
-          caption: `MATCHDAY — ${seed.playerName} · ${result.facts.homeTeam} vs ${result.facts.awayTeam}`,
-        }),
-      });
-      const data = (await res.json()) as { sent?: boolean; waUrl?: string; error?: string };
-      if (!res.ok) {
-        setSendMsg(data.error || t('matchday_v2_send_failed'));
-        return;
-      }
-      if (channel === 'whatsapp' && data.waUrl) {
-        window.open(data.waUrl, '_blank');
-        setSendMsg(t('matchday_v2_whatsapp_opened'));
-      } else {
-        setSendMsg(t('matchday_v2_email_sent'));
-      }
-    } catch (err) {
-      setSendMsg(err instanceof Error ? err.message : t('matchday_v2_send_failed'));
-    } finally {
-      setSending(null);
-    }
   };
 
   // Live motion preview: (re)start the canvas loop whenever it is switched on.
@@ -689,95 +619,132 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
           )}
 
           {/* ── Step 4: Deliver ── */}
-          {step === 'deliver' && result && (
-            <>
-              <p className="md2-eyebrow">{t('matchday_generate_button')} · <b>{t('matchday_v2_ready')}</b></p>
-              <h1 className="md2-h1">{t('matchday_v2_send_it')} <span className="g">{t('matchday_v2_out')}.</span></h1>
+          {step === 'deliver' && result && (() => {
+            const meta = MATCHDAY_DESIGNS.find((d) => d.id === result.design);
+            const cur = designVariant(result.design, remix);
+            const warns = result.qualityChecks.filter((c) => c.status !== 'pass').length;
+            const total = result.qualityChecks.length;
+            return (
+              <>
+                <p className="md2-eyebrow">{t('matchday_generate_button')} · <b>{t('matchday_v2_ready')}</b></p>
+                <h1 className="md2-h1">{t('matchday_v3_ready_a')} <span className="g">{t('matchday_v3_ready_b')}.</span></h1>
 
-              <div className="md2-result">
-                <div className="md2-canvas">
-                  {motionOn ? (
-                    <>
-                      <canvas ref={motionCanvas} width={540} height={960} aria-label={`MATCHDAY ${result.facts.playerName}`} />
-                      <span className="md2-live">● {t('matchday_v3_live')}</span>
-                    </>
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={result.imageDataUrl} alt={`MATCHDAY ${result.facts.playerName}`} />
-                  )}
-                </div>
-
-                <div className="md2-rside">
-                  <p className="md2-variant">
-                    {MATCHDAY_DESIGNS.find((d) => d.id === result.design)?.name ?? result.design}
-                    <span> · {t('matchday_v3_variant')}: <b>{designVariant(result.design, remix).name}</b></span>
-                  </p>
-                  <ul className="md2-checks">
-                    {result.qualityChecks.map((c) => (
-                      <li key={c.id} className={`qc-${c.status}`}>
-                        <span className="m" />
-                        <span className="lab">{c.label}</span>
-                        {c.detail && <span className="d">{c.detail}</span>}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <p className="md2-dh">{t('matchday_v2_deliver_title')}</p>
-                  <label className="md2-fld">
-                    <span>{t('matchday_v2_email_label')}</span>
-                    <input type="email" inputMode="email" placeholder="you@example.com"
-                      value={agentEmail} onChange={(e) => setAgentEmail(e.target.value)} />
-                  </label>
-                  <label className="md2-fld">
-                    <span>{t('matchday_v2_phone_label')}</span>
-                    <input type="tel" inputMode="tel" placeholder="05X-XXXXXXX"
-                      value={agentPhone} onChange={(e) => setAgentPhone(e.target.value)} />
-                  </label>
-
-                  <div className="md2-actions" style={{ marginTop: 20 }}>
-                    <button className="md2-lead" onClick={() => void handleSend('email')}
-                      disabled={sending !== null || !agentEmail.trim()}>
-                      {sending === 'email' ? '…' : t('matchday_v2_send_email')}
-                    </button>
-                    <button className="md2-text g" onClick={() => void handleSend('whatsapp')}
-                      disabled={sending !== null || !agentPhone.trim()}>
-                      {sending === 'whatsapp' ? '…' : t('matchday_v2_send_whatsapp')}
-                    </button>
+                <div className="md2-result">
+                  <div className="md2-canvas">
+                    {motionOn ? (
+                      <>
+                        <canvas ref={motionCanvas} width={540} height={960} aria-label={`MATCHDAY ${result.facts.playerName}`} />
+                        <span className="md2-live">● {t('matchday_v3_live')}</span>
+                      </>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={result.imageDataUrl} alt={`MATCHDAY ${result.facts.playerName}`} />
+                    )}
                   </div>
-                  {sendMsg && <p className="md2-sent">{sendMsg}</p>}
 
-                  <div className="md2-actions" style={{ marginTop: 34 }}>
-                    <button className="md2-text" onClick={handleDownload}>{t('matchday_download')}</button>
-                    <button className="md2-text g" onClick={() => setMotionOn((v) => !v)} disabled={recording !== null}>
-                      {motionOn ? `■ ${t('matchday_v3_show_still')}` : `▶ ${t('matchday_v3_animate')}`}
-                    </button>
-                    <button className="md2-text" onClick={() => void handleDownloadVideo()} disabled={recording !== null}>
-                      {recording !== null ? `${t('matchday_v3_recording')} ${Math.round(recording * 100)}%` : t('matchday_v3_download_video')}
-                    </button>
-                    <button className="md2-text" onClick={handleSave} disabled={saved}>
-                      {saved ? t('matchday_saved') : t('matchday_save')}
-                    </button>
-                    <button
-                      className="md2-text g"
-                      onClick={() => {
-                        const n = remix + 1;
-                        setRemix(n);
-                        void run(n);
-                      }}
-                    >
-                      ↻ {t('matchday_v3_remix')} → {designVariant(result.design, remix + 1).name}
-                    </button>
-                    <button className="md2-text" onClick={() => setStep('design')}>{t('matchday_regenerate')}</button>
+                  <div className="md2-rside md2-deliver">
+                    <div className="md2-dhead">
+                      <p className="k">{meta?.family === 'cinematic' ? t('matchday_v3_family_cinematic') : t('matchday_v3_family_graphic')}</p>
+                      <h3>{meta?.name ?? result.design}<span> · {cur.name}</span></h3>
+                    </div>
+
+                    {(meta?.variants?.length ?? 0) > 1 && (
+                      <div className="md2-dsec">
+                        <p className="md2-dlab">{t('matchday_v3_variant')}<span>{t('matchday_v3_variant_hint')}</span></p>
+                        <div className="md2-variants" role="radiogroup" aria-label={t('matchday_v3_variant')}>
+                          {meta!.variants!.map((n, k) => (
+                            <button key={n} type="button" role="radio" aria-checked={cur.index === k}
+                              className={`md2-chip${cur.index === k ? ' on' : ''}`}
+                              disabled={recording !== null}
+                              onClick={() => {
+                                if (cur.index === k) return;
+                                setRemix(k);
+                                void run(k);
+                              }}>
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="md2-dsec">
+                      <p className="md2-dlab">{t('matchday_v3_get_it')}</p>
+                      <div className="md2-btns">
+                        <button type="button" className="md2-btn primary" onClick={handleDownload}>
+                          <Icon name="download" />
+                          <span className="tx">{t('matchday_v3_download_image')}<small>JPG · 1080×1920</small></span>
+                        </button>
+                        <button type="button" className={`md2-btn${motionOn ? ' on' : ''}`} onClick={() => setMotionOn((v) => !v)} disabled={recording !== null} aria-pressed={motionOn}>
+                          <Icon name={motionOn ? 'stop' : 'play'} />
+                          <span className="tx">{motionOn ? t('matchday_v3_stop_animation') : t('matchday_v3_animate')}<small>{t('matchday_v3_preview_small')}</small></span>
+                        </button>
+                        <button type="button" className={`md2-btn${recording !== null ? ' busy' : ''}`} onClick={() => void handleDownloadVideo()} disabled={recording !== null}
+                          style={recording !== null ? ({ '--p': `${Math.round(recording * 100)}%` } as CSSProperties) : undefined}>
+                          <Icon name="film" />
+                          <span className="tx">
+                            {recording !== null ? `${t('matchday_v3_recording')} ${Math.round(recording * 100)}%` : t('matchday_v3_download_video')}
+                            <small>{t('matchday_v3_video_meta')}</small>
+                          </span>
+                        </button>
+                      </div>
+                      <div className="md2-btns sec">
+                        <button type="button" className={`md2-btn ghost${saved ? ' done' : ''}`} onClick={handleSave} disabled={saved}>
+                          <Icon name={saved ? 'check' : 'bookmark'} />
+                          <span className="tx">{saved ? t('matchday_v3_saved_player') : t('matchday_v3_save_player')}</span>
+                        </button>
+                        <button type="button" className="md2-btn ghost" onClick={() => setStep('design')} disabled={recording !== null}>
+                          <Icon name="grid" />
+                          <span className="tx">{t('matchday_v3_change_style')}</span>
+                        </button>
+                      </div>
+                      {motionMsg && <p className="md2-sent">{motionMsg}</p>}
+                    </div>
+
+                    <details className={`md2-qc${warns ? ' warn' : ''}`}>
+                      <summary>
+                        <span className="dot" aria-hidden />
+                        {warns
+                          ? t('matchday_v3_checks_notes').replace('{w}', String(warns)).replace('{n}', String(total))
+                          : t('matchday_v3_checks_ok').replace('{n}', String(total))}
+                      </summary>
+                      <ul className="md2-checks">
+                        {result.qualityChecks.map((c) => (
+                          <li key={c.id} className={`qc-${c.status}`}>
+                            <span className="m" />
+                            <span className="lab">{c.label}</span>
+                            {c.detail && <span className="d">{c.detail}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
                   </div>
-                  {motionMsg && <p className="md2-sent">{motionMsg}</p>}
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            );
+          })()}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/** Small stroke icons for the Deliver buttons (inherit currentColor). */
+function Icon({ name }: { name: 'download' | 'play' | 'stop' | 'film' | 'bookmark' | 'grid' | 'check' }) {
+  const d: Record<typeof name, string> = {
+    download: 'M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14',
+    play: 'M8 5.5v13l10.5-6.5z',
+    stop: 'M7 7h10v10H7z',
+    film: 'M4 6h16v12H4zM8 6v12M16 6v12M4 10h4M4 14h4M16 10h4M16 14h4',
+    bookmark: 'M7 4h10v16l-5-3.5L7 20z',
+    grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+    check: 'M5 12.5l4.5 4.5L19 7.5',
+  };
+  return (
+    <svg className="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d={d[name]} />
+    </svg>
   );
 }
 

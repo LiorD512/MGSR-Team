@@ -259,7 +259,8 @@ function buildChecks(
   return [
     { id: 'identity', label: 'Player face preserved (never generated)', status: 'pass', detail: 'AI used only for cutout/kit/pose' },
     { id: 'cutout', label: 'Player cutout', status: haveCutout ? 'pass' : 'fail', detail: cutoutDetail },
-    { id: 'kit', label: 'Kit', status: kitSwapped ? 'pass' : 'warn', detail: kitSwapped ? 'swapped from reference' : 'original kit kept' },
+    // Keeping the original kit is a normal choice, not a problem — so it passes.
+    { id: 'kit', label: 'Kit', status: 'pass', detail: kitSwapped ? 'swapped from reference' : 'original kit kept (no kit reference uploaded)' },
     { id: 'teams', label: 'Home & away teams resolved', status: facts.homeTeam && facts.awayTeam ? 'pass' : 'fail', detail: `${facts.homeTeam} vs ${facts.awayTeam}` },
     { id: 'datetime', label: 'Date & kickoff', status: facts.date ? (facts.time ? 'pass' : 'warn') : 'fail', detail: `${facts.date}${facts.time ? ` • ${facts.time}` : ' • TBC'}` },
     { id: 'crests', label: 'Club crests', status: home && away ? 'pass' : home || away ? 'warn' : 'fail', detail: `home ${home ? 'ok' : 'missing'} · away ${away ? 'ok' : 'missing'}` },

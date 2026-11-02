@@ -40,6 +40,9 @@ async function main() {
   const varArg = args.find((a) => a.startsWith('--variant='));
   const allVariants = args.includes('--all-variants');
   const two = args.includes('--two');
+  // --stress: realistic worst-case lengths (two-word given name, accented surname,
+  // long clubs / competition / venue) to catch overlapping elements.
+  const stress = args.includes('--stress');
   const wanted = args.filter((a) => !a.startsWith('--'));
   const designs = (wanted.length ? wanted : MATCHDAY_DESIGNS.map((d) => d.id)) as MatchdayDesignId[];
   await fs.mkdir(outDir, { recursive: true });
@@ -62,22 +65,37 @@ async function main() {
     const out = await renderV2({
       variant,
       design,
-      playerName: playerName.toUpperCase(),
+      playerName: (stress ? 'Gontie Junior Diomandé' : playerName).toUpperCase(),
       squadNumber: '57',
-      facts: {
-        playerName,
-        homeTeam: 'FK Garliava',
-        awayTeam: 'Kauno Zalgiris II',
-        playerSide: 'home',
-        country: 'Lithuania',
-        competition: 'Lithuania: I Lyga',
-        round: 'Round 9',
-        date: '09/10/2026',
-        time: '16:00',
-        venue: 'Garliavos Stadionas',
-        homeLogo: null,
-        awayLogo: null,
-      },
+      facts: stress
+        ? {
+            playerName: 'Gontie Junior Diomandé',
+            homeTeam: 'Hapoel Ironi Kiryat Shmona',
+            awayTeam: 'Maccabi Bnei Reineh',
+            playerSide: 'home',
+            country: 'Israel',
+            competition: "Israel: Ligat ha'Al Championship Round",
+            round: 'Round 13',
+            date: '09/11/2026',
+            time: '19:00',
+            venue: 'Municipal Stadium Kiryat Shmona Galil',
+            homeLogo: null,
+            awayLogo: null,
+          }
+        : {
+            playerName,
+            homeTeam: 'FK Garliava',
+            awayTeam: 'Kauno Zalgiris II',
+            playerSide: 'home',
+            country: 'Lithuania',
+            competition: 'Lithuania: I Lyga',
+            round: 'Round 9',
+            date: '09/10/2026',
+            time: '16:00',
+            venue: 'Garliavos Stadionas',
+            homeLogo: null,
+            awayLogo: null,
+          },
       layers: { cutAction: cutout, hero: cutout2 ?? cutout, backdropMono: null, heroIsDistinct: Boolean(cutout2) },
       homeCrest,
       awayCrest,

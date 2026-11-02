@@ -8,14 +8,14 @@
  * Variants: 0 Club glow (crest colours) · 1 Sunset · 2 Midnight
  */
 import sharp from 'sharp';
-import { type RenderV2Input, V2_W, V2_H, placeLayer, textLayer, text, contactShadow, compLine } from '../render';
+import { type RenderV2Input, V2_W, V2_H, placeLayer, textLayer, text, contactShadow } from '../render';
 import { hasSecond, secondSheet } from '../kit/second';
 import { abs, centred, column, root, sheet, orbs, frostedGlass } from '../kit/compose';
 import { relightCutout } from '../kit/relight';
 import { grain } from '../kit/texture';
 import { discBadge } from '../kit/badges';
 import { mix, matchPalette } from '../kit/palette';
-import { fitFontSize } from '../kit/fit';
+import { fitFontSize, fitText, compLineFit } from '../kit/fit';
 import { posterDate, countdownLabel } from '../kit/dates';
 import type { BrandOptions } from '../kit/brand';
 
@@ -76,9 +76,9 @@ export async function renderGlass(i: RenderV2Input): Promise<Buffer> {
   const nameFit = (n: string) => fitFontSize(n.toUpperCase(), 230, 'Montserrat', 22, 14, 1);
   const t = await textLayer(
     root([
-      text(abs(96, 110, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '22px', letterSpacing: '6px', color: '#ffffff', opacity: 0.8 }), compLine(f).toUpperCase()),
+      (() => { const k = compLineFit(f, 800, 'Montserrat', 22, 13, 6); return text(abs(96, 110, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: `${k.size}px`, letterSpacing: '6px', color: '#ffffff', opacity: 0.8 }), k.text); })(),
       text(abs(132, 104, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '112px', letterSpacing: '-3px', color: '#ffffff', lineHeight: 1 }), 'Matchday'),
-      text(abs(266, 110, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: `${fitFontSize(name, 800, 'Montserrat', 36, 22, 4)}px`, letterSpacing: '4px', color: '#ffffff', opacity: 0.92 }), name + (i.squadNumber ? `  ·  ${i.squadNumber}` : '')),
+      (() => { const n = fitText(name + (i.squadNumber ? `  ·  ${i.squadNumber}` : ''), 860, 'Montserrat', 36, 18, 4); return text(abs(266, 110, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: `${n.size}px`, letterSpacing: '4px', color: '#ffffff', opacity: 0.92 }), n.text); })(),
       ...(countdown
         ? [text(abs(1310, 60, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '26px', letterSpacing: '4px', padding: '12px 26px', borderRadius: '40px', background: 'rgba(255,255,255,0.92)', color: P.base }), countdown)]
         : []),

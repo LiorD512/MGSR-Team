@@ -62,3 +62,48 @@ export function wrapSurname(surname: string, singleLineMax = 11): string[] {
   const b = s.slice(best + 1).trim();
   return a && b ? [a, b] : [s];
 }
+
+/**
+ * One-line text that is guaranteed to fit `maxW`: the largest size in
+ * [min, max] that fits, and — only if even `min` is too wide — the text is
+ * shortened with an ellipsis. Estimates are padded 6 % to stay on the safe side.
+ */
+export function fitText(text: string, maxW: number, family: string, max: number, min: number, letterSpacing = 0): { size: number; text: string } {
+  const safeW = maxW / 1.06;
+  const size = fitFontSize(text, safeW, family, max, min, letterSpacing);
+  if (estimateWidth(text, size, family, letterSpacing) <= safeW) return { size, text };
+  let t = text;
+  while (t.length > 4 && estimateWidth(`${t}…`, min, family, letterSpacing) > safeW) t = t.slice(0, -1);
+  return { size: min, text: `${t.trimEnd()}…` };
+}
+
+/**
+ * Competition kicker ("COUNTRY: LEAGUE • ROUND") fitted to a width. Tries the
+ * full line, then without the "Country:" prefix, then without the round, and
+ * only then truncates — so long leagues lose the least important part first.
+ */
+export function compLineFit(
+  facts: { competition?: string | null; country?: string | null; round?: string | null },
+  maxW: number,
+  family: string,
+  max: number,
+  min: number,
+  letterSpacing = 0,
+  sep = '  •  '
+): { size: number; text: string } {
+  const comp = (facts.competition ?? '').trim();
+  const country = (facts.country ?? '').trim();
+  const round = (facts.round ?? '').trim();
+  const hasCountry = country && comp.toLowerCase().includes(country.toLowerCase());
+  const bare = comp.replace(/^[^:]{2,40}:\s*/, '');
+  const candidates = [
+    [hasCountry ? '' : country, comp, round],
+    [bare, round],
+    [bare],
+  ].map((parts) => parts.filter(Boolean).join(sep).toUpperCase() || 'MATCHDAY');
+  for (const c of candidates) {
+    const s = fitFontSize(c, maxW / 1.06, family, max, min, letterSpacing);
+    if (estimateWidth(c, s, family, letterSpacing) <= maxW / 1.06) return { size: s, text: c };
+  }
+  return fitText(candidates[candidates.length - 1], maxW, family, max, min, letterSpacing);
+}

@@ -9,12 +9,12 @@
  * Variants: 0 Navy blueprint · 1 Chalkboard · 2 Night pitch
  */
 import sharp from 'sharp';
-import { type RenderV2Input, V2_W, V2_H, textLayer, text, compLine } from '../render';
+import { type RenderV2Input, V2_W, V2_H, textLayer, text } from '../render';
 import { hasSecond, secondSheet } from '../kit/second';
 import { abs, centred, root, sheet, flatten } from '../kit/compose';
 import { grain } from '../kit/texture';
 import { squareBadge } from '../kit/badges';
-import { fitFontSize, splitName } from '../kit/fit';
+import { fitFontSize, splitName, fitText, compLineFit } from '../kit/fit';
 import { posterDate, countdownLabel } from '../kit/dates';
 import { makeRng } from '../kit/prng';
 import type { BrandOptions } from '../kit/brand';
@@ -110,23 +110,25 @@ export async function renderBlueprint(i: RenderV2Input): Promise<Buffer> {
   const mono = (top: number, left: number, s: string, size = 26, color = T.ink) =>
     text(abs(top, left, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: `${size}px`, letterSpacing: '2px', color }), s);
   const SUR = surname.toUpperCase();
+  // One fact per row so long club names never wrap into the next label.
   const spec: Array<[string, string]> = [
-    ['FIXTURE', `${f.homeTeam} v ${f.awayTeam}`],
+    ['HOME', f.homeTeam],
+    ['AWAY', f.awayTeam],
     ['DATE', pd ? pd.short : f.date],
     ['KICK-OFF', f.time ?? 'TBC'],
     ['VENUE', f.venue ?? 'TBC'],
   ];
   const t = await textLayer(
     root([
-      mono(58, 60, `// ${compLine(f).toUpperCase()}`, 22, T.line),
+      (() => { const k = compLineFit(f, 840, 'SpaceMono', 22, 12, 2); return mono(58, 60, `// ${k.text}`, k.size, T.line); })(),
       text(abs(96, 52, { fontFamily: 'Bebas', fontSize: '196px', letterSpacing: '10px', color: T.ink, lineHeight: 1 }), 'MATCHDAY'),
       mono(292, 62, `TACTICAL BRIEF  ·  PLAYER: ${SUR}${i.squadNumber ? `  #${i.squadNumber}` : ''}`, 24, T.accent),
       text(abs(660, -290, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '20px', letterSpacing: '6px', color: T.line, transform: 'rotate(-90deg)', width: '700px', justifyContent: 'center' }), 'ELEVATION  ·  FRONT VIEW'),
       ...spec.flatMap(([k, v], n) => [
-        mono(1500 + n * 72, 640, k, 20, T.line),
-        text(abs(1524 + n * 72, 640, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: `${fitFontSize(v.toUpperCase(), 390, 'SpaceMono', 26, 15, 1)}px`, color: T.ink, width: '400px' }), v.toUpperCase()),
+        mono(1442 + n * 72, 640, k, 18, T.line),
+        (() => { const t2 = fitText(v.toUpperCase(), 370, 'SpaceMono', 26, 13, 1); return text(abs(1464 + n * 72, 640, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: `${t2.size}px`, color: T.ink }), t2.text); })(),
       ]),
-      ...(countdown ? [mono(1440, 640, `> ${countdown}`, 26, T.accent)] : []),
+      ...(countdown ? [mono(1380, 640, `> ${countdown}`, 26, T.accent)] : []),
       mono(1860, 60, `REF ${f.date.replace(/\//g, '.')}  ·  ${f.homeTeam.toUpperCase()}`, 18, T.line),
     ])
   );
