@@ -43,13 +43,30 @@ async function main() {
   // --stress: realistic worst-case lengths (two-word given name, accented surname,
   // long clubs / competition / venue) to catch overlapping elements.
   const stress = args.includes('--stress');
+  // --pose=half | wide : realistic awkward photo shapes for layout testing.
+  //   half = waist-up portrait (cropped cutout, ~1:1)   wide = arms-out pose (~1:1.1)
+  const poseArg = args.find((a) => a.startsWith('--pose='))?.slice(7) ?? null;
   const wanted = args.filter((a) => !a.startsWith('--'));
   const designs = (wanted.length ? wanted : MATCHDAY_DESIGNS.map((d) => d.id)) as MatchdayDesignId[];
   await fs.mkdir(outDir, { recursive: true });
 
   const cutout = await fs.readFile(path.join(process.cwd(), '..', 'docs/matchday-poc/results/cutout_clean.png'));
   // --two: a genuinely different second pose (the POC's orange-bib cutout).
-  const cutout2 = two ? await fs.readFile(path.join(process.cwd(), '..', 'docs/matchday-poc/results/diomande_cutout.png')) : null;
+  async function shaped(buf: Buffer, pose: string | null): Promise<Buffer> {
+    if (pose === 'half') {
+      const m = await sharp(buf).metadata();
+      return sharp(buf).extract({ left: 0, top: 0, width: m.width!, height: Math.round(m.height! * 0.52) }).png().toBuffer();
+    }
+    if (pose === 'wide') {
+      const m = await sharp(buf).metadata();
+      // widen the silhouette (a stand-in for an arms-out celebration)
+      return sharp(buf).resize({ width: Math.round(m.width! * 1.75), height: m.height!, fit: 'fill' }).png().toBuffer();
+    }
+    return buf;
+  }
+  const cutout2Raw = two ? await fs.readFile(path.join(process.cwd(), '..', 'docs/matchday-poc/results/diomande_cutout.png')) : null;
+  const heroCut = await shaped(cutout, poseArg);
+  const cutout2 = cutout2Raw ? await shaped(cutout2Raw, poseArg === 'half' ? 'half' : poseArg === 'wide' ? 'wide' : null) : null;
   const homeCrest = await crest('round', '#1d4ed8', '#fde047', 'G');
   const awayCrest = await crest('shield', '#b91c1c', '#ffffff', 'K');
   const palette = await matchPalette(homeCrest, awayCrest);
@@ -96,7 +113,7 @@ async function main() {
             homeLogo: null,
             awayLogo: null,
           },
-      layers: { cutAction: cutout, hero: cutout2 ?? cutout, backdropMono: null, heroIsDistinct: Boolean(cutout2) },
+      layers: { cutAction: heroCut, hero: cutout2 ?? heroCut, backdropMono: null, heroIsDistinct: Boolean(cutout2) },
       homeCrest,
       awayCrest,
       stadium: null,

@@ -40,9 +40,9 @@ export async function renderCinema(i: RenderV2Input): Promise<Buffer> {
 
   const lit = i.layers.cutAction ? await relightCutout(i.layers.cutAction, { tint: T.rim, amount: 0.35, wrap: 0.8 }) : null;
   const two = hasSecond(i);
-  const hero = await placeLayer(lit, 1330, (w) => ({ left: Math.round((two ? 430 : V2_W / 2) - w / 2), top: 250 }), { fade: true, fadeStart: 82 });
+  const hero = await placeLayer(lit, 1330, (w) => ({ left: Math.round((two ? 430 : V2_W / 2) - w / 2), top: 250 }), { fade: true, fadeStart: 82, maxW: two ? 600 : 780 });
   // Second real photo: the classic one-sheet "giant figure in the sky" behind the lead.
-  const sky = await secondSheet(i, { height: 1480, cx: 790, top: 90, flip: true, opacity: 0.8, fadeStart: 58, treatment: { kind: 'relit', tint: T.rim, amount: 0.55, brightness: 0.62 } });
+  const sky = await secondSheet(i, { height: 1480, cx: 790, top: 90, flip: true, opacity: 0.8, fadeStart: 58, maxW: 640, treatment: { kind: 'relit', tint: T.rim, amount: 0.55, brightness: 0.62 } });
   const rim = await rimGlow(hero, T.rim);
 
   // Heavy bottom fade so the title + billing sit on near-black, like a real one-sheet.

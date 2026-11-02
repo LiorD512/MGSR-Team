@@ -257,7 +257,7 @@ function buildChecks(
       ? 'cutout failed this run (model busy/rate-limited) — try again in a moment'
       : 'cutout unavailable — GEMINI_API_KEY is not set';
   return [
-    { id: 'identity', label: 'Player face preserved (never generated)', status: 'pass', detail: 'AI used only for cutout/kit/pose' },
+    { id: 'identity', label: 'Real photos (face never generated)', status: 'pass', detail: 'AI used only for cutout / kit' },
     { id: 'cutout', label: 'Player cutout', status: haveCutout ? 'pass' : 'fail', detail: cutoutDetail },
     // Keeping the original kit is a normal choice, not a problem — so it passes.
     { id: 'kit', label: 'Kit', status: 'pass', detail: kitSwapped ? 'swapped from reference' : 'original kit kept (no kit reference uploaded)' },

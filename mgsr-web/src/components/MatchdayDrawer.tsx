@@ -21,7 +21,9 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { auth, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
+import { apiHeaders } from '@/lib/matchday/clientApi';
+import MatchdayPhotoLibrary from './MatchdayPhotoLibrary';
 import { MATCHDAY_DESIGNS, designVariant, type MatchdayDesignId, type MatchdayV2Result } from '@/lib/matchday/v2/types';
 import { loadPosterImage, playMotion, recordMotionVideo } from '@/lib/matchday/motionClient';
 import type { MatchdaySeed } from './MatchdayGeneratorModal';
@@ -53,12 +55,6 @@ function sampleSrc(id: MatchdayDesignId, v: number | 'two'): string {
   return `/matchday-samples/${id}-${v === 'two' ? 'two' : `v${v}`}.jpg`;
 }
 
-/** JSON headers + the signed-in user's Firebase ID token (MATCHDAY routes verify it). */
-async function apiHeaders(): Promise<Record<string, string>> {
-  const token = await auth.currentUser?.getIdToken().catch(() => null);
-  return token ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } : { 'Content-Type': 'application/json' };
-}
-
 export default function MatchdayDrawer({ seed, onClose }: Props) {
   const { t } = useLanguage();
 
@@ -74,6 +70,15 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
   const [assetsLoading, setAssetsLoading] = useState(true);
   const [uploading, setUploading] = useState<'player' | 'player2' | 'stadium' | 'kit' | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // Player photo library (null = not known yet; false → classic two photo rows).
+  const [libConfigured, setLibConfigured] = useState<boolean | null>(null);
+  const onLibConfigured = useCallback((c: boolean) => setLibConfigured(c), []);
+  // Stable (the library reloads when this changes).
+  const onLibSelect = useCallback((slot: 1 | 2 | 'kit', url: string | null) => {
+    if (slot === 1) setPlayerPhotoUrl(url);
+    else if (slot === 2) setPlayerPhoto2Url(url);
+    else setKitPhotoUrl(url);
+  }, []);
 
   // Real-player style previews (V3).
   const [previews, setPreviews] = useState<Record<string, string> | null>(null);
@@ -432,23 +437,40 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                 </div>
               )}
 
+              {seed.playerId && libConfigured !== false && (
+                <MatchdayPhotoLibrary
+                  playerId={seed.playerId}
+                  club={seed.club}
+                  mainUrl={playerPhotoUrl}
+                  secondUrl={playerPhoto2Url}
+                  kitUrl={kitPhotoUrl}
+                  onSelect={onLibSelect}
+                  onConfigured={onLibConfigured}
+                  t={t}
+                />
+              )}
+
               <div className="md2-assets">
-                <AssetRow idx="01" label={t('matchday_player_photo')} url={playerPhotoUrl} required
-                  loading={assetsLoading} busy={uploading === 'player'}
-                  hint={t('matchday_player_photo_hint')} missingLabel={t('matchday_photo_missing')}
-                  uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
-                  onPick={(f) => void handleUpload('player', f)} />
-                <AssetRow idx="02" label={t('matchday_v2_player2_photo')} url={playerPhoto2Url} required={false}
-                  loading={assetsLoading} busy={uploading === 'player2'}
-                  hint={t('matchday_v2_player2_hint')} missingLabel={t('matchday_optional')}
-                  uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
-                  onPick={(f) => void handleUpload('player2', f)} />
-                <AssetRow idx="03" label={t('matchday_v2_kit_photo')} url={kitPhotoUrl} required={false}
-                  loading={assetsLoading} busy={uploading === 'kit'}
-                  hint={t('matchday_v2_kit_hint')} missingLabel={t('matchday_optional')}
-                  uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
-                  onPick={(f) => void handleUpload('kit', f)} />
-                <AssetRow idx="04" label={t('matchday_stadium_photo')} url={stadiumPhotoUrl} required={false}
+                {libConfigured === false || !seed.playerId ? (
+                  <>
+                    <AssetRow idx="01" label={t('matchday_player_photo')} url={playerPhotoUrl} required
+                      loading={assetsLoading} busy={uploading === 'player'}
+                      hint={t('matchday_player_photo_hint')} missingLabel={t('matchday_photo_missing')}
+                      uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
+                      onPick={(f) => void handleUpload('player', f)} />
+                    <AssetRow idx="02" label={t('matchday_v2_player2_photo')} url={playerPhoto2Url} required={false}
+                      loading={assetsLoading} busy={uploading === 'player2'}
+                      hint={t('matchday_v2_player2_hint')} missingLabel={t('matchday_optional')}
+                      uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
+                      onPick={(f) => void handleUpload('player2', f)} />
+                    <AssetRow idx="03" label={t('matchday_v2_kit_photo')} url={kitPhotoUrl} required={false}
+                      loading={assetsLoading} busy={uploading === 'kit'}
+                      hint={t('matchday_v2_kit_hint')} missingLabel={t('matchday_optional')}
+                      uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}
+                      onPick={(f) => void handleUpload('kit', f)} />
+                  </>
+                ) : null}
+                <AssetRow idx={libConfigured === false || !seed.playerId ? '04' : '01'} label={t('matchday_stadium_photo')} url={stadiumPhotoUrl} required={false}
                   loading={assetsLoading} busy={uploading === 'stadium'}
                   hint={t('matchday_stadium_photo_hint')} missingLabel={t('matchday_optional')}
                   uploadLabel={t('matchday_upload')} replaceLabel={t('matchday_replace')}

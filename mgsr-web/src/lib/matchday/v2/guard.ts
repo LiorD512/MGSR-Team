@@ -16,7 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin, adminAuth } from '@/lib/firebaseAdmin';
 
-export type MatchdayAction = 'generate' | 'preview' | 'send' | 'upload' | 'save' | 'history';
+export type MatchdayAction = 'generate' | 'preview' | 'send' | 'upload' | 'save' | 'history' | 'library';
 
 /** Max calls per user per window. */
 const LIMITS: Record<MatchdayAction, number> = {
@@ -26,6 +26,7 @@ const LIMITS: Record<MatchdayAction, number> = {
   upload: 40,
   save: 40,
   history: 120,
+  library: 120,
 };
 const WINDOW_MS = 10 * 60 * 1000;
 const hits = new Map<string, number[]>();

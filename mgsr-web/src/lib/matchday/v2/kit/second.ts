@@ -12,6 +12,7 @@ import { type RenderV2Input, bottomFade, onCanvas } from '../render';
 import { hexToRgb } from './palette';
 import { relightCutout } from './relight';
 import { halftone } from './texture';
+import { boxScale, isCroppedBottom } from './figure';
 
 export type SecondTreatment =
   | { kind: 'photo'; brightness?: number; saturation?: number }
@@ -31,6 +32,8 @@ export interface SecondOptions {
   opacity?: number;
   /** Start of the bottom dissolve, in % of the figure height (omit = no fade). */
   fadeStart?: number;
+  /** Max width (box fitting): wide / waist-up photos shrink to fit and sit on the box bottom. */
+  maxW?: number;
 }
 
 /** True when the operator supplied a second photo AND it was cut out successfully. */
@@ -52,9 +55,11 @@ async function duotone(cut: Buffer, dark: string, light: string): Promise<Buffer
 }
 
 /** The second cutout, scaled + treated, as a bare (not canvas-sized) PNG. */
-export async function secondCutout(i: RenderV2Input, height: number, treatment: SecondTreatment, flip = false, opacity = 1): Promise<Buffer | null> {
+export async function secondCutout(i: RenderV2Input, height: number, treatment: SecondTreatment, flip = false, opacity = 1, maxW?: number): Promise<Buffer | null> {
   if (!hasSecond(i)) return null;
-  let img = await sharp(i.layers.hero!).resize({ height: Math.round(height) }).png().toBuffer();
+  const m0 = await sharp(i.layers.hero!).metadata();
+  const h0 = Math.round((m0.height ?? 1) * boxScale(m0.width ?? 1, m0.height ?? 1, height, maxW));
+  let img = await sharp(i.layers.hero!).resize({ height: h0 }).png().toBuffer();
   if (flip) img = await sharp(img).flop().png().toBuffer();
   switch (treatment.kind) {
     case 'photo':
@@ -77,11 +82,15 @@ export async function secondCutout(i: RenderV2Input, height: number, treatment: 
 
 /** The second cutout placed on a full transparent canvas (null when there is no second photo). */
 export async function secondSheet(i: RenderV2Input, o: SecondOptions): Promise<Buffer | null> {
-  let img = await secondCutout(i, o.height, o.treatment, o.flip, o.opacity ?? 1);
+  let img = await secondCutout(i, o.height, o.treatment, o.flip, o.opacity ?? 1, o.maxW);
   if (!img) return null;
-  if (o.fadeStart !== undefined) img = await bottomFade(img, o.fadeStart);
+  let fadeStart = o.fadeStart;
+  const cropped = Boolean(o.maxW) && (await isCroppedBottom(img));
+  if (cropped) fadeStart = Math.min(fadeStart ?? 100, 62);
+  if (fadeStart !== undefined) img = await bottomFade(img, fadeStart);
   const m = await sharp(img).metadata();
   const w = m.width ?? 1;
   const h = m.height ?? 1;
-  return onCanvas(img, w, h, Math.round(o.cx - w / 2), Math.round(o.top));
+  // full-body: feet stay on the box bottom · waist-up: head at the box top
+  return onCanvas(img, w, h, Math.round(o.cx - w / 2), Math.round(cropped ? o.top : o.top + (o.height - h)));
 }

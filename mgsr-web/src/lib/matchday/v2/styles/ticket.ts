@@ -73,9 +73,9 @@ export async function renderTicket(i: RenderV2Input): Promise<Buffer> {
 
   // hero: clipped only at the window's bottom edge, so the head breaks out of the top
   const two = hasSecond(i);
-  const hero = await placeLayer(i.layers.cutAction, 960, (w) => ({ left: Math.round(TX + TW * (two ? 0.62 : 0.5) - w / 2), top: WY - 70 }), { mod: { brightness: 1.03, saturation: 1.08 } });
+  const hero = await placeLayer(i.layers.cutAction, 960, (w) => ({ left: Math.round(TX + TW * (two ? 0.62 : 0.5) - w / 2), top: WY - 70 }), { mod: { brightness: 1.03, saturation: 1.08 }, maxW: two ? 480 : 760 });
   // Second real photo: a second figure inside the photo window (clipped to it — it never breaks out).
-  const secondRaw = await secondSheet(i, { height: 780, cx: TX + TW * 0.27, top: WY + 70, flip: true, opacity: 0.95, treatment: { kind: 'photo', brightness: 0.92, saturation: 0.95 } });
+  const secondRaw = await secondSheet(i, { height: 780, cx: TX + TW * 0.27, top: WY + 70, flip: true, opacity: 0.95, maxW: 380, treatment: { kind: 'photo', brightness: 0.92, saturation: 0.95 } });
   const secondIn = secondRaw
     ? await sharp(secondRaw).composite([{ input: sheet(`<rect x="${WX}" y="${WY}" width="${WW}" height="${WH}" rx="26" fill="#fff"/>`), blend: 'dest-in' }]).png().toBuffer()
     : null;

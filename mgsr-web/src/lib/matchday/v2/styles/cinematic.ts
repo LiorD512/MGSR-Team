@@ -164,7 +164,7 @@ export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
 
   const cx = 662;
   const hero = await placeLayer(lit, 1500, (w) => ({ left: Math.round(cx - w / 2), top: 340 }), {
-    mod: { brightness: 1.03, saturation: 1.18 }, fade: true, fadeStart: 94,
+    mod: { brightness: 1.03, saturation: 1.18 }, fade: true, fadeStart: 94, maxW: 740,
   });
   const rim = await rimGlow(hero, T.rim);
   const shadow = contactShadow(cx, 1790, 520);
@@ -210,7 +210,7 @@ export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
     { input: embersBack, blend: 'screen' },
     // Second real photo: a fire-relit, darkened figure rising behind the title.
     ...(await (async () => {
-      const g = await secondSheet(i, { height: 1380, cx: 250, top: 380, flip: true, opacity: 0.92, fadeStart: 70, treatment: { kind: 'relit', tint: T.rim, amount: 0.65, brightness: 0.75 } });
+      const g = await secondSheet(i, { height: 1060, cx: 250, top: 380, flip: true, opacity: 0.92, fadeStart: 62, maxW: 460, treatment: { kind: 'relit', tint: T.rim, amount: 0.65, brightness: 0.75 } });
       return g ? [{ input: g }] : [];
     })()),
     { input: title },
@@ -297,7 +297,7 @@ export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
   );
 
   const hero = await placeLayer(lit, 1200, (w) => ({ left: Math.round((hasSecond(i) ? 470 : 540) - w / 2), top: 370 }), {
-    mod: { brightness: 1.06, saturation: 0.96 }, fade: true, fadeStart: 93,
+    mod: { brightness: 1.06, saturation: 0.96 }, fade: true, fadeStart: 93, maxW: hasSecond(i) ? 600 : 760,
   });
   const rim = await rimGlow(hero, T.rim);
 
@@ -335,7 +335,7 @@ export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
     { input: hud },
     // Second real photo: an ice-duotone figure inside the HUD ring.
     ...(await (async () => {
-      const g = await secondSheet(i, { height: 1000, cx: 840, top: 460, flip: true, opacity: 0.6, fadeStart: 74, treatment: { kind: 'duotone', dark: T.bottom, light: T.accent } });
+      const g = await secondSheet(i, { height: 1000, cx: 840, top: 460, flip: true, opacity: 0.6, fadeStart: 74, maxW: 420, treatment: { kind: 'duotone', dark: T.bottom, light: T.accent } });
       return g ? [{ input: g }] : [];
     })()),
     { input: rim, blend: 'screen' },
@@ -395,7 +395,7 @@ export async function renderPrestigeV3(i: RenderV2Input): Promise<Buffer> {
   );
 
   const hero = await placeLayer(lit, 1130, (w) => ({ left: Math.round(560 - w / 2), top: 340 }), {
-    mod: { brightness: 1.0, saturation: 1.04 }, fade: true, fadeStart: 92,
+    mod: { brightness: 1.0, saturation: 1.04 }, fade: true, fadeStart: 92, maxW: 640,
   });
   const rim = await rimGlow(hero, T.rim);
 
@@ -427,7 +427,7 @@ export async function renderPrestigeV3(i: RenderV2Input): Promise<Buffer> {
     { input: frame },
     // Second real photo: a gold duotone portrait receding into the darkness.
     ...(await (async () => {
-      const g = await secondSheet(i, { height: 1240, cx: 290, top: 300, flip: true, opacity: 0.45, fadeStart: 66, treatment: { kind: 'duotone', dark: '#000000', light: T.gold } });
+      const g = await secondSheet(i, { height: 1240, cx: 290, top: 300, flip: true, opacity: 0.45, fadeStart: 66, maxW: 480, treatment: { kind: 'duotone', dark: '#000000', light: T.gold } });
       return g ? [{ input: g }] : [];
     })()),
     { input: watermark },
@@ -482,9 +482,11 @@ export async function renderElectricV3(i: RenderV2Input): Promise<Buffer> {
   const cx = 610, top = 400;
   const pos = (dx: number, dy: number) => (w: number) => ({ left: Math.round(cx - w / 2) + dx, top: top + dy });
   const cut = i.layers.cutAction;
-  const cyanCopy = cut ? await placeLayer(await tintCutout(cut, CY), H, pos(-15, -3), {}) : await emptySheet();
-  const magCopy = cut ? await placeLayer(await tintCutout(cut, MG), H, pos(15, 3), {}) : await emptySheet();
-  const hero = await placeLayer(lit, H, pos(0, 0), { mod: { brightness: 1.05, saturation: 1.14 }, fade: true, fadeStart: 94 });
+  // all three copies share the same box so the RGB split stays aligned
+  const EW = 700;
+  const cyanCopy = cut ? await placeLayer(await tintCutout(cut, CY), H, pos(-15, -3), { maxW: EW }) : await emptySheet();
+  const magCopy = cut ? await placeLayer(await tintCutout(cut, MG), H, pos(15, 3), { maxW: EW }) : await emptySheet();
+  const hero = await placeLayer(lit, H, pos(0, 0), { mod: { brightness: 1.05, saturation: 1.14 }, fade: true, fadeStart: 94, maxW: EW });
 
   // glitch title (3 offset layers)
   const titleStyle = (extra: Sty) => ({ fontFamily: 'Anton', fontSize: '206px', letterSpacing: '8px', lineHeight: 1, ...extra });
@@ -534,7 +536,7 @@ export async function renderElectricV3(i: RenderV2Input): Promise<Buffer> {
     { input: neon },
     // Second real photo: a neon hologram (duotone, screen-blended) behind the hero.
     ...(await (async () => {
-      const g = await secondSheet(i, { height: 1180, cx: 860, top: 380, flip: true, opacity: 1, fadeStart: 80, treatment: { kind: 'duotone', dark: '#000000', light: T.cy } });
+      const g = await secondSheet(i, { height: 1180, cx: 860, top: 380, flip: true, opacity: 1, fadeStart: 80, maxW: 440, treatment: { kind: 'duotone', dark: '#000000', light: T.cy } });
       return g ? [{ input: g, blend: 'screen' as const }] : [];
     })()),
     { input: titleCy, left: -7, top: 0, blend: 'screen' },

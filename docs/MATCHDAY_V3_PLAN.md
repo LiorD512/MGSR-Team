@@ -36,6 +36,8 @@ Repo rules that constrain this plan (from `.github/copilot-instructions.md`): **
 - [x] Round 4 (owner: "2nd photo is sometimes ignored", "hard to understand the style boxes"):
   - 2nd photo: root cause was ours (pipeline skipped it for graphic styles; V3 layouts never drew it). Now every style composes it in its own way (`kit/second.ts`); previews include it; quality checks report its status.
   - Picker: spotlight panel + built-in examples for every style/variant (+ two-photo example), anonymous illustrated player + fake clubs.
+- [x] Round 6 (branch `feat/matchday-layout-and-library`): figure boxes (no more images over text / each other for wide or waist-up photos); player library — every photo and kit upload kept, pick main / 2nd photo and the kit per poster.
+- [x] AI-generated player poses: built, tested by the owner, **dropped** — the faces drifted from the real player and looked fake. Posters use real photos only.
 - [ ] Later: real layer parallax in video (needs per-style layer export), Riso Pop style, evaluate free in-browser segmentation (e.g. MODNet, Apache-2.0, via transformers.js) to replace the Gemini cutout
 
 ### Test it on localhost

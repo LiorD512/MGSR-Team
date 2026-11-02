@@ -77,7 +77,7 @@ export async function renderCard(i: RenderV2Input): Promise<Buffer> {
   const corner = await discBadge(playerCrest, 120, { fill: '#ffffff', ring: accent, ringWidth: 3 });
 
   const lit = i.layers.cutAction ? await relightCutout(i.layers.cutAction, { tint: mix(p.home, '#ffffff', 0.4), amount: 0.25, wrap: 0.7 }) : null;
-  const hero = await placeLayer(lit, 1080, (w) => ({ left: Math.round(CX + CW / 2 + 40 - w / 2), top: IY + 70 }), {});
+  const hero = await placeLayer(lit, 1080, (w) => ({ left: Math.round(CX + CW / 2 + 40 - w / 2), top: IY + 70 }), { maxW: IW - 60 });
   const heroIn = await sharp(hero).composite([{ input: artMask, blend: 'dest-in' }]).png().toBuffer();
 
   // name plate
@@ -143,7 +143,7 @@ export async function renderCard(i: RenderV2Input): Promise<Buffer> {
         `<linearGradient id="art" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(art1, '#000000', 0.25)}"/><stop offset="1" stop-color="${mix(art2, '#000000', 0.35)}"/></linearGradient>`
     );
     // the other pose sits in the part of the back card that stays visible
-    const s2 = await secondSheet(i, { height: 860, cx: BX + 210, top: BY + 140, treatment: { kind: 'photo', brightness: 0.88, saturation: 0.95 } });
+    const s2 = await secondSheet(i, { height: 860, cx: BX + 210, top: BY + 140, maxW: 400, treatment: { kind: 'photo', brightness: 0.88, saturation: 0.95 } });
     const s2In = s2 ? await sharp(s2).composite([{ input: sheet(bArt), blend: 'dest-in' }]).png().toBuffer() : null;
     const flat = await sharp(await sharp(back).png().toBuffer()).composite(s2In ? [{ input: s2In }] : []).png().toBuffer();
     fanned = await rotateCanvas(flat, -7);

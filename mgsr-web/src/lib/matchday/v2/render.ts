@@ -14,6 +14,7 @@ import { loadV2Fonts } from './fonts';
 import type { MatchdayDesignId } from './types';
 import type { MatchdayMatchFacts } from '../types';
 import { stampBrand, type BrandOptions } from './kit/brand';
+import { boxScale, isCroppedBottom } from './kit/figure';
 import { renderGiantType, GIANT_TYPE_BRAND } from './styles/giantType';
 import { renderClubColors, CLUB_COLORS_BRAND } from './styles/clubColors';
 import { renderBroadsheet, BROADSHEET_BRAND } from './styles/broadsheet';
@@ -102,15 +103,42 @@ export async function placeLayer(
   buf: Buffer | null,
   targetH: number,
   position: (w: number, h: number) => { left: number; top: number },
-  opts?: { mod?: { brightness?: number; saturation?: number }; fade?: boolean; fadeStart?: number; flip?: boolean }
+  opts?: {
+    mod?: { brightness?: number; saturation?: number };
+    fade?: boolean;
+    fadeStart?: number;
+    flip?: boolean;
+    /**
+     * Box fitting (V3): the figure may be at most `maxW` wide. Wide / waist-up
+     * photos are scaled down to fit and sit on the box's BOTTOM edge (the box
+     * bottom = position().top + targetH), and a bottom-cropped photo gets a soft
+     * fade. Narrow full-body photos are unchanged.
+     */
+    maxW?: number;
+  }
 ): Promise<Buffer> {
   if (!buf) return emptySheet();
   let src = buf;
   if (opts?.flip) src = await sharp(buf).flop().png().toBuffer(); // mirror horizontally
-  const s = await scaleH(src, targetH, opts?.mod);
-  const body = opts?.fade ? await bottomFade(s.buf, opts.fadeStart ?? 60) : s.buf;
-  const { left, top } = position(s.w, s.h);
-  return onCanvas(body, s.w, s.h, left, top);
+  let h = targetH;
+  if (opts?.maxW) {
+    const m = await sharp(src).metadata();
+    h = Math.round((m.height ?? 1) * boxScale(m.width ?? 1, m.height ?? 1, targetH, opts.maxW));
+  }
+  const s = await scaleH(src, h, opts?.mod);
+  let fade = opts?.fade;
+  let fadeStart = opts?.fadeStart ?? 60;
+  // Full-body photo → feet on the box bottom. Waist-up (bottom-cropped) photo →
+  // head where a full-body head would be (box top), cut edge faded out early so
+  // it never reaches the style's bottom text zone.
+  const cropped = Boolean(opts?.maxW) && (await isCroppedBottom(s.buf));
+  if (cropped) {
+    fade = true;
+    fadeStart = Math.min(fadeStart, 62);
+  }
+  const body = fade ? await bottomFade(s.buf, fadeStart) : s.buf;
+  const pos = position(s.w, s.h);
+  return onCanvas(body, s.w, s.h, pos.left, cropped ? pos.top : pos.top + (targetH - s.h));
 }
 
 /**
