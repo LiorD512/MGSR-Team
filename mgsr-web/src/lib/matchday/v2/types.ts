@@ -88,6 +88,8 @@ export interface MatchdayV2Input {
 
   /** Which named design to render. */
   design: MatchdayDesignId;
+  /** "Remix" counter: changes the seeded texture/particles, same fixture + design. */
+  remix?: number;
 }
 
 export interface MatchdayV2Result {

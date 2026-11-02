@@ -17,6 +17,12 @@ import { stampBrand, type BrandOptions } from './kit/brand';
 import { renderGiantType, GIANT_TYPE_BRAND } from './styles/giantType';
 import { renderClubColors, CLUB_COLORS_BRAND } from './styles/clubColors';
 import { renderBroadsheet, BROADSHEET_BRAND } from './styles/broadsheet';
+import {
+  renderInfernoV3, INFERNO_BRAND,
+  renderFrostV3, FROST_BRAND,
+  renderPrestigeV3, PRESTIGE_BRAND,
+  renderElectricV3, ELECTRIC_BRAND,
+} from './styles/cinematic';
 
 export const V2_W = 1080;
 export const V2_H = 1920;
@@ -609,7 +615,7 @@ export function cinematicVignette(bottom: string): Buffer {
  * spotlight. This is the big quality lever: a real, integrated, moody scene
  * instead of a flat gradient.
  */
-async function cinematicStadiumBg(
+export async function cinematicStadiumBg(
   i: RenderV2Input,
   opts: { wash: string; washOpacity: number; spot: string; smokeTint: string; smokeIntensity?: number; bottom: string }
 ): Promise<Buffer> {
@@ -921,16 +927,24 @@ export async function renderV2(input: RenderV2Input): Promise<{ bytes: Buffer; w
       bytes = await renderStorm(input);
       break;
     case 'inferno':
-      bytes = await renderInferno(input);
+      // V3 composition (the original renderInferno() is kept above, unused).
+      bytes = await renderInfernoV3(input);
+      brand = INFERNO_BRAND;
       break;
     case 'frost':
-      bytes = await renderFrost(input);
+      // V3 composition (the original renderFrost() is kept above, unused).
+      bytes = await renderFrostV3(input);
+      brand = FROST_BRAND;
       break;
     case 'prestige':
-      bytes = await renderPrestige(input);
+      // V3 composition (the original renderPrestige() is kept above, unused).
+      bytes = await renderPrestigeV3(input);
+      brand = PRESTIGE_BRAND;
       break;
     case 'electric':
-      bytes = await renderElectric(input);
+      // V3 composition (the original renderElectric() is kept above, unused).
+      bytes = await renderElectricV3(input);
+      brand = ELECTRIC_BRAND;
       break;
     case 'gianttype':
       bytes = await renderGiantType(input);

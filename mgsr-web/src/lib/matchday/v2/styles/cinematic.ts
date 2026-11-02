@@ -1,0 +1,458 @@
+/**
+ * CINEMATIC family (V3) — Inferno, Frost, Prestige, Electric.
+ *
+ * These four used to be one template in four colours. Each is now its own
+ * composition with a distinct visual idea, while still sitting on the shared
+ * cinematic scene (AI stadium scene when available, otherwise a graded
+ * gradient + smoke + spotlight):
+ *
+ *   INFERNO   low-angle hero bleeding off the bottom, stacked MATCH/DAY, embers
+ *   FROST     frosted-glass fixture panel (real blur of the scene) + HUD marks
+ *   PRESTIGE  gold double frame, vertical surname watermark, editorial centre
+ *   ELECTRIC  RGB-split hero, glitch title, terminal-style data panel
+ *
+ * The player is always the real cutout; nothing here generates a face.
+ */
+import sharp from 'sharp';
+import {
+  type RenderV2Input,
+  V2_W,
+  V2_H,
+  placeLayer,
+  textLayer,
+  cinematicStadiumBg,
+  rimGlow,
+  contactShadow,
+  div,
+  text,
+  compLine,
+  emptySheet,
+} from '../render';
+import { mix } from '../kit/palette';
+import { makeRng } from '../kit/prng';
+import { grain } from '../kit/texture';
+import { discBadge } from '../kit/badges';
+import { fitFontSize, splitName } from '../kit/fit';
+import { posterDate, countdownLabel } from '../kit/dates';
+import type { BrandOptions } from '../kit/brand';
+
+type Sty = Record<string, string | number>;
+const abs = (top: number, left: number, extra: Sty): Sty => ({ position: 'absolute', top: `${top}px`, left: `${left}px`, ...extra });
+const centred = (top: number, extra: Sty): Sty => abs(top, 0, { width: `${V2_W}px`, justifyContent: 'center', ...extra });
+const root = (children: unknown[]) =>
+  div({ width: `${V2_W}px`, height: `${V2_H}px`, position: 'relative' }, children as never);
+
+interface Shared {
+  pd: ReturnType<typeof posterDate>;
+  countdown: string | null;
+  dateStr: string;
+  timeStr: string;
+  rng: () => number;
+}
+function shared(i: RenderV2Input): Shared {
+  const pd = posterDate(i.facts.date);
+  return {
+    pd,
+    countdown: countdownLabel(i.facts.date),
+    dateStr: pd ? pd.short : i.facts.date,
+    timeStr: i.facts.time ?? 'TBC',
+    rng: makeRng((i.seed ?? 1) + 101),
+  };
+}
+
+/** Tint a cutout's silhouette a flat colour (alpha preserved). */
+async function tintCutout(cutout: Buffer, color: string): Promise<Buffer> {
+  const alpha = await sharp(cutout).ensureAlpha().extractChannel(3).toBuffer();
+  const m = await sharp(cutout).metadata();
+  const rgb = await sharp({ create: { width: m.width ?? 1, height: m.height ?? 1, channels: 3, background: color } }).png().toBuffer();
+  return sharp(rgb).joinChannel(alpha).png().toBuffer();
+}
+
+/** Glowing particles (embers / snow): seeded, soft, screen-blended. */
+async function particles(rng: () => number, color: string, n: number, yMin: number, yMax: number, rMax = 5): Promise<Buffer> {
+  const dots: string[] = [];
+  for (let k = 0; k < n; k++) {
+    const x = (rng() * V2_W).toFixed(0);
+    const y = (yMin + rng() * (yMax - yMin)).toFixed(0);
+    const r = (1 + rng() * rMax).toFixed(1);
+    dots.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="${(0.3 + rng() * 0.7).toFixed(2)}"/>`);
+  }
+  const svg = Buffer.from(`<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg">${dots.join('')}</svg>`);
+  const soft = await sharp(svg).blur(1.4).png().toBuffer();
+  const halo = await sharp(svg).blur(9).png().toBuffer();
+  return sharp(halo).composite([{ input: soft }]).png().toBuffer();
+}
+
+const lines = (s: string) => s.toUpperCase();
+
+// ═══════════════════════════ INFERNO ═══════════════════════════
+export const INFERNO_BRAND: BrandOptions = { corner: 'top-right', size: 84, margin: 40 };
+
+export async function renderInfernoV3(i: RenderV2Input): Promise<Buffer> {
+  const f = i.facts;
+  const { countdown, dateStr, timeStr, rng } = shared(i);
+  const { given, surname } = splitName(i.playerName);
+  const bg = await cinematicStadiumBg(i, {
+    wash: '#7c1d08', washOpacity: 0.42, spot: '#ff7a1a', smokeTint: '#ff6a2a', smokeIntensity: 1.15, bottom: '#140502',
+  });
+
+  // diagonal heat streaks
+  const streaks: string[] = [];
+  for (let k = 0; k < 16; k++) {
+    const x = rng() * (V2_W + 600) - 300;
+    const len = 500 + rng() * 900;
+    streaks.push(
+      `<line x1="${x.toFixed(0)}" y1="${(rng() * 900).toFixed(0)}" x2="${(x - len * 0.45).toFixed(0)}" y2="${(len + rng() * 500).toFixed(0)}" stroke="#ff9a3a" stroke-width="${(2 + rng() * 5).toFixed(1)}" opacity="${(0.1 + rng() * 0.25).toFixed(2)}"/>`
+    );
+  }
+  const streakLayer = await sharp(Buffer.from(`<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg">${streaks.join('')}</svg>`)).blur(2.5).png().toBuffer();
+
+  const SUR = lines(surname);
+  const title = await textLayer(
+    root([
+      text(abs(64, 56, { fontFamily: 'Bebas', fontSize: '38px', letterSpacing: '9px', color: '#ffcf6b' }), lines(compLine(f))),
+      text(abs(134, 46, { fontFamily: 'Anton', fontSize: '262px', lineHeight: 0.9, color: '#ffe3a6', letterSpacing: '2px', textShadow: '0 0 70px rgba(255,100,20,0.85)' }), 'MATCH'),
+      text(abs(368, 46, { fontFamily: 'Anton', fontSize: '262px', lineHeight: 0.9, color: '#ff7a2a', letterSpacing: '2px', textShadow: '0 0 70px rgba(255,60,10,0.8)' }), 'DAY'),
+      text(abs(626, 56, { fontFamily: 'Bebas', fontSize: '66px', letterSpacing: '16px', color: '#ffffff' }), `${lines(given)} ${SUR}`.trim()),
+      ...(i.squadNumber
+        ? [text(abs(708, 56, { fontFamily: 'Anton', fontSize: '46px', padding: '6px 22px 2px', background: '#ff7a2a', color: '#1a0802', letterSpacing: '3px' }), `#${i.squadNumber}`)]
+        : []),
+    ])
+  );
+
+  const cx = 662;
+  const hero = await placeLayer(i.layers.cutAction, 1500, (w) => ({ left: Math.round(cx - w / 2), top: 340 }), {
+    mod: { brightness: 1.03, saturation: 1.18 }, fade: true, fadeStart: 94,
+  });
+  const rim = await rimGlow(hero, '#ff8a3a');
+  const shadow = contactShadow(cx, 1790, 520);
+
+  const panel = Buffer.from(
+    `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><defs>` +
+      `<linearGradient id="p" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#0d0301" stop-opacity="0.9"/>` +
+      `<stop offset="62%" stop-color="#0d0301" stop-opacity="0.55"/><stop offset="100%" stop-color="#0d0301" stop-opacity="0"/></linearGradient>` +
+      `<linearGradient id="v" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="0.8"/></linearGradient></defs>` +
+      `<rect y="1330" width="${V2_W}" height="590" fill="url(#v)"/><rect y="1330" width="760" height="590" fill="url(#p)"/>` +
+      `<rect x="56" y="1352" width="170" height="6" fill="#ff7a2a"/></svg>`
+  );
+
+  const BS = 150;
+  const [cH, cA] = await Promise.all([
+    discBadge(i.homeCrest, BS, { ring: '#ff9a3a', ringWidth: 5, fill: '#16090a', fillOpacity: 0.9 }),
+    discBadge(i.awayCrest, BS, { ring: '#ff9a3a', ringWidth: 5, fill: '#16090a', fillOpacity: 0.9 }),
+  ]);
+  const nameFit = (n: string) => fitFontSize(n.toUpperCase(), 250, 'Bebas', 38, 22, 3);
+  const info = await textLayer(
+    root([
+      ...(countdown
+        ? [text(abs(1372 - 80, 56, { fontFamily: 'Anton', fontSize: '40px', letterSpacing: '4px', padding: '6px 22px 2px', background: '#ffcf6b', color: '#1a0802' }), countdown)]
+        : []),
+      text(centredAt(1530, 56, 250, { fontFamily: 'Bebas', fontSize: `${nameFit(f.homeTeam)}px`, letterSpacing: '3px', color: '#fff' }), lines(f.homeTeam)),
+      text(centredAt(1530, 56 + BS + 70, 250, { fontFamily: 'Bebas', fontSize: `${nameFit(f.awayTeam)}px`, letterSpacing: '3px', color: '#fff' }), lines(f.awayTeam)),
+      text(abs(1372 + BS / 2 - 28, 56 + BS + 8, { fontFamily: 'Anton', fontSize: '44px', color: '#ff9a3a', width: '54px', justifyContent: 'center' }), 'VS'),
+      text(abs(1596, 56, { fontFamily: 'Anton', fontSize: '98px', letterSpacing: '3px', color: '#fff', lineHeight: 1 }), dateStr),
+      text(abs(1696, 56, { fontFamily: 'Anton', fontSize: '150px', letterSpacing: '2px', color: '#ffcf6b', lineHeight: 1, textShadow: '0 0 40px rgba(255,110,20,0.6)' }), timeStr),
+      ...(f.venue ? [text(abs(1856, 56, { fontFamily: 'Bebas', fontSize: '32px', letterSpacing: '7px', color: '#ffb36b', width: '600px' }), lines(f.venue))] : []),
+    ])
+  );
+
+  const embersFront = await particles(rng, '#ffb05a', 120, 300, 1900, 5);
+  const embersBack = await particles(rng, '#ff6a1a', 60, 200, 1700, 8);
+  const comp: sharp.OverlayOptions[] = [
+    { input: streakLayer, blend: 'screen' },
+    { input: embersBack, blend: 'screen' },
+    { input: title },
+    { input: rim },
+    { input: shadow },
+    { input: hero },
+    { input: panel },
+    { input: info },
+    { input: embersFront, blend: 'screen' },
+  ];
+  if (cH) comp.push({ input: cH, left: 56, top: 1372 });
+  if (cA) comp.push({ input: cA, left: 56 + BS + 70, top: 1372 });
+  comp.push({ input: await grain((i.seed ?? 1) + 5, 0.1), blend: 'overlay' });
+  return sharp(bg).composite(comp).png().toBuffer();
+}
+
+/** A text box of fixed width centred on its own column (left = column left). */
+function centredAt(top: number, left: number, width: number, extra: Sty): Sty {
+  return abs(top, left, { width: `${width}px`, justifyContent: 'center', textAlign: 'center', ...extra });
+}
+
+// ═══════════════════════════ FROST ═══════════════════════════
+export const FROST_BRAND: BrandOptions = { corner: 'top-right', size: 84, margin: 40 };
+
+async function glassPanel(bg: Buffer, x: number, y: number, w: number, h: number, r: number): Promise<Buffer> {
+  const crop = await sharp(bg).extract({ left: x, top: y, width: w, height: h }).blur(24).modulate({ brightness: 1.35, saturation: 1.15 }).png().toBuffer();
+  const mask = Buffer.from(`<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><rect width="${w}" height="${h}" rx="${r}" fill="#fff"/></svg>`);
+  const frosted = await sharp(crop).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
+  const sheen = Buffer.from(
+    `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="s" x1="0" y1="0" x2="1" y2="1">` +
+      `<stop offset="0%" stop-color="#dff6ff" stop-opacity="0.26"/><stop offset="55%" stop-color="#9fdcff" stop-opacity="0.07"/>` +
+      `<stop offset="100%" stop-color="#dff6ff" stop-opacity="0.16"/></linearGradient></defs>` +
+      `<rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="${r}" fill="url(#s)" stroke="#dff6ff" stroke-opacity="0.5" stroke-width="2"/></svg>`
+  );
+  const panel = await sharp(frosted).composite([{ input: sheen }]).png().toBuffer();
+  return sharp({ create: { width: V2_W, height: V2_H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: panel, left: x, top: y }])
+    .png()
+    .toBuffer();
+}
+
+export async function renderFrostV3(i: RenderV2Input): Promise<Buffer> {
+  const f = i.facts;
+  const { countdown, dateStr, timeStr, rng } = shared(i);
+  const bg = await cinematicStadiumBg(i, {
+    wash: '#13395c', washOpacity: 0.44, spot: '#aee9ff', smokeTint: '#bfe6ff', smokeIntensity: 1.0, bottom: '#05101c',
+  });
+  const ICE = '#8fe3ff';
+
+  const hud = Buffer.from(
+    `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="${ICE}">` +
+      // targeting rings behind the player
+      `<g opacity="0.32"><circle cx="540" cy="900" r="360" stroke-width="2"/><circle cx="540" cy="900" r="430" stroke-width="1" stroke-dasharray="3 14"/></g>` +
+      Array.from({ length: 72 }, (_, k) => {
+        const a = (k / 72) * Math.PI * 2;
+        const r1 = 430, r2 = k % 6 === 0 ? 452 : 440;
+        return `<line x1="${540 + Math.cos(a) * r1}" y1="${900 + Math.sin(a) * r1}" x2="${540 + Math.cos(a) * r2}" y2="${900 + Math.sin(a) * r2}" stroke-width="${k % 6 === 0 ? 3 : 1.5}" opacity="0.4"/>`;
+      }).join('') +
+      // corner brackets
+      `<g stroke-width="4" opacity="0.9"><path d="M48 150 V48 H150"/><path d="M${V2_W - 48} 150 V48 H${V2_W - 150}"/>` +
+      `<path d="M48 ${V2_H - 150} V${V2_H - 48} H150"/><path d="M${V2_W - 48} ${V2_H - 150} V${V2_H - 48} H${V2_W - 150}"/></g>` +
+      `</svg>`
+  );
+
+  const hero = await placeLayer(i.layers.cutAction, 1200, (w) => ({ left: Math.round(540 - w / 2), top: 370 }), {
+    mod: { brightness: 1.06, saturation: 0.96 }, fade: true, fadeStart: 93,
+  });
+  const rim = await rimGlow(hero, '#7fd8ff');
+
+  const panelBg = await sharp(bg).composite([{ input: hud }, { input: rim, blend: 'screen' }]).png().toBuffer();
+  const PX = 60, PY = 1462, PW = 960, PH = 384;
+  const glass = await glassPanel(panelBg, PX, PY, PW, PH, 40);
+
+  const snow = await particles(rng, '#ffffff', 140, 0, 1900, 3);
+
+  const BS = 156;
+  const [cH, cA] = await Promise.all([
+    discBadge(i.homeCrest, BS, { ring: ICE, ringWidth: 4, fill: '#ffffff', fillOpacity: 0.92 }),
+    discBadge(i.awayCrest, BS, { ring: ICE, ringWidth: 4, fill: '#ffffff', fillOpacity: 0.92 }),
+  ]);
+  const nameFit = (n: string) => fitFontSize(n.toUpperCase(), 230, 'Bebas', 36, 22, 3);
+  const text1 = await textLayer(
+    root([
+      text(centred(66, { fontFamily: 'Bebas', fontSize: '36px', letterSpacing: '12px', color: ICE }), lines(compLine(f))),
+      text(centred(104, { fontFamily: 'Bebas', fontSize: '196px', letterSpacing: '30px', color: '#eaf7ff', lineHeight: 1, textShadow: '0 0 50px rgba(143,227,255,0.55)' }), 'MATCHDAY'),
+      text(centred(312, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '38px', letterSpacing: '16px', color: '#ffffff' }), lines(i.playerName)),
+      ...(countdown
+        ? [text(abs(PY - 66, PX, { fontFamily: 'Bebas', fontSize: '42px', letterSpacing: '6px', padding: '6px 22px 2px', background: ICE, color: '#04121e' }), countdown)]
+        : []),
+      text(centredAt(PY + 24 + BS + 14, PX + 36 - 32, BS + 64, { fontFamily: 'Bebas', fontSize: `${nameFit(f.homeTeam)}px`, letterSpacing: '3px', color: '#fff' }), lines(f.homeTeam)),
+      text(centredAt(PY + 24 + BS + 14, PX + PW - 36 - BS - 32, BS + 64, { fontFamily: 'Bebas', fontSize: `${nameFit(f.awayTeam)}px`, letterSpacing: '3px', color: '#fff' }), lines(f.awayTeam)),
+      text(centredAt(PY + 34, PX + 270, 420, { fontFamily: 'Bebas', fontSize: '92px', letterSpacing: '8px', color: '#ffffff', lineHeight: 1 }), dateStr),
+      text(centredAt(PY + 128, PX + 270, 420, { fontFamily: 'Bebas', fontSize: '170px', letterSpacing: '6px', color: ICE, lineHeight: 1, textShadow: '0 0 40px rgba(143,227,255,0.6)' }), timeStr),
+      ...(f.venue
+        ? [text(centredAt(PY + 314, PX + 230, 500, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: `${fitFontSize(f.venue.toUpperCase(), 500, 'Montserrat', 24, 16, 5)}px`, letterSpacing: '5px', color: '#d6f3ff' }), lines(f.venue))]
+        : []),
+    ])
+  );
+
+  const comp: sharp.OverlayOptions[] = [
+    { input: hud },
+    { input: rim, blend: 'screen' },
+    { input: contactShadow(540, 1560, 480) },
+    { input: hero },
+    { input: glass },
+    { input: snow, blend: 'screen' },
+    { input: text1 },
+  ];
+  if (cH) comp.push({ input: cH, left: PX + 36, top: PY + 24 });
+  if (cA) comp.push({ input: cA, left: PX + PW - 36 - BS, top: PY + 24 });
+  comp.push({ input: await grain((i.seed ?? 1) + 9, 0.08), blend: 'overlay' });
+  void emptySheet;
+  return sharp(bg).composite(comp).png().toBuffer();
+}
+
+// ═══════════════════════════ PRESTIGE ═══════════════════════════
+export const PRESTIGE_BRAND: BrandOptions = { corner: 'top-right', size: 76, margin: 70 };
+
+export async function renderPrestigeV3(i: RenderV2Input): Promise<Buffer> {
+  const f = i.facts;
+  const { pd, countdown, timeStr } = shared(i);
+  const GOLD = '#d8af4e';
+  const GOLD_L = '#ecd28a';
+  const bg = await cinematicStadiumBg(i, {
+    wash: '#1a1407', washOpacity: 0.5, spot: '#e9c879', smokeTint: '#d8af4e', smokeIntensity: 0.85, bottom: '#050403',
+  });
+  const SUR = lines(splitName(i.playerName).surname);
+
+  const frame = Buffer.from(
+    `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg" fill="none"><defs>` +
+      `<linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${GOLD_L}" stop-opacity="0.22"/><stop offset="100%" stop-color="${GOLD_L}" stop-opacity="0"/></linearGradient>` +
+      `<linearGradient id="gl" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${GOLD_L}"/><stop offset="50%" stop-color="#a9772a"/><stop offset="100%" stop-color="${GOLD_L}"/></linearGradient></defs>` +
+      `<polygon points="420,0 660,0 900,1500 180,1500" fill="url(#beam)"/>` +
+      `<rect x="34" y="34" width="${V2_W - 68}" height="${V2_H - 68}" stroke="url(#gl)" stroke-width="3"/>` +
+      `<rect x="52" y="52" width="${V2_W - 104}" height="${V2_H - 104}" stroke="${GOLD}" stroke-opacity="0.55" stroke-width="1"/>` +
+      [[34, 34], [V2_W - 34, 34], [34, V2_H - 34], [V2_W - 34, V2_H - 34]]
+        .map(([x, y]) => `<rect x="${x - 10}" y="${y - 10}" width="20" height="20" transform="rotate(45 ${x} ${y})" fill="${GOLD}" stroke="#050403" stroke-width="3"/>`)
+        .join('') +
+      `<line x1="150" y1="156" x2="380" y2="156" stroke="${GOLD}" stroke-width="2"/><line x1="${V2_W - 380}" y1="156" x2="${V2_W - 150}" y2="156" stroke="${GOLD}" stroke-width="2"/>` +
+      `<line x1="150" y1="1486" x2="${V2_W - 150}" y2="1486" stroke="${GOLD}" stroke-width="2" opacity="0.8"/>` +
+      `</svg>`
+  );
+
+  const wmSize = fitFontSize(SUR, 1000, 'Cinzel', 190, 70);
+  const watermark = await textLayer(
+    root([
+      div(
+        { position: 'absolute', left: '-390px', top: '760px', width: '1000px', height: '260px', justifyContent: 'center', alignItems: 'center', transform: 'rotate(-90deg)' },
+        text({ fontFamily: 'Cinzel', fontWeight: 700, fontSize: `${wmSize}px`, color: GOLD, opacity: 0.2, letterSpacing: '10px', lineHeight: 1 }, SUR)
+      ),
+    ])
+  );
+
+  const hero = await placeLayer(i.layers.cutAction, 1130, (w) => ({ left: Math.round(560 - w / 2), top: 340 }), {
+    mod: { brightness: 1.0, saturation: 1.04 }, fade: true, fadeStart: 92,
+  });
+  const rim = await rimGlow(hero, '#caa23f');
+
+  const BS = 150;
+  const [cH, cA] = await Promise.all([
+    discBadge(i.homeCrest, BS, { ring: GOLD, ringWidth: 4, fill: '#0c0a05', fillOpacity: 0.92 }),
+    discBadge(i.awayCrest, BS, { ring: GOLD, ringWidth: 4, fill: '#0c0a05', fillOpacity: 0.92 }),
+  ]);
+  const longDate = pd ? pd.long : i.facts.date;
+  const nameFit = (n: string) => fitFontSize(n.toUpperCase(), 330, 'Cinzel', 26, 16, 2);
+  const crestY = 1514;
+  const t = await textLayer(
+    root([
+      text(centred(84, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '22px', letterSpacing: '9px', color: GOLD_L }), lines(compLine(f))),
+      text(centred(118, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: '84px', letterSpacing: '26px', color: GOLD_L, lineHeight: 1 }), 'MATCHDAY'),
+      text(centred(224, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: '36px', letterSpacing: '14px', color: '#ffffff' }), lines(i.playerName)),
+      ...(i.squadNumber ? [text(centred(278, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '22px', letterSpacing: '10px', color: GOLD }), `No. ${i.squadNumber}`)] : []),
+      text(centredAt(crestY + BS + 12, 170 - 90, BS + 180, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: `${nameFit(f.homeTeam)}px`, letterSpacing: '2px', color: '#fff' }), lines(f.homeTeam)),
+      text(centredAt(crestY + BS + 12, V2_W - 170 - BS - 90, BS + 180, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: `${nameFit(f.awayTeam)}px`, letterSpacing: '2px', color: '#fff' }), lines(f.awayTeam)),
+      text(centred(crestY + 46, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: '40px', color: GOLD, letterSpacing: '4px' }), 'VS'),
+      text(centredAt(crestY + 100, 270, 540, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '26px', letterSpacing: '8px', color: GOLD_L }), `KICK-OFF  ·  ${timeStr}`),
+      text(centred(1728, { fontFamily: 'Cinzel', fontWeight: 700, fontSize: `${fitFontSize(longDate, 820, 'Cinzel', 56, 30, 2)}px`, color: GOLD_L, letterSpacing: '2px' }), longDate),
+      ...(f.venue ? [text(centred(1798, { fontFamily: 'Montserrat', fontWeight: 400, fontSize: '24px', letterSpacing: '8px', color: '#c9c2ae' }), lines(f.venue))] : []),
+      ...(countdown ? [text(centred(1834, { fontFamily: 'Montserrat', fontWeight: 600, fontSize: '22px', letterSpacing: '10px', color: GOLD }), `—  ${countdown}  —`)] : []),
+    ])
+  );
+
+  const comp: sharp.OverlayOptions[] = [
+    { input: frame },
+    { input: watermark },
+    { input: rim },
+    { input: contactShadow(560, 1470, 460) },
+    { input: hero },
+    { input: t },
+  ];
+  if (cH) comp.push({ input: cH, left: 170, top: crestY - 0 });
+  if (cA) comp.push({ input: cA, left: V2_W - 170 - BS, top: crestY - 0 });
+  comp.push({ input: await grain((i.seed ?? 1) + 13, 0.09), blend: 'overlay' });
+  return sharp(bg).composite(comp).png().toBuffer();
+}
+
+// ═══════════════════════════ ELECTRIC ═══════════════════════════
+export const ELECTRIC_BRAND: BrandOptions = { corner: 'top-right', size: 84, margin: 40 };
+
+export async function renderElectricV3(i: RenderV2Input): Promise<Buffer> {
+  const f = i.facts;
+  const { countdown, dateStr, timeStr, rng } = shared(i);
+  const CY = '#4df2ff';
+  const MG = '#ff3df2';
+  const GR = '#7cf6c8';
+  const bg = await cinematicStadiumBg(i, {
+    wash: '#241158', washOpacity: 0.46, spot: '#7cf6c8', smokeTint: '#9f6bff', smokeIntensity: 1.1, bottom: '#070314',
+  });
+
+  // neon frame + light streaks + scanlines
+  const streakLines = Array.from({ length: 9 }, () => {
+    const y = 160 + rng() * 1400;
+    const x = rng() * 500;
+    return `<rect x="${x.toFixed(0)}" y="${y.toFixed(0)}" width="${(300 + rng() * 600).toFixed(0)}" height="${(2 + rng() * 3).toFixed(0)}" fill="${rng() > 0.5 ? CY : MG}" opacity="${(0.25 + rng() * 0.4).toFixed(2)}"/>`;
+  }).join('');
+  const neon = Buffer.from(
+    `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg" fill="none">` +
+      `<rect x="120" y="420" width="760" height="1130" stroke="${GR}" stroke-width="5"/>` +
+      `<rect x="150" y="450" width="760" height="1130" stroke="${MG}" stroke-width="2" opacity="0.7"/>` +
+      streakLines + `</svg>`
+  );
+  const neonGlow = await sharp(neon).blur(10).png().toBuffer();
+  const scan = Buffer.from(
+    `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="s" width="4" height="4" patternUnits="userSpaceOnUse">` +
+      `<rect width="4" height="2" fill="#000" opacity="0.16"/></pattern></defs><rect width="${V2_W}" height="${V2_H}" fill="url(#s)"/></svg>`
+  );
+
+  // RGB-split hero
+  const H = 1300;
+  const cx = 610, top = 400;
+  const pos = (dx: number, dy: number) => (w: number) => ({ left: Math.round(cx - w / 2) + dx, top: top + dy });
+  const cut = i.layers.cutAction;
+  const cyanCopy = cut ? await placeLayer(await tintCutout(cut, CY), H, pos(-15, -3), {}) : await emptySheet();
+  const magCopy = cut ? await placeLayer(await tintCutout(cut, MG), H, pos(15, 3), {}) : await emptySheet();
+  const hero = await placeLayer(cut, H, pos(0, 0), { mod: { brightness: 1.05, saturation: 1.14 }, fade: true, fadeStart: 94 });
+
+  // glitch title (3 offset layers)
+  const titleStyle = (extra: Sty) => ({ fontFamily: 'Anton', fontSize: '206px', letterSpacing: '8px', lineHeight: 1, ...extra });
+  const titleCy = await textLayer(root([text(centred(110, titleStyle({ color: CY })), 'MATCHDAY')]));
+  const titleMg = await textLayer(root([text(centred(110, titleStyle({ color: MG })), 'MATCHDAY')]));
+  const titleW = await textLayer(
+    root([
+      text(centred(68, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '26px', letterSpacing: '6px', color: GR }), `// ${lines(compLine(f))}`),
+      text(centred(110, titleStyle({ color: '#ffffff' })), 'MATCHDAY'),
+      text(centred(330, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '40px', letterSpacing: '8px', color: '#ffffff' }), lines(i.playerName) + (i.squadNumber ? `  #${i.squadNumber}` : '')),
+    ])
+  );
+
+  // terminal data panel
+  const PX = 56, PY = 1560, PW = 700, PH = 300;
+  const panel = Buffer.from(
+    `<svg width="${V2_W}" height="${V2_H}" xmlns="http://www.w3.org/2000/svg" fill="none">` +
+      `<rect x="${PX}" y="${PY}" width="${PW}" height="${PH}" fill="#07031a" fill-opacity="0.82"/>` +
+      `<g stroke="${GR}" stroke-width="4"><path d="M${PX} ${PY + 40} V${PY} H${PX + 40}"/><path d="M${PX + PW} ${PY + 40} V${PY} H${PX + PW - 40}"/>` +
+      `<path d="M${PX} ${PY + PH - 40} V${PY + PH} H${PX + 40}"/><path d="M${PX + PW} ${PY + PH - 40} V${PY + PH} H${PX + PW - 40}"/></g></svg>`
+  );
+  const row = (k: number, label: string, value: string) => {
+    const s = fitFontSize(value.toUpperCase(), 470, 'SpaceMono', 34, 18, 1);
+    return [
+      text(abs(PY + 24 + k * 54, PX + 28, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '30px', color: GR }), label),
+      text(abs(PY + 24 + k * 54 + (34 - s) / 2, PX + 190, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: `${s}px`, color: '#ffffff', letterSpacing: '1px', width: '490px' }), value.toUpperCase()),
+    ];
+  };
+  const data = await textLayer(
+    root([
+      ...row(0, 'HOME', f.homeTeam),
+      ...row(1, 'AWAY', f.awayTeam),
+      ...row(2, 'DATE', dateStr),
+      ...row(3, 'KO', timeStr),
+      ...row(4, 'VENUE', f.venue ?? 'TBC'),
+      ...(countdown ? [text(abs(PY - 58, PX, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '30px', padding: '8px 20px', background: MG, color: '#ffffff', letterSpacing: '4px' }), `> ${countdown}`)] : []),
+    ])
+  );
+
+  const BS = 150;
+  const [cH, cA] = await Promise.all([
+    discBadge(i.homeCrest, BS, { ring: CY, ringWidth: 4, fill: '#0a0420', fillOpacity: 0.92 }),
+    discBadge(i.awayCrest, BS, { ring: MG, ringWidth: 4, fill: '#0a0420', fillOpacity: 0.92 }),
+  ]);
+  const comp: sharp.OverlayOptions[] = [
+    { input: neonGlow, blend: 'screen' },
+    { input: neon },
+    { input: titleCy, left: -7, top: 0, blend: 'screen' },
+    { input: titleMg, left: 7, top: 0, blend: 'screen' },
+    { input: cyanCopy, blend: 'screen' },
+    { input: magCopy, blend: 'screen' },
+    { input: hero },
+    { input: titleW },
+    { input: panel },
+    { input: data },
+    { input: scan },
+  ];
+  if (cH) comp.push({ input: cH, left: 800, top: 1510 });
+  if (cA) comp.push({ input: cA, left: 800, top: 1700 });
+  comp.push({ input: await grain((i.seed ?? 1) + 17, 0.1), blend: 'overlay' });
+  return sharp(bg).composite(comp).png().toBuffer();
+}

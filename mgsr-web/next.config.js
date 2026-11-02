@@ -24,6 +24,12 @@ const nextConfig = {
         './public/fonts/**',
         './public/brit_circle_black_gold.svg',
       ],
+      '/api/matchday/preview': [
+        './node_modules/harfbuzzjs/**',
+        './node_modules/satori/**',
+        './public/fonts/**',
+        './public/brit_circle_black_gold.svg',
+      ],
       '/api/matchday/generate': [
         './node_modules/harfbuzzjs/**',
         './node_modules/satori/**',

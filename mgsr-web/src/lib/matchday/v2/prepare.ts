@@ -13,6 +13,7 @@
 
 import sharp from 'sharp';
 import { cutoutPlayer, swapKit, CHROMA_KEY } from './gemini';
+import { cutoutKey, getCachedCutout, putCachedCutout } from './cache';
 
 export interface PreparedLayers {
   cutAction: Buffer | null; // transparent PNG (null if cutout failed)
@@ -21,6 +22,10 @@ export interface PreparedLayers {
   /** True only when `hero` is a genuinely DIFFERENT pose from `cutAction`. */
   heroIsDistinct: boolean;
   usedGemini: boolean;
+  /** The operator's upload was already a transparent cutout (no AI used). */
+  preCut?: boolean;
+  /** The cutout came from the cutout cache (no Gemini call this run). */
+  fromCache?: boolean;
 }
 
 /**
@@ -114,6 +119,36 @@ async function toMono(pngWithAlpha: Buffer): Promise<Buffer> {
   return sharp(grey).joinChannel(alpha).png().toBuffer();
 }
 
+/**
+ * If the operator uploaded an already-transparent cutout (a PNG with a real
+ * see-through background), use it as-is: it is cleaner than any AI cutout, it
+ * costs no Gemini call and the face is, by construction, untouched.
+ * Returns the trimmed cutout, or null when the image is an ordinary photo.
+ */
+export async function asTransparentCutout(buf: Buffer): Promise<Buffer | null> {
+  try {
+    const meta = await sharp(buf).metadata();
+    if (!meta.hasAlpha) return null;
+    const { data, info } = await sharp(buf)
+      .ensureAlpha()
+      .resize(96, 96, { fit: 'inside' })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    let clear = 0;
+    let total = 0;
+    for (let i = 3; i < data.length; i += info.channels) {
+      total++;
+      if (data[i] < 16) clear++;
+    }
+    // A real cutout has a large see-through area; a photo with a stray alpha
+    // channel does not.
+    if (total === 0 || clear / total < 0.12) return null;
+    return await sharp(buf).ensureAlpha().trim({ threshold: 1 }).png().toBuffer();
+  } catch {
+    return null;
+  }
+}
+
 export async function prepareLayers(opts: {
   playerPhoto: Buffer;
   /** Optional SECOND real photo — becomes a real secondary figure. */
@@ -122,16 +157,33 @@ export async function prepareLayers(opts: {
   squadNumber?: string | null;
   needHero: boolean;
 }): Promise<PreparedLayers> {
-  // 1) Optional kit swap FIRST (so cutout/pose carry the correct shirt).
-  let source = opts.playerPhoto;
-  if (opts.kitPhoto) {
-    const swapped = await swapKit(source, opts.kitPhoto, opts.squadNumber ?? null);
-    if (swapped) source = swapped.bytes;
+  // 0) A pre-cut transparent upload skips the whole AI path (no kit swap either:
+  //    re-editing it would risk the face; the operator already chose this image).
+  const preCut = await asTransparentCutout(opts.playerPhoto);
+
+  // The AI cutout for (photo, kit, number) is the same for every design, so it
+  // is computed once and cached (memory + Storage). Previews and the final
+  // generation therefore share one Gemini call.
+  const key = cutoutKey(opts.playerPhoto, opts.kitPhoto ?? null, opts.squadNumber ?? null, 'main');
+  let cutAction: Buffer | null = preCut;
+  let fromCache = false;
+  if (!cutAction) {
+    cutAction = await getCachedCutout(key);
+    fromCache = Boolean(cutAction);
   }
 
-  // 2) Action cutout → key out magenta → true transparency.
-  const cutRaw = await cutoutPlayer(source);
-  const cutAction = cutRaw ? await keyOutMagenta(cutRaw.bytes) : null;
+  if (!cutAction) {
+    // 1) Optional kit swap FIRST (so cutout/pose carry the correct shirt).
+    let source = opts.playerPhoto;
+    if (opts.kitPhoto) {
+      const swapped = await swapKit(source, opts.kitPhoto, opts.squadNumber ?? null);
+      if (swapped) source = swapped.bytes;
+    }
+    // 2) Action cutout → key out magenta → true transparency.
+    const cutRaw = await cutoutPlayer(source);
+    cutAction = cutRaw ? await keyOutMagenta(cutRaw.bytes) : null;
+    if (cutAction) await putCachedCutout(key, cutAction);
+  }
 
   // 3) SECONDARY FIGURE.
   //    PREFERRED: a SECOND REAL photo the operator uploaded — cut out the same
@@ -142,13 +194,19 @@ export async function prepareLayers(opts: {
   let hero = cutAction;
   let heroIsDistinct = false;
   if (opts.playerPhoto2) {
+    const key2 = cutoutKey(opts.playerPhoto2, opts.kitPhoto ?? null, opts.squadNumber ?? null, 'second');
     let src2 = opts.playerPhoto2;
-    if (opts.kitPhoto) {
-      const swapped2 = await swapKit(src2, opts.kitPhoto, opts.squadNumber ?? null);
-      if (swapped2) src2 = swapped2.bytes;
+    const preCut2 = await asTransparentCutout(src2);
+    let cut2: Buffer | null = preCut2 ?? (await getCachedCutout(key2));
+    if (!cut2) {
+      if (opts.kitPhoto) {
+        const swapped2 = await swapKit(src2, opts.kitPhoto, opts.squadNumber ?? null);
+        if (swapped2) src2 = swapped2.bytes;
+      }
+      const raw2 = await cutoutPlayer(src2);
+      cut2 = raw2 ? await keyOutMagenta(raw2.bytes) : null;
+      if (cut2) await putCachedCutout(key2, cut2);
     }
-    const raw2 = await cutoutPlayer(src2);
-    const cut2 = raw2 ? await keyOutMagenta(raw2.bytes) : null;
     if (cut2) {
       hero = cut2; // a real second pose
       heroIsDistinct = true;
@@ -158,5 +216,5 @@ export async function prepareLayers(opts: {
   // 4) Monochrome backdrop from the primary cutout.
   const backdropMono = cutAction ? await toMono(cutAction) : null;
 
-  return { cutAction, hero, backdropMono, heroIsDistinct, usedGemini: Boolean(cutAction) };
+  return { cutAction, hero, backdropMono, heroIsDistinct, usedGemini: Boolean(cutAction) && !preCut && !fromCache, preCut: Boolean(preCut), fromCache };
 }

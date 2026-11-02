@@ -21,7 +21,19 @@ Repo rules that constrain this plan (from `.github/copilot-instructions.md`): **
 - [x] Phase 0 (partial): `v2/kit/` (prng, dates, palette, texture, badges, fit, brand), font pack, exported renderer helpers
 - [x] Phase 1: **Giant Type**, **Club Colors**, **Broadsheet**, countdown badge, unambiguous dates, real grain/paper/halftone, club-colour extraction, two-line surname wrapping
 - [x] BRIT logo on every image
-- [ ] Phase 2+: see roadmap below (relight/integration for cinematic styles, real picker previews, caching, animation prototype, remaining styles)
+- [x] Cinematic four reworked into distinct compositions (Inferno / Frost / Prestige / Electric)
+- [x] Transparent-PNG upload used as-is (no AI); cutout + crest caching; pipeline helpers shared
+- [x] Real-player style previews in the picker (`/api/matchday/preview`), Remix, Animate (beta, animated WebP)
+- [x] Fix: design-memory Firestore write could hang a request forever -> capped at 2.5 s
+- [ ] Later: relight / colour-match the cutout to the scene, foreground smoke, evaluate a free segmentation model, ffmpeg video with real layer parallax, remaining styles (Glass, Blueprint, Street, Cinema Poster, Riso Pop), history gallery, auth + rate-limit on the routes
+
+### Test it on localhost
+1. `git fetch && git checkout feat/matchday-v3`
+2. `cd mgsr-web && npm ci`, then start the web app the usual way (your normal `.env.local`: Firebase + `GEMINI_API_KEY`).
+3. Open a player's dossier (OUR ASSETS) -> "Generate MATCHDAY image" -> Assets -> Design -> **Preview on my player** -> pick a style -> Generate -> try **Remix** and **Animate (beta)**.
+
+No keys / quick look only: `cd mgsr-web && npx tsx scripts/matchday-preview.ts` renders every style to `.matchday-preview/`.
+Tip: upload a **transparent PNG cutout** as the player photo to skip the Gemini cutout entirely (cleanest result, zero cost).
 
 ---
 

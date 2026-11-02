@@ -5321,6 +5321,16 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .md2-sc.md-prestige .md2-pv{background:radial-gradient(circle at 50% 28%,#f0d389,transparent 52%),linear-gradient(180deg,#15120a,#0b0a06 72%,#040302)}
 .md2-sc.md-electric .md2-pv{background:radial-gradient(circle at 50% 32%,#8affd8,transparent 54%),linear-gradient(180deg,#160a30,#3b1d7a 62%,#0a0618)}
 /* V3 graphic styles — CSS miniatures that hint at each layout */
+/* Real-player previews (V3): thumbnails replace the CSS miniatures */
+.md2-styles.has-previews{grid-template-columns:repeat(3,1fr)}
+@media (max-width:760px){.md2-styles.has-previews{grid-template-columns:repeat(2,1fr)}}
+.md2-sc .md2-pv.has-img{height:auto;aspect-ratio:9/16;background-color:#0b0b0d;background-size:cover;background-position:top center;background-repeat:no-repeat}
+.md2-sc .md2-pv.has-img::before,.md2-sc .md2-pv.has-img::after{display:none}
+.md2-prevbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:26px 0 0;min-height:44px}
+.md2-prevbar .hint{font:400 12px/1.5 var(--body);color:var(--muted)}
+.md2-prevbar .err{font:500 12px/1.4 var(--mono);color:#b3261e}
+.md2-prevbar .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--gold);border-radius:50%;animation:md2spin .8s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes md2spin{to{transform:rotate(360deg)}}
 .md2-sc.md-gianttype .md2-pv,.md2-sc.md-broadsheet .md2-pv{position:relative;overflow:hidden}
 .md2-sc.md-gianttype .md2-pv{background:linear-gradient(180deg,#2347c4,#0b1a4a 80%)}
 .md2-sc.md-gianttype .md2-pv::after{content:'NAME';position:absolute;left:0;right:0;top:18px;text-align:center;font:900 62px/1 var(--display);letter-spacing:-.02em;color:rgba(255,255,255,.88)}
