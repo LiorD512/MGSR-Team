@@ -14,7 +14,8 @@ import { radarFetch, RadarApiError, type FeedItem, type FeedResponse, type Summa
 import { useRadarT } from '@/lib/transferRadar/i18n';
 import { DAY, SIT_COLOR, SIT_FILTER, contractNote, flagUrl, fmtDate, fmtDay, monthsLeft } from '@/lib/transferRadar/format';
 import type { Situation } from '@/lib/transferRadar/situations';
-import RadarFile from './RadarFile';
+import RadarFile, { prefetchFile } from './RadarFile';
+import RadarPortal from './RadarPortal';
 import RadarFiltered from './RadarFiltered';
 import { Arr, Ico } from './RadarIcons';
 
@@ -26,7 +27,7 @@ const tmIdOf = (u?: string | null) => u?.match(/spieler\/(\d+)/)?.[1] ?? null;
 
 /** Transfer Radar (v3): players the local press says may become available, each identified on Transfermarkt. */
 export default function RadarFeed({ initialId }: { initialId?: string }) {
-  const { t, lang } = useRadarT();
+  const { t, lang, isRtl } = useRadarT();
   const { user } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
@@ -213,12 +214,14 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
       {body}
       </>}
 
-      {openId && (
-        <RadarFile id={openId} onClose={closeFile} shortIds={shortIds} adding={adding === openId} onShort={addShort} say={say}
-          onChanged={() => { load(); }} />
-      )}
-      {filteredOpen && <RadarFiltered onClose={() => setFilteredOpen(false)} onChanged={() => { load(); }} say={say} />}
-      <div className={`tr3-toast ${toast ? 'show' : ''}`} role="status">{toast}</div>
+      <RadarPortal isRtl={isRtl}>
+        {openId && (
+          <RadarFile id={openId} preview={all.find((x) => x.id === openId) ?? null} onClose={closeFile} shortIds={shortIds} adding={adding === openId} onShort={addShort} say={say}
+            onChanged={() => { load(); prefetchFile(openId, true).catch(() => undefined); }} />
+        )}
+        {filteredOpen && <RadarFiltered onClose={() => setFilteredOpen(false)} onChanged={() => { load(); }} say={say} />}
+        <div className={`tr3-toast ${toast ? 'show' : ''}`} role="status">{toast}</div>
+      </RadarPortal>
     </>
   );
 }
@@ -234,7 +237,7 @@ function PlayerCard({ p, saved, adding, onOpen, onShort, cn }: { p: FeedItem; sa
   const note = contractNote(t, p.contractEnd);
   const lt = p.latest;
   return (
-    <article className={`brit-ra-alert tr3-card ${p.closed ? 'moved' : ''}`}>
+    <article className={`brit-ra-alert tr3-card ${p.closed ? 'moved' : ''}`} onMouseEnter={() => { prefetchFile(p.id).catch(() => undefined); }} onFocus={() => { prefetchFile(p.id).catch(() => undefined); }}>
       <span className={`brit-ra-badge s-${SIT_COLOR[p.situation]}`}>{t('s_' + p.situation)}</span>
       <div className="brit-ra-top" onClick={onOpen} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}>
         {bg ? <img className="brit-ra-flagbg" src={bg} alt="" aria-hidden="true" /> : <div className="brit-ra-flagbg-ph" aria-hidden="true" />}
@@ -289,7 +292,7 @@ function Ledger({ list, onOpen, cn }: { list: FeedItem[]; onOpen: (id: string) =
       {list.map((p) => {
         const note = contractNote(t, p.contractEnd);
         return (
-          <div className="tr3-lrow" key={p.id} onClick={() => onOpen(p.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(p.id); }}>
+          <div className="tr3-lrow" key={p.id} onMouseEnter={() => { prefetchFile(p.id).catch(() => undefined); }} onClick={() => onOpen(p.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(p.id); }}>
             <div className="tr3-lp">{p.photo ? <img src={p.photo} alt="" /> : <span className="ini">{p.name.charAt(0)}</span>}<div style={{ minWidth: 0 }}><b>{p.name}</b><small>{p.nationalities.map(cn).join(' / ')}</small></div></div>
             <div><span className={`tr3-pill s-${SIT_COLOR[p.situation]}`}>{t('s_' + p.situation)}</span></div>
             <div>{p.club ?? '-'}<span className="tr3-sub">{[p.league, cn(p.country)].filter(Boolean).join(' · ')}</span></div>

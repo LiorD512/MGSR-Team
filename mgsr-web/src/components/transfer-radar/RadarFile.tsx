@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { openWhatsAppShare } from '@/lib/whatsapp';
-import { postFlag, radarFetch, RadarApiError, type IdentityCheck, type PlayerFile } from '@/lib/transferRadar/client';
+import { postFlag, radarFetch, RadarApiError, type FeedItem, type IdentityCheck, type PlayerFile } from '@/lib/transferRadar/client';
 import { useRadarT } from '@/lib/transferRadar/i18n';
 import { SITUATION_PRIORITY } from '@/lib/transferRadar/situations';
 import { SIT_COLOR, contractNote, countryCode, flagUrl, fmtDate, fmtDay, langName } from '@/lib/transferRadar/format';
@@ -11,14 +11,25 @@ import { Arr, Ico } from './RadarIcons';
 
 type ShortPayload = { id: string; tmUrl: string | null; photo: string | null; name: string; position: string | null; age: number | null; nationalities: string[]; club: string | null; value: string | null; contractEnd: number | null };
 interface Props {
-  id: string; onClose: () => void; shortIds: Set<string>; adding: boolean; onShort: (p: ShortPayload) => void; say: (m: string) => void; onChanged: () => void;
+  id: string; preview?: FeedItem | null; onClose: () => void; shortIds: Set<string>; adding: boolean; onShort: (p: ShortPayload) => void; say: (m: string) => void; onChanged: () => void;
 }
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
 const tmIdOf = (u?: string | null) => u?.match(/spieler\/(\d+)/)?.[1] ?? null;
 const TIER_BARS: Record<string, number> = { A: 4, B: 3, C: 2, D: 1 };
 
+/** Player files are cached for the session and prefetched on card hover, so opening a file is usually instant. */
+const fileCache = new Map<string, Promise<PlayerFile>>();
+export function prefetchFile(id: string, force = false): Promise<PlayerFile> {
+  const hit = fileCache.get(id);
+  if (hit && !force) return hit;
+  const p = radarFetch<PlayerFile>(`players/${encodeURIComponent(id)}`);
+  fileCache.set(id, p);
+  p.catch(() => fileCache.delete(id));
+  return p;
+}
+
 /** Player file (side panel): who he is on Transfermarkt + why we are sure, what happened, and every original source. */
-export default function RadarFile({ id, onClose, shortIds, adding, onShort, say, onChanged }: Props) {
+export default function RadarFile({ id, preview, onClose, shortIds, adding, onShort, say, onChanged }: Props) {
   const { t, lang } = useRadarT();
   const [d, setD] = useState<PlayerFile | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -27,24 +38,38 @@ export default function RadarFile({ id, onClose, shortIds, adding, onShort, say,
   const [busy, setBusy] = useState(false);
   const cn = (c: string | null | undefined) => (c ? getCountryDisplayName(c, lang === 'he') : '');
 
-  const load = useCallback(() => {
+  const panel = useRef<HTMLElement | null>(null);
+  const load = useCallback((force = false) => {
     setErr(null);
-    radarFetch<PlayerFile>(`players/${encodeURIComponent(id)}`).then(setD).catch((e) => setErr(e instanceof RadarApiError ? e.message : String(e)));
+    prefetchFile(id, force).then(setD).catch((e) => setErr(e instanceof RadarApiError ? e.message : String(e)));
   }, [id]);
-  useEffect(() => { setD(null); setWrong(false); setFb(false); load(); }, [load]);
+  useEffect(() => { setD(null); setWrong(false); setFb(false); load(); if (panel.current) panel.current.scrollTop = 0; }, [load]);
+  // the page behind the drawer does not scroll while it is open
+  useEffect(() => {
+    const room = document.querySelector<HTMLElement>('.brit-room.tr-root');
+    if (!room) return;
+    const prev = room.style.overflow; room.style.overflow = 'hidden';
+    return () => { room.style.overflow = prev; };
+  }, []);
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', k);
     return () => document.removeEventListener('keydown', k);
   }, [onClose]);
 
-  const p = d?.player;
+  // header renders immediately from the feed card; identity checks / timeline / sources fill in when the file arrives
+  const p: PlayerFile['player'] | undefined = d?.player ?? (preview ? {
+    id: preview.id, name: preview.name, fullName: preview.fullName, writtenAs: preview.writtenAs, tmUrl: preview.tmUrl, photo: preview.photo, position: preview.position, age: preview.age,
+    dob: preview.dob, nationalities: preview.nationalities, foot: null, height: null, club: preview.club, crest: preview.crest, league: preview.league, country: preview.country,
+    contractEnd: preview.contractEnd, loanFrom: preview.loanFrom, value: preview.value, valueEur: preview.valueEur, identity: preview.identity, excludedReason: null, checks: [], candidates: [], inRoster: preview.inRoster,
+  } : undefined);
+  const closed = d ? d.closed : !!preview?.closed;
   const nat = p?.nationalities[0];
   const bg = flagUrl(nat) || flagUrl(p?.country);
   const note = contractNote(t, p?.contractEnd);
   const saved = !!p && !!tmIdOf(p.tmUrl) && shortIds.has(tmIdOf(p.tmUrl)!);
   // same rule as the feed card: highest-priority live situation across all sources (moved only when the move is confirmed)
-  const situation = !d ? 'other' : d.closed ? 'moved' : (SITUATION_PRIORITY.find((k) => k !== 'moved' && k !== 'other' && d.sources.some((s) => s.situation === k)) ?? 'other');
+  const situation = !d ? (preview?.situation ?? 'other') : d.closed ? 'moved' : (SITUATION_PRIORITY.find((k) => k !== 'moved' && k !== 'other' && d.sources.some((s) => s.situation === k)) ?? 'other');
   const srcById = new Map((d?.sources ?? []).map((s, i) => [s.id, { s, i }]));
 
   const checkHtml = (c: IdentityCheck): string => {
@@ -78,7 +103,7 @@ export default function RadarFile({ id, onClose, shortIds, adding, onShort, say,
   };
   const pickOther = async (tmUrl: string, name: string) => {
     setBusy(true);
-    try { await radarFetch('identify', { method: 'POST', body: JSON.stringify({ playerId: id, tmUrl }) }); say(t('t_wrong', { n: name })); onChanged(); load(); setWrong(false); }
+    try { await radarFetch('identify', { method: 'POST', body: JSON.stringify({ playerId: id, tmUrl }) }); say(t('t_wrong', { n: name })); onChanged(); load(true); setWrong(false); }
     catch { say(t('t_err')); } finally { setBusy(false); }
   };
   const feedback = async (kind: 'correct' | 'incorrect' | 'outdated') => {
@@ -103,13 +128,10 @@ export default function RadarFile({ id, onClose, shortIds, adding, onShort, say,
   return (
     <>
       <div className="tr3-scrim open" onClick={onClose} />
-      <aside className="tr3-file open" role="dialog" aria-modal="true" aria-label={t('file')}>
-        {!d ? (
-          <>
-            <div className="tr3-fhead"><div className="tr3-fbar"><span className="crumb">{t('nav_radar')} / {t('file')}</span><button onClick={onClose}><Arr name="x" /> {t('back')}</button></div></div>
-            <div className="tr3-loading">{err ?? t('loading')}{err && <> · <button onClick={load} style={{ textDecoration: 'underline' }}>{t('retry')}</button></>}</div>
-          </>
-        ) : p && (
+      <aside ref={panel} className="tr3-file open" role="dialog" aria-busy={!d} aria-modal="true" aria-label={t('file')}>
+        {!p ? (
+          <div className="tr3-fhead"><div className="tr3-fbar"><span className="crumb">{t('nav_radar')} / {t('file')}</span><button onClick={onClose}><Arr name="x" /> {t('back')}</button></div></div>
+        ) : (
           <>
             <div className="tr3-fhead">
               {bg && <img className="bg" src={bg} alt="" aria-hidden="true" />}
@@ -132,7 +154,7 @@ export default function RadarFile({ id, onClose, shortIds, adding, onShort, say,
                 <div><label>{t('f_contract')}</label><b className={note ? 'soon' : ''}>{p.contractEnd ? fmtDay(p.contractEnd, lang) : t('no_contract')}</b>{note && <small className="soon">{note}</small>}</div>
               </div>
               <div className="tr3-factions">
-                {!d.closed && p.tmUrl && (
+                {!closed && p.tmUrl && (
                   <button className={`gold ${saved ? 'done' : ''}`} disabled={saved || adding} onClick={() => onShort({ id: p.id, tmUrl: p.tmUrl, photo: p.photo, name: p.name, position: p.position, age: p.age, nationalities: p.nationalities, club: p.club, value: p.value, contractEnd: p.contractEnd })}>
                     <Ico name="save" />{saved ? t('in_sl') : t('add_sl')}
                   </button>
@@ -143,6 +165,7 @@ export default function RadarFile({ id, onClose, shortIds, adding, onShort, say,
               </div>
             </div>
 
+            {!d ? <FileSkeleton err={err} onRetry={() => load(true)} /> : (
             <div className="tr3-fbody">
               <div className="tr3-fsec">
                 <h3>{t('how_h')} <small>{t('m_auto')}</small></h3>
@@ -218,9 +241,28 @@ export default function RadarFile({ id, onClose, shortIds, adding, onShort, say,
                 </div>
               </div>
             </div>
+            )}
           </>
         )}
+        {!p && <FileSkeleton err={err} onRetry={() => load(true)} />}
       </aside>
     </>
+  );
+}
+
+/** Loading state of the file body: section titles + shimmer blocks in the same layout as the real content. */
+function FileSkeleton({ err, onRetry }: { err: string | null; onRetry: () => void }) {
+  const { t } = useRadarT();
+  if (err) return <div className="tr3-fbody"><div className="tr3-emptybox" style={{ marginTop: 24 }}><h3>{t('t_err')}</h3><p>{err}</p><button className="brit-mast-add" onClick={onRetry}>{t('retry')}</button></div></div>;
+  return (
+    <div className="tr3-fbody tr3-fskel" aria-label={t('loading')}>
+      {[['how_h', 3], ['tl_h', 2], ['src_h', 2]].map(([k, n]) => (
+        <div className="tr3-fsec" key={k as string}>
+          <h3>{t(k as string)}</h3>
+          <div className="brit-skel l2" style={{ width: '46%', marginBottom: 14 }} />
+          {Array.from({ length: n as number }).map((_, i) => <div key={i} className="brit-skel tr3-skrow" />)}
+        </div>
+      ))}
+    </div>
   );
 }
