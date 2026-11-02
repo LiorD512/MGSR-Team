@@ -5,20 +5,22 @@ import { Llm, BudgetExhausted } from '../llm.js';
 import { PROMPT_VERSION, buildUserPrompt, type AiItem } from '../prompt.js';
 import { evaluate } from '../rules.js';
 import { resolvePlayer } from './resolve.js';
-import { chunk, log, now, shortHash } from '../util.js';
+import { chunk, hostOf, log, now, shortHash } from '../util.js';
 import { sourceTier } from '../sources.js';
 import type { Tier } from '../taxonomy.js';
 
 interface ArticleRow {
   id: string; source_id: string; outlet: string | null; link: string; title_orig: string; excerpt: string | null; lang: string | null; country: string | null;
-  published_at: number; collected_at: number; headline_only: number; attempts: number; priority: number; body_read: number;
+  published_at: number; collected_at: number; headline_only: number; attempts: number; priority: number; body_read: number; publisher_url?: string | null;
 }
 export interface AnalyzeStats { selected: number; analyzed: number; failed: number; reports: number; final: number; needsBody: number; stopReason: string; usd: number; freeCalls: number; paidCalls: number }
 
 /** Highest-priority queued articles first, no country may take more than perCountryShare of a run (keeps coverage broad). */
 async function selectBatch(db: Db, cfg: RadarConfig): Promise<ArticleRow[]> {
   const limit = cfg.pipeline.maxItemsPerRun;
-  const rows = await all<ArticleRow>(db, `SELECT * FROM articles WHERE state='COLLECTED' AND next_attempt_at <= ? ORDER BY priority DESC, published_at DESC LIMIT ?`, [now(), limit * 2]);
+  // with triage on, only headlines the triage kept go to the full (expensive) analysis
+  const rows = await all<ArticleRow>(db, `SELECT * FROM articles WHERE state='COLLECTED' AND next_attempt_at <= ? AND (triage = 1 OR ? = 0) ORDER BY priority DESC, published_at DESC LIMIT ?`,
+    [now(), cfg.triage.enabled ? 1 : 0, limit * 2]);
   const cap = Math.max(1, Math.ceil(limit * cfg.pipeline.perCountryShare));
   const per: Record<string, number> = {}; const out: ArticleRow[] = [];
   for (const r of rows) {
@@ -88,8 +90,48 @@ export async function persistFromAi(db: Db, cfg: RadarConfig, a: ArticleRow, ai:
     reportId, a.id, a.source_id, a.outlet, a.link, a.published_at, a.collected_at, a.lang, a.country, ai.player || null, ai.playerLatin || null, ai.club || null, ai.clubLatin || null, playerId, status, conf,
     JSON.stringify(signals), ai.claimType, ai.strength, ai.attributedTo || null, ev.verification, ai.evidenceQuote || null, ev.evidenceOk ? 1 : 0, ev.eventDate, ai.historical ? 1 : 0, ai.sport, ai.squadType, ai.role,
     ai.starPlayer ? 1 : 0, a.title_orig, ai.titleEn || null, ai.why || null, ai.actionable ? 1 : 0, ev.final ? 1 : 0, ev.reasons.join('; ') || null, ev.needsBody ? 1 : 0, PROMPT_VERSION, modelId, a.headline_only]);
+  if (a.publisher_url) await run(db, `UPDATE reports SET publisher_url = ?, publisher_host = ? WHERE id = ?`, [a.publisher_url, hostOf(a.publisher_url), reportId]);
   if (playerId) {
     await run(db, 'UPDATE sources SET relevant_reports = relevant_reports + 1 WHERE id = ? AND ? = 1', [a.source_id, ev.final ? 1 : 0]);
   }
   return { reports: 1, final: ev.final ? 1 : 0, needsBody: ev.needsBody ? 1 : 0 };
+}
+
+/* ------------------------------------------------------------------ triage */
+export interface TriageStats { selected: number; kept: number; dropped: number; calls: number; failed: number; stopReason: string }
+const TRIAGE_SCHEMA = { type: 'OBJECT', properties: { keep: { type: 'ARRAY', items: { type: 'INTEGER' } } }, required: ['keep'] };
+const TRIAGE_SYSTEM = `You pre-screen local football news headlines (many languages) for a football agency that recruits MEN'S CLUB footballers.
+Return the #ids of items that COULD be about a men's club footballer (named or not) who may become available or whose situation changes:
+wants to leave, club wants to sell / release / terminate, contract ending or not renewed, loan (out or ending), left out of the squad / frozen out / sent to the B team,
+conflict or discipline, unpaid wages, free agent / without club, player close to leaving, a transfer completed or a player returning to the squad.
+Do NOT return: match reports, results, line-ups, previews, goals, statistics, coaches' comments about a game, injuries only, other sports, national teams, women, youth,
+betting, TV listings, general news. When unsure, KEEP the item (recall matters more than precision here).`;
+
+/** Cheap first pass: ~60 headlines per request, only the id list comes back. Drops the clear non-stories before the full analysis. */
+export async function triage(db: Db, cfg: RadarConfig, llm: Llm, deadline: number): Promise<TriageStats> {
+  const st: TriageStats = { selected: 0, kept: 0, dropped: 0, calls: 0, failed: 0, stopReason: '' };
+  if (!cfg.triage.enabled) { st.stopReason = 'disabled'; return st; }
+  if (!llm.configured) { st.stopReason = 'no LLM key configured'; return st; }
+  const rows = await all<{ id: string; title_orig: string; excerpt: string | null; country: string | null; lang: string | null }>(db,
+    `SELECT id, title_orig, excerpt, country, lang FROM articles WHERE state = 'COLLECTED' AND triage IS NULL ORDER BY priority DESC, published_at DESC LIMIT ?`, [cfg.triage.maxPerRun]);
+  st.selected = rows.length;
+  for (const batch of chunk(rows, cfg.triage.batchSize)) {
+    if (Date.now() > deadline) { st.stopReason = 'run time budget'; break; }
+    const prompt = batch.map((a, i) => `#${i} | ${a.country ?? ''} | ${a.title_orig}${a.excerpt ? ` | ${a.excerpt.slice(0, 160)}` : ''}`).join('\n');
+    let keep: Set<number>;
+    try {
+      const r = await llm.json<{ keep: number[] }>(TRIAGE_SYSTEM, prompt, TRIAGE_SCHEMA);
+      st.calls++;
+      if (!r || !Array.isArray(r.keep)) { st.failed += batch.length; continue; } // unparsed reply: the batch stays untriaged and is retried next run
+      keep = new Set(r.keep.filter((n) => Number.isInteger(n)));
+    } catch (e) {
+      if (e instanceof BudgetExhausted) { st.stopReason = e.message; break; }
+      log.error('triage batch failed', { msg: (e as Error).message }); st.failed += batch.length; continue;
+    }
+    for (let i = 0; i < batch.length; i++) {
+      if (keep.has(i)) { st.kept++; await run(db, `UPDATE articles SET triage = 1, priority = priority + 2 WHERE id = ?`, [batch[i].id]); }
+      else { st.dropped++; await run(db, `UPDATE articles SET triage = 0, state = 'SKIPPED', skip_reason = 'TRIAGE' WHERE id = ?`, [batch[i].id]); }
+    }
+  }
+  return st;
 }

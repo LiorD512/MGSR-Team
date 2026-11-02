@@ -5,9 +5,17 @@ import { Http } from '../http.js';
 import { discoverFeeds, parseDate, parseFeed, type FeedItem } from '../feeds.js';
 import { GN_QUERIES, dueSources, gnUrl, recordSourceEvent, type SourceRow } from '../sources.js';
 import { DAY, canonicalUrl, log, norm, now, shortHash, chunk } from '../util.js';
+import { latinName } from '../tm.js';
+import { clubWordSet } from './clubSearches.js';
 
 // recall-oriented football gate (multilingual stems). Cheap, free, runs BEFORE any LLM call.
-const FOOTBALL = ['football', 'soccer', 'fudbal', 'nogomet', 'ποδόσφαιρ', 'ποδοσφαιρ', 'μεταγραφ', 'superliga', 'fotbal', 'piłk', 'pilk', 'ekstraklasa', 'футбол', 'futbol', 'futebol',
+const FOOTBALL = ['football', 'soccer', 'fußball', 'fussball', 'calcio', 'fútbol', 'jalkapallo', 'fótbolti', 'voetbal', 'nogomet', 'labdarúgás', 'mercato', 'serie b', 'segunda', 'eredivisie', 'bundesliga',
+  'premier league', 'championship', 'league one', 'league two', 'ligue 1', 'ligue 2', 'süper lig', 'hnl', 'superettan', 'allsvenskan', 'eliteserien', 'veikkausliiga', 'virslīga', 'premium liiga',
+  'a lyga', 'efbet', 'chance liga', 'niké liga', 'otp bank', 'jupiler', 'keuken kampioen', 'primeira liga', 'liga portugal', 'gol ', 'goal', 'golu', 'gola', 'trener', 'antrenor', 'coach', 'treinador',
+  'entrenador', 'allenatore', 'атакант', 'нападател', 'вратар', 'защитник', 'полузащитник', 'portar', 'atacant', 'fundaș', 'mijlocaș', 'bramkarz', 'napastnik', 'obrońca', 'pomocnik',
+  'golman', 'napadač', 'vezni', 'branič', 'kaleci', 'forvet', 'stoper', 'teknik direktör', 'atacante', 'zagueiro', 'goleiro', 'avançado', 'aanvaller', 'doelman', 'middenvelder', 'verdediger',
+  'attaquant', 'gardien', 'défenseur', 'anfallare', 'målvakt', 'mittfältare', 'striker', 'winger', 'midfielder', 'defender', 'goalkeeper', 'stürmer', 'torwart', 'verteidiger',
+  'mittelfeld', 'attaccante', 'portiere', 'difensore', 'centrocampista', 'delantero', 'portero', 'επιθετικ', 'τερματοφύλακ', 'αμυντικ', 'μέσος', 'κόουτς', 'προπονητ', 'fudbal', 'nogomet', 'ποδόσφαιρ', 'ποδοσφαιρ', 'μεταγραφ', 'superliga', 'fotbal', 'piłk', 'pilk', 'ekstraklasa', 'футбол', 'futbol', 'futebol',
   'jalgpall', 'futbolo', 'futbolininkas', 'futbola', 'transfer', 'liga', 'klub', 'club', 'fc ', 'cf ', 'παίκτ', 'ποδοσφαιριστ', 'igrač', 'igrac', 'jucător', 'jucator', 'zawodnik', 'oyuncu', 'jogador', 'играч', 'voetbal', 'fotboll', 'fodbold', 'fotball', 'labdarúg', 'futbalist', 'fotbalist', 'futbollist'];
 // signal vocabulary = recall/priority aid ONLY (never the decision; spec R6.2)
 const SIGNAL = ['transfer lista', 'ne računa', 'otpis', 'prekomandovan', 'raskid', 'raskin', 'napušta', 'napusta', 'izlazn', 'nije u planovima', 'odbio', 'ističe ugovor', 'pozajm', 'posudb', 'posuđen',
@@ -21,18 +29,33 @@ const SIGNAL = ['transfer lista', 'ne računa', 'otpis', 'prekomandovan', 'raski
   'out of plans', 'frozen out', 'on loan', 'wants to leave', 'transfer list', 'terminate', 'free agent'];
 
 const TIER_W: Record<string, number> = { A: 3, B: 2, C: 1, D: 0 };
+const STATS_SITE = /transfermarkt|fotmob|sofascore|soccerway|worldfootball|besoccer|footystats|soccerdonna|fbref|ogol|zerozero|sportsmole odds|flashscore\.com\/team|^facebook$|^instagram$|^youtube$|^tiktok$|^x$|^twitter$/i;
 export interface CollectStats { sources: number; ok: number; failed: number; items: number; inserted: number; noDate: number; tooOld: number; notFootball: number; duplicates: number; notModified: number }
 
 export async function collect(db: Db, cfg: RadarConfig, http: Http, deadline: number): Promise<CollectStats> {
   const st: CollectStats = { sources: 0, ok: 0, failed: 0, items: 0, inserted: 0, noDate: 0, tooOld: 0, notFootball: 0, duplicates: 0, notModified: 0 };
-  const due = await dueSources(db, 120);
+  const due = await dueSources(db, 500);
   st.sources = due.length;
-  // process sources in small parallel groups; per-host delays are enforced inside Http (different hosts run concurrently)
-  for (const group of chunk(due, cfg.http.concurrency)) {
-    if (Date.now() > deadline) { log.warn('collect: run budget reached, remaining sources wait for next run'); break; }
-    await Promise.all(group.map((s) => scanSource(db, cfg, http, s, st)));
-  }
+  clubWords = await clubWordSet(db);
+  // two lanes: news searches all hit news.google.com (one request per 5 s, so they run one by one) while direct outlets run in parallel groups
+  const gn = due.filter((s) => s.host === 'news.google.com'), direct = due.filter((s) => s.host !== 'news.google.com');
+  const lane = async (list: SourceRow[], size: number) => {
+    for (const group of chunk(list, size)) {
+      if (Date.now() > deadline) { log.warn('collect: run budget reached, remaining sources wait for next run'); break; }
+      await Promise.all(group.map((s) => scanSource(db, cfg, http, s, st)));
+    }
+  };
+  await Promise.all([lane(direct, cfg.http.concurrency), lane(gn, 1)]);
   return st;
+}
+
+let clubWords = new Set<string>();
+/** Football evidence for items of general / multi-sport feeds: football words, transfer words or a club name of a covered league. */
+function isFootball(text: string): boolean {
+  if (FOOTBALL.some((k) => text.includes(norm(k))) || /\bfc\b|\bfk\b|\bsk\b|\bnk\b|\bac\b/.test(text)) return true;
+  if (SIGNAL.some((k) => text.includes(norm(k)))) return true;
+  for (const w of latinName(text).split(' ')) if (w.length >= 4 && clubWords.has(w)) return true;
+  return false;
 }
 
 async function scanSource(db: Db, cfg: RadarConfig, http: Http, s: SourceRow, st: CollectStats) {
@@ -52,7 +75,7 @@ async function scanSource(db: Db, cfg: RadarConfig, http: Http, s: SourceRow, st
       items = parseFeed(r.text).map((it) => {
         const m = it.title.match(/ - ([^-]+)$/);
         return { ...it, title: it.title.replace(/ - [^-]+$/, ''), outlet: it.outlet || (m ? m[1].trim() : 'Google News') };
-      });
+      }).filter((it) => !STATS_SITE.test(it.outlet ?? '')); // database / stats pages are not news
       void g;
     } else {
       if (!feedUrl) {
@@ -78,7 +101,7 @@ async function scanSource(db: Db, cfg: RadarConfig, http: Http, s: SourceRow, st
 
     const tier = (s.tier_override || s.tier) as string;
     const minTs = now() - cfg.pipeline.intakeDays * DAY;
-    let inserted = 0; let newest = 0;
+    let inserted = 0; let newest = 0; let seen = 0; let gated = 0;
     for (const it of items) {
       st.items++;
       if (!it.title || !it.link) continue;
@@ -89,8 +112,10 @@ async function scanSource(db: Db, cfg: RadarConfig, http: Http, s: SourceRow, st
       newest = Math.max(newest, ts);
 
       const text = norm(`${it.title} ${it.snippet}`);
-      const football = prov.kind === 'GNEWS' || FOOTBALL.some((k) => text.includes(norm(k))) || /\bfc\b|\bfk\b|\bsk\b/.test(text);
-      if (!football) { st.notFootball++; continue; }
+      // football-only feeds (football sections, football sites) and news searches skip the word gate; the AI triage decides
+      const football = prov.kind === 'GNEWS' || !!s.football_only || isFootball(text);
+      seen++;
+      if (!football) { st.notFootball++; gated++; continue; }
 
       const canon = canonicalUrl(it.link);
       const id = shortHash(canon);
@@ -108,7 +133,7 @@ async function scanSource(db: Db, cfg: RadarConfig, http: Http, s: SourceRow, st
     }
     st.inserted += inserted; st.ok++;
     await run(db, `UPDATE sources SET last_scan_at=?, last_success_at=?, next_scan_at=?, consecutive_failures=0, last_error=NULL, items_collected=items_collected+?, last_article_at=COALESCE(NULLIF(?,0), last_article_at),
-      access_limitation=NULL, updated_at=? WHERE id=?`, [now(), now(), now() + interval, inserted, newest, now(), s.id]);
+      access_limitation=NULL, items_seen=items_seen+?, items_gated=items_gated+?, updated_at=? WHERE id=?`, [now(), now(), now() + interval, inserted, newest, seen, gated, now(), s.id]);
   } catch (e) {
     st.failed++;
     const fails = s.consecutive_failures + 1;

@@ -110,3 +110,11 @@ export async function identityReady(): Promise<boolean> {
 
 /** Reports that belong in the story: final signals + status changes (moved, returned, renewed...). */
 export const STORY_REPORTS = `(r.final = 1 OR r.signals LIKE '%TRANSFER_COMPLETED%' OR r.signals LIKE '%RETURNED_TO_SQUAD%' OR r.signals LIKE '%RENEWED_CONTRACT%' OR r.signals LIKE '%DENIED_BY_CLUB%')`;
+
+let playerColumns: Set<string> | null = null;
+/** Column names of `players` (newer columns such as agent appear after a pipeline migration; the API must work before that). */
+export async function playerCols(): Promise<Set<string>> {
+  if (playerColumns && playerColumns.has('agent')) return playerColumns;
+  playerColumns = new Set((await q<{ name: string }>('PRAGMA table_info(players)')).map((c) => c.name));
+  return playerColumns;
+}

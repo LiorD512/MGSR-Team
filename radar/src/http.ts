@@ -63,7 +63,8 @@ export class Http {
 
   private async raw(url: string, o: { timeoutMs?: number; headers?: Record<string, string>; trackBlocks?: boolean }, host: string, skipRobots = false): Promise<HttpResult> {
     if (!skipRobots && (await this.isBlocked(host))) throw new Error(`host ${host} is in back-off`);
-    await this.slot(host, this.cfg.http.perHostDelayMs);
+    // the news-search host serves only small RSS answers: 2.5 s between requests is still gentle; every other host keeps perHostDelayMs
+    await this.slot(host, host === 'news.google.com' ? Math.min(2500, this.cfg.http.perHostDelayMs) : this.cfg.http.perHostDelayMs);
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), o.timeoutMs ?? this.cfg.http.timeoutMs);
     try {
@@ -71,7 +72,7 @@ export class Http {
         headers: { 'User-Agent': this.cfg.http.userAgent, Accept: 'text/html,application/xml,application/rss+xml,application/atom+xml,*/*', ...(o.headers ?? {}) },
         signal: ctl.signal, redirect: 'follow',
       });
-      const text = r.status === 304 ? '' : (await r.text()).slice(0, 2_500_000);
+      const text = r.status === 304 ? '' : decodeBody(new Uint8Array(await r.arrayBuffer()), r.headers.get('content-type')).slice(0, 2_500_000);
       if (!skipRobots && o.trackBlocks !== false) await this.noteStatus(host, r.status);
       return { status: r.status, text, url: r.url, etag: r.headers.get('etag') ?? undefined, lastModified: r.headers.get('last-modified') ?? undefined, notModified: r.status === 304 };
     } finally { clearTimeout(t); }
@@ -98,4 +99,11 @@ export function parseRobots(txt: string): string[] {
     else if (applies && k === 'disallow' && v) dis.push(v);
   }
   return dis;
+}
+
+/** Decode with the declared charset (HTTP header, XML prolog or <meta charset>); many local outlets still serve ISO-8859-1 / Windows-125x. */
+export function decodeBody(buf: Uint8Array, contentType: string | null): string {
+  const head = new TextDecoder('latin1').decode(buf.slice(0, 2048));
+  const cs = (contentType?.match(/charset=([\w-]+)/i)?.[1] || head.match(/<\?xml[^>]*encoding=["']([\w-]+)["']/i)?.[1] || head.match(/<meta[^>]+charset=["']?([\w-]+)/i)?.[1] || 'utf-8').toLowerCase();
+  try { return new TextDecoder(cs === 'utf8' ? 'utf-8' : cs).decode(buf); } catch { return new TextDecoder('utf-8').decode(buf); }
 }

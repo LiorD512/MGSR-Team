@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticate, ensureFlags, failure, foldFlags, identityReady, isResponse, parseJson, q, STORY_REPORTS } from '@/lib/transferRadar/server';
+import { authenticate, ensureFlags, failure, foldFlags, identityReady, isResponse, parseJson, playerCols, q, STORY_REPORTS } from '@/lib/transferRadar/server';
 import { situationsOf } from '@/lib/transferRadar/situations';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,9 @@ export async function GET(req: NextRequest) {
   try {
     if (!(await identityReady())) return NextResponse.json({ items: [], pending: true, generatedAt: Date.now() });
     await ensureFlags();
-    const rows = await q<Record<string, unknown>>(`SELECT o.player_id, o.closed, o.loan_available, o.first_seen_at, o.last_report_at,
+    const cols = await playerCols();
+    const extra = ['agent', 'agent_url', 'club_tm_id'].filter((c) => cols.has(c)).map((c) => `p.${c}`).join(', ');
+    const rows = await q<Record<string, unknown>>(`SELECT ${extra ? extra + ', ' : ''}o.player_id, o.closed, o.loan_available, o.first_seen_at, o.last_report_at,
         p.display_name, p.full_name, p.aliases, p.tm_url, p.photo_url, p.position, p.age, p.dob, p.nationalities, p.club_name, p.club_crest, p.league, p.country, p.contract_expires,
         p.loan_from, p.market_value, p.market_value_eur, p.identity_status, p.on_shortlist, p.roster_player_id
       FROM opportunities o JOIN players p ON p.id = o.player_id
@@ -43,6 +45,7 @@ export async function GET(req: NextRequest) {
         firstAt: r.first_seen_at, lastAt: Number(latest?.published_at ?? r.last_report_at), sources: rs.length,
         latest: latest ? { outlet: latest.outlet, country: latest.country, at: latest.published_at, en: latest.headline_en || latest.title_orig, orig: latest.title_orig } : null,
         inRoster: !!r.roster_player_id, flags: flags.get(id) ?? {},
+        agent: (r.agent as string | null) ?? null, agentUrl: (r.agent_url as string | null) ?? null, clubTmId: (r.club_tm_id as string | null) ?? null,
       };
     });
     return NextResponse.json({ items, pending: false, generatedAt: Date.now() });

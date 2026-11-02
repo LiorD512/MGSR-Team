@@ -141,4 +141,25 @@ export const MIGRATIONS: { id: number; name: string; sql: string[] }[] = [
       `CREATE TABLE IF NOT EXISTS tm_cache (key TEXT PRIMARY KEY, json TEXT NOT NULL, fetched_at INTEGER NOT NULL)`,
     ],
   },
+  {
+    // more players / more data: football-only feeds, cheap headline triage, publisher URL on articles, agent, notifications, source quality
+    id: 5,
+    name: 'triage_agent_notify_quality',
+    sql: [
+      `ALTER TABLE sources ADD COLUMN football_only INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE sources ADD COLUMN items_seen INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE sources ADD COLUMN items_gated INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE articles ADD COLUMN triage INTEGER`,
+      `ALTER TABLE articles ADD COLUMN publisher_url TEXT`,
+      `CREATE INDEX IF NOT EXISTS ix_articles_triage ON articles(state, triage)`,
+      `ALTER TABLE players ADD COLUMN agent TEXT`,
+      `ALTER TABLE players ADD COLUMN agent_url TEXT`,
+      `ALTER TABLE players ADD COLUMN notified_at INTEGER`,
+      // players already on the screen are not announced again
+      `UPDATE players SET notified_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE identity_status IN ('CONFIRMED','PROBABLE')`,
+      // the triage step adds ~1 request per 60 headlines: allow more paid requests per run (the dollar caps still apply)
+      `UPDATE config SET json = json_set(json, '$.paidMaxRequestsPerRun', 700), version = version + 1, updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE key = 'llm'`,
+      `UPDATE config SET json = json_set(json, '$.maxBodyReads', 150, '$.runBudgetMinutes', 60), version = version + 1, updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000 WHERE key = 'pipeline'`,
+    ],
+  },
 ];

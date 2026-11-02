@@ -6,7 +6,7 @@ name: Transfer Radar pipeline
 # (days since 1970-01-01 divisible by 3).
 # SAFETY: scheduled runs only happen when the repository variable RADAR_ENABLED is exactly 'true', and only once this
 # workflow is on the default branch (GitHub only schedules workflows from main). Until then nothing spends money.
-# Manual runs: workflow_dispatch (default branch only) or a push to feat/transfer-radar whose commit message contains [radar-run].
+# Manual runs: workflow_dispatch (any branch, with backfill / reidentify options) or a push to feat/transfer-radar or feat/press-room-* whose commit message contains [radar-run].
 on:
   schedule:
     - cron: '30 1 * * *'
@@ -16,8 +16,16 @@ on:
         description: 'Skip the AI step (collect + score only)'
         type: boolean
         default: false
+      backfill:
+        description: 'Re-read the whole 30-day window of every news search once'
+        type: boolean
+        default: false
+      reidentify:
+        description: 'Retry every unmatched player now and refresh all Transfermarkt profiles'
+        type: boolean
+        default: false
   push:
-    branches: [feat/transfer-radar]
+    branches: [feat/transfer-radar, 'feat/press-room-*']
     paths: ['radar/**', '.github/workflows/radar-pipeline.yml']
 
 permissions:
@@ -47,7 +55,7 @@ jobs:
       needs.gate.outputs.go == 'true' &&
       (github.event_name != 'push' || contains(github.event.head_commit.message, '[radar-run]'))
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 85
     defaults:
       run:
         working-directory: radar
@@ -77,9 +85,12 @@ jobs:
           # Transfermarkt blocks GitHub IPs: identification goes through the site's html-proxy, like the other TM workflows
           TM_HTML_PROXY_URL: ${{ vars.TM_HTML_PROXY_URL || 'https://management.britsportgroup.com/api/transfermarkt/html-proxy' }}
           # one-time 30-day re-read of the news searches (commit message on the branch contains [radar-backfill])
-          RADAR_BACKFILL: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[radar-backfill]') && '1' || '0' }}
+          RADAR_BACKFILL: ${{ (inputs.backfill || (github.event_name == 'push' && contains(github.event.head_commit.message, '[radar-backfill]'))) && '1' || '0' }}
           # one-time retry of every unmatched player now (commit message contains [radar-reidentify])
-          RADAR_REIDENTIFY: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[radar-reidentify]') && '1' || '0' }}
+          RADAR_REIDENTIFY: ${{ (inputs.reidentify || (github.event_name == 'push' && contains(github.event.head_commit.message, '[radar-reidentify]'))) && '1' || '0' }}
+          # Press Room push notifications (digest of new players). Off until both are set.
+          RADAR_NOTIFY_SECRET: ${{ secrets.RADAR_NOTIFY_SECRET }}
+          RADAR_SITE_URL: ${{ vars.RADAR_SITE_URL || 'https://management.britsportgroup.com' }}
         run: npx tsx src/cli.ts run ${{ inputs.no_analyze && '--no-analyze' || '' }}
       - name: Cleanup (decay, expiry, retention)
         env:

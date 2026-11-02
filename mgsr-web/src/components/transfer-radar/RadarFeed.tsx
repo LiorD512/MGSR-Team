@@ -16,6 +16,7 @@ import { DAY, SIT_COLOR, SIT_FILTER, contractNote, flagUrl, fmtDate, fmtDay, mon
 import type { Situation } from '@/lib/transferRadar/situations';
 import RadarFile, { prefetchFile } from './RadarFile';
 import RadarPortal from './RadarPortal';
+import { agencyInBook, isReleased, isRoster, useAgencyLinks, type AgencyLinks } from '@/lib/transferRadar/agencyLinks';
 import RadarFiltered from './RadarFiltered';
 import { Arr, Ico } from './RadarIcons';
 
@@ -50,6 +51,7 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const now = Date.now();
   const cn = useCallback((c: string | null | undefined) => (c ? getCountryDisplayName(c, lang === 'he') : ''), [lang]);
+  const links = useAgencyLinks();
 
   const say = useCallback((m: string) => {
     setToast(m);
@@ -128,7 +130,7 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
   const pad = (n: number) => String(n).padStart(2, '0');
   const lastRun = summary?.lastRun?.started_at ?? null;
   const card = (p: FeedItem) => (
-    <PlayerCard key={p.id} p={p} saved={!!tmIdOf(p.tmUrl) && shortIds.has(tmIdOf(p.tmUrl)!)} adding={adding === p.id} onOpen={() => openFile(p.id)} onShort={() => addShort(p)} cn={cn} />
+    <PlayerCard key={p.id} p={p} links={links} saved={!!tmIdOf(p.tmUrl) && shortIds.has(tmIdOf(p.tmUrl)!)} adding={adding === p.id} onOpen={() => openFile(p.id)} onShort={() => addShort(p)} cn={cn} />
   );
 
   let body: React.ReactNode;
@@ -230,14 +232,17 @@ function Signal({ on, onClick, label, value, note, cls }: { on: boolean; onClick
   return <div className={`brit-signal ${on ? 'on' : ''}`} onClick={onClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onClick(); }}><label>{label}</label><strong className={cls}>{value}</strong><small>{note}</small></div>;
 }
 
-function PlayerCard({ p, saved, adding, onOpen, onShort, cn }: { p: FeedItem; saved: boolean; adding: boolean; onOpen: () => void; onShort: () => void; cn: (c: string | null) => string }) {
+function PlayerCard({ p, links, saved, adding, onOpen, onShort, cn }: { p: FeedItem; links: AgencyLinks; saved: boolean; adding: boolean; onOpen: () => void; onShort: () => void; cn: (c: string | null) => string }) {
   const { t, lang } = useRadarT();
   const nat = p.nationalities[0];
   const bg = flagUrl(nat) || flagUrl(p.country);
   const note = contractNote(t, p.contractEnd);
   const lt = p.latest;
+  // what the agency already knows about him (roster, release alerts, agent in the Black Book) - from the site's own data
+  const roster = isRoster(links, p.tmUrl), released = isReleased(links, p.tmUrl), book = agencyInBook(links, p.agent, p.agentUrl) > 0;
+  const free = /without club/i.test(p.club ?? '');
   return (
-    <article className={`brit-ra-alert tr3-card ${p.closed ? 'moved' : ''}`} onMouseEnter={() => { prefetchFile(p.id).catch(() => undefined); }} onFocus={() => { prefetchFile(p.id).catch(() => undefined); }}>
+    <article className={`brit-ra-alert tr3-card${p.closed ? ' moved' : ''}${roster ? ' roster' : ''}`} onMouseEnter={() => { prefetchFile(p.id).catch(() => undefined); }} onFocus={() => { prefetchFile(p.id).catch(() => undefined); }}>
       <span className={`brit-ra-badge s-${SIT_COLOR[p.situation]}`}>{t('s_' + p.situation)}</span>
       <div className="brit-ra-top" onClick={onOpen} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}>
         {bg ? <img className="brit-ra-flagbg" src={bg} alt="" aria-hidden="true" /> : <div className="brit-ra-flagbg-ph" aria-hidden="true" />}
@@ -250,6 +255,14 @@ function PlayerCard({ p, saved, adding, onOpen, onShort, cn }: { p: FeedItem; sa
             {nat && <span className="nat">{cn(nat)}</span>}
           </div>
           <div className="tr3-clubrow">{p.crest && <img src={p.crest} alt="" onError={(e) => e.currentTarget.remove()} />}<b>{p.club ?? '-'}</b>{p.league ? `· ${p.league}` : ''}</div>
+          {(roster || released || free || book) && (
+            <div className="tr3-badges">
+              {roster && <span className="g">{t('b_roster')}</span>}
+              {released && <span className="r">{t('b_released')}</span>}
+              {free && !released && <span className="r">{t('b_free')}</span>}
+              {book && <span className="o">{t('b_book')}</span>}
+            </div>
+          )}
         </div>
       </div>
       {lt && (
@@ -259,8 +272,9 @@ function PlayerCard({ p, saved, adding, onOpen, onShort, cn }: { p: FeedItem; sa
           {p.sources > 1 && <div className="more"><b>{t('more_src', { n: p.sources - 1 })}</b></div>}
         </div>
       )}
-      <div className="tr3-facts">
+      <div className="tr3-facts f3">
         <div><label>{t('value')}</label><b>{p.value || '-'}</b></div>
+        <div><label>{t('f_agent')}</label><b className="txt" title={p.agent ?? ''}>{p.agent ? (/^relatives$/i.test(p.agent) ? t('relatives') : p.agent) : t('no_agent')}</b></div>
         <div>
           <label>{t('contract')}</label>
           <b className={note ? 'soon' : ''}>{p.contractEnd ? fmtDay(p.contractEnd, lang) : t('no_contract')}</b>
@@ -295,7 +309,7 @@ function Ledger({ list, onOpen, cn }: { list: FeedItem[]; onOpen: (id: string) =
           <div className="tr3-lrow" key={p.id} onMouseEnter={() => { prefetchFile(p.id).catch(() => undefined); }} onClick={() => onOpen(p.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(p.id); }}>
             <div className="tr3-lp">{p.photo ? <img src={p.photo} alt="" /> : <span className="ini">{p.name.charAt(0)}</span>}<div style={{ minWidth: 0 }}><b>{p.name}</b><small>{p.nationalities.map(cn).join(' / ')}</small></div></div>
             <div><span className={`tr3-pill s-${SIT_COLOR[p.situation]}`}>{t('s_' + p.situation)}</span></div>
-            <div>{p.club ?? '-'}<span className="tr3-sub">{[p.league, cn(p.country)].filter(Boolean).join(' · ')}</span></div>
+            <div>{p.club ?? '-'}<span className="tr3-sub">{[p.league, cn(p.country)].filter(Boolean).join(' · ')}</span>{p.agent && <span className="tr3-sub">{t('l_agent')}: {/^relatives$/i.test(p.agent) ? t('relatives') : p.agent}</span>}</div>
             <div>{p.position ?? '-'}<span className="tr3-sub">{p.age != null ? `${t('f_age')} ${p.age}` : ''}</span></div>
             <div className="tr3-mono">{p.value || '-'}</div>
             <div className={`tr3-mono ${note ? 'soon' : ''}`}>{p.contractEnd ? fmtDay(p.contractEnd, lang) : t('no_contract')}{note && <span className="tr3-sub" style={{ color: 'var(--red)' }}>{note}</span>}</div>

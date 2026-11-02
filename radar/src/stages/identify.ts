@@ -50,6 +50,7 @@ export async function identify(db: Db, cfg: RadarConfig, llm: Llm, deadline: num
     await run(db, `UPDATE players SET tm_attempts = 0, tm_checked_at = 0 WHERE identity_status = 'UNIDENTIFIED'`);
     // decisions the AI made are re-checked too (the tie-break prompt improves over time); human corrections are never touched
     await run(db, `UPDATE players SET identity_status = NULL, tm_attempts = 0 WHERE identity_checks LIKE '%"k":"ai"%' AND identity_checks NOT LIKE '%"k":"human"%'`);
+    await run(db, `UPDATE players SET tm_checked_at = 0 WHERE identity_status IN ('CONFIRMED','PROBABLE')`);
   }
   const todo = await all<PlayerRow>(db, `SELECT p.id, p.display_name, p.aliases, p.country, p.country_source, p.identity_status, p.tm_id, p.tm_attempts FROM players p
       WHERE EXISTS (SELECT 1 FROM reports r WHERE r.player_id = p.id AND r.final = 1 AND r.published_at >= ?)
@@ -326,11 +327,11 @@ async function saveProfile(db: Db, playerId: string, prof: TmProfile, identity: 
   else if (prev?.identity_status === 'EXCLUDED' && (prev.excluded_reason === 'star' || prev.excluded_reason === 'retired') && !identity) { status = 'CONFIRMED'; reason = null; } // value dropped below the ceiling
   await run(db, `UPDATE players SET display_name=?, full_name=?, tm_id=?, tm_url=?, photo_url=?, dob=?, age=?, nationalities=?, position=?, foot=?, height=?, club_name=?, club_tm_id=?, club_crest=?,
       league=COALESCE(?, league), country=COALESCE(?, country), country_source=CASE WHEN ? IS NOT NULL THEN 'CLUB' ELSE country_source END, contract_expires=?, contract_verified=?, contract_source='TM', loan_from=?,
-      market_value=?, market_value_eur=?, identity_status=?, excluded_reason=?, identity_conf=COALESCE(?, identity_conf), identity_checks=COALESCE(?, identity_checks), identity_candidates=COALESCE(?, identity_candidates),
+      market_value=?, market_value_eur=?, agent=?, agent_url=?, identity_status=?, excluded_reason=?, identity_conf=COALESCE(?, identity_conf), identity_checks=COALESCE(?, identity_checks), identity_candidates=COALESCE(?, identity_candidates),
       aliases=COALESCE(?, aliases), resolution_status='TM', tm_checked_at=?, tm_attempts=tm_attempts+1, updated_at=? WHERE id=?`, [
     prof.name, prof.fullName, prof.tmId, prof.tmUrl, prof.photo, prof.dob, prof.age, JSON.stringify(prof.nationalities), prof.position, prof.foot, prof.height, prof.withoutClub ? 'Without club' : prof.club, prof.clubId, prof.crest,
     prof.league ?? identity?.league ?? null, identity?.country ?? null, identity?.country ?? null, dateToMs(prof.contract), prof.contract ? 1 : 0, prof.loanFrom,
-    prof.value, eur, status, reason, identity?.conf ?? null, identity ? JSON.stringify(identity.checks) : null, identity ? JSON.stringify(identity.candidates) : null,
+    prof.value, eur, prof.agent ?? null, prof.agentUrl ?? null, status, reason, identity?.conf ?? null, identity ? JSON.stringify(identity.checks) : null, identity ? JSON.stringify(identity.candidates) : null,
     identity ? aliasJson(prev?.aliases ?? null, identity.names) : null, now(), now(), playerId]);
 }
 

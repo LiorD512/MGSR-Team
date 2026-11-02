@@ -8,6 +8,8 @@ import { useRadarT } from '@/lib/transferRadar/i18n';
 import { SITUATION_PRIORITY } from '@/lib/transferRadar/situations';
 import { SIT_COLOR, contractNote, countryCode, flagUrl, fmtDate, fmtDay, langName } from '@/lib/transferRadar/format';
 import { Arr, Ico } from './RadarIcons';
+import Link from 'next/link';
+import { agencyInBook, isReleased, isRoster, useAgencyLinks } from '@/lib/transferRadar/agencyLinks';
 
 type ShortPayload = { id: string; tmUrl: string | null; photo: string | null; name: string; position: string | null; age: number | null; nationalities: string[]; club: string | null; value: string | null; contractEnd: number | null };
 interface Props {
@@ -37,6 +39,7 @@ export default function RadarFile({ id, preview, onClose, shortIds, adding, onSh
   const [wrong, setWrong] = useState(false);
   const [busy, setBusy] = useState(false);
   const cn = (c: string | null | undefined) => (c ? getCountryDisplayName(c, lang === 'he') : '');
+  const links = useAgencyLinks();
 
   const panel = useRef<HTMLElement | null>(null);
   const load = useCallback((force = false) => {
@@ -61,7 +64,7 @@ export default function RadarFile({ id, preview, onClose, shortIds, adding, onSh
   const p: PlayerFile['player'] | undefined = d?.player ?? (preview ? {
     id: preview.id, name: preview.name, fullName: preview.fullName, writtenAs: preview.writtenAs, tmUrl: preview.tmUrl, photo: preview.photo, position: preview.position, age: preview.age,
     dob: preview.dob, nationalities: preview.nationalities, foot: null, height: null, club: preview.club, crest: preview.crest, league: preview.league, country: preview.country,
-    contractEnd: preview.contractEnd, loanFrom: preview.loanFrom, value: preview.value, valueEur: preview.valueEur, identity: preview.identity, excludedReason: null, checks: [], candidates: [], inRoster: preview.inRoster,
+    contractEnd: preview.contractEnd, loanFrom: preview.loanFrom, value: preview.value, valueEur: preview.valueEur, identity: preview.identity, excludedReason: null, checks: [], candidates: [], inRoster: preview.inRoster, agent: preview.agent, agentUrl: preview.agentUrl, clubTmId: preview.clubTmId,
   } : undefined);
   const closed = d ? d.closed : !!preview?.closed;
   const nat = p?.nationalities[0];
@@ -153,6 +156,22 @@ export default function RadarFile({ id, preview, onClose, shortIds, adding, onSh
                 <div><label>{t('f_value')}</label><b>{p.value ?? '-'}</b>{p.nationalities.length > 0 && <small>{p.nationalities.map(cn).join(' / ')}</small>}</div>
                 <div><label>{t('f_contract')}</label><b className={note ? 'soon' : ''}>{p.contractEnd ? fmtDay(p.contractEnd, lang) : t('no_contract')}</b>{note && <small className="soon">{note}</small>}</div>
               </div>
+              {(() => {
+                const book = agencyInBook(links, p.agent, p.agentUrl);
+                const clubN = p.clubTmId ? links.clubContacts.get(p.clubTmId) ?? 0 : 0;
+                const roster = isRoster(links, p.tmUrl), released = isReleased(links, p.tmUrl);
+                return (
+                  <div className="tr3-agent">
+                    <div><label>{t('f_agent')}</label>
+                      <b>{p.agent ? (/^relatives$/i.test(p.agent) ? t('relatives') : p.agent) : t('no_agent')}</b>
+                      {p.agentUrl && <a href={p.agentUrl} target="_blank" rel="noopener noreferrer">{t('tm')} <Arr name="ext" /></a>}
+                      {p.agent && !/^relatives$/i.test(p.agent) && (book ? <Link className="ok" href="/contacts"><Ico name="ok" /> {book > 1 ? t('in_book_n', { n: book }) : t('in_book')}</Link> : <span className="muted">{t('book_add')}</span>)}
+                    </div>
+                    {clubN > 0 && <div><Link className="ok" href="/contacts">{clubN === 1 ? t('club_contact_1', { c: p.club ?? '' }) : t('club_contacts', { n: clubN, c: p.club ?? '' })} <Arr name="fwd" /></Link></div>}
+                    {(roster || released) && <div className="tr3-badges">{roster && <span className="g">{t('b_roster')}</span>}{released && <span className="r">{t('b_released')}</span>}</div>}
+                  </div>
+                );
+              })()}
               <div className="tr3-factions">
                 {!closed && p.tmUrl && (
                   <button className={`gold ${saved ? 'done' : ''}`} disabled={saved || adding} onClick={() => onShort({ id: p.id, tmUrl: p.tmUrl, photo: p.photo, name: p.name, position: p.position, age: p.age, nationalities: p.nationalities, club: p.club, value: p.value, contractEnd: p.contractEnd })}>

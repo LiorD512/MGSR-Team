@@ -5,8 +5,10 @@ export interface FeedItem { title: string; link: string; date: string; snippet: 
 const decode = (s: string) =>
   s.replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
     .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
+const stripCdata = (s: string) => s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+// some feeds entity-encode their CDATA markers (&lt;![CDATA[ ... ]]&gt;): strip them again after decoding
 export const cleanText = (s: string) =>
-  decode((s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+  stripCdata(decode(stripCdata(s || '').replace(/<[^>]+>/g, ' '))).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
 /** RSS 2.0 + Atom, no dependencies. */
 export function parseFeed(xml: string): FeedItem[] {
