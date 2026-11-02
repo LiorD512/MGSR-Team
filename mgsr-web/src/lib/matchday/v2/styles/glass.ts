@@ -51,9 +51,9 @@ export async function renderGlass(i: RenderV2Input): Promise<Buffer> {
 
   const lit = i.layers.cutAction ? await relightCutout(i.layers.cutAction, { tint: P.key, amount: 0.3, wrap: 0.9 }) : null;
   const two = hasSecond(i);
-  const hero = await placeLayer(lit, 1000, (w) => ({ left: Math.round((two ? 640 : V2_W / 2) - w / 2), top: 370 }), {});
+  const hero = await placeLayer(lit, 1000, (w) => ({ left: Math.round((two ? 640 : V2_W / 2) - w / 2), top: 370 }), { maxW: two ? 540 : 760 });
   // Second real photo: a second, slightly receding figure; the glass card blurs its legs.
-  const second = await secondSheet(i, { height: 900, cx: 290, top: 520, flip: true, opacity: 0.9, treatment: { kind: 'relit', tint: P.key, amount: 0.35, brightness: 0.9 } });
+  const second = await secondSheet(i, { height: 900, cx: 290, top: 520, flip: true, opacity: 0.9, maxW: 420, treatment: { kind: 'relit', tint: P.key, amount: 0.35, brightness: 0.9 } });
   const scene = await sharp(bg)
     .composite([...(second ? [{ input: second }] : []), { input: contactShadow(two ? 640 : 540, 1362, 380) }, { input: hero }])
     .png()

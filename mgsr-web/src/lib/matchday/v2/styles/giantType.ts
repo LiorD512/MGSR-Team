@@ -140,7 +140,8 @@ export async function renderGiantType(i: RenderV2Input): Promise<Buffer> {
     i.layers.cutAction,
     1290,
     (w) => ({ left: Math.round(V2_W / 2 - w / 2), top: 340 }),
-    { mod: { brightness: 1.04, saturation: 1.1 } }
+    // box: clear of the corner crests (64–240 / 840–1016)
+    { mod: { brightness: 1.04, saturation: 1.1 }, maxW: 660 }
   );
 
   // ── 5) crests at the band corners, fixture facts centred under the boots ──
@@ -197,7 +198,7 @@ export async function renderGiantType(i: RenderV2Input): Promise<Buffer> {
   // Second real photo: a club-colour duotone ghost BEHIND the giant type, so
   // it shows through the outlined rows (ghost → type → hero depth sandwich).
   const ghost = await secondSheet(i, {
-    height: 1560, cx: 800, top: 230, flip: true, opacity: 0.9, fadeStart: 72,
+    height: 1560, cx: 800, top: 230, flip: true, opacity: 0.9, fadeStart: 72, maxW: 760,
     treatment: { kind: 'duotone', dark: p.ink, light: mix(noir ? base.home : p.home, '#ffffff', 0.62) },
   });
   const comp: sharp.OverlayOptions[] = [

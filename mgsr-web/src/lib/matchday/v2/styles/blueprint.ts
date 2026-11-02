@@ -9,7 +9,8 @@
  * Variants: 0 Navy blueprint · 1 Chalkboard · 2 Night pitch
  */
 import sharp from 'sharp';
-import { type RenderV2Input, V2_W, V2_H, textLayer, text } from '../render';
+import { type RenderV2Input, V2_W, V2_H, textLayer, text, onCanvas, bottomFade } from '../render';
+import { boxScale, isCroppedBottom } from '../kit/figure';
 import { hasSecond, secondSheet } from '../kit/second';
 import { abs, centred, root, sheet, flatten } from '../kit/compose';
 import { grain } from '../kit/texture';
@@ -99,11 +100,15 @@ export async function renderBlueprint(i: RenderV2Input): Promise<Buffer> {
   // ── figure ───────────────────────────────────────────────────────────────
   let figSheet: Buffer = await flatten([]);
   if (i.layers.cutAction) {
-    const scaled = await sharp(i.layers.cutAction).resize({ height: 1180 }).png().toBuffer();
-    const fig = await blueprintFigure(scaled, T.duo, T.line);
-    const fw = (await sharp(fig).metadata()).width ?? 1;
     const two = hasSecond(i);
-    figSheet = await flatten([{ input: fig, left: Math.max(0, Math.round((two ? 660 : 600) - fw / 2)), top: 330 }]);
+    const m0 = await sharp(i.layers.cutAction).metadata();
+    const fitH = Math.round((m0.height ?? 1) * boxScale(m0.width ?? 1, m0.height ?? 1, 1180, two ? 600 : 720));
+    const scaled = await sharp(i.layers.cutAction).resize({ height: fitH }).png().toBuffer();
+    let fig = await blueprintFigure(scaled, T.duo, T.line);
+    const croppedHero = await isCroppedBottom(scaled);
+    if (croppedHero) fig = await bottomFade(fig, 62);
+    const fw = (await sharp(fig).metadata()).width ?? 1;
+    figSheet = await onCanvas(fig, fw, fitH, Math.round((two ? 660 : 600) - fw / 2), croppedHero ? 330 : 330 + (1180 - fitH));
   }
 
   // ── spec sheet text ──────────────────────────────────────────────────────
@@ -145,12 +150,16 @@ export async function renderBlueprint(i: RenderV2Input): Promise<Buffer> {
   // Second real photo: a second elevation drawing, "VIEW B".
   let viewB: Buffer | null = null;
   if (hasSecond(i)) {
-    const s2 = await sharp(i.layers.hero!).resize({ height: 820 }).flop().png().toBuffer();
+    const m2 = await sharp(i.layers.hero!).metadata();
+    const h2 = Math.round((m2.height ?? 1) * boxScale(m2.width ?? 1, m2.height ?? 1, 820, 380));
+    const s2 = await sharp(i.layers.hero!).resize({ height: h2 }).flop().png().toBuffer();
     const f2 = await blueprintFigure(s2, T.duo, T.line);
-    const f2o = await sharp(f2).ensureAlpha().linear([1, 1, 1, 0.6], [0, 0, 0, 0]).png().toBuffer();
+    let f2o = await sharp(f2).ensureAlpha().linear([1, 1, 1, 0.6], [0, 0, 0, 0]).png().toBuffer();
+    const cropped2 = await isCroppedBottom(s2);
+    if (cropped2) f2o = await bottomFade(f2o, 62);
     const w2 = (await sharp(f2o).metadata()).width ?? 1;
     const label = await textLayer(root([text(abs(1395, 120, { fontFamily: 'SpaceMono', fontWeight: 700, fontSize: '20px', letterSpacing: '4px', color: T.line }), 'VIEW B')]));
-    viewB = await flatten([{ input: f2o, left: Math.max(0, Math.round(270 - w2 / 2)), top: 560 }, { input: label }]);
+    viewB = await flatten([{ input: await onCanvas(f2o, w2, h2, Math.round(270 - w2 / 2), cropped2 ? 560 : 560 + (820 - h2)) }, { input: label }]);
   }
   const overlays: sharp.OverlayOptions[] = [...(viewB ? [{ input: viewB }] : []), { input: figSheet }, { input: box }, { input: t }, { input: vs }];
   if (cH) overlays.push({ input: cH, left: 60, top: 1660 });

@@ -8,7 +8,9 @@
  * (the surname + the two clubs) — nothing editorial is invented.
  */
 import sharp from 'sharp';
+import { boxScale, isCroppedBottom } from '../kit/figure';
 import {
+  onCanvas,
   type RenderV2Input,
   V2_W,
   V2_H,
@@ -98,22 +100,23 @@ export async function renderBroadsheet(i: RenderV2Input): Promise<Buffer> {
   let heroSpot: Buffer;
   if (i.layers.cutAction) {
     // Work at placed size so the dot pitch is identical across players.
-    const scaled = await sharp(i.layers.cutAction).resize({ height: heroH }).png().toBuffer();
+    // Box-fit (max 640 wide, clear of the fixture box) and bottom-anchor.
+    const m0 = await sharp(i.layers.cutAction).metadata();
+    const fitH = Math.round((m0.height ?? 1) * boxScale(m0.width ?? 1, m0.height ?? 1, heroH, 640));
+    const scaled = await sharp(i.layers.cutAction).resize({ height: fitH }).png().toBuffer();
     const meta = await sharp(scaled).metadata();
     const w = meta.width ?? 1;
+    const croppedHero = await isCroppedBottom(scaled);
+    const figTop = croppedHero ? heroTop : heroTop + (heroH - fitH);
+    const fadeAt = croppedHero ? 62 : 90;
     const ht = await halftone(scaled, { cell: 4, angle: 45, ink: INK, contrast: 1.2, gamma: 0.6 });
     // Flat spot-colour plate in the exact silhouette of the cutout.
     const plateAlpha = await sharp(scaled).ensureAlpha().extractChannel(3).toBuffer();
-    const plateRgb = await sharp({ create: { width: w, height: heroH, channels: 3, background: mix(spot, paperTone, 0.28) } }).png().toBuffer();
+    const plateRgb = await sharp({ create: { width: w, height: fitH, channels: 3, background: mix(spot, paperTone, 0.28) } }).png().toBuffer();
     const solid = await sharp(plateRgb).joinChannel(plateAlpha).png().toBuffer();
-    const faded = (b: Buffer) => bottomFade(b, 90);
-    const place = async (b: Buffer, dx: number, dy: number) => {
-      const sheet = await sharp({ create: { width: V2_W, height: V2_H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
-        .composite([{ input: await faded(b), left: Math.max(0, Math.round(cx - w / 2) + dx), top: heroTop + dy }])
-        .png()
-        .toBuffer();
-      return sheet;
-    };
+    const faded = (b: Buffer) => bottomFade(b, fadeAt);
+    // onCanvas clips safely (a figure may never crash the render by overflowing).
+    const place = async (b: Buffer, dx: number, dy: number) => onCanvas(await faded(b), w, fitH, Math.round(cx - w / 2) + dx, figTop + dy);
     heroInk = await place(ht, 0, 0);
     heroSpot = await place(solid, 16, 12); // deliberate misregistration
   } else {
@@ -174,7 +177,7 @@ export async function renderBroadsheet(i: RenderV2Input): Promise<Buffer> {
     { input: rules },
     // Second real photo: a second, lighter halftone print layered behind (a photo collage).
     ...(await (async () => {
-      const g = await secondSheet(i, { height: 900, cx: 330, top: 600, flip: true, opacity: 0.42, fadeStart: 86, treatment: { kind: 'halftone', ink: INK, cell: 6 } });
+      const g = await secondSheet(i, { height: 900, cx: 330, top: 600, flip: true, opacity: 0.42, fadeStart: 86, maxW: 520, treatment: { kind: 'halftone', ink: INK, cell: 6 } });
       return g ? [{ input: g, blend: 'multiply' as const }] : [];
     })()),
     { input: heroSpot, blend: 'multiply' },

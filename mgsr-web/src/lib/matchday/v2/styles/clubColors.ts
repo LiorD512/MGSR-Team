@@ -127,7 +127,8 @@ export async function renderClubColors(i: RenderV2Input): Promise<Buffer> {
     i.layers.cutAction,
     1400,
     (w) => ({ left: Math.round(V2_W * (v === 2 ? 0.5 : 0.56) - w / 2), top: 300 }),
-    { mod: { brightness: 1.04, saturation: 1.1 } }
+    // box: right of the vertical wordmark (x ≥ 230), above the ticket bar
+    { mod: { brightness: 1.04, saturation: 1.1 }, maxW: 740 }
   );
 
   // ── 4) front: kicker, surname over the legs, ticket bar ──────────────────
@@ -173,7 +174,7 @@ export async function renderClubColors(i: RenderV2Input): Promise<Buffer> {
   ]);
   // Second real photo: duotoned in the OTHER half's colour, behind the wordmark.
   const ghost = await secondSheet(i, {
-    height: 1150, cx: 250, top: 600, flip: true, opacity: 0.88, fadeStart: 78,
+    height: 1150, cx: 250, top: 600, flip: true, opacity: 0.88, fadeStart: 78, maxW: 460,
     treatment: { kind: 'duotone', dark: mix(p.away, '#000000', 0.7), light: mix(p.away, '#ffffff', 0.4) },
   });
   const comp: sharp.OverlayOptions[] = [...(ghost ? [{ input: ghost }] : []), { input: behind }, { input: hero }, { input: bar }, { input: front }];

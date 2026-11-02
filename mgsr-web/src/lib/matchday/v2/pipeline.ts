@@ -226,7 +226,7 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
         }
     : null;
 
-  const qualityChecks = buildChecks(facts, geminiConfigured(), Boolean(layers.cutAction), Boolean(homeCrest), Boolean(awayCrest), Boolean(kitBytes), rendered.width, rendered.height, layers.preCut ? 'your transparent cutout, used as-is (no AI)' : layers.fromCache ? 'clean transparent cutout (cached — no AI call this run)' : null);
+  const qualityChecks = buildChecks(facts, geminiConfigured(), Boolean(layers.cutAction), Boolean(homeCrest), Boolean(awayCrest), Boolean(kitBytes), rendered.width, rendered.height, layers.preCut ? 'your transparent cutout, used as-is (no AI)' : layers.fromCache ? 'clean transparent cutout (cached — no AI call this run)' : null, input.aiPhotos);
 
   return {
     generationId,
@@ -247,7 +247,8 @@ function buildChecks(
   kitSwapped: boolean,
   w: number,
   h: number,
-  cutoutNote: string | null = null
+  cutoutNote: string | null = null,
+  aiPhotos?: { main?: boolean; second?: boolean }
 ): MatchdayQualityCheck[] {
   // Report the ACCURATE reason: a missing key vs a transient model failure
   // (rate-limit / overload) are different problems with different fixes.
@@ -257,7 +258,9 @@ function buildChecks(
       ? 'cutout failed this run (model busy/rate-limited) — try again in a moment'
       : 'cutout unavailable — GEMINI_API_KEY is not set';
   return [
-    { id: 'identity', label: 'Player face preserved (never generated)', status: 'pass', detail: 'AI used only for cutout/kit/pose' },
+    aiPhotos?.main || aiPhotos?.second
+      ? { id: 'identity', label: 'AI-generated pose used', status: 'warn', detail: `${aiPhotos.main ? 'main' : 'second'} photo is an AI pose you approved from his real photos` }
+      : { id: 'identity', label: 'Real photos (face never generated)', status: 'pass', detail: 'AI used only for cutout / kit' },
     { id: 'cutout', label: 'Player cutout', status: haveCutout ? 'pass' : 'fail', detail: cutoutDetail },
     // Keeping the original kit is a normal choice, not a problem — so it passes.
     { id: 'kit', label: 'Kit', status: 'pass', detail: kitSwapped ? 'swapped from reference' : 'original kit kept (no kit reference uploaded)' },

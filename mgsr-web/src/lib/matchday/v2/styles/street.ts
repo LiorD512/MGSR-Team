@@ -111,6 +111,7 @@ export async function renderStreet(i: RenderV2Input): Promise<Buffer> {
 
   const hero = await placeLayer(i.layers.cutAction, 1050, (w) => ({ left: Math.round((i.layers.heroIsDistinct ? 500 : 560) - w / 2), top: SY + 160 }), {
     mod: { brightness: 1.02, saturation: 1.12 },
+    maxW: 680, // clear of the crest stickers on the right
   });
   // clip the hero to the sheet so nothing hangs off the paper
   const clip = sheet(`<polygon points="${tornRect(rng, SX, SY, SW, SH, 8)}" fill="#fff"/>`);
@@ -148,7 +149,7 @@ export async function renderStreet(i: RenderV2Input): Promise<Buffer> {
 
   // Second real photo: a taped polaroid pasted on the sheet, BEHIND the main player.
   let polaroid: Buffer | null = null;
-  const cut2 = await secondCutout(i, 470, { kind: 'photo', saturation: 1.05 }, true);
+  const cut2 = await secondCutout(i, 470, { kind: 'photo', saturation: 1.05 }, true, 1, 270);
   if (cut2) {
     const PW = 330, PH = 410, PIW = 290, PIH = 320;
     const m2 = await sharp(cut2).metadata();
