@@ -78,9 +78,19 @@ export async function identify(db: Db, cfg: RadarConfig, llm: Llm, deadline: num
 }
 
 async function identifyOne(db: Db, cfg: RadarConfig, tm: TmClient, llm: Llm, p: PlayerRow, st: IdentifyStats): Promise<string> {
-  const reps = await all<RepRow>(db, `SELECT id, player_raw, player_latin, club_raw, club_latin, country, url, publisher_url, title_orig, headline_en, evidence_quote, sport, published_at
+  let reps = await all<RepRow>(db, `SELECT id, player_raw, player_latin, club_raw, club_latin, country, url, publisher_url, title_orig, headline_en, evidence_quote, sport, published_at
       FROM reports WHERE player_id = ? ORDER BY final DESC, published_at DESC LIMIT 12`, [p.id]);
   if (!reps.length) return 'UNIDENTIFIED';
+
+  // 0a) the same article is already attached to another radar player (the AI spelled the name differently in another analysis,
+  //     e.g. "Heberton" vs "Хевертон"): one story = one player. Names must still fit, so two players named in one article stay apart.
+  const twin = await sameArticleTwin(db, p.id, reps);
+  if (twin) {
+    if (twin.identity_status && twin.identity_status !== 'UNIDENTIFIED') { await mergeInto(db, p.id, twin.id, st); return twin.identity_status; }
+    await mergeInto(db, twin.id, p.id, st); // both unknown: combine them and identify once, with every spelling
+    reps = await all<RepRow>(db, `SELECT id, player_raw, player_latin, club_raw, club_latin, country, url, publisher_url, title_orig, headline_en, evidence_quote, sport, published_at
+      FROM reports WHERE player_id = ? ORDER BY final DESC, published_at DESC LIMIT 12`, [p.id]);
+  }
   const articleAt = Math.max(...reps.map((r) => r.published_at));
 
   // names as written (+ Latin form); full names first
@@ -243,6 +253,23 @@ async function identifyOne(db: Db, cfg: RadarConfig, tm: TmClient, llm: Llm, p: 
   await saveProfile(db, keepId, prof, { status, conf, checks, candidates: candidatesJson, country: pick.squad ? resolvedClubs.find((c) => c.id === pick!.squad!.clubId)?.country ?? null : null, league: pick.squad?.league ?? null, names }, cfg);
   const after = await one<{ identity_status: string }>(db, 'SELECT identity_status FROM players WHERE id = ?', [keepId]);
   return after?.identity_status ?? status;
+}
+
+async function sameArticleTwin(db: Db, playerId: string, reps: RepRow[]): Promise<{ id: string; identity_status: string | null } | null> {
+  const urls = Array.from(new Set(reps.map((r) => r.publisher_url).filter((u): u is string => !!u)));
+  const titles = Array.from(new Set(reps.map((r) => r.title_orig).filter((x) => x && x.length >= 25)));
+  if (!urls.length && !titles.length) return null;
+  const cond = [urls.length ? `r.publisher_url IN (${urls.map(() => '?').join(',')})` : '', titles.length ? `r.title_orig IN (${titles.map(() => '?').join(',')})` : ''].filter(Boolean).join(' OR ');
+  const rows = await all<{ id: string; identity_status: string | null; display_name: string; full_name: string | null; player_raw: string | null; player_latin: string | null }>(db,
+    `SELECT p.id, p.identity_status, p.display_name, p.full_name, r.player_raw, r.player_latin FROM reports r JOIN players p ON p.id = r.player_id
+     WHERE r.player_id <> ? AND (${cond})
+     ORDER BY CASE p.identity_status WHEN 'CONFIRMED' THEN 0 WHEN 'PROBABLE' THEN 1 WHEN 'EXCLUDED' THEN 2 ELSE 3 END, p.created_at`, [playerId, ...urls, ...titles]);
+  const mine = reps.flatMap((r) => [r.player_raw, r.player_latin]).filter((x): x is string => !!x);
+  for (const o of rows) {
+    const theirs = [o.player_raw, o.player_latin, o.display_name, o.full_name].filter((x): x is string => !!x);
+    if (mine.some((a) => theirs.some((b) => Math.max(nameScore(a, b).s, nameScore(b, a).s) >= 0.7))) return { id: o.id, identity_status: o.identity_status };
+  }
+  return null;
 }
 
 async function tieBreak(llm: Llm, reps: RepRow[], cs: Cand[], st: IdentifyStats): Promise<{ c: Cand; why: string } | null> {

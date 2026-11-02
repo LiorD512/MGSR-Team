@@ -93,6 +93,12 @@ export async function writeSummary(db: Db, out: Record<string, any>, ms: number)
     for (const c of cov) L.push(`| ${c.country ?? '?'} | ${c.sources} | ${c.articles} | ${c.analyzed} | ${c.stories} | ${c.shown} |`);
     const ident = await all<any>(db, `SELECT identity_status AS s, COALESCE(excluded_reason, '') AS r, COUNT(*) AS n FROM players WHERE identity_status IS NOT NULL GROUP BY 1, 2 ORDER BY 1, 3 DESC`);
     L.push(`\n**Identification:** ${ident.map((x) => `${x.s}${x.r ? ` (${x.r})` : ''}: ${x.n}`).join(' · ')}`);
+    const aiPicks = await all<any>(db, `SELECT p.display_name, p.club_name, p.identity_checks, (SELECT group_concat(DISTINCT r.player_raw) FROM reports r WHERE r.player_id = p.id) AS written
+      FROM players p WHERE p.identity_checks LIKE '%"k":"ai"%'`);
+    if (aiPicks.length) {
+      L.push(`\n## Identified with the AI tie-break (${aiPicks.length})\n| Written as | Picked on Transfermarkt | Club | Why |\n|---|---|---|---|`);
+      for (const a of aiPicks) { let why = ''; try { why = (JSON.parse(a.identity_checks).find((c: any) => c.k === 'ai')?.why) ?? ''; } catch { /* */ } L.push(`| ${a.written ?? ''} | ${a.display_name} | ${a.club_name ?? ''} | ${String(why).replace(/\|/g, '/')} |`); }
+    }
     // players the identify stage could not match: the evidence, so matching can be improved
     const un = await all<any>(db, `SELECT p.id, p.excluded_reason AS reason, p.identity_candidates AS cands, p.tm_attempts AS attempts,
         r.player_raw, r.player_latin, r.club_raw, r.club_latin, r.outlet, r.country, r.published_at, r.title_orig, r.headline_en, COALESCE(r.publisher_url, r.url) AS url
