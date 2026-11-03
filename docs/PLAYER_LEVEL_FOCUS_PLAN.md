@@ -1,6 +1,23 @@
 # Level & Focus — Player Tiering with AI (Men platform)
 
-Status: **draft for discussion** · Interactive mock: [`brit-sport-group-level-focus.html`](./brit-sport-group-level-focus.html) (open in a browser; EN/HE toggle, press `/` for Ask AI)
+Status: **v2 — decisions locked, ready to refine screens**
+
+Mocks (open in a browser; EN/HE toggle in both):
+- [`brit-sport-group-dashboard-roster-intelligence.html`](./brit-sport-group-dashboard-roster-intelligence.html) — **the real dashboard, with the new Roster intelligence module** (see §12)
+- [`brit-sport-group-level-focus.html`](./brit-sport-group-level-focus.html) — the full feature: board, AI inbox, engine, calibration, alerts (press `/` for Ask AI)
+
+## 0. Decisions (v2)
+
+| Topic | Decision |
+|---|---|
+| Scope v1 | **Roster only.** Shortlist and ScoutProfiles come later |
+| Levels | 5 levels, with **market-specific meaning** (Ligat Ha’al / Europe / Gulf) and a **bar per position group** |
+| Who can change tags | **Any agent.** Notes are **optional**, never required (history still records who and when) |
+| Focus drivers | Contract, mandate, matching requests, last touch, trend. **No revenue/commission** |
+| Effort tracking | **Automatic** from notes, tasks and contacts. No manual quick-log |
+| Alerts | **Yes** — when a player becomes Push now (plus a few optional rules) |
+| Platforms | **Men only** |
+
 
 ---
 
@@ -53,7 +70,7 @@ Stage 4  Delta engine
          only changes to Level/Focus go to the human inbox; everything else updates silently
 ```
 
-Guard-rails (non-negotiable): AI moves a level **max ±1**; AI **never writes** a confirmed tag — it writes a *suggestion*; every change has reason + history; per-player **lock**; confidence shown; dismissed suggestions aren't repeated until data changes.
+Guard-rails (non-negotiable): AI moves a level **max ±1**; AI **never writes** a confirmed tag — it writes a *suggestion*; every change is recorded in history (who, when, optional note); per-player **lock**; confidence shown; dismissed suggestions aren't repeated until data changes.
 
 ### Wow moments in the mock
 1. **Before/After** dashboard module (toggle on Overview).
@@ -81,10 +98,10 @@ flowchart LR
 ```
 
 ### 4.2 Agent daily flow
-Dashboard → sees "AI needs your call (n)" + "Focus now" → opens drawer → accepts/overrides (reason) → logs contact → effort bars update.
+Dashboard → sees "AI needs your call (n)" + "Focus now" → opens drawer → accepts/overrides → works the player (notes, tasks and contacts are counted automatically) → effort bars update.
 
 ### 4.3 Manual tagging flow
-Player profile or board → set Level/Focus (reason optional, required if overriding AI) → history entry → optionally lock.
+Player profile, drawer or board → any agent sets Level/Focus (note optional) → history entry → optionally lock.
 
 ### 4.4 Universe flow (large DB)
 Stage 1 weekly on `ScoutProfiles` after the scout build; Stage 3 only for top ~2% + borderline. AI Scout / War Room gain a **Level filter and badge**. A player promoted from Radar/Scout to roster **inherits** their computed Level.
@@ -95,7 +112,7 @@ Stage 1 weekly on `ScoutProfiles` after the scout build; Stage 3 only for top ~2
 |---|---|---|
 | 1 | **Overview → Roster intelligence (After)** | Replaces the top-6 table: level distribution bar (clickable), Focus-now list with AI "why", AI-needs-your-call, attention gaps, effort-vs-priority, Ask AI box |
 | 2 | **Level & Focus board** | Matrix (Level×Focus, pills with gold dot = pending AI suggestion) + list; filters; bulk set |
-| 3 | **Player drawer** | Ladder, focus, AI read, evidence, signals, override reason, lock, peers, history |
+| 3 | **Player drawer** | Ladder, focus, AI read, evidence, signals, automatic effort, optional note, lock, peers, history |
 | 4 | **AI inbox** | Review queue sorted by impact; batch accept |
 | 5 | **Engine** | Pipeline visibility, populations & cadence, cost, guard-rails |
 | 6 | **Calibration** | Weights, thresholds, position presets, live impact preview |
@@ -160,12 +177,49 @@ Rules: read for authenticated users; writes only via callable (audit trail) + ba
 - **Scale:** don't use `onSnapshot` on the universe; paginate server-side.
 - **Concept collision** with Alpha Board tiers → naming + UI separation (see §2).
 
-## 11. Open questions — need your decisions
+## 11. Position bars and market definitions
 
-1. **Scope of "database":** is the first target the **roster (~40)** + shortlist, or the full **ScoutProfiles universe** from day one? (Plan assumes roster first.)
-2. **Level definitions:** are 5 levels right, and what do they mean *for your market* (Ligat Ha’al vs. Europe vs. Gulf)? Do you want position-specific bars?
-3. **Who may change tags:** any agent, or only admins/owners? Should overrides of AI require a reason?
-4. **Focus drivers:** besides contract/mandate/requests, do you want revenue potential (commission estimate) as a driver?
-5. **Effort tracking:** can we count "touches" from notes/tasks/contacts automatically, or do we need a quick-log button?
-6. **Alerts:** push/WhatsApp when a player becomes F1 or an Elite player's contract <6 months?
-7. **Women/Youth platforms:** men only for now, or design the collection to be platform-aware from the start (`PlayerTiersWomen`, …)?
+Draft definitions (editable in the Calibration screen):
+
+| Level | Ligat Ha’al | Europe | Gulf |
+|---|---|---|---|
+| L1 Elite | Key player of a title-winning club; European group-stage level | Starter at a top-5-league or Champions-League club | Marquee starter at a Saudi Pro League top-4 club |
+| L2 Premium | Starter at a top-3 club | Starter in strong second-tier leagues (NL, PT, BE, TR) or top-5 rotation | Regular starter in Saudi / UAE Pro League |
+| L3 Core | Reliable starter at a mid-table club | Starter in mid-tier leagues (GR, AT, CY, CH) or top-5 second division | Starter at a mid-table Gulf club (QAT, KUW, BHR) |
+| L4 Depth | Rotation / lower-half club | Lower leagues, bench at mid-tier clubs | Rotation at lower-tier Gulf clubs |
+| L5 Developing | Unproven youth, long-shot or clearly declining | judged by trend | judged by trend |
+
+**Position bars.** Six groups (GK, CB, FB, DM/CM, AM/wingers, ST). Each has an offset added to the four base thresholds, so "Premium" means the same thing for a goalkeeper and a striker even though raw output stats differ. The AI can *suggest* offsets (example in the mock: GK −3, CB −2, AM +2, ST +3) and Calibration shows live which players would change before you save.
+
+**Needs your input:** the table above is my draft from general football knowledge. Please correct it with your real view of each market.
+
+## 12. Dashboard: Roster intelligence redesign
+
+Mock: `brit-sport-group-dashboard-roster-intelligence.html` reproduces the current Management Room (rail, topbar, masthead, signals, left and right columns) using the real CSS tokens from `globals.css`, with only the module in the right column replaced.
+
+**What was wrong with the old module:** four columns (name, club, position, value) of the six most valuable players. It repeated data found on `/players`, was not clickable and supported no decision.
+
+**Design principles**
+1. **Same slot, same vocabulary.** Right column, `brit-module-head`, `.brit-roster`-style table, mono micro-labels, gold on paper. Red is used *only* for Push now and for deadlines of 14 days or less.
+2. **One bar, one nudge, one table.** Top to bottom: a level bar (who we have) → a gold callout (what the AI wants decided) → a ranked table (what to do).
+3. **Answer the three questions in order:** *Who do I have?* (bar) → *What needs me?* (callout) → *Who first?* (table sorted by Focus, then urgency).
+4. **Compact for a ~430px column.** Four columns only: Player (club and position underneath), Level (+ trend arrow), Focus, Next (the single most relevant signal, such as "Mandate 6d"). A dashed outline on a Level chip means "AI has a pending suggestion".
+5. **Level colours are a luminance ramp** (black → gold → soft gold → grey → outline), so they read as "more/less" without adding new hues to the palette.
+6. **Progressive disclosure.** Tabs: *Priority* (default) · *All players* · *AI changes (n)*. Six rows by default, "Show all" expands. Full detail is one click away in the drawer.
+7. **Effort footer** — one line and one bar: share of effort on Push-now players vs. target. Computed automatically.
+
+**Interactions in the mock:** level-bar segments filter the table; AI callout opens the inbox modal (accept, adjust, dismiss, accept-all ≥85%); a row opens the drawer (any agent can change Level/Focus; optional note; history); the bottom mock bar simulates the **Push-now alert** (toast + row flash), an empty state and a reset; HE/EN with RTL.
+
+**Possible follow-ups (not in the mock):** a fourth top signal "Push now: n" next to Managed portfolio / Roster assets / Mandates; moving the module higher in the right column once agents trust it.
+
+## 13. Alerts
+
+Rules (all toggleable in the Alerts screen): player becomes Push now (on); Elite/Premium contract under 6 months (on); mandate ≤14 days (on); Push-now player untouched 7+ days (on); AI suggestion ≥85% confidence (off). Channels: in-app, push (existing messaging setup), WhatsApp (optional). Recipient: the agent in charge plus the owner; quiet hours 22:00–07:00 Tel Aviv, except mandates expiring today.
+
+## 14. Remaining open questions
+
+1. Please review the level definitions in §11 for each market.
+2. Position groups: are six enough, or do you want separate DM and CM, or LW/RW and AM?
+3. Alert recipients: agent in charge + owner, or the whole team for Push now?
+4. WhatsApp alerts: do you want that channel or only in-app + push?
+5. Should the Push-now count appear as a fourth signal at the top of the dashboard?

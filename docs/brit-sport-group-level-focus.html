@@ -171,7 +171,7 @@ en:{room:'Management room',dashboard:'Overview',board:'Level & Focus',triage:'AI
  run:'Run nightly pipeline',universe:'Universe',s1:'Deterministic score',s2:'Candidate filter',s3:'Gemini analysis',s4:'Suggestions',
  calT:'Calibration',calS:'Tune what “good” means. Every change is previewed against the live roster before you save it.',
  wts:'Signal weights',thr:'Level thresholds (score ≥)',impact:'Live impact',save:'Save calibration',reset:'Reset',
- overrideWhy:'Why are you overriding? (kept in history)',lock:'Lock — AI may suggest but never auto-moves',rerun:'Re-run AI analysis',
+ overrideWhy:'Add a note (optional)',alerts:'Alerts',effortAuto:'Counted automatically from notes, tasks and contacts',lock:'Lock — AI may suggest but never auto-moves',rerun:'Re-run AI analysis',
  factors:'Signal breakdown',aiRead:'AI read',hist:'History',peers:'Same level, same position',saveChg:'Save',
  months:'mo',days:'d',none:'—',signedOff:'Saved',
  L1:'Elite',L2:'Premium',L3:'Core',L4:'Depth',L5:'Developing',
@@ -194,7 +194,7 @@ he:{room:'חדר ניהול',dashboard:'סקירה',board:'רמה ופוקוס',
  run:'הרץ צינור לילי',universe:'היקום',s1:'ציון דטרמיניסטי',s2:'סינון מועמדים',s3:'ניתוח Gemini',s4:'הצעות',
  calT:'כיול',calS:'כוונן מה זה ״טוב״. כל שינוי נבדק מול הסגל החי לפני שמירה.',
  wts:'משקלי אותות',thr:'ספי רמה (ציון ≥)',impact:'השפעה חיה',save:'שמור כיול',reset:'איפוס',
- overrideWhy:'למה אתה משנה? (נשמר בהיסטוריה)',lock:'נעילה — ה־AI יציע אך לא יזיז אוטומטית',rerun:'הרץ ניתוח AI מחדש',
+ overrideWhy:'הוסף הערה (אופציונלי)',alerts:'התראות',effortAuto:'נספר אוטומטית מהערות, משימות ואנשי קשר',lock:'נעילה — ה־AI יציע אך לא יזיז אוטומטית',rerun:'הרץ ניתוח AI מחדש',
  factors:'פירוט אותות',aiRead:'קריאת AI',hist:'היסטוריה',peers:'אותה רמה, אותה עמדה',saveChg:'שמור',
  months:'חו׳',days:'י׳',none:'—',signedOff:'נשמר',
  L1:'עילית',L2:'פרימיום',L3:'ליבה',L4:'עומק',L5:'בפיתוח',
@@ -211,6 +211,9 @@ let W={perf:30,fm:25,val:20,lg:10,form:15};
 const W0={...W};
 let TH={1:78,2:64,3:50,4:36};
 const TH0={...TH};
+const PG={GK:'GK',CB:'CB',LB:'FB',RB:'FB',DM:'MF',CM:'MF',AM:'AM',LW:'AM',RW:'AM',CF:'ST',ST:'ST'};
+const pg=p=>PG[p.pos]||'MF';
+const OFF={GK:0,CB:0,FB:0,MF:0,AM:0,ST:0}, OFF0={...OFF}, OFF_AI={GK:-3,CB:-2,FB:0,MF:0,AM:2,ST:3};
 const P=[
 {id:1,n:'Itai Sassoon',club:'Maccabi Haifa',pos:'CF',age:24,mv:3500,c:8,m:21,d:3,t:4,f:[88,84,86,70,90],lv:2,adj:0,tr:'up',fc:2,conf:91,
  r:{en:'Output is top-5% among Ligat Ha’al forwards for two straight windows and market value has outrun his Level 2 tag. He now profiles as Elite for our market.',he:'התפוקה בטופ 5% בין החלוצים בליגת העל לשני חלונות רצופים, והשווי עבר את תג רמה 2. כעת הוא מתאים לרמת עילית בשוק שלנו.'}},
@@ -254,8 +257,8 @@ const dismissed=new Set(), locked=new Set(), focusAI={}, selected=new Set();
 /* ============ engine maths ============ */
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function score(p){const s=Object.values(W).reduce((a,b)=>a+b,0)||1;return p.f.reduce((a,v,i)=>a+v*Object.values(W)[i],0)/s}
-function lvOf(s){return s>=TH[1]?1:s>=TH[2]?2:s>=TH[3]?3:s>=TH[4]?4:5}
-function baseLv(p){return lvOf(score(p))}
+function lvOf(s,p){const o=p?OFF[pg(p)]:0;return s>=TH[1]+o?1:s>=TH[2]+o?2:s>=TH[3]+o?3:s>=TH[4]+o?4:5}
+function baseLv(p){return lvOf(score(p),p)}
 function aiLv(p){return clamp(baseLv(p)-p.adj,1,5)}
 const LW={1:1,2:.85,3:.6,4:.35,5:.3};
 function urgency(p){
@@ -276,17 +279,18 @@ const arrow=t=>`<span class="arrow ${t}">${t==='up'?'▲':t==='down'?'▼':'●'
 const R=p=>p.r[lang];
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2300)}
 const byId=id=>P.find(p=>p.id===id);
+function touches(p){const n=Math.max(0,7-Math.floor(p.t/5)),k=Math.max(0,5-Math.floor(p.t/7)),c=Math.max(0,6-Math.floor(p.t/5));return [[lang==='en'?'Notes':'הערות',n],[lang==='en'?'Tasks':'משימות',k],[lang==='en'?'Contacts':'קשר',c],[lang==='en'?'Last':'אחרון',p.t+T('days')]]}
 
 /* ============ router ============ */
 let view='dashboard', dashMode='after', boardMode='matrix', bf={q:'',lv:0,fc:0,untouched:false,aidiff:false,cell:null};
-const NAV=[['dashboard','01'],['board',''],['triage',''],['engine',''],['calib','']];
+const NAV=[['dashboard','01'],['board',''],['triage',''],['engine',''],['calib',''],['alerts','']];
 function renderNav(){
   const n=P.filter(sugg).length;
   document.getElementById('nav').innerHTML=NAV.map(([k])=>`<button class="${view===k?'on':''}" onclick="go('${k}')"><span>${T(k)}</span>${k==='triage'?`<span class="badge">${n}</span>`:k==='board'?`<small>${P.length}</small>`:'<small></small>'}</button>`).join('');
   document.getElementById('crumb').innerHTML=`BRIT / <strong>${T(view)}</strong> / 03 NOV 2026`;
 }
 function go(v,opts){view=v;if(opts)Object.assign(bf,opts);render();window.scrollTo(0,0)}
-function render(){renderNav();applyT();({dashboard:vDash,board:vBoard,triage:vTriage,engine:vEngine,calib:vCalib})[view]()}
+function render(){renderNav();applyT();({dashboard:vDash,board:vBoard,triage:vTriage,engine:vEngine,calib:vCalib,alerts:vAlerts})[view]()}
 function toggleLang(){lang=lang==='en'?'he':'en';document.documentElement.lang=lang;document.documentElement.dir=lang==='he'?'rtl':'ltr';document.getElementById('langbtn').textContent=lang==='en'?'HE / EN':'EN / HE';render();if(openId)openDrawer(openId)}
 
 /* ============ DASHBOARD ============ */
@@ -338,7 +342,7 @@ function vDash(){
         <section class="dark mod" style="padding-bottom:18px">
           <div class="mh"><h2 style="font-size:20px">${T('effort')}</h2><span class="m">${lang==='en'?'last 30 days':'30 ימים אחרונים'}</span></div>
           <div class="bars">${eff}</div>
-          <p style="margin:0;color:#b9b5aa;font:10.5px/1.5 var(--mono)"><span class="ai">AI</span>${lang==='en'?'Only 22% of your effort went to Push-now players; the target is 45%. 41% went to Active.':'רק 22% מהמאמץ הלך לשחקני ״לדחוף עכשיו״; היעד הוא 45%. 41% הלכו לפעילים.'}</p>
+          <p style="margin:0 0 8px;color:#8e8b82;font:9px/1.5 var(--mono);text-transform:uppercase">${T('effortAuto')} · ${lang==='en'?'notes 38% · tasks 34% · contacts 28%':'הערות 38% · משימות 34% · אנשי קשר 28%'}</p><p style="margin:0;color:#b9b5aa;font:10.5px/1.5 var(--mono)"><span class="ai">AI</span>${lang==='en'?'Only 22% of your effort went to Push-now players; the target is 45%. 41% went to Active.':'רק 22% מהמאמץ הלך לשחקני ״לדחוף עכשיו״; היעד הוא 45%. 41% הלכו לפעילים.'}</p>
         </section>
       </div>
     </div>`}
@@ -438,6 +442,8 @@ function openDrawer(id){
     ${names.map((k,i)=>`<div class="fac"><span>${T(k)}</span><div class="tr"><i style="width:${p.f[i]}%"></i></div><span>${p.f[i]}</span></div>`).join('')}
     ${p.adj?`<div class="fac"><span>✦ ${lang==='en'?'AI adjust':'התאמת AI'}</span><div style="font:10.5px var(--mono)">${p.adj>0?'+1':'−1'} ${lang==='en'?'level (max ±1, always explained)':'רמה (מקס׳ ±1, תמיד מוסבר)'}</div><span></span></div>`:''}
   </div>
+  <div class="dsec"><h4><span>${lang==='en'?'Effort · last 30 days':'מאמץ · 30 ימים אחרונים'}</span><span>${lang==='en'?'auto':'אוטומטי'}</span></h4>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font:10px var(--mono);text-transform:uppercase">${touches(p).map(([k,v])=>`<div style="border:1px solid var(--line);padding:10px;background:var(--card)"><b style="display:block;font:500 24px var(--display)">${v}</b>${k}</div>`).join('')}</div></div>
   <div class="dsec"><h4><span>${T('overrideWhy')}</span></h4><textarea id="why" placeholder="…"></textarea></div>
   <div class="dsec"><h4><span>${T('peers')}</span></h4><div class="peers">${peers.map(x=>`<span class="pill" style="background:${LC[x.lv]};cursor:pointer" title="${x.n}" onclick="openDrawer(${x.id})">${ini(x.n)}</span>`).join('')||'—'}</div></div>
   <div class="dsec"><h4><span>${T('hist')}</span></h4><div class="tl">${[...HIST[id]].reverse().map(h=>`<div><b>${h.a}</b><br><span style="color:var(--muted)">${h.d} · ${h.w}</span></div>`).join('')}</div></div>`;
@@ -473,19 +479,21 @@ function acceptHigh(){const hi=P.filter(sugg).filter(p=>p.conf>=85);hi.forEach(p
 /* ============ ENGINE ============ */
 let engRun=false;
 function vEngine(){
-  const el=document.getElementById('view');
-  const st=[['s1','48,213','All scouted + roster + shortlist. Weighted maths on stats, FM CA/PA, value, league coefficient. No AI cost.','$0'],['s2','1,184','Roster, shortlist, mandate targets, open-request matches, borderline scores, big movers.','$0'],['s3','1,184','Gemini reads stats + notes + highlights, returns JSON: ±1 level adjust, trend, reason EN/HE, confidence.','~$1.20'],['s4','38','Only deltas that change a level or focus reach a human. Everything else updates silently.','—']];
-  el.innerHTML=`<h1 class="big">${lang==='en'?'The <span>engine</span>':'ה<span>מנוע</span>'}</h1><p class="sub">${T('engS')}</p>
-  <div class="mh"><h2>${lang==='en'?'Nightly pipeline':'צינור לילי'}</h2><button class="btn red" id="runb" onclick="runEngine()">▶ ${T('run')}</button></div>
-  <div class="stages" id="stages">${st.map((s,i)=>`<div class="stg" id="stg${i}"><small>0${i+1}</small><h3>${T(s[0])}</h3><div class="num" id="n${i}">${s[1]}</div><p>${s[2]}</p><p style="color:var(--ink)">${lang==='en'?'Cost':'עלות'}: ${s[3]}</p><div class="pg"><i></i></div></div>`).join('')}</div>
-  <div class="mh"><h2>${T('universe')}</h2><span class="m">${lang==='en'?'who gets scored, how often':'מי מקבל ציון, באיזו תדירות'}</span></div>
-  <table><thead><tr><th>${lang==='en'?'Population':'אוכלוסייה'}</th><th>${lang==='en'?'Size':'גודל'}</th><th>${lang==='en'?'Stage 1':'שלב 1'}</th><th>${lang==='en'?'Gemini':'Gemini'}</th><th>${lang==='en'?'Who sees it':'מי רואה'}</th></tr></thead><tbody>
-   <tr><td class="n">Roster (Players)</td><td>42</td><td>${lang==='en'?'daily + on every data change':'יומי + בכל שינוי נתונים'}</td><td>${lang==='en'?'always':'תמיד'}</td><td>${lang==='en'?'Dashboard, inbox, board':'דשבורד, תיבה, לוח'}</td></tr>
-   <tr><td class="n">Shortlist</td><td>188</td><td>${lang==='en'?'daily':'יומי'}</td><td>${lang==='en'?'weekly':'שבועי'}</td><td>${lang==='en'?'Shortlist badge, board':'תג ברשימת מעקב, לוח'}</td></tr>
-   <tr><td class="n">ScoutProfiles</td><td>48,213</td><td>${lang==='en'?'weekly (after scout build)':'שבועי (אחרי בניית סקאוט)'}</td><td>${lang==='en'?'only top 2% + borderline':'רק 2% עליונים + גבוליים'}</td><td>${lang==='en'?'AI Scout / War Room filter by Level':'AI Scout / חדר מלחמה — סינון לפי רמה'}</td></tr>
-   <tr><td class="n">Transfer Radar</td><td>31,870</td><td>${lang==='en'?'on demand':'לפי דרישה'}</td><td>${lang==='en'?'on open':'בפתיחה'}</td><td>${lang==='en'?'Radar cards':'כרטיסי רדאר'}</td></tr></tbody></table>
-  <div class="mh" style="margin-top:40px"><h2>${lang==='en'?'Guard-rails':'מעקות בטיחות'}</h2></div>
-  <div class="cost"><div><b>±1</b><small>${lang==='en'?'max AI level change':'שינוי רמה מקסימלי של AI'}</small></div><div><b>0</b><small>${lang==='en'?'auto-writes to confirmed tags':'כתיבות אוטומטיות לתגים מאושרים'}</small></div><div><b>100%</b><small>${lang==='en'?'changes with reason + history':'שינויים עם סיבה והיסטוריה'}</small></div><div><b>🔒</b><small>${lang==='en'?'per-player lock':'נעילה לשחקן'}</small></div></div>`;
+  const el=document.getElementById('view'),n=P.length,en=lang==='en';
+  const st=[['s1',n,en?'Weighted maths on output, FM CA/PA, value, league and form — position-aware thresholds. No AI cost.':'חישוב משוקלל על תפוקה, יכולת FM, שווי, ליגה ופורמה — ספים לפי עמדה. ללא עלות AI.','$0'],
+   ['s2',n,en?'v1 sends the whole roster to Gemini because it is small. Candidate filtering arrives with the wider database.':'בגרסה 1 כל הסגל עובר ל־Gemini כי הוא קטן. סינון מועמדים יגיע עם המאגר הרחב.','$0'],
+   ['s3',n,en?'Gemini reads stats, FM, notes, contract and demand. Returns ±1 level, trend, reason EN/HE, confidence.':'Gemini קורא סטטיסטיקות, FM, הערות, חוזה וביקוש. מחזיר ±1 רמה, מגמה, סיבה EN/HE וביטחון.','< $0.10 / day'],
+   ['s4',P.filter(sugg).length,en?'Only changes to a Level or Focus reach a human. Everything else updates silently.':'רק שינויים ברמה או בפוקוס מגיעים אליך. השאר מתעדכן בשקט.','—']];
+  el.innerHTML=`<h1 class="big">${en?'The <span>engine</span>':'ה<span>מנוע</span>'}</h1><p class="sub">${T('engS')}</p>
+  <div class="mh"><h2>${en?'Daily pipeline · roster':'צינור יומי · סגל'}</h2><button class="btn red" id="runb" onclick="runEngine()">▶ ${T('run')}</button></div>
+  <div class="stages" id="stages">${st.map((s,i)=>`<div class="stg" id="stg${i}"><small>0${i+1}</small><h3>${T(s[0])}</h3><div class="num" id="n${i}">${s[1]}</div><p>${s[2]}</p><p style="color:var(--ink)">${en?'Cost':'עלות'}: ${s[3]}</p><div class="pg"><i></i></div></div>`).join('')}</div>
+  <div class="mh"><h2>${T('universe')}</h2><span class="m">${en?'v1 scope: roster only':'היקף גרסה 1: סגל בלבד'}</span></div>
+  <table><thead><tr><th>${en?'Population':'אוכלוסייה'}</th><th>${en?'Size':'גודל'}</th><th>${en?'Cadence':'תדירות'}</th><th>${en?'Status':'סטטוס'}</th></tr></thead><tbody>
+   <tr><td class="n">Roster (Players)</td><td>${n}</td><td>${en?'daily + on every data change':'יומי + בכל שינוי נתונים'}</td><td><span class="chip" style="color:var(--green)">${en?'v1 · live':'גרסה 1 · פעיל'}</span></td></tr>
+   <tr style="opacity:.55"><td class="n">Shortlist</td><td>~190</td><td>${en?'daily / weekly Gemini':'יומי / Gemini שבועי'}</td><td><span class="chip" style="color:var(--muted)">${en?'later':'בהמשך'}</span></td></tr>
+   <tr style="opacity:.55"><td class="n">ScoutProfiles</td><td>48,213</td><td>${en?'weekly, top 2% to Gemini':'שבועי, 2% עליונים ל־Gemini'}</td><td><span class="chip" style="color:var(--muted)">${en?'later':'בהמשך'}</span></td></tr></tbody></table>
+  <div class="mh" style="margin-top:40px"><h2>${en?'Guard-rails':'מעקות בטיחות'}</h2></div>
+  <div class="cost"><div><b>±1</b><small>${en?'max AI level change':'שינוי רמה מקסימלי של AI'}</small></div><div><b>0</b><small>${en?'auto-writes to confirmed tags':'כתיבות אוטומטיות לתגים מאושרים'}</small></div><div><b>100%</b><small>${en?'changes in history (who + when)':'שינויים בהיסטוריה (מי + מתי)'}</small></div><div><b>🔒</b><small>${en?'per-player lock':'נעילה לשחקן'}</small></div></div>`;
 }
 function runEngine(){if(engRun)return;engRun=true;const b=document.getElementById('runb');b.textContent='…';
   const stg=[...document.querySelectorAll('.stg')];stg.forEach(s=>s.classList.remove('done'));let i=0;
@@ -494,33 +502,73 @@ function runEngine(){if(engRun)return;engRun=true;const b=document.getElementByI
 
 /* ============ CALIBRATION ============ */
 let calSnapshot=null;
+const GN={GK:'Goalkeepers',CB:'Centre-backs',FB:'Full-backs',MF:'Midfielders (DM/CM)',AM:'Attacking mids & wingers',ST:'Strikers'};
+const GNH={GK:'שוערים',CB:'בלמים',FB:'מגנים',MF:'קשרים (DM/CM)',AM:'קשרים התקפיים וכנפיים',ST:'חלוצים'};
+const DEFS=[
+ ['L1 Elite','Key player of a title-winning club; European group-stage level','Starter at a top-5-league or Champions-League club','Marquee starter at a Saudi Pro League top-4 club'],
+ ['L2 Premium','Starter at a top-3 club','Starter in strong second-tier leagues (NL, PT, BE, TR) or top-5-league rotation','Regular starter in Saudi Pro League / UAE Pro League'],
+ ['L3 Core','Reliable starter at a mid-table club','Starter in mid-tier leagues (GR, AT, CY, CH) or top-5 second division','Starter at a mid-table Gulf club (QAT, KUW, BHR)'],
+ ['L4 Depth','Rotation player / lower-half club','Lower leagues, bench at mid-tier clubs','Rotation at lower-tier Gulf clubs'],
+ ['L5 Developing','Unproven youth, long-shot or clearly declining','Same — judged by trend, not by current level','Same']];
 function vCalib(){
-  const el=document.getElementById('view');
+  const el=document.getElementById('view'),en=lang==='en';
   if(!calSnapshot)calSnapshot=P.map(p=>({id:p.id,l:aiLv(p)}));
   const keys=['perf','fm','val','lg','form'];
-  el.innerHTML=`<h1 class="big">${lang==='en'?'Cali<span>bration</span>':'<span>כיול</span>'}</h1><p class="sub">${T('calS')}</p>
+  el.innerHTML=`<h1 class="big">${en?'Cali<span>bration</span>':'<span>כיול</span>'}</h1><p class="sub">${T('calS')}</p>
+  <div class="mh"><h2>${en?'What each level means':'מה כל רמה אומרת'}</h2><span class="m">${en?'draft · click any cell to edit':'טיוטה · לחץ על תא לעריכה'}</span></div>
+  <table style="margin-bottom:40px"><thead><tr><th>${T('level')}</th><th>Ligat Ha’al</th><th>Europe</th><th>Gulf</th></tr></thead><tbody>${DEFS.map((d,i)=>`<tr><td class="n"><span class="chip fill" style="background:${LC[i+1]}">${d[0]}</span></td>${d.slice(1).map(c=>`<td contenteditable="true" style="font:11.5px/1.5 var(--body);max-width:260px">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>
   <div class="cal"><div>
     <div class="mh"><h2>${T('wts')}</h2><span class="m" id="wsum"></span></div>
-    <div style="margin:10px 0 0"><span style="font:10px var(--mono);color:var(--muted)">${lang==='en'?'PRESET':'תבנית'}</span>
-      <select id="preset" onchange="preset(this.value)" style="margin-inline-start:8px;border:1px solid var(--ink);background:transparent;padding:6px;font:10px var(--mono)"><option value="def">Default</option><option value="fw">Forwards — output-heavy</option><option value="gk">Goalkeepers — form-heavy</option><option value="yo">Youth — potential-heavy</option></select></div>
     ${keys.map(k=>`<div class="sl"><span>${T(k)}</span><input type="range" min="0" max="50" value="${W[k]}" oninput="W['${k}']=+this.value;calUpd()"><span id="w_${k}">${W[k]}</span></div>`).join('')}
-    <div class="mh" style="margin-top:30px"><h2>${T('thr')}</h2></div>
+    <div class="mh" style="margin-top:30px"><h2>${T('thr')} · ${en?'base':'בסיס'}</h2></div>
     ${[1,2,3,4].map(l=>`<div class="sl"><span>L${l} ${T('L'+l)}</span><input type="range" min="20" max="95" value="${TH[l]}" oninput="TH[${l}]=+this.value;calUpd()"><span id="t_${l}">${TH[l]}</span></div>`).join('')}
-    <div style="display:flex;gap:10px;margin-top:20px"><button class="btn red" onclick="calSave()">${T('save')}</button><button class="btn" onclick="Object.assign(W,W0);Object.assign(TH,TH0);document.getElementById('preset').value='def';vCalib()">${T('reset')}</button></div>
+    <div class="mh" style="margin-top:30px"><h2>${en?'Bar by position':'רף לפי עמדה'}</h2><button class="lnk" onclick="Object.assign(OFF,OFF_AI);vCalib()">✦ ${en?'AI: suggest bars':'AI: הצע רפים'}</button></div>
+    <p style="font:10.5px/1.5 var(--mono);color:var(--muted);margin:8px 0">${en?'Offset added to every threshold for that position. Positive = harder to reach a level (strikers inflate on output stats).':'הסטה שנוספת לכל הספים של העמדה. חיובי = קשה יותר להגיע לרמה (חלוצים מנופחים בסטטיסטיקות תפוקה).'}</p>
+    ${Object.keys(OFF).map(g=>`<div class="sl"><span style="font-size:9px">${en?GN[g]:GNH[g]}</span><input type="range" min="-8" max="8" value="${OFF[g]}" oninput="OFF['${g}']=+this.value;calUpd()"><span id="o_${g}">${OFF[g]>0?'+':''}${OFF[g]}</span></div>`).join('')}
+    <div style="display:flex;gap:10px;margin-top:20px"><button class="btn red" onclick="calSave()">${T('save')}</button><button class="btn" onclick="Object.assign(W,W0);Object.assign(TH,TH0);Object.assign(OFF,OFF0);vCalib()">${T('reset')}</button></div>
   </div><div>
     <div class="mh"><h2>${T('impact')}</h2></div><div id="impact"></div></div></div>`;
   calUpd();
 }
-function preset(v){const m={def:[30,25,20,10,15],fw:[45,15,15,10,15],gk:[25,20,15,10,30],yo:[15,45,10,10,20]}[v];['perf','fm','val','lg','form'].forEach((k,i)=>W[k]=m[i]);vCalib();document.getElementById('preset').value=v}
 function calUpd(){
-  ['perf','fm','val','lg','form'].forEach(k=>{const e=document.getElementById('w_'+k);if(e)e.textContent=W[k]});[1,2,3,4].forEach(l=>{const e=document.getElementById('t_'+l);if(e)e.textContent=TH[l]});
+  ['perf','fm','val','lg','form'].forEach(k=>{const e=document.getElementById('w_'+k);if(e)e.textContent=W[k]});
+  [1,2,3,4].forEach(l=>{const e=document.getElementById('t_'+l);if(e)e.textContent=TH[l]});
+  Object.keys(OFF).forEach(g=>{const e=document.getElementById('o_'+g);if(e)e.textContent=(OFF[g]>0?'+':'')+OFF[g]});
   const sum=Object.values(W).reduce((a,b)=>a+b,0);const ws=document.getElementById('wsum');if(ws)ws.textContent=lang==='en'?`normalised from ${sum}`:`מנורמל מתוך ${sum}`;
   const ch=P.filter(p=>aiLv(p)!==calSnapshot.find(s=>s.id===p.id).l);
-  document.getElementById('impact').innerHTML=`<div class="imp"><b>${ch.length}</b> ${lang==='en'?'of 16 players change AI level vs. the current calibration':'מתוך 16 שחקנים משנים רמת AI לעומת הכיול הנוכחי'}</div>
+  document.getElementById('impact').innerHTML=`<div class="imp"><b>${ch.length}</b> ${lang==='en'?`of ${P.length} players change AI level vs. the saved calibration`:`מתוך ${P.length} שחקנים משנים רמת AI לעומת הכיול השמור`}</div>
   ${ch.map(p=>{const o=calSnapshot.find(s=>s.id===p.id).l,n=aiLv(p);return `<div class="frow" style="grid-template-columns:1fr auto;padding:10px 0"><div><h3 style="font-size:17px">${p.n}</h3><p>${p.pos} · ${p.club}</p></div><div>${lvChip(o,false)} → ${lvChip(n)}</div></div>`}).join('')}
-  <div class="imp" style="margin-top:20px">${[1,2,3,4,5].map(l=>`<div style="display:grid;grid-template-columns:80px 1fr 30px;gap:8px;align-items:center;margin:4px 0"><span>L${l}</span><div class="urg" style="width:100%"><i style="width:${P.filter(p=>aiLv(p)===l).length/16*100}%;background:${LC[l]}"></i></div><span>${P.filter(p=>aiLv(p)===l).length}</span></div>`).join('')}</div>`;
+  <div class="imp" style="margin-top:20px">${[1,2,3,4,5].map(l=>`<div style="display:grid;grid-template-columns:80px 1fr 30px;gap:8px;align-items:center;margin:4px 0"><span>L${l}</span><div class="urg" style="width:100%"><i style="width:${P.filter(p=>aiLv(p)===l).length/P.length*100}%;background:${LC[l]}"></i></div><span>${P.filter(p=>aiLv(p)===l).length}</span></div>`).join('')}</div>`;
 }
 function calSave(){calSnapshot=P.map(p=>({id:p.id,l:aiLv(p)}));toast(T('signedOff')+' · '+(lang==='en'?'inbox will refresh':'התיבה תתרענן'));renderNav();calUpd()}
+
+/* ============ ALERTS ============ */
+const AL={push:true,elite:true,mandate:true,conf:false,untouched:true,ch_app:true,ch_push:true,ch_wa:false,quiet:true};
+function vAlerts(){
+  const en=lang==='en',el=document.getElementById('view');
+  const rules=[['push',en?'A player becomes Push now':'שחקן עובר ל״לדחוף עכשיו״',en?'The headline alert — fires when Focus moves to F1, by you, a teammate or the engine.':'ההתראה המרכזית — נשלחת כשהפוקוס עובר ל־F1, על ידך, חבר צוות או המנוע.'],
+   ['elite',en?'Elite / Premium player: contract under 6 months':'שחקן עילית / פרימיום: חוזה מתחת ל־6 חודשים',en?'Once per player, then weekly while it stays true.':'פעם אחת לשחקן, ואז שבועית כל עוד זה נכון.'],
+   ['mandate',en?'Mandate expires in 14 days or less':'מנדט פג בעוד 14 ימים או פחות',en?'Reuses the existing Mandate watch logic.':'משתמש בלוגיקת מעקב המנדטים הקיימת.'],
+   ['untouched',en?'A Push-now player is untouched for 7+ days':'שחקן ״לדחוף עכשיו״ ללא קשר 7+ ימים',en?'Based on notes, tasks and contacts — nothing to log manually.':'לפי הערות, משימות ואנשי קשר — אין מה לתעד ידנית.'],
+   ['conf',en?'AI suggestion with ≥ 85% confidence':'הצעת AI בביטחון ≥ 85%',en?'Off by default to avoid noise; the AI inbox already collects these.':'כבוי כברירת מחדל למניעת רעש; תיבת ה־AI כבר אוספת אותן.']];
+  const chans=[['ch_app',en?'In-app':'באפליקציה',en?'Bell + toast on the dashboard':'פעמון והודעה בדשבורד'],['ch_push',en?'Push notification':'התראת פוש',en?'Phone / browser, via the existing messaging setup':'טלפון / דפדפן, דרך מנגנון ההודעות הקיים'],['ch_wa',en?'WhatsApp':'וואטסאפ',en?'Optional — needs the agent’s number on file':'אופציונלי — דורש מספר של הסוכן בתיק']];
+  const tg=k=>`<button class="seg" style="width:46px;height:24px;position:relative;background:${AL[k]?'var(--ink)':'transparent'}" onclick="AL['${k}']=!AL['${k}'];vAlerts()"><span style="position:absolute;top:3px;${AL[k]?'inset-inline-end:3px':'inset-inline-start:3px'};width:16px;height:16px;background:${AL[k]?'var(--white)':'var(--ink)'}"></span></button>`;
+  el.innerHTML=`<h1 class="big">${en?'<span>Alerts</span>':'<span>התראות</span>'}</h1><p class="sub">${en?'Go to the right people at the right moment. Default recipient: the player’s agent in charge, plus the owner.':'מגיעות לאנשים הנכונים ברגע הנכון. נמען ברירת מחדל: הסוכן האחראי על השחקן, ובנוסף הבעלים.'}</p>
+  <div class="cal"><div>
+   <div class="mh"><h2>${en?'When':'מתי'}</h2></div>
+   ${rules.map(r=>`<div style="display:grid;grid-template-columns:1fr auto;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)"><div><b style="font:700 13px var(--body)">${r[1]}</b><p style="margin:4px 0 0;color:var(--muted);font:10.5px/1.5 var(--mono)">${r[2]}</p></div>${tg(r[0])}</div>`).join('')}
+   <div class="mh" style="margin-top:34px"><h2>${en?'How':'איך'}</h2></div>
+   ${chans.map(r=>`<div style="display:grid;grid-template-columns:1fr auto;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)"><div><b style="font:700 13px var(--body)">${r[1]}</b><p style="margin:4px 0 0;color:var(--muted);font:10.5px/1.5 var(--mono)">${r[2]}</p></div>${tg(r[0])}</div>`).join('')}
+   <div style="display:grid;grid-template-columns:1fr auto;gap:16px;padding:16px 0"><div><b style="font:700 13px var(--body)">${en?'Quiet hours 22:00–07:00 (Tel Aviv)':'שעות שקט 22:00–07:00 (תל אביב)'}</b><p style="margin:4px 0 0;color:var(--muted);font:10.5px/1.5 var(--mono)">${en?'Queued and delivered at 07:00, except mandates expiring today.':'נשמרות ומגיעות ב־07:00, פרט למנדטים שפגים היום.'}</p></div>${tg('quiet')}</div>
+  </div><div>
+   <div class="mh"><h2>${en?'Preview':'תצוגה מקדימה'}</h2><button class="lnk" onclick="toast('${en?'Test alert sent to you':'התראת בדיקה נשלחה אליך'}')">${en?'Send test':'שלח בדיקה'}</button></div>
+   <div style="background:var(--black);color:var(--white);padding:18px 20px;margin-top:18px;border-inline-start:3px solid var(--red)">
+     <div style="display:flex;justify-content:space-between;color:var(--gold);font:9px var(--mono);text-transform:uppercase;letter-spacing:.1em"><span>BRIT · ${T('F1')}</span><span>${en?'now':'עכשיו'}</span></div>
+     <div style="font:500 22px/1 var(--display);text-transform:uppercase;margin:9px 0 5px">Amit Rosen</div>
+     <p style="margin:0;color:#b9b5aa;font:10.5px/1.5 var(--mono)">${en?'Moved to Push now: 4th matching request, mandate in 6 days.':'עבר ל״לדחוף עכשיו״: בקשה מתאימה רביעית, מנדט בעוד 6 ימים.'}</p></div>
+   <div class="imp" style="margin-top:18px">${en?'Active channels':'ערוצים פעילים'}: ${['ch_app','ch_push','ch_wa'].filter(k=>AL[k]).map(k=>chans.find(c=>c[0]===k)[1]).join(' · ')||'—'}<br>${en?'Rules on':'כללים פעילים'}: ${rules.filter(r=>AL[r[0]]).length}/${rules.length}</div>
+  </div></div>`;
+}
 
 /* ============ ASK AI ============ */
 function openAsk(q){document.getElementById('askov').classList.add('open');const i=document.getElementById('askin');i.value=q||'';i.focus();document.getElementById('askres').innerHTML=q?'':sampleQs().map(x=>`<div class="sug"><button onclick="runAsk('${x.replace(/'/g,"\\'")}')">${x}</button></div>`).join('');if(q)runAsk(q)}
