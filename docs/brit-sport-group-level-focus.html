@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BRIT — Level & Focus (interactive mock)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#161613;--paper:#f3f0e8;--card:#fbf9f3;--black:#11110f;--black2:#23231f;--white:#f4f1e9;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--blue:#4a5f6f;--gold:#a47d43;--muted:#77736a;--line:rgba(22,22,19,.18);--dline:rgba(244,241,233,.2);--display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace}
+*{box-sizing:border-box}html{background:var(--paper)}body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+[dir=rtl] body,[dir=rtl] button,[dir=rtl] input,[dir=rtl] select{font-family:'Heebo',var(--body)}
+[dir=rtl] .mono,[dir=rtl] label,[dir=rtl] th{letter-spacing:0}
+button{border:0;color:inherit;font:inherit;cursor:pointer;background:none}input,select,textarea{font:inherit;color:inherit}
+.shell{min-height:100vh;display:grid;grid-template-columns:230px minmax(0,1fr)}
+.rail{position:sticky;top:0;height:100vh;background:var(--black);color:var(--white);padding:26px 20px;display:flex;flex-direction:column}
+.brand{font:600 14px/1 var(--display);letter-spacing:.08em;padding-bottom:26px;border-bottom:1px solid var(--dline)}.brand b{color:var(--red)}
+.cap{margin:28px 0 12px;color:#8e8b82;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.12em}
+.nav{display:grid;gap:2px}.nav button{display:flex;justify-content:space-between;align-items:center;padding:12px 0;color:#b9b5aa;font:11px/1 var(--mono);text-transform:uppercase;text-align:start}
+.nav button:hover,.nav button.on{color:var(--white)}.nav button.on span:first-child{border-bottom:1px solid var(--red);padding-bottom:3px}
+.nav small{color:#8e8b82}.badge{background:var(--red);color:#fff;border-radius:9px;padding:2px 7px;font:10px/1 var(--mono)}
+.rail-foot{margin-top:auto;color:#8e8b82;font:9px/1.5 var(--mono);text-transform:uppercase}
+.topbar{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 38px;border-bottom:1px solid var(--line)}
+.crumb{color:var(--muted);font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}.crumb strong{color:var(--ink);font-weight:500}
+.tact{display:flex;gap:16px;align-items:center;font:10px/1 var(--mono);text-transform:uppercase}.tact button:hover{color:var(--red)}
+.askbtn{border:1px solid var(--ink);padding:9px 14px;display:flex;gap:8px;align-items:center}.askbtn:hover{background:var(--ink);color:var(--white)!important}
+.main{padding:34px 38px 80px;max-width:1500px}
+h1.big{margin:0 0 6px;font:500 clamp(44px,5.4vw,84px)/.86 var(--display);letter-spacing:-.03em;text-transform:uppercase}h1.big span{color:var(--red)}
+.sub{color:var(--muted);font:11px/1.5 var(--mono);text-transform:uppercase;max-width:760px;margin:0 0 30px}
+.mh{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.mh h2{margin:0;font:500 24px/.95 var(--display);text-transform:uppercase}.mh .m{color:var(--muted);font:10px/1 var(--mono);text-transform:uppercase}
+.mod{margin-bottom:44px}
+.lnk{color:var(--red);font:10px/1 var(--mono);text-transform:uppercase}.lnk:hover{text-decoration:underline}
+.seg{display:inline-flex;border:1px solid var(--ink)}.seg button{padding:8px 14px;font:10px/1 var(--mono);text-transform:uppercase}.seg button.on{background:var(--ink);color:var(--white)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;font:10px/1.2 var(--mono);text-transform:uppercase;border:1px solid currentColor;white-space:nowrap}
+.chip.fill{color:#fff!important;border-color:transparent}
+.dark .chip[style*="#161613"],.dh .chip[style*="#161613"]{color:var(--white)!important}.dark .chip[style*="#161613"] .dot,.dh .chip[style*="#161613"] .dot{background:var(--white)!important}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+table{width:100%;border-collapse:collapse}th{padding:14px 8px 10px;color:var(--muted);text-align:start;font:9px/1 var(--mono);font-weight:400;text-transform:uppercase}
+td{padding:13px 8px;border-top:1px solid var(--line);font:11px/1.25 var(--mono);vertical-align:middle}td.n{font:700 13px var(--body)}td.n small{display:block;color:var(--muted);font:10px var(--mono);font-weight:400;margin-top:2px}
+tbody tr.row{cursor:pointer}tbody tr.row:hover{background:rgba(22,22,19,.04)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(320px,.8fr);gap:46px}
+.dark{background:var(--black);color:var(--white);padding:24px 24px 10px}.dark .mh{border-color:var(--dline)}.dark .mh h2{color:var(--white)}.dark .mh .m{color:#aaa69b}
+.btn{padding:9px 14px;border:1px solid var(--ink);font:10px/1 var(--mono);text-transform:uppercase}.btn:hover{background:var(--ink);color:var(--white)}
+.btn.red{background:var(--red);border-color:var(--red);color:#fff}.btn.red:hover{background:#8f3329}
+.btn.ghost-d{border-color:var(--dline);color:var(--white)}.btn.ghost-d:hover{background:var(--white);color:var(--ink)}
+.btn.sm{padding:7px 10px}
+/* distribution */
+.dist{display:flex;height:54px;border:1px solid var(--ink);margin:16px 0 8px}.dist button{display:flex;flex-direction:column;justify-content:center;align-items:center;color:#fff;font:500 20px/1 var(--display);transition:flex .3s}.dist button small{font:9px var(--mono);opacity:.85}.dist button:hover{filter:brightness(1.15)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font:10px var(--mono);text-transform:uppercase}
+/* focus rows */
+.frow{display:grid;grid-template-columns:42px 1fr auto;gap:14px;align-items:center;padding:16px 0;border-bottom:1px solid var(--line)}
+.ava{width:42px;height:42px;display:grid;place-items:center;background:var(--black);color:var(--white);font:500 15px var(--display);letter-spacing:.04em}
+.frow h3{margin:0 0 3px;font:500 20px/1 var(--display);text-transform:uppercase}.frow p{margin:0;color:var(--muted);font:10.5px/1.45 var(--mono)}.frow .why{color:var(--ink);margin-top:5px}
+.ai{display:inline-block;background:var(--black);color:var(--gold);font:9px/1 var(--mono);padding:3px 5px;margin-inline-end:6px;letter-spacing:.06em}
+.prow{padding:16px 0;border-bottom:1px solid var(--dline)}.prow h3{margin:0 0 4px;font:500 19px/1 var(--display);text-transform:uppercase}.prow p{margin:0 0 10px;color:#b9b5aa;font:10.5px/1.45 var(--mono)}.prow .acts{display:flex;gap:8px}
+.bars{display:grid;gap:12px;margin:14px 0 18px}.bar{display:grid;grid-template-columns:90px 1fr 70px;gap:10px;align-items:center;font:10px var(--mono);text-transform:uppercase}
+.track{height:10px;background:rgba(244,241,233,.12);position:relative}.track i{position:absolute;inset:0 auto 0 0;display:block}.track u{position:absolute;top:-3px;bottom:-3px;width:2px;background:#fff}
+[dir=rtl] .track i{inset:0 0 0 auto}
+.ask{display:flex;border:1px solid var(--ink);margin-top:10px}.ask input{flex:1;border:0;background:transparent;padding:13px 14px;outline:0;font:12px var(--mono)}.ask button{padding:0 16px;background:var(--ink);color:var(--white);font:10px var(--mono);text-transform:uppercase}
+.sug{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.sug button{border:1px solid var(--line);padding:6px 9px;font:10px var(--mono);color:var(--muted)}.sug button:hover{border-color:var(--ink);color:var(--ink)}
+/* before */
+.before{opacity:.95;border:1px dashed var(--red);padding:16px;position:relative}.before::after{content:attr(data-tag);position:absolute;top:-9px;inset-inline-start:12px;background:var(--paper);color:var(--red);padding:0 6px;font:9px var(--mono);text-transform:uppercase}
+/* board */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}.filters input[type=search]{border:1px solid var(--ink);background:transparent;padding:9px 12px;font:11px var(--mono);min-width:220px;outline:0}
+.fbtn{border:1px solid var(--line);padding:7px 10px;font:10px var(--mono);text-transform:uppercase}.fbtn.on{background:var(--ink);color:var(--white);border-color:var(--ink)}
+.matrix{display:grid;grid-template-columns:130px repeat(4,minmax(0,1fr));border:1px solid var(--ink);margin-bottom:26px;background:var(--card)}
+.mx-h{padding:12px 10px;background:var(--black);color:var(--white);font:10px/1.3 var(--mono);text-transform:uppercase}.mx-h b{display:block;font:500 15px var(--display);letter-spacing:.03em}
+.mx-r{padding:12px 10px;border-top:1px solid var(--line);font:10px/1.3 var(--mono);text-transform:uppercase;background:var(--card)}.mx-r b{display:block;font:500 17px var(--display)}
+.mx-c{border-top:1px solid var(--line);border-inline-start:1px solid var(--line);min-height:82px;padding:8px;display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start;position:relative;cursor:pointer;transition:background .2s}
+.mx-c:hover{background:rgba(164,125,67,.1)}.mx-c.sel{outline:2px solid var(--red);outline-offset:-2px;background:rgba(182,66,53,.07)}
+.mx-c .ct{position:absolute;top:4px;inset-inline-end:7px;color:var(--muted);font:10px var(--mono)}
+.pill{width:30px;height:30px;display:grid;place-items:center;font:500 11px var(--display);color:#fff;position:relative}.pill.sg::after{content:'';position:absolute;top:-3px;inset-inline-end:-3px;width:9px;height:9px;border-radius:50%;background:var(--gold);border:1.5px solid var(--card)}
+.urg{display:inline-block;width:64px;height:6px;background:var(--line);vertical-align:middle}.urg i{display:block;height:100%}
+.arrow.up{color:var(--green)}.arrow.down{color:var(--red)}.arrow.flat{color:var(--muted)}
+.bulk{position:sticky;bottom:14px;margin-top:14px;background:var(--black);color:var(--white);padding:12px 16px;display:none;gap:12px;align-items:center;font:10px var(--mono);text-transform:uppercase;z-index:5}.bulk.show{display:flex}
+.bulk select{background:transparent;color:var(--white);border:1px solid var(--dline);padding:6px;font:10px var(--mono)}.bulk option{color:#000}
+/* drawer */
+.ov{position:fixed;inset:0;background:rgba(17,17,15,.6);z-index:30;display:none}.ov.open{display:block}
+.drawer{position:fixed;top:0;bottom:0;inset-inline-end:0;width:min(640px,100%);background:var(--paper);z-index:31;overflow:auto;transform:translateX(105%);transition:transform .3s;border-inline-start:4px solid var(--red)}
+[dir=rtl] .drawer{transform:translateX(-105%)}.drawer.open{transform:none!important}
+.dh{background:var(--black);color:var(--white);padding:26px 28px 22px}.dh h2{margin:6px 0 4px;font:500 40px/.9 var(--display);text-transform:uppercase}.dh p{margin:0;color:#b9b5aa;font:11px var(--mono);text-transform:uppercase}
+.x{float:inset-inline-end;font:22px var(--display);color:var(--white)}
+.dsec{padding:20px 28px;border-bottom:1px solid var(--line)}.dsec h4{margin:0 0 12px;color:var(--muted);font:10px var(--mono);text-transform:uppercase;letter-spacing:.08em;display:flex;justify-content:space-between}
+.ladder{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}.ladder button{border:1px solid var(--line);padding:10px 4px 9px;text-align:center;position:relative;background:var(--card)}
+.ladder button b{display:block;font:500 20px var(--display)}.ladder button small{font:9px var(--mono);text-transform:uppercase;color:var(--muted)}
+.ladder button.cur{color:#fff;border-color:transparent}.ladder button.cur small{color:rgba(255,255,255,.85)}
+.ladder button.aim::after{content:'AI';position:absolute;top:-8px;inset-inline-start:50%;transform:translateX(-50%);background:var(--black);color:var(--gold);font:9px var(--mono);padding:2px 5px}
+.fseg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.fseg button{border:1px solid var(--line);padding:10px 4px;font:10px var(--mono);text-transform:uppercase;background:var(--card);position:relative}.fseg button.cur{color:#fff;border-color:transparent}
+.fseg button.aim::after{content:'AI';position:absolute;top:-8px;inset-inline-start:50%;transform:translateX(-50%);background:var(--black);color:var(--gold);font:9px var(--mono);padding:2px 5px}
+.fac{display:grid;grid-template-columns:110px 1fr 36px;gap:10px;align-items:center;margin:8px 0;font:10px var(--mono);text-transform:uppercase}.fac .tr{height:8px;background:var(--line)}.fac .tr i{display:block;height:100%;background:var(--ink)}
+.aibox{background:var(--black);color:var(--white);padding:18px 20px;font:12px/1.65 var(--body);position:relative}.aibox .t{color:var(--gold);font:9px var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between}
+.cur-blink::after{content:'▍';animation:bl 1s steps(2) infinite;color:var(--gold)}@keyframes bl{50%{opacity:0}}
+.ev{display:grid;gap:6px;margin-top:14px}.ev div{font:10.5px/1.4 var(--mono);color:#cbc6b9;padding-inline-start:12px;border-inline-start:2px solid var(--gold)}
+.tl{border-inline-start:1px solid var(--ink);margin-inline-start:5px}.tl div{padding:0 0 14px 14px;position:relative;font:10.5px/1.45 var(--mono)}[dir=rtl] .tl div{padding:0 14px 14px 0}
+.tl div::before{content:'';position:absolute;inset-inline-start:-4px;top:5px;width:7px;height:7px;background:var(--red);border-radius:50%}.tl b{font-family:var(--body)}
+.drawer textarea{width:100%;border:1px solid var(--ink);background:var(--card);padding:10px;font:11px var(--mono);min-height:62px;resize:vertical}
+.peers{display:flex;gap:6px;flex-wrap:wrap}
+/* triage */
+.tcard{display:grid;grid-template-columns:1fr auto;gap:20px;padding:22px 0;border-bottom:1px solid var(--line)}
+.tcard h3{margin:0;font:500 26px/1 var(--display);text-transform:uppercase}.tcard .mv{display:flex;align-items:center;gap:10px;margin:10px 0}
+.conf{display:inline-block;width:90px;height:6px;background:var(--line);vertical-align:middle;margin-inline:6px}.conf i{display:block;height:100%;background:var(--green)}
+.tcard p{margin:6px 0 0;font:11.5px/1.55 var(--body);max-width:640px}.tcard .ac{display:flex;flex-direction:column;gap:8px;min-width:130px}
+.empty{padding:60px 0;text-align:center;color:var(--muted);font:12px var(--mono);text-transform:uppercase}
+/* engine */
+.stages{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--ink);margin:18px 0 22px}
+.stg{padding:18px;border-inline-end:1px solid var(--line);background:var(--card);min-height:200px;position:relative}.stg:last-child{border:0}
+.stg small{color:var(--muted);font:9px var(--mono);text-transform:uppercase}.stg h3{margin:6px 0 10px;font:500 20px/1 var(--display);text-transform:uppercase}.stg .num{font:500 38px/1 var(--display)}.stg p{font:10.5px/1.5 var(--mono);color:var(--muted)}
+.stg .pg{position:absolute;bottom:0;inset-inline:0;height:4px;background:var(--line)}.stg .pg i{display:block;height:100%;width:0;background:var(--red);transition:width .2s}.stg.done{background:#eef0e6}.stg.done .pg i{background:var(--green)}
+.cost{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.cost div{border:1px solid var(--line);padding:14px;background:var(--card)}.cost b{display:block;font:500 28px var(--display)}.cost small{font:9px var(--mono);text-transform:uppercase;color:var(--muted)}
+/* calib */
+.cal{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:46px}
+.sl{display:grid;grid-template-columns:120px 1fr 44px;gap:12px;align-items:center;margin:14px 0;font:10px var(--mono);text-transform:uppercase}.sl input{accent-color:var(--red);width:100%}
+.imp{border:1px solid var(--ink);background:var(--card);padding:14px;margin-top:12px;font:11px/1.6 var(--mono)}.imp b{font:500 30px var(--display)}
+/* ask */
+.askov{position:fixed;inset:0;background:rgba(17,17,15,.72);z-index:40;display:none;place-items:start center;padding-top:9vh}.askov.open{display:grid}
+.askm{width:min(760px,94%);background:var(--paper);border-top:4px solid var(--red);max-height:80vh;overflow:auto}
+.askm .in{display:flex;border-bottom:1px solid var(--line)}.askm .in input{flex:1;border:0;background:transparent;padding:20px;font:16px var(--body);outline:0}
+.askm .res{padding:6px 22px 22px}.askm .ans{background:var(--black);color:var(--white);padding:16px 18px;margin:16px 0;font:12.5px/1.65 var(--body)}
+.toast{position:fixed;right:22px;bottom:22px;z-index:60;min-width:240px;padding:15px 18px;background:var(--black);color:var(--white);border-left:3px solid var(--red);font:11px/1.35 var(--mono);transform:translateY(20px);opacity:0;pointer-events:none;transition:.25s}.toast.show{transform:none;opacity:1}
+@media(max-width:1100px){.shell{grid-template-columns:64px 1fr}.rail span,.rail .cap,.rail-foot,.nav small,.brand span{display:none}.grid2,.cal{grid-template-columns:1fr}.stages{grid-template-columns:1fr 1fr}.cost{grid-template-columns:1fr 1fr}.main,.topbar{padding-inline:20px}.matrix{grid-template-columns:90px repeat(4,1fr);font-size:9px}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="brand"><b>BRIT</b><span> / SPORT GROUP</span></div>
+    <p class="cap" data-t="room"></p>
+    <nav class="nav" id="nav"></nav>
+    <div class="rail-foot">Mock · sample data<br>Men platform</div>
+  </aside>
+  <div>
+    <header class="topbar">
+      <div class="crumb" id="crumb"></div>
+      <div class="tact">
+        <button class="askbtn" onclick="openAsk()">✦ <span data-t="askAi"></span> <span style="opacity:.5">/</span></button>
+        <button onclick="toggleLang()" id="langbtn">HE / EN</button>
+        <span>TLV 14:45</span>
+      </div>
+    </header>
+    <main class="main" id="view"></main>
+  </div>
+</div>
+
+<div class="ov" id="ov" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer"></aside>
+<div class="askov" id="askov" onclick="if(event.target===this)closeAsk()"><div class="askm">
+  <div class="in"><span style="padding:20px 0 0 20px;color:var(--gold);font-size:20px">✦</span><input id="askin" placeholder="" onkeydown="if(event.key==='Enter')runAsk(this.value)"></div>
+  <div class="res" id="askres"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ i18n ============ */
+let lang='en';
+const D={
+en:{room:'Management room',dashboard:'Overview',board:'Level & Focus',triage:'AI inbox',engine:'Engine',calib:'Calibration',askAi:'Ask AI',
+ ph:'Ask: “who should I push this week?”',
+ level:'Level',focus:'Focus',traj:'Trend',urg:'Urgency',conf:'Confidence',player:'Player',club:'Club',pos:'Pos',age:'Age',value:'Value',
+ contract:'Contract',mandate:'Mandate',demand:'Open requests',touch:'Last touch',
+ roster_intel:'Roster intelligence',before:'Before — top 6 by value',after:'After — Level & Focus',
+ dist:'Level distribution',focusNow:'Focus now',needCall:'AI needs your call',attention:'Attention gaps',effort:'Effort vs. priority',
+ viewBoard:'Open board →',openInbox:'Open inbox →',accept:'Accept',dismiss:'Dismiss',adjust:'Adjust',open:'Open',
+ actual:'Actual',target:'Target',askPh:'Ask the roster anything…',
+ boardT:'Level & Focus board',boardS:'Skill level says who he is. Focus says how hard we push. Together they decide where your hours go.',
+ matrix:'Matrix',list:'List',all:'All',search:'Search player / club…',untouched:'Untouched 14d+',aiDiff:'AI disagrees',
+ triageT:'AI inbox',triageS:'The engine re-scores continuously. Anything that would change a level or focus lands here — you decide.',
+ acceptHigh:'Accept all ≥ 85% confidence',empty:'Inbox zero. The engine will tell you when something moves.',
+ engT:'Engine',engS:'How we tier a very large database without burning money: cheap maths on everyone, AI only where it matters.',
+ run:'Run nightly pipeline',universe:'Universe',s1:'Deterministic score',s2:'Candidate filter',s3:'Gemini analysis',s4:'Suggestions',
+ calT:'Calibration',calS:'Tune what “good” means. Every change is previewed against the live roster before you save it.',
+ wts:'Signal weights',thr:'Level thresholds (score ≥)',impact:'Live impact',save:'Save calibration',reset:'Reset',
+ overrideWhy:'Why are you overriding? (kept in history)',lock:'Lock — AI may suggest but never auto-moves',rerun:'Re-run AI analysis',
+ factors:'Signal breakdown',aiRead:'AI read',hist:'History',peers:'Same level, same position',saveChg:'Save',
+ months:'mo',days:'d',none:'—',signedOff:'Saved',
+ L1:'Elite',L2:'Premium',L3:'Core',L4:'Depth',L5:'Developing',
+ F1:'Push now',F2:'Active',F3:'Maintain',F4:'Park',
+ perf:'Output',fm:'Ability/FM',val:'Market value',lg:'League',form:'Form',
+ sel:'selected',setLevel:'Set level…',setFocus:'Set focus…',apply:'Apply'},
+he:{room:'חדר ניהול',dashboard:'סקירה',board:'רמה ופוקוס',triage:'תיבת AI',engine:'מנוע',calib:'כיול',askAi:'שאל AI',
+ ph:'שאל: ״על מי כדאי לדחוף השבוע?״',
+ level:'רמה',focus:'פוקוס',traj:'מגמה',urg:'דחיפות',conf:'ביטחון',player:'שחקן',club:'קבוצה',pos:'עמדה',age:'גיל',value:'שווי',
+ contract:'חוזה',mandate:'מנדט',demand:'בקשות פתוחות',touch:'קשר אחרון',
+ roster_intel:'מודיעין סגל',before:'לפני — 6 הגבוהים בשווי',after:'אחרי — רמה ופוקוס',
+ dist:'התפלגות רמות',focusNow:'פוקוס עכשיו',needCall:'ה־AI צריך החלטה שלך',attention:'פערי תשומת לב',effort:'מאמץ מול עדיפות',
+ viewBoard:'פתח לוח ←',openInbox:'פתח תיבה ←',accept:'אשר',dismiss:'דחה',adjust:'שנה',open:'פתח',
+ actual:'בפועל',target:'יעד',askPh:'שאל כל דבר על הסגל…',
+ boardT:'לוח רמה ופוקוס',boardS:'הרמה אומרת מי הוא. הפוקוס אומר כמה חזק אנחנו דוחפים. יחד הם מחליטים לאן הולכות השעות שלך.',
+ matrix:'מטריצה',list:'רשימה',all:'הכול',search:'חפש שחקן / קבוצה…',untouched:'ללא קשר 14+ ימים',aiDiff:'ה־AI חולק',
+ triageT:'תיבת AI',triageS:'המנוע מחשב מחדש ברציפות. כל מה שישנה רמה או פוקוס מגיע לכאן — אתה מחליט.',
+ acceptHigh:'אשר הכול עם ביטחון ≥ 85%',empty:'התיבה ריקה. המנוע יודיע כשמשהו זז.',
+ engT:'מנוע',engS:'איך מדרגים מאגר ענק בלי לשרוף כסף: חישוב זול על כולם, AI רק איפה שחשוב.',
+ run:'הרץ צינור לילי',universe:'היקום',s1:'ציון דטרמיניסטי',s2:'סינון מועמדים',s3:'ניתוח Gemini',s4:'הצעות',
+ calT:'כיול',calS:'כוונן מה זה ״טוב״. כל שינוי נבדק מול הסגל החי לפני שמירה.',
+ wts:'משקלי אותות',thr:'ספי רמה (ציון ≥)',impact:'השפעה חיה',save:'שמור כיול',reset:'איפוס',
+ overrideWhy:'למה אתה משנה? (נשמר בהיסטוריה)',lock:'נעילה — ה־AI יציע אך לא יזיז אוטומטית',rerun:'הרץ ניתוח AI מחדש',
+ factors:'פירוט אותות',aiRead:'קריאת AI',hist:'היסטוריה',peers:'אותה רמה, אותה עמדה',saveChg:'שמור',
+ months:'חו׳',days:'י׳',none:'—',signedOff:'נשמר',
+ L1:'עילית',L2:'פרימיום',L3:'ליבה',L4:'עומק',L5:'בפיתוח',
+ F1:'לדחוף עכשיו',F2:'פעיל',F3:'תחזוקה',F4:'מושהה',
+ perf:'תפוקה',fm:'יכולת/FM',val:'שווי שוק',lg:'ליגה',form:'פורמה',
+ sel:'נבחרו',setLevel:'קבע רמה…',setFocus:'קבע פוקוס…',apply:'החל'}};
+const T=k=>(D[lang][k]??D.en[k]??k);
+function applyT(){document.querySelectorAll('[data-t]').forEach(e=>e.textContent=T(e.dataset.t));document.getElementById('askin').placeholder=T('ph')}
+
+/* ============ data (sample / fictional) ============ */
+const LC={1:'#a47d43',2:'#5c6f4a',3:'#4a5f6f',4:'#77736a',5:'#b07a2b'};
+const FCOL={1:'#b64235',2:'#161613',3:'#77736a',4:'#b9b5aa'};
+let W={perf:30,fm:25,val:20,lg:10,form:15};
+const W0={...W};
+let TH={1:78,2:64,3:50,4:36};
+const TH0={...TH};
+const P=[
+{id:1,n:'Itai Sassoon',club:'Maccabi Haifa',pos:'CF',age:24,mv:3500,c:8,m:21,d:3,t:4,f:[88,84,86,70,90],lv:2,adj:0,tr:'up',fc:2,conf:91,
+ r:{en:'Output is top-5% among Ligat Ha’al forwards for two straight windows and market value has outrun his Level 2 tag. He now profiles as Elite for our market.',he:'התפוקה בטופ 5% בין החלוצים בליגת העל לשני חלונות רצופים, והשווי עבר את תג רמה 2. כעת הוא מתאים לרמת עילית בשוק שלנו.'}},
+{id:2,n:'Roi Dahan',club:'Hapoel Beer Sheva',pos:'RW',age:27,mv:1800,c:5,m:9,d:2,t:19,f:[74,70,72,60,72],lv:2,adj:0,tr:'flat',fc:2,conf:88,
+ r:{en:'Level is stable. Contract ends in 5 months and the mandate lapses in 9 days — urgency is driven by time, not by form.',he:'הרמה יציבה. החוזה מסתיים בעוד 5 חודשים והמנדט פג בעוד 9 ימים — הדחיפות נובעת מזמן, לא מפורמה.'}},
+{id:3,n:'Tomer Biton',club:'Beitar Jerusalem',pos:'CB',age:29,mv:900,c:14,m:120,d:0,t:31,f:[58,55,50,58,55],lv:3,adj:0,tr:'flat',fc:3,conf:84,
+ r:{en:'Solid starter, no catalyst. Maintain relationship, no extra hours.',he:'בלם פותח מוצק, ללא קטליזטור. לשמור על קשר בלי להשקיע שעות נוספות.'}},
+{id:4,n:'Lior Avraham',club:'Ashdod',pos:'GK',age:31,mv:450,c:4,m:15,d:1,t:12,f:[52,45,40,50,60],lv:3,adj:0,tr:'down',fc:2,conf:79,
+ r:{en:'Save-% and post-shot xG fell for 3 months. Deterministic score now sits under the Core line. Contract is short, so the question is whether to renew at all.',he:'אחוז הצלות ו־PSxG ירדו שלושה חודשים. הציון יורד מתחת לקו ה״ליבה״. החוזה קצר, אז השאלה אם בכלל לחדש.'}},
+{id:5,n:'Yonatan Peretz',club:'Maccabi Tel Aviv U21',pos:'CM',age:19,mv:700,c:30,m:200,d:1,t:8,f:[48,78,45,55,80],lv:3,adj:1,tr:'up',fc:3,conf:72,
+ r:{en:'Numbers say Core, but the ceiling is the story: FM potential far above current, strong youth-national minutes and a similar profile to two past sell-ons. AI lifts him one level on upside.',he:'המספרים אומרים ליבה, אבל הסיפור הוא התקרה: פוטנציאל FM גבוה בהרבה מהיכולת, דקות בנבחרות נוער ופרופיל דומה לשני שחקנים שנמכרו הלאה. ה־AI מעלה רמה אחת בגלל הפוטנציאל.'}},
+{id:6,n:'Dor Mizrahi',club:'Hapoel Jerusalem',pos:'LB',age:26,mv:1200,c:11,m:45,d:2,t:6,f:[66,62,60,62,66],lv:2,adj:0,tr:'flat',fc:2,conf:58,
+ r:{en:'Borderline between Premium and Core (score 63.4 vs line 64). Low confidence — worth a human look at video before changing anything.',he:'גבולי בין פרימיום לליבה (63.4 מול קו 64). ביטחון נמוך — כדאי עין אנושית על וידאו לפני שינוי.'}},
+{id:7,n:'Gal Kedem',club:'Bnei Sakhnin',pos:'ST',age:22,mv:250,c:20,m:null,d:0,t:40,f:[38,50,30,40,40],lv:4,adj:0,tr:'flat',fc:4,conf:86,
+ r:{en:'Depth profile, no mandate, no demand. Park until form or a request changes the picture.',he:'פרופיל עומק, ללא מנדט וללא ביקוש. להשהות עד ששינוי בפורמה או בקשה ישנו תמונה.'}},
+{id:8,n:'Amit Rosen',club:'Maccabi Netanya',pos:'DM',age:28,mv:2200,c:3,m:6,d:4,t:3,f:[80,72,78,68,78],lv:2,adj:0,tr:'up',fc:1,conf:93,
+ r:{en:'Four open club requests match him, contract ends in 3 months and the mandate in 6 days. Highest time-value on the roster.',he:'ארבע בקשות מועדונים פתוחות מתאימות לו, החוזה נגמר בעוד 3 חודשים והמנדט בעוד 6 ימים. הערך־בזמן הגבוה ביותר בסגל.'}},
+{id:9,n:'Shai Golan',club:'Hapoel Haifa',pos:'AM',age:25,mv:1500,c:16,m:60,d:1,t:22,f:[65,60,62,60,58],lv:3,adj:0,tr:'flat',fc:3,conf:81,
+ r:{en:'Consistent Core playmaker. Nothing time-critical; 22 days since last touch is the only flag.',he:'פלייסמייקר ליבה עקבי. אין דחיפות בזמן; רק 22 ימים ללא קשר.'}},
+{id:10,n:'Eden Ziv',club:'Maccabi Haifa',pos:'LW',age:21,mv:2800,c:24,m:150,d:2,t:9,f:[82,88,80,70,91],lv:1,adj:0,tr:'up',fc:2,conf:94,
+ r:{en:'Elite at 21: output, ability and value all aligned. Long contract means we pace the approach — Active, not Push.',he:'עילית בגיל 21: תפוקה, יכולת ושווי מתיישרים. חוזה ארוך מאפשר קצב — פעיל, לא דחיפה.'}},
+{id:11,n:'Nir Cohen',club:'Kiryat Shmona',pos:'CB',age:33,mv:300,c:6,m:30,d:0,t:55,f:[44,38,25,45,30],lv:4,adj:-1,tr:'down',fc:3,conf:76,
+ r:{en:'Age-33 centre-back, sharp decline in duels won and two injury spells. AI drops him a level; focus stays Maintain.',he:'בלם בן 33, ירידה חדה בדו־קרבות ושתי תקופות פציעה. ה־AI מוריד רמה; הפוקוס נשאר תחזוקה.'}},
+{id:12,n:'Omri Tal',club:'Hapoel Beer Sheva',pos:'RB',age:23,mv:1900,c:18,m:90,d:1,t:14,f:[72,68,70,72,70],lv:3,adj:0,tr:'up',fc:3,conf:85,
+ r:{en:'Two seasons of Premium-level output at a top-3 club; tag is a year out of date.',he:'שתי עונות ברמת פרימיום במועדון מצמרת; התג מיושן בשנה.'}},
+{id:13,n:'Yuval Haim',club:'Sektzia Ness Ziona',pos:'CF',age:20,mv:400,c:36,m:null,d:0,t:25,f:[38,66,38,42,55],lv:4,adj:0,tr:'up',fc:4,conf:70,
+ r:{en:'Depth today, rising FM potential. Watch list — revisit after 900 more minutes.',he:'עומק היום, פוטנציאל FM עולה. ברשימת מעקב — לחזור אחרי עוד 900 דקות.'}},
+{id:14,n:'Ben Levi',club:'Maccabi Tel Aviv',pos:'CF',age:30,mv:3000,c:9,m:3,d:2,t:2,f:[78,70,74,72,74],lv:2,adj:0,tr:'flat',fc:1,conf:90,
+ r:{en:'Mandate lapses in 3 days. Level is solid; the cost of inaction is now the whole story.',he:'המנדט פג בעוד 3 ימים. הרמה יציבה; מחיר חוסר הפעולה הוא כל הסיפור.'}},
+{id:15,n:'Ido Shamir',club:'Hapoel Acre',pos:'CM',age:27,mv:350,c:12,m:70,d:0,t:18,f:[50,48,40,40,50],lv:4,adj:0,tr:'flat',fc:4,conf:83,
+ r:{en:'Squad player in a weaker league. Parked until a request surfaces.',he:'שחקן סגל בליגה חלשה יותר. מושהה עד שתעלה בקשה.'}},
+{id:16,n:'Maor Azulay',club:'Hapoel Tel Aviv',pos:'GK',age:24,mv:800,c:22,m:110,d:1,t:10,f:[68,64,58,55,68],lv:3,adj:0,tr:'up',fc:3,conf:61,
+ r:{en:'Score 63.7 — a hair under Premium. Trend is up; likely to cross the line within a month.',he:'ציון 63.7 — בקושי מתחת לפרימיום. מגמה עולה; צפוי לחצות את הקו בתוך חודש.'}}
+];
+const HIST={};P.forEach(p=>{HIST[p.id]=[{d:'2026-08-02',a:'Joined roster',w:'System',l:p.lv}]});
+HIST[1].push({d:'2026-09-14',a:'Level set to L2 (Premium)',w:'Avi N.',l:2});
+HIST[2].push({d:'2026-09-30',a:'Focus raised to Active',w:'Avi N.',l:2});
+HIST[8].push({d:'2026-10-21',a:'AI flagged: 4th matching request',w:'Engine',l:2});
+const dismissed=new Set(), locked=new Set(), focusAI={}, selected=new Set();
+
+/* ============ engine maths ============ */
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function score(p){const s=Object.values(W).reduce((a,b)=>a+b,0)||1;return p.f.reduce((a,v,i)=>a+v*Object.values(W)[i],0)/s}
+function lvOf(s){return s>=TH[1]?1:s>=TH[2]?2:s>=TH[3]?3:s>=TH[4]?4:5}
+function baseLv(p){return lvOf(score(p))}
+function aiLv(p){return clamp(baseLv(p)-p.adj,1,5)}
+const LW={1:1,2:.85,3:.6,4:.35,5:.3};
+function urgency(p){
+  const time=Math.max(p.c<=4?95:p.c<=7?80:p.c<=12?55:20,p.m!=null?(p.m<=7?100:p.m<=30?75:p.m<=60?40:0):0);
+  const dem=Math.min(100,p.d*30), gap=Math.min(100,p.t*3), mom=p.tr==='up'?80:p.tr==='down'?30:50;
+  return Math.round(.38*time+.27*dem+.17*gap+.18*mom);
+}
+function aiFocus(p){const v=urgency(p)*.7+LW[aiLv(p)]*100*.3;return v>=62?1:v>=50?2:v>=39?3:4}
+function sugg(p){return !dismissed.has(p.id)&&!locked.has(p.id)&&(aiLv(p)!==p.lv||aiFocus(p)!==p.fc)}
+const sevScore=p=>Math.abs(aiLv(p)-p.lv)*2+Math.abs(aiFocus(p)-p.fc);
+
+/* ============ helpers ============ */
+const ini=n=>n.split(' ').map(x=>x[0]).join('');
+const mvF=k=>k>=1000?'€'+(k/1000).toFixed(k%1000?2:1).replace(/\.?0+$/,'')+'M':'€'+k+'K';
+const lvChip=(l,fill=true)=>`<span class="chip ${fill?'fill':''}" style="${fill?'background:'+LC[l]:'color:'+LC[l]}">L${l} · ${T('L'+l)}</span>`;
+const fcChip=(f)=>`<span class="chip" style="color:${FCOL[f]===FCOL[4]?'#77736a':FCOL[f]}"><i class="dot" style="background:${FCOL[f]}"></i>${T('F'+f)}</span>`;
+const arrow=t=>`<span class="arrow ${t}">${t==='up'?'▲':t==='down'?'▼':'●'}</span>`;
+const R=p=>p.r[lang];
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2300)}
+const byId=id=>P.find(p=>p.id===id);
+
+/* ============ router ============ */
+let view='dashboard', dashMode='after', boardMode='matrix', bf={q:'',lv:0,fc:0,untouched:false,aidiff:false,cell:null};
+const NAV=[['dashboard','01'],['board',''],['triage',''],['engine',''],['calib','']];
+function renderNav(){
+  const n=P.filter(sugg).length;
+  document.getElementById('nav').innerHTML=NAV.map(([k])=>`<button class="${view===k?'on':''}" onclick="go('${k}')"><span>${T(k)}</span>${k==='triage'?`<span class="badge">${n}</span>`:k==='board'?`<small>${P.length}</small>`:'<small></small>'}</button>`).join('');
+  document.getElementById('crumb').innerHTML=`BRIT / <strong>${T(view)}</strong> / 03 NOV 2026`;
+}
+function go(v,opts){view=v;if(opts)Object.assign(bf,opts);render();window.scrollTo(0,0)}
+function render(){renderNav();applyT();({dashboard:vDash,board:vBoard,triage:vTriage,engine:vEngine,calib:vCalib})[view]()}
+function toggleLang(){lang=lang==='en'?'he':'en';document.documentElement.lang=lang;document.documentElement.dir=lang==='he'?'rtl':'ltr';document.getElementById('langbtn').textContent=lang==='en'?'HE / EN':'EN / HE';render();if(openId)openDrawer(openId)}
+
+/* ============ DASHBOARD ============ */
+function vDash(){
+  const el=document.getElementById('view');
+  const oldRows=[...P].sort((a,b)=>b.mv-a.mv).slice(0,6).map(p=>`<tr><td class="n">${p.n}</td><td>${p.club}</td><td>${p.pos}</td><td style="text-align:end">${mvF(p.mv)}</td></tr>`).join('');
+  const counts=[1,2,3,4,5].map(l=>P.filter(p=>p.lv===l).length);
+  const total=P.length;
+  const dist=counts.map((c,i)=>`<button style="flex:${c||.0001};background:${LC[i+1]};${c?'':'display:none'}" onclick="go('board',{lv:${i+1},fc:0,cell:null,q:'',untouched:false,aidiff:false})"><span>${c}</span><small>L${i+1} ${T('L'+(i+1))}</small></button>`).join('');
+  const focusNow=P.filter(p=>p.fc===1||(aiFocus(p)===1&&!locked.has(p.id))).sort((a,b)=>urgency(b)-urgency(a)).slice(0,4);
+  const sg=P.filter(sugg).sort((a,b)=>sevScore(b)-sevScore(a));
+  const gaps=P.filter(p=>p.fc<=2&&p.t>=14).sort((a,b)=>b.t-a.t);
+  // effort vs priority: touches share (mock = recency-weighted), target = by focus
+  const grp=f=>P.filter(p=>p.fc===f);
+  const target={1:45,2:30,3:15,4:10};
+  const act={1:22,2:41,3:24,4:13};
+  const eff=[1,2,3,4].map(f=>`<div class="bar"><span>${T('F'+f)}</span><div class="track"><i style="width:${act[f]}%;background:${FCOL[f]===FCOL[2]?'#f4f1e9':FCOL[f]}"></i><u style="inset-inline-start:${target[f]}%"></u></div><span>${act[f]}% / ${target[f]}%</span></div>`).join('');
+  el.innerHTML=`
+  <h1 class="big">${lang==='en'?'Good<br><span>afternoon.</span>':'צהריים<br><span>טובים.</span>'}</h1>
+  <p class="sub">${lang==='en'?'Men platform · 16 managed players · window closes in 58 days':'פלטפורמת גברים · 16 שחקנים מנוהלים · החלון נסגר בעוד 58 יום'}</p>
+  <section class="mod">
+    <div class="mh"><h2>${T('roster_intel')}</h2>
+      <div class="seg"><button class="${dashMode==='before'?'on':''}" onclick="dashMode='before';vDash()">${lang==='en'?'Before':'לפני'}</button><button class="${dashMode==='after'?'on':''}" onclick="dashMode='after';vDash()">${lang==='en'?'After':'אחרי'}</button></div>
+    </div>
+    ${dashMode==='before'?`
+      <div class="before" data-tag="${T('before')}" style="margin-top:22px"><table><thead><tr><th>${T('player')}</th><th>${T('club')}</th><th>${T('pos')}</th><th style="text-align:end">${T('value')}</th></tr></thead><tbody>${oldRows}</tbody></table>
+      <p style="font:11px var(--mono);color:var(--muted);margin:14px 0 0">${lang==='en'?'Static list of the six most valuable players. No decision can be made from this.':'רשימה סטטית של ששת השחקנים היקרים ביותר. אי אפשר לקבל מזה שום החלטה.'}</p></div>`
+    :`
+    <div class="grid2" style="margin-top:20px">
+      <div>
+        <div class="m" style="color:var(--muted);font:10px var(--mono);text-transform:uppercase">${T('dist')} · ${total}</div>
+        <div class="dist">${dist}</div>
+        <div class="legend">${[1,2,3,4,5].map(l=>`<span><i class="dot" style="background:${LC[l]}"></i> L${l} ${T('L'+l)}</span>`).join('')}</div>
+        <div class="mh" style="margin-top:34px"><h2 style="font-size:20px">${T('focusNow')}</h2><button class="lnk" onclick="go('board',{fc:1,lv:0,cell:null,q:'',untouched:false,aidiff:false})">${T('viewBoard')}</button></div>
+        ${focusNow.map(p=>`<div class="frow"><div class="ava">${ini(p.n)}</div><div><h3>${p.n}</h3><p>${p.pos} · ${p.age} · ${p.club} · ${mvF(p.mv)}</p><p class="why"><span class="ai">AI</span>${R(p).split('.')[0]}.</p></div><div style="text-align:end;display:grid;gap:6px;justify-items:end">${lvChip(p.lv)}${fcChip(aiFocus(p)===1?1:p.fc)}<button class="lnk" onclick="openDrawer(${p.id})">${T('open')} →</button></div></div>`).join('')}
+        <div class="ask"><input id="dashask" placeholder="${T('askPh')}" onkeydown="if(event.key==='Enter')openAsk(this.value)"><button onclick="openAsk(document.getElementById('dashask').value)">✦ ${T('askAi')}</button></div>
+        <div class="sug">${sampleQs().map(q=>`<button onclick="openAsk('${q.replace(/'/g,"\\'")}')">${q}</button>`).join('')}</div>
+      </div>
+      <div>
+        <section class="dark mod">
+          <div class="mh"><h2>${T('needCall')}</h2><span class="m">${sg.length}</span></div>
+          ${sg.length?sg.slice(0,3).map(p=>prow(p)).join(''):`<div class="empty" style="color:#aaa69b">${T('empty')}</div>`}
+          <div style="padding:14px 0"><button class="lnk" style="color:var(--gold)" onclick="go('triage')">${T('openInbox')}</button></div>
+        </section>
+        <section class="mod">
+          <div class="mh"><h2 style="font-size:20px">${T('attention')}</h2><span class="m">${gaps.length}</span></div>
+          ${gaps.slice(0,4).map(p=>`<div class="frow" style="grid-template-columns:1fr auto;padding:12px 0;cursor:pointer" onclick="openDrawer(${p.id})"><div><h3 style="font-size:17px">${p.n}</h3><p>${fcChip(p.fc)} · ${p.t}${T('days')} ${lang==='en'?'since last touch':'ללא קשר'}</p></div><span class="lnk">${T('open')} →</span></div>`).join('')}
+        </section>
+        <section class="dark mod" style="padding-bottom:18px">
+          <div class="mh"><h2 style="font-size:20px">${T('effort')}</h2><span class="m">${lang==='en'?'last 30 days':'30 ימים אחרונים'}</span></div>
+          <div class="bars">${eff}</div>
+          <p style="margin:0;color:#b9b5aa;font:10.5px/1.5 var(--mono)"><span class="ai">AI</span>${lang==='en'?'Only 22% of your effort went to Push-now players; the target is 45%. 41% went to Active.':'רק 22% מהמאמץ הלך לשחקני ״לדחוף עכשיו״; היעד הוא 45%. 41% הלכו לפעילים.'}</p>
+        </section>
+      </div>
+    </div>`}
+  </section>`;
+}
+function sampleQs(){return lang==='en'?['Who should I push this week?','Core players expiring in 6 months','Anyone drifting down?','Untouched Premium players']:['על מי לדחוף השבוע?','שחקני ליבה שהחוזה שלהם נגמר בחצי שנה','מי בירידה?','שחקני פרימיום ללא קשר']}
+function prow(p){
+  const a=aiLv(p),fa=aiFocus(p);
+  return `<div class="prow"><h3>${p.n}</h3>
+   <p>${a!==p.lv?`${lvChip(p.lv,false)} → ${lvChip(a)}`:`${T('L'+p.lv)}`} ${fa!==p.fc?` · ${fcChip(p.fc)} → ${fcChip(fa)}`:''}</p>
+   <p style="color:#e5e0d3">${R(p).split('.')[0]}.</p>
+   <div class="acts"><button class="btn sm ghost-d" onclick="accept(${p.id})">${T('accept')}</button><button class="btn sm ghost-d" onclick="openDrawer(${p.id})">${T('adjust')}</button><button class="btn sm ghost-d" onclick="dismissS(${p.id})">${T('dismiss')}</button></div></div>`;
+}
+
+/* ============ BOARD ============ */
+function filtered(){
+  return P.filter(p=>{
+    if(bf.q&&!(p.n+' '+p.club).toLowerCase().includes(bf.q.toLowerCase()))return false;
+    if(bf.lv&&p.lv!==bf.lv)return false;
+    if(bf.fc&&p.fc!==bf.fc)return false;
+    if(bf.untouched&&p.t<14)return false;
+    if(bf.aidiff&&!(aiLv(p)!==p.lv||aiFocus(p)!==p.fc))return false;
+    return true;
+  }).sort((a,b)=>a.lv-b.lv||a.fc-b.fc);
+}
+function vBoard(){
+  const el=document.getElementById('view');
+  const rows=filtered();
+  const cell=(l,f)=>{const ps=P.filter(p=>p.lv===l&&p.fc===f);const sel=bf.lv===l&&bf.fc===f;
+    return `<div class="mx-c ${sel?'sel':''}" onclick="cellClick(${l},${f})"><span class="ct">${ps.length||''}</span>${ps.map(p=>`<span class="pill ${sugg(p)?'sg':''}" style="background:${LC[l]}" title="${p.n}" onclick="event.stopPropagation();openDrawer(${p.id})">${ini(p.n)}</span>`).join('')}</div>`};
+  const mx=`<div class="matrix"><div class="mx-h"></div>${[1,2,3,4].map(f=>`<div class="mx-h" style="border-top:3px solid ${FCOL[f]}"><b>F${f} · ${T('F'+f)}</b></div>`).join('')}
+   ${[1,2,3,4,5].map(l=>`<div class="mx-r" style="border-inline-start:4px solid ${LC[l]}"><b>L${l}</b>${T('L'+l)}</div>${[1,2,3,4].map(f=>cell(l,f)).join('')}`).join('')}</div>`;
+  el.innerHTML=`<h1 class="big">${T('boardT').replace(' & ',' &<br><span>')}${lang==='en'?'</span>':''}</h1><p class="sub">${T('boardS')}</p>
+  <div class="filters">
+    <input type="search" placeholder="${T('search')}" value="${bf.q}" oninput="bf.q=this.value;vBoardList()" id="bq">
+    <div class="seg"><button class="${boardMode==='matrix'?'on':''}" onclick="boardMode='matrix';vBoard()">${T('matrix')}</button><button class="${boardMode==='list'?'on':''}" onclick="boardMode='list';vBoard()">${T('list')}</button></div>
+    <span style="width:8px"></span>
+    ${[0,1,2,3,4,5].map(l=>`<button class="fbtn ${bf.lv===l?'on':''}" onclick="bf.lv=${l};bf.cell=null;vBoard()">${l?'L'+l:T('all')+' '+T('level')}</button>`).join('')}
+    <span style="width:8px"></span>
+    ${[0,1,2,3,4].map(f=>`<button class="fbtn ${bf.fc===f?'on':''}" onclick="bf.fc=${f};bf.cell=null;vBoard()">${f?T('F'+f):T('all')+' '+T('focus')}</button>`).join('')}
+    <button class="fbtn ${bf.untouched?'on':''}" onclick="bf.untouched=!bf.untouched;vBoard()">${T('untouched')}</button>
+    <button class="fbtn ${bf.aidiff?'on':''}" onclick="bf.aidiff=!bf.aidiff;vBoard()">✦ ${T('aiDiff')}</button>
+  </div>
+  ${boardMode==='matrix'?mx:''}
+  <div id="blist"></div>
+  <div class="bulk ${selected.size?'show':''}" id="bulk"></div>`;
+  vBoardList();
+}
+function cellClick(l,f){if(bf.lv===l&&bf.fc===f){bf.lv=0;bf.fc=0}else{bf.lv=l;bf.fc=f}vBoard()}
+function vBoardList(){
+  const rows=filtered();
+  document.getElementById('blist').innerHTML=`<table><thead><tr><th></th><th>${T('player')}</th><th>${T('pos')}/${T('age')}</th><th>${T('value')}</th><th>${T('level')}</th><th>${T('traj')}</th><th>${T('focus')}</th><th>${T('urg')}</th><th>${T('contract')}</th><th>${T('touch')}</th></tr></thead><tbody>
+  ${rows.map(p=>{const a=aiLv(p),fa=aiFocus(p),u=urgency(p);
+   return `<tr class="row" onclick="openDrawer(${p.id})"><td onclick="event.stopPropagation()"><input type="checkbox" ${selected.has(p.id)?'checked':''} onchange="selToggle(${p.id},this.checked)"></td>
+   <td class="n">${p.n}<small>${p.club}</small></td><td>${p.pos} · ${p.age}</td><td>${mvF(p.mv)}</td>
+   <td>${lvChip(p.lv)} ${a!==p.lv&&!locked.has(p.id)&&!dismissed.has(p.id)?`<span class="ai" title="AI">AI→L${a}</span>`:''}</td>
+   <td>${arrow(p.tr)}</td><td>${fcChip(p.fc)} ${fa!==p.fc&&!locked.has(p.id)&&!dismissed.has(p.id)?`<span class="ai">AI→F${fa}</span>`:''}</td>
+   <td><span class="urg"><i style="width:${u}%;background:${u>=65?'var(--red)':u>=45?'var(--amber)':'var(--muted)'}"></i></span> ${u}</td>
+   <td>${p.c}${T('months')}${p.m!=null?` · <span style="color:${p.m<=14?'var(--red)':'inherit'}">${p.m}${T('days')} ${T('mandate').toLowerCase()}</span>`:''}</td>
+   <td style="color:${p.t>=14&&p.fc<=2?'var(--red)':'inherit'}">${p.t}${T('days')}</td></tr>`}).join('')||`<tr><td colspan="10" class="empty">—</td></tr>`}
+  </tbody></table>`;
+  const b=document.getElementById('bulk');if(b){b.className='bulk '+(selected.size?'show':'');
+   b.innerHTML=`<span>${selected.size} ${T('sel')}</span><select id="bl"><option value="">${T('setLevel')}</option>${[1,2,3,4,5].map(l=>`<option value="${l}">L${l} ${T('L'+l)}</option>`).join('')}</select><select id="bf"><option value="">${T('setFocus')}</option>${[1,2,3,4].map(f=>`<option value="${f}">${T('F'+f)}</option>`).join('')}</select><button class="btn sm ghost-d" onclick="bulkApply()">${T('apply')}</button>`}
+}
+function selToggle(id,on){on?selected.add(id):selected.delete(id);vBoardList()}
+function bulkApply(){const l=+document.getElementById('bl').value,f=+document.getElementById('bf').value;
+  selected.forEach(id=>{const p=byId(id);if(l&&l!==p.lv){HIST[id].push({d:'2026-11-03',a:`Level L${p.lv} → L${l} (bulk)`,w:'You',l});p.lv=l}if(f&&f!==p.fc){HIST[id].push({d:'2026-11-03',a:`Focus F${p.fc} → F${f} (bulk)`,w:'You',l:p.lv});p.fc=f}});
+  toast(`${selected.size} ${T('signedOff')}`);selected.clear();vBoard();renderNav()}
+
+/* ============ DRAWER ============ */
+let openId=null;
+function openDrawer(id){
+  openId=id;const p=byId(id),a=aiLv(p),fa=aiFocus(p),sc=score(p).toFixed(1),u=urgency(p);
+  const names=['perf','fm','val','lg','form'];
+  const ev=[`${T('perf')}: ${p.f[0]}/100 ${lang==='en'?'(percentile vs. same position, league-adjusted)':'(אחוזון מול אותה עמדה, מתואם ליגה)'}`,
+    `${T('fm')}: ${p.f[1]}/100 · FM CA/PA ${lang==='en'?'index':'אינדקס'}`,
+    `${lang==='en'?'Contract':'חוזה'}: ${p.c}${T('months')}${p.m!=null?` · ${T('mandate')}: ${p.m}${T('days')}`:''}`,
+    `${T('demand')}: ${p.d} ${lang==='en'?'matching club requests':'בקשות מועדונים מתאימות'}`];
+  const peers=P.filter(x=>x.id!==id&&x.lv===p.lv&&x.pos===p.pos);
+  const dr=document.getElementById('drawer');
+  dr.innerHTML=`
+  <div class="dh"><button class="x" onclick="closeDrawer()">×</button>
+    <p>${p.pos} · ${p.age} · ${p.club}</p><h2>${p.n}</h2><p>${mvF(p.mv)} · ${lang==='en'?'contract':'חוזה'} ${p.c}${T('months')}</p>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">${lvChip(p.lv)} ${fcChip(p.fc)} <span class="chip" style="color:#b9b5aa">${T('traj')}: ${arrow(p.tr)}</span> <span class="chip" style="color:var(--gold)">${T('urg')} ${u}</span></div></div>
+  <div class="dsec"><h4><span>${T('level')}</span><span>${lang==='en'?'score':'ציון'} ${sc}</span></h4>
+    <div class="ladder">${[1,2,3,4,5].map(l=>`<button class="${p.lv===l?'cur':''} ${a===l&&a!==p.lv?'aim':''}" style="${p.lv===l?'background:'+LC[l]:''}" onclick="setLv(${id},${l})"><b>L${l}</b><small>${T('L'+l)}</small></button>`).join('')}</div>
+    <h4 style="margin-top:20px"><span>${T('focus')}</span></h4>
+    <div class="fseg">${[1,2,3,4].map(f=>`<button class="${p.fc===f?'cur':''} ${fa===f&&fa!==p.fc?'aim':''}" style="${p.fc===f?'background:'+FCOL[f]:''}" onclick="setFc(${id},${f})">${T('F'+f)}</button>`).join('')}</div>
+    <label style="display:flex;gap:8px;align-items:center;margin-top:16px;font:10.5px var(--mono)"><input type="checkbox" ${locked.has(id)?'checked':''} onchange="this.checked?locked.add(${id}):locked.delete(${id});renderNav()"> ${T('lock')}</label>
+  </div>
+  <div class="dsec"><h4><span>✦ ${T('aiRead')}</span><span>${T('conf')} ${p.conf}%</span></h4>
+    <div class="aibox"><div class="t"><span>GEMINI 2.5 · ${lang==='en'?'GROUNDED ON YOUR DATA':'מבוסס על הנתונים שלך'}</span><button class="lnk" style="color:var(--gold)" onclick="rerun(${id})">${T('rerun')}</button></div>
+      <div id="aitext">${R(p)}</div>
+      <div class="ev">${ev.map(e=>`<div>${e}</div>`).join('')}</div></div>
+  </div>
+  <div class="dsec"><h4><span>${T('factors')}</span><span>${lang==='en'?'weighted':'משוקלל'}</span></h4>
+    ${names.map((k,i)=>`<div class="fac"><span>${T(k)}</span><div class="tr"><i style="width:${p.f[i]}%"></i></div><span>${p.f[i]}</span></div>`).join('')}
+    ${p.adj?`<div class="fac"><span>✦ ${lang==='en'?'AI adjust':'התאמת AI'}</span><div style="font:10.5px var(--mono)">${p.adj>0?'+1':'−1'} ${lang==='en'?'level (max ±1, always explained)':'רמה (מקס׳ ±1, תמיד מוסבר)'}</div><span></span></div>`:''}
+  </div>
+  <div class="dsec"><h4><span>${T('overrideWhy')}</span></h4><textarea id="why" placeholder="…"></textarea></div>
+  <div class="dsec"><h4><span>${T('peers')}</span></h4><div class="peers">${peers.map(x=>`<span class="pill" style="background:${LC[x.lv]};cursor:pointer" title="${x.n}" onclick="openDrawer(${x.id})">${ini(x.n)}</span>`).join('')||'—'}</div></div>
+  <div class="dsec"><h4><span>${T('hist')}</span></h4><div class="tl">${[...HIST[id]].reverse().map(h=>`<div><b>${h.a}</b><br><span style="color:var(--muted)">${h.d} · ${h.w}</span></div>`).join('')}</div></div>`;
+  document.getElementById('ov').classList.add('open');dr.classList.add('open');
+}
+function closeDrawer(){openId=null;document.getElementById('ov').classList.remove('open');document.getElementById('drawer').classList.remove('open')}
+function setLv(id,l){const p=byId(id);if(l===p.lv)return;const w=(document.getElementById('why')||{}).value;
+  HIST[id].push({d:'2026-11-03',a:`Level L${p.lv} → L${l}${w?` — “${w}”`:''}`,w:'You',l});p.lv=l;dismissed.delete(id);toast(`${p.n}: L${l} ${T('L'+l)}`);openDrawer(id);renderNav()}
+function setFc(id,f){const p=byId(id);if(f===p.fc)return;const w=(document.getElementById('why')||{}).value;
+  HIST[id].push({d:'2026-11-03',a:`Focus ${T('F'+p.fc)} → ${T('F'+f)}${w?` — “${w}”`:''}`,w:'You',l:p.lv});p.fc=f;toast(`${p.n}: ${T('F'+f)}`);openDrawer(id);renderNav()}
+function rerun(id){const p=byId(id),el=document.getElementById('aitext'),txt=R(p);el.textContent='';el.classList.add('cur-blink');let i=0;
+  const iv=setInterval(()=>{i+=3;el.textContent=txt.slice(0,i);if(i>=txt.length){clearInterval(iv);el.classList.remove('cur-blink');toast(lang==='en'?'Analysis refreshed · 4 sources':'הניתוח רוענן · 4 מקורות')}},18)}
+
+/* ============ TRIAGE ============ */
+function accept(id){const p=byId(id),a=aiLv(p),fa=aiFocus(p);
+  if(a!==p.lv){HIST[id].push({d:'2026-11-03',a:`Level L${p.lv} → L${a} (accepted AI)`,w:'You + Engine',l:a});p.lv=a}
+  if(fa!==p.fc){HIST[id].push({d:'2026-11-03',a:`Focus ${T('F'+p.fc)} → ${T('F'+fa)} (accepted AI)`,w:'You + Engine',l:p.lv});p.fc=fa}
+  toast(`${p.n} ✓`);render()}
+function dismissS(id){dismissed.add(id);toast(lang==='en'?'Dismissed — engine will not re-suggest until data changes':'נדחה — המנוע לא יציע שוב עד שינוי בנתונים');render()}
+function vTriage(){
+  const el=document.getElementById('view'),sg=P.filter(sugg).sort((a,b)=>sevScore(b)-sevScore(a));
+  el.innerHTML=`<h1 class="big">${lang==='en'?'AI <span>inbox</span>':'תיבת <span>AI</span>'}</h1><p class="sub">${T('triageS')}</p>
+  <div class="mh"><h2>${sg.length} ${lang==='en'?'pending':'ממתינים'}</h2><button class="btn" onclick="acceptHigh()">${T('acceptHigh')}</button></div>
+  ${sg.map(p=>{const a=aiLv(p),fa=aiFocus(p);return `<div class="tcard"><div>
+    <h3>${p.n} <span style="font:11px var(--mono);color:var(--muted)">${p.pos} · ${p.age} · ${p.club}</span></h3>
+    <div class="mv">${a!==p.lv?`${lvChip(p.lv,false)} <b>→</b> ${lvChip(a)}`:lvChip(p.lv)} ${fa!==p.fc?`<span style="width:10px"></span>${fcChip(p.fc)} <b>→</b> ${fcChip(fa)}`:''}
+      <span style="font:10px var(--mono);color:var(--muted)">${T('conf')}<span class="conf"><i style="width:${p.conf}%"></i></span>${p.conf}%</span></div>
+    <p><span class="ai">AI</span>${R(p)}</p></div>
+    <div class="ac"><button class="btn red" onclick="accept(${p.id})">${T('accept')}</button><button class="btn" onclick="openDrawer(${p.id})">${T('adjust')}</button><button class="btn" onclick="dismissS(${p.id})">${T('dismiss')}</button></div></div>`}).join('')||`<div class="empty">${T('empty')}</div>`}`;
+}
+function acceptHigh(){const hi=P.filter(sugg).filter(p=>p.conf>=85);hi.forEach(p=>{const a=aiLv(p),fa=aiFocus(p);if(a!==p.lv){HIST[p.id].push({d:'2026-11-03',a:`Level L${p.lv} → L${a} (batch accept)`,w:'You + Engine',l:a});p.lv=a}if(fa!==p.fc){p.fc=fa}});toast(`${hi.length} ✓`);render()}
+
+/* ============ ENGINE ============ */
+let engRun=false;
+function vEngine(){
+  const el=document.getElementById('view');
+  const st=[['s1','48,213','All scouted + roster + shortlist. Weighted maths on stats, FM CA/PA, value, league coefficient. No AI cost.','$0'],['s2','1,184','Roster, shortlist, mandate targets, open-request matches, borderline scores, big movers.','$0'],['s3','1,184','Gemini reads stats + notes + highlights, returns JSON: ±1 level adjust, trend, reason EN/HE, confidence.','~$1.20'],['s4','38','Only deltas that change a level or focus reach a human. Everything else updates silently.','—']];
+  el.innerHTML=`<h1 class="big">${lang==='en'?'The <span>engine</span>':'ה<span>מנוע</span>'}</h1><p class="sub">${T('engS')}</p>
+  <div class="mh"><h2>${lang==='en'?'Nightly pipeline':'צינור לילי'}</h2><button class="btn red" id="runb" onclick="runEngine()">▶ ${T('run')}</button></div>
+  <div class="stages" id="stages">${st.map((s,i)=>`<div class="stg" id="stg${i}"><small>0${i+1}</small><h3>${T(s[0])}</h3><div class="num" id="n${i}">${s[1]}</div><p>${s[2]}</p><p style="color:var(--ink)">${lang==='en'?'Cost':'עלות'}: ${s[3]}</p><div class="pg"><i></i></div></div>`).join('')}</div>
+  <div class="mh"><h2>${T('universe')}</h2><span class="m">${lang==='en'?'who gets scored, how often':'מי מקבל ציון, באיזו תדירות'}</span></div>
+  <table><thead><tr><th>${lang==='en'?'Population':'אוכלוסייה'}</th><th>${lang==='en'?'Size':'גודל'}</th><th>${lang==='en'?'Stage 1':'שלב 1'}</th><th>${lang==='en'?'Gemini':'Gemini'}</th><th>${lang==='en'?'Who sees it':'מי רואה'}</th></tr></thead><tbody>
+   <tr><td class="n">Roster (Players)</td><td>42</td><td>${lang==='en'?'daily + on every data change':'יומי + בכל שינוי נתונים'}</td><td>${lang==='en'?'always':'תמיד'}</td><td>${lang==='en'?'Dashboard, inbox, board':'דשבורד, תיבה, לוח'}</td></tr>
+   <tr><td class="n">Shortlist</td><td>188</td><td>${lang==='en'?'daily':'יומי'}</td><td>${lang==='en'?'weekly':'שבועי'}</td><td>${lang==='en'?'Shortlist badge, board':'תג ברשימת מעקב, לוח'}</td></tr>
+   <tr><td class="n">ScoutProfiles</td><td>48,213</td><td>${lang==='en'?'weekly (after scout build)':'שבועי (אחרי בניית סקאוט)'}</td><td>${lang==='en'?'only top 2% + borderline':'רק 2% עליונים + גבוליים'}</td><td>${lang==='en'?'AI Scout / War Room filter by Level':'AI Scout / חדר מלחמה — סינון לפי רמה'}</td></tr>
+   <tr><td class="n">Transfer Radar</td><td>31,870</td><td>${lang==='en'?'on demand':'לפי דרישה'}</td><td>${lang==='en'?'on open':'בפתיחה'}</td><td>${lang==='en'?'Radar cards':'כרטיסי רדאר'}</td></tr></tbody></table>
+  <div class="mh" style="margin-top:40px"><h2>${lang==='en'?'Guard-rails':'מעקות בטיחות'}</h2></div>
+  <div class="cost"><div><b>±1</b><small>${lang==='en'?'max AI level change':'שינוי רמה מקסימלי של AI'}</small></div><div><b>0</b><small>${lang==='en'?'auto-writes to confirmed tags':'כתיבות אוטומטיות לתגים מאושרים'}</small></div><div><b>100%</b><small>${lang==='en'?'changes with reason + history':'שינויים עם סיבה והיסטוריה'}</small></div><div><b>🔒</b><small>${lang==='en'?'per-player lock':'נעילה לשחקן'}</small></div></div>`;
+}
+function runEngine(){if(engRun)return;engRun=true;const b=document.getElementById('runb');b.textContent='…';
+  const stg=[...document.querySelectorAll('.stg')];stg.forEach(s=>s.classList.remove('done'));let i=0;
+  (function step(){ if(i>=stg.length){engRun=false;b.textContent='▶ '+T('run');toast(lang==='en'?'Pipeline done · 38 new suggestions':'הצינור הסתיים · 38 הצעות חדשות');return}
+   const s=stg[i],bar=s.querySelector('.pg i');let w=0;const iv=setInterval(()=>{w+=8;bar.style.width=Math.min(w,100)+'%';if(w>=100){clearInterval(iv);s.classList.add('done');i++;step()}},70)})()}
+
+/* ============ CALIBRATION ============ */
+let calSnapshot=null;
+function vCalib(){
+  const el=document.getElementById('view');
+  if(!calSnapshot)calSnapshot=P.map(p=>({id:p.id,l:aiLv(p)}));
+  const keys=['perf','fm','val','lg','form'];
+  el.innerHTML=`<h1 class="big">${lang==='en'?'Cali<span>bration</span>':'<span>כיול</span>'}</h1><p class="sub">${T('calS')}</p>
+  <div class="cal"><div>
+    <div class="mh"><h2>${T('wts')}</h2><span class="m" id="wsum"></span></div>
+    <div style="margin:10px 0 0"><span style="font:10px var(--mono);color:var(--muted)">${lang==='en'?'PRESET':'תבנית'}</span>
+      <select id="preset" onchange="preset(this.value)" style="margin-inline-start:8px;border:1px solid var(--ink);background:transparent;padding:6px;font:10px var(--mono)"><option value="def">Default</option><option value="fw">Forwards — output-heavy</option><option value="gk">Goalkeepers — form-heavy</option><option value="yo">Youth — potential-heavy</option></select></div>
+    ${keys.map(k=>`<div class="sl"><span>${T(k)}</span><input type="range" min="0" max="50" value="${W[k]}" oninput="W['${k}']=+this.value;calUpd()"><span id="w_${k}">${W[k]}</span></div>`).join('')}
+    <div class="mh" style="margin-top:30px"><h2>${T('thr')}</h2></div>
+    ${[1,2,3,4].map(l=>`<div class="sl"><span>L${l} ${T('L'+l)}</span><input type="range" min="20" max="95" value="${TH[l]}" oninput="TH[${l}]=+this.value;calUpd()"><span id="t_${l}">${TH[l]}</span></div>`).join('')}
+    <div style="display:flex;gap:10px;margin-top:20px"><button class="btn red" onclick="calSave()">${T('save')}</button><button class="btn" onclick="Object.assign(W,W0);Object.assign(TH,TH0);document.getElementById('preset').value='def';vCalib()">${T('reset')}</button></div>
+  </div><div>
+    <div class="mh"><h2>${T('impact')}</h2></div><div id="impact"></div></div></div>`;
+  calUpd();
+}
+function preset(v){const m={def:[30,25,20,10,15],fw:[45,15,15,10,15],gk:[25,20,15,10,30],yo:[15,45,10,10,20]}[v];['perf','fm','val','lg','form'].forEach((k,i)=>W[k]=m[i]);vCalib();document.getElementById('preset').value=v}
+function calUpd(){
+  ['perf','fm','val','lg','form'].forEach(k=>{const e=document.getElementById('w_'+k);if(e)e.textContent=W[k]});[1,2,3,4].forEach(l=>{const e=document.getElementById('t_'+l);if(e)e.textContent=TH[l]});
+  const sum=Object.values(W).reduce((a,b)=>a+b,0);const ws=document.getElementById('wsum');if(ws)ws.textContent=lang==='en'?`normalised from ${sum}`:`מנורמל מתוך ${sum}`;
+  const ch=P.filter(p=>aiLv(p)!==calSnapshot.find(s=>s.id===p.id).l);
+  document.getElementById('impact').innerHTML=`<div class="imp"><b>${ch.length}</b> ${lang==='en'?'of 16 players change AI level vs. the current calibration':'מתוך 16 שחקנים משנים רמת AI לעומת הכיול הנוכחי'}</div>
+  ${ch.map(p=>{const o=calSnapshot.find(s=>s.id===p.id).l,n=aiLv(p);return `<div class="frow" style="grid-template-columns:1fr auto;padding:10px 0"><div><h3 style="font-size:17px">${p.n}</h3><p>${p.pos} · ${p.club}</p></div><div>${lvChip(o,false)} → ${lvChip(n)}</div></div>`}).join('')}
+  <div class="imp" style="margin-top:20px">${[1,2,3,4,5].map(l=>`<div style="display:grid;grid-template-columns:80px 1fr 30px;gap:8px;align-items:center;margin:4px 0"><span>L${l}</span><div class="urg" style="width:100%"><i style="width:${P.filter(p=>aiLv(p)===l).length/16*100}%;background:${LC[l]}"></i></div><span>${P.filter(p=>aiLv(p)===l).length}</span></div>`).join('')}</div>`;
+}
+function calSave(){calSnapshot=P.map(p=>({id:p.id,l:aiLv(p)}));toast(T('signedOff')+' · '+(lang==='en'?'inbox will refresh':'התיבה תתרענן'));renderNav();calUpd()}
+
+/* ============ ASK AI ============ */
+function openAsk(q){document.getElementById('askov').classList.add('open');const i=document.getElementById('askin');i.value=q||'';i.focus();document.getElementById('askres').innerHTML=q?'':sampleQs().map(x=>`<div class="sug"><button onclick="runAsk('${x.replace(/'/g,"\\'")}')">${x}</button></div>`).join('');if(q)runAsk(q)}
+function closeAsk(){document.getElementById('askov').classList.remove('open')}
+function runAsk(q){
+  document.getElementById('askin').value=q;const s=q.toLowerCase();let res=P.slice(),why=[];
+  const has=(...w)=>w.some(x=>s.includes(x));
+  if(has('push','this week','לדחוף','השבוע')){res=res.filter(p=>aiFocus(p)===1||p.fc===1);why.push(lang==='en'?'Focus = Push now':'פוקוס = לדחוף עכשיו')}
+  if(has('expir','6 month','contract','נגמר','חוזה')){res=res.filter(p=>p.c<=6);why.push(lang==='en'?'contract ≤ 6 months':'חוזה ≤ 6 חודשים')}
+  if(has('core','ליבה')){res=res.filter(p=>p.lv===3);why.push('L3 Core')}
+  if(has('premium','פרימיום')){res=res.filter(p=>p.lv===2);why.push('L2 Premium')}
+  if(has('elite','עילית')){res=res.filter(p=>p.lv===1);why.push('L1 Elite')}
+  if(has('drift','down','ירידה','בירידה')){res=res.filter(p=>p.tr==='down'||aiLv(p)>p.lv);why.push(lang==='en'?'trending down / AI lower':'מגמת ירידה / AI נמוך יותר')}
+  if(has('untouched','ללא קשר','לא נגעת')){res=res.filter(p=>p.t>=14);why.push(lang==='en'?'no contact 14d+':'ללא קשר 14+ ימים')}
+  if(!why.length){res=res.filter(p=>sugg(p));why.push(lang==='en'?'pending AI suggestions':'הצעות AI ממתינות')}
+  res.sort((a,b)=>urgency(b)-urgency(a));
+  const ans=lang==='en'?`${res.length} match${res.length===1?'':'es'} (${why.join(' + ')}). ${res[0]?`Highest urgency: <b>${res[0].n}</b> — ${R(res[0]).split('.')[0]}.`:'Nothing matches right now.'}`
+    :`${res.length} תוצאות (${why.join(' + ')}). ${res[0]?`הדחיפות הגבוהה ביותר: <b>${res[0].n}</b> — ${R(res[0]).split('.')[0]}.`:'אין התאמות כרגע.'}`;
+  document.getElementById('askres').innerHTML=`<div class="ans"><span class="ai">AI</span>${ans}</div>
+  <table><tbody>${res.slice(0,8).map(p=>`<tr class="row" onclick="closeAsk();openDrawer(${p.id})"><td class="n">${p.n}<small>${p.pos} · ${p.club}</small></td><td>${lvChip(p.lv)}</td><td>${fcChip(p.fc)}</td><td>${p.c}${T('months')}</td></tr>`).join('')}</tbody></table>`;
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){e.preventDefault();openAsk()}
+  if(e.key==='Escape'){closeAsk();closeDrawer()}
+});
+render();
+</script>
+</body>
+</html>
