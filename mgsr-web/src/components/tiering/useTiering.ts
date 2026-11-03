@@ -2,15 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Focus, Level, PlayerTierDoc, TierListResponse, TierMeta } from '@/lib/tiering/types';
+import type { PlayerTierDoc, TierListResponse, TierMeta } from '@/lib/tiering/types';
 
-/** Client access to /api/tiering/*. Read-only by default: analysis happens in the background worker. */
+export type BoardAction = 'mark' | 'unmark' | 'handled' | 'reopen';
+
+/**
+ * Client access to /api/tiering/*. Read-only by default — analysis happens in the background worker.
+ * Results auto-refresh every 2 minutes.
+ */
 export function useTiering(enabled = true) {
   const { user } = useAuth();
   const [items, setItems] = useState<PlayerTierDoc[]>([]);
   const [meta, setMeta] = useState<TierMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** Player ids with a background re-analysis in flight (after marking). */
+  const [analysing, setAnalysing] = useState<Set<string>>(new Set());
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -38,6 +45,10 @@ export function useTiering(enabled = true) {
     [user]
   );
 
+  const upsert = useCallback((item: PlayerTierDoc) => {
+    setItems((prev) => [...prev.filter((x) => x.playerId !== item.playerId), item]);
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!enabled || !user) return;
     try {
@@ -61,42 +72,34 @@ export function useTiering(enabled = true) {
 
   const rerunOne = useCallback(
     async (playerId: string) => {
-      await call('/api/tiering/run', { method: 'POST', body: JSON.stringify({ playerId }) });
-      await refresh();
+      setAnalysing((s) => new Set(s).add(playerId));
+      try {
+        const r = (await call('/api/tiering/run', { method: 'POST', body: JSON.stringify({ playerId }) })) as { item: PlayerTierDoc };
+        if (mounted.current) upsert(r.item);
+      } finally {
+        if (mounted.current)
+          setAnalysing((s) => {
+            const n = new Set(s);
+            n.delete(playerId);
+            return n;
+          });
+      }
     },
-    [call, refresh]
+    [call, upsert]
   );
 
-  const setTags = useCallback(
-    async (playerId: string, change: { level?: Level; focus?: Focus; note?: string; locked?: boolean }) => {
-      const r = (await call('/api/tiering/set', { method: 'POST', body: JSON.stringify({ playerId, ...change }) })) as {
+  const act = useCallback(
+    async (playerId: string, action: BoardAction, note?: string) => {
+      const r = (await call('/api/tiering/action', { method: 'POST', body: JSON.stringify({ playerId, action, note }) })) as {
         item: PlayerTierDoc;
       };
-      setItems((prev) => {
-        const rest = prev.filter((x) => x.playerId !== playerId);
-        return [...rest, r.item];
-      });
+      upsert(r.item);
+      // A new window target gets a fresh plan built around the window, in the background.
+      if (action === 'mark') rerunOne(playerId).catch(() => {});
       return r.item;
     },
-    [call]
+    [call, upsert, rerunOne]
   );
 
-  const accept = useCallback(
-    async (opts: { playerIds?: string[]; minConfidence?: number }) => {
-      const r = (await call('/api/tiering/accept', { method: 'POST', body: JSON.stringify(opts) })) as { accepted: number };
-      await refresh();
-      return r.accepted;
-    },
-    [call, refresh]
-  );
-
-  const dismiss = useCallback(
-    async (ids: string[]) => {
-      await call('/api/tiering/accept', { method: 'POST', body: JSON.stringify({ dismissIds: ids }) });
-      await refresh();
-    },
-    [call, refresh]
-  );
-
-  return { items, meta, loading, error, refresh, rerunOne, setTags, accept, dismiss };
+  return { items, meta, loading, error, analysing, refresh, rerunOne, act };
 }

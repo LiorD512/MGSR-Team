@@ -1,4 +1,6 @@
-# Level & Focus — how it works and how to switch it on (v2, background analyst)
+# Push board (Level & Focus) — how it works and how to switch it on (v3)
+
+> The dashboard shows only **Push now** (automatic) and **Window targets** (marked by agents). Design and rules: `PLAYER_LEVEL_FOCUS_PLAN.md`.
 
 Nobody presses a button. A **background worker** analyses every roster player on its own and keeps the results fresh.
 The dashboard only *reads* finished results, so it opens instantly.
@@ -26,13 +28,14 @@ The dashboard only *reads* finished results, so it opens instantly.
    - **risks**,
    - a **push plan**: *how* (what to do, with which clubs) and *when* (tied to real dates/windows) + timing tag (now / this week / this window / later / hold).
    The analyst only re-runs when the player's facts changed (new headline, new request, value/contract change…) or its read is older than 24h — fast and cheap.
-6. **Writes** `PlayerTiers/{playerId}`. Confirmed tags are never overwritten — anything different becomes a suggestion in the AI inbox.
-7. **Alerts** the owner by push when a player becomes Push now (confirmed by anyone, or newly recommended by the engine).
+6. **Computes Push-now reasons** (mandate, contract, requests, news, AI plan) — rules in the plan doc.
+7. **Writes** `PlayerTiers/{playerId}` (agent marks — window target, done — live in the same doc and are never touched by the worker).
+8. **Alerts** the owner by push once when a player lands on Push now with a new set of reasons.
 
 ## Running it
 - **Scheduled (default):** `.github/workflows/tiering-worker.yml` sweeps the roster every 3 hours. "Run workflow" in GitHub Actions starts one now; tick *force* to ignore caches.
 - **Near real-time (optional, always-on host):** `npx tsx _tiering_worker.ts watch` re-analyses a player ~15s after his doc changes, sweeps when a mandate or club request changes, plus hourly. Run it on any always-on box (Cloud Run service with min instances 1, a small VM, or the existing worker host).
-- **One player now:** the drawer's *Re-run analysis* (≈10–30s), or `npx tsx _tiering_worker.ts player <playerId>`.
+- **One player now:** the drawer's *Re-run analysis* (≈10–30s), or `npx tsx _tiering_worker.ts player <playerId>`. Marking a window target triggers this automatically.
 
 ## Configuration
 GitHub → Settings → Secrets and variables → Actions:
@@ -44,7 +47,7 @@ GitHub → Settings → Secrets and variables → Actions:
 | `SCOUT_SERVER_URL` | variable | optional, defaults to the Render scout server |
 | `TIERING_APP_ORIGIN` | variable | optional, defaults to `https://management.britsportgroup.com` |
 
-Vercel: `TIERING_ALERT_EMAILS` too (alerts when an agent sets Push now from the dashboard).
+Vercel: `TIERING_ALERT_EMAILS` too (alerts from the single-player re-run).
 `TIERING_RUN_SECRET` is no longer needed.
 
 ## Speed & cost

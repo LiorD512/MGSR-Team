@@ -14,6 +14,17 @@ export async function GET(req: NextRequest) {
   const actor = await authenticate(req);
   if (actor instanceof NextResponse) return actor;
   const db = adminDb();
+  const one = req.nextUrl.searchParams.get('playerId');
+  if (one) {
+    const s = await db.collection(TIERS_COLLECTION).doc(one).get();
+    const items: PlayerTierDoc[] = [];
+    if (s.exists) {
+      const { inputs: _x, ...rest } = s.data() as Omit<PlayerTierDoc, 'playerId'>;
+      void _x;
+      items.push({ playerId: one, ...rest });
+    }
+    return NextResponse.json({ items, meta: null, generatedAt: Date.now() } satisfies TierListResponse);
+  }
   const [tiersSnap, playersSnap, meta] = await Promise.all([
     db.collection(TIERS_COLLECTION).get(),
     db.collection('Players').select().get(),

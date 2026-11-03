@@ -35,7 +35,7 @@ if (fs.existsSync(envPath)) {
 async function main() {
   // Imported after env is loaded so firebaseAdmin picks the credentials up.
   const { adminDb, getFirebaseAdmin } = await import('./src/lib/firebaseAdmin');
-  const { sweepRoster, loadContext, processPlayer, alertNewPushRecommendation } = await import('./src/lib/tiering/server');
+  const { sweepRoster, loadContext, processPlayer, alertIfNewlyUrgent } = await import('./src/lib/tiering/server');
 
   if (!getFirebaseAdmin()) {
     console.error('Missing Firebase credentials (FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY)');
@@ -56,7 +56,7 @@ async function main() {
     const p = ctx.players.find((x) => x.id === arg);
     if (!p) throw new Error(`player ${arg} not on roster`);
     const r = await processPlayer(db, ctx, p, { appOrigin, force: true });
-    await alertNewPushRecommendation(db, r.doc);
+    await alertIfNewlyUrgent(db, r.doc);
     console.log(JSON.stringify(r.doc.ai, null, 2));
     return;
   }

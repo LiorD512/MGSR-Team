@@ -19,6 +19,7 @@ import type {
   PositionGroup,
   TierCriterion,
   TierSignals,
+  TierTrigger,
   TierUrgencyParts,
   Trend,
 } from './types';
@@ -230,4 +231,92 @@ export function requestMatches(
     if (typeof req.maxAge === 'number' && req.maxAge > 0 && player.age > req.maxAge) return false;
   }
   return true;
+}
+
+/* ───────────────────────── Push-now triggers ───────────────────────── */
+
+export interface TriggerInput {
+  now: number;
+  level: Level;
+  mandateDays: number | null;
+  contractMonths: number | null;
+  /** Open club requests that match the player. */
+  requests: { club: string; position: string; createdAt?: number }[];
+  plan?: { timing: string; nextStepEn?: string; nextStepHe?: string; deadline?: string } | null;
+  focusAdj: number;
+  newsSignal: number;
+  news: { headline: string; sentiment: string; impactEn?: string; impactHe?: string }[];
+}
+
+const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
+const sev = (n: number) => Math.max(1, Math.min(3, n)) as 1 | 2 | 3;
+
+/**
+ * Rules (severity 3 = act today, 2 = this week, 1 = context). A player is "Push now" when the
+ * severities add up to >= 3 — e.g. one hard deadline, or two medium reasons together.
+ */
+export function computeTriggers(i: TriggerInput): TierTrigger[] {
+  const out: TierTrigger[] = [];
+  const DAYMS = 24 * 3600 * 1000;
+  const lowLevel = i.level >= 4; // depth / developing: market opportunities matter less
+
+  if (i.mandateDays != null && i.mandateDays <= 45) {
+    const d = Math.max(0, Math.round(i.mandateDays));
+    out.push({
+      kind: 'mandate',
+      severity: d <= 7 ? 3 : d <= 21 ? 2 : 1,
+      en: d === 0 ? 'Mandate expires today' : `Mandate expires in ${d} days`,
+      he: d === 0 ? 'המנדט פג היום' : `המנדט פג בעוד ${d} ימים`,
+      deadline: iso(i.now + i.mandateDays * DAYMS),
+    });
+  }
+
+  if (i.contractMonths != null && i.contractMonths <= 12) {
+    const m = Math.max(0, Math.round(i.contractMonths));
+    const base = m <= 3 ? 3 : m <= 6 ? 2 : 1;
+    out.push({
+      kind: 'contract',
+      severity: sev(lowLevel ? base - 1 : base),
+      en: m === 0 ? 'Contract ending now — free-agent window' : `Contract ends in ${m} months`,
+      he: m === 0 ? 'החוזה מסתיים עכשיו — חלון שחקן חופשי' : `החוזה מסתיים בעוד ${m} חודשים`,
+      deadline: iso(i.now + i.contractMonths * 30.44 * DAYMS),
+    });
+  }
+
+  if (i.requests.length) {
+    const fresh = i.requests.filter((r) => r.createdAt && i.now - r.createdAt <= 14 * DAYMS);
+    const lead = (fresh[0] ?? i.requests[0]);
+    const more = i.requests.length - 1;
+    const base = fresh.length >= 2 ? 3 : fresh.length === 1 ? 2 : 1;
+    out.push({
+      kind: 'request',
+      severity: sev(lowLevel ? base - 1 : base),
+      en: `${lead.club} is looking for a ${lead.position}${more > 0 ? ` (+${more} more request${more > 1 ? 's' : ''})` : ''}`,
+      he: `${lead.club} מחפשת ${lead.position}${more > 0 ? ` (+${more} בקשות נוספות)` : ''}`,
+      ref: i.requests.map((r) => r.club).sort().join(','),
+    });
+  }
+
+  const hot = i.news.find((n) => n.sentiment === 'positive') ?? i.news.find((n) => n.sentiment === 'risk' || n.sentiment === 'negative');
+  if (hot && (i.focusAdj > 0 || Math.abs(i.newsSignal) >= 2)) {
+    out.push({
+      kind: 'news',
+      severity: 2,
+      en: hot.impactEn ? `${hot.headline} — ${hot.impactEn}` : hot.headline,
+      he: hot.impactHe ? `${hot.headline} — ${hot.impactHe}` : hot.headline,
+      ref: hot.headline.slice(0, 60),
+    });
+  }
+
+  if (i.plan && (i.plan.timing === 'now' || i.plan.timing === 'this_week')) {
+    out.push({
+      kind: 'plan',
+      severity: i.plan.timing === 'now' ? 3 : 2,
+      en: i.plan.nextStepEn || (i.plan.timing === 'now' ? 'AI: act now' : 'AI: act this week'),
+      he: i.plan.nextStepHe || i.plan.nextStepEn || (i.plan.timing === 'now' ? 'AI: לפעול עכשיו' : 'AI: לפעול השבוע'),
+      ...(i.plan.deadline ? { deadline: i.plan.deadline } : {}),
+    });
+  }
+
+  return out.sort((a, b) => b.severity - a.severity);
 }

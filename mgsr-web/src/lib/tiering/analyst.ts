@@ -11,7 +11,7 @@
  */
 import { GoogleGenAI } from '@google/genai';
 import { GEMINI_MODEL, LEVEL_DEFINITIONS } from './config';
-import type { Level, NewsSentiment, PushTiming, TierNewsItem, TierPlan, TierRisk, TierSource } from './types';
+import type { Level, NewsSentiment, PushTiming, TierNewsItem, TierPlan, TierRisk, TierSource, TierWindowFit } from './types';
 
 export interface AnalystFacts {
   player: string;
@@ -27,7 +27,9 @@ export interface AnalystFacts {
   mandateDaysLeft: number | null;
   criteria: { key: string; weight: number; score: number | null; note?: string }[];
   engine: { score: number; baseLevel: Level; dataCoverage: number; focus: number; urgency: number };
-  matchingClubRequests: { club: string; position: string; ages?: string; euOnly?: boolean }[];
+  matchingClubRequests: { club: string; position: string; ages?: string; euOnly?: boolean; daysOld?: number }[];
+  /** Marked by the agency as a player to work hard on in the next window. */
+  windowTarget: boolean;
   transferWindows: { country: string; daysLeft: number }[];
   daysSinceLastTouch: number | null;
   recentAgentNotes: string[];
@@ -46,6 +48,7 @@ export interface AnalystRead {
   news: TierNewsItem[];
   risks: TierRisk[];
   plan: TierPlan;
+  windowFit: TierWindowFit;
   sources: TierSource[];
 }
 
@@ -57,7 +60,8 @@ const tri = (v: unknown): -1 | 0 | 1 => (Number(v) === 1 ? 1 : Number(v) === -1 
 export function buildPrompt(f: AnalystFacts): string {
   const levels = ([1, 2, 3, 4, 5] as Level[]).map((l) => `L${l}: ${LEVEL_DEFINITIONS[l].en}`).join('\n');
   return `You are the head of football operations at BRIT Sport Group, a player agency working the Israeli, European and Gulf markets.
-Today is ${f.today}. Analyse ONE player we represent and decide (a) his level, (b) how hard to push him now, and (c) HOW and WHEN to push him.
+Today is ${f.today}. Analyse ONE player we represent and decide (a) his level, (b) whether he needs action NOW, (c) HOW and WHEN to push him,
+and (d) whether he is a strong candidate for a focused push in the next transfer window.${f.windowTarget ? '\nThe agency has MARKED him as a window target — build the plan around the coming window.' : ''}
 
 LEVEL SCALE:
 ${levels}
@@ -73,9 +77,12 @@ YOUR TASKS
    (e.g. data coverage is low and real-world evidence shows a different level, a breakout season, a serious decline/injury). Default 0.
 3. "focusAdj": -1, 0 or +1 (+1 = push HARDER than the engine says). Use it only for genuinely time-sensitive news
    (club interest, contract talks, coach change, he lost his place, long injury). Default 0.
-4. "plan": concrete and actionable for an agent. HOW = what to do and with whom (use the matching club requests and markets/windows below when relevant).
+4. "plan": concrete and actionable for an agent. "nextStepEn"/"nextStepHe" = the single next action, imperative, max 16 words
+   (e.g. "Call Beer Sheva's sporting director before Thursday; renew the mandate first"). HOW = what to do and with whom (use the matching club requests and markets/windows below when relevant).
    WHEN = timing tied to real dates (contract end, mandate expiry, window deadlines). "timing" must be one of now|this_week|this_window|later|hold.
-5. Never invent statistics or news. If you found nothing, say so and keep confidence moderate.
+5. "windowFit": 0-100 — how much it would pay off to work hard on him in the next window
+   (level vs. market, age, contract situation, demand, momentum). Explain in one sentence.
+6. Never invent statistics or news. If you found nothing, say so and keep confidence moderate.
 
 FACTS (JSON):
 ${JSON.stringify(f)}
@@ -87,7 +94,8 @@ Reply with ONE JSON object and nothing else:
  "evidence": ["short fact", "short fact"],
  "news": [{"headline": "...", "sentiment": "positive|neutral|negative|risk", "impactEn": "why it matters for us", "impactHe": "...", "source": "outlet", "date": "YYYY-MM-DD"}],
  "risks": [{"en": "...", "he": "..."}],
- "plan": {"howEn": "...", "howHe": "...", "whenEn": "...", "whenHe": "...", "timing": "this_window", "targets": ["club"], "deadline": "YYYY-MM-DD or empty"}
+ "plan": {"nextStepEn": "...", "nextStepHe": "...", "howEn": "...", "howHe": "...", "whenEn": "...", "whenHe": "...", "timing": "this_window", "targets": ["club"], "deadline": "YYYY-MM-DD or empty"},
+ "windowFit": {"score": 60, "reasonEn": "...", "reasonHe": "..."}
 }
 newsSignal: -2 (very negative) … +2 (very positive) overall news momentum. Max 4 news items, max 3 risks, max 3 targets.`;
 }
@@ -103,6 +111,7 @@ export function extractJsonObject(text: string): unknown {
 export function normaliseRead(raw: unknown, sources: TierSource[]): AnalystRead {
   const j = (raw ?? {}) as Record<string, unknown>;
   const plan = (j.plan ?? {}) as Record<string, unknown>;
+  const wf = (j.windowFit ?? {}) as Record<string, unknown>;
   const timing = TIMINGS.includes(plan.timing as PushTiming) ? (plan.timing as PushTiming) : 'later';
   const deadline = s(plan.deadline, 10);
   return {
@@ -127,6 +136,8 @@ export function normaliseRead(raw: unknown, sources: TierSource[]): AnalystRead 
       ? j.risks.slice(0, 3).map((r: Record<string, unknown>) => ({ en: s(r.en, 200), he: s(r.he, 200) })).filter((r) => r.en)
       : [],
     plan: {
+      nextStepEn: s(plan.nextStepEn, 160),
+      nextStepHe: s(plan.nextStepHe, 160),
       howEn: s(plan.howEn, 400),
       howHe: s(plan.howHe, 400),
       whenEn: s(plan.whenEn, 300),
@@ -134,6 +145,11 @@ export function normaliseRead(raw: unknown, sources: TierSource[]): AnalystRead 
       timing,
       targets: Array.isArray(plan.targets) ? plan.targets.slice(0, 3).map((t) => s(t, 60)).filter(Boolean) : [],
       ...(/^\d{4}-\d{2}-\d{2}$/.test(deadline) ? { deadline } : {}),
+    },
+    windowFit: {
+      score: Math.max(0, Math.min(100, Math.round(Number(wf.score) || 0))),
+      reasonEn: s(wf.reasonEn, 240),
+      reasonHe: s(wf.reasonHe, 240),
     },
     sources: sources.slice(0, 6),
   };

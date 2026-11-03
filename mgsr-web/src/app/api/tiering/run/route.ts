@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { alertNewPushRecommendation, authenticateOrSecret, loadContext, processPlayer } from '@/lib/tiering/server';
+import { alertIfNewlyUrgent, authenticateOrSecret, loadContext, processPlayer } from '@/lib/tiering/server';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   const p = ctx.players.find((x) => x.id === body.playerId);
   if (!p) return NextResponse.json({ error: 'Player not found on roster' }, { status: 404 });
   const r = await processPlayer(db, ctx, p, { appOrigin: req.nextUrl.origin, force: true });
-  await alertNewPushRecommendation(db, r.doc);
+  await alertIfNewlyUrgent(db, r.doc);
   const { inputs: _i, ...item } = r.doc;
   void _i;
   return NextResponse.json({ item, analystRan: r.analystRan, refreshed: r.refreshed });

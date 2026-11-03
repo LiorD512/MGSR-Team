@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BRIT — Dashboard · Push board (Push now + Window targets)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/* Tokens + shell copied from mgsr-web globals.css (.brit-room) so this mock matches production */
+.brit-room{--ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;--gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--blue:#4a5f6f;--muted:#77736a;--muted-2:#aba69b;--line:rgba(22,22,19,.18);--line-2:rgba(22,22,19,.07);--dark-line:rgba(243,240,232,.2);--display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace;min-height:100vh;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+.brit-room[dir=rtl]{--display:'Heebo',sans-serif;--body:'Heebo',sans-serif;--mono:'Heebo',sans-serif}
+.brit-room *,.brit-room *::before,.brit-room *::after{box-sizing:border-box}
+body{margin:0;background:var(--paper)}
+.brit-room::before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+.brit-room a{color:inherit;text-decoration:none}.brit-room button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+.brit-app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+.brit-rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+.brit-lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+.brit-lockup .lg{width:44px;height:44px;border-radius:50%;border:2px solid var(--gold-soft);display:grid;place-items:center;color:var(--gold-soft);font:600 15px var(--display)}
+.brit-lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}.brit-lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+.brit-nav{display:grid;gap:3px;margin-top:28px}.brit-nav a{display:flex;justify-content:space-between;align-items:center;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;cursor:pointer}
+.brit-nav a:hover,.brit-nav a.active{color:var(--gold-soft)}.brit-nav a.active::before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+.brit-nav em{color:var(--gold-soft);font-style:normal}
+.brit-rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}.brit-rail-footer strong{display:block;color:var(--paper);font-weight:400}
+.brit-topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+.brit-topbar strong{color:var(--paper);font-weight:400}.brit-actions{display:flex;align-items:center;gap:19px}.brit-actions button{color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}.brit-actions button:hover{color:var(--gold-soft)}
+.brit-avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+.brit-ps{display:inline-flex;padding:3px;border:1px solid var(--dark-line);border-radius:999px;position:relative}.brit-ps span{padding:7px 16px;border-radius:999px;font:600 11px/1 var(--display);letter-spacing:.07em;color:#8e8b82}.brit-ps span.on{background:var(--gold-soft);color:var(--ink)}
+.brit-canvas{max-width:1540px;padding:43px}
+.brit-kicker{margin:0 0 18px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.brit-masthead{margin-bottom:49px}.brit-masthead h1{margin:0;font:500 clamp(56px,7vw,104px)/.78 var(--display);letter-spacing:-.045em;text-transform:uppercase}.brit-masthead h1 span{color:var(--gold)}
+.brit-room[dir=rtl] .brit-masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+.brit-signals{display:grid;grid-template-columns:2fr repeat(2,1fr);margin-bottom:59px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.brit-signal{min-height:116px;padding:18px 20px 20px 0;border-inline-end:1px solid var(--line)}.brit-signal:not(:first-child){padding-inline-start:20px}.brit-signal:last-child{border-inline-end:0}
+.brit-signal label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.brit-signal strong{display:block;margin-top:14px;font:500 clamp(30px,3.6vw,50px)/.8 var(--display);text-transform:uppercase}.brit-signal .brit-red{color:var(--red)}
+.brit-signal small{display:block;margin-top:10px;color:var(--muted);font:9px/1 var(--mono)}
+.brit-grid{display:grid;grid-template-columns:minmax(0,1.42fr) minmax(300px,.78fr);gap:56px}
+.brit-module{margin-bottom:56px}
+.brit-module-head{display:flex;justify-content:space-between;align-items:baseline;gap:20px;padding-bottom:13px;border-bottom:1px solid var(--line)}
+.brit-module-head h2{margin:0;font:500 27px/.9 var(--display);text-transform:uppercase}.brit-room[dir=rtl] .brit-module-head h2{font-weight:800;letter-spacing:normal}
+.brit-module-head span,.brit-module-head a,.brit-module-head button{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}.brit-module-head a:hover,.brit-module-head button:hover{color:var(--gold)}
+.brit-heading-gold{color:var(--gold)}
+.brit-deadline{display:grid;grid-template-columns:57px 1fr auto;gap:18px;align-items:center;padding:19px 0;border-bottom:1px solid var(--line)}
+.brit-deadline .brit-code{color:var(--gold);font:10px/1 var(--mono)}.brit-deadline h3{margin:0 0 4px;font:500 24px/.9 var(--display);text-transform:uppercase}
+.brit-deadline p{margin:0;color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}.brit-deadline time{color:var(--gold);text-align:end;font:500 18px/.9 var(--display);text-transform:uppercase}.brit-deadline time.brit-red{color:var(--red)}
+.brit-birthday-btn{padding:8px 10px;background:var(--gold-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;margin-inline-end:12px}.brit-birthday-btn:hover{background:var(--gold);color:var(--paper)}
+.brit-black-module{padding:25px 26px 8px;background:var(--black);color:var(--paper)}.brit-black-module .brit-module-head{border-color:var(--dark-line)}.brit-black-module .brit-module-head h2{color:var(--paper)}.brit-black-module .brit-module-head span{color:#aaa69c}
+.brit-approval{display:grid;grid-template-columns:48px 1fr auto;gap:15px;align-items:center;padding:17px 0;border-bottom:1px solid var(--dark-line)}
+.brit-avatar-box{width:48px;height:58px;display:grid;place-items:center;background:rgba(243,240,232,.08);color:#aaa69c;font:500 18px/1 var(--display)}
+.brit-approval h3{margin:0 0 4px;font:500 22px/.9 var(--display);text-transform:uppercase}.brit-approval p{margin:0;color:#aaa69c;font:9px/1.4 var(--mono);text-transform:uppercase}
+.brit-approve-btn{padding:9px 10px;background:var(--gold-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase}
+.brit-mandates{display:grid;grid-template-columns:repeat(3,1fr)}.brit-mandate{padding:18px 16px 20px 0;border-bottom:1px solid var(--line)}.brit-mandate:not(:first-child){padding-inline-start:16px;border-inline-start:1px solid var(--line)}
+.brit-mandate strong{display:block;margin-bottom:7px;font:500 23px/.9 var(--display);text-transform:uppercase}.brit-mandate span{color:var(--red);font:9px/1 var(--mono);text-transform:uppercase}
+.brit-mandate p{min-height:30px;margin:10px 0 14px;color:var(--muted);font:9px/1.4 var(--mono)}.brit-mandate a{padding:0 0 4px;border-bottom:1px solid var(--ink);font:9px/1 var(--mono);text-transform:uppercase;cursor:pointer}
+.brit-feed-row{display:grid;grid-template-columns:70px 1fr auto;gap:18px;padding:15px 0;border-top:1px solid var(--line);align-items:start}.brit-feed-row time{color:var(--muted);font:9px/1 var(--mono)}.brit-feed-row p{margin:0;font-size:11px}.brit-feed-row p strong{display:block;margin-top:3px}.brit-feed-row span{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;white-space:nowrap}
+.brit-new-request{display:block;width:100%;margin-top:18px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase}
+.brit-focus{display:grid;grid-template-columns:1fr 1fr;gap:16px}.brit-focus article{position:relative;min-height:190px;overflow:hidden;background:linear-gradient(160deg,#23231f,#11110f)}
+.brit-focus article::after{content:'';position:absolute;inset:52% 0 0;background:rgba(17,17,15,.76)}.brit-focus-copy{position:absolute;inset-inline:16px;bottom:16px;z-index:1;color:var(--paper)}
+.brit-focus-copy small{display:block;color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}.brit-focus-copy h3{margin:6px 0 0;font:500 24px/.9 var(--display);text-transform:uppercase}
+.brit-empty{padding:22px 0;color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}
+
+/* push notification */
+.notif{position:fixed;top:92px;inset-inline-end:24px;z-index:90;width:360px;background:var(--black);color:var(--paper);border-inline-start:3px solid var(--red);padding:16px 18px;transform:translateX(130%);transition:transform .4s cubic-bezier(.2,.8,.2,1);box-shadow:0 20px 50px -20px rgba(0,0,0,.6)}
+.brit-room[dir=rtl] .notif{transform:translateX(-130%)}.notif.show{transform:none!important}
+.notif small{display:flex;justify-content:space-between;color:var(--gold-soft);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}.notif b{display:block;margin:8px 0 4px;font:500 20px/1 var(--display);text-transform:uppercase}.notif p{margin:0;color:#b9b5aa;font:10px/1.5 var(--mono)}.notif button{margin-top:10px;color:var(--gold-soft);font:9px var(--mono);text-transform:uppercase;border-bottom:1px solid var(--gold-soft)}
+.toast{position:fixed;left:24px;bottom:70px;z-index:90;padding:13px 16px;background:var(--black);color:var(--paper);border-left:3px solid var(--gold);font:10px/1.4 var(--mono);transform:translateY(20px);opacity:0;pointer-events:none;transition:.25s}.toast.show{transform:none;opacity:1}
+.mockbar{position:fixed;left:0;right:0;bottom:0;z-index:95;display:flex;gap:10px;align-items:center;padding:9px 14px;background:#fff;border-top:2px dashed var(--gold);font:10px/1 var(--mono);text-transform:uppercase}
+.mockbar b{color:var(--gold)}.mockbar button{padding:7px 10px;border:1px solid var(--ink)}.mockbar button:hover{background:var(--ink);color:#fff}.mockbar span{color:var(--muted)}
+.brit-canvas{padding-bottom:90px}
+@media(max-width:1100px){.brit-app{grid-template-columns:1fr}.brit-rail{display:none}.brit-grid{grid-template-columns:1fr}.brit-canvas{padding:24px}.brit-topbar{padding:0 20px}.brit-signals{grid-template-columns:1fr}.brit-signal{border:0;padding-inline-start:0!important}}
+/* ═══════════════════════════════════════════════════════
+   Level & Focus — Roster intelligence (dashboard module)
+   Scoped to .brit-room; uses the room's own tokens.
+   ═══════════════════════════════════════════════════════ */
+.brit-room .ri-l1 { background: #11110f; color: #f3f0e8; }
+.brit-room .ri-l2 { background: var(--gold); color: #fff; }
+.brit-room .ri-l3 { background: var(--gold-soft); color: var(--ink); }
+.brit-room .ri-l4 { background: var(--muted-2); color: var(--ink); }
+.brit-room .ri-l5 { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--muted-2); }
+.brit-room .ri-link { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; text-decoration: underline; }
+.brit-room .ri-link-gold { color: var(--gold-soft); margin-top: 12px; }
+.brit-room .ri-red { color: var(--red); }
+.brit-room .ri-muted { color: var(--muted); font: 10px var(--mono); }
+.brit-room .ri-end { text-align: end; }
+
+.brit-room .ri-bar { display: flex; height: 34px; margin: 20px 0 9px; border: 1px solid var(--ink); }
+.brit-room .ri-bar button { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; font: 500 15px/1 var(--display); transition: opacity 0.2s, filter 0.2s; }
+.brit-room .ri-bar button:hover { filter: brightness(1.12); }
+.brit-room .ri-bar.dim button:not(.sel) { opacity: 0.35; }
+.brit-room .ri-key { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.brit-room .ri-key button { text-align: start; padding: 0; color: var(--muted); font: 9px/1.35 var(--mono); text-transform: uppercase; }
+.brit-room .ri-key button b { display: block; color: var(--ink); font-weight: 500; }
+.brit-room .ri-key button:hover b, .brit-room .ri-key button.sel b { color: var(--gold); }
+
+.brit-room .ri-call { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; margin: 22px 0 4px; padding: 14px 16px; border: 1px solid var(--gold-soft); background: color-mix(in srgb, var(--gold-soft) 8%, transparent); }
+.brit-room .ri-call-icon { width: 32px; height: 32px; display: grid; place-items: center; background: var(--gold-soft); color: var(--ink); font: 12px/1 var(--display); }
+.brit-room .ri-call b { display: block; font: 500 15px/1.1 var(--display); text-transform: uppercase; }
+.brit-room .ri-call small { display: block; margin-top: 3px; color: var(--gold); font: 9px/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+.brit-room .ri-call > button { padding: 9px 11px; background: var(--ink); color: var(--paper); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-call > button:hover { background: var(--gold); }
+
+.brit-room .ri-tabs { display: flex; gap: 18px; margin-top: 22px; border-bottom: 1px solid var(--line-2); }
+.brit-room .ri-tabs button { margin-bottom: -1px; padding: 0 0 9px; border-bottom: 2px solid transparent; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.brit-room .ri-tabs button.on { color: var(--ink); border-color: var(--gold); }
+.brit-room .ri-tabs button i { margin-inline-start: 4px; color: var(--gold); font-style: normal; }
+
+.brit-room .ri-table { width: 100%; border-collapse: collapse; }
+.brit-room .ri-table th { padding: 13px 0 9px; color: var(--muted); text-align: start; font: 9px/1 var(--mono); font-weight: 400; text-transform: uppercase; }
+.brit-room .ri-table th.ri-end { text-align: end; }
+.brit-room .ri-table td { padding: 13px 0; border-top: 1px solid var(--line); font: 10px/1.25 var(--mono); vertical-align: middle; }
+.brit-room .ri-table tbody tr { cursor: pointer; transition: background 0.2s; }
+.brit-room .ri-table tbody tr:hover { background: rgba(164, 125, 67, 0.07); }
+.brit-room .ri-table td.ri-pl { padding-inline-end: 6px; font: 700 12.5px/1.25 var(--body); }
+.brit-room .ri-table td.ri-pl small { display: block; margin-top: 3px; color: var(--muted); font: 9px/1.2 var(--mono); font-weight: 400; text-transform: uppercase; }
+.brit-room .ri-table td.ri-nx { color: var(--muted); white-space: nowrap; }
+.brit-room .ri-table td.ri-nx.hot { color: var(--red); }
+
+.brit-room .ri-lv { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.brit-room .ri-lv b { min-width: 26px; height: 20px; display: inline-grid; place-items: center; font: 500 11px/1 var(--display); letter-spacing: 0.03em; }
+.brit-room .ri-lv.sg b { outline: 1.5px dashed var(--gold); outline-offset: 2px; }
+.brit-room .ri-lv b.ri-o { opacity: 0.5; }
+.brit-room .ri-tr { font-size: 8px; font-style: normal; }
+.brit-room .ri-tr.up { color: var(--green); }
+.brit-room .ri-tr.down { color: var(--red); }
+.brit-room .ri-tr.flat { color: var(--muted-2); }
+
+.brit-room .ri-fc { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-transform: uppercase; font: 10px/1 var(--mono); }
+.brit-room .ri-fc s { width: 7px; height: 7px; display: inline-block; border-radius: 50%; text-decoration: none; }
+.brit-room .ri-fc1 { color: var(--red); } .brit-room .ri-fc1 s { background: var(--red); }
+.brit-room .ri-fc2 s { background: var(--ink); }
+.brit-room .ri-fc3 { color: var(--muted); } .brit-room .ri-fc3 s { background: var(--muted); }
+.brit-room .ri-fc4 { color: var(--muted); } .brit-room .ri-fc4 s { background: transparent; box-shadow: inset 0 0 0 1.5px var(--muted-2); }
+.brit-room .ri-bgf1 { background: var(--red) !important; color: #fff !important; }
+.brit-room .ri-bgf2 { background: var(--ink) !important; color: #fff !important; }
+.brit-room .ri-bgf3 { background: var(--muted) !important; color: #fff !important; }
+.brit-room .ri-bgf4 { background: var(--muted-2) !important; color: var(--ink) !important; }
+
+.brit-room .ri-more { display: flex; justify-content: space-between; padding: 13px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-more button { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-eff { margin-top: 20px; }
+.brit-room .ri-eff-row { display: flex; justify-content: space-between; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-eff-row b { color: var(--ink); font-weight: 500; }
+.brit-room .ri-eff-track { position: relative; height: 6px; margin: 9px 0 8px; background: var(--paper-2); }
+.brit-room .ri-eff-track i { position: absolute; inset: 0 auto 0 0; background: var(--red); }
+.brit-room[dir='rtl'] .ri-eff-track i { inset: 0 0 0 auto; }
+.brit-room .ri-eff-track u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
+.brit-room .ri-eff p { margin: 0; color: var(--muted); font: 9px/1.5 var(--mono); }
+.brit-room .ri-first { padding: 24px 0; }
+.brit-room .ri-first p { margin: 0 0 6px; font: 12px/1.5 var(--body); }
+.brit-room .ri-first .ri-first-sub { margin-bottom: 14px; color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+
+.brit-room .ri-btn { display: inline-block; padding: 11px 14px; border: 1px solid var(--ink); font: 9px/1 var(--mono); text-transform: uppercase; text-align: center; }
+.brit-room .ri-btn:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
+.brit-room .ri-btn:disabled { opacity: 0.5; cursor: default; }
+.brit-room .ri-btn-gold { background: var(--gold-soft); border-color: var(--gold-soft); color: var(--ink); }
+.brit-room .ri-btn-gold:hover:not(:disabled) { background: var(--gold); border-color: var(--gold); color: var(--paper); }
+
+/* drawer / modal */
+.brit-room .ri-backdrop { position: fixed; inset: 0; z-index: 70; background: rgba(17, 17, 15, 0.66); }
+.brit-room .ri-drawer { position: fixed; top: 0; bottom: 0; inset-inline-end: 0; z-index: 71; width: min(560px, 100%); overflow: auto; background: var(--paper); border-inline-start: 4px solid var(--gold); animation: ri-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes ri-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.brit-room[dir='rtl'] .ri-drawer { animation-name: ri-in-rtl; }
+@keyframes ri-in-rtl { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.brit-room .ri-dr-h { padding: 26px 28px 22px; background: var(--black); color: var(--paper); }
+.brit-room .ri-x { float: inline-end; font: 22px var(--display); }
+.brit-room .ri-dr-h small { color: #aaa69c; font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-h h2 { margin: 8px 0 12px; font: 500 42px/0.9 var(--display); text-transform: uppercase; }
+.brit-room[dir='rtl'] .ri-dr-h h2 { font-weight: 800; letter-spacing: normal; }
+.brit-room .ri-dr-tags { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.brit-room .ri-dr-h .ri-fc2 { color: var(--paper); } .brit-room .ri-dr-h .ri-fc2 s { background: var(--paper); }
+.brit-room .ri-unconf { color: var(--gold-soft); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-s { padding: 20px 28px; border-bottom: 1px solid var(--line); }
+.brit-room .ri-dr-s h4 { margin: 0 0 12px; display: flex; justify-content: space-between; color: var(--muted); font: 9px/1 var(--mono); font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; }
+.brit-room .ri-ladder { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.brit-room .ri-ladder button, .brit-room .ri-fseg button { position: relative; border: 1px solid var(--line); background: var(--card); text-align: center; }
+.brit-room .ri-ladder button { padding: 10px 2px 9px; }
+.brit-room .ri-ladder b { display: block; font: 500 19px/1 var(--display); }
+.brit-room .ri-ladder small { font: 8px/1 var(--mono); text-transform: uppercase; color: var(--muted); }
+.brit-room .ri-ladder button.cur { border-color: transparent; } .brit-room .ri-ladder button.cur small { color: inherit; opacity: 0.8; }
+.brit-room .ri-fseg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.brit-room .ri-fseg button { padding: 11px 2px; font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-fseg button.cur { border-color: transparent; }
+.brit-room .ri-ladder button.aim::after, .brit-room .ri-fseg button.aim::after { content: 'AI'; position: absolute; top: -8px; inset-inline-start: 50%; transform: translateX(-50%); padding: 3px 5px; background: var(--black); color: var(--gold-soft); font: 8px/1 var(--mono); }
+.brit-room .ri-dr-accept { display: flex; gap: 8px; margin-top: 18px; }
+.brit-room .ri-aibox { padding: 18px 20px; background: var(--black); color: var(--paper); }
+.brit-room .ri-aibox p { margin: 0; font: 12px/1.65 var(--body); }
+.brit-room .ri-ev { margin-top: 12px; display: grid; gap: 5px; }
+.brit-room .ri-ev div { padding-inline-start: 10px; border-inline-start: 2px solid var(--gold); color: #cbc6b9; font: 10px/1.4 var(--mono); }
+.brit-room .ri-sig { display: grid; grid-template-columns: 96px 1fr 28px; gap: 10px; align-items: center; margin: 8px 0; font: 9px var(--mono); text-transform: uppercase; }
+.brit-room .ri-sig-tr { height: 6px; background: var(--paper-2); }
+.brit-room .ri-sig-tr i { display: block; height: 100%; background: var(--ink); }
+.brit-room .ri-touch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.brit-room .ri-touch div { padding: 10px; border: 1px solid var(--line); background: var(--card); color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
+.brit-room .ri-touch b { display: block; color: var(--ink); font: 500 22px var(--display); }
+.brit-room .ri-dr-s textarea { width: 100%; min-height: 54px; padding: 10px; border: 1px solid var(--ink); background: var(--card); font: 11px var(--mono); }
+.brit-room .ri-lock { display: flex; gap: 8px; margin-top: 12px; font: 10px var(--mono); }
+.brit-room .ri-tl { margin-inline-start: 4px; border-inline-start: 1px solid var(--ink); }
+.brit-room .ri-tl > div { position: relative; padding: 0 14px 13px; padding-inline-end: 0; color: var(--muted); font: 10px/1.5 var(--mono); }
+.brit-room .ri-tl > div::before { content: ''; position: absolute; inset-inline-start: -4px; top: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.brit-room .ri-tl b { color: var(--ink); font-family: var(--body); }
+.brit-room .ri-dr-f { padding: 18px 28px 40px; display: flex; }
+
+.brit-room .ri-modal { position: fixed; z-index: 72; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(680px, 94%); max-height: 86vh; overflow: auto; padding: 30px; background: var(--paper); border-top: 4px solid var(--gold); }
+.brit-room .ri-modal h2 { margin: 0 0 4px; font: 500 40px/0.9 var(--display); text-transform: uppercase; }
+.brit-room .ri-modal-sub { margin: 0 0 14px; color: var(--muted); font: 10px/1.5 var(--mono); text-transform: uppercase; }
+.brit-room .ri-sg { display: grid; grid-template-columns: 1fr auto; gap: 16px; margin-top: 16px; padding: 16px 0 0; border-top: 1px solid var(--line); }
+.brit-room .ri-sg h3 { margin: 0 0 8px; font: 500 22px/0.95 var(--display); text-transform: uppercase; }
+.brit-room .ri-sg-mv { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.brit-room .ri-sg p { margin: 8px 0 0; color: #3b3a35; font: 11px/1.55 var(--body); }
+.brit-room .ri-sg-ac { display: flex; flex-direction: column; gap: 6px; }
+.brit-room .ri-ai { display: inline-block; margin-inline-end: 6px; padding: 3px 5px; background: var(--black); color: var(--gold-soft); font: 8px/1 var(--mono); letter-spacing: 0.06em; }
+.brit-room .ri-conf { color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
+.brit-room .ri-toast { position: fixed; z-index: 90; left: 24px; bottom: 24px; padding: 13px 16px; background: var(--black); color: var(--paper); border-left: 3px solid var(--gold); font: 10px/1.4 var(--mono); }
+@media (max-width: 900px) { .brit-room .ri-th-next, .brit-room .ri-table th:last-child, .brit-room .ri-table td:last-child { display: none; } .brit-room .ri-sg { grid-template-columns: 1fr; } .brit-room .ri-sg-ac { flex-direction: row; } }
+
+/* Level & Focus — background analyst additions */
+.brit-room .ri-plan-line { display: block; margin-top: 4px; color: var(--ink); font: 400 10.5px/1.35 var(--body); max-width: 260px; }
+.brit-room .ri-news-dot { margin-inline-start: 6px; padding: 1px 4px; font: 8px/1.3 var(--mono); font-style: normal; text-transform: uppercase; vertical-align: 2px; }
+.brit-room .ri-news-dot.pos { color: var(--green); border: 1px solid var(--green); }
+.brit-room .ri-news-dot.neg { color: var(--red); border: 1px solid var(--red); }
+.brit-room .ri-status { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+.brit-room .ri-live { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
+.brit-room .ri-plan { display: grid; gap: 12px; padding: 16px 18px; border: 1px solid var(--gold-soft); background: color-mix(in srgb, var(--gold-soft) 8%, transparent); }
+.brit-room .ri-plan b { display: block; margin-bottom: 3px; color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
+.brit-room .ri-plan p { margin: 0; font: 12px/1.55 var(--body); }
+.brit-room .ri-timing { padding: 3px 6px; font: 9px/1 var(--mono); }
+.brit-room .ri-t-now, .brit-room .ri-t-this_week { background: var(--red); color: #fff; }
+.brit-room .ri-t-this_window { background: var(--gold-soft); color: var(--ink); }
+.brit-room .ri-t-later, .brit-room .ri-t-hold { background: var(--paper-2); color: var(--ink); }
+.brit-room .ri-news { padding: 10px 0 10px 12px; border-bottom: 1px solid var(--line-2); border-inline-start: 3px solid var(--muted-2); padding-inline-start: 12px; }
+.brit-room .ri-news b { display: block; font: 600 12px/1.4 var(--body); }
+.brit-room .ri-news p { margin: 4px 0; font: 11px/1.5 var(--body); color: #3b3a35; }
+.brit-room .ri-news small { color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
+.brit-room .ri-ns-positive { border-inline-start-color: var(--green); }
+.brit-room .ri-ns-negative, .brit-room .ri-ns-risk { border-inline-start-color: var(--red); }
+.brit-room .ri-srcs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.brit-room .ri-srcs a { padding: 3px 6px; border: 1px solid var(--line); color: var(--muted); font: 9px/1.3 var(--mono); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brit-room .ri-srcs a:hover { color: var(--gold); border-color: var(--gold); }
+.brit-room .ri-risk { padding: 8px 0 8px 12px; padding-inline-start: 12px; border-inline-start: 3px solid var(--red); margin-bottom: 6px; font: 11.5px/1.5 var(--body); }
+.brit-room .ri-sig { grid-template-columns: 120px 1fr 28px; }
+.brit-room .ri-sig em { margin-inline-start: 6px; color: var(--muted-2); font-style: normal; }
+.brit-room .ri-sig small { grid-column: 1 / -1; margin-top: -4px; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: none; }
+.brit-room .ri-adj { margin-top: 10px; color: var(--gold); font: 10px var(--mono); text-transform: uppercase; }
+
+/* ═══ Push board (Roster intelligence v3): Push now + Window targets ═══ */
+.brit-room .pb-sum { display: grid; grid-template-columns: 1fr 1fr 1.2fr; margin: 18px 0 6px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.brit-room .pb-sum > * { padding: 14px 14px 13px 0; border-inline-end: 1px solid var(--line); }
+.brit-room .pb-sum > *:not(:first-child) { padding-inline-start: 14px; }
+.brit-room .pb-sum > *:last-child { border-inline-end: 0; }
+.brit-room .pb-sum strong { display: block; font: 500 34px/0.85 var(--display); }
+.brit-room .pb-sum span { display: block; margin-top: 7px; color: var(--muted); font: 9px/1.2 var(--mono); text-transform: uppercase; }
+.brit-room .pb-sum a.hot strong { color: var(--red); }
+.brit-room .pb-sum-win strong { color: var(--gold); }
+.brit-room .pb-h { display: flex; justify-content: space-between; align-items: baseline; margin-top: 26px; padding-bottom: 9px; border-bottom: 1px solid var(--ink); }
+.brit-room .pb-h h3 { margin: 0; font: 500 19px/1 var(--display); text-transform: uppercase; }
+.brit-room[dir='rtl'] .pb-h h3 { font-weight: 800; }
+.brit-room .pb-h span { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .pb-empty { padding: 16px 0; border-bottom: 1px solid var(--line); color: var(--muted); font: 11px/1.5 var(--body); }
+.brit-room .pb-empty b { color: var(--ink); }
+.brit-room .pb-item { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start; padding: 14px 0 14px 12px; padding-inline-start: 12px; border-bottom: 1px solid var(--line); border-inline-start: 3px solid var(--gold-soft); }
+.brit-room .pb-item.sev3 { border-inline-start-color: var(--red); }
+.brit-room .pb-item-main, .brit-room .pb-target, .brit-room .pb-sugg-name { display: block; width: 100%; text-align: start; }
+.brit-room .pb-item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.brit-room .pb-item h4, .brit-room .pb-target h4 { display: flex; align-items: center; gap: 7px; margin: 0; font: 700 13.5px/1.25 var(--body); }
+.brit-room .pb-item time, .brit-room .pb-target time { color: var(--gold); font: 500 15px/1 var(--display); white-space: nowrap; }
+.brit-room .pb-target time { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .pb-item time.hot, .brit-room .pb-target time.hot { color: var(--red); }
+.brit-room .pb-item small, .brit-room .pb-target small { display: block; margin-top: 3px; color: var(--muted); font: 9px/1.2 var(--mono); text-transform: uppercase; }
+.brit-room .pb-why { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 3px; }
+.brit-room .pb-why li { position: relative; padding-inline-start: 12px; font: 11px/1.45 var(--body); color: #3b3a35; }
+.brit-room .pb-why li::before { content: ''; position: absolute; inset-inline-start: 0; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold-soft); }
+.brit-room .pb-why li.k-mandate::before, .brit-room .pb-why li.k-contract::before, .brit-room .pb-why li.k-neglect::before { background: var(--red); }
+.brit-room .pb-why li.k-request::before { background: var(--green); }
+.brit-room .pb-why li.k-news::before { background: var(--blue); }
+.brit-room .pb-why.big li { padding: 6px 0; padding-inline-start: 14px; border-bottom: 1px solid var(--line-2); font-size: 12px; }
+.brit-room .pb-why.big li::before { top: 12px; }
+.brit-room .pb-why.big time { display: block; margin-top: 2px; color: var(--muted); font: 9px var(--mono); }
+.brit-room .pb-step { margin: 8px 0 0; font: 600 11.5px/1.45 var(--body); color: var(--ink); }
+.brit-room .pb-step.muted { color: var(--gold); font-weight: 400; }
+.brit-room .pb-clubs { margin: 4px 0 0; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
+.brit-room .pb-done { padding: 8px 10px; border: 1px solid var(--line); color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; white-space: nowrap; }
+.brit-room .pb-done:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+.brit-room .pb-tag { padding: 2px 5px; border: 1px solid var(--gold); color: var(--gold); font: 8px/1.2 var(--mono); font-style: normal; text-transform: uppercase; letter-spacing: 0.05em; }
+.brit-room .pb-tag.hot { border-color: var(--red); color: var(--red); }
+.brit-room .ri-dr-h .pb-tag { border-color: var(--gold-soft); color: var(--gold-soft); }
+.brit-room .pb-lv { min-width: 24px; height: 18px; display: inline-grid; place-items: center; font: 500 10px/1 var(--display); }
+.brit-room .pb-handled { padding: 10px 0; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
+.brit-room .pb-add { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .pb-add:hover { color: var(--ink); }
+.brit-room .pb-target { padding: 13px 0; border-bottom: 1px solid var(--line); }
+.brit-room .pb-target:hover, .brit-room .pb-item-main:hover h4 { color: var(--gold); }
+.brit-room .pb-sugg { margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--gold-soft); }
+.brit-room .pb-sugg-h { display: block; margin-bottom: 6px; color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.brit-room .pb-sugg-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 7px 0; }
+.brit-room .pb-sugg-name { font: 700 12px/1.3 var(--body); }
+.brit-room .pb-sugg-name em { margin-inline-start: 6px; color: var(--gold); font: 10px var(--mono); font-style: normal; }
+.brit-room .pb-sugg-name small { display: block; margin-top: 2px; color: var(--muted); font: 400 10.5px/1.4 var(--body); }
+.brit-room .pb-dr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.brit-room .ri-btn-dark { border-color: var(--dark-line); color: var(--paper); }
+.brit-room .ri-btn-dark:hover:not(:disabled) { background: var(--paper) !important; color: var(--ink) !important; }
+.brit-room .pb-next { font-weight: 700 !important; }
+.brit-room .pb-search { width: 100%; margin-top: 8px; padding: 11px 12px; border: 1px solid var(--ink); background: var(--card); font: 12px var(--body); }
+.brit-room .pb-picker-list { margin-top: 12px; max-height: 52vh; overflow: auto; border-top: 1px solid var(--line); }
+.brit-room .pb-picker-row { display: flex; width: 100%; justify-content: space-between; gap: 12px; padding: 11px 4px; border-bottom: 1px solid var(--line); text-align: start; }
+.brit-room .pb-picker-row:hover { background: rgba(164, 125, 67, 0.07); }
+.brit-room .pb-picker-row b { display: block; font: 700 12.5px/1.3 var(--body); }
+.brit-room .pb-picker-row small { display: block; margin-top: 2px; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
+.brit-room .pb-picker-row small.pb-fit { color: var(--gold); text-transform: none; font: 10.5px/1.4 var(--body); }
+.brit-room .pb-picker-r { display: flex; align-items: center; gap: 8px; }
+.brit-room .pb-picker-r em { color: var(--gold); font: 11px var(--mono); font-style: normal; }
+.brit-room .pb-picker-r i { width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid var(--ink); font-style: normal; }
+
+.brit-room .ri-toast{left:24px;bottom:70px}
+</style>
+</head>
+<body>
+<div class="brit-room" id="room" dir="ltr" lang="en">
+<div class="brit-app">
+  <aside class="brit-rail">
+    <div class="brit-lockup"><div class="lg">B</div><div><strong>BRIT SPORT GROUP</strong><small id="lockSub">Management room</small></div></div>
+    <nav class="brit-nav" id="nav"></nav>
+    <div class="brit-rail-footer"><strong id="fpl">Men / Europe</strong><span id="fpv">Live data</span></div>
+  </aside>
+  <div>
+    <header class="brit-topbar">
+      <div>BRIT / <strong id="crumbD">Dashboard</strong> / 03 NOV 2026</div>
+      <div class="brit-actions"><div class="brit-ps"><span class="on">MEN</span><span>YOUTH</span></div><button onclick="toggleLang()" id="lb">HE / EN</button><button id="srch">Search /</button><span>TLV 14:45</span><span class="brit-avatar">LD</span></div>
+    </header>
+    <main class="brit-canvas" id="canvas"></main>
+  </div>
+</div>
+
+<div class="brit-backdrop" id="bd" onclick="closeAll()"></div>
+<aside class="brit-drawer" id="drawer"></aside>
+<div class="brit-modal" id="modal"></div>
+<div class="notif" id="notif"></div>
+<div class="toast" id="toast"></div>
+<div class="mockbar"><b>MOCK</b><span>Simulate —</span>
+  <button onclick="simRequest()">▶ New club request for Shai Golan</button>
+  <button onclick="simDays()">▶ 15 days pass</button>
+  <button onclick="resetAll()">Reset</button></div>
+</div>
+
+<script>
+let lang='en',empty=false,tab='priority',lvFilter=0,showAll=false;
+const D={en:{
+ room:'Management room',nav:['Dashboard','Players','Shortlist','Requests','Contacts','Signals','War Room'],
+ kicker:'Private client office / Men platform',hi:'Good afternoon',
+ sig1:'Managed portfolio',sig1n:'Across 16 valued assets',sig2:'Roster assets',sig2n:'9 EU passports',sig3:'Mandates under 30d',sig3n:'Action required',
+ bday:'Player birthdays',bdayN:'2 in the next 30 days',pend:'Pending decisions',pendN:'2 need sign-off',review:'Review',mw:'Mandate watch',mwSub:'Action window / next 30 days',openP:'Open player →',
+ act:'Recent activity',our:'OUR',assets:'ASSETS',cr:'Club requests',crN:'3 live',newReq:'+ New request',
+ ri:'Roster intelligence',viewAll:'View all 16 →',
+ lvl:['Elite','Premium','Core','Depth','Developing'],fcs:['Push now','Active','Maintain','Park'],
+ callTitle:'AI suggests {n} changes',callSub:'{h} high confidence · review and accept',callBtn:'Review',
+ tPri:'Priority',tAll:'All players',tChg:'AI changes',
+ thP:'Player',thL:'Level',thF:'Focus',thN:'Next',
+ more:'Showing {a} of {b}',showAll:'Show all',showLess:'Show less',
+ effTitle:'Effort on Push-now players',effNote:'Counted automatically from notes, tasks and contacts',effMsg:'{n} Push-now players have had no contact for 14+ days.',effLink:'See who',
+ empty:'No tiered players yet — the first AI analysis runs tonight.',
+ drLevel:'Level',drFocus:'Focus',drAI:'AI read',drSig:'Signals',drEff:'Effort · last 30 days',drNote:'Add a note (optional)',drHist:'History',drLock:'Lock — AI suggests but never auto-moves',
+ sPerf:'Output',sFm:'Ability / FM',sVal:'Market value',sLg:'League',sForm:'Form',nNotes:'Notes',nTasks:'Tasks',nCont:'Contacts',nLast:'Last',
+ openFull:'Open full profile →',rerun:'Re-run',accept:'Accept',dismiss:'Dismiss',adjust:'Adjust',acceptHigh:'Accept all ≥ 85% confidence',
+ modalT:'AI inbox',modalS:'Changes the engine wants to make — you decide',done:'Inbox clear. The engine will tell you when something moves.',
+ conf:'Confidence',mo:'mo',d:'d',mand:'mandate',untouched:'untouched',
+ notifT:'Push now',notifB:'Shai Golan',notifP:'A new club request from Hapoel Haifa matches him (CM, 22–27). Focus moved to Push now.',notifBtn:'Open player →',
+ sav:'Saved',alertSent:'Alert sent to agent in charge · in-app + push'},
+he:{room:'חדר ניהול',nav:['דשבורד','שחקנים','רשימת מעקב','בקשות','אנשי קשר','סיגנלים','חדר מלחמה'],
+ kicker:'משרד לקוחות פרטי / פלטפורמת גברים',hi:'צהריים טובים',
+ sig1:'תיק מנוהל',sig1n:'על פני 16 נכסים מוערכים',sig2:'נכסי סגל',sig2n:'9 דרכונים אירופיים',sig3:'מנדטים מתחת ל־30 יום',sig3n:'נדרשת פעולה',
+ bday:'ימי הולדת שחקנים',bdayN:'2 ב־30 הימים הקרובים',pend:'החלטות ממתינות',pendN:'2 דורשים אישור',review:'סקירה',mw:'מעקב מנדטים',mwSub:'חלון פעולה / 30 ימים',openP:'פתח שחקן ←',
+ act:'פעילות אחרונה',our:'הנכסים',assets:'שלנו',cr:'בקשות מועדונים',crN:'3 פעילות',newReq:'+ בקשה חדשה',
+ ri:'מודיעין סגל',viewAll:'הצג את כל 16 ←',
+ lvl:['עילית','פרימיום','ליבה','עומק','בפיתוח'],fcs:['לדחוף עכשיו','פעיל','תחזוקה','מושהה'],
+ callTitle:'ה־AI מציע {n} שינויים',callSub:'{h} בביטחון גבוה · סקור ואשר',callBtn:'סקירה',
+ tPri:'עדיפות',tAll:'כל השחקנים',tChg:'שינויי AI',
+ thP:'שחקן',thL:'רמה',thF:'פוקוס',thN:'הבא',
+ more:'מציג {a} מתוך {b}',showAll:'הצג הכול',showLess:'הצג פחות',
+ effTitle:'מאמץ על שחקני ״לדחוף עכשיו״',effNote:'נספר אוטומטית מהערות, משימות ואנשי קשר',effMsg:'{n} שחקני ״לדחוף עכשיו״ ללא קשר 14+ ימים.',effLink:'הצג מי',
+ empty:'אין עדיין שחקנים מדורגים — ניתוח ה־AI הראשון רץ הלילה.',
+ drLevel:'רמה',drFocus:'פוקוס',drAI:'קריאת AI',drSig:'אותות',drEff:'מאמץ · 30 ימים אחרונים',drNote:'הוסף הערה (אופציונלי)',drHist:'היסטוריה',drLock:'נעילה — ה־AI מציע אך לא מזיז אוטומטית',
+ sPerf:'תפוקה',sFm:'יכולת / FM',sVal:'שווי שוק',sLg:'ליגה',sForm:'פורמה',nNotes:'הערות',nTasks:'משימות',nCont:'קשר',nLast:'אחרון',
+ openFull:'פתח פרופיל מלא ←',rerun:'הרץ שוב',accept:'אשר',dismiss:'דחה',adjust:'שנה',acceptHigh:'אשר הכול עם ביטחון ≥ 85%',
+ modalT:'תיבת AI',modalS:'שינויים שהמנוע רוצה לבצע — אתה מחליט',done:'התיבה ריקה. המנוע יודיע כשמשהו זז.',
+ conf:'ביטחון',mo:'חו׳',d:'י׳',mand:'מנדט',untouched:'ללא קשר',
+ notifT:'לדחוף עכשיו',notifB:'שי גולן',notifP:'בקשה חדשה של הפועל חיפה מתאימה לו (קשר, 22–27). הפוקוס עבר ל״לדחוף עכשיו״.',notifBtn:'פתח שחקן ←',
+ sav:'נשמר',alertSent:'ההתראה נשלחה לסוכן האחראי · באפליקציה + פוש'}};
+const T=k=>D[lang][k];
+/* Level palette: luminance ramp on the existing black/gold/paper tokens */
+const LV={1:['#11110f','#f3f0e8'],2:['#a47d43','#fff'],3:['#c9a66b','#161613'],4:['#aba69b','#161613'],5:['transparent','#161613']};
+const FCOL={1:'#b64235',2:'#161613',3:'#77736a',4:'transparent'};
+
+/* ---- sample data (fictional) ---- */
+const P=[
+{id:8,n:'Amit Rosen',club:'Maccabi Netanya',pos:'DM',age:28,mv:2200,lv:2,fc:1,tr:'up',conf:93,u:81,t:3,x:[4,3,5],nx:['Mandate 6d','מנדט 6י׳',1],f:[80,72,78,68,78],
+ r:{en:'Four open club requests match him, the contract ends in 3 months and the mandate in 6 days. Highest time-value on the roster.',he:'ארבע בקשות פתוחות מתאימות לו, החוזה נגמר בעוד 3 חודשים והמנדט בעוד 6 ימים. הערך־בזמן הגבוה ביותר בסגל.'}},
+{id:14,n:'Ben Levi',club:'Maccabi Tel Aviv',pos:'CF',age:30,mv:3000,lv:2,fc:1,tr:'flat',conf:90,u:64,t:2,x:[3,2,4],nx:['Mandate 3d','מנדט 3י׳',1],f:[78,70,74,72,74],
+ r:{en:'Mandate lapses in 3 days. Level is solid; the cost of inaction is now the whole story.',he:'המנדט פג בעוד 3 ימים. הרמה יציבה; מחיר חוסר הפעולה הוא כל הסיפור.'}},
+{id:2,n:'Roi Dahan',club:'Hapoel Beer Sheva',pos:'RW',age:27,mv:1800,lv:2,fc:2,tr:'flat',conf:88,u:65,t:19,x:[1,1,1],nx:['Contract 5mo','חוזה 5חו׳',1],f:[74,70,72,60,72],s:{fc:1},
+ r:{en:'Level is stable. Contract ends in 5 months and the mandate lapses in 9 days — urgency is driven by time, not form.',he:'הרמה יציבה. החוזה נגמר בעוד 5 חודשים והמנדט בעוד 9 ימים — הדחיפות נובעת מזמן, לא מפורמה.'}},
+{id:1,n:'Itai Sassoon',club:'Maccabi Haifa',pos:'CF',age:24,mv:3500,lv:2,fc:2,tr:'up',conf:91,u:69,t:4,x:[5,3,5],nx:['3 requests','3 בקשות',0],f:[88,84,86,70,90],s:{lv:1,fc:1},
+ r:{en:'Output is top-5% among Ligat Ha’al forwards for two straight windows and market value has outrun his Level 2 tag. He now profiles as Elite.',he:'התפוקה בטופ 5% בין החלוצים בליגת העל לשני חלונות רצופים והשווי עבר את תג רמה 2. כעת הוא בפרופיל עילית.'}},
+{id:10,n:'Eden Ziv',club:'Maccabi Haifa',pos:'LW',age:21,mv:2800,lv:1,fc:2,tr:'up',conf:94,u:43,t:9,x:[3,2,4],nx:['Contract 24mo','חוזה 24חו׳',0],f:[82,88,80,70,91],
+ r:{en:'Elite at 21: output, ability and value all aligned. Long contract lets us pace the approach — Active, not Push.',he:'עילית בגיל 21: תפוקה, יכולת ושווי מתיישרים. חוזה ארוך מאפשר קצב — פעיל ולא דחיפה.'}},
+{id:6,n:'Dor Mizrahi',club:'Hapoel Jerusalem',pos:'LB',age:26,mv:1200,lv:2,fc:2,tr:'flat',conf:58,u:49,t:6,x:[3,2,3],nx:['Contract 11mo','חוזה 11חו׳',0],f:[66,62,60,62,66],s:{lv:3},
+ r:{en:'Borderline between Premium and Core (score 63.4 vs line 64). Low confidence — worth a human look at video before changing anything.',he:'גבולי בין פרימיום לליבה (63.4 מול קו 64). ביטחון נמוך — כדאי עין אנושית על וידאו לפני שינוי.'}},
+{id:4,n:'Lior Avraham',club:'Ashdod',pos:'GK',age:31,mv:450,lv:3,fc:2,tr:'down',conf:79,u:56,t:12,x:[2,1,2],nx:['Contract 4mo','חוזה 4חו׳',1],f:[52,45,40,50,60],s:{lv:4,fc:3},
+ r:{en:'Save-% and post-shot xG fell for 3 months and the score now sits under the Core line. Contract is short, so the question is whether to renew at all.',he:'אחוז הצלות ו־PSxG ירדו שלושה חודשים והציון מתחת לקו ה״ליבה״. החוזה קצר, ולכן השאלה אם בכלל לחדש.'}},
+{id:5,n:'Yonatan Peretz',club:'Maccabi Tel Aviv U21',pos:'CM',age:19,mv:700,lv:3,fc:3,tr:'up',conf:72,u:34,t:8,x:[2,1,3],nx:['Contract 30mo','חוזה 30חו׳',0],f:[48,78,45,55,80],s:{lv:2},
+ r:{en:'Numbers say Core, but the ceiling is the story: FM potential far above current, strong youth-national minutes, similar profile to two past sell-ons. AI lifts him one level.',he:'המספרים אומרים ליבה, אבל התקרה היא הסיפור: פוטנציאל FM גבוה, דקות בנבחרות נוער ופרופיל דומה לשני שחקנים שנמכרו. ה־AI מעלה רמה אחת.'}},
+{id:12,n:'Omri Tal',club:'Hapoel Beer Sheva',pos:'RB',age:23,mv:1900,lv:3,fc:3,tr:'up',conf:85,u:37,t:14,x:[2,1,2],nx:['Contract 18mo','חוזה 18חו׳',0],f:[72,68,70,72,70],s:{lv:2},
+ r:{en:'Two seasons of Premium-level output at a top-3 club; the tag is a year out of date.',he:'שתי עונות ברמת פרימיום במועדון מצמרת; התג מיושן בשנה.'}},
+{id:9,n:'Shai Golan',club:'Hapoel Haifa',pos:'AM',age:25,mv:1500,lv:3,fc:3,tr:'flat',conf:81,u:44,t:22,x:[1,1,1],nx:['Untouched 22d','22י׳ ללא קשר',0],f:[65,60,62,60,58],
+ r:{en:'Consistent Core playmaker. Nothing time-critical; 22 days since last touch is the only flag.',he:'פלייסמייקר ליבה עקבי. אין דחיפות בזמן; רק 22 ימים ללא קשר.'}},
+{id:3,n:'Tomer Biton',club:'Beitar Jerusalem',pos:'CB',age:29,mv:900,lv:3,fc:3,tr:'flat',conf:84,u:32,t:31,x:[1,0,1],nx:['Contract 14mo','חוזה 14חו׳',0],f:[58,55,50,58,55],
+ r:{en:'Solid starter, no catalyst. Maintain the relationship, no extra hours.',he:'בלם פותח מוצק, ללא קטליזטור. לשמור על הקשר בלי שעות נוספות.'}},
+{id:16,n:'Maor Azulay',club:'Hapoel Tel Aviv',pos:'GK',age:24,mv:800,lv:3,fc:3,tr:'up',conf:61,u:35,t:10,x:[2,1,2],nx:['Contract 22mo','חוזה 22חו׳',0],f:[68,64,58,55,68],
+ r:{en:'Score 63.7 — a hair under Premium. Trend is up; likely to cross the line within a month.',he:'ציון 63.7 — בקושי מתחת לפרימיום. מגמה עולה; צפוי לחצות את הקו בתוך חודש.'}},
+{id:11,n:'Nir Cohen',club:'Kiryat Shmona',pos:'CB',age:33,mv:300,lv:4,fc:3,tr:'down',conf:76,u:53,t:55,x:[0,0,1],nx:['Contract 6mo','חוזה 6חו׳',0],f:[44,38,25,45,30],s:{lv:5},
+ r:{en:'Age-33 centre-back, sharp decline in duels won and two injury spells. AI drops him a level; focus stays Maintain.',he:'בלם בן 33, ירידה חדה בדו־קרבות ושתי תקופות פציעה. ה־AI מוריד רמה; הפוקוס נשאר תחזוקה.'}},
+{id:15,n:'Ido Shamir',club:'Hapoel Acre',pos:'CM',age:27,mv:350,lv:4,fc:4,tr:'flat',conf:83,u:39,t:18,x:[1,0,1],nx:['Contract 12mo','חוזה 12חו׳',0],f:[50,48,40,40,50],
+ r:{en:'Squad player in a weaker league. Parked until a request surfaces.',he:'שחקן סגל בליגה חלשה יותר. מושהה עד שתעלה בקשה.'}},
+{id:7,n:'Gal Kedem',club:'Bnei Sakhnin',pos:'ST',age:22,mv:250,lv:4,fc:4,tr:'flat',conf:86,u:34,t:40,x:[0,0,1],nx:['Contract 20mo','חוזה 20חו׳',0],f:[38,50,30,40,40],
+ r:{en:'Depth profile, no mandate, no demand. Park until form or a request changes the picture.',he:'פרופיל עומק, ללא מנדט וללא ביקוש. להשהות עד ששינוי בפורמה או בקשה ישנו את התמונה.'}},
+{id:13,n:'Yuval Haim',club:'Sektzia Ness Ziona',pos:'CF',age:20,mv:400,lv:4,fc:4,tr:'up',conf:70,u:35,t:25,x:[1,0,1],nx:['Contract 36mo','חוזה 36חו׳',0],f:[38,66,38,42,55],
+ r:{en:'Depth today, rising FM potential. Watch list — revisit after 900 more minutes.',he:'עומק היום, פוטנציאל FM עולה. ברשימת מעקב — לחזור אחרי עוד 900 דקות.'}}
+];
+const SNAP=JSON.stringify(P);
+const HIST={};P.forEach(p=>HIST[p.id]=[{d:'02 Aug 2026',a:'Added to roster',w:'System'}]);
+HIST[1].push({d:'14 Sep 2026',a:'Level set to L2 Premium',w:'Avi N.'});HIST[2].push({d:'30 Sep 2026',a:'Focus set to Active',w:'Avi N.'});
+const byId=id=>P.find(p=>p.id===id);
+const mvF=k=>k>=1000?'€'+(k/1000).toFixed(2).replace(/\.?0+$/,'')+'M':'€'+k+'K';
+const ini=n=>n.split(' ').map(x=>x[0]).join('');
+const hasS=p=>p.s&&((p.s.lv&&p.s.lv!==p.lv)||(p.s.fc&&p.s.fc!==p.fc));
+const sugs=()=>P.filter(hasS);
+const lvChip=(l,sg)=>`<span class="lv ${sg?'sg':''}"><b style="background:${LV[l][0]};color:${LV[l][1]};${l===5?'border:1px solid var(--muted-2)':''}">L${l}</b></span>`;
+const fcTag=f=>`<span class="fc" style="color:${f===1?'var(--red)':f===4?'var(--muted)':'inherit'}"><s style="background:${FCOL[f]};${f===4?'border:1.5px solid var(--muted-2)':''}"></s>${T('fcs')[f-1]}</span>`;
+const arrow=t=>`<i class="${t}">${t==='up'?'▲':t==='down'?'▼':'●'}</i>`;
+const name=p=>lang==='he'&&HEN[p.n]?HEN[p.n]:p.n;
+const HEN={'Shai Golan':'שי גולן'};
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2400)}
+
+/* ---- rows for the table ---- */
+function rows(){
+  let r=[...P];
+  if(lvFilter)r=r.filter(p=>p.lv===lvFilter);
+  if(tab==='changes')r=r.filter(hasS);
+  r.sort(tab==='all'?((a,b)=>a.lv-b.lv||a.fc-b.fc):((a,b)=>a.fc-b.fc||b.u-a.u));
+  return r;
+}
+let flashId=null;
+function riHTML(){
+  const n=P.length, counts=[1,2,3,4,5].map(l=>P.filter(p=>p.lv===l).length);
+  const sg=sugs(), hi=sg.filter(p=>p.conf>=85).length;
+  const all=rows(), lim=tab==='changes'?99:(showAll?99:6), list=all.slice(0,lim);
+  const gaps=P.filter(p=>p.fc===1&&p.t>=14).length;
+  const pushShare=22,target=45;
+  if(empty)return `<div class="brit-module-head"><h2>${T('ri')}</h2><a href="#">${T('viewAll')}</a></div><div class="brit-empty">${T('empty')}</div>`;
+  return `
+  <div class="brit-module-head"><h2>${T('ri')}</h2><a href="#" onclick="return false">${T('viewAll')}</a></div>
+  <div class="ri-bar ${lvFilter?'dim':''}" role="group">${counts.map((c,i)=>`<button class="${lvFilter===i+1?'sel':''}" style="flex:${c||.001};background:${LV[i+1][0]};color:${LV[i+1][1]};${i===4?'box-shadow:inset 0 0 0 1px var(--muted-2)':''}${c?'':';display:none'}" onclick="setLv(${i+1})" title="L${i+1} ${T('lvl')[i]}">${c}</button>`).join('')}</div>
+  <div class="ri-key">${[1,2,3,4,5].map(l=>`<button class="${lvFilter===l?'sel':''}" onclick="setLv(${l})"><b>L${l}</b>${T('lvl')[l-1]}</button>`).join('')}</div>
+  ${sg.length?`<div class="ri-call"><div class="gi">AI</div><div><b>${T('callTitle').replace('{n}',sg.length)}</b><small>${T('callSub').replace('{h}',hi)}</small></div><button onclick="openInbox()">${T('callBtn')} →</button></div>`:''}
+  <div class="ri-tabs"><button class="${tab==='priority'?'on':''}" onclick="setTab('priority')">${T('tPri')}</button><button class="${tab==='all'?'on':''}" onclick="setTab('all')">${T('tAll')}</button><button class="${tab==='changes'?'on':''}" onclick="setTab('changes')">${T('tChg')}<i>${sg.length}</i></button></div>
+  <table class="ri-table"><thead><tr><th>${T('thP')}</th><th>${T('thL')}</th><th>${T('thF')}</th><th style="text-align:end">${T('thN')}</th></tr></thead><tbody>
+  ${list.map(p=>`<tr class="${flashId===p.id?'flash':''}" onclick="openDrawer(${p.id})"><td class="pl">${name(p)}<small>${p.pos} · ${p.club}</small></td><td><span class="lv ${hasS(p)?'sg':''}"><b style="background:${LV[p.lv][0]};color:${LV[p.lv][1]};${p.lv===5?'border:1px solid var(--muted-2)':''}">L${p.lv}</b>${arrow(p.tr)}</span></td><td>${fcTag(p.fc)}</td><td class="nx ${p.nx[2]?'hot':''}">${p.nx[lang==='en'?0:1]}</td></tr>`).join('')||`<tr><td colspan="4" class="brit-empty">—</td></tr>`}
+  </tbody></table>
+  ${tab!=='changes'&&all.length>6?`<div class="ri-more"><span>${T('more').replace('{a}',list.length).replace('{b}',all.length)}</span><button onclick="showAll=!showAll;paint()">${showAll?T('showLess'):T('showAll')}</button></div>`:''}
+  <div class="ri-eff"><div class="row"><span>${T('effTitle')}</span><b>${pushShare}% / ${target}%</b></div><div class="tr"><i style="width:${pushShare}%"></i><u style="inset-inline-start:${target}%"></u></div>
+   <p>${T('effMsg').replace('{n}',gaps||3)} <a onclick="setTab('priority')">${T('effLink')}</a><br>${T('effNote')}.</p></div>`;
+}
+const setLv=l=>{lvFilter=lvFilter===l?0:l;if(tab==='changes')tab='all';paint()};
+const setTab=t=>{tab=t;showAll=false;paint()};
+
+/* ---- page ---- */
+function pageHTML(){
+  const he=lang==='he';
+  return `
+  <header class="brit-masthead"><p class="brit-kicker">${T('kicker')}</p><h1>${T('hi')}<br><span>${he?'ליאור.':'Lior.'}</span></h1></header>
+  <section class="brit-signals"><div class="brit-signal"><label>${T('sig1')}</label><strong>€48.55M</strong><small>${T('sig1n')}</small></div><div class="brit-signal"><label>${T('sig2')}</label><strong>16</strong><small>${T('sig2n')}</small></div><div class="brit-signal"><label>${T('sig3')}</label><strong class="brit-red">03</strong><small>${T('sig3n')}</small></div></section>
+  <div class="brit-grid">
+   <div>
+    <section class="brit-module"><div class="brit-module-head"><h2>${T('bday')}</h2><span>${T('bdayN')}</span></div>
+      <div class="brit-deadline"><div class="brit-code">${he?'היום':'Today'}</div><div><h3>Yonatan Peretz</h3><p>Maccabi Tel Aviv U21 / ${he?'חוגג 20':'Turns 20'}</p></div><div><button class="brit-birthday-btn">${he?'שלח ברכה':'Send wishes'}</button><time class="brit-red">${he?'היום':'Today'}</time></div></div>
+      <div class="brit-deadline"><div class="brit-code">08 NOV</div><div><h3>Eden Ziv</h3><p>Maccabi Haifa / ${he?'חוגג 22':'Turns 22'}</p></div><time>${he?'5 ימים':'5 days'}</time></div></section>
+    <section class="brit-module brit-black-module"><div class="brit-module-head"><h2>${T('pend')}</h2><span>${T('pendN')}</span></div>
+      ${[['Ben Levi','CF / 30 / €3.00M','Maccabi Tel Aviv',3],['Amit Rosen','DM / 28 / €2.20M','Maccabi Netanya',6]].map(x=>`<div class="brit-approval"><div class="brit-avatar-box">${ini(x[0])}</div><div><h3>${x[0]}</h3><p>${x[1]}<br>${he?`המנדט פג בעוד ${x[3]} ימים`:`Mandate expires in ${x[3]} days`}</p></div><a class="brit-approve-btn" onclick="openDrawer(${x[0]==='Ben Levi'?14:8})">${T('review')}</a></div>`).join('')}</section>
+    <section class="brit-module"><div class="brit-module-head"><h2>${T('mw')}</h2><span>${T('mwSub')}</span></div>
+      <div class="brit-mandates">${[['Ben Levi',3,'Maccabi Tel Aviv / CF / €3.00M',14],['Amit Rosen',6,'Maccabi Netanya / DM / €2.20M',8],['Roi Dahan',9,'Hapoel Beer Sheva / RW / €1.80M',2]].map(x=>`<article class="brit-mandate"><strong>${x[0]}</strong><span>${he?`${x[1]} ימים נותרו`:`${x[1]} days left`}</span><p>${x[2]}</p><a onclick="openDrawer(${x[3]})">${T('openP')}</a></article>`).join('')}</div></section>
+    <section class="brit-module"><div class="brit-module-head"><h2>${T('act')}</h2><span>${he?'מציג 3 מתוך 28':'Showing 3 of 28'}</span></div>
+      ${[['Avi N.',he?'עדכן הערה':'Updated note','Ben Levi','10:42'],['Dana K.',he?'הוסיפה בקשה':'Added request','Hapoel Haifa','09:15'],['Avi N.',he?'שינה פוקוס ל״פעיל״':'Set focus to Active','Roi Dahan','Yesterday']].map(a=>`<div class="brit-feed-row"><time>${a[3]}</time><p>${a[0]} / ${a[1]}<strong>${a[2]}</strong></p><span>${he?'פתח':'Open'}</span></div>`).join('')}</section>
+   </div>
+   <aside>
+    <section class="brit-module"><div class="brit-module-head"><h2><span style="color:var(--ink);font:inherit">${T('our')}</span> <span class="brit-heading-gold" style="font:inherit;color:var(--gold)">${T('assets')}</span></h2><span>16</span></div>
+      <div class="brit-focus" style="margin-top:18px"><article><div class="brit-focus-copy"><small>Maccabi Haifa</small><h3>Eden Ziv</h3></div></article><article><div class="brit-focus-copy"><small>Maccabi Netanya</small><h3>Amit Rosen</h3></div></article></div></section>
+    <section class="brit-module"><div class="brit-module-head"><h2>${T('cr')}</h2><span>${T('crN')}</span></div>
+      ${[['03 NOV','Hapoel Haifa','CM · 22–27',he?'חדש':'New'],['01 NOV','Maccabi Netanya','CF · 25–31 / EU',he?'פתוח':'Open'],['29 OCT','Bnei Sakhnin','GK · 20–26',he?'פתוח':'Open']].map(r=>`<div class="brit-feed-row"><time>${r[0]}</time><p>${r[1]}<strong>${r[2]}</strong></p><span>${r[3]}</span></div>`).join('')}
+      <a class="brit-new-request">${T('newReq')}</a></section>
+    <section class="brit-module" id="ri">${riHTML()}</section>
+   </div>
+  </div>`;
+}
+function paint(){document.getElementById('ri').innerHTML=riHTML()}
+function renderAll(){
+  const r=document.getElementById('room');r.dir=lang==='he'?'rtl':'ltr';r.lang=lang;document.documentElement.dir=r.dir;
+  document.getElementById('lb').textContent=lang==='en'?'HE / EN':'EN / HE';
+  document.getElementById('lockSub').textContent=T('room');document.getElementById('crumbD').textContent=T('nav')[0];
+  document.getElementById('nav').innerHTML=T('nav').map((x,i)=>`<a class="${i===0?'active':''}"><span>${x}</span>${i===1?'<em>16</em>':''}</a>`).join('');
+  document.getElementById('canvas').innerHTML=pageHTML();
+}
+function toggleLang(){lang=lang==='en'?'he':'en';renderAll();if(openId)openDrawer(openId);if(document.getElementById('modal').classList.contains('open'))openInbox()}
+
+/* ---- drawer ---- */
+let openId=null;
+function openDrawer(id){
+  openId=id;const p=byId(id),s=p.s||{},he=lang==='he';
+  const sig=[['sPerf',0],['sFm',1],['sVal',2],['sLg',3],['sForm',4]];
+  document.getElementById('drawer').innerHTML=`
+  <div class="dr-h"><button class="x" onclick="closeAll()">×</button><small>${p.pos} · ${p.age} · ${p.club} · ${mvF(p.mv)}</small><h2>${name(p)}</h2>
+    <div class="tags">${lvChip(p.lv)}<span style="color:var(--paper)">${fcTag(p.fc).replace('inherit','var(--paper)')}</span><span style="color:#aaa69c;font:10px var(--mono)">${arrow(p.tr)} ${he?'מגמה':'Trend'}</span></div></div>
+  <div class="dr-s"><h4><span>${T('drLevel')}</span><span>${T('conf')} ${p.conf}%</span></h4>
+    <div class="ladder">${[1,2,3,4,5].map(l=>`<button class="${p.lv===l?'cur':''} ${s.lv===l&&s.lv!==p.lv?'aim':''}" style="${p.lv===l?`background:${LV[l][0]};color:${LV[l][1]}`:''}" onclick="setLevel(${id},${l})"><b>L${l}</b><small>${T('lvl')[l-1]}</small></button>`).join('')}</div>
+    <h4 style="margin-top:20px"><span>${T('drFocus')}</span></h4>
+    <div class="fseg">${[1,2,3,4].map(f=>`<button class="${p.fc===f?'cur':''} ${s.fc===f&&s.fc!==p.fc?'aim':''}" style="${p.fc===f?`background:${f===4?'#aba69b':FCOL[f]}`:''}" onclick="setFocus(${id},${f})">${T('fcs')[f-1]}</button>`).join('')}</div></div>
+  <div class="dr-s"><h4><span>✦ ${T('drAI')}</span><span>GEMINI 2.5</span></h4><div class="aibox"><div class="t"><span>${he?'מבוסס על הנתונים שלך':'Grounded on your data'}</span><button onclick="typeAI(${id})">${T('rerun')}</button></div><div id="aitx">${p.r[lang]}</div>
+    <div class="ev"><div>${T('sPerf')}: ${p.f[0]}/100</div><div>${T('sFm')}: ${p.f[1]}/100</div><div>${T('nLast')}: ${p.t}${T('d')} · ${p.nx[lang==='en'?0:1]}</div></div></div></div>
+  <div class="dr-s"><h4><span>${T('drSig')}</span></h4>${sig.map(([k,i])=>`<div class="sigrow"><span>${T(k)}</span><div class="tr"><i style="width:${p.f[i]}%"></i></div><span>${p.f[i]}</span></div>`).join('')}</div>
+  <div class="dr-s"><h4><span>${T('drEff')}</span><span>${he?'אוטומטי':'Auto'}</span></h4><div class="touch"><div><b>${p.x[0]}</b>${T('nNotes')}</div><div><b>${p.x[1]}</b>${T('nTasks')}</div><div><b>${p.x[2]}</b>${T('nCont')}</div><div><b>${p.t}${T('d')}</b>${T('nLast')}</div></div></div>
+  <div class="dr-s"><h4><span>${T('drNote')}</span></h4><textarea id="nt"></textarea><label style="display:flex;gap:8px;margin-top:12px;font:10px var(--mono)"><input type="checkbox"> ${T('drLock')}</label></div>
+  <div class="dr-s"><h4><span>${T('drHist')}</span></h4><div class="tl">${[...HIST[id]].reverse().map(h=>`<div><b>${h.a}</b><br>${h.d} · ${h.w}</div>`).join('')}</div></div>
+  <div class="dr-f"><button class="btn gold" onclick="toast(T('sav'))">${T('openFull')}</button></div>`;
+  document.getElementById('bd').classList.add('open');document.getElementById('drawer').classList.add('open');
+}
+function typeAI(id){const p=byId(id),el=document.getElementById('aitx'),t=p.r[lang];el.textContent='';let i=0;const iv=setInterval(()=>{i+=3;el.textContent=t.slice(0,i);if(i>=t.length)clearInterval(iv)},16)}
+function setLevel(id,l){const p=byId(id);if(l===p.lv)return;const note=(document.getElementById('nt')||{}).value;HIST[id].push({d:'03 Nov 2026',a:`Level L${p.lv} → L${l}${note?` — “${note}”`:''}`,w:'You'});p.lv=l;if(p.s&&p.s.lv===l)delete p.s.lv;toast(`${p.n}: L${l} ${T('lvl')[l-1]}`);openDrawer(id);paint()}
+function setFocus(id,f){const p=byId(id);if(f===p.fc)return;const note=(document.getElementById('nt')||{}).value;HIST[id].push({d:'03 Nov 2026',a:`Focus ${D.en.fcs[p.fc-1]} → ${D.en.fcs[f-1]}${note?` — “${note}”`:''}`,w:'You'});p.fc=f;if(p.s&&p.s.fc===f)delete p.s.fc;if(f===1)toast(T('alertSent'));else toast(`${p.n}: ${T('fcs')[f-1]}`);openDrawer(id);paint()}
+
+/* ---- AI inbox modal ---- */
+function openInbox(){
+  const sg=sugs().sort((a,b)=>b.conf-a.conf);
+  document.getElementById('modal').innerHTML=`<button class="close" onclick="closeAll()">×</button><h2>${T('modalT')}</h2><p class="sub">${T('modalS')}</p>
+  ${sg.length?`<div style="margin:12px 0"><button class="btn gold" onclick="acceptHigh()">${T('acceptHigh')}</button></div>`:''}
+  ${sg.map(p=>{const s=p.s;return `<div class="sg-row"><div><h3>${name(p)}</h3><div class="mv">${s.lv&&s.lv!==p.lv?`${lvChip(p.lv)} → ${lvChip(s.lv)}`:lvChip(p.lv)} ${s.fc&&s.fc!==p.fc?`<span style="margin-inline-start:8px">${fcTag(p.fc)} → ${fcTag(s.fc)}</span>`:''} <span class="conf">${T('conf')} ${p.conf}%</span></div><p><span class="ai">AI</span>${p.r[lang]}</p></div>
+   <div class="ac"><button class="btn gold" onclick="acceptS(${p.id})">${T('accept')}</button><button class="btn" onclick="closeAll();openDrawer(${p.id})">${T('adjust')}</button><button class="btn" onclick="dismissS(${p.id})">${T('dismiss')}</button></div></div>`}).join('')||`<div class="brit-empty">${T('done')}</div>`}`;
+  document.getElementById('bd').classList.add('open');document.getElementById('modal').classList.add('open');
+}
+function applyS(p){const s=p.s;if(s.lv&&s.lv!==p.lv){HIST[p.id].push({d:'03 Nov 2026',a:`Level L${p.lv} → L${s.lv} (accepted AI)`,w:'You + Engine'});p.lv=s.lv}if(s.fc&&s.fc!==p.fc){HIST[p.id].push({d:'03 Nov 2026',a:`Focus ${D.en.fcs[p.fc-1]} → ${D.en.fcs[s.fc-1]} (accepted AI)`,w:'You + Engine'});p.fc=s.fc}delete p.s}
+function acceptS(id){applyS(byId(id));paint();openInbox();toast('✓')}
+function dismissS(id){delete byId(id).s;paint();openInbox()}
+function acceptHigh(){const l=sugs().filter(p=>p.conf>=85);l.forEach(applyS);paint();openInbox();toast(`${l.length} ✓`)}
+function closeAll(){openId=null;['bd','drawer','modal'].forEach(i=>document.getElementById(i).classList.remove('open'))}
+
+/* ---- mock controls ---- */
+function simAlert(){
+  const p=byId(9);if(p.fc===1){toast('Already Push now — hit Reset');return}
+  p.fc=1;p.nx=['Request match','בקשה מתאימה',1];p.u=78;p.r={en:'A new Hapoel Haifa request (CM, 22–27) matches him exactly. Focus raised from Maintain to Push now.',he:'בקשה חדשה של הפועל חיפה (קשר, 22–27) מתאימה לו בדיוק. הפוקוס הועלה מ״תחזוקה״ ל״לדחוף עכשיו״.'};
+  HIST[9].push({d:'03 Nov 2026',a:'Focus Maintain → Push now (new matching request)',w:'Engine'});
+  tab='priority';lvFilter=0;flashId=9;paint();
+  const n=document.getElementById('notif');n.innerHTML=`<small><span>BRIT · ${T('notifT')}</span><span>now</span></small><b>${name(p)}</b><p>${T('notifP')}</p><button onclick="document.getElementById('notif').classList.remove('show');openDrawer(9)">${T('notifBtn')}</button>`;
+  n.classList.add('show');clearTimeout(simAlert.h);simAlert.h=setTimeout(()=>n.classList.remove('show'),7000);
+}
+function simEmpty(){empty=!empty;paint()}
+function resetAll(){const o=JSON.parse(SNAP);P.splice(0,P.length,...o);Object.keys(HIST).forEach(k=>{HIST[k]=HIST[k].filter(h=>h.w==='System'||h.w==='Avi N.')});empty=false;tab='priority';lvFilter=0;showAll=false;flashId=null;closeAll();document.getElementById('notif').classList.remove('show');paint()}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll()});
+renderAll();
+</script>
+<script>
+/* ===== Push board mock — overrides the Roster intelligence module of the dashboard mock ===== */
+Object.assign(D.en,{pushNow:'Push now',winTargets:'Window targets',winCloses:'{c} window closes',pushSub:'Found automatically · act on these',
+ nothing:'Nothing urgent right now.',nothingSub:' The analyst checks every player every 3 hours and will flag anyone who needs action.',
+ tagWin:'Window',done:'Done',doneToast:'Marked as done — returns if something new happens',handledN:'{n} handled · hidden until something new happens',show:'Show',
+ add:'Add player',addShort:'Add',noTargets:'No window targets yet.',noTargetsSub:' Mark the players you want to work hard on in the next window.',
+ touched:'Touched {n}d ago',noContact:'No contact logged',aiSuggests:'AI suggests for the window',marked:'Marked as window target',unmarked:'Removed from window targets',
+ pickTitle:'Add window target',pickSub:'Players we will work hard on in the next window · AI fit score shown',search:'Search player or club…',note:'Add a note (optional)',
+ mark:'★ Mark as window target',unmark:'Remove from window targets',whyNow:'Why now',plan:'Push plan',nextStep:'Next step',how:'How',when:'When',targetsL:'Targets',
+ aiRead:'AI read',newsL:'News',risks:'Risks',basis:'Level · how we judged him',effort:'Effort · last 30 days',notes:'Notes',tasks:'Tasks',last:'Last touch',
+ history:'History',profile:'Open full profile →',rerun:'Re-run analysis',updated:'Background analysis · updated 2h ago',fit:'Window fit',
+ lv:['Elite','Premium','Core','Depth','Developing'],timing:{now:'Now',this_week:'This week',this_window:'This window',later:'Later',hold:'Hold'},
+ crit:{output:'Output',ability:'Ability',value:'Value',league:'League / club',availability:'Availability'},building:'AI is building his window plan…',
+ notifT:'Push now',hist:{mark:'Marked as window target',unmark:'Removed from window targets',handled:'Push now · done'}});
+Object.assign(D.he,{pushNow:'לדחוף עכשיו',winTargets:'יעדים לחלון',winCloses:'החלון ב{c} נסגר',pushSub:'מזוהה אוטומטית · לפעול עליהם',
+ nothing:'אין כרגע שום דבר דחוף.',nothingSub:' האנליסט בודק כל שחקן כל 3 שעות ויסמן מי שצריך פעולה.',
+ tagWin:'חלון',done:'טופל',doneToast:'סומן כטופל — יחזור אם יקרה משהו חדש',handledN:'{n} טופלו · מוסתרים עד שיקרה משהו חדש',show:'הצג',
+ add:'הוסף שחקן',addShort:'הוסף',noTargets:'אין עדיין יעדים לחלון.',noTargetsSub:' סמנו את השחקנים שאתם רוצים לעבוד עליהם חזק בחלון הבא.',
+ touched:'קשר לפני {n} ימים',noContact:'לא נרשם קשר',aiSuggests:'ה־AI מציע לחלון',marked:'סומן כיעד לחלון',unmarked:'הוסר מיעדי החלון',
+ pickTitle:'הוספת יעד לחלון',pickSub:'שחקנים שנעבוד עליהם חזק בחלון הבא · מוצג ציון התאמה',search:'חיפוש שחקן או קבוצה…',note:'הוסף הערה (אופציונלי)',
+ mark:'★ סמן כיעד לחלון',unmark:'הסר מיעדי החלון',whyNow:'למה עכשיו',plan:'תוכנית דחיפה',nextStep:'הצעד הבא',how:'איך',when:'מתי',targetsL:'יעדים',
+ aiRead:'קריאת AI',newsL:'חדשות',risks:'סיכונים',basis:'רמה · איך שפטנו אותו',effort:'מאמץ · 30 ימים אחרונים',notes:'הערות',tasks:'משימות',last:'קשר אחרון',
+ history:'היסטוריה',profile:'פתח פרופיל מלא ←',rerun:'הרץ ניתוח מחדש',updated:'ניתוח ברקע · עודכן לפני 2 שע׳',fit:'התאמה לחלון',
+ lv:['עילית','פרימיום','ליבה','עומק','בפיתוח'],timing:{now:'עכשיו',this_week:'השבוע',this_window:'החלון הזה',later:'בהמשך',hold:'להמתין'},
+ crit:{output:'תפוקה',ability:'יכולת',value:'שווי',league:'ליגה / מועדון',availability:'זמינות'},building:'ה־AI בונה את תוכנית החלון שלו…',
+ notifT:'לדחוף עכשיו',hist:{mark:'סומן כיעד לחלון',unmark:'הוסר מיעדי החלון',handled:'לדחוף עכשיו · טופל'}});
+
+const DAYMS=864e5; let NOW=Date.now();
+const isoD=t=>new Date(t).toISOString().slice(0,10);
+const tr=(kind,severity,en,he,extra)=>Object.assign({kind,severity,en,he},extra||{});
+const crit=(o,a,v,l,av)=>[['output',30,o],['ability',20,a],['value',25,v],['league',15,l],['availability',10,av]];
+function mkData(){ return [
+ {id:8,n:'Amit Rosen',pos:'DM',club:'Maccabi Netanya',age:28,mv:'€2.20M',lv:2,touch:3,
+  trig:[tr('mandate',3,'Mandate expires in 6 days','המנדט פג בעוד 6 ימים',{deadline:isoD(NOW+6*DAYMS)}),tr('request',2,'Hapoel Beer Sheva is looking for a DM (+1 more request)','הפועל באר שבע מחפשת קשר אחורי (+1 בקשות נוספות)'),tr('contract',2,'Contract ends in 5 months','החוזה מסתיים בעוד 5 חודשים',{deadline:isoD(NOW+150*DAYMS)})],
+  step:{en:'Renew the mandate today, then call Beer Sheva’s sporting director',he:'לחדש את המנדט היום, ואז להתקשר למנהל המקצועי של באר שבע'},timing:'now',targets:['Hapoel Beer Sheva','Maccabi Haifa'],
+  how:{en:'Lead with his 7.1 average and 1,850 minutes; Beer Sheva need a DM before the window. Offer a two-year deal; use Haifa’s interest as leverage.',he:'להוביל עם ממוצע 7.1 ו־1,850 דקות; באר שבע צריכה קשר אחורי לפני החלון. להציע חוזה לשנתיים ולהשתמש בעניין של חיפה כמנוף.'},
+  when:{en:'Mandate first (expires in 6 days), pitch this week, close before the Israeli window ends.',he:'קודם מנדט (פג בעוד 6 ימים), פנייה השבוע, סגירה לפני סוף החלון בישראל.'},
+  read:{en:'Premium for our market: steady 7.1 ratings as a starter at a mid-table club, value rising.',he:'פרימיום לשוק שלנו: דירוג יציב של 7.1 כפותח בקבוצת אמצע טבלה, השווי עולה.'},fit:62,
+  news:[{h:'Netanya midfielder Rosen attracting interest from Beer Sheva',s:'positive',i:{en:'Confirms demand — use it in renewal talks',he:'מאשר ביקוש — להשתמש בזה במו״מ'},src:'ONE · 2026-11-01'}],
+  risks:[{en:'Hamstring issue last season (21 days missed)',he:'פציעה בירך האחורית בעונה שעברה (21 ימים)'}],c:crit([68,'SofaScore 7.15 · 1,850 min'],[null],[66,'€2.2m'],[50,'Israel · Elo 1420'],[93,'21 days missed'])},
+ {id:14,n:'Ben Levi',pos:'CF',club:'Maccabi Tel Aviv',age:30,mv:'€3.00M',lv:2,touch:2,
+  trig:[tr('mandate',3,'Mandate expires in 3 days','המנדט פג בעוד 3 ימים',{deadline:isoD(NOW+3*DAYMS)})],
+  step:{en:'Get the mandate renewal signed before Friday',he:'להחתים על חידוש המנדט לפני שישי'},timing:'now',targets:[],how:{en:'Renewal meeting with the player and family; bring the Gulf interest summary.',he:'פגישת חידוש עם השחקן והמשפחה; להביא סיכום עניין מהמפרץ.'},when:{en:'Before the mandate lapses in 3 days.',he:'לפני שהמנדט פג בעוד 3 ימים.'},
+  read:{en:'Solid Premium striker; the risk is losing the mandate, not his level.',he:'חלוץ פרימיום יציב; הסיכון הוא איבוד המנדט, לא הרמה.'},fit:55,news:[],risks:[],c:crit([70,'API 7.2 · 2,100 min'],[62,'FM CA 122'],[72,'€3m'],[50,'Israel'],[100,'No injuries'])},
+ {id:10,n:'Eden Ziv',pos:'LW',club:'Maccabi Haifa',age:21,mv:'€2.80M',lv:1,touch:19,win:{by:'Lior',at:NOW-30*DAYMS},
+  trig:[],step:{en:'Send his highlight reel to Al Ettifaq and Al Fayha',he:'לשלוח קליפ הייליטס לאל אתיפאק ולאל פייחה'},timing:'this_window',targets:['Al Ettifaq','Al Fayha','Panathinaikos'],
+  how:{en:'Position him as the best young winger in Israel; Saudi clubs are paying for U23 quota players.',he:'למצב אותו ככנף הצעיר הטוב בישראל; קבוצות סעודיות משלמות על שחקני מכסת U23.'},when:{en:'Build interest now, target offers in the first two weeks of the window.',he:'לבנות עניין עכשיו, לכוון להצעות בשבועיים הראשונים של החלון.'},
+  read:{en:'Elite at 21: output, ability and value all aligned.',he:'עילית בגיל 21: תפוקה, יכולת ושווי מתיישרים.'},fit:88,news:[{h:'Ziv called up to Israel senior squad',s:'positive',i:{en:'Raises his profile ahead of the window',he:'מעלה את הפרופיל לפני החלון'},src:'Ynet · 2026-10-28'}],risks:[],c:crit([80,'SofaScore 7.4 · 2,300 min'],[76,'FM CA 128 / PA 155'],[70,'€2.8m'],[56,'Israel · Elo 1510'],[100,'No injuries'])},
+ {id:6,n:'Dor Mizrahi',pos:'LB',club:'Hapoel Jerusalem',age:26,mv:'€1.20M',lv:2,touch:4,win:{by:'Dana',at:NOW-6*DAYMS},trig:[],
+  step:{en:'Ask Greek contacts for full-back needs; share his clips',he:'לשאול אנשי קשר ביוון על צורך במגנים; לשתף קליפים'},timing:'this_window',targets:['Aris','OFI'],how:{en:'Greek mid-table clubs fit his level and salary.',he:'קבוצות אמצע טבלה ביוון מתאימות לרמה ולשכר.'},when:{en:'Shortlist clubs this month, pitch in the window.',he:'רשימת קבוצות החודש, פנייה בחלון.'},
+  read:{en:'Borderline Premium/Core; consistent starter.',he:'גבולי פרימיום/ליבה; פותח עקבי.'},fit:70,news:[],risks:[],c:crit([62,'FotMob 7.0'],[null],[58,'€1.2m'],[50,'Israel'],[90,'8 days missed'])},
+ {id:12,n:'Omri Tal',pos:'RB',club:'Hapoel Beer Sheva',age:23,mv:'€1.90M',lv:2,touch:9,trig:[],step:{en:'Discuss a step-up move with him',he:'לשוחח איתו על מעבר שלב'},timing:'this_window',targets:[],how:{en:'',he:''},when:{en:'',he:''},
+  read:{en:'Two seasons of Premium-level output at a top-3 club.',he:'שתי עונות ברמת פרימיום במועדון צמרת.'},fit:79,fitR:{en:'Two Premium seasons, 18 months left — prime for a step up',he:'שתי עונות פרימיום, 18 חודשים בחוזה — בשל לקפיצה'},news:[],risks:[],c:crit([72,'API 7.2'],[68,'FM CA 126'],[60,'€1.9m'],[56,'Israel · top-3 club'],[100,'—'])},
+ {id:5,n:'Yonatan Peretz',pos:'CM',club:'Maccabi Tel Aviv U21',age:19,mv:'€700K',lv:3,touch:8,trig:[],step:{en:'',he:''},timing:'later',targets:[],how:{en:'',he:''},when:{en:'',he:''},
+  read:{en:'Core today; the ceiling is the story.',he:'ליבה היום; התקרה היא הסיפור.'},fit:72,fitR:{en:'FM potential 150+, youth international — a loan move would accelerate him',he:'פוטנציאל FM 150+, שחקן נבחרת נוער — השאלה תאיץ אותו'},news:[],risks:[],c:crit([48,'FotMob 6.8 · 600 min'],[70,'FM CA 112 / PA 152'],[44,'€700k'],[50,'Israel'],[100,'—'])},
+ {id:2,n:'Roi Dahan',pos:'RW',club:'Hapoel Beer Sheva',age:27,mv:'€1.80M',lv:2,touch:19,trig:[tr('mandate',2,'Mandate expires in 9 days','המנדט פג בעוד 9 ימים',{deadline:isoD(NOW+9*DAYMS)})],step:{en:'Schedule the mandate renewal call',he:'לקבוע שיחת חידוש מנדט'},timing:'this_week',targets:[],how:{en:'',he:''},when:{en:'',he:''},
+  read:{en:'Stable Premium winger.',he:'כנף פרימיום יציב.'},fit:50,news:[],risks:[],c:crit([66,'API 7.0'],[null],[60,'€1.8m'],[56,'Israel'],[100,'—'])},
+ {id:9,n:'Shai Golan',pos:'AM',club:'Hapoel Haifa',age:25,mv:'€1.50M',lv:3,touch:22,trig:[],step:{en:'',he:''},timing:'later',targets:[],how:{en:'',he:''},when:{en:'',he:''},read:{en:'Consistent Core playmaker.',he:'פלייסמייקר ליבה עקבי.'},fit:45,news:[],risks:[],c:crit([60,'FotMob 6.9'],[null],[56,'€1.5m'],[50,'Israel'],[95,'—'])},
+ {id:7,n:'Gal Kedem',pos:'ST',club:'Bnei Sakhnin',age:22,mv:'€250K',lv:4,touch:40,trig:[],step:{en:'',he:''},timing:'hold',targets:[],how:{en:'',he:''},when:{en:'',he:''},read:{en:'Depth profile.',he:'פרופיל עומק.'},fit:20,news:[],risks:[],c:crit([null],[null],[33,'€250k'],[50,'Israel'],[null])},
+]}
+let PB=mkData(), HANDLED=new Set(), PBHIST={}, pbOpen=null, pbPicker=false, pbShowHandled=false, ANALYSING=new Set();
+const pb=id=>PB.find(p=>p.id===id);
+function liveTrig(p){const l=[...p.trig];if(p.win){const since=Math.min(p.touch,Math.floor((NOW-p.win.at)/DAYMS));if(since>=14)l.push(tr('neglect',3,`Window target · no contact for ${since} days`,`יעד לחלון · ${since} ימים ללא קשר`));}return l.sort((a,b)=>b.severity-a.severity)}
+const score=p=>liveTrig(p).reduce((s,t)=>s+t.severity,0);
+const key=p=>liveTrig(p).filter(t=>t.severity>=2).map(t=>t.kind+':'+(t.deadline||'')+':'+(t.ref||'')).sort().join('|');
+const urgent=p=>score(p)>=3&&!(HANDLED.has(p.id+'#'+key(p)));
+const dl=p=>{const d=liveTrig(p).map(t=>t.deadline?Date.parse(t.deadline):NaN).filter(x=>!isNaN(x));return d.length?Math.max(0,Math.ceil((Math.min(...d)-NOW)/DAYMS)):null};
+const L=k=>T(k), he=()=>lang==='he', tt=(o)=>o?(he()?o.he||o.en:o.en):'';
+const lvB=l=>`<b class="ri-l${l} pb-lv">L${l}</b>`;
+function hist(id,a){(PBHIST[id]=PBHIST[id]||[]).push({a,at:new Date().toLocaleDateString(he()?'he-IL':'en-GB',{day:'2-digit',month:'short'}),by:'Lior'})}
+
+function riHTML(){
+  const U=PB.filter(urgent).sort((a,b)=>score(b)-score(a)||(dl(a)??999)-(dl(b)??999));
+  const W=PB.filter(p=>p.win).sort((a,b)=>b.touch-a.touch);
+  const S=PB.filter(p=>!p.win&&p.fit>=65).sort((a,b)=>b.fit-a.fit).slice(0,3);
+  const handled=PB.filter(p=>HANDLED.has(p.id+'#'+key(p))&&score(p)>=3);
+  const row=p=>{const tg=liveTrig(p),d=dl(p);return `<article class="pb-item sev${tg[0]?.severity||2}"><button class="pb-item-main" onclick="pbDrawer(${p.id})">
+    <div class="pb-item-top"><h4>${p.n}${p.win?`<em class="pb-tag">${L('tagWin')}</em>`:''}</h4>${d!=null?`<time class="${d<=7?'hot':''}">${d}d</time>`:''}</div>
+    <small>${p.pos} · ${p.club} · L${p.lv}</small><ul class="pb-why">${tg.slice(0,2).map(t=>`<li class="k-${t.kind}">${tt(t)}</li>`).join('')}</ul>
+    ${p.step.en?`<p class="pb-step">→ ${tt(p.step)}</p>`:''}</button>
+    <button class="pb-done" onclick="pbDone(${p.id})">✓ ${L('done')}</button></article>`};
+  return `<div class="brit-module-head"><h2>${T('ri')}</h2><a href="#" onclick="return false">${T('viewAll')}</a></div>
+  <div class="pb-sum"><a href="#pb-urgent" class="${U.length?'hot':''}"><strong>${String(U.length).padStart(2,'0')}</strong><span>${L('pushNow')}</span></a>
+   <a href="#pb-window"><strong>${String(W.length).padStart(2,'0')}</strong><span>${L('winTargets')}</span></a>
+   <div class="pb-sum-win"><strong>58d</strong><span>${L('winCloses').replace('{c}',he()?'ישראל':'Israel')}</span></div></div>
+  <div class="pb-h" id="pb-urgent"><h3>${L('pushNow')}</h3><span>${L('pushSub')}</span></div>
+  ${U.length?U.map(row).join(''):`<div class="pb-empty"><b>${L('nothing')}</b>${L('nothingSub')}</div>`}
+  ${handled.length?`<div class="pb-handled">${L('handledN').replace('{n}',handled.length)} · <a href="#" style="color:var(--gold)" onclick="HANDLED.clear();paint();return false">${L('show')}</a></div>`:''}
+  <div class="pb-h" id="pb-window"><h3>${L('winTargets')}</h3><button class="pb-add" onclick="pbPick()">+ ${L('add')}</button></div>
+  ${W.length?W.map(p=>`<button class="pb-target" onclick="pbDrawer(${p.id})"><div class="pb-item-top"><h4>${p.n}${lvB(p.lv)}${urgent(p)?`<em class="pb-tag hot">${L('pushNow')}</em>`:''}</h4>
+    <time class="${p.touch>=14?'hot':''}">${L('touched').replace('{n}',p.touch)}</time></div><small>${p.pos} · ${p.club}</small>
+    ${ANALYSING.has(p.id)?`<p class="pb-step muted">${L('building')}</p>`:p.step.en?`<p class="pb-step">→ ${tt(p.step)}</p>`:''}
+    ${p.targets.length?`<p class="pb-clubs">${L('targetsL')}: ${p.targets.join(' · ')}</p>`:''}</button>`).join(''):`<div class="pb-empty"><b>${L('noTargets')}</b>${L('noTargetsSub')}</div>`}
+  ${S.length?`<div class="pb-sugg"><span class="pb-sugg-h">✦ ${L('aiSuggests')}</span>${S.map(p=>`<div class="pb-sugg-row"><button class="pb-sugg-name" onclick="pbDrawer(${p.id})">${p.n} <em>${p.fit}</em><small>${tt(p.fitR||p.read)}</small></button><button class="pb-add" onclick="pbMark(${p.id})">+ ${L('addShort')}</button></div>`).join('')}</div>`:''}
+  <div class="ri-status"><span class="ri-live"></span>${L('updated')}</div>`;
+}
+function paint(){document.getElementById('ri').innerHTML=riHTML()}
+function pbToast(m){toast(m)}
+function pbDone(id){const p=pb(id);HANDLED.add(id+'#'+key(p));hist(id,'handled');paint();if(pbOpen===id)pbDrawer(id);pbToast(L('doneToast'))}
+function pbMark(id,note){const p=pb(id);p.win={by:'Lior',at:NOW,note};hist(id,'mark');ANALYSING.add(id);paint();pbToast(L('marked'));
+  setTimeout(()=>{ANALYSING.delete(id);if(!p.step.en){p.step={en:'Build a 3-club shortlist for him this week',he:'לבנות לו רשימה של 3 קבוצות השבוע'};p.timing='this_window'}paint();if(pbOpen===id)pbDrawer(id)},1800)}
+function pbUnmark(id){delete pb(id).win;hist(id,'unmark');paint();pbDrawer(id);pbToast(L('unmarked'))}
+function closePb(){document.getElementById('pbLayer').innerHTML='';pbOpen=null}
+function closeAll(){closePb();['bd','drawer','modal'].forEach(i=>{const e=document.getElementById(i);e&&e.classList.remove('open')})}
+function openDrawer(id){pbDrawer(id)}
+function pbDrawer(id){
+  pbOpen=id;const p=pb(id);if(!p)return;const tg=liveTrig(p),u=urgent(p);
+  document.getElementById('pbLayer').innerHTML=`<div class="ri-backdrop" onclick="closePb()"></div><aside class="ri-drawer">
+  <div class="ri-dr-h"><button class="ri-x" onclick="closePb()">×</button><small>${p.pos} · ${p.age} · ${p.club} · ${p.mv}</small><h2>${p.n}</h2>
+   <div class="ri-dr-tags"><span class="ri-lv"><b class="ri-l${p.lv}">L${p.lv}</b></span><span class="ri-unconf">${L('lv')[p.lv-1]}</span>${u?`<em class="pb-tag hot">${L('pushNow')}</em>`:''}${p.win?`<em class="pb-tag">${L('tagWin')}</em>`:''}</div>
+   <div class="pb-dr-actions">${p.win?`<button class="ri-btn ri-btn-dark" onclick="pbUnmark(${id})">${L('unmark')}</button>`:`<button class="ri-btn ri-btn-gold" onclick="pbMark(${id});pbDrawer(${id})">${L('mark')}</button>`}
+   ${u?`<button class="ri-btn ri-btn-dark" onclick="pbDone(${id})">✓ ${L('done')}</button>`:''}</div></div>
+  ${tg.length?`<div class="ri-dr-s"><h4><span>${L('whyNow')}</span></h4><ul class="pb-why big">${tg.map(t=>`<li class="k-${t.kind}">${tt(t)}${t.deadline?`<time>${t.deadline}</time>`:''}</li>`).join('')}</ul></div>`:''}
+  ${p.step.en||p.how.en?`<div class="ri-dr-s"><h4><span>✦ ${L('plan')}</span><span class="ri-timing ri-t-${p.timing}">${L('timing')[p.timing]}</span></h4><div class="ri-plan">
+    ${p.step.en?`<div><b>${L('nextStep')}</b><p class="pb-next">${tt(p.step)}</p></div>`:''}${p.how.en?`<div><b>${L('how')}</b><p>${tt(p.how)}</p></div>`:''}${p.when.en?`<div><b>${L('when')}</b><p>${tt(p.when)}</p></div>`:''}
+    ${p.targets.length?`<div><b>${L('targetsL')}</b><p>${p.targets.join(' · ')}</p></div>`:''}</div></div>`:''}
+  <div class="ri-dr-s"><h4><span>✦ ${L('aiRead')}</span><span>GEMINI + SEARCH · 2h</span></h4><div class="ri-aibox"><p>${tt(p.read)}</p><div class="ri-ev"><div>${L('fit')} ${p.fit}/100${p.fitR?' — '+tt(p.fitR):''}</div></div><button class="ri-link ri-link-gold" onclick="pbToast('${L('updated')}')">${L('rerun')}</button></div></div>
+  <div class="ri-dr-s"><h4><span>${L('newsL')}</span></h4>${p.news.length?p.news.map(n=>`<div class="ri-news ri-ns-${n.s}"><b>${n.h}</b><p>${tt(n.i)}</p><small>${n.src}</small></div>`).join(''):`<div class="ri-muted">—</div>`}</div>
+  ${p.risks.length?`<div class="ri-dr-s"><h4><span>${L('risks')}</span></h4>${p.risks.map(r=>`<div class="ri-risk">${tt(r)}</div>`).join('')}</div>`:''}
+  <div class="ri-dr-s"><h4><span>${L('basis')}</span></h4>${p.c.map(([k,w,v])=>`<div class="ri-sig"><span>${L('crit')[k]}<em>${w}%</em></span><div class="ri-sig-tr"><i style="width:${v[0]||0}%;opacity:${v[0]==null?.2:1}"></i></div><span>${v[0]??'—'}</span>${v[1]?`<small>${v[1]}</small>`:''}</div>`).join('')}</div>
+  <div class="ri-dr-s"><h4><span>${L('effort')}</span></h4><div class="ri-touch"><div><b>${Math.max(0,4-Math.floor(p.touch/7))}</b>${L('notes')}</div><div><b>${Math.max(0,2-Math.floor(p.touch/10))}</b>${L('tasks')}</div><div><b>${p.touch}d</b>${L('last')}</div></div></div>
+  ${(PBHIST[id]||[]).length?`<div class="ri-dr-s"><h4><span>${L('history')}</span></h4><div class="ri-tl">${PBHIST[id].slice().reverse().map(h=>`<div><b>${L('hist')[h.a]}</b><br>${h.at} · ${h.by}</div>`).join('')}</div></div>`:''}
+  <div class="ri-dr-f"><a class="ri-btn ri-btn-gold">${L('profile')}</a></div></aside>`;
+}
+function pbPick(){
+  const draw=(q='')=>{const list=PB.filter(p=>!p.win&&(!q||(p.n+' '+p.club).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>b.fit-a.fit);
+    document.getElementById('pbList').innerHTML=list.map(p=>`<button class="pb-picker-row" onclick="pbMark(${p.id},document.getElementById('pbNote').value);closePb()"><span><b>${p.n}</b><small>${p.pos} · ${p.club} · ${p.mv}</small>${p.fit>=65?`<small class="pb-fit">✦ ${tt(p.fitR||p.read)}</small>`:''}</span><span class="pb-picker-r">${lvB(p.lv)}<em>${p.fit}</em><i>+</i></span></button>`).join('')};
+  document.getElementById('pbLayer').innerHTML=`<div class="ri-backdrop" onclick="closePb()"></div><div class="ri-modal pb-picker"><button class="ri-x" onclick="closePb()">×</button><h2>${L('pickTitle')}</h2><p class="ri-modal-sub">${L('pickSub')}</p>
+   <input class="pb-search" id="pbQ" placeholder="${L('search')}"><input class="pb-search" id="pbNote" placeholder="${L('note')}"><div class="pb-picker-list" id="pbList"></div></div>`;
+  document.getElementById('pbQ').oninput=e=>draw(e.target.value);draw();document.getElementById('pbQ').focus();
+}
+function pushNotif(title,body,id){const n=document.getElementById('notif');n.innerHTML=`<small><span>BRIT · ${L('notifT')}</span><span>now</span></small><b>${title}</b><p>${body}</p><button onclick="document.getElementById('notif').classList.remove('show');pbDrawer(${id})">${T('notifBtn')}</button>`;n.classList.add('show');clearTimeout(pushNotif.h);pushNotif.h=setTimeout(()=>n.classList.remove('show'),7000)}
+function simRequest(){const p=pb(9);if(p.trig.some(t=>t.kind==='request'))return toast('Already simulated — Reset');
+  p.trig.push(tr('request',3,'Hapoel Haifa is looking for an AM (new today) +1 more','הפועל חיפה מחפשת קשר התקפי (חדש היום) +1'));p.step={en:'Call Hapoel Haifa today — he fits their AM request exactly',he:'להתקשר היום להפועל חיפה — הוא מתאים בדיוק לבקשה'};p.timing='now';p.targets=['Hapoel Haifa'];
+  paint();pushNotif(p.n,he()?'הפועל חיפה מחפשת קשר התקפי → להתקשר היום':'Hapoel Haifa is looking for an AM → call them today',9)}
+function simDays(){PB.forEach(p=>p.touch+=15);NOW+=15*DAYMS;paint();toast(he()?'עברו 15 ימים — יעדים מוזנחים עלו ל״לדחוף עכשיו״':'15 days later — neglected window targets moved to Push now')}
+function resetAll(){NOW=Date.now();PB=mkData();HANDLED.clear();PBHIST={};closeAll();paint()}
+function simAlert(){simRequest()} function simEmpty(){}
+const _toggle=toggleLang; toggleLang=function(){_toggle();if(pbOpen)pbDrawer(pbOpen)};
+document.getElementById('room').insertAdjacentHTML('beforeend','<div id="pbLayer"></div>');
+renderAll();
+
+</script>
+</body>
+</html>

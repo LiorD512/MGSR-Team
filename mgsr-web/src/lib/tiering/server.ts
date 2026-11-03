@@ -12,6 +12,7 @@ import {
   abilitySignal,
   applyFocusAdj,
   availabilitySignal,
+  computeTriggers,
   computeUrgency,
   confidenceFrom,
   contractMonthsLeft,
@@ -30,9 +31,9 @@ import {
 } from './engine';
 import { gatherInputs } from './inputs';
 import { runAnalyst, type AnalystFacts } from './analyst';
+import { isUrgent, liveTriggers, triggerKey } from './shared';
 import type {
   CriterionKey,
-  Focus,
   Level,
   PlayerTierDoc,
   TierAi,
@@ -119,6 +120,7 @@ interface RosterPlayer {
 
 interface RequestRow {
   clubName?: string;
+  createdAt?: number;
   euOnly?: boolean;
   position?: string;
   minAge?: number;
@@ -327,7 +329,9 @@ export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPl
       position: r.position ?? '',
       ...(r.minAge || r.maxAge ? { ages: `${r.minAge ?? ''}-${r.maxAge ?? ''}` } : {}),
       ...(r.euOnly ? { euOnly: true } : {}),
+      ...(r.createdAt ? { daysOld: Math.max(0, Math.floor((now - r.createdAt) / DAY)) } : {}),
     })),
+    windowTarget: !!prev?.windowTarget,
     transferWindows: ctx.windows,
     daysSinceLastTouch: effort.lastTouchAt ? daysSinceTouch : null,
     recentAgentNotes: recentNotes,
@@ -359,6 +363,21 @@ export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPl
   const engineConf = confidenceFrom(coverage, score, group);
   const confidence = read ? Math.round((engineConf + read.confidence) / 2) : keep ? keep.confidence : engineConf;
   const tmpl = templateReason(u.next, coverage);
+  const plan = read?.plan ?? keep?.plan;
+  const news = read?.news ?? keep?.news ?? [];
+  const newsSignal = read ? read.newsSignal : keep?.newsSignal ?? 0;
+  const triggers = computeTriggers({
+    now,
+    level,
+    mandateDays,
+    contractMonths,
+    requests: matchingReqs.map((r) => ({ club: r.clubName ?? '—', position: r.position ?? '', createdAt: r.createdAt })),
+    plan: plan ?? null,
+    focusAdj,
+    newsSignal,
+    news,
+  });
+  const windowFit = read?.windowFit ?? keep?.windowFit;
 
   const ai: TierAi = {
     score,
@@ -371,22 +390,24 @@ export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPl
     urgency: u.urgency,
     urgencyParts: u.parts,
     trend,
-    newsSignal: read ? read.newsSignal : keep?.newsSignal ?? 0,
+    newsSignal,
     confidence,
     reasonEn: read?.reasonEn || keep?.reasonEn || tmpl.en,
     reasonHe: read?.reasonHe || keep?.reasonHe || tmpl.he,
     evidence: read?.evidence ?? keep?.evidence ?? [],
     criteria,
     signals,
-    news: read?.news ?? keep?.news ?? [],
+    news,
     risks: read?.risks ?? keep?.risks ?? [],
-    ...(read?.plan ? { plan: read.plan } : keep?.plan ? { plan: keep.plan } : {}),
+    ...(plan ? { plan } : {}),
+    triggers,
+    ...(windowFit ? { windowFit } : {}),
     sources: read?.sources ?? keep?.sources ?? [],
     next: u.next,
     model: read ? GEMINI_MODEL : keep?.model ?? 'engine',
     computedAt: now,
     ...(read ? { analystAt: now, dataHash } : keep?.analystAt ? { analystAt: keep.analystAt, dataHash: keep.dataHash } : {}),
-    alertedFocus1: focus === 1 ? prevAi?.alertedFocus1 : false,
+    ...(prevAi?.alertKey ? { alertKey: prevAi.alertKey } : {}),
   };
 
   const doc: PlayerTierDoc = {
@@ -424,7 +445,7 @@ export async function sweepRoster(
       const p = queue[i++];
       try {
         const r = await processPlayer(db, ctx, p, opts);
-        await alertNewPushRecommendation(db, r.doc);
+        await alertIfNewlyUrgent(db, r.doc);
         analysed++;
         if (r.analystRan) aiCalls++;
         log(`✓ ${p.fullName} → L${r.doc.ai?.level} F${r.doc.ai?.focus}${r.analystRan ? ' (AI)' : ''} [${r.refreshed.join(',') || 'cached'}]`);
@@ -435,7 +456,15 @@ export async function sweepRoster(
     }
   });
   await Promise.all(workers);
-  const meta: TierMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, aiCalls, total: queue.length, errors: errors.slice(0, 20) };
+  const meta: TierMeta = {
+    lastRunAt: Date.now(),
+    durationMs: Date.now() - t0,
+    analysed,
+    aiCalls,
+    total: queue.length,
+    windows: ctx.windows,
+    errors: errors.slice(0, 20),
+  };
   const [col, id] = META_DOC.split('/');
   await db.collection(col).doc(id).set(clean(meta));
   return meta;
@@ -453,72 +482,34 @@ function clean<T>(o: T): T {
   return JSON.parse(JSON.stringify(o)) as T;
 }
 
-export interface TagChange {
-  level?: Level;
-  focus?: Focus;
-  note?: string;
-  locked?: boolean;
-}
+export type BoardAction = 'mark' | 'unmark' | 'handled' | 'reopen';
 
-/** Any agent can change tags; notes are optional. Records history; alerts owners on Push now. */
-export async function applyTags(
+/** Any agent: mark / unmark a window target, mark a Push-now item as done, or reopen it. Note optional. */
+export async function applyAction(
   db: Firestore,
   playerId: string,
-  change: TagChange,
+  action: BoardAction,
   actor: Actor,
-  kind: TierHistoryEntry['kind']
+  note?: string
 ): Promise<PlayerTierDoc> {
   const ref = db.collection(TIERS_COLLECTION).doc(playerId);
-  const playerSnap = await db.collection('Players').doc(playerId).get();
-  const pdata = playerSnap.data() as RosterPlayer | undefined;
-  const snap = await ref.get();
+  const [snap, playerSnap] = await Promise.all([ref.get(), db.collection('Players').doc(playerId).get()]);
+  if (!playerSnap.exists) throw new Error('Player not found on roster');
+  const pdata = playerSnap.data() as RosterPlayer;
   const cur = (snap.exists ? (snap.data() as PlayerTierDoc) : { playerId }) as PlayerTierDoc;
-  const next: PlayerTierDoc = { ...cur, playerId, tmProfile: cur.tmProfile ?? pdata?.tmProfile, playerName: cur.playerName ?? pdata?.fullName };
+  const now = Date.now();
+  const next: PlayerTierDoc = { ...cur, playerId, tmProfile: cur.tmProfile ?? pdata.tmProfile, playerName: cur.playerName ?? pdata.fullName };
+  const n = note?.trim() ? note.trim().slice(0, 400) : undefined;
 
-  const fromLevel = cur.level ?? null;
-  const fromFocus = cur.focus ?? null;
-  const toLevel = change.level ?? cur.level;
-  const toFocus = change.focus ?? cur.focus;
-  const changed = (change.level != null && change.level !== cur.level) || (change.focus != null && change.focus !== cur.focus);
+  if (action === 'mark') next.windowTarget = { by: actor.name, at: now, ...(n ? { note: n } : {}) };
+  if (action === 'unmark') delete next.windowTarget;
+  if (action === 'handled') next.handled = { by: actor.name, at: now, key: triggerKey(next, now) };
+  if (action === 'reopen') delete next.handled;
 
-  if (change.level != null) next.level = change.level;
-  if (change.focus != null) next.focus = change.focus;
-  if (change.locked != null) next.locked = change.locked;
-  if (changed) {
-    next.confirmedBy = actor.name;
-    next.confirmedAt = Date.now();
-    // Accepting/overriding clears a dismissal that no longer applies.
-    delete next.dismissed;
-    const entry: TierHistoryEntry = {
-      at: Date.now(),
-      by: actor.name,
-      kind,
-      fromLevel,
-      toLevel: toLevel ?? null,
-      fromFocus,
-      toFocus: toFocus ?? null,
-      ...(change.note ? { note: change.note.slice(0, 400) } : {}),
-    };
-    next.history = [...(cur.history ?? []), entry].slice(-40);
-  }
+  const entry: TierHistoryEntry = { at: now, by: actor.name, action, ...(n ? { note: n } : {}) };
+  next.history = [...(cur.history ?? []), entry].slice(-40);
   await ref.set(clean(next));
-
-  if (change.focus === 1 && cur.focus !== 1) {
-    await notifyOwners(db, {
-      title: 'Push now',
-      body: `${next.playerName ?? 'Player'} moved to Push now${actor.system ? '' : ` by ${actor.name}`}.`,
-      playerId,
-    });
-  }
   return next;
-}
-
-export async function dismissSuggestion(db: Firestore, playerId: string): Promise<void> {
-  const ref = db.collection(TIERS_COLLECTION).doc(playerId);
-  const snap = await ref.get();
-  if (!snap.exists) return;
-  const d = snap.data() as PlayerTierDoc;
-  await ref.set(clean({ ...d, dismissed: { level: d.ai?.level, focus: d.ai?.focus, at: Date.now() } }));
 }
 
 /* ───────────────────────── push alerts ───────────────────────── */
@@ -577,14 +568,20 @@ export async function notifyOwners(
   return { sent, owners: accounts.length };
 }
 
-/** After a run: alert once when the engine newly recommends Push now for a not-yet-Push-now player. */
-export async function alertNewPushRecommendation(db: Firestore, doc: PlayerTierDoc): Promise<void> {
+/** After each analysis: push once to the owner when a player newly lands on Push now (new set of reasons). */
+export async function alertIfNewlyUrgent(db: Firestore, doc: PlayerTierDoc): Promise<boolean> {
   const ai = doc.ai;
-  if (!ai || ai.focus !== 1 || doc.focus === 1 || ai.alertedFocus1) return;
+  if (!ai || !isUrgent(doc)) return false;
+  const key = triggerKey(doc);
+  if (!key || ai.alertKey === key) return false;
+  const top = liveTriggers(doc)[0];
+  const step = ai.plan?.nextStepEn;
   await notifyOwners(db, {
-    title: 'AI recommends Push now',
-    body: `${doc.playerName ?? 'Player'}: ${ai.reasonEn.split('.')[0]}.`,
+    title: `Push now: ${doc.playerName ?? 'Player'}`,
+    body: [top?.en, step].filter(Boolean).join(' → ').slice(0, 230),
     playerId: doc.playerId,
   });
-  await db.collection(TIERS_COLLECTION).doc(doc.playerId).set({ ai: { ...ai, alertedFocus1: true } }, { merge: true });
+  await db.collection(TIERS_COLLECTION).doc(doc.playerId).set({ ai: { ...ai, alertKey: key } }, { merge: true });
+  ai.alertKey = key;
+  return true;
 }

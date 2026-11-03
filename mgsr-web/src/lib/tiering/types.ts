@@ -17,6 +17,26 @@ export type PositionGroup = 'GK' | 'CB' | 'FB' | 'MF' | 'AM' | 'ST';
 
 export type NextKind = 'mandate' | 'contract' | 'requests' | 'untouched' | 'none';
 
+/** Why a player needs action now. Severity 3 = act today, 2 = this week, 1 = context. */
+export type TriggerKind = 'mandate' | 'contract' | 'request' | 'news' | 'plan' | 'neglect';
+export interface TierTrigger {
+  kind: TriggerKind;
+  severity: 1 | 2 | 3;
+  en: string;
+  he: string;
+  /** ISO date (YYYY-MM-DD) of the hard deadline, if any. */
+  deadline?: string;
+  /** What exactly triggered it (clubs, headline) — a new ref re-opens a "done" item. */
+  ref?: string;
+}
+
+/** How good a candidate he is for a focused push in the next transfer window (AI). */
+export interface TierWindowFit {
+  score: number;
+  reasonEn: string;
+  reasonHe: string;
+}
+
 /** The five level criteria. Missing data => the criterion is dropped and weights renormalised. */
 export type CriterionKey = 'output' | 'ability' | 'value' | 'league' | 'availability';
 
@@ -61,6 +81,9 @@ export type PushTiming = 'now' | 'this_week' | 'this_window' | 'later' | 'hold';
 
 /** HOW and WHEN to push the player. */
 export interface TierPlan {
+  /** One imperative line: the very next thing to do. */
+  nextStepEn: string;
+  nextStepHe: string;
   howEn: string;
   howHe: string;
   whenEn: string;
@@ -113,6 +136,9 @@ export interface TierAi {
   plan?: TierPlan;
   sources: TierSource[];
   next: { kind: NextKind; value?: number };
+  /** Time-critical reasons computed by the worker (neglect is added live in the UI). */
+  triggers: TierTrigger[];
+  windowFit?: TierWindowFit;
   model: string;
   /** Last deterministic recompute. */
   computedAt: number;
@@ -120,8 +146,8 @@ export interface TierAi {
   analystAt?: number;
   /** Hash of the facts the analyst saw; a change triggers a fresh analyst run. */
   dataHash?: string;
-  /** True once we have pushed "AI recommends Push now" for this streak. */
-  alertedFocus1?: boolean;
+  /** Trigger key we last sent a push alert for (prevents repeats). */
+  alertKey?: string;
 }
 
 export interface TierEffort {
@@ -134,11 +160,7 @@ export interface TierEffort {
 export interface TierHistoryEntry {
   at: number;
   by: string;
-  kind: 'manual' | 'ai-accepted' | 'system';
-  fromLevel?: Level | null;
-  toLevel?: Level | null;
-  fromFocus?: Focus | null;
-  toFocus?: Focus | null;
+  action: 'mark' | 'unmark' | 'handled' | 'reopen';
   note?: string;
 }
 
@@ -178,14 +200,10 @@ export interface PlayerTierDoc {
   playerId: string;
   tmProfile?: string;
   playerName?: string;
-  /** Confirmed by a human. Undefined = AI-assigned until someone confirms. */
-  level?: Level;
-  focus?: Focus;
-  locked?: boolean;
-  confirmedBy?: string;
-  confirmedAt?: number;
-  /** Suggestion the user dismissed; same suggestion is not shown again. */
-  dismissed?: { level?: Level; focus?: Focus; at: number };
+  /** Marked by an agent: "we work hard on him in the next window". */
+  windowTarget?: { by: string; at: number; note?: string };
+  /** "Done" on the Push now list — hidden until a new trigger appears (or 7 days pass). */
+  handled?: { by: string; at: number; key: string };
   ai?: TierAi;
   effort?: TierEffort;
   inputs?: TierInputs;
@@ -198,6 +216,7 @@ export interface TierMeta {
   analysed?: number;
   aiCalls?: number;
   total?: number;
+  windows?: { country: string; daysLeft: number }[];
   errors?: { playerId: string; error: string }[];
 }
 
