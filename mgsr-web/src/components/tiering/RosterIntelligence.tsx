@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { EFFORT_TARGET } from '@/lib/tiering/config';
 import { effectiveFocus, effectiveLevel, hasSuggestion, suggestionOf } from '@/lib/tiering/shared';
-import type { Focus, Level, PlayerTierDoc } from '@/lib/tiering/types';
+import type { CriterionKey, Focus, Level, PlayerTierDoc, PushTiming } from '@/lib/tiering/types';
 import { useTiering } from './useTiering';
 
 export interface RosterIntelPlayer {
@@ -26,12 +26,23 @@ type Tab = 'priority' | 'all' | 'changes';
 const LEVELS: Level[] = [1, 2, 3, 4, 5];
 const FOCUSES: Focus[] = [1, 2, 3, 4];
 const DAY = 24 * 3600 * 1000;
+const CRITERIA: CriterionKey[] = ['output', 'ability', 'value', 'league', 'availability'];
+
+function ago(ts: number | undefined, lang: string): string {
+  if (!ts) return '—';
+  const m = Math.max(0, Math.round((Date.now() - ts) / 60000));
+  if (m < 60) return lang === 'he' ? `לפני ${m} דק׳` : `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 36) return lang === 'he' ? `לפני ${h} שע׳` : `${h}h ago`;
+  const d = Math.round(h / 24);
+  return lang === 'he' ? `לפני ${d} ימים` : `${d}d ago`;
+}
 
 const initials = (n?: string) =>
   (n || '?').split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
 export default function RosterIntelligence({ players }: { players: RosterIntelPlayer[] }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const tt = useTiering(true);
   const [tab, setTab] = useState<Tab>('priority');
   const [lvFilter, setLvFilter] = useState<Level | 0>(0);
@@ -129,12 +140,8 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
       <section className="brit-module">
         {head}
         <div className="ri-first">
-          <p>{t('ri_empty')}</p>
-          <p className="ri-first-sub">{tok('ri_pending', { n: tt.pending || players.length })}</p>
-          <button className="ri-btn ri-btn-gold" disabled={tt.progress.running} onClick={() => tt.runAll(tt.pending || players.length)}>
-            {tt.progress.running ? tok('ri_running', { a: tt.progress.done, b: tt.progress.total }) : t('ri_run')}
-          </button>
-          {tt.progress.error && <p className="ri-first-sub ri-red">{tt.progress.error}</p>}
+          <p>{t('ri_empty_bg')}</p>
+          <p className="ri-first-sub">{tt.meta?.lastRunAt ? tok('ri_last_run', { t: ago(tt.meta.lastRunAt, lang) }) : t('ri_never_run')}</p>
         </div>
       </section>
     );
@@ -211,7 +218,13 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
                 <tr key={d.playerId} onClick={() => setOpenId(d.playerId)}>
                   <td className="ri-pl">
                     {p.fullName || '—'}
+                    {d.ai?.newsSignal ? (
+                      <em className={`ri-news-dot ${d.ai.newsSignal > 0 ? 'pos' : 'neg'}`} title={t('ri_news')}>{d.ai.newsSignal > 0 ? '▲' : '▼'} {t('ri_news_short')}</em>
+                    ) : null}
                     <small>{[(p.positions ?? [])[0], p.currentClub?.clubName].filter(Boolean).join(' · ')}</small>
+                    {d.ai?.plan && (lang === 'he' ? d.ai.plan.whenHe : d.ai.plan.whenEn) ? (
+                      <span className="ri-plan-line">{(lang === 'he' ? d.ai.plan.whenHe || d.ai.plan.whenEn : d.ai.plan.whenEn).split(/(?<=[.!?])\s/)[0]}</span>
+                    ) : null}
                   </td>
                   <td>
                     <span className={`ri-lv${sg ? ' sg' : ''}`}>
@@ -252,14 +265,11 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
           {t('ri_eff_auto')}
         </p>
       </div>
-      {tt.pending > 0 && (
-        <div className="ri-more" style={{ borderTop: 0 }}>
-          <span>{tok('ri_pending', { n: tt.pending })}</span>
-          <button disabled={tt.progress.running} onClick={() => tt.runAll(tt.pending)}>
-            {tt.progress.running ? tok('ri_running', { a: tt.progress.done, b: tt.progress.total }) : t('ri_run_again')}
-          </button>
-        </div>
-      )}
+      <div className="ri-status">
+        <span className="ri-live" />
+        {tt.meta?.lastRunAt ? tok('ri_last_run', { t: ago(tt.meta.lastRunAt, lang) }) : t('ri_never_run')}
+        {tt.meta?.aiCalls != null ? ` · ${tok('ri_ai_calls', { n: tt.meta.aiCalls })}` : ''}
+      </div>
 
       {/* drawer */}
       {open && (
@@ -323,6 +333,7 @@ function Drawer({
   const lv = effectiveLevel(doc)!;
   const fc = effectiveFocus(doc)!;
   const sg = suggestionOf(doc);
+  const he = lang === 'he';
 
   const act = async (fn: () => Promise<unknown>, ok: string) => {
     setBusy(true);
@@ -337,12 +348,6 @@ function Drawer({
     }
   };
 
-  const signals: [string, number | undefined][] = [
-    ['ri_sig_output', ai.signals.output],
-    ['ri_sig_fm', ai.signals.fm],
-    ['ri_sig_value', ai.signals.value],
-    ['ri_sig_league', ai.signals.league],
-  ];
   const lastTouchDays = doc.effort?.lastTouchAt ? Math.floor((Date.now() - doc.effort.lastTouchAt) / DAY) : null;
   const hist = (doc.history ?? []).slice().reverse();
 
@@ -401,28 +406,71 @@ function Drawer({
           )}
         </div>
 
+        {ai.plan && (
+          <div className="ri-dr-s">
+            <h4><span>✦ {t('ri_dr_plan')}</span><span className={`ri-timing ri-t-${ai.plan.timing}`}>{t(`ri_timing_${ai.plan.timing as PushTiming}`)}</span></h4>
+            <div className="ri-plan">
+              <div><b>{t('ri_plan_how')}</b><p>{he ? ai.plan.howHe || ai.plan.howEn : ai.plan.howEn}</p></div>
+              <div><b>{t('ri_plan_when')}</b><p>{he ? ai.plan.whenHe || ai.plan.whenEn : ai.plan.whenEn}{ai.plan.deadline ? ` · ${ai.plan.deadline}` : ''}</p></div>
+              {ai.plan.targets.length > 0 && (
+                <div><b>{t('ri_plan_targets')}</b><p>{ai.plan.targets.join(' · ')}</p></div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="ri-dr-s">
-          <h4><span>✦ {t('ri_dr_ai')}</span><span>{ai.model === 'engine' ? 'ENGINE' : 'GEMINI 2.5'}</span></h4>
+          <h4><span>✦ {t('ri_dr_ai')}</span><span>{ai.model === 'engine' ? 'ENGINE' : 'GEMINI 2.5 + SEARCH'} · {ago(ai.analystAt ?? ai.computedAt, lang)}</span></h4>
           <div className="ri-aibox">
-            <p>{lang === 'he' ? ai.reasonHe || ai.reasonEn : ai.reasonEn}</p>
+            <p>{he ? ai.reasonHe || ai.reasonEn : ai.reasonEn}</p>
             {ai.evidence?.length > 0 && (
               <div className="ri-ev">{ai.evidence.map((e, i) => <div key={i}>{e}</div>)}</div>
             )}
             <button className="ri-link ri-link-gold" disabled={busy} onClick={() => act(() => tt.rerunOne(doc.playerId), t('ri_refreshed'))}>
-              {t('ri_dr_rerun')}
+              {busy ? t('ri_analysing') : t('ri_dr_rerun')}
             </button>
           </div>
         </div>
 
         <div className="ri-dr-s">
-          <h4><span>{t('ri_dr_signals')}</span><span>{t('ri_score')} {ai.score}</span></h4>
-          {signals.map(([k, v]) => (
-            <div className="ri-sig" key={k}>
-              <span>{t(k)}</span>
-              <div className="ri-sig-tr"><i style={{ width: `${v ?? 0}%`, opacity: v == null ? 0.2 : 1 }} /></div>
-              <span>{v == null ? '—' : v}</span>
+          <h4><span>{t('ri_dr_news')}</span><span>{ai.newsSignal > 0 ? '▲' : ai.newsSignal < 0 ? '▼' : '●'} {t('ri_news_momentum')}</span></h4>
+          {(ai.news ?? []).length === 0 && <div className="ri-muted">{t('ri_news_none')}</div>}
+          {(ai.news ?? []).map((n, i) => (
+            <div className={`ri-news ri-ns-${n.sentiment}`} key={i}>
+              <b>{n.headline}</b>
+              <p>{he ? n.impactHe || n.impactEn : n.impactEn}</p>
+              <small>{[n.source, n.date].filter(Boolean).join(' · ')}</small>
             </div>
           ))}
+          {(ai.sources ?? []).length > 0 && (
+            <div className="ri-srcs">
+              {ai.sources.slice(0, 5).map((s, i) => (
+                <a key={i} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {(ai.risks ?? []).length > 0 && (
+          <div className="ri-dr-s">
+            <h4><span>{t('ri_dr_risks')}</span></h4>
+            {ai.risks.map((r, i) => <div className="ri-risk" key={i}>{he ? r.he || r.en : r.en}</div>)}
+          </div>
+        )}
+
+        <div className="ri-dr-s">
+          <h4><span>{t('ri_dr_criteria')}</span><span>{t('ri_score')} {ai.score} · {t('ri_coverage')} {Math.round((ai.coverage ?? 0) * 100)}%</span></h4>
+          {(ai.criteria ?? []).filter((c) => CRITERIA.includes(c.key)).map((c) => (
+            <div className="ri-sig" key={c.key}>
+              <span>{t(`ri_crit_${c.key}`)}<em>{c.weight}%</em></span>
+              <div className="ri-sig-tr"><i style={{ width: `${c.score ?? 0}%`, opacity: c.score == null ? 0.2 : 1 }} /></div>
+              <span>{c.score == null ? '—' : c.score}</span>
+              {c.note && <small>{c.note}</small>}
+            </div>
+          ))}
+          {ai.adj !== 0 && (
+            <div className="ri-adj">✦ {t('ri_ai_adj')}: {ai.adj > 0 ? '+1' : '−1'} ({t('ri_dr_level')} L{ai.baseLevel} → L{ai.level})</div>
+          )}
         </div>
 
         <div className="ri-dr-s">

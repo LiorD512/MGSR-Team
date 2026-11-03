@@ -1,37 +1,61 @@
-# Level & Focus — setup and how it works (v1, roster only)
+# Level & Focus — how it works and how to switch it on (v2, background analyst)
 
-## What shipped
-- Dashboard → **Roster intelligence** now shows Level & Focus (flag: `LEVEL_FOCUS_ENABLED` in `mgsr-web/src/lib/featureFlags.ts`; set it to `false` to get the old table back).
-- Data lives in the new Firestore collection `PlayerTiers/{playerId}`. The browser never touches it directly: it calls `/api/tiering/*` with the agent's ID token, and the server uses the Admin SDK.
-- Any signed-in agent can set Level / Focus / lock. The note is optional. Every change is stored in the player's history (who, when).
-- The engine and Gemini only write a **suggestion** (`ai` block). Confirmed tags change only when an agent sets them or accepts a suggestion.
+Nobody presses a button. A **background worker** analyses every roster player on its own and keeps the results fresh.
+The dashboard only *reads* finished results, so it opens instantly.
 
-## Environment variables (Vercel)
-| Variable | Purpose |
-|---|---|
-| `GEMINI_API_KEY` | Already used by other routes. Without it the engine still runs (maths only, template reasons). |
-| `TIERING_ALERT_EMAILS` | Comma-separated account emails of the owner(s) who get the Push-now push notification. **Without it no alerts are sent.** |
-| `TIERING_RUN_SECRET` | Shared secret for the daily scheduled run (also add it as a GitHub Actions secret with the same name). |
-| `SCOUT_SERVER_URL` | Optional, already used elsewhere (match ratings). |
+## What the worker does for each player
+1. **Gathers data** (every source optional, cached, time-boxed — a failing source never blocks the player):
+   | Source | What | Refreshed |
+   |---|---|---|
+   | Google News RSS (EN + HE) | Headlines from the last 45 days that actually name the player | every run (≤5h cache) |
+   | Gemini **with Google Search** | Live web check of transfers, injuries, form, contract talk, coach changes | when facts change, or every 24h |
+   | Scout server / SofaScore / FotMob | Match rating + minutes | 3 days |
+   | Transfermarkt injury history | Days missed, injury-prone | 7 days |
+   | ClubElo | Club strength | 7 days |
+   | FMInside cache | Current ability / potential | 14 days |
+   | Firestore (live) | Contract, mandate expiry, open club requests that match him, notes & tasks, value history | every run |
+   | Transfer windows | Days left per country | every run |
+2. **Scores five criteria** (0–100, weights): Output 30 · Ability 20 · Value 25 · League/club 15 · Availability 10.
+   Missing criteria are dropped and the rest renormalised; the share of data we had becomes *coverage*, which drives confidence.
+3. **Base level** from thresholds 78 / 64 / 50 / 36 (per-position offsets in `lib/tiering/config.ts`).
+4. **Urgency → Focus** from contract end, mandate expiry, matching club requests, days since last touch and trend.
+5. **AI analyst** (Gemini 2.5 Flash + Google Search) receives all of the above and returns:
+   - level adjustment −1/0/+1 with a reason (EN/HE) and evidence,
+   - a focus nudge −1/0/+1 for time-sensitive news,
+   - a **news digest** (what happened and why it matters to us) with source links,
+   - **risks**,
+   - a **push plan**: *how* (what to do, with which clubs) and *when* (tied to real dates/windows) + timing tag (now / this week / this window / later / hold).
+   The analyst only re-runs when the player's facts changed (new headline, new request, value/contract change…) or its read is older than 24h — fast and cheap.
+6. **Writes** `PlayerTiers/{playerId}`. Confirmed tags are never overwritten — anything different becomes a suggestion in the AI inbox.
+7. **Alerts** the owner by push when a player becomes Push now (confirmed by anyone, or newly recommended by the engine).
 
-## First use
-1. Deploy, open the dashboard. The module shows "Run first analysis".
-2. Click it — the roster is analysed in small batches (progress is shown). Stats/FM are fetched on a best-effort basis; missing data lowers confidence instead of failing.
-3. Review the gold **AI suggests N changes** box → accept, adjust or dismiss.
-4. The daily workflow `.github/workflows/tiering-daily.yml` (03:00 Israel) keeps analyses fresh. Needs repo secret `TIERING_RUN_SECRET`; optional repo variable `TIERING_BASE_URL`.
+## Running it
+- **Scheduled (default):** `.github/workflows/tiering-worker.yml` sweeps the roster every 3 hours. "Run workflow" in GitHub Actions starts one now; tick *force* to ignore caches.
+- **Near real-time (optional, always-on host):** `npx tsx _tiering_worker.ts watch` re-analyses a player ~15s after his doc changes, sweeps when a mandate or club request changes, plus hourly. Run it on any always-on box (Cloud Run service with min instances 1, a small VM, or the existing worker host).
+- **One player now:** the drawer's *Re-run analysis* (≈10–30s), or `npx tsx _tiering_worker.ts player <playerId>`.
 
-## Alerts (push only)
-- When a player's **confirmed** Focus becomes *Push now* (by anyone) → push to the owner(s).
-- When the engine newly **recommends** Push now for a player → one push (not repeated until the recommendation clears).
-- Delivery reuses the existing FCM tokens on the `Accounts` docs and also adds an item to the account's in-app notifications.
+## Configuration
+GitHub → Settings → Secrets and variables → Actions:
+| Name | Type | Notes |
+|---|---|---|
+| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | secrets | already used by other workflows |
+| `GEMINI_API_KEY` | secret | **add** (same key as Vercel). Without it only the criteria engine runs |
+| `TIERING_ALERT_EMAILS` | variable | owner account email(s), comma-separated |
+| `SCOUT_SERVER_URL` | variable | optional, defaults to the Render scout server |
+| `TIERING_APP_ORIGIN` | variable | optional, defaults to `https://management.britsportgroup.com` |
+
+Vercel: `TIERING_ALERT_EMAILS` too (alerts when an agent sets Push now from the dashboard).
+`TIERING_RUN_SECRET` is no longer needed.
+
+## Speed & cost
+- First sweep of ~40 players: a few minutes (sources fetched for everyone, one AI read each).
+- Following sweeps: seconds per unchanged player (all cached, no AI call); only changed players get a new AI read.
+- Gemini Flash with search ≈ 40 reads on the first day, then roughly 5–15 a day.
 
 ## Firestore rules
-`firestore.rules` has a new `PlayerTiers` block (read for authenticated users, no client writes). Deploy with `firebase deploy --only firestore:rules`. The feature works without this deploy because all access goes through the API, but deploy it to keep rules in sync.
+`PlayerTiers` block in `firestore.rules` (read for signed-in users, no client writes). Deploy with `firebase deploy --only firestore:rules`. Not required for the feature to work (all access is via the API / Admin SDK).
 
-## How Level is computed (v1)
-Score = weighted average of the signals that exist: match rating (30), FM current ability (25), market value on a log scale (35), league strength of the club's country (10). Thresholds 78 / 64 / 50 / 36 → L1…L4 (below = L5). Per-position offsets exist in `lib/tiering/config.ts` (`POSITION_OFFSETS`, all 0 for now). Gemini may adjust by **at most one level**, using agent notes, trend, contract and data coverage. Confidence drops when data is thin.
-
-**Known limits of v1**
-- Without FM/match data the level is mostly market value + league. Check the confidence figure.
-- Effort counts **notes and tasks** only. The app has no contact log linked to players, so calls/meetings are not counted unless someone adds a note or task.
-- Mandate expiry comes from `PlayerDocuments` (type `MANDATE`); contract expiry is parsed from the Transfermarkt text on the player.
+## Known limits
+- Calls and meetings count as effort only when logged as a note or task (there is no contact log linked to players).
+- News search is by name + club; very common names may pull unrelated headlines — the analyst is told to ignore other people with the same name.
+- The level definitions per market are a draft (`LEVEL_DEFINITIONS` in `lib/tiering/config.ts`); edit them to change how the AI reads levels.

@@ -12,10 +12,12 @@ import {
   WEIGHTS,
 } from './config';
 import type {
+  CriterionKey,
   Focus,
   Level,
   NextKind,
   PositionGroup,
+  TierCriterion,
   TierSignals,
   TierUrgencyParts,
   Trend,
@@ -67,16 +69,45 @@ export function leagueSignal(country: string | undefined | null): number {
   return LEAGUE_STRENGTH[key] ?? DEFAULT_LEAGUE_STRENGTH;
 }
 
-/** FM current ability (≈60-160 is the useful range) -> 0-100. */
-export function fmSignal(ca: number | undefined | null): number | undefined {
+/** FM ability -> 0-100. For players up to 23, potential counts for 30%. */
+export function abilitySignal(ca: number | undefined | null, pa: number | undefined | null, age: number | null): number | undefined {
   if (!ca || ca <= 0) return undefined;
-  return Math.round(clamp(((ca - 60) / 100) * 100, 0, 100));
+  const map = (x: number) => clamp(((x - 60) / 100) * 100, 0, 100);
+  const young = age != null && age <= 23 && pa && pa > ca;
+  return Math.round(young ? map(ca) * 0.7 + map(pa!) * 0.3 : map(ca));
+}
+
+/** Kept for backwards compatibility with earlier callers. */
+export function fmSignal(ca: number | undefined | null): number | undefined {
+  return abilitySignal(ca, null, null);
 }
 
 /** Average match rating (6.2-7.6 useful range) -> 0-100. Needs a minimum of minutes. */
 export function outputSignal(rating: number | undefined | null, minutes: number | undefined | null): number | undefined {
-  if (!rating || rating <= 0 || !minutes || minutes < 450) return undefined;
-  return Math.round(clamp(((rating - 6.2) / 1.4) * 100, 0, 100));
+  if (!rating || rating <= 0) return undefined;
+  if (minutes != null && minutes > 0 && minutes < 450) return undefined;
+  const base = clamp(((rating - 6.2) / 1.4) * 100, 0, 100);
+  // Very low minutes (but >= 450) slightly discounted: a rating over 600 minutes is less certain than over 2,500.
+  const m = minutes ?? 900;
+  const reliability = m >= 1500 ? 1 : 0.85 + ((m - 450) / 1050) * 0.15;
+  return Math.round(base * reliability);
+}
+
+/** League strength blended with club Elo level (1 elite … 4 low) when known. */
+export function leagueClubSignal(country: string | undefined | null, eloLevel?: number | null): number {
+  const lg = leagueSignal(country);
+  if (!eloLevel || eloLevel < 1 || eloLevel > 4) return lg;
+  const clubBoost = { 1: 15, 2: 6, 3: 0, 4: -8 }[eloLevel as 1 | 2 | 3 | 4];
+  return Math.round(clamp(lg + clubBoost, 0, 100));
+}
+
+/** Injury history -> 0-100 availability (100 = always available). */
+export function availabilitySignal(i?: { injuryProne?: boolean; daysMissed?: number } | null): number | undefined {
+  if (!i || (i.daysMissed == null && i.injuryProne == null)) return undefined;
+  const days = i.daysMissed ?? 0;
+  let s = 100 - Math.min(70, days / 3);
+  if (i.injuryProne) s -= 15;
+  return Math.round(clamp(s, 0, 100));
 }
 
 /** Market value history -> trend. Compares latest vs. the oldest entry within the last ~14 months. */
@@ -98,21 +129,22 @@ export function trendFromHistory(
 }
 
 export function weightedScore(s: TierSignals): { score: number; coverage: number } {
-  const parts: [number | undefined, number][] = [
-    [s.output, WEIGHTS.output],
-    [s.fm, WEIGHTS.fm],
-    [s.value, WEIGHTS.value],
-    [s.league, WEIGHTS.league],
-  ];
+  const keys: CriterionKey[] = ['output', 'ability', 'value', 'league', 'availability'];
   let sum = 0;
   let w = 0;
-  for (const [v, wt] of parts) {
+  for (const k of keys) {
+    const v = s[k];
     if (v == null) continue;
-    sum += v * wt;
-    w += wt;
+    sum += v * WEIGHTS[k];
+    w += WEIGHTS[k];
   }
-  const total = WEIGHTS.output + WEIGHTS.fm + WEIGHTS.value + WEIGHTS.league;
+  const total = keys.reduce((a, k) => a + WEIGHTS[k], 0);
   return { score: w ? Math.round((sum / w) * 10) / 10 : 0, coverage: w / total };
+}
+
+export function criteriaList(s: TierSignals, notes: Partial<Record<CriterionKey, string>>): TierCriterion[] {
+  const keys: CriterionKey[] = ['output', 'ability', 'value', 'league', 'availability'];
+  return keys.map((k) => ({ key: k, weight: WEIGHTS[k], score: s[k] ?? null, ...(notes[k] ? { note: notes[k] } : {}) }));
 }
 
 export function levelFromScore(score: number, group: PositionGroup): Level {
@@ -158,6 +190,19 @@ export function focusFrom(urgency: number, level: Level): Focus {
   if (v >= FOCUS_THRESHOLDS.active) return 2;
   if (v >= FOCUS_THRESHOLDS.maintain) return 3;
   return 4;
+}
+
+/** Breaking news can move Focus by at most one step (+1 = push harder). */
+export function applyFocusAdj(base: Focus, adj: -1 | 0 | 1): Focus {
+  return Math.max(1, Math.min(4, base - adj)) as Focus;
+}
+
+/** Small, stable hash of the facts the analyst sees (djb2). */
+export function hashFacts(o: unknown): string {
+  const s = JSON.stringify(o);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
 }
 
 /** 0-100. Lower when data is thin or the score sits right on a threshold. */

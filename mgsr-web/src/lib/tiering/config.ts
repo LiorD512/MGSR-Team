@@ -1,7 +1,16 @@
-import type { Focus, Level, PositionGroup } from './types';
+import type { CriterionKey, Focus, Level, PositionGroup } from './types';
 
-/** Score weights. Signals that are missing are dropped and the rest renormalised. */
-export const WEIGHTS = { output: 30, fm: 25, value: 35, league: 10 } as const;
+/**
+ * Level criteria and their weights. A criterion with no data is dropped and the rest renormalised,
+ * so thin data lowers confidence instead of producing a wrong level.
+ */
+export const WEIGHTS: Record<CriterionKey, number> = {
+  output: 30, // match ratings & minutes (SofaScore / FotMob / API stats)
+  ability: 20, // FM current ability, blended with potential for young players
+  value: 25, // Transfermarkt market value (log scale)
+  league: 15, // league strength of the club's country + club Elo
+  availability: 10, // injury history
+};
 
 /** Base thresholds: score >= T[n] means at least level n. */
 export const LEVEL_THRESHOLDS: Record<1 | 2 | 3 | 4, number> = { 1: 78, 2: 64, 3: 50, 4: 36 };
@@ -48,12 +57,24 @@ export const FOCUS_THRESHOLDS = { push: 62, active: 50, maintain: 39 } as const;
 /** Target share of effort per Focus group (used by the dashboard effort bar). */
 export const EFFORT_TARGET: Record<Focus, number> = { 1: 45, 2: 30, 3: 15, 4: 10 };
 
-/** Re-analyse a player when its analysis is older than this. */
-export const REANALYSE_AFTER_MS = 20 * 60 * 60 * 1000;
-/** Re-fetch FM / stats inputs at most this often. */
-export const INPUTS_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+/* ───────── background worker cadence ───────── */
+/** Skip a player entirely if it was recomputed more recently than this (unless forced). */
+export const MIN_RECOMPUTE_MS = 2 * 60 * 60 * 1000;
+/** Re-run the AI analyst (Gemini + Google Search) at least this often, or earlier if the facts changed. */
+export const ANALYST_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/** Input cache lifetimes. */
+export const TTL = {
+  news: 5 * 60 * 60 * 1000,
+  stats: 3 * 24 * 60 * 60 * 1000,
+  intel: 7 * 24 * 60 * 60 * 1000,
+  fm: 14 * 24 * 60 * 60 * 1000,
+} as const;
 
 export const GEMINI_MODEL = 'gemini-2.5-flash';
+export const NEWS_WINDOW_DAYS = 45;
+export const TIERS_COLLECTION = 'PlayerTiers';
+export const META_DOC = 'TieringMeta/status';
 
 /** League strength 0-100 by club country (rough, editable). Default 40. */
 export const LEAGUE_STRENGTH: Record<string, number> = {
@@ -69,7 +90,7 @@ export const LEAGUE_STRENGTH: Record<string, number> = {
 
 export const DEFAULT_LEAGUE_STRENGTH = 40;
 
-/** Draft meaning of each level per market (shown in the UI help). */
+/** Draft meaning of each level per market (given to the AI analyst and shown in the UI help). */
 export const LEVEL_DEFINITIONS: Record<Level, { en: string; he: string }> = {
   1: { en: 'Elite — top-5 league / Champions League starter, or key player of a title winner in Israel', he: 'עילית — פותח בליגה מהחמש הגדולות / ליגת האלופות, או שחקן מפתח באלופה בישראל' },
   2: { en: 'Premium — strong European leagues or top-3 club in Israel / Saudi & UAE starter', he: 'פרימיום — ליגות אירופה חזקות או קבוצה מהשלישייה בישראל / פותח בסעודיה ובאיחוד' },

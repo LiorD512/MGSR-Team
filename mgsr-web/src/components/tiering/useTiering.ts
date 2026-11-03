@@ -2,23 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Focus, Level, PlayerTierDoc, TierListResponse } from '@/lib/tiering/types';
+import type { Focus, Level, PlayerTierDoc, TierListResponse, TierMeta } from '@/lib/tiering/types';
 
-export interface RunProgress {
-  done: number;
-  total: number;
-  running: boolean;
-  error?: string;
-}
-
-/** Client access to /api/tiering/*. All calls carry the signed-in agent's ID token. */
+/** Client access to /api/tiering/*. Read-only by default: analysis happens in the background worker. */
 export function useTiering(enabled = true) {
   const { user } = useAuth();
   const [items, setItems] = useState<PlayerTierDoc[]>([]);
-  const [pending, setPending] = useState(0);
+  const [meta, setMeta] = useState<TierMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<RunProgress>({ done: 0, total: 0, running: false });
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -52,7 +44,7 @@ export function useTiering(enabled = true) {
       const data = (await call('/api/tiering')) as TierListResponse;
       if (!mounted.current) return;
       setItems(data.items);
-      setPending(data.pending);
+      setMeta(data.meta);
       setError(null);
     } catch (e) {
       if (mounted.current) setError(String((e as Error).message));
@@ -63,31 +55,9 @@ export function useTiering(enabled = true) {
 
   useEffect(() => {
     refresh();
+    const id = window.setInterval(refresh, 2 * 60 * 1000);
+    return () => window.clearInterval(id);
   }, [refresh]);
-
-  /** Analyse everyone who is stale, in small chunks, until done (or no progress). */
-  const runAll = useCallback(
-    async (totalHint: number) => {
-      setProgress({ done: 0, total: totalHint, running: true });
-      let done = 0;
-      try {
-        for (let i = 0; i < 60; i++) {
-          const r = (await call('/api/tiering/run', { method: 'POST', body: JSON.stringify({ limit: 4 }) })) as {
-            processed: number;
-            remaining: number;
-          };
-          done += r.processed;
-          if (mounted.current) setProgress({ done, total: Math.max(totalHint, done + r.remaining), running: true });
-          if (r.remaining === 0 || r.processed === 0) break;
-        }
-        await refresh();
-        if (mounted.current) setProgress((p) => ({ ...p, running: false }));
-      } catch (e) {
-        if (mounted.current) setProgress({ done, total: totalHint, running: false, error: String((e as Error).message) });
-      }
-    },
-    [call, refresh]
-  );
 
   const rerunOne = useCallback(
     async (playerId: string) => {
@@ -128,5 +98,5 @@ export function useTiering(enabled = true) {
     [call, refresh]
   );
 
-  return { items, pending, loading, error, progress, refresh, runAll, rerunOne, setTags, accept, dismiss };
+  return { items, meta, loading, error, refresh, rerunOne, setTags, accept, dismiss };
 }

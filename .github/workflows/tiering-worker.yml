@@ -1,0 +1,49 @@
+name: Level & Focus worker
+
+# Runs the roster analysis in the background — nobody has to click anything.
+# Each sweep refreshes news every run, stats/injuries/FM on their own cache cycle, and re-runs the
+# AI analyst (Gemini + Google Search) only for players whose facts changed or whose read is >24h old.
+on:
+  schedule:
+    # every 3 hours (UTC). Israel ≈ UTC+2/+3 → covers the working day and the evening news cycle.
+    - cron: '15 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Ignore all caches (full refresh)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: tiering-worker
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mgsr-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mgsr-web/package-lock.json
+
+      - run: npm ci --ignore-scripts
+
+      - name: Analyse roster
+        run: npx --yes tsx@4.19.2 _tiering_worker.ts sweep ${{ inputs.force && '--force' || '' }}
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SCOUT_SERVER_URL: ${{ vars.SCOUT_SERVER_URL }}
+          TIERING_APP_ORIGIN: ${{ vars.TIERING_APP_ORIGIN || 'https://management.britsportgroup.com' }}
+          TIERING_ALERT_EMAILS: ${{ vars.TIERING_ALERT_EMAILS }}
+          TIERING_CONCURRENCY: '4'

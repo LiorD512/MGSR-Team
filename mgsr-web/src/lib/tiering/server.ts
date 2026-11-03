@@ -4,24 +4,21 @@
  */
 import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getMessaging } from 'firebase-admin/messaging';
 import type { Firestore } from 'firebase-admin/firestore';
 import { adminAuth, adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
-import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
+import { ANALYST_MAX_AGE_MS, GEMINI_MODEL, META_DOC, MIN_RECOMPUTE_MS, TIERS_COLLECTION as TC } from './config';
 import {
-  GEMINI_MODEL,
-  INPUTS_TTL_MS,
-  LEVEL_DEFINITIONS,
-  REANALYSE_AFTER_MS,
-} from './config';
-import {
+  abilitySignal,
+  applyFocusAdj,
+  availabilitySignal,
   computeUrgency,
   confidenceFrom,
   contractMonthsLeft,
-  fmSignal,
+  criteriaList,
   focusFrom,
-  leagueSignal,
+  hashFacts,
+  leagueClubSignal,
   levelFromScore,
   outputSignal,
   parseValueEuro,
@@ -31,19 +28,22 @@ import {
   valueSignal,
   weightedScore,
 } from './engine';
+import { gatherInputs } from './inputs';
+import { runAnalyst, type AnalystFacts } from './analyst';
 import type {
+  CriterionKey,
   Focus,
   Level,
   PlayerTierDoc,
   TierAi,
   TierEffort,
   TierHistoryEntry,
-  TierInputs,
+  TierMeta,
   TierSignals,
   Trend,
 } from './types';
 
-export const TIERS_COLLECTION = 'PlayerTiers';
+export const TIERS_COLLECTION = TC;
 const DAY = 24 * 3600 * 1000;
 
 /* ───────────────────────── auth ───────────────────────── */
@@ -118,6 +118,8 @@ interface RosterPlayer {
 }
 
 interface RequestRow {
+  clubName?: string;
+  euOnly?: boolean;
   position?: string;
   minAge?: number;
   maxAge?: number;
@@ -132,6 +134,7 @@ export interface TierContext {
   mandates: Map<string, number>; // tmProfile -> expiresAt
   requests: RequestRow[];
   taskTouches: Map<string, { count30: number; last: number }>; // key: tmProfile or playerId
+  windows: { country: string; daysLeft: number }[];
 }
 
 export async function loadContext(db: Firestore): Promise<TierContext> {
@@ -179,11 +182,31 @@ export async function loadContext(db: Firestore): Promise<TierContext> {
       }
     });
   }
-  return { now, players, tiers, mandates, requests, taskTouches };
+  const windows = await loadWindows(db);
+  return { now, players, tiers, mandates, requests, taskTouches, windows };
+}
+
+/** Open transfer windows (top ones by deadline). Reads the public JSON published by the transfer-windows workflow. */
+async function loadWindows(_db: Firestore): Promise<{ country: string; daysLeft: number }[]> {
+  const url = process.env.TIERING_WINDOWS_URL || 'https://raw.githubusercontent.com/LiorD512/MGSR-Team/main/mgsr-web/public/transfer-windows.json';
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 6000);
+    const res = await fetch(url, { signal: ctl.signal, cache: 'no-store' });
+    clearTimeout(t);
+    if (!res.ok) return [];
+    const j = (await res.json()) as { windows?: { countryName?: string; daysLeft?: number }[] };
+    return (j.windows ?? [])
+      .filter((w) => w.countryName && typeof w.daysLeft === 'number')
+      .map((w) => ({ country: String(w.countryName), daysLeft: Number(w.daysLeft) }))
+      .slice(0, 12);
+  } catch {
+    return [];
+  }
 }
 
 export function isStale(tier: PlayerTierDoc | undefined, now: number): boolean {
-  return !tier?.ai || now - (tier.ai.computedAt || 0) > REANALYSE_AFTER_MS;
+  return !tier?.ai || now - (tier.ai.computedAt || 0) > MIN_RECOMPUTE_MS;
 }
 
 export function computeEffort(p: RosterPlayer, ctx: TierContext): TierEffort {
@@ -194,140 +217,21 @@ export function computeEffort(p: RosterPlayer, ctx: TierContext): TierEffort {
   return { notes30: notes.length, tasks30: t.count30, lastTouchAt: Math.max(lastNote, t.last) };
 }
 
-/* ───────────────────────── external inputs (cached) ───────────────────────── */
+/* ───────────────────────── analysis pipeline ───────────────────────── */
 
-async function fetchJson(url: string, ms: number): Promise<Record<string, unknown> | null> {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), ms);
-  try {
-    const res = await fetch(url, { signal: ctl.signal, cache: 'no-store' });
-    if (!res.ok) return null;
-    return (await res.json()) as Record<string, unknown>;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function gatherInputs(p: RosterPlayer, prev: TierInputs | undefined, origin: string, now: number): Promise<TierInputs> {
-  if (prev?.fetchedAt && now - prev.fetchedAt < INPUTS_TTL_MS) return prev;
-  const out: TierInputs = { ...(prev ?? {}), fetchedAt: now };
-  const name = p.fullName ?? '';
-  const [fm, stats] = await Promise.all([
-    name
-      ? fetchJson(
-          `${origin}/api/fminside/player?` +
-            new URLSearchParams({
-              player_name: name,
-              club: p.currentClub?.clubName ?? '',
-              age: p.age ?? '',
-              position: (p.positions ?? [])[0] ?? '',
-              nationality: p.nationality ?? '',
-            }).toString(),
-          15000
-        )
-      : null,
-    p.tmProfile ? fetchJson(`${getScoutBaseUrl()}/player_stats?${new URLSearchParams({ url: p.tmProfile })}`, 10000) : null,
-  ]);
-  const ca = Number(fm?.ca);
-  const pa = Number(fm?.pa);
-  if (ca > 0) out.fmCa = ca;
-  if (pa > 0) out.fmPa = pa;
-  if (stats && stats.api_matched) {
-    const r = Number(stats.api_rating);
-    const m = Number(stats.api_minutes);
-    if (r > 0) out.apiRating = r;
-    if (m > 0) out.apiMinutes = m;
-  }
-  return out;
-}
-
-/* ───────────────────────── Gemini ───────────────────────── */
-
-interface GeminiRead {
-  adj: -1 | 0 | 1;
-  confidence: number;
-  reasonEn: string;
-  reasonHe: string;
-  evidence: string[];
-}
-
-function extractJson(text: string): unknown {
-  const cleaned = text.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
-  return JSON.parse(cleaned);
-}
-
-async function askGemini(facts: Record<string, unknown>): Promise<GeminiRead | null> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
-  const levels = (Object.keys(LEVEL_DEFINITIONS) as unknown as Level[])
-    .map((l) => `L${l}: ${LEVEL_DEFINITIONS[l].en}`)
-    .join('\n');
-  const prompt = `You are the head scout of a football agency (Israel / Europe / Gulf market).
-Classify the player's current LEVEL using this scale:
-${levels}
-
-The engine already computed a base level from market value, league strength and (when available) FM ability and match ratings.
-Your job: decide whether a qualitative adjustment of exactly -1, 0 or +1 level is justified (+1 = better level), using ONLY the facts below
-(agent notes, age, trend, contract, data coverage). Be conservative: use 0 unless the facts clearly justify a move.
-Never invent statistics. If data is thin, say so and lower confidence.
-
-FACTS (JSON):
-${JSON.stringify(facts)}
-
-Return ONLY JSON:
-{"adj": -1|0|1, "confidence": 0-100, "reasonEn": "1-2 sentences, concrete, agent-facing", "reasonHe": "same in Hebrew", "evidence": ["short fact", "short fact"]}`;
-  const genAI = new GoogleGenerativeAI(key);
-  const model = genAI.getGenerativeModel({
-    model: GEMINI_MODEL,
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
-  });
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await model.generateContent(prompt);
-      const j = extractJson(res.response.text()) as Partial<GeminiRead>;
-      const adj = j.adj === 1 || j.adj === -1 ? j.adj : 0;
-      return {
-        adj,
-        confidence: Math.max(0, Math.min(100, Number(j.confidence) || 50)),
-        reasonEn: String(j.reasonEn ?? '').slice(0, 400),
-        reasonHe: String(j.reasonHe ?? '').slice(0, 400),
-        evidence: Array.isArray(j.evidence) ? j.evidence.slice(0, 4).map((e) => String(e).slice(0, 160)) : [],
-      };
-    } catch (e) {
-      const msg = String((e as Error)?.message ?? e);
-      if (attempt === 0 && /429|quota|rate/i.test(msg)) {
-        await new Promise((r) => setTimeout(r, 2500));
-        continue;
-      }
-      return null;
-    }
-  }
-  return null;
-}
-
-/* ───────────────────────── analysis ───────────────────────── */
-
-function templateReason(opts: {
-  level: Level;
-  focus: Focus;
-  next: TierAi['next'];
-  coverage: number;
-  trend: Trend;
-}): { en: string; he: string } {
-  const thin = opts.coverage < 0.6;
+function templateReason(next: TierAi['next'], coverage: number): { en: string; he: string } {
+  const thin = coverage < 0.6;
   const nextEn =
-    opts.next.kind === 'mandate' ? `Mandate ends in ${opts.next.value} days.`
-    : opts.next.kind === 'contract' ? `Contract ends in ${opts.next.value} months.`
-    : opts.next.kind === 'requests' ? `${opts.next.value} open club request(s) match him.`
-    : opts.next.kind === 'untouched' ? `No contact for ${opts.next.value} days.`
+    next.kind === 'mandate' ? `Mandate ends in ${next.value} days.`
+    : next.kind === 'contract' ? `Contract ends in ${next.value} months.`
+    : next.kind === 'requests' ? `${next.value} open club request(s) match him.`
+    : next.kind === 'untouched' ? `No contact for ${next.value} days.`
     : 'Nothing time-critical right now.';
   const nextHe =
-    opts.next.kind === 'mandate' ? `המנדט פג בעוד ${opts.next.value} ימים.`
-    : opts.next.kind === 'contract' ? `החוזה מסתיים בעוד ${opts.next.value} חודשים.`
-    : opts.next.kind === 'requests' ? `${opts.next.value} בקשות מועדונים פתוחות מתאימות לו.`
-    : opts.next.kind === 'untouched' ? `אין קשר ${opts.next.value} ימים.`
+    next.kind === 'mandate' ? `המנדט פג בעוד ${next.value} ימים.`
+    : next.kind === 'contract' ? `החוזה מסתיים בעוד ${next.value} חודשים.`
+    : next.kind === 'requests' ? `${next.value} בקשות מועדונים פתוחות מתאימות לו.`
+    : next.kind === 'untouched' ? `אין קשר ${next.value} ימים.`
     : 'אין דחיפות בזמן כרגע.';
   return {
     en: `${thin ? 'Based mainly on market value and league (limited match data). ' : ''}${nextEn}`,
@@ -335,105 +239,154 @@ function templateReason(opts: {
   };
 }
 
-export async function analyzePlayer(
-  db: Firestore,
-  ctx: TierContext,
-  p: RosterPlayer,
-  origin: string,
-  opts: { useGemini?: boolean } = {}
-): Promise<PlayerTierDoc> {
+export interface ProcessOptions {
+  /** Base URL of the deployed app, used only for the live FMInside lookup fallback. */
+  appOrigin: string | null;
+  /** Re-fetch every source and re-run the analyst regardless of caches. */
+  force?: boolean;
+  useAnalyst?: boolean;
+}
+
+export interface ProcessResult {
+  doc: PlayerTierDoc;
+  analystRan: boolean;
+  refreshed: string[];
+}
+
+/** Full pipeline for one roster player: gather → criteria → urgency → AI analyst (when needed) → write. */
+export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPlayer, opts: ProcessOptions): Promise<ProcessResult> {
   const now = ctx.now;
   const prev = ctx.tiers.get(p.id);
-  const inputs = await gatherInputs(p, prev?.inputs, origin, now);
+  const { inputs, refreshed } = await gatherInputs(db, p, prev?.inputs, { now, appOrigin: opts.appOrigin, force: opts.force });
 
+  const age = p.age ? parseInt(p.age, 10) || null : null;
   const group = positionGroupOf(p.positions);
   const valueEuro = parseValueEuro(p.marketValue);
+  const intel = inputs.intel ?? {};
+
+  // Output: best available rating source (API stats → SofaScore → FotMob)
+  const rating = inputs.apiRating ?? intel.sofascoreRating ?? intel.fotmobRating;
+  const minutes = inputs.apiRating ? inputs.apiMinutes : intel.minutes;
+  const ratingSrc = inputs.apiRating ? 'API' : intel.sofascoreRating ? 'SofaScore' : intel.fotmobRating ? 'FotMob' : '';
+
   const signals: TierSignals = {
+    output: outputSignal(rating, minutes),
+    ability: abilitySignal(inputs.fmCa, inputs.fmPa, age),
     value: valueSignal(valueEuro),
-    league: leagueSignal(p.currentClub?.clubCountry),
-    fm: fmSignal(inputs.fmCa),
-    output: outputSignal(inputs.apiRating, inputs.apiMinutes),
+    league: leagueClubSignal(p.currentClub?.clubCountry, intel.eloLevel),
+    availability: availabilitySignal(intel),
   };
+  const notes: Partial<Record<CriterionKey, string>> = {
+    output: rating ? `${ratingSrc} rating ${rating.toFixed(2)}${minutes ? ` · ${Math.round(minutes).toLocaleString('en-US')} min` : ''}` : undefined,
+    ability: inputs.fmCa ? `FM CA ${inputs.fmCa}${inputs.fmPa ? ` / PA ${inputs.fmPa}` : ''}` : undefined,
+    value: p.marketValue ? `${p.marketValue} (Transfermarkt)` : undefined,
+    league: `${p.currentClub?.clubCountry ?? '—'}${intel.elo ? ` · club Elo ${Math.round(intel.elo)}` : ''}`,
+    availability: intel.daysMissed != null ? `${intel.daysMissed} days missed${intel.injuryProne ? ' · injury-prone' : ''}` : undefined,
+  };
+  const criteria = criteriaList(signals, notes);
   const { score, coverage } = weightedScore(signals);
   const baseLevel = levelFromScore(score, group);
-  const { trend } = trendFromHistory(p.marketValueHistory, now);
+  const { trend: valueTrend } = trendFromHistory(p.marketValueHistory, now);
+  const trend: Trend =
+    intel.formTrend === 'rising' && valueTrend !== 'down' ? 'up'
+    : intel.formTrend === 'declining' && valueTrend !== 'up' ? 'down'
+    : valueTrend;
 
   const effort = computeEffort(p, ctx);
-  const daysSinceTouch = effort.lastTouchAt ? Math.floor((now - effort.lastTouchAt) / DAY) : 60;
-  const age = p.age ? parseInt(p.age, 10) || null : null;
+  // No recorded touch: count it as a 30-day gap for urgency, but don't present an invented number as "next".
+  const daysSinceTouch = effort.lastTouchAt ? Math.floor((now - effort.lastTouchAt) / DAY) : 30;
   const contractMonths = contractMonthsLeft(p.contractExpired, now);
   const mandateExp = p.tmProfile ? ctx.mandates.get(p.tmProfile) : undefined;
   const mandateDays = mandateExp ? (mandateExp - now) / DAY : null;
-  const matching = ctx.requests.filter((r) => requestMatches(r, { positions: p.positions, age })).length;
+  const matchingReqs = ctx.requests.filter((r) => requestMatches(r, { positions: p.positions, age }));
+  const u = computeUrgency({ contractMonths, mandateDays, matchingRequests: matchingReqs.length, daysSinceTouch, trend });
+  const baseFocus = focusFrom(u.urgency, baseLevel);
 
-  const u = computeUrgency({ contractMonths, mandateDays, matchingRequests: matching, daysSinceTouch, trend });
+  const recentNotes = (p.noteList ?? [])
+    .slice()
+    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+    .slice(0, 5)
+    .map((n) => String(n.notes ?? '').slice(0, 220));
 
-  let adj: -1 | 0 | 1 = 0;
-  let reasonEn = '';
-  let reasonHe = '';
-  let evidence: string[] = [];
-  let confidence = confidenceFrom(coverage, score, group);
-  let model = 'engine';
+  const facts: AnalystFacts = {
+    player: p.fullName ?? '',
+    age,
+    positions: p.positions ?? [],
+    nationality: p.nationality,
+    club: p.currentClub?.clubName,
+    clubCountry: p.currentClub?.clubCountry,
+    marketValue: p.marketValue,
+    valueTrend,
+    contractMonthsLeft: contractMonths != null ? Math.round(contractMonths) : null,
+    haveMandate: !!p.haveMandate || mandateDays != null,
+    mandateDaysLeft: mandateDays != null ? Math.round(mandateDays) : null,
+    criteria: criteria.map((c) => ({ key: c.key, weight: c.weight, score: c.score, note: c.note })),
+    engine: { score, baseLevel, dataCoverage: Math.round(coverage * 100), focus: baseFocus, urgency: u.urgency },
+    matchingClubRequests: matchingReqs.slice(0, 6).map((r) => ({
+      club: r.clubName ?? '—',
+      position: r.position ?? '',
+      ...(r.minAge || r.maxAge ? { ages: `${r.minAge ?? ''}-${r.maxAge ?? ''}` } : {}),
+      ...(r.euOnly ? { euOnly: true } : {}),
+    })),
+    transferWindows: ctx.windows,
+    daysSinceLastTouch: effort.lastTouchAt ? daysSinceTouch : null,
+    recentAgentNotes: recentNotes,
+    headlines: (inputs.news ?? []).slice(0, 8).map((n) => ({ title: n.title, source: n.source, date: n.date })),
+    today: new Date(now).toISOString().slice(0, 10),
+  };
+  // Hash only facts that should trigger a new analysis (not "today" or touch-days that tick daily).
+  const dataHash = hashFacts({ ...facts, today: undefined, daysSinceLastTouch: undefined, transferWindows: undefined });
 
-  if (opts.useGemini !== false) {
-    const recentNotes = (p.noteList ?? [])
-      .slice()
-      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-      .slice(0, 5)
-      .map((n) => String(n.notes ?? '').slice(0, 220));
-    const read = await askGemini({
-      player: p.fullName,
-      age,
-      positions: p.positions,
-      club: p.currentClub?.clubName,
-      clubCountry: p.currentClub?.clubCountry,
-      marketValue: p.marketValue,
-      valueTrend: trend,
-      contractMonthsLeft: contractMonths != null ? Math.round(contractMonths) : null,
-      mandateDaysLeft: mandateDays != null ? Math.round(mandateDays) : null,
-      matchingOpenClubRequests: matching,
-      daysSinceLastTouch: effort.lastTouchAt ? daysSinceTouch : null,
-      fm: inputs.fmCa ? { currentAbility: inputs.fmCa, potential: inputs.fmPa ?? null } : null,
-      matchData: inputs.apiRating ? { avgRating: inputs.apiRating, minutes: inputs.apiMinutes ?? null } : null,
-      engine: { score, baseLevel, signals, dataCoverage: Math.round(coverage * 100) },
-      recentAgentNotes: recentNotes,
-    });
-    if (read) {
-      adj = read.adj;
-      reasonEn = read.reasonEn;
-      reasonHe = read.reasonHe;
-      evidence = read.evidence;
-      confidence = Math.round((confidence + read.confidence) / 2);
-      model = GEMINI_MODEL;
-    }
+  const prevAi = prev?.ai;
+  const analystDue =
+    opts.useAnalyst !== false &&
+    (opts.force || !prevAi?.analystAt || prevAi.dataHash !== dataHash || now - prevAi.analystAt > ANALYST_MAX_AGE_MS);
+
+  let analystRan = false;
+  let read: Awaited<ReturnType<typeof runAnalyst>> = null;
+  if (analystDue) {
+    read = await runAnalyst(facts);
+    analystRan = !!read;
   }
 
+  // Reuse the last analyst read when it was not due (or failed) — keeps reasons/plan/news stable.
+  const keep = !read && prevAi?.analystAt ? prevAi : null;
+  const adj = read ? read.adj : keep ? keep.adj : 0;
+  const focusAdj = read ? read.focusAdj : keep ? keep.focusAdj ?? 0 : 0;
   const level = Math.max(1, Math.min(5, baseLevel - adj)) as Level;
-  const focus = focusFrom(u.urgency, level);
-  if (!reasonEn) {
-    const t = templateReason({ level, focus, next: u.next, coverage, trend });
-    reasonEn = t.en;
-    reasonHe = t.he;
-  }
+  const focus = applyFocusAdj(focusFrom(u.urgency, level), focusAdj);
+
+  const engineConf = confidenceFrom(coverage, score, group);
+  const confidence = read ? Math.round((engineConf + read.confidence) / 2) : keep ? keep.confidence : engineConf;
+  const tmpl = templateReason(u.next, coverage);
 
   const ai: TierAi = {
     score,
+    coverage: Math.round(coverage * 100) / 100,
     baseLevel,
     adj,
     level,
     focus,
+    focusAdj,
     urgency: u.urgency,
     urgencyParts: u.parts,
     trend,
+    newsSignal: read ? read.newsSignal : keep?.newsSignal ?? 0,
     confidence,
-    reasonEn,
-    reasonHe,
-    evidence,
+    reasonEn: read?.reasonEn || keep?.reasonEn || tmpl.en,
+    reasonHe: read?.reasonHe || keep?.reasonHe || tmpl.he,
+    evidence: read?.evidence ?? keep?.evidence ?? [],
+    criteria,
     signals,
+    news: read?.news ?? keep?.news ?? [],
+    risks: read?.risks ?? keep?.risks ?? [],
+    ...(read?.plan ? { plan: read.plan } : keep?.plan ? { plan: keep.plan } : {}),
+    sources: read?.sources ?? keep?.sources ?? [],
     next: u.next,
-    model,
+    model: read ? GEMINI_MODEL : keep?.model ?? 'engine',
     computedAt: now,
-    alertedFocus1: focus === 1 ? prev?.ai?.alertedFocus1 : false,
+    ...(read ? { analystAt: now, dataHash } : keep?.analystAt ? { analystAt: keep.analystAt, dataHash: keep.dataHash } : {}),
+    alertedFocus1: focus === 1 ? prevAi?.alertedFocus1 : false,
   };
 
   const doc: PlayerTierDoc = {
@@ -447,7 +400,51 @@ export async function analyzePlayer(
   };
   await db.collection(TIERS_COLLECTION).doc(p.id).set(clean(doc));
   ctx.tiers.set(p.id, doc);
-  return doc;
+  return { doc, analystRan, refreshed };
+}
+
+/** Background sweep of the whole roster with bounded concurrency. Used by the worker. */
+export async function sweepRoster(
+  db: Firestore,
+  opts: ProcessOptions & { concurrency?: number; onlyIds?: string[]; log?: (m: string) => void }
+): Promise<TierMeta> {
+  const t0 = Date.now();
+  const ctx = await loadContext(db);
+  const log = opts.log ?? (() => {});
+  const queue = ctx.players.filter((p) => (opts.onlyIds ? opts.onlyIds.includes(p.id) : true));
+  // stalest first
+  queue.sort((a, b) => (ctx.tiers.get(a.id)?.ai?.computedAt ?? 0) - (ctx.tiers.get(b.id)?.ai?.computedAt ?? 0));
+  const conc = Math.max(1, Math.min(8, opts.concurrency ?? 4));
+  let analysed = 0;
+  let aiCalls = 0;
+  const errors: { playerId: string; error: string }[] = [];
+  let i = 0;
+  const workers = Array.from({ length: conc }, async () => {
+    while (i < queue.length) {
+      const p = queue[i++];
+      try {
+        const r = await processPlayer(db, ctx, p, opts);
+        await alertNewPushRecommendation(db, r.doc);
+        analysed++;
+        if (r.analystRan) aiCalls++;
+        log(`✓ ${p.fullName} → L${r.doc.ai?.level} F${r.doc.ai?.focus}${r.analystRan ? ' (AI)' : ''} [${r.refreshed.join(',') || 'cached'}]`);
+      } catch (e) {
+        errors.push({ playerId: p.id, error: String((e as Error)?.message ?? e).slice(0, 200) });
+        log(`✗ ${p.fullName}: ${(e as Error)?.message ?? e}`);
+      }
+    }
+  });
+  await Promise.all(workers);
+  const meta: TierMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, aiCalls, total: queue.length, errors: errors.slice(0, 20) };
+  const [col, id] = META_DOC.split('/');
+  await db.collection(col).doc(id).set(clean(meta));
+  return meta;
+}
+
+export async function readMeta(db: Firestore): Promise<TierMeta | null> {
+  const [col, id] = META_DOC.split('/');
+  const s = await db.collection(col).doc(id).get();
+  return s.exists ? (s.data() as TierMeta) : null;
 }
 
 /* ───────────────────────── writes ───────────────────────── */
