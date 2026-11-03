@@ -8,3 +8,6 @@ export const MEN_ROSTER_ANALYSIS_ENABLED = false;
 export const TRANSFER_RADAR_ENABLED = true;
 // The Radar Sources admin screen is hidden for now (route redirects to /transfer-radar, no menu entry). The code and API stay in place.
 export const TRANSFER_RADAR_SOURCES_VISIBLE = false;
+
+/** Level & Focus tiering in the men dashboard's Roster intelligence module (roster only, v1). */
+export const LEVEL_FOCUS_ENABLED = true;

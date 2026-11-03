@@ -6737,3 +6737,148 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-dossier-kv:last-child { border-bottom: 0; }
 .brit-room .brit-dossier-kv .k { color: var(--muted); font: 11px var(--body); }
 .brit-room .brit-dossier-kv .v { font: 600 14px/1 var(--display); color: var(--ink); }
+
+/* ═══════════════════════════════════════════════════════
+   Level & Focus — Roster intelligence (dashboard module)
+   Scoped to .brit-room; uses the room's own tokens.
+   ═══════════════════════════════════════════════════════ */
+.brit-room .ri-l1 { background: #11110f; color: #f3f0e8; }
+.brit-room .ri-l2 { background: var(--gold); color: #fff; }
+.brit-room .ri-l3 { background: var(--gold-soft); color: var(--ink); }
+.brit-room .ri-l4 { background: var(--muted-2); color: var(--ink); }
+.brit-room .ri-l5 { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--muted-2); }
+.brit-room .ri-link { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; text-decoration: underline; }
+.brit-room .ri-link-gold { color: var(--gold-soft); margin-top: 12px; }
+.brit-room .ri-red { color: var(--red); }
+.brit-room .ri-muted { color: var(--muted); font: 10px var(--mono); }
+.brit-room .ri-end { text-align: end; }
+
+.brit-room .ri-bar { display: flex; height: 34px; margin: 20px 0 9px; border: 1px solid var(--ink); }
+.brit-room .ri-bar button { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; font: 500 15px/1 var(--display); transition: opacity 0.2s, filter 0.2s; }
+.brit-room .ri-bar button:hover { filter: brightness(1.12); }
+.brit-room .ri-bar.dim button:not(.sel) { opacity: 0.35; }
+.brit-room .ri-key { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.brit-room .ri-key button { text-align: start; padding: 0; color: var(--muted); font: 9px/1.35 var(--mono); text-transform: uppercase; }
+.brit-room .ri-key button b { display: block; color: var(--ink); font-weight: 500; }
+.brit-room .ri-key button:hover b, .brit-room .ri-key button.sel b { color: var(--gold); }
+
+.brit-room .ri-call { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; margin: 22px 0 4px; padding: 14px 16px; border: 1px solid var(--gold-soft); background: color-mix(in srgb, var(--gold-soft) 8%, transparent); }
+.brit-room .ri-call-icon { width: 32px; height: 32px; display: grid; place-items: center; background: var(--gold-soft); color: var(--ink); font: 12px/1 var(--display); }
+.brit-room .ri-call b { display: block; font: 500 15px/1.1 var(--display); text-transform: uppercase; }
+.brit-room .ri-call small { display: block; margin-top: 3px; color: var(--gold); font: 9px/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+.brit-room .ri-call > button { padding: 9px 11px; background: var(--ink); color: var(--paper); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-call > button:hover { background: var(--gold); }
+
+.brit-room .ri-tabs { display: flex; gap: 18px; margin-top: 22px; border-bottom: 1px solid var(--line-2); }
+.brit-room .ri-tabs button { margin-bottom: -1px; padding: 0 0 9px; border-bottom: 2px solid transparent; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.brit-room .ri-tabs button.on { color: var(--ink); border-color: var(--gold); }
+.brit-room .ri-tabs button i { margin-inline-start: 4px; color: var(--gold); font-style: normal; }
+
+.brit-room .ri-table { width: 100%; border-collapse: collapse; }
+.brit-room .ri-table th { padding: 13px 0 9px; color: var(--muted); text-align: start; font: 9px/1 var(--mono); font-weight: 400; text-transform: uppercase; }
+.brit-room .ri-table th.ri-end { text-align: end; }
+.brit-room .ri-table td { padding: 13px 0; border-top: 1px solid var(--line); font: 10px/1.25 var(--mono); vertical-align: middle; }
+.brit-room .ri-table tbody tr { cursor: pointer; transition: background 0.2s; }
+.brit-room .ri-table tbody tr:hover { background: rgba(164, 125, 67, 0.07); }
+.brit-room .ri-table td.ri-pl { padding-inline-end: 6px; font: 700 12.5px/1.25 var(--body); }
+.brit-room .ri-table td.ri-pl small { display: block; margin-top: 3px; color: var(--muted); font: 9px/1.2 var(--mono); font-weight: 400; text-transform: uppercase; }
+.brit-room .ri-table td.ri-nx { color: var(--muted); white-space: nowrap; }
+.brit-room .ri-table td.ri-nx.hot { color: var(--red); }
+
+.brit-room .ri-lv { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.brit-room .ri-lv b { min-width: 26px; height: 20px; display: inline-grid; place-items: center; font: 500 11px/1 var(--display); letter-spacing: 0.03em; }
+.brit-room .ri-lv.sg b { outline: 1.5px dashed var(--gold); outline-offset: 2px; }
+.brit-room .ri-lv b.ri-o { opacity: 0.5; }
+.brit-room .ri-tr { font-size: 8px; font-style: normal; }
+.brit-room .ri-tr.up { color: var(--green); }
+.brit-room .ri-tr.down { color: var(--red); }
+.brit-room .ri-tr.flat { color: var(--muted-2); }
+
+.brit-room .ri-fc { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-transform: uppercase; font: 10px/1 var(--mono); }
+.brit-room .ri-fc s { width: 7px; height: 7px; display: inline-block; border-radius: 50%; text-decoration: none; }
+.brit-room .ri-fc1 { color: var(--red); } .brit-room .ri-fc1 s { background: var(--red); }
+.brit-room .ri-fc2 s { background: var(--ink); }
+.brit-room .ri-fc3 { color: var(--muted); } .brit-room .ri-fc3 s { background: var(--muted); }
+.brit-room .ri-fc4 { color: var(--muted); } .brit-room .ri-fc4 s { background: transparent; box-shadow: inset 0 0 0 1.5px var(--muted-2); }
+.brit-room .ri-bgf1 { background: var(--red) !important; color: #fff !important; }
+.brit-room .ri-bgf2 { background: var(--ink) !important; color: #fff !important; }
+.brit-room .ri-bgf3 { background: var(--muted) !important; color: #fff !important; }
+.brit-room .ri-bgf4 { background: var(--muted-2) !important; color: var(--ink) !important; }
+
+.brit-room .ri-more { display: flex; justify-content: space-between; padding: 13px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-more button { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-eff { margin-top: 20px; }
+.brit-room .ri-eff-row { display: flex; justify-content: space-between; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-eff-row b { color: var(--ink); font-weight: 500; }
+.brit-room .ri-eff-track { position: relative; height: 6px; margin: 9px 0 8px; background: var(--paper-2); }
+.brit-room .ri-eff-track i { position: absolute; inset: 0 auto 0 0; background: var(--red); }
+.brit-room[dir='rtl'] .ri-eff-track i { inset: 0 0 0 auto; }
+.brit-room .ri-eff-track u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
+.brit-room .ri-eff p { margin: 0; color: var(--muted); font: 9px/1.5 var(--mono); }
+.brit-room .ri-first { padding: 24px 0; }
+.brit-room .ri-first p { margin: 0 0 6px; font: 12px/1.5 var(--body); }
+.brit-room .ri-first .ri-first-sub { margin-bottom: 14px; color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+
+.brit-room .ri-btn { display: inline-block; padding: 11px 14px; border: 1px solid var(--ink); font: 9px/1 var(--mono); text-transform: uppercase; text-align: center; }
+.brit-room .ri-btn:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
+.brit-room .ri-btn:disabled { opacity: 0.5; cursor: default; }
+.brit-room .ri-btn-gold { background: var(--gold-soft); border-color: var(--gold-soft); color: var(--ink); }
+.brit-room .ri-btn-gold:hover:not(:disabled) { background: var(--gold); border-color: var(--gold); color: var(--paper); }
+
+/* drawer / modal */
+.brit-room .ri-backdrop { position: fixed; inset: 0; z-index: 70; background: rgba(17, 17, 15, 0.66); }
+.brit-room .ri-drawer { position: fixed; top: 0; bottom: 0; inset-inline-end: 0; z-index: 71; width: min(560px, 100%); overflow: auto; background: var(--paper); border-inline-start: 4px solid var(--gold); animation: ri-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes ri-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.brit-room[dir='rtl'] .ri-drawer { animation-name: ri-in-rtl; }
+@keyframes ri-in-rtl { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.brit-room .ri-dr-h { padding: 26px 28px 22px; background: var(--black); color: var(--paper); }
+.brit-room .ri-x { float: inline-end; font: 22px var(--display); }
+.brit-room .ri-dr-h small { color: #aaa69c; font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-h h2 { margin: 8px 0 12px; font: 500 42px/0.9 var(--display); text-transform: uppercase; }
+.brit-room[dir='rtl'] .ri-dr-h h2 { font-weight: 800; letter-spacing: normal; }
+.brit-room .ri-dr-tags { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.brit-room .ri-dr-h .ri-fc2 { color: var(--paper); } .brit-room .ri-dr-h .ri-fc2 s { background: var(--paper); }
+.brit-room .ri-unconf { color: var(--gold-soft); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-s { padding: 20px 28px; border-bottom: 1px solid var(--line); }
+.brit-room .ri-dr-s h4 { margin: 0 0 12px; display: flex; justify-content: space-between; color: var(--muted); font: 9px/1 var(--mono); font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; }
+.brit-room .ri-ladder { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.brit-room .ri-ladder button, .brit-room .ri-fseg button { position: relative; border: 1px solid var(--line); background: var(--card); text-align: center; }
+.brit-room .ri-ladder button { padding: 10px 2px 9px; }
+.brit-room .ri-ladder b { display: block; font: 500 19px/1 var(--display); }
+.brit-room .ri-ladder small { font: 8px/1 var(--mono); text-transform: uppercase; color: var(--muted); }
+.brit-room .ri-ladder button.cur { border-color: transparent; } .brit-room .ri-ladder button.cur small { color: inherit; opacity: 0.8; }
+.brit-room .ri-fseg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.brit-room .ri-fseg button { padding: 11px 2px; font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-fseg button.cur { border-color: transparent; }
+.brit-room .ri-ladder button.aim::after, .brit-room .ri-fseg button.aim::after { content: 'AI'; position: absolute; top: -8px; inset-inline-start: 50%; transform: translateX(-50%); padding: 3px 5px; background: var(--black); color: var(--gold-soft); font: 8px/1 var(--mono); }
+.brit-room .ri-dr-accept { display: flex; gap: 8px; margin-top: 18px; }
+.brit-room .ri-aibox { padding: 18px 20px; background: var(--black); color: var(--paper); }
+.brit-room .ri-aibox p { margin: 0; font: 12px/1.65 var(--body); }
+.brit-room .ri-ev { margin-top: 12px; display: grid; gap: 5px; }
+.brit-room .ri-ev div { padding-inline-start: 10px; border-inline-start: 2px solid var(--gold); color: #cbc6b9; font: 10px/1.4 var(--mono); }
+.brit-room .ri-sig { display: grid; grid-template-columns: 96px 1fr 28px; gap: 10px; align-items: center; margin: 8px 0; font: 9px var(--mono); text-transform: uppercase; }
+.brit-room .ri-sig-tr { height: 6px; background: var(--paper-2); }
+.brit-room .ri-sig-tr i { display: block; height: 100%; background: var(--ink); }
+.brit-room .ri-touch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.brit-room .ri-touch div { padding: 10px; border: 1px solid var(--line); background: var(--card); color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
+.brit-room .ri-touch b { display: block; color: var(--ink); font: 500 22px var(--display); }
+.brit-room .ri-dr-s textarea { width: 100%; min-height: 54px; padding: 10px; border: 1px solid var(--ink); background: var(--card); font: 11px var(--mono); }
+.brit-room .ri-lock { display: flex; gap: 8px; margin-top: 12px; font: 10px var(--mono); }
+.brit-room .ri-tl { margin-inline-start: 4px; border-inline-start: 1px solid var(--ink); }
+.brit-room .ri-tl > div { position: relative; padding: 0 14px 13px; padding-inline-end: 0; color: var(--muted); font: 10px/1.5 var(--mono); }
+.brit-room .ri-tl > div::before { content: ''; position: absolute; inset-inline-start: -4px; top: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.brit-room .ri-tl b { color: var(--ink); font-family: var(--body); }
+.brit-room .ri-dr-f { padding: 18px 28px 40px; display: flex; }
+
+.brit-room .ri-modal { position: fixed; z-index: 72; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(680px, 94%); max-height: 86vh; overflow: auto; padding: 30px; background: var(--paper); border-top: 4px solid var(--gold); }
+.brit-room .ri-modal h2 { margin: 0 0 4px; font: 500 40px/0.9 var(--display); text-transform: uppercase; }
+.brit-room .ri-modal-sub { margin: 0 0 14px; color: var(--muted); font: 10px/1.5 var(--mono); text-transform: uppercase; }
+.brit-room .ri-sg { display: grid; grid-template-columns: 1fr auto; gap: 16px; margin-top: 16px; padding: 16px 0 0; border-top: 1px solid var(--line); }
+.brit-room .ri-sg h3 { margin: 0 0 8px; font: 500 22px/0.95 var(--display); text-transform: uppercase; }
+.brit-room .ri-sg-mv { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.brit-room .ri-sg p { margin: 8px 0 0; color: #3b3a35; font: 11px/1.55 var(--body); }
+.brit-room .ri-sg-ac { display: flex; flex-direction: column; gap: 6px; }
+.brit-room .ri-ai { display: inline-block; margin-inline-end: 6px; padding: 3px 5px; background: var(--black); color: var(--gold-soft); font: 8px/1 var(--mono); letter-spacing: 0.06em; }
+.brit-room .ri-conf { color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
+.brit-room .ri-toast { position: fixed; z-index: 90; left: 24px; bottom: 24px; padding: 13px 16px; background: var(--black); color: var(--paper); border-left: 3px solid var(--gold); font: 10px/1.4 var(--mono); }
+@media (max-width: 900px) { .brit-room .ri-th-next, .brit-room .ri-table th:last-child, .brit-room .ri-table td:last-child { display: none; } .brit-room .ri-sg { grid-template-columns: 1fr; } .brit-room .ri-sg-ac { flex-direction: row; } }
