@@ -455,8 +455,17 @@ export async function readMeta(db: Firestore): Promise<TierMeta | null> {
 
 /* ───────────────────────── push alerts (optional) ───────────────────────── */
 
+/** Deep-strip undefined (and NaN) so Firestore never rejects an optional field. */
 function clean<T>(o: T): T {
-  return JSON.parse(JSON.stringify(o)) as T;
+  if (o === null || typeof o !== 'object') return o;
+  if (Array.isArray(o)) return o.map((v) => clean(v)) as unknown as T;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+    if (v === undefined) continue;
+    if (typeof v === 'number' && Number.isNaN(v)) continue;
+    out[k] = clean(v);
+  }
+  return out as T;
 }
 
 /** Owners configured in TIERING_ALERT_EMAILS get a weekly digest push of the top targets. */

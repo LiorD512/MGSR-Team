@@ -41,3 +41,6 @@ jobs:
           TIERING_APP_ORIGIN: ${{ vars.TIERING_APP_ORIGIN || 'https://management.britsportgroup.com' }}
           TIERING_ALERT_EMAILS: ${{ vars.TIERING_ALERT_EMAILS }}
           TIERING_CONCURRENCY: '4'
+          # Transfermarkt blocks GitHub runner IPs (HTTP 405/202/403). Route TM scrapes through the
+          # same shared proxy the other TM workflows use so injury/intel sources work.
+          TM_HTML_PROXY_URL: ${{ vars.TM_HTML_PROXY_URL || 'https://management.britsportgroup.com/api/transfermarkt/html-proxy' }}
