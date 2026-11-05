@@ -84,6 +84,8 @@ export interface IntelMeta {
   withGames?: number;
   /** How many players had a stale stored TM id that a name-search re-resolved to a live one. */
   staleIds?: number;
+  /** Count of each no-games diagnostic note (search_threw / no_candidates / candidates_empty / ...). */
+  noGamesBreakdown?: Record<string, number>;
   errors?: { playerId: string; error: string }[];
 }
 

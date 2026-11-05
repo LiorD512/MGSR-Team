@@ -153,6 +153,9 @@ export interface ProcessResult {
   flagged: boolean;
   reason: string;
   staleTmId: boolean;
+  /** Fine-grained resolver diagnostic + error (circuit breaker / block / no-candidates) for the log. */
+  note?: string;
+  error?: string;
 }
 
 /** Oldest value within ~14 months from marketValueHistory, for the value-move signal. */
@@ -181,7 +184,7 @@ function clean<T>(o: T): T {
 
 export async function processPlayer(db: Firestore, ctx: IntelContext, p: RosterPlayer, opts: ProcessOptions): Promise<ProcessResult> {
   const now = ctx.now;
-  const { games, source, reason, resolvedTmId, staleTmId } = await getRecentGames(
+  const { games, source, reason, resolvedTmId, staleTmId, note, error } = await getRecentGames(
     { tmProfile: p.tmProfile, fullName: p.fullName, recentGames: p.recentGames, recentGamesAt: p.recentGamesAt },
     now,
     { force: opts.force, allowFetch: opts.allowFetch !== false }
@@ -225,7 +228,7 @@ export async function processPlayer(db: Firestore, ctx: IntelContext, p: RosterP
   };
   await db.collection(TIERS_COLLECTION).doc(p.id).set(clean(doc));
   ctx.docs.set(p.id, doc);
-  return { doc, hasGames, flagged: !!intel, reason, staleTmId: !!staleTmId };
+  return { doc, hasGames, flagged: !!intel, reason, staleTmId: !!staleTmId, note, error };
 }
 
 export async function sweepRoster(
@@ -243,6 +246,7 @@ export async function sweepRoster(
   let flagged = 0;
   let withGames = 0;
   let staleIds = 0;
+  const noteCounts = new Map<string, number>();
   const errors: { playerId: string; error: string }[] = [];
   let i = 0;
   const workers = Array.from({ length: conc }, async () => {
@@ -254,8 +258,10 @@ export async function sweepRoster(
         if (r.hasGames) withGames++;
         if (r.flagged) flagged++;
         if (r.staleTmId) staleIds++;
+        if (!r.hasGames && r.note) noteCounts.set(r.note, (noteCounts.get(r.note) ?? 0) + 1);
         const relink = r.staleTmId ? ` [stale TM id → re-link to ${r.doc.resolvedTmId}]` : '';
-        log(`✓ ${p.fullName}${r.flagged ? ` → ${r.doc.intel!.top.en}` : ' (no signal)'}${r.hasGames ? '' : ` [no games: ${r.reason}]`}${relink}`);
+        const diag = r.hasGames ? '' : ` [no games: ${r.reason}${r.note ? `/${r.note}` : ''}${r.error ? ` — ${r.error}` : ''}]`;
+        log(`✓ ${p.fullName}${r.flagged ? ` → ${r.doc.intel!.top.en}` : ' (no signal)'}${diag}${relink}`);
       } catch (e) {
         errors.push({ playerId: p.id, error: String((e as Error)?.message ?? e).slice(0, 200) });
         log(`✗ ${p.fullName}: ${(e as Error)?.message ?? e}`);
@@ -264,6 +270,12 @@ export async function sweepRoster(
   });
   await Promise.all(workers);
 
+  // Aggregate why players had no games — the single most useful diagnostic line.
+  if (noteCounts.size) {
+    const breakdown = Array.from(noteCounts.entries()).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(', ');
+    log(`no-games breakdown: ${breakdown}`);
+  }
+
   // Drop intel docs for players no longer on the roster.
   if (!opts.onlyIds) {
     const rosterIds = new Set(ctx.players.map((p) => p.id));
@@ -271,7 +283,8 @@ export async function sweepRoster(
     for (const d of all.docs) if (!rosterIds.has(d.id)) await d.ref.delete();
   }
 
-  const meta: IntelMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, flagged, total: queue.length, withGames, staleIds, errors: errors.slice(0, 20) };
+  const noGamesBreakdown = Object.fromEntries(noteCounts);
+  const meta: IntelMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, flagged, total: queue.length, withGames, staleIds, noGamesBreakdown, errors: errors.slice(0, 20) };
   const [col, id] = META_DOC.split('/');
   await db.collection(col).doc(id).set(clean(meta));
   return meta;

@@ -20,6 +20,10 @@ export interface GamesResult {
   resolvedTmId?: string | null;
   /** True when stored id was stale and a name-search found the live one — surfaced for a "re-link" flag. */
   staleTmId?: boolean;
+  /** Fine-grained diagnostic from the resolver (why no games) — surfaced in the sweep log. */
+  note?: string;
+  /** Short error string when a TM fetch threw (circuit breaker / block / timeout). */
+  error?: string;
 }
 
 export async function getRecentGames(
@@ -36,7 +40,7 @@ export async function getRecentGames(
       if (p.recentGames?.length) return { games: p.recentGames, source: 'doc', reason: 'ok' };
       return { games: [], source: 'none', reason: 'no_tmprofile' };
     }
-    const { games, resolvedId, staleId } = await fetchRecentGamesResolved({ tmProfile: p.tmProfile, fullName: p.fullName });
+    const { games, resolvedId, staleId, note, error } = await fetchRecentGamesResolved({ tmProfile: p.tmProfile, fullName: p.fullName });
     if (games.length) {
       return {
         games,
@@ -44,11 +48,12 @@ export async function getRecentGames(
         reason: staleId ? 'stale_relinked' : 'ok',
         resolvedTmId: resolvedId,
         staleTmId: staleId,
+        note,
       };
     }
     // fetch + name search both yielded nothing recent (no live TM record, or long inactive)
     if (p.recentGames?.length) return { games: p.recentGames, source: 'doc', reason: 'ok' };
-    return { games: [], source: 'none', reason: p.tmProfile ? 'fetch_empty' : 'no_tmprofile' };
+    return { games: [], source: 'none', reason: p.tmProfile ? 'fetch_empty' : 'no_tmprofile', note, error };
   }
 
   if (p.recentGames?.length) return { games: p.recentGames, source: 'doc', reason: 'ok' };

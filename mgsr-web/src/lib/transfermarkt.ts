@@ -3919,6 +3919,18 @@ export interface ResolvedRecentGames {
   resolvedId: string | null;
   /** True when the stored id produced no recent games but a name-search match did → the stored id is stale. */
   staleId: boolean;
+  /**
+   * Diagnostic trace of what happened, so a sweep can explain *why* a player has no games:
+   *  - 'stored_ok'        stored id had recent games
+   *  - 'relinked'         stored empty, name-search found a live id
+   *  - 'no_name'          no fullName to search with
+   *  - 'search_threw'     TM name-search request failed/blocked (e.g. circuit breaker / proxy)
+   *  - 'no_candidates'    search ran but returned no name-matching candidates
+   *  - 'candidates_empty' candidates found but none had recent games (all stale/inactive)
+   */
+  note: 'stored_ok' | 'relinked' | 'no_name' | 'search_threw' | 'no_candidates' | 'candidates_empty';
+  /** Short reason string when a fetch threw (circuit breaker, HTTP status, timeout). */
+  error?: string;
 }
 
 function normaliseName(s: string): string {
@@ -3946,18 +3958,19 @@ export async function fetchRecentGamesResolved(
   const storedId = extractPlayerIdFromUrl(p.tmProfile);
   if (storedId) {
     const games = await fetchRecentGamesById(storedId, max);
-    if (games.length) return { games, resolvedId: storedId, staleId: false };
+    if (games.length) return { games, resolvedId: storedId, staleId: false, note: 'stored_ok' };
   }
 
   const name = (p.fullName ?? '').trim();
-  if (!name) return { games: [], resolvedId: storedId, staleId: false };
+  if (!name) return { games: [], resolvedId: storedId, staleId: false, note: 'no_name' };
 
   let candidates: { tmProfile?: unknown; playerName?: unknown }[] = [];
   try {
     const res = await handleSearch(name);
     candidates = (res.players ?? []) as typeof candidates;
-  } catch {
-    return { games: [], resolvedId: storedId, staleId: false };
+  } catch (e) {
+    // TM search request itself failed — most often circuit breaker open or proxy/IP block.
+    return { games: [], resolvedId: storedId, staleId: false, note: 'search_threw', error: String((e as Error)?.message ?? e).slice(0, 120) };
   }
 
   const wantName = normaliseName(name);
@@ -3966,12 +3979,19 @@ export async function fetchRecentGamesResolved(
     .filter((c) => c.id && c.id !== storedId && (c.nm === wantName || c.nm.includes(wantName) || wantName.includes(c.nm)))
     .slice(0, 4); // cap TM fetches
 
+  if (!matched.length) return { games: [], resolvedId: storedId, staleId: false, note: 'no_candidates' };
+
   let best: { games: RecentGame[]; id: string } | null = null;
+  let lastErr: string | undefined;
   for (const c of matched) {
-    const games = await fetchRecentGamesById(c.id!, max);
-    if (!games.length) continue;
-    if (!best || games[0].date > best.games[0].date) best = { games, id: c.id! };
+    try {
+      const games = await fetchRecentGamesById(c.id!, max);
+      if (!games.length) continue;
+      if (!best || games[0].date > best.games[0].date) best = { games, id: c.id! };
+    } catch (e) {
+      lastErr = String((e as Error)?.message ?? e).slice(0, 120);
+    }
   }
-  if (best) return { games: best.games, resolvedId: best.id, staleId: true };
-  return { games: [], resolvedId: storedId, staleId: false };
+  if (best) return { games: best.games, resolvedId: best.id, staleId: true, note: 'relinked' };
+  return { games: [], resolvedId: storedId, staleId: false, note: 'candidates_empty', error: lastErr };
 }
