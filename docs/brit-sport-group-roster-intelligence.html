@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BRIT — Roster intelligence (weekly, in-app data)</title>
+<title>BRIT — Roster intelligence (weekly signals)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -72,280 +72,73 @@ body{margin:0;background:var(--paper)}
 .brit-canvas{padding-bottom:90px}
 @media(max-width:1100px){.brit-app{grid-template-columns:1fr}.brit-rail{display:none}.brit-grid{grid-template-columns:1fr}.brit-canvas{padding:24px}.brit-topbar{padding:0 20px}.brit-signals{grid-template-columns:1fr}.brit-signal{border:0;padding-inline-start:0!important}}
 /* ═══════════════════════════════════════════════════════
-   Level & Focus — Roster intelligence (dashboard module)
-   Scoped to .brit-room; uses the room's own tokens.
+   Roster Intelligence — "what needs attention this week"
+   Scoped to .brit-room. Cards + read-only drawer.
    ═══════════════════════════════════════════════════════ */
-.brit-room .ri-l1 { background: #11110f; color: #f3f0e8; }
-.brit-room .ri-l2 { background: var(--gold); color: #fff; }
-.brit-room .ri-l3 { background: var(--gold-soft); color: var(--ink); }
-.brit-room .ri-l4 { background: var(--muted-2); color: var(--ink); }
-.brit-room .ri-l5 { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--muted-2); }
+.brit-room .ri-caption { margin: 14px 0 12px; color: var(--muted); font: 9px/1.5 var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
 .brit-room .ri-link { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; text-decoration: underline; }
-.brit-room .ri-link-gold { color: var(--gold-soft); margin-top: 12px; }
-.brit-room .ri-red { color: var(--red); }
-.brit-room .ri-muted { color: var(--muted); font: 10px var(--mono); }
-.brit-room .ri-end { text-align: end; }
-
-.brit-room .ri-bar { display: flex; height: 34px; margin: 20px 0 9px; border: 1px solid var(--ink); }
-.brit-room .ri-bar button { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; font: 500 15px/1 var(--display); transition: opacity 0.2s, filter 0.2s; }
-.brit-room .ri-bar button:hover { filter: brightness(1.12); }
-.brit-room .ri-bar.dim button:not(.sel) { opacity: 0.35; }
-.brit-room .ri-key { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
-.brit-room .ri-key button { text-align: start; padding: 0; color: var(--muted); font: 9px/1.35 var(--mono); text-transform: uppercase; }
-.brit-room .ri-key button b { display: block; color: var(--ink); font-weight: 500; }
-.brit-room .ri-key button:hover b, .brit-room .ri-key button.sel b { color: var(--gold); }
-
-.brit-room .ri-call { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; margin: 22px 0 4px; padding: 14px 16px; border: 1px solid var(--gold-soft); background: color-mix(in srgb, var(--gold-soft) 8%, transparent); }
-.brit-room .ri-call-icon { width: 32px; height: 32px; display: grid; place-items: center; background: var(--gold-soft); color: var(--ink); font: 12px/1 var(--display); }
-.brit-room .ri-call b { display: block; font: 500 15px/1.1 var(--display); text-transform: uppercase; }
-.brit-room .ri-call small { display: block; margin-top: 3px; color: var(--gold); font: 9px/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
-.brit-room .ri-call > button { padding: 9px 11px; background: var(--ink); color: var(--paper); font: 9px/1 var(--mono); text-transform: uppercase; }
-.brit-room .ri-call > button:hover { background: var(--gold); }
-
-.brit-room .ri-tabs { display: flex; gap: 18px; margin-top: 22px; border-bottom: 1px solid var(--line-2); }
-.brit-room .ri-tabs button { margin-bottom: -1px; padding: 0 0 9px; border-bottom: 2px solid transparent; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
-.brit-room .ri-tabs button.on { color: var(--ink); border-color: var(--gold); }
-.brit-room .ri-tabs button i { margin-inline-start: 4px; color: var(--gold); font-style: normal; }
-
-.brit-room .ri-table { width: 100%; border-collapse: collapse; }
-.brit-room .ri-table th { padding: 13px 0 9px; color: var(--muted); text-align: start; font: 9px/1 var(--mono); font-weight: 400; text-transform: uppercase; }
-.brit-room .ri-table th.ri-end { text-align: end; }
-.brit-room .ri-table td { padding: 13px 0; border-top: 1px solid var(--line); font: 10px/1.25 var(--mono); vertical-align: middle; }
-.brit-room .ri-table tbody tr { cursor: pointer; transition: background 0.2s; }
-.brit-room .ri-table tbody tr:hover { background: rgba(164, 125, 67, 0.07); }
-.brit-room .ri-table td.ri-pl { padding-inline-end: 6px; font: 700 12.5px/1.25 var(--body); }
-.brit-room .ri-table td.ri-pl small { display: block; margin-top: 3px; color: var(--muted); font: 9px/1.2 var(--mono); font-weight: 400; text-transform: uppercase; }
-.brit-room .ri-table td.ri-nx { color: var(--muted); white-space: nowrap; }
-.brit-room .ri-table td.ri-nx.hot { color: var(--red); }
-
-.brit-room .ri-lv { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-.brit-room .ri-lv b { min-width: 26px; height: 20px; display: inline-grid; place-items: center; font: 500 11px/1 var(--display); letter-spacing: 0.03em; }
-.brit-room .ri-lv.sg b { outline: 1.5px dashed var(--gold); outline-offset: 2px; }
-.brit-room .ri-lv b.ri-o { opacity: 0.5; }
-.brit-room .ri-tr { font-size: 8px; font-style: normal; }
-.brit-room .ri-tr.up { color: var(--green); }
-.brit-room .ri-tr.down { color: var(--red); }
-.brit-room .ri-tr.flat { color: var(--muted-2); }
-
-.brit-room .ri-fc { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-transform: uppercase; font: 10px/1 var(--mono); }
-.brit-room .ri-fc s { width: 7px; height: 7px; display: inline-block; border-radius: 50%; text-decoration: none; }
-.brit-room .ri-fc1 { color: var(--red); } .brit-room .ri-fc1 s { background: var(--red); }
-.brit-room .ri-fc2 s { background: var(--ink); }
-.brit-room .ri-fc3 { color: var(--muted); } .brit-room .ri-fc3 s { background: var(--muted); }
-.brit-room .ri-fc4 { color: var(--muted); } .brit-room .ri-fc4 s { background: transparent; box-shadow: inset 0 0 0 1.5px var(--muted-2); }
-.brit-room .ri-bgf1 { background: var(--red) !important; color: #fff !important; }
-.brit-room .ri-bgf2 { background: var(--ink) !important; color: #fff !important; }
-.brit-room .ri-bgf3 { background: var(--muted) !important; color: #fff !important; }
-.brit-room .ri-bgf4 { background: var(--muted-2) !important; color: var(--ink) !important; }
-
-.brit-room .ri-more { display: flex; justify-content: space-between; padding: 13px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
-.brit-room .ri-more button { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; }
-.brit-room .ri-eff { margin-top: 20px; }
-.brit-room .ri-eff-row { display: flex; justify-content: space-between; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
-.brit-room .ri-eff-row b { color: var(--ink); font-weight: 500; }
-.brit-room .ri-eff-track { position: relative; height: 6px; margin: 9px 0 8px; background: var(--paper-2); }
-.brit-room .ri-eff-track i { position: absolute; inset: 0 auto 0 0; background: var(--red); }
-.brit-room[dir='rtl'] .ri-eff-track i { inset: 0 0 0 auto; }
-.brit-room .ri-eff-track u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
-.brit-room .ri-eff p { margin: 0; color: var(--muted); font: 9px/1.5 var(--mono); }
-.brit-room .ri-first { padding: 24px 0; }
+.brit-room .ri-muted { color: var(--muted); font: 11px/1.5 var(--mono); }
+.brit-room .ri-first { padding: 22px 0; }
 .brit-room .ri-first p { margin: 0 0 6px; font: 12px/1.5 var(--body); }
-.brit-room .ri-first .ri-first-sub { margin-bottom: 14px; color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+.brit-room .ri-first-sub { color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
 
-.brit-room .ri-btn { display: inline-block; padding: 11px 14px; border: 1px solid var(--ink); font: 9px/1 var(--mono); text-transform: uppercase; text-align: center; }
-.brit-room .ri-btn:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
-.brit-room .ri-btn:disabled { opacity: 0.5; cursor: default; }
-.brit-room .ri-btn-gold { background: var(--gold-soft); border-color: var(--gold-soft); color: var(--ink); }
-.brit-room .ri-btn-gold:hover:not(:disabled) { background: var(--gold); border-color: var(--gold); color: var(--paper); }
+/* list of flagged players */
+.brit-room .rk { list-style: none; margin: 0; padding: 0; }
+.brit-room .rk-row { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; width: 100%; padding: 13px 0; border-top: 1px solid var(--line); text-align: start; }
+.brit-room .rk li:first-child .rk-row { border-top: 0; }
+.brit-room .rk-row:hover { background: rgba(164, 125, 67, 0.06); }
+.brit-room .rk-badge { width: 30px; height: 30px; display: grid; place-items: center; font-size: 15px; border-radius: 50%; }
+.brit-room .rk-badge.t-positive { background: color-mix(in srgb, var(--green) 16%, transparent); }
+.brit-room .rk-badge.t-watch { background: color-mix(in srgb, var(--gold-soft) 20%, transparent); }
+.brit-room .rk-badge.t-negative { background: color-mix(in srgb, var(--red) 14%, transparent); }
+.brit-room .rk-main { min-width: 0; }
+.brit-room .rk-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.brit-room .rk-top b { font: 700 13.5px/1.2 var(--body); }
+.brit-room .rk-chip { padding: 2px 6px; font: 8px/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; }
+.brit-room .rk-chip.t-positive { background: var(--green); color: #fff; }
+.brit-room .rk-chip.t-watch { background: var(--gold); color: #fff; }
+.brit-room .rk-chip.t-negative { background: var(--red); color: #fff; }
+.brit-room .rk-more { color: var(--muted); font: 8px/1 var(--mono); border: 1px solid var(--line); padding: 2px 4px; }
+.brit-room .rk-reason { display: block; margin-top: 4px; font: 500 12px/1.4 var(--body); color: var(--ink); }
+.brit-room .rk-sub { display: block; margin-top: 3px; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
+.brit-room .ri-spark { flex: none; }
+.brit-room .ri-spark-lg { display: block; }
 
-/* drawer / modal */
-.brit-room .ri-backdrop { position: fixed; inset: 0; z-index: 70; background: rgba(17, 17, 15, 0.66); }
-.brit-room .ri-drawer { position: fixed; top: 0; bottom: 0; inset-inline-end: 0; z-index: 71; width: min(560px, 100%); overflow: auto; background: var(--paper); border-inline-start: 4px solid var(--gold); animation: ri-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.brit-room .ri-status { display: flex; align-items: center; gap: 8px; margin-top: 16px; color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+.brit-room .ri-live { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
+
+/* read-only drawer */
+.brit-room .ri-backdrop { position: fixed; inset: 0; z-index: 70; background: rgba(17, 17, 15, 0.6); }
+.brit-room .ri-drawer { position: fixed; top: 0; bottom: 0; inset-inline-end: 0; z-index: 71; width: min(540px, 100%); overflow: auto; background: var(--paper); border-inline-start: 4px solid var(--gold); animation: ri-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes ri-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 .brit-room[dir='rtl'] .ri-drawer { animation-name: ri-in-rtl; }
 @keyframes ri-in-rtl { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
-.brit-room .ri-dr-h { padding: 26px 28px 22px; background: var(--black); color: var(--paper); }
+.brit-room .ri-dr-h { padding: 24px 26px 20px; background: var(--black); color: var(--paper); }
 .brit-room .ri-x { float: inline-end; font: 22px var(--display); }
 .brit-room .ri-dr-h small { color: #aaa69c; font: 9px/1 var(--mono); text-transform: uppercase; }
-.brit-room .ri-dr-h h2 { margin: 8px 0 12px; font: 500 42px/0.9 var(--display); text-transform: uppercase; }
+.brit-room .ri-dr-h h2 { margin: 8px 0 12px; font: 500 38px/0.9 var(--display); text-transform: uppercase; }
 .brit-room[dir='rtl'] .ri-dr-h h2 { font-weight: 800; letter-spacing: normal; }
-.brit-room .ri-dr-tags { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.brit-room .ri-dr-h .ri-fc2 { color: var(--paper); } .brit-room .ri-dr-h .ri-fc2 s { background: var(--paper); }
-.brit-room .ri-unconf { color: var(--gold-soft); font: 9px/1 var(--mono); text-transform: uppercase; }
-.brit-room .ri-dr-s { padding: 20px 28px; border-bottom: 1px solid var(--line); }
-.brit-room .ri-dr-s h4 { margin: 0 0 12px; display: flex; justify-content: space-between; color: var(--muted); font: 9px/1 var(--mono); font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; }
-.brit-room .ri-ladder { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
-.brit-room .ri-ladder button, .brit-room .ri-fseg button { position: relative; border: 1px solid var(--line); background: var(--card); text-align: center; }
-.brit-room .ri-ladder button { padding: 10px 2px 9px; }
-.brit-room .ri-ladder b { display: block; font: 500 19px/1 var(--display); }
-.brit-room .ri-ladder small { font: 8px/1 var(--mono); text-transform: uppercase; color: var(--muted); }
-.brit-room .ri-ladder button.cur { border-color: transparent; } .brit-room .ri-ladder button.cur small { color: inherit; opacity: 0.8; }
-.brit-room .ri-fseg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-.brit-room .ri-fseg button { padding: 11px 2px; font: 9px/1 var(--mono); text-transform: uppercase; }
-.brit-room .ri-fseg button.cur { border-color: transparent; }
-.brit-room .ri-ladder button.aim::after, .brit-room .ri-fseg button.aim::after { content: 'AI'; position: absolute; top: -8px; inset-inline-start: 50%; transform: translateX(-50%); padding: 3px 5px; background: var(--black); color: var(--gold-soft); font: 8px/1 var(--mono); }
-.brit-room .ri-dr-accept { display: flex; gap: 8px; margin-top: 18px; }
-.brit-room .ri-aibox { padding: 18px 20px; background: var(--black); color: var(--paper); }
-.brit-room .ri-aibox p { margin: 0; font: 12px/1.65 var(--body); }
-.brit-room .ri-ev { margin-top: 12px; display: grid; gap: 5px; }
-.brit-room .ri-ev div { padding-inline-start: 10px; border-inline-start: 2px solid var(--gold); color: #cbc6b9; font: 10px/1.4 var(--mono); }
-.brit-room .ri-sig { display: grid; grid-template-columns: 96px 1fr 28px; gap: 10px; align-items: center; margin: 8px 0; font: 9px var(--mono); text-transform: uppercase; }
-.brit-room .ri-sig-tr { height: 6px; background: var(--paper-2); }
-.brit-room .ri-sig-tr i { display: block; height: 100%; background: var(--ink); }
-.brit-room .ri-touch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.brit-room .ri-touch div { padding: 10px; border: 1px solid var(--line); background: var(--card); color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
-.brit-room .ri-touch b { display: block; color: var(--ink); font: 500 22px var(--display); }
-.brit-room .ri-dr-s textarea { width: 100%; min-height: 54px; padding: 10px; border: 1px solid var(--ink); background: var(--card); font: 11px var(--mono); }
-.brit-room .ri-lock { display: flex; gap: 8px; margin-top: 12px; font: 10px var(--mono); }
-.brit-room .ri-tl { margin-inline-start: 4px; border-inline-start: 1px solid var(--ink); }
-.brit-room .ri-tl > div { position: relative; padding: 0 14px 13px; padding-inline-end: 0; color: var(--muted); font: 10px/1.5 var(--mono); }
-.brit-room .ri-tl > div::before { content: ''; position: absolute; inset-inline-start: -4px; top: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
-.brit-room .ri-tl b { color: var(--ink); font-family: var(--body); }
-.brit-room .ri-dr-f { padding: 18px 28px 40px; display: flex; }
-
-.brit-room .ri-modal { position: fixed; z-index: 72; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(680px, 94%); max-height: 86vh; overflow: auto; padding: 30px; background: var(--paper); border-top: 4px solid var(--gold); }
-.brit-room .ri-modal h2 { margin: 0 0 4px; font: 500 40px/0.9 var(--display); text-transform: uppercase; }
-.brit-room .ri-modal-sub { margin: 0 0 14px; color: var(--muted); font: 10px/1.5 var(--mono); text-transform: uppercase; }
-.brit-room .ri-sg { display: grid; grid-template-columns: 1fr auto; gap: 16px; margin-top: 16px; padding: 16px 0 0; border-top: 1px solid var(--line); }
-.brit-room .ri-sg h3 { margin: 0 0 8px; font: 500 22px/0.95 var(--display); text-transform: uppercase; }
-.brit-room .ri-sg-mv { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.brit-room .ri-sg p { margin: 8px 0 0; color: #3b3a35; font: 11px/1.55 var(--body); }
-.brit-room .ri-sg-ac { display: flex; flex-direction: column; gap: 6px; }
-.brit-room .ri-ai { display: inline-block; margin-inline-end: 6px; padding: 3px 5px; background: var(--black); color: var(--gold-soft); font: 8px/1 var(--mono); letter-spacing: 0.06em; }
-.brit-room .ri-conf { color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
-.brit-room .ri-toast { position: fixed; z-index: 90; left: 24px; bottom: 24px; padding: 13px 16px; background: var(--black); color: var(--paper); border-left: 3px solid var(--gold); font: 10px/1.4 var(--mono); }
-@media (max-width: 900px) { .brit-room .ri-th-next, .brit-room .ri-table th:last-child, .brit-room .ri-table td:last-child { display: none; } .brit-room .ri-sg { grid-template-columns: 1fr; } .brit-room .ri-sg-ac { flex-direction: row; } }
-
-/* Level & Focus — background analyst additions */
-.brit-room .ri-plan-line { display: block; margin-top: 4px; color: var(--ink); font: 400 10.5px/1.35 var(--body); max-width: 260px; }
-.brit-room .ri-news-dot { margin-inline-start: 6px; padding: 1px 4px; font: 8px/1.3 var(--mono); font-style: normal; text-transform: uppercase; vertical-align: 2px; }
-.brit-room .ri-news-dot.pos { color: var(--green); border: 1px solid var(--green); }
-.brit-room .ri-news-dot.neg { color: var(--red); border: 1px solid var(--red); }
-.brit-room .ri-status { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
-.brit-room .ri-live { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
-.brit-room .ri-plan { display: grid; gap: 12px; padding: 16px 18px; border: 1px solid var(--gold-soft); background: color-mix(in srgb, var(--gold-soft) 8%, transparent); }
-.brit-room .ri-plan b { display: block; margin-bottom: 3px; color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
-.brit-room .ri-plan p { margin: 0; font: 12px/1.55 var(--body); }
-.brit-room .ri-timing { padding: 3px 6px; font: 9px/1 var(--mono); }
-.brit-room .ri-t-now, .brit-room .ri-t-this_week { background: var(--red); color: #fff; }
-.brit-room .ri-t-this_window { background: var(--gold-soft); color: var(--ink); }
-.brit-room .ri-t-later, .brit-room .ri-t-hold { background: var(--paper-2); color: var(--ink); }
-.brit-room .ri-news { padding: 10px 0 10px 12px; border-bottom: 1px solid var(--line-2); border-inline-start: 3px solid var(--muted-2); padding-inline-start: 12px; }
-.brit-room .ri-news b { display: block; font: 600 12px/1.4 var(--body); }
-.brit-room .ri-news p { margin: 4px 0; font: 11px/1.5 var(--body); color: #3b3a35; }
-.brit-room .ri-news small { color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
-.brit-room .ri-ns-positive { border-inline-start-color: var(--green); }
-.brit-room .ri-ns-negative, .brit-room .ri-ns-risk { border-inline-start-color: var(--red); }
-.brit-room .ri-srcs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.brit-room .ri-srcs a { padding: 3px 6px; border: 1px solid var(--line); color: var(--muted); font: 9px/1.3 var(--mono); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.brit-room .ri-srcs a:hover { color: var(--gold); border-color: var(--gold); }
-.brit-room .ri-risk { padding: 8px 0 8px 12px; padding-inline-start: 12px; border-inline-start: 3px solid var(--red); margin-bottom: 6px; font: 11.5px/1.5 var(--body); }
-.brit-room .ri-sig { grid-template-columns: 120px 1fr 28px; }
-.brit-room .ri-sig em { margin-inline-start: 6px; color: var(--muted-2); font-style: normal; }
-.brit-room .ri-sig small { grid-column: 1 / -1; margin-top: -4px; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: none; }
-.brit-room .ri-adj { margin-top: 10px; color: var(--gold); font: 10px var(--mono); text-transform: uppercase; }
-
-/* ═══ Push board (Roster intelligence v3): Push now + Window targets ═══ */
-.brit-room .pb-sum { display: grid; grid-template-columns: 1fr 1fr 1.2fr; margin: 18px 0 6px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.brit-room .pb-sum > * { padding: 14px 14px 13px 0; border-inline-end: 1px solid var(--line); }
-.brit-room .pb-sum > *:not(:first-child) { padding-inline-start: 14px; }
-.brit-room .pb-sum > *:last-child { border-inline-end: 0; }
-.brit-room .pb-sum strong { display: block; font: 500 34px/0.85 var(--display); }
-.brit-room .pb-sum span { display: block; margin-top: 7px; color: var(--muted); font: 9px/1.2 var(--mono); text-transform: uppercase; }
-.brit-room .pb-sum a.hot strong { color: var(--red); }
-.brit-room .pb-sum-win strong { color: var(--gold); }
-.brit-room .pb-h { display: flex; justify-content: space-between; align-items: baseline; margin-top: 26px; padding-bottom: 9px; border-bottom: 1px solid var(--ink); }
-.brit-room .pb-h h3 { margin: 0; font: 500 19px/1 var(--display); text-transform: uppercase; }
-.brit-room[dir='rtl'] .pb-h h3 { font-weight: 800; }
-.brit-room .pb-h span { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
-.brit-room .pb-empty { padding: 16px 0; border-bottom: 1px solid var(--line); color: var(--muted); font: 11px/1.5 var(--body); }
-.brit-room .pb-empty b { color: var(--ink); }
-.brit-room .pb-item { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start; padding: 14px 0 14px 12px; padding-inline-start: 12px; border-bottom: 1px solid var(--line); border-inline-start: 3px solid var(--gold-soft); }
-.brit-room .pb-item.sev3 { border-inline-start-color: var(--red); }
-.brit-room .pb-item-main, .brit-room .pb-target, .brit-room .pb-sugg-name { display: block; width: 100%; text-align: start; }
-.brit-room .pb-item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.brit-room .pb-item h4, .brit-room .pb-target h4 { display: flex; align-items: center; gap: 7px; margin: 0; font: 700 13.5px/1.25 var(--body); }
-.brit-room .pb-item time, .brit-room .pb-target time { color: var(--gold); font: 500 15px/1 var(--display); white-space: nowrap; }
-.brit-room .pb-target time { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
-.brit-room .pb-item time.hot, .brit-room .pb-target time.hot { color: var(--red); }
-.brit-room .pb-item small, .brit-room .pb-target small { display: block; margin-top: 3px; color: var(--muted); font: 9px/1.2 var(--mono); text-transform: uppercase; }
-.brit-room .pb-why { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 3px; }
-.brit-room .pb-why li { position: relative; padding-inline-start: 12px; font: 11px/1.45 var(--body); color: #3b3a35; }
-.brit-room .pb-why li::before { content: ''; position: absolute; inset-inline-start: 0; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold-soft); }
-.brit-room .pb-why li.k-mandate::before, .brit-room .pb-why li.k-contract::before, .brit-room .pb-why li.k-neglect::before { background: var(--red); }
-.brit-room .pb-why li.k-request::before { background: var(--green); }
-.brit-room .pb-why li.k-news::before { background: var(--blue); }
-.brit-room .pb-why.big li { padding: 6px 0; padding-inline-start: 14px; border-bottom: 1px solid var(--line-2); font-size: 12px; }
-.brit-room .pb-why.big li::before { top: 12px; }
-.brit-room .pb-why.big time { display: block; margin-top: 2px; color: var(--muted); font: 9px var(--mono); }
-.brit-room .pb-step { margin: 8px 0 0; font: 600 11.5px/1.45 var(--body); color: var(--ink); }
-.brit-room .pb-step.muted { color: var(--gold); font-weight: 400; }
-.brit-room .pb-clubs { margin: 4px 0 0; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
-.brit-room .pb-done { padding: 8px 10px; border: 1px solid var(--line); color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; white-space: nowrap; }
-.brit-room .pb-done:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
-.brit-room .pb-tag { padding: 2px 5px; border: 1px solid var(--gold); color: var(--gold); font: 8px/1.2 var(--mono); font-style: normal; text-transform: uppercase; letter-spacing: 0.05em; }
-.brit-room .pb-tag.hot { border-color: var(--red); color: var(--red); }
-.brit-room .ri-dr-h .pb-tag { border-color: var(--gold-soft); color: var(--gold-soft); }
-.brit-room .pb-lv { min-width: 24px; height: 18px; display: inline-grid; place-items: center; font: 500 10px/1 var(--display); }
-.brit-room .pb-handled { padding: 10px 0; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
-.brit-room .pb-add { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; }
-.brit-room .pb-add:hover { color: var(--ink); }
-.brit-room .pb-target { padding: 13px 0; border-bottom: 1px solid var(--line); }
-.brit-room .pb-target:hover, .brit-room .pb-item-main:hover h4 { color: var(--gold); }
-.brit-room .pb-sugg { margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--gold-soft); }
-.brit-room .pb-sugg-h { display: block; margin-bottom: 6px; color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
-.brit-room .pb-sugg-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 7px 0; }
-.brit-room .pb-sugg-name { font: 700 12px/1.3 var(--body); }
-.brit-room .pb-sugg-name em { margin-inline-start: 6px; color: var(--gold); font: 10px var(--mono); font-style: normal; }
-.brit-room .pb-sugg-name small { display: block; margin-top: 2px; color: var(--muted); font: 400 10.5px/1.4 var(--body); }
-.brit-room .pb-dr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.brit-room .ri-btn-dark { border-color: var(--dark-line); color: var(--paper); }
-.brit-room .ri-btn-dark:hover:not(:disabled) { background: var(--paper) !important; color: var(--ink) !important; }
-.brit-room .pb-next { font-weight: 700 !important; }
-.brit-room .pb-search { width: 100%; margin-top: 8px; padding: 11px 12px; border: 1px solid var(--ink); background: var(--card); font: 12px var(--body); }
-.brit-room .pb-picker-list { margin-top: 12px; max-height: 52vh; overflow: auto; border-top: 1px solid var(--line); }
-.brit-room .pb-picker-row { display: flex; width: 100%; justify-content: space-between; gap: 12px; padding: 11px 4px; border-bottom: 1px solid var(--line); text-align: start; }
-.brit-room .pb-picker-row:hover { background: rgba(164, 125, 67, 0.07); }
-.brit-room .pb-picker-row b { display: block; font: 700 12.5px/1.3 var(--body); }
-.brit-room .pb-picker-row small { display: block; margin-top: 2px; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
-.brit-room .pb-picker-row small.pb-fit { color: var(--gold); text-transform: none; font: 10.5px/1.4 var(--body); }
-.brit-room .pb-picker-r { display: flex; align-items: center; gap: 8px; }
-.brit-room .pb-picker-r em { color: var(--gold); font: 11px var(--mono); font-style: normal; }
-.brit-room .pb-picker-r i { width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid var(--ink); font-style: normal; }
-
-/* ═══ Roster intelligence v4 — single ranked board (top targets) ═══ */
-.brit-room .ri-caption { margin: 14px 0 10px; color: var(--muted); font: 9px/1.5 var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
-.brit-room .rk { list-style: none; margin: 0; padding: 0; counter-reset: rk; }
-.brit-room .rk-row { display: grid; grid-template-columns: 30px 1fr 64px; gap: 12px; align-items: center; width: 100%; padding: 14px 0; border-top: 1px solid var(--line); text-align: start; }
-.brit-room .rk li:first-child .rk-row { border-top: 0; }
-.brit-room .rk-row:hover { background: rgba(164, 125, 67, 0.07); }
-.brit-room .rk-n { font: 500 18px/1 var(--display); color: var(--muted-2); }
-.brit-room .rk-main { min-width: 0; }
-.brit-room .rk-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.brit-room .rk-top b { font: 700 14px/1.2 var(--body); }
-.brit-room .rk-tier { display: inline-flex; align-items: center; gap: 2px; }
-.brit-room .rk-tier b { min-width: 24px; height: 18px; display: inline-grid; place-items: center; font: 500 10px/1 var(--display); }
-.brit-room .rk-ceil { color: var(--gold); font: 9px/1 var(--mono); font-style: normal; }
-.brit-room .rk-push { padding: 2px 6px; font: 8px/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; }
-.brit-room .rk-push.p-now { background: var(--red); color: #fff; }
-.brit-room .rk-push.p-high { background: var(--gold); color: #fff; }
-.brit-room .rk-push.p-medium { border: 1px solid var(--gold); color: var(--gold); }
-.brit-room .rk-push.p-low { border: 1px solid var(--muted-2); color: var(--muted); }
-.brit-room .rk-fit { display: block; margin-top: 3px; color: var(--ink); font: 500 10.5px/1.3 var(--mono); text-transform: uppercase; }
-.brit-room .rk-sub { display: block; margin-top: 2px; color: var(--muted); font: 9px/1.2 var(--mono); text-transform: uppercase; }
-.brit-room .rk-why { display: block; margin-top: 6px; padding-inline-start: 11px; position: relative; font: 11px/1.45 var(--body); color: #3b3a35; }
-.brit-room .rk-why::before { content: ''; position: absolute; inset-inline-start: 0; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold-soft); }
-.brit-room .rk-why.w3::before { background: var(--red); }
-.brit-room .rk-why.w1::before { background: var(--muted-2); }
-.brit-room .rk-worth { position: relative; text-align: end; }
-.brit-room .rk-worth b { font: 500 20px/1 var(--display); }
-.brit-room .rk-worth i { position: absolute; inset-inline-end: 0; bottom: -4px; height: 3px; background: var(--gold); max-width: 100%; }
-.brit-room .ri-dr-worth { display: flex; gap: 16px; margin-top: 14px; }
-.brit-room .ri-dr-worth span { color: #b9b5aa; font: 9px/1.4 var(--mono); text-transform: uppercase; }
-.brit-room .ri-dr-worth b { display: block; margin-top: 3px; color: var(--paper); font: 500 20px/1 var(--display); }
+.brit-room .ri-dr-tags { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .brit-room .ri-fitlabel { color: var(--gold-soft); font: 9px/1.2 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-s { padding: 18px 26px; border-bottom: 1px solid var(--line); }
+.brit-room .ri-dr-s h4 { margin: 0 0 12px; display: flex; justify-content: space-between; color: var(--muted); font: 9px/1 var(--mono); font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; }
+.brit-room .pb-why { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.brit-room .pb-why.big li { position: relative; padding-inline-start: 14px; font: 12px/1.45 var(--body); }
+.brit-room .pb-why.big li::before { content: ''; position: absolute; inset-inline-start: 0; top: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--muted-2); }
+.brit-room .pb-why.big li.tone-positive::before { background: var(--green); }
+.brit-room .pb-why.big li.tone-watch::before { background: var(--gold); }
+.brit-room .pb-why.big li.tone-negative::before { background: var(--red); }
+.brit-room .pb-why.big li b { font-weight: 700; }
+.brit-room .ri-facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.brit-room .ri-facts > div { padding: 10px 12px; border: 1px solid var(--line); background: var(--card); }
+.brit-room .ri-facts b { display: block; font: 500 22px/1 var(--display); }
+.brit-room .ri-facts span { display: block; margin-top: 3px; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-f { padding: 18px 26px 40px; }
+.brit-room .ri-btn { display: inline-block; padding: 11px 14px; border: 1px solid var(--ink); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-btn-gold { background: var(--gold-soft); border-color: var(--gold-soft); color: var(--ink); }
+.brit-room .ri-btn-gold:hover { background: var(--gold); border-color: var(--gold); color: var(--paper); }
+@media (max-width: 900px) { .brit-room .ri-spark { display: none; } }
 
-.brit-room .ri-toast{left:24px;bottom:70px}
 </style>
 </head>
 <body>
@@ -370,7 +163,7 @@ body{margin:0;background:var(--paper)}
 <div class="brit-modal" id="modal"></div>
 <div class="notif" id="notif"></div>
 <div class="toast" id="toast"></div>
-<div class="mockbar"><b>MOCK</b><span>weekly agent · in-app data only (no external sources)</span><button onclick="resetAll()">Reset</button></div>
+<div class="mockbar"><b>MOCK</b><span>weekly agent · live stats · read-only</span><button onclick="resetAll()">Reset</button></div>
 </div>
 
 <script>
@@ -596,80 +389,68 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll()});
 renderAll();
 </script>
 <script>
-/* ===== Roster intelligence v4 — single ranked board. Overrides the mock's RI module. ===== */
-Object.assign(D.en,{cap:'Top {n} to work on next window · ranked by the weekly analysis',win:'{c} window in {d}d',
- worth:'Worth',urgency:'Urgency',conf:'Confidence',weekly:'refreshed weekly',updated:'Background analysis · updated 2d ago',
- push:{now:'Push now',high:'High',medium:'Medium',low:'Low'},lv:['Elite','Premium','Core','Depth','Developing'],
- summary:'Summary',why:'Why he’s worth it',news:'News',newsMom:'momentum',basis:'Level · how we judged him',effort:'Effort · last 30 days',
- notes:'Notes',tasks:'Tasks',last:'Last touch',auto:'Automatic',score:'Score',coverage:'data',profile:'Open full profile →',
- crit:{output:'Output',ability:'Ability',value:'Market value',league:'League / club',availability:'Availability'},
- notifT:'This week’s targets'});
-Object.assign(D.he,{cap:'{n} המובילים לעבוד עליהם בחלון הבא · מדורג לפי הניתוח השבועי',win:'החלון ב{c} בעוד {d} ימים',
- worth:'שווי עבודה',urgency:'דחיפות',conf:'ביטחון',weekly:'מתעדכן שבועית',updated:'ניתוח ברקע · עודכן לפני יומיים',
- push:{now:'לדחוף עכשיו',high:'גבוה',medium:'בינוני',low:'נמוך'},lv:['עילית','פרימיום','ליבה','עומק','בפיתוח'],
- summary:'תקציר',why:'למה כדאי לעבוד עליו',news:'חדשות',newsMom:'מומנטום',basis:'רמה · איך שפטנו אותו',effort:'מאמץ · 30 ימים אחרונים',
- notes:'הערות',tasks:'משימות',last:'קשר אחרון',auto:'אוטומטי',score:'ציון',coverage:'נתונים',profile:'פתח פרופיל מלא ←',
- crit:{output:'תפוקה',ability:'יכולת',value:'שווי שוק',league:'ליגה / מועדון',availability:'זמינות'},
- notifT:'היעדים של השבוע'});
-const he=()=>lang==='he', L=k=>T(k), tt=o=>o?(he()?o.he||o.en:o.en):'';
-const crit=(o,ab,v,l,av)=>[['output',30,o],['ability',20,ab],['value',25,v],['league',15,l],['availability',10,av]];
+/* ===== Roster Intelligence — weekly "what needs attention" board. Overrides the mock's RI module. ===== */
+Object.assign(D.en,{cap:'{n} players need attention this week · from live stats',baseline:'baseline week — change tracking starts next week',
+ weekly:'updated weekly',updated:'updated 2d ago',
+ dr_why:'Why he’s flagged',dr_stats:'This season',dr_touch:'Last contact',dr_updated:'Updated',last_touch:'Last touch',
+ f_rating:'Rating',f_minutes:'Minutes',f_apps:'Apps',f_ga:'Goals/Assists',f_league:'League',profile:'Open full profile →',
+ badge:{hot_form:['🔥','In form'],cold_form:['📉','Form dip'],breaking_in:['⬆️','Playing more'],losing_place:['🪑','Out of the side'],output_surge:['⚽','Output surge'],value_jump:['💹','Value up'],value_drop:['🔻','Value down'],contract_clock:['⏳','Contract'],mandate_clock:['📄','Mandate'],standout_form:['⭐','Standout'],standout_output:['🎯','High output'],heavy_load:['🏃','Key player']}});
+Object.assign(D.he,{cap:'{n} שחקנים דורשים תשומת לב השבוע · מסטטיסטיקה חיה',baseline:'שבוע בסיס — מעקב שינויים מתחיל בשבוע הבא',
+ weekly:'מתעדכן שבועית',updated:'עודכן לפני יומיים',
+ dr_why:'למה הוא סומן',dr_stats:'העונה',dr_touch:'קשר אחרון',dr_updated:'עודכן',last_touch:'קשר אחרון',
+ f_rating:'דירוג',f_minutes:'דקות',f_apps:'הופעות',f_ga:'שערים/בישולים',f_league:'ליגה',profile:'פתח פרופיל מלא ←',
+ badge:{hot_form:['🔥','בכושר'],cold_form:['📉','ירידה בכושר'],breaking_in:['⬆️','משחק יותר'],losing_place:['🪑','מחוץ להרכב'],output_surge:['⚽','זינוק בתפוקה'],value_jump:['💹','השווי עלה'],value_drop:['🔻','השווי ירד'],contract_clock:['⏳','חוזה'],mandate_clock:['📄','מנדט'],standout_form:['⭐','בולט'],standout_output:['🎯','תפוקה גבוהה'],heavy_load:['🏃','שחקן מפתח']}});
+const he=()=>lang==='he', L=k=>T(k);
+const S=(kind,tone,en,he,det,detHe)=>({kind,tone,en,he,det,detHe});
 const BOARD=[
- {id:8,n:'Amit Rosen',pos:'DM',club:'Maccabi Netanya',age:28,mv:'€2.20M',tier:2,ceiling:2,role:'starter',push:'now',worth:81,urg:82,conf:81,
-  summary:{en:'Premium starter whose mandate expires in days while a club actively wants his profile — the single most time-critical target.',he:'פותח פרימיום שהמנדט שלו פג בעוד ימים בזמן שקבוצה רוצה בדיוק את הפרופיל שלו — היעד הדחוף ביותר.'},
-  why:[{t:3,en:'Mandate expires in 6 days',he:'המנדט פג בעוד 6 ימים'},{t:2,en:'Hapoel Beer Sheva is looking for a DM (open request)',he:'הפועל באר שבע מחפשת קשר אחורי (בקשה פתוחה)'},{t:1,en:'Market value up 55% this year',he:'השווי עלה 55% השנה'}],
-  news:[{h:'Rosen linked with Beer Sheva move',s:'positive',i:{en:'Confirms demand ahead of the window',he:'מאשר ביקוש לפני החלון'},src:'ONE · 2026-11-01'}],
-  c:crit([68,'SofaScore 7.15 · 1,850 min'],[null],[66,'€2.2m'],[50,'Israel · Elo 1420'],[93,'21 days missed']),srcs:['ONE','SofaScore']},
- {id:12,n:'Omri Tal',pos:'RB',club:'Hapoel Beer Sheva',age:23,mv:'€1.90M',tier:2,ceiling:1,role:'starter',push:'high',worth:69,urg:52,conf:78,
-  summary:{en:'Two Premium-level seasons at a top-3 club at 23, with a European ceiling — a classic sell-on with 18 months left.',he:'שתי עונות ברמת פרימיום במועדון צמרת בגיל 23, עם תקרה אירופית — שחקן מכירה קלאסי עם 18 חודשים בחוזה.'},
-  why:[{t:2,en:'Prime age (23) with a European ceiling',he:'גיל שיא (23) עם תקרה אירופית'},{t:2,en:'18 months on his contract — movable now',he:'18 חודשים בחוזה — ניתן להזזה עכשיו'},{t:1,en:'Consistent 7.2 rating',he:'דירוג 7.2 עקבי'}],
-  news:[],c:crit([72,'API 7.2 · 2,400 min'],[68,'FM CA 126'],[60,'€1.9m'],[56,'Israel · top-3 club'],[100,'No injuries']),srcs:[]},
- {id:10,n:'Eden Ziv',pos:'LW',club:'Maccabi Haifa',age:21,mv:'€2.80M',tier:1,ceiling:1,role:'starter',push:'medium',worth:64,urg:40,conf:90,
-  summary:{en:'Elite-level winger at 21 just called up to the senior national team; long contract means no rush, but the value ceiling is high.',he:'כנף ברמת עילית בגיל 21 שזומן לנבחרת הבכירה; חוזה ארוך אז אין לחץ, אבל תקרת השווי גבוהה.'},
-  why:[{t:2,en:'Elite output at 21, rising value',he:'תפוקת עילית בגיל 21, שווי עולה'},{t:1,en:'Called up to the senior national team',he:'זומן לנבחרת הבכירה'}],
-  news:[{h:'Ziv earns first senior Israel call-up',s:'positive',i:{en:'Raises his profile and price',he:'מעלה פרופיל ומחיר'},src:'Ynet · 2026-10-28'}],
-  c:crit([80,'SofaScore 7.4 · 2,300 min'],[76,'FM CA 128 / PA 155'],[70,'€2.8m'],[56,'Israel · Elo 1510'],[100,'No injuries']),srcs:['Ynet']},
- {id:2,n:'Roi Dahan',pos:'RW',club:'Hapoel Beer Sheva',age:27,mv:'€1.80M',tier:2,ceiling:2,role:'rotation',push:'high',worth:58,urg:60,conf:72,
-  summary:{en:'Solid Premium winger whose mandate lapses in nine days — renew before anything else.',he:'כנף פרימיום יציב שהמנדט שלו פג בעוד תשעה ימים — לחדש לפני הכול.'},
-  why:[{t:3,en:'Mandate expires in 9 days',he:'המנדט פג בעוד 9 ימים'},{t:1,en:'22 days since last contact',he:'22 ימים מאז הקשר האחרון'}],
-  news:[],c:crit([66,'API 7.0'],[null],[60,'€1.8m'],[56,'Israel'],[100,'—']),srcs:[]},
- {id:3,n:'Tomer Biton',pos:'CB',club:'Beitar Jerusalem',age:29,mv:'€900K',tier:3,ceiling:3,role:'starter',push:'medium',worth:47,urg:45,conf:84,
-  summary:{en:'Dependable Core centre-back; worth keeping warm but no catalyst yet.',he:'בלם ליבה אמין; שווה לשמור על קשר אך ללא קטליזטור.'},
-  why:[{t:1,en:'Reliable starter, stable value',he:'פותח אמין, שווי יציב'}],news:[],c:crit([58,'FotMob 7.0'],[null],[50,'€900k'],[50,'Israel'],[88,'14 days missed']),srcs:[]},
+ {id:8,n:'Itai Sassoon',pos:'CF',club:'Maccabi Haifa',age:24,mv:'€2.8M',spark:[6.8,7.0,7.3,7.5],cur:{rating:7.5,minutes:2100,apps:25,lineups:24,g:12,a:4,league:'Ligat Haal',season:2026},
+  sigs:[S('hot_form','positive','In form — rating up to 7.5','בכושר — הדירוג עלה ל-7.5','was 6.8 three weeks ago','היה 6.8 לפני שלושה שבועות'),S('output_surge','positive','Scoring — +4 goals in recent weeks','כובש — +4 שערים בשבועות האחרונים','12 goals this season','12 שערים העונה')]},
+ {id:9,n:'Dennis Kolo',pos:'CM',club:'Bnei Sakhnin',age:20,mv:'€500k',spark:[6.7,6.9,7.1],cur:{rating:7.1,minutes:980,apps:15,lineups:9,g:2,a:3,league:'Ligat Haal',season:2026},
+  sigs:[S('breaking_in','positive','Breaking in — +5 starts','נכנס להרכב — +5 פתיחות','barely featured a month ago','בקושי שיחק לפני חודש')]},
+ {id:3,n:'Omer Katz',pos:'CB',club:'Hapoel Jerusalem',age:31,mv:'€700k',spark:[7.1,7.1,7.0,7.0],cur:{rating:7.0,minutes:2000,apps:24,lineups:21,g:1,league:'Ligat Haal',season:2026},
+  sigs:[S('losing_place','negative','Fallen out of the side — no new minutes','יצא מההרכב — אין דקות חדשות','~3 weeks on the bench','~3 שבועות על הספסל'),S('contract_clock','watch','Contract ends in 4 months','החוזה מסתיים בעוד 4 חודשים')]},
+ {id:4,n:'Guy Mizrahi',pos:'ST',club:'Beer Sheva',age:27,mv:'€1.6M',spark:[7.2,6.9,6.5,6.3],cur:{rating:6.3,minutes:1850,apps:23,g:6,league:'Ligat Haal',season:2026},
+  sigs:[S('cold_form','negative','Form dipping — rating down to 6.3','ירידה בכושר — הדירוג ירד ל-6.3','was 7.2 two months ago','היה 7.2 לפני חודשיים')]},
+ {id:5,n:'Noam Bar',pos:'LW',club:'Maccabi Netanya',age:19,mv:'€2.1M',spark:[7.0,7.3],cur:{rating:7.3,minutes:1400,apps:20,lineups:17,g:5,a:6,league:'Ligat Haal',season:2026},
+  sigs:[S('value_jump','positive','Market value up 40%','שווי השוק עלה 40%','€1.5M → €2.1M','€1.5M → €2.1M'),S('output_surge','positive','11 G+A this season','11 ש+ב העונה')]},
+ {id:14,n:'Dean Levi',pos:'RW',club:'Hapoel Haifa',age:28,mv:'€1.2M',spark:[6.9,6.6,6.4],cur:{rating:6.4,minutes:1600,apps:22,g:3,league:'Ligat Haal',season:2026},
+  sigs:[S('mandate_clock','negative','Mandate expires in 9 days','המנדט פג בעוד 9 ימים')]},
 ];
-let bOpen=null;
+let riOpen=null;
 const b=id=>BOARD.find(x=>x.id===id);
-const lvB=t=>`<b class="ri-l${t}">L${t}</b>`;
+const badge=k=>(he()?D.he.badge[k]:D.en.badge[k]);
+const sigTxt=s=>he()?s.he:s.en, det=s=>he()?(s.detHe||s.det):s.det;
+function spark(vals,w,h,sw){ if(vals.length<2)return''; const min=Math.min(...vals),max=Math.max(...vals),span=(max-min)||1;
+ const pts=vals.map((v,i)=>`${(i/(vals.length-1))*w},${(h-((v-min)/span)*h).toFixed(1)}`).join(' ');
+ const rising=vals[vals.length-1]>=vals[0]; return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${rising?'var(--green)':'var(--red)'}" stroke-width="${sw}"/></svg>`;}
 function riHTML(){
- const w=58, c=he()?'ישראל':'Israel';
  return `<div class="brit-module-head"><h2>${T('ri')}</h2><a href="#" onclick="return false">${T('viewAll')}</a></div>
- <p class="ri-caption">${L('cap').replace('{n}',BOARD.length)} · ${L('win').replace('{c}',c).replace('{d}',w)}</p>
- <ol class="rk">${BOARD.map((p,i)=>`<li><button class="rk-row" onclick="bDrawer(${p.id})">
-   <span class="rk-n">${String(i+1).padStart(2,'0')}</span>
-   <span class="rk-main"><span class="rk-top"><b>${p.n}</b><span class="rk-tier">${lvB(p.tier)}${p.ceiling<p.tier?`<em class="rk-ceil">→L${p.ceiling}</em>`:''}</span><span class="rk-push p-${p.push}">${L('push')[p.push]}</span></span>
-   <small class="rk-fit">${he()?D.he.lv[p.tier-1]:D.en.lv[p.tier-1]} · ${({starter:he()?'פותח':'Starter',rotation:he()?'רוטציה':'Rotation',squad:he()?'סגל':'Squad'})[p.role]}</small>
-   <small class="rk-sub">${p.pos} · ${p.age} · ${p.club}</small>
-   ${p.why[0]?`<span class="rk-why w${p.why[0].t}">${tt(p.why[0])}</span>`:''}</span>
-   <span class="rk-worth"><b>${p.worth}</b><i style="width:${p.worth}%"></i></span></button></li>`).join('')}</ol>
+ <p class="ri-caption">${L('cap').replace('{n}',BOARD.length)}</p>
+ <ul class="rk">${BOARD.map(p=>{const s=p.sigs[0],bd=badge(s.kind);return `<li><button class="rk-row tone-${s.tone}" onclick="riDrawer(${p.id})">
+   <span class="rk-badge t-${s.tone}">${bd[0]}</span>
+   <span class="rk-main"><span class="rk-top"><b>${p.n}</b><span class="rk-chip t-${s.tone}">${bd[1]}</span>${p.sigs.length>1?`<span class="rk-more">+${p.sigs.length-1}</span>`:''}</span>
+   <span class="rk-reason">${sigTxt(s)}</span>
+   <span class="rk-sub">${p.pos} · ${p.club}${det(s)?' · '+det(s):''}</span></span>
+   <span class="ri-spark">${spark(p.spark,56,18,1.5)}</span></button></li>`;}).join('')}</ul>
  <div class="ri-status"><span class="ri-live"></span>${L('updated')} · ${L('weekly')}</div>`;
 }
 function paint(){document.getElementById('ri').innerHTML=riHTML()}
-function closePb(){document.getElementById('pbLayer').innerHTML='';bOpen=null}
+function closePb(){document.getElementById('pbLayer').innerHTML='';riOpen=null}
 function closeAll(){closePb();['bd','drawer','modal'].forEach(i=>{const e=document.getElementById(i);e&&e.classList.remove('open')})}
-function openDrawer(id){bDrawer(id)}
-function bDrawer(id){bOpen=id;const p=b(id);
+function openDrawer(id){riDrawer(id)}
+function riDrawer(id){riOpen=id;const p=b(id),c=p.cur;
+ const facts=[];if(c.rating!=null)facts.push([L('f_rating'),c.rating.toFixed(2)]);if(c.minutes!=null)facts.push([L('f_minutes'),c.minutes.toLocaleString()]);
+ if(c.apps!=null)facts.push([L('f_apps'),`${c.apps}${c.lineups!=null?` (${c.lineups} ${he()?'הרכב':'st'})`:''}`]);if(c.g!=null||c.a!=null)facts.push([L('f_ga'),`${c.g||0}G / ${c.a||0}A`]);if(c.league)facts.push([L('f_league'),c.league]);
  document.getElementById('pbLayer').innerHTML=`<div class="ri-backdrop" onclick="closePb()"></div><aside class="ri-drawer">
   <div class="ri-dr-h"><button class="ri-x" onclick="closePb()">×</button><small>${p.pos} · ${p.age} · ${p.club} · ${p.mv}</small><h2>${p.n}</h2>
-   <div class="ri-dr-tags"><span class="ri-lv">${lvB(p.tier)}</span><span class="ri-fitlabel">${he()?D.he.lv[p.tier-1]:D.en.lv[p.tier-1]} · ${({starter:'Starter',rotation:'Rotation',squad:'Squad'})[p.role]}</span><span class="rk-push p-${p.push}">${L('push')[p.push]}</span></div>
-   <div class="ri-dr-worth"><span>${L('worth')} <b>${p.worth}</b></span><span>${L('urgency')} <b>${p.urg}</b></span><span>${L('conf')} <b>${p.conf}%</b></span></div></div>
-  <div class="ri-dr-s"><h4><span>✦ ${L('summary')}</span><span>GEMINI + SEARCH · 2d</span></h4><div class="ri-aibox"><p>${tt(p.summary)}</p></div></div>
-  ${p.why.length?`<div class="ri-dr-s"><h4><span>${L('why')}</span></h4><ul class="pb-why big">${p.why.map(r=>`<li class="s${r.t}">${tt(r)}</li>`).join('')}</ul></div>`:''}
-  <div class="ri-dr-s"><h4><span>${L('basis')}</span></h4>${p.c.map(([k,wt,v])=>`<div class="ri-sig"><span>${L('crit')[k]}<em>${wt}%</em></span><div class="ri-sig-tr"><i style="width:${v[0]||0}%;opacity:${v[0]==null?.2:1}"></i></div><span>${v[0]??'—'}</span>${v[1]?`<small>${v[1]}</small>`:''}</div>`).join('')}</div>
-  <div class="ri-dr-s"><h4><span>${L('effort')}</span></h4><div class="ri-touch"><div><b>1</b>${L('notes')}</div><div><b>0</b>${L('tasks')}</div><div><b>20d</b>${L('last')}</div></div></div>
+   <div class="ri-dr-tags">${spark(p.spark,120,34,2)}<span class="ri-fitlabel">${L('dr_updated')} 2 ${he()?'בנוב׳':'Nov'}</span></div></div>
+  <div class="ri-dr-s"><h4><span>${L('dr_why')}</span></h4><ul class="pb-why big">${p.sigs.map(s=>`<li class="tone-${s.tone}"><b>${sigTxt(s)}</b>${det(s)?`<br><span class="ri-muted">${det(s)}</span>`:''}</li>`).join('')}</ul></div>
+  <div class="ri-dr-s"><h4><span>${L('dr_stats')}</span><span>${c.season}/${(c.season+1)%100}</span></h4><div class="ri-facts">${facts.map(f=>`<div><b>${f[1]}</b><span>${f[0]}</span></div>`).join('')}</div></div>
+  <div class="ri-dr-s"><h4><span>${L('dr_touch')}</span></h4><div class="ri-muted">${L('last_touch')}: 14 ${he()?'באוק׳':'Oct'} 2026</div></div>
   <div class="ri-dr-f"><a class="ri-btn ri-btn-gold">${L('profile')}</a></div></aside>`;}
 function resetAll(){closeAll();paint()}
-function simAlert(){const n=document.getElementById('notif');n.innerHTML=`<small><span>BRIT · ${L('notifT')}</span><span>weekly</span></small><b>${L('notifT')}</b><p>${he()?'אמית רוזן, עומרי טל, עדן זיו +2':'Amit Rosen, Omri Tal, Eden Ziv +2 more'}</p><button onclick="document.getElementById('notif').classList.remove('show')">${T('notifBtn')}</button>`;n.classList.add('show');setTimeout(()=>n.classList.remove('show'),7000)}
-function simEmpty(){}
-const _tl=toggleLang;toggleLang=function(){_tl();if(bOpen)bDrawer(bOpen)};
+function simAlert(){} function simEmpty(){}
+const _tl=toggleLang;toggleLang=function(){_tl();if(riOpen)riDrawer(riOpen)};
 document.getElementById('room').insertAdjacentHTML('beforeend','<div id="pbLayer"></div>');
 renderAll();
 

@@ -1,18 +1,18 @@
 'use client';
 
 /**
- * Dashboard "Roster intelligence" — one ranked section.
+ * Dashboard "Roster intelligence" — what changed on the roster this week, and who needs attention.
  *
- * A weekly background agent scores the whole roster. This shows only the top players worth working on
- * next window, each with the predicted level (league tier + role), a push strength, and the reasons.
- * Read-only in Phase 1 — no marking, no buttons that change data; clicking a row opens a read-only drawer.
+ * A weekly background agent flags players whose situation moved (form up/down, suddenly playing,
+ * fallen out of the side, output surge, value move, contract/mandate clock). Read-only: each card
+ * shows the badge, the reason with real numbers, a rating sparkline, and opens a detail drawer.
  */
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { rankBoard } from '@/lib/tiering/shared';
-import type { CriterionKey, Push, Tier, PlayerTierDoc } from '@/lib/tiering/types';
+import type { PlayerIntelDoc, Signal, SignalKind } from '@/lib/tiering/types';
 import { useTiering } from './useTiering';
 
 export interface RosterIntelPlayer {
@@ -24,9 +24,22 @@ export interface RosterIntelPlayer {
   age?: string;
 }
 
-const CRITERIA: CriterionKey[] = ['output', 'ability', 'value', 'league'];
 const DAY = 24 * 3600 * 1000;
-const PUSH_RANK: Record<Push, number> = { now: 3, high: 2, medium: 1, low: 0 };
+
+const BADGE: Record<SignalKind, { icon: string; en: string; he: string }> = {
+  hot_form: { icon: '🔥', en: 'In form', he: 'בכושר' },
+  cold_form: { icon: '📉', en: 'Form dip', he: 'ירידה בכושר' },
+  breaking_in: { icon: '⬆️', en: 'Playing more', he: 'משחק יותר' },
+  losing_place: { icon: '🪑', en: 'Out of the side', he: 'מחוץ להרכב' },
+  output_surge: { icon: '⚽', en: 'Output surge', he: 'זינוק בתפוקה' },
+  value_jump: { icon: '💹', en: 'Value up', he: 'השווי עלה' },
+  value_drop: { icon: '🔻', en: 'Value down', he: 'השווי ירד' },
+  contract_clock: { icon: '⏳', en: 'Contract', he: 'חוזה' },
+  mandate_clock: { icon: '📄', en: 'Mandate', he: 'מנדט' },
+  standout_form: { icon: '⭐', en: 'Standout', he: 'בולט' },
+  standout_output: { icon: '🎯', en: 'High output', he: 'תפוקה גבוהה' },
+  heavy_load: { icon: '🏃', en: 'Key player', he: 'שחקן מפתח' },
+};
 
 function ago(ts: number | undefined, he: boolean): string {
   if (!ts) return '—';
@@ -35,6 +48,23 @@ function ago(ts: number | undefined, he: boolean): string {
   if (d < 14) return he ? `לפני ${d} ימים` : `${d}d ago`;
   const w = Math.round(d / 7);
   return he ? `לפני ${w} שב׳` : `${w}w ago`;
+}
+
+/** Tiny inline rating sparkline (last ~6 captures). */
+function Spark({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const w = 56;
+  const h = 18;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${h - ((v - min) / span) * h}`).join(' ');
+  const rising = values[values.length - 1] >= values[0];
+  return (
+    <svg className="ri-spark" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden>
+      <polyline points={pts} fill="none" stroke={rising ? 'var(--green)' : 'var(--red)'} strokeWidth="1.5" />
+    </svg>
+  );
 }
 
 export default function RosterIntelligence({ players }: { players: RosterIntelPlayer[] }) {
@@ -49,16 +79,15 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
   const byPlayer = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
   const docs = useMemo(() => tt.items.filter((d) => byPlayer.has(d.playerId)), [tt.items, byPlayer]);
   const board = useMemo(() => rankBoard(docs), [docs]);
-  const win = useMemo(() => {
-    const w = tt.meta?.windows ?? [];
-    return w.find((x) => /israel/i.test(x.country)) ?? w[0];
-  }, [tt.meta]);
+  const firstRun = board.length > 0 && board.every((d) => d.intel?.firstRun);
 
   const nm = (id: string) => byPlayer.get(id)?.fullName ?? docs.find((d) => d.playerId === id)?.playerName ?? '—';
   const sub = (id: string) => {
     const p = byPlayer.get(id);
-    return [(p?.positions ?? [])[0], p?.age, p?.currentClub?.clubName].filter(Boolean).join(' · ');
+    return [(p?.positions ?? [])[0], p?.currentClub?.clubName].filter(Boolean).join(' · ');
   };
+  const sig = (s: Signal) => (he ? s.he : s.en);
+  const det = (s: Signal) => (he ? s.detailHe || s.detailEn : s.detailEn);
 
   const head = (
     <div className="brit-module-head">
@@ -67,28 +96,24 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
     </div>
   );
 
-  if (tt.loading) {
-    return <section className="brit-module">{head}<div className="brit-empty">…</div></section>;
-  }
-  if (tt.error && !docs.length) {
+  if (tt.loading) return <section className="brit-module">{head}<div className="brit-empty">…</div></section>;
+  if (tt.error && !docs.length)
     return (
       <section className="brit-module">
         {head}
         <div className="brit-empty">{t('ri_error')} ({tt.error}) <button className="ri-link" onClick={() => tt.refresh()}>{t('ri_retry')}</button></div>
       </section>
     );
-  }
-  if (!board.length) {
+  if (!board.length)
     return (
       <section className="brit-module">
         {head}
         <div className="ri-first">
-          <p>{docs.length ? t('ri_none_worth') : t('ri_empty_bg')}</p>
+          <p>{docs.length ? t('ri_none') : t('ri_empty_bg')}</p>
           <p className="ri-first-sub">{tt.meta?.lastRunAt ? tok('ri_last_run', { t: ago(tt.meta.lastRunAt, he) }) : t('ri_never_run')}</p>
         </div>
       </section>
     );
-  }
 
   const open = openId ? docs.find((d) => d.playerId === openId) : undefined;
 
@@ -97,36 +122,32 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
       {head}
       <p className="ri-caption">
         {tok('ri_caption', { n: board.length })}
-        {win ? ` · ${tok('ri_window', { c: win.country, d: win.daysLeft })}` : ''}
+        {firstRun ? ` · ${t('ri_baseline')}` : ''}
       </p>
 
-      <ol className="rk">
-        {board.map((d, i) => {
-          const a = d.analysis!;
-          const top = a.reasons[0];
+      <ul className="rk">
+        {board.map((d) => {
+          const it = d.intel!;
+          const b = BADGE[it.top.kind];
           return (
             <li key={d.playerId}>
-              <button className="rk-row" onClick={() => setOpenId(d.playerId)}>
-                <span className="rk-n">{String(i + 1).padStart(2, '0')}</span>
+              <button className={`rk-row tone-${it.top.tone}`} onClick={() => setOpenId(d.playerId)}>
+                <span className={`rk-badge t-${it.top.tone}`} title={he ? b.he : b.en}>{b.icon}</span>
                 <span className="rk-main">
                   <span className="rk-top">
                     <b>{nm(d.playerId)}</b>
-                    <Tiers tier={a.fit.tier} ceiling={a.fit.ceiling} />
-                    <PushBadge push={a.push} label={t(`ri_push_${a.push}`)} />
+                    <span className={`rk-chip t-${it.top.tone}`}>{he ? b.he : b.en}</span>
+                    {it.signals.length > 1 && <span className="rk-more">+{it.signals.length - 1}</span>}
                   </span>
-                  <small className="rk-fit">{he ? a.fit.labelHe : a.fit.labelEn}</small>
-                  <small className="rk-sub">{sub(d.playerId)}</small>
-                  {top && <span className={`rk-why w${top.weight}`}>{he ? top.he || top.en : top.en}</span>}
+                  <span className="rk-reason">{sig(it.top)}</span>
+                  <span className="rk-sub">{sub(d.playerId)}{det(it.top) ? ` · ${det(it.top)}` : ''}</span>
                 </span>
-                <span className="rk-worth" title={t('ri_worth')}>
-                  <b>{a.worth}</b>
-                  <i style={{ width: `${a.worth}%` }} />
-                </span>
+                <Spark values={it.ratingSpark} />
               </button>
             </li>
           );
         })}
-      </ol>
+      </ul>
 
       <div className="ri-status">
         <span className="ri-live" />
@@ -139,25 +160,22 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
   );
 }
 
-function Tiers({ tier, ceiling }: { tier: Tier; ceiling: Tier }) {
-  return (
-    <span className="rk-tier">
-      <b className={`ri-l${tier}`}>L{tier}</b>
-      {ceiling < tier && <em className="rk-ceil" title="ceiling">→L{ceiling}</em>}
-    </span>
-  );
-}
-function PushBadge({ push, label }: { push: Push; label: string }) {
-  return <span className={`rk-push p-${push}`}>{label}</span>;
-}
-
 /* ───────────────────────── read-only drawer ───────────────────────── */
 
-function Drawer({ doc, player, onClose }: { doc: PlayerTierDoc; player?: RosterIntelPlayer; onClose: () => void }) {
+function Drawer({ doc, player, onClose }: { doc: PlayerIntelDoc; player?: RosterIntelPlayer; onClose: () => void }) {
   const { t, lang } = useLanguage();
   const he = lang === 'he';
-  const a = doc.analysis!;
-  const days = doc.effort?.lastTouchAt ? Math.floor((Date.now() - doc.effort.lastTouchAt) / DAY) : null;
+  const it = doc.intel!;
+  const c = it.current;
+  const sig = (s: Signal) => (he ? s.he : s.en);
+  const det = (s: Signal) => (he ? s.detailHe || s.detailEn : s.detailEn);
+
+  const facts: { k: string; v: string }[] = [];
+  if (c.rating != null) facts.push({ k: t('ri_f_rating'), v: c.rating.toFixed(2) });
+  if (c.minutes != null) facts.push({ k: t('ri_f_minutes'), v: c.minutes.toLocaleString(he ? 'he-IL' : 'en-US') });
+  if (c.appearances != null) facts.push({ k: t('ri_f_apps'), v: `${c.appearances}${c.lineups != null ? ` (${c.lineups} ${he ? 'הרכב' : 'st'})` : ''}` });
+  if (c.goals != null || c.assists != null) facts.push({ k: t('ri_f_ga'), v: `${c.goals ?? 0}G / ${c.assists ?? 0}A` });
+  if (c.league) facts.push({ k: t('ri_f_league'), v: c.league });
 
   return (
     <>
@@ -168,51 +186,39 @@ function Drawer({ doc, player, onClose }: { doc: PlayerTierDoc; player?: RosterI
           <small>{[(player?.positions ?? [])[0], player?.age, player?.currentClub?.clubName, player?.marketValue].filter(Boolean).join(' · ')}</small>
           <h2>{player?.fullName ?? doc.playerName}</h2>
           <div className="ri-dr-tags">
-            <span className="ri-lv"><b className={`ri-l${a.fit.tier}`}>L{a.fit.tier}</b></span>
-            <span className="ri-fitlabel">{he ? a.fit.labelHe : a.fit.labelEn}</span>
-            <span className={`rk-push p-${a.push}`}>{t(`ri_push_${a.push}`)}</span>
-          </div>
-          <div className="ri-dr-worth">
-            <span>{t('ri_worth')} <b>{a.worth}</b></span>
-            <span>{t('ri_urgency')} <b>{a.urgency}</b></span>
-            <span>{t('ri_conf')} <b>{a.fit.confidence}%</b></span>
+            {Spark2(it.ratingSpark)}
+            <span className="ri-fitlabel">{t('ri_updated')} {it.computedAt ? new Date(it.computedAt).toLocaleDateString(he ? 'he-IL' : 'en-GB', { day: '2-digit', month: 'short' }) : '—'}</span>
           </div>
         </div>
 
         <div className="ri-dr-s">
-          <h4><span>{t('ri_dr_summary')}</span><span>{ago(a.computedAt, he)}</span></h4>
-          <div className="ri-aibox"><p>{he ? a.summaryHe || a.summaryEn : a.summaryEn}</p></div>
+          <h4><span>{t('ri_dr_why')}</span>{it.firstRun && <span>{t('ri_baseline')}</span>}</h4>
+          <ul className="pb-why big">
+            {it.signals.map((s, i) => (
+              <li key={i} className={`tone-${s.tone}`}>
+                <b>{he ? s.he : s.en}</b>
+                {det(s) ? <><br /><span className="ri-muted">{det(s)}</span></> : null}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {a.reasons.length > 0 && (
+        <div className="ri-dr-s">
+          <h4><span>{t('ri_dr_stats')}</span>{c.season ? <span>{c.season}/{(c.season + 1) % 100}</span> : null}</h4>
+          <div className="ri-facts">
+            {facts.map((f) => (
+              <div key={f.k}><b>{f.v}</b><span>{f.k}</span></div>
+            ))}
+            {!facts.length && <div className="ri-muted">{t('ri_no_stats')}</div>}
+          </div>
+        </div>
+
+        {doc.lastTouchAt ? (
           <div className="ri-dr-s">
-            <h4><span>{t('ri_dr_why')}</span></h4>
-            <ul className="pb-why big">
-              {a.reasons.map((r, i) => <li key={i} className={`s${r.weight}`}>{he ? r.he || r.en : r.en}</li>)}
-            </ul>
+            <h4><span>{t('ri_dr_touch')}</span></h4>
+            <div className="ri-muted">{t('ri_last_touch')}: {new Date(doc.lastTouchAt).toLocaleDateString(he ? 'he-IL' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
           </div>
-        )}
-
-        <div className="ri-dr-s">
-          <h4><span>{t('ri_dr_basis')}</span><span>{t('ri_score')} {a.score} · {t('ri_coverage')} {Math.round((a.coverage ?? 0) * 100)}%</span></h4>
-          {a.criteria.filter((c) => CRITERIA.includes(c.key)).map((c) => (
-            <div className="ri-sig" key={c.key}>
-              <span>{t(`ri_crit_${c.key}`)}<em>{c.weight}%</em></span>
-              <div className="ri-sig-tr"><i style={{ width: `${c.score ?? 0}%`, opacity: c.score == null ? 0.2 : 1 }} /></div>
-              <span>{c.score == null ? '—' : c.score}</span>
-              {c.note && <small>{c.note}</small>}
-            </div>
-          ))}
-        </div>
-
-        <div className="ri-dr-s">
-          <h4><span>{t('ri_dr_effort')}</span><span>{t('ri_auto')}</span></h4>
-          <div className="ri-touch">
-            <div><b>{doc.effort?.notes30 ?? 0}</b>{t('ri_notes')}</div>
-            <div><b>{doc.effort?.tasks30 ?? 0}</b>{t('ri_tasks')}</div>
-            <div><b>{days == null ? '—' : `${days}d`}</b>{t('ri_last')}</div>
-          </div>
-        </div>
+        ) : null}
 
         <div className="ri-dr-f">
           <Link className="ri-btn ri-btn-gold" href={`/players/${doc.playerId}`}>{t('ri_dr_profile')}</Link>
@@ -220,4 +226,17 @@ function Drawer({ doc, player, onClose }: { doc: PlayerTierDoc; player?: RosterI
       </aside>
     </>
   );
+
+  function Spark2(values: number[]) {
+    if (values.length < 2) return null;
+    const w = 120, h = 34, min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
+    const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${h - ((v - min) / span) * h}`).join(' ');
+    const rising = values[values.length - 1] >= values[0];
+    return (
+      <svg className="ri-spark-lg" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden>
+        <polyline points={pts} fill="none" stroke={rising ? 'var(--green)' : 'var(--red)'} strokeWidth="2" />
+      </svg>
+    );
+  }
+
 }

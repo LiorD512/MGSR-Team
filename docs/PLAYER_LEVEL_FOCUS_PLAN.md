@@ -1,38 +1,44 @@
-# Roster Intelligence — Phase 1 (men platform)
+# Roster Intelligence — weekly signals (men platform)
 
 Mock (open in a browser, EN/HE): [`brit-sport-group-roster-intelligence.html`](./brit-sport-group-roster-intelligence.html)
 Setup / operations: [`PLAYER_LEVEL_FOCUS_SETUP.md`](./PLAYER_LEVEL_FOCUS_SETUP.md)
 
 ## Goal
-One section on the dashboard answering: **who on our roster is worth working on next window, and at what level do they fit.**
-Computed by a weekly background agent. No user interaction in Phase 1 — the dashboard only reads.
+One section on the dashboard that answers: **what changed on our roster this week, and who needs attention.**
+Not scores or tiers — a list of flagged players, each with the reason and the real numbers behind it.
+Computed by a weekly background agent. Read-only (no user interaction).
 
-## Data — ONLY what we already have (no external scrapers, no AI/news)
-Per player, the agent reads:
-- **Players doc** (already stored, no network): market value + history, contract expiry, club country, age, positions, mandate flag, notes.
-- **FmIntelligenceCache** (Firestore, populated nightly): FM current & potential ability (CA/PA), FM tier.
-- **Our scout server** `/player_stats` (Render, we control it): match rating, minutes, goals/90 — the one network call, result cached ~a week.
-- **ClubRequests / PlayerMatchResults**: matching open requests (demand).
-- **PlayerDocuments (MANDATE)**: mandate expiry.
-- **AgentTasks + notes**: last touch / effort.
+## How "change" is detected
+The stats API gives **season aggregates only** (no per-game log). So the agent **stores a weekly snapshot**
+of each player's stats and compares this week to recent weeks. That turns a static season total into real movement.
+- **Week 1** has nothing to compare → it flags absolute standouts (strong rating, high output, heavy minutes) + contract/mandate clocks. The UI says "baseline week".
+- **Week 2+** → the week-over-week deltas drive everything.
 
-Removed on purpose: SofaScore, FotMob, ClubElo, Capology, Google News, live FMInside/Transfermarkt scrapes, Gemini — all external and blocked/unreliable from servers. The analysis is pure maths on our own data: fast, free, deterministic.
+## Signals (each becomes the reason on the card)
+| Signal | Fires when | Tone |
+|---|---|---|
+| 🔥 In form | season rating rose ≥ 0.2 vs a recent snapshot | positive |
+| 📉 Form dip | season rating fell ≥ 0.2 | negative |
+| ⬆️ Playing more | was fringe, now +minutes / +starts — suddenly playing | positive |
+| 🪑 Out of the side | was a regular, minutes stalled for 2+ weeks | negative |
+| ⚽ Output surge | goals/assists jumped since last snapshot | positive |
+| 💹 / 🔻 Value move | market value ±15% (from marketValueHistory) | positive/watch |
+| ⏳ Contract | contract ends within 6 months | watch |
+| 📄 Mandate | mandate expires within 30 days | negative |
+| ⭐ 🎯 🏃 Standout (week 1) | high rating / high output / heavy minutes, when no history yet | positive/watch |
 
-## The maths
-1. **Quality score (0-100)** — weighted over four criteria, each dropped if we have no data (coverage lowers confidence):
-   Output 35 (scout-server rating/minutes/goals), Ability 25 (FM CA/PA), Value 25 (market value, log scale), League 15 (club country strength).
-2. **Level / fit** — predicted **league tier** (1 Elite … 5 Developing) + **role** (starter/rotation/squad) + a **ceiling** (one tier higher for young, rising players with FM upside) + confidence.
-3. **Urgency (0-100) + push strength** — contract, mandate, demand (matching requests), momentum (value trend), neglect (days since contact) → now / high / medium / low.
-4. **Saleability (0-100)** — how movable he is this window (demand, age curve, contract length, momentum).
-5. **Worth (0-100)** — the single ranking score: `0.40·quality + 0.35·saleability + 0.25·urgency`.
+Each signal carries a **strength (0-100)**; cards sort by the strongest signal. A player can show several (e.g. "In form" +1 more).
+All thresholds live in `mgsr-web/src/lib/tiering/config.ts` — tune after seeing real output.
 
-All weights, thresholds, tier definitions and board size live in `mgsr-web/src/lib/tiering/config.ts` — tune after seeing real output.
+## Data — in-app only (no external scrapers, no AI/news)
+- **Our scout server** `/player_stats` (season rating, minutes, starts, goals/assists, per-90) — the one network call, cached ~weekly.
+- **Players doc**: market value + history, contract, club, positions, age, notes.
+- **PlayerDocuments (MANDATE)**, **ClubRequests**, **AgentTasks + notes** (last touch).
 
 ## What the dashboard shows
-The **top 10 by worth** (min worth 30), one ranked list: rank, name, level chip + ceiling, push strength, fit label
-("Starter in Premium · ceiling Elite"), the strongest reason, the worth score. Read-only drawer: summary, why he's worth it,
-the criteria breakdown (how the level was judged), effort (notes/tasks/last touch).
+Up to **20 flagged players**, strongest signal first. Each card: badge icon, name, a chip (In form / Out of the side / …),
+the reason with real numbers, position + club, and a **rating sparkline**. Click → read-only drawer: all signals for that
+player, the season stats, last contact, and a link to his full profile.
 
 ## Phase 2 ideas (not built)
-Agent interaction, shortlist + ScoutProfiles universe, "predicted best destination club", and once we have a reliable feed,
-optional news/context enrichment.
+Per-game data if the API ever exposes it (true last-5 streaks), agent actions, shortlist universe.

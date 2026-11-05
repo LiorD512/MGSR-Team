@@ -1,13 +1,10 @@
 name: Roster Intelligence weekly agent
 
-# Scores the whole men roster in the background once a week. Nobody clicks anything; the dashboard reads results.
 on:
   schedule:
-    - cron: '0 2 * * 0' # Sunday 02:00 UTC
-  push:
+    - cron: '0 2 * * 0'   push:
     branches: [main]
-    paths: # run one sweep automatically when the tiering code lands on main
-      - 'mgsr-web/src/lib/tiering/**'
+    paths:       - 'mgsr-web/src/lib/tiering/**'
       - 'mgsr-web/_tiering_worker.ts'
       - '.github/workflows/tiering-worker.yml'
   workflow_dispatch:
@@ -47,6 +44,4 @@ jobs:
           TIERING_APP_ORIGIN: ${{ vars.TIERING_APP_ORIGIN || 'https://management.britsportgroup.com' }}
           TIERING_ALERT_EMAILS: ${{ vars.TIERING_ALERT_EMAILS }}
           TIERING_CONCURRENCY: '4'
-          # Transfermarkt blocks GitHub runner IPs (HTTP 405/202/403). Route TM scrapes through the
-          # same shared proxy the other TM workflows use so injury/intel sources work.
-          TM_HTML_PROXY_URL: ${{ vars.TM_HTML_PROXY_URL || 'https://management.britsportgroup.com/api/transfermarkt/html-proxy' }}
+                              TM_HTML_PROXY_URL: ${{ vars.TM_HTML_PROXY_URL || 'https://management.britsportgroup.com/api/transfermarkt/html-proxy' }}

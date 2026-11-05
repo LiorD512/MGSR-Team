@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import type { PlayerTierDoc, TierListResponse, TierMeta } from '@/lib/tiering/types';
+import type { IntelListResponse, IntelMeta, PlayerIntelDoc } from '@/lib/tiering/types';
 
 /** Read-only client for /api/tiering. The weekly background agent produces the data. */
 export function useTiering(enabled = true) {
   const { user } = useAuth();
-  const [items, setItems] = useState<PlayerTierDoc[]>([]);
-  const [meta, setMeta] = useState<TierMeta | null>(null);
+  const [items, setItems] = useState<PlayerIntelDoc[]>([]);
+  const [meta, setMeta] = useState<IntelMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
@@ -29,7 +29,7 @@ export function useTiering(enabled = true) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j as { error?: string }).error || `HTTP ${res.status}`);
       }
-      const data = (await res.json()) as TierListResponse;
+      const data = (await res.json()) as IntelListResponse;
       if (!mounted.current) return;
       setItems(data.items);
       setMeta(data.meta);

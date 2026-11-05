@@ -1,139 +1,105 @@
 /**
- * Roster Intelligence — Phase 1 (men platform). IN-APP DATA ONLY, no external scrapers, no AI/news.
+ * Roster Intelligence — "what changed / what needs attention" (men platform).
  *
- * A weekly background agent reads only data we already hold:
- *   • Players doc        — market value (+history), contract, club country, age, positions, mandate, notes
- *   • FmIntelligenceCache — FM current/potential ability (Firestore, populated nightly)
- *   • our scout server    — match rating, minutes, goals/90 (/player_stats, keyed by tmProfile)
- *   • ClubRequests / PlayerMatchResults — demand (matching open requests)
- *   • PlayerDocuments (MANDATE) — mandate expiry
- *   • AgentTasks + notes  — last touch / effort
- * and computes, mathematically:
- *   • Level     — the league tier + role the player realistically fits, with a ceiling (prediction).
- *   • Urgency   — how hard / how soon to push him (contract, mandate, demand, momentum, neglect).
- *   • Worth     — a single 0-100 "work on him next window" score that ranks the roster.
- * The dashboard shows only the top of that ranking. No user interaction in Phase 1.
+ * A weekly background agent stores a stats snapshot for every roster player, compares it to recent
+ * weeks, and flags the players whose situation moved: hot form, cold form, suddenly playing, stopped
+ * playing, output surge, value jump/fall, contract/mandate clock. The reason is always shown.
+ *
+ * The stats API is SEASON AGGREGATES only (no per-game log), so "change" is detected by comparing
+ * weekly snapshots. Week 1 has no history → it flags absolute standouts + value/contract; from week 2
+ * the week-over-week deltas drive everything. Data is in-app only (our scout server + Players doc).
  */
 
-/** League tier the player fits. 1 = elite (top-5 league / CL), 5 = developing / lower leagues. */
-export type Tier = 1 | 2 | 3 | 4 | 5;
-export type Role = 'starter' | 'rotation' | 'squad';
-export type Trend = 'up' | 'flat' | 'down';
-export type PositionGroup = 'GK' | 'CB' | 'FB' | 'MF' | 'AM' | 'ST';
-
-/** The four level criteria. Missing data => the criterion is dropped and weights renormalised. */
-export type CriterionKey = 'output' | 'ability' | 'value' | 'league';
-
-export interface TierSignals {
-  output?: number;
-  ability?: number;
-  value: number;
-  league: number;
+/** One weekly snapshot of a player's season stats (what we store to compare over time). */
+export interface StatsSnapshot {
+  at: number; // epoch ms of this weekly capture
+  season?: number;
+  league?: string;
+  team?: string;
+  position?: string;
+  rating?: number;
+  minutes?: number;
+  nineties?: number; // api_minutes_90s
+  appearances?: number;
+  lineups?: number; // starts
+  goals?: number;
+  assists?: number;
+  goalsPer90?: number;
+  assistsPer90?: number;
+  gaPer90?: number; // goal contributions / 90
+  /** Market value in euros at capture time (from the Players doc). */
+  valueEuro?: number;
 }
 
-export interface TierCriterion {
-  key: CriterionKey;
-  weight: number;
-  score: number | null;
-  note?: string;
-}
+export type SignalKind =
+  | 'hot_form'        // season rating climbing week over week
+  | 'cold_form'       // season rating falling
+  | 'breaking_in'     // minutes/starts jumping — suddenly playing
+  | 'losing_place'    // was playing, minutes/starts have stalled while the season rolls on
+  | 'output_surge'    // goals/assists rising
+  | 'value_jump'      // market value rose
+  | 'value_drop'      // market value fell
+  | 'contract_clock'  // contract ending soon
+  | 'mandate_clock'   // mandate expiring soon
+  | 'standout_form'   // week-1 fallback: unusually strong current rating
+  | 'standout_output' // week-1 fallback: unusually high output per 90
+  | 'heavy_load';     // week-1 fallback: very high minutes (a key, in-demand player)
 
-/** Predicted fit: which tier, in what role, with how much confidence, and the realistic ceiling. */
-export interface FitPrediction {
-  tier: Tier;
-  role: Role;
-  /** Best realistic tier if form/age trend holds (<= tier numerically; 1 is best). */
-  ceiling: Tier;
-  /** 0-100. */
-  confidence: number;
-  labelEn: string;
-  labelHe: string;
-}
+export type SignalTone = 'positive' | 'watch' | 'negative';
 
-export interface UrgencyParts {
-  contract: number;
-  mandate: number;
-  demand: number;
-  momentum: number;
-  neglect: number;
-}
-
-/** Push strength shown next to the level. */
-export type Push = 'now' | 'high' | 'medium' | 'low';
-
-export interface TierReason {
+export interface Signal {
+  kind: SignalKind;
+  tone: SignalTone;
+  /** 0-100 — how strongly this fired; drives card order. */
+  strength: number;
+  /** The headline reason, with real numbers. */
   en: string;
   he: string;
-  /** For ordering/colour: 3 = time-critical, 2 = important, 1 = context. */
-  weight: 1 | 2 | 3;
-}
-
-export interface TierEffort {
-  notes30: number;
-  tasks30: number;
-  lastTouchAt: number;
-}
-
-/** Cached inputs so a weekly run is cheap; FM is free (Firestore), stats is one call to our server. */
-export interface TierInputs {
-  fmCa?: number;
-  fmPa?: number;
-  fmTier?: string;
-  fmAt?: number;
-  apiRating?: number;
-  apiMinutes?: number;
-  apiGoalsPer90?: number;
-  statsAt?: number;
+  /** Optional one-line supporting detail. */
+  detailEn?: string;
+  detailHe?: string;
 }
 
 /** Everything the weekly agent computes for one player. */
-export interface TierAnalysis {
-  /** 0-100 deterministic quality score (criteria). */
+export interface PlayerIntel {
+  /** Highest-strength signal (used for the card badge + sort). */
+  top: Signal;
+  /** All signals that fired, strongest first. */
+  signals: Signal[];
+  /** Max signal strength (sort key). */
   score: number;
-  /** Share of criteria weight that had data (0-1). */
-  coverage: number;
-  signals: TierSignals;
-  criteria: TierCriterion[];
-
-  fit: FitPrediction;
-
-  urgency: number;
-  urgencyParts: UrgencyParts;
-  push: Push;
-  trend: Trend;
-
-  /** 0-100 ranking score: worth working on him next window. */
-  worth: number;
-
-  /** Ordered reasons (why he's worth it / why now), derived from the data. */
-  reasons: TierReason[];
-  /** One-line plain-language summary, built from the numbers (no AI). */
-  summaryEn: string;
-  summaryHe: string;
-
+  /** Current season stats (for the card facts). */
+  current: StatsSnapshot;
+  /** Recent ratings for the sparkline (oldest→newest), from stored snapshots. */
+  ratingSpark: number[];
+  /** True while we only have one snapshot (week 1 — change detection not active yet). */
+  firstRun: boolean;
   computedAt: number;
 }
 
-export interface PlayerTierDoc {
+export interface PlayerIntelDoc {
   playerId: string;
   tmProfile?: string;
   playerName?: string;
-  analysis?: TierAnalysis;
-  effort?: TierEffort;
-  inputs?: TierInputs;
+  /** Rolling history of weekly snapshots (we keep the last ~12). */
+  history?: StatsSnapshot[];
+  intel?: PlayerIntel;
+  /** Last touch (notes/tasks) — shown as context, not a signal. */
+  lastTouchAt?: number;
 }
 
-export interface TierMeta {
+export interface IntelMeta {
   lastRunAt?: number;
   durationMs?: number;
   analysed?: number;
+  flagged?: number;
   total?: number;
-  windows?: { country: string; daysLeft: number }[];
+  statsMatched?: number;
   errors?: { playerId: string; error: string }[];
 }
 
-export interface TierListResponse {
-  items: PlayerTierDoc[];
-  meta: TierMeta | null;
+export interface IntelListResponse {
+  items: PlayerIntelDoc[];
+  meta: IntelMeta | null;
   generatedAt: number;
 }

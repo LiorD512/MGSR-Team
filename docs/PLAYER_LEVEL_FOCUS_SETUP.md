@@ -1,38 +1,34 @@
-# Roster Intelligence — setup & operations (Phase 1)
+# Roster Intelligence — setup & operations
 
-A weekly background agent scores the whole men roster from **in-app data only** and writes `PlayerTiers/{playerId}`.
-The dashboard's **Roster intelligence** section reads it and shows the top targets. Nothing is triggered from the browser.
+A weekly background agent stores a stats snapshot for every roster player, flags those whose situation changed,
+and writes `PlayerTiers/{playerId}`. The dashboard's **Roster intelligence** section reads it. Nothing runs from the browser.
 
 ## Switch on / off
 `LEVEL_FOCUS_ENABLED` in `mgsr-web/src/lib/featureFlags.ts`.
 
 ## Run the agent
-- **Weekly (default):** `.github/workflows/tiering-worker.yml` (Sunday 02:00 UTC). "Run workflow" runs it now; tick *force* to ignore caches.
-- **Locally (test without merging):** `cd mgsr-web && npm ci && npx tsx _tiering_worker.ts sweep` (needs `mgsr-web/.env.local`, see below).
+- **Weekly (default):** `.github/workflows/tiering-worker.yml` (Sunday 02:00 UTC). "Run workflow" runs it now; tick *force* to re-fetch stats.
+- **Locally (test without merging):** `cd mgsr-web && npm ci && npx tsx _tiering_worker.ts sweep` (needs `mgsr-web/.env.local`).
 - **Debug one player:** `npx tsx _tiering_worker.ts player <playerId>`.
 
 ## Configuration
-GitHub → Settings → Secrets and variables → Actions (or `mgsr-web/.env.local` for local runs):
+GitHub → Settings → Secrets and variables → Actions (or `mgsr-web/.env.local` locally):
 | Name | Type | Notes |
 |---|---|---|
 | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | secrets | already used by other workflows |
-| `SCOUT_SERVER_URL` | variable | optional; defaults to our Render scout server (match ratings) |
-| `TIERING_ALERT_EMAILS` | variable | optional; owner email(s) for the weekly digest push |
+| `SCOUT_SERVER_URL` | variable | optional; defaults to our Render scout server |
 
-No `GEMINI_API_KEY`, no proxy, no news keys — the agent makes no external scrapes.
+No Gemini, no proxy, no news keys — the agent makes no external scrapes.
 
-## Data sources (all in-app)
-Players doc · FmIntelligenceCache (nightly) · our scout server `/player_stats` · ClubRequests / PlayerMatchResults ·
-PlayerDocuments (MANDATE) · AgentTasks + notes · transfer-windows JSON (our own repo file, optional, for the "window closes" caption).
+## How it gets smarter over time
+Each run appends one snapshot (last ~12 kept). Week 1 = baseline (standouts only). From week 2 the week-over-week
+change detection is active, so the feature is fully powered after the second run.
 
 ## Cost & speed
-The only network call is to our own scout server (one per player per week; result cached in `PlayerTiers`). FM comes from Firestore (free).
-A full ~40-player sweep is seconds, re-runs reuse the cache.
+One scout-server call per player per week (season stats), cached in `PlayerTiers`. A ~40-player sweep is seconds.
 
-## Firestore rules
-`PlayerTiers` block in `firestore.rules` (read for signed-in users, no client writes). Deploy with `firebase deploy --only firestore:rules`. Not required for the feature (all access is server-side).
-
-## Known limits (Phase 1)
-- A player with no FM cache entry and no scout-stats match is scored on market value + league only — the confidence figure shows this.
-- Calls/meetings count as effort only when logged as a note or task.
-- Level definitions per market are a draft in `config.ts` (`TIER_DEFINITIONS`). Tune weights/thresholds there after the first real ranking.
+## Known limits
+- Stats are season aggregates → "change" is week-over-week, not literal last-5-games.
+- A player the stats API can't match (lower leagues) still appears if a contract/mandate/value signal fires; otherwise he's simply not flagged.
+- Calls/meetings show as "last contact" (from notes/tasks), context only — not a signal.
+- Tune thresholds in `config.ts` after the first couple of real runs.

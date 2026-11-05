@@ -1,17 +1,12 @@
 /**
- * Board selection shared by the API and the dashboard: rank the roster by worth and show the top N.
+ * Board selection shared by the API and the dashboard: show flagged players, strongest signal first.
  */
-import { BOARD_SIZE, MIN_WORTH } from './config';
-import type { PlayerTierDoc } from './types';
+import { BOARD_SIZE } from './config';
+import type { PlayerIntelDoc } from './types';
 
-export function rankBoard(docs: PlayerTierDoc[], size = BOARD_SIZE, minWorth = MIN_WORTH): PlayerTierDoc[] {
+export function rankBoard(docs: PlayerIntelDoc[], size = BOARD_SIZE): PlayerIntelDoc[] {
   return docs
-    .filter((d) => d.analysis && d.analysis.worth >= minWorth)
-    .sort((a, b) => (b.analysis!.worth - a.analysis!.worth) || (b.analysis!.urgency - a.analysis!.urgency))
+    .filter((d) => d.intel && d.intel.signals.length > 0)
+    .sort((a, b) => (b.intel!.score - a.intel!.score) || (b.intel!.computedAt - a.intel!.computedAt))
     .slice(0, size);
-}
-
-export function daysSinceTouch(d: PlayerTierDoc, now = Date.now()): number | null {
-  const t = d.effort?.lastTouchAt;
-  return t ? Math.floor((now - t) / (24 * 3600 * 1000)) : null;
 }
