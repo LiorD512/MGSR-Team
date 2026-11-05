@@ -69,6 +69,10 @@ export interface PlayerIntelDoc {
   recentGames?: RecentGame[];
   intel?: PlayerIntel;
   lastTouchAt?: number;
+  /** Set when the stored tmProfile id was stale and a name-search found the live one — the stored id needs re-linking. */
+  staleTmId?: boolean;
+  /** The live TM id discovered by name search (only when staleTmId). Surfaced so the user can fix the Players doc. */
+  resolvedTmId?: string | null;
 }
 
 export interface IntelMeta {
@@ -78,6 +82,8 @@ export interface IntelMeta {
   flagged?: number;
   total?: number;
   withGames?: number;
+  /** How many players had a stale stored TM id that a name-search re-resolved to a live one. */
+  staleIds?: number;
   errors?: { playerId: string; error: string }[];
 }
 

@@ -58,6 +58,7 @@ async function main() {
   const meta = await sweepRoster(db, { force, concurrency, log });
   log(
     `done: ${meta.analysed}/${meta.total} analysed, ${meta.flagged} flagged, ${meta.withGames} with games, ` +
+      `${meta.staleIds ?? 0} stale TM ids re-linked, ` +
       `${Math.round((meta.durationMs ?? 0) / 1000)}s, ${meta.errors?.length ?? 0} errors`
   );
 }

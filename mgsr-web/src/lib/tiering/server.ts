@@ -151,6 +151,8 @@ export interface ProcessResult {
   doc: PlayerIntelDoc;
   hasGames: boolean;
   flagged: boolean;
+  reason: string;
+  staleTmId: boolean;
 }
 
 /** Oldest value within ~14 months from marketValueHistory, for the value-move signal. */
@@ -179,7 +181,11 @@ function clean<T>(o: T): T {
 
 export async function processPlayer(db: Firestore, ctx: IntelContext, p: RosterPlayer, opts: ProcessOptions): Promise<ProcessResult> {
   const now = ctx.now;
-  const { games, source } = await getRecentGames(p, now, { force: opts.force, allowFetch: opts.allowFetch !== false });
+  const { games, source, reason, resolvedTmId, staleTmId } = await getRecentGames(
+    { tmProfile: p.tmProfile, fullName: p.fullName, recentGames: p.recentGames, recentGamesAt: p.recentGamesAt },
+    now,
+    { force: opts.force, allowFetch: opts.allowFetch !== false }
+  );
   const hasGames = games.length > 0;
 
   const age = p.age ? parseInt(p.age, 10) || null : null;
@@ -214,10 +220,12 @@ export async function processPlayer(db: Firestore, ctx: IntelContext, p: RosterP
     ...(source === 'fetched' || (source === 'doc' && hasGames) ? { recentGames: games.slice(0, 10) } : {}),
     ...(intel ? { intel } : {}),
     ...(lastTouchAt ? { lastTouchAt } : {}),
+    // stored id was stale — surface the live id so the user can re-link the Players doc (we never mutate it here)
+    ...(staleTmId ? { staleTmId: true, resolvedTmId: resolvedTmId ?? null } : {}),
   };
   await db.collection(TIERS_COLLECTION).doc(p.id).set(clean(doc));
   ctx.docs.set(p.id, doc);
-  return { doc, hasGames, flagged: !!intel };
+  return { doc, hasGames, flagged: !!intel, reason, staleTmId: !!staleTmId };
 }
 
 export async function sweepRoster(
@@ -234,6 +242,7 @@ export async function sweepRoster(
   let analysed = 0;
   let flagged = 0;
   let withGames = 0;
+  let staleIds = 0;
   const errors: { playerId: string; error: string }[] = [];
   let i = 0;
   const workers = Array.from({ length: conc }, async () => {
@@ -244,7 +253,9 @@ export async function sweepRoster(
         analysed++;
         if (r.hasGames) withGames++;
         if (r.flagged) flagged++;
-        log(`✓ ${p.fullName}${r.flagged ? ` → ${r.doc.intel!.top.en}` : ' (no signal)'}${r.hasGames ? '' : ' [no games]'}`);
+        if (r.staleTmId) staleIds++;
+        const relink = r.staleTmId ? ` [stale TM id → re-link to ${r.doc.resolvedTmId}]` : '';
+        log(`✓ ${p.fullName}${r.flagged ? ` → ${r.doc.intel!.top.en}` : ' (no signal)'}${r.hasGames ? '' : ` [no games: ${r.reason}]`}${relink}`);
       } catch (e) {
         errors.push({ playerId: p.id, error: String((e as Error)?.message ?? e).slice(0, 200) });
         log(`✗ ${p.fullName}: ${(e as Error)?.message ?? e}`);
@@ -260,7 +271,7 @@ export async function sweepRoster(
     for (const d of all.docs) if (!rosterIds.has(d.id)) await d.ref.delete();
   }
 
-  const meta: IntelMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, flagged, total: queue.length, withGames, errors: errors.slice(0, 20) };
+  const meta: IntelMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, flagged, total: queue.length, withGames, staleIds, errors: errors.slice(0, 20) };
   const [col, id] = META_DOC.split('/');
   await db.collection(col).doc(id).set(clean(meta));
   return meta;

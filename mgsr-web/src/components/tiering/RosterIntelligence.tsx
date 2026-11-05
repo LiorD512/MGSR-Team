@@ -131,6 +131,7 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
                     <b>{nm(d.playerId)}</b>
                     <span className={`rk-chip t-${it.top.tone}`}>{he ? b.he : b.en}</span>
                     {it.signals.length > 1 && <span className="rk-more">+{it.signals.length - 1}</span>}
+                    {d.staleTmId && <span className="rk-relink" title={t('ri_stale_title')}>⚠</span>}
                   </span>
                   <span className="rk-reason">{sig(it.top)}</span>
                   <span className="rk-sub">{sub(d.playerId)}{det(it.top) ? ` · ${det(it.top)}` : ''}</span>
@@ -226,6 +227,15 @@ function Drawer({ doc, player, onClose }: { doc: PlayerIntelDoc; player?: Roster
 
         {it.noGameData && (
           <div className="ri-dr-s"><div className="ri-muted">{t('ri_no_games')}</div></div>
+        )}
+
+        {doc.staleTmId && (
+          <div className="ri-dr-s">
+            <div className="ri-stale">
+              <b>{t('ri_stale_title')}</b>
+              <span className="ri-muted">{t('ri_stale_body')}{doc.resolvedTmId ? ` (TM #${doc.resolvedTmId})` : ''}</span>
+            </div>
+          </div>
         )}
 
         {doc.lastTouchAt ? (

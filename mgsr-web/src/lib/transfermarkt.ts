@@ -3868,6 +3868,11 @@ export interface RecentGame {
 export async function fetchRecentGames(tmProfile: string, max = 10): Promise<RecentGame[]> {
   const id = extractPlayerIdFromUrl(tmProfile);
   if (!id) return [];
+  return fetchRecentGamesById(id, max);
+}
+
+/** Core per-game fetch keyed by a raw numeric TM id (used by fetchRecentGames + the name-search fallback). */
+export async function fetchRecentGamesById(id: string, max = 10): Promise<RecentGame[]> {
   try {
     const raw = await fetchHtmlWithRetry(`${TRANSFERMARKT_BASE}/ceapi/performance-game/${id}`);
     const json = JSON.parse(raw) as { data?: { performance?: unknown[] } };
@@ -3898,8 +3903,75 @@ export async function fetchRecentGames(tmProfile: string, max = 10): Promise<Rec
       })
       .filter((g) => g.date)
       .sort((a, b) => b.date.localeCompare(a.date));
-    return games.slice(0, max);
+    // Only keep reasonably recent games (last ~18 months). A player whose latest TM game is years
+    // old (stale/duplicate id, or long inactive) should not produce signals from ancient data —
+    // return [] so the worker records "no recent games" rather than analysing a 2019 season.
+    const cutoff = new Date(Date.now() - 18 * 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    return games.filter((g) => g.date >= cutoff).slice(0, max);
   } catch {
     return [];
   }
+}
+
+export interface ResolvedRecentGames {
+  games: RecentGame[];
+  /** Numeric TM id the games actually came from (may differ from the stored one when re-looked-up by name). */
+  resolvedId: string | null;
+  /** True when the stored id produced no recent games but a name-search match did → the stored id is stale. */
+  staleId: boolean;
+}
+
+function normaliseName(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip accents
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Resolve a player's recent games, tolerating a stale stored TM id.
+ *
+ * 1. Try the stored tmProfile id.
+ * 2. If that yields no recent games, search TM by name and try candidates whose name matches,
+ *    preferring the one with the most-recent game. The stored id is NOT mutated — we just report
+ *    the better id via `resolvedId` + `staleId` so the caller can surface a "needs re-link" flag.
+ */
+export async function fetchRecentGamesResolved(
+  p: { tmProfile?: string; fullName?: string },
+  max = 10
+): Promise<ResolvedRecentGames> {
+  const storedId = extractPlayerIdFromUrl(p.tmProfile);
+  if (storedId) {
+    const games = await fetchRecentGamesById(storedId, max);
+    if (games.length) return { games, resolvedId: storedId, staleId: false };
+  }
+
+  const name = (p.fullName ?? '').trim();
+  if (!name) return { games: [], resolvedId: storedId, staleId: false };
+
+  let candidates: { tmProfile?: unknown; playerName?: unknown }[] = [];
+  try {
+    const res = await handleSearch(name);
+    candidates = (res.players ?? []) as typeof candidates;
+  } catch {
+    return { games: [], resolvedId: storedId, staleId: false };
+  }
+
+  const wantName = normaliseName(name);
+  const matched = candidates
+    .map((c) => ({ id: extractPlayerIdFromUrl(String(c.tmProfile ?? '')), nm: normaliseName(String(c.playerName ?? '')) }))
+    .filter((c) => c.id && c.id !== storedId && (c.nm === wantName || c.nm.includes(wantName) || wantName.includes(c.nm)))
+    .slice(0, 4); // cap TM fetches
+
+  let best: { games: RecentGame[]; id: string } | null = null;
+  for (const c of matched) {
+    const games = await fetchRecentGamesById(c.id!, max);
+    if (!games.length) continue;
+    if (!best || games[0].date > best.games[0].date) best = { games, id: c.id! };
+  }
+  if (best) return { games: best.games, resolvedId: best.id, staleId: true };
+  return { games: [], resolvedId: storedId, staleId: false };
 }
