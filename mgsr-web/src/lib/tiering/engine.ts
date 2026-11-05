@@ -9,6 +9,20 @@ const DAY = 24 * 3600 * 1000;
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
+/** "2 goals, 1 assist" style — goals and assists spelled out separately, never "G+A". */
+function goalsAssistsEn(goals: number, assists: number): string {
+  const parts: string[] = [];
+  if (goals > 0) parts.push(`${goals} ${goals === 1 ? 'goal' : 'goals'}`);
+  if (assists > 0) parts.push(`${assists} ${assists === 1 ? 'assist' : 'assists'}`);
+  return parts.join(', ') || '0 goals';
+}
+function goalsAssistsHe(goals: number, assists: number): string {
+  const parts: string[] = [];
+  if (goals > 0) parts.push(`${goals} ${goals === 1 ? 'שער' : 'שערים'}`);
+  if (assists > 0) parts.push(`${assists} ${assists === 1 ? 'בישול' : 'בישולים'}`);
+  return parts.join(', ') || '0 שערים';
+}
+
 export function parseValueEuro(value: string | undefined | null): number {
   if (!value || value.includes('-')) return 0;
   const c = value.replace(/[€\s,]/g, '').toLowerCase();
@@ -101,25 +115,27 @@ export function detectSignals(ctx: SignalContext): Signal[] {
     const recentBenched = streak.filter((g) => !isPlayed(g) && /in squad/i.test(g.state) && !/not in squad/i.test(g.state)).length;
     const recentStarts = streak.filter((g) => g.started).length;
     const olderStarts = games.slice(S.recentForStreak).filter((g) => g.started).length;
-    const streakGA = streak.reduce((a, g) => a + g.goals + g.assists, 0);
+    const streakGoals = streak.reduce((a, g) => a + g.goals, 0);
+    const streakAssists = streak.reduce((a, g) => a + g.assists, 0);
+    const streakGA = streakGoals + streakAssists;
     const streakGrades = streak.map((g) => g.grade).filter((x): x is number => typeof x === 'number');
     const streakAvgGrade = streakGrades.length ? streakGrades.reduce((a, b) => a + b, 0) / streakGrades.length : null;
 
     /* dropped from the squad — was playing, now out */
     if (recentNotInSquad >= S.droppedRecent && olderStarts + played.length > recentNotInSquad) {
       out.push({ kind: 'dropped_squad', tone: 'negative', strength: clamp(70 + recentNotInSquad * 8, 70, 96),
-        en: `Out of the squad — last ${recentNotInSquad} game(s)`, he: `מחוץ לסגל — ${recentNotInSquad} משחקים אחרונים`,
+        en: `Out of the squad — last ${recentNotInSquad} ${recentNotInSquad === 1 ? 'game' : 'games'}`, he: `מחוץ לסגל — ${recentNotInSquad} ${recentNotInSquad === 1 ? 'משחק אחרון' : 'משחקים אחרונים'}`,
         detailEn: 'was in the team before', detailHe: 'היה בהרכב קודם' });
     } else if (recentBenched >= S.benchedRecent) {
       /* benched — in the squad but not playing */
       out.push({ kind: 'benched', tone: 'negative', strength: clamp(60 + recentBenched * 6, 60, 88),
-        en: `On the bench — 0 minutes in last ${recentBenched} game(s)`, he: `על הספסל — 0 דקות ב-${recentBenched} משחקים אחרונים` });
+        en: `On the bench — 0 minutes in the last ${recentBenched} ${recentBenched === 1 ? 'game' : 'games'}`, he: `על הספסל — 0 דקות ב-${recentBenched} ${recentBenched === 1 ? 'משחק אחרון' : 'משחקים אחרונים'}` });
     }
 
     /* breaking in — became a starter */
     if (recentStarts >= S.startsForBreakingIn && olderStarts === 0 && games.length > S.recentForStreak) {
       out.push({ kind: 'breaking_in', tone: 'positive', strength: clamp(60 + recentStarts * 9, 60, 92),
-        en: `Breaking into the XI — ${recentStarts} recent starts`, he: `נכנס להרכב — ${recentStarts} פתיחות אחרונות`,
+        en: `Breaking into the XI — ${recentStarts} recent ${recentStarts === 1 ? 'start' : 'starts'}`, he: `נכנס להרכב — ${recentStarts} ${recentStarts === 1 ? 'פתיחה אחרונה' : 'פתיחות אחרונות'}`,
         detailEn: 'was not starting before', detailHe: 'לא פתח קודם' });
     }
 
@@ -128,19 +144,20 @@ export function detectSignals(ctx: SignalContext): Signal[] {
       played.length >= 2 &&
       ((streakAvgGrade != null && streakAvgGrade >= S.hotMinGrade) || streakGA >= S.hotMinGAStreak)
     ) {
-      const bits = [streakGA > 0 ? `${streakGA} G+A` : '', streakAvgGrade != null ? `avg ${r1(streakAvgGrade)}` : ''].filter(Boolean).join(' · ');
+      const enBits = [streakGA > 0 ? goalsAssistsEn(streakGoals, streakAssists) : '', streakAvgGrade != null ? `avg rating ${r1(streakAvgGrade)}` : ''].filter(Boolean).join(' · ');
+      const heBits = [streakGA > 0 ? goalsAssistsHe(streakGoals, streakAssists) : '', streakAvgGrade != null ? `ציון ממוצע ${r1(streakAvgGrade)}` : ''].filter(Boolean).join(' · ');
       out.push({ kind: 'hot_form', tone: 'positive', strength: clamp(60 + streakGA * 8 + (streakAvgGrade ? (streakAvgGrade - S.hotMinGrade) * 40 : 0), 60, 97),
-        en: `In form — ${bits} over last ${streak.length}`, he: `בכושר — ${bits} ב-${streak.length} האחרונים` });
+        en: `In form — ${enBits} in the last ${streak.length} games`, he: `בכושר — ${heBits} ב-${streak.length} המשחקים האחרונים` });
     } else if (streakAvgGrade != null && streakAvgGrade <= S.coldMaxGrade && played.length >= 2) {
       /* cold form — playing but poor */
       out.push({ kind: 'cold_form', tone: 'negative', strength: clamp(55 + (S.coldMaxGrade - streakAvgGrade) * 40, 55, 88),
-        en: `Form dip — avg ${r1(streakAvgGrade)} over last ${streak.length}`, he: `ירידה בכושר — ממוצע ${r1(streakAvgGrade)} ב-${streak.length} האחרונים` });
+        en: `Form dip — avg rating ${r1(streakAvgGrade)} in the last ${streak.length} games`, he: `ירידה בכושר — ציון ממוצע ${r1(streakAvgGrade)} ב-${streak.length} המשחקים האחרונים` });
     }
 
     /* output surge (separate from hot form so it shows even without grades) */
     if (streakGA >= S.outputSurgeGA && !out.some((s) => s.kind === 'hot_form')) {
       out.push({ kind: 'output_surge', tone: 'positive', strength: clamp(58 + streakGA * 9, 58, 90),
-        en: `Scoring/assisting — ${streakGA} G+A in last ${streak.length}`, he: `כובש/מבשל — ${streakGA} ש+ב ב-${streak.length} האחרונים` });
+        en: `${goalsAssistsEn(streakGoals, streakAssists)} in the last ${streak.length} games`, he: `${goalsAssistsHe(streakGoals, streakAssists)} ב-${streak.length} המשחקים האחרונים` });
     }
 
     /* back from injury — an injured gap then a return */

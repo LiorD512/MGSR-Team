@@ -201,23 +201,32 @@ function Drawer({ doc, player, onClose }: { doc: PlayerIntelDoc; player?: Roster
           <div className="ri-facts">
             <div><b>{f.played}/{f.games}</b><span>{t('ri_f_played')}</span></div>
             <div><b>{f.starts}</b><span>{t('ri_f_starts')}</span></div>
-            <div><b>{f.goals}/{f.assists}</b><span>{t('ri_f_ga')}</span></div>
+            <div><b>{f.goals}</b><span>{t('ri_f_goals')}</span></div>
+            <div><b>{f.assists}</b><span>{t('ri_f_assists')}</span></div>
             <div><b>{f.avgGrade ?? '—'}</b><span>{t('ri_f_grade')}</span></div>
           </div>
         </div>
 
         {games.length > 0 && (
           <div className="ri-dr-s">
-            <h4><span>{t('ri_dr_games')}</span></h4>
+            <h4><span>{t('ri_dr_last4')}</span></h4>
             <div className="ri-games">
-              {games.slice(0, 8).map((g, i) => {
+              <div className="ri-game ri-g-head">
+                <span className="ri-g-date">{t('ri_g_date')}</span>
+                <span className="ri-g-comp">{t('ri_g_comp')}</span>
+                <span className="ri-g-state">{t('ri_g_status')}</span>
+                <span className="ri-g-g">{t('ri_g_goals')}</span>
+                <span className="ri-g-a">{t('ri_g_assists')}</span>
+              </div>
+              {games.slice(0, 4).map((g, i) => {
                 const st = stateLabel(g, he);
                 return (
                   <div className={`ri-game ri-g-${st.cls}`} key={i}>
                     <span className="ri-g-date">{g.date?.slice(5)}</span>
                     <span className="ri-g-comp">{g.competition}</span>
                     <span className="ri-g-state">{st.txt}</span>
-                    <span className="ri-g-out">{g.goals ? `${g.goals}⚽` : ''}{g.assists ? ` ${g.assists}🅰` : ''}{g.grade != null ? ` ${g.grade}` : ''}</span>
+                    <span className="ri-g-g">{g.goals > 0 ? `⚽ ${g.goals}` : '–'}</span>
+                    <span className="ri-g-a">{g.assists > 0 ? `🅰 ${g.assists}` : '–'}</span>
                   </div>
                 );
               })}
