@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BRIT — Dashboard · Roster intelligence (weekly ranked targets)</title>
+<title>BRIT — Roster intelligence (weekly, in-app data)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -370,7 +370,7 @@ body{margin:0;background:var(--paper)}
 <div class="brit-modal" id="modal"></div>
 <div class="notif" id="notif"></div>
 <div class="toast" id="toast"></div>
-<div class="mockbar"><b>MOCK</b><span>read-only · weekly agent</span><button onclick="simAlert()">▶ Weekly digest push</button><button onclick="resetAll()">Reset</button></div>
+<div class="mockbar"><b>MOCK</b><span>weekly agent · in-app data only (no external sources)</span><button onclick="resetAll()">Reset</button></div>
 </div>
 
 <script>
@@ -663,7 +663,6 @@ function bDrawer(id){bOpen=id;const p=b(id);
    <div class="ri-dr-worth"><span>${L('worth')} <b>${p.worth}</b></span><span>${L('urgency')} <b>${p.urg}</b></span><span>${L('conf')} <b>${p.conf}%</b></span></div></div>
   <div class="ri-dr-s"><h4><span>✦ ${L('summary')}</span><span>GEMINI + SEARCH · 2d</span></h4><div class="ri-aibox"><p>${tt(p.summary)}</p></div></div>
   ${p.why.length?`<div class="ri-dr-s"><h4><span>${L('why')}</span></h4><ul class="pb-why big">${p.why.map(r=>`<li class="s${r.t}">${tt(r)}</li>`).join('')}</ul></div>`:''}
-  ${p.news.length?`<div class="ri-dr-s"><h4><span>${L('news')}</span></h4>${p.news.map(n=>`<div class="ri-news ri-ns-${n.s}"><b>${n.h}</b><p>${tt(n.i)}</p><small>${n.src}</small></div>`).join('')}${p.srcs.length?`<div class="ri-srcs">${p.srcs.map(s=>`<a href="#" onclick="return false">${s}</a>`).join('')}</div>`:''}</div>`:''}
   <div class="ri-dr-s"><h4><span>${L('basis')}</span></h4>${p.c.map(([k,wt,v])=>`<div class="ri-sig"><span>${L('crit')[k]}<em>${wt}%</em></span><div class="ri-sig-tr"><i style="width:${v[0]||0}%;opacity:${v[0]==null?.2:1}"></i></div><span>${v[0]??'—'}</span>${v[1]?`<small>${v[1]}</small>`:''}</div>`).join('')}</div>
   <div class="ri-dr-s"><h4><span>${L('effort')}</span></h4><div class="ri-touch"><div><b>1</b>${L('notes')}</div><div><b>0</b>${L('tasks')}</div><div><b>20d</b>${L('last')}</div></div></div>
   <div class="ri-dr-f"><a class="ri-btn ri-btn-gold">${L('profile')}</a></div></aside>`;}

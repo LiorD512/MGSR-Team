@@ -1,11 +1,16 @@
 /**
- * Roster Intelligence — Phase 1 (men platform).
+ * Roster Intelligence — Phase 1 (men platform). IN-APP DATA ONLY, no external scrapers, no AI/news.
  *
- * A weekly background agent reads everything we hold on every roster player (notes, contract, mandate,
- * market value + history, match stats, availability/injuries, club/league strength, recent news) and
- * computes, mathematically:
- *   • Level     — the league tier the player realistically fits, with a role and a ceiling (prediction).
- *   • Urgency   — how hard / how soon to push him (contract, mandate, demand, momentum, trend).
+ * A weekly background agent reads only data we already hold:
+ *   • Players doc        — market value (+history), contract, club country, age, positions, mandate, notes
+ *   • FmIntelligenceCache — FM current/potential ability (Firestore, populated nightly)
+ *   • our scout server    — match rating, minutes, goals/90 (/player_stats, keyed by tmProfile)
+ *   • ClubRequests / PlayerMatchResults — demand (matching open requests)
+ *   • PlayerDocuments (MANDATE) — mandate expiry
+ *   • AgentTasks + notes  — last touch / effort
+ * and computes, mathematically:
+ *   • Level     — the league tier + role the player realistically fits, with a ceiling (prediction).
+ *   • Urgency   — how hard / how soon to push him (contract, mandate, demand, momentum, neglect).
  *   • Worth     — a single 0-100 "work on him next window" score that ranks the roster.
  * The dashboard shows only the top of that ranking. No user interaction in Phase 1.
  */
@@ -16,15 +21,14 @@ export type Role = 'starter' | 'rotation' | 'squad';
 export type Trend = 'up' | 'flat' | 'down';
 export type PositionGroup = 'GK' | 'CB' | 'FB' | 'MF' | 'AM' | 'ST';
 
-/** The five level criteria. Missing data => the criterion is dropped and weights renormalised. */
-export type CriterionKey = 'output' | 'ability' | 'value' | 'league' | 'availability';
+/** The four level criteria. Missing data => the criterion is dropped and weights renormalised. */
+export type CriterionKey = 'output' | 'ability' | 'value' | 'league';
 
 export interface TierSignals {
   output?: number;
   ability?: number;
   value: number;
   league: number;
-  availability?: number;
 }
 
 export interface TierCriterion {
@@ -57,27 +61,11 @@ export interface UrgencyParts {
 /** Push strength shown next to the level. */
 export type Push = 'now' | 'high' | 'medium' | 'low';
 
-export type NewsSentiment = 'positive' | 'neutral' | 'negative' | 'risk';
-export interface TierNewsItem {
-  headline: string;
-  sentiment: NewsSentiment;
-  impactEn: string;
-  impactHe: string;
-  source?: string;
-  date?: string;
-  url?: string;
-}
-
 export interface TierReason {
   en: string;
   he: string;
   /** For ordering/colour: 3 = time-critical, 2 = important, 1 = context. */
   weight: 1 | 2 | 3;
-}
-
-export interface TierSource {
-  title: string;
-  url: string;
 }
 
 export interface TierEffort {
@@ -86,28 +74,16 @@ export interface TierEffort {
   lastTouchAt: number;
 }
 
+/** Cached inputs so a weekly run is cheap; FM is free (Firestore), stats is one call to our server. */
 export interface TierInputs {
   fmCa?: number;
   fmPa?: number;
+  fmTier?: string;
   fmAt?: number;
   apiRating?: number;
   apiMinutes?: number;
+  apiGoalsPer90?: number;
   statsAt?: number;
-  intel?: {
-    sofascoreRating?: number;
-    fotmobRating?: number;
-    minutes?: number;
-    injuryProne?: boolean;
-    daysMissed?: number;
-    recentInjuries?: string[];
-    eloLevel?: number;
-    elo?: number;
-    weeklyWageEur?: number;
-    formTrend?: 'rising' | 'stable' | 'declining';
-  };
-  intelAt?: number;
-  news?: { title: string; source?: string; date?: string; url?: string }[];
-  newsAt?: number;
 }
 
 /** Everything the weekly agent computes for one player. */
@@ -129,20 +105,13 @@ export interface TierAnalysis {
   /** 0-100 ranking score: worth working on him next window. */
   worth: number;
 
-  /** Ordered human reasons (why he's worth it / why now). */
+  /** Ordered reasons (why he's worth it / why now), derived from the data. */
   reasons: TierReason[];
-  /** One-line AI summary of the player and the opportunity. */
+  /** One-line plain-language summary, built from the numbers (no AI). */
   summaryEn: string;
   summaryHe: string;
 
-  newsSignal: number;
-  news: TierNewsItem[];
-  sources: TierSource[];
-
-  model: string;
   computedAt: number;
-  analystAt?: number;
-  dataHash?: string;
 }
 
 export interface PlayerTierDoc {
@@ -158,7 +127,6 @@ export interface TierMeta {
   lastRunAt?: number;
   durationMs?: number;
   analysed?: number;
-  aiCalls?: number;
   total?: number;
   windows?: { country: string; daysLeft: number }[];
   errors?: { playerId: string; error: string }[];

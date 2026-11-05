@@ -5,11 +5,10 @@ import type { CriterionKey, PositionGroup, Push, Tier } from './types';
  * so thin data lowers confidence instead of producing a wrong level.
  */
 export const WEIGHTS: Record<CriterionKey, number> = {
-  output: 30, // match ratings & minutes (SofaScore / FotMob / API stats)
-  ability: 20, // FM current ability, blended with potential for young players
-  value: 25, // Transfermarkt market value (log scale)
-  league: 15, // league strength of the club's country + club Elo
-  availability: 10, // injury history
+  output: 35, // match rating, minutes, goals/90 from our scout server
+  ability: 25, // FM current ability (FmIntelligenceCache), blended with potential for young players
+  value: 25, // Transfermarkt market value (log scale), already on the player doc
+  league: 15, // league strength of the club's country
 };
 
 /** Quality score -> fit tier. score >= T[n] means the player projects to at least tier n. */

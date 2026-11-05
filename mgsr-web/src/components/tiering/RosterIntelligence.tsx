@@ -24,7 +24,7 @@ export interface RosterIntelPlayer {
   age?: string;
 }
 
-const CRITERIA: CriterionKey[] = ['output', 'ability', 'value', 'league', 'availability'];
+const CRITERIA: CriterionKey[] = ['output', 'ability', 'value', 'league'];
 const DAY = 24 * 3600 * 1000;
 const PUSH_RANK: Record<Push, number> = { now: 3, high: 2, medium: 1, low: 0 };
 
@@ -180,7 +180,7 @@ function Drawer({ doc, player, onClose }: { doc: PlayerTierDoc; player?: RosterI
         </div>
 
         <div className="ri-dr-s">
-          <h4><span>✦ {t('ri_dr_summary')}</span><span>{a.model === 'engine' ? 'ENGINE' : 'GEMINI + SEARCH'} · {ago(a.analystAt ?? a.computedAt, he)}</span></h4>
+          <h4><span>{t('ri_dr_summary')}</span><span>{ago(a.computedAt, he)}</span></h4>
           <div className="ri-aibox"><p>{he ? a.summaryHe || a.summaryEn : a.summaryEn}</p></div>
         </div>
 
@@ -190,24 +190,6 @@ function Drawer({ doc, player, onClose }: { doc: PlayerTierDoc; player?: RosterI
             <ul className="pb-why big">
               {a.reasons.map((r, i) => <li key={i} className={`s${r.weight}`}>{he ? r.he || r.en : r.en}</li>)}
             </ul>
-          </div>
-        )}
-
-        {a.news.length > 0 && (
-          <div className="ri-dr-s">
-            <h4><span>{t('ri_dr_news')}</span><span>{a.newsSignal > 0 ? '▲' : a.newsSignal < 0 ? '▼' : '●'} {t('ri_news_momentum')}</span></h4>
-            {a.news.map((n, i) => (
-              <div className={`ri-news ri-ns-${n.sentiment}`} key={i}>
-                <b>{n.headline}</b>
-                <p>{he ? n.impactHe || n.impactEn : n.impactEn}</p>
-                <small>{[n.source, n.date].filter(Boolean).join(' · ')}</small>
-              </div>
-            ))}
-            {a.sources.length > 0 && (
-              <div className="ri-srcs">
-                {a.sources.slice(0, 5).map((s, i) => <a key={i} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>)}
-              </div>
-            )}
           </div>
         )}
 

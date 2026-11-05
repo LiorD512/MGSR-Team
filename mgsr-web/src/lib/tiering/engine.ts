@@ -99,15 +99,6 @@ export function leagueClubSignal(country: string | undefined | null, eloLevel?: 
   return round(clamp(lg + clubBoost, 0, 100));
 }
 
-/** Injury history -> 0-100 availability (100 = always available). */
-export function availabilitySignal(i?: { injuryProne?: boolean; daysMissed?: number } | null): number | undefined {
-  if (!i || (i.daysMissed == null && i.injuryProne == null)) return undefined;
-  const days = i.daysMissed ?? 0;
-  let s = 100 - Math.min(70, days / 3);
-  if (i.injuryProne) s -= 15;
-  return round(clamp(s, 0, 100));
-}
-
 /** Market value history -> trend. Compares latest vs. the oldest entry within the last ~14 months. */
 export function trendFromHistory(
   history: { value?: string; date?: number }[] | undefined | null,
@@ -129,7 +120,7 @@ export function trendFromHistory(
 /* ───────────────────────── quality score ───────────────────────── */
 
 export function weightedScore(s: TierSignals): { score: number; coverage: number } {
-  const keys: CriterionKey[] = ['output', 'ability', 'value', 'league', 'availability'];
+  const keys: CriterionKey[] = ['output', 'ability', 'value', 'league'];
   let sum = 0;
   let w = 0;
   for (const k of keys) {
@@ -143,7 +134,7 @@ export function weightedScore(s: TierSignals): { score: number; coverage: number
 }
 
 export function criteriaList(s: TierSignals, notes: Partial<Record<CriterionKey, string>>): TierCriterion[] {
-  const keys: CriterionKey[] = ['output', 'ability', 'value', 'league', 'availability'];
+  const keys: CriterionKey[] = ['output', 'ability', 'value', 'league'];
   return keys.map((k) => ({ key: k, weight: WEIGHTS[k], score: s[k] ?? null, ...(notes[k] ? { note: notes[k] } : {}) }));
 }
 

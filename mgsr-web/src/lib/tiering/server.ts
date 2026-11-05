@@ -7,15 +7,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getMessaging } from 'firebase-admin/messaging';
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import { adminAuth, adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
-import { ANALYST_MAX_AGE_MS, GEMINI_MODEL, META_DOC, REANALYSE_AFTER_MS, TIER_DEFINITIONS, TIERS_COLLECTION as TC } from './config';
+import { META_DOC, REANALYSE_AFTER_MS, TIER_DEFINITIONS, TIERS_COLLECTION as TC } from './config';
 import {
   abilitySignal,
-  availabilitySignal,
   computeUrgency,
   contractMonthsLeft,
   criteriaList,
   fitLabel,
-  hashFacts,
   leagueClubSignal,
   outputSignal,
   parseValueEuro,
@@ -24,14 +22,12 @@ import {
   pushFromUrgency,
   requestMatches,
   saleability,
-  tierFromScore,
   trendFromHistory,
   valueSignal,
   weightedScore,
   worth as worthScore,
 } from './engine';
 import { gatherInputs } from './inputs';
-import { runAnalyst, type AnalystFacts } from './analyst';
 import type {
   CriterionKey,
   FitPrediction,
@@ -222,34 +218,62 @@ export function computeEffort(p: RosterPlayer, ctx: TierContext): TierEffort {
 
 /* ───────────────────────── analysis pipeline ───────────────────────── */
 
-function fallbackReasons(opts: {
+/** Reasons are derived purely from the numbers — no AI. Ordered by weight (3 = time-critical). */
+function buildReasons(o: {
   contractMonths: number | null;
   mandateDays: number | null;
-  requests: number;
-  coverage: number;
+  requests: { club?: string; position?: string }[];
   trend: Trend;
+  coverage: number;
+  fit: FitPrediction;
+  age: number | null;
 }): TierReason[] {
   const r: TierReason[] = [];
-  if (opts.mandateDays != null && opts.mandateDays <= 45)
-    r.push({ en: `Mandate expires in ${Math.max(0, Math.round(opts.mandateDays))} days`, he: `המנדט פג בעוד ${Math.max(0, Math.round(opts.mandateDays))} ימים`, weight: 3 });
-  if (opts.contractMonths != null && opts.contractMonths <= 12)
-    r.push({ en: `Contract ends in ${Math.max(0, Math.round(opts.contractMonths))} months`, he: `החוזה מסתיים בעוד ${Math.max(0, Math.round(opts.contractMonths))} חודשים`, weight: opts.contractMonths <= 6 ? 3 : 2 });
-  if (opts.requests > 0)
-    r.push({ en: `${opts.requests} open club request(s) match him`, he: `${opts.requests} בקשות מועדונים פתוחות מתאימות לו`, weight: 2 });
-  if (opts.trend === 'up') r.push({ en: 'Market value trending up', he: 'שווי השוק במגמת עלייה', weight: 1 });
-  if (!r.length) r.push({ en: opts.coverage < 0.6 ? 'Limited data — ranked mainly on value and league' : 'Stable profile, no time pressure', he: opts.coverage < 0.6 ? 'מעט נתונים — דירוג לפי שווי וליגה בעיקר' : 'פרופיל יציב, ללא דחיפות', weight: 1 });
-  return r;
+  const m = o.mandateDays;
+  if (m != null && m <= 45) {
+    const d = Math.max(0, Math.round(m));
+    r.push({ en: d === 0 ? 'Mandate expires today' : `Mandate expires in ${d} days`, he: d === 0 ? 'המנדט פג היום' : `המנדט פג בעוד ${d} ימים`, weight: d <= 14 ? 3 : 2 });
+  }
+  const c = o.contractMonths;
+  if (c != null && c <= 12) {
+    const mo = Math.max(0, Math.round(c));
+    r.push({ en: mo <= 0 ? 'Contract ending — free agent' : `Contract ends in ${mo} months`, he: mo <= 0 ? 'החוזה מסתיים — שחקן חופשי' : `החוזה מסתיים בעוד ${mo} חודשים`, weight: mo <= 6 ? 3 : 2 });
+  }
+  if (o.requests.length) {
+    const lead = o.requests[0];
+    const more = o.requests.length - 1;
+    r.push({ en: `${lead.club ?? 'A club'} wants a ${lead.position ?? 'player'}${more > 0 ? ` (+${more} more request${more > 1 ? 's' : ''})` : ''}`, he: `${lead.club ?? 'מועדון'} מחפש ${lead.position ?? 'שחקן'}${more > 0 ? ` (+${more} בקשות נוספות)` : ''}`, weight: o.requests.length >= 2 ? 3 : 2 });
+  }
+  if (o.fit.ceiling < o.fit.tier && o.age != null && o.age <= 23)
+    r.push({ en: `Young with a higher ceiling (${TIER_DEFINITIONS[o.fit.ceiling].en.split(' — ')[0]})`, he: `צעיר עם תקרה גבוהה יותר (${TIER_DEFINITIONS[o.fit.ceiling].he.split(' — ')[0]})`, weight: 2 });
+  if (o.trend === 'up') r.push({ en: 'Market value trending up', he: 'שווי השוק במגמת עלייה', weight: 1 });
+  else if (o.trend === 'down') r.push({ en: 'Market value trending down', he: 'שווי השוק במגמת ירידה', weight: 1 });
+  if (!r.length) r.push({ en: o.coverage < 0.6 ? 'Limited data — ranked on value and league' : 'Solid profile, no time pressure', he: o.coverage < 0.6 ? 'מעט נתונים — דירוג לפי שווי וליגה' : 'פרופיל יציב, ללא דחיפות בזמן', weight: 1 });
+  return r.sort((a, b) => b.weight - a.weight);
+}
+
+/** Plain-language summary built from the numbers (no AI). */
+function buildSummary(o: { fit: FitPrediction; push: Push; worth: number; coverage: number }): { en: string; he: string } {
+  const tierEn = TIER_DEFINITIONS[o.fit.tier].en.split(' — ')[0];
+  const tierHe = TIER_DEFINITIONS[o.fit.tier].he.split(' — ')[0];
+  const roleEn = { starter: 'starter', rotation: 'rotation player', squad: 'squad player' }[o.fit.role];
+  const roleHe = { starter: 'פותח', rotation: 'שחקן רוטציה', squad: 'שחקן סגל' }[o.fit.role];
+  const pushEn = { now: 'act now', high: 'high priority', medium: 'worth working', low: 'low priority' }[o.push];
+  const pushHe = { now: 'לפעול עכשיו', high: 'עדיפות גבוהה', medium: 'שווה לעבוד', low: 'עדיפות נמוכה' }[o.push];
+  const thinEn = o.coverage < 0.6 ? ' (limited data)' : '';
+  const thinHe = o.coverage < 0.6 ? ' (מעט נתונים)' : '';
+  return {
+    en: `${tierEn} ${roleEn}; worth ${o.worth}/100 — ${pushEn}${thinEn}.`,
+    he: `${roleHe} ברמת ${tierHe}; שווי עבודה ${o.worth}/100 — ${pushHe}${thinHe}.`,
+  };
 }
 
 export interface ProcessOptions {
-  appOrigin: string | null;
   force?: boolean;
-  useAnalyst?: boolean;
 }
 
 export interface ProcessResult {
   doc: PlayerTierDoc;
-  analystRan: boolean;
   refreshed: string[];
 }
 
@@ -257,39 +281,34 @@ export interface ProcessResult {
 export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPlayer, opts: ProcessOptions): Promise<ProcessResult> {
   const now = ctx.now;
   const prev = ctx.tiers.get(p.id);
-  const { inputs, refreshed } = await gatherInputs(db, p, prev?.inputs, { now, appOrigin: opts.appOrigin, force: opts.force });
+  const { inputs, refreshed } = await gatherInputs(db, p, prev?.inputs, { now, force: opts.force });
 
   const age = p.age ? parseInt(p.age, 10) || null : null;
   const group = positionGroupOf(p.positions);
   const valueEuro = parseValueEuro(p.marketValue);
-  const intel = inputs.intel ?? {};
 
-  const rating = inputs.apiRating ?? intel.sofascoreRating ?? intel.fotmobRating;
-  const minutes = inputs.apiRating ? inputs.apiMinutes : intel.minutes;
-  const ratingSrc = inputs.apiRating ? 'API' : intel.sofascoreRating ? 'SofaScore' : intel.fotmobRating ? 'FotMob' : '';
-
+  // Signals — IN-APP data only: scout-server rating/minutes, FM cache CA/PA, market value, club league.
+  const rating = inputs.apiRating;
+  const minutes = inputs.apiMinutes;
   const signals: TierSignals = {
     output: outputSignal(rating, minutes),
     ability: abilitySignal(inputs.fmCa, inputs.fmPa, age),
     value: valueSignal(valueEuro),
-    league: leagueClubSignal(p.currentClub?.clubCountry, intel.eloLevel),
-    availability: availabilitySignal(intel),
+    league: leagueClubSignal(p.currentClub?.clubCountry),
   };
   const notes: Partial<Record<CriterionKey, string>> = {
-    output: rating ? `${ratingSrc} rating ${rating.toFixed(2)}${minutes ? ` · ${Math.round(minutes).toLocaleString('en-US')} min` : ''}` : undefined,
+    output:
+      rating != null
+        ? `Rating ${rating.toFixed(2)}${minutes ? ` · ${Math.round(minutes).toLocaleString('en-US')} min` : ''}${inputs.apiGoalsPer90 ? ` · ${inputs.apiGoalsPer90.toFixed(2)} g/90` : ''}`
+        : undefined,
     ability: inputs.fmCa ? `FM CA ${inputs.fmCa}${inputs.fmPa ? ` / PA ${inputs.fmPa}` : ''}` : undefined,
-    value: p.marketValue ? `${p.marketValue} (Transfermarkt)` : undefined,
-    league: `${p.currentClub?.clubCountry ?? '—'}${intel.elo ? ` · club Elo ${Math.round(intel.elo)}` : ''}`,
-    availability: intel.daysMissed != null ? `${intel.daysMissed} days missed${intel.injuryProne ? ' · injury-prone' : ''}` : undefined,
+    value: p.marketValue ? `${p.marketValue}` : undefined,
+    league: p.currentClub?.clubCountry ?? '—',
   };
   const criteria = criteriaList(signals, notes);
   const { score, coverage } = weightedScore(signals);
 
-  const { trend: valueTrend } = trendFromHistory(p.marketValueHistory, now);
-  const trend: Trend =
-    intel.formTrend === 'rising' && valueTrend !== 'down' ? 'up'
-    : intel.formTrend === 'declining' && valueTrend !== 'up' ? 'down'
-    : valueTrend;
+  const { trend } = trendFromHistory(p.marketValueHistory, now);
 
   const effort = computeEffort(p, ctx);
   const daysSinceTouch = effort.lastTouchAt ? Math.floor((now - effort.lastTouchAt) / DAY) : null;
@@ -298,7 +317,7 @@ export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPl
   const mandateDays = mandateExp ? (mandateExp - now) / DAY : null;
   const matchingReqs = ctx.requests.filter((r) => requestMatches(r, { positions: p.positions, age }));
 
-  let fitBase = predictFit({
+  const fitBase = predictFit({
     score,
     coverage,
     group,
@@ -307,80 +326,24 @@ export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPl
     trend,
     abilityGap: inputs.fmPa && inputs.fmCa ? inputs.fmPa - inputs.fmCa : undefined,
   });
+  const label = fitLabel(fitBase, TIER_DEFINITIONS);
+  const fit: FitPrediction = { ...fitBase, labelEn: label.en, labelHe: label.he };
 
-  // Facts the analyst sees (hash excludes volatile "today"/touch so it doesn't re-run daily).
-  const recentNotes = (p.noteList ?? [])
-    .slice()
-    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-    .slice(0, 5)
-    .map((n) => String(n.notes ?? '').slice(0, 220));
-  const preUrg = computeUrgency({ now, tier: fitBase.tier, contractMonths, mandateDays, matchingRequests: matchingReqs.length, daysSinceTouch, trend, newsSignal: prev?.analysis?.newsSignal ?? 0 });
-  const preSale = saleability({ tier: fitBase.tier, age, contractMonths, matchingRequests: matchingReqs.length, trend, newsSignal: prev?.analysis?.newsSignal ?? 0 });
-  const facts: AnalystFacts = {
-    player: p.fullName ?? '',
-    age,
-    positions: p.positions ?? [],
-    nationality: p.nationality,
-    club: p.currentClub?.clubName,
-    clubCountry: p.currentClub?.clubCountry,
-    marketValue: p.marketValue,
-    valueTrend,
-    contractMonthsLeft: contractMonths != null ? Math.round(contractMonths) : null,
-    haveMandate: !!p.haveMandate || mandateDays != null,
-    mandateDaysLeft: mandateDays != null ? Math.round(mandateDays) : null,
-    criteria: criteria.map((c) => ({ key: c.key, weight: c.weight, score: c.score, note: c.note })),
-    engine: { score, dataCoverage: Math.round(coverage * 100), fitTier: fitBase.tier, fitRole: fitBase.role, ceiling: fitBase.ceiling, urgency: preUrg.urgency, worth: worthScore(score, preSale, preUrg.urgency) },
-    matchingClubRequests: matchingReqs.slice(0, 6).map((r) => ({
-      club: r.clubName ?? '—',
-      position: r.position ?? '',
-      ...(r.minAge || r.maxAge ? { ages: `${r.minAge ?? ''}-${r.maxAge ?? ''}` } : {}),
-      ...(r.euOnly ? { euOnly: true } : {}),
-      ...(r.createdAt ? { daysOld: Math.max(0, Math.floor((now - r.createdAt) / DAY)) } : {}),
-    })),
-    transferWindows: ctx.windows,
-    daysSinceLastTouch: daysSinceTouch,
-    recentAgentNotes: recentNotes,
-    headlines: (inputs.news ?? []).slice(0, 8).map((n) => ({ title: n.title, source: n.source, date: n.date })),
-    today: new Date(now).toISOString().slice(0, 10),
-  };
-  const dataHash = hashFacts({ ...facts, today: undefined, daysSinceLastTouch: undefined, transferWindows: undefined, engine: undefined });
-
-  const prevA = prev?.analysis;
-  const analystDue =
-    opts.useAnalyst !== false && (opts.force || !prevA?.analystAt || prevA.dataHash !== dataHash || now - prevA.analystAt > ANALYST_MAX_AGE_MS);
-
-  let read: Awaited<ReturnType<typeof runAnalyst>> = null;
-  let analystRan = false;
-  if (analystDue) {
-    read = await runAnalyst(facts);
-    analystRan = !!read;
-  }
-  const keep = !read && prevA?.analystAt ? prevA : null;
-
-  // Apply AI fit nudges (±1), re-derive role/ceiling.
-  const tierAdj = read ? read.tierAdj : 0;
-  const ceilAdj = read ? read.ceilingAdj : 0;
-  const tier = clampTier(fitBase.tier - tierAdj);
-  const role: Role = read?.role ?? (tier === fitBase.tier ? fitBase.role : fitBase.role);
-  const ceiling = clampTier(Math.min(tier, fitBase.ceiling - ceilAdj));
-  const fitConf = read ? Math.round((fitBase.confidence + read.confidence) / 2) : keep ? keep.fit.confidence : fitBase.confidence;
-  const label = fitLabel({ tier, role, ceiling, confidence: fitConf }, TIER_DEFINITIONS);
-  const fit: FitPrediction = { tier, role, ceiling, confidence: fitConf, labelEn: label.en, labelHe: label.he };
-
-  const newsSignal = read ? read.newsSignal : keep?.newsSignal ?? 0;
-  const { urgency, parts } = computeUrgency({ now, tier, contractMonths, mandateDays, matchingRequests: matchingReqs.length, daysSinceTouch, trend, newsSignal });
+  const { urgency, parts } = computeUrgency({ now, tier: fit.tier, contractMonths, mandateDays, matchingRequests: matchingReqs.length, daysSinceTouch, trend, newsSignal: 0 });
   const push: Push = pushFromUrgency(urgency);
-  const sale = saleability({ tier, age, contractMonths, matchingRequests: matchingReqs.length, trend, newsSignal });
+  const sale = saleability({ tier: fit.tier, age, contractMonths, matchingRequests: matchingReqs.length, trend, newsSignal: 0 });
   const worth = worthScore(score, sale, urgency);
 
-  const reasons: TierReason[] = read?.reasons?.length
-    ? read.reasons
-    : keep?.reasons?.length
-    ? keep.reasons
-    : fallbackReasons({ contractMonths, mandateDays, requests: matchingReqs.length, coverage, trend });
-
-  const summaryEn = read?.summaryEn || keep?.summaryEn || label.en;
-  const summaryHe = read?.summaryHe || keep?.summaryHe || label.he;
+  const reasons = buildReasons({
+    contractMonths,
+    mandateDays,
+    requests: matchingReqs.map((r) => ({ club: r.clubName, position: r.position })),
+    trend,
+    coverage,
+    fit,
+    age,
+  });
+  const summary = buildSummary({ fit, push, worth, coverage });
 
   const analysis: TierAnalysis = {
     score,
@@ -394,20 +357,15 @@ export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPl
     trend,
     worth,
     reasons,
-    summaryEn,
-    summaryHe,
-    newsSignal,
-    news: read?.news ?? keep?.news ?? [],
-    sources: read?.sources ?? keep?.sources ?? [],
-    model: read ? GEMINI_MODEL : keep?.model ?? 'engine',
+    summaryEn: summary.en,
+    summaryHe: summary.he,
     computedAt: now,
-    ...(read ? { analystAt: now, dataHash } : keep?.analystAt ? { analystAt: keep.analystAt, dataHash: keep.dataHash } : {}),
   };
 
   const doc: PlayerTierDoc = { playerId: p.id, tmProfile: p.tmProfile, playerName: p.fullName, analysis, effort, inputs };
   await db.collection(TIERS_COLLECTION).doc(p.id).set(clean(doc));
   ctx.tiers.set(p.id, doc);
-  return { doc, analystRan, refreshed };
+  return { doc, refreshed };
 }
 
 /** Weekly sweep of the whole roster with bounded concurrency. */
@@ -422,7 +380,6 @@ export async function sweepRoster(
   queue.sort((a, b) => (ctx.tiers.get(a.id)?.analysis?.computedAt ?? 0) - (ctx.tiers.get(b.id)?.analysis?.computedAt ?? 0));
   const conc = Math.max(1, Math.min(8, opts.concurrency ?? 4));
   let analysed = 0;
-  let aiCalls = 0;
   const errors: { playerId: string; error: string }[] = [];
   let i = 0;
   const workers = Array.from({ length: conc }, async () => {
@@ -431,9 +388,8 @@ export async function sweepRoster(
       try {
         const r = await processPlayer(db, ctx, p, opts);
         analysed++;
-        if (r.analystRan) aiCalls++;
         const a = r.doc.analysis!;
-        log(`✓ ${p.fullName} worth ${a.worth} · ${a.fit.labelEn} · ${a.push}${r.analystRan ? ' (AI)' : ''} [${r.refreshed.join(',') || 'cached'}]`);
+        log(`✓ ${p.fullName} worth ${a.worth} · ${a.fit.labelEn} · ${a.push} [${r.refreshed.join(',') || 'cached'}]`);
       } catch (e) {
         errors.push({ playerId: p.id, error: String((e as Error)?.message ?? e).slice(0, 200) });
         log(`✗ ${p.fullName}: ${(e as Error)?.message ?? e}`);
@@ -461,7 +417,7 @@ export async function sweepRoster(
     if (removed) log(`cleanup: removed ${removed} off-roster tier doc(s)`);
   }
 
-  const meta: TierMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, aiCalls, total: queue.length, windows: ctx.windows, errors: errors.slice(0, 20) };
+  const meta: TierMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, total: queue.length, windows: ctx.windows, errors: errors.slice(0, 20) };
   const [col, id] = META_DOC.split('/');
   await db.collection(col).doc(id).set(clean(meta));
   return meta;
