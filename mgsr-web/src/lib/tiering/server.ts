@@ -5,7 +5,7 @@
 import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMessaging } from 'firebase-admin/messaging';
-import type { Firestore } from 'firebase-admin/firestore';
+import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import { adminAuth, adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
 import { ANALYST_MAX_AGE_MS, GEMINI_MODEL, META_DOC, REANALYSE_AFTER_MS, TIER_DEFINITIONS, TIERS_COLLECTION as TC } from './config';
 import {
@@ -441,6 +441,26 @@ export async function sweepRoster(
     }
   });
   await Promise.all(workers);
+
+  // Cleanup (full sweeps only): drop tier docs for players no longer on the roster, and remove any
+  // leftover legacy `ai` field from an earlier version so the doc shape stays clean.
+  let removed = 0;
+  if (!opts.onlyIds) {
+    const rosterIds = new Set(ctx.players.map((p) => p.id));
+    const legacy = await db.collection(TIERS_COLLECTION).get();
+    for (const d of legacy.docs) {
+      if (!rosterIds.has(d.id)) {
+        await d.ref.delete();
+        removed++;
+        continue;
+      }
+      if ((d.data() as Record<string, unknown>).ai !== undefined) {
+        await d.ref.update({ ai: FieldValue.delete() });
+      }
+    }
+    if (removed) log(`cleanup: removed ${removed} off-roster tier doc(s)`);
+  }
+
   const meta: TierMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, aiCalls, total: queue.length, windows: ctx.windows, errors: errors.slice(0, 20) };
   const [col, id] = META_DOC.split('/');
   await db.collection(col).doc(id).set(clean(meta));

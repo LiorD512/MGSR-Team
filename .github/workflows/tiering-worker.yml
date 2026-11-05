@@ -4,6 +4,12 @@ name: Roster Intelligence weekly agent
 on:
   schedule:
     - cron: '0 2 * * 0' # Sunday 02:00 UTC
+  push:
+    branches: [main]
+    paths: # run one sweep automatically when the tiering code lands on main
+      - 'mgsr-web/src/lib/tiering/**'
+      - 'mgsr-web/_tiering_worker.ts'
+      - '.github/workflows/tiering-worker.yml'
   workflow_dispatch:
     inputs:
       force:
