@@ -9,6 +9,7 @@ import { adminAuth, adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
 import { MAX_HISTORY, META_DOC, REANALYSE_AFTER_MS, STATS_TTL_MS, TIERS_COLLECTION as TC } from './config';
 import { contractMonthsLeft, detectSignals, parseValueEuro, snapshotFromStats } from './engine';
 import { fetchPlayerStats } from './inputs';
+import { isPlayerOurAsset } from '@/lib/transfermarkt-utils';
 import type { IntelMeta, PlayerIntel, PlayerIntelDoc, StatsSnapshot } from './types';
 
 export const TIERS_COLLECTION = TC;
@@ -59,6 +60,8 @@ interface RosterPlayer {
   age?: string;
   contractExpired?: string;
   tmProfile?: string;
+  isOurAsset?: boolean;
+  agencyUrl?: string;
   noteList?: { createdAt?: number }[];
 }
 
@@ -90,7 +93,9 @@ export async function loadContext(db: Firestore): Promise<IntelContext> {
     db.collection('AgentTasks').where('createdAt', '>=', cutoff).get().catch(() => null),
   ]);
 
-  const players = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<RosterPlayer, 'id'>) }));
+  const allPlayers = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<RosterPlayer, 'id'>) }));
+  // Only the players WE manage (our assets) — not the wider scouting database.
+  const players = allPlayers.filter((p) => isPlayerOurAsset(p));
   const docs = new Map<string, PlayerIntelDoc>();
   docsSnap.docs.forEach((d) => docs.set(d.id, { playerId: d.id, ...(d.data() as Omit<PlayerIntelDoc, 'playerId'>) }));
 

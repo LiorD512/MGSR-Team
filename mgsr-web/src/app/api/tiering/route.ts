@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { authenticate, readMeta, TIERS_COLLECTION } from '@/lib/tiering/server';
+import { isPlayerOurAsset } from '@/lib/transfermarkt-utils';
 import type { IntelListResponse, PlayerIntelDoc } from '@/lib/tiering/types';
 
 export const dynamic = 'force-dynamic';
@@ -16,10 +17,12 @@ export async function GET(req: NextRequest) {
   const db = adminDb();
   const [docsSnap, playersSnap, meta] = await Promise.all([
     db.collection(TIERS_COLLECTION).get(),
-    db.collection('Players').select().get(),
+    db.collection('Players').select('isOurAsset', 'agencyUrl').get(),
     readMeta(db),
   ]);
-  const rosterIds = new Set(playersSnap.docs.map((d) => d.id));
+  const rosterIds = new Set(
+    playersSnap.docs.filter((d) => isPlayerOurAsset(d.data() as { isOurAsset?: boolean; agencyUrl?: string })).map((d) => d.id)
+  );
   const items: PlayerIntelDoc[] = [];
   docsSnap.docs.forEach((d) => {
     if (!rosterIds.has(d.id)) return;
