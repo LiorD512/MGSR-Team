@@ -1,7 +1,7 @@
 /**
  * Roster Intelligence — weekly background agent (men roster).
  *
- * Stores a weekly stats snapshot for every roster player and flags those whose situation changed:
+ * Flags roster players whose situation changed, from their recent game-by-game log (TM ceapi):
  * hot/cold form, suddenly playing, fallen out of the side, output surge, market-value move,
  * contract/mandate clock. Reason always shown. Uses ONLY in-app data — our scout server
  * /player_stats (season aggregates) + the Players doc + ClubRequests/PlayerDocuments/AgentTasks.
@@ -57,7 +57,7 @@ async function main() {
   log(`weekly sweep start (concurrency ${concurrency}${force ? ', forced' : ''})`);
   const meta = await sweepRoster(db, { force, concurrency, log });
   log(
-    `done: ${meta.analysed}/${meta.total} analysed, ${meta.flagged} flagged, ${meta.statsMatched} with stats, ` +
+    `done: ${meta.analysed}/${meta.total} analysed, ${meta.flagged} flagged, ${meta.withGames} with games, ` +
       `${Math.round((meta.durationMs ?? 0) / 1000)}s, ${meta.errors?.length ?? 0} errors`
   );
 }

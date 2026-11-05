@@ -3836,3 +3836,70 @@ export async function scrapeClubTransfers(clubTmProfile: string, season?: number
     departures: departuresAlt.length > 0 ? departuresAlt : departures,
   };
 }
+
+
+/* ───────────────────────── Recent per-game form (ceapi) ─────────────────────────
+   Transfermarkt serves a player's game-by-game log as JSON from an internal endpoint
+   (/ceapi/performance-game/{id}). It covers all leagues (incl. Israel / lower divisions),
+   unlike the season-aggregate stats API. We extract a compact "last N games" record and
+   store it on the player doc during refresh, so Roster Intelligence reads it cheaply. */
+
+export interface RecentGame {
+  /** YYYY-MM-DD (kickoff, UTC). */
+  date: string;
+  season: number;
+  competition: string;
+  /** 'played' | 'in squad' (benched, 0 min) | 'not in squad' | other TM states. */
+  state: string;
+  minutes: number;
+  started: boolean;
+  goals: number;
+  assists: number;
+  /** TM match grade when available (mostly big leagues); null otherwise. */
+  grade: number | null;
+  /** >0 when TM marks the player injured/absent for this game. */
+  injured: boolean;
+}
+
+/**
+ * Fetch a player's recent games from Transfermarkt's ceapi, newest first.
+ * Returns [] on any failure. Honours TM_HTML_PROXY_URL (same as all TM fetches).
+ */
+export async function fetchRecentGames(tmProfile: string, max = 10): Promise<RecentGame[]> {
+  const id = extractPlayerIdFromUrl(tmProfile);
+  if (!id) return [];
+  try {
+    const raw = await fetchHtmlWithRetry(`${TRANSFERMARKT_BASE}/ceapi/performance-game/${id}`);
+    const json = JSON.parse(raw) as { data?: { performance?: unknown[] } };
+    const perf = json?.data?.performance;
+    if (!Array.isArray(perf)) return [];
+    const games: RecentGame[] = perf
+      .map((x) => {
+        const r = x as Record<string, unknown>;
+        const gi = (r.gameInformation ?? {}) as Record<string, unknown>;
+        const st = (r.statistics ?? {}) as Record<string, Record<string, unknown>>;
+        const gen = (st.generalStatistics ?? {}) as Record<string, unknown>;
+        const pt = (st.playingTimeStatistics ?? {}) as Record<string, unknown>;
+        const go = (st.goalStatistics ?? {}) as Record<string, unknown>;
+        const date = String((gi.date as Record<string, unknown>)?.dateTimeUTC ?? '').slice(0, 10);
+        const gradeNum = Number(gen.grade);
+        return {
+          date,
+          season: Number(gi.seasonId) || 0,
+          competition: String(gi.competitionId ?? ''),
+          state: String(gen.participationState ?? ''),
+          minutes: Number(pt.playedMinutes) || 0,
+          started: pt.isStarting === true,
+          goals: Number(go.goalsScoredTotal) || 0,
+          assists: Number(go.assists) || 0,
+          grade: Number.isFinite(gradeNum) && gradeNum > 0 ? gradeNum : null,
+          injured: Number(gen.injuryId) > 0 || Number(gen.absenceId) > 0,
+        };
+      })
+      .filter((g) => g.date)
+      .sort((a, b) => b.date.localeCompare(a.date));
+    return games.slice(0, max);
+  } catch {
+    return [];
+  }
+}

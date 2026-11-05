@@ -6,10 +6,10 @@ import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { type Firestore } from 'firebase-admin/firestore';
 import { adminAuth, adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
-import { MAX_HISTORY, META_DOC, REANALYSE_AFTER_MS, STATS_TTL_MS, TIERS_COLLECTION as TC } from './config';
-import { contractMonthsLeft, detectSignals, parseValueEuro, snapshotFromStats } from './engine';
-import { fetchPlayerStats, warmScoutServer } from './inputs';
-import type { IntelMeta, PlayerIntel, PlayerIntelDoc, StatsSnapshot } from './types';
+import { META_DOC, REANALYSE_AFTER_MS, TIERS_COLLECTION as TC } from './config';
+import { contractMonthsLeft, detectSignals, parseValueEuro, summariseForm } from './engine';
+import { getRecentGames } from './inputs';
+import type { IntelMeta, PlayerIntel, PlayerIntelDoc, RecentGame } from './types';
 
 export const TIERS_COLLECTION = TC;
 const DAY = 24 * 3600 * 1000;
@@ -59,8 +59,9 @@ interface RosterPlayer {
   age?: string;
   contractExpired?: string;
   tmProfile?: string;
-  isOurAsset?: boolean;
-  agencyUrl?: string;
+  marketValueHistory?: { value?: string; date?: number }[];
+  recentGames?: RecentGame[];
+  recentGamesAt?: number;
   noteList?: { createdAt?: number }[];
 }
 
@@ -143,11 +144,25 @@ function requestMatches(r: RequestRow, positions: string[] | undefined, age: num
 
 export interface ProcessOptions {
   force?: boolean;
+  /** Let the worker self-enrich via TM ceapi when the doc has no fresh recentGames (default true). */
+  allowFetch?: boolean;
 }
 export interface ProcessResult {
   doc: PlayerIntelDoc;
-  statsMatched: boolean;
+  hasGames: boolean;
   flagged: boolean;
+}
+
+/** Oldest value within ~14 months from marketValueHistory, for the value-move signal. */
+function prevValueEuro(history: { value?: string; date?: number }[] | undefined, now: number): number | null {
+  const pts = (history ?? [])
+    .map((h) => ({ v: parseValueEuro(h.value), d: Number(h.date) || 0 }))
+    .filter((p) => p.v > 0 && p.d > 0)
+    .sort((a, b) => a.d - b.d);
+  if (pts.length < 2) return null;
+  const windowStart = now - 14 * 30.44 * DAY;
+  const base = pts.find((p) => p.d >= windowStart) ?? pts[0];
+  return base.v;
 }
 
 function clean<T>(o: T): T {
@@ -164,64 +179,25 @@ function clean<T>(o: T): T {
 
 export async function processPlayer(db: Firestore, ctx: IntelContext, p: RosterPlayer, opts: ProcessOptions): Promise<ProcessResult> {
   const now = ctx.now;
-  const prev = ctx.docs.get(p.id);
-  const history = (prev?.history ?? []).slice().sort((a, b) => a.at - b.at);
-  const valueEuro = parseValueEuro(p.marketValue);
+  const { games, source } = await getRecentGames(p, now, { force: opts.force, allowFetch: opts.allowFetch !== false });
+  const hasGames = games.length > 0;
 
-  // Fetch stats at most weekly; otherwise reuse the latest snapshot's stats with a fresh value.
-  const lastSnap = history[history.length - 1];
-  const hadStats = (s?: StatsSnapshot) => !!s && (s.rating != null || s.minutes != null);
-  const statsFresh = lastSnap && now - lastSnap.at < STATS_TTL_MS && !opts.force;
-  let statsMatched = false;
-  let snapshot: StatsSnapshot;
-  if (statsFresh) {
-    snapshot = { ...lastSnap, at: now, valueEuro: valueEuro || lastSnap.valueEuro };
-    statsMatched = hadStats(lastSnap);
-  } else if (p.tmProfile) {
-    const res = await fetchPlayerStats(p.tmProfile);
-    if (res.status === 'ok') {
-      snapshot = snapshotFromStats(now, res.data, valueEuro);
-      statsMatched = true;
-    } else if (res.status === 'unavailable' && hadStats(lastSnap)) {
-      // Server was down/cold — keep the player's last good stats rather than wiping them this week.
-      snapshot = { ...lastSnap, at: now, valueEuro: valueEuro || lastSnap.valueEuro };
-      statsMatched = true;
-    } else {
-      // 'not_found' (genuinely not in the stats DB) or unavailable with no prior stats.
-      snapshot = snapshotFromStats(now, null, valueEuro);
-    }
-  } else {
-    snapshot = snapshotFromStats(now, null, valueEuro);
-  }
-
-  // Append to history (replace a same-week capture so repeated runs don't pile up), keep the window.
-  const base = history.filter((h) => now - h.at > DAY); // prior weeks only
-  const newHistory = [...base, snapshot].slice(-MAX_HISTORY);
-
-  // Signals compare `current` to everything BEFORE it.
   const age = p.age ? parseInt(p.age, 10) || null : null;
   const mandateExp = p.tmProfile ? ctx.mandates.get(p.tmProfile) : undefined;
+
   const signals = detectSignals({
     now,
-    current: snapshot,
-    history: base,
+    games,
+    value: { curEuro: parseValueEuro(p.marketValue), prevEuro: prevValueEuro(p.marketValueHistory, now) },
     contractMonths: contractMonthsLeft(p.contractExpired, now),
     mandateDays: mandateExp ? (mandateExp - now) / DAY : null,
-    matchingRequests: ctx.requests.filter((r) => requestMatches(r, p.positions, age)).length,
-    clubCountry: p.currentClub?.clubCountry,
   });
+  // requests still influence nothing here (kept for future); silence unused
+  void requestMatches;
 
-  const ratingSpark = newHistory.map((h) => h.rating).filter((v): v is number => typeof v === 'number');
+  const form = summariseForm(games);
   const intel: PlayerIntel | undefined = signals.length
-    ? {
-        top: signals[0],
-        signals,
-        score: signals[0].strength,
-        current: snapshot,
-        ratingSpark: ratingSpark.slice(-6),
-        firstRun: base.length === 0,
-        computedAt: now,
-      }
+    ? { top: signals[0], signals, score: signals[0].strength, form, noGameData: !hasGames, computedAt: now }
     : undefined;
 
   const lastTouchAt = Math.max(
@@ -234,13 +210,14 @@ export async function processPlayer(db: Firestore, ctx: IntelContext, p: RosterP
     playerId: p.id,
     tmProfile: p.tmProfile,
     playerName: p.fullName,
-    history: newHistory,
+    // keep the games we analysed (so the drawer can show them), only when we have fresh ones
+    ...(source === 'fetched' || (source === 'doc' && hasGames) ? { recentGames: games.slice(0, 10) } : {}),
     ...(intel ? { intel } : {}),
     ...(lastTouchAt ? { lastTouchAt } : {}),
   };
   await db.collection(TIERS_COLLECTION).doc(p.id).set(clean(doc));
   ctx.docs.set(p.id, doc);
-  return { doc, statsMatched, flagged: !!intel };
+  return { doc, hasGames, flagged: !!intel };
 }
 
 export async function sweepRoster(
@@ -250,13 +227,13 @@ export async function sweepRoster(
   const t0 = Date.now();
   const ctx = await loadContext(db);
   const log = opts.log ?? (() => {});
-  await warmScoutServer(); // wake the Render scout server so the first calls don't all hit a cold start
   const queue = ctx.players.filter((p) => (opts.onlyIds ? opts.onlyIds.includes(p.id) : true));
   queue.sort((a, b) => (ctx.docs.get(a.id)?.intel?.computedAt ?? 0) - (ctx.docs.get(b.id)?.intel?.computedAt ?? 0));
-  const conc = Math.max(1, Math.min(8, opts.concurrency ?? 4));
+  // Modest concurrency — the self-enrich path hits TM via the proxy.
+  const conc = Math.max(1, Math.min(6, opts.concurrency ?? 3));
   let analysed = 0;
   let flagged = 0;
-  let statsMatched = 0;
+  let withGames = 0;
   const errors: { playerId: string; error: string }[] = [];
   let i = 0;
   const workers = Array.from({ length: conc }, async () => {
@@ -265,9 +242,9 @@ export async function sweepRoster(
       try {
         const r = await processPlayer(db, ctx, p, opts);
         analysed++;
-        if (r.statsMatched) statsMatched++;
+        if (r.hasGames) withGames++;
         if (r.flagged) flagged++;
-        log(`✓ ${p.fullName}${r.flagged ? ` → ${r.doc.intel!.top.en}` : ' (no signal)'}${r.statsMatched ? '' : ' [no stats]'}`);
+        log(`✓ ${p.fullName}${r.flagged ? ` → ${r.doc.intel!.top.en}` : ' (no signal)'}${r.hasGames ? '' : ' [no games]'}`);
       } catch (e) {
         errors.push({ playerId: p.id, error: String((e as Error)?.message ?? e).slice(0, 200) });
         log(`✗ ${p.fullName}: ${(e as Error)?.message ?? e}`);
@@ -283,7 +260,7 @@ export async function sweepRoster(
     for (const d of all.docs) if (!rosterIds.has(d.id)) await d.ref.delete();
   }
 
-  const meta: IntelMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, flagged, total: queue.length, statsMatched, errors: errors.slice(0, 20) };
+  const meta: IntelMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, flagged, total: queue.length, withGames, errors: errors.slice(0, 20) };
   const [col, id] = META_DOC.split('/');
   await db.collection(col).doc(id).set(clean(meta));
   return meta;

@@ -6806,3 +6806,14 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .ri-btn-gold { background: var(--gold-soft); border-color: var(--gold-soft); color: var(--ink); }
 .brit-room .ri-btn-gold:hover { background: var(--gold); border-color: var(--gold); color: var(--paper); }
 @media (max-width: 900px) { .brit-room .ri-spark { display: none; } }
+
+/* Roster Intelligence — recent games list in the drawer */
+.brit-room .ri-games { display: grid; gap: 2px; }
+.brit-room .ri-game { display: grid; grid-template-columns: 44px 44px 1fr auto; gap: 8px; align-items: center; padding: 7px 8px; font: 10px/1.3 var(--mono); border-inline-start: 3px solid var(--line); background: var(--card); }
+.brit-room .ri-game.ri-g-played { border-inline-start-color: var(--green); }
+.brit-room .ri-game.ri-g-bench { border-inline-start-color: var(--gold); }
+.brit-room .ri-game.ri-g-out { border-inline-start-color: var(--red); }
+.brit-room .ri-g-date { color: var(--muted); }
+.brit-room .ri-g-comp { color: var(--muted); text-transform: uppercase; }
+.brit-room .ri-g-state { color: var(--ink); }
+.brit-room .ri-g-out { text-align: end; color: var(--ink); }

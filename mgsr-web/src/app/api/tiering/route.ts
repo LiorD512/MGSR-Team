@@ -24,9 +24,7 @@ export async function GET(req: NextRequest) {
   docsSnap.docs.forEach((d) => {
     if (!rosterIds.has(d.id)) return;
     const data = d.data() as Omit<PlayerIntelDoc, 'playerId'>;
-    const { history: _history, ...rest } = data; // history = server-side snapshots, keep the payload small
-    void _history;
-    items.push({ playerId: d.id, ...rest });
+    items.push({ playerId: d.id, ...data });
   });
   return NextResponse.json({ items, meta, generatedAt: Date.now() } satisfies IntelListResponse);
 }

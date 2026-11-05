@@ -60,6 +60,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   "marketValue", "profileImage", "nationalityFlag", "nationality",
   "nationalities", "nationalityFlags", "age", "contractExpired",
   "positions", "currentClub", "marketValueHistory", "lastRefreshedAt",
+  "recentGames", "recentGamesAt",
   "isOnLoan", "foot", "onLoanFromClub", "height", "noteList", "notes",
   // Women-specific
   "soccerDonnaUrl", "fmInsideUrl", "fullName",

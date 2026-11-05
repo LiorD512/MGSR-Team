@@ -139,6 +139,17 @@ body{margin:0;background:var(--paper)}
 .brit-room .ri-btn-gold:hover { background: var(--gold); border-color: var(--gold); color: var(--paper); }
 @media (max-width: 900px) { .brit-room .ri-spark { display: none; } }
 
+/* Roster Intelligence — recent games list in the drawer */
+.brit-room .ri-games { display: grid; gap: 2px; }
+.brit-room .ri-game { display: grid; grid-template-columns: 44px 44px 1fr auto; gap: 8px; align-items: center; padding: 7px 8px; font: 10px/1.3 var(--mono); border-inline-start: 3px solid var(--line); background: var(--card); }
+.brit-room .ri-game.ri-g-played { border-inline-start-color: var(--green); }
+.brit-room .ri-game.ri-g-bench { border-inline-start-color: var(--gold); }
+.brit-room .ri-game.ri-g-out { border-inline-start-color: var(--red); }
+.brit-room .ri-g-date { color: var(--muted); }
+.brit-room .ri-g-comp { color: var(--muted); text-transform: uppercase; }
+.brit-room .ri-g-state { color: var(--ink); }
+.brit-room .ri-g-out { text-align: end; color: var(--ink); }
+
 </style>
 </head>
 <body>
@@ -163,7 +174,7 @@ body{margin:0;background:var(--paper)}
 <div class="brit-modal" id="modal"></div>
 <div class="notif" id="notif"></div>
 <div class="toast" id="toast"></div>
-<div class="mockbar"><b>MOCK</b><span>weekly agent · live stats · read-only</span><button onclick="resetAll()">Reset</button></div>
+<div class="mockbar"><b>MOCK</b><span>weekly agent · recent-game signals · read-only</span><button onclick="resetAll()">Reset</button></div>
 </div>
 
 <script>
@@ -389,63 +400,69 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll()});
 renderAll();
 </script>
 <script>
-/* ===== Roster Intelligence — weekly "what needs attention" board. Overrides the mock's RI module. ===== */
-Object.assign(D.en,{cap:'{n} players need attention this week · from live stats',baseline:'baseline week — change tracking starts next week',
- weekly:'updated weekly',updated:'updated 2d ago',
- dr_why:'Why he’s flagged',dr_stats:'This season',dr_touch:'Last contact',dr_updated:'Updated',last_touch:'Last touch',
- f_rating:'Rating',f_minutes:'Minutes',f_apps:'Apps',f_ga:'Goals/Assists',f_league:'League',profile:'Open full profile →',
- badge:{hot_form:['🔥','In form'],cold_form:['📉','Form dip'],breaking_in:['⬆️','Playing more'],losing_place:['🪑','Out of the side'],output_surge:['⚽','Output surge'],value_jump:['💹','Value up'],value_drop:['🔻','Value down'],contract_clock:['⏳','Contract'],mandate_clock:['📄','Mandate'],standout_form:['⭐','Standout'],standout_output:['🎯','High output'],heavy_load:['🏃','Key player']}});
-Object.assign(D.he,{cap:'{n} שחקנים דורשים תשומת לב השבוע · מסטטיסטיקה חיה',baseline:'שבוע בסיס — מעקב שינויים מתחיל בשבוע הבא',
- weekly:'מתעדכן שבועית',updated:'עודכן לפני יומיים',
- dr_why:'למה הוא סומן',dr_stats:'העונה',dr_touch:'קשר אחרון',dr_updated:'עודכן',last_touch:'קשר אחרון',
- f_rating:'דירוג',f_minutes:'דקות',f_apps:'הופעות',f_ga:'שערים/בישולים',f_league:'ליגה',profile:'פתח פרופיל מלא ←',
- badge:{hot_form:['🔥','בכושר'],cold_form:['📉','ירידה בכושר'],breaking_in:['⬆️','משחק יותר'],losing_place:['🪑','מחוץ להרכב'],output_surge:['⚽','זינוק בתפוקה'],value_jump:['💹','השווי עלה'],value_drop:['🔻','השווי ירד'],contract_clock:['⏳','חוזה'],mandate_clock:['📄','מנדט'],standout_form:['⭐','בולט'],standout_output:['🎯','תפוקה גבוהה'],heavy_load:['🏃','שחקן מפתח']}});
+/* ===== Roster Intelligence — weekly per-game signals. Overrides the mock's RI module. ===== */
+Object.assign(D.en,{cap:'{n} players need attention this week · from recent games',weekly:'updated weekly',updated:'updated 2d ago',
+ dr_why:'Why he’s flagged',dr_form:'Recent form',dr_games:'Last games',dr_touch:'Last contact',dr_updated:'Updated',last_touch:'Last touch',
+ form_last:'last {n} games',f_played:'Played',f_starts:'Starts',f_ga:'Goals/Assists',f_grade:'Avg grade',profile:'Open full profile →',
+ badge:{hot_form:['🔥','In form'],cold_form:['📉','Form dip'],dropped_squad:['🪑','Out of the squad'],benched:['🛋️','On the bench'],breaking_in:['⬆️','Breaking in'],output_surge:['⚽','Output surge'],back_from_injury:['🩹','Back in action'],value_jump:['💹','Value up'],value_drop:['🔻','Value down'],contract_clock:['⏳','Contract'],mandate_clock:['📄','Mandate']}});
+Object.assign(D.he,{cap:'{n} שחקנים דורשים תשומת לב השבוע · ממשחקים אחרונים',weekly:'מתעדכן שבועית',updated:'עודכן לפני יומיים',
+ dr_why:'למה הוא סומן',dr_form:'כושר אחרון',dr_games:'משחקים אחרונים',dr_touch:'קשר אחרון',dr_updated:'עודכן',last_touch:'קשר אחרון',
+ form_last:'{n} משחקים אחרונים',f_played:'שיחק',f_starts:'פתיחות',f_ga:'שערים/בישולים',f_grade:'ציון ממוצע',profile:'פתח פרופיל מלא ←',
+ badge:{hot_form:['🔥','בכושר'],cold_form:['📉','ירידה בכושר'],dropped_squad:['🪑','מחוץ לסגל'],benched:['🛋️','על הספסל'],breaking_in:['⬆️','נכנס להרכב'],output_surge:['⚽','זינוק בתפוקה'],back_from_injury:['🩹','חזר לפעילות'],value_jump:['💹','השווי עלה'],value_drop:['🔻','השווי ירד'],contract_clock:['⏳','חוזה'],mandate_clock:['📄','מנדט']}});
 const he=()=>lang==='he', L=k=>T(k);
 const S=(kind,tone,en,he,det,detHe)=>({kind,tone,en,he,det,detHe});
+const g=(o)=>Object.assign({date:'2026-10-20',comp:'IS1',state:'played',min:90,started:true,goals:0,assists:0,grade:null},o);
 const BOARD=[
- {id:8,n:'Itai Sassoon',pos:'CF',club:'Maccabi Haifa',age:24,mv:'€2.8M',spark:[6.8,7.0,7.3,7.5],cur:{rating:7.5,minutes:2100,apps:25,lineups:24,g:12,a:4,league:'Ligat Haal',season:2026},
-  sigs:[S('hot_form','positive','In form — rating up to 7.5','בכושר — הדירוג עלה ל-7.5','was 6.8 three weeks ago','היה 6.8 לפני שלושה שבועות'),S('output_surge','positive','Scoring — +4 goals in recent weeks','כובש — +4 שערים בשבועות האחרונים','12 goals this season','12 שערים העונה')]},
- {id:9,n:'Dennis Kolo',pos:'CM',club:'Bnei Sakhnin',age:20,mv:'€500k',spark:[6.7,6.9,7.1],cur:{rating:7.1,minutes:980,apps:15,lineups:9,g:2,a:3,league:'Ligat Haal',season:2026},
-  sigs:[S('breaking_in','positive','Breaking in — +5 starts','נכנס להרכב — +5 פתיחות','barely featured a month ago','בקושי שיחק לפני חודש')]},
- {id:3,n:'Omer Katz',pos:'CB',club:'Hapoel Jerusalem',age:31,mv:'€700k',spark:[7.1,7.1,7.0,7.0],cur:{rating:7.0,minutes:2000,apps:24,lineups:21,g:1,league:'Ligat Haal',season:2026},
-  sigs:[S('losing_place','negative','Fallen out of the side — no new minutes','יצא מההרכב — אין דקות חדשות','~3 weeks on the bench','~3 שבועות על הספסל'),S('contract_clock','watch','Contract ends in 4 months','החוזה מסתיים בעוד 4 חודשים')]},
- {id:4,n:'Guy Mizrahi',pos:'ST',club:'Beer Sheva',age:27,mv:'€1.6M',spark:[7.2,6.9,6.5,6.3],cur:{rating:6.3,minutes:1850,apps:23,g:6,league:'Ligat Haal',season:2026},
-  sigs:[S('cold_form','negative','Form dipping — rating down to 6.3','ירידה בכושר — הדירוג ירד ל-6.3','was 7.2 two months ago','היה 7.2 לפני חודשיים')]},
- {id:5,n:'Noam Bar',pos:'LW',club:'Maccabi Netanya',age:19,mv:'€2.1M',spark:[7.0,7.3],cur:{rating:7.3,minutes:1400,apps:20,lineups:17,g:5,a:6,league:'Ligat Haal',season:2026},
-  sigs:[S('value_jump','positive','Market value up 40%','שווי השוק עלה 40%','€1.5M → €2.1M','€1.5M → €2.1M'),S('output_surge','positive','11 G+A this season','11 ש+ב העונה')]},
- {id:14,n:'Dean Levi',pos:'RW',club:'Hapoel Haifa',age:28,mv:'€1.2M',spark:[6.9,6.6,6.4],cur:{rating:6.4,minutes:1600,apps:22,g:3,league:'Ligat Haal',season:2026},
-  sigs:[S('mandate_clock','negative','Mandate expires in 9 days','המנדט פג בעוד 9 ימים')]},
+ {id:8,n:'Itai Sassoon',pos:'CF',club:'Maccabi Haifa',age:24,mv:'€2.8M',form:{games:6,played:6,starts:6,goals:5,assists:1,grade:null},
+  sigs:[S('hot_form','positive','In form — 5 G+A over last 6','בכושר — 5 ש+ב ב-6 האחרונים','2 goals last game','2 שערים במשחק האחרון'),S('output_surge','positive','Scoring — 5 G+A in last 6','כובש — 5 ש+ב ב-6 האחרונים')],
+  games:[g({date:'2026-11-04',comp:'CL',goals:2}),g({date:'2026-10-31',comp:'IS1',goals:1}),g({date:'2026-10-24',comp:'IS1',assists:1}),g({date:'2026-10-20',comp:'IS1',goals:1}),g({date:'2026-10-17',comp:'IS1',goals:1})],spark:[0.9,1,0.8,1,1,1]},
+ {id:3,n:'Omer Katz',pos:'CB',club:'Hapoel Jerusalem',age:31,mv:'€700k',form:{games:6,played:3,starts:3,goals:0,assists:0,grade:null},
+  sigs:[S('dropped_squad','negative','Out of the squad — last 2 games','מחוץ לסגל — 2 משחקים אחרונים','was starting before','פתח לפני כן'),S('contract_clock','watch','Contract ends in 4 months','החוזה מסתיים בעוד 4 חודשים')],
+  games:[g({date:'2026-11-02',comp:'IS1',state:'not in squad',min:0,started:false}),g({date:'2026-10-26',comp:'IS1',state:'not in squad',min:0,started:false}),g({date:'2026-10-19',comp:'IS1'}),g({date:'2026-10-05',comp:'IS1'})],spark:[1,1,1,1,0,0]},
+ {id:9,n:'Dennis Kolo',pos:'CM',club:'Bnei Sakhnin',age:20,mv:'€500k',form:{games:6,played:4,starts:3,goals:1,assists:1,grade:null},
+  sigs:[S('breaking_in','positive','Breaking into the XI — 3 recent starts','נכנס להרכב — 3 פתיחות אחרונות','was not starting a month ago','לא פתח לפני חודש')],
+  games:[g({date:'2026-11-01',comp:'IS1',started:true}),g({date:'2026-10-25',comp:'IS1',started:true,assists:1}),g({date:'2026-10-18',comp:'IS1',started:true,goals:1}),g({date:'2026-10-04',comp:'IS1',state:'in squad',min:0,started:false})],spark:[0,0.3,1,1,1]},
+ {id:4,n:'Guy Mizrahi',pos:'ST',club:'Beer Sheva',age:27,mv:'€1.6M',form:{games:6,played:1,starts:0,goals:0,assists:0,grade:null},
+  sigs:[S('benched','negative','On the bench — 0 minutes in last 3 games','על הספסל — 0 דקות ב-3 משחקים אחרונים')],
+  games:[g({date:'2026-11-02',comp:'IS1',state:'in squad',min:0,started:false}),g({date:'2026-10-26',comp:'IS1',state:'in squad',min:0,started:false}),g({date:'2026-10-19',comp:'IS1',state:'in squad',min:0,started:false}),g({date:'2026-10-12',comp:'IS1',min:25,started:false})],spark:[0.3,0,0,0]},
+ {id:5,n:'Noam Bar',pos:'LW',club:'Maccabi Netanya',age:19,mv:'€2.1M',form:{games:6,played:6,starts:5,goals:4,assists:3,grade:null},
+  sigs:[S('value_jump','positive','Market value up 40%','שווי השוק עלה 40%','€1.5M → €2.1M','€1.5M → €2.1M'),S('output_surge','positive','7 G+A in last 6','7 ש+ב ב-6 האחרונים')],
+  games:[g({date:'2026-11-03',comp:'IS1',goals:1,assists:1}),g({date:'2026-10-27',comp:'IS1',goals:1}),g({date:'2026-10-20',comp:'IS1',assists:2})],spark:[0.8,1,1,1,1,1]},
+ {id:14,n:'Dean Levi',pos:'RW',club:'Hapoel Haifa',age:28,mv:'€1.2M',form:{games:6,played:5,starts:5,goals:1,grade:null},
+  sigs:[S('cold_form','negative','Form dip — quiet run of games','ירידה בכושר — רצף חלש','1 goal in 6','שער אחד ב-6')],
+  games:[g({date:'2026-11-01',comp:'IS1'}),g({date:'2026-10-25',comp:'IS1'}),g({date:'2026-10-18',comp:'IS1'})],spark:[1,0.9,0.8,0.7,0.8,0.7]},
 ];
 let riOpen=null;
 const b=id=>BOARD.find(x=>x.id===id);
 const badge=k=>(he()?D.he.badge[k]:D.en.badge[k]);
 const sigTxt=s=>he()?s.he:s.en, det=s=>he()?(s.detHe||s.det):s.det;
-function spark(vals,w,h,sw){ if(vals.length<2)return''; const min=Math.min(...vals),max=Math.max(...vals),span=(max-min)||1;
- const pts=vals.map((v,i)=>`${(i/(vals.length-1))*w},${(h-((v-min)/span)*h).toFixed(1)}`).join(' ');
- const rising=vals[vals.length-1]>=vals[0]; return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${rising?'var(--green)':'var(--red)'}" stroke-width="${sw}"/></svg>`;}
+function spark(vals,w,h,sw){if(!vals||vals.length<2)return'';const min=Math.min(...vals),max=Math.max(...vals),span=(max-min)||1;
+ const pts=vals.map((v,i)=>`${(i/(vals.length-1))*w},${(h-((v-min)/span)*h).toFixed(1)}`).join(' ');const rising=vals[vals.length-1]>=vals[0];
+ return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${rising?'var(--green)':'var(--red)'}" stroke-width="${sw}"/></svg>`;}
 function riHTML(){
  return `<div class="brit-module-head"><h2>${T('ri')}</h2><a href="#" onclick="return false">${T('viewAll')}</a></div>
  <p class="ri-caption">${L('cap').replace('{n}',BOARD.length)}</p>
  <ul class="rk">${BOARD.map(p=>{const s=p.sigs[0],bd=badge(s.kind);return `<li><button class="rk-row tone-${s.tone}" onclick="riDrawer(${p.id})">
    <span class="rk-badge t-${s.tone}">${bd[0]}</span>
    <span class="rk-main"><span class="rk-top"><b>${p.n}</b><span class="rk-chip t-${s.tone}">${bd[1]}</span>${p.sigs.length>1?`<span class="rk-more">+${p.sigs.length-1}</span>`:''}</span>
-   <span class="rk-reason">${sigTxt(s)}</span>
-   <span class="rk-sub">${p.pos} · ${p.club}${det(s)?' · '+det(s):''}</span></span>
-   <span class="ri-spark">${spark(p.spark,56,18,1.5)}</span></button></li>`;}).join('')}</ul>
+   <span class="rk-reason">${sigTxt(s)}</span><span class="rk-sub">${p.pos} · ${p.club}${det(s)?' · '+det(s):''}</span></span>
+   <span class="ri-spark">${spark(p.spark,58,18,1.5)}</span></button></li>`;}).join('')}</ul>
  <div class="ri-status"><span class="ri-live"></span>${L('updated')} · ${L('weekly')}</div>`;
 }
 function paint(){document.getElementById('ri').innerHTML=riHTML()}
 function closePb(){document.getElementById('pbLayer').innerHTML='';riOpen=null}
 function closeAll(){closePb();['bd','drawer','modal'].forEach(i=>{const e=document.getElementById(i);e&&e.classList.remove('open')})}
 function openDrawer(id){riDrawer(id)}
-function riDrawer(id){riOpen=id;const p=b(id),c=p.cur;
- const facts=[];if(c.rating!=null)facts.push([L('f_rating'),c.rating.toFixed(2)]);if(c.minutes!=null)facts.push([L('f_minutes'),c.minutes.toLocaleString()]);
- if(c.apps!=null)facts.push([L('f_apps'),`${c.apps}${c.lineups!=null?` (${c.lineups} ${he()?'הרכב':'st'})`:''}`]);if(c.g!=null||c.a!=null)facts.push([L('f_ga'),`${c.g||0}G / ${c.a||0}A`]);if(c.league)facts.push([L('f_league'),c.league]);
+function stateLabel(x){if(x.min>=1||x.state==='played')return{t:x.min+"'"+(x.started?(he()?' פתח':' ST'):''),c:'played'};if(/not in squad/.test(x.state))return{t:he()?'מחוץ לסגל':'not in squad',c:'out'};if(/in squad/.test(x.state))return{t:he()?'ספסל':'bench',c:'bench'};return{t:x.state,c:'out'};}
+function riDrawer(id){riOpen=id;const p=b(id),f=p.form;
  document.getElementById('pbLayer').innerHTML=`<div class="ri-backdrop" onclick="closePb()"></div><aside class="ri-drawer">
   <div class="ri-dr-h"><button class="ri-x" onclick="closePb()">×</button><small>${p.pos} · ${p.age} · ${p.club} · ${p.mv}</small><h2>${p.n}</h2>
-   <div class="ri-dr-tags">${spark(p.spark,120,34,2)}<span class="ri-fitlabel">${L('dr_updated')} 2 ${he()?'בנוב׳':'Nov'}</span></div></div>
+   <div class="ri-dr-tags">${spark(p.spark,120,34,2)}<span class="ri-fitlabel">${L('dr_updated')} 4 ${he()?'בנוב׳':'Nov'}</span></div></div>
   <div class="ri-dr-s"><h4><span>${L('dr_why')}</span></h4><ul class="pb-why big">${p.sigs.map(s=>`<li class="tone-${s.tone}"><b>${sigTxt(s)}</b>${det(s)?`<br><span class="ri-muted">${det(s)}</span>`:''}</li>`).join('')}</ul></div>
-  <div class="ri-dr-s"><h4><span>${L('dr_stats')}</span><span>${c.season}/${(c.season+1)%100}</span></h4><div class="ri-facts">${facts.map(f=>`<div><b>${f[1]}</b><span>${f[0]}</span></div>`).join('')}</div></div>
+  <div class="ri-dr-s"><h4><span>${L('dr_form')}</span><span>${L('form_last').replace('{n}',f.games)}</span></h4><div class="ri-facts">
+   <div><b>${f.played}/${f.games}</b><span>${L('f_played')}</span></div><div><b>${f.starts}</b><span>${L('f_starts')}</span></div>
+   <div><b>${f.goals}/${f.assists||0}</b><span>${L('f_ga')}</span></div><div><b>${f.grade??'—'}</b><span>${L('f_grade')}</span></div></div></div>
+  <div class="ri-dr-s"><h4><span>${L('dr_games')}</span></h4><div class="ri-games">${p.games.map(x=>{const st=stateLabel(x);return `<div class="ri-game ri-g-${st.c}"><span class="ri-g-date">${x.date.slice(5)}</span><span class="ri-g-comp">${x.comp}</span><span class="ri-g-state">${st.t}</span><span class="ri-g-out">${x.goals?x.goals+'⚽':''}${x.assists?' '+x.assists+'🅰':''}</span></div>`;}).join('')}</div></div>
   <div class="ri-dr-s"><h4><span>${L('dr_touch')}</span></h4><div class="ri-muted">${L('last_touch')}: 14 ${he()?'באוק׳':'Oct'} 2026</div></div>
   <div class="ri-dr-f"><a class="ri-btn ri-btn-gold">${L('profile')}</a></div></aside>`;}
 function resetAll(){closeAll();paint()}
