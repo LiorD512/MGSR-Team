@@ -1,41 +1,20 @@
 /**
- * Level & Focus — roster tiering (men platform, v1: roster only).
+ * Roster Intelligence — Phase 1 (men platform).
  *
- * Level  = what can the player play at (1 Elite … 5 Developing)
- * Focus  = how hard we push now        (1 Push now … 4 Park)
- *
- * A background worker (see _tiering_worker.ts) keeps the `ai` block fresh for every roster player.
- * Humans own the confirmed tags (`level`, `focus`). The engine/AI never overwrites them — it only
- * proposes. See docs/PLAYER_LEVEL_FOCUS_PLAN.md.
+ * A weekly background agent reads everything we hold on every roster player (notes, contract, mandate,
+ * market value + history, match stats, availability/injuries, club/league strength, recent news) and
+ * computes, mathematically:
+ *   • Level     — the league tier the player realistically fits, with a role and a ceiling (prediction).
+ *   • Urgency   — how hard / how soon to push him (contract, mandate, demand, momentum, trend).
+ *   • Worth     — a single 0-100 "work on him next window" score that ranks the roster.
+ * The dashboard shows only the top of that ranking. No user interaction in Phase 1.
  */
 
-export type Level = 1 | 2 | 3 | 4 | 5;
-export type Focus = 1 | 2 | 3 | 4;
+/** League tier the player fits. 1 = elite (top-5 league / CL), 5 = developing / lower leagues. */
+export type Tier = 1 | 2 | 3 | 4 | 5;
+export type Role = 'starter' | 'rotation' | 'squad';
 export type Trend = 'up' | 'flat' | 'down';
-
 export type PositionGroup = 'GK' | 'CB' | 'FB' | 'MF' | 'AM' | 'ST';
-
-export type NextKind = 'mandate' | 'contract' | 'requests' | 'untouched' | 'none';
-
-/** Why a player needs action now. Severity 3 = act today, 2 = this week, 1 = context. */
-export type TriggerKind = 'mandate' | 'contract' | 'request' | 'news' | 'plan' | 'neglect';
-export interface TierTrigger {
-  kind: TriggerKind;
-  severity: 1 | 2 | 3;
-  en: string;
-  he: string;
-  /** ISO date (YYYY-MM-DD) of the hard deadline, if any. */
-  deadline?: string;
-  /** What exactly triggered it (clubs, headline) — a new ref re-opens a "done" item. */
-  ref?: string;
-}
-
-/** How good a candidate he is for a focused push in the next transfer window (AI). */
-export interface TierWindowFit {
-  score: number;
-  reasonEn: string;
-  reasonHe: string;
-}
 
 /** The five level criteria. Missing data => the criterion is dropped and weights renormalised. */
 export type CriterionKey = 'output' | 'ability' | 'value' | 'league' | 'availability';
@@ -51,25 +30,37 @@ export interface TierSignals {
 export interface TierCriterion {
   key: CriterionKey;
   weight: number;
-  /** 0-100, or null when we have no data for this criterion. */
   score: number | null;
-  /** Short human-readable evidence, e.g. "Avg rating 7.1 over 1,850 min". */
   note?: string;
 }
 
-export interface TierUrgencyParts {
-  time: number;
-  demand: number;
-  gap: number;
-  momentum: number;
+/** Predicted fit: which tier, in what role, with how much confidence, and the realistic ceiling. */
+export interface FitPrediction {
+  tier: Tier;
+  role: Role;
+  /** Best realistic tier if form/age trend holds (<= tier numerically; 1 is best). */
+  ceiling: Tier;
+  /** 0-100. */
+  confidence: number;
+  labelEn: string;
+  labelHe: string;
 }
 
-export type NewsSentiment = 'positive' | 'neutral' | 'negative' | 'risk';
+export interface UrgencyParts {
+  contract: number;
+  mandate: number;
+  demand: number;
+  momentum: number;
+  neglect: number;
+}
 
+/** Push strength shown next to the level. */
+export type Push = 'now' | 'high' | 'medium' | 'low';
+
+export type NewsSentiment = 'positive' | 'neutral' | 'negative' | 'risk';
 export interface TierNewsItem {
   headline: string;
   sentiment: NewsSentiment;
-  /** Why it matters for us. */
   impactEn: string;
   impactHe: string;
   source?: string;
@@ -77,27 +68,11 @@ export interface TierNewsItem {
   url?: string;
 }
 
-export type PushTiming = 'now' | 'this_week' | 'this_window' | 'later' | 'hold';
-
-/** HOW and WHEN to push the player. */
-export interface TierPlan {
-  /** One imperative line: the very next thing to do. */
-  nextStepEn: string;
-  nextStepHe: string;
-  howEn: string;
-  howHe: string;
-  whenEn: string;
-  whenHe: string;
-  timing: PushTiming;
-  /** Clubs worth approaching (from open requests / the analyst). */
-  targets: string[];
-  /** ISO date by which the action should happen, if there is a hard one. */
-  deadline?: string;
-}
-
-export interface TierRisk {
+export interface TierReason {
   en: string;
   he: string;
+  /** For ordering/colour: 3 = time-critical, 2 = important, 1 = context. */
+  weight: 1 | 2 | 3;
 }
 
 export interface TierSource {
@@ -105,73 +80,12 @@ export interface TierSource {
   url: string;
 }
 
-export interface TierAi {
-  /** Weighted 0-100 score (before AI adjustment). */
-  score: number;
-  /** Share of the criteria weight that had data (0-1). */
-  coverage: number;
-  baseLevel: Level;
-  /** AI qualitative adjustment, +1 = one level better. Always -1, 0 or +1. */
-  adj: -1 | 0 | 1;
-  /** Suggested level = clamp(baseLevel - adj). */
-  level: Level;
-  /** Suggested focus = deterministic focus, nudged at most one step by breaking news. */
-  focus: Focus;
-  /** +1 = news says push harder, -1 = ease off. */
-  focusAdj: -1 | 0 | 1;
-  urgency: number;
-  urgencyParts: TierUrgencyParts;
-  trend: Trend;
-  /** -2 (very negative) … +2 (very positive) news momentum. */
-  newsSignal: number;
-  /** 0-100. */
-  confidence: number;
-  reasonEn: string;
-  reasonHe: string;
-  evidence: string[];
-  criteria: TierCriterion[];
-  signals: TierSignals;
-  news: TierNewsItem[];
-  risks: TierRisk[];
-  plan?: TierPlan;
-  sources: TierSource[];
-  next: { kind: NextKind; value?: number };
-  /** Time-critical reasons computed by the worker (neglect is added live in the UI). */
-  triggers: TierTrigger[];
-  windowFit?: TierWindowFit;
-  model: string;
-  /** Last deterministic recompute. */
-  computedAt: number;
-  /** Last time the AI analyst (Gemini + Google Search) ran. */
-  analystAt?: number;
-  /** Hash of the facts the analyst saw; a change triggers a fresh analyst run. */
-  dataHash?: string;
-  /** Trigger key we last sent a push alert for (prevents repeats). */
-  alertKey?: string;
-}
-
 export interface TierEffort {
   notes30: number;
   tasks30: number;
-  /** Epoch ms of the latest note/task touch, or 0 if none. */
   lastTouchAt: number;
 }
 
-export interface TierHistoryEntry {
-  at: number;
-  by: string;
-  action: 'mark' | 'unmark' | 'handled' | 'reopen';
-  note?: string;
-}
-
-export interface NewsRow {
-  title: string;
-  source?: string;
-  date?: string;
-  url?: string;
-}
-
-/** Cached external inputs so repeat runs are cheap. */
 export interface TierInputs {
   fmCa?: number;
   fmPa?: number;
@@ -192,22 +106,52 @@ export interface TierInputs {
     formTrend?: 'rising' | 'stable' | 'declining';
   };
   intelAt?: number;
-  news?: NewsRow[];
+  news?: { title: string; source?: string; date?: string; url?: string }[];
   newsAt?: number;
+}
+
+/** Everything the weekly agent computes for one player. */
+export interface TierAnalysis {
+  /** 0-100 deterministic quality score (criteria). */
+  score: number;
+  /** Share of criteria weight that had data (0-1). */
+  coverage: number;
+  signals: TierSignals;
+  criteria: TierCriterion[];
+
+  fit: FitPrediction;
+
+  urgency: number;
+  urgencyParts: UrgencyParts;
+  push: Push;
+  trend: Trend;
+
+  /** 0-100 ranking score: worth working on him next window. */
+  worth: number;
+
+  /** Ordered human reasons (why he's worth it / why now). */
+  reasons: TierReason[];
+  /** One-line AI summary of the player and the opportunity. */
+  summaryEn: string;
+  summaryHe: string;
+
+  newsSignal: number;
+  news: TierNewsItem[];
+  sources: TierSource[];
+
+  model: string;
+  computedAt: number;
+  analystAt?: number;
+  dataHash?: string;
 }
 
 export interface PlayerTierDoc {
   playerId: string;
   tmProfile?: string;
   playerName?: string;
-  /** Marked by an agent: "we work hard on him in the next window". */
-  windowTarget?: { by: string; at: number; note?: string };
-  /** "Done" on the Push now list — hidden until a new trigger appears (or 7 days pass). */
-  handled?: { by: string; at: number; key: string };
-  ai?: TierAi;
+  analysis?: TierAnalysis;
   effort?: TierEffort;
   inputs?: TierInputs;
-  history?: TierHistoryEntry[];
 }
 
 export interface TierMeta {

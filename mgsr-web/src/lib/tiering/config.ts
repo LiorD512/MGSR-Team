@@ -1,7 +1,7 @@
-import type { CriterionKey, Focus, Level, PositionGroup } from './types';
+import type { CriterionKey, PositionGroup, Push, Tier } from './types';
 
 /**
- * Level criteria and their weights. A criterion with no data is dropped and the rest renormalised,
+ * Quality criteria and weights. A criterion with no data is dropped and the rest renormalised,
  * so thin data lowers confidence instead of producing a wrong level.
  */
 export const WEIGHTS: Record<CriterionKey, number> = {
@@ -12,63 +12,53 @@ export const WEIGHTS: Record<CriterionKey, number> = {
   availability: 10, // injury history
 };
 
-/** Base thresholds: score >= T[n] means at least level n. */
-export const LEVEL_THRESHOLDS: Record<1 | 2 | 3 | 4, number> = { 1: 78, 2: 64, 3: 50, 4: 36 };
+/** Quality score -> fit tier. score >= T[n] means the player projects to at least tier n. */
+export const TIER_THRESHOLDS: Record<1 | 2 | 3 | 4, number> = { 1: 80, 2: 66, 3: 50, 4: 34 };
 
-/**
- * Per position-group offset added to every threshold (positive = harder to reach a level).
- * v1 ships neutral; tune after seeing real results.
- */
-export const POSITION_OFFSETS: Record<PositionGroup, number> = {
-  GK: 0,
-  CB: 0,
-  FB: 0,
-  MF: 0,
-  AM: 0,
-  ST: 0,
-};
+/** Per position-group offset on every threshold (positive = harder). Neutral in Phase 1. */
+export const POSITION_OFFSETS: Record<PositionGroup, number> = { GK: 0, CB: 0, FB: 0, MF: 0, AM: 0, ST: 0 };
 
 export const POSITION_TO_GROUP: Record<string, PositionGroup> = {
-  GK: 'GK',
-  CB: 'CB',
-  LB: 'FB',
-  RB: 'FB',
-  LWB: 'FB',
-  RWB: 'FB',
-  DM: 'MF',
-  CM: 'MF',
-  LM: 'MF',
-  RM: 'MF',
-  AM: 'AM',
-  CAM: 'AM',
-  LW: 'AM',
-  RW: 'AM',
-  SS: 'AM',
-  CF: 'ST',
-  ST: 'ST',
+  GK: 'GK', CB: 'CB', LB: 'FB', RB: 'FB', LWB: 'FB', RWB: 'FB',
+  DM: 'MF', CM: 'MF', LM: 'MF', RM: 'MF', AM: 'AM', CAM: 'AM', LW: 'AM', RW: 'AM', SS: 'AM', CF: 'ST', ST: 'ST',
 };
 
-/** How much a level counts toward Focus (higher level = more worth the effort). */
-export const LEVEL_WEIGHT: Record<Level, number> = { 1: 1, 2: 0.85, 3: 0.6, 4: 0.35, 5: 0.3 };
+/**
+ * Worth = how much it pays to work on him next window.
+ *   worth = qualityW·quality + saleabilityW·saleability + urgencyW·urgency
+ * quality     = the criteria score (how good he is)
+ * saleability = how movable he is this window (demand + contract + age curve + momentum)
+ * urgency     = time pressure (contract, mandate, demand, momentum, neglect)
+ */
+export const WORTH_WEIGHTS = { quality: 0.4, saleability: 0.35, urgency: 0.25 } as const;
 
-/** Focus cut-offs on `urgency*0.7 + levelWeight*100*0.3`. */
-export const FOCUS_THRESHOLDS = { push: 62, active: 50, maintain: 39 } as const;
+/** Urgency sub-weights. */
+export const URGENCY_WEIGHTS = { contract: 0.3, mandate: 0.26, demand: 0.22, momentum: 0.12, neglect: 0.1 } as const;
 
-/** Target share of effort per Focus group (used by the dashboard effort bar). */
-export const EFFORT_TARGET: Record<Focus, number> = { 1: 45, 2: 30, 3: 15, 4: 10 };
+/** Push-strength cutoffs on urgency (0-100). */
+export const PUSH_THRESHOLDS: { v: number; push: Push }[] = [
+  { v: 72, push: 'now' },
+  { v: 55, push: 'high' },
+  { v: 38, push: 'medium' },
+  { v: 0, push: 'low' },
+];
 
-/* ───────── background worker cadence ───────── */
-/** Skip a player entirely if it was recomputed more recently than this (unless forced). */
-export const MIN_RECOMPUTE_MS = 2 * 60 * 60 * 1000;
-/** Re-run the AI analyst (Gemini + Google Search) at least this often, or earlier if the facts changed. */
-export const ANALYST_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+/** How many players the dashboard shows (ranked by worth). Tune later. */
+export const BOARD_SIZE = 10;
+/** Don't show players below this worth even inside the top N. */
+export const MIN_WORTH = 30;
 
-/** Input cache lifetimes. */
+/* ───────── weekly background agent ───────── */
+/** A player is re-analysed if its analysis is older than this (weekly cadence + a margin). */
+export const REANALYSE_AFTER_MS = 6 * 24 * 60 * 60 * 1000;
+/** Re-run the AI analyst if its read is older than this, or the facts changed. */
+export const ANALYST_MAX_AGE_MS = 8 * 24 * 60 * 60 * 1000;
+
 export const TTL = {
-  news: 5 * 60 * 60 * 1000,
-  stats: 3 * 24 * 60 * 60 * 1000,
-  intel: 7 * 24 * 60 * 60 * 1000,
-  fm: 14 * 24 * 60 * 60 * 1000,
+  news: 6 * 24 * 60 * 60 * 1000,
+  stats: 6 * 24 * 60 * 60 * 1000,
+  intel: 6 * 24 * 60 * 60 * 1000,
+  fm: 20 * 24 * 60 * 60 * 1000,
 } as const;
 
 export const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -87,14 +77,13 @@ export const LEAGUE_STRENGTH: Record<string, number> = {
   slovenia: 42, 'united states': 55, mexico: 55, japan: 52, 'south korea': 50,
   kuwait: 40, bahrain: 38, azerbaijan: 40, georgia: 38, kazakhstan: 38,
 };
-
 export const DEFAULT_LEAGUE_STRENGTH = 40;
 
-/** Draft meaning of each level per market (given to the AI analyst and shown in the UI help). */
-export const LEVEL_DEFINITIONS: Record<Level, { en: string; he: string }> = {
-  1: { en: 'Elite — top-5 league / Champions League starter, or key player of a title winner in Israel', he: 'עילית — פותח בליגה מהחמש הגדולות / ליגת האלופות, או שחקן מפתח באלופה בישראל' },
-  2: { en: 'Premium — strong European leagues or top-3 club in Israel / Saudi & UAE starter', he: 'פרימיום — ליגות אירופה חזקות או קבוצה מהשלישייה בישראל / פותח בסעודיה ובאיחוד' },
-  3: { en: 'Core — reliable top-flight starter (mid-table Israel, mid-tier Europe, Gulf mid-table)', he: 'ליבה — פותח עקבי בליגה הבכירה (אמצע טבלה בישראל, אירופה בינונית, אמצע טבלה במפרץ)' },
-  4: { en: 'Depth — rotation player / lower leagues', he: 'עומק — שחקן רוטציה / ליגות נמוכות' },
-  5: { en: 'Developing — unproven, long-shot or declining', he: 'בפיתוח — לא מוכח, הימור ארוך או בירידה' },
+/** Tier meaning per market (given to the analyst and shown in the UI). */
+export const TIER_DEFINITIONS: Record<Tier, { en: string; he: string }> = {
+  1: { en: 'Elite — top-5 league / Champions League', he: 'עילית — ליגה מהחמש הגדולות / ליגת האלופות' },
+  2: { en: 'Premium — strong European leagues, Israeli top-3, Saudi/UAE', he: 'פרימיום — ליגות אירופה חזקות, שלישיית ישראל, סעודיה/איחוד' },
+  3: { en: 'Core — mid-tier Europe, mid-table Israel, Gulf mid-table', he: 'ליבה — אירופה בינונית, אמצע טבלה בישראל, אמצע טבלה במפרץ' },
+  4: { en: 'Depth — lower leagues / rotation', he: 'עומק — ליגות נמוכות / רוטציה' },
+  5: { en: 'Developing — unproven or declining', he: 'בפיתוח — לא מוכח או בירידה' },
 };

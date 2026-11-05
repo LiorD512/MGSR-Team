@@ -1,32 +1,36 @@
 /**
- * Pure scoring engine for Level & Focus. No I/O — easy to unit test.
+ * Pure maths for Roster Intelligence. No I/O — unit-testable.
+ *
+ * Pipeline: signals → quality score → fit (tier + role + ceiling) → urgency → saleability → worth.
  */
 import {
   DEFAULT_LEAGUE_STRENGTH,
-  FOCUS_THRESHOLDS,
   LEAGUE_STRENGTH,
-  LEVEL_THRESHOLDS,
-  LEVEL_WEIGHT,
   POSITION_OFFSETS,
   POSITION_TO_GROUP,
+  PUSH_THRESHOLDS,
+  TIER_THRESHOLDS,
+  URGENCY_WEIGHTS,
   WEIGHTS,
+  WORTH_WEIGHTS,
 } from './config';
 import type {
   CriterionKey,
-  Focus,
-  Level,
-  NextKind,
+  FitPrediction,
   PositionGroup,
+  Push,
+  Role,
+  Tier,
   TierCriterion,
   TierSignals,
-  TierTrigger,
-  TierUrgencyParts,
   Trend,
+  UrgencyParts,
 } from './types';
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+const round = (v: number) => Math.round(v);
 
-/** "€1.5m" / "€500k" -> euros. Mirrors lib/releases.parseMarketValue (kept local to stay dependency-free). */
+/** "€1.5m" / "€500k" -> euros. */
 export function parseValueEuro(value: string | undefined | null): number {
   if (!value || value.includes('-')) return 0;
   const cleaned = value.replace(/[€\s,]/g, '').toLowerCase();
@@ -59,10 +63,9 @@ export function positionGroupOf(positions: string[] | undefined | null): Positio
 
 export function valueSignal(euro: number): number {
   if (euro <= 0) return 0;
-  // €50k -> 0, €15m -> 100 (log scale)
-  const lo = Math.log10(50_000);
-  const hi = Math.log10(15_000_000);
-  return Math.round(clamp(((Math.log10(euro) - lo) / (hi - lo)) * 100, 0, 100));
+  const lo = Math.log10(50_000); // €50k -> 0
+  const hi = Math.log10(15_000_000); // €15m -> 100
+  return round(clamp(((Math.log10(euro) - lo) / (hi - lo)) * 100, 0, 100));
 }
 
 export function leagueSignal(country: string | undefined | null): number {
@@ -75,12 +78,7 @@ export function abilitySignal(ca: number | undefined | null, pa: number | undefi
   if (!ca || ca <= 0) return undefined;
   const map = (x: number) => clamp(((x - 60) / 100) * 100, 0, 100);
   const young = age != null && age <= 23 && pa && pa > ca;
-  return Math.round(young ? map(ca) * 0.7 + map(pa!) * 0.3 : map(ca));
-}
-
-/** Kept for backwards compatibility with earlier callers. */
-export function fmSignal(ca: number | undefined | null): number | undefined {
-  return abilitySignal(ca, null, null);
+  return round(young ? map(ca) * 0.7 + map(pa!) * 0.3 : map(ca));
 }
 
 /** Average match rating (6.2-7.6 useful range) -> 0-100. Needs a minimum of minutes. */
@@ -88,10 +86,9 @@ export function outputSignal(rating: number | undefined | null, minutes: number 
   if (!rating || rating <= 0) return undefined;
   if (minutes != null && minutes > 0 && minutes < 450) return undefined;
   const base = clamp(((rating - 6.2) / 1.4) * 100, 0, 100);
-  // Very low minutes (but >= 450) slightly discounted: a rating over 600 minutes is less certain than over 2,500.
   const m = minutes ?? 900;
   const reliability = m >= 1500 ? 1 : 0.85 + ((m - 450) / 1050) * 0.15;
-  return Math.round(base * reliability);
+  return round(base * reliability);
 }
 
 /** League strength blended with club Elo level (1 elite … 4 low) when known. */
@@ -99,7 +96,7 @@ export function leagueClubSignal(country: string | undefined | null, eloLevel?: 
   const lg = leagueSignal(country);
   if (!eloLevel || eloLevel < 1 || eloLevel > 4) return lg;
   const clubBoost = { 1: 15, 2: 6, 3: 0, 4: -8 }[eloLevel as 1 | 2 | 3 | 4];
-  return Math.round(clamp(lg + clubBoost, 0, 100));
+  return round(clamp(lg + clubBoost, 0, 100));
 }
 
 /** Injury history -> 0-100 availability (100 = always available). */
@@ -108,7 +105,7 @@ export function availabilitySignal(i?: { injuryProne?: boolean; daysMissed?: num
   const days = i.daysMissed ?? 0;
   let s = 100 - Math.min(70, days / 3);
   if (i.injuryProne) s -= 15;
-  return Math.round(clamp(s, 0, 100));
+  return round(clamp(s, 0, 100));
 }
 
 /** Market value history -> trend. Compares latest vs. the oldest entry within the last ~14 months. */
@@ -129,6 +126,8 @@ export function trendFromHistory(
   return { trend: ratio >= 1.15 ? 'up' : ratio <= 0.85 ? 'down' : 'flat', ratio };
 }
 
+/* ───────────────────────── quality score ───────────────────────── */
+
 export function weightedScore(s: TierSignals): { score: number; coverage: number } {
   const keys: CriterionKey[] = ['output', 'ability', 'value', 'league', 'availability'];
   let sum = 0;
@@ -148,72 +147,139 @@ export function criteriaList(s: TierSignals, notes: Partial<Record<CriterionKey,
   return keys.map((k) => ({ key: k, weight: WEIGHTS[k], score: s[k] ?? null, ...(notes[k] ? { note: notes[k] } : {}) }));
 }
 
-export function levelFromScore(score: number, group: PositionGroup): Level {
+export function tierFromScore(score: number, group: PositionGroup): Tier {
   const o = POSITION_OFFSETS[group] ?? 0;
-  if (score >= LEVEL_THRESHOLDS[1] + o) return 1;
-  if (score >= LEVEL_THRESHOLDS[2] + o) return 2;
-  if (score >= LEVEL_THRESHOLDS[3] + o) return 3;
-  if (score >= LEVEL_THRESHOLDS[4] + o) return 4;
+  if (score >= TIER_THRESHOLDS[1] + o) return 1;
+  if (score >= TIER_THRESHOLDS[2] + o) return 2;
+  if (score >= TIER_THRESHOLDS[3] + o) return 3;
+  if (score >= TIER_THRESHOLDS[4] + o) return 4;
   return 5;
 }
 
+/* ───────────────────────── fit prediction ───────────────────────── */
+
+const betterTier = (t: Tier, steps: number): Tier => clamp(t - steps, 1, 5) as Tier;
+
+export interface FitInput {
+  score: number;
+  coverage: number;
+  group: PositionGroup;
+  age: number | null;
+  minutes?: number;
+  trend: Trend;
+  abilityGap?: number; // FM PA - CA, if known
+}
+
+/**
+ * Predict which tier + role the player fits, and a realistic ceiling.
+ *  - Role from how far into the band the score sits (and minutes, when known).
+ *  - Ceiling lifts one tier for young, rising players with FM upside.
+ *  - Confidence from data coverage, distance from a tier line, and minutes.
+ */
+export function predictFit(i: FitInput): Omit<FitPrediction, 'labelEn' | 'labelHe'> {
+  const tier = tierFromScore(i.score, i.group);
+  const o = POSITION_OFFSETS[i.group] ?? 0;
+  const lines = [TIER_THRESHOLDS[1] + o, TIER_THRESHOLDS[2] + o, TIER_THRESHOLDS[3] + o, TIER_THRESHOLDS[4] + o];
+
+  // Position within the tier band (0 bottom … 1 top)
+  const hi = tier === 1 ? 100 : lines[tier - 2];
+  const lo = tier >= 5 ? 0 : lines[tier - 1];
+  const within = hi > lo ? clamp((i.score - lo) / (hi - lo), 0, 1) : 0.5;
+
+  let role: Role = within >= 0.6 ? 'starter' : within >= 0.3 ? 'rotation' : 'squad';
+  if (i.minutes != null) {
+    if (i.minutes >= 1800 && role === 'squad') role = 'rotation';
+    if (i.minutes < 600 && role === 'starter') role = 'rotation';
+  }
+
+  // Ceiling: young + rising + FM upside can project one tier higher.
+  let ceiling: Tier = tier;
+  const young = i.age != null && i.age <= 23;
+  const upside = (i.abilityGap ?? 0) >= 12 || (young && i.trend === 'up');
+  if (young && upside) ceiling = betterTier(tier, 1);
+  else if (i.trend === 'up' && within >= 0.8) ceiling = betterTier(tier, 1);
+  if (i.age != null && i.age >= 31 && i.trend === 'down') ceiling = tier; // no ceiling lift for declining veterans
+
+  const dist = Math.min(...lines.map((l) => Math.abs(i.score - l)));
+  const edge = clamp(dist / 6, 0, 1);
+  const minutesConf = i.minutes == null ? 0.6 : clamp(i.minutes / 1800, 0.4, 1);
+  const confidence = round(clamp(20 + i.coverage * 45 + edge * 20 + minutesConf * 15, 0, 100));
+
+  return { tier, role, ceiling, confidence };
+}
+
+/* ───────────────────────── urgency & push ───────────────────────── */
+
 export interface UrgencyInput {
+  now: number;
+  tier: Tier;
   contractMonths: number | null;
   mandateDays: number | null;
   matchingRequests: number;
-  daysSinceTouch: number;
+  daysSinceTouch: number | null;
   trend: Trend;
+  newsSignal: number; // -2 … +2
 }
 
-export function computeUrgency(i: UrgencyInput): { urgency: number; parts: TierUrgencyParts; next: { kind: NextKind; value?: number } } {
+export function computeUrgency(i: UrgencyInput): { urgency: number; parts: UrgencyParts } {
   const c = i.contractMonths;
-  const contractTime = c == null ? 20 : c <= 4 ? 95 : c <= 7 ? 80 : c <= 12 ? 55 : 20;
+  const contract = c == null ? 15 : c <= 3 ? 100 : c <= 6 ? 80 : c <= 12 ? 55 : c <= 18 ? 30 : 10;
   const m = i.mandateDays;
-  const mandateTime = m == null ? 0 : m <= 7 ? 100 : m <= 30 ? 75 : m <= 60 ? 40 : 0;
-  const time = Math.max(contractTime, mandateTime);
-  const demand = Math.min(100, i.matchingRequests * 30);
-  const gap = Math.min(100, i.daysSinceTouch * 3);
-  const momentum = i.trend === 'up' ? 80 : i.trend === 'down' ? 30 : 50;
-  const urgency = Math.round(0.38 * time + 0.27 * demand + 0.17 * gap + 0.18 * momentum);
+  const mandate = m == null ? 0 : m <= 7 ? 100 : m <= 21 ? 80 : m <= 45 ? 55 : m <= 90 ? 25 : 0;
+  const demand = clamp(i.matchingRequests * 28 + (i.newsSignal > 0 ? i.newsSignal * 12 : 0), 0, 100);
+  const momentum = i.trend === 'up' ? 80 : i.trend === 'down' ? 35 : 50;
+  const neglect = i.daysSinceTouch == null ? 40 : clamp(i.daysSinceTouch * 2.2, 0, 100);
 
-  // "Next" = the single most relevant reason to act, in priority order.
-  let next: { kind: NextKind; value?: number } = { kind: 'none' };
-  if (m != null && m <= 30) next = { kind: 'mandate', value: Math.max(0, Math.round(m)) };
-  else if (c != null && c <= 12) next = { kind: 'contract', value: Math.max(0, Math.round(c)) };
-  else if (i.matchingRequests > 0) next = { kind: 'requests', value: i.matchingRequests };
-  else if (i.daysSinceTouch >= 14) next = { kind: 'untouched', value: Math.round(i.daysSinceTouch) };
-  return { urgency, parts: { time, demand, gap, momentum }, next };
+  const w = URGENCY_WEIGHTS;
+  const urgency = round(w.contract * contract + w.mandate * mandate + w.demand * demand + w.momentum * momentum + w.neglect * neglect);
+  return { urgency, parts: { contract: round(contract), mandate: round(mandate), demand: round(demand), momentum, neglect: round(neglect) } };
 }
 
-export function focusFrom(urgency: number, level: Level): Focus {
-  const v = urgency * 0.7 + LEVEL_WEIGHT[level] * 100 * 0.3;
-  if (v >= FOCUS_THRESHOLDS.push) return 1;
-  if (v >= FOCUS_THRESHOLDS.active) return 2;
-  if (v >= FOCUS_THRESHOLDS.maintain) return 3;
-  return 4;
+export function pushFromUrgency(urgency: number): Push {
+  for (const { v, push } of PUSH_THRESHOLDS) if (urgency >= v) return push;
+  return 'low';
 }
 
-/** Breaking news can move Focus by at most one step (+1 = push harder). */
-export function applyFocusAdj(base: Focus, adj: -1 | 0 | 1): Focus {
-  return Math.max(1, Math.min(4, base - adj)) as Focus;
+/* ───────────────────────── saleability & worth ───────────────────────── */
+
+export interface SaleabilityInput {
+  tier: Tier;
+  age: number | null;
+  contractMonths: number | null;
+  matchingRequests: number;
+  trend: Trend;
+  newsSignal: number;
 }
 
-/** Small, stable hash of the facts the analyst sees (djb2). */
-export function hashFacts(o: unknown): string {
-  const s = JSON.stringify(o);
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
-  return (h >>> 0).toString(36);
+/** How movable he is this window (demand + a sellable age/contract/momentum profile). */
+export function saleability(i: SaleabilityInput): number {
+  let s = 50;
+  s += Math.min(30, i.matchingRequests * 15); // concrete demand is the strongest signal
+  if (i.age != null) {
+    if (i.age <= 24) s += 12;
+    else if (i.age <= 28) s += 6;
+    else if (i.age >= 32) s -= 14;
+    else if (i.age >= 30) s -= 6;
+  }
+  const c = i.contractMonths;
+  if (c != null) {
+    if (c <= 6) s += 14; // cheap to move / free soon
+    else if (c <= 18) s += 6;
+    else if (c >= 36) s -= 6;
+  }
+  s += i.trend === 'up' ? 8 : i.trend === 'down' ? -8 : 0;
+  s += clamp(i.newsSignal * 5, -10, 10);
+  // Tier only mildly affects saleability — a cheap mover can still be worth working.
+  s += (3 - i.tier) * 2;
+  return round(clamp(s, 0, 100));
 }
 
-/** 0-100. Lower when data is thin or the score sits right on a threshold. */
-export function confidenceFrom(coverage: number, score: number, group: PositionGroup): number {
-  const o = POSITION_OFFSETS[group] ?? 0;
-  const lines = [1, 2, 3, 4].map((k) => LEVEL_THRESHOLDS[k as 1 | 2 | 3 | 4] + o);
-  const dist = Math.min(...lines.map((l) => Math.abs(score - l)));
-  const edge = clamp(dist / 6, 0, 1); // 0 = on a line, 1 = ≥6 pts away
-  return Math.round(20 + coverage * 50 + edge * 30);
+export function worth(quality: number, sale: number, urgency: number): number {
+  const w = WORTH_WEIGHTS;
+  return round(clamp(w.quality * quality + w.saleability * sale + w.urgency * urgency, 0, 100));
 }
+
+/* ───────────────────────── misc ───────────────────────── */
 
 /** Does a club request (position code + optional age range) match this player? */
 export function requestMatches(
@@ -233,90 +299,21 @@ export function requestMatches(
   return true;
 }
 
-/* ───────────────────────── Push-now triggers ───────────────────────── */
-
-export interface TriggerInput {
-  now: number;
-  level: Level;
-  mandateDays: number | null;
-  contractMonths: number | null;
-  /** Open club requests that match the player. */
-  requests: { club: string; position: string; createdAt?: number }[];
-  plan?: { timing: string; nextStepEn?: string; nextStepHe?: string; deadline?: string } | null;
-  focusAdj: number;
-  newsSignal: number;
-  news: { headline: string; sentiment: string; impactEn?: string; impactHe?: string }[];
+/** Small, stable hash of the facts the analyst sees (djb2). */
+export function hashFacts(o: unknown): string {
+  const s = JSON.stringify(o);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
 }
 
-const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
-const sev = (n: number) => Math.max(1, Math.min(3, n)) as 1 | 2 | 3;
-
-/**
- * Rules (severity 3 = act today, 2 = this week, 1 = context). A player is "Push now" when the
- * severities add up to >= 3 — e.g. one hard deadline, or two medium reasons together.
- */
-export function computeTriggers(i: TriggerInput): TierTrigger[] {
-  const out: TierTrigger[] = [];
-  const DAYMS = 24 * 3600 * 1000;
-  const lowLevel = i.level >= 4; // depth / developing: market opportunities matter less
-
-  if (i.mandateDays != null && i.mandateDays <= 45) {
-    const d = Math.max(0, Math.round(i.mandateDays));
-    out.push({
-      kind: 'mandate',
-      severity: d <= 7 ? 3 : d <= 21 ? 2 : 1,
-      en: d === 0 ? 'Mandate expires today' : `Mandate expires in ${d} days`,
-      he: d === 0 ? 'המנדט פג היום' : `המנדט פג בעוד ${d} ימים`,
-      deadline: iso(i.now + i.mandateDays * DAYMS),
-    });
-  }
-
-  if (i.contractMonths != null && i.contractMonths <= 12) {
-    const m = Math.max(0, Math.round(i.contractMonths));
-    const base = m <= 3 ? 3 : m <= 6 ? 2 : 1;
-    out.push({
-      kind: 'contract',
-      severity: sev(lowLevel ? base - 1 : base),
-      en: m === 0 ? 'Contract ending now — free-agent window' : `Contract ends in ${m} months`,
-      he: m === 0 ? 'החוזה מסתיים עכשיו — חלון שחקן חופשי' : `החוזה מסתיים בעוד ${m} חודשים`,
-      deadline: iso(i.now + i.contractMonths * 30.44 * DAYMS),
-    });
-  }
-
-  if (i.requests.length) {
-    const fresh = i.requests.filter((r) => r.createdAt && i.now - r.createdAt <= 14 * DAYMS);
-    const lead = (fresh[0] ?? i.requests[0]);
-    const more = i.requests.length - 1;
-    const base = fresh.length >= 2 ? 3 : fresh.length === 1 ? 2 : 1;
-    out.push({
-      kind: 'request',
-      severity: sev(lowLevel ? base - 1 : base),
-      en: `${lead.club} is looking for a ${lead.position}${more > 0 ? ` (+${more} more request${more > 1 ? 's' : ''})` : ''}`,
-      he: `${lead.club} מחפשת ${lead.position}${more > 0 ? ` (+${more} בקשות נוספות)` : ''}`,
-      ref: i.requests.map((r) => r.club).sort().join(','),
-    });
-  }
-
-  const hot = i.news.find((n) => n.sentiment === 'positive') ?? i.news.find((n) => n.sentiment === 'risk' || n.sentiment === 'negative');
-  if (hot && (i.focusAdj > 0 || Math.abs(i.newsSignal) >= 2)) {
-    out.push({
-      kind: 'news',
-      severity: 2,
-      en: hot.impactEn ? `${hot.headline} — ${hot.impactEn}` : hot.headline,
-      he: hot.impactHe ? `${hot.headline} — ${hot.impactHe}` : hot.headline,
-      ref: hot.headline.slice(0, 60),
-    });
-  }
-
-  if (i.plan && (i.plan.timing === 'now' || i.plan.timing === 'this_week')) {
-    out.push({
-      kind: 'plan',
-      severity: i.plan.timing === 'now' ? 3 : 2,
-      en: i.plan.nextStepEn || (i.plan.timing === 'now' ? 'AI: act now' : 'AI: act this week'),
-      he: i.plan.nextStepHe || i.plan.nextStepEn || (i.plan.timing === 'now' ? 'AI: לפעול עכשיו' : 'AI: לפעול השבוע'),
-      ...(i.plan.deadline ? { deadline: i.plan.deadline } : {}),
-    });
-  }
-
-  return out.sort((a, b) => b.severity - a.severity);
+/** English/Hebrew fit label, e.g. "Starter in Premium (ceiling Elite)". */
+export function fitLabel(fit: Omit<FitPrediction, 'labelEn' | 'labelHe'>, defs: Record<Tier, { en: string; he: string }>): { en: string; he: string } {
+  const roleEn = { starter: 'Starter', rotation: 'Rotation', squad: 'Squad' }[fit.role];
+  const roleHe = { starter: 'פותח', rotation: 'רוטציה', squad: 'סגל' }[fit.role];
+  const tierEn = defs[fit.tier].en.split(' — ')[0];
+  const tierHe = defs[fit.tier].he.split(' — ')[0];
+  const ceilEn = fit.ceiling < fit.tier ? ` · ceiling ${defs[fit.ceiling].en.split(' — ')[0]}` : '';
+  const ceilHe = fit.ceiling < fit.tier ? ` · תקרה ${defs[fit.ceiling].he.split(' — ')[0]}` : '';
+  return { en: `${roleEn} in ${tierEn}${ceilEn}`, he: `${roleHe} ב${tierHe}${ceilHe}` };
 }

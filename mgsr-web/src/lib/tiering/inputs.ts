@@ -7,7 +7,8 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 import { gatherPlayerIntel } from '@/lib/playerIntel';
 import { NEWS_WINDOW_DAYS, TTL } from './config';
-import type { NewsRow, TierInputs } from './types';
+import type { TierInputs } from './types';
+type NewsRow = NonNullable<TierInputs['news']>[number];
 
 export interface InputPlayer {
   fullName?: string;

@@ -205,7 +205,6 @@ export interface MenPlayerProfileProps {
   mandateLeagues: string[];
   hasValidMandate: boolean;
   /** Optional extra status row (Level & Focus window-target switch). */
-  windowTargetRow?: ReactNode;
 }
 
 const ENGLISH_LEVELS = ['none', 'medium', 'good', 'native'] as const;
@@ -225,7 +224,7 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
     onPreparePortfolio, fileInput, contactBlock, agentTransferBlock,
     resolvedTransferBanner, statsPanel,
     fmPanel, gpsPanel, similarPanel, highlightsPanel, mandateExpiryLabel, mandateLeagues,
-    hasValidMandate, windowTargetRow,
+    hasValidMandate,
   } = props;
 
   const [tab, setTab] = useState<'overview' | 'performance' | 'documents' | 'notes'>('overview');
@@ -632,7 +631,6 @@ export default function MenPlayerProfile(props: MenPlayerProfileProps) {
                   <span className="track" />
                 </label>
               </div>
-              {windowTargetRow}
               <div className="bp-switchrow">
                 <div className="lbl">🇮🇱 {t('player_info_interested_in_israel')}</div>
                 <label className="bp-sw">

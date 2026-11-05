@@ -1,64 +1,40 @@
-# Push board (Level & Focus) — how it works and how to switch it on (v3)
+# Roster Intelligence — setup & operations (Phase 1)
 
-> The dashboard shows only **Push now** (automatic) and **Window targets** (marked by agents). Design and rules: `PLAYER_LEVEL_FOCUS_PLAN.md`.
+A weekly background agent scores the whole men roster and writes `PlayerTiers/{playerId}`. The dashboard's
+**Roster intelligence** section reads it and shows the top targets. Nothing is triggered from the browser.
 
-Nobody presses a button. A **background worker** analyses every roster player on its own and keeps the results fresh.
-The dashboard only *reads* finished results, so it opens instantly.
+## Switch on / off
+`LEVEL_FOCUS_ENABLED` in `mgsr-web/src/lib/featureFlags.ts` (true = new section, false = old value table).
 
-## What the worker does for each player
-1. **Gathers data** (every source optional, cached, time-boxed — a failing source never blocks the player):
-   | Source | What | Refreshed |
-   |---|---|---|
-   | Google News RSS (EN + HE) | Headlines from the last 45 days that actually name the player | every run (≤5h cache) |
-   | Gemini **with Google Search** | Live web check of transfers, injuries, form, contract talk, coach changes | when facts change, or every 24h |
-   | Scout server / SofaScore / FotMob | Match rating + minutes | 3 days |
-   | Transfermarkt injury history | Days missed, injury-prone | 7 days |
-   | ClubElo | Club strength | 7 days |
-   | FMInside cache | Current ability / potential | 14 days |
-   | Firestore (live) | Contract, mandate expiry, open club requests that match him, notes & tasks, value history | every run |
-   | Transfer windows | Days left per country | every run |
-2. **Scores five criteria** (0–100, weights): Output 30 · Ability 20 · Value 25 · League/club 15 · Availability 10.
-   Missing criteria are dropped and the rest renormalised; the share of data we had becomes *coverage*, which drives confidence.
-3. **Base level** from thresholds 78 / 64 / 50 / 36 (per-position offsets in `lib/tiering/config.ts`).
-4. **Urgency → Focus** from contract end, mandate expiry, matching club requests, days since last touch and trend.
-5. **AI analyst** (Gemini 2.5 Flash + Google Search) receives all of the above and returns:
-   - level adjustment −1/0/+1 with a reason (EN/HE) and evidence,
-   - a focus nudge −1/0/+1 for time-sensitive news,
-   - a **news digest** (what happened and why it matters to us) with source links,
-   - **risks**,
-   - a **push plan**: *how* (what to do, with which clubs) and *when* (tied to real dates/windows) + timing tag (now / this week / this window / later / hold).
-   The analyst only re-runs when the player's facts changed (new headline, new request, value/contract change…) or its read is older than 24h — fast and cheap.
-6. **Computes Push-now reasons** (mandate, contract, requests, news, AI plan) — rules in the plan doc.
-7. **Writes** `PlayerTiers/{playerId}` (agent marks — window target, done — live in the same doc and are never touched by the worker).
-8. **Alerts** the owner by push once when a player lands on Push now with a new set of reasons.
-
-## Running it
-- **Scheduled (default):** `.github/workflows/tiering-worker.yml` sweeps the roster every 3 hours. "Run workflow" in GitHub Actions starts one now; tick *force* to ignore caches.
-- **Near real-time (optional, always-on host):** `npx tsx _tiering_worker.ts watch` re-analyses a player ~15s after his doc changes, sweeps when a mandate or club request changes, plus hourly. Run it on any always-on box (Cloud Run service with min instances 1, a small VM, or the existing worker host).
-- **One player now:** the drawer's *Re-run analysis* (≈10–30s), or `npx tsx _tiering_worker.ts player <playerId>`. Marking a window target triggers this automatically.
+## Run the agent
+- **Weekly (default):** `.github/workflows/tiering-worker.yml` (Sunday 02:00 UTC). "Run workflow" runs it now; tick *force* to ignore caches.
+- **Debug one player:** `cd mgsr-web && npx tsx _tiering_worker.ts player <playerId>`.
 
 ## Configuration
 GitHub → Settings → Secrets and variables → Actions:
 | Name | Type | Notes |
 |---|---|---|
 | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | secrets | already used by other workflows |
-| `GEMINI_API_KEY` | secret | **add** (same key as Vercel). Without it only the criteria engine runs |
-| `TIERING_ALERT_EMAILS` | variable | owner account email(s), comma-separated |
-| `SCOUT_SERVER_URL` | variable | optional, defaults to the Render scout server |
-| `TIERING_APP_ORIGIN` | variable | optional, defaults to `https://management.britsportgroup.com` |
+| `GEMINI_API_KEY` | secret | **add** (same key as Vercel). Without it the maths engine still runs; no AI summary/news |
+| `TIERING_ALERT_EMAILS` | variable | owner email(s) for the weekly digest push (optional) |
+| `SCOUT_SERVER_URL` | variable | optional (match ratings) |
+| `TIERING_APP_ORIGIN` | variable | optional, defaults to `https://management.britsportgroup.com` (live FMInside fallback) |
 
-Vercel: `TIERING_ALERT_EMAILS` too (alerts from the single-player re-run).
-`TIERING_RUN_SECRET` is no longer needed.
+## Cost
+First sweep of ~40 players: a few minutes, one AI read each. Weekly after that: unchanged players reuse cache and skip the AI;
+only players whose facts changed get a fresh AI read. Gemini Flash + search ≈ one call per analysed player per week.
 
-## Speed & cost
-- First sweep of ~40 players: a few minutes (sources fetched for everyone, one AI read each).
-- Following sweeps: seconds per unchanged player (all cached, no AI call); only changed players get a new AI read.
-- Gemini Flash with search ≈ 40 reads on the first day, then roughly 5–15 a day.
+## Data sources per player
+Google News RSS (EN+HE, 45 days) · Gemini + Google Search · scout server / SofaScore / FotMob ratings · Transfermarkt
+injuries · ClubElo · FMInside cache · Firestore (contract, mandate from `PlayerDocuments`, matching `ClubRequests`,
+notes & tasks for effort, value history) · transfer windows JSON.
 
 ## Firestore rules
-`PlayerTiers` block in `firestore.rules` (read for signed-in users, no client writes). Deploy with `firebase deploy --only firestore:rules`. Not required for the feature to work (all access is via the API / Admin SDK).
+`PlayerTiers` block in `firestore.rules` (read for signed-in users, no client writes). Deploy with
+`firebase deploy --only firestore:rules`. Not required for the feature (all access is server-side / Admin SDK).
 
-## Known limits
-- Calls and meetings count as effort only when logged as a note or task (there is no contact log linked to players).
-- News search is by name + club; very common names may pull unrelated headlines — the analyst is told to ignore other people with the same name.
-- The level definitions per market are a draft (`LEVEL_DEFINITIONS` in `lib/tiering/config.ts`); edit them to change how the AI reads levels.
+## Known limits (Phase 1)
+- Level leans on market value + league when match/FM data is missing — the confidence figure shows this.
+- Calls/meetings count as effort only when logged as a note or task (no contact log is linked to players).
+- Level definitions per market are a draft in `config.ts` (`TIER_DEFINITIONS`) — edit to change how the AI reads tiers.
+- Tune weights/thresholds in `config.ts` after reviewing the first real ranking.

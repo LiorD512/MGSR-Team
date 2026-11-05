@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BRIT — Dashboard · Roster intelligence (Level & Focus)</title>
+<title>BRIT — Dashboard · Roster intelligence (weekly ranked targets)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -62,58 +62,6 @@ body{margin:0;background:var(--paper)}
 .brit-focus-copy small{display:block;color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}.brit-focus-copy h3{margin:6px 0 0;font:500 24px/.9 var(--display);text-transform:uppercase}
 .brit-empty{padding:22px 0;color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}
 
-/* ============ NEW: Roster intelligence (Level & Focus) ============ */
-.ri-bar{display:flex;height:34px;margin:20px 0 9px;border:1px solid var(--ink)}
-.ri-bar button{display:flex;align-items:center;justify-content:center;font:500 15px/1 var(--display);transition:flex .35s,opacity .2s,filter .2s;min-width:0;overflow:hidden}
-.ri-bar button:hover{filter:brightness(1.12)}.ri-bar.dim button:not(.sel){opacity:.35}
-.ri-key{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
-.ri-key button{text-align:start;font:9px/1.35 var(--mono);color:var(--muted);text-transform:uppercase;padding:0}.ri-key button b{display:block;color:var(--ink);font-weight:500}.ri-key button:hover b,.ri-key button.sel b{color:var(--gold)}
-.ri-call{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;margin:22px 0 4px;padding:14px 16px;border:1px solid var(--gold-soft);background:color-mix(in srgb,var(--gold-soft) 8%,transparent)}
-.ri-call .gi{width:32px;height:32px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:12px/1 var(--display)}
-.ri-call b{display:block;font:500 15px/1.1 var(--display);text-transform:uppercase}.ri-call small{display:block;margin-top:3px;color:var(--gold);font:9px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.04em}
-.ri-call button{padding:9px 11px;background:var(--ink);color:var(--paper);font:9px/1 var(--mono);text-transform:uppercase}.ri-call button:hover{background:var(--gold)}
-.ri-tabs{display:flex;gap:18px;margin-top:22px;border-bottom:1px solid var(--line-2)}
-.ri-tabs button{padding:0 0 9px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid transparent;margin-bottom:-1px}
-.ri-tabs button.on{color:var(--ink);border-color:var(--gold)}.ri-tabs button i{font-style:normal;color:var(--gold);margin-inline-start:4px}
-.ri-table{width:100%;border-collapse:collapse}.ri-table th{padding:13px 0 9px;color:var(--muted);text-align:start;font:9px/1 var(--mono);font-weight:400;text-transform:uppercase}
-.ri-table td{padding:13px 0;border-top:1px solid var(--line);font:10px/1.25 var(--mono);vertical-align:middle}
-.ri-table tbody tr{cursor:pointer;transition:background .2s}.ri-table tbody tr:hover{background:rgba(164,125,67,.07)}
-.ri-table td.pl{font-family:var(--body);font-weight:700;font-size:12.5px;padding-inline-end:6px}.ri-table td.pl small{display:block;margin-top:3px;color:var(--muted);font:9px/1.2 var(--mono);font-weight:400;text-transform:uppercase}
-.ri-table td.nx{text-align:end;color:var(--muted);white-space:nowrap}.ri-table td.nx.hot{color:var(--red)}
-.ri-table tr.flash{animation:fl 2.4s}@keyframes fl{0%,40%{background:rgba(182,66,53,.18)}100%{background:transparent}}
-.lv{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.lv b{min-width:26px;height:20px;display:inline-grid;place-items:center;font:500 11px/1 var(--display);letter-spacing:.03em}
-.lv i{font-style:normal;font-size:8px}.lv .up{color:var(--green)}.lv .down{color:var(--red)}.lv .flat{color:var(--muted-2)}
-.lv.sg b{outline:1.5px dashed var(--gold);outline-offset:2px}
-.fc{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;text-transform:uppercase;font:10px/1 var(--mono)}.fc s{width:7px;height:7px;border-radius:50%;display:inline-block;text-decoration:none}
-.ri-more{display:flex;justify-content:space-between;padding:13px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font:9px/1 var(--mono);text-transform:uppercase}.ri-more button{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase}
-.ri-eff{margin-top:20px}.ri-eff .row{display:flex;justify-content:space-between;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}.ri-eff .row b{color:var(--ink);font-weight:500}
-.ri-eff .tr{position:relative;height:6px;background:var(--paper-2);margin:9px 0 8px}.ri-eff .tr i{position:absolute;inset:0 auto 0 0;background:var(--red)}.ri-eff .tr u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
-.brit-room[dir=rtl] .ri-eff .tr i{inset:0 0 0 auto}.ri-eff p{margin:0;color:var(--muted);font:9px/1.5 var(--mono)}.ri-eff p a{color:var(--gold);cursor:pointer;border-bottom:1px solid var(--gold)}
-
-/* drawer + modal (same vocabulary as .brit-backdrop/.brit-modal) */
-.brit-backdrop{position:fixed;inset:0;z-index:70;background:rgba(17,17,15,.66);display:none}.brit-backdrop.open{display:block}
-.brit-drawer{position:fixed;top:0;bottom:0;inset-inline-end:0;z-index:71;width:min(560px,100%);overflow:auto;background:var(--paper);transform:translateX(105%);transition:transform .32s;border-inline-start:4px solid var(--gold)}
-.brit-room[dir=rtl] .brit-drawer{transform:translateX(-105%)}.brit-drawer.open{transform:none!important}
-.dr-h{background:var(--black);color:var(--paper);padding:26px 28px 22px}.dr-h .x{float:inset-inline-end;font:22px var(--display);color:var(--paper)}
-.dr-h small{color:#aaa69c;font:9px/1 var(--mono);text-transform:uppercase}.dr-h h2{margin:8px 0 12px;font:500 42px/.9 var(--display);text-transform:uppercase}.dr-h .tags{display:flex;gap:8px;flex-wrap:wrap}
-.dr-s{padding:20px 28px;border-bottom:1px solid var(--line)}.dr-s h4{margin:0 0 12px;display:flex;justify-content:space-between;color:var(--muted);font:9px/1 var(--mono);font-weight:400;text-transform:uppercase;letter-spacing:.08em}
-.ladder{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}.ladder button{position:relative;padding:10px 2px 9px;text-align:center;border:1px solid var(--line);background:var(--card)}.ladder b{display:block;font:500 19px/1 var(--display)}.ladder small{font:8px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
-.ladder button.cur{border-color:transparent}.ladder button.cur small{color:inherit;opacity:.8}.ladder button.aim::after,.fseg button.aim::after{content:'AI';position:absolute;top:-8px;inset-inline-start:50%;transform:translateX(-50%);background:var(--black);color:var(--gold-soft);font:8px/1 var(--mono);padding:3px 5px}
-.fseg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.fseg button{position:relative;padding:11px 2px;border:1px solid var(--line);background:var(--card);font:9px/1 var(--mono);text-transform:uppercase}.fseg button.cur{color:#fff;border-color:transparent}
-.aibox{background:var(--black);color:var(--paper);padding:18px 20px;font:12px/1.65 var(--body)}.aibox .t{display:flex;justify-content:space-between;margin-bottom:9px;color:var(--gold-soft);font:9px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}.aibox .t button{color:var(--gold-soft);font:9px/1 var(--mono)}
-.aibox .ev{margin-top:12px;display:grid;gap:5px}.aibox .ev div{padding-inline-start:10px;border-inline-start:2px solid var(--gold);color:#cbc6b9;font:10px/1.4 var(--mono)}
-.sigrow{display:grid;grid-template-columns:96px 1fr 28px;gap:10px;align-items:center;margin:8px 0;font:9px var(--mono);text-transform:uppercase}.sigrow .tr{height:6px;background:var(--paper-2)}.sigrow .tr i{display:block;height:100%;background:var(--ink)}
-.touch{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.touch div{padding:10px;border:1px solid var(--line);background:var(--card);font:9px var(--mono);text-transform:uppercase;color:var(--muted)}.touch b{display:block;color:var(--ink);font:500 22px var(--display)}
-.tl{border-inline-start:1px solid var(--ink);margin-inline-start:4px}.tl div{position:relative;padding:0 0 13px 14px;font:10px/1.5 var(--mono);color:var(--muted)}.brit-room[dir=rtl] .tl div{padding:0 14px 13px 0}.tl div::before{content:'';position:absolute;inset-inline-start:-4px;top:5px;width:7px;height:7px;border-radius:50%;background:var(--gold)}.tl b{color:var(--ink);font-family:var(--body)}
-.dr-s textarea{width:100%;min-height:54px;padding:10px;border:1px solid var(--ink);background:var(--card);font:11px var(--mono)}
-.dr-f{padding:18px 28px;display:flex;gap:10px}.btn{padding:11px 14px;font:9px/1 var(--mono);text-transform:uppercase;border:1px solid var(--ink)}.btn:hover{background:var(--ink);color:var(--paper)}.btn.gold{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--ink)}.btn.gold:hover{background:var(--gold);color:var(--paper)}
-.brit-modal{position:fixed;z-index:72;top:50%;left:50%;transform:translate(-50%,-48%);width:min(680px,94%);max-height:86vh;overflow:auto;background:var(--paper);border-top:4px solid var(--gold);padding:30px;opacity:0;pointer-events:none;transition:.25s}
-.brit-modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}.brit-modal h2{margin:0 0 4px;font:500 40px/.9 var(--display);text-transform:uppercase}.brit-modal .sub{margin:0 0 10px;color:var(--muted);font:10px/1.5 var(--mono);text-transform:uppercase}
-.brit-modal .close{float:inset-inline-end;font:22px var(--display)}
-.sg-row{display:grid;grid-template-columns:1fr auto;gap:16px;padding:16px 0;border-top:1px solid var(--line)}.sg-row h3{margin:0 0 6px;font:500 22px/.95 var(--display);text-transform:uppercase}.sg-row .mv{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.sg-row p{margin:8px 0 0;font:11px/1.55 var(--body);color:#3b3a35}.sg-row .ac{display:flex;flex-direction:column;gap:6px}.ai{display:inline-block;margin-inline-end:6px;padding:3px 5px;background:var(--black);color:var(--gold-soft);font:8px/1 var(--mono);letter-spacing:.06em}
-.conf{font:9px var(--mono);color:var(--muted);text-transform:uppercase}
 /* push notification */
 .notif{position:fixed;top:92px;inset-inline-end:24px;z-index:90;width:360px;background:var(--black);color:var(--paper);border-inline-start:3px solid var(--red);padding:16px 18px;transform:translateX(130%);transition:transform .4s cubic-bezier(.2,.8,.2,1);box-shadow:0 20px 50px -20px rgba(0,0,0,.6)}
 .brit-room[dir=rtl] .notif{transform:translateX(-130%)}.notif.show{transform:none!important}
@@ -123,6 +71,281 @@ body{margin:0;background:var(--paper)}
 .mockbar b{color:var(--gold)}.mockbar button{padding:7px 10px;border:1px solid var(--ink)}.mockbar button:hover{background:var(--ink);color:#fff}.mockbar span{color:var(--muted)}
 .brit-canvas{padding-bottom:90px}
 @media(max-width:1100px){.brit-app{grid-template-columns:1fr}.brit-rail{display:none}.brit-grid{grid-template-columns:1fr}.brit-canvas{padding:24px}.brit-topbar{padding:0 20px}.brit-signals{grid-template-columns:1fr}.brit-signal{border:0;padding-inline-start:0!important}}
+/* ═══════════════════════════════════════════════════════
+   Level & Focus — Roster intelligence (dashboard module)
+   Scoped to .brit-room; uses the room's own tokens.
+   ═══════════════════════════════════════════════════════ */
+.brit-room .ri-l1 { background: #11110f; color: #f3f0e8; }
+.brit-room .ri-l2 { background: var(--gold); color: #fff; }
+.brit-room .ri-l3 { background: var(--gold-soft); color: var(--ink); }
+.brit-room .ri-l4 { background: var(--muted-2); color: var(--ink); }
+.brit-room .ri-l5 { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--muted-2); }
+.brit-room .ri-link { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; text-decoration: underline; }
+.brit-room .ri-link-gold { color: var(--gold-soft); margin-top: 12px; }
+.brit-room .ri-red { color: var(--red); }
+.brit-room .ri-muted { color: var(--muted); font: 10px var(--mono); }
+.brit-room .ri-end { text-align: end; }
+
+.brit-room .ri-bar { display: flex; height: 34px; margin: 20px 0 9px; border: 1px solid var(--ink); }
+.brit-room .ri-bar button { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; font: 500 15px/1 var(--display); transition: opacity 0.2s, filter 0.2s; }
+.brit-room .ri-bar button:hover { filter: brightness(1.12); }
+.brit-room .ri-bar.dim button:not(.sel) { opacity: 0.35; }
+.brit-room .ri-key { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.brit-room .ri-key button { text-align: start; padding: 0; color: var(--muted); font: 9px/1.35 var(--mono); text-transform: uppercase; }
+.brit-room .ri-key button b { display: block; color: var(--ink); font-weight: 500; }
+.brit-room .ri-key button:hover b, .brit-room .ri-key button.sel b { color: var(--gold); }
+
+.brit-room .ri-call { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; margin: 22px 0 4px; padding: 14px 16px; border: 1px solid var(--gold-soft); background: color-mix(in srgb, var(--gold-soft) 8%, transparent); }
+.brit-room .ri-call-icon { width: 32px; height: 32px; display: grid; place-items: center; background: var(--gold-soft); color: var(--ink); font: 12px/1 var(--display); }
+.brit-room .ri-call b { display: block; font: 500 15px/1.1 var(--display); text-transform: uppercase; }
+.brit-room .ri-call small { display: block; margin-top: 3px; color: var(--gold); font: 9px/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+.brit-room .ri-call > button { padding: 9px 11px; background: var(--ink); color: var(--paper); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-call > button:hover { background: var(--gold); }
+
+.brit-room .ri-tabs { display: flex; gap: 18px; margin-top: 22px; border-bottom: 1px solid var(--line-2); }
+.brit-room .ri-tabs button { margin-bottom: -1px; padding: 0 0 9px; border-bottom: 2px solid transparent; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.brit-room .ri-tabs button.on { color: var(--ink); border-color: var(--gold); }
+.brit-room .ri-tabs button i { margin-inline-start: 4px; color: var(--gold); font-style: normal; }
+
+.brit-room .ri-table { width: 100%; border-collapse: collapse; }
+.brit-room .ri-table th { padding: 13px 0 9px; color: var(--muted); text-align: start; font: 9px/1 var(--mono); font-weight: 400; text-transform: uppercase; }
+.brit-room .ri-table th.ri-end { text-align: end; }
+.brit-room .ri-table td { padding: 13px 0; border-top: 1px solid var(--line); font: 10px/1.25 var(--mono); vertical-align: middle; }
+.brit-room .ri-table tbody tr { cursor: pointer; transition: background 0.2s; }
+.brit-room .ri-table tbody tr:hover { background: rgba(164, 125, 67, 0.07); }
+.brit-room .ri-table td.ri-pl { padding-inline-end: 6px; font: 700 12.5px/1.25 var(--body); }
+.brit-room .ri-table td.ri-pl small { display: block; margin-top: 3px; color: var(--muted); font: 9px/1.2 var(--mono); font-weight: 400; text-transform: uppercase; }
+.brit-room .ri-table td.ri-nx { color: var(--muted); white-space: nowrap; }
+.brit-room .ri-table td.ri-nx.hot { color: var(--red); }
+
+.brit-room .ri-lv { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.brit-room .ri-lv b { min-width: 26px; height: 20px; display: inline-grid; place-items: center; font: 500 11px/1 var(--display); letter-spacing: 0.03em; }
+.brit-room .ri-lv.sg b { outline: 1.5px dashed var(--gold); outline-offset: 2px; }
+.brit-room .ri-lv b.ri-o { opacity: 0.5; }
+.brit-room .ri-tr { font-size: 8px; font-style: normal; }
+.brit-room .ri-tr.up { color: var(--green); }
+.brit-room .ri-tr.down { color: var(--red); }
+.brit-room .ri-tr.flat { color: var(--muted-2); }
+
+.brit-room .ri-fc { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-transform: uppercase; font: 10px/1 var(--mono); }
+.brit-room .ri-fc s { width: 7px; height: 7px; display: inline-block; border-radius: 50%; text-decoration: none; }
+.brit-room .ri-fc1 { color: var(--red); } .brit-room .ri-fc1 s { background: var(--red); }
+.brit-room .ri-fc2 s { background: var(--ink); }
+.brit-room .ri-fc3 { color: var(--muted); } .brit-room .ri-fc3 s { background: var(--muted); }
+.brit-room .ri-fc4 { color: var(--muted); } .brit-room .ri-fc4 s { background: transparent; box-shadow: inset 0 0 0 1.5px var(--muted-2); }
+.brit-room .ri-bgf1 { background: var(--red) !important; color: #fff !important; }
+.brit-room .ri-bgf2 { background: var(--ink) !important; color: #fff !important; }
+.brit-room .ri-bgf3 { background: var(--muted) !important; color: #fff !important; }
+.brit-room .ri-bgf4 { background: var(--muted-2) !important; color: var(--ink) !important; }
+
+.brit-room .ri-more { display: flex; justify-content: space-between; padding: 13px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-more button { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-eff { margin-top: 20px; }
+.brit-room .ri-eff-row { display: flex; justify-content: space-between; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-eff-row b { color: var(--ink); font-weight: 500; }
+.brit-room .ri-eff-track { position: relative; height: 6px; margin: 9px 0 8px; background: var(--paper-2); }
+.brit-room .ri-eff-track i { position: absolute; inset: 0 auto 0 0; background: var(--red); }
+.brit-room[dir='rtl'] .ri-eff-track i { inset: 0 0 0 auto; }
+.brit-room .ri-eff-track u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
+.brit-room .ri-eff p { margin: 0; color: var(--muted); font: 9px/1.5 var(--mono); }
+.brit-room .ri-first { padding: 24px 0; }
+.brit-room .ri-first p { margin: 0 0 6px; font: 12px/1.5 var(--body); }
+.brit-room .ri-first .ri-first-sub { margin-bottom: 14px; color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+
+.brit-room .ri-btn { display: inline-block; padding: 11px 14px; border: 1px solid var(--ink); font: 9px/1 var(--mono); text-transform: uppercase; text-align: center; }
+.brit-room .ri-btn:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
+.brit-room .ri-btn:disabled { opacity: 0.5; cursor: default; }
+.brit-room .ri-btn-gold { background: var(--gold-soft); border-color: var(--gold-soft); color: var(--ink); }
+.brit-room .ri-btn-gold:hover:not(:disabled) { background: var(--gold); border-color: var(--gold); color: var(--paper); }
+
+/* drawer / modal */
+.brit-room .ri-backdrop { position: fixed; inset: 0; z-index: 70; background: rgba(17, 17, 15, 0.66); }
+.brit-room .ri-drawer { position: fixed; top: 0; bottom: 0; inset-inline-end: 0; z-index: 71; width: min(560px, 100%); overflow: auto; background: var(--paper); border-inline-start: 4px solid var(--gold); animation: ri-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes ri-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.brit-room[dir='rtl'] .ri-drawer { animation-name: ri-in-rtl; }
+@keyframes ri-in-rtl { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.brit-room .ri-dr-h { padding: 26px 28px 22px; background: var(--black); color: var(--paper); }
+.brit-room .ri-x { float: inline-end; font: 22px var(--display); }
+.brit-room .ri-dr-h small { color: #aaa69c; font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-h h2 { margin: 8px 0 12px; font: 500 42px/0.9 var(--display); text-transform: uppercase; }
+.brit-room[dir='rtl'] .ri-dr-h h2 { font-weight: 800; letter-spacing: normal; }
+.brit-room .ri-dr-tags { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.brit-room .ri-dr-h .ri-fc2 { color: var(--paper); } .brit-room .ri-dr-h .ri-fc2 s { background: var(--paper); }
+.brit-room .ri-unconf { color: var(--gold-soft); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-s { padding: 20px 28px; border-bottom: 1px solid var(--line); }
+.brit-room .ri-dr-s h4 { margin: 0 0 12px; display: flex; justify-content: space-between; color: var(--muted); font: 9px/1 var(--mono); font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; }
+.brit-room .ri-ladder { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.brit-room .ri-ladder button, .brit-room .ri-fseg button { position: relative; border: 1px solid var(--line); background: var(--card); text-align: center; }
+.brit-room .ri-ladder button { padding: 10px 2px 9px; }
+.brit-room .ri-ladder b { display: block; font: 500 19px/1 var(--display); }
+.brit-room .ri-ladder small { font: 8px/1 var(--mono); text-transform: uppercase; color: var(--muted); }
+.brit-room .ri-ladder button.cur { border-color: transparent; } .brit-room .ri-ladder button.cur small { color: inherit; opacity: 0.8; }
+.brit-room .ri-fseg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.brit-room .ri-fseg button { padding: 11px 2px; font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-fseg button.cur { border-color: transparent; }
+.brit-room .ri-ladder button.aim::after, .brit-room .ri-fseg button.aim::after { content: 'AI'; position: absolute; top: -8px; inset-inline-start: 50%; transform: translateX(-50%); padding: 3px 5px; background: var(--black); color: var(--gold-soft); font: 8px/1 var(--mono); }
+.brit-room .ri-dr-accept { display: flex; gap: 8px; margin-top: 18px; }
+.brit-room .ri-aibox { padding: 18px 20px; background: var(--black); color: var(--paper); }
+.brit-room .ri-aibox p { margin: 0; font: 12px/1.65 var(--body); }
+.brit-room .ri-ev { margin-top: 12px; display: grid; gap: 5px; }
+.brit-room .ri-ev div { padding-inline-start: 10px; border-inline-start: 2px solid var(--gold); color: #cbc6b9; font: 10px/1.4 var(--mono); }
+.brit-room .ri-sig { display: grid; grid-template-columns: 96px 1fr 28px; gap: 10px; align-items: center; margin: 8px 0; font: 9px var(--mono); text-transform: uppercase; }
+.brit-room .ri-sig-tr { height: 6px; background: var(--paper-2); }
+.brit-room .ri-sig-tr i { display: block; height: 100%; background: var(--ink); }
+.brit-room .ri-touch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.brit-room .ri-touch div { padding: 10px; border: 1px solid var(--line); background: var(--card); color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
+.brit-room .ri-touch b { display: block; color: var(--ink); font: 500 22px var(--display); }
+.brit-room .ri-dr-s textarea { width: 100%; min-height: 54px; padding: 10px; border: 1px solid var(--ink); background: var(--card); font: 11px var(--mono); }
+.brit-room .ri-lock { display: flex; gap: 8px; margin-top: 12px; font: 10px var(--mono); }
+.brit-room .ri-tl { margin-inline-start: 4px; border-inline-start: 1px solid var(--ink); }
+.brit-room .ri-tl > div { position: relative; padding: 0 14px 13px; padding-inline-end: 0; color: var(--muted); font: 10px/1.5 var(--mono); }
+.brit-room .ri-tl > div::before { content: ''; position: absolute; inset-inline-start: -4px; top: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.brit-room .ri-tl b { color: var(--ink); font-family: var(--body); }
+.brit-room .ri-dr-f { padding: 18px 28px 40px; display: flex; }
+
+.brit-room .ri-modal { position: fixed; z-index: 72; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(680px, 94%); max-height: 86vh; overflow: auto; padding: 30px; background: var(--paper); border-top: 4px solid var(--gold); }
+.brit-room .ri-modal h2 { margin: 0 0 4px; font: 500 40px/0.9 var(--display); text-transform: uppercase; }
+.brit-room .ri-modal-sub { margin: 0 0 14px; color: var(--muted); font: 10px/1.5 var(--mono); text-transform: uppercase; }
+.brit-room .ri-sg { display: grid; grid-template-columns: 1fr auto; gap: 16px; margin-top: 16px; padding: 16px 0 0; border-top: 1px solid var(--line); }
+.brit-room .ri-sg h3 { margin: 0 0 8px; font: 500 22px/0.95 var(--display); text-transform: uppercase; }
+.brit-room .ri-sg-mv { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.brit-room .ri-sg p { margin: 8px 0 0; color: #3b3a35; font: 11px/1.55 var(--body); }
+.brit-room .ri-sg-ac { display: flex; flex-direction: column; gap: 6px; }
+.brit-room .ri-ai { display: inline-block; margin-inline-end: 6px; padding: 3px 5px; background: var(--black); color: var(--gold-soft); font: 8px/1 var(--mono); letter-spacing: 0.06em; }
+.brit-room .ri-conf { color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
+.brit-room .ri-toast { position: fixed; z-index: 90; left: 24px; bottom: 24px; padding: 13px 16px; background: var(--black); color: var(--paper); border-left: 3px solid var(--gold); font: 10px/1.4 var(--mono); }
+@media (max-width: 900px) { .brit-room .ri-th-next, .brit-room .ri-table th:last-child, .brit-room .ri-table td:last-child { display: none; } .brit-room .ri-sg { grid-template-columns: 1fr; } .brit-room .ri-sg-ac { flex-direction: row; } }
+
+/* Level & Focus — background analyst additions */
+.brit-room .ri-plan-line { display: block; margin-top: 4px; color: var(--ink); font: 400 10.5px/1.35 var(--body); max-width: 260px; }
+.brit-room .ri-news-dot { margin-inline-start: 6px; padding: 1px 4px; font: 8px/1.3 var(--mono); font-style: normal; text-transform: uppercase; vertical-align: 2px; }
+.brit-room .ri-news-dot.pos { color: var(--green); border: 1px solid var(--green); }
+.brit-room .ri-news-dot.neg { color: var(--red); border: 1px solid var(--red); }
+.brit-room .ri-status { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+.brit-room .ri-live { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
+.brit-room .ri-plan { display: grid; gap: 12px; padding: 16px 18px; border: 1px solid var(--gold-soft); background: color-mix(in srgb, var(--gold-soft) 8%, transparent); }
+.brit-room .ri-plan b { display: block; margin-bottom: 3px; color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
+.brit-room .ri-plan p { margin: 0; font: 12px/1.55 var(--body); }
+.brit-room .ri-timing { padding: 3px 6px; font: 9px/1 var(--mono); }
+.brit-room .ri-t-now, .brit-room .ri-t-this_week { background: var(--red); color: #fff; }
+.brit-room .ri-t-this_window { background: var(--gold-soft); color: var(--ink); }
+.brit-room .ri-t-later, .brit-room .ri-t-hold { background: var(--paper-2); color: var(--ink); }
+.brit-room .ri-news { padding: 10px 0 10px 12px; border-bottom: 1px solid var(--line-2); border-inline-start: 3px solid var(--muted-2); padding-inline-start: 12px; }
+.brit-room .ri-news b { display: block; font: 600 12px/1.4 var(--body); }
+.brit-room .ri-news p { margin: 4px 0; font: 11px/1.5 var(--body); color: #3b3a35; }
+.brit-room .ri-news small { color: var(--muted); font: 9px var(--mono); text-transform: uppercase; }
+.brit-room .ri-ns-positive { border-inline-start-color: var(--green); }
+.brit-room .ri-ns-negative, .brit-room .ri-ns-risk { border-inline-start-color: var(--red); }
+.brit-room .ri-srcs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.brit-room .ri-srcs a { padding: 3px 6px; border: 1px solid var(--line); color: var(--muted); font: 9px/1.3 var(--mono); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brit-room .ri-srcs a:hover { color: var(--gold); border-color: var(--gold); }
+.brit-room .ri-risk { padding: 8px 0 8px 12px; padding-inline-start: 12px; border-inline-start: 3px solid var(--red); margin-bottom: 6px; font: 11.5px/1.5 var(--body); }
+.brit-room .ri-sig { grid-template-columns: 120px 1fr 28px; }
+.brit-room .ri-sig em { margin-inline-start: 6px; color: var(--muted-2); font-style: normal; }
+.brit-room .ri-sig small { grid-column: 1 / -1; margin-top: -4px; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: none; }
+.brit-room .ri-adj { margin-top: 10px; color: var(--gold); font: 10px var(--mono); text-transform: uppercase; }
+
+/* ═══ Push board (Roster intelligence v3): Push now + Window targets ═══ */
+.brit-room .pb-sum { display: grid; grid-template-columns: 1fr 1fr 1.2fr; margin: 18px 0 6px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.brit-room .pb-sum > * { padding: 14px 14px 13px 0; border-inline-end: 1px solid var(--line); }
+.brit-room .pb-sum > *:not(:first-child) { padding-inline-start: 14px; }
+.brit-room .pb-sum > *:last-child { border-inline-end: 0; }
+.brit-room .pb-sum strong { display: block; font: 500 34px/0.85 var(--display); }
+.brit-room .pb-sum span { display: block; margin-top: 7px; color: var(--muted); font: 9px/1.2 var(--mono); text-transform: uppercase; }
+.brit-room .pb-sum a.hot strong { color: var(--red); }
+.brit-room .pb-sum-win strong { color: var(--gold); }
+.brit-room .pb-h { display: flex; justify-content: space-between; align-items: baseline; margin-top: 26px; padding-bottom: 9px; border-bottom: 1px solid var(--ink); }
+.brit-room .pb-h h3 { margin: 0; font: 500 19px/1 var(--display); text-transform: uppercase; }
+.brit-room[dir='rtl'] .pb-h h3 { font-weight: 800; }
+.brit-room .pb-h span { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .pb-empty { padding: 16px 0; border-bottom: 1px solid var(--line); color: var(--muted); font: 11px/1.5 var(--body); }
+.brit-room .pb-empty b { color: var(--ink); }
+.brit-room .pb-item { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start; padding: 14px 0 14px 12px; padding-inline-start: 12px; border-bottom: 1px solid var(--line); border-inline-start: 3px solid var(--gold-soft); }
+.brit-room .pb-item.sev3 { border-inline-start-color: var(--red); }
+.brit-room .pb-item-main, .brit-room .pb-target, .brit-room .pb-sugg-name { display: block; width: 100%; text-align: start; }
+.brit-room .pb-item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.brit-room .pb-item h4, .brit-room .pb-target h4 { display: flex; align-items: center; gap: 7px; margin: 0; font: 700 13.5px/1.25 var(--body); }
+.brit-room .pb-item time, .brit-room .pb-target time { color: var(--gold); font: 500 15px/1 var(--display); white-space: nowrap; }
+.brit-room .pb-target time { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .pb-item time.hot, .brit-room .pb-target time.hot { color: var(--red); }
+.brit-room .pb-item small, .brit-room .pb-target small { display: block; margin-top: 3px; color: var(--muted); font: 9px/1.2 var(--mono); text-transform: uppercase; }
+.brit-room .pb-why { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 3px; }
+.brit-room .pb-why li { position: relative; padding-inline-start: 12px; font: 11px/1.45 var(--body); color: #3b3a35; }
+.brit-room .pb-why li::before { content: ''; position: absolute; inset-inline-start: 0; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold-soft); }
+.brit-room .pb-why li.k-mandate::before, .brit-room .pb-why li.k-contract::before, .brit-room .pb-why li.k-neglect::before { background: var(--red); }
+.brit-room .pb-why li.k-request::before { background: var(--green); }
+.brit-room .pb-why li.k-news::before { background: var(--blue); }
+.brit-room .pb-why.big li { padding: 6px 0; padding-inline-start: 14px; border-bottom: 1px solid var(--line-2); font-size: 12px; }
+.brit-room .pb-why.big li::before { top: 12px; }
+.brit-room .pb-why.big time { display: block; margin-top: 2px; color: var(--muted); font: 9px var(--mono); }
+.brit-room .pb-step { margin: 8px 0 0; font: 600 11.5px/1.45 var(--body); color: var(--ink); }
+.brit-room .pb-step.muted { color: var(--gold); font-weight: 400; }
+.brit-room .pb-clubs { margin: 4px 0 0; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
+.brit-room .pb-done { padding: 8px 10px; border: 1px solid var(--line); color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; white-space: nowrap; }
+.brit-room .pb-done:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+.brit-room .pb-tag { padding: 2px 5px; border: 1px solid var(--gold); color: var(--gold); font: 8px/1.2 var(--mono); font-style: normal; text-transform: uppercase; letter-spacing: 0.05em; }
+.brit-room .pb-tag.hot { border-color: var(--red); color: var(--red); }
+.brit-room .ri-dr-h .pb-tag { border-color: var(--gold-soft); color: var(--gold-soft); }
+.brit-room .pb-lv { min-width: 24px; height: 18px; display: inline-grid; place-items: center; font: 500 10px/1 var(--display); }
+.brit-room .pb-handled { padding: 10px 0; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
+.brit-room .pb-add { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .pb-add:hover { color: var(--ink); }
+.brit-room .pb-target { padding: 13px 0; border-bottom: 1px solid var(--line); }
+.brit-room .pb-target:hover, .brit-room .pb-item-main:hover h4 { color: var(--gold); }
+.brit-room .pb-sugg { margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--gold-soft); }
+.brit-room .pb-sugg-h { display: block; margin-bottom: 6px; color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.brit-room .pb-sugg-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 7px 0; }
+.brit-room .pb-sugg-name { font: 700 12px/1.3 var(--body); }
+.brit-room .pb-sugg-name em { margin-inline-start: 6px; color: var(--gold); font: 10px var(--mono); font-style: normal; }
+.brit-room .pb-sugg-name small { display: block; margin-top: 2px; color: var(--muted); font: 400 10.5px/1.4 var(--body); }
+.brit-room .pb-dr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.brit-room .ri-btn-dark { border-color: var(--dark-line); color: var(--paper); }
+.brit-room .ri-btn-dark:hover:not(:disabled) { background: var(--paper) !important; color: var(--ink) !important; }
+.brit-room .pb-next { font-weight: 700 !important; }
+.brit-room .pb-search { width: 100%; margin-top: 8px; padding: 11px 12px; border: 1px solid var(--ink); background: var(--card); font: 12px var(--body); }
+.brit-room .pb-picker-list { margin-top: 12px; max-height: 52vh; overflow: auto; border-top: 1px solid var(--line); }
+.brit-room .pb-picker-row { display: flex; width: 100%; justify-content: space-between; gap: 12px; padding: 11px 4px; border-bottom: 1px solid var(--line); text-align: start; }
+.brit-room .pb-picker-row:hover { background: rgba(164, 125, 67, 0.07); }
+.brit-room .pb-picker-row b { display: block; font: 700 12.5px/1.3 var(--body); }
+.brit-room .pb-picker-row small { display: block; margin-top: 2px; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
+.brit-room .pb-picker-row small.pb-fit { color: var(--gold); text-transform: none; font: 10.5px/1.4 var(--body); }
+.brit-room .pb-picker-r { display: flex; align-items: center; gap: 8px; }
+.brit-room .pb-picker-r em { color: var(--gold); font: 11px var(--mono); font-style: normal; }
+.brit-room .pb-picker-r i { width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid var(--ink); font-style: normal; }
+
+/* ═══ Roster intelligence v4 — single ranked board (top targets) ═══ */
+.brit-room .ri-caption { margin: 14px 0 10px; color: var(--muted); font: 9px/1.5 var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+.brit-room .rk { list-style: none; margin: 0; padding: 0; counter-reset: rk; }
+.brit-room .rk-row { display: grid; grid-template-columns: 30px 1fr 64px; gap: 12px; align-items: center; width: 100%; padding: 14px 0; border-top: 1px solid var(--line); text-align: start; }
+.brit-room .rk li:first-child .rk-row { border-top: 0; }
+.brit-room .rk-row:hover { background: rgba(164, 125, 67, 0.07); }
+.brit-room .rk-n { font: 500 18px/1 var(--display); color: var(--muted-2); }
+.brit-room .rk-main { min-width: 0; }
+.brit-room .rk-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.brit-room .rk-top b { font: 700 14px/1.2 var(--body); }
+.brit-room .rk-tier { display: inline-flex; align-items: center; gap: 2px; }
+.brit-room .rk-tier b { min-width: 24px; height: 18px; display: inline-grid; place-items: center; font: 500 10px/1 var(--display); }
+.brit-room .rk-ceil { color: var(--gold); font: 9px/1 var(--mono); font-style: normal; }
+.brit-room .rk-push { padding: 2px 6px; font: 8px/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; }
+.brit-room .rk-push.p-now { background: var(--red); color: #fff; }
+.brit-room .rk-push.p-high { background: var(--gold); color: #fff; }
+.brit-room .rk-push.p-medium { border: 1px solid var(--gold); color: var(--gold); }
+.brit-room .rk-push.p-low { border: 1px solid var(--muted-2); color: var(--muted); }
+.brit-room .rk-fit { display: block; margin-top: 3px; color: var(--ink); font: 500 10.5px/1.3 var(--mono); text-transform: uppercase; }
+.brit-room .rk-sub { display: block; margin-top: 2px; color: var(--muted); font: 9px/1.2 var(--mono); text-transform: uppercase; }
+.brit-room .rk-why { display: block; margin-top: 6px; padding-inline-start: 11px; position: relative; font: 11px/1.45 var(--body); color: #3b3a35; }
+.brit-room .rk-why::before { content: ''; position: absolute; inset-inline-start: 0; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold-soft); }
+.brit-room .rk-why.w3::before { background: var(--red); }
+.brit-room .rk-why.w1::before { background: var(--muted-2); }
+.brit-room .rk-worth { position: relative; text-align: end; }
+.brit-room .rk-worth b { font: 500 20px/1 var(--display); }
+.brit-room .rk-worth i { position: absolute; inset-inline-end: 0; bottom: -4px; height: 3px; background: var(--gold); max-width: 100%; }
+.brit-room .ri-dr-worth { display: flex; gap: 16px; margin-top: 14px; }
+.brit-room .ri-dr-worth span { color: #b9b5aa; font: 9px/1.4 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-worth b { display: block; margin-top: 3px; color: var(--paper); font: 500 20px/1 var(--display); }
+.brit-room .ri-fitlabel { color: var(--gold-soft); font: 9px/1.2 var(--mono); text-transform: uppercase; }
+
+.brit-room .ri-toast{left:24px;bottom:70px}
 </style>
 </head>
 <body>
@@ -147,10 +370,7 @@ body{margin:0;background:var(--paper)}
 <div class="brit-modal" id="modal"></div>
 <div class="notif" id="notif"></div>
 <div class="toast" id="toast"></div>
-<div class="mockbar"><b>MOCK</b><span>Controls for review only —</span>
-  <button onclick="simAlert()">▶ Simulate “becomes Push now” alert</button>
-  <button onclick="simEmpty()">Toggle empty state</button>
-  <button onclick="resetAll()">Reset</button></div>
+<div class="mockbar"><b>MOCK</b><span>read-only · weekly agent</span><button onclick="simAlert()">▶ Weekly digest push</button><button onclick="resetAll()">Reset</button></div>
 </div>
 
 <script>
@@ -374,6 +594,86 @@ function simEmpty(){empty=!empty;paint()}
 function resetAll(){const o=JSON.parse(SNAP);P.splice(0,P.length,...o);Object.keys(HIST).forEach(k=>{HIST[k]=HIST[k].filter(h=>h.w==='System'||h.w==='Avi N.')});empty=false;tab='priority';lvFilter=0;showAll=false;flashId=null;closeAll();document.getElementById('notif').classList.remove('show');paint()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll()});
 renderAll();
+</script>
+<script>
+/* ===== Roster intelligence v4 — single ranked board. Overrides the mock's RI module. ===== */
+Object.assign(D.en,{cap:'Top {n} to work on next window · ranked by the weekly analysis',win:'{c} window in {d}d',
+ worth:'Worth',urgency:'Urgency',conf:'Confidence',weekly:'refreshed weekly',updated:'Background analysis · updated 2d ago',
+ push:{now:'Push now',high:'High',medium:'Medium',low:'Low'},lv:['Elite','Premium','Core','Depth','Developing'],
+ summary:'Summary',why:'Why he’s worth it',news:'News',newsMom:'momentum',basis:'Level · how we judged him',effort:'Effort · last 30 days',
+ notes:'Notes',tasks:'Tasks',last:'Last touch',auto:'Automatic',score:'Score',coverage:'data',profile:'Open full profile →',
+ crit:{output:'Output',ability:'Ability',value:'Market value',league:'League / club',availability:'Availability'},
+ notifT:'This week’s targets'});
+Object.assign(D.he,{cap:'{n} המובילים לעבוד עליהם בחלון הבא · מדורג לפי הניתוח השבועי',win:'החלון ב{c} בעוד {d} ימים',
+ worth:'שווי עבודה',urgency:'דחיפות',conf:'ביטחון',weekly:'מתעדכן שבועית',updated:'ניתוח ברקע · עודכן לפני יומיים',
+ push:{now:'לדחוף עכשיו',high:'גבוה',medium:'בינוני',low:'נמוך'},lv:['עילית','פרימיום','ליבה','עומק','בפיתוח'],
+ summary:'תקציר',why:'למה כדאי לעבוד עליו',news:'חדשות',newsMom:'מומנטום',basis:'רמה · איך שפטנו אותו',effort:'מאמץ · 30 ימים אחרונים',
+ notes:'הערות',tasks:'משימות',last:'קשר אחרון',auto:'אוטומטי',score:'ציון',coverage:'נתונים',profile:'פתח פרופיל מלא ←',
+ crit:{output:'תפוקה',ability:'יכולת',value:'שווי שוק',league:'ליגה / מועדון',availability:'זמינות'},
+ notifT:'היעדים של השבוע'});
+const he=()=>lang==='he', L=k=>T(k), tt=o=>o?(he()?o.he||o.en:o.en):'';
+const crit=(o,ab,v,l,av)=>[['output',30,o],['ability',20,ab],['value',25,v],['league',15,l],['availability',10,av]];
+const BOARD=[
+ {id:8,n:'Amit Rosen',pos:'DM',club:'Maccabi Netanya',age:28,mv:'€2.20M',tier:2,ceiling:2,role:'starter',push:'now',worth:81,urg:82,conf:81,
+  summary:{en:'Premium starter whose mandate expires in days while a club actively wants his profile — the single most time-critical target.',he:'פותח פרימיום שהמנדט שלו פג בעוד ימים בזמן שקבוצה רוצה בדיוק את הפרופיל שלו — היעד הדחוף ביותר.'},
+  why:[{t:3,en:'Mandate expires in 6 days',he:'המנדט פג בעוד 6 ימים'},{t:2,en:'Hapoel Beer Sheva is looking for a DM (open request)',he:'הפועל באר שבע מחפשת קשר אחורי (בקשה פתוחה)'},{t:1,en:'Market value up 55% this year',he:'השווי עלה 55% השנה'}],
+  news:[{h:'Rosen linked with Beer Sheva move',s:'positive',i:{en:'Confirms demand ahead of the window',he:'מאשר ביקוש לפני החלון'},src:'ONE · 2026-11-01'}],
+  c:crit([68,'SofaScore 7.15 · 1,850 min'],[null],[66,'€2.2m'],[50,'Israel · Elo 1420'],[93,'21 days missed']),srcs:['ONE','SofaScore']},
+ {id:12,n:'Omri Tal',pos:'RB',club:'Hapoel Beer Sheva',age:23,mv:'€1.90M',tier:2,ceiling:1,role:'starter',push:'high',worth:69,urg:52,conf:78,
+  summary:{en:'Two Premium-level seasons at a top-3 club at 23, with a European ceiling — a classic sell-on with 18 months left.',he:'שתי עונות ברמת פרימיום במועדון צמרת בגיל 23, עם תקרה אירופית — שחקן מכירה קלאסי עם 18 חודשים בחוזה.'},
+  why:[{t:2,en:'Prime age (23) with a European ceiling',he:'גיל שיא (23) עם תקרה אירופית'},{t:2,en:'18 months on his contract — movable now',he:'18 חודשים בחוזה — ניתן להזזה עכשיו'},{t:1,en:'Consistent 7.2 rating',he:'דירוג 7.2 עקבי'}],
+  news:[],c:crit([72,'API 7.2 · 2,400 min'],[68,'FM CA 126'],[60,'€1.9m'],[56,'Israel · top-3 club'],[100,'No injuries']),srcs:[]},
+ {id:10,n:'Eden Ziv',pos:'LW',club:'Maccabi Haifa',age:21,mv:'€2.80M',tier:1,ceiling:1,role:'starter',push:'medium',worth:64,urg:40,conf:90,
+  summary:{en:'Elite-level winger at 21 just called up to the senior national team; long contract means no rush, but the value ceiling is high.',he:'כנף ברמת עילית בגיל 21 שזומן לנבחרת הבכירה; חוזה ארוך אז אין לחץ, אבל תקרת השווי גבוהה.'},
+  why:[{t:2,en:'Elite output at 21, rising value',he:'תפוקת עילית בגיל 21, שווי עולה'},{t:1,en:'Called up to the senior national team',he:'זומן לנבחרת הבכירה'}],
+  news:[{h:'Ziv earns first senior Israel call-up',s:'positive',i:{en:'Raises his profile and price',he:'מעלה פרופיל ומחיר'},src:'Ynet · 2026-10-28'}],
+  c:crit([80,'SofaScore 7.4 · 2,300 min'],[76,'FM CA 128 / PA 155'],[70,'€2.8m'],[56,'Israel · Elo 1510'],[100,'No injuries']),srcs:['Ynet']},
+ {id:2,n:'Roi Dahan',pos:'RW',club:'Hapoel Beer Sheva',age:27,mv:'€1.80M',tier:2,ceiling:2,role:'rotation',push:'high',worth:58,urg:60,conf:72,
+  summary:{en:'Solid Premium winger whose mandate lapses in nine days — renew before anything else.',he:'כנף פרימיום יציב שהמנדט שלו פג בעוד תשעה ימים — לחדש לפני הכול.'},
+  why:[{t:3,en:'Mandate expires in 9 days',he:'המנדט פג בעוד 9 ימים'},{t:1,en:'22 days since last contact',he:'22 ימים מאז הקשר האחרון'}],
+  news:[],c:crit([66,'API 7.0'],[null],[60,'€1.8m'],[56,'Israel'],[100,'—']),srcs:[]},
+ {id:3,n:'Tomer Biton',pos:'CB',club:'Beitar Jerusalem',age:29,mv:'€900K',tier:3,ceiling:3,role:'starter',push:'medium',worth:47,urg:45,conf:84,
+  summary:{en:'Dependable Core centre-back; worth keeping warm but no catalyst yet.',he:'בלם ליבה אמין; שווה לשמור על קשר אך ללא קטליזטור.'},
+  why:[{t:1,en:'Reliable starter, stable value',he:'פותח אמין, שווי יציב'}],news:[],c:crit([58,'FotMob 7.0'],[null],[50,'€900k'],[50,'Israel'],[88,'14 days missed']),srcs:[]},
+];
+let bOpen=null;
+const b=id=>BOARD.find(x=>x.id===id);
+const lvB=t=>`<b class="ri-l${t}">L${t}</b>`;
+function riHTML(){
+ const w=58, c=he()?'ישראל':'Israel';
+ return `<div class="brit-module-head"><h2>${T('ri')}</h2><a href="#" onclick="return false">${T('viewAll')}</a></div>
+ <p class="ri-caption">${L('cap').replace('{n}',BOARD.length)} · ${L('win').replace('{c}',c).replace('{d}',w)}</p>
+ <ol class="rk">${BOARD.map((p,i)=>`<li><button class="rk-row" onclick="bDrawer(${p.id})">
+   <span class="rk-n">${String(i+1).padStart(2,'0')}</span>
+   <span class="rk-main"><span class="rk-top"><b>${p.n}</b><span class="rk-tier">${lvB(p.tier)}${p.ceiling<p.tier?`<em class="rk-ceil">→L${p.ceiling}</em>`:''}</span><span class="rk-push p-${p.push}">${L('push')[p.push]}</span></span>
+   <small class="rk-fit">${he()?D.he.lv[p.tier-1]:D.en.lv[p.tier-1]} · ${({starter:he()?'פותח':'Starter',rotation:he()?'רוטציה':'Rotation',squad:he()?'סגל':'Squad'})[p.role]}</small>
+   <small class="rk-sub">${p.pos} · ${p.age} · ${p.club}</small>
+   ${p.why[0]?`<span class="rk-why w${p.why[0].t}">${tt(p.why[0])}</span>`:''}</span>
+   <span class="rk-worth"><b>${p.worth}</b><i style="width:${p.worth}%"></i></span></button></li>`).join('')}</ol>
+ <div class="ri-status"><span class="ri-live"></span>${L('updated')} · ${L('weekly')}</div>`;
+}
+function paint(){document.getElementById('ri').innerHTML=riHTML()}
+function closePb(){document.getElementById('pbLayer').innerHTML='';bOpen=null}
+function closeAll(){closePb();['bd','drawer','modal'].forEach(i=>{const e=document.getElementById(i);e&&e.classList.remove('open')})}
+function openDrawer(id){bDrawer(id)}
+function bDrawer(id){bOpen=id;const p=b(id);
+ document.getElementById('pbLayer').innerHTML=`<div class="ri-backdrop" onclick="closePb()"></div><aside class="ri-drawer">
+  <div class="ri-dr-h"><button class="ri-x" onclick="closePb()">×</button><small>${p.pos} · ${p.age} · ${p.club} · ${p.mv}</small><h2>${p.n}</h2>
+   <div class="ri-dr-tags"><span class="ri-lv">${lvB(p.tier)}</span><span class="ri-fitlabel">${he()?D.he.lv[p.tier-1]:D.en.lv[p.tier-1]} · ${({starter:'Starter',rotation:'Rotation',squad:'Squad'})[p.role]}</span><span class="rk-push p-${p.push}">${L('push')[p.push]}</span></div>
+   <div class="ri-dr-worth"><span>${L('worth')} <b>${p.worth}</b></span><span>${L('urgency')} <b>${p.urg}</b></span><span>${L('conf')} <b>${p.conf}%</b></span></div></div>
+  <div class="ri-dr-s"><h4><span>✦ ${L('summary')}</span><span>GEMINI + SEARCH · 2d</span></h4><div class="ri-aibox"><p>${tt(p.summary)}</p></div></div>
+  ${p.why.length?`<div class="ri-dr-s"><h4><span>${L('why')}</span></h4><ul class="pb-why big">${p.why.map(r=>`<li class="s${r.t}">${tt(r)}</li>`).join('')}</ul></div>`:''}
+  ${p.news.length?`<div class="ri-dr-s"><h4><span>${L('news')}</span></h4>${p.news.map(n=>`<div class="ri-news ri-ns-${n.s}"><b>${n.h}</b><p>${tt(n.i)}</p><small>${n.src}</small></div>`).join('')}${p.srcs.length?`<div class="ri-srcs">${p.srcs.map(s=>`<a href="#" onclick="return false">${s}</a>`).join('')}</div>`:''}</div>`:''}
+  <div class="ri-dr-s"><h4><span>${L('basis')}</span></h4>${p.c.map(([k,wt,v])=>`<div class="ri-sig"><span>${L('crit')[k]}<em>${wt}%</em></span><div class="ri-sig-tr"><i style="width:${v[0]||0}%;opacity:${v[0]==null?.2:1}"></i></div><span>${v[0]??'—'}</span>${v[1]?`<small>${v[1]}</small>`:''}</div>`).join('')}</div>
+  <div class="ri-dr-s"><h4><span>${L('effort')}</span></h4><div class="ri-touch"><div><b>1</b>${L('notes')}</div><div><b>0</b>${L('tasks')}</div><div><b>20d</b>${L('last')}</div></div></div>
+  <div class="ri-dr-f"><a class="ri-btn ri-btn-gold">${L('profile')}</a></div></aside>`;}
+function resetAll(){closeAll();paint()}
+function simAlert(){const n=document.getElementById('notif');n.innerHTML=`<small><span>BRIT · ${L('notifT')}</span><span>weekly</span></small><b>${L('notifT')}</b><p>${he()?'אמית רוזן, עומרי טל, עדן זיו +2':'Amit Rosen, Omri Tal, Eden Ziv +2 more'}</p><button onclick="document.getElementById('notif').classList.remove('show')">${T('notifBtn')}</button>`;n.classList.add('show');setTimeout(()=>n.classList.remove('show'),7000)}
+function simEmpty(){}
+const _tl=toggleLang;toggleLang=function(){_tl();if(bOpen)bDrawer(bOpen)};
+document.getElementById('room').insertAdjacentHTML('beforeend','<div id="pbLayer"></div>');
+renderAll();
+
 </script>
 </body>
 </html>

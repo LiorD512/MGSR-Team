@@ -7,24 +7,13 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 /**
- * GET /api/tiering — read-only. Returns the finished analyses produced by the background worker.
- * Never triggers analysis: the dashboard just reads.
+ * GET /api/tiering — read-only. Returns the analyses produced by the weekly background agent.
+ * The dashboard ranks and shows the top N from this; it never triggers analysis.
  */
 export async function GET(req: NextRequest) {
   const actor = await authenticate(req);
   if (actor instanceof NextResponse) return actor;
   const db = adminDb();
-  const one = req.nextUrl.searchParams.get('playerId');
-  if (one) {
-    const s = await db.collection(TIERS_COLLECTION).doc(one).get();
-    const items: PlayerTierDoc[] = [];
-    if (s.exists) {
-      const { inputs: _x, ...rest } = s.data() as Omit<PlayerTierDoc, 'playerId'>;
-      void _x;
-      items.push({ playerId: one, ...rest });
-    }
-    return NextResponse.json({ items, meta: null, generatedAt: Date.now() } satisfies TierListResponse);
-  }
   const [tiersSnap, playersSnap, meta] = await Promise.all([
     db.collection(TIERS_COLLECTION).get(),
     db.collection('Players').select().get(),
@@ -35,11 +24,9 @@ export async function GET(req: NextRequest) {
   tiersSnap.docs.forEach((d) => {
     if (!rosterIds.has(d.id)) return;
     const data = d.data() as Omit<PlayerTierDoc, 'playerId'>;
-    // `inputs` is a server-side cache — not needed by the UI.
-    const { inputs: _inputs, ...rest } = data;
+    const { inputs: _inputs, ...rest } = data; // inputs = server cache, not for the UI
     void _inputs;
     items.push({ playerId: d.id, ...rest });
   });
-  const body: TierListResponse = { items, meta, generatedAt: Date.now() };
-  return NextResponse.json(body);
+  return NextResponse.json({ items, meta, generatedAt: Date.now() } satisfies TierListResponse);
 }

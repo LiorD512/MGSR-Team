@@ -1,51 +1,55 @@
 /**
- * Server-side pieces of Level & Focus: auth, data loading, analysis pipeline, writes, push alerts.
- * All Firestore access uses the Admin SDK (bypasses rules) — the client talks to /api/tiering/*.
+ * Server-side Roster Intelligence: auth, data loading, the weekly analysis pipeline, and push alerts.
+ * All Firestore access uses the Admin SDK (bypasses rules) — the client only reads via /api/tiering.
  */
 import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMessaging } from 'firebase-admin/messaging';
 import type { Firestore } from 'firebase-admin/firestore';
 import { adminAuth, adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
-import { ANALYST_MAX_AGE_MS, GEMINI_MODEL, META_DOC, MIN_RECOMPUTE_MS, TIERS_COLLECTION as TC } from './config';
+import { ANALYST_MAX_AGE_MS, GEMINI_MODEL, META_DOC, REANALYSE_AFTER_MS, TIER_DEFINITIONS, TIERS_COLLECTION as TC } from './config';
 import {
   abilitySignal,
-  applyFocusAdj,
   availabilitySignal,
-  computeTriggers,
   computeUrgency,
-  confidenceFrom,
   contractMonthsLeft,
   criteriaList,
-  focusFrom,
+  fitLabel,
   hashFacts,
   leagueClubSignal,
-  levelFromScore,
   outputSignal,
   parseValueEuro,
   positionGroupOf,
+  predictFit,
+  pushFromUrgency,
   requestMatches,
+  saleability,
+  tierFromScore,
   trendFromHistory,
   valueSignal,
   weightedScore,
+  worth as worthScore,
 } from './engine';
 import { gatherInputs } from './inputs';
 import { runAnalyst, type AnalystFacts } from './analyst';
-import { isUrgent, liveTriggers, triggerKey } from './shared';
 import type {
   CriterionKey,
-  Level,
+  FitPrediction,
   PlayerTierDoc,
-  TierAi,
+  Push,
+  Role,
+  Tier,
+  TierAnalysis,
   TierEffort,
-  TierHistoryEntry,
   TierMeta,
+  TierReason,
   TierSignals,
   Trend,
 } from './types';
 
 export const TIERS_COLLECTION = TC;
 const DAY = 24 * 3600 * 1000;
+const clampTier = (t: number): Tier => Math.max(1, Math.min(5, t)) as Tier;
 
 /* ───────────────────────── auth ───────────────────────── */
 
@@ -70,7 +74,7 @@ export async function resolveAccountName(db: Firestore, email: string, fallback:
   }
 }
 
-/** Verifies a Firebase ID token. Any signed-in agent may use the tiering API. */
+/** Verifies a Firebase ID token. Any signed-in agent may read the tiering API. */
 export async function authenticate(req: NextRequest): Promise<Actor | NextResponse> {
   if (!getFirebaseAdmin()) return NextResponse.json({ error: 'Firebase Admin not configured' }, { status: 503 });
   const h = req.headers.get('Authorization');
@@ -86,16 +90,14 @@ export async function authenticate(req: NextRequest): Promise<Actor | NextRespon
   }
 }
 
-/** Scheduled jobs authenticate with a shared secret header instead of a user token. */
+/** The weekly job authenticates with a shared secret header instead of a user token. */
 export async function authenticateOrSecret(req: NextRequest): Promise<Actor | NextResponse> {
   const secret = process.env.TIERING_RUN_SECRET;
   const given = req.headers.get('x-tiering-secret');
   if (secret && given) {
     const a = Buffer.from(secret);
     const b = Buffer.from(given);
-    if (a.length === b.length && timingSafeEqual(a, b)) {
-      return { uid: 'system', email: '', name: 'Engine', system: true };
-    }
+    if (a.length === b.length && timingSafeEqual(a, b)) return { uid: 'system', email: '', name: 'Weekly agent', system: true };
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   return authenticate(req);
@@ -133,9 +135,9 @@ export interface TierContext {
   now: number;
   players: RosterPlayer[];
   tiers: Map<string, PlayerTierDoc>;
-  mandates: Map<string, number>; // tmProfile -> expiresAt
+  mandates: Map<string, number>;
   requests: RequestRow[];
-  taskTouches: Map<string, { count30: number; last: number }>; // key: tmProfile or playerId
+  taskTouches: Map<string, { count30: number; last: number }>;
   windows: { country: string; daysLeft: number }[];
 }
 
@@ -184,12 +186,11 @@ export async function loadContext(db: Firestore): Promise<TierContext> {
       }
     });
   }
-  const windows = await loadWindows(db);
+  const windows = await loadWindows();
   return { now, players, tiers, mandates, requests, taskTouches, windows };
 }
 
-/** Open transfer windows (top ones by deadline). Reads the public JSON published by the transfer-windows workflow. */
-async function loadWindows(_db: Firestore): Promise<{ country: string; daysLeft: number }[]> {
+async function loadWindows(): Promise<{ country: string; daysLeft: number }[]> {
   const url = process.env.TIERING_WINDOWS_URL || 'https://raw.githubusercontent.com/LiorD512/MGSR-Team/main/mgsr-web/public/transfer-windows.json';
   try {
     const ctl = new AbortController();
@@ -208,7 +209,7 @@ async function loadWindows(_db: Firestore): Promise<{ country: string; daysLeft:
 }
 
 export function isStale(tier: PlayerTierDoc | undefined, now: number): boolean {
-  return !tier?.ai || now - (tier.ai.computedAt || 0) > MIN_RECOMPUTE_MS;
+  return !tier?.analysis || now - (tier.analysis.computedAt || 0) > REANALYSE_AFTER_MS;
 }
 
 export function computeEffort(p: RosterPlayer, ctx: TierContext): TierEffort {
@@ -221,30 +222,27 @@ export function computeEffort(p: RosterPlayer, ctx: TierContext): TierEffort {
 
 /* ───────────────────────── analysis pipeline ───────────────────────── */
 
-function templateReason(next: TierAi['next'], coverage: number): { en: string; he: string } {
-  const thin = coverage < 0.6;
-  const nextEn =
-    next.kind === 'mandate' ? `Mandate ends in ${next.value} days.`
-    : next.kind === 'contract' ? `Contract ends in ${next.value} months.`
-    : next.kind === 'requests' ? `${next.value} open club request(s) match him.`
-    : next.kind === 'untouched' ? `No contact for ${next.value} days.`
-    : 'Nothing time-critical right now.';
-  const nextHe =
-    next.kind === 'mandate' ? `המנדט פג בעוד ${next.value} ימים.`
-    : next.kind === 'contract' ? `החוזה מסתיים בעוד ${next.value} חודשים.`
-    : next.kind === 'requests' ? `${next.value} בקשות מועדונים פתוחות מתאימות לו.`
-    : next.kind === 'untouched' ? `אין קשר ${next.value} ימים.`
-    : 'אין דחיפות בזמן כרגע.';
-  return {
-    en: `${thin ? 'Based mainly on market value and league (limited match data). ' : ''}${nextEn}`,
-    he: `${thin ? 'מבוסס בעיקר על שווי שוק וליגה (מעט נתוני משחק). ' : ''}${nextHe}`,
-  };
+function fallbackReasons(opts: {
+  contractMonths: number | null;
+  mandateDays: number | null;
+  requests: number;
+  coverage: number;
+  trend: Trend;
+}): TierReason[] {
+  const r: TierReason[] = [];
+  if (opts.mandateDays != null && opts.mandateDays <= 45)
+    r.push({ en: `Mandate expires in ${Math.max(0, Math.round(opts.mandateDays))} days`, he: `המנדט פג בעוד ${Math.max(0, Math.round(opts.mandateDays))} ימים`, weight: 3 });
+  if (opts.contractMonths != null && opts.contractMonths <= 12)
+    r.push({ en: `Contract ends in ${Math.max(0, Math.round(opts.contractMonths))} months`, he: `החוזה מסתיים בעוד ${Math.max(0, Math.round(opts.contractMonths))} חודשים`, weight: opts.contractMonths <= 6 ? 3 : 2 });
+  if (opts.requests > 0)
+    r.push({ en: `${opts.requests} open club request(s) match him`, he: `${opts.requests} בקשות מועדונים פתוחות מתאימות לו`, weight: 2 });
+  if (opts.trend === 'up') r.push({ en: 'Market value trending up', he: 'שווי השוק במגמת עלייה', weight: 1 });
+  if (!r.length) r.push({ en: opts.coverage < 0.6 ? 'Limited data — ranked mainly on value and league' : 'Stable profile, no time pressure', he: opts.coverage < 0.6 ? 'מעט נתונים — דירוג לפי שווי וליגה בעיקר' : 'פרופיל יציב, ללא דחיפות', weight: 1 });
+  return r;
 }
 
 export interface ProcessOptions {
-  /** Base URL of the deployed app, used only for the live FMInside lookup fallback. */
   appOrigin: string | null;
-  /** Re-fetch every source and re-run the analyst regardless of caches. */
   force?: boolean;
   useAnalyst?: boolean;
 }
@@ -255,7 +253,7 @@ export interface ProcessResult {
   refreshed: string[];
 }
 
-/** Full pipeline for one roster player: gather → criteria → urgency → AI analyst (when needed) → write. */
+/** Full pipeline for one roster player. */
 export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPlayer, opts: ProcessOptions): Promise<ProcessResult> {
   const now = ctx.now;
   const prev = ctx.tiers.get(p.id);
@@ -266,7 +264,6 @@ export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPl
   const valueEuro = parseValueEuro(p.marketValue);
   const intel = inputs.intel ?? {};
 
-  // Output: best available rating source (API stats → SofaScore → FotMob)
   const rating = inputs.apiRating ?? intel.sofascoreRating ?? intel.fotmobRating;
   const minutes = inputs.apiRating ? inputs.apiMinutes : intel.minutes;
   const ratingSrc = inputs.apiRating ? 'API' : intel.sofascoreRating ? 'SofaScore' : intel.fotmobRating ? 'FotMob' : '';
@@ -287,7 +284,7 @@ export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPl
   };
   const criteria = criteriaList(signals, notes);
   const { score, coverage } = weightedScore(signals);
-  const baseLevel = levelFromScore(score, group);
+
   const { trend: valueTrend } = trendFromHistory(p.marketValueHistory, now);
   const trend: Trend =
     intel.formTrend === 'rising' && valueTrend !== 'down' ? 'up'
@@ -295,21 +292,30 @@ export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPl
     : valueTrend;
 
   const effort = computeEffort(p, ctx);
-  // No recorded touch: count it as a 30-day gap for urgency, but don't present an invented number as "next".
-  const daysSinceTouch = effort.lastTouchAt ? Math.floor((now - effort.lastTouchAt) / DAY) : 30;
+  const daysSinceTouch = effort.lastTouchAt ? Math.floor((now - effort.lastTouchAt) / DAY) : null;
   const contractMonths = contractMonthsLeft(p.contractExpired, now);
   const mandateExp = p.tmProfile ? ctx.mandates.get(p.tmProfile) : undefined;
   const mandateDays = mandateExp ? (mandateExp - now) / DAY : null;
   const matchingReqs = ctx.requests.filter((r) => requestMatches(r, { positions: p.positions, age }));
-  const u = computeUrgency({ contractMonths, mandateDays, matchingRequests: matchingReqs.length, daysSinceTouch, trend });
-  const baseFocus = focusFrom(u.urgency, baseLevel);
 
+  let fitBase = predictFit({
+    score,
+    coverage,
+    group,
+    age,
+    minutes: minutes ?? undefined,
+    trend,
+    abilityGap: inputs.fmPa && inputs.fmCa ? inputs.fmPa - inputs.fmCa : undefined,
+  });
+
+  // Facts the analyst sees (hash excludes volatile "today"/touch so it doesn't re-run daily).
   const recentNotes = (p.noteList ?? [])
     .slice()
     .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
     .slice(0, 5)
     .map((n) => String(n.notes ?? '').slice(0, 220));
-
+  const preUrg = computeUrgency({ now, tier: fitBase.tier, contractMonths, mandateDays, matchingRequests: matchingReqs.length, daysSinceTouch, trend, newsSignal: prev?.analysis?.newsSignal ?? 0 });
+  const preSale = saleability({ tier: fitBase.tier, age, contractMonths, matchingRequests: matchingReqs.length, trend, newsSignal: prev?.analysis?.newsSignal ?? 0 });
   const facts: AnalystFacts = {
     player: p.fullName ?? '',
     age,
@@ -323,7 +329,7 @@ export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPl
     haveMandate: !!p.haveMandate || mandateDays != null,
     mandateDaysLeft: mandateDays != null ? Math.round(mandateDays) : null,
     criteria: criteria.map((c) => ({ key: c.key, weight: c.weight, score: c.score, note: c.note })),
-    engine: { score, baseLevel, dataCoverage: Math.round(coverage * 100), focus: baseFocus, urgency: u.urgency },
+    engine: { score, dataCoverage: Math.round(coverage * 100), fitTier: fitBase.tier, fitRole: fitBase.role, ceiling: fitBase.ceiling, urgency: preUrg.urgency, worth: worthScore(score, preSale, preUrg.urgency) },
     matchingClubRequests: matchingReqs.slice(0, 6).map((r) => ({
       club: r.clubName ?? '—',
       position: r.position ?? '',
@@ -331,100 +337,80 @@ export async function processPlayer(db: Firestore, ctx: TierContext, p: RosterPl
       ...(r.euOnly ? { euOnly: true } : {}),
       ...(r.createdAt ? { daysOld: Math.max(0, Math.floor((now - r.createdAt) / DAY)) } : {}),
     })),
-    windowTarget: !!prev?.windowTarget,
     transferWindows: ctx.windows,
-    daysSinceLastTouch: effort.lastTouchAt ? daysSinceTouch : null,
+    daysSinceLastTouch: daysSinceTouch,
     recentAgentNotes: recentNotes,
     headlines: (inputs.news ?? []).slice(0, 8).map((n) => ({ title: n.title, source: n.source, date: n.date })),
     today: new Date(now).toISOString().slice(0, 10),
   };
-  // Hash only facts that should trigger a new analysis (not "today" or touch-days that tick daily).
-  const dataHash = hashFacts({ ...facts, today: undefined, daysSinceLastTouch: undefined, transferWindows: undefined });
+  const dataHash = hashFacts({ ...facts, today: undefined, daysSinceLastTouch: undefined, transferWindows: undefined, engine: undefined });
 
-  const prevAi = prev?.ai;
+  const prevA = prev?.analysis;
   const analystDue =
-    opts.useAnalyst !== false &&
-    (opts.force || !prevAi?.analystAt || prevAi.dataHash !== dataHash || now - prevAi.analystAt > ANALYST_MAX_AGE_MS);
+    opts.useAnalyst !== false && (opts.force || !prevA?.analystAt || prevA.dataHash !== dataHash || now - prevA.analystAt > ANALYST_MAX_AGE_MS);
 
-  let analystRan = false;
   let read: Awaited<ReturnType<typeof runAnalyst>> = null;
+  let analystRan = false;
   if (analystDue) {
     read = await runAnalyst(facts);
     analystRan = !!read;
   }
+  const keep = !read && prevA?.analystAt ? prevA : null;
 
-  // Reuse the last analyst read when it was not due (or failed) — keeps reasons/plan/news stable.
-  const keep = !read && prevAi?.analystAt ? prevAi : null;
-  const adj = read ? read.adj : keep ? keep.adj : 0;
-  const focusAdj = read ? read.focusAdj : keep ? keep.focusAdj ?? 0 : 0;
-  const level = Math.max(1, Math.min(5, baseLevel - adj)) as Level;
-  const focus = applyFocusAdj(focusFrom(u.urgency, level), focusAdj);
+  // Apply AI fit nudges (±1), re-derive role/ceiling.
+  const tierAdj = read ? read.tierAdj : 0;
+  const ceilAdj = read ? read.ceilingAdj : 0;
+  const tier = clampTier(fitBase.tier - tierAdj);
+  const role: Role = read?.role ?? (tier === fitBase.tier ? fitBase.role : fitBase.role);
+  const ceiling = clampTier(Math.min(tier, fitBase.ceiling - ceilAdj));
+  const fitConf = read ? Math.round((fitBase.confidence + read.confidence) / 2) : keep ? keep.fit.confidence : fitBase.confidence;
+  const label = fitLabel({ tier, role, ceiling, confidence: fitConf }, TIER_DEFINITIONS);
+  const fit: FitPrediction = { tier, role, ceiling, confidence: fitConf, labelEn: label.en, labelHe: label.he };
 
-  const engineConf = confidenceFrom(coverage, score, group);
-  const confidence = read ? Math.round((engineConf + read.confidence) / 2) : keep ? keep.confidence : engineConf;
-  const tmpl = templateReason(u.next, coverage);
-  const plan = read?.plan ?? keep?.plan;
-  const news = read?.news ?? keep?.news ?? [];
   const newsSignal = read ? read.newsSignal : keep?.newsSignal ?? 0;
-  const triggers = computeTriggers({
-    now,
-    level,
-    mandateDays,
-    contractMonths,
-    requests: matchingReqs.map((r) => ({ club: r.clubName ?? '—', position: r.position ?? '', createdAt: r.createdAt })),
-    plan: plan ?? null,
-    focusAdj,
-    newsSignal,
-    news,
-  });
-  const windowFit = read?.windowFit ?? keep?.windowFit;
+  const { urgency, parts } = computeUrgency({ now, tier, contractMonths, mandateDays, matchingRequests: matchingReqs.length, daysSinceTouch, trend, newsSignal });
+  const push: Push = pushFromUrgency(urgency);
+  const sale = saleability({ tier, age, contractMonths, matchingRequests: matchingReqs.length, trend, newsSignal });
+  const worth = worthScore(score, sale, urgency);
 
-  const ai: TierAi = {
+  const reasons: TierReason[] = read?.reasons?.length
+    ? read.reasons
+    : keep?.reasons?.length
+    ? keep.reasons
+    : fallbackReasons({ contractMonths, mandateDays, requests: matchingReqs.length, coverage, trend });
+
+  const summaryEn = read?.summaryEn || keep?.summaryEn || label.en;
+  const summaryHe = read?.summaryHe || keep?.summaryHe || label.he;
+
+  const analysis: TierAnalysis = {
     score,
     coverage: Math.round(coverage * 100) / 100,
-    baseLevel,
-    adj,
-    level,
-    focus,
-    focusAdj,
-    urgency: u.urgency,
-    urgencyParts: u.parts,
-    trend,
-    newsSignal,
-    confidence,
-    reasonEn: read?.reasonEn || keep?.reasonEn || tmpl.en,
-    reasonHe: read?.reasonHe || keep?.reasonHe || tmpl.he,
-    evidence: read?.evidence ?? keep?.evidence ?? [],
-    criteria,
     signals,
-    news,
-    risks: read?.risks ?? keep?.risks ?? [],
-    ...(plan ? { plan } : {}),
-    triggers,
-    ...(windowFit ? { windowFit } : {}),
+    criteria,
+    fit,
+    urgency,
+    urgencyParts: parts,
+    push,
+    trend,
+    worth,
+    reasons,
+    summaryEn,
+    summaryHe,
+    newsSignal,
+    news: read?.news ?? keep?.news ?? [],
     sources: read?.sources ?? keep?.sources ?? [],
-    next: u.next,
     model: read ? GEMINI_MODEL : keep?.model ?? 'engine',
     computedAt: now,
     ...(read ? { analystAt: now, dataHash } : keep?.analystAt ? { analystAt: keep.analystAt, dataHash: keep.dataHash } : {}),
-    ...(prevAi?.alertKey ? { alertKey: prevAi.alertKey } : {}),
   };
 
-  const doc: PlayerTierDoc = {
-    ...(prev ?? { playerId: p.id }),
-    playerId: p.id,
-    tmProfile: p.tmProfile,
-    playerName: p.fullName,
-    ai,
-    effort,
-    inputs,
-  };
+  const doc: PlayerTierDoc = { playerId: p.id, tmProfile: p.tmProfile, playerName: p.fullName, analysis, effort, inputs };
   await db.collection(TIERS_COLLECTION).doc(p.id).set(clean(doc));
   ctx.tiers.set(p.id, doc);
   return { doc, analystRan, refreshed };
 }
 
-/** Background sweep of the whole roster with bounded concurrency. Used by the worker. */
+/** Weekly sweep of the whole roster with bounded concurrency. */
 export async function sweepRoster(
   db: Firestore,
   opts: ProcessOptions & { concurrency?: number; onlyIds?: string[]; log?: (m: string) => void }
@@ -433,8 +419,7 @@ export async function sweepRoster(
   const ctx = await loadContext(db);
   const log = opts.log ?? (() => {});
   const queue = ctx.players.filter((p) => (opts.onlyIds ? opts.onlyIds.includes(p.id) : true));
-  // stalest first
-  queue.sort((a, b) => (ctx.tiers.get(a.id)?.ai?.computedAt ?? 0) - (ctx.tiers.get(b.id)?.ai?.computedAt ?? 0));
+  queue.sort((a, b) => (ctx.tiers.get(a.id)?.analysis?.computedAt ?? 0) - (ctx.tiers.get(b.id)?.analysis?.computedAt ?? 0));
   const conc = Math.max(1, Math.min(8, opts.concurrency ?? 4));
   let analysed = 0;
   let aiCalls = 0;
@@ -445,10 +430,10 @@ export async function sweepRoster(
       const p = queue[i++];
       try {
         const r = await processPlayer(db, ctx, p, opts);
-        await alertIfNewlyUrgent(db, r.doc);
         analysed++;
         if (r.analystRan) aiCalls++;
-        log(`✓ ${p.fullName} → L${r.doc.ai?.level} F${r.doc.ai?.focus}${r.analystRan ? ' (AI)' : ''} [${r.refreshed.join(',') || 'cached'}]`);
+        const a = r.doc.analysis!;
+        log(`✓ ${p.fullName} worth ${a.worth} · ${a.fit.labelEn} · ${a.push}${r.analystRan ? ' (AI)' : ''} [${r.refreshed.join(',') || 'cached'}]`);
       } catch (e) {
         errors.push({ playerId: p.id, error: String((e as Error)?.message ?? e).slice(0, 200) });
         log(`✗ ${p.fullName}: ${(e as Error)?.message ?? e}`);
@@ -456,15 +441,7 @@ export async function sweepRoster(
     }
   });
   await Promise.all(workers);
-  const meta: TierMeta = {
-    lastRunAt: Date.now(),
-    durationMs: Date.now() - t0,
-    analysed,
-    aiCalls,
-    total: queue.length,
-    windows: ctx.windows,
-    errors: errors.slice(0, 20),
-  };
+  const meta: TierMeta = { lastRunAt: Date.now(), durationMs: Date.now() - t0, analysed, aiCalls, total: queue.length, windows: ctx.windows, errors: errors.slice(0, 20) };
   const [col, id] = META_DOC.split('/');
   await db.collection(col).doc(id).set(clean(meta));
   return meta;
@@ -476,112 +453,42 @@ export async function readMeta(db: Firestore): Promise<TierMeta | null> {
   return s.exists ? (s.data() as TierMeta) : null;
 }
 
-/* ───────────────────────── writes ───────────────────────── */
+/* ───────────────────────── push alerts (optional) ───────────────────────── */
 
 function clean<T>(o: T): T {
   return JSON.parse(JSON.stringify(o)) as T;
 }
 
-export type BoardAction = 'mark' | 'unmark' | 'handled' | 'reopen';
-
-/** Any agent: mark / unmark a window target, mark a Push-now item as done, or reopen it. Note optional. */
-export async function applyAction(
-  db: Firestore,
-  playerId: string,
-  action: BoardAction,
-  actor: Actor,
-  note?: string
-): Promise<PlayerTierDoc> {
-  const ref = db.collection(TIERS_COLLECTION).doc(playerId);
-  const [snap, playerSnap] = await Promise.all([ref.get(), db.collection('Players').doc(playerId).get()]);
-  if (!playerSnap.exists) throw new Error('Player not found on roster');
-  const pdata = playerSnap.data() as RosterPlayer;
-  const cur = (snap.exists ? (snap.data() as PlayerTierDoc) : { playerId }) as PlayerTierDoc;
-  const now = Date.now();
-  const next: PlayerTierDoc = { ...cur, playerId, tmProfile: cur.tmProfile ?? pdata.tmProfile, playerName: cur.playerName ?? pdata.fullName };
-  const n = note?.trim() ? note.trim().slice(0, 400) : undefined;
-
-  if (action === 'mark') next.windowTarget = { by: actor.name, at: now, ...(n ? { note: n } : {}) };
-  if (action === 'unmark') delete next.windowTarget;
-  if (action === 'handled') next.handled = { by: actor.name, at: now, key: triggerKey(next, now) };
-  if (action === 'reopen') delete next.handled;
-
-  const entry: TierHistoryEntry = { at: now, by: actor.name, action, ...(n ? { note: n } : {}) };
-  next.history = [...(cur.history ?? []), entry].slice(-40);
-  await ref.set(clean(next));
-  return next;
-}
-
-/* ───────────────────────── push alerts ───────────────────────── */
-
-/**
- * Alerts go to the owner(s) configured in TIERING_ALERT_EMAILS (comma-separated account emails).
- * Push only (FCM) + an entry in the account's in-app Notifications list.
- */
-export async function notifyOwners(
-  db: Firestore,
-  msg: { title: string; body: string; playerId: string }
-): Promise<{ sent: number; owners: number }> {
+/** Owners configured in TIERING_ALERT_EMAILS get a weekly digest push of the top targets. */
+export async function notifyOwners(db: Firestore, msg: { title: string; body: string }): Promise<{ sent: number; owners: number }> {
   const emails = (process.env.TIERING_ALERT_EMAILS ?? '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
   if (!emails.length) return { sent: 0, owners: 0 };
-  const accounts = (await db.collection('Accounts').get()).docs.filter((d) =>
-    emails.includes(String(d.data().email ?? '').toLowerCase())
-  );
+  const accounts = (await db.collection('Accounts').get()).docs.filter((d) => emails.includes(String(d.data().email ?? '').toLowerCase()));
   let sent = 0;
   for (const acc of accounts) {
     const d = acc.data();
     const tokens = new Set<string>();
     if (d.fcmToken) tokens.add(String(d.fcmToken));
-    if (Array.isArray(d.fcmTokens)) {
-      for (const e of d.fcmTokens) {
-        const t = typeof e === 'string' ? e : e?.token;
-        if (t) tokens.add(String(t));
-      }
-    }
+    if (Array.isArray(d.fcmTokens)) for (const e of d.fcmTokens) { const tk = typeof e === 'string' ? e : e?.token; if (tk) tokens.add(String(tk)); }
     const link = '/dashboard';
     try {
       if (tokens.size) {
         const r = await getMessaging(getFirebaseAdmin()!).sendEachForMulticast({
           tokens: Array.from(tokens),
           notification: { title: msg.title, body: msg.body },
-          data: { type: 'LEVEL_FOCUS', playerId: msg.playerId, link },
+          data: { type: 'ROSTER_INTEL', link },
           android: { priority: 'high', notification: { channelId: 'mgsr_team_notifications' } },
           webpush: { notification: { title: msg.title, body: msg.body }, fcmOptions: { link } },
         });
         sent += r.successCount;
       }
-      await acc.ref.collection('Notifications').add({
-        type: 'LEVEL_FOCUS',
-        title: msg.title,
-        body: msg.body,
-        data: { playerId: msg.playerId, link },
-        timestamp: Date.now(),
-        read: false,
-      });
+      await acc.ref.collection('Notifications').add({ type: 'ROSTER_INTEL', title: msg.title, body: msg.body, data: { link }, timestamp: Date.now(), read: false });
     } catch (e) {
       console.warn('[tiering] notify failed for', acc.id, e);
     }
   }
   return { sent, owners: accounts.length };
-}
-
-/** After each analysis: push once to the owner when a player newly lands on Push now (new set of reasons). */
-export async function alertIfNewlyUrgent(db: Firestore, doc: PlayerTierDoc): Promise<boolean> {
-  const ai = doc.ai;
-  if (!ai || !isUrgent(doc)) return false;
-  const key = triggerKey(doc);
-  if (!key || ai.alertKey === key) return false;
-  const top = liveTriggers(doc)[0];
-  const step = ai.plan?.nextStepEn;
-  await notifyOwners(db, {
-    title: `Push now: ${doc.playerName ?? 'Player'}`,
-    body: [top?.en, step].filter(Boolean).join(' → ').slice(0, 230),
-    playerId: doc.playerId,
-  });
-  await db.collection(TIERS_COLLECTION).doc(doc.playerId).set({ ai: { ...ai, alertKey: key } }, { merge: true });
-  ai.alertKey = key;
-  return true;
 }

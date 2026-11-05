@@ -1,12 +1,9 @@
-name: Level & Focus worker
+name: Roster Intelligence weekly agent
 
-# Runs the roster analysis in the background — nobody has to click anything.
-# Each sweep refreshes news every run, stats/injuries/FM on their own cache cycle, and re-runs the
-# AI analyst (Gemini + Google Search) only for players whose facts changed or whose read is >24h old.
+# Scores the whole men roster in the background once a week. Nobody clicks anything; the dashboard reads results.
 on:
   schedule:
-    # every 3 hours (UTC). Israel ≈ UTC+2/+3 → covers the working day and the evening news cycle.
-    - cron: '15 */3 * * *'
+    - cron: '0 2 * * 0' # Sunday 02:00 UTC
   workflow_dispatch:
     inputs:
       force:
@@ -21,23 +18,20 @@ concurrency:
 jobs:
   sweep:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: mgsr-web
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: mgsr-web/package-lock.json
-
       - run: npm ci --ignore-scripts
-
       - name: Analyse roster
-        run: npx --yes tsx@4.19.2 _tiering_worker.ts sweep ${{ inputs.force && '--force' || '' }}
+        run: npx tsx _tiering_worker.ts sweep ${{ inputs.force && '--force' || '' }}
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}

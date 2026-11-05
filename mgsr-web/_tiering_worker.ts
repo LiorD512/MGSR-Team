@@ -1,21 +1,19 @@
 /**
- * Level & Focus — background worker (men roster).
+ * Roster Intelligence — weekly background agent (men roster).
  *
- * Analyses every roster player in the background: news (Google News + Gemini Google Search), match ratings,
- * FM ability, injuries, club strength, contract, mandate, matching club requests and transfer windows →
- * Level, Focus, and a HOW/WHEN push plan. Nobody clicks anything; the dashboard only reads results.
+ * Reads everything we hold on every roster player (notes, contract, mandate, market value + history,
+ * match stats, FM ability, injuries, club/league strength, recent news) and computes, mathematically:
+ *   • Level  — the league tier + role the player fits, with a ceiling (prediction).
+ *   • Urgency / push strength.
+ *   • Worth  — a single 0-100 "work on him next window" score used to rank the roster.
+ * Writes PlayerTiers/{id}. The dashboard only reads. No user interaction.
  *
  * Modes
- *   npx tsx _tiering_worker.ts sweep            # full roster sweep, then exit (GitHub Actions, every few hours)
- *   npx tsx _tiering_worker.ts sweep --force    # ignore all caches
- *   npx tsx _tiering_worker.ts watch            # sweep, then stay up: re-analyse a player within seconds when
- *                                               # his doc, a mandate or a club request changes, and sweep hourly
- *                                               # (for an always-on host such as a Cloud Run service or a VM)
- *   npx tsx _tiering_worker.ts player <id>      # one player
+ *   npx tsx _tiering_worker.ts sweep [--force]   # full roster, then exit (GitHub Actions, weekly)
+ *   npx tsx _tiering_worker.ts player <id>       # one player (debug)
  *
  * Env: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, GEMINI_API_KEY,
- *      optional SCOUT_SERVER_URL, TIERING_APP_ORIGIN (for the live FMInside fallback), TIERING_ALERT_EMAILS,
- *      TIERING_CONCURRENCY (default 4).
+ *      optional SCOUT_SERVER_URL, TIERING_APP_ORIGIN, TIERING_ALERT_EMAILS, TIERING_CONCURRENCY (default 4).
  */
 import fs from 'fs';
 import path from 'path';
@@ -33,15 +31,15 @@ if (fs.existsSync(envPath)) {
 }
 
 async function main() {
-  // Imported after env is loaded so firebaseAdmin picks the credentials up.
   const { adminDb, getFirebaseAdmin } = await import('./src/lib/firebaseAdmin');
-  const { sweepRoster, loadContext, processPlayer, alertIfNewlyUrgent } = await import('./src/lib/tiering/server');
+  const { sweepRoster, loadContext, processPlayer, notifyOwners } = await import('./src/lib/tiering/server');
+  const { rankBoard } = await import('./src/lib/tiering/shared');
 
   if (!getFirebaseAdmin()) {
     console.error('Missing Firebase credentials (FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY)');
     process.exit(1);
   }
-  if (!process.env.GEMINI_API_KEY) console.warn('⚠ GEMINI_API_KEY not set — running criteria engine only (no AI analyst, no news reasoning).');
+  if (!process.env.GEMINI_API_KEY) console.warn('⚠ GEMINI_API_KEY not set — running the maths engine only (no AI summary/news).');
 
   const db = adminDb();
   const [mode = 'sweep', arg] = process.argv.slice(2);
@@ -56,60 +54,29 @@ async function main() {
     const p = ctx.players.find((x) => x.id === arg);
     if (!p) throw new Error(`player ${arg} not on roster`);
     const r = await processPlayer(db, ctx, p, { appOrigin, force: true });
-    await alertIfNewlyUrgent(db, r.doc);
-    console.log(JSON.stringify(r.doc.ai, null, 2));
+    console.log(JSON.stringify(r.doc.analysis, null, 2));
     return;
   }
 
-  const runSweep = async (f: boolean) => {
-    log(`sweep start (concurrency ${concurrency}${f ? ', forced' : ''})`);
-    const meta = await sweepRoster(db, { appOrigin, force: f, concurrency, log });
-    log(`sweep done: ${meta.analysed}/${meta.total} players, ${meta.aiCalls} AI analyses, ${Math.round((meta.durationMs ?? 0) / 1000)}s, ${meta.errors?.length ?? 0} errors`);
-  };
+  log(`weekly sweep start (concurrency ${concurrency}${force ? ', forced' : ''})`);
+  const meta = await sweepRoster(db, { appOrigin, force, concurrency, log });
+  log(`done: ${meta.analysed}/${meta.total} players, ${meta.aiCalls} AI analyses, ${Math.round((meta.durationMs ?? 0) / 1000)}s, ${meta.errors?.length ?? 0} errors`);
 
-  await runSweep(force);
-  if (mode !== 'watch') return;
-
-  // ── watch mode: react to changes in near real time ──
-  const pending = new Set<string>();
-  let timer: NodeJS.Timeout | null = null;
-  const flush = () => {
-    timer = null;
-    const ids = Array.from(pending);
-    pending.clear();
-    if (!ids.length) return;
-    log(`change detected → re-analysing ${ids.length} player(s)`);
-    sweepRoster(db, { appOrigin, concurrency, onlyIds: ids, log }).catch((e) => log(`watch error: ${e}`));
-  };
-  const queue = (id: string) => {
-    pending.add(id);
-    if (!timer) timer = setTimeout(flush, 15_000); // debounce bursts of edits
-  };
-
-  let first = true;
-  db.collection('Players').onSnapshot((snap) => {
-    if (first) {
-      first = false;
-      return;
+  // Weekly digest push of the top targets (only if TIERING_ALERT_EMAILS is set).
+  try {
+    const ctx = await loadContext(db);
+    const board = rankBoard(Array.from(ctx.tiers.values()));
+    if (board.length) {
+      const names = board.slice(0, 3).map((d) => d.playerName).filter(Boolean).join(', ');
+      const res = await notifyOwners(db, {
+        title: `This week's top ${board.length} to work on`,
+        body: names ? `${names}${board.length > 3 ? ` +${board.length - 3} more` : ''}` : 'Roster intelligence refreshed.',
+      });
+      log(`digest: ${res.sent} push to ${res.owners} owner(s)`);
     }
-    snap.docChanges().forEach((c) => {
-      if (c.type !== 'removed') queue(c.doc.id);
-    });
-  });
-  // Mandates and club requests affect many players → schedule a quick sweep (caches make it cheap).
-  let firstOther = 0;
-  const sweepSoon = () => {
-    if (firstOther < 2) {
-      firstOther++;
-      return;
-    }
-    if (!timer) timer = setTimeout(() => runSweep(false).catch((e) => log(`${e}`)), 30_000);
-  };
-  db.collection('PlayerDocuments').where('type', '==', 'MANDATE').onSnapshot(sweepSoon);
-  db.collection('ClubRequests').onSnapshot(sweepSoon);
-
-  setInterval(() => runSweep(false).catch((e) => log(`${e}`)), 60 * 60 * 1000);
-  log('watching for changes…');
+  } catch (e) {
+    log(`digest skipped: ${e}`);
+  }
 }
 
 main().catch((e) => {

@@ -11,7 +11,6 @@ import { auth, db, storage } from '@/lib/firebase';
 import { callOffersCreate, callOffersUpdateFeedback, callTasksToggleComplete, callPlayersUpdate, callPlayersToggleMandate, callPlayersAddNote, callPlayersDeleteNote, callPlayersDelete, callPlayerDocumentsCreate, callPlayerDocumentsDelete, callPlayerDocumentsMarkExpired, callPortfolioUpsert } from '@/lib/callables';
 import { getPlayerDetails, PlayerDetails } from '@/lib/api';
 import MenPlayerProfile from '@/components/MenPlayerProfile';
-import WindowTargetSwitch from '@/components/tiering/WindowTargetSwitch';
 import { isContactPickerSupported, pickPhoneFromDevice } from '@/lib/deviceContacts';
 import BritLoader from '@/components/BritLoader';
 import BritRail from '@/components/BritRail';
@@ -1848,7 +1847,6 @@ export default function PlayerInfoPage() {
   return (
     <>
       <MenPlayerProfile
-        windowTargetRow={<WindowTargetSwitch playerId={id} />}
         t={t}
         isRtl={isRtl}
         player={player}

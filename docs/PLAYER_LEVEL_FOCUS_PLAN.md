@@ -1,44 +1,39 @@
-# Push board — Roster intelligence v3 (men platform)
+# Roster Intelligence — Phase 1 (men platform)
 
-Mock (open in a browser, EN/HE): [`brit-sport-group-push-board.html`](./brit-sport-group-push-board.html)
+Mock (open in a browser, EN/HE): [`brit-sport-group-roster-intelligence.html`](./brit-sport-group-roster-intelligence.html)
 Setup / operations: [`PLAYER_LEVEL_FOCUS_SETUP.md`](./PLAYER_LEVEL_FOCUS_SETUP.md)
 
-## The question the dashboard answers
-Not "what does the roster look like?" but **"who do I act on?"** Only two groups appear:
+## Goal
+One section on the dashboard that answers: **who on our roster is worth working on next window, and at what level do they fit.**
+Everything is computed by a background agent. No user interaction in Phase 1 — the dashboard only reads.
 
-| | Push now | Window targets |
-|---|---|---|
-| Who decides | Automatic (background analyst) | Any agent marks a player |
-| Meaning | Something time-critical is happening | "We work hard on him in the next window" |
-| Each row shows | Why (top reasons) · next step · deadline | Plan / next step · target clubs · days since contact |
-| Leaves when | Agent presses **Done** (comes back only if a *new* reason appears) or the reasons go away | Agent unmarks |
+## The weekly agent
+Runs once a week over the whole roster (GitHub Actions). For each player it reads everything we hold —
+notes, contract, mandate, market value + history, match stats, FM ability, injuries/availability, club &
+league strength — and the latest **news** (Google News + Gemini with Google Search), then computes:
 
-Everyone else stays off the dashboard (still analysed in the background, visible on the player's drawer/profile).
+1. **Quality score (0-100)** — weighted over five criteria, each dropped if we have no data (coverage lowers confidence):
+   - Output 30 (match ratings + minutes), Ability 20 (FM CA/PA), Value 25 (market value, log scale),
+     League/club 15 (league strength + club Elo), Availability 10 (injuries).
+2. **Level / fit prediction** — which **league tier** (1 Elite … 5 Developing) and **role** (starter/rotation/squad)
+   he realistically fits, plus a **ceiling** (one tier higher for young, rising players with FM upside) and a confidence.
+   The AI may nudge the tier/ceiling by one step with reasons; the engine does the rest.
+3. **Urgency (0-100) + push strength** — contract end, mandate expiry, concrete demand (matching open requests + news),
+   momentum (form/value trend), neglect (days since contact) → push = now / high / medium / low.
+4. **Saleability (0-100)** — how movable he is this window (demand, age curve, contract length, momentum).
+5. **Worth (0-100)** — the single ranking score: `0.40·quality + 0.35·saleability + 0.25·urgency`.
 
-## What puts a player on Push now
-Each reason has a severity (3 = act today, 2 = this week, 1 = context). A player is on Push now when they add up to **3 or more**.
+## What the dashboard shows
+The **top 10 by worth** (min worth 30), one ranked list. Each row: rank, name, **level chip + ceiling**, **push strength**,
+the fit label ("Starter in Premium · ceiling Elite"), position/age/club, the strongest reason, and the worth score.
+Click a row for a read-only drawer: AI summary, why he's worth it, news (with sources), the criteria breakdown
+(how we judged the level), and effort (notes/tasks/last touch).
 
-| Reason | Severity |
-|---|---|
-| Mandate expires | ≤7 days → 3 · ≤21 → 2 · ≤45 → 1 |
-| Contract ends | ≤3 months → 3 · ≤6 → 2 · ≤12 → 1 (one lower for L4–L5 players) |
-| Matching open club request | 2+ new (≤14 days) → 3 · 1 new → 2 · older → 1 (one lower for L4–L5) |
-| News (AI: interest, transfer talk, injury, lost place) | 2 |
-| AI plan says act now / this week | 3 / 2 |
-| Window target with no contact for 14+ days | 3 |
+All weights, thresholds, tier definitions and the board size live in `mgsr-web/src/lib/tiering/config.ts` — tune after seeing real output.
 
-Examples: mandate in 6 days → on. Contract in 5 months alone → off; plus a new matching request → on.
+## Alerts (optional)
+If `TIERING_ALERT_EMAILS` is set, owners get one weekly digest push naming the top targets. No per-player alerts in Phase 1.
 
-## Window targets
-- Mark from the dashboard (**+ Add player** — list sorted by AI window-fit), from AI suggestions (one click), from the player drawer, or with the **Window target** switch on the player profile.
-- On marking, the analyst immediately re-runs for that player and builds the plan around the coming window (targets, how, when, next step).
-- The header shows the nearest window (Israel first).
-
-## The analyst (background, no buttons)
-Unchanged engine, new outputs: every roster player is analysed every 3 hours (news, match data, FM, injuries, club strength, contract, mandate, requests, windows, notes/tasks) and Gemini + Google Search returns: level (±1), news digest, risks, push plan **with a one-line next step**, and a **window-fit score** (used for suggestions).
-
-## Alerts
-Push to the owner once when a player lands on Push now with a new set of reasons: "Push now: Amit Rosen — Mandate expires in 6 days → Renew the mandate today, then call Beer Sheva". AI-worded reasons are keyed by type only, so rephrasing never re-alerts.
-
-## Level
-Still computed (five weighted criteria) but no longer the headline: it is shown as a small L1–L5 chip and on the drawer ("how we judged him"), and it tempers contract/request urgency for low-level players.
+## Phase 2 ideas (not built)
+Agent interaction (confirm/override level, mark extra targets), shortlist + the 48k ScoutProfiles universe,
+"predicted best destination club" per target, and a learning loop from deals that actually happened.
