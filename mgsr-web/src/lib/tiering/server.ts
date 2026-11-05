@@ -8,8 +8,7 @@ import { type Firestore } from 'firebase-admin/firestore';
 import { adminAuth, adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
 import { MAX_HISTORY, META_DOC, REANALYSE_AFTER_MS, STATS_TTL_MS, TIERS_COLLECTION as TC } from './config';
 import { contractMonthsLeft, detectSignals, parseValueEuro, snapshotFromStats } from './engine';
-import { fetchPlayerStats } from './inputs';
-import { isPlayerOurAsset } from '@/lib/transfermarkt-utils';
+import { fetchPlayerStats, warmScoutServer } from './inputs';
 import type { IntelMeta, PlayerIntel, PlayerIntelDoc, StatsSnapshot } from './types';
 
 export const TIERS_COLLECTION = TC;
@@ -93,9 +92,7 @@ export async function loadContext(db: Firestore): Promise<IntelContext> {
     db.collection('AgentTasks').where('createdAt', '>=', cutoff).get().catch(() => null),
   ]);
 
-  const allPlayers = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<RosterPlayer, 'id'>) }));
-  // Only the players WE manage (our assets) — not the wider scouting database.
-  const players = allPlayers.filter((p) => isPlayerOurAsset(p));
+  const players = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<RosterPlayer, 'id'>) }));
   const docs = new Map<string, PlayerIntelDoc>();
   docsSnap.docs.forEach((d) => docs.set(d.id, { playerId: d.id, ...(d.data() as Omit<PlayerIntelDoc, 'playerId'>) }));
 
@@ -173,16 +170,28 @@ export async function processPlayer(db: Firestore, ctx: IntelContext, p: RosterP
 
   // Fetch stats at most weekly; otherwise reuse the latest snapshot's stats with a fresh value.
   const lastSnap = history[history.length - 1];
+  const hadStats = (s?: StatsSnapshot) => !!s && (s.rating != null || s.minutes != null);
   const statsFresh = lastSnap && now - lastSnap.at < STATS_TTL_MS && !opts.force;
   let statsMatched = false;
   let snapshot: StatsSnapshot;
   if (statsFresh) {
     snapshot = { ...lastSnap, at: now, valueEuro: valueEuro || lastSnap.valueEuro };
-    statsMatched = lastSnap.rating != null || lastSnap.minutes != null;
+    statsMatched = hadStats(lastSnap);
+  } else if (p.tmProfile) {
+    const res = await fetchPlayerStats(p.tmProfile);
+    if (res.status === 'ok') {
+      snapshot = snapshotFromStats(now, res.data, valueEuro);
+      statsMatched = true;
+    } else if (res.status === 'unavailable' && hadStats(lastSnap)) {
+      // Server was down/cold — keep the player's last good stats rather than wiping them this week.
+      snapshot = { ...lastSnap, at: now, valueEuro: valueEuro || lastSnap.valueEuro };
+      statsMatched = true;
+    } else {
+      // 'not_found' (genuinely not in the stats DB) or unavailable with no prior stats.
+      snapshot = snapshotFromStats(now, null, valueEuro);
+    }
   } else {
-    const stats = p.tmProfile ? await fetchPlayerStats(p.tmProfile) : null;
-    statsMatched = !!stats;
-    snapshot = snapshotFromStats(now, stats, valueEuro);
+    snapshot = snapshotFromStats(now, null, valueEuro);
   }
 
   // Append to history (replace a same-week capture so repeated runs don't pile up), keep the window.
@@ -241,6 +250,7 @@ export async function sweepRoster(
   const t0 = Date.now();
   const ctx = await loadContext(db);
   const log = opts.log ?? (() => {});
+  await warmScoutServer(); // wake the Render scout server so the first calls don't all hit a cold start
   const queue = ctx.players.filter((p) => (opts.onlyIds ? opts.onlyIds.includes(p.id) : true));
   queue.sort((a, b) => (ctx.docs.get(a.id)?.intel?.computedAt ?? 0) - (ctx.docs.get(b.id)?.intel?.computedAt ?? 0));
   const conc = Math.max(1, Math.min(8, opts.concurrency ?? 4));
