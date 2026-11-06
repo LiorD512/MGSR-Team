@@ -195,7 +195,59 @@ function stateLabel(g: RecentGame, he: boolean): { txt: string; cls: string } {
   if (g.minutes >= 1 || g.state === 'played') return { txt: `${g.minutes}'${g.started ? (he ? ' פתח' : ' ST') : ''}`, cls: 'played' };
   if (/not in squad/i.test(g.state)) return { txt: he ? 'מחוץ לסגל' : 'not in squad', cls: 'out' };
   if (/in squad/i.test(g.state)) return { txt: he ? 'ספסל' : 'bench', cls: 'bench' };
+  if (g.injured || /injur/i.test(g.state)) return { txt: he ? 'פצוע' : 'injured', cls: 'out' };
   return { txt: g.state || '—', cls: 'out' };
+}
+
+/** League tier / competition kind from TM's competition typeId. */
+function compKind(type: number | undefined, he: boolean): string {
+  switch (type) {
+    case 1: return he ? 'ליגה בכירה' : 'Top tier';
+    case 2: return he ? 'ליגה שנייה' : '2nd tier';
+    case 3: return he ? 'ליגה שלישית' : '3rd tier';
+    case 4: return he ? 'ליגה רביעית' : '4th tier';
+    case 5: return he ? 'ליגה חמישית' : '5th tier';
+    case 8: return he ? 'גביע' : 'Cup';
+    default: return '';
+  }
+}
+
+const flagUrl = (countryId?: number) => (countryId ? `https://tmssl.akamaized.net/images/flagge/tiny/${countryId}.png` : '');
+const matchUrl = (gameId?: string) => (gameId ? `https://www.transfermarkt.com/spielbericht/index/spielbericht/${gameId}` : '');
+
+function GameRow({ g, he }: { g: RecentGame; he: boolean }) {
+  const st = stateLabel(g, he);
+  const kind = compKind(g.competitionType, he);
+  const flag = flagUrl(g.countryId);
+  const href = matchUrl(g.gameId);
+  const venue = g.venue === 'home' ? (he ? 'בית' : 'home') : g.venue === 'away' ? (he ? 'חוץ' : 'away') : '';
+  const inner = (
+    <>
+      <span className="ri-g-date">{g.date?.slice(5).split('-').reverse().join('/')}</span>
+      <span className="ri-g-match">
+        <span className="ri-g-comp">
+          {flag ? <img src={flag} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} /> : null}
+          <span className="nm">{g.competitionName || g.competition}</span>
+          {kind ? <span className="kind">{kind}</span> : null}
+        </span>
+        <span className="ri-g-opp">
+          {g.opponent ? <>{he ? 'נגד' : 'vs'} <b>{g.opponent}</b></> : null}
+          {venue ? <span className="ven"> · {venue}</span> : null}
+          {g.score ? <span className={`res r-${g.result}`}>{g.score}</span> : null}
+        </span>
+      </span>
+      <span className="ri-g-state">{st.txt}</span>
+      <span className="ri-g-g">{g.goals > 0 ? `⚽ ${g.goals}` : '–'}</span>
+      <span className="ri-g-a">{g.assists > 0 ? `🅰 ${g.assists}` : '–'}</span>
+    </>
+  );
+  return href ? (
+    <a className={`ri-game ri-g-${st.cls} ri-g-link`} href={href} target="_blank" rel="noopener noreferrer" title={he ? 'פתח את דף המשחק בטרנספרמרקט' : 'Open match sheet on Transfermarkt'}>
+      {inner}
+    </a>
+  ) : (
+    <div className={`ri-game ri-g-${st.cls}`}>{inner}</div>
+  );
 }
 
 function Drawer({ doc, player, onClose }: { doc: PlayerIntelDoc; player?: RosterIntelPlayer; onClose: () => void }) {
@@ -294,23 +346,14 @@ function Drawer({ doc, player, onClose }: { doc: PlayerIntelDoc; player?: Roster
             <div className="ri-games">
               <div className="ri-game ri-g-head">
                 <span className="ri-g-date">{t('ri_g_date')}</span>
-                <span className="ri-g-comp">{t('ri_g_comp')}</span>
+                <span className="ri-g-match">{t('ri_g_match')}</span>
                 <span className="ri-g-state">{t('ri_g_status')}</span>
                 <span className="ri-g-g">{t('ri_g_goals')}</span>
                 <span className="ri-g-a">{t('ri_g_assists')}</span>
               </div>
-              {games.slice(0, 4).map((g, i) => {
-                const st = stateLabel(g, he);
-                return (
-                  <div className={`ri-game ri-g-${st.cls}`} key={i}>
-                    <span className="ri-g-date">{g.date?.slice(5)}</span>
-                    <span className="ri-g-comp">{g.competition}</span>
-                    <span className="ri-g-state">{st.txt}</span>
-                    <span className="ri-g-g">{g.goals > 0 ? `⚽ ${g.goals}` : '–'}</span>
-                    <span className="ri-g-a">{g.assists > 0 ? `🅰 ${g.assists}` : '–'}</span>
-                  </div>
-                );
-              })}
+              {games.slice(0, 4).map((g, i) => (
+                <GameRow key={g.gameId ?? i} g={g} he={he} />
+              ))}
             </div>
           </div>
         )}

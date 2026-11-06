@@ -6841,3 +6841,20 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .ri-dr-f { display: flex; flex-wrap: wrap; gap: 10px; }
 .brit-room .ri-dr-f a.ri-btn:not(.ri-btn-gold):hover { background: var(--ink); color: var(--paper); }
 .brit-room .ri-row .ri-also { display: block; margin-top: 2px; font: 11px/1.4 var(--body); font-style: normal; color: var(--muted); }
+
+/* Roster Intelligence — last games: readable competition (flag · name · tier), opponent, score; rows link to the TM match sheet */
+.brit-room .ri-game { grid-template-columns: 42px minmax(0, 1fr) 78px 34px 40px; }
+.brit-room a.ri-game { color: inherit; text-decoration: none; transition: background 0.15s; }
+.brit-room a.ri-game:hover { background: #fff; box-shadow: inset 0 0 0 1px var(--gold-soft); }
+.brit-room .ri-g-match { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.brit-room .ri-g-match .ri-g-comp { display: flex; align-items: center; gap: 5px; min-width: 0; text-transform: none; color: var(--muted); font: 9px/1.2 var(--mono); }
+.brit-room .ri-g-match .ri-g-comp img { width: 14px; height: 10px; flex: none; object-fit: cover; border: 1px solid var(--line); }
+.brit-room .ri-g-match .ri-g-comp .nm { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.brit-room .ri-g-match .ri-g-comp .kind { flex: none; padding: 1px 4px; border: 1px solid var(--line); font-size: 8px; text-transform: uppercase; letter-spacing: 0.03em; }
+.brit-room .ri-g-opp { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 11px/1.3 var(--body); color: var(--ink); }
+.brit-room .ri-g-opp b { font-weight: 700; }
+.brit-room .ri-g-opp .ven { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-g-opp .res { margin-inline-start: 6px; padding: 1px 5px; font: 600 9px/1.3 var(--mono); color: #fff; background: var(--muted); }
+.brit-room .ri-g-opp .res.r-W { background: var(--green); }
+.brit-room .ri-g-opp .res.r-L { background: var(--red); }
+.brit-room .ri-g-opp .res.r-D { background: var(--gold); }

@@ -3859,6 +3859,70 @@ export interface RecentGame {
   grade: number | null;
   /** >0 when TM marks the player injured/absent for this game. */
   injured: boolean;
+  /** TM game id → match sheet: https://www.transfermarkt.com/spielbericht/index/spielbericht/{gameId} */
+  gameId?: string;
+  /** Opponent club (TM club id + resolved name). */
+  opponentId?: string;
+  opponent?: string;
+  /** Player's team played at home or away. */
+  venue?: 'home' | 'away';
+  /** Final score from the player's team's side, e.g. "2-0", and the result. */
+  score?: string;
+  result?: 'W' | 'D' | 'L';
+  /** Resolved competition name, e.g. "Campeonato Brasileiro Série B". */
+  competitionName?: string;
+  /** League tier 1-5 (TM competition typeId); 8 = domestic cup; >=10 international. */
+  competitionType?: number;
+  /** TM country id of the competition (0 = international) → flag tmssl.akamaized.net/images/flagge/tiny/{id}.png */
+  countryId?: number;
+}
+
+/* ── Club / competition names via TM's own JSON API (tmapi), cached for the process ── */
+const TMAPI_BASE = 'https://tmapi-alpha.transfermarkt.technology';
+const clubNameCache = new Map<string, string>();
+const compCache = new Map<string, { name: string; type: number; countryId: number }>();
+
+async function tmapiJson(path: string): Promise<unknown> {
+  const url = `${TMAPI_BASE}${path}`;
+  // tmapi is a separate JSON host (not the rate-limited HTML site) — try direct, fall back to the proxy.
+  try {
+    const res = await fetch(url, { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    if (res.ok) return await res.json();
+  } catch {
+    /* fall through to proxy */
+  }
+  if (TM_HTML_PROXY_URL) {
+    const res = await fetchViaProxy(url);
+    if (res.ok) return JSON.parse(await res.text());
+  }
+  return null;
+}
+
+async function resolveTmNames(clubIds: string[], compIds: string[]): Promise<void> {
+  const clubs = Array.from(new Set(clubIds.filter((id) => id && !clubNameCache.has(id))));
+  const comps = Array.from(new Set(compIds.filter((id) => id && !compCache.has(id))));
+  const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
+  await Promise.all([
+    ...chunk(clubs, 50).map(async (ids) => {
+      try {
+        const j = (await tmapiJson(`/clubs?${ids.map((i) => `ids[]=${encodeURIComponent(i)}`).join('&')}`)) as { data?: { id?: string; name?: string }[] } | null;
+        for (const c of j?.data ?? []) if (c?.id && c.name) clubNameCache.set(String(c.id), c.name);
+      } catch {
+        /* names are optional */
+      }
+    }),
+    ...chunk(comps, 50).map(async (ids) => {
+      try {
+        const j = (await tmapiJson(`/competitions?${ids.map((i) => `ids[]=${encodeURIComponent(i)}`).join('&')}`)) as {
+          data?: { id?: string; name?: string; typeId?: number; originDetails?: { countryId?: number } }[];
+        } | null;
+        for (const c of j?.data ?? [])
+          if (c?.id && c.name) compCache.set(String(c.id), { name: c.name, type: Number(c.typeId) || 0, countryId: Number(c.originDetails?.countryId) || 0 });
+      } catch {
+        /* names are optional */
+      }
+    }),
+  ]);
 }
 
 /**
@@ -3888,6 +3952,13 @@ export async function fetchRecentGamesById(id: string, max = 10): Promise<Recent
         const go = (st.goalStatistics ?? {}) as Record<string, unknown>;
         const date = String((gi.date as Record<string, unknown>)?.dateTimeUTC ?? '').slice(0, 10);
         const gradeNum = Number(gen.grade);
+        const ci = (r.clubsInformation ?? {}) as Record<string, Record<string, unknown>>;
+        const own = ci.club ?? {};
+        const opp = ci.opponent ?? {};
+        const gf = Number(own.goalsTotal);
+        const ga = Number(own.opponentGoalsTotal);
+        const hasScore = Number.isFinite(gf) && Number.isFinite(ga) && own.goalsTotal != null && own.opponentGoalsTotal != null;
+        const venue = own.venue === 'home' || own.venue === 'away' ? (own.venue as 'home' | 'away') : undefined;
         return {
           date,
           season: Number(gi.seasonId) || 0,
@@ -3899,7 +3970,12 @@ export async function fetchRecentGamesById(id: string, max = 10): Promise<Recent
           assists: Number(go.assists) || 0,
           grade: Number.isFinite(gradeNum) && gradeNum > 0 ? gradeNum : null,
           injured: Number(gen.injuryId) > 0 || Number(gen.absenceId) > 0,
-        };
+          gameId: gi.gameId != null ? String(gi.gameId) : undefined,
+          opponentId: opp.clubId != null ? String(opp.clubId) : undefined,
+          venue,
+          score: hasScore ? `${gf}-${ga}` : undefined,
+          result: hasScore ? (gf > ga ? 'W' : gf < ga ? 'L' : 'D') : undefined,
+        } as RecentGame;
       })
       .filter((g) => g.date)
       .sort((a, b) => b.date.localeCompare(a.date));
@@ -3907,7 +3983,27 @@ export async function fetchRecentGamesById(id: string, max = 10): Promise<Recent
     // old (stale/duplicate id, or long inactive) should not produce signals from ancient data —
     // return [] so the worker records "no recent games" rather than analysing a 2019 season.
     const cutoff = new Date(Date.now() - 18 * 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-    return games.filter((g) => g.date >= cutoff).slice(0, max);
+    const recent = games.filter((g) => g.date >= cutoff).slice(0, max);
+
+    // Attach readable opponent + competition names (best-effort; never fails the fetch).
+    if (recent.length) {
+      try {
+        await resolveTmNames(recent.map((g) => g.opponentId ?? ''), recent.map((g) => g.competition));
+      } catch {
+        /* optional */
+      }
+      for (const g of recent) {
+        const opp = g.opponentId ? clubNameCache.get(g.opponentId) : undefined;
+        if (opp) g.opponent = opp;
+        const comp = compCache.get(g.competition);
+        if (comp) {
+          g.competitionName = comp.name;
+          g.competitionType = comp.type;
+          g.countryId = comp.countryId;
+        }
+      }
+    }
+    return recent;
   } catch {
     return [];
   }
