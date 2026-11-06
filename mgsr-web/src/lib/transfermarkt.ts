@@ -3836,3 +3836,258 @@ export async function scrapeClubTransfers(clubTmProfile: string, season?: number
     departures: departuresAlt.length > 0 ? departuresAlt : departures,
   };
 }
+
+
+/* ───────────────────────── Recent per-game form (ceapi) ─────────────────────────
+   Transfermarkt serves a player's game-by-game log as JSON from an internal endpoint
+   (/ceapi/performance-game/{id}). It covers all leagues (incl. Israel / lower divisions),
+   unlike the season-aggregate stats API. We extract a compact "last N games" record and
+   store it on the player doc during refresh, so Roster Intelligence reads it cheaply. */
+
+export interface RecentGame {
+  /** YYYY-MM-DD (kickoff, UTC). */
+  date: string;
+  season: number;
+  competition: string;
+  /** 'played' | 'in squad' (benched, 0 min) | 'not in squad' | other TM states. */
+  state: string;
+  minutes: number;
+  started: boolean;
+  goals: number;
+  assists: number;
+  /** TM match grade when available (mostly big leagues); null otherwise. */
+  grade: number | null;
+  /** >0 when TM marks the player injured/absent for this game. */
+  injured: boolean;
+  /** TM game id → match sheet: https://www.transfermarkt.com/spielbericht/index/spielbericht/{gameId} */
+  gameId?: string;
+  /** Opponent club (TM club id + resolved name). */
+  opponentId?: string;
+  opponent?: string;
+  /** Player's team played at home or away. */
+  venue?: 'home' | 'away';
+  /** Final score from the player's team's side, e.g. "2-0", and the result. */
+  score?: string;
+  result?: 'W' | 'D' | 'L';
+  /** Resolved competition name, e.g. "Campeonato Brasileiro Série B". */
+  competitionName?: string;
+  /** League tier 1-5 (TM competition typeId); 8 = domestic cup; >=10 international. */
+  competitionType?: number;
+  /** TM country id of the competition (0 = international) → flag tmssl.akamaized.net/images/flagge/tiny/{id}.png */
+  countryId?: number;
+}
+
+/* ── Club / competition names via TM's own JSON API (tmapi), cached for the process ── */
+const TMAPI_BASE = 'https://tmapi-alpha.transfermarkt.technology';
+const clubNameCache = new Map<string, string>();
+const compCache = new Map<string, { name: string; type: number; countryId: number }>();
+
+async function tmapiJson(path: string): Promise<unknown> {
+  const url = `${TMAPI_BASE}${path}`;
+  // tmapi is a separate JSON host (not the rate-limited HTML site) — try direct, fall back to the proxy.
+  try {
+    const res = await fetch(url, { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    if (res.ok) return await res.json();
+  } catch {
+    /* fall through to proxy */
+  }
+  if (TM_HTML_PROXY_URL) {
+    const res = await fetchViaProxy(url);
+    if (res.ok) return JSON.parse(await res.text());
+  }
+  return null;
+}
+
+async function resolveTmNames(clubIds: string[], compIds: string[]): Promise<void> {
+  const clubs = Array.from(new Set(clubIds.filter((id) => id && !clubNameCache.has(id))));
+  const comps = Array.from(new Set(compIds.filter((id) => id && !compCache.has(id))));
+  const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
+  await Promise.all([
+    ...chunk(clubs, 50).map(async (ids) => {
+      try {
+        const j = (await tmapiJson(`/clubs?${ids.map((i) => `ids[]=${encodeURIComponent(i)}`).join('&')}`)) as { data?: { id?: string; name?: string }[] } | null;
+        for (const c of j?.data ?? []) if (c?.id && c.name) clubNameCache.set(String(c.id), c.name);
+      } catch {
+        /* names are optional */
+      }
+    }),
+    ...chunk(comps, 50).map(async (ids) => {
+      try {
+        const j = (await tmapiJson(`/competitions?${ids.map((i) => `ids[]=${encodeURIComponent(i)}`).join('&')}`)) as {
+          data?: { id?: string; name?: string; typeId?: number; originDetails?: { countryId?: number } }[];
+        } | null;
+        for (const c of j?.data ?? [])
+          if (c?.id && c.name) compCache.set(String(c.id), { name: c.name, type: Number(c.typeId) || 0, countryId: Number(c.originDetails?.countryId) || 0 });
+      } catch {
+        /* names are optional */
+      }
+    }),
+  ]);
+}
+
+/**
+ * Fetch a player's recent games from Transfermarkt's ceapi, newest first.
+ * Returns [] on any failure. Honours TM_HTML_PROXY_URL (same as all TM fetches).
+ */
+export async function fetchRecentGames(tmProfile: string, max = 10): Promise<RecentGame[]> {
+  const id = extractPlayerIdFromUrl(tmProfile);
+  if (!id) return [];
+  return fetchRecentGamesById(id, max);
+}
+
+/** Core per-game fetch keyed by a raw numeric TM id (used by fetchRecentGames + the name-search fallback). */
+export async function fetchRecentGamesById(id: string, max = 10): Promise<RecentGame[]> {
+  try {
+    const raw = await fetchHtmlWithRetry(`${TRANSFERMARKT_BASE}/ceapi/performance-game/${id}`);
+    const json = JSON.parse(raw) as { data?: { performance?: unknown[] } };
+    const perf = json?.data?.performance;
+    if (!Array.isArray(perf)) return [];
+    const games: RecentGame[] = perf
+      .map((x) => {
+        const r = x as Record<string, unknown>;
+        const gi = (r.gameInformation ?? {}) as Record<string, unknown>;
+        const st = (r.statistics ?? {}) as Record<string, Record<string, unknown>>;
+        const gen = (st.generalStatistics ?? {}) as Record<string, unknown>;
+        const pt = (st.playingTimeStatistics ?? {}) as Record<string, unknown>;
+        const go = (st.goalStatistics ?? {}) as Record<string, unknown>;
+        const date = String((gi.date as Record<string, unknown>)?.dateTimeUTC ?? '').slice(0, 10);
+        const gradeNum = Number(gen.grade);
+        const ci = (r.clubsInformation ?? {}) as Record<string, Record<string, unknown>>;
+        const own = ci.club ?? {};
+        const opp = ci.opponent ?? {};
+        const gf = Number(own.goalsTotal);
+        const ga = Number(own.opponentGoalsTotal);
+        const hasScore = Number.isFinite(gf) && Number.isFinite(ga) && own.goalsTotal != null && own.opponentGoalsTotal != null;
+        const venue = own.venue === 'home' || own.venue === 'away' ? (own.venue as 'home' | 'away') : undefined;
+        return {
+          date,
+          season: Number(gi.seasonId) || 0,
+          competition: String(gi.competitionId ?? ''),
+          state: String(gen.participationState ?? ''),
+          minutes: Number(pt.playedMinutes) || 0,
+          started: pt.isStarting === true,
+          goals: Number(go.goalsScoredTotal) || 0,
+          assists: Number(go.assists) || 0,
+          grade: Number.isFinite(gradeNum) && gradeNum > 0 ? gradeNum : null,
+          injured: Number(gen.injuryId) > 0 || Number(gen.absenceId) > 0,
+          gameId: gi.gameId != null ? String(gi.gameId) : undefined,
+          opponentId: opp.clubId != null ? String(opp.clubId) : undefined,
+          venue,
+          score: hasScore ? `${gf}-${ga}` : undefined,
+          result: hasScore ? (gf > ga ? 'W' : gf < ga ? 'L' : 'D') : undefined,
+        } as RecentGame;
+      })
+      .filter((g) => g.date)
+      .sort((a, b) => b.date.localeCompare(a.date));
+    // Only keep reasonably recent games (last ~18 months). A player whose latest TM game is years
+    // old (stale/duplicate id, or long inactive) should not produce signals from ancient data —
+    // return [] so the worker records "no recent games" rather than analysing a 2019 season.
+    const cutoff = new Date(Date.now() - 18 * 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const recent = games.filter((g) => g.date >= cutoff).slice(0, max);
+
+    // Attach readable opponent + competition names (best-effort; never fails the fetch).
+    if (recent.length) {
+      try {
+        await resolveTmNames(recent.map((g) => g.opponentId ?? ''), recent.map((g) => g.competition));
+      } catch {
+        /* optional */
+      }
+      for (const g of recent) {
+        const opp = g.opponentId ? clubNameCache.get(g.opponentId) : undefined;
+        if (opp) g.opponent = opp;
+        const comp = compCache.get(g.competition);
+        if (comp) {
+          g.competitionName = comp.name;
+          g.competitionType = comp.type;
+          g.countryId = comp.countryId;
+        }
+      }
+    }
+    return recent;
+  } catch {
+    return [];
+  }
+}
+
+export interface ResolvedRecentGames {
+  games: RecentGame[];
+  /** Numeric TM id the games actually came from (may differ from the stored one when re-looked-up by name). */
+  resolvedId: string | null;
+  /** True when the stored id produced no recent games but a name-search match did → the stored id is stale. */
+  staleId: boolean;
+  /**
+   * Diagnostic trace of what happened, so a sweep can explain *why* a player has no games:
+   *  - 'stored_ok'        stored id had recent games
+   *  - 'relinked'         stored empty, name-search found a live id
+   *  - 'no_name'          no fullName to search with
+   *  - 'search_threw'     TM name-search request failed/blocked (e.g. circuit breaker / proxy)
+   *  - 'no_candidates'    search ran but returned no name-matching candidates
+   *  - 'candidates_empty' candidates found but none had recent games (all stale/inactive)
+   */
+  note: 'stored_ok' | 'relinked' | 'no_name' | 'search_threw' | 'no_candidates' | 'candidates_empty';
+  /** Short reason string when a fetch threw (circuit breaker, HTTP status, timeout). */
+  error?: string;
+}
+
+function normaliseName(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip accents
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Resolve a player's recent games, tolerating a stale stored TM id.
+ *
+ * 1. Try the stored tmProfile id.
+ * 2. If that yields no recent games, search TM by name and try candidates whose name matches,
+ *    preferring the one with the most-recent game. The stored id is NOT mutated — we just report
+ *    the better id via `resolvedId` + `staleId` so the caller can surface a "needs re-link" flag.
+ */
+export async function fetchRecentGamesResolved(
+  p: { tmProfile?: string; fullName?: string },
+  max = 10
+): Promise<ResolvedRecentGames> {
+  const storedId = extractPlayerIdFromUrl(p.tmProfile);
+  if (storedId) {
+    const games = await fetchRecentGamesById(storedId, max);
+    if (games.length) return { games, resolvedId: storedId, staleId: false, note: 'stored_ok' };
+  }
+
+  const name = (p.fullName ?? '').trim();
+  if (!name) return { games: [], resolvedId: storedId, staleId: false, note: 'no_name' };
+
+  let candidates: { tmProfile?: unknown; playerName?: unknown }[] = [];
+  try {
+    const res = await handleSearch(name);
+    candidates = (res.players ?? []) as typeof candidates;
+  } catch (e) {
+    // TM search request itself failed — most often circuit breaker open or proxy/IP block.
+    return { games: [], resolvedId: storedId, staleId: false, note: 'search_threw', error: String((e as Error)?.message ?? e).slice(0, 120) };
+  }
+
+  const wantName = normaliseName(name);
+  const matched = candidates
+    .map((c) => ({ id: extractPlayerIdFromUrl(String(c.tmProfile ?? '')), nm: normaliseName(String(c.playerName ?? '')) }))
+    .filter((c) => c.id && c.id !== storedId && (c.nm === wantName || c.nm.includes(wantName) || wantName.includes(c.nm)))
+    .slice(0, 4); // cap TM fetches
+
+  if (!matched.length) return { games: [], resolvedId: storedId, staleId: false, note: 'no_candidates' };
+
+  let best: { games: RecentGame[]; id: string } | null = null;
+  let lastErr: string | undefined;
+  for (const c of matched) {
+    try {
+      const games = await fetchRecentGamesById(c.id!, max);
+      if (!games.length) continue;
+      if (!best || games[0].date > best.games[0].date) best = { games, id: c.id! };
+    } catch (e) {
+      lastErr = String((e as Error)?.message ?? e).slice(0, 120);
+    }
+  }
+  if (best) return { games: best.games, resolvedId: best.id, staleId: true, note: 'relinked' };
+  return { games: [], resolvedId: storedId, staleId: false, note: 'candidates_empty', error: lastErr };
+}

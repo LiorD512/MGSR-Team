@@ -6753,3 +6753,124 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-dossier-kv:last-child { border-bottom: 0; }
 .brit-room .brit-dossier-kv .k { color: var(--muted); font: 11px var(--body); }
 .brit-room .brit-dossier-kv .v { font: 600 14px/1 var(--display); color: var(--ink); }
+
+
+/* ═══════════════════════════════════════════════════════
+   Roster Intelligence — "what needs attention this week"
+   Scoped to .brit-room. Cards + read-only drawer.
+   ═══════════════════════════════════════════════════════ */
+.brit-room .ri-caption { margin: 14px 0 12px; color: var(--muted); font: 9px/1.5 var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+.brit-room .ri-link { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; text-decoration: underline; }
+.brit-room .ri-muted { color: var(--muted); font: 11px/1.5 var(--mono); }
+.brit-room .ri-first { padding: 22px 0; }
+.brit-room .ri-first p { margin: 0 0 6px; font: 12px/1.5 var(--body); }
+.brit-room .ri-first-sub { color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+
+/* list of flagged players */
+.brit-room .rk { list-style: none; margin: 0; padding: 0; }
+.brit-room .rk-row { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; width: 100%; padding: 13px 0; border-top: 1px solid var(--line); text-align: start; }
+.brit-room .rk li:first-child .rk-row { border-top: 0; }
+.brit-room .rk-row:hover { background: rgba(164, 125, 67, 0.06); }
+.brit-room .rk-badge { width: 30px; height: 30px; display: grid; place-items: center; font-size: 15px; border-radius: 50%; }
+.brit-room .rk-badge.t-positive { background: color-mix(in srgb, var(--green) 16%, transparent); }
+.brit-room .rk-badge.t-watch { background: color-mix(in srgb, var(--gold-soft) 20%, transparent); }
+.brit-room .rk-badge.t-negative { background: color-mix(in srgb, var(--red) 14%, transparent); }
+.brit-room .rk-main { min-width: 0; }
+.brit-room .rk-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.brit-room .rk-top b { font: 700 13.5px/1.2 var(--body); }
+.brit-room .rk-chip { padding: 2px 6px; font: 8px/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; }
+.brit-room .rk-chip.t-positive { background: var(--green); color: #fff; }
+.brit-room .rk-chip.t-watch { background: var(--gold); color: #fff; }
+.brit-room .rk-chip.t-negative { background: var(--red); color: #fff; }
+.brit-room .rk-more { color: var(--muted); font: 8px/1 var(--mono); border: 1px solid var(--line); padding: 2px 4px; }
+.brit-room .rk-reason { display: block; margin-top: 4px; font: 500 12px/1.4 var(--body); color: var(--ink); }
+.brit-room .rk-sub { display: block; margin-top: 3px; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
+.brit-room .ri-spark { flex: none; }
+.brit-room .rk-relink { color: var(--amber, #c08a2d); font-size: 11px; line-height: 1; cursor: help; }
+.brit-room .ri-stale { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--amber, #c08a2d); background: rgba(192, 138, 45, 0.06); }
+.brit-room .ri-stale b { font: 600 12px/1.3 var(--body); color: var(--amber, #c08a2d); }
+.brit-room .ri-spark-lg { display: block; }
+
+.brit-room .ri-status { display: flex; align-items: center; gap: 8px; margin-top: 16px; color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+.brit-room .ri-live { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
+
+/* read-only drawer */
+.brit-room .ri-backdrop { position: fixed; inset: 0; z-index: 70; background: rgba(17, 17, 15, 0.6); }
+.brit-room .ri-drawer { position: fixed; top: 0; bottom: 0; inset-inline-end: 0; z-index: 71; width: min(540px, 100%); overflow: auto; background: var(--paper); border-inline-start: 4px solid var(--gold); animation: ri-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes ri-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.brit-room[dir='rtl'] .ri-drawer { animation-name: ri-in-rtl; }
+@keyframes ri-in-rtl { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.brit-room .ri-dr-h { padding: 24px 26px 20px; background: var(--black); color: var(--paper); }
+.brit-room .ri-x { float: inline-end; font: 22px var(--display); }
+.brit-room .ri-dr-h small { color: #aaa69c; font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-h h2 { margin: 8px 0 12px; font: 500 38px/0.9 var(--display); text-transform: uppercase; }
+.brit-room[dir='rtl'] .ri-dr-h h2 { font-weight: 800; letter-spacing: normal; }
+.brit-room .ri-dr-tags { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brit-room .ri-fitlabel { color: var(--gold-soft); font: 9px/1.2 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-s { padding: 18px 26px; border-bottom: 1px solid var(--line); }
+.brit-room .ri-dr-s h4 { margin: 0 0 12px; display: flex; justify-content: space-between; color: var(--muted); font: 9px/1 var(--mono); font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; }
+.brit-room .pb-why { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.brit-room .pb-why.big li { position: relative; padding-inline-start: 14px; font: 12px/1.45 var(--body); }
+.brit-room .pb-why.big li::before { content: ''; position: absolute; inset-inline-start: 0; top: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--muted-2); }
+.brit-room .pb-why.big li.tone-positive::before { background: var(--green); }
+.brit-room .pb-why.big li.tone-watch::before { background: var(--gold); }
+.brit-room .pb-why.big li.tone-negative::before { background: var(--red); }
+.brit-room .pb-why.big li b { font-weight: 700; }
+.brit-room .ri-facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.brit-room .ri-facts > div { padding: 10px 12px; border: 1px solid var(--line); background: var(--card); }
+.brit-room .ri-facts b { display: block; font: 500 22px/1 var(--display); }
+.brit-room .ri-facts span { display: block; margin-top: 3px; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-f { padding: 18px 26px 40px; }
+.brit-room .ri-btn { display: inline-block; padding: 11px 14px; border: 1px solid var(--ink); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-btn-gold { background: var(--gold-soft); border-color: var(--gold-soft); color: var(--ink); }
+.brit-room .ri-btn-gold:hover { background: var(--gold); border-color: var(--gold); color: var(--paper); }
+@media (max-width: 900px) { .brit-room .ri-spark { display: none; } }
+
+/* Roster Intelligence — recent games list in the drawer */
+.brit-room .ri-games { display: grid; gap: 2px; }
+.brit-room .ri-game { display: grid; grid-template-columns: 48px 52px 1fr 40px 46px; gap: 8px; align-items: center; padding: 7px 8px; font: 10px/1.3 var(--mono); border-inline-start: 3px solid var(--line); background: var(--card); }
+.brit-room .ri-game.ri-g-played { border-inline-start-color: var(--green); }
+.brit-room .ri-game.ri-g-bench { border-inline-start-color: var(--gold); }
+.brit-room .ri-game.ri-g-out { border-inline-start-color: var(--red); }
+.brit-room .ri-game.ri-g-head { border-inline-start-color: transparent; background: transparent; padding-bottom: 2px; }
+.brit-room .ri-game.ri-g-head span { color: var(--muted); text-transform: uppercase; font-size: 8px; letter-spacing: 0.04em; }
+.brit-room .ri-g-date { color: var(--muted); }
+.brit-room .ri-g-comp { color: var(--muted); text-transform: uppercase; }
+.brit-room .ri-g-state { color: var(--ink); }
+.brit-room .ri-g-g, .brit-room .ri-game .ri-g-a { text-align: end; color: var(--ink); }
+
+/* Roster Intelligence — rows in the Recent-activity style (thumb + name + reason + status chip) */
+.brit-room .ri-list { display: block; }
+.brit-room .ri-row { width: 100%; margin: 0; padding: 15px 0; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; transition: background 0.15s; }
+.brit-room .ri-list .ri-row:first-child { border-top: 0; }
+.brit-room .ri-row:hover { background: rgba(164, 125, 67, 0.06); }
+.brit-room .ri-row p { min-width: 0; }
+.brit-room .ri-row p strong { margin-top: 0; font: 700 13px/1.25 var(--body); }
+.brit-room .ri-row .ri-reason { display: block; margin-top: 4px; font: 500 12px/1.4 var(--body); font-style: normal; color: var(--ink); }
+.brit-room .ri-row .ri-sub { display: block; margin-top: 3px; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
+.brit-room .ri-row .ri-side { display: flex; align-items: center; gap: 6px; color: inherit; }
+.brit-room .ri-row .ri-side i { font-style: normal; }
+
+/* Roster Intelligence — drawer hero reuses the roster dossier (.brit-asset-modal .bam-*) */
+.brit-room .ri-hero.brit-asset-modal { max-height: none; overflow: hidden; }
+.brit-room .ri-hero > .brit-close { padding: 0; border: 0; background: none; font: 28px/1 var(--display); cursor: pointer; }
+.brit-room .ri-dr-f { display: flex; flex-wrap: wrap; gap: 10px; }
+.brit-room .ri-dr-f a.ri-btn:not(.ri-btn-gold):hover { background: var(--ink); color: var(--paper); }
+.brit-room .ri-row .ri-also { display: block; margin-top: 2px; font: 11px/1.4 var(--body); font-style: normal; color: var(--muted); }
+
+/* Roster Intelligence — last games: readable competition (flag · name · tier), opponent, score; rows link to the TM match sheet */
+.brit-room .ri-game { grid-template-columns: 42px minmax(0, 1fr) 78px 34px 40px; }
+.brit-room a.ri-game { color: inherit; text-decoration: none; transition: background 0.15s; }
+.brit-room a.ri-game:hover { background: #fff; box-shadow: inset 0 0 0 1px var(--gold-soft); }
+.brit-room .ri-g-match { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.brit-room .ri-g-match .ri-g-comp { display: flex; align-items: center; gap: 5px; min-width: 0; text-transform: none; color: var(--muted); font: 9px/1.2 var(--mono); }
+.brit-room .ri-g-match .ri-g-comp img { width: 14px; height: 10px; flex: none; object-fit: cover; border: 1px solid var(--line); }
+.brit-room .ri-g-match .ri-g-comp .nm { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.brit-room .ri-g-match .ri-g-comp .kind { flex: none; padding: 1px 4px; border: 1px solid var(--line); font-size: 8px; text-transform: uppercase; letter-spacing: 0.03em; }
+.brit-room .ri-g-opp { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 11px/1.3 var(--body); color: var(--ink); }
+.brit-room .ri-g-opp b { font-weight: 700; }
+.brit-room .ri-g-opp .ven { color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-g-opp .res { margin-inline-start: 6px; padding: 1px 5px; font: 600 9px/1.3 var(--mono); color: #fff; background: var(--muted); }
+.brit-room .ri-g-opp .res.r-W { background: var(--green); }
+.brit-room .ri-g-opp .res.r-L { background: var(--red); }
+.brit-room .ri-g-opp .res.r-D { background: var(--gold); }

@@ -10,6 +10,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '@/lib/firebase';
 import { callOffersCreate, callOffersUpdateFeedback, callTasksToggleComplete, callPlayersUpdate, callPlayersToggleMandate, callPlayersAddNote, callPlayersDeleteNote, callPlayersDelete, callPlayerDocumentsCreate, callPlayerDocumentsDelete, callPlayerDocumentsMarkExpired, callPortfolioUpsert } from '@/lib/callables';
 import { getPlayerDetails, PlayerDetails } from '@/lib/api';
+import { fetchRecentGamesForPlayer } from '@/lib/recentGamesApi';
 import MenPlayerProfile from '@/components/MenPlayerProfile';
 import { isContactPickerSupported, pickPhoneFromDevice } from '@/lib/deviceContacts';
 import BritLoader from '@/components/BritLoader';
@@ -1000,6 +1001,14 @@ export default function PlayerInfoPage() {
       } else if (details.agentInfoReliable) {
         deleteFields.push('agency', 'agencyUrl');
       }
+      // Enrich with recent per-game form (used by Roster Intelligence). Best-effort.
+      try {
+        const games = await fetchRecentGamesForPlayer(player.tmProfile);
+        if (games && games.length) {
+          updates.recentGames = games;
+          updates.recentGamesAt = Date.now();
+        }
+      } catch { /* non-critical */ }
       updates.lastRefreshedAt = Date.now();
       if (deleteFields.length) updates._deleteFields = deleteFields;
       if (Object.keys(updates).length > 2) {

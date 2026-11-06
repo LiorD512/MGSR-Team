@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BRIT — Roster intelligence (weekly signals)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/* Tokens + shell copied from mgsr-web globals.css (.brit-room) so this mock matches production */
+.brit-room{--ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;--gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--blue:#4a5f6f;--muted:#77736a;--muted-2:#aba69b;--line:rgba(22,22,19,.18);--line-2:rgba(22,22,19,.07);--dark-line:rgba(243,240,232,.2);--display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace;min-height:100vh;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+.brit-room[dir=rtl]{--display:'Heebo',sans-serif;--body:'Heebo',sans-serif;--mono:'Heebo',sans-serif}
+.brit-room *,.brit-room *::before,.brit-room *::after{box-sizing:border-box}
+body{margin:0;background:var(--paper)}
+.brit-room::before{content:'';position:fixed;inset:0;z-index:20;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+.brit-room a{color:inherit;text-decoration:none}.brit-room button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+.brit-app{min-height:100vh;display:grid;grid-template-columns:250px minmax(0,1fr)}
+.brit-rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:25px 22px;background:var(--black);color:var(--paper)}
+.brit-lockup{display:flex;align-items:center;gap:12px;padding-bottom:25px;border-bottom:1px solid var(--dark-line)}
+.brit-lockup .lg{width:44px;height:44px;border-radius:50%;border:2px solid var(--gold-soft);display:grid;place-items:center;color:var(--gold-soft);font:600 15px var(--display)}
+.brit-lockup strong{display:block;font:600 15px/1 var(--display);letter-spacing:.08em}.brit-lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase}
+.brit-nav{display:grid;gap:3px;margin-top:28px}.brit-nav a{display:flex;justify-content:space-between;align-items:center;padding:12px 0;color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase;cursor:pointer}
+.brit-nav a:hover,.brit-nav a.active{color:var(--gold-soft)}.brit-nav a.active::before{content:'';width:20px;height:1px;margin-inline-end:-20px;background:var(--gold-soft)}
+.brit-nav em{color:var(--gold-soft);font-style:normal}
+.brit-rail-footer{margin-top:auto;padding-top:18px;border-top:1px solid var(--dark-line);color:#979289;font:9px/1.6 var(--mono);text-transform:uppercase}.brit-rail-footer strong{display:block;color:var(--paper);font-weight:400}
+.brit-topbar{height:74px;display:flex;align-items:center;justify-content:space-between;padding:0 43px;background:var(--black);color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}
+.brit-topbar strong{color:var(--paper);font-weight:400}.brit-actions{display:flex;align-items:center;gap:19px}.brit-actions button{color:#aaa69c;font:10px/1 var(--mono);text-transform:uppercase}.brit-actions button:hover{color:var(--gold-soft)}
+.brit-avatar{width:28px;height:28px;display:grid;place-items:center;background:var(--gold-soft);color:var(--ink);font:11px/1 var(--display)}
+.brit-ps{display:inline-flex;padding:3px;border:1px solid var(--dark-line);border-radius:999px;position:relative}.brit-ps span{padding:7px 16px;border-radius:999px;font:600 11px/1 var(--display);letter-spacing:.07em;color:#8e8b82}.brit-ps span.on{background:var(--gold-soft);color:var(--ink)}
+.brit-canvas{max-width:1540px;padding:43px}
+.brit-kicker{margin:0 0 18px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.brit-masthead{margin-bottom:49px}.brit-masthead h1{margin:0;font:500 clamp(56px,7vw,104px)/.78 var(--display);letter-spacing:-.045em;text-transform:uppercase}.brit-masthead h1 span{color:var(--gold)}
+.brit-room[dir=rtl] .brit-masthead h1{letter-spacing:normal;font-weight:800;line-height:.95}
+.brit-signals{display:grid;grid-template-columns:2fr repeat(2,1fr);margin-bottom:59px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.brit-signal{min-height:116px;padding:18px 20px 20px 0;border-inline-end:1px solid var(--line)}.brit-signal:not(:first-child){padding-inline-start:20px}.brit-signal:last-child{border-inline-end:0}
+.brit-signal label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.brit-signal strong{display:block;margin-top:14px;font:500 clamp(30px,3.6vw,50px)/.8 var(--display);text-transform:uppercase}.brit-signal .brit-red{color:var(--red)}
+.brit-signal small{display:block;margin-top:10px;color:var(--muted);font:9px/1 var(--mono)}
+.brit-grid{display:grid;grid-template-columns:minmax(0,1.42fr) minmax(300px,.78fr);gap:56px}
+.brit-module{margin-bottom:56px}
+.brit-module-head{display:flex;justify-content:space-between;align-items:baseline;gap:20px;padding-bottom:13px;border-bottom:1px solid var(--line)}
+.brit-module-head h2{margin:0;font:500 27px/.9 var(--display);text-transform:uppercase}.brit-room[dir=rtl] .brit-module-head h2{font-weight:800;letter-spacing:normal}
+.brit-module-head span,.brit-module-head a,.brit-module-head button{color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}.brit-module-head a:hover,.brit-module-head button:hover{color:var(--gold)}
+.brit-heading-gold{color:var(--gold)}
+.brit-deadline{display:grid;grid-template-columns:57px 1fr auto;gap:18px;align-items:center;padding:19px 0;border-bottom:1px solid var(--line)}
+.brit-deadline .brit-code{color:var(--gold);font:10px/1 var(--mono)}.brit-deadline h3{margin:0 0 4px;font:500 24px/.9 var(--display);text-transform:uppercase}
+.brit-deadline p{margin:0;color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}.brit-deadline time{color:var(--gold);text-align:end;font:500 18px/.9 var(--display);text-transform:uppercase}.brit-deadline time.brit-red{color:var(--red)}
+.brit-birthday-btn{padding:8px 10px;background:var(--gold-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase;margin-inline-end:12px}.brit-birthday-btn:hover{background:var(--gold);color:var(--paper)}
+.brit-black-module{padding:25px 26px 8px;background:var(--black);color:var(--paper)}.brit-black-module .brit-module-head{border-color:var(--dark-line)}.brit-black-module .brit-module-head h2{color:var(--paper)}.brit-black-module .brit-module-head span{color:#aaa69c}
+.brit-approval{display:grid;grid-template-columns:48px 1fr auto;gap:15px;align-items:center;padding:17px 0;border-bottom:1px solid var(--dark-line)}
+.brit-avatar-box{width:48px;height:58px;display:grid;place-items:center;background:rgba(243,240,232,.08);color:#aaa69c;font:500 18px/1 var(--display)}
+.brit-approval h3{margin:0 0 4px;font:500 22px/.9 var(--display);text-transform:uppercase}.brit-approval p{margin:0;color:#aaa69c;font:9px/1.4 var(--mono);text-transform:uppercase}
+.brit-approve-btn{padding:9px 10px;background:var(--gold-soft);color:var(--ink);font:9px/1 var(--mono);text-transform:uppercase}
+.brit-mandates{display:grid;grid-template-columns:repeat(3,1fr)}.brit-mandate{padding:18px 16px 20px 0;border-bottom:1px solid var(--line)}.brit-mandate:not(:first-child){padding-inline-start:16px;border-inline-start:1px solid var(--line)}
+.brit-mandate strong{display:block;margin-bottom:7px;font:500 23px/.9 var(--display);text-transform:uppercase}.brit-mandate span{color:var(--red);font:9px/1 var(--mono);text-transform:uppercase}
+.brit-mandate p{min-height:30px;margin:10px 0 14px;color:var(--muted);font:9px/1.4 var(--mono)}.brit-mandate a{padding:0 0 4px;border-bottom:1px solid var(--ink);font:9px/1 var(--mono);text-transform:uppercase;cursor:pointer}
+.brit-feed-row{display:grid;grid-template-columns:70px 1fr auto;gap:18px;padding:15px 0;border-top:1px solid var(--line);align-items:start}.brit-feed-row time{color:var(--muted);font:9px/1 var(--mono)}.brit-feed-row p{margin:0;font-size:11px}.brit-feed-row p strong{display:block;margin-top:3px}.brit-feed-row span{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;white-space:nowrap}
+.brit-new-request{display:block;width:100%;margin-top:18px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase}
+.brit-focus{display:grid;grid-template-columns:1fr 1fr;gap:16px}.brit-focus article{position:relative;min-height:190px;overflow:hidden;background:linear-gradient(160deg,#23231f,#11110f)}
+.brit-focus article::after{content:'';position:absolute;inset:52% 0 0;background:rgba(17,17,15,.76)}.brit-focus-copy{position:absolute;inset-inline:16px;bottom:16px;z-index:1;color:var(--paper)}
+.brit-focus-copy small{display:block;color:var(--gold-soft);font:9px/1 var(--mono);text-transform:uppercase}.brit-focus-copy h3{margin:6px 0 0;font:500 24px/.9 var(--display);text-transform:uppercase}
+.brit-empty{padding:22px 0;color:var(--muted);font:9px/1.4 var(--mono);text-transform:uppercase}
+
+/* push notification */
+.notif{position:fixed;top:92px;inset-inline-end:24px;z-index:90;width:360px;background:var(--black);color:var(--paper);border-inline-start:3px solid var(--red);padding:16px 18px;transform:translateX(130%);transition:transform .4s cubic-bezier(.2,.8,.2,1);box-shadow:0 20px 50px -20px rgba(0,0,0,.6)}
+.brit-room[dir=rtl] .notif{transform:translateX(-130%)}.notif.show{transform:none!important}
+.notif small{display:flex;justify-content:space-between;color:var(--gold-soft);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}.notif b{display:block;margin:8px 0 4px;font:500 20px/1 var(--display);text-transform:uppercase}.notif p{margin:0;color:#b9b5aa;font:10px/1.5 var(--mono)}.notif button{margin-top:10px;color:var(--gold-soft);font:9px var(--mono);text-transform:uppercase;border-bottom:1px solid var(--gold-soft)}
+.toast{position:fixed;left:24px;bottom:70px;z-index:90;padding:13px 16px;background:var(--black);color:var(--paper);border-left:3px solid var(--gold);font:10px/1.4 var(--mono);transform:translateY(20px);opacity:0;pointer-events:none;transition:.25s}.toast.show{transform:none;opacity:1}
+.mockbar{position:fixed;left:0;right:0;bottom:0;z-index:95;display:flex;gap:10px;align-items:center;padding:9px 14px;background:#fff;border-top:2px dashed var(--gold);font:10px/1 var(--mono);text-transform:uppercase}
+.mockbar b{color:var(--gold)}.mockbar button{padding:7px 10px;border:1px solid var(--ink)}.mockbar button:hover{background:var(--ink);color:#fff}.mockbar span{color:var(--muted)}
+.brit-canvas{padding-bottom:90px}
+@media(max-width:1100px){.brit-app{grid-template-columns:1fr}.brit-rail{display:none}.brit-grid{grid-template-columns:1fr}.brit-canvas{padding:24px}.brit-topbar{padding:0 20px}.brit-signals{grid-template-columns:1fr}.brit-signal{border:0;padding-inline-start:0!important}}
+/* ═══════════════════════════════════════════════════════
+   Roster Intelligence — "what needs attention this week"
+   Scoped to .brit-room. Cards + read-only drawer.
+   ═══════════════════════════════════════════════════════ */
+.brit-room .ri-caption { margin: 14px 0 12px; color: var(--muted); font: 9px/1.5 var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+.brit-room .ri-link { color: var(--gold); font: 9px/1 var(--mono); text-transform: uppercase; text-decoration: underline; }
+.brit-room .ri-muted { color: var(--muted); font: 11px/1.5 var(--mono); }
+.brit-room .ri-first { padding: 22px 0; }
+.brit-room .ri-first p { margin: 0 0 6px; font: 12px/1.5 var(--body); }
+.brit-room .ri-first-sub { color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+
+/* list of flagged players */
+.brit-room .rk { list-style: none; margin: 0; padding: 0; }
+.brit-room .rk-row { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; width: 100%; padding: 13px 0; border-top: 1px solid var(--line); text-align: start; }
+.brit-room .rk li:first-child .rk-row { border-top: 0; }
+.brit-room .rk-row:hover { background: rgba(164, 125, 67, 0.06); }
+.brit-room .rk-badge { width: 30px; height: 30px; display: grid; place-items: center; font-size: 15px; border-radius: 50%; }
+.brit-room .rk-badge.t-positive { background: color-mix(in srgb, var(--green) 16%, transparent); }
+.brit-room .rk-badge.t-watch { background: color-mix(in srgb, var(--gold-soft) 20%, transparent); }
+.brit-room .rk-badge.t-negative { background: color-mix(in srgb, var(--red) 14%, transparent); }
+.brit-room .rk-main { min-width: 0; }
+.brit-room .rk-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.brit-room .rk-top b { font: 700 13.5px/1.2 var(--body); }
+.brit-room .rk-chip { padding: 2px 6px; font: 8px/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; }
+.brit-room .rk-chip.t-positive { background: var(--green); color: #fff; }
+.brit-room .rk-chip.t-watch { background: var(--gold); color: #fff; }
+.brit-room .rk-chip.t-negative { background: var(--red); color: #fff; }
+.brit-room .rk-more { color: var(--muted); font: 8px/1 var(--mono); border: 1px solid var(--line); padding: 2px 4px; }
+.brit-room .rk-reason { display: block; margin-top: 4px; font: 500 12px/1.4 var(--body); color: var(--ink); }
+.brit-room .rk-sub { display: block; margin-top: 3px; color: var(--muted); font: 9px/1.3 var(--mono); text-transform: uppercase; }
+.brit-room .ri-spark { flex: none; }
+.brit-room .ri-spark-lg { display: block; }
+
+.brit-room .ri-status { display: flex; align-items: center; gap: 8px; margin-top: 16px; color: var(--muted); font: 9px/1.4 var(--mono); text-transform: uppercase; }
+.brit-room .ri-live { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
+
+/* read-only drawer */
+.brit-room .ri-backdrop { position: fixed; inset: 0; z-index: 70; background: rgba(17, 17, 15, 0.6); }
+.brit-room .ri-drawer { position: fixed; top: 0; bottom: 0; inset-inline-end: 0; z-index: 71; width: min(540px, 100%); overflow: auto; background: var(--paper); border-inline-start: 4px solid var(--gold); animation: ri-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes ri-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.brit-room[dir='rtl'] .ri-drawer { animation-name: ri-in-rtl; }
+@keyframes ri-in-rtl { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.brit-room .ri-dr-h { padding: 24px 26px 20px; background: var(--black); color: var(--paper); }
+.brit-room .ri-x { float: inline-end; font: 22px var(--display); }
+.brit-room .ri-dr-h small { color: #aaa69c; font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-h h2 { margin: 8px 0 12px; font: 500 38px/0.9 var(--display); text-transform: uppercase; }
+.brit-room[dir='rtl'] .ri-dr-h h2 { font-weight: 800; letter-spacing: normal; }
+.brit-room .ri-dr-tags { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brit-room .ri-fitlabel { color: var(--gold-soft); font: 9px/1.2 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-s { padding: 18px 26px; border-bottom: 1px solid var(--line); }
+.brit-room .ri-dr-s h4 { margin: 0 0 12px; display: flex; justify-content: space-between; color: var(--muted); font: 9px/1 var(--mono); font-weight: 400; text-transform: uppercase; letter-spacing: 0.08em; }
+.brit-room .pb-why { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.brit-room .pb-why.big li { position: relative; padding-inline-start: 14px; font: 12px/1.45 var(--body); }
+.brit-room .pb-why.big li::before { content: ''; position: absolute; inset-inline-start: 0; top: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--muted-2); }
+.brit-room .pb-why.big li.tone-positive::before { background: var(--green); }
+.brit-room .pb-why.big li.tone-watch::before { background: var(--gold); }
+.brit-room .pb-why.big li.tone-negative::before { background: var(--red); }
+.brit-room .pb-why.big li b { font-weight: 700; }
+.brit-room .ri-facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.brit-room .ri-facts > div { padding: 10px 12px; border: 1px solid var(--line); background: var(--card); }
+.brit-room .ri-facts b { display: block; font: 500 22px/1 var(--display); }
+.brit-room .ri-facts span { display: block; margin-top: 3px; color: var(--muted); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-dr-f { padding: 18px 26px 40px; }
+.brit-room .ri-btn { display: inline-block; padding: 11px 14px; border: 1px solid var(--ink); font: 9px/1 var(--mono); text-transform: uppercase; }
+.brit-room .ri-btn-gold { background: var(--gold-soft); border-color: var(--gold-soft); color: var(--ink); }
+.brit-room .ri-btn-gold:hover { background: var(--gold); border-color: var(--gold); color: var(--paper); }
+@media (max-width: 900px) { .brit-room .ri-spark { display: none; } }
+
+/* Roster Intelligence — recent games list in the drawer */
+.brit-room .ri-games { display: grid; gap: 2px; }
+.brit-room .ri-game { display: grid; grid-template-columns: 44px 44px 1fr auto; gap: 8px; align-items: center; padding: 7px 8px; font: 10px/1.3 var(--mono); border-inline-start: 3px solid var(--line); background: var(--card); }
+.brit-room .ri-game.ri-g-played { border-inline-start-color: var(--green); }
+.brit-room .ri-game.ri-g-bench { border-inline-start-color: var(--gold); }
+.brit-room .ri-game.ri-g-out { border-inline-start-color: var(--red); }
+.brit-room .ri-g-date { color: var(--muted); }
+.brit-room .ri-g-comp { color: var(--muted); text-transform: uppercase; }
+.brit-room .ri-g-state { color: var(--ink); }
+.brit-room .ri-g-out { text-align: end; color: var(--ink); }
+
+</style>
+</head>
+<body>
+<div class="brit-room" id="room" dir="ltr" lang="en">
+<div class="brit-app">
+  <aside class="brit-rail">
+    <div class="brit-lockup"><div class="lg">B</div><div><strong>BRIT SPORT GROUP</strong><small id="lockSub">Management room</small></div></div>
+    <nav class="brit-nav" id="nav"></nav>
+    <div class="brit-rail-footer"><strong id="fpl">Men / Europe</strong><span id="fpv">Live data</span></div>
+  </aside>
+  <div>
+    <header class="brit-topbar">
+      <div>BRIT / <strong id="crumbD">Dashboard</strong> / 03 NOV 2026</div>
+      <div class="brit-actions"><div class="brit-ps"><span class="on">MEN</span><span>YOUTH</span></div><button onclick="toggleLang()" id="lb">HE / EN</button><button id="srch">Search /</button><span>TLV 14:45</span><span class="brit-avatar">LD</span></div>
+    </header>
+    <main class="brit-canvas" id="canvas"></main>
+  </div>
+</div>
+
+<div class="brit-backdrop" id="bd" onclick="closeAll()"></div>
+<aside class="brit-drawer" id="drawer"></aside>
+<div class="brit-modal" id="modal"></div>
+<div class="notif" id="notif"></div>
+<div class="toast" id="toast"></div>
+<div class="mockbar"><b>MOCK</b><span>weekly agent · recent-game signals · read-only</span><button onclick="resetAll()">Reset</button></div>
+</div>
+
+<script>
+let lang='en',empty=false,tab='priority',lvFilter=0,showAll=false;
+const D={en:{
+ room:'Management room',nav:['Dashboard','Players','Shortlist','Requests','Contacts','Signals','War Room'],
+ kicker:'Private client office / Men platform',hi:'Good afternoon',
+ sig1:'Managed portfolio',sig1n:'Across 16 valued assets',sig2:'Roster assets',sig2n:'9 EU passports',sig3:'Mandates under 30d',sig3n:'Action required',
+ bday:'Player birthdays',bdayN:'2 in the next 30 days',pend:'Pending decisions',pendN:'2 need sign-off',review:'Review',mw:'Mandate watch',mwSub:'Action window / next 30 days',openP:'Open player →',
+ act:'Recent activity',our:'OUR',assets:'ASSETS',cr:'Club requests',crN:'3 live',newReq:'+ New request',
+ ri:'Roster intelligence',viewAll:'View all 16 →',
+ lvl:['Elite','Premium','Core','Depth','Developing'],fcs:['Push now','Active','Maintain','Park'],
+ callTitle:'AI suggests {n} changes',callSub:'{h} high confidence · review and accept',callBtn:'Review',
+ tPri:'Priority',tAll:'All players',tChg:'AI changes',
+ thP:'Player',thL:'Level',thF:'Focus',thN:'Next',
+ more:'Showing {a} of {b}',showAll:'Show all',showLess:'Show less',
+ effTitle:'Effort on Push-now players',effNote:'Counted automatically from notes, tasks and contacts',effMsg:'{n} Push-now players have had no contact for 14+ days.',effLink:'See who',
+ empty:'No tiered players yet — the first AI analysis runs tonight.',
+ drLevel:'Level',drFocus:'Focus',drAI:'AI read',drSig:'Signals',drEff:'Effort · last 30 days',drNote:'Add a note (optional)',drHist:'History',drLock:'Lock — AI suggests but never auto-moves',
+ sPerf:'Output',sFm:'Ability / FM',sVal:'Market value',sLg:'League',sForm:'Form',nNotes:'Notes',nTasks:'Tasks',nCont:'Contacts',nLast:'Last',
+ openFull:'Open full profile →',rerun:'Re-run',accept:'Accept',dismiss:'Dismiss',adjust:'Adjust',acceptHigh:'Accept all ≥ 85% confidence',
+ modalT:'AI inbox',modalS:'Changes the engine wants to make — you decide',done:'Inbox clear. The engine will tell you when something moves.',
+ conf:'Confidence',mo:'mo',d:'d',mand:'mandate',untouched:'untouched',
+ notifT:'Push now',notifB:'Shai Golan',notifP:'A new club request from Hapoel Haifa matches him (CM, 22–27). Focus moved to Push now.',notifBtn:'Open player →',
+ sav:'Saved',alertSent:'Alert sent to agent in charge · in-app + push'},
+he:{room:'חדר ניהול',nav:['דשבורד','שחקנים','רשימת מעקב','בקשות','אנשי קשר','סיגנלים','חדר מלחמה'],
+ kicker:'משרד לקוחות פרטי / פלטפורמת גברים',hi:'צהריים טובים',
+ sig1:'תיק מנוהל',sig1n:'על פני 16 נכסים מוערכים',sig2:'נכסי סגל',sig2n:'9 דרכונים אירופיים',sig3:'מנדטים מתחת ל־30 יום',sig3n:'נדרשת פעולה',
+ bday:'ימי הולדת שחקנים',bdayN:'2 ב־30 הימים הקרובים',pend:'החלטות ממתינות',pendN:'2 דורשים אישור',review:'סקירה',mw:'מעקב מנדטים',mwSub:'חלון פעולה / 30 ימים',openP:'פתח שחקן ←',
+ act:'פעילות אחרונה',our:'הנכסים',assets:'שלנו',cr:'בקשות מועדונים',crN:'3 פעילות',newReq:'+ בקשה חדשה',
+ ri:'מודיעין סגל',viewAll:'הצג את כל 16 ←',
+ lvl:['עילית','פרימיום','ליבה','עומק','בפיתוח'],fcs:['לדחוף עכשיו','פעיל','תחזוקה','מושהה'],
+ callTitle:'ה־AI מציע {n} שינויים',callSub:'{h} בביטחון גבוה · סקור ואשר',callBtn:'סקירה',
+ tPri:'עדיפות',tAll:'כל השחקנים',tChg:'שינויי AI',
+ thP:'שחקן',thL:'רמה',thF:'פוקוס',thN:'הבא',
+ more:'מציג {a} מתוך {b}',showAll:'הצג הכול',showLess:'הצג פחות',
+ effTitle:'מאמץ על שחקני ״לדחוף עכשיו״',effNote:'נספר אוטומטית מהערות, משימות ואנשי קשר',effMsg:'{n} שחקני ״לדחוף עכשיו״ ללא קשר 14+ ימים.',effLink:'הצג מי',
+ empty:'אין עדיין שחקנים מדורגים — ניתוח ה־AI הראשון רץ הלילה.',
+ drLevel:'רמה',drFocus:'פוקוס',drAI:'קריאת AI',drSig:'אותות',drEff:'מאמץ · 30 ימים אחרונים',drNote:'הוסף הערה (אופציונלי)',drHist:'היסטוריה',drLock:'נעילה — ה־AI מציע אך לא מזיז אוטומטית',
+ sPerf:'תפוקה',sFm:'יכולת / FM',sVal:'שווי שוק',sLg:'ליגה',sForm:'פורמה',nNotes:'הערות',nTasks:'משימות',nCont:'קשר',nLast:'אחרון',
+ openFull:'פתח פרופיל מלא ←',rerun:'הרץ שוב',accept:'אשר',dismiss:'דחה',adjust:'שנה',acceptHigh:'אשר הכול עם ביטחון ≥ 85%',
+ modalT:'תיבת AI',modalS:'שינויים שהמנוע רוצה לבצע — אתה מחליט',done:'התיבה ריקה. המנוע יודיע כשמשהו זז.',
+ conf:'ביטחון',mo:'חו׳',d:'י׳',mand:'מנדט',untouched:'ללא קשר',
+ notifT:'לדחוף עכשיו',notifB:'שי גולן',notifP:'בקשה חדשה של הפועל חיפה מתאימה לו (קשר, 22–27). הפוקוס עבר ל״לדחוף עכשיו״.',notifBtn:'פתח שחקן ←',
+ sav:'נשמר',alertSent:'ההתראה נשלחה לסוכן האחראי · באפליקציה + פוש'}};
+const T=k=>D[lang][k];
+/* Level palette: luminance ramp on the existing black/gold/paper tokens */
+const LV={1:['#11110f','#f3f0e8'],2:['#a47d43','#fff'],3:['#c9a66b','#161613'],4:['#aba69b','#161613'],5:['transparent','#161613']};
+const FCOL={1:'#b64235',2:'#161613',3:'#77736a',4:'transparent'};
+
+/* ---- sample data (fictional) ---- */
+const P=[
+{id:8,n:'Amit Rosen',club:'Maccabi Netanya',pos:'DM',age:28,mv:2200,lv:2,fc:1,tr:'up',conf:93,u:81,t:3,x:[4,3,5],nx:['Mandate 6d','מנדט 6י׳',1],f:[80,72,78,68,78],
+ r:{en:'Four open club requests match him, the contract ends in 3 months and the mandate in 6 days. Highest time-value on the roster.',he:'ארבע בקשות פתוחות מתאימות לו, החוזה נגמר בעוד 3 חודשים והמנדט בעוד 6 ימים. הערך־בזמן הגבוה ביותר בסגל.'}},
+{id:14,n:'Ben Levi',club:'Maccabi Tel Aviv',pos:'CF',age:30,mv:3000,lv:2,fc:1,tr:'flat',conf:90,u:64,t:2,x:[3,2,4],nx:['Mandate 3d','מנדט 3י׳',1],f:[78,70,74,72,74],
+ r:{en:'Mandate lapses in 3 days. Level is solid; the cost of inaction is now the whole story.',he:'המנדט פג בעוד 3 ימים. הרמה יציבה; מחיר חוסר הפעולה הוא כל הסיפור.'}},
+{id:2,n:'Roi Dahan',club:'Hapoel Beer Sheva',pos:'RW',age:27,mv:1800,lv:2,fc:2,tr:'flat',conf:88,u:65,t:19,x:[1,1,1],nx:['Contract 5mo','חוזה 5חו׳',1],f:[74,70,72,60,72],s:{fc:1},
+ r:{en:'Level is stable. Contract ends in 5 months and the mandate lapses in 9 days — urgency is driven by time, not form.',he:'הרמה יציבה. החוזה נגמר בעוד 5 חודשים והמנדט בעוד 9 ימים — הדחיפות נובעת מזמן, לא מפורמה.'}},
+{id:1,n:'Itai Sassoon',club:'Maccabi Haifa',pos:'CF',age:24,mv:3500,lv:2,fc:2,tr:'up',conf:91,u:69,t:4,x:[5,3,5],nx:['3 requests','3 בקשות',0],f:[88,84,86,70,90],s:{lv:1,fc:1},
+ r:{en:'Output is top-5% among Ligat Ha’al forwards for two straight windows and market value has outrun his Level 2 tag. He now profiles as Elite.',he:'התפוקה בטופ 5% בין החלוצים בליגת העל לשני חלונות רצופים והשווי עבר את תג רמה 2. כעת הוא בפרופיל עילית.'}},
+{id:10,n:'Eden Ziv',club:'Maccabi Haifa',pos:'LW',age:21,mv:2800,lv:1,fc:2,tr:'up',conf:94,u:43,t:9,x:[3,2,4],nx:['Contract 24mo','חוזה 24חו׳',0],f:[82,88,80,70,91],
+ r:{en:'Elite at 21: output, ability and value all aligned. Long contract lets us pace the approach — Active, not Push.',he:'עילית בגיל 21: תפוקה, יכולת ושווי מתיישרים. חוזה ארוך מאפשר קצב — פעיל ולא דחיפה.'}},
+{id:6,n:'Dor Mizrahi',club:'Hapoel Jerusalem',pos:'LB',age:26,mv:1200,lv:2,fc:2,tr:'flat',conf:58,u:49,t:6,x:[3,2,3],nx:['Contract 11mo','חוזה 11חו׳',0],f:[66,62,60,62,66],s:{lv:3},
+ r:{en:'Borderline between Premium and Core (score 63.4 vs line 64). Low confidence — worth a human look at video before changing anything.',he:'גבולי בין פרימיום לליבה (63.4 מול קו 64). ביטחון נמוך — כדאי עין אנושית על וידאו לפני שינוי.'}},
+{id:4,n:'Lior Avraham',club:'Ashdod',pos:'GK',age:31,mv:450,lv:3,fc:2,tr:'down',conf:79,u:56,t:12,x:[2,1,2],nx:['Contract 4mo','חוזה 4חו׳',1],f:[52,45,40,50,60],s:{lv:4,fc:3},
+ r:{en:'Save-% and post-shot xG fell for 3 months and the score now sits under the Core line. Contract is short, so the question is whether to renew at all.',he:'אחוז הצלות ו־PSxG ירדו שלושה חודשים והציון מתחת לקו ה״ליבה״. החוזה קצר, ולכן השאלה אם בכלל לחדש.'}},
+{id:5,n:'Yonatan Peretz',club:'Maccabi Tel Aviv U21',pos:'CM',age:19,mv:700,lv:3,fc:3,tr:'up',conf:72,u:34,t:8,x:[2,1,3],nx:['Contract 30mo','חוזה 30חו׳',0],f:[48,78,45,55,80],s:{lv:2},
+ r:{en:'Numbers say Core, but the ceiling is the story: FM potential far above current, strong youth-national minutes, similar profile to two past sell-ons. AI lifts him one level.',he:'המספרים אומרים ליבה, אבל התקרה היא הסיפור: פוטנציאל FM גבוה, דקות בנבחרות נוער ופרופיל דומה לשני שחקנים שנמכרו. ה־AI מעלה רמה אחת.'}},
+{id:12,n:'Omri Tal',club:'Hapoel Beer Sheva',pos:'RB',age:23,mv:1900,lv:3,fc:3,tr:'up',conf:85,u:37,t:14,x:[2,1,2],nx:['Contract 18mo','חוזה 18חו׳',0],f:[72,68,70,72,70],s:{lv:2},
+ r:{en:'Two seasons of Premium-level output at a top-3 club; the tag is a year out of date.',he:'שתי עונות ברמת פרימיום במועדון מצמרת; התג מיושן בשנה.'}},
+{id:9,n:'Shai Golan',club:'Hapoel Haifa',pos:'AM',age:25,mv:1500,lv:3,fc:3,tr:'flat',conf:81,u:44,t:22,x:[1,1,1],nx:['Untouched 22d','22י׳ ללא קשר',0],f:[65,60,62,60,58],
+ r:{en:'Consistent Core playmaker. Nothing time-critical; 22 days since last touch is the only flag.',he:'פלייסמייקר ליבה עקבי. אין דחיפות בזמן; רק 22 ימים ללא קשר.'}},
+{id:3,n:'Tomer Biton',club:'Beitar Jerusalem',pos:'CB',age:29,mv:900,lv:3,fc:3,tr:'flat',conf:84,u:32,t:31,x:[1,0,1],nx:['Contract 14mo','חוזה 14חו׳',0],f:[58,55,50,58,55],
+ r:{en:'Solid starter, no catalyst. Maintain the relationship, no extra hours.',he:'בלם פותח מוצק, ללא קטליזטור. לשמור על הקשר בלי שעות נוספות.'}},
+{id:16,n:'Maor Azulay',club:'Hapoel Tel Aviv',pos:'GK',age:24,mv:800,lv:3,fc:3,tr:'up',conf:61,u:35,t:10,x:[2,1,2],nx:['Contract 22mo','חוזה 22חו׳',0],f:[68,64,58,55,68],
+ r:{en:'Score 63.7 — a hair under Premium. Trend is up; likely to cross the line within a month.',he:'ציון 63.7 — בקושי מתחת לפרימיום. מגמה עולה; צפוי לחצות את הקו בתוך חודש.'}},
+{id:11,n:'Nir Cohen',club:'Kiryat Shmona',pos:'CB',age:33,mv:300,lv:4,fc:3,tr:'down',conf:76,u:53,t:55,x:[0,0,1],nx:['Contract 6mo','חוזה 6חו׳',0],f:[44,38,25,45,30],s:{lv:5},
+ r:{en:'Age-33 centre-back, sharp decline in duels won and two injury spells. AI drops him a level; focus stays Maintain.',he:'בלם בן 33, ירידה חדה בדו־קרבות ושתי תקופות פציעה. ה־AI מוריד רמה; הפוקוס נשאר תחזוקה.'}},
+{id:15,n:'Ido Shamir',club:'Hapoel Acre',pos:'CM',age:27,mv:350,lv:4,fc:4,tr:'flat',conf:83,u:39,t:18,x:[1,0,1],nx:['Contract 12mo','חוזה 12חו׳',0],f:[50,48,40,40,50],
+ r:{en:'Squad player in a weaker league. Parked until a request surfaces.',he:'שחקן סגל בליגה חלשה יותר. מושהה עד שתעלה בקשה.'}},
+{id:7,n:'Gal Kedem',club:'Bnei Sakhnin',pos:'ST',age:22,mv:250,lv:4,fc:4,tr:'flat',conf:86,u:34,t:40,x:[0,0,1],nx:['Contract 20mo','חוזה 20חו׳',0],f:[38,50,30,40,40],
+ r:{en:'Depth profile, no mandate, no demand. Park until form or a request changes the picture.',he:'פרופיל עומק, ללא מנדט וללא ביקוש. להשהות עד ששינוי בפורמה או בקשה ישנו את התמונה.'}},
+{id:13,n:'Yuval Haim',club:'Sektzia Ness Ziona',pos:'CF',age:20,mv:400,lv:4,fc:4,tr:'up',conf:70,u:35,t:25,x:[1,0,1],nx:['Contract 36mo','חוזה 36חו׳',0],f:[38,66,38,42,55],
+ r:{en:'Depth today, rising FM potential. Watch list — revisit after 900 more minutes.',he:'עומק היום, פוטנציאל FM עולה. ברשימת מעקב — לחזור אחרי עוד 900 דקות.'}}
+];
+const SNAP=JSON.stringify(P);
+const HIST={};P.forEach(p=>HIST[p.id]=[{d:'02 Aug 2026',a:'Added to roster',w:'System'}]);
+HIST[1].push({d:'14 Sep 2026',a:'Level set to L2 Premium',w:'Avi N.'});HIST[2].push({d:'30 Sep 2026',a:'Focus set to Active',w:'Avi N.'});
+const byId=id=>P.find(p=>p.id===id);
+const mvF=k=>k>=1000?'€'+(k/1000).toFixed(2).replace(/\.?0+$/,'')+'M':'€'+k+'K';
+const ini=n=>n.split(' ').map(x=>x[0]).join('');
+const hasS=p=>p.s&&((p.s.lv&&p.s.lv!==p.lv)||(p.s.fc&&p.s.fc!==p.fc));
+const sugs=()=>P.filter(hasS);
+const lvChip=(l,sg)=>`<span class="lv ${sg?'sg':''}"><b style="background:${LV[l][0]};color:${LV[l][1]};${l===5?'border:1px solid var(--muted-2)':''}">L${l}</b></span>`;
+const fcTag=f=>`<span class="fc" style="color:${f===1?'var(--red)':f===4?'var(--muted)':'inherit'}"><s style="background:${FCOL[f]};${f===4?'border:1.5px solid var(--muted-2)':''}"></s>${T('fcs')[f-1]}</span>`;
+const arrow=t=>`<i class="${t}">${t==='up'?'▲':t==='down'?'▼':'●'}</i>`;
+const name=p=>lang==='he'&&HEN[p.n]?HEN[p.n]:p.n;
+const HEN={'Shai Golan':'שי גולן'};
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2400)}
+
+/* ---- rows for the table ---- */
+function rows(){
+  let r=[...P];
+  if(lvFilter)r=r.filter(p=>p.lv===lvFilter);
+  if(tab==='changes')r=r.filter(hasS);
+  r.sort(tab==='all'?((a,b)=>a.lv-b.lv||a.fc-b.fc):((a,b)=>a.fc-b.fc||b.u-a.u));
+  return r;
+}
+let flashId=null;
+function riHTML(){
+  const n=P.length, counts=[1,2,3,4,5].map(l=>P.filter(p=>p.lv===l).length);
+  const sg=sugs(), hi=sg.filter(p=>p.conf>=85).length;
+  const all=rows(), lim=tab==='changes'?99:(showAll?99:6), list=all.slice(0,lim);
+  const gaps=P.filter(p=>p.fc===1&&p.t>=14).length;
+  const pushShare=22,target=45;
+  if(empty)return `<div class="brit-module-head"><h2>${T('ri')}</h2><a href="#">${T('viewAll')}</a></div><div class="brit-empty">${T('empty')}</div>`;
+  return `
+  <div class="brit-module-head"><h2>${T('ri')}</h2><a href="#" onclick="return false">${T('viewAll')}</a></div>
+  <div class="ri-bar ${lvFilter?'dim':''}" role="group">${counts.map((c,i)=>`<button class="${lvFilter===i+1?'sel':''}" style="flex:${c||.001};background:${LV[i+1][0]};color:${LV[i+1][1]};${i===4?'box-shadow:inset 0 0 0 1px var(--muted-2)':''}${c?'':';display:none'}" onclick="setLv(${i+1})" title="L${i+1} ${T('lvl')[i]}">${c}</button>`).join('')}</div>
+  <div class="ri-key">${[1,2,3,4,5].map(l=>`<button class="${lvFilter===l?'sel':''}" onclick="setLv(${l})"><b>L${l}</b>${T('lvl')[l-1]}</button>`).join('')}</div>
+  ${sg.length?`<div class="ri-call"><div class="gi">AI</div><div><b>${T('callTitle').replace('{n}',sg.length)}</b><small>${T('callSub').replace('{h}',hi)}</small></div><button onclick="openInbox()">${T('callBtn')} →</button></div>`:''}
+  <div class="ri-tabs"><button class="${tab==='priority'?'on':''}" onclick="setTab('priority')">${T('tPri')}</button><button class="${tab==='all'?'on':''}" onclick="setTab('all')">${T('tAll')}</button><button class="${tab==='changes'?'on':''}" onclick="setTab('changes')">${T('tChg')}<i>${sg.length}</i></button></div>
+  <table class="ri-table"><thead><tr><th>${T('thP')}</th><th>${T('thL')}</th><th>${T('thF')}</th><th style="text-align:end">${T('thN')}</th></tr></thead><tbody>
+  ${list.map(p=>`<tr class="${flashId===p.id?'flash':''}" onclick="openDrawer(${p.id})"><td class="pl">${name(p)}<small>${p.pos} · ${p.club}</small></td><td><span class="lv ${hasS(p)?'sg':''}"><b style="background:${LV[p.lv][0]};color:${LV[p.lv][1]};${p.lv===5?'border:1px solid var(--muted-2)':''}">L${p.lv}</b>${arrow(p.tr)}</span></td><td>${fcTag(p.fc)}</td><td class="nx ${p.nx[2]?'hot':''}">${p.nx[lang==='en'?0:1]}</td></tr>`).join('')||`<tr><td colspan="4" class="brit-empty">—</td></tr>`}
+  </tbody></table>
+  ${tab!=='changes'&&all.length>6?`<div class="ri-more"><span>${T('more').replace('{a}',list.length).replace('{b}',all.length)}</span><button onclick="showAll=!showAll;paint()">${showAll?T('showLess'):T('showAll')}</button></div>`:''}
+  <div class="ri-eff"><div class="row"><span>${T('effTitle')}</span><b>${pushShare}% / ${target}%</b></div><div class="tr"><i style="width:${pushShare}%"></i><u style="inset-inline-start:${target}%"></u></div>
+   <p>${T('effMsg').replace('{n}',gaps||3)} <a onclick="setTab('priority')">${T('effLink')}</a><br>${T('effNote')}.</p></div>`;
+}
+const setLv=l=>{lvFilter=lvFilter===l?0:l;if(tab==='changes')tab='all';paint()};
+const setTab=t=>{tab=t;showAll=false;paint()};
+
+/* ---- page ---- */
+function pageHTML(){
+  const he=lang==='he';
+  return `
+  <header class="brit-masthead"><p class="brit-kicker">${T('kicker')}</p><h1>${T('hi')}<br><span>${he?'ליאור.':'Lior.'}</span></h1></header>
+  <section class="brit-signals"><div class="brit-signal"><label>${T('sig1')}</label><strong>€48.55M</strong><small>${T('sig1n')}</small></div><div class="brit-signal"><label>${T('sig2')}</label><strong>16</strong><small>${T('sig2n')}</small></div><div class="brit-signal"><label>${T('sig3')}</label><strong class="brit-red">03</strong><small>${T('sig3n')}</small></div></section>
+  <div class="brit-grid">
+   <div>
+    <section class="brit-module"><div class="brit-module-head"><h2>${T('bday')}</h2><span>${T('bdayN')}</span></div>
+      <div class="brit-deadline"><div class="brit-code">${he?'היום':'Today'}</div><div><h3>Yonatan Peretz</h3><p>Maccabi Tel Aviv U21 / ${he?'חוגג 20':'Turns 20'}</p></div><div><button class="brit-birthday-btn">${he?'שלח ברכה':'Send wishes'}</button><time class="brit-red">${he?'היום':'Today'}</time></div></div>
+      <div class="brit-deadline"><div class="brit-code">08 NOV</div><div><h3>Eden Ziv</h3><p>Maccabi Haifa / ${he?'חוגג 22':'Turns 22'}</p></div><time>${he?'5 ימים':'5 days'}</time></div></section>
+    <section class="brit-module brit-black-module"><div class="brit-module-head"><h2>${T('pend')}</h2><span>${T('pendN')}</span></div>
+      ${[['Ben Levi','CF / 30 / €3.00M','Maccabi Tel Aviv',3],['Amit Rosen','DM / 28 / €2.20M','Maccabi Netanya',6]].map(x=>`<div class="brit-approval"><div class="brit-avatar-box">${ini(x[0])}</div><div><h3>${x[0]}</h3><p>${x[1]}<br>${he?`המנדט פג בעוד ${x[3]} ימים`:`Mandate expires in ${x[3]} days`}</p></div><a class="brit-approve-btn" onclick="openDrawer(${x[0]==='Ben Levi'?14:8})">${T('review')}</a></div>`).join('')}</section>
+    <section class="brit-module"><div class="brit-module-head"><h2>${T('mw')}</h2><span>${T('mwSub')}</span></div>
+      <div class="brit-mandates">${[['Ben Levi',3,'Maccabi Tel Aviv / CF / €3.00M',14],['Amit Rosen',6,'Maccabi Netanya / DM / €2.20M',8],['Roi Dahan',9,'Hapoel Beer Sheva / RW / €1.80M',2]].map(x=>`<article class="brit-mandate"><strong>${x[0]}</strong><span>${he?`${x[1]} ימים נותרו`:`${x[1]} days left`}</span><p>${x[2]}</p><a onclick="openDrawer(${x[3]})">${T('openP')}</a></article>`).join('')}</div></section>
+    <section class="brit-module"><div class="brit-module-head"><h2>${T('act')}</h2><span>${he?'מציג 3 מתוך 28':'Showing 3 of 28'}</span></div>
+      ${[['Avi N.',he?'עדכן הערה':'Updated note','Ben Levi','10:42'],['Dana K.',he?'הוסיפה בקשה':'Added request','Hapoel Haifa','09:15'],['Avi N.',he?'שינה פוקוס ל״פעיל״':'Set focus to Active','Roi Dahan','Yesterday']].map(a=>`<div class="brit-feed-row"><time>${a[3]}</time><p>${a[0]} / ${a[1]}<strong>${a[2]}</strong></p><span>${he?'פתח':'Open'}</span></div>`).join('')}</section>
+   </div>
+   <aside>
+    <section class="brit-module"><div class="brit-module-head"><h2><span style="color:var(--ink);font:inherit">${T('our')}</span> <span class="brit-heading-gold" style="font:inherit;color:var(--gold)">${T('assets')}</span></h2><span>16</span></div>
+      <div class="brit-focus" style="margin-top:18px"><article><div class="brit-focus-copy"><small>Maccabi Haifa</small><h3>Eden Ziv</h3></div></article><article><div class="brit-focus-copy"><small>Maccabi Netanya</small><h3>Amit Rosen</h3></div></article></div></section>
+    <section class="brit-module"><div class="brit-module-head"><h2>${T('cr')}</h2><span>${T('crN')}</span></div>
+      ${[['03 NOV','Hapoel Haifa','CM · 22–27',he?'חדש':'New'],['01 NOV','Maccabi Netanya','CF · 25–31 / EU',he?'פתוח':'Open'],['29 OCT','Bnei Sakhnin','GK · 20–26',he?'פתוח':'Open']].map(r=>`<div class="brit-feed-row"><time>${r[0]}</time><p>${r[1]}<strong>${r[2]}</strong></p><span>${r[3]}</span></div>`).join('')}
+      <a class="brit-new-request">${T('newReq')}</a></section>
+    <section class="brit-module" id="ri">${riHTML()}</section>
+   </div>
+  </div>`;
+}
+function paint(){document.getElementById('ri').innerHTML=riHTML()}
+function renderAll(){
+  const r=document.getElementById('room');r.dir=lang==='he'?'rtl':'ltr';r.lang=lang;document.documentElement.dir=r.dir;
+  document.getElementById('lb').textContent=lang==='en'?'HE / EN':'EN / HE';
+  document.getElementById('lockSub').textContent=T('room');document.getElementById('crumbD').textContent=T('nav')[0];
+  document.getElementById('nav').innerHTML=T('nav').map((x,i)=>`<a class="${i===0?'active':''}"><span>${x}</span>${i===1?'<em>16</em>':''}</a>`).join('');
+  document.getElementById('canvas').innerHTML=pageHTML();
+}
+function toggleLang(){lang=lang==='en'?'he':'en';renderAll();if(openId)openDrawer(openId);if(document.getElementById('modal').classList.contains('open'))openInbox()}
+
+/* ---- drawer ---- */
+let openId=null;
+function openDrawer(id){
+  openId=id;const p=byId(id),s=p.s||{},he=lang==='he';
+  const sig=[['sPerf',0],['sFm',1],['sVal',2],['sLg',3],['sForm',4]];
+  document.getElementById('drawer').innerHTML=`
+  <div class="dr-h"><button class="x" onclick="closeAll()">×</button><small>${p.pos} · ${p.age} · ${p.club} · ${mvF(p.mv)}</small><h2>${name(p)}</h2>
+    <div class="tags">${lvChip(p.lv)}<span style="color:var(--paper)">${fcTag(p.fc).replace('inherit','var(--paper)')}</span><span style="color:#aaa69c;font:10px var(--mono)">${arrow(p.tr)} ${he?'מגמה':'Trend'}</span></div></div>
+  <div class="dr-s"><h4><span>${T('drLevel')}</span><span>${T('conf')} ${p.conf}%</span></h4>
+    <div class="ladder">${[1,2,3,4,5].map(l=>`<button class="${p.lv===l?'cur':''} ${s.lv===l&&s.lv!==p.lv?'aim':''}" style="${p.lv===l?`background:${LV[l][0]};color:${LV[l][1]}`:''}" onclick="setLevel(${id},${l})"><b>L${l}</b><small>${T('lvl')[l-1]}</small></button>`).join('')}</div>
+    <h4 style="margin-top:20px"><span>${T('drFocus')}</span></h4>
+    <div class="fseg">${[1,2,3,4].map(f=>`<button class="${p.fc===f?'cur':''} ${s.fc===f&&s.fc!==p.fc?'aim':''}" style="${p.fc===f?`background:${f===4?'#aba69b':FCOL[f]}`:''}" onclick="setFocus(${id},${f})">${T('fcs')[f-1]}</button>`).join('')}</div></div>
+  <div class="dr-s"><h4><span>✦ ${T('drAI')}</span><span>GEMINI 2.5</span></h4><div class="aibox"><div class="t"><span>${he?'מבוסס על הנתונים שלך':'Grounded on your data'}</span><button onclick="typeAI(${id})">${T('rerun')}</button></div><div id="aitx">${p.r[lang]}</div>
+    <div class="ev"><div>${T('sPerf')}: ${p.f[0]}/100</div><div>${T('sFm')}: ${p.f[1]}/100</div><div>${T('nLast')}: ${p.t}${T('d')} · ${p.nx[lang==='en'?0:1]}</div></div></div></div>
+  <div class="dr-s"><h4><span>${T('drSig')}</span></h4>${sig.map(([k,i])=>`<div class="sigrow"><span>${T(k)}</span><div class="tr"><i style="width:${p.f[i]}%"></i></div><span>${p.f[i]}</span></div>`).join('')}</div>
+  <div class="dr-s"><h4><span>${T('drEff')}</span><span>${he?'אוטומטי':'Auto'}</span></h4><div class="touch"><div><b>${p.x[0]}</b>${T('nNotes')}</div><div><b>${p.x[1]}</b>${T('nTasks')}</div><div><b>${p.x[2]}</b>${T('nCont')}</div><div><b>${p.t}${T('d')}</b>${T('nLast')}</div></div></div>
+  <div class="dr-s"><h4><span>${T('drNote')}</span></h4><textarea id="nt"></textarea><label style="display:flex;gap:8px;margin-top:12px;font:10px var(--mono)"><input type="checkbox"> ${T('drLock')}</label></div>
+  <div class="dr-s"><h4><span>${T('drHist')}</span></h4><div class="tl">${[...HIST[id]].reverse().map(h=>`<div><b>${h.a}</b><br>${h.d} · ${h.w}</div>`).join('')}</div></div>
+  <div class="dr-f"><button class="btn gold" onclick="toast(T('sav'))">${T('openFull')}</button></div>`;
+  document.getElementById('bd').classList.add('open');document.getElementById('drawer').classList.add('open');
+}
+function typeAI(id){const p=byId(id),el=document.getElementById('aitx'),t=p.r[lang];el.textContent='';let i=0;const iv=setInterval(()=>{i+=3;el.textContent=t.slice(0,i);if(i>=t.length)clearInterval(iv)},16)}
+function setLevel(id,l){const p=byId(id);if(l===p.lv)return;const note=(document.getElementById('nt')||{}).value;HIST[id].push({d:'03 Nov 2026',a:`Level L${p.lv} → L${l}${note?` — “${note}”`:''}`,w:'You'});p.lv=l;if(p.s&&p.s.lv===l)delete p.s.lv;toast(`${p.n}: L${l} ${T('lvl')[l-1]}`);openDrawer(id);paint()}
+function setFocus(id,f){const p=byId(id);if(f===p.fc)return;const note=(document.getElementById('nt')||{}).value;HIST[id].push({d:'03 Nov 2026',a:`Focus ${D.en.fcs[p.fc-1]} → ${D.en.fcs[f-1]}${note?` — “${note}”`:''}`,w:'You'});p.fc=f;if(p.s&&p.s.fc===f)delete p.s.fc;if(f===1)toast(T('alertSent'));else toast(`${p.n}: ${T('fcs')[f-1]}`);openDrawer(id);paint()}
+
+/* ---- AI inbox modal ---- */
+function openInbox(){
+  const sg=sugs().sort((a,b)=>b.conf-a.conf);
+  document.getElementById('modal').innerHTML=`<button class="close" onclick="closeAll()">×</button><h2>${T('modalT')}</h2><p class="sub">${T('modalS')}</p>
+  ${sg.length?`<div style="margin:12px 0"><button class="btn gold" onclick="acceptHigh()">${T('acceptHigh')}</button></div>`:''}
+  ${sg.map(p=>{const s=p.s;return `<div class="sg-row"><div><h3>${name(p)}</h3><div class="mv">${s.lv&&s.lv!==p.lv?`${lvChip(p.lv)} → ${lvChip(s.lv)}`:lvChip(p.lv)} ${s.fc&&s.fc!==p.fc?`<span style="margin-inline-start:8px">${fcTag(p.fc)} → ${fcTag(s.fc)}</span>`:''} <span class="conf">${T('conf')} ${p.conf}%</span></div><p><span class="ai">AI</span>${p.r[lang]}</p></div>
+   <div class="ac"><button class="btn gold" onclick="acceptS(${p.id})">${T('accept')}</button><button class="btn" onclick="closeAll();openDrawer(${p.id})">${T('adjust')}</button><button class="btn" onclick="dismissS(${p.id})">${T('dismiss')}</button></div></div>`}).join('')||`<div class="brit-empty">${T('done')}</div>`}`;
+  document.getElementById('bd').classList.add('open');document.getElementById('modal').classList.add('open');
+}
+function applyS(p){const s=p.s;if(s.lv&&s.lv!==p.lv){HIST[p.id].push({d:'03 Nov 2026',a:`Level L${p.lv} → L${s.lv} (accepted AI)`,w:'You + Engine'});p.lv=s.lv}if(s.fc&&s.fc!==p.fc){HIST[p.id].push({d:'03 Nov 2026',a:`Focus ${D.en.fcs[p.fc-1]} → ${D.en.fcs[s.fc-1]} (accepted AI)`,w:'You + Engine'});p.fc=s.fc}delete p.s}
+function acceptS(id){applyS(byId(id));paint();openInbox();toast('✓')}
+function dismissS(id){delete byId(id).s;paint();openInbox()}
+function acceptHigh(){const l=sugs().filter(p=>p.conf>=85);l.forEach(applyS);paint();openInbox();toast(`${l.length} ✓`)}
+function closeAll(){openId=null;['bd','drawer','modal'].forEach(i=>document.getElementById(i).classList.remove('open'))}
+
+/* ---- mock controls ---- */
+function simAlert(){
+  const p=byId(9);if(p.fc===1){toast('Already Push now — hit Reset');return}
+  p.fc=1;p.nx=['Request match','בקשה מתאימה',1];p.u=78;p.r={en:'A new Hapoel Haifa request (CM, 22–27) matches him exactly. Focus raised from Maintain to Push now.',he:'בקשה חדשה של הפועל חיפה (קשר, 22–27) מתאימה לו בדיוק. הפוקוס הועלה מ״תחזוקה״ ל״לדחוף עכשיו״.'};
+  HIST[9].push({d:'03 Nov 2026',a:'Focus Maintain → Push now (new matching request)',w:'Engine'});
+  tab='priority';lvFilter=0;flashId=9;paint();
+  const n=document.getElementById('notif');n.innerHTML=`<small><span>BRIT · ${T('notifT')}</span><span>now</span></small><b>${name(p)}</b><p>${T('notifP')}</p><button onclick="document.getElementById('notif').classList.remove('show');openDrawer(9)">${T('notifBtn')}</button>`;
+  n.classList.add('show');clearTimeout(simAlert.h);simAlert.h=setTimeout(()=>n.classList.remove('show'),7000);
+}
+function simEmpty(){empty=!empty;paint()}
+function resetAll(){const o=JSON.parse(SNAP);P.splice(0,P.length,...o);Object.keys(HIST).forEach(k=>{HIST[k]=HIST[k].filter(h=>h.w==='System'||h.w==='Avi N.')});empty=false;tab='priority';lvFilter=0;showAll=false;flashId=null;closeAll();document.getElementById('notif').classList.remove('show');paint()}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll()});
+renderAll();
+</script>
+<script>
+/* ===== Roster Intelligence — weekly per-game signals. Overrides the mock's RI module. ===== */
+Object.assign(D.en,{cap:'{n} players need attention this week · from recent games',weekly:'updated weekly',updated:'updated 2d ago',
+ dr_why:'Why he’s flagged',dr_form:'Recent form',dr_games:'Last games',dr_touch:'Last contact',dr_updated:'Updated',last_touch:'Last touch',
+ form_last:'last {n} games',f_played:'Played',f_starts:'Starts',f_ga:'Goals/Assists',f_grade:'Avg grade',profile:'Open full profile →',
+ badge:{hot_form:['🔥','In form'],cold_form:['📉','Form dip'],dropped_squad:['🪑','Out of the squad'],benched:['🛋️','On the bench'],breaking_in:['⬆️','Breaking in'],output_surge:['⚽','Output surge'],back_from_injury:['🩹','Back in action'],value_jump:['💹','Value up'],value_drop:['🔻','Value down'],contract_clock:['⏳','Contract'],mandate_clock:['📄','Mandate']}});
+Object.assign(D.he,{cap:'{n} שחקנים דורשים תשומת לב השבוע · ממשחקים אחרונים',weekly:'מתעדכן שבועית',updated:'עודכן לפני יומיים',
+ dr_why:'למה הוא סומן',dr_form:'כושר אחרון',dr_games:'משחקים אחרונים',dr_touch:'קשר אחרון',dr_updated:'עודכן',last_touch:'קשר אחרון',
+ form_last:'{n} משחקים אחרונים',f_played:'שיחק',f_starts:'פתיחות',f_ga:'שערים/בישולים',f_grade:'ציון ממוצע',profile:'פתח פרופיל מלא ←',
+ badge:{hot_form:['🔥','בכושר'],cold_form:['📉','ירידה בכושר'],dropped_squad:['🪑','מחוץ לסגל'],benched:['🛋️','על הספסל'],breaking_in:['⬆️','נכנס להרכב'],output_surge:['⚽','זינוק בתפוקה'],back_from_injury:['🩹','חזר לפעילות'],value_jump:['💹','השווי עלה'],value_drop:['🔻','השווי ירד'],contract_clock:['⏳','חוזה'],mandate_clock:['📄','מנדט']}});
+const he=()=>lang==='he', L=k=>T(k);
+const S=(kind,tone,en,he,det,detHe)=>({kind,tone,en,he,det,detHe});
+const g=(o)=>Object.assign({date:'2026-10-20',comp:'IS1',state:'played',min:90,started:true,goals:0,assists:0,grade:null},o);
+const BOARD=[
+ {id:8,n:'Itai Sassoon',pos:'CF',club:'Maccabi Haifa',age:24,mv:'€2.8M',form:{games:6,played:6,starts:6,goals:5,assists:1,grade:null},
+  sigs:[S('hot_form','positive','In form — 5 G+A over last 6','בכושר — 5 ש+ב ב-6 האחרונים','2 goals last game','2 שערים במשחק האחרון'),S('output_surge','positive','Scoring — 5 G+A in last 6','כובש — 5 ש+ב ב-6 האחרונים')],
+  games:[g({date:'2026-11-04',comp:'CL',goals:2}),g({date:'2026-10-31',comp:'IS1',goals:1}),g({date:'2026-10-24',comp:'IS1',assists:1}),g({date:'2026-10-20',comp:'IS1',goals:1}),g({date:'2026-10-17',comp:'IS1',goals:1})],spark:[0.9,1,0.8,1,1,1]},
+ {id:3,n:'Omer Katz',pos:'CB',club:'Hapoel Jerusalem',age:31,mv:'€700k',form:{games:6,played:3,starts:3,goals:0,assists:0,grade:null},
+  sigs:[S('dropped_squad','negative','Out of the squad — last 2 games','מחוץ לסגל — 2 משחקים אחרונים','was starting before','פתח לפני כן'),S('contract_clock','watch','Contract ends in 4 months','החוזה מסתיים בעוד 4 חודשים')],
+  games:[g({date:'2026-11-02',comp:'IS1',state:'not in squad',min:0,started:false}),g({date:'2026-10-26',comp:'IS1',state:'not in squad',min:0,started:false}),g({date:'2026-10-19',comp:'IS1'}),g({date:'2026-10-05',comp:'IS1'})],spark:[1,1,1,1,0,0]},
+ {id:9,n:'Dennis Kolo',pos:'CM',club:'Bnei Sakhnin',age:20,mv:'€500k',form:{games:6,played:4,starts:3,goals:1,assists:1,grade:null},
+  sigs:[S('breaking_in','positive','Breaking into the XI — 3 recent starts','נכנס להרכב — 3 פתיחות אחרונות','was not starting a month ago','לא פתח לפני חודש')],
+  games:[g({date:'2026-11-01',comp:'IS1',started:true}),g({date:'2026-10-25',comp:'IS1',started:true,assists:1}),g({date:'2026-10-18',comp:'IS1',started:true,goals:1}),g({date:'2026-10-04',comp:'IS1',state:'in squad',min:0,started:false})],spark:[0,0.3,1,1,1]},
+ {id:4,n:'Guy Mizrahi',pos:'ST',club:'Beer Sheva',age:27,mv:'€1.6M',form:{games:6,played:1,starts:0,goals:0,assists:0,grade:null},
+  sigs:[S('benched','negative','On the bench — 0 minutes in last 3 games','על הספסל — 0 דקות ב-3 משחקים אחרונים')],
+  games:[g({date:'2026-11-02',comp:'IS1',state:'in squad',min:0,started:false}),g({date:'2026-10-26',comp:'IS1',state:'in squad',min:0,started:false}),g({date:'2026-10-19',comp:'IS1',state:'in squad',min:0,started:false}),g({date:'2026-10-12',comp:'IS1',min:25,started:false})],spark:[0.3,0,0,0]},
+ {id:5,n:'Noam Bar',pos:'LW',club:'Maccabi Netanya',age:19,mv:'€2.1M',form:{games:6,played:6,starts:5,goals:4,assists:3,grade:null},
+  sigs:[S('value_jump','positive','Market value up 40%','שווי השוק עלה 40%','€1.5M → €2.1M','€1.5M → €2.1M'),S('output_surge','positive','7 G+A in last 6','7 ש+ב ב-6 האחרונים')],
+  games:[g({date:'2026-11-03',comp:'IS1',goals:1,assists:1}),g({date:'2026-10-27',comp:'IS1',goals:1}),g({date:'2026-10-20',comp:'IS1',assists:2})],spark:[0.8,1,1,1,1,1]},
+ {id:14,n:'Dean Levi',pos:'RW',club:'Hapoel Haifa',age:28,mv:'€1.2M',form:{games:6,played:5,starts:5,goals:1,grade:null},
+  sigs:[S('cold_form','negative','Form dip — quiet run of games','ירידה בכושר — רצף חלש','1 goal in 6','שער אחד ב-6')],
+  games:[g({date:'2026-11-01',comp:'IS1'}),g({date:'2026-10-25',comp:'IS1'}),g({date:'2026-10-18',comp:'IS1'})],spark:[1,0.9,0.8,0.7,0.8,0.7]},
+];
+let riOpen=null;
+const b=id=>BOARD.find(x=>x.id===id);
+const badge=k=>(he()?D.he.badge[k]:D.en.badge[k]);
+const sigTxt=s=>he()?s.he:s.en, det=s=>he()?(s.detHe||s.det):s.det;
+function spark(vals,w,h,sw){if(!vals||vals.length<2)return'';const min=Math.min(...vals),max=Math.max(...vals),span=(max-min)||1;
+ const pts=vals.map((v,i)=>`${(i/(vals.length-1))*w},${(h-((v-min)/span)*h).toFixed(1)}`).join(' ');const rising=vals[vals.length-1]>=vals[0];
+ return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${rising?'var(--green)':'var(--red)'}" stroke-width="${sw}"/></svg>`;}
+function riHTML(){
+ return `<div class="brit-module-head"><h2>${T('ri')}</h2><a href="#" onclick="return false">${T('viewAll')}</a></div>
+ <p class="ri-caption">${L('cap').replace('{n}',BOARD.length)}</p>
+ <ul class="rk">${BOARD.map(p=>{const s=p.sigs[0],bd=badge(s.kind);return `<li><button class="rk-row tone-${s.tone}" onclick="riDrawer(${p.id})">
+   <span class="rk-badge t-${s.tone}">${bd[0]}</span>
+   <span class="rk-main"><span class="rk-top"><b>${p.n}</b><span class="rk-chip t-${s.tone}">${bd[1]}</span>${p.sigs.length>1?`<span class="rk-more">+${p.sigs.length-1}</span>`:''}</span>
+   <span class="rk-reason">${sigTxt(s)}</span><span class="rk-sub">${p.pos} · ${p.club}${det(s)?' · '+det(s):''}</span></span>
+   <span class="ri-spark">${spark(p.spark,58,18,1.5)}</span></button></li>`;}).join('')}</ul>
+ <div class="ri-status"><span class="ri-live"></span>${L('updated')} · ${L('weekly')}</div>`;
+}
+function paint(){document.getElementById('ri').innerHTML=riHTML()}
+function closePb(){document.getElementById('pbLayer').innerHTML='';riOpen=null}
+function closeAll(){closePb();['bd','drawer','modal'].forEach(i=>{const e=document.getElementById(i);e&&e.classList.remove('open')})}
+function openDrawer(id){riDrawer(id)}
+function stateLabel(x){if(x.min>=1||x.state==='played')return{t:x.min+"'"+(x.started?(he()?' פתח':' ST'):''),c:'played'};if(/not in squad/.test(x.state))return{t:he()?'מחוץ לסגל':'not in squad',c:'out'};if(/in squad/.test(x.state))return{t:he()?'ספסל':'bench',c:'bench'};return{t:x.state,c:'out'};}
+function riDrawer(id){riOpen=id;const p=b(id),f=p.form;
+ document.getElementById('pbLayer').innerHTML=`<div class="ri-backdrop" onclick="closePb()"></div><aside class="ri-drawer">
+  <div class="ri-dr-h"><button class="ri-x" onclick="closePb()">×</button><small>${p.pos} · ${p.age} · ${p.club} · ${p.mv}</small><h2>${p.n}</h2>
+   <div class="ri-dr-tags">${spark(p.spark,120,34,2)}<span class="ri-fitlabel">${L('dr_updated')} 4 ${he()?'בנוב׳':'Nov'}</span></div></div>
+  <div class="ri-dr-s"><h4><span>${L('dr_why')}</span></h4><ul class="pb-why big">${p.sigs.map(s=>`<li class="tone-${s.tone}"><b>${sigTxt(s)}</b>${det(s)?`<br><span class="ri-muted">${det(s)}</span>`:''}</li>`).join('')}</ul></div>
+  <div class="ri-dr-s"><h4><span>${L('dr_form')}</span><span>${L('form_last').replace('{n}',f.games)}</span></h4><div class="ri-facts">
+   <div><b>${f.played}/${f.games}</b><span>${L('f_played')}</span></div><div><b>${f.starts}</b><span>${L('f_starts')}</span></div>
+   <div><b>${f.goals}/${f.assists||0}</b><span>${L('f_ga')}</span></div><div><b>${f.grade??'—'}</b><span>${L('f_grade')}</span></div></div></div>
+  <div class="ri-dr-s"><h4><span>${L('dr_games')}</span></h4><div class="ri-games">${p.games.map(x=>{const st=stateLabel(x);return `<div class="ri-game ri-g-${st.c}"><span class="ri-g-date">${x.date.slice(5)}</span><span class="ri-g-comp">${x.comp}</span><span class="ri-g-state">${st.t}</span><span class="ri-g-out">${x.goals?x.goals+'⚽':''}${x.assists?' '+x.assists+'🅰':''}</span></div>`;}).join('')}</div></div>
+  <div class="ri-dr-s"><h4><span>${L('dr_touch')}</span></h4><div class="ri-muted">${L('last_touch')}: 14 ${he()?'באוק׳':'Oct'} 2026</div></div>
+  <div class="ri-dr-f"><a class="ri-btn ri-btn-gold">${L('profile')}</a></div></aside>`;}
+function resetAll(){closeAll();paint()}
+function simAlert(){} function simEmpty(){}
+const _tl=toggleLang;toggleLang=function(){_tl();if(riOpen)riDrawer(riOpen)};
+document.getElementById('room').insertAdjacentHTML('beforeend','<div id="pbLayer"></div>');
+renderAll();
+
+</script>
+</body>
+</html>

@@ -22,6 +22,8 @@ import { extractPlayerIdFromUrl } from '@/lib/api';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import { openWhatsAppWithMessage } from '@/lib/whatsapp';
 import BritRail from '@/components/BritRail';
+import RosterIntelligence from '@/components/tiering/RosterIntelligence';
+import { LEVEL_FOCUS_ENABLED } from '@/lib/featureFlags';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import { type MatchdaySeed } from '@/components/MatchdayGeneratorModal';
 import MatchdayDrawer from '@/components/MatchdayDrawer';
@@ -1424,7 +1426,10 @@ export default function MenDashboard({
                   </Link>
                 </section>
 
-                {/* Roster intelligence — moved to secondary (right) column */}
+                {/* Roster intelligence — Level & Focus (falls back to the old value table when the flag is off) */}
+                {LEVEL_FOCUS_ENABLED ? (
+                  <RosterIntelligence players={rosterPlayers} />
+                ) : (
                 <section className="brit-module">
                   <div className="brit-module-head">
                     <h2>{t('room_roster_intel')}</h2>
@@ -1453,6 +1458,7 @@ export default function MenDashboard({
                     </table>
                   </div>
                 </section>
+                )}
               </aside>
             </div>
           </main>

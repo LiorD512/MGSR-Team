@@ -204,6 +204,7 @@ export interface MenPlayerProfileProps {
   mandateExpiryLabel: string | null;
   mandateLeagues: string[];
   hasValidMandate: boolean;
+  /** Optional extra status row (Level & Focus window-target switch). */
 }
 
 const ENGLISH_LEVELS = ['none', 'medium', 'good', 'native'] as const;
