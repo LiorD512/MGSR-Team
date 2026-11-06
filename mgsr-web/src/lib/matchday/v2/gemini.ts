@@ -70,6 +70,34 @@ function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
 }
 
 /**
+ * What kind of quota a 429 / RESOURCE_EXHAUSTED hit. Google's error text names
+ * the quota (e.g. `generate_content_free_tier_requests, limit: 0`,
+ * `GenerateRequestsPerDayPerProjectPerModel-FreeTier`) and a retry delay.
+ */
+export interface QuotaInfo {
+  /** 'free_tier' = the key's project has no billing → image models are not included (limit 0). */
+  kind: 'free_tier' | 'per_day' | 'per_minute' | 'unknown';
+  /** Seconds Google asks us to wait, when given. */
+  retryAfterS: number | null;
+  model: string | null;
+}
+
+export function parseQuota(raw: string): QuotaInfo | null {
+  if (!/\b429\b|resource_exhausted|quota/i.test(raw)) return null;
+  const freeTier = /free[_ -]?tier/i.test(raw) || /limit:\s*0\b/i.test(raw);
+  const perDay = /per\s*day|perday|requests per day|daily/i.test(raw);
+  const perMinute = /per\s*minute|perminute|tokens per minute|rpm/i.test(raw);
+  const delay =
+    raw.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/i)?.[1] ?? raw.match(/retry in\s+(\d+(?:\.\d+)?)\s*s/i)?.[1] ?? null;
+  const model = raw.match(/model:\s*([a-z0-9.\-]+)/i)?.[1] ?? null;
+  return {
+    kind: freeTier ? 'free_tier' : perDay ? 'per_day' : perMinute ? 'per_minute' : 'unknown',
+    retryAfterS: delay ? Math.ceil(Number(delay)) : null,
+    model,
+  };
+}
+
+/**
  * Turn a raw Gemini / network error into a short, actionable reason. Raw API
  * messages contain the HTTP status and Google's error code.
  */
@@ -79,8 +107,17 @@ export function explainGeminiError(raw: string): string {
     return 'Gemini rejected the API key — check GEMINI_API_KEY in the server environment (no spaces, quotes or line breaks), then redeploy.';
   if (/location is not supported|user location|failed_precondition/.test(m))
     return 'Gemini is not available from the server’s region — change the Vercel function region (e.g. to iad1).';
-  if (/\b429\b|resource_exhausted|quota|rate limit|exhausted/.test(m))
-    return 'Quota / rate limit hit on this key. Image models need a paid (billing-enabled) Gemini key — a free-tier key cannot use them. If billing is on, wait a minute and retry.';
+  const q = parseQuota(raw);
+  if (q) {
+    if (q.kind === 'free_tier')
+      return 'This API key is on Google’s FREE tier, and image models are not included in it (limit 0) — so cutouts can never work with it. Fix: enable billing on the Google Cloud project of this key (aistudio.google.com → API keys → the key’s project → Set up billing), or put a key from a billing-enabled project in GEMINI_API_KEY.';
+    if (q.kind === 'per_day')
+      return 'The daily image limit of this key’s project is used up. It resets within 24 h — or raise the limit / tier in Google AI Studio.';
+    if (q.kind === 'per_minute')
+      return `Too many image requests in the last minute.${q.retryAfterS ? ` Google asks to wait ${q.retryAfterS} s` : ' Wait a minute'} and try again.`;
+    return 'Quota / rate limit hit on this key. If the key’s project has no billing, image models are not available (enable billing); otherwise wait a minute and retry.';
+  }
+  if (/rate limit|exhausted/.test(m)) return 'Rate limit hit on this key — wait a minute and try again.';
   if (/\b403\b|permission_denied|permission denied/.test(m))
     return 'This API key is not allowed to use the image models — enable billing / the Generative Language API on the key’s Google project.';
   if (/\b404\b|not_found|is not found|not supported for generatecontent/.test(m))
@@ -173,13 +210,20 @@ async function generate(parts: unknown[], label: string, diag?: GenDiag, budgetM
         // Empty (no image) — a short backoff then retry the same model.
         if (attempt < 2) await sleep(600 * (attempt + 1));
       } catch (e) {
-        const transient = isTransient(e);
-        diag?.errors.push(`${model}: ${(e as Error).message}`);
+        const msg = (e as Error).message ?? String(e);
+        const quota = parseQuota(msg);
+        // Free tier (limit 0) or a used-up daily quota: retrying can't help.
+        const hopeless = quota?.kind === 'free_tier' || quota?.kind === 'per_day';
+        const transient = !hopeless && isTransient(e);
+        diag?.errors.push(`${model}: ${msg}`);
         console.warn(
           `[matchday v2] ${label}: ${model} attempt ${attempt + 1} failed (${transient ? 'transient' : 'permanent'}): ${(e as Error).message}`
         );
         if (transient && attempt < 2) {
-          await sleep(800 * (attempt + 1)); // 0.8s, 1.6s backoff
+          // Per-minute limit: wait what Google asks (if it fits the step budget), else a short backoff.
+          const wantMs = quota?.retryAfterS ? quota.retryAfterS * 1000 + 500 : 800 * (attempt + 1);
+          if (wantMs > deadline - Date.now() - 10_000) break; // not enough time left — try the next model
+          await sleep(Math.min(wantMs, 35_000));
           continue;
         }
         break; // permanent error, or retries exhausted → try next model
@@ -314,7 +358,7 @@ export async function generateCinematicScene(opts: {
  */
 export function summarizeDiag(diag: GenDiag): string | null {
   if (!diag.errors.length) return null;
-  const order = [/api key not valid|api_key_invalid/i, /location/i, /\b403\b|permission/i, /\b429\b|quota|exhausted|rate/i, /\b404\b|not_found/i, /timeout/i, /blocked|no image|no result/i];
+  const order = [/api key not valid|api_key_invalid/i, /location/i, /\b403\b|permission/i, /free[_ -]?tier|limit:\s*0\b/i, /per\s*day|perday/i, /\b429\b|quota|exhausted|rate/i, /\b404\b|not_found/i, /timeout/i, /blocked|no image|no result/i];
   for (const re of order) {
     const hit = diag.errors.find((e) => re.test(e));
     if (hit) return explainGeminiError(hit.replace(/^[^:]+:\s*/, ''));
