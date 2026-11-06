@@ -9,8 +9,9 @@
  * shows the recent games behind it.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import BritFilterSheetPortal from '@/components/BritFilterSheetPortal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { rankBoard } from '@/lib/tiering/shared';
 import type { PlayerIntelDoc, RecentGame, Signal, SignalKind } from '@/lib/tiering/types';
@@ -50,7 +51,7 @@ function ago(ts: number | undefined, he: boolean): string {
   return he ? `לפני ${w} שב׳` : `${w}w ago`;
 }
 
-function Spark({ values, w = 58, h = 18, sw = 1.5 }: { values: number[]; w?: number; h?: number; sw?: number }) {
+function Spark({ values, w = 58, h = 18, sw = 1.5, title }: { values: number[]; w?: number; h?: number; sw?: number; title?: string }) {
   if (!values || values.length < 2) return null;
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -59,6 +60,7 @@ function Spark({ values, w = 58, h = 18, sw = 1.5 }: { values: number[]; w?: num
   const rising = values[values.length - 1] >= values[0];
   return (
     <svg className="ri-spark" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden>
+      {title && <title>{title}</title>}
       <polyline points={pts} fill="none" stroke={rising ? 'var(--green)' : 'var(--red)'} strokeWidth={sw} />
     </svg>
   );
@@ -136,7 +138,7 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
                   <span className="rk-reason">{sig(it.top)}</span>
                   <span className="rk-sub">{sub(d.playerId)}{det(it.top) ? ` · ${det(it.top)}` : ''}</span>
                 </span>
-                <Spark values={it.form.spark} />
+                <Spark values={it.form.spark} title={t('ri_spark_tip')} />
               </button>
             </li>
           );
@@ -170,8 +172,17 @@ function Drawer({ doc, player, onClose }: { doc: PlayerIntelDoc; player?: Roster
   const f = it.form;
   const games = doc.recentGames ?? [];
 
+  // Close on Escape.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // Portal to <body>: inside the scrolling `.brit-room` / animated `.brit-canvas`, a position:fixed
+  // drawer anchors to the page's full scroll height instead of the viewport (opened off-screen).
   return (
-    <>
+    <BritFilterSheetPortal active isRtl={he}>
       <div className="ri-backdrop" onClick={onClose} />
       <aside className="ri-drawer" role="dialog" aria-modal="true">
         <div className="ri-dr-h">
@@ -258,7 +269,7 @@ function Drawer({ doc, player, onClose }: { doc: PlayerIntelDoc; player?: Roster
           <Link className="ri-btn ri-btn-gold" href={`/players/${doc.playerId}`}>{t('ri_dr_profile')}</Link>
         </div>
       </aside>
-    </>
+    </BritFilterSheetPortal>
   );
 
   function tok2(s: string, n: number) {
