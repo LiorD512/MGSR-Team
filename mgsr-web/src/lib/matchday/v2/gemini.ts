@@ -13,17 +13,82 @@
 
 import { GoogleGenAI } from '@google/genai';
 
-const MODEL_PRIMARY = 'gemini-3-pro-image-preview';
-const MODEL_FALLBACK = 'gemini-2.5-flash-image';
+
+/**
+ * The API key as configured, cleaned: env UIs (Vercel, .env files) often keep
+ * a trailing newline / spaces or surrounding quotes, which make every call fail
+ * with "API key not valid" while the key looks right.
+ */
+export function geminiKey(): string | null {
+  const raw = process.env.GEMINI_API_KEY;
+  if (!raw) return null;
+  const k = raw.trim().replace(/^['"]|['"]$/g, '').trim();
+  return k || null;
+}
 
 export function geminiConfigured(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY);
+  return Boolean(geminiKey());
 }
 
 function client(): GoogleGenAI {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = geminiKey();
   if (!apiKey) throw new Error('GEMINI_API_KEY not set');
   return new GoogleGenAI({ apiKey });
+}
+
+export const IMAGE_MODELS = { primary: 'gemini-3-pro-image-preview', fallback: 'gemini-2.5-flash-image' } as const;
+const MODEL_PRIMARY: string = IMAGE_MODELS.primary;
+const MODEL_FALLBACK: string = IMAGE_MODELS.fallback;
+
+/** Collects WHY a generation produced no image, so the UI can show the real cause. */
+export interface GenDiag {
+  errors: string[];
+}
+
+/** Hard cap per model call, so one hung request can't eat the whole function budget. */
+const CALL_TIMEOUT_MS = 75_000;
+/**
+ * Total time budget per generation step (all retries + the fallback model).
+ * The generate route allows 300 s; kit swap + cutout + scene must fit inside it.
+ */
+export const STEP_BUDGET_MS = { cutout: 100_000, kit: 70_000, scene: 60_000 } as const;
+
+function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`timeout: ${what} took longer than ${Math.round(ms / 1000)} s`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
+}
+
+/**
+ * Turn a raw Gemini / network error into a short, actionable reason. Raw API
+ * messages contain the HTTP status and Google's error code.
+ */
+export function explainGeminiError(raw: string): string {
+  const m = raw.toLowerCase();
+  if (/api key not valid|api_key_invalid|invalid api key/.test(m))
+    return 'Gemini rejected the API key — check GEMINI_API_KEY in the server environment (no spaces, quotes or line breaks), then redeploy.';
+  if (/location is not supported|user location|failed_precondition/.test(m))
+    return 'Gemini is not available from the server’s region — change the Vercel function region (e.g. to iad1).';
+  if (/\b429\b|resource_exhausted|quota|rate limit|exhausted/.test(m))
+    return 'Quota / rate limit hit on this key. Image models need a paid (billing-enabled) Gemini key — a free-tier key cannot use them. If billing is on, wait a minute and retry.';
+  if (/\b403\b|permission_denied|permission denied/.test(m))
+    return 'This API key is not allowed to use the image models — enable billing / the Generative Language API on the key’s Google project.';
+  if (/\b404\b|not_found|is not found|not supported for generatecontent/.test(m))
+    return 'The image model is not available for this key / project.';
+  if (/timeout|timed out|deadline/.test(m)) return 'The image model did not answer in time.';
+  if (/\b5\d\d\b|unavailable|overloaded|internal/.test(m)) return 'Google’s image model is temporarily overloaded — try again in a minute.';
+  if (/fetch failed|enotfound|econnreset|network/.test(m)) return 'The server could not reach Google (network error).';
+  return raw.slice(0, 220);
 }
 
 export function sniffMime(buf: Buffer): string {
@@ -50,6 +115,16 @@ function isTransient(err: unknown): boolean {
   return /\b(429|500|502|503|504)\b/.test(msg) || /rate|quota|overload|unavailable|timeout|exhausted|internal/.test(msg);
 }
 
+/** Why a 200 response carried no image (safety block, refusal, text-only answer …). */
+function emptyReason(resp: unknown): string {
+  const r = resp as { promptFeedback?: { blockReason?: string }; candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{ text?: string }> } }> };
+  if (r.promptFeedback?.blockReason) return `request blocked by the model (${r.promptFeedback.blockReason})`;
+  const c = r.candidates?.[0];
+  if (!c) return 'the model returned no result';
+  const text = c.content?.parts?.map((p) => p.text).filter(Boolean).join(' ').slice(0, 120);
+  return `the model returned no image (${c.finishReason ?? 'no reason'})${text ? `: “${text}”` : ''}`;
+}
+
 /** Pull the first inline image out of a response, if any. */
 function extractImage(resp: unknown): GenResult | null {
   const cand = (resp as { candidates?: Array<{ content?: { parts?: unknown[] } }> }).candidates?.[0];
@@ -67,10 +142,12 @@ function extractImage(resp: unknown): GenResult | null {
  * Call a model once, returning an image or null. Never throws for an empty
  * response; rethrows the API error so the caller can decide to retry/fallback.
  */
-async function callModel(model: string, parts: unknown[]): Promise<GenResult | null> {
+async function callModel(model: string, parts: unknown[], diag?: GenDiag, timeoutMs = CALL_TIMEOUT_MS): Promise<GenResult | null> {
   const ai = client();
-  const resp = await ai.models.generateContent({ model, contents: [{ role: 'user', parts }] as never });
-  return extractImage(resp);
+  const resp = await withTimeout(ai.models.generateContent({ model, contents: [{ role: 'user', parts }] as never }), timeoutMs, model);
+  const img = extractImage(resp);
+  if (!img) diag?.errors.push(`${model}: ${emptyReason(resp)}`);
+  return img;
 }
 
 /**
@@ -78,18 +155,26 @@ async function callModel(model: string, parts: unknown[]): Promise<GenResult | n
  * couple of retries on transient errors (rate limit / overload / 5xx). This is
  * what makes a burst of generations not suddenly fail with "no image".
  */
-async function generate(parts: unknown[], label: string): Promise<GenResult | null> {
+async function generate(parts: unknown[], label: string, diag?: GenDiag, budgetMs = 100_000): Promise<GenResult | null> {
   const models = [MODEL_PRIMARY, MODEL_FALLBACK];
+  const deadline = Date.now() + budgetMs;
   for (let m = 0; m < models.length; m++) {
     const model = models[m];
     for (let attempt = 0; attempt < 3; attempt++) {
+      const left = deadline - Date.now();
+      if (left < 8_000) {
+        diag?.errors.push(`${model}: timeout — the ${label} step ran out of time (${Math.round(budgetMs / 1000)} s budget)`);
+        console.warn(`[matchday v2] ${label}: time budget exhausted`);
+        return null;
+      }
       try {
-        const img = await callModel(model, parts);
+        const img = await callModel(model, parts, diag, Math.min(CALL_TIMEOUT_MS, left));
         if (img) return img;
         // Empty (no image) — a short backoff then retry the same model.
         if (attempt < 2) await sleep(600 * (attempt + 1));
       } catch (e) {
         const transient = isTransient(e);
+        diag?.errors.push(`${model}: ${(e as Error).message}`);
         console.warn(
           `[matchday v2] ${label}: ${model} attempt ${attempt + 1} failed (${transient ? 'transient' : 'permanent'}): ${(e as Error).message}`
         );
@@ -118,7 +203,7 @@ export const CHROMA_KEY = { r: 255, g: 0, b: 255 } as const;
  * true transparency. Returns null when Gemini is unavailable — the caller must
  * then skip the cutout rather than paste a raw rectangle.
  */
-export async function cutoutPlayer(src: Buffer): Promise<GenResult | null> {
+export async function cutoutPlayer(src: Buffer, diag?: GenDiag): Promise<GenResult | null> {
   if (!geminiConfigured()) return null;
   const out = await generate(
     [
@@ -133,7 +218,9 @@ export async function cutoutPlayer(src: Buffer): Promise<GenResult | null> {
           'transparency pattern — the background must be a uniform magenta fill. Output the full image.',
       },
     ],
-    'cutout'
+    'cutout',
+    diag,
+    STEP_BUDGET_MS.cutout
   );
   return out;
 }
@@ -143,7 +230,7 @@ export async function cutoutPlayer(src: Buffer): Promise<GenResult | null> {
  * `squadNumber`. Face/pose/identity are explicitly locked. Returns null on
  * failure so the caller keeps the original photo.
  */
-export async function swapKit(src: Buffer, kitRef: Buffer, squadNumber: string | null): Promise<GenResult | null> {
+export async function swapKit(src: Buffer, kitRef: Buffer, squadNumber: string | null, diag?: GenDiag): Promise<GenResult | null> {
   if (!geminiConfigured()) return null;
   const numberLine = squadNumber
     ? `Put the number ${squadNumber} on the shirt and shorts in the correct football placement.`
@@ -163,7 +250,9 @@ export async function swapKit(src: Buffer, kitRef: Buffer, squadNumber: string |
           'Keep the background transparent/unchanged. Output only the edited player.',
       },
     ],
-    'kit-swap'
+    'kit-swap',
+    diag,
+    STEP_BUDGET_MS.kit
   );
 }
 
@@ -216,5 +305,56 @@ export async function generateCinematicScene(opts: {
     `only the empty atmospheric stadium scene. Photorealistic, ultra-detailed, 8K, no borders.`;
 
   const parts: unknown[] = opts.stadiumRef ? [imagePart(opts.stadiumRef), { text: prompt }] : [{ text: prompt }];
-  return generate(parts, 'cinematic-scene');
+  return generate(parts, 'cinematic-scene', undefined, STEP_BUDGET_MS.scene);
+}
+
+/**
+ * One readable reason from a GenDiag: the most specific error wins (a key /
+ * quota / permission problem is more useful than the follow-up "no image").
+ */
+export function summarizeDiag(diag: GenDiag): string | null {
+  if (!diag.errors.length) return null;
+  const order = [/api key not valid|api_key_invalid/i, /location/i, /\b403\b|permission/i, /\b429\b|quota|exhausted|rate/i, /\b404\b|not_found/i, /timeout/i, /blocked|no image|no result/i];
+  for (const re of order) {
+    const hit = diag.errors.find((e) => re.test(e));
+    if (hit) return explainGeminiError(hit.replace(/^[^:]+:\s*/, ''));
+  }
+  return explainGeminiError(diag.errors[diag.errors.length - 1].replace(/^[^:]+:\s*/, ''));
+}
+
+// ── Diagnostics (used by /api/matchday/diagnose) ─────────────────────────────
+
+export interface ModelCheck {
+  model: string;
+  ok: boolean;
+  ms: number;
+  /** Plain-language cause when not ok. */
+  reason: string | null;
+  /** Raw error (truncated) for support. */
+  raw: string | null;
+}
+
+/** A tiny text request to an image model: proves key / permission / quota / region, costs a fraction of a cent. */
+export async function pingImageModel(model: string): Promise<ModelCheck> {
+  const t0 = Date.now();
+  try {
+    const ai = client();
+    await withTimeout(
+      ai.models.generateContent({ model, contents: [{ role: 'user', parts: [{ text: 'Reply with the single word OK. Do not create an image.' }] }] as never }),
+      30_000,
+      model
+    );
+    return { model, ok: true, ms: Date.now() - t0, reason: null, raw: null };
+  } catch (e) {
+    const raw = (e as Error).message ?? String(e);
+    return { model, ok: false, ms: Date.now() - t0, reason: explainGeminiError(raw), raw: raw.slice(0, 400) };
+  }
+}
+
+/** A real (small) cutout of a synthetic figure — exercises the full image path. */
+export async function testCutout(sample: Buffer): Promise<{ ok: boolean; ms: number; reason: string | null; errors: string[] }> {
+  const t0 = Date.now();
+  const diag: GenDiag = { errors: [] };
+  const out = await cutoutPlayer(sample, diag);
+  return { ok: Boolean(out), ms: Date.now() - t0, reason: out ? null : summarizeDiag(diag), errors: diag.errors.map((e) => e.slice(0, 300)) };
 }

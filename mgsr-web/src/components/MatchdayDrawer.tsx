@@ -24,6 +24,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { db } from '@/lib/firebase';
 import { apiHeaders } from '@/lib/matchday/clientApi';
 import MatchdayPhotoLibrary from './MatchdayPhotoLibrary';
+import MatchdayAiCheck from './MatchdayAiCheck';
 import { MATCHDAY_DESIGNS, designVariant, type MatchdayDesignId, type MatchdayV2Result } from '@/lib/matchday/v2/types';
 import { loadPosterImage, playMotion, recordMotionVideo } from '@/lib/matchday/motionClient';
 import type { MatchdaySeed } from './MatchdayGeneratorModal';
@@ -520,6 +521,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                     </button>
                     {!previews && previewPhase !== 'error' && <span className="hint">{t('matchday_v3_preview_hint')}</span>}
                     {previewPhase === 'error' && <span className="err">{previewError}</span>}
+                    {previewPhase === 'error' && <MatchdayAiCheck t={t} />}
                   </>
                 )}
               </div>
@@ -636,6 +638,7 @@ export default function MatchdayDrawer({ seed, onClose }: Props) {
                   <button className="md2-lead" onClick={() => void run()}>{t('matchday_regenerate')} →</button>
                   <button className="md2-text" onClick={() => setStep('design')}>← {t('matchday_v2_back')}</button>
                 </div>
+                <MatchdayAiCheck t={t} />
               </div>
             </>
           )}

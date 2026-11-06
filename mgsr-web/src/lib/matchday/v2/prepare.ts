@@ -12,7 +12,7 @@
  */
 
 import sharp from 'sharp';
-import { cutoutPlayer, swapKit, CHROMA_KEY } from './gemini';
+import { cutoutPlayer, swapKit, CHROMA_KEY, summarizeDiag, type GenDiag } from './gemini';
 import { cutoutKey, getCachedCutout, putCachedCutout } from './cache';
 
 export interface PreparedLayers {
@@ -26,6 +26,13 @@ export interface PreparedLayers {
   preCut?: boolean;
   /** The cutout came from the cutout cache (no Gemini call this run). */
   fromCache?: boolean;
+  /** Why the main cutout failed (real Gemini / keying reason), when it did. */
+  cutoutError?: string | null;
+  /** Kit swap outcome: 'none' (no kit chosen) · 'swapped' · 'failed' · 'skipped' (pre-cut photo / cached cutout). */
+  kitResult?: 'none' | 'swapped' | 'failed' | 'skipped';
+  kitError?: string | null;
+  /** Why the second photo's cutout failed, when it did. */
+  secondError?: string | null;
 }
 
 /**
@@ -172,17 +179,32 @@ export async function prepareLayers(opts: {
     fromCache = Boolean(cutAction);
   }
 
+  let cutoutError: string | null = null;
+  let kitResult: PreparedLayers['kitResult'] = opts.kitPhoto ? 'skipped' : 'none';
+  let kitError: string | null = null;
   if (!cutAction) {
     // 1) Optional kit swap FIRST (so cutout/pose carry the correct shirt).
     let source = opts.playerPhoto;
     if (opts.kitPhoto) {
-      const swapped = await swapKit(source, opts.kitPhoto, opts.squadNumber ?? null);
-      if (swapped) source = swapped.bytes;
+      const kd: GenDiag = { errors: [] };
+      const swapped = await swapKit(source, opts.kitPhoto, opts.squadNumber ?? null, kd);
+      if (swapped) {
+        source = swapped.bytes;
+        kitResult = 'swapped';
+      } else {
+        kitResult = 'failed';
+        kitError = summarizeDiag(kd);
+      }
     }
     // 2) Action cutout → key out magenta → true transparency.
-    const cutRaw = await cutoutPlayer(source);
+    const cd: GenDiag = { errors: [] };
+    const cutRaw = await cutoutPlayer(source, cd);
     cutAction = cutRaw ? await keyOutMagenta(cutRaw.bytes) : null;
     if (cutAction) await putCachedCutout(key, cutAction);
+    else
+      cutoutError = cutRaw
+        ? 'The model answered, but not on a clean magenta background, so the player could not be cut out. Try again, or upload a transparent PNG cutout.'
+        : summarizeDiag(cd) ?? 'the image model returned nothing';
   }
 
   // 3) SECONDARY FIGURE.
@@ -193,6 +215,7 @@ export async function prepareLayers(opts: {
   //    silhouette echo (handled in the renderer); NOT a generated pose.
   let hero = cutAction;
   let heroIsDistinct = false;
+  let secondError: string | null = null;
   if (opts.playerPhoto2) {
     const key2 = cutoutKey(opts.playerPhoto2, opts.kitPhoto ?? null, opts.squadNumber ?? null, 'second');
     let src2 = opts.playerPhoto2;
@@ -203,9 +226,11 @@ export async function prepareLayers(opts: {
         const swapped2 = await swapKit(src2, opts.kitPhoto, opts.squadNumber ?? null);
         if (swapped2) src2 = swapped2.bytes;
       }
-      const raw2 = await cutoutPlayer(src2);
+      const d2: GenDiag = { errors: [] };
+      const raw2 = await cutoutPlayer(src2, d2);
       cut2 = raw2 ? await keyOutMagenta(raw2.bytes) : null;
       if (cut2) await putCachedCutout(key2, cut2);
+      else secondError = raw2 ? 'no clean magenta background' : summarizeDiag(d2);
     }
     if (cut2) {
       hero = cut2; // a real second pose
@@ -216,5 +241,5 @@ export async function prepareLayers(opts: {
   // 4) Monochrome backdrop from the primary cutout.
   const backdropMono = cutAction ? await toMono(cutAction) : null;
 
-  return { cutAction, hero, backdropMono, heroIsDistinct, usedGemini: Boolean(cutAction) && !preCut && !fromCache, preCut: Boolean(preCut), fromCache };
+  return { cutAction, hero, backdropMono, heroIsDistinct, usedGemini: Boolean(cutAction) && !preCut && !fromCache, preCut: Boolean(preCut), fromCache, cutoutError, kitResult, kitError, secondError };
 }
