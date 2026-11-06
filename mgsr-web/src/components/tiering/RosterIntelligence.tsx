@@ -5,8 +5,11 @@
  *
  * A weekly background agent reads each player's game-by-game log and flags movement: hot/cold form,
  * dropped from the squad, benched, breaking into the XI, output surge, back from injury, plus
- * value/contract/mandate clocks. Read-only: card shows badge + reason + a form sparkline; the drawer
- * shows the recent games behind it.
+ * value/contract/mandate clocks. Read-only.
+ *
+ * Rows reuse the Recent-activity look (small grayscale thumb + name + reason). The drawer reuses the
+ * roster dossier hero (photo | slant | club crest + market value) and links to both the MGSR
+ * profile and the Transfermarkt profile.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -20,26 +23,28 @@ import { useTiering } from './useTiering';
 export interface RosterIntelPlayer {
   id: string;
   fullName?: string;
+  profileImage?: string;
+  tmProfile?: string;
   positions?: string[];
-  currentClub?: { clubName?: string };
+  currentClub?: { clubName?: string; clubLogo?: string };
   marketValue?: string;
   age?: string;
 }
 
 const DAY = 24 * 3600 * 1000;
 
-const BADGE: Record<SignalKind, { icon: string; en: string; he: string }> = {
-  hot_form: { icon: '🔥', en: 'In form', he: 'בכושר' },
-  cold_form: { icon: '📉', en: 'Form dip', he: 'ירידה בכושר' },
-  dropped_squad: { icon: '🪑', en: 'Out of the squad', he: 'מחוץ לסגל' },
-  benched: { icon: '🛋️', en: 'On the bench', he: 'על הספסל' },
-  breaking_in: { icon: '⬆️', en: 'Breaking in', he: 'נכנס להרכב' },
-  output_surge: { icon: '⚽', en: 'Output surge', he: 'זינוק בתפוקה' },
-  back_from_injury: { icon: '🩹', en: 'Back in action', he: 'חזר לפעילות' },
-  value_jump: { icon: '💹', en: 'Value up', he: 'השווי עלה' },
-  value_drop: { icon: '🔻', en: 'Value down', he: 'השווי ירד' },
-  contract_clock: { icon: '⏳', en: 'Contract', he: 'חוזה' },
-  mandate_clock: { icon: '📄', en: 'Mandate', he: 'מנדט' },
+const BADGE: Record<SignalKind, { en: string; he: string }> = {
+  hot_form: { en: 'In form', he: 'בכושר' },
+  cold_form: { en: 'Form dip', he: 'ירידה בכושר' },
+  dropped_squad: { en: 'Out of the squad', he: 'מחוץ לסגל' },
+  benched: { en: 'On the bench', he: 'על הספסל' },
+  breaking_in: { en: 'Breaking in', he: 'נכנס להרכב' },
+  output_surge: { en: 'Output surge', he: 'זינוק בתפוקה' },
+  back_from_injury: { en: 'Back in action', he: 'חזר לפעילות' },
+  value_jump: { en: 'Value up', he: 'השווי עלה' },
+  value_drop: { en: 'Value down', he: 'השווי ירד' },
+  contract_clock: { en: 'Contract', he: 'חוזה' },
+  mandate_clock: { en: 'Mandate', he: 'מנדט' },
 };
 
 function ago(ts: number | undefined, he: boolean): string {
@@ -51,19 +56,19 @@ function ago(ts: number | undefined, he: boolean): string {
   return he ? `לפני ${w} שב׳` : `${w}w ago`;
 }
 
-function Spark({ values, w = 58, h = 18, sw = 1.5, title }: { values: number[]; w?: number; h?: number; sw?: number; title?: string }) {
-  if (!values || values.length < 2) return null;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
-  const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${(h - ((v - min) / span) * h).toFixed(1)}`).join(' ');
-  const rising = values[values.length - 1] >= values[0];
-  return (
-    <svg className="ri-spark" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden>
-      {title && <title>{title}</title>}
-      <polyline points={pts} fill="none" stroke={rising ? 'var(--green)' : 'var(--red)'} strokeWidth={sw} />
-    </svg>
-  );
+function initials(s?: string): string {
+  return (s || '?')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w.charAt(0).toUpperCase())
+    .join('');
+}
+
+/** Transfermarkt link. If the stored id is stale, point at the live id we re-resolved (TM redirects `/-/profil/spieler/{id}`). */
+function tmLink(doc: PlayerIntelDoc, player?: RosterIntelPlayer): string | null {
+  if (doc.staleTmId && doc.resolvedTmId) return `https://www.transfermarkt.com/-/profil/spieler/${doc.resolvedTmId}`;
+  return player?.tmProfile || doc.tmProfile || null;
 }
 
 export default function RosterIntelligence({ players }: { players: RosterIntelPlayer[] }) {
@@ -85,7 +90,6 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
     return [(p?.positions ?? [])[0], p?.currentClub?.clubName].filter(Boolean).join(' · ');
   };
   const sig = (s: Signal) => (he ? s.he : s.en);
-  const det = (s: Signal) => (he ? s.detailHe || s.detailEn : s.detailEn);
 
   const head = (
     <div className="brit-module-head">
@@ -120,30 +124,33 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
       {head}
       <p className="ri-caption">{tok('ri_caption', { n: board.length })}</p>
 
-      <ul className="rk">
+      <div className="ri-list">
         {board.map((d) => {
           const it = d.intel!;
           const b = BADGE[it.top.kind];
+          const p = byPlayer.get(d.playerId);
+          const name = nm(d.playerId);
           return (
-            <li key={d.playerId}>
-              <button className={`rk-row tone-${it.top.tone}`} onClick={() => setOpenId(d.playerId)}>
-                <span className={`rk-badge t-${it.top.tone}`} title={he ? b.he : b.en}>{b.icon}</span>
-                <span className="rk-main">
-                  <span className="rk-top">
-                    <b>{nm(d.playerId)}</b>
-                    <span className={`rk-chip t-${it.top.tone}`}>{he ? b.he : b.en}</span>
-                    {it.signals.length > 1 && <span className="rk-more">+{it.signals.length - 1}</span>}
-                    {d.staleTmId && <span className="rk-relink" title={t('ri_stale_title')}>⚠</span>}
-                  </span>
-                  <span className="rk-reason">{sig(it.top)}</span>
-                  <span className="rk-sub">{sub(d.playerId)}{det(it.top) ? ` · ${det(it.top)}` : ''}</span>
-                </span>
-                <Spark values={it.form.spark} title={t('ri_spark_tip')} />
-              </button>
-            </li>
+            <button key={d.playerId} type="button" className="brit-feed-row brit-feed-activity ri-row" onClick={() => setOpenId(d.playerId)}>
+              {p?.profileImage ? (
+                <img className="brit-feed-thumb" src={p.profileImage} alt={name} loading="lazy" />
+              ) : (
+                <div className="brit-feed-thumb brit-feed-thumb-fallback">{name.charAt(0).toUpperCase()}</div>
+              )}
+              <p>
+                <strong>{name}</strong>
+                <em className="ri-reason">{sig(it.top)}</em>
+                {sub(d.playerId) ? <small className="ri-sub">{sub(d.playerId)}</small> : null}
+              </p>
+              <span className="ri-side">
+                <b className={`rk-chip t-${it.top.tone}`}>{he ? b.he : b.en}</b>
+                {it.signals.length > 1 && <i className="rk-more">+{it.signals.length - 1}</i>}
+                {d.staleTmId && <i className="rk-relink" title={t('ri_stale_title')}>⚠</i>}
+              </span>
+            </button>
           );
         })}
-      </ul>
+      </div>
 
       <div className="ri-status">
         <span className="ri-live" />
@@ -171,6 +178,10 @@ function Drawer({ doc, player, onClose }: { doc: PlayerIntelDoc; player?: Roster
   const it = doc.intel!;
   const f = it.form;
   const games = doc.recentGames ?? [];
+  const name = player?.fullName ?? doc.playerName ?? '—';
+  const club = player?.currentClub?.clubName || '—';
+  const tm = tmLink(doc, player);
+  const position = (player?.positions ?? [])[0];
 
   // Close on Escape.
   useEffect(() => {
@@ -184,19 +195,52 @@ function Drawer({ doc, player, onClose }: { doc: PlayerIntelDoc; player?: Roster
   return (
     <BritFilterSheetPortal active isRtl={he}>
       <div className="ri-backdrop" onClick={onClose} />
-      <aside className="ri-drawer" role="dialog" aria-modal="true">
-        <div className="ri-dr-h">
-          <button className="ri-x" onClick={onClose} aria-label="Close">×</button>
-          <small>{[(player?.positions ?? [])[0], player?.age, player?.currentClub?.clubName, player?.marketValue].filter(Boolean).join(' · ')}</small>
-          <h2>{player?.fullName ?? doc.playerName}</h2>
-          <div className="ri-dr-tags">
-            <Spark values={f.spark} w={120} h={34} sw={2} />
-            <span className="ri-fitlabel">{t('ri_updated')} {it.computedAt ? new Date(it.computedAt).toLocaleDateString(he ? 'he-IL' : 'en-GB', { day: '2-digit', month: 'short' }) : '—'}</span>
-          </div>
+      <aside className="ri-drawer" role="dialog" aria-modal="true" aria-label={name}>
+        {/* Hero — same design as the roster player dossier (photo | slant | club crest + value) */}
+        <div className="brit-asset-modal ri-hero">
+          <button className="brit-close" onClick={onClose} aria-label={t('room_close')}>×</button>
+          <section className="bam-hero">
+            <div className="bam-shot">
+              {player?.profileImage ? (
+                <img src={player.profileImage} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
+              ) : null}
+            </div>
+            <span className="bam-slant" aria-hidden />
+            <div className="bam-clubside">
+              <div className="bam-stadium" aria-hidden />
+              <div className="bam-crestwrap">
+                <div className="crest">
+                  {player?.currentClub?.clubLogo ? (
+                    <img src={player.currentClub.clubLogo} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
+                  ) : (
+                    <span className="ph">{initials(club)}</span>
+                  )}
+                </div>
+              </div>
+              <span className="clubname">{club}</span>
+            </div>
+            {player?.marketValue ? (
+              <div className="bam-valtab">
+                <div className="v">{player.marketValue}</div>
+                <div className="l">{t('room_market_value')}</div>
+              </div>
+            ) : null}
+            <div className="bam-hero-inner">
+              <p className="bam-eyebrow">{club}</p>
+              <h2>{name}</h2>
+              <div className="bam-tags">
+                {position ? <span className="tag">{position}</span> : null}
+                {player?.age ? <span className="tag">{t('ri_age').replace('{n}', String(player.age))}</span> : null}
+              </div>
+            </div>
+          </section>
         </div>
 
         <div className="ri-dr-s">
-          <h4><span>{t('ri_dr_why')}</span></h4>
+          <h4>
+            <span>{t('ri_dr_why')}</span>
+            <span>{t('ri_updated')} {it.computedAt ? new Date(it.computedAt).toLocaleDateString(he ? 'he-IL' : 'en-GB', { day: '2-digit', month: 'short' }) : '—'}</span>
+          </h4>
           <ul className="pb-why big">
             {it.signals.map((s, i) => (
               <li key={i} className={`tone-${s.tone}`}>
@@ -208,7 +252,7 @@ function Drawer({ doc, player, onClose }: { doc: PlayerIntelDoc; player?: Roster
         </div>
 
         <div className="ri-dr-s">
-          <h4><span>{t('ri_dr_form')}</span><span>{tok2(t('ri_form_last'), f.games)}</span></h4>
+          <h4><span>{t('ri_dr_form')}</span><span>{t('ri_form_last').replace('{n}', String(f.games))}</span></h4>
           <div className="ri-facts">
             <div><b>{f.played}/{f.games}</b><span>{t('ri_f_played')}</span></div>
             <div><b>{f.starts}</b><span>{t('ri_f_starts')}</span></div>
@@ -267,12 +311,11 @@ function Drawer({ doc, player, onClose }: { doc: PlayerIntelDoc; player?: Roster
 
         <div className="ri-dr-f">
           <Link className="ri-btn ri-btn-gold" href={`/players/${doc.playerId}`}>{t('ri_dr_profile')}</Link>
+          {tm ? (
+            <a className="ri-btn" href={tm} target="_blank" rel="noopener noreferrer">{t('ri_dr_tm')}</a>
+          ) : null}
         </div>
       </aside>
     </BritFilterSheetPortal>
   );
-
-  function tok2(s: string, n: number) {
-    return s.replace('{n}', String(n));
-  }
 }
