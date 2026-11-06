@@ -5334,6 +5334,9 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .md2-aicheck li span.y{background:#3d8b5a}
 .md2-aicheck li span.n{background:#b3261e}
 .md2-aicheck .bad{color:#b3261e;font:500 12px/1.4 var(--body)}
+.md2-aicheck .raw{margin-top:12px}
+.md2-aicheck .raw summary{cursor:pointer;font:500 11px/1.4 var(--mono);letter-spacing:.04em;color:var(--muted)}
+.md2-aicheck .raw pre{margin:8px 0;max-height:240px;overflow:auto;padding:10px;background:#1a1a1d;color:#e8e6df;font:400 11px/1.45 var(--mono);white-space:pre-wrap;word-break:break-word}
 /* Player photo library (Assets step) */
 .md2-lib{margin:30px 0 8px}
 .md2-lib-head .md2-famh{margin:0 0 6px}

@@ -37,6 +37,8 @@ function client(): GoogleGenAI {
 }
 
 export const IMAGE_MODELS = { primary: 'gemini-3-pro-image-preview', fallback: 'gemini-2.5-flash-image' } as const;
+/** Text model used by the app's other AI features — a control in diagnostics. */
+export const TEXT_CONTROL_MODEL = 'gemini-2.5-flash';
 const MODEL_PRIMARY: string = IMAGE_MODELS.primary;
 const MODEL_FALLBACK: string = IMAGE_MODELS.fallback;
 
@@ -107,15 +109,19 @@ export function explainGeminiError(raw: string): string {
     return 'Gemini rejected the API key — check GEMINI_API_KEY in the server environment (no spaces, quotes or line breaks), then redeploy.';
   if (/location is not supported|user location|failed_precondition/.test(m))
     return 'Gemini is not available from the server’s region — change the Vercel function region (e.g. to iad1).';
+  if (/prepay|prepaid|credit balance|credits? (are|is) (depleted|exhausted)|insufficient (funds|credit)/.test(m))
+    return 'The prepaid Gemini credits of this key’s project are used up — top up the balance in Google AI Studio (Billing).';
+  if (/spend(ing)?\s*(cap|limit)|budget (exceeded|limit)|billing (account|is) (closed|disabled|suspended|not active)|billing account/.test(m))
+    return 'The billing account / spend limit of this key’s project blocks the request — check Billing in Google AI Studio / Google Cloud.';
   const q = parseQuota(raw);
   if (q) {
     if (q.kind === 'free_tier')
-      return 'This API key is on Google’s FREE tier, and image models are not included in it (limit 0) — so cutouts can never work with it. Fix: enable billing on the Google Cloud project of this key (aistudio.google.com → API keys → the key’s project → Set up billing), or put a key from a billing-enabled project in GEMINI_API_KEY.';
+      return 'This API key is on Google’s FREE tier, and image models are not included in it (limit 0) — so cutouts can never work with it. Fix: enable billing on the Google Cloud project of this key (aistudio.google.com, API keys, open the key’s project, Set up billing), or put a key from a billing-enabled project in GEMINI_API_KEY.';
     if (q.kind === 'per_day')
       return 'The daily image limit of this key’s project is used up. It resets within 24 h — or raise the limit / tier in Google AI Studio.';
     if (q.kind === 'per_minute')
       return `Too many image requests in the last minute.${q.retryAfterS ? ` Google asks to wait ${q.retryAfterS} s` : ' Wait a minute'} and try again.`;
-    return 'Quota / rate limit hit on this key. If the key’s project has no billing, image models are not available (enable billing); otherwise wait a minute and retry.';
+    return 'Google refused with “quota exhausted” without saying which limit. Most often: the key’s Google project has no billing for image models, or its usage / spend limit is reached. Check “Usage & limits” for this key in Google AI Studio — the technical details below show Google’s exact answer.';
   }
   if (/rate limit|exhausted/.test(m)) return 'Rate limit hit on this key — wait a minute and try again.';
   if (/\b403\b|permission_denied|permission denied/.test(m))
@@ -356,6 +362,20 @@ export async function generateCinematicScene(opts: {
  * One readable reason from a GenDiag: the most specific error wins (a key /
  * quota / permission problem is more useful than the follow-up "no image").
  */
+/** Google's error body without the SDK prefix, pretty enough to read and paste (max ~1.5 KB). */
+function rawForSupport(raw: string): string {
+  const i = raw.indexOf('{');
+  if (i >= 0) {
+    try {
+      const body = JSON.parse(raw.slice(i));
+      return `${raw.slice(0, i).trim()}\n${JSON.stringify(body, null, 1)}`.slice(0, 1500);
+    } catch {
+      /* not JSON */
+    }
+  }
+  return raw.slice(0, 1500);
+}
+
 export function summarizeDiag(diag: GenDiag): string | null {
   if (!diag.errors.length) return null;
   const order = [/api key not valid|api_key_invalid/i, /location/i, /\b403\b|permission/i, /free[_ -]?tier|limit:\s*0\b/i, /per\s*day|perday/i, /\b429\b|quota|exhausted|rate/i, /\b404\b|not_found/i, /timeout/i, /blocked|no image|no result/i];
@@ -378,8 +398,8 @@ export interface ModelCheck {
   raw: string | null;
 }
 
-/** A tiny text request to an image model: proves key / permission / quota / region, costs a fraction of a cent. */
-export async function pingImageModel(model: string): Promise<ModelCheck> {
+/** A tiny text request to a model: proves key / permission / quota / region, costs a fraction of a cent. */
+export async function pingModel(model: string): Promise<ModelCheck> {
   const t0 = Date.now();
   try {
     const ai = client();
@@ -391,7 +411,7 @@ export async function pingImageModel(model: string): Promise<ModelCheck> {
     return { model, ok: true, ms: Date.now() - t0, reason: null, raw: null };
   } catch (e) {
     const raw = (e as Error).message ?? String(e);
-    return { model, ok: false, ms: Date.now() - t0, reason: explainGeminiError(raw), raw: raw.slice(0, 400) };
+    return { model, ok: false, ms: Date.now() - t0, reason: explainGeminiError(raw), raw: rawForSupport(raw) };
   }
 }
 
@@ -400,5 +420,5 @@ export async function testCutout(sample: Buffer): Promise<{ ok: boolean; ms: num
   const t0 = Date.now();
   const diag: GenDiag = { errors: [] };
   const out = await cutoutPlayer(sample, diag);
-  return { ok: Boolean(out), ms: Date.now() - t0, reason: out ? null : summarizeDiag(diag), errors: diag.errors.map((e) => e.slice(0, 300)) };
+  return { ok: Boolean(out), ms: Date.now() - t0, reason: out ? null : summarizeDiag(diag), errors: diag.errors.map((e) => rawForSupport(e)) };
 }
