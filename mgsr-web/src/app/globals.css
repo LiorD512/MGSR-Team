@@ -6840,3 +6840,4 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .ri-hero > .brit-close { padding: 0; border: 0; background: none; font: 28px/1 var(--display); cursor: pointer; }
 .brit-room .ri-dr-f { display: flex; flex-wrap: wrap; gap: 10px; }
 .brit-room .ri-dr-f a.ri-btn:not(.ri-btn-gold):hover { background: var(--ink); color: var(--paper); }
+.brit-room .ri-row .ri-also { display: block; margin-top: 2px; font: 11px/1.4 var(--body); font-style: normal; color: var(--muted); }

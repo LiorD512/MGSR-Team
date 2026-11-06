@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { type Firestore } from 'firebase-admin/firestore';
 import { adminAuth, adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
 import { META_DOC, REANALYSE_AFTER_MS, TIERS_COLLECTION as TC } from './config';
-import { contractMonthsLeft, detectSignals, parseValueEuro, summariseForm } from './engine';
+import { contractMonthsLeft, detectSignals, isWithoutClub, parseValueEuro, summariseForm } from './engine';
 import { getRecentGames } from './inputs';
 import type { IntelMeta, PlayerIntel, PlayerIntelDoc, RecentGame } from './types';
 
@@ -200,6 +200,7 @@ export async function processPlayer(db: Firestore, ctx: IntelContext, p: RosterP
     value: { curEuro: parseValueEuro(p.marketValue), prevEuro: prevValueEuro(p.marketValueHistory, now) },
     contractMonths: contractMonthsLeft(p.contractExpired, now),
     mandateDays: mandateExp ? (mandateExp - now) / DAY : null,
+    withoutClub: isWithoutClub(p.currentClub?.clubName),
   });
   // requests still influence nothing here (kept for future); silence unused
   void requestMatches;

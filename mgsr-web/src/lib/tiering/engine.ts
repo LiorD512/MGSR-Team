@@ -46,6 +46,17 @@ export function contractMonthsLeft(raw: string | undefined | null, now = Date.no
   return t == null ? null : (t - now) / (30.44 * DAY);
 }
 
+/**
+ * Player has no club (free agent / retired / career break). Squad signals ("out of the squad",
+ * "on the bench", "breaking in") make no sense for him — there is no squad to be out of.
+ * Mirrors isFreeAgent() in shortlistIntelligence + TM's localized "without club" labels.
+ */
+const NO_CLUB = /^(without club|vereinslos|ohne verein|sans club|sin club|senza squadra|sem clube|geen club|bez klubu|klubsuz|ללא מועדון|free agent|unattached|retired|career break|karriereende|pause)$/i;
+export function isWithoutClub(clubName: string | undefined | null): boolean {
+  const s = (clubName ?? '').trim();
+  return !!s && NO_CLUB.test(s);
+}
+
 const isPlayed = (g: RecentGame) => g.minutes >= SIGNALS.minMinutesPlayed || g.state === 'played';
 
 export function summariseForm(games: RecentGame[]): FormSummary {
@@ -79,6 +90,8 @@ export interface SignalContext {
   value: { curEuro: number; prevEuro: number | null };
   contractMonths: number | null;
   mandateDays: number | null;
+  /** No current club → skip squad-status signals (dropped / benched / breaking in). */
+  withoutClub?: boolean;
 }
 
 export function detectSignals(ctx: SignalContext): Signal[] {
@@ -121,8 +134,10 @@ export function detectSignals(ctx: SignalContext): Signal[] {
     const streakGrades = streak.map((g) => g.grade).filter((x): x is number => typeof x === 'number');
     const streakAvgGrade = streakGrades.length ? streakGrades.reduce((a, b) => a + b, 0) / streakGrades.length : null;
 
-    /* dropped from the squad — was playing, now out */
-    if (recentNotInSquad >= S.droppedRecent && olderStarts + played.length > recentNotInSquad) {
+    /* dropped from the squad — was playing, now out (never for a player without a club) */
+    if (ctx.withoutClub) {
+      // no squad → no dropped / benched / breaking-in signals
+    } else if (recentNotInSquad >= S.droppedRecent && olderStarts + played.length > recentNotInSquad) {
       out.push({ kind: 'dropped_squad', tone: 'negative', strength: clamp(70 + recentNotInSquad * 8, 70, 96),
         en: `Out of the squad — last ${recentNotInSquad} ${recentNotInSquad === 1 ? 'game' : 'games'}`, he: `מחוץ לסגל — ${recentNotInSquad} ${recentNotInSquad === 1 ? 'משחק אחרון' : 'משחקים אחרונים'}`,
         detailEn: 'was in the team before', detailHe: 'היה בהרכב קודם' });
@@ -133,7 +148,7 @@ export function detectSignals(ctx: SignalContext): Signal[] {
     }
 
     /* breaking in — became a starter */
-    if (recentStarts >= S.startsForBreakingIn && olderStarts === 0 && games.length > S.recentForStreak) {
+    if (!ctx.withoutClub && recentStarts >= S.startsForBreakingIn && olderStarts === 0 && games.length > S.recentForStreak) {
       out.push({ kind: 'breaking_in', tone: 'positive', strength: clamp(60 + recentStarts * 9, 60, 92),
         en: `Breaking into the XI — ${recentStarts} recent ${recentStarts === 1 ? 'start' : 'starts'}`, he: `נכנס להרכב — ${recentStarts} ${recentStarts === 1 ? 'פתיחה אחרונה' : 'פתיחות אחרונות'}`,
         detailEn: 'was not starting before', detailHe: 'לא פתח קודם' });

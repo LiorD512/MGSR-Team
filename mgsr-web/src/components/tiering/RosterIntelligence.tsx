@@ -17,6 +17,7 @@ import Link from 'next/link';
 import BritFilterSheetPortal from '@/components/BritFilterSheetPortal';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { rankBoard } from '@/lib/tiering/shared';
+import { isWithoutClub } from '@/lib/tiering/engine';
 import type { PlayerIntelDoc, RecentGame, Signal, SignalKind } from '@/lib/tiering/types';
 import { useTiering } from './useTiering';
 
@@ -32,6 +33,7 @@ export interface RosterIntelPlayer {
 }
 
 const DAY = 24 * 3600 * 1000;
+const SQUAD_KINDS = new Set<SignalKind>(['dropped_squad', 'benched', 'breaking_in']);
 
 const BADGE: Record<SignalKind, { en: string; he: string }> = {
   hot_form: { en: 'In form', he: 'בכושר' },
@@ -81,13 +83,35 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
     Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, String(v)), t(key));
 
   const byPlayer = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
-  const docs = useMemo(() => tt.items.filter((d) => byPlayer.has(d.playerId)), [tt.items, byPlayer]);
+  // Players without a club can't be "out of the squad" / "on the bench" / "breaking in". The worker no
+  // longer emits these for them; also strip them here so docs written by older sweeps render correctly.
+  const docs = useMemo(
+    () =>
+      tt.items
+        .filter((d) => byPlayer.has(d.playerId))
+        .map((d) => {
+          if (!d.intel || !isWithoutClub(byPlayer.get(d.playerId)?.currentClub?.clubName)) return d;
+          const signals = d.intel.signals.filter((s) => !SQUAD_KINDS.has(s.kind));
+          if (signals.length === d.intel.signals.length) return d;
+          if (!signals.length) return { ...d, intel: undefined };
+          return { ...d, intel: { ...d.intel, signals, top: signals[0], score: signals[0].strength } };
+        }),
+    [tt.items, byPlayer]
+  );
   const board = useMemo(() => rankBoard(docs), [docs]);
 
   const nm = (id: string) => byPlayer.get(id)?.fullName ?? docs.find((d) => d.playerId === id)?.playerName ?? '—';
   const sub = (id: string) => {
     const p = byPlayer.get(id);
-    return [(p?.positions ?? [])[0], p?.currentClub?.clubName].filter(Boolean).join(' · ');
+    const value = p?.marketValue && p.marketValue.trim() !== '-' ? p.marketValue : '';
+    return [
+      (p?.positions ?? [])[0],
+      p?.currentClub?.clubName,
+      p?.age ? t('ri_age').replace('{n}', String(p.age)) : '',
+      value,
+    ]
+      .filter(Boolean)
+      .join(' · ');
   };
   const sig = (s: Signal) => (he ? s.he : s.en);
 
@@ -140,11 +164,13 @@ export default function RosterIntelligence({ players }: { players: RosterIntelPl
               <p>
                 <strong>{name}</strong>
                 <em className="ri-reason">{sig(it.top)}</em>
+                {it.signals.length > 1 ? (
+                  <em className="ri-also">{t('ri_also')}: {it.signals.slice(1).map(sig).join(' · ')}</em>
+                ) : null}
                 {sub(d.playerId) ? <small className="ri-sub">{sub(d.playerId)}</small> : null}
               </p>
               <span className="ri-side">
                 <b className={`rk-chip t-${it.top.tone}`}>{he ? b.he : b.en}</b>
-                {it.signals.length > 1 && <i className="rk-more">+{it.signals.length - 1}</i>}
                 {d.staleTmId && <i className="rk-relink" title={t('ri_stale_title')}>⚠</i>}
               </span>
             </button>
