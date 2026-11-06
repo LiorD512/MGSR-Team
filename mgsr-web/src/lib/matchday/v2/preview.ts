@@ -39,7 +39,7 @@ export async function generatePreviews(input: PreviewInput): Promise<Record<stri
   });
   if (!layers.cutAction) {
     throw new MatchdayError(
-      'The player cutout could not be prepared (the image model is busy or not configured). Try again in a moment, or upload a transparent PNG cutout.',
+      `The player could not be cut out of the photo. ${layers.cutoutError ?? 'The image model returned nothing.'} You can also upload a transparent PNG cutout — it is used as-is, without AI.`,
       'GENERATION_FAILED'
     );
   }

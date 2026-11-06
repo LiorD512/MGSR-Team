@@ -149,6 +149,15 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
     needHero,
   });
 
+  // No cutout = no player on the poster, which is useless — stop here with the
+  // REAL reason (API key / quota / region / refusal …) instead of a blank poster.
+  if (!layers.cutAction) {
+    throw new MatchdayError(
+      `The player could not be cut out of the photo. ${layers.cutoutError ?? (geminiConfigured() ? 'The image model returned nothing.' : 'GEMINI_API_KEY is not set on the server.')} You can also upload a transparent PNG cutout of the player — it is used as-is, without AI.`,
+      'GENERATION_FAILED'
+    );
+  }
+
   // ── Stage 4: crests (hi-res, cached) ──
   const { homeCrest, awayCrest } = await resolveCrests(facts);
 
@@ -222,11 +231,11 @@ export async function generateMatchdayV2(input: MatchdayV2Input): Promise<Matchd
           status: 'warn',
           detail: !player2Bytes
             ? 'could not be downloaded — poster uses one photo'
-            : 'cutout failed this run — poster uses one photo; try again or upload a transparent PNG',
+            : `cutout failed — poster uses one photo (${layers.secondError ?? 'unknown reason'})`,
         }
     : null;
 
-  const qualityChecks = buildChecks(facts, geminiConfigured(), Boolean(layers.cutAction), Boolean(homeCrest), Boolean(awayCrest), Boolean(kitBytes), rendered.width, rendered.height, layers.preCut ? 'your transparent cutout, used as-is (no AI)' : layers.fromCache ? 'clean transparent cutout (cached — no AI call this run)' : null);
+  const qualityChecks = buildChecks(facts, geminiConfigured(), Boolean(layers.cutAction), Boolean(homeCrest), Boolean(awayCrest), layers.kitResult === 'swapped' ? 'swapped' : layers.kitResult === 'failed' ? `failed: ${layers.kitError ?? 'unknown reason'}` : kitBytes ? 'cached' : 'none', rendered.width, rendered.height, layers.preCut ? 'your transparent cutout, used as-is (no AI)' : layers.fromCache ? 'clean transparent cutout (cached — no AI call this run)' : null);
 
   return {
     generationId,
@@ -244,7 +253,8 @@ function buildChecks(
   haveCutout: boolean,
   home: boolean,
   away: boolean,
-  kitSwapped: boolean,
+  /** 'swapped' | 'cached' (cutout reused — kit already applied before) | 'none' | 'failed: <reason>' */
+  kit: string,
   w: number,
   h: number,
   cutoutNote: string | null = null
@@ -260,7 +270,13 @@ function buildChecks(
     { id: 'identity', label: 'Real photos (face never generated)', status: 'pass', detail: 'AI used only for cutout / kit' },
     { id: 'cutout', label: 'Player cutout', status: haveCutout ? 'pass' : 'fail', detail: cutoutDetail },
     // Keeping the original kit is a normal choice, not a problem — so it passes.
-    { id: 'kit', label: 'Kit', status: 'pass', detail: kitSwapped ? 'swapped from reference' : 'original kit kept (no kit reference uploaded)' },
+    kit === 'swapped'
+      ? { id: 'kit', label: 'Kit', status: 'pass', detail: 'swapped from your kit photo' }
+      : kit === 'cached'
+        ? { id: 'kit', label: 'Kit', status: 'pass', detail: 'kit applied (reused cutout from an earlier run)' }
+        : kit === 'none'
+          ? { id: 'kit', label: 'Kit', status: 'pass', detail: 'his own kit (no kit photo chosen)' }
+          : { id: 'kit', label: 'Kit swap failed', status: 'warn', detail: `his own kit was kept — ${kit.replace(/^failed:\s*/, '')}` },
     { id: 'teams', label: 'Home & away teams resolved', status: facts.homeTeam && facts.awayTeam ? 'pass' : 'fail', detail: `${facts.homeTeam} vs ${facts.awayTeam}` },
     { id: 'datetime', label: 'Date & kickoff', status: facts.date ? (facts.time ? 'pass' : 'warn') : 'fail', detail: `${facts.date}${facts.time ? ` • ${facts.time}` : ' • TBC'}` },
     { id: 'crests', label: 'Club crests', status: home && away ? 'pass' : home || away ? 'warn' : 'fail', detail: `home ${home ? 'ok' : 'missing'} · away ${away ? 'ok' : 'missing'}` },
