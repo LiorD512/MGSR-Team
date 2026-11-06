@@ -84,7 +84,13 @@ export interface QuotaInfo {
   model: string | null;
 }
 
+/** 402 / prepaid credits depleted / payment required — only a top-up fixes it. */
+export function isBillingError(raw: string): boolean {
+  return /\b402\b|payment required|prepay|prepaid|credits? (are|is) (depleted|exhausted)|insufficient (funds|credit)/i.test(raw);
+}
+
 export function parseQuota(raw: string): QuotaInfo | null {
+  if (isBillingError(raw)) return null;
   if (!/\b429\b|resource_exhausted|quota/i.test(raw)) return null;
   const freeTier = /free[_ -]?tier/i.test(raw) || /limit:\s*0\b/i.test(raw);
   const perDay = /per\s*day|perday|requests per day|daily/i.test(raw);
@@ -109,8 +115,8 @@ export function explainGeminiError(raw: string): string {
     return 'Gemini rejected the API key — check GEMINI_API_KEY in the server environment (no spaces, quotes or line breaks), then redeploy.';
   if (/location is not supported|user location|failed_precondition/.test(m))
     return 'Gemini is not available from the server’s region — change the Vercel function region (e.g. to iad1).';
-  if (/prepay|prepaid|credit balance|credits? (are|is) (depleted|exhausted)|insufficient (funds|credit)/.test(m))
-    return 'The prepaid Gemini credits of this key’s project are used up — top up the balance in Google AI Studio (Billing).';
+  if (isBillingError(raw))
+    return 'The prepaid Gemini credits of this key’s project are used up (402 Payment Required). Top up the balance — or turn on auto-reload — in Google AI Studio (ai.studio/projects, the key’s project, Billing). This affects every AI feature that uses this key.';
   if (/spend(ing)?\s*(cap|limit)|budget (exceeded|limit)|billing (account|is) (closed|disabled|suspended|not active)|billing account/.test(m))
     return 'The billing account / spend limit of this key’s project blocks the request — check Billing in Google AI Studio / Google Cloud.';
   const q = parseQuota(raw);
@@ -218,8 +224,9 @@ async function generate(parts: unknown[], label: string, diag?: GenDiag, budgetM
       } catch (e) {
         const msg = (e as Error).message ?? String(e);
         const quota = parseQuota(msg);
-        // Free tier (limit 0) or a used-up daily quota: retrying can't help.
-        const hopeless = quota?.kind === 'free_tier' || quota?.kind === 'per_day';
+        // Billing problems (402: prepaid credits used up, payment required), free
+        // tier (limit 0) or a used-up daily quota: retrying can't help.
+        const hopeless = isBillingError(msg) || quota?.kind === 'free_tier' || quota?.kind === 'per_day';
         const transient = !hopeless && isTransient(e);
         diag?.errors.push(`${model}: ${msg}`);
         console.warn(
@@ -378,7 +385,7 @@ function rawForSupport(raw: string): string {
 
 export function summarizeDiag(diag: GenDiag): string | null {
   if (!diag.errors.length) return null;
-  const order = [/api key not valid|api_key_invalid/i, /location/i, /\b403\b|permission/i, /free[_ -]?tier|limit:\s*0\b/i, /per\s*day|perday/i, /\b429\b|quota|exhausted|rate/i, /\b404\b|not_found/i, /timeout/i, /blocked|no image|no result/i];
+  const order = [/\b402\b|payment required|prepay/i, /api key not valid|api_key_invalid/i, /location/i, /\b403\b|permission/i, /free[_ -]?tier|limit:\s*0\b/i, /per\s*day|perday/i, /\b429\b|quota|exhausted|rate/i, /\b404\b|not_found/i, /timeout/i, /blocked|no image|no result/i];
   for (const re of order) {
     const hit = diag.errors.find((e) => re.test(e));
     if (hit) return explainGeminiError(hit.replace(/^[^:]+:\s*/, ''));
