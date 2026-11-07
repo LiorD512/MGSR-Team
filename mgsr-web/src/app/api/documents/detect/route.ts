@@ -48,27 +48,11 @@ If the document contains "FOOTBALL AGENT MANDATE" or similar agent mandate text,
 - mandateExpiresAt: Look for expiry/end date in patterns like "ends on DD/MM/YYYY", "until DD.MM.YYYY", "valid as from ... until DD.MM.YYYY". Return as DD/MM/YYYY string.
 - validLeagues: array of league/country names from "Valid Leagues" section. If the document is club-specific (authorization for a single club), return the club name(s) instead (e.g. ["RAAL La Louvière"]).
 
-GPS / PHYSICAL PERFORMANCE DATA DETECTION:
-If the document is a football/soccer GPS tracking report or physical performance data sheet, set isGpsData: true. Look for ANY of these:
-- Tables with columns like: Total Distance, Sprint Distance, High Intensity Distance, Max Speed, Accelerations, Decelerations, Time/Duration
-- Catapult-specific columns: Tot Dist, Tot Dur, Max Vel, High MP Effs, Meterage Per Minute, Acc #, Decel #
-- Player names with match data rows containing distance/speed metrics
-- Club or team names with match dates
-- Bar charts or graphs showing per-player distance, speed zones, or physical metrics
-- Speed zone breakdowns (Walk, Jog, Run, High Speed Run, Sprint) in chart or table form
-- Team comparison charts showing player distance or speed data (e.g. "total distance a player travels")
-- Any visual or tabular per-player physical performance data from GPS/tracking systems
-- Match analysis charts with metres, km/h, or speed categories per player
-If isGpsData is true, also extract:
-- gpsFirstMatchDate: the EARLIEST match date in DD/MM/YYYY format
-- gpsLastMatchDate: the LATEST/most recent match date in DD/MM/YYYY format
-- gpsMatchTitle: short match identifier from the report header (e.g. "J15 Rio Ave", "LEON VS FOLGORE", "Vora Vs Tirana"). Use whatever game/match label appears in the title.
-
 RULES:
 - Never swap firstName and lastName
 - Never return field labels as values
 - Use null for fields you cannot read
-- If the document is none of passport, mandate, or GPS data, set all three to false`;
+- If the document is neither a passport nor a mandate, set both to false`;
 
 /** Safety settings that allow processing identity documents without triggering content filters. */
 const SAFETY_SETTINGS = [
@@ -77,6 +61,12 @@ const SAFETY_SETTINGS = [
   { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
+
+/** File-name rule for GPS reports (no AI): "gps" or "catapult" in the name. */
+function looksLikeGpsFileName(fileName: string): boolean {
+  const n = fileName.toLowerCase();
+  return n.includes('gps') || n.includes('catapult');
+}
 
 /**
  * Check if a PDF buffer is a GPS/physical performance report.
@@ -240,20 +230,16 @@ Return a JSON object with these fields:
 {
   "isPassport": boolean,
   "isMandate": boolean,
-  "isGpsData": boolean,
   "firstName": string or null,
   "lastName": string or null,
   "dateOfBirth": string or null (YYYY-MM-DD),
   "passportNumber": string or null,
   "nationality": string or null,
   "mandateExpiresAt": string or null (DD/MM/YYYY),
-  "validLeagues": string[] or [],
-  "gpsFirstMatchDate": string or null (DD/MM/YYYY),
-  "gpsLastMatchDate": string or null (DD/MM/YYYY),
-  "gpsMatchTitle": string or null
+  "validLeagues": string[] or []
 }
 
-PRIORITY: A document can only be ONE type. Check in order: passport first, then mandate, then GPS data. Only one of isPassport/isMandate/isGpsData should be true.`;
+PRIORITY: A document can only be ONE type. Check passport first, then mandate. Only one of isPassport/isMandate should be true.`;
 
   const part: { inlineData: { mimeType: string; data: string } } | { text: string } = {
     inlineData: {
@@ -363,29 +349,6 @@ PRIORITY: A document can only be ONE type. Check in order: passport first, then 
     };
   }
 
-  // GPS data detected by Gemini vision (image-based PDFs that keyword scan missed)
-  if (obj.isGpsData === true) {
-    const firstDate = typeof obj.gpsFirstMatchDate === 'string' ? obj.gpsFirstMatchDate : '';
-    const lastDate = typeof obj.gpsLastMatchDate === 'string' ? obj.gpsLastMatchDate : '';
-    const matchTitle = typeof obj.gpsMatchTitle === 'string' ? obj.gpsMatchTitle : '';
-    const safeName = playerName ? sanitizeFileName(playerName) : '';
-    const safeFirst = firstDate ? firstDate.replace(/\//g, '-') : '';
-    const safeLast = lastDate ? lastDate.replace(/\//g, '-') : '';
-    const dateRange = safeFirst && safeLast && safeFirst !== safeLast
-      ? `${safeFirst}_to_${safeLast}`
-      : safeFirst;
-    const safeTitle = matchTitle ? sanitizeFileName(matchTitle) : '';
-    const nameParts = ['GPS', safeName, safeTitle, dateRange].filter(Boolean);
-    // Use correct extension based on file type (not always PDF — could be image)
-    const extMatch = originalFileName.match(/\.([a-zA-Z0-9]+)$/);
-    const ext = extMatch ? extMatch[1].toLowerCase() : 'pdf';
-    const safeExt = ['pdf', 'png', 'jpg', 'jpeg', 'webp'].includes(ext) ? (ext === 'jpeg' ? 'jpg' : ext) : 'pdf';
-    return {
-      documentType: 'GPS_DATA',
-      suggestedName: `${nameParts.join('_')}.${safeExt}`,
-    };
-  }
-
   return {
     documentType: 'OTHER',
     suggestedName: originalFileName,
@@ -393,14 +356,6 @@ PRIORITY: A document can only be ONE type. Check in order: passport first, then 
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: 'GEMINI_API_KEY not configured' },
-      { status: 503 }
-    );
-  }
-
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
@@ -421,7 +376,7 @@ export async function POST(req: NextRequest) {
       else if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') fileName = 'document.jpg';
     }
 
-    // GPS report pre-check: fast keyword scan avoids unnecessary Gemini call
+    // GPS report check: keyword scan of the PDF text (no AI)
     const isPdf = mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
     if (isPdf) {
       const gpsResult = await detectGpsReport(buffer);
@@ -438,9 +393,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // GPS by file name (no AI): image-based GPS reports the keyword scan can't read.
+    if (looksLikeGpsFileName(fileName)) {
+      return NextResponse.json({
+        documentType: 'GPS_DATA',
+        suggestedName: fileName,
+      } satisfies DocumentDetectionResult);
+    }
+
+    // Gemini is used only for passport and mandate detection.
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'GEMINI_API_KEY not configured' },
+        { status: 503 }
+      );
+    }
+
     const base64 = buffer.toString('base64');
 
-    // Use Gemini for passport and mandate detection (supports PDF and images)
     const result = await detectWithGemini(
       apiKey,
       mimeType,

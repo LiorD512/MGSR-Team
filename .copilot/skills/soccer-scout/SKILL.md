@@ -243,7 +243,7 @@ Natural-language scouting interface — type queries like "Fast strikers under 2
 
 **Your oversight:** This is your direct line — you can query anything. Monitor Gemini API usage (free tier: 5 calls/min). Scout server cold start on Render can take 60–90s. The system supports both Hebrew and English.
 
-**Key files:** `mgsr-web/src/app/api/scout/search/route.ts`, `mgsr-web/src/lib/aiScoutGeminiFirst.ts`, `mgsr-web/src/lib/parseFreeQuery.ts`
+**Key files:** `mgsr-web/src/app/api/scout/search/route.ts`, `mgsr-web/src/lib/parseFreeQuery.ts`
 
 ---
 
@@ -312,7 +312,7 @@ TM scraping proxy (`/api/transfermarkt/player`, `/search`, `/releases`, `/contra
 
 **Android War Room** (3 tabs): Discovery, Agents, AI Scout
 
-**Reports:** Multi-agent Gemini system (stats agent + market agent + tactics agent + synthesis) generates executive scout reports per player.
+**Reports:** The AI War Room report (multi-agent Gemini) was removed in Nov 2026 — there is no per-player AI report in the War Room.
 
 **Your oversight:** The Discovery tab is your daily briefing — check it each morning. Filter by source (Agent Pick / Request Match / Hidden Gem / General). The feedback you give on the Agents tab directly shapes how each country agent evolves.
 

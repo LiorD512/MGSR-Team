@@ -1453,14 +1453,7 @@
     <string name="war_room_filter_requests">Request Match</string>
     <string name="war_room_filter_gems">Hidden Gems</string>
     <string name="war_room_tap_report">Report</string>
-    <string name="war_room_view_report">View report</string>
-    <string name="war_room_generating_report">Generating report…</string>
-    <string name="war_room_synthesis">SYNTHESIS</string>
-    <string name="war_room_stats_agent">STATS AGENT</string>
-    <string name="war_room_market_agent">MARKET AGENT</string>
-    <string name="war_room_tactics_agent">TACTICS AGENT</string>
     <string name="war_room_shortlist">Shortlist</string>
-    <string name="war_room_full_report">View Full Report →</string>
     <string name="war_room_agent_network_title">Scout Agent Network</string>
     <string name="war_room_agent_network_desc">AI agents continuously monitoring leagues and players based on your criteria.</string>
     <string name="war_room_profiles">profiles</string>
@@ -1473,18 +1466,6 @@
     <string name="war_room_all_agents">All Agents</string>
     <string name="war_room_all_positions">All Positions</string>
     <string name="war_room_no_profiles_for_position_filter">No scout profiles match the selected position filter.</string>
-    <string name="war_room_scouting_report">Scouting Report</string>
-    <string name="war_room_generating_full_report">Generating Full Report…</string>
-    <string name="war_room_agents_analyzing">AI agents are analyzing the player</string>
-    <string name="war_room_full_scouting_report">Full Scouting Report</string>
-    <string name="war_room_view_on_tm">View on Transfermarkt</string>
-    <string name="war_room_recommendation">RECOMMENDATION</string>
-    <string name="war_room_confidence">CONFIDENCE</string>
-    <string name="war_room_risks">Risks</string>
-    <string name="war_room_opportunities">Opportunities</string>
-    <string name="war_room_key_stats">Key Stats</string>
-    <string name="war_room_comparables">Comparable Players</string>
-    <string name="war_room_formations">Best Formations</string>
     <string name="war_room_match_score">Match</string>
     <!-- Agent country names (for filter chips) - Hebrew in values-he -->
     <string name="war_room_agent_portugal">Portugal</string>

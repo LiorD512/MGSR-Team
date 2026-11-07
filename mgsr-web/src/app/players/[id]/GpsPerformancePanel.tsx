@@ -73,12 +73,10 @@ function formatDist(meters: number): string {
 export default function GpsPerformancePanel({
   playerRefId,
   playerPosition = '',
-  parsingGps = false,
   isRtl = false,
 }: {
   playerRefId: string;
   playerPosition?: string;
-  parsingGps?: boolean;
   isRtl?: boolean;
 }) {
   const [matches, setMatches] = useState<GpsMatchData[]>([]);
@@ -139,9 +137,9 @@ export default function GpsPerformancePanel({
     }).catch(() => {});
   }, [loading, matches.length, storedInsights.length, playerRefId]);
 
-  if (!loading && matches.length === 0 && !parsingGps) return null;
+  if (!loading && matches.length === 0) return null;
 
-  if (loading || (parsingGps && matches.length === 0)) {
+  if (loading) {
     return (
       <section className="bp-module">
         <div className="bp-mod-head">
@@ -189,8 +187,6 @@ export default function GpsPerformancePanel({
           {totalStars > 0 ? ` · ★ ${totalStars}` : ''}
         </span>
       </div>
-
-      {parsingGps && <div className="bp-caution">{t('gps_analyzing')}</div>}
 
       {/* Metric cards */}
       <div className="bp-gps">

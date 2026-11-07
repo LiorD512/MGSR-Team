@@ -176,7 +176,7 @@ app/src/main/java/com/liordahan/mgsrteam/
 │   ├── releases/                        # ReleasesScreen + ReleasesViewModel
 │   ├── contractfinisher/                # ContractFinisherScreen + ViewModel
 │   ├── returnee/                        # ReturneeScreen + ReturneeViewModel
-│   ├── warroom/                         # WarRoomScreen + WarRoomReportScreen + ViewModel
+│   ├── warroom/                         # WarRoomScreen + ViewModel (AI report removed)
 │   ├── aiscout/                         # AiScoutScreen + AiScoutViewModel
 │   ├── chatroom/                        # ChatRoomScreen + ChatRoomViewModel
 │   ├── shadowteams/                     # ShadowTeamsScreen + ShadowTeamsViewModel
@@ -190,7 +190,7 @@ app/src/main/java/com/liordahan/mgsrteam/
 │   ├── CloudVisionOcrProvider.kt        # Google Cloud Vision OCR
 │   ├── GeminiPassportOcrProvider.kt     # Gemini AI OCR for passports
 │   ├── PdfFlattener.kt                  # PDF form flattening
-│   ├── GpsPdfParser.kt                  # GPS performance PDF parsing
+│   ├── GpsPdfParser.kt                  # GPS report keyword detection only (no AI parsing)
 │   └── AiHelperService.kt              # Scout reports, similar player discovery (hidden gem removed)
 ├── ui/                                  # Shared UI components, theme, styles
 └── util/                                # Utilities, extensions
@@ -216,7 +216,6 @@ app/src/main/java/com/liordahan/mgsrteam/
 /shadow_teams                     # Fantasy formation builder
 /ai_scout                         # AI-powered player search
 /war_room                         # Discovery candidates + scout agents
-/war_room_report/{tmUrl}/{name}   # Individual scout report
 /chat_room                        # Team messaging
 /mandate_preview                  # Mandate preview
 /generate_mandate                 # Mandate PDF generation
@@ -374,7 +373,6 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/transfer-radar` | Press Room (חדר העיתונות; formerly Transfer Radar) | **Men web only.** Same design as Roster / Contacts / Requests: masthead, KPI strip, filter tray, Feed / Ledger. Every card is a player identified on Transfermarkt (photo, position, age, club, league, value, contract) with the newest original headline. Player file (side panel, `?p=<id>`): "Is it really him?" checks, timeline, original sources (as published + English). Real Shortlist add. `/transfer-radar/players/[id]` opens the same screen with the file open (see §21) |
 | `/transfer-radar/players/[id]` | Radar player profile | Score breakdown, evidence timeline (original headline + English summary + quote + link), facts vs reported vs rumor vs AI assessment, feedback buttons |
 | `/transfer-radar/sources` | Radar Source Center | **Hidden for now** (`TRANSFER_RADAR_SOURCES_VISIBLE=false`: no menu entry, route redirects to `/transfer-radar`). Source registry health; approve / disable / remove / add (admin) || `/news` | News | Redirects to `/market-radar` |
-| `/jewish-finder` | Jewish Finder | Discover Jewish/Israeli heritage players |
 | `/p/[token]` | Shared Player | Public share page (no auth required) |
 | `/shared/requests` | Shared Requests | Public requests page (no auth required) |
 | `/sign-mandate/[token]` | Mandate Signing | Digital mandate signature page |
@@ -429,8 +427,6 @@ Separate Gradle module for HTML scraping via JSoup:
 | `scoutAgentConfig.ts` | Scout agent configuration |
 | `scoutPersona.ts` | AI scout persona definition |
 | `fetchPlayerStats.ts` | Render server player stats fetcher |
-| `aiScoutGeminiFirst.ts` | Gemini-first AI scout search (DEAD CODE — never imported) |
-| `aiQueryParser.ts` | Gemini AI query parser (DEAD CODE — removed from search route, never called) |
 | `parseFreeQuery.ts` | Free-text search query parser (868 lines, regex+keyword, Hebrew+English — primary parser for all scout searches) |
 | `translateQuery.ts` | Hebrew ↔ English query translation (MyMemory API, free) |
 | `requestMatcher.ts` | Client-side request ↔ player matching (used directly in shortlist flows and as web requests-page fallback merge with precomputed match docs) |
@@ -440,13 +436,11 @@ Separate Gradle module for HTML scraping via JSoup:
 | `clubIntel.ts` | Club intelligence (league tiers, squad analysis) |
 | `portfolioApi.ts` | Portfolio data access |
 | `shareApi.ts` | Share page token generation |
-| `generateEnrichment.ts` | AI-generated enrichment data (Gemini dossier + FM radar). Used at share-creation (web) and lazy on page load (Android fallback) |
 | `mandatePdfGenerator.ts` | Mandate PDF creation |
 | `pdfFlatten.ts` | PDF form flattening |
 | `documentDetection.ts` | Gemini-based document type detection |
 | `highlightsApi.ts` | Video highlights search |
 | `ifa.ts` | IFA (Israel Football Association) player data |
-| `jewishPlayerFinder.ts` | Jewish/Israeli heritage discovery |
 | `nationToConfederation.ts` | Country → FIFA confederation |
 | `countryTranslations.ts` | Country name EN ↔ HE |
 | `countries.ts` | Country data |
@@ -830,7 +824,7 @@ Both Android and Web support switching between Men, Women, and Youth platforms a
 | Google News | Web API route | Football news articles |
 | YouTube / Vimeo | Web API route, Android | Player highlight videos |
 | Google Cloud Vision | Android service | Passport OCR |
-| Gemini AI | Web API routes, Android service | Document detection, scout reports (find_next narrative removed, AI query parser removed, translation switched to MyMemory on both web and Android, hidden gem score removed, similar_players Gemini enrichment replaced with deterministic logic) |
+| Gemini AI | Web API routes, Android service | Passport/mandate document detection (GPS detection is keyword + file-name only; GPS parsing, War Room report and shared-link AI removed), scout reports (find_next narrative removed, AI query parser removed, translation switched to MyMemory on both web and Android, hidden gem score removed, similar_players Gemini enrichment replaced with deterministic logic) |
 
 ---
 
@@ -886,6 +880,8 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Data | Firestore (player, notes, docs, offers) + External APIs | Same |
 | Sections | Profile, notes, documents, offers, stats, highlights, GPS, FM data, mandates | Same sections |
 | Callables | `playersAddNote`, `playerDocumentsCreate`, `playersToggleMandate`, `offersCreate` | Same callables via `callables.ts` |
+
+- **GPS files (no AI, Nov 2026):** an uploaded GPS file is only tagged `GPS_DATA` and stored. Detection is a keyword scan of the PDF text (web `detectGpsReport()` in `api/documents/detect`, Android `GpsPdfParser.isGpsReport()`) plus a file-name rule (`gps` / `catapult` in the name) that replaces the old Gemini vision fallback. The file is not read or analysed: the Gemini GPS parser (`/api/documents/gps-parse`, Android `GpsPdfParser.parseFromBytes` + `processGpsDocument`, `GeminiPassportOcrProvider.classifyAsGpsFromBytes`) was removed, so no new `GpsMatchData` rows are created. Existing `GpsMatchData` / `GpsPlayerInsights` are still shown, and deleting a GPS document still cleans them up via `/api/documents/gps-recompute`. Gemini is still used for passport / mandate detection.
 
 ### Shortlist
 | Aspect | Android | Web |
@@ -950,7 +946,7 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 ### War Room (AI Discovery)
 | Aspect | Android | Web |
 |--------|---------|-----|
-| Screen | `WarRoomScreen` + `WarRoomReportScreen` | `/war-room/page.tsx` |
+| Screen | `WarRoomScreen` (the AI "View report" button, bottom sheet and `WarRoomReportScreen` were removed) | `/war-room/page.tsx` (`/api/war-room/report` removed) |
 | Data | Vercel API → Render server (recruitment + scout reports) | Direct API route calls |
 | Features | AI-discovered candidates, scout agent profiles, **separate** `AI Scout` and `Find Next` tabs inside War Room command UI (UI-only split; same underlying `AiScoutViewModel` logic), command-shell presentation layer (active stage strip + framed stage workspace), and a new operations layer (tab-aware quick-action chips for refresh/filter/open-full-scout/switch-mode) for faster inner-screen workflow | Same |
 
@@ -1024,41 +1020,33 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Screen | N/A | `/news/page.tsx` |
 | Data | N/A | Google News API + transfer rumours |
 
-### Jewish Finder
-| Aspect | Android | Web |
-|--------|---------|-----|
-| Screen | N/A | `/jewish-finder/page.tsx` |
-| Data | N/A | AI-powered discovery of Jewish/Israeli heritage players |
-
 ### Shared Player Page (Public)
 | Aspect | Detail |
 |--------|--------|
 | Route | `/p/[token]` |
 | Auth | None required |
 | Data | SharedPlayers collection (token lookup via Firebase Admin) |
-| Features | Player profile snapshot, GPS showcase, stats, AI enrichments (radar chart, key traits, tactical fit, selling points, hook line, club summary), OG image generation |
-| Enrichment parity | Both Android and Web produce identical share pages. Web pre-generates enrichment at share-creation time via `/api/share/create`. Android creates shares via `sharePlayerCreate` Cloud Function (basic data only). When `/p/[token]` loads and `enrichment` / `playerStats` are missing, `getShareData.ts` lazy-generates them using the same Gemini + scout server pipeline, then backfills to Firestore so subsequent loads are instant. |
+| Features | Player profile snapshot, GPS showcase, stats, template scout report (no AI), OG image generation. AI enrichments (radar chart, AI score, key traits, tactical fit, selling points, hook line, club summary, comparisons) were removed: no longer generated, their components and the `PortfolioEnrichment` types were deleted, and an old share doc's stored `enrichment` field is ignored |
+| Data parity | No AI anywhere in shared links. Web creates shares via `/api/share/create` (+ API-Football stats). Android's in-app share sends the Transfermarkt URL; its `sharePlayerCreate` path (basic data only) remains. When `/p/[token]` loads and `gpsData` / `playerStats` are missing, `getShareData.ts` fetches them live (non-AI) and backfills to Firestore. `/api/share/generate-scout-report` is template-only (player profile + scout-server stats / IFA stats). |
 
 #### Share Creation Paths
 
 ```
 ─── WEB PATH ───────────────────────────────────────
 Web Client → POST /api/share/create (Next.js API route)
-  ├─ generateEnrichment() → Gemini AI dossier + FM radar
   ├─ fetchPlayerStatsForShare() → Scout server API-Football stats
-  └─ Writes to SharedPlayers: player + enrichment + playerStats + gpsData
+  └─ Writes to SharedPlayers: player + scoutReport (template / edited) + playerStats + gpsData
 
 ─── ANDROID PATH ───────────────────────────────────
 Android Client → sharePlayerCreate (Cloud Function callable)
-  └─ Writes to SharedPlayers: player + gpsData (NO enrichment, NO stats)
+  └─ Writes to SharedPlayers: player + gpsData (NO stats)
 
-─── LAZY ENRICHMENT (both paths) ──────────────────
+─── LAZY FALLBACKS (both paths, no AI) ────────────
 /p/[token] page load → getShareData.ts:
   1. Read SharedPlayers doc
   2. If gpsData missing → fetch live from GpsMatchData
   3. If playerStats missing → fetch from scout server
-  4. If enrichment missing → generateEnrichment() (Gemini + FM radar)
-  5. Backfill any newly-generated data to Firestore (fire-and-forget)
+  4. Backfill any newly-fetched data to Firestore (awaited)
 ```
 
 ### Shared Requests Page (Public)
@@ -1123,7 +1111,6 @@ Server-side Flashscore search and structured team-page fixture retrieval:
 | Route | Purpose |
 |-------|---------|
 | `/api/documents/detect` | Gemini AI document type detection |
-| `/api/documents/gps-parse` | GPS performance PDF parsing |
 | `/api/documents/gps-recompute` | Recompute GPS insights |
 
 ### FM Inside Routes (`/api/fminside/`)
@@ -1161,9 +1148,8 @@ Server-side Flashscore search and structured team-page fixture retrieval:
 
 | Route | Purpose |
 |-------|---------|
-| `/api/share/create` | Create share token + snapshot + pre-generate enrichment & stats (web path) |
-| `/api/share/enrich-portfolio` | AI-enrich portfolio for sharing |
-| `/api/share/generate-scout-report` | Generate scout report for share page |
+| `/api/share/create` | Create share token + snapshot + pre-fetch stats (web path, no AI) |
+| `/api/share/generate-scout-report` | Template scout report for share page (no AI) |
 | `/api/share/image/[token]` | Dynamic OG image generation |
 | `/api/share/vcard` | Generate vCard for contact sharing |
 
@@ -1186,7 +1172,6 @@ Server-side Flashscore search and structured team-page fixture retrieval:
 | Route | Purpose |
 |-------|---------|
 | `/api/club-intel` | Club intelligence analysis |
-| `/api/jewish-finder/discover` | Jewish player heritage discovery |
 | `/api/transfers/ligat-haal-analysis` | Israeli Premier League transfer analysis |
 
 ---
@@ -1239,7 +1224,7 @@ Every write operation goes through this chain:
 | `chatRoomDelete` | ✅ | ✅ | `chatRoom.js` | Delete message |
 | `portfolioUpsert` | ✅ | ✅ | `portfolio.js` | Upsert portfolio entry |
 | `portfolioDelete` | ✅ | ✅ | `portfolio.js` | Delete portfolio entry |
-| `sharePlayerCreate` | ✅ | ✅ | `phase6Misc.js` | Create share token (Android uses this; web uses `/api/share/create` with enrichment) |
+| `sharePlayerCreate` | ✅ | ✅ | `phase6Misc.js` | Create share token (Android uses this; web uses `/api/share/create`) |
 | `shadowTeamsSave` | ✅ | ✅ | `phase6Misc.js` | Save shadow team |
 | `scoutProfileFeedbackSet` | ✅ | ✅ | `phase6Misc.js` | Submit scout feedback |
 | `birthdayWishSend` | ✅ | ✅ | `phase6Misc.js` | Send birthday wish |

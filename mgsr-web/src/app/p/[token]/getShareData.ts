@@ -2,10 +2,10 @@
  * Server-side fetch of share data for metadata (OG tags) and SSR.
  * Tries Firebase Admin first, falls back to client SDK (works with public read rules).
  * For older shares missing GPS data, fetches it live from Firestore.
- * For shares missing enrichment/stats (e.g. created from Android), generates on the fly
- * and backfills the Firestore doc so subsequent loads are instant.
+ * For shares missing stats (e.g. created from Android), fetches them on the fly
+ * and backfills the Firestore doc so subsequent loads are instant. No AI.
  */
-import type { ShareData, SharedGpsData, GpsStrength, PortfolioEnrichment, SharedPlayerStats } from './types';
+import type { ShareData, SharedGpsData, GpsStrength } from './types';
 
 export async function getShareData(token: string): Promise<ShareData | null> {
   let data: ShareData | null = null;
@@ -36,7 +36,7 @@ export async function getShareData(token: string): Promise<ShareData | null> {
     }
   }
 
-  // 3-5. Live fallbacks for missing GPS, stats, enrichment — run in PARALLEL
+  // 3-4. Live fallbacks for missing GPS and stats — run in PARALLEL
   //       with a hard 5s cap. Skip if already checked recently (24h cooldown)
   //       to avoid hitting cold external servers on every page load.
   if (data) {
@@ -46,10 +46,9 @@ export async function getShareData(token: string): Promise<ShareData | null> {
 
     const needGps = !data.gpsData && data.player?.tmProfile && !recentlyChecked(data._gpsCheckedAt);
     const needStats = !data.playerStats && data.player?.tmProfile && !recentlyChecked(data._statsCheckedAt);
-    const needEnrichment = !data.enrichment && data.player && !recentlyChecked(data._enrichmentCheckedAt);
 
-    if (needGps || needStats || needEnrichment) {
-      const enrichmentWork = Promise.allSettled([
+    if (needGps || needStats) {
+      const fallbackWork = Promise.allSettled([
         needGps
           ? fetchLiveGpsData(data.player!.tmProfile!, data.lang, data.playerId)
           : Promise.resolve(undefined),
@@ -58,32 +57,19 @@ export async function getShareData(token: string): Promise<ShareData | null> {
               m.fetchPlayerStatsForShare(data.player!.tmProfile!, data.player!.positions),
             )
           : Promise.resolve(undefined),
-        needEnrichment
-          ? import('@/lib/generateEnrichment').then(m =>
-              m.generateEnrichment(
-                data.player as Record<string, unknown>,
-                data.scoutReport,
-                data.platform,
-                data.lang,
-              ),
-            )
-          : Promise.resolve(undefined),
       ]);
 
-      // Hard cap: don't wait more than 5s for enrichment
+      // Hard cap: don't wait more than 5s for the live fallbacks
       const timeout = new Promise<'timeout'>(res => setTimeout(() => res('timeout'), 5000));
-      const result = await Promise.race([enrichmentWork, timeout]);
+      const result = await Promise.race([fallbackWork, timeout]);
 
       if (result !== 'timeout') {
-        const [gpsResult, statsResult, enrichResult] = result;
+        const [gpsResult, statsResult] = result;
         if (gpsResult.status === 'fulfilled' && gpsResult.value) {
           data.gpsData = gpsResult.value;
         }
         if (statsResult.status === 'fulfilled' && statsResult.value) {
           data.playerStats = statsResult.value;
-        }
-        if (enrichResult.status === 'fulfilled' && enrichResult.value && Object.keys(enrichResult.value).length > 0) {
-          data.enrichment = enrichResult.value;
         }
       }
 
@@ -92,12 +78,11 @@ export async function getShareData(token: string): Promise<ShareData | null> {
       const checkedMarkers: Record<string, number> = {};
       if (needGps) checkedMarkers._gpsCheckedAt = now;
       if (needStats) checkedMarkers._statsCheckedAt = now;
-      if (needEnrichment) checkedMarkers._enrichmentCheckedAt = now;
       Object.assign(data, checkedMarkers);
     }
   }
 
-  // 6. Backfill: persist enrichment/stats/gps + checked markers to Firestore.
+  // 5. Backfill: persist stats/gps + checked markers to Firestore.
   //    MUST be awaited — fire-and-forget gets killed by Vercel after response is sent.
   if (data) {
     await backfillShareDoc(token, data).catch(() => {});
@@ -201,15 +186,12 @@ async function fetchLiveGpsData(
 }
 
 /**
- * Backfill newly-generated enrichment, stats, and GPS data into the Firestore doc
+ * Backfill newly-fetched stats and GPS data into the Firestore doc
  * so subsequent page loads don't re-generate. Uses merge to avoid overwriting existing fields.
  */
 async function backfillShareDoc(token: string, data: ShareData): Promise<void> {
   const updates: Record<string, unknown> = {};
 
-  if (data.enrichment && Object.keys(data.enrichment).length > 0) {
-    updates.enrichment = data.enrichment;
-  }
   if (data.playerStats) {
     updates.playerStats = data.playerStats;
   }
@@ -219,7 +201,6 @@ async function backfillShareDoc(token: string, data: ShareData): Promise<void> {
   // Always save checked-at markers so we don't retry on cold servers
   if (data._gpsCheckedAt) updates._gpsCheckedAt = data._gpsCheckedAt;
   if (data._statsCheckedAt) updates._statsCheckedAt = data._statsCheckedAt;
-  if (data._enrichmentCheckedAt) updates._enrichmentCheckedAt = data._enrichmentCheckedAt;
 
   // Nothing to backfill
   if (Object.keys(updates).length === 0) return;

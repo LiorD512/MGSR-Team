@@ -35,16 +35,14 @@ export interface ShareData {
   highlights?: SharedHighlightVideo[];
   lang?: 'he' | 'en';
   platform?: 'men' | 'women' | 'youth';
-  enrichment?: PortfolioEnrichment;
   familyStatus?: { isMarried?: boolean; kidsCount?: number };
   englishLevel?: string;
   gpsData?: SharedGpsData;
   playerStats?: SharedPlayerStats;
-  /** Timestamps marking when enrichment was last attempted (even if no data found).
+  /** Timestamps marking when GPS / stats were last fetched (even if no data found).
    *  Prevents re-fetching from cold external servers on every page load. */
   _gpsCheckedAt?: number;
   _statsCheckedAt?: number;
-  _enrichmentCheckedAt?: number;
 }
 
 /* ── API Football Stats types ── */
@@ -94,74 +92,4 @@ export interface GpsStrength {
   description: string;
   value: string;
   benchmark?: string;
-}
-
-/* ── Portfolio Enrichment types ── */
-
-export interface PortfolioEnrichment {
-  aiScore?: AIScoutScore;
-  radarAttributes?: RadarAttribute[];
-  sellingPoints?: SellingPoint[];
-  comparisons?: ComparisonPlayer[];
-  seasonStats?: SeasonStatsData;
-  /** One-line elevator pitch for the hero section */
-  hookLine?: string;
-  hookLineHe?: string;
-  /** 4-6 bullet points: "Why Clubs Like Him" */
-  clubSummary?: string[];
-  clubSummaryHe?: string[];
-  /** 5-6 scannable key traits (short phrases) */
-  keyTraits?: string[];
-  keyTraitsHe?: string[];
-  /** Tactical fit: best formations, role, and description */
-  tacticalFit?: TacticalFit;
-}
-
-export interface AIScoutScore {
-  overall: number;
-  categories: { name: string; nameHe: string; value: number }[];
-}
-
-export interface RadarAttribute {
-  name: string;
-  nameHe: string;
-  value: number; // 0-100
-}
-
-export interface SellingPoint {
-  icon: string;
-  title: string;
-  titleHe: string;
-  description: string;
-  descriptionHe: string;
-}
-
-export interface ComparisonPlayer {
-  name: string;
-  age: number;
-  goalsAndAssists: number;
-  keyStatLabel: string;
-  keyStatLabelHe: string;
-  keyStat: string;
-  value: string;
-  isSubject?: boolean;
-}
-
-export interface SeasonStatsData {
-  season: string;
-  goals?: number;
-  assists?: number;
-  appearances?: number;
-  minutes?: number;
-  keyStatLabel?: string;
-  keyStatLabelHe?: string;
-  keyStatValue?: number;
-}
-
-export interface TacticalFit {
-  systems: string[];
-  role: string;
-  roleHe: string;
-  description: string;
-  descriptionHe: string;
 }

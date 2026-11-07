@@ -8,20 +8,14 @@ import { getPositionDisplayName } from '@/lib/appConfig';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
-import type { ShareData, PortfolioEnrichment } from './types';
+import type { ShareData } from './types';
 import {
   UrgencyBadgesStrip,
-  WhyThisPlayerPitch,
   HighlightsGrid,
   InterestHeaderCTA,
   MiniPitchPosition,
   ContractCountdown,
-  HookLine,
-  ClubSummarySection,
-  KeyTraitsGrid,
-  TacticalFitSection,
   BottomCTASection,
-  PlayerRadarChart,
 } from './PortfolioEnrichments';
 import { GpsPerformanceShowcase } from './GpsPerformanceShowcase';
 import { PlayerStatsShowcase } from './PlayerStatsShowcase';
@@ -85,9 +79,6 @@ export default function SharedPlayerContent({
   const [isEditing, setIsEditing] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [sharing, setSharing] = useState(false);
-
-  // Portfolio enrichment state
-  const [enrichment, setEnrichment] = useState<PortfolioEnrichment | null>(initialData?.enrichment ?? null);
 
   // Initialize edited report when data loads
   useEffect(() => {
@@ -201,13 +192,6 @@ export default function SharedPlayerContent({
       .catch(() => setError('Failed to load'))
       .finally(() => setLoading(false));
   }, [token, initialData]);
-
-  // Enrichment is pre-computed at share-creation time and stored in Firestore.
-  // No client-side fetch fallback — if enrichment wasn't generated, we skip those sections.
-  // This ensures the page loads instantly with no loading spinners.
-  useEffect(() => {
-    if (!enrichment && data) setEnrichment({});
-  }, [data, enrichment]);
 
   // "Show more" expandable state
   const [showMore, setShowMore] = useState(false);
@@ -476,8 +460,6 @@ export default function SharedPlayerContent({
                 </div>
               </div>
             </div>
-            {/* Hook line — 3-second pitch */}
-            <HookLine hookLine={enrichment?.hookLine} hookLineHe={enrichment?.hookLineHe} isWomen={isWomen} useHebrew={useHebrew} />
           </div>
         </div>
 
@@ -634,8 +616,6 @@ export default function SharedPlayerContent({
 
         {/* ═══ SHOW MORE — expandable section for deeper data ═══ */}
         {(() => {
-          const hasTraits = enrichment?.keyTraits && enrichment.keyTraits.length > 0;
-          const hasTactical = !!enrichment?.tacticalFit;
           const hasPositions = player.positions && player.positions.length > 0;
           const hasStats = data.playerStats && data.playerStats.stats.length > 0;
           const hasFamilyStatus = data.familyStatus && (data.familyStatus.isMarried || (data.familyStatus.kidsCount ?? 0) > 0);
@@ -650,9 +630,7 @@ export default function SharedPlayerContent({
             const daysUntil = Math.floor((expiryDate.getTime() - Date.now()) / 86400000);
             return daysUntil > 0 && daysUntil <= 180;
           })();
-          const hasRadar = enrichment?.radarAttributes && enrichment.radarAttributes.length >= 3;
-          const hasSellingPoints = !!enrichment?.sellingPoints;
-          const hasAnythingToExpand = hasRadar || hasSellingPoints || hasTraits || hasTactical || hasPositions || hasStats || hasFamilyStatus || hasContractCountdown || playerPhone || agencyPhone;
+          const hasAnythingToExpand = hasPositions || hasStats || hasFamilyStatus || hasContractCountdown || playerPhone || agencyPhone;
 
           if (!hasAnythingToExpand) return null;
           return (
@@ -688,22 +666,6 @@ export default function SharedPlayerContent({
                 className={`overflow-hidden transition-all duration-500 ease-in-out ${showMore ? 'max-h-[5000px] opacity-100 mt-6' : 'max-h-0 opacity-0 mt-0'}`}
               >
                 <div>
-                  {/* Player Radar Chart (FM data) */}
-                  {enrichment?.radarAttributes && enrichment.radarAttributes.length >= 3 && (
-                    <PlayerRadarChart attributes={enrichment.radarAttributes} isWomen={isWomen} useHebrew={useHebrew} />
-                  )}
-
-                  {/* Why This Player */}
-                  {enrichment?.sellingPoints && (
-                    <WhyThisPlayerPitch points={enrichment.sellingPoints} isWomen={isWomen} useHebrew={useHebrew} />
-                  )}
-
-                  {/* Key Traits */}
-                  <KeyTraitsGrid traits={enrichment?.keyTraits} traitsHe={enrichment?.keyTraitsHe} isWomen={isWomen} useHebrew={useHebrew} />
-
-                  {/* Tactical Fit */}
-                  <TacticalFitSection fit={enrichment?.tacticalFit} isWomen={isWomen} useHebrew={useHebrew} />
-
                   {/* Position Map */}
                   {player.positions && player.positions.length > 0 && (
                     <MiniPitchPosition positions={player.positions} isWomen={isWomen} useHebrew={useHebrew} />

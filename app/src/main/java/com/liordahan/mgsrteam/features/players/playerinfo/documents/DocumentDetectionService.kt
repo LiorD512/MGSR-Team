@@ -268,36 +268,18 @@ class DocumentDetectionService(
             }
 
             // ──────────────────────────────────────────────────────
-            // PHASE 6: GPS data detection via Gemini vision
-            // Only when neither passport nor mandate was detected.
-            // Catches image-based GPS PDFs where keyword scan fails.
-            // Matches web detect route's Gemini GPS fallback.
+            // PHASE 6: GPS by file name (no AI) — only when nothing else matched.
+            // Catches image-based GPS reports the PDF keyword scan can't read.
+            // Matches the web detect route's file-name rule.
             // ──────────────────────────────────────────────────────
-            if (finalResult.documentType == DocumentType.OTHER && geminiPassportOcr != null) {
-                try {
-                    val gpsResult = geminiPassportOcr.classifyAsGpsFromBytes(bytes, mimeType)
-                    if (gpsResult.isGpsData) {
-                        val safeFirst = gpsResult.firstMatchDate?.replace("/", "-") ?: ""
-                        val safeLast = gpsResult.lastMatchDate?.replace("/", "-") ?: ""
-                        val dateRange = if (safeFirst.isNotEmpty() && safeLast.isNotEmpty() && safeFirst != safeLast) {
-                            "${safeFirst}_to_${safeLast}"
-                        } else safeFirst
-                        val safeName = sanitizeFileName(playerName ?: "")
-                        val nameParts = listOf("GPS", safeName, dateRange).filter { it.isNotEmpty() }
-                        val ext = when (mimeType?.lowercase()) {
-                            "image/png" -> "png"
-                            "image/jpeg", "image/jpg" -> "jpg"
-                            "image/webp" -> "webp"
-                            else -> "pdf"
-                        }
-                        return@withContext DetectionResult(
-                            documentType = DocumentType.GPS_DATA,
-                            suggestedName = "${nameParts.joinToString("_")}.$ext"
-                        )
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Gemini GPS classification fallback failed", e)
-                }
+            val lowerName = originalFileName.lowercase()
+            if (finalResult.documentType == DocumentType.OTHER &&
+                (lowerName.contains("gps") || lowerName.contains("catapult"))
+            ) {
+                return@withContext DetectionResult(
+                    documentType = DocumentType.GPS_DATA,
+                    suggestedName = originalFileName
+                )
             }
 
             finalResult

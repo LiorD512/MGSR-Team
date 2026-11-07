@@ -277,7 +277,6 @@ export default function PlayerInfoPage() {
   const [noteTaggedAgentIds, setNoteTaggedAgentIds] = useState<string[]>([]);
   const [deleteConfirmNote, setDeleteConfirmNote] = useState<NoteModel | null>(null);
   const [uploadingDocument, setUploadingDocument] = useState(false);
-  const [parsingGps, setParsingGps] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [docToDelete, setDocToDelete] = useState<PlayerDocument | null>(null);
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
@@ -721,7 +720,6 @@ export default function PlayerInfoPage() {
         if (docType === 'MANDATE' && uploadedBy) data.uploadedBy = uploadedBy;
 
         // GPS uploads: don't delete existing docs — each file is a separate match report.
-        // GpsMatchData dedup (in gps-parse) handles preventing data duplicates.
 
         // Create document entry + FeedEvent via callable
         await callPlayerDocumentsCreate({
@@ -752,63 +750,7 @@ export default function PlayerInfoPage() {
           setPlayer((p) => (p ? { ...p, passportDetails } : null));
         }
 
-        // 5. Parse GPS report (show analyzing feedback)
-        // Detect API may have timed out or misclassified — also check file name/type as fallback
-        const looksLikeGps = docType === 'GPS_DATA' || (
-          docType === 'OTHER' && (
-            file.name.toLowerCase().includes('gps') ||
-            file.name.toLowerCase().includes('physical') ||
-            file.name.toLowerCase().includes('catapult') ||
-            file.name.toLowerCase().includes('match report') ||
-            file.name.toLowerCase().includes('performance')
-          )
-        );
-        console.log('[GPS upload] Detected docType:', docType, '| looksLikeGps:', looksLikeGps, '| playerName:', player.fullName, '| fileName:', file.name);
-        if (looksLikeGps) {
-          setParsingGps(true);
-          try {
-            const parseRes = await fetch('/api/documents/gps-parse', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                storageUrl: url,
-                mimeType: file.type || 'application/pdf',
-                playerName: player.fullName,
-                playerTmProfile: tmProfile,
-              }),
-            });
-            if (!parseRes.ok) {
-              const errBody = await parseRes.text();
-              console.error('[GPS parse] Server error:', parseRes.status, errBody);
-              try {
-                const errJson = JSON.parse(errBody);
-                if (errJson.availablePlayers) {
-                  setUploadError(`GPS: Player "${player.fullName}" not found. Found: ${errJson.availablePlayers.join(', ')}`);
-                } else {
-                  setUploadError(`GPS parse error: ${errJson.error || errBody}`);
-                }
-              } catch {
-                setUploadError(`GPS parse error: ${errBody}`);
-              }
-              // Keep error visible — don't auto-hide
-            } else {
-              const parseData = await parseRes.json();
-              console.log('[GPS parse] Success:', parseData);
-              const count = parseData.matchCount || 1;
-              setUploadError(`✅ GPS: ${count} match${count > 1 ? 'es' : ''} saved for ${parseData.playerName || 'player'}`);
-              setTimeout(() => setUploadError(null), 6000);
-            }
-          } catch (err) {
-            console.error('[GPS parse] Failed:', err);
-            setUploadError(`GPS parse failed: ${err instanceof Error ? err.message : 'unknown error'}`);
-            // Keep error visible — don't auto-hide
-          } finally {
-            setParsingGps(false);
-          }
-        } else if (docType === 'OTHER') {
-          // Show what was detected so user knows if GPS classification failed
-          console.warn('[GPS upload] Document classified as OTHER — GPS parse skipped. fileName:', file.name);
-        }
+        // GPS files are only tagged as GPS_DATA and stored — no AI reading / analysis.
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : 'upload_failed');
         setTimeout(() => setUploadError(null), 4000);
@@ -1824,7 +1766,6 @@ export default function PlayerInfoPage() {
       playerRefId={merged.tmProfile || player?.tmProfile || id}
       playerPosition={(merged.positions ?? player?.positions ?? [])[0] || ''}
       isRtl={isRtl}
-      parsingGps={parsingGps}
     />
   ) : null;
 

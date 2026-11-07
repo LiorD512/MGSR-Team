@@ -1003,14 +1003,13 @@ fun PlayerInfoScreen(
             // ── GPS Performance Section ───────────────────────────────
             val gpsSummary by viewModel.gpsSummaryFlow.collectAsStateWithLifecycle()
             val gpsInsights by viewModel.gpsInsightsFlow.collectAsStateWithLifecycle()
-            val isGpsLoading by viewModel.isGpsLoading.collectAsStateWithLifecycle()
-
-            if (gpsSummary != null || isGpsLoading) {
+            // GPS files are no longer AI-parsed, so there is no "analyzing" state.
+            if (gpsSummary != null) {
                 PlayerInfoSectionHeader(stringResource(R.string.gps_section_title))
                 com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPerformanceSection(
                     summary = gpsSummary,
                     insights = gpsInsights,
-                    isLoading = isGpsLoading
+                    isLoading = false
                 )
             }
 
