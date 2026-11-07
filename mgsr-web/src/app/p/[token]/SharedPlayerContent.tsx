@@ -15,7 +15,6 @@ import {
   InterestHeaderCTA,
   MiniPitchPosition,
   ContractCountdown,
-  ClubSummarySection,
   BottomCTASection,
 } from './PortfolioEnrichments';
 import { GpsPerformanceShowcase } from './GpsPerformanceShowcase';

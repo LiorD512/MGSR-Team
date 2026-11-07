@@ -90,7 +90,6 @@ export const menMoreItems = [
   // DISABLED — Vercel cost optimization (May 2026)
   // { href: '/news', labelKey: 'nav_news' },
   { href: '/war-room', labelKey: 'nav_war_room' },
-  // { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
   // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
@@ -99,8 +98,6 @@ export const menMoreItems = [
 
 export const womenMoreItems = [
   { href: '/shortlist', labelKey: 'nav_shortlist' },
-  // DISABLED — Vercel cost optimization (May 2026)
-  // { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
   // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio' },

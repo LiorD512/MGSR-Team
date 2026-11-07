@@ -217,15 +217,13 @@ function NavContent({
   );
 }
 
-const WOMEN_ALLOWED_PATHS = ['/dashboard', ...(WEB_TASKS_ENABLED ? ['/tasks'] : []), '/players', '/players/add', '/portfolio', '/shortlist', '/contacts', '/requests' /* , '/jewish-finder' — DISABLED */];
+const WOMEN_ALLOWED_PATHS = ['/dashboard', ...(WEB_TASKS_ENABLED ? ['/tasks'] : []), '/players', '/players/add', '/portfolio', '/shortlist', '/contacts', '/requests'];
 function isWomenAllowedPath(pathname: string | null): boolean {
   if (!pathname) return false;
   if (pathname === '/dashboard' || (WEB_TASKS_ENABLED && pathname === '/tasks')) return true;
   if (pathname === '/players' || pathname === '/players/add') return true;
   if (pathname === '/portfolio') return true;
   if (pathname === '/shortlist' || pathname === '/contacts' || pathname === '/requests') return true;
-  // DISABLED — Vercel cost optimization (May 2026)
-  // if (pathname === '/jewish-finder') return true;
   if (pathname.startsWith('/players/women/')) return true;
   return false;
 }

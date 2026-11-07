@@ -373,7 +373,6 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/transfer-radar` | Press Room (חדר העיתונות; formerly Transfer Radar) | **Men web only.** Same design as Roster / Contacts / Requests: masthead, KPI strip, filter tray, Feed / Ledger. Every card is a player identified on Transfermarkt (photo, position, age, club, league, value, contract) with the newest original headline. Player file (side panel, `?p=<id>`): "Is it really him?" checks, timeline, original sources (as published + English). Real Shortlist add. `/transfer-radar/players/[id]` opens the same screen with the file open (see §21) |
 | `/transfer-radar/players/[id]` | Radar player profile | Score breakdown, evidence timeline (original headline + English summary + quote + link), facts vs reported vs rumor vs AI assessment, feedback buttons |
 | `/transfer-radar/sources` | Radar Source Center | **Hidden for now** (`TRANSFER_RADAR_SOURCES_VISIBLE=false`: no menu entry, route redirects to `/transfer-radar`). Source registry health; approve / disable / remove / add (admin) || `/news` | News | Redirects to `/market-radar` |
-| `/jewish-finder` | Jewish Finder | Discover Jewish/Israeli heritage players |
 | `/p/[token]` | Shared Player | Public share page (no auth required) |
 | `/shared/requests` | Shared Requests | Public requests page (no auth required) |
 | `/sign-mandate/[token]` | Mandate Signing | Digital mandate signature page |
@@ -442,7 +441,6 @@ Separate Gradle module for HTML scraping via JSoup:
 | `documentDetection.ts` | Gemini-based document type detection |
 | `highlightsApi.ts` | Video highlights search |
 | `ifa.ts` | IFA (Israel Football Association) player data |
-| `jewishPlayerFinder.ts` | Jewish/Israeli heritage discovery |
 | `nationToConfederation.ts` | Country → FIFA confederation |
 | `countryTranslations.ts` | Country name EN ↔ HE |
 | `countries.ts` | Country data |
@@ -1022,19 +1020,13 @@ MANDATE_SIGNED, BIRTHDAY_WISH
 | Screen | N/A | `/news/page.tsx` |
 | Data | N/A | Google News API + transfer rumours |
 
-### Jewish Finder
-| Aspect | Android | Web |
-|--------|---------|-----|
-| Screen | N/A | `/jewish-finder/page.tsx` |
-| Data | N/A | AI-powered discovery of Jewish/Israeli heritage players |
-
 ### Shared Player Page (Public)
 | Aspect | Detail |
 |--------|--------|
 | Route | `/p/[token]` |
 | Auth | None required |
 | Data | SharedPlayers collection (token lookup via Firebase Admin) |
-| Features | Player profile snapshot, GPS showcase, stats, template scout report (no AI), OG image generation. AI enrichments (radar chart, key traits, tactical fit, selling points, hook line) were removed: they are no longer generated and are not rendered even if an old share doc still has an `enrichment` field |
+| Features | Player profile snapshot, GPS showcase, stats, template scout report (no AI), OG image generation. AI enrichments (radar chart, AI score, key traits, tactical fit, selling points, hook line, club summary, comparisons) were removed: no longer generated, their components and the `PortfolioEnrichment` types were deleted, and an old share doc's stored `enrichment` field is ignored |
 | Data parity | No AI anywhere in shared links. Web creates shares via `/api/share/create` (+ API-Football stats). Android's in-app share sends the Transfermarkt URL; its `sharePlayerCreate` path (basic data only) remains. When `/p/[token]` loads and `gpsData` / `playerStats` are missing, `getShareData.ts` fetches them live (non-AI) and backfills to Firestore. `/api/share/generate-scout-report` is template-only (player profile + scout-server stats / IFA stats). |
 
 #### Share Creation Paths
@@ -1180,7 +1172,6 @@ Server-side Flashscore search and structured team-page fixture retrieval:
 | Route | Purpose |
 |-------|---------|
 | `/api/club-intel` | Club intelligence analysis |
-| `/api/jewish-finder/discover` | Jewish player heritage discovery |
 | `/api/transfers/ligat-haal-analysis` | Israeli Premier League transfer analysis |
 
 ---
