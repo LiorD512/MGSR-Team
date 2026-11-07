@@ -1,12 +1,10 @@
 /**
  * POST /api/share/create
  * Creates a shareable player link. Requires Firebase Auth token in Authorization header.
- * Generates a short scout report via Gemini when GEMINI_API_KEY is set.
+ * No AI: the scout report is whatever the caller sends (template or human-edited).
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin, adminAuth, adminDb } from '@/lib/firebaseAdmin';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { generateEnrichment } from '@/lib/generateEnrichment';
 import { fetchPlayerStatsForShare } from '@/lib/fetchPlayerStats';
 
 export const dynamic = 'force-dynamic';
@@ -52,44 +50,6 @@ interface SharePayload {
   lang?: 'he' | 'en';
 }
 
-function buildPlayerContext(player: SharePayload['player']): string {
-  const parts: string[] = [];
-  if (player.fullName) parts.push(`Name: ${player.fullName}`);
-  if (player.age) parts.push(`Age: ${player.age}`);
-  if (player.positions?.length) parts.push(`Position: ${player.positions.filter(Boolean).join(', ')}`);
-  if (player.height) parts.push(`Height: ${player.height}`);
-  if (player.marketValue) parts.push(`Market value: ${player.marketValue}`);
-  if (player.currentClub?.clubName) parts.push(`Club: ${player.currentClub.clubName}`);
-  if (player.nationality) parts.push(`Nationality: ${player.nationality}`);
-  if (player.contractExpired) parts.push(`Contract: ${player.contractExpired}`);
-  return parts.join('\n');
-}
-
-async function generateShortScoutReport(player: SharePayload['player'], lang: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return '';
-  }
-  try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const playerContext = buildPlayerContext(player);
-    const outputLang = lang === 'he' || lang === 'iw' ? 'Hebrew' : 'English';
-    const prompt = `You are a professional football scout. Write a SHORT player introduction (2-3 sentences, one paragraph). Include: who the player is, where he plays, his key strengths, and any notable statistics if available. Keep it professional, direct, and factual. Do NOT mention market value, transfer fees, or league-specific fit. Do NOT use section headers. Do NOT use bold or markdown. Write in ${outputLang}.
-
-Player profile:
-${playerContext}
-
-Write only the report text, no headers or labels.`;
-    const result = await model.generateContent(prompt);
-    const text = result.response.text()?.trim();
-    return text || '';
-  } catch (e) {
-    console.error('[share] Scout report generation failed:', e);
-    return '';
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('Authorization');
@@ -116,18 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     const lang = bodyLang ?? (request.headers.get('Accept-Language')?.includes('he') ? 'he' : 'en');
-    let scoutReport = providedScoutReport;
-    if (!scoutReport?.trim()) {
-      scoutReport = await generateShortScoutReport(player, lang);
-    }
-
-    // Pre-generate enrichment so shared page loads instantly
-    let enrichment = {};
-    try {
-      enrichment = await generateEnrichment(player as Record<string, unknown>, scoutReport, platform, lang);
-    } catch (e) {
-      console.error('[share] Enrichment pre-generation failed (non-blocking):', e);
-    }
+    const scoutReport = providedScoutReport;
 
     // Pre-fetch API Football stats for share page
     let playerStats = undefined;
@@ -196,7 +145,6 @@ export async function POST(request: NextRequest) {
       highlights: highlights?.length ? highlights : null,
       lang: lang ?? null,
       platform: platform ?? null,
-      enrichment: Object.keys(enrichment).length ? enrichment : null,
       familyStatus: (body as { familyStatus?: { isMarried?: boolean; kidsCount?: number } }).familyStatus ?? null,
       englishLevel: (body as { englishLevel?: string }).englishLevel ?? null,
       gpsData: gpsData ?? null,

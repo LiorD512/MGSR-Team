@@ -27,7 +27,6 @@ data class WarRoomUiState(
     val discoveryCount: Int = 0,
     val discoveryUpdatedAt: String = "",
     val selectedSourceFilter: String = "all",         // "all", "request_match", "hidden_gem"
-    val expandedCandidateUrl: String? = null,          // Which card is expanded
     val discoveryError: String? = null,
 
     // Scout Agents tab
@@ -38,16 +37,6 @@ data class WarRoomUiState(
     val selectedAgentPositionFilter: String? = null,    // null = All positions
     val agentsError: String? = null,
     val agentRotationPage: Int = 0,                       // rotation page for 10-per-agent display
-
-    // Report (full detail)
-    val reportLoading: Boolean = false,
-    val currentReport: WarRoomReportResponse? = null,
-    val reportPlayerUrl: String? = null,
-    val reportError: String? = null,
-
-    // Expanded reports inside discovery (loaded on demand)
-    val candidateReports: Map<String, WarRoomReportResponse> = emptyMap(),
-    val loadingReportUrls: Set<String> = emptySet(),
 
     // Scout profile feedback (thumbs up/down)
     val scoutFeedback: Map<String, String> = emptyMap(),  // profileId -> "up" | "down"
@@ -67,9 +56,6 @@ abstract class IWarRoomViewModel : ViewModel() {
     abstract fun setSourceFilter(filter: String)
     abstract fun setAgentFilter(agentId: String?)
     abstract fun setAgentPositionFilter(position: String?)
-    abstract fun toggleCandidateExpanded(transfermarktUrl: String)
-    abstract fun loadReport(playerUrl: String, playerName: String?)
-    abstract fun clearReport()
     abstract fun setProfileFeedback(profileId: String, feedback: String, agentId: String)
     abstract fun rotateAgentProfiles()
 }
@@ -187,96 +173,6 @@ class WarRoomViewModel(
 
     override fun rotateAgentProfiles() {
         _uiState.update { it.copy(agentRotationPage = it.agentRotationPage + 1) }
-    }
-
-    override fun toggleCandidateExpanded(transfermarktUrl: String) {
-        val current = _uiState.value
-        val newExpanded = if (current.expandedCandidateUrl == transfermarktUrl) null else transfermarktUrl
-
-        _uiState.update { it.copy(expandedCandidateUrl = newExpanded) }
-
-        // Load report on demand if expanding and not already loaded
-        if (newExpanded != null && !current.candidateReports.containsKey(transfermarktUrl) &&
-            !current.loadingReportUrls.contains(transfermarktUrl)
-        ) {
-            val candidate = current.candidates.find { it.transfermarktUrl == transfermarktUrl }
-            loadCandidateReport(transfermarktUrl, candidate)
-        }
-    }
-
-    private fun loadCandidateReport(playerUrl: String, candidate: DiscoveryCandidate?) {
-        _uiState.update { it.copy(loadingReportUrls = it.loadingReportUrls + playerUrl) }
-
-        viewModelScope.launch {
-            val request = WarRoomReportRequest(
-                playerUrl = playerUrl,
-                playerName = candidate?.name,
-                lang = lang
-            )
-
-            apiClient.getReport(request)
-                .onSuccess { report ->
-                    // API may not return player info at top level — fill from candidate
-                    val enrichedReport = if (report.playerName.isBlank() && candidate != null) {
-                        report.copy(
-                            playerName = candidate.name,
-                            position = report.position.ifBlank { candidate.position },
-                            age = if (report.age == 0) candidate.age else report.age,
-                            marketValue = report.marketValue.ifBlank { candidate.marketValue },
-                            club = report.club.ifBlank { candidate.club },
-                            nationality = report.nationality.ifBlank { candidate.nationality }
-                        )
-                    } else report
-
-                    _uiState.update {
-                        it.copy(
-                            candidateReports = it.candidateReports + (playerUrl to enrichedReport),
-                            loadingReportUrls = it.loadingReportUrls - playerUrl
-                        )
-                    }
-                }
-                .onFailure { e ->
-                    Log.e(TAG, "Candidate report failed for $playerUrl", e)
-                    _uiState.update {
-                        it.copy(loadingReportUrls = it.loadingReportUrls - playerUrl)
-                    }
-                }
-        }
-    }
-
-    override fun loadReport(playerUrl: String, playerName: String?) {
-        _uiState.update { it.copy(reportLoading = true, reportError = null, reportPlayerUrl = playerUrl) }
-
-        viewModelScope.launch {
-            val request = WarRoomReportRequest(
-                playerUrl = playerUrl,
-                playerName = playerName,
-                lang = lang
-            )
-
-            apiClient.getReport(request)
-                .onSuccess { report ->
-                    _uiState.update {
-                        it.copy(
-                            reportLoading = false,
-                            currentReport = report
-                        )
-                    }
-                }
-                .onFailure { e ->
-                    Log.e(TAG, "Report failed", e)
-                    _uiState.update {
-                        it.copy(
-                            reportLoading = false,
-                            reportError = e.message ?: "Failed to generate report"
-                        )
-                    }
-                }
-        }
-    }
-
-    override fun clearReport() {
-        _uiState.update { it.copy(currentReport = null, reportPlayerUrl = null, reportError = null) }
     }
 
     // ── Scout Profile Feedback ───────────────────────────────────────────

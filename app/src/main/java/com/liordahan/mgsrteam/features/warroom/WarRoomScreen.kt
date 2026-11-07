@@ -54,9 +54,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -258,74 +256,6 @@ fun WarRoomScreen(
         }
     }
 
-    // Bottom sheet for report preview
-    var reportSheetCandidate by remember { mutableStateOf<DiscoveryCandidate?>(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    if (reportSheetCandidate != null) {
-        val candidate = reportSheetCandidate!!
-        val report = state.candidateReports[candidate.transfermarktUrl]
-        val isLoading = state.loadingReportUrls.contains(candidate.transfermarktUrl)
-
-        ModalBottomSheet(
-            onDismissRequest = { reportSheetCandidate = null },
-            sheetState = sheetState,
-            containerColor = WrSurface,
-            contentColor = HomeTextPrimary,
-            dragHandle = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        Modifier
-                            .padding(top = 12.dp, bottom = 4.dp)
-                            .width(40.dp)
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        WrIndigo.copy(alpha = 0.4f),
-                                        WrIndigoLight.copy(alpha = 0.6f),
-                                        WrIndigo.copy(alpha = 0.4f)
-                                    )
-                                )
-                            )
-                    )
-                    // Subtle glow line under handle
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                            .height(1.dp)
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        Color.Transparent,
-                                        WrIndigo.copy(alpha = 0.15f),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
-                    )
-                }
-            }
-        ) {
-            ReportBottomSheetContent(
-                candidate = candidate,
-                report = report,
-                isLoading = isLoading,
-                onFullReport = {
-                    reportSheetCandidate = null
-                    navController.navigate(
-                        Screens.fullReportRoute(Uri.encode(candidate.transfermarktUrl), candidate.name)
-                    ) { launchSingleTop = true }
-                }
-            )
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -417,15 +347,7 @@ fun WarRoomScreen(
                         0 -> DiscoveryTab(
                             state = state,
                             viewModel = viewModel,
-                            navController = navController,
-                            onShowReport = { candidate ->
-                                reportSheetCandidate = candidate
-                                if (!state.candidateReports.containsKey(candidate.transfermarktUrl) &&
-                                    !state.loadingReportUrls.contains(candidate.transfermarktUrl)
-                                ) {
-                                    viewModel.toggleCandidateExpanded(candidate.transfermarktUrl)
-                                }
-                            }
+                            navController = navController
                         )
                         1 -> AgentsTab(state = state, viewModel = viewModel, navController = navController)
                         2 -> AiScoutContentBody(
@@ -840,8 +762,7 @@ private fun SegmentedTabBar(selectedTab: WarRoomTab, onTabSelected: (WarRoomTab)
 private fun DiscoveryTab(
     state: WarRoomUiState,
     viewModel: IWarRoomViewModel,
-    navController: NavController,
-    onShowReport: (DiscoveryCandidate) -> Unit
+    navController: NavController
 ) {
     val context = LocalContext.current
     val shortlistRepository: ShortlistRepository = koinInject()
@@ -981,7 +902,6 @@ private fun DiscoveryTab(
                 candidate = candidate,
                 isInShortlist = isInShortlist,
                 isShortlistPending = isShortlistPending,
-                onShowReport = { onShowReport(candidate) },
                 onAddToShortlist = if (tmUrl.isNotBlank()) {
                     {
                         coroutineScope.launch {
@@ -1183,7 +1103,6 @@ private fun DiscoveryPlayerCard(
     candidate: DiscoveryCandidate,
     isInShortlist: Boolean,
     isShortlistPending: Boolean,
-    onShowReport: () -> Unit,
     onAddToShortlist: (() -> Unit)?,
     onOpenTm: () -> Unit
 ) {
@@ -1449,276 +1368,8 @@ private fun DiscoveryPlayerCard(
                     labelColor = HomeBlueAccent,
                     onClick = onOpenTm
                 )
-
-                Spacer(Modifier.weight(1f))
-
-                // Report button — prominent gradient CTA
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(WrIndigo.copy(alpha = 0.40f), WrIndigoDim.copy(alpha = 0.22f))
-                            )
-                        )
-                        .border(1.dp, WrIndigoBorder, RoundedCornerShape(14.dp))
-                        .clickable { onShowReport() }
-                        .padding(horizontal = 20.dp, vertical = 11.dp)
-                ) {
-                    Text(
-                        "🧠 ${stringResource(R.string.war_room_view_report)}",
-                        style = boldTextStyle(WrIndigoLight, 13.sp)
-                    )
-                }
             }
         }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  REPORT BOTTOM SHEET
-// ═══════════════════════════════════════════════════════════════════════════════
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ReportBottomSheetContent(
-    candidate: DiscoveryCandidate,
-    report: WarRoomReportResponse?,
-    isLoading: Boolean,
-    onFullReport: () -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 40.dp)
-    ) {
-        // Player header
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SubcomposeAsyncImage(
-                    model = getPlayerImageUrl(candidate.imageUrl, candidate.transfermarktUrl),
-                    contentDescription = candidate.name,
-                    modifier = Modifier.size(48.dp).clip(CircleShape),
-                    contentScale = ContentScale.Crop,
-                    loading = { PlayerInitials(candidate.name, 48.dp) },
-                    error = { PlayerInitials(candidate.name, 48.dp) }
-                )
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(candidate.name, style = boldTextStyle(HomeTextPrimary, 16.sp))
-                    Text(
-                        "${candidate.position} · ${candidate.age} · ${candidate.marketValue}",
-                        style = regularTextStyle(HomeTextSecondary, 12.sp)
-                    )
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-        }
-
-        if (isLoading) {
-            item {
-                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(
-                            color = WrIndigo,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            stringResource(R.string.war_room_generating_report),
-                            style = regularTextStyle(HomeTextSecondary, 13.sp)
-                        )
-                    }
-                }
-            }
-        } else if (report != null) {
-            // Recommendation
-            item {
-                ReportRecommendationBar(rec = report.recommendation, confidence = report.confidencePercent)
-                Spacer(Modifier.height(16.dp))
-            }
-
-            // Synthesis
-            item {
-                ReportSection(
-                    icon = "🧠",
-                    title = stringResource(R.string.war_room_synthesis),
-                    accentColor = WrIndigo,
-                    content = report.synthesis.summary
-                )
-                Spacer(Modifier.height(8.dp))
-            }
-
-            // Risks & Opportunities
-            if (report.synthesis.risks.isNotEmpty() || report.synthesis.opportunities.isNotEmpty()) {
-                item {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        report.synthesis.risks.forEach { risk ->
-                            TagChip("⚠ $risk", HomeRedAccent, HomeRedAccent.copy(alpha = 0.1f))
-                        }
-                        report.synthesis.opportunities.forEach { opp ->
-                            TagChip("✓ $opp", HomeGreenAccent, HomeGreenAccent.copy(alpha = 0.1f))
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                }
-            }
-
-            // Agent sections
-            item {
-                ReportSection("📊", stringResource(R.string.war_room_stats_agent), HomeTealAccent, report.stats.analysis)
-                Spacer(Modifier.height(8.dp))
-                ReportSection("💰", stringResource(R.string.war_room_market_agent), HomeOrangeAccent, report.market.analysis)
-                Spacer(Modifier.height(8.dp))
-                ReportSection("⚽", stringResource(R.string.war_room_tactics_agent), HomeBlueAccent, report.tactics.analysis)
-                Spacer(Modifier.height(16.dp))
-            }
-
-            // Full report CTA
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(WrIndigo.copy(alpha = 0.35f), WrIndigoDim.copy(alpha = 0.18f))
-                            )
-                        )
-                        .border(1.dp, WrIndigoBorder, RoundedCornerShape(16.dp))
-                        .clickable { onFullReport() }
-                        .padding(vertical = 15.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        stringResource(R.string.war_room_full_report),
-                        style = boldTextStyle(WrIndigoLight, 14.sp)
-                    )
-                }
-            }
-        } else {
-            item {
-                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        stringResource(R.string.war_room_generating_report),
-                        style = regularTextStyle(HomeTextSecondary, 13.sp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReportRecommendationBar(rec: String, confidence: Int) {
-    val (bgColor, textColor, icon) = when (rec.uppercase()) {
-        "SIGN" -> Triple(HomeGreenAccent, HomeGreenAccent, "✓")
-        "MONITOR" -> Triple(HomeOrangeAccent, HomeOrangeAccent, "👁")
-        "PASS" -> Triple(HomeRedAccent, HomeRedAccent, "✗")
-        else -> Triple(HomeTextSecondary, HomeTextSecondary, "—")
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        bgColor.copy(alpha = 0.10f),
-                        textColor.copy(alpha = 0.05f)
-                    )
-                )
-            )
-            .drawBehind {
-                drawRect(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            bgColor.copy(alpha = 0.10f),
-                            Color.Transparent
-                        ),
-                        center = Offset(0f, size.height / 2),
-                        radius = size.width * 0.5f
-                    )
-                )
-            }
-            .border(1.dp, bgColor.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(icon, style = boldTextStyle(textColor, 18.sp))
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(rec.uppercase(), style = boldTextStyle(textColor, 16.sp))
-                Text(
-                    stringResource(R.string.war_room_recommendation),
-                    style = regularTextStyle(HomeTextSecondary, 10.sp)
-                )
-            }
-        }
-
-        Column(horizontalAlignment = Alignment.End) {
-            Text("$confidence%", style = boldTextStyle(textColor, 20.sp))
-            Text(
-                stringResource(R.string.war_room_confidence),
-                style = regularTextStyle(HomeTextSecondary, 10.sp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ReportSection(icon: String, title: String, accentColor: Color, content: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(WrSurfaceElevated)
-            .drawBehind {
-                // Subtle accent glow
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.04f),
-                            Color.Transparent
-                        ),
-                        endY = size.height * 0.4f
-                    )
-                )
-            }
-            .border(1.dp, accentColor.copy(alpha = 0.10f), RoundedCornerShape(14.dp))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .drawBehind {
-                    drawLine(
-                        color = accentColor,
-                        start = Offset(0f, 0f),
-                        end = Offset(0f, size.height),
-                        strokeWidth = 4.dp.toPx()
-                    )
-                }
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(icon, style = regularTextStyle(HomeTextPrimary, 14.sp))
-            Spacer(Modifier.width(8.dp))
-            Text(title, style = boldTextStyle(accentColor, 11.sp), letterSpacing = 0.8.sp)
-        }
-        Text(
-            text = content,
-            style = regularTextStyle(HomeTextPrimary, 13.sp),
-            lineHeight = 19.sp,
-            modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-            maxLines = 4,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
 

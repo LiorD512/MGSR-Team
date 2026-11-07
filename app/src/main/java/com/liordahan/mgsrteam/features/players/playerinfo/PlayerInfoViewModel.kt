@@ -132,8 +132,6 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val gpsMatchDataFlow: StateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsMatchData>>
     abstract val gpsSummaryFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsSummary?>
     abstract val gpsInsightsFlow: StateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsInsight>>
-    abstract val isGpsLoading: StateFlow<Boolean>
-    abstract fun processGpsDocument(bytes: ByteArray, mimeType: String?, storageUrl: String, documentId: String?)
 
     // ── Agent Transfer ─────────────────────────────────────────────
     abstract val pendingTransferFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest?>
@@ -271,8 +269,6 @@ class PlayerInfoViewModel(
     private val _gpsInsightsFlow = MutableStateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsInsight>>(emptyList())
     override val gpsInsightsFlow: StateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsInsight>> = _gpsInsightsFlow
 
-    private val _isGpsLoading = MutableStateFlow(false)
-    override val isGpsLoading: StateFlow<Boolean> = _isGpsLoading
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val matchingRequestsFlow: StateFlow<List<MatchingRequestUiState>> = combine(
@@ -998,7 +994,7 @@ class PlayerInfoViewModel(
                         } catch (_: Exception) { "" }
                     }
                     if (com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.isGpsReport(pdfText)) {
-                        Log.i(TAG, "GPS report detected — uploading as GPS_DATA and parsing")
+                        Log.i(TAG, "GPS report detected — uploading as GPS_DATA (no AI parsing)")
                         // Build name: GPS_PlayerName_FirstDate_to_LastDate.pdf
                         // Supports DD/MM/YYYY and YYYY_MM_DD (K-Sport) date formats
                         val dateRegex = Regex("""\d{2}/\d{2}/\d{4}""")
@@ -1021,9 +1017,7 @@ class PlayerInfoViewModel(
                         val storageUrl = documentsRepository.uploadBytesToStorage(storageKey, gpsName, bytesToUpload)
 
                         // GPS uploads: don't delete existing docs — each file is a separate match report.
-                        // GpsMatchData dedup (in processGpsDocument) handles preventing data duplicates.
-
-                        val docResult = SharedCallables.playerDocumentsCreate(
+                        SharedCallables.playerDocumentsCreate(
                             platform = platformManager.value,
                             playerRefId = storageKey,
                             type = DocumentType.GPS_DATA.name,
@@ -1033,8 +1027,6 @@ class PlayerInfoViewModel(
                             playerImage = player.profileImage,
                             agentName = getCurrentUserName()
                         )
-                        // Parse GPS data in background (don't block upload completion)
-                        processGpsDocument(bytes, mimeType, storageUrl, docResult)
                         return@launch
                     }
                 }
@@ -1072,9 +1064,9 @@ class PlayerInfoViewModel(
                         Log.w(TAG, "Document not detected as passport (type: ${detection.documentType})")
                     }
                 }
-                // ── GPS_DATA from Gemini vision fallback ──────────────────
+                // ── GPS_DATA by file name (no AI) ─────────────────────────
                 if (detection.documentType == DocumentType.GPS_DATA) {
-                    Log.i(TAG, "GPS report detected via Gemini vision — uploading as GPS_DATA and parsing")
+                    Log.i(TAG, "GPS report detected by file name — uploading as GPS_DATA (no AI parsing)")
                     val gpsName = detection.suggestedName
                     val bytesToUpload = if (isPdf) {
                         withContext(Dispatchers.IO) { PdfFlattener.flatten(bytes) }
@@ -1082,9 +1074,7 @@ class PlayerInfoViewModel(
                     val storageUrl = documentsRepository.uploadBytesToStorage(storageKey, gpsName, bytesToUpload)
 
                     // GPS uploads: don't delete existing docs — each file is a separate match report.
-                    // GpsMatchData dedup (in processGpsDocument) handles preventing data duplicates.
-
-                    val docResult = SharedCallables.playerDocumentsCreate(
+                    SharedCallables.playerDocumentsCreate(
                         platform = platformManager.value,
                         playerRefId = storageKey,
                         type = DocumentType.GPS_DATA.name,
@@ -1094,8 +1084,6 @@ class PlayerInfoViewModel(
                         playerImage = player.profileImage,
                         agentName = getCurrentUserName()
                     )
-                    // Parse GPS data in background (don't block upload completion)
-                    processGpsDocument(bytes, mimeType, storageUrl, docResult)
                     return@launch
                 }
 
@@ -1464,142 +1452,6 @@ class PlayerInfoViewModel(
                     _gpsInsightsFlow.value = com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsAnalyzer.analyze(_gpsMatchDataFlow.value)
                 }
             }
-    }
-
-    /**
-     * Process an uploaded GPS PDF: parse with Gemini, find this player's row,
-     * and write GpsMatchData to Firestore.
-     */
-    override fun processGpsDocument(bytes: ByteArray, mimeType: String?, storageUrl: String, documentId: String?) {
-        val player = _playerInfoFlow.value ?: return
-        val playerName = player.fullName ?: return
-        val storageKey = player.tmProfile ?: _playerDocumentIdFlow.value ?: return
-
-        viewModelScope.launch {
-            _isGpsLoading.value = true
-            try {
-                val report = withContext(Dispatchers.IO) {
-                    com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.parseFromBytes(bytes, mimeType)
-                } ?: run {
-                    Log.w(TAG, "GPS parsing returned null — could not parse PDF")
-                    return@launch
-                }
-
-                // Single-player report: each row is a match, not a player — use all rows directly
-                val isSinglePlayer = report.isSinglePlayerReport
-                val allRows = if (isSinglePlayer) {
-                    Log.i(TAG, "Single-player report: ${report.players.size} matches for '$playerName'")
-                    report.players
-                } else {
-                    // Find this player's rows in the report (may be multiple for multi-match reports)
-                    val rows = com.liordahan.mgsrteam.features.players.playerinfo.gps.GpsPdfParser.findAllPlayerRows(report, playerName)
-                    if (rows.isEmpty()) {
-                        Log.w(TAG, "Player '$playerName' not found in GPS report with ${report.players.size} players")
-                        return@launch
-                    }
-                    rows
-                }
-
-                Log.i(TAG, "Found ${allRows.size} GPS match rows for '$playerName'")
-
-                val store = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US)
-
-                for (playerRow in allRows) {
-                    // Use per-row matchDate if available, else fall back to report-level
-                    val rowDateStr = playerRow.perRowMatchDate ?: report.matchDateStr
-                    val rowDateMs = if (!playerRow.perRowMatchDate.isNullOrEmpty()) {
-                        try { sdf.parse(playerRow.perRowMatchDate)?.time } catch (_: Exception) { null }
-                    } else report.matchDate
-
-                    // For single-player reports, each row's "playerName" is actually the match title
-                    val rowMatchTitle = if (isSinglePlayer) {
-                        playerRow.playerName.ifEmpty { report.matchTitle ?: "" }
-                    } else {
-                        report.matchTitle ?: ""
-                    }
-
-                    val matchData = playerRow.toGpsMatchData(
-                        playerTmProfile = storageKey,
-                        matchTitle = rowMatchTitle,
-                        matchDate = rowDateMs,
-                        matchDateStr = rowDateStr,
-                        documentId = documentId,
-                        storageUrl = storageUrl,
-                        teamAvgDist = report.teamAverageTotalDist,
-                        teamAvgMeterage = report.teamAverageMeteragePerMin,
-                        teamAvgHI = report.teamAverageHighIntensityRuns,
-                        teamAvgSprints = report.teamAverageSprints,
-                        teamAvgMaxVel = report.teamAverageMaxVelocity
-                    )
-
-                    // Check for duplicate (same player + same match date + same match title) — replace if exists
-                    val existingQuery = store.collection("GpsMatchData")
-                        .whereEqualTo("playerTmProfile", storageKey)
-                    val existing = withContext(Dispatchers.IO) {
-                        var q = existingQuery
-                        if (!rowDateStr.isNullOrEmpty()) q = q.whereEqualTo("matchDateStr", rowDateStr)
-                        if (rowMatchTitle.isNotEmpty()) q = q.whereEqualTo("matchTitle", rowMatchTitle)
-                        q.get().await()
-                    }
-
-                    // Write to Firestore
-                    val dataMap = hashMapOf<String, Any?>(
-                        "playerTmProfile" to matchData.playerTmProfile,
-                        "playerName" to if (isSinglePlayer) playerName else matchData.playerName,
-                        "matchTitle" to rowMatchTitle,
-                        "matchDate" to matchData.matchDate,
-                        "matchDateStr" to matchData.matchDateStr,
-                        "documentId" to matchData.documentId,
-                        "storageUrl" to matchData.storageUrl,
-                        "totalDuration" to matchData.totalDuration,
-                        "totalDistance" to matchData.totalDistance,
-                        "highMpEffsDist" to matchData.highMpEffsDist,
-                        "highMpEffs" to matchData.highMpEffs,
-                        "meteragePerMinute" to matchData.meteragePerMinute,
-                        "accelerations" to matchData.accelerations,
-                        "decelerations" to matchData.decelerations,
-                        "highIntensityRuns" to matchData.highIntensityRuns,
-                        "sprints" to matchData.sprints,
-                        "maxVelocity" to matchData.maxVelocity,
-                        "adEffs" to matchData.adEffs,
-                        "hiDistTotal" to matchData.hiDistTotal,
-                        "hiDistPercent" to matchData.hiDistPercent,
-                        "sprintDistTotal" to matchData.sprintDistTotal,
-                        "sprintDistPercent" to matchData.sprintDistPercent,
-                        "isStarTotalDist" to matchData.isStarTotalDist,
-                        "isStarHighMpEffsDist" to matchData.isStarHighMpEffsDist,
-                        "isStarHighMpEffs" to matchData.isStarHighMpEffs,
-                        "isStarMeteragePerMin" to matchData.isStarMeteragePerMin,
-                        "isStarAccelerations" to matchData.isStarAccelerations,
-                        "isStarHighIntensityRuns" to matchData.isStarHighIntensityRuns,
-                        "isStarSprints" to matchData.isStarSprints,
-                        "isStarMaxVelocity" to matchData.isStarMaxVelocity,
-                        "teamAverageTotalDist" to matchData.teamAverageTotalDist,
-                        "teamAverageMeteragePerMin" to matchData.teamAverageMeteragePerMin,
-                        "teamAverageHighIntensityRuns" to matchData.teamAverageHighIntensityRuns,
-                        "teamAverageSprints" to matchData.teamAverageSprints,
-                        "teamAverageMaxVelocity" to matchData.teamAverageMaxVelocity,
-                        "createdAt" to System.currentTimeMillis()
-                    )
-                    withContext(Dispatchers.IO) {
-                        if (!existing.isEmpty) {
-                            val existingId = existing.documents.first().id
-                            dataMap["updatedAt"] = System.currentTimeMillis()
-                            store.collection("GpsMatchData").document(existingId).update(dataMap as Map<String, Any>).await()
-                            Log.i(TAG, "GPS data replaced for $playerName — $rowDateStr -> $existingId")
-                        } else {
-                            store.collection("GpsMatchData").add(dataMap).await()
-                            Log.i(TAG, "GPS data saved for $playerName — $rowDateStr")
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "processGpsDocument failed", e)
-            } finally {
-                _isGpsLoading.value = false
-            }
-        }
     }
 
     override suspend fun createShareUrl(

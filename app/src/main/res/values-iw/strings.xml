@@ -1357,14 +1357,7 @@
     <string name="war_room_filter_requests">התאמת בקשות</string>
     <string name="war_room_filter_gems">יהלומים נסתרים</string>
     <string name="war_room_tap_report">דוח</string>
-    <string name="war_room_view_report">הצג דוח</string>
-    <string name="war_room_generating_report">מייצר דוח…</string>
-    <string name="war_room_synthesis">סינתזה</string>
-    <string name="war_room_stats_agent">סוכן סטטיסטי</string>
-    <string name="war_room_market_agent">סוכן שוק</string>
-    <string name="war_room_tactics_agent">סוכן טקטי</string>
     <string name="war_room_shortlist">רשימה קצרה</string>
-    <string name="war_room_full_report">צפה בדוח מלא →</string>
     <string name="war_room_agent_network_title">רשת סוכני סקאוטינג</string>
     <string name="war_room_agent_network_desc">סוכני AI מנטרים ליגות ושחקנים ברציפות על פי הקריטריונים שלך.</string>
     <string name="war_room_profiles">פרופילים</string>
@@ -1377,18 +1370,6 @@
     <string name="war_room_all_agents">כל הסוכנים</string>
     <string name="war_room_all_positions">כל העמדות</string>
     <string name="war_room_no_profiles_for_position_filter">אין פרופילי סקאוט שתואמים למסנן העמדה שנבחר.</string>
-    <string name="war_room_scouting_report">דוח סקאוטינג</string>
-    <string name="war_room_generating_full_report">מייצר דוח מלא…</string>
-    <string name="war_room_agents_analyzing">סוכני AI מנתחים את השחקן</string>
-    <string name="war_room_full_scouting_report">דוח סקאוטינג מלא</string>
-    <string name="war_room_view_on_tm">צפה ב-Transfermarkt</string>
-    <string name="war_room_recommendation">המלצה</string>
-    <string name="war_room_confidence">ביטחון</string>
-    <string name="war_room_risks">סיכונים</string>
-    <string name="war_room_opportunities">הזדמנויות</string>
-    <string name="war_room_key_stats">סטטיסטיקות מרכזיות</string>
-    <string name="war_room_comparables">שחקנים דומים</string>
-    <string name="war_room_formations">מערכים מומלצים</string>
     <string name="war_room_match_score">התאמה</string>
     <!-- Agent country names (for filter chips) -->
     <string name="war_room_agent_portugal">פורטוגל</string>

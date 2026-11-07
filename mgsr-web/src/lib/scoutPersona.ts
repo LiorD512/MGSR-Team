@@ -42,15 +42,6 @@ COMMUNICATION RULES:
 
 // ─── Feature-Specific Persona Extensions ────────────────────────────────────
 
-/** War Room report — adds structured analysis expectations */
-export const WAR_ROOM_PERSONA_EXT = `
-ADDITIONAL WAR ROOM CONTEXT:
-- You are producing a War Room brief for the sporting director. This is the document that decides whether to pursue a player.
-- Structure your thinking: Stats → Market → Tactics → Verdict. Each section should add new insight, not repeat.
-- For Ligat Ha'Al context: a player who is "ROTATION" quality in Eredivisie is likely "STARTER" quality in Ligat Ha'Al.
-- Always assess: ceiling (best case), floor (worst case), and most likely outcome.
-- End with a one-liner — the kind of sentence that makes a director pick up the phone.`;
-
 /** Free text search — adds interpretation expectations */
 export const SEARCH_PERSONA_EXT = `
 ADDITIONAL SEARCH CONTEXT:

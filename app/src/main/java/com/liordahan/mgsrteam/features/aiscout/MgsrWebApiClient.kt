@@ -3,14 +3,8 @@ package com.liordahan.mgsrteam.features.aiscout
 import android.util.Log
 import com.liordahan.mgsrteam.features.warroom.DiscoveryCandidate
 import com.liordahan.mgsrteam.features.warroom.DiscoveryResponse
-import com.liordahan.mgsrteam.features.warroom.MarketReport
 import com.liordahan.mgsrteam.features.warroom.ScoutProfile
 import com.liordahan.mgsrteam.features.warroom.ScoutProfilesResponse
-import com.liordahan.mgsrteam.features.warroom.StatsReport
-import com.liordahan.mgsrteam.features.warroom.SynthesisReport
-import com.liordahan.mgsrteam.features.warroom.TacticsReport
-import com.liordahan.mgsrteam.features.warroom.WarRoomReportRequest
-import com.liordahan.mgsrteam.features.warroom.WarRoomReportResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -225,38 +219,6 @@ class MgsrWebApiClient(
                 }
 
                 parseScoutProfilesResponse(responseBody)
-                } // end retryOnNetworkError
-            }
-        }
-
-    // ─── War Room Report ───────────────────────────────────────────────────
-
-    suspend fun getReport(request: WarRoomReportRequest): Result<WarRoomReportResponse> =
-        withContext(Dispatchers.IO) {
-            runCatching {
-                retryOnNetworkError {
-                val json = JSONObject().apply {
-                    put("player_url", request.playerUrl)
-                    request.playerName?.let { put("player_name", it) }
-                    put("lang", request.lang)
-                }
-
-                val body = json.toString().toRequestBody("application/json".toMediaType())
-                val httpRequest = Request.Builder()
-                    .url("$baseUrl/api/war-room/report")
-                    .post(body)
-                    .build()
-
-                Log.d(TAG, "Generating report for ${request.playerUrl}")
-                val response = client.newCallAsync(httpRequest)
-                val responseBody = response.body?.string()
-                    ?: throw IOException("Empty response from war-room report")
-
-                if (!response.isSuccessful) {
-                    throw IOException("Report failed: ${response.code} — $responseBody")
-                }
-
-                parseReportResponse(responseBody)
                 } // end retryOnNetworkError
             }
         }
@@ -511,63 +473,6 @@ class MgsrWebApiClient(
         )
     }
 
-    private fun parseReportResponse(json: String): WarRoomReportResponse {
-        val obj = JSONObject(json)
-
-        Log.d(TAG, "Report response keys: ${obj.keys().asSequence().toList()}")
-
-        val synthesisObj = obj.optJSONObject("synthesis") ?: JSONObject()
-        val statsObj = obj.optJSONObject("stats") ?: JSONObject()
-        val marketObj = obj.optJSONObject("market") ?: JSONObject()
-        val tacticsObj = obj.optJSONObject("tactics") ?: JSONObject()
-
-        // API returns snake_case fields and player info is NOT at top level.
-        // recommendation, confidence, oneLiner, timeline live inside synthesis.
-        return WarRoomReportResponse(
-            playerName = obj.optString("playerName", obj.optString("player_name", "")),
-            position = obj.optString("position", ""),
-            age = obj.optInt("age", 0),
-            marketValue = obj.optString("marketValue", obj.optString("market_value", "")),
-            club = obj.optString("club", ""),
-            nationality = obj.optString("nationality", ""),
-            recommendation = synthesisObj.optString("recommendation", obj.optString("recommendation", "MONITOR")),
-            confidencePercent = synthesisObj.optInt("confidence_level", synthesisObj.optInt("confidencePercent", obj.optInt("confidencePercent", 0))),
-            oneLiner = synthesisObj.optString("one_liner", synthesisObj.optString("oneLiner", obj.optString("oneLiner", ""))),
-            timeline = synthesisObj.optString("action_timeline", synthesisObj.optString("timeline", obj.optString("timeline", ""))),
-            synthesis = SynthesisReport(
-                summary = synthesisObj.optString("executive_summary", synthesisObj.optString("summary", "")),
-                risks = synthesisObj.optJSONArray("key_risks")?.toStringList()
-                    ?: synthesisObj.optJSONArray("risks")?.toStringList() ?: emptyList(),
-                opportunities = synthesisObj.optJSONArray("key_opportunities")?.toStringList()
-                    ?: synthesisObj.optJSONArray("opportunities")?.toStringList() ?: emptyList()
-            ),
-            stats = StatsReport(
-                analysis = statsObj.optString("summary", statsObj.optString("analysis", "")),
-                strengths = statsObj.optJSONArray("strengths")?.toStringList() ?: emptyList(),
-                weaknesses = statsObj.optJSONArray("weaknesses")?.toStringList() ?: emptyList(),
-                keyMetrics = statsObj.optJSONArray("key_metrics")?.toStringList()
-                    ?: statsObj.optJSONArray("keyMetrics")?.toStringList() ?: emptyList()
-            ),
-            market = MarketReport(
-                analysis = marketObj.optString("summary", marketObj.optString("analysis", "")),
-                marketPosition = marketObj.optString("market_position", marketObj.optString("marketPosition", "")),
-                currentValue = marketObj.optString("current_value", marketObj.optString("currentValue", "")),
-                comparableRange = marketObj.optString("comparable_range", marketObj.optString("comparableRange", "")),
-                contractLeverage = marketObj.optString("contract_leverage", marketObj.optString("contractLeverage", "")),
-                suggestedBid = marketObj.optString("suggested_bid", marketObj.optString("suggestedBid", ""))
-            ),
-            tactics = TacticsReport(
-                analysis = tacticsObj.optString("summary", tacticsObj.optString("analysis", "")),
-                bestRole = tacticsObj.optString("best_role", tacticsObj.optString("bestRole", "")),
-                bestSystem = tacticsObj.optString("best_system", tacticsObj.optString("bestSystem", "")),
-                leagueFit = tacticsObj.optString("ligat_haal_fit", tacticsObj.optString("league_fit", tacticsObj.optString("leagueFit", ""))),
-                comparison = tacticsObj.optString("comparison_player", tacticsObj.optString("comparison", "")),
-                bestClubFit = tacticsObj.optJSONArray("club_fit")?.toStringList()
-                    ?: tacticsObj.optJSONArray("bestClubFit")?.toStringList() ?: emptyList()
-            )
-        )
-    }
-
     // ─── Extension helpers ─────────────────────────────────────────────────
 
     /** hiddenGemReason can be a string OR {he, en} object */
@@ -591,14 +496,6 @@ class MgsrWebApiClient(
 
     private fun JSONObject.optDoubleOrNull(key: String): Double? =
         if (has(key) && !isNull(key)) optDouble(key).takeIf { !it.isNaN() } else null
-
-    private fun JSONArray.toStringList(): List<String> {
-        val list = mutableListOf<String>()
-        for (i in 0 until length()) {
-            list.add(optString(i, ""))
-        }
-        return list
-    }
 
     private suspend fun OkHttpClient.newCallAsync(request: Request): Response =
         suspendCancellableCoroutine { cont ->

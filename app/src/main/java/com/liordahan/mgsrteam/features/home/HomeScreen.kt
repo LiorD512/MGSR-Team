@@ -48,7 +48,6 @@ import com.liordahan.mgsrteam.features.chatroom.ChatRoomScreen
 import com.liordahan.mgsrteam.features.shadowteams.ShadowTeamsScreen
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
 import com.liordahan.mgsrteam.features.warroom.WarRoomScreen
-import com.liordahan.mgsrteam.features.warroom.WarRoomReportScreen
 import com.liordahan.mgsrteam.BuildConfig
 import com.liordahan.mgsrteam.navigation.NavigationTransitions
 import com.liordahan.mgsrteam.navigation.Screens
@@ -403,22 +402,6 @@ fun HomeScreen(
                 route = Screens.WarRoomScreen.route
             ) {
                 WarRoomScreen(navController = navController)
-            }
-
-            composable(
-                route = Screens.WarRoomReportScreen.route,
-                arguments = listOf(
-                    navArgument("tmUrl") { type = NavType.StringType },
-                    navArgument("playerName") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val tmUrl = Uri.decode(backStackEntry.arguments?.getString("tmUrl") ?: "")
-                val playerName = backStackEntry.arguments?.getString("playerName") ?: ""
-                WarRoomReportScreen(
-                    transfermarktUrl = tmUrl,
-                    playerName = playerName,
-                    navController = navController
-                )
             }
 
             composable(
