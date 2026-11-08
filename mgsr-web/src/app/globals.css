@@ -4740,6 +4740,14 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   .brit-room .brit-add-drawer{width:100vw;border-inline-start:0;border-top:4px solid var(--gold)}
 }
 
+/* Mobile: the sticky top bar (.brit-rail, z-index 60) was painting over the
+   header of every drawer (z-index 56), cutting it off. Lift scrim + drawers
+   above the bar so they fit the full screen. */
+@media(max-width:900px){
+  .brit-room .brit-scrim{z-index:70}
+  .brit-room .brit-drawer{z-index:71}
+}
+
 /* ═══════════════════════════════════════════════════════
    MEN ADD CLUB REQUEST DRAWER — extends .brit-room
    Reuses .brit-drawer/.brit-scrim + .brit-add-* head/progress/accordion.
