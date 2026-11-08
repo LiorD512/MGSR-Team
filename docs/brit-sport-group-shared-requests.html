@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BRIT Sport Group — Shared Recruitment Brief (Light Management Room)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+      --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--blue:#4a5a6f;--muted:#77736a;
+      --line:rgba(22,22,19,.16);--line-strong:rgba(22,22,19,.5);--dark-line:rgba(243,240,232,.2);
+      --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+    }
+    *{box-sizing:border-box}
+    html{background:var(--paper);scroll-behavior:smooth}
+    body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+    body:before{content:'';position:fixed;inset:0;z-index:90;pointer-events:none;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent}
+    img{display:block;max-width:100%}
+    ::selection{background:var(--gold-soft);color:var(--ink)}
+
+    /* ── Top bar ── */
+    .topbar{background:var(--black);color:var(--paper)}
+    .topbar-in{max-width:1180px;margin:0 auto;height:68px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .lockup{display:flex;align-items:center;gap:12px}
+    .lockup img{width:38px;height:38px;border-radius:50%}
+    .lockup strong{display:block;font:600 14px/1 var(--display);letter-spacing:.1em}
+    .lockup small{display:block;margin-top:5px;color:#aaa59b;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .secure{display:flex;align-items:center;gap:8px;color:#aaa69c;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .secure svg{width:13px;height:13px;stroke:var(--gold-soft)}
+
+    .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+
+    /* ── Masthead ── */
+    .masthead{padding:46px 0 34px}
+    .kicker{margin:0 0 16px;color:var(--gold);font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .masthead h1{margin:0;font:500 clamp(46px,7vw,92px)/.84 var(--display);letter-spacing:-.04em;text-transform:uppercase}
+    .masthead h1 span{color:var(--gold)}
+    .lede{max-width:560px;margin:20px 0 0;color:var(--muted);font:500 14px/1.6 var(--body)}
+
+    /* ── Signals ── */
+    .signals{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line)}
+    .sig{padding:16px 18px 18px 0;border-inline-end:1px solid var(--line)}
+    .sig:not(:first-child){padding-inline-start:18px}
+    .sig:last-child{border-inline-end:0}
+    .sig label{display:block;color:var(--muted);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .sig strong{display:block;margin-top:12px;font:500 clamp(28px,3.4vw,40px)/.8 var(--display)}
+    .sig small{display:block;margin-top:9px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+
+    /* ── Filter bar ── */
+    .filters{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--line);margin-top:34px}
+    .filters-in{max-width:1180px;margin:0 auto;padding:0 32px}
+    .frow{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+    .frow:last-child{border-bottom:0}
+    .flabel{display:flex;align-items:center;flex:none;width:92px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .chips{display:flex;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+    .chips::-webkit-scrollbar{display:none}
+    .chips button{flex:none;display:flex;align-items:center;gap:7px;padding:14px 14px;color:var(--muted);font:10px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+    .chips button:hover{color:var(--ink)}
+    .chips button i{font-style:normal;color:rgba(22,22,19,.38);font-size:9px}
+    .chips button.on{color:var(--ink);border-bottom-color:var(--gold)}
+    .chips button.on i{color:var(--gold)}
+    .fbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+    .fbar b{color:var(--ink);font-weight:500}
+    .fbar .links{display:flex;gap:16px}
+    .fbar .links button{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .fbar .links button:hover{color:var(--ink)}
+
+    /* ── Position sections ── */
+    .sections{padding:10px 0 80px}
+    .psec{border-top:2px solid var(--black);margin-top:34px}
+    .psec:first-child{margin-top:20px}
+    .phead{width:100%;display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:20px;padding:20px 0 18px;text-align:start}
+    .pcode{min-width:74px;font:500 clamp(40px,5vw,60px)/.8 var(--display);letter-spacing:-.03em;color:var(--gold)}
+    .pname strong{display:block;font:500 clamp(18px,2vw,24px)/1 var(--display);text-transform:uppercase;letter-spacing:.01em}
+    .pname small{display:block;margin-top:7px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .pcount{font:500 11px/1 var(--mono);text-transform:uppercase;color:var(--ink);padding:7px 10px;border:1px solid var(--line-strong)}
+    .caret{width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);color:var(--muted);transition:transform .2s,color .15s,border-color .15s}
+    .phead:hover .caret{color:var(--gold);border-color:var(--gold-soft)}
+    .psec.closed .caret{transform:rotate(-90deg)}
+    .pbody{padding-bottom:6px}
+    .psec.closed .pbody{display:none}
+
+    .cgroup{margin-bottom:26px}
+    .chead{display:flex;align-items:center;gap:10px;margin-bottom:12px;color:var(--ink);font:500 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .chead .flag{font-size:17px;line-height:1}
+    .chead .ln{flex:1;height:1px;background:var(--line)}
+    .chead em{font-style:normal;color:var(--muted)}
+
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+    .card{background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;transition:border-color .15s,transform .15s}
+    .card:hover{border-color:var(--gold-soft);transform:translateY(-1px)}
+    .card-top{display:flex;align-items:center;gap:12px;padding:15px 16px 14px}
+    .badge{width:40px;height:40px;flex:none;display:grid;place-items:center;background:#fff;border:1px solid var(--line);color:var(--muted);font:600 12px/1 var(--display);letter-spacing:.04em}
+    .badge.lock{background:var(--paper-2)}
+    .badge svg{width:16px;height:16px;stroke:var(--muted)}
+    .cname{min-width:0;flex:1}
+    .cname strong{display:block;font:700 14px/1.2 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cname small{display:block;margin-top:4px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+    .cname.conf strong{font-weight:600;font-style:italic;color:var(--muted)}
+    .tag{flex:none;font:8px/1 var(--mono);text-transform:uppercase;padding:5px 7px;border:1px solid var(--gold-soft);color:var(--gold);letter-spacing:.06em}
+    .facts{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
+    .fact{padding:11px 14px 12px;border-inline-end:1px solid var(--line);min-width:0}
+    .fact:last-child{border-inline-end:0}
+    .fact label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .fact b{display:block;margin-top:8px;font:500 15px/1 var(--display);letter-spacing:.01em;white-space:nowrap}
+    .fact b.na{color:rgba(22,22,19,.28)}
+    .note{margin:0;padding:12px 16px 14px;border-top:1px solid var(--line);border-inline-start:3px solid var(--gold-soft);color:var(--muted);font:500 12px/1.55 var(--body);font-style:italic}
+
+    .empty{padding:80px 0;text-align:center;color:var(--muted);font:10px/1.8 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .empty b{display:block;margin-bottom:6px;color:var(--ink);font:500 22px/1 var(--display);letter-spacing:0}
+
+    /* ── Footer ── */
+    footer{background:var(--black);color:#aaa69c}
+    .foot-in{max-width:1180px;margin:0 auto;padding:28px 32px;display:flex;justify-content:space-between;align-items:center;gap:20px;font:9px/1.7 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .foot-in strong{display:block;color:var(--paper);font:600 13px/1 var(--display);letter-spacing:.1em;margin-bottom:6px}
+
+    /* ── Mock-only preview control ── */
+    .mockbar{position:fixed;inset-inline:0;bottom:0;z-index:100;display:flex;justify-content:center;pointer-events:none}
+    .mockbar div{pointer-events:auto;display:flex;align-items:center;gap:14px;margin:0 12px 12px;padding:9px 12px 9px 16px;background:var(--black);color:var(--paper);border:1px solid var(--dark-line);box-shadow:0 8px 30px rgba(0,0,0,.28);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+    .mockbar .seg{display:flex;border:1px solid var(--dark-line)}
+    .mockbar .seg button{padding:8px 11px;color:#aaa69c;font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+    .mockbar .seg button.on{background:var(--gold-soft);color:var(--ink)}
+
+    @media(max-width:900px){
+      .topbar-in,.wrap,.filters-in,.foot-in{padding-inline:18px}
+      .topbar-in{height:60px}
+      .secure span{display:none}
+      .masthead{padding:32px 0 26px}
+      .signals{grid-template-columns:1fr 1fr}
+      .sig:nth-child(2){border-inline-end:0}
+      .sig:nth-child(3){padding-inline-start:0;border-top:1px solid var(--line)}
+      .sig:nth-child(4){border-top:1px solid var(--line)}
+      .flabel{width:68px}
+      .phead{grid-template-columns:auto 1fr auto;gap:14px}
+      .pcount{display:none}
+      .pcode{min-width:56px}
+      .cards{grid-template-columns:1fr}
+      .foot-in{flex-direction:column;align-items:flex-start}
+      .fbar .links{display:none}
+    }
+    @media(max-width:420px){
+      .fact{padding:10px 10px 11px}
+      .fact b{font-size:13px}
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-in">
+      <div class="lockup">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MjUgNTI1IiB3aWR0aD0iNTI1IiBoZWlnaHQ9IjUyNSIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJCUklUIFNwb3J0IEdyb3VwIGxvZ28iPgogIDxjaXJjbGUgY3g9IjI2Mi41IiBjeT0iMjYyLjUiIHI9IjI2Mi41IiBmaWxsPSIjRkZGRkZGIi8+CiAgPHBhdGggZD0iTTMwMS41MywxMzEuNUgxMzkuNzNDMTM4LjUsMTMxLjUgMTM3LjUsMTMyLjUgMTM3LjUsMTMzLjczVjE1NC45N0MxMzcuNSwxNTYuMiAxMzguNDMsMTU3LjIgMTM5LjY2LDE1Ny4yQzE1OC42OSwxNTcuMjIgMjk2Ljg2LDE1Ny4zOSAzMDEuNTMsMTU3LjM5QzMwNi41NSwxNTcuMzkgMzM5LjA4LDE1OC4zIDM0OS43OSwxODguODZDMzYwLjMsMjI2Ljg4IDMzNC4xMSwyNDUuODggMzE3LjgxLDI1NC44M0MzMTUuMSwyNTYuMzIgMzE0Ljk2LDI2MC4xOSAzMTcuNTgsMjYxLjgxQzM0MS4wOCwyNzYuMyAzNTkuNjgsMjkxLjExIDM2MC43MiwzMTcuMzhDMzU5LjA0LDM2My4zIDMyMC44NiwzNjguNzUgMjg4LjA1LDM2Ny40M0MyODYuODYsMzY3LjM4IDI4NS45MywzNjYuNDIgMjg1LjkzLDM2NS4yM0MyODUuOTQsMzI4LjA4IDI4Ni4xMiwyNTUuODIgMjg2LjEyLDI0Ny40M0MyODUuMzcsMjA5LjQ2IDI1Ny4xOCwxOTYuMzggMjQyLjY3LDE5Ni42NkwxMzkuNzQsMTk2LjIzQzEzOC41MSwxOTYuMjIgMTM3LjUsMTk3LjIyIDEzNy41LDE5OC40NlYyMTkuNjlDMTM3LjUsMjIwLjkyIDEzOC41LDIyMS45MiAxMzkuNzMsMjIxLjkySDE1NC44MkMxNTYuMDUsMjIxLjkyIDE1Ny4wNSwyMjIuOTIgMTU3LjA1LDIyNC4xNVYzMzIuNjFDMTU3LjA1LDMzMy44NCAxNTYuMDUsMzM0Ljg0IDE1NC44MiwzMzQuODRIMTM5LjczQzEzOC41LDMzNC44NCAxMzcuNSwzMzUuODQgMTM3LjUsMzM3LjA3VjM1OC40OUMxMzcuNSwzNTkuNzIgMTM4LjUsMzYwLjcyIDEzOS43MywzNjAuNzJIMTgwLjM2QzE4MS41OSwzNjAuNzIgMTgyLjU5LDM1OS43MiAxODIuNTksMzU4LjQ5VjIyNC4xNUMxODIuNTksMjIyLjkyIDE4My41OSwyMjEuOTIgMTg0LjgyLDIyMS45MkgyMzcuODRDMjQ2Ljg1LDIyMS43MiAyNTkuMjUsMjMxLjc1IDI1OS4yNSwyNDMuODVWMzkwLjY1QzI1OS4yNSwzOTEuODggMjYwLjIzLDM5Mi44IDI2MS40NiwzOTIuODJDMjc5LjIyLDM5My4xNiAzMjUuNSwzOTYuNzUgMzQ5LjUzLDM4My4yM0MzODAuMiwzNjUuOTkgMzg4LjIsMzQyLjU5IDM4Ny40NSwzMTUuNThDMzg2LjczLDI4OS43MyAzNzIuMDgsMjc0LjE3IDM1My45MywyNjAuMjJDMzUyLjczLDI1OS4yOSAzNTIuNzUsMjU3LjQ1IDM1My45NSwyNTYuNTFDMzczLjcxLDI0MC45OCAzODguOTYsMjA2LjMzIDM3MC43MSwxNjguODFDMzU0LjU0LDEzOC4xOCAzMjEuMzQsMTMxLjUgMzAxLjUzLDEzMS41WiIgZmlsbD0idXJsKCNnb2xkR3JhZGllbnQpIi8+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdvbGRHcmFkaWVudCIgeDE9IjMzNi41MiIgeTE9IjEzMS41IiB4Mj0iMjA4LjgyIiB5Mj0iMzkzLjMyIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI0U1Q0JBNSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM5MTZFNDYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPgo8L3N2Zz4K" alt="BRIT Sport Group">
+        <div><strong>BRIT SPORT GROUP</strong><small>Recruitment brief</small></div>
+      </div>
+      <div class="secure">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>Private link · shared by your agent</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="masthead">
+      <p class="kicker" id="kicker">Men's Football / November 2026</p>
+      <h1>Open <span>requests.</span></h1>
+      <p class="lede">Clubs we are actively recruiting for right now. Browse by position or country — each card shows exactly what the club is looking for.</p>
+    </section>
+
+    <section class="signals">
+      <div class="sig"><label>Open requests</label><strong id="s-req">0</strong><small>Currently live</small></div>
+      <div class="sig"><label>Positions</label><strong id="s-pos">0</strong><small>Being recruited</small></div>
+      <div class="sig"><label>Markets</label><strong id="s-mkt">0</strong><small>Countries</small></div>
+      <div class="sig"><label>EU passport</label><strong id="s-eu">0</strong><small>Requests that need one</small></div>
+    </section>
+  </main>
+
+  <div class="filters">
+    <div class="filters-in">
+      <div class="frow"><span class="flabel">Position</span><div class="chips" id="f-pos"></div></div>
+      <div class="frow"><span class="flabel">Country</span><div class="chips" id="f-cty"></div></div>
+      <div class="fbar">
+        <span id="count"></span>
+        <span class="links"><button id="expand">Expand all</button><button id="collapse">Collapse all</button></span>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap"><div class="sections" id="sections"></div></main>
+
+  <footer>
+    <div class="foot-in">
+      <div><strong>BRIT SPORT GROUP</strong>Interested in a request? Reply to the agent who sent you this link.</div>
+      <div>Updated live · Confidential — not for redistribution</div>
+    </div>
+  </footer>
+
+  <div class="mockbar"><div>
+    <span>Mock preview · club names</span>
+    <span class="seg"><button class="on" data-clubs="1">Shown</button><button data-clubs="0">Confidential</button></span>
+  </div></div>
+
+  <script>
+    const POS={GK:['Goalkeeper','Goalkeeper'],CB:['Centre-Back','Defence'],RB:['Right-Back','Defence'],LB:['Left-Back','Defence'],
+      DM:['Defensive Midfielder','Midfield'],CM:['Central Midfielder','Midfield'],AM:['Attacking Midfielder','Midfield'],
+      LW:['Left Winger','Attack'],RW:['Right Winger','Attack'],CF:['Centre-Forward','Attack'],SS:['Second Striker','Attack']};
+    const ORDER=Object.keys(POS);
+    const FLAG={Israel:'🇮🇱','Saudi Arabia':'🇸🇦',Netherlands:'🇳🇱',UAE:'🇦🇪',Belgium:'🇧🇪',Greece:'🇬🇷',Cyprus:'🇨🇾'};
+
+    const R=[
+      {club:'Hapoel Beer Sheva',c:'Israel',p:'CF',min:22,max:28,sal:'40-60',fee:'700-900',foot:'any',eu:false,note:'Strong in the air, pressing forward. Ready to start immediately.'},
+      {club:'Maccabi Haifa',c:'Israel',p:'CF',min:20,max:30,sal:'30-50',fee:'300-600',foot:'right',eu:false},
+      {club:'Hapoel Tel Aviv',c:'Israel',p:'CB',any:true,sal:'20-25',fee:'<200',foot:'left',eu:false,note:'Left-footed centre-back with leadership qualities.'},
+      {club:'FC Utrecht',c:'Netherlands',p:'LB',min:20,max:26,sal:'30-50',fee:'300-600',foot:'left',eu:true},
+      {club:'AZ Alkmaar',c:'Netherlands',p:'CM',min:21,max:27,sal:'16-20',fee:'700-900',foot:'any',eu:true,note:'Box-to-box profile, comfortable in a 4-3-3.'},
+      {club:'Al Ain FC',c:'UAE',p:'RW',any:true,sal:'30+',fee:'1m+',foot:'any',eu:false,note:'Looking for a proven winger with Champions League experience.'},
+      {club:'Shabab Al Ahli',c:'UAE',p:'CF',min:24,max:31,sal:'30+',fee:'1m+',foot:'any',eu:false},
+      {club:'Al Nassr',c:'Saudi Arabia',p:'DM',min:24,max:30,sal:'30+',fee:'1m+',foot:'right',eu:false},
+      {club:'Al Hilal',c:'Saudi Arabia',p:'GK',min:25,max:33,sal:'30+',fee:'Free/Free loan',foot:'any',eu:false,note:'Experienced goalkeeper, comfortable with the ball at his feet.'},
+      {club:'Royale Union SG',c:'Belgium',p:'CB',min:21,max:27,sal:'16-20',fee:'700-900',foot:'right',eu:true},
+      {club:'Club Brugge',c:'Belgium',p:'RB',min:19,max:25,sal:'11-15',fee:'300-600',foot:'any',eu:true},
+      {club:'Olympiacos',c:'Greece',p:'AM',min:22,max:29,sal:'20-25',fee:'700-900',foot:'any',eu:true},
+      {club:'PAOK',c:'Greece',p:'LW',min:20,max:27,sal:'16-20',fee:'300-600',foot:'right',eu:true,note:'Pace and 1v1 ability are the priority.'},
+      {club:'Apollon Limassol',c:'Cyprus',p:'CM',min:22,max:30,sal:'6-10',fee:'Free/Free loan',foot:'any',eu:false}
+    ];
+
+    const fmtSal=s=>({'>5':'< €5K','6-10':'€6–10K','11-15':'€11–15K','16-20':'€16–20K','20-25':'€20–25K','26-30':'€26–30K','30+':'€30K+'}[s]||s);
+    const fmtFee=f=>({'Free/Free loan':'Free / Loan','<200':'< €200K','300-600':'€300–600K','700-900':'€700–900K','1m+':'€1M+'}[f]||f);
+    const fmtAge=r=>r.any?'Any':(r.min&&r.max?`${r.min}–${r.max}`:null);
+    const fmtFoot=f=>f==='left'?'Left':f==='right'?'Right':null;
+
+    const state={pos:'all',cty:'all',clubs:true,closed:new Set()};
+    const $=id=>document.getElementById(id);
+    const lock='<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+
+    const countBy=(arr,k)=>arr.reduce((m,r)=>(m[r[k]]=(m[r[k]]||0)+1,m),{});
+
+    function fact(label,val){return `<div class="fact"><label>${label}</label><b class="${val?'':'na'}">${val||'—'}</b></div>`}
+
+    function card(r){
+      const ini=r.club.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      const top=state.clubs
+        ? `<div class="badge">${ini}</div><div class="cname"><strong>${r.club}</strong><small>${r.c}</small></div>`
+        : `<div class="badge lock">${lock}</div><div class="cname conf"><strong>Confidential club</strong><small>${r.c}</small></div>`;
+      return `<article class="card">
+        <div class="card-top">${top}${r.eu?'<span class="tag">EU passport</span>':''}</div>
+        <div class="facts">${fact('Age',fmtAge(r))}${fact('Salary',r.sal&&fmtSal(r.sal))}${fact('Fee',r.fee&&fmtFee(r.fee))}${fact('Foot',fmtFoot(r.foot))}</div>
+        ${r.note?`<p class="note">${r.note}</p>`:''}
+      </article>`;
+    }
+
+    function render(){
+      // Signals (always global)
+      $('s-req').textContent=R.length;
+      $('s-pos').textContent=new Set(R.map(r=>r.p)).size;
+      $('s-mkt').textContent=new Set(R.map(r=>r.c)).size;
+      $('s-eu').textContent=R.filter(r=>r.eu).length;
+
+      // Position chips (counts respect country filter) & country chips (respect position filter)
+      const byCty=state.cty==='all'?R:R.filter(r=>r.c===state.cty);
+      const byPos=state.pos==='all'?R:R.filter(r=>r.p===state.pos);
+      const pc=countBy(byCty,'p'), cc=countBy(byPos,'c');
+      $('f-pos').innerHTML=`<button class="${state.pos==='all'?'on':''}" data-pos="all">All <i>${byCty.length}</i></button>`+
+        ORDER.filter(p=>R.some(r=>r.p===p)).map(p=>`<button class="${state.pos===p?'on':''}" data-pos="${p}">${p} <i>${pc[p]||0}</i></button>`).join('');
+      const ctys=[...new Set(R.map(r=>r.c))].sort();
+      $('f-cty').innerHTML=`<button class="${state.cty==='all'?'on':''}" data-cty="all">All <i>${byPos.length}</i></button>`+
+        ctys.map(c=>`<button class="${state.cty===c?'on':''}" data-cty="${c}">${FLAG[c]||''} ${c} <i>${cc[c]||0}</i></button>`).join('');
+
+      const list=R.filter(r=>(state.pos==='all'||r.p===state.pos)&&(state.cty==='all'||r.c===state.cty));
+      $('count').innerHTML=`Showing <b>${list.length}</b> of ${R.length} requests`;
+
+      if(!list.length){$('sections').innerHTML='<div class="empty"><b>No requests match</b>Try a different position or country</div>';return}
+
+      const positions=ORDER.filter(p=>list.some(r=>r.p===p));
+      $('sections').innerHTML=positions.map(p=>{
+        const rs=list.filter(r=>r.p===p);
+        const groups=[...new Set(rs.map(r=>r.c))].sort();
+        const closed=state.closed.has(p);
+        return `<section class="psec${closed?' closed':''}" data-p="${p}">
+          <button class="phead" data-toggle="${p}" aria-expanded="${!closed}">
+            <span class="pcode">${p}</span>
+            <span class="pname"><strong>${POS[p][0]}</strong><small>${POS[p][1]} · ${groups.length} ${groups.length===1?'market':'markets'}</small></span>
+            <span class="pcount">${rs.length} ${rs.length===1?'request':'requests'}</span>
+            <span class="caret"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+          </button>
+          <div class="pbody">${groups.map(c=>{
+            const g=rs.filter(r=>r.c===c);
+            return `<div class="cgroup"><div class="chead"><span class="flag">${FLAG[c]||''}</span>${c}<span class="ln"></span><em>${g.length}</em></div><div class="cards">${g.map(card).join('')}</div></div>`;
+          }).join('')}</div>
+        </section>`;
+      }).join('');
+    }
+
+    document.addEventListener('click',e=>{
+      const t=e.target.closest('button');if(!t)return;
+      if(t.dataset.pos){state.pos=t.dataset.pos;render()}
+      else if(t.dataset.cty){state.cty=t.dataset.cty;render()}
+      else if(t.dataset.toggle){const p=t.dataset.toggle;state.closed.has(p)?state.closed.delete(p):state.closed.add(p);render()}
+      else if(t.id==='expand'){state.closed.clear();render()}
+      else if(t.id==='collapse'){ORDER.forEach(p=>state.closed.add(p));render()}
+      else if(t.dataset.clubs!==undefined){
+        state.clubs=t.dataset.clubs==='1';
+        document.querySelectorAll('.mockbar .seg button').forEach(b=>b.classList.toggle('on',b===t));
+        render();
+      }
+    });
+    render();
+  </script>
+</body>
+</html>
