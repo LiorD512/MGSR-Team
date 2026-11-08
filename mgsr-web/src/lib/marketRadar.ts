@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getCached, setCache } from './scrapingCache';
+import { recordGeminiUsage } from './geminiUsage';
 
 export type MarketSignalType =
   | 'OUT_OF_PLANS'       // 🔴 Exiled, reserve team (B-Kern/Kadro Dışı), left out of pre-season/squad
@@ -520,17 +521,149 @@ interface GeminiEnrichedOutput {
   agentTakeaway: string;
 }
 
+type GeminiPayload = { index: number; rawHeadline: string; source: string; league: string; country: string };
+
+/* ─── AI memory: one remembered Gemini answer per article ───────────────────
+ * Firestore `MarketRadarAiMemory/{sha1(url)}`. A headline is sent to Gemini only if
+ * there is no remembered answer for the SAME url + headline + source/league/country
+ * (the exact input Gemini saw) under the same prompt/model version, younger than 14 days
+ * (the news window). Both "valid" and "not a real story" answers are remembered.
+ * Headlines whose call failed or timed out are not remembered, so they are retried
+ * next time (same as before). Without Firebase Admin (local dev) the memory is off.
+ */
+const AI_MEMORY_COLLECTION = 'MarketRadarAiMemory';
+const AI_MEMORY_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+/** Bump when the Gemini prompt or model changes — older answers are then ignored. */
+const AI_MEMORY_VERSION = 1;
+
+interface AiMemoryKey { docId: string; url: string; input: string }
+interface AiMemoryDoc {
+  url: string;
+  input: string;
+  version: number;
+  model: string;
+  analyzedAt: number;
+  expiresAt: Date;
+  answer: Omit<GeminiEnrichedOutput, 'index'>;
+}
+
+/** Resolves to `fallback` if `p` takes longer than `ms` (Firestore must never hold up the page). */
+function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
+}
+
+async function memoryDb() {
+  try {
+    const { adminDb, getFirebaseAdmin } = await import('./firebaseAdmin');
+    if (!getFirebaseAdmin()) return null;
+    return adminDb();
+  } catch {
+    return null;
+  }
+}
+
+async function aiMemoryKey(p: GeminiPayload, url: string): Promise<AiMemoryKey> {
+  const { createHash } = await import('crypto');
+  return {
+    docId: createHash('sha1').update(url).digest('hex'),
+    url,
+    input: JSON.stringify([p.rawHeadline, p.source, p.league, p.country]),
+  };
+}
+
+/** Remembered answers for these keys (index → answer). Never throws. */
+async function readAiMemory(keys: Map<number, AiMemoryKey>): Promise<Map<number, GeminiEnrichedOutput>> {
+  const out = new Map<number, GeminiEnrichedOutput>();
+  if (!keys.size) return out;
+  try {
+    const db = await memoryDb();
+    if (!db) return out;
+    const entries = Array.from(keys.entries());
+    const snaps = await within(db.getAll(...entries.map(([, k]) => db.collection(AI_MEMORY_COLLECTION).doc(k.docId))), 3000, null);
+    if (!snaps) { console.warn('[market-radar] AI memory read slow — analysing without it'); return out; }
+    const now = Date.now();
+    snaps.forEach((snap, i) => {
+      if (!snap.exists) return;
+      const d = snap.data() as AiMemoryDoc;
+      const [index, k] = entries[i];
+      if (d.url !== k.url || d.input !== k.input || d.version !== AI_MEMORY_VERSION || d.model !== RADAR_MODEL) return;
+      if (now - d.analyzedAt > AI_MEMORY_TTL_MS) return;
+      out.set(index, { ...d.answer, index });
+    });
+  } catch (e) {
+    console.warn('[market-radar] AI memory read failed — analysing without it:', (e as Error).message);
+  }
+  return out;
+}
+
+/** Saves Gemini answers (index → answer) for the matching keys. Never throws. */
+async function saveAiMemory(answers: Map<number, GeminiEnrichedOutput>, keys: Map<number, AiMemoryKey>): Promise<void> {
+  if (!answers.size) return;
+  try {
+    const db = await memoryDb();
+    if (!db) return;
+    const batch = db.batch();
+    let n = 0;
+    const now = Date.now();
+    answers.forEach((ans, index) => {
+      const k = keys.get(index);
+      if (!k) return;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { index: _i, ...answer } = ans;
+      const doc: AiMemoryDoc = {
+        url: k.url, input: k.input, version: AI_MEMORY_VERSION, model: RADAR_MODEL,
+        analyzedAt: now, expiresAt: new Date(now + AI_MEMORY_TTL_MS),
+        answer: JSON.parse(JSON.stringify(answer)), // strips undefined (Firestore rejects it)
+      };
+      batch.set(db.collection(AI_MEMORY_COLLECTION).doc(k.docId), doc);
+      n++;
+    });
+    if (n) await batch.commit();
+    // Housekeeping: drop up to 100 expired answers (cheap; keeps the collection small).
+    const old = await db.collection(AI_MEMORY_COLLECTION).where('expiresAt', '<', new Date(now)).limit(100).get();
+    if (!old.empty) {
+      const del = db.batch();
+      old.docs.forEach((d) => del.delete(d.ref));
+      await del.commit();
+    }
+  } catch (e) {
+    console.warn('[market-radar] AI memory write failed:', (e as Error).message);
+  }
+}
+
+const RADAR_MODEL = 'gemini-2.5-flash';
+
+/** Parses Gemini's JSON reply into index → answer. Throws on invalid JSON (caller handles). */
+function parseRadarReply(jsonStr: string | undefined): Map<number, GeminiEnrichedOutput> {
+  const out = new Map<number, GeminiEnrichedOutput>();
+  if (!jsonStr) return out;
+  const parsed = JSON.parse(jsonStr) as GeminiEnrichedOutput[];
+  if (Array.isArray(parsed)) {
+    for (const p of parsed) {
+      if (typeof p.index === 'number') out.set(p.index, p);
+    }
+  }
+  return out;
+}
+
+/**
+ * One Gemini call for up to 10 headlines. The prompt is unchanged; the memory keys travel
+ * separately (they are NOT sent to Gemini). Every answer — on time or late — is saved to the
+ * per-article AI memory so the same article is never paid for twice.
+ */
 async function enrichBatchWithGemini(
-  items: { index: number; rawHeadline: string; source: string; league: string; country: string }[]
+  items: GeminiPayload[],
+  memoryKeys: Map<number, AiMemoryKey>
 ): Promise<Map<number, GeminiEnrichedOutput>> {
   const outMap = new Map<number, GeminiEnrichedOutput>();
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || !items.length) return outMap;
 
+  let recorded = false;
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: RADAR_MODEL,
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.1,
@@ -572,24 +705,34 @@ Return a JSON array conforming to:
 ]`;
 
     const geminiPromise = model.generateContent(prompt);
-    const timeoutPromise = new Promise<{ response: { text: () => string } }>((_, reject) =>
-      setTimeout(() => reject(new Error('Gemini timeout')), 6500)
+    let timedOut = false;
+    // The page still gives up after 6.5 s (unchanged), but Google bills the call anyway.
+    // When the answer arrives late it is recorded and saved to the AI memory (best effort),
+    // so the next build reuses it instead of paying again.
+    geminiPromise
+      .then(async (res) => {
+        if (!timedOut) return;
+        await recordGeminiUsage({ feature: 'market-radar', model: RADAR_MODEL, usage: res.response.usageMetadata, late: true, extra: { items: items.length } });
+        try {
+          await saveAiMemory(parseRadarReply(res.response.text()?.trim()), memoryKeys);
+        } catch { /* unparseable late reply — nothing to save */ }
+      })
+      .catch(() => {});
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => { timedOut = true; reject(new Error('Gemini timeout')); }, 6500)
     );
 
     const result = await Promise.race([geminiPromise, timeoutPromise]);
-    const jsonStr = result.response.text()?.trim();
-    if (!jsonStr) return outMap;
-
-    const parsed = JSON.parse(jsonStr) as GeminiEnrichedOutput[];
-    if (Array.isArray(parsed)) {
-      for (const p of parsed) {
-        if (typeof p.index === 'number') {
-          outMap.set(p.index, p);
-        }
-      }
-    }
+    recorded = true;
+    await recordGeminiUsage({ feature: 'market-radar', model: RADAR_MODEL, usage: result.response.usageMetadata, extra: { items: items.length } });
+    const parsed = parseRadarReply(result.response.text()?.trim());
+    parsed.forEach((v, k) => outMap.set(k, v));
+    await saveAiMemory(outMap, memoryKeys);
   } catch (err) {
     console.error('Gemini Radar enrichment error:', err);
+    if (!recorded && !(err instanceof Error && err.message === 'Gemini timeout')) {
+      await recordGeminiUsage({ feature: 'market-radar', model: RADAR_MODEL, failed: true, extra: { items: items.length } });
+    }
   }
 
   return outMap;
@@ -733,6 +876,110 @@ export async function getMarketRadarFeed(options?: {
     }
   }
 
+  return buildOnce(cacheKey, () => buildMarketRadarFeed(region, signal, cacheKey));
+}
+
+/* ─── One build at a time ────────────────────────────────────────────────────
+ * When the saved list has expired (or Refresh is pressed) and a build for the same
+ * view is already running, wait for that build's result instead of starting a second
+ * one (which would pay Gemini again for the same headlines).
+ *  - Same server instance: share the in-flight promise.
+ *  - Other instances: a Firestore lock `MarketRadarBuildLock/{view}` (60 s lease). The
+ *    waiter polls the build's result for up to 25 s; if it doesn't appear (crashed /
+ *    slow build), the waiter builds itself — so nobody ever gets an empty page because
+ *    of the lock. Without Firebase Admin the lock is skipped.
+ */
+/** JSON round-trip: drops `undefined` fields, which Firestore rejects. */
+const firestoreSafe = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+
+const INFLIGHT = new Map<string, Promise<MarketRadarItem[]>>();
+const BUILD_LOCK_COLLECTION = 'MarketRadarBuildLock';
+const BUILD_LOCK_LEASE_MS = 60_000;
+const BUILD_WAIT_MS = 25_000;
+const buildResultKey = (cacheKey: string) => `${RADAR_L2_KEY}__build__${cacheKey}`;
+
+async function buildOnce(cacheKey: string, build: () => Promise<MarketRadarItem[]>): Promise<MarketRadarItem[]> {
+  const running = INFLIGHT.get(cacheKey);
+  if (running) return running;
+  const p = (async () => {
+    const lock = await acquireBuildLock(cacheKey);
+    if (lock.held === false) {
+      const waited = await waitForBuildResult(cacheKey, lock.startedAt);
+      if (waited) {
+        RADAR_L1_CACHE.set(cacheKey, { items: waited, ts: Date.now() });
+        return waited;
+      }
+    }
+    try {
+      const items = await build();
+      await setCache(buildResultKey(cacheKey), firestoreSafe(items));
+      return items;
+    } finally {
+      if (lock.held === true) await releaseBuildLock(cacheKey, lock.token);
+    }
+  })();
+  INFLIGHT.set(cacheKey, p);
+  try {
+    return await p;
+  } finally {
+    INFLIGHT.delete(cacheKey);
+  }
+}
+
+type LockResult = { held: true; token: string } | { held: false; startedAt: number } | { held: null };
+
+async function acquireBuildLock(cacheKey: string): Promise<LockResult> {
+  try {
+    const db = await memoryDb();
+    if (!db) return { held: null };
+    const ref = db.collection(BUILD_LOCK_COLLECTION).doc(cacheKey);
+    const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tx$ = db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const now = Date.now();
+      const d = snap.exists ? (snap.data() as { token?: string; startedAt?: number; expiresAt?: number; done?: boolean }) : null;
+      if (d && !d.done && (d.expiresAt ?? 0) > now) return { held: false as const, startedAt: d.startedAt ?? now };
+      tx.set(ref, { token, startedAt: now, expiresAt: now + BUILD_LOCK_LEASE_MS, done: false });
+      return { held: true as const, token };
+    });
+    // If the lock is slow, build without it (a lock taken late still expires after 60 s).
+    return await within<LockResult>(tx$, 3000, { held: null });
+  } catch (e) {
+    console.warn('[market-radar] build lock unavailable — building without it:', (e as Error).message);
+    return { held: null };
+  }
+}
+
+async function releaseBuildLock(cacheKey: string, token: string): Promise<void> {
+  try {
+    const db = await memoryDb();
+    if (!db) return;
+    const ref = db.collection(BUILD_LOCK_COLLECTION).doc(cacheKey);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.exists && (snap.data() as { token?: string }).token === token) tx.update(ref, { done: true, doneAt: Date.now() });
+    });
+  } catch { /* the 60 s lease expires on its own */ }
+}
+
+/** Polls the running build's result (written when it finishes). Null on timeout. */
+async function waitForBuildResult(cacheKey: string, startedAt: number): Promise<MarketRadarItem[] | null> {
+  const db = await memoryDb();
+  if (!db) return null;
+  const deadline = Date.now() + BUILD_WAIT_MS;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1000));
+    try {
+      const snap = await db.collection('ScrapingCache').doc(buildResultKey(cacheKey)).get();
+      const d = snap.exists ? (snap.data() as { cachedAt?: number; payload?: MarketRadarItem[] }) : null;
+      if (d && (d.cachedAt ?? 0) >= startedAt && Array.isArray(d.payload)) return d.payload;
+    } catch { /* keep waiting */ }
+  }
+  return null;
+}
+
+/** Builds the feed for one view: RSS → dedupe → Gemini (only for headlines not in the AI memory) → filter. */
+async function buildMarketRadarFeed(region: MarketRegion, signal: MarketSignalType | 'all', cacheKey: string): Promise<MarketRadarItem[]> {
   const targetQueries = region === 'all'
     ? MARKET_RADAR_QUERIES
     : MARKET_RADAR_QUERIES.filter(q => q.region === region);
@@ -775,14 +1022,21 @@ export async function getMarketRadarFeed(options?: {
     });
   });
 
+  // AI memory: reuse the remembered answer for every article Gemini already analysed;
+  // only the remaining (new) headlines are sent to Gemini.
+  const memoryKeys = new Map<number, AiMemoryKey>();
+  for (const pl of geminiPayloads) memoryKeys.set(pl.index, await aiMemoryKey(pl, topItems[pl.index].url));
+  const geminiResults = await readAiMemory(memoryKeys);
+  const newPayloads = geminiPayloads.filter(pl => !geminiResults.has(pl.index));
+
   const GEMINI_CHUNK = 10;
   const geminiChunks: (typeof geminiPayloads)[] = [];
-  for (let i = 0; i < geminiPayloads.length; i += GEMINI_CHUNK) {
-    geminiChunks.push(geminiPayloads.slice(i, i + GEMINI_CHUNK));
+  for (let i = 0; i < newPayloads.length; i += GEMINI_CHUNK) {
+    geminiChunks.push(newPayloads.slice(i, i + GEMINI_CHUNK));
   }
+  console.log(`[market-radar] build ${cacheKey}: ${topItems.length} headlines, ${geminiResults.size} from AI memory, ${newPayloads.length} sent to Gemini in ${geminiChunks.length} call(s)`);
 
-  const geminiResults = new Map<number, GeminiEnrichedOutput>();
-  const aiChunkResults = await Promise.allSettled(geminiChunks.map(c => enrichBatchWithGemini(c)));
+  const aiChunkResults = await Promise.allSettled(geminiChunks.map(c => enrichBatchWithGemini(c, memoryKeys)));
 
   for (const r of aiChunkResults) {
     if (r.status === 'fulfilled') {
@@ -831,7 +1085,9 @@ export async function getMarketRadarFeed(options?: {
   }
 
   if (region === 'all' && validEnrichedItems.length > 0) {
-    await setCache(RADAR_L2_KEY, validEnrichedItems);
+    // Firestore rejects `undefined` values (e.g. a missing player age), which made this
+    // shared 30-minute cache write fail silently — so save a JSON-clean copy.
+    await setCache(RADAR_L2_KEY, firestoreSafe(validEnrichedItems));
   }
 
   let finalItems = validEnrichedItems;

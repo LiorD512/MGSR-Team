@@ -369,7 +369,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `/shadow-teams` | Shadow Teams | Fantasy formation builder |
 | `/tasks` | Tasks | Agent task management (route currently shows disabled state while tasks feature flag is off) |
 | `/portfolio` | Portfolio | Player portfolio management |
-| `/market-radar` | Early Market Radar | Real-time market disruption intelligence (out-of-plans, collapsed deals, contract standoffs across 35+ leagues, max 14 days) |
+| `/market-radar` | Early Market Radar | Real-time market disruption intelligence (out-of-plans, collapsed deals, contract standoffs across 35+ leagues, max 14 days). **Gemini only for new articles (Nov 2026):** each article's Gemini answer is remembered (`MarketRadarAiMemory`), so a rebuild / Refresh sends only headlines never analysed before (same 10-per-call batches, same prompt); answers that arrive after the 6.5 s page timeout are saved too. Only one rebuild runs at a time per view (`MarketRadarBuildLock` + in-process sharing). The shared 30-minute list cache (`ScrapingCache/secret_market_radar_v10`) is now written as clean JSON — before, `undefined` fields (e.g. a missing player age) made Firestore reject the write silently |
 | `/transfer-radar` | Press Room (חדר העיתונות; formerly Transfer Radar) | **Men web only.** Same design as Roster / Contacts / Requests: masthead, KPI strip, filter tray, Feed / Ledger. Every card is a player identified on Transfermarkt (photo, position, age, club, league, value, contract) with the newest original headline. Player file (side panel, `?p=<id>`): "Is it really him?" checks, timeline, original sources (as published + English). Real Shortlist add. `/transfer-radar/players/[id]` opens the same screen with the file open (see §21) |
 | `/transfer-radar/players/[id]` | Radar player profile | Score breakdown, evidence timeline (original headline + English summary + quote + link), facts vs reported vs rumor vs AI assessment, feedback buttons |
 | `/transfer-radar/sources` | Radar Source Center | **Hidden for now** (`TRANSFER_RADAR_SOURCES_VISIBLE=false`: no menu entry, route redirects to `/transfer-radar`). Source registry health; approve / disable / remove / add (admin) || `/news` | News | Redirects to `/market-radar` |
@@ -455,6 +455,7 @@ Separate Gradle module for HTML scraping via JSoup:
 | `playersYouth.ts` | Youth player data utilities |
 | `api.ts` | Generic API helpers |
 | `marketRadar.ts` | Early Market Radar engine: 35+ league disruption scanner, multilingual classification, 14-day cutoff, auto-translation |
+| `geminiUsage.ts` | Records every server-side Gemini call (tokens, thinking tokens, images, estimated USD, late / failed) as a `[gemini-usage]` log line and in the daily Firestore total `GeminiUsage/{YYYY-MM-DD}` (`byFeature.market-radar / documents-detect / matchday-image / matchday-diagnose`, `byModel`). Estimates use list prices in the file; the real bill is Google Cloud Billing |
 | `releases.ts` | Release data processing |
 | `contractFinisherStore.ts` | Contract finisher data store |
 | `returneesStore.ts` | Returnees data store |
@@ -705,6 +706,9 @@ Android app calls Render **directly** for performance-critical endpoints:
 | `ScoutAgentRuns` | Scout agent execution history with lifecycle statuses (`running`, `success`, `failed`) written at start and finalized at completion |
 | `WorkerRuns` | Worker job execution history |
 | `WorkerState` | Worker state tracking (last run, progress) |
+| `GeminiUsage` | Daily totals of server-side Gemini usage per feature and model (`lib/geminiUsage.ts`) |
+| `MarketRadarAiMemory` | Market Radar: one remembered Gemini answer per article (doc id = sha1(url)); reused when url + headline + source/league/country, prompt version and model match, for 14 days (`expiresAt`, expired docs pruned on write) |
+| `MarketRadarBuildLock` | Market Radar: one feed build at a time per view (60 s lease; waiters poll the build result for ≤ 25 s, then build themselves) |
 
 ### Notification Center
 
