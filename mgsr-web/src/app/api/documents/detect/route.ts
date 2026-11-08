@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { extractNameFromMandateFilename } from '@/lib/documentDetection';
+import { recordGeminiUsage } from '@/lib/geminiUsage';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -248,7 +249,14 @@ PRIORITY: A document can only be ONE type. Check passport first, then mandate. O
     },
   };
 
-  const result = await model.generateContent([part, { text: prompt }]);
+  let result: Awaited<ReturnType<typeof model.generateContent>>;
+  try {
+    result = await model.generateContent([part, { text: prompt }]);
+  } catch (e) {
+    await recordGeminiUsage({ feature: 'documents-detect', model: GEMINI_MODEL, failed: true, extra: { mimeType } });
+    throw e;
+  }
+  await recordGeminiUsage({ feature: 'documents-detect', model: GEMINI_MODEL, usage: result.response.usageMetadata, extra: { mimeType } });
   const response = result.response;
   // Try multiple strategies to extract clean JSON from Gemini 2.5 Flash response
   // Strategy 1: Filter out thinking parts (thought: true) from raw candidates

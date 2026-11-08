@@ -12,6 +12,7 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { recordGeminiUsage, type GeminiFeature, type GeminiUsageMeta } from '../../geminiUsage';
 
 
 /**
@@ -191,12 +192,37 @@ function extractImage(resp: unknown): GenResult | null {
  * Call a model once, returning an image or null. Never throws for an empty
  * response; rethrows the API error so the caller can decide to retry/fallback.
  */
-async function callModel(model: string, parts: unknown[], diag?: GenDiag, timeoutMs = CALL_TIMEOUT_MS): Promise<GenResult | null> {
+async function callModel(model: string, parts: unknown[], diag?: GenDiag, timeoutMs = CALL_TIMEOUT_MS, step = 'image'): Promise<GenResult | null> {
   const ai = client();
-  const resp = await withTimeout(ai.models.generateContent({ model, contents: [{ role: 'user', parts }] as never }), timeoutMs, model);
+  const call = ai.models.generateContent({ model, contents: [{ role: 'user', parts }] as never });
+  const resp = await recordedCall(call, timeoutMs, model, 'matchday-image', { step });
   const img = extractImage(resp);
+  await recordGeminiUsage({ feature: 'matchday-image', model, usage: usageOf(resp), images: img ? 1 : 0, extra: { step } });
   if (!img) diag?.errors.push(`${model}: ${emptyReason(resp)}`);
   return img;
+}
+
+function usageOf(resp: unknown): GeminiUsageMeta | null {
+  return ((resp as { usageMetadata?: GeminiUsageMeta } | null)?.usageMetadata) ?? null;
+}
+
+/**
+ * withTimeout + usage recording for answers that arrive after we gave up (Google still
+ * bills them) and for failed calls. The on-time answer is recorded by the caller.
+ */
+async function recordedCall<T>(call: Promise<T>, timeoutMs: number, model: string, feature: GeminiFeature, extra: Record<string, unknown>): Promise<T> {
+  try {
+    return await withTimeout(call, timeoutMs, model);
+  } catch (e) {
+    if ((e as Error).message?.startsWith('timeout:')) {
+      call
+        .then((late) => recordGeminiUsage({ feature, model, usage: usageOf(late), images: extractImage(late as never) ? 1 : 0, late: true, extra }))
+        .catch(() => {});
+    } else {
+      await recordGeminiUsage({ feature, model, failed: true, extra });
+    }
+    throw e;
+  }
 }
 
 /**
@@ -217,7 +243,7 @@ async function generate(parts: unknown[], label: string, diag?: GenDiag, budgetM
         return null;
       }
       try {
-        const img = await callModel(model, parts, diag, Math.min(CALL_TIMEOUT_MS, left));
+        const img = await callModel(model, parts, diag, Math.min(CALL_TIMEOUT_MS, left), label);
         if (img) return img;
         // Empty (no image) — a short backoff then retry the same model.
         if (attempt < 2) await sleep(600 * (attempt + 1));
@@ -410,11 +436,14 @@ export async function pingModel(model: string): Promise<ModelCheck> {
   const t0 = Date.now();
   try {
     const ai = client();
-    await withTimeout(
+    const resp = await recordedCall(
       ai.models.generateContent({ model, contents: [{ role: 'user', parts: [{ text: 'Reply with the single word OK. Do not create an image.' }] }] as never }),
       30_000,
-      model
+      model,
+      'matchday-diagnose',
+      { step: 'ping' }
     );
+    await recordGeminiUsage({ feature: 'matchday-diagnose', model, usage: usageOf(resp), extra: { step: 'ping' } });
     return { model, ok: true, ms: Date.now() - t0, reason: null, raw: null };
   } catch (e) {
     const raw = (e as Error).message ?? String(e);
