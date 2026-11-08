@@ -6882,3 +6882,47 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .ri-g-opp .res.r-W { background: var(--green); }
 .brit-room .ri-g-opp .res.r-L { background: var(--red); }
 .brit-room .ri-g-opp .res.r-D { background: var(--gold); }
+
+/* ═══════════════════════════════════════════════════════
+   SHARE REQUESTS — country picker + manage shared links
+   ═══════════════════════════════════════════════════════ */
+.brit-room .brit-share-countries{border:1px solid var(--line);padding:12px;margin-bottom:14px}
+.brit-room .brit-share-countries .lbl{margin:0 0 10px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+.brit-room .brit-share-seg{display:flex;border:1px solid var(--line);margin-bottom:10px}
+.brit-room .brit-share-seg button{flex:1;padding:10px;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted);transition:.15s}
+.brit-room .brit-share-seg button+button{border-inline-start:1px solid var(--line)}
+.brit-room .brit-share-seg button.on{background:var(--gold-soft);color:var(--ink)}
+.brit-room .brit-share-quick{display:flex;gap:14px;margin-bottom:8px}
+.brit-room .brit-share-quick button{color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase}
+.brit-room .brit-share-quick button:hover{color:var(--ink)}
+.brit-room .brit-share-chips{display:flex;flex-wrap:wrap;gap:6px;max-height:132px;overflow-y:auto}
+.brit-room .brit-share-chips button{padding:7px 9px;border:1px solid var(--line);color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;transition:.15s}
+.brit-room .brit-share-chips button:hover{color:var(--ink)}
+.brit-room .brit-share-chips button.on{border-color:var(--gold-soft);background:rgba(201,166,107,.18);color:var(--ink)}
+.brit-room .brit-share-selcount{margin:8px 0 0;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+.brit-room .brit-share-manage{margin-top:4px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:center}
+.brit-room .brit-share-manage button{padding:8px 4px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.brit-room .brit-share-manage button:hover{color:var(--gold)}
+
+.brit-room .brit-links-modal{width:min(520px,100%)}
+.brit-room .brit-links-list{display:grid;gap:10px}
+.brit-room .brit-links-h{margin:6px 0 0;color:var(--gold);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+.brit-room .brit-links-h.muted{color:var(--muted);margin-top:16px}
+.brit-room .brit-links-empty{padding:40px 0;text-align:center;color:var(--muted);font:10px/1.6 var(--mono);text-transform:uppercase}
+.brit-room .brit-links-item{border:1px solid var(--line);background:var(--card);padding:13px 14px}
+.brit-room .brit-links-item.revoked{opacity:.55}
+.brit-room .brit-links-item .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.brit-room .brit-links-item .who strong{display:block;font:700 13px/1.2 var(--body)}
+.brit-room .brit-links-item .who span{display:block;margin-top:4px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase}
+.brit-room .brit-links-item .state{flex:none;padding:4px 7px;border:1px solid;font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.brit-room .brit-links-item .state.on{color:var(--green);border-color:var(--green)}
+.brit-room .brit-links-item .state.off{color:var(--red);border-color:var(--red)}
+.brit-room .brit-links-item .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.brit-room .brit-links-item .tags i{font-style:normal;padding:4px 6px;border:1px solid var(--line);color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+.brit-room .brit-links-item .ops{display:flex;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+.brit-room .brit-links-item .ops button{flex:1;padding:9px;border:1px solid var(--line);font:9px/1 var(--mono);text-transform:uppercase;color:var(--ink);transition:.15s}
+.brit-room .brit-links-item .ops button:hover{border-color:var(--gold-soft);color:var(--gold)}
+.brit-room .brit-links-item .ops button.del,.brit-room .brit-links-item .ops button.danger{flex:none;color:var(--red)}
+.brit-room .brit-links-item .ops button.danger{background:var(--red);border-color:var(--red);color:var(--paper)}
+.brit-room .brit-links-item .ops button.del:hover{border-color:var(--red);color:var(--red)}
+.brit-room .brit-links-item .ops button:disabled{opacity:.5}

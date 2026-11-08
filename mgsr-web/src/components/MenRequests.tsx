@@ -27,6 +27,7 @@ import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 import MenAddRequestDrawer from '@/components/MenAddRequestDrawer';
+import MenManageSharedLinks from '@/components/MenManageSharedLinks';
 
 interface Request {
   id: string;
@@ -130,6 +131,9 @@ export default function MenRequests() {
   const [showShare, setShowShare] = useState(false);
   const [shareCreating, setShareCreating] = useState(false);
   const [shareRecipient, setShareRecipient] = useState('');
+  const [shareCountriesMode, setShareCountriesMode] = useState<'all' | 'selected'>('all');
+  const [shareCountries, setShareCountries] = useState<string[]>([]);
+  const [showManageLinks, setShowManageLinks] = useState(false);
 
   // ── Subscriptions ──
   useEffect(() => {
@@ -295,7 +299,12 @@ export default function MenRequests() {
       const res = await fetch('/api/shared-requests/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ platform: 'men', showClubs, recipientLabel: shareRecipient.trim() || undefined, allowedCountries: [] }),
+        body: JSON.stringify({
+          platform: 'men',
+          showClubs,
+          recipientLabel: shareRecipient.trim() || undefined,
+          allowedCountries: shareCountriesMode === 'selected' ? shareCountries.filter((c) => c.trim().length > 0) : [],
+        }),
       });
       if (!res.ok) throw new Error('Failed');
       const { token: shareToken } = await res.json();
@@ -337,7 +346,7 @@ export default function MenRequests() {
               </div>
               <div className="brit-req-mast-actions">
                 {pending.length > 0 && (
-                  <button onClick={() => { setShareRecipient(''); setShowShare(true); }}>↗ {t('requests_share')}</button>
+                  <button onClick={() => { setShareRecipient(''); setShareCountriesMode('all'); setShareCountries(activeCountries); setShowShare(true); }}>↗ {t('requests_share')}</button>
                 )}
                 <button className="primary" onClick={() => setShowAddDrawer(true)}>+ {t('requests_add')}</button>
               </div>
@@ -571,17 +580,60 @@ export default function MenRequests() {
               onChange={(e) => setShareRecipient(e.target.value)}
               dir={isRtl ? 'rtl' : 'ltr'}
             />
+            {activeCountries.length > 0 && (
+              <div className="brit-share-countries">
+                <p className="lbl">{isRtl ? 'מדינות בקישור' : 'Countries in link'}</p>
+                <div className="brit-share-seg">
+                  <button className={shareCountriesMode === 'all' ? 'on' : ''} onClick={() => setShareCountriesMode('all')}>
+                    {isRtl ? 'כל המדינות' : 'All countries'}
+                  </button>
+                  <button
+                    className={shareCountriesMode === 'selected' ? 'on' : ''}
+                    onClick={() => { setShareCountriesMode('selected'); if (shareCountries.length === 0) setShareCountries(activeCountries); }}
+                  >
+                    {isRtl ? 'בחירה ידנית' : 'Select countries'}
+                  </button>
+                </div>
+                {shareCountriesMode === 'selected' && (
+                  <>
+                    <div className="brit-share-quick">
+                      <button onClick={() => setShareCountries(activeCountries)}>{isRtl ? 'בחר הכל' : 'Select all'}</button>
+                      <button onClick={() => setShareCountries([])}>{isRtl ? 'נקה הכל' : 'Clear all'}</button>
+                    </div>
+                    <div className="brit-share-chips">
+                      {activeCountries.map((c) => (
+                        <button
+                          key={c}
+                          className={shareCountries.includes(c) ? 'on' : ''}
+                          onClick={() => setShareCountries((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))}
+                        >
+                          {getCountryDisplayName(c, isHebrew)}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="brit-share-selcount">{shareCountries.length} / {activeCountries.length} {isRtl ? 'נבחרו' : 'selected'}</p>
+                  </>
+                )}
+              </div>
+            )}
             <div style={{ display: 'grid', gap: 10 }}>
-              <button className="brit-req-sharebtn" disabled={shareCreating} onClick={() => createShareLink(true)}>
+              <button className="brit-req-sharebtn" disabled={shareCreating || (shareCountriesMode === 'selected' && shareCountries.length === 0)} onClick={() => createShareLink(true)}>
                 {shareCreating ? (isRtl ? 'יוצר...' : 'Creating...') : (isRtl ? 'שתף עם שמות מועדונים' : 'Share with club names')}
               </button>
-              <button className="brit-req-sharebtn ghost" disabled={shareCreating} onClick={() => createShareLink(false)}>
+              <button className="brit-req-sharebtn ghost" disabled={shareCreating || (shareCountriesMode === 'selected' && shareCountries.length === 0)} onClick={() => createShareLink(false)}>
                 {shareCreating ? (isRtl ? 'יוצר...' : 'Creating...') : (isRtl ? 'שתף עם הסתרת מועדונים' : 'Share with hidden clubs')}
+              </button>
+            </div>
+            <div className="brit-share-manage">
+              <button onClick={() => { setShowShare(false); setShowManageLinks(true); }}>
+                ⛓ {isRtl ? 'ניהול קישורים משותפים' : 'Manage shared links'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {showManageLinks && <MenManageSharedLinks user={user} isRtl={isRtl} onClose={() => setShowManageLinks(false)} />}
     </div>
   );
 }
