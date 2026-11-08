@@ -93,22 +93,39 @@
     .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
     .card{background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;transition:border-color .15s,transform .15s}
     .card:hover{border-color:var(--gold-soft);transform:translateY(-1px)}
-    .card-top{display:flex;align-items:center;gap:12px;padding:15px 16px 14px}
-    .badge{width:40px;height:40px;flex:none;display:grid;place-items:center;background:#fff;border:1px solid var(--line);color:var(--muted);font:600 12px/1 var(--display);letter-spacing:.04em}
-    .badge.lock{background:var(--paper-2)}
-    .badge svg{width:16px;height:16px;stroke:var(--muted)}
-    .cname{min-width:0;flex:1}
-    .cname strong{display:block;font:700 14px/1.2 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .cname small{display:block;margin-top:4px;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em}
-    .cname.conf strong{font-weight:600;font-style:italic;color:var(--muted)}
-    .tag{flex:none;font:8px/1 var(--mono);text-transform:uppercase;padding:5px 7px;border:1px solid var(--gold-soft);color:var(--gold);letter-spacing:.06em}
-    .facts{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
+    .hero{position:relative;height:124px;background:var(--black);overflow:hidden}
+    .hero-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:22px;filter:grayscale(1);opacity:.5}
+    .hero.ph .hero-bg{display:none}
+    .hero.ph{background:linear-gradient(160deg,#26261f,#101010)}
+    .hero:before{content:'';position:absolute;inset:0;z-index:1;background-image:linear-gradient(rgba(243,240,232,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(243,240,232,.05) 1px,transparent 1px);background-size:22px 22px}
+    .hero:after{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(17,17,15,.35),rgba(17,17,15,.9))}
+    .pos{position:absolute;z-index:2;top:12px;inset-inline-start:12px;padding:5px 9px;background:var(--gold-soft);color:var(--ink);font:600 11px/1 var(--display);text-transform:uppercase}
+    .pos.gk{background:var(--gold)}.pos.def{background:#8794a3}.pos.mid{background:var(--green);color:var(--paper)}.pos.fwd{background:var(--red);color:var(--paper)}
+    .tag{position:absolute;z-index:2;top:12px;inset-inline-end:12px;font:8px/1 var(--mono);text-transform:uppercase;padding:4px 6px;border:1px solid var(--dark-line);color:var(--paper);letter-spacing:.06em}
+    .clubline{position:absolute;z-index:2;inset-inline:14px;bottom:12px;display:flex;align-items:center;gap:10px;color:var(--paper)}
+    .clubline .logo{width:38px;height:38px;flex:none;object-fit:contain;background:#fff;padding:3px;display:grid;place-items:center;color:var(--ink);font:600 12px/1 var(--display)}
+    .clubline .logo.lock{background:rgba(243,240,232,.12);border:1px solid var(--dark-line)}
+    .clubline .logo.lock svg{width:16px;height:16px;stroke:var(--paper)}
+    .clubline .cn{font:500 20px/.95 var(--display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .clubline .cn.conf{font-size:17px;color:#d8d2c4}
+    .clubline .cc{color:#c9c3b6;font:8px/1 var(--mono);text-transform:uppercase;margin-top:5px;letter-spacing:.04em}
+    .clubline>div:last-child{min-width:0}
+
+    /* Club strip in the masthead */
+    .strip{margin-top:26px;display:flex;align-items:center;gap:14px}
+    .strip label{flex:none;color:var(--muted);font:9px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
+    .strip .logos{display:flex;flex-wrap:wrap;gap:8px}
+    .strip .logos span{width:40px;height:40px;display:grid;place-items:center;background:#fff;border:1px solid var(--line)}
+    .strip .logos img{width:100%;height:100%;object-fit:contain;padding:5px}
+    .strip .logos span.in{color:var(--muted);font:600 11px/1 var(--display)}
+    .strip.hide{display:none}
+    .facts{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
     .fact{padding:11px 14px 12px;border-inline-end:1px solid var(--line);min-width:0}
     .fact:last-child{border-inline-end:0}
     .fact label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em}
     .fact b{display:block;margin-top:8px;font:500 15px/1 var(--display);letter-spacing:.01em;white-space:nowrap}
     .fact b.na{color:rgba(22,22,19,.28)}
-    .note{margin:0;padding:12px 16px 14px;border-top:1px solid var(--line);border-inline-start:3px solid var(--gold-soft);color:var(--muted);font:500 12px/1.55 var(--body);font-style:italic}
+    .note{margin:0;padding:12px 16px 14px;border-inline-start:3px solid var(--gold-soft);color:var(--muted);font:500 12px/1.55 var(--body);font-style:italic}
 
     .empty{padding:80px 0;text-align:center;color:var(--muted);font:10px/1.8 var(--mono);text-transform:uppercase;letter-spacing:.06em}
     .empty b{display:block;margin-bottom:6px;color:var(--ink);font:500 22px/1 var(--display);letter-spacing:0}
@@ -167,6 +184,7 @@
       <p class="kicker" id="kicker">Men's Football / November 2026</p>
       <h1>Open <span>requests.</span></h1>
       <p class="lede">Clubs we are actively recruiting for right now. Browse by position or country — each card shows exactly what the club is looking for.</p>
+      <div class="strip" id="strip"><label>Clubs recruiting</label><div class="logos" id="logos"></div></div>
     </section>
 
     <section class="signals">
@@ -210,20 +228,20 @@
     const FLAG={Israel:'🇮🇱','Saudi Arabia':'🇸🇦',Netherlands:'🇳🇱',UAE:'🇦🇪',Belgium:'🇧🇪',Greece:'🇬🇷',Cyprus:'🇨🇾'};
 
     const R=[
-      {club:'Hapoel Beer Sheva',c:'Israel',p:'CF',min:22,max:28,sal:'40-60',fee:'700-900',foot:'any',eu:false,note:'Strong in the air, pressing forward. Ready to start immediately.'},
-      {club:'Maccabi Haifa',c:'Israel',p:'CF',min:20,max:30,sal:'30-50',fee:'300-600',foot:'right',eu:false},
-      {club:'Hapoel Tel Aviv',c:'Israel',p:'CB',any:true,sal:'20-25',fee:'<200',foot:'left',eu:false,note:'Left-footed centre-back with leadership qualities.'},
-      {club:'FC Utrecht',c:'Netherlands',p:'LB',min:20,max:26,sal:'30-50',fee:'300-600',foot:'left',eu:true},
-      {club:'AZ Alkmaar',c:'Netherlands',p:'CM',min:21,max:27,sal:'16-20',fee:'700-900',foot:'any',eu:true,note:'Box-to-box profile, comfortable in a 4-3-3.'},
-      {club:'Al Ain FC',c:'UAE',p:'RW',any:true,sal:'30+',fee:'1m+',foot:'any',eu:false,note:'Looking for a proven winger with Champions League experience.'},
-      {club:'Shabab Al Ahli',c:'UAE',p:'CF',min:24,max:31,sal:'30+',fee:'1m+',foot:'any',eu:false},
-      {club:'Al Nassr',c:'Saudi Arabia',p:'DM',min:24,max:30,sal:'30+',fee:'1m+',foot:'right',eu:false},
-      {club:'Al Hilal',c:'Saudi Arabia',p:'GK',min:25,max:33,sal:'30+',fee:'Free/Free loan',foot:'any',eu:false,note:'Experienced goalkeeper, comfortable with the ball at his feet.'},
-      {club:'Royale Union SG',c:'Belgium',p:'CB',min:21,max:27,sal:'16-20',fee:'700-900',foot:'right',eu:true},
-      {club:'Club Brugge',c:'Belgium',p:'RB',min:19,max:25,sal:'11-15',fee:'300-600',foot:'any',eu:true},
-      {club:'Olympiacos',c:'Greece',p:'AM',min:22,max:29,sal:'20-25',fee:'700-900',foot:'any',eu:true},
-      {club:'PAOK',c:'Greece',p:'LW',min:20,max:27,sal:'16-20',fee:'300-600',foot:'right',eu:true,note:'Pace and 1v1 ability are the priority.'},
-      {club:'Apollon Limassol',c:'Cyprus',p:'CM',min:22,max:30,sal:'6-10',fee:'Free/Free loan',foot:'any',eu:false}
+      {club:'Hapoel Beer Sheva',l:2976,c:'Israel',p:'CF',min:22,max:28,sal:'40-60',fee:'700-900',foot:'any',eu:false,note:'Strong in the air, pressing forward. Ready to start immediately.'},
+      {club:'Maccabi Haifa',l:1064,c:'Israel',p:'CF',min:20,max:30,sal:'30-50',fee:'300-600',foot:'right',eu:false},
+      {club:'Maccabi Tel Aviv',l:119,c:'Israel',p:'CB',any:true,sal:'20-25',fee:'<200',foot:'left',eu:false,note:'Left-footed centre-back with leadership qualities.'},
+      {club:'FC Utrecht',l:200,c:'Netherlands',p:'LB',min:20,max:26,sal:'30-50',fee:'300-600',foot:'left',eu:true},
+      {club:'AZ Alkmaar',l:1090,c:'Netherlands',p:'CM',min:21,max:27,sal:'16-20',fee:'700-900',foot:'any',eu:true,note:'Box-to-box profile, comfortable in a 4-3-3.'},
+      {club:'Al Ain FC',l:2150,c:'UAE',p:'RW',any:true,sal:'30+',fee:'1m+',foot:'any',eu:false,note:'Looking for a proven winger with Champions League experience.'},
+      {club:'Shabab Al Ahli',l:60529,c:'UAE',p:'CF',min:24,max:31,sal:'30+',fee:'1m+',foot:'any',eu:false},
+      {club:'Al Nassr',l:18544,c:'Saudi Arabia',p:'DM',min:24,max:30,sal:'30+',fee:'1m+',foot:'right',eu:false},
+      {club:'Al Hilal',l:1114,c:'Saudi Arabia',p:'GK',min:25,max:33,sal:'30+',fee:'Free/Free loan',foot:'any',eu:false,note:'Experienced goalkeeper, comfortable with the ball at his feet.'},
+      {club:'Standard Liège',l:3057,c:'Belgium',p:'CB',min:21,max:27,sal:'16-20',fee:'700-900',foot:'right',eu:true},
+      {club:'Club Brugge',l:2282,c:'Belgium',p:'RB',min:19,max:25,sal:'11-15',fee:'300-600',foot:'any',eu:true},
+      {club:'Olympiacos',l:683,c:'Greece',p:'AM',min:22,max:29,sal:'20-25',fee:'700-900',foot:'any',eu:true},
+      {club:'PAOK',l:1091,c:'Greece',p:'LW',min:20,max:27,sal:'16-20',fee:'300-600',foot:'right',eu:true,note:'Pace and 1v1 ability are the priority.'},
+      {club:'Apollon Limassol',l:429,c:'Cyprus',p:'CM',min:22,max:30,sal:'6-10',fee:'Free/Free loan',foot:'any',eu:false}
     ];
 
     const fmtSal=s=>({'>5':'< €5K','6-10':'€6–10K','11-15':'€11–15K','16-20':'€16–20K','20-25':'€20–25K','26-30':'€26–30K','30+':'€30K+'}[s]||s);
@@ -239,19 +257,32 @@
 
     function fact(label,val){return `<div class="fact"><label>${label}</label><b class="${val?'':'na'}">${val||'—'}</b></div>`}
 
+    const posCls=p=>({GK:'gk',CB:'def',RB:'def',LB:'def',DM:'mid',CM:'mid',AM:'mid'}[p]||'fwd');
+    const logoUrl=id=>`https://tmssl.akamaized.net/images/wappen/head/${id}.png`;
+    const ini=n=>n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    // If a logo fails to load, fall back to initials (same as the app)
+    window.logoFail=el=>{const d=document.createElement('div');d.className='logo';d.textContent=el.dataset.ini;el.replaceWith(d)};
+
     function card(r){
-      const ini=r.club.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-      const top=state.clubs
-        ? `<div class="badge">${ini}</div><div class="cname"><strong>${r.club}</strong><small>${r.c}</small></div>`
-        : `<div class="badge lock">${lock}</div><div class="cname conf"><strong>Confidential club</strong><small>${r.c}</small></div>`;
-      return `<article class="card">
-        <div class="card-top">${top}${r.eu?'<span class="tag">EU passport</span>':''}</div>
+      const hero=state.clubs
+        ? `<div class="hero"><img class="hero-bg" src="${logoUrl(r.l)}" alt="" onerror="this.remove()">
+             <span class="pos ${posCls(r.p)}">${POS[r.p][0]}</span>${r.eu?'<span class="tag">🇪🇺 EU</span>':''}
+             <div class="clubline"><img class="logo" src="${logoUrl(r.l)}" alt="" data-ini="${ini(r.club)}" onerror="logoFail(this)">
+               <div><div class="cn">${r.club}</div><div class="cc">${r.c}</div></div></div></div>`
+        : `<div class="hero ph"><span class="pos ${posCls(r.p)}">${POS[r.p][0]}</span>${r.eu?'<span class="tag">🇪🇺 EU</span>':''}
+             <div class="clubline"><div class="logo lock">${lock}</div>
+               <div><div class="cn conf">Confidential club</div><div class="cc">${r.c}</div></div></div></div>`;
+      return `<article class="card">${hero}
         <div class="facts">${fact('Age',fmtAge(r))}${fact('Salary',r.sal&&fmtSal(r.sal))}${fact('Fee',r.fee&&fmtFee(r.fee))}${fact('Foot',fmtFoot(r.foot))}</div>
         ${r.note?`<p class="note">${r.note}</p>`:''}
       </article>`;
     }
 
     function render(){
+      // Club logo strip (hidden when clubs are confidential)
+      $('strip').classList.toggle('hide',!state.clubs);
+      $('logos').innerHTML=R.map(r=>`<span title="${r.club}"><img src="${logoUrl(r.l)}" alt="${r.club}" onerror="this.parentNode.className='in';this.parentNode.textContent='${ini(r.club)}'"></span>`).join('');
+
       // Signals (always global)
       $('s-req').textContent=R.length;
       $('s-pos').textContent=new Set(R.map(r=>r.p)).size;
