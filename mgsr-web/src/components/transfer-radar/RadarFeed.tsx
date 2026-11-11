@@ -115,6 +115,18 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
   }, [user, say, t]);
 
   const all = items ?? [];
+  // one entry per club that has open requests (a club with several requests is a single chip; a player matches if he fits any of them)
+  const clubs = useMemo(() => {
+    const m = new Map<string, { key: string; name: string; reqs: OpenRequest[] }>();
+    for (const r of requests) {
+      const name = r.clubName?.trim();
+      const key = r.clubTmProfile || name;
+      if (!key) continue;
+      const c = m.get(key) ?? { key, name: name || '-', reqs: [] };
+      c.reqs.push(r); m.set(key, c);
+    }
+    return Array.from(m.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [requests]);
   const list = useMemo(() => {
     let a = all;
     if (kpi === 'new') a = a.filter((p) => now - p.firstAt <= 7 * DAY);
@@ -124,8 +136,8 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
     if (country !== 'all') a = a.filter((p) => p.country === country);
     if (position !== 'all') a = a.filter((p) => positionCode(p.position) === position);
     if (reqId !== 'all') {
-      const req = requests.find((r) => r.id === reqId);
-      a = req ? a.filter((p) => feedItemMatchesRequest(p, req, euCountries, matchRequestToPlayers)) : a;
+      const club = clubs.find((c) => c.key === reqId);
+      a = club ? a.filter((p) => club.reqs.some((r) => feedItemMatchesRequest(p, r, euCountries, matchRequestToPlayers))) : a;
     }
     if (q.trim()) {
       const s = q.trim().toLowerCase();
@@ -137,7 +149,7 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
       value: (x, y) => (y.valueEur ?? -1) - (x.valueEur ?? -1),
     };
     return [...a].sort((x, y) => Number(x.closed) - Number(y.closed) || by[sort](x, y));
-  }, [all, kpi, sit, country, position, reqId, requests, euCountries, q, sort, now, cn]);
+  }, [all, kpi, sit, country, position, reqId, clubs, euCountries, q, sort, now, cn]);
 
   if (error?.code === 'RADAR_NOT_CONFIGURED') return <State title={t('not_configured_title')} text={t('not_configured_text')} />;
   if (error?.code === 'RADAR_FORBIDDEN') return <State title={t('forbidden_title')} text={t('forbidden_text')} />;
@@ -150,7 +162,6 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
   };
   const countries = Array.from(new Set(all.map((p) => p.country).filter((c): c is string => !!c))).sort((a, b) => cn(a).localeCompare(cn(b)));
   const positions = RADAR_POSITIONS.filter((c) => all.some((p) => positionCode(p.position) === c));
-  const reqMatchCount = (r: OpenRequest) => all.filter((p) => !p.closed && feedItemMatchesRequest(p, r, euCountries, matchRequestToPlayers)).length;
   const sits = SIT_FILTER.filter((s) => all.some((p) => p.situation === s || p.situations.includes(s)));
   const pad = (n: number) => String(n).padStart(2, '0');
   const lastRun = summary?.lastRun?.started_at ?? null;
@@ -255,8 +266,8 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
           <span className="brit-req-flabel">{t('f_request')}</span>
           <div className="brit-req-chipset">
             <button className={reqId === 'all' ? 'on' : ''} onClick={() => setReqId('all')}>{t('all')}</button>
-            {requests.map((r) => <button key={r.id} className={reqId === r.id ? 'on' : ''} onClick={() => setReqId(r.id)}>{r.clubName ?? '-'} · {getPositionDisplayName(r.position, lang === 'he')} ({reqMatchCount(r)})</button>)}
-            {!requests.length && <span className="brit-req-flabel">{t('req_none')}</span>}
+            {clubs.map((c) => <button key={c.key} className={reqId === c.key ? 'on' : ''} onClick={() => setReqId(c.key)}>{c.name}</button>)}
+            {!clubs.length && <span className="brit-req-flabel">{t('req_none')}</span>}
           </div>
         </div>
         <div className="brit-ra-sortrow brit-ra-sortrow-sheet">
