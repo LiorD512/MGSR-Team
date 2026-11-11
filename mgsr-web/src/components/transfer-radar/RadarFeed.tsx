@@ -266,7 +266,7 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
           <span className="brit-req-flabel">{t('f_request')}</span>
           <div className="brit-req-chipset">
             <button className={reqId === 'all' ? 'on' : ''} onClick={() => setReqId('all')}>{t('all')}</button>
-            {clubs.map((c) => <button key={c.key} className={reqId === c.key ? 'on' : ''} onClick={() => setReqId(c.key)}>{c.name}</button>)}
+            {clubs.map((c) => <button key={c.key} className={reqId === c.key ? 'on' : ''} onClick={() => setReqId(c.key)}>{c.name} <small>({Array.from(new Set(c.reqs.map((r) => positionCode(r.position)).filter(Boolean))).join(', ')})</small></button>)}
             {!clubs.length && <span className="brit-req-flabel">{t('req_none')}</span>}
           </div>
         </div>
