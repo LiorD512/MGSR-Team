@@ -251,7 +251,7 @@ export default function PlayerInfoPage() {
     ? `/dashboard?scrollTo=${encodeURIComponent(scrollTo)}`
     : fromPath;
   const backLabelKey =
-    fromPath === '/requests'
+    fromPath === '/requests' || fromPath.startsWith('/requests/')
       ? 'player_info_back_requests'
       : (fromPath === '/releases' || fromPath === '/release-notifications')
         ? 'player_info_back_releases'
