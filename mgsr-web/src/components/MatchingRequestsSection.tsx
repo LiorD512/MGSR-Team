@@ -5,6 +5,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getPositionDisplayName } from '@/lib/appConfig';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import type { ClubRequest } from '@/lib/requestMatcher';
+import type { Bucket, ReasonCode } from '@/lib/matching/engine';
+import { bucketLabel, reasonLabel } from '@/lib/matching/i18n';
 
 export interface PlayerOffer {
   id: string;
@@ -22,6 +24,8 @@ export interface PlayerOffer {
 export interface MatchingRequestUiState {
   request: ClubRequest & { clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string };
   offer?: PlayerOffer;
+  /** Men platform: matching-engine fit score + reasons (women / youth don't pass it). */
+  match?: { score: number; bucket: Bucket; reasons: ReasonCode[]; warnings: ReasonCode[] };
 }
 
 interface MatchingRequestsSectionProps {
@@ -167,6 +171,14 @@ export default function MatchingRequestsSection({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-mgsr-text">{request.clubName || '—'}</span>
+                    {state.match && (
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-semibold ${state.match.bucket === 'strong' ? 'bg-emerald-500/15 text-emerald-600' : state.match.bucket === 'good' ? 'bg-amber-500/15 text-amber-600' : 'bg-mgsr-border/60 text-mgsr-muted'}`}
+                        title={[...state.match.reasons, ...state.match.warnings].map((r) => reasonLabel(r, isRtl)).join(' · ')}
+                      >
+                        {state.match.score} · {bucketLabel(state.match.bucket, isRtl)}
+                      </span>
+                    )}
                     {offer && (
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isWomen ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)]' : 'bg-mgsr-teal/20 text-mgsr-teal'}`}>
                         {t('player_info_matching_requests_offered')}
@@ -178,6 +190,12 @@ export default function MatchingRequestsSection({
                   </p>
                   {detailsText && (
                     <p className="text-xs text-mgsr-muted mt-0.5">{detailsText}</p>
+                  )}
+                  {state.match && (state.match.reasons.length > 0 || state.match.warnings.length > 0) && (
+                    <p className="text-xs mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+                      {state.match.reasons.slice(0, 3).map((r) => <span key={r} className="text-emerald-600">✓ {reasonLabel(r, isRtl)}</span>)}
+                      {state.match.warnings.slice(0, 2).map((r) => <span key={r} className="text-mgsr-muted">! {reasonLabel(r, isRtl)}</span>)}
+                    </p>
                   )}
                   {offer && (
                     <p className="text-xs text-mgsr-teal mt-0.5">

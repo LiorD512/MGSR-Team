@@ -4006,6 +4006,30 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-reqm-club img{width:44px;height:44px;object-fit:contain}
 .brit-room .brit-reqm-spec{display:flex;flex-wrap:wrap;gap:8px 18px;font:10px/1.4 var(--mono);text-transform:uppercase;color:var(--muted);margin:8px 0 18px}
 .brit-room .brit-reqm-spec b{color:var(--ink);font-weight:500}
+.brit-room .brit-reqm-item{display:flex;flex-direction:column;min-width:0}
+.brit-room .brit-reqm-item .brit-player-card{display:block}
+.brit-room .brit-reqm-score{min-width:30px;padding:4px 7px;font:600 12px/1 var(--mono);text-align:center;color:var(--paper);background:rgba(17,17,15,.7);border:1px solid var(--dark-line)}
+.brit-room .brit-reqm-score.b-strong{background:var(--green);border-color:var(--green)}
+.brit-room .brit-reqm-score.b-good{background:var(--gold);border-color:var(--gold)}
+.brit-room .brit-reqm-meta{background:var(--card);border:1px solid var(--line);border-top:0;padding:9px 10px 10px;display:flex;flex-direction:column;gap:7px;flex:1}
+.brit-room .brit-reqm-headline{display:flex;justify-content:space-between;align-items:center;font:9px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
+.brit-room .brit-reqm-headline b{font-weight:600}
+.brit-room .brit-reqm-headline b.b-strong{color:var(--green)}
+.brit-room .brit-reqm-headline b.b-good{color:var(--gold)}
+.brit-room .brit-reqm-headline b.b-stretch{color:var(--muted)}
+.brit-room .brit-reqm-chips{display:flex;flex-wrap:wrap;gap:4px}
+.brit-room .brit-reqm-chips span{font:8px/1.2 var(--mono);text-transform:uppercase;padding:3px 5px;border:1px solid var(--line)}
+.brit-room .brit-reqm-chips span.pos{color:var(--green);border-color:rgba(92,111,74,.4)}
+.brit-room .brit-reqm-chips span.neg{color:var(--red);border-color:rgba(182,66,53,.35)}
+.brit-room .brit-reqm-acts{display:flex;flex-wrap:wrap;gap:5px;margin-top:auto}
+.brit-room .brit-reqm-acts button{font:8.5px/1 var(--mono);text-transform:uppercase;color:var(--ink);border:1px solid var(--line);padding:5px 7px;background:transparent;transition:.15s}
+.brit-room .brit-reqm-acts button:hover,.brit-room .brit-reqm-acts button.on{border-color:var(--gold);color:var(--gold)}
+.brit-room .brit-reqm-acts button.x{margin-inline-start:auto;border:0}
+.brit-room .brit-reqm-toggle{margin:22px 0 14px}
+.brit-room .brit-reqm-group{margin-top:28px}
+.brit-room .brit-reqm-group h2{font:600 15px/1.2 var(--display);text-transform:uppercase;margin:0 0 12px;color:var(--ink)}
+.brit-room .brit-reqm-group h2 span{font:10px/1 var(--mono);color:var(--muted);margin-inline-start:6px}
+.brit-room .brit-reqm-group.muted .brit-reqm-item{opacity:.6}
 .brit-room .brit-req-foot{display:flex;align-items:flex-end;justify-content:space-between;border-top:1px solid var(--line);padding-top:11px;margin-top:11px}
 .brit-room .brit-req-foot .by{color:var(--muted);font:8px/1.5 var(--mono);text-transform:uppercase}
 .brit-room .brit-req-foot .by b{color:var(--ink);font-weight:500}

@@ -2,7 +2,8 @@
 
 /**
  * Club request -> roster matches (men). Opened from "View all" on a Club Requirements card.
- * Same matching as the board: local matcher + precomputed RequestMatchResults, merged and sorted by market value.
+ * Ranked by the matching engine v2 (lib/matching/engine.ts): hard gates, then a 0-100 fit score with reasons.
+ * Agents can mark each match "good fit" / "not a fit" — that feedback is the golden set used to tune the engine.
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -12,30 +13,30 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
+import { isEuNational } from '@/hooks/useEuCountries';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
-import { CLUB_REQUESTS_COLLECTIONS, PLAYERS_COLLECTIONS, REQUEST_MATCH_RESULTS_COLLECTIONS } from '@/lib/platformCollections';
+import { useMatchingContext } from '@/hooks/useMatchingContext';
+import { CLUB_REQUESTS_COLLECTIONS, PLAYERS_COLLECTIONS } from '@/lib/platformCollections';
 import { getPositionDisplayName } from '@/lib/appConfig';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
-import { matchRequestToPlayers, type ClubRequest, type RosterPlayer } from '@/lib/requestMatcher';
-import { parseMarketValueToEuros } from '@/lib/shortlistIntelligence';
+import { rankPlayersForRequest, isFreeAgent, parseContractEnd, type MatchPlayer, type MatchRequest, type MatchResult } from '@/lib/matching/engine';
+import { bucketLabel, mt, reasonLabel } from '@/lib/matching/i18n';
 import BritLoader from '@/components/BritLoader';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
 
-type Req = ClubRequest & { clubName?: string; clubLogo?: string; clubCountry?: string; salaryRange?: string; status?: string };
+type Req = MatchRequest & { clubLogo?: string };
 
-type MatchPlayer = RosterPlayer & { contractExpired?: string; haveMandate?: boolean; isOnLoan?: boolean; agentInChargeName?: string };
+type Player = MatchPlayer & { profileImage?: string; haveMandate?: boolean; agentInChargeName?: string };
 
-// same helpers the roster gallery uses for its card badges
-const isFreeAgent = (p: MatchPlayer) => { const c = p.currentClub?.clubName?.toLowerCase(); return c === 'without club' || c === 'vereinslos'; };
-function expiresWithin6Months(contractExpired?: string): boolean {
-  if (!contractExpired?.trim() || contractExpired === '-') return false;
-  const date = new Date(contractExpired);
-  if (isNaN(date.getTime())) return false;
-  const now = new Date(); const limit = new Date(); limit.setMonth(limit.getMonth() + 6);
-  return date >= now && date <= limit;
-}
+const NOT_FIT_REASONS = ['level', 'budget', 'profile', 'availability', 'other'] as const;
+const NOT_FIT_LABEL: Record<(typeof NOT_FIT_REASONS)[number], [string, string]> = {
+  level: ['Level', 'רמה'],
+  budget: ['Budget', 'תקציב'],
+  profile: ['Profile', 'פרופיל'],
+  availability: ['Availability', 'זמינות'],
+  other: ['Other', 'אחר'],
+};
 
 export default function RequestMatchesPage() {
   const { id } = useParams<{ id: string }>();
@@ -44,12 +45,13 @@ export default function RequestMatchesPage() {
   const { platform } = usePlatform();
   const { lang, setLang, isRtl, t } = useLanguage();
   const isHebrew = lang === 'he';
-  const euCountries = useEuCountries();
 
   const [req, setReq] = useState<Req | null | undefined>(undefined);
-  const [players, setPlayers] = useState<MatchPlayer[]>([]);
-  const [precomputed, setPrecomputed] = useState<string[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [opening, setOpening] = useState(false);
+  const [showStretch, setShowStretch] = useState(false);
+  const [showDismissed, setShowDismissed] = useState(false);
+  const [askReason, setAskReason] = useState<string | null>(null);
 
   useEffect(() => { if (!loading && !user) router.replace('/login'); }, [loading, user, router]);
   // the matches page is men-only (women / youth keep the standard requests screen)
@@ -61,20 +63,23 @@ export default function RequestMatchesPage() {
   }, [user, id]);
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(query(collection(db, PLAYERS_COLLECTIONS.men), orderBy('createdAt', 'desc')), (snap) => setPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() } as MatchPlayer))));
+    return onSnapshot(query(collection(db, PLAYERS_COLLECTIONS.men), orderBy('createdAt', 'desc')), (snap) => setPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Player))));
   }, [user]);
-  useEffect(() => {
-    if (!user || !id) return;
-    return onSnapshot(doc(db, REQUEST_MATCH_RESULTS_COLLECTIONS.men, id), (d) => setPrecomputed((d.data()?.matchingPlayerIds as string[]) ?? []), () => undefined);
-  }, [user, id]);
 
-  const matches = useMemo(() => {
-    if (!req) return [];
-    const byId = new Map<string, MatchPlayer>();
-    for (const p of matchRequestToPlayers(req, players, euCountries)) byId.set(p.id, p);
-    for (const pid of precomputed) { const p = players.find((x) => x.id === pid); if (p) byId.set(p.id, p); }
-    return Array.from(byId.values()).sort((a, b) => parseMarketValueToEuros(b.marketValue ?? '') - parseMarketValueToEuros(a.marketValue ?? ''));
-  }, [req, players, precomputed, euCountries]);
+  const clubUrls = useMemo(() => [req?.clubTmProfile], [req?.clubTmProfile]);
+  const { ctx, levelsLoading, setFeedback } = useMatchingContext(clubUrls);
+
+  const ranked = useMemo(() => (req ? rankPlayersForRequest(req, players, ctx) : []), [req, players, ctx]);
+  const playerById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
+  const groups = useMemo(() => {
+    const live = ranked.filter((m) => m.feedback !== 'not_fit');
+    return {
+      main: live.filter((m) => m.offered !== 'request' && m.bucket !== 'stretch'),
+      stretch: live.filter((m) => m.offered !== 'request' && m.bucket === 'stretch'),
+      offered: live.filter((m) => m.offered === 'request'),
+      dismissed: ranked.filter((m) => m.feedback === 'not_fit'),
+    };
+  }, [ranked]);
 
   const saveScroll = useScrollRestore(`requests-matches-${id}`, !!req && players.length > 0);
 
@@ -90,6 +95,73 @@ export default function RequestMatchesPage() {
   const dateStr = new Date().toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
   const age = req && !req.ageDoesntMatter && (req.minAge || req.maxAge) ? `${req.minAge || ''}–${req.maxAge || ''}` : null;
   const back = <Link href="/requests" className="brit-reqm-back">← {t('nav_requests')}</Link>;
+
+  const card = (m: MatchResult) => {
+    const p = playerById.get(m.playerId);
+    if (!p) return null;
+    const flags: string[] = [];
+    if (isEuNational(p.nationality, ctx.euCountries, p.nationalities)) flags.push(t('eu_nat_tag'));
+    if (m.mandate || p.haveMandate) flags.push(isRtl ? 'מנדט' : 'Mandate');
+    const end = parseContractEnd(p.contractExpired);
+    if (isFreeAgent(p)) flags.push(isRtl ? 'חופשי' : 'Free');
+    else if (end != null && end >= ctx.now && end - ctx.now <= 183 * 86_400_000) flags.push(isRtl ? 'מסתיים' : 'Exp');
+    if (p.isOnLoan || p.onLoan) flags.push(isRtl ? 'השאלה' : 'Loan');
+    if (m.offered === 'club') flags.push(mt('offered_club', isHebrew));
+    const club = p.currentClub?.clubName;
+    const clubLabel = !club ? t('no_club') : isFreeAgent(p) ? t('without_club') : club;
+    const agent = p.agentInChargeName?.trim();
+    const showAgent = !!agent && agent.toLowerCase() !== 'unknown';
+    const key = `${m.requestId}_${m.playerId}`;
+    return (
+      <div className="brit-reqm-item" key={m.playerId}>
+        <Link href={`/players/${p.id}?from=/requests/${id}`} onClick={openPlayer} className="brit-player-card">
+          {p.profileImage ? <img src={p.profileImage} alt={p.fullName || ''} /> : <div className="brit-player-card-ph" />}
+          <div className="brit-player-card-top">
+            <span className={`brit-reqm-score b-${m.bucket}`} title={`${mt('score', isHebrew)} ${m.score}/100`}>{m.score}</span>
+            <span className="brit-ct-flags">{flags.map((f, idx) => <b key={idx}>{f}</b>)}</span>
+          </div>
+          {showAgent && (
+            <span className="brit-card-agent" title={agent}>
+              <span className="brit-card-agent-dot">{agent!.charAt(0).toUpperCase()}</span>
+              {agent}
+            </span>
+          )}
+          <div className="brit-player-card-copy">
+            <small>{clubLabel} / {(p.positions ?? []).filter(Boolean).join(' / ') || '—'}</small>
+            <h3>{p.fullName || '—'}</h3>
+            <div className="brit-cval">{p.marketValue || '—'}{p.age ? ` · ${p.age}` : ''}</div>
+          </div>
+        </Link>
+        <div className="brit-reqm-meta">
+          <div className="brit-reqm-headline">
+            <b className={`b-${m.bucket}`}>{bucketLabel(m.bucket, isHebrew)}</b>
+            <span>{Math.round(m.confidence * 100)}% {mt('confidence', isHebrew)}</span>
+          </div>
+          <div className="brit-reqm-chips">
+            {m.reasons.slice(0, 4).map((r) => <span key={r} className="pos">{reasonLabel(r, isHebrew)}</span>)}
+            {m.warnings.slice(0, 3).map((r) => <span key={r} className="neg">{reasonLabel(r, isHebrew)}</span>)}
+          </div>
+          {m.feedback === 'not_fit' ? (
+            <div className="brit-reqm-acts"><button onClick={() => setFeedback(m.requestId, m.playerId, null)}>{mt('undo', isHebrew)}</button></div>
+          ) : askReason === key ? (
+            <div className="brit-reqm-acts reasons">
+              {NOT_FIT_REASONS.map((r) => (
+                <button key={r} onClick={() => { setAskReason(null); setFeedback(m.requestId, m.playerId, 'not_fit', r); }}>{NOT_FIT_LABEL[r][isHebrew ? 1 : 0]}</button>
+              ))}
+              <button className="x" onClick={() => setAskReason(null)} aria-label="close">×</button>
+            </div>
+          ) : (
+            <div className="brit-reqm-acts">
+              <button className={m.feedback === 'fit' ? 'on' : ''} onClick={() => setFeedback(m.requestId, m.playerId, m.feedback === 'fit' ? null : 'fit')}>
+                👍 {m.feedback === 'fit' ? mt('marked_fit', isHebrew) : mt('good_fit', isHebrew)}
+              </button>
+              <button onClick={() => setAskReason(key)}>👎 {mt('not_fit', isHebrew)}</button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -121,48 +193,49 @@ export default function RequestMatchesPage() {
                     <div className="brit-reqm-spec">
                       {req.clubCountry && <span>{getCountryDisplayName(req.clubCountry, isHebrew)}</span>}
                       {age && <span>{t('player_info_age')} <b>{age}</b></span>}
+                      {req.transferFee && req.transferFee !== 'N/A' && <span>{t('requests_label_fee')} <b>{req.transferFee}</b></span>}
+                      {req.salaryRange && req.salaryRange !== 'N/A' && <span>{t('requests_label_salary')} <b>{req.salaryRange}</b></span>}
+                      {req.dominateFoot && req.dominateFoot !== 'any' && <span><b>{req.dominateFoot}</b></span>}
                       {req.euOnly && <span><b>EU</b></span>}
                     </div>
                   </div>
                 </header>
-                <p className="brit-result-count">{matches.length} {t('requests_room_matches')}</p>
-                {matches.length === 0 ? (
-                  <div className="tr3-emptybox"><h3>{t('requests_room_no_match')}</h3></div>
+                <p className="brit-result-count">
+                  {groups.main.length} {t('requests_room_matches')}
+                  {levelsLoading && <> · {mt('loading_levels', isHebrew)}</>}
+                </p>
+                {groups.main.length === 0 && groups.stretch.length === 0 && groups.offered.length === 0 ? (
+                  <div className="tr3-emptybox"><h3>{mt('none', isHebrew)}</h3></div>
                 ) : (
-                  <div className="brit-players-gallery">
-                    {matches.map((p, i) => {
-                      const flags: string[] = [];
-                      if (isEuNational(p.nationality, euCountries, p.nationalities)) flags.push(t('eu_nat_tag'));
-                      if (p.haveMandate) flags.push(isRtl ? 'מנדט' : 'Mandate');
-                      if (isFreeAgent(p)) flags.push(isRtl ? 'חופשי' : 'Free');
-                      else if (expiresWithin6Months(p.contractExpired)) flags.push(isRtl ? 'מסתיים' : 'Exp');
-                      if (p.isOnLoan) flags.push(isRtl ? 'השאלה' : 'Loan');
-                      const club = p.currentClub?.clubName;
-                      const clubLabel = !club ? t('no_club') : isFreeAgent(p) ? t('without_club') : club;
-                      const agent = p.agentInChargeName?.trim();
-                      const showAgent = !!agent && agent.toLowerCase() !== 'unknown';
-                      return (
-                        <Link key={p.id} href={`/players/${p.id}?from=/requests/${id}`} onClick={openPlayer} className="brit-player-card">
-                          {p.profileImage ? <img src={p.profileImage} alt={p.fullName || ''} /> : <div className="brit-player-card-ph" />}
-                          <div className="brit-player-card-top">
-                            <span className="brit-num">{String(i + 1).padStart(2, '0')}</span>
-                            <span className="brit-ct-flags">{flags.map((f, idx) => <b key={idx}>{f}</b>)}</span>
-                          </div>
-                          {showAgent && (
-                            <span className="brit-card-agent" title={agent}>
-                              <span className="brit-card-agent-dot">{agent!.charAt(0).toUpperCase()}</span>
-                              {agent}
-                            </span>
-                          )}
-                          <div className="brit-player-card-copy">
-                            <small>{clubLabel} / {(p.positions ?? []).filter(Boolean).join(' / ') || '—'}</small>
-                            <h3>{p.fullName || '—'}</h3>
-                            <div className="brit-cval">{p.marketValue || '—'}{p.age ? ` · ${p.age}` : ''}</div>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
+                  <>
+                    {groups.main.length > 0 && <div className="brit-players-gallery">{groups.main.map(card)}</div>}
+                    {groups.stretch.length > 0 && (
+                      <>
+                        <button className="brit-reveal brit-reqm-toggle" onClick={() => setShowStretch((v) => !v)} aria-expanded={showStretch}>
+                          <span className="brit-reveal-line" aria-hidden />
+                          <span className="brit-reveal-label">{showStretch ? mt('hide_stretch', isHebrew) : mt('show_stretch', isHebrew, groups.stretch.length)}</span>
+                          <span className="brit-reveal-line" aria-hidden />
+                        </button>
+                        {showStretch && <div className="brit-players-gallery">{groups.stretch.map(card)}</div>}
+                      </>
+                    )}
+                    {groups.offered.length > 0 && (
+                      <section className="brit-reqm-group">
+                        <h2>{mt('offered_group', isHebrew)} <span>{groups.offered.length}</span></h2>
+                        <div className="brit-players-gallery">{groups.offered.map(card)}</div>
+                      </section>
+                    )}
+                  </>
+                )}
+                {groups.dismissed.length > 0 && (
+                  <section className="brit-reqm-group muted">
+                    <button className="brit-reveal brit-reqm-toggle" onClick={() => setShowDismissed((v) => !v)} aria-expanded={showDismissed}>
+                      <span className="brit-reveal-line" aria-hidden />
+                      <span className="brit-reveal-label">{mt('dismissed_group', isHebrew, groups.dismissed.length)}</span>
+                      <span className="brit-reveal-line" aria-hidden />
+                    </button>
+                    {showDismissed && <div className="brit-players-gallery">{groups.dismissed.map(card)}</div>}
+                  </section>
                 )}
               </>
             )}

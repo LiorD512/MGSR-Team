@@ -12,18 +12,20 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useEuCountries } from '@/hooks/useEuCountries';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
 import { getAllAccounts, getCurrentAccountForShortlist } from '@/lib/accounts';
 import { callRequestsDelete } from '@/lib/callables';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { getPositionDisplayName } from '@/lib/appConfig';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
-import { matchRequestToPlayers, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
+import type { RosterPlayer } from '@/lib/requestMatcher';
+import { isVisibleMatch, rankPlayersForRequest, type MatchPlayer, type MatchRequest, type MatchResult } from '@/lib/matching/engine';
+import { bucketLabel } from '@/lib/matching/i18n';
+import { useMatchingContext } from '@/hooks/useMatchingContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
@@ -79,22 +81,10 @@ const posClass = (pos?: string): string => {
   return 'def';
 };
 
-const parseMarketValueToEuros = (value?: string): number => {
-  if (!value?.trim()) return 0;
-  const cleaned = value.replace(/[€,\s]/g, '').toLowerCase();
-  const num = parseFloat(cleaned.replace(/[^\d.]/g, ''));
-  if (isNaN(num)) return 0;
-  if (cleaned.includes('m')) return num * 1_000_000;
-  if (cleaned.includes('k')) return num * 1_000;
-  return num;
-};
 
 const initials = (name: string | undefined) =>
   (name || '?').split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
-const normalizeClub = (s: string) =>
-  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[.,'\-]/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
-const clubNamesMatch = (a: string, b: string) => a === b || a.includes(b) || b.includes(a);
 
 interface RequestsFilterCache {
   search: string;
@@ -107,7 +97,6 @@ export default function MenRequests() {
   const { user } = useAuth();
   const { t, lang, setLang, isRtl } = useLanguage();
   const isHebrew = lang === 'he';
-  const euCountries = useEuCountries();
 
   const cacheKey = 'men-requests-filters';
   const cached = getScreenCache<RequestsFilterCache>(cacheKey);
@@ -116,8 +105,6 @@ export default function MenRequests() {
   const [ready, setReady] = useState(false);
   const saveScroll = useScrollRestore('requests-board', ready);
   const [players, setPlayers] = useState<RosterPlayer[]>([]);
-  const [precomputed, setPrecomputed] = useState<Record<string, string[]>>({});
-  const [mandateLeaguesByPlayer, setMandateLeaguesByPlayer] = useState<Record<string, string[]>>({});
   const [agentHebrewMap, setAgentHebrewMap] = useState<Record<string, string>>({});
 
   const [search, setSearch] = useState(cached?.search ?? '');
@@ -163,81 +150,24 @@ export default function MenRequests() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    const unsub = onSnapshot(collection(db, 'RequestMatchResults'), (snap) => {
-      const results: Record<string, string[]> = {};
-      for (const d of snap.docs) results[d.id] = (d.data().matchingPlayerIds as string[]) ?? [];
-      setPrecomputed(results);
-    });
-    return () => unsub();
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, 'PlayerDocuments'), where('type', '==', 'MANDATE'));
-    const unsub = onSnapshot(q, (snap) => {
-      const now = Date.now();
-      const byPlayer: Record<string, string[]> = {};
-      for (const d of snap.docs) {
-        const data = d.data();
-        const profile = data.playerTmProfile as string | undefined;
-        if (!profile || data.expired === true) continue;
-        const expiresAt = data.expiresAt as number | undefined;
-        if (!expiresAt || expiresAt < now) continue;
-        (byPlayer[profile] ??= []).push(...((data.validLeagues as string[] | undefined) ?? []));
-      }
-      for (const k of Object.keys(byPlayer)) byPlayer[k] = Array.from(new Set(byPlayer[k]));
-      setMandateLeaguesByPlayer(byPlayer);
-    });
-    return () => unsub();
-  }, [user]);
-
-  useEffect(() => {
     setScreenCache<RequestsFilterCache>(cacheKey, { search, positionFilter, countryFilter, view: 'board' });
   }, [search, positionFilter, countryFilter]);
 
   const pending = useMemo(() => requests.filter((r) => (r.status || 'pending') === 'pending'), [requests]);
 
-  // Roster matches per request (local + precomputed, merged, sorted by value)
+  // Roster matches per request — matching engine v2 (gates + fit score), best first. Board shows Strong + Good.
+  const { ctx: matchCtx } = useMatchingContext(useMemo(() => pending.map((r) => r.clubTmProfile), [pending]));
   const matchesByRequest = useMemo(() => {
-    const playerById: Record<string, RosterPlayer> = {};
-    for (const p of players) if (p.id) playerById[p.id] = p;
-    const byId: Record<string, RosterPlayer[]> = {};
+    const playerById = new Map(players.map((p) => [p.id, p]));
+    const byId: Record<string, { player: RosterPlayer; m: MatchResult }[]> = {};
     for (const r of pending) {
-      const ids = precomputed[r.id] ?? [];
-      const local = matchRequestToPlayers(r as ClubRequest, players, euCountries);
-      const merged = new Map<string, RosterPlayer>();
-      for (const p of local) if (p.id) merged.set(p.id, p);
-      for (const id of ids) { const p = playerById[id]; if (p?.id) merged.set(p.id, p); }
-      byId[r.id] = Array.from(merged.values()).sort((a, b) => parseMarketValueToEuros(b.marketValue) - parseMarketValueToEuros(a.marketValue));
+      byId[r.id] = rankPlayersForRequest(r as MatchRequest, players as unknown as MatchPlayer[], matchCtx)
+        .filter(isVisibleMatch)
+        .map((m) => ({ player: playerById.get(m.playerId)!, m }))
+        .filter((x) => !!x.player);
     }
     return byId;
-  }, [pending, players, precomputed, euCountries]);
-
-  // Mandate player count per request
-  const mandateCountByRequest = useMemo(() => {
-    const byId: Record<string, number> = {};
-    if (Object.keys(mandateLeaguesByPlayer).length === 0) return byId;
-    const withMandate = players.filter((p) => (p.tmProfile || p.id) && mandateLeaguesByPlayer[p.tmProfile || p.id!]);
-    if (withMandate.length === 0) return byId;
-    for (const r of pending) {
-      if (!r.position) continue;
-      const clubNorm = r.clubName ? normalizeClub(r.clubName) : undefined;
-      const countryNorm = r.clubCountry ? normalizeClub(r.clubCountry) : undefined;
-      const reqPos = normalizePosition(r.position).toUpperCase();
-      const n = withMandate.filter((p) => {
-        const positions = (p.positions ?? []).filter(Boolean).map((pos) => normalizePosition(pos as string).toUpperCase());
-        if (!positions.includes(reqPos)) return false;
-        const leagues = (mandateLeaguesByPlayer[p.tmProfile || p.id!] ?? []).map(normalizeClub);
-        if (leagues.some((l) => l === 'worldwide')) return true;
-        if (countryNorm && leagues.some((l) => l === countryNorm)) return true;
-        if (clubNorm) for (const l of leagues) { const part = l.includes(' - ') ? l.split(' - ')[0]! : l; if (clubNamesMatch(clubNorm, part)) return true; }
-        return false;
-      }).length;
-      if (n > 0) byId[r.id] = n;
-    }
-    return byId;
-  }, [pending, players, mandateLeaguesByPlayer]);
+  }, [pending, players, matchCtx]);
 
   const activePositions = useMemo(() => {
     const set = new Set(pending.map((r) => normalizePosition(r.position) || 'Other'));
@@ -425,7 +355,8 @@ export default function MenRequests() {
               <div className="brit-req-board">
                 {filtered.map((r) => {
                   const matches = matchesByRequest[r.id] ?? [];
-                  const mandateN = mandateCountByRequest[r.id] ?? 0;
+                  const mandateN = matches.filter((x) => x.m.mandate).length;
+                  const strongN = matches.filter((x) => x.m.bucket === 'strong').length;
                   const age = ageRange(r);
                   const fee = feeLabel(r.transferFee);
                   const isNew = r.createdAt && Date.now() - r.createdAt < 86400000;
@@ -475,16 +406,16 @@ export default function MenRequests() {
                           <div className="mleft">
                             {matches.length > 0 && (
                               <div className="brit-req-avatars">
-                                {matches.slice(0, 4).map((p) => (
+                                {matches.slice(0, 4).map(({ player: p, m }) => (
                                   p.profileImage
-                                    ? <img key={p.id} src={p.profileImage} alt="" title={p.fullName} />
-                                    : <span key={p.id} className="ph" title={p.fullName}>{initials(p.fullName)}</span>
+                                    ? <img key={p.id} src={p.profileImage} alt="" title={`${p.fullName} · ${m.score}`} />
+                                    : <span key={p.id} className="ph" title={`${p.fullName} · ${m.score}`}>{initials(p.fullName)}</span>
                                 ))}
                               </div>
                             )}
                             <span className="mcount">
                               {matches.length > 0
-                                ? <><b>{matches.length}</b> {t('requests_room_matches')}</>
+                                ? <><b>{matches.length}</b> {t('requests_room_matches')}{strongN > 0 && <> · <b>{strongN}</b> {bucketLabel('strong', isHebrew)}</>}</>
                                 : <><b className="none">0</b> {t('requests_room_no_match')}</>}
                             </span>
                           </div>

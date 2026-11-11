@@ -30,7 +30,8 @@ import PlayerStatsPanel from '@/components/PlayerStatsPanel';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import ProposalHistorySection, { type ProposalOffer } from '@/components/ProposalHistorySection';
 import { type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
-import { usePlayerMatchResults } from '@/hooks/useMatchResults';
+import { useMatchingContext } from '@/hooks/useMatchingContext';
+import { rankRequestsForPlayer, type MatchPlayer, type MatchRequest } from '@/lib/matching/engine';
 import AgentTransferSection from '@/components/AgentTransferSection';
 import { type AgentTransferRequest, listenForPendingRequest, listenForResolvedTransfer, requestAgentTransfer, approveTransfer, rejectTransfer, cancelTransferRequest } from '@/lib/agentTransfer';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
@@ -241,7 +242,6 @@ export default function PlayerInfoPage() {
   const searchParams = useSearchParams();
   const id = params.id as string;
   const euCountries = useEuCountries();
-  const precomputedMatchRequestIds = usePlayerMatchResults(id);
   const tasksEnabled = WEB_TASKS_ENABLED;
   const menRosterAnalysisEnabled = MEN_ROSTER_ANALYSIS_ENABLED;
   const fromPath = searchParams.get('from') || '/players';
@@ -566,19 +566,26 @@ export default function PlayerInfoPage() {
     };
   }, [player]);
 
+  // Matching requests — matching engine v2 (gates + fit score), best fit first; "not a fit" verdicts are hidden.
+  const matchClubUrls = useMemo(
+    () => clubRequests.filter((r) => (r.status || 'pending') === 'pending').map((r) => (r as { clubTmProfile?: string }).clubTmProfile),
+    [clubRequests]
+  );
+  const { ctx: matchCtx } = useMatchingContext(matchClubUrls);
   const matchingRequests = useMemo(() => {
     if (!playerAsRoster || !player?.tmProfile) return [];
-    // Use pre-computed matching request IDs from Cloud Functions
     const requestById = Object.fromEntries(clubRequests.map((r) => [r.id, r]));
-    const matching = precomputedMatchRequestIds.map((id) => requestById[id]).filter((r): r is ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string } => !!r);
+    const ranked = rankRequestsForPlayer(player as unknown as MatchPlayer, clubRequests as unknown as MatchRequest[], matchCtx)
+      .filter((m) => m.feedback !== 'not_fit');
     const offerByRequestId = Object.fromEntries(
       playerOffers.map((o) => [o.requestId ?? '', o])
     );
-    return matching.map((req) => ({
-      request: req,
-      offer: offerByRequestId[req.id] as { id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; clubName?: string; clubLogo?: string; position?: string } | undefined,
+    return ranked.filter((m) => requestById[m.requestId]).map((m) => ({
+      request: requestById[m.requestId]!,
+      offer: offerByRequestId[m.requestId] as { id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; clubName?: string; clubLogo?: string; position?: string } | undefined,
+      match: { score: m.score, bucket: m.bucket, reasons: m.reasons, warnings: m.warnings },
     }));
-  }, [playerAsRoster, player?.tmProfile, clubRequests, playerOffers, precomputedMatchRequestIds]);
+  }, [playerAsRoster, player, clubRequests, playerOffers, matchCtx]);
 
   const proposalHistory: ProposalOffer[] = useMemo(() => {
     const activeRequestIds = new Set(matchingRequests.map((m) => m.request.id));
