@@ -49,6 +49,7 @@ export default function RequestMatchesPage() {
   const [req, setReq] = useState<Req | null | undefined>(undefined);
   const [players, setPlayers] = useState<MatchPlayer[]>([]);
   const [precomputed, setPrecomputed] = useState<string[]>([]);
+  const [opening, setOpening] = useState(false);
 
   useEffect(() => { if (!loading && !user) router.replace('/login'); }, [loading, user, router]);
   // the matches page is men-only (women / youth keep the standard requests screen)
@@ -77,6 +78,13 @@ export default function RequestMatchesPage() {
 
   const saveScroll = useScrollRestore(`requests-matches-${id}`, !!req && players.length > 0);
 
+  // instant feedback while the player page loads (skip for ctrl/cmd/middle-click, which open a new tab)
+  const openPlayer = (e: React.MouseEvent) => {
+    saveScroll();
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    setOpening(true);
+  };
+
   if (loading || !user || platform !== 'men') return <BritLoader fullPage />;
 
   const dateStr = new Date().toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -84,6 +92,8 @@ export default function RequestMatchesPage() {
   const back = <Link href="/requests" className="brit-reqm-back">← {t('nav_requests')}</Link>;
 
   return (
+    <>
+    {opening && <BritLoader fullPage text="LOADING PLAYER" subtitle="Fetching profile details" />}
     <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
       <div className="brit-app">
         <BritRail active="requests" />
@@ -132,7 +142,7 @@ export default function RequestMatchesPage() {
                       const agent = p.agentInChargeName?.trim();
                       const showAgent = !!agent && agent.toLowerCase() !== 'unknown';
                       return (
-                        <Link key={p.id} href={`/players/${p.id}?from=/requests/${id}`} onClick={saveScroll} className="brit-player-card">
+                        <Link key={p.id} href={`/players/${p.id}?from=/requests/${id}`} onClick={openPlayer} className="brit-player-card">
                           {p.profileImage ? <img src={p.profileImage} alt={p.fullName || ''} /> : <div className="brit-player-card-ph" />}
                           <div className="brit-player-card-top">
                             <span className="brit-num">{String(i + 1).padStart(2, '0')}</span>
@@ -160,5 +170,6 @@ export default function RequestMatchesPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
