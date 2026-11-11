@@ -21,6 +21,8 @@ import { parseMarketValue, formatMarketValue } from '@/lib/releases';
 import { extractPlayerIdFromUrl } from '@/lib/api';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import { openWhatsAppWithMessage } from '@/lib/whatsapp';
+import { parseDob } from '@/lib/birthdays';
+import BritBirthdaysModule from '@/components/BritBirthdaysModule';
 import BritRail from '@/components/BritRail';
 import RosterIntelligence from '@/components/tiering/RosterIntelligence';
 import { LEVEL_FOCUS_ENABLED } from '@/lib/featureFlags';
@@ -266,37 +268,6 @@ function ageRangeLabel(r: MenClubRequest): string {
   if (r.minAge) return ` / ${r.minAge}+`;
   if (r.maxAge) return ` / ≤${r.maxAge}`;
   return '';
-}
-
-/** Parse dateOfBirth strings in common formats → { month (0-based), day, year }. */
-function parseDob(dob: string | undefined): { month: number; day: number; year: number } | null {
-  if (!dob) return null;
-  const iso = dob.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (iso) return { year: +iso[1]!, month: +iso[2]! - 1, day: +iso[3]! };
-  const dmy = dob.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
-  if (dmy) return { year: +dmy[3]!, month: +dmy[2]! - 1, day: +dmy[1]! };
-  return null;
-}
-
-/** Whole days from today until the next occurrence of a birthday (0 = today). */
-function daysUntilBirthday(parsed: { month: number; day: number }): number {
-  const today = new Date();
-  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  let next = new Date(today.getFullYear(), parsed.month, parsed.day);
-  if (next < todayMidnight) next = new Date(today.getFullYear() + 1, parsed.month, parsed.day);
-  return Math.round((next.getTime() - todayMidnight.getTime()) / 86_400_000);
-}
-
-interface BirthdayEntry {
-  id: string;
-  player: MenRosterPlayer;
-  fullName: string;
-  club?: string;
-  phone?: string;
-  agent?: string;
-  turnsAge: number;
-  daysUntil: number;
-  dateLabel: string;
 }
 
 const clubDisplay = (p: MenRosterPlayer, t: (k: string) => string) => {
@@ -755,43 +726,6 @@ export default function MenDashboard({
     ).length;
   }, [rosterPlayers, euCountries]);
 
-  // Upcoming player birthdays (today + next 30 days), soonest first.
-  const birthdays = useMemo<BirthdayEntry[]>(() => {
-    const list: BirthdayEntry[] = [];
-    for (const p of rosterPlayers) {
-      const parsed = parseDob(p.dateOfBirth || p.passportDetails?.dateOfBirth);
-      if (!parsed) continue;
-      const daysUntil = daysUntilBirthday(parsed);
-      if (daysUntil > 30) continue;
-      // Year of the next birthday occurrence → age they will turn.
-      const todayMidnight = new Date();
-      todayMidnight.setHours(0, 0, 0, 0);
-      const thisYearBday = new Date(todayMidnight.getFullYear(), parsed.month, parsed.day);
-      const nextBdayYear =
-        thisYearBday < todayMidnight ? todayMidnight.getFullYear() + 1 : todayMidnight.getFullYear();
-      list.push({
-        id: p.id,
-        player: p,
-        fullName: p.fullName || '—',
-        club: p.currentClub?.clubName,
-        phone: p.playerPhoneNumber,
-        agent: p.agentInChargeName?.trim() || undefined,
-        turnsAge: nextBdayYear - parsed.year,
-        daysUntil,
-        dateLabel: new Date(todayMidnight.getFullYear(), parsed.month, parsed.day).toLocaleDateString(
-          isRtl ? 'he-IL' : 'en-US',
-          { month: 'short', day: 'numeric' }
-        ),
-      });
-    }
-    const sorted = list.sort((a, b) => a.daysUntil - b.daysUntil);
-    // Cap the list at 5 in general. The only exception: if MORE than 5 players
-    // have a birthday today, show all of today's (and nothing else) so none of
-    // them are hidden. Otherwise, take the soonest 5 (today + upcoming).
-    const today = sorted.filter((b) => b.daysUntil === 0);
-    return today.length > 5 ? today : sorted.slice(0, 5);
-  }, [rosterPlayers, isRtl]);
-
   const topRoster = useMemo(
     () =>
       [...rosterPlayers]
@@ -855,13 +789,6 @@ export default function MenDashboard({
   };
 
   const rosterPlayerValue = (p: MenRosterPlayer) => p.marketValue || '—';
-
-  const sendBirthdayWish = (b: BirthdayEntry) => {
-    if (!b.phone) return;
-    const first = b.fullName.split(' ')[0] || b.fullName;
-    const msg = `Happy Birthday ${first}!\nWishing you a wonderful year ahead, full of success on and off the pitch!\n${userName}`;
-    openWhatsAppWithMessage(b.phone, msg);
-  };
 
   const openDossier = (p: MenRosterPlayer) =>
     setDossier({
@@ -976,66 +903,7 @@ export default function MenDashboard({
               {/* ── Left column ── */}
               <div>
                 {/* Player birthdays */}
-                <section className="brit-module">
-                  <div className="brit-module-head">
-                    <h2>{t('room_birthdays')}</h2>
-                    <span>{withToken('room_birthdays_count', birthdays.length)}</span>
-                  </div>
-                  {birthdays.length > 0 ? (
-                    birthdays.map((b) => {
-                      const isToday = b.daysUntil === 0;
-                      return (
-                        <div
-                          className="brit-deadline"
-                          key={b.id}
-                          onClick={() => setDrawer(b.player)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <div className="brit-code">{isToday ? t('room_birthdays_today_code') : b.dateLabel}</div>
-                          <div>
-                            <h3>{b.fullName}</h3>
-                            <p>
-                              {(b.club || '—')} / {withToken('room_birthdays_turns', b.turnsAge)}
-                            </p>
-                            {b.agent && (
-                              <p className="brit-birthday-agent">
-                                {t('room_birthdays_agent')} <em>{b.agent}</em>
-                              </p>
-                            )}
-                          </div>
-                          <div className="brit-birthday-action" onClick={(e) => e.stopPropagation()}>
-                            {isToday && b.phone && (
-                              <button
-                                type="button"
-                                className="brit-birthday-btn"
-                                onClick={() => sendBirthdayWish(b)}
-                                aria-label={t('room_birthdays_wish')}
-                              >
-                                {t('room_birthdays_wish')}
-                              </button>
-                            )}
-                            {isToday && !b.phone && (
-                              <span className="brit-birthday-nonum" aria-label={t('room_birthdays_no_number')}>
-                                <span className="brit-birthday-nonum-bar" aria-hidden />
-                                <span className="brit-birthday-nonum-txt">
-                                  <b>{t('room_birthdays_no_number')}</b>
-                                  <span>{t('room_birthdays_no_number_sub')}</span>
-                                </span>
-                              </span>
-                            )}
-                            <time className={isToday ? 'brit-red' : ''}>
-                              {isToday
-                                ? t('room_birthdays_today')
-                                : withToken('room_window_days', b.daysUntil)}
-                            </time>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="brit-empty">{t('room_birthdays_empty')}</div>
-                  )}
-                </section>
+                <BritBirthdaysModule players={rosterPlayers} userName={userName} onOpen={setDrawer} />
 
                 {/* Pending decisions (mandates expiring soonest) */}
                 <section className="brit-module brit-black-module">

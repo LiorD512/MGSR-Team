@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useLanguage, translateType } from '@/contexts/LanguageContext';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
+import BritBirthdaysModule from '@/components/BritBirthdaysModule';
 import type { YouthPlayer } from '@/lib/playersYouth';
 
 export interface YouthDashboardFeedEvent {
@@ -159,6 +160,9 @@ export default function YouthDashboard({
 
             <div className="brit-grid">
               <div>
+                {/* Player birthdays — same module as the men dashboard */}
+                <BritBirthdaysModule players={youthPlayers} userName={userName} onOpen={(p) => router.push(`/players/youth/${p.id}?from=/dashboard`)} />
+
                 {/* Age-group ladder */}
                 <section className="brit-module">
                   <div className="brit-module-head">
