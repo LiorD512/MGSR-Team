@@ -486,20 +486,9 @@ export default function MenRequests() {
                                 : <><b className="none">0</b> {t('requests_room_no_match')}</>}
                             </span>
                           </div>
+                          {matches.length > 0 && <Link href={`/requests/${r.id}`} className="brit-req-viewall">{isRtl ? 'הצג הכל' : 'View all'} →</Link>}
                           {mandateN > 0 && <span className="brit-req-mand">✍ {mandateN} {isRtl ? 'מנדט' : 'Mandate'}</span>}
                         </div>
-
-                        {/* Matched player quick links */}
-                        {matches.length > 0 && (
-                          <div className="brit-req-matchlinks">
-                            {matches.slice(0, 3).map((p) => (
-                              <Link key={p.id} href={`/players/${p.id}?from=/requests`} className="brit-req-mlink">
-                                {p.fullName || '—'}
-                              </Link>
-                            ))}
-                            {matches.length > 3 && <span className="brit-req-more">+{matches.length - 3}</span>}
-                          </div>
-                        )}
 
                         <div className="brit-req-foot">
                           <span className="by">

@@ -3998,6 +3998,23 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-req-mlink{font:9px/1 var(--mono);text-transform:uppercase;color:var(--gold);border:1px solid var(--gold-soft);padding:5px 7px;transition:.15s}
 .brit-room .brit-req-mlink:hover{background:var(--gold-soft);color:var(--ink)}
 .brit-room .brit-req-more{font:9px/1 var(--mono);color:var(--muted);align-self:center}
+.brit-room .brit-req-viewall{font:9px/1 var(--mono);text-transform:uppercase;color:var(--gold);border:1px solid var(--gold-soft);padding:6px 8px;transition:.15s;white-space:nowrap}
+.brit-room .brit-req-viewall:hover{background:var(--gold-soft);color:var(--ink)}
+.brit-room .brit-reqm-back{display:inline-block;font:10px/1 var(--mono);text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.brit-room .brit-reqm-back:hover{color:var(--gold)}
+.brit-room .brit-reqm-club{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.brit-room .brit-reqm-club img{width:44px;height:44px;object-fit:contain}
+.brit-room .brit-reqm-spec{display:flex;flex-wrap:wrap;gap:8px 18px;font:10px/1.4 var(--mono);text-transform:uppercase;color:var(--muted);margin:8px 0 18px}
+.brit-room .brit-reqm-spec b{color:var(--ink);font-weight:500}
+.brit-room .brit-reqm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.brit-room .brit-reqm-card{display:block;background:var(--card);border:1px solid var(--line);transition:.15s}
+.brit-room .brit-reqm-card:hover{border-color:var(--gold)}
+.brit-room .brit-reqm-photo{aspect-ratio:1/1;width:100%;object-fit:cover;object-position:top;display:block;background:linear-gradient(160deg,#26261f,#101010)}
+.brit-room .brit-reqm-photo.ph{display:grid;place-items:center;color:var(--paper);font:600 28px/1 var(--display)}
+.brit-room .brit-reqm-info{padding:10px 12px 12px}
+.brit-room .brit-reqm-info .nm{font:600 14px/1.25 var(--display);color:var(--ink)}
+.brit-room .brit-reqm-info .sub{font:9px/1.5 var(--mono);text-transform:uppercase;color:var(--muted);margin-top:4px}
+.brit-room .brit-reqm-info .val{font:11px/1 var(--mono);color:var(--gold);margin-top:8px}
 .brit-room .brit-req-foot{display:flex;align-items:flex-end;justify-content:space-between;border-top:1px solid var(--line);padding-top:11px;margin-top:11px}
 .brit-room .brit-req-foot .by{color:var(--muted);font:8px/1.5 var(--mono);text-transform:uppercase}
 .brit-room .brit-req-foot .by b{color:var(--ink);font-weight:500}
