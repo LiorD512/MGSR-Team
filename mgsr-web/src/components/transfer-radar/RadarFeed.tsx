@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
+import { CLUB_REQUESTS_COLLECTIONS, SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
 import { callShortlistAdd } from '@/lib/callables';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
@@ -19,6 +19,10 @@ import RadarPortal from './RadarPortal';
 import BritFilterSheetPortal from '@/components/BritFilterSheetPortal';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { agencyInBook, isReleased, isRoster, useAgencyLinks, type AgencyLinks } from '@/lib/transferRadar/agencyLinks';
+import { matchRequestToPlayers, type ClubRequest } from '@/lib/requestMatcher';
+import { useEuCountries } from '@/hooks/useEuCountries';
+import { RADAR_POSITIONS, feedItemMatchesRequest, positionCode } from '@/lib/transferRadar/positions';
+import { getPositionDisplayName } from '@/lib/appConfig';
 import RadarFiltered from './RadarFiltered';
 import { Arr, Ico } from './RadarIcons';
 
@@ -26,6 +30,7 @@ type View = 'feed' | 'ledger';
 type Sort = 'new' | 'contract' | 'value';
 type Kpi = 'radar' | 'new' | 'contract' | null;
 const POLL_MS = 5 * 60_000;
+type OpenRequest = ClubRequest & { clubName?: string; clubLogo?: string; status?: string };
 const tmIdOf = (u?: string | null) => u?.match(/spieler\/(\d+)/)?.[1] ?? null;
 
 /** Transfer Radar (v3): players the local press says may become available, each identified on Transfermarkt. */
@@ -42,6 +47,10 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
   const [q, setQ] = useState('');
   const [sit, setSit] = useState<Situation | 'all'>('all');
   const [country, setCountry] = useState('all');
+  const [position, setPosition] = useState('all');
+  const [reqId, setReqId] = useState('all');
+  const [requests, setRequests] = useState<OpenRequest[]>([]);
+  const euCountries = useEuCountries();
   const [sort, setSort] = useState<Sort>('new');
   const [kpi, setKpi] = useState<Kpi>(null);
   const [openId, setOpenId] = useState<string | null>(initialId ?? params.get('p'));
@@ -79,6 +88,11 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
     setShortIds(new Set(snap.docs.map((d) => tmIdOf(d.data().tmProfileUrl as string)).filter((x): x is string => !!x)));
   }, () => undefined), []);
 
+  // open club requests (men): lets the agency filter the Press Room by what each club is looking for
+  useEffect(() => onSnapshot(collection(db, CLUB_REQUESTS_COLLECTIONS.men), (snap) => {
+    setRequests(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<OpenRequest, 'id'>) })).filter((r) => (r.status || 'pending') === 'pending' && !!r.position));
+  }, () => undefined), []);
+
   // ?p=<id> keeps the open file in the URL (shareable, back button closes it)
   const openFile = (id: string) => { setOpenId(id); router.replace(`/transfer-radar?p=${encodeURIComponent(id)}`, { scroll: false }); };
   const closeFile = () => { setOpenId(null); router.replace('/transfer-radar', { scroll: false }); };
@@ -108,6 +122,11 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
     if (kpi === 'radar') a = a.filter((p) => !p.closed);
     if (sit !== 'all') a = a.filter((p) => p.situation === sit || p.situations.includes(sit));
     if (country !== 'all') a = a.filter((p) => p.country === country);
+    if (position !== 'all') a = a.filter((p) => positionCode(p.position) === position);
+    if (reqId !== 'all') {
+      const req = requests.find((r) => r.id === reqId);
+      a = req ? a.filter((p) => feedItemMatchesRequest(p, req, euCountries, matchRequestToPlayers)) : a;
+    }
     if (q.trim()) {
       const s = q.trim().toLowerCase();
       a = a.filter((p) => [p.name, p.fullName, p.club, p.league, p.country, cn(p.country), ...p.writtenAs].join(' ').toLowerCase().includes(s));
@@ -118,7 +137,7 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
       value: (x, y) => (y.valueEur ?? -1) - (x.valueEur ?? -1),
     };
     return [...a].sort((x, y) => Number(x.closed) - Number(y.closed) || by[sort](x, y));
-  }, [all, kpi, sit, country, q, sort, now, cn]);
+  }, [all, kpi, sit, country, position, reqId, requests, euCountries, q, sort, now, cn]);
 
   if (error?.code === 'RADAR_NOT_CONFIGURED') return <State title={t('not_configured_title')} text={t('not_configured_text')} />;
   if (error?.code === 'RADAR_FORBIDDEN') return <State title={t('forbidden_title')} text={t('forbidden_text')} />;
@@ -130,6 +149,8 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
     contract: all.filter((p) => { const m = monthsLeft(p.contractEnd, now); return m != null && m <= 6; }).length,
   };
   const countries = Array.from(new Set(all.map((p) => p.country).filter((c): c is string => !!c))).sort((a, b) => cn(a).localeCompare(cn(b)));
+  const positions = RADAR_POSITIONS.filter((c) => all.some((p) => positionCode(p.position) === c));
+  const reqMatchCount = (r: OpenRequest) => all.filter((p) => !p.closed && feedItemMatchesRequest(p, r, euCountries, matchRequestToPlayers)).length;
   const sits = SIT_FILTER.filter((s) => all.some((p) => p.situation === s || p.situations.includes(s)));
   const pad = (n: number) => String(n).padStart(2, '0');
   const lastRun = summary?.lastRun?.started_at ?? null;
@@ -198,7 +219,7 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
         <button type="button" className="brit-mfilter-btn" onClick={() => setSheetOpen(true)} aria-expanded={sheetOpen}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4h18M6 12h12M10 20h4" /></svg>
           <span>{t('filters_btn')}</span>
-          {(sit !== 'all' ? 1 : 0) + (country !== 'all' ? 1 : 0) + (sort !== 'new' ? 1 : 0) > 0 && <span className="brit-mfilter-count">{(sit !== 'all' ? 1 : 0) + (country !== 'all' ? 1 : 0) + (sort !== 'new' ? 1 : 0)}</span>}
+          {(sit !== 'all' ? 1 : 0) + (country !== 'all' ? 1 : 0) + (position !== 'all' ? 1 : 0) + (reqId !== 'all' ? 1 : 0) + (sort !== 'new' ? 1 : 0) > 0 && <span className="brit-mfilter-count">{(sit !== 'all' ? 1 : 0) + (country !== 'all' ? 1 : 0) + (position !== 'all' ? 1 : 0) + (reqId !== 'all' ? 1 : 0) + (sort !== 'new' ? 1 : 0)}</span>}
         </button>
       </div>
       <BritFilterSheetPortal active={isMobileSheet} isRtl={isRtl}>
@@ -223,12 +244,27 @@ export default function RadarFeed({ initialId }: { initialId?: string }) {
             {countries.map((c) => <button key={c} className={country === c ? 'on' : ''} onClick={() => setCountry(c)}>{cn(c)}</button>)}
           </div>
         </div>
+        <div className="brit-req-filterrow">
+          <span className="brit-req-flabel">{t('f_position')}</span>
+          <div className="brit-req-chipset">
+            <button className={position === 'all' ? 'on' : ''} onClick={() => setPosition('all')}>{t('all')}</button>
+            {positions.map((c) => <button key={c} className={position === c ? 'on' : ''} onClick={() => setPosition(c)}>{getPositionDisplayName(c, lang === 'he')}</button>)}
+          </div>
+        </div>
+        <div className="brit-req-filterrow">
+          <span className="brit-req-flabel">{t('f_request')}</span>
+          <div className="brit-req-chipset">
+            <button className={reqId === 'all' ? 'on' : ''} onClick={() => setReqId('all')}>{t('all')}</button>
+            {requests.map((r) => <button key={r.id} className={reqId === r.id ? 'on' : ''} onClick={() => setReqId(r.id)}>{r.clubName ?? '-'} · {getPositionDisplayName(r.position, lang === 'he')} ({reqMatchCount(r)})</button>)}
+            {!requests.length && <span className="brit-req-flabel">{t('req_none')}</span>}
+          </div>
+        </div>
         <div className="brit-ra-sortrow brit-ra-sortrow-sheet">
         <span className="lbl">{t('sort')}</span>
         {(['new', 'contract', 'value'] as const).map((s) => <button key={s} className={sort === s ? 'on' : ''} onClick={() => setSort(s)}>{t('so_' + s)}</button>)}
               </div>
         <div className="brit-tray-sheet-foot">
-          {(sit !== 'all' ? 1 : 0) + (country !== 'all' ? 1 : 0) + (sort !== 'new' ? 1 : 0) > 0 && <button type="button" className="reset" onClick={() => { setSit('all'); setCountry('all'); setSort('new'); }}>{t('f_clear_v4')}</button>}
+          {(sit !== 'all' ? 1 : 0) + (country !== 'all' ? 1 : 0) + (position !== 'all' ? 1 : 0) + (reqId !== 'all' ? 1 : 0) + (sort !== 'new' ? 1 : 0) > 0 && <button type="button" className="reset" onClick={() => { setSit('all'); setCountry('all'); setPosition('all'); setReqId('all'); setSort('new'); }}>{t('f_clear_v4')}</button>}
           <button type="button" className="apply" onClick={() => setSheetOpen(false)}>{t('showing', { n: list.length, t: all.length })}</button>
         </div>
       </section>

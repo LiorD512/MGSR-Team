@@ -131,7 +131,7 @@ function transferFeeToValueRange(transferFee: string): { min: number; max: numbe
 }
 
 /** Exclude players whose market value is clearly above the request's budget (e.g. €2M player vs 300-600 request). */
-function matchesMarketValueVsTransferFee(player: RosterPlayer, request: ClubRequest): boolean {
+export function matchesMarketValueVsTransferFee(player: RosterPlayer, request: ClubRequest): boolean {
   const reqFee = request.transferFee?.trim();
   if (!reqFee) return true;
   const playerValue = player.marketValue ? parseMarketValueToEuros(player.marketValue) : 0;
