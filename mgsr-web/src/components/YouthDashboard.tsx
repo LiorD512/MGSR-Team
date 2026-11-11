@@ -9,12 +9,13 @@
  * review, and a recent-activity feed.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLanguage, translateType } from '@/contexts/LanguageContext';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
+import BritBirthdaysModule from '@/components/BritBirthdaysModule';
 import type { YouthPlayer } from '@/lib/playersYouth';
 
 export interface YouthDashboardFeedEvent {
@@ -41,6 +42,31 @@ interface YouthDashboardProps {
   requests?: YouthDashboardRequest[];
   contactsCount?: number;
   shortlistCount?: number;
+}
+
+/**
+ * DEV ONLY — preview the birthdays module with fake prospects: open /dashboard?mockBirthdays=1 on `npm run dev`.
+ * Nothing is written to Firestore; ignored in production builds.
+ */
+function mockBirthdayPlayers(): YouthPlayer[] {
+  const d = (offset: number, age: number, fmt: 'iso' | 'dmy') => {
+    const x = new Date(); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() + offset);
+    const y = x.getFullYear() - age, m = String(x.getMonth() + 1).padStart(2, '0'), day = String(x.getDate()).padStart(2, '0');
+    return fmt === 'iso' ? `${y}-${m}-${day}` : `${day}.${m}.${y}`;
+  };
+  const rows: [string, string, number, number, 'iso' | 'dmy', string | undefined, string | undefined][] = [
+    ['Noam Levi', 'Maccabi Haifa U-17', 0, 16, 'iso', '+972500000001', 'Agent A'],
+    ['Itay Cohen', 'Hapoel Tel Aviv U-19', 0, 18, 'dmy', undefined, 'Agent B'],
+    ['Omer Peretz', 'Beitar Jerusalem U-15', 2, 14, 'iso', '+972500000002', undefined],
+    ['Yonatan Mizrahi', 'Maccabi Tel Aviv U-21', 6, 20, 'dmy', '+972500000003', 'Agent A'],
+    ['Daniel Biton', 'Hapoel Beer Sheva U-17', 13, 16, 'iso', undefined, 'Agent C'],
+    ['Ariel Azulay', 'Maccabi Netanya U-14', 27, 13, 'iso', '+972500000004', 'Agent B'],
+    ['Eden Shalom', 'Bnei Yehuda U-19', 45, 18, 'iso', '+972500000005', 'Agent A'],
+  ];
+  return rows.map(([fullName, club, offset, age, fmt, phone, agent], i) => ({
+    id: `mock-bday-${i}`, fullName, currentClub: { clubName: club }, dateOfBirth: d(offset, age, fmt),
+    playerPhoneNumber: phone, agentInChargeName: agent, createdAt: 0,
+  }));
 }
 
 const AGE_GROUPS = ['U-13', 'U-14', 'U-15', 'U-17', 'U-19', 'U-21'] as const;
@@ -84,6 +110,12 @@ export default function YouthDashboard({
   );
 
   const [showAllActivity, setShowAllActivity] = useState(false);
+
+  const [mockBirthdays, setMockBirthdays] = useState(false);
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') setMockBirthdays(new URLSearchParams(window.location.search).has('mockBirthdays'));
+  }, []);
+  const birthdayPlayers = useMemo(() => (mockBirthdays ? mockBirthdayPlayers() : youthPlayers), [mockBirthdays, youthPlayers]);
 
   const withToken = (key: string, value: string | number) => t(key).replace('{n}', String(value));
 
@@ -159,6 +191,9 @@ export default function YouthDashboard({
 
             <div className="brit-grid">
               <div>
+                {/* Player birthdays — same module as the men dashboard */}
+                <BritBirthdaysModule players={birthdayPlayers} userName={userName} onOpen={(p) => { if (!p.id.startsWith('mock-')) router.push(`/players/youth/${p.id}?from=/dashboard`); }} />
+
                 {/* Age-group ladder */}
                 <section className="brit-module">
                   <div className="brit-module-head">

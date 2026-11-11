@@ -17,6 +17,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useEuCountries } from '@/hooks/useEuCountries';
+import { useScrollRestore } from '@/hooks/useScrollRestore';
 import { getAllAccounts, getCurrentAccountForShortlist } from '@/lib/accounts';
 import { callRequestsDelete } from '@/lib/callables';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
@@ -113,6 +114,7 @@ export default function MenRequests() {
 
   const [requests, setRequests] = useState<Request[]>([]);
   const [ready, setReady] = useState(false);
+  const saveScroll = useScrollRestore('requests-board', ready);
   const [players, setPlayers] = useState<RosterPlayer[]>([]);
   const [precomputed, setPrecomputed] = useState<Record<string, string[]>>({});
   const [mandateLeaguesByPlayer, setMandateLeaguesByPlayer] = useState<Record<string, string[]>>({});
@@ -486,20 +488,9 @@ export default function MenRequests() {
                                 : <><b className="none">0</b> {t('requests_room_no_match')}</>}
                             </span>
                           </div>
+                          {matches.length > 0 && <Link href={`/requests/${r.id}`} className="brit-req-viewall" onClick={saveScroll}>{isRtl ? 'הצג הכל' : 'View all'} →</Link>}
                           {mandateN > 0 && <span className="brit-req-mand">✍ {mandateN} {isRtl ? 'מנדט' : 'Mandate'}</span>}
                         </div>
-
-                        {/* Matched player quick links */}
-                        {matches.length > 0 && (
-                          <div className="brit-req-matchlinks">
-                            {matches.slice(0, 3).map((p) => (
-                              <Link key={p.id} href={`/players/${p.id}?from=/requests`} className="brit-req-mlink">
-                                {p.fullName || '—'}
-                              </Link>
-                            ))}
-                            {matches.length > 3 && <span className="brit-req-more">+{matches.length - 3}</span>}
-                          </div>
-                        )}
 
                         <div className="brit-req-foot">
                           <span className="by">
