@@ -30,24 +30,12 @@ export function normalizePosition(pos: string | null | undefined): PositionCode 
 }
 
 /**
- * Positions a player can realistically cover for a request, scored lower than his own positions.
- * Kept deliberately tight: neighbouring roles on the same side / line only.
+ * Position rule (agency decision):
+ *   - Wingers (LW / RW) and central / defensive midfielders (CM / DM): the player's main OR secondary positions count,
+ *     and the other side / other midfield role counts as an adjacent fit (LW↔RW, CM↔DM).
+ *   - Every other position: the player's MAIN position only (positions[0]). Secondary positions don't count.
  */
-export const ADJACENT: Record<PositionCode, PositionCode[]> = {
-  GK: [],
-  CB: ['DM'],
-  LB: ['LM'],
-  RB: ['RM'],
-  DM: ['CM', 'CB'],
-  CM: ['DM', 'AM'],
-  AM: ['CM', 'SS'],
-  LM: ['LW', 'LB'],
-  RM: ['RW', 'RB'],
-  LW: ['RW', 'LM'],
-  RW: ['LW', 'RM'],
-  CF: ['SS'],
-  SS: ['CF', 'AM'],
-};
+const FLEXIBLE_PAIRS: Partial<Record<PositionCode, PositionCode>> = { LW: 'RW', RW: 'LW', CM: 'DM', DM: 'CM' };
 
 export type PositionFit = 'primary' | 'secondary' | 'adjacent' | 'none';
 
@@ -58,7 +46,9 @@ export function positionFit(playerPositions: (string | null | undefined)[] | und
   const codes = (playerPositions ?? []).map(normalizePosition).filter((c): c is PositionCode => !!c);
   if (codes.length === 0) return 'none';
   if (codes[0] === req) return 'primary';
+  const pair = FLEXIBLE_PAIRS[req];
+  if (!pair) return 'none'; // main position only
   if (codes.includes(req)) return 'secondary';
-  if (codes.some((c) => ADJACENT[req].includes(c))) return 'adjacent';
+  if (codes.includes(pair)) return 'adjacent';
   return 'none';
 }

@@ -191,7 +191,11 @@ legacy matcher and the precomputed `RequestMatchResults`. The men web screens no
 engine v2 directly in the browser (≈900 players × ≈40 requests evaluates in milliseconds).
 
 Defaults chosen for the open decisions (all tunable, see below): 1-year age band, 2.5× budget gate, mandate = boost
-(+10, gates still apply), adjacent positions allowed but capped at 70 (never "Strong").
+(+10, gates still apply).
+
+**Position rule (agency decision):** only the player's **main** position counts (`positions[0]`), except for wingers
+and central/defensive midfielders. For LW / RW / CM / DM requests a secondary position also counts, and the paired
+role counts as an adjacent fit (LW↔RW, CM↔DM), capped at 70 so it is never "Strong".
 
 | Phase | What was built | Where |
 |---|---|---|
