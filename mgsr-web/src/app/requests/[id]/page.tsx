@@ -177,6 +177,7 @@ export default function RequestMatchesPage() {
               {mt('level_line', isHebrew, { club: req!.clubName || '—', lo: formatEurShort(m.level.mvP10), hi: formatEurShort(m.level.mvP90) })}
               {m.level.playerMv > 0 && <>{' · '}{mt('level_player', isHebrew, { mv: formatEurShort(m.level.playerMv) })}</>}
               {m.levelClub?.strength ? <>{' · '}{mt('level_from', isHebrew, { club: m.levelClub.name ?? '', m: formatEurShort(m.levelClub.strength) })}</> : null}
+              {m.level.playerCountry && <>{' · '}{mt('level_from_country', isHebrew, { k: m.level.fromCountry, n: m.level.signingsUsed, c: m.level.playerCountry })}</>}
               {m.monthsInactive != null && m.monthsInactive > 6 && <>{' · '}{mt('inactive_months', isHebrew, m.monthsInactive)}</>}
             </p>
           )}

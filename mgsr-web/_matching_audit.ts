@@ -185,27 +185,29 @@ async function main() {
     };
   });
 
-  // ── 3b. club-level backtest (same method as the proof run in docs §8) ──
+  // ── 3b. club-level backtest (same method as docs §8/§9: own signings vs the other requesting clubs' signings) ──
   const lvlList = Object.values(clubLevels).filter((l): l is ClubLevel => !!l && l.signings.filter((x) => x.mv > 0).length >= ctx.weights.levelMinSignings);
-  const params = { gateFactor: ctx.weights.levelGateFactor, minSignings: ctx.weights.levelMinSignings };
+  const params = { gateFactor: ctx.weights.levelGateFactor, minSignings: ctx.weights.levelMinSignings, gateExemptMaxAge: ctx.weights.levelGateExemptAge };
+  type Sg = ClubLevel['signings'][number];
+  const originOf = (sg: Sg) => ({ clubStrength: sg.src, league: sg.league ?? null, country: sg.country ?? null, age: sg.age ?? null });
   const levelBacktest = lvlList.map((l) => {
     const own = l.signings.filter((x) => x.mv > 0);
-    let pass = 0;
-    own.forEach((sg, i) => {
-      const loo = { ...l, signings: own.filter((_, j) => j !== i) };
-      if (assessLevel(loo, sg.mv, sg.src, params)?.pass !== false) pass++;
-    });
-    // AUC vs signings of clubs at least 2× weaker
-    const weaker = lvlList.filter((o) => o.id !== l.id && o.squadMedian && l.squadMedian && o.squadMedian * 2 <= l.squadMedian).flatMap((o) => o.signings.filter((x) => x.mv > 0));
-    let auc: string = '-';
-    if (weaker.length >= 10) {
-      const sOwn = own.map((sg, i) => assessLevel({ ...l, signings: own.filter((_, j) => j !== i) }, sg.mv, sg.src, params)?.pct ?? 0.5);
-      const sW = weaker.map((sg) => assessLevel(l, sg.mv, sg.src, params)?.pct ?? 0.5);
-      let wins = 0, n = 0;
-      for (const a of sOwn) for (const b of sW) { n++; wins += a > b ? 1 : a === b ? 0.5 : 0; }
-      auc = (wins / n).toFixed(2);
-    }
-    return { club: l.name, squadMedian: formatEurShort(l.squadMedian), signings: own.length, ownSigningsPassGate: pct(pass, own.length), aucVsWeakerClubs: auc };
+    const others = lvlList.filter((o) => o.id !== l.id).flatMap((o) => o.signings.filter((x) => x.mv > 0));
+    const loo = (i: number) => ({ ...l, signings: own.filter((_, j) => j !== i) });
+    const sOwn = own.map((sg, i) => assessLevel(loo(i), sg.mv, originOf(sg), params));
+    const sOth = others.map((sg) => assessLevel(l, sg.mv, originOf(sg), params));
+    const pass = sOwn.filter((r) => r?.pass !== false).length;
+    const a1 = sOwn.map((r) => r?.raw ?? 0.5), b1 = sOth.map((r) => r?.raw ?? 0.5);
+    let wins = 0, n = 0;
+    for (const x of a1) for (const y of b1) { n++; wins += x > y ? 1 : x === y ? 0.5 : 0; }
+    const ranked = [...a1.map((v) => ({ v, own: 1 })), ...b1.map((v) => ({ v, own: 0 }))].sort((x, y) => y.v - x.v || Math.random() - 0.5);
+    return {
+      club: l.name, squadMedian: formatEurShort(l.squadMedian), signings: own.length, dataVersion: l.v ?? 1,
+      ownSigningsPassGate: pct(pass, own.length),
+      aucVsOtherClubs: others.length >= 10 ? (wins / n).toFixed(2) : '-',
+      ownInTop10: others.length >= 10 ? `${ranked.slice(0, 10).reduce((s, x) => s + x.own, 0)}/10` : '-',
+      randomTop10: others.length >= 10 ? (10 * own.length / (own.length + others.length)).toFixed(1) : '-',
+    };
   });
 
   // ── 4. golden set ──
@@ -260,7 +262,7 @@ async function main() {
   console.log('\n=== 3. Old vs new per open request ===');
   console.table(perRequest);
   console.log('Why players were excluded (all requests × players):'); console.table(gateTotals);
-  console.log('\n=== 3b. Club-level backtest (own signings should pass ≈95-100%; AUC near 1.0 = level score separates clubs well) ===');
+  console.log('\n=== 3b. Club-level backtest (own signings should pass ≈95-100%; AUC: 0.5 = coin flip, 1.0 = perfect; ownInTop10 vs randomTop10) ===');
   console.table(levelBacktest);
   if (!levelBacktest.length) console.log('No club level data yet — run `npx tsx _matching_worker.ts` (or the "Request matching — club level data" GitHub Action) first.');
   console.log('\n=== 4. Golden set (agents\' verdicts) ===');

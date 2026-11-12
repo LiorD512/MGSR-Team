@@ -58,14 +58,15 @@ export async function scrapeSquad(vereinId: string, season = currentSeasonId()):
   return { id: vereinId, name, league, median: median(vals), size: vals.length, positionMedian };
 }
 
-export interface LeagueData { code: string; avg: number | null; uefaRank: number | null }
+export interface LeagueData { code: string; avg: number | null; uefaRank: number | null; country: string | null }
 
 export async function scrapeLeague(code: string): Promise<LeagueData> {
   const h = await fetchHtmlWithRetry(`${TM}/x/startseite/wettbewerb/${code}`);
   const t = h.replace(/<[^>]+>/g, ' ').replace(/(&nbsp;|\s)+/g, ' ');
   const avgTxt = t.match(/(?:&oslash;|ø)-Market value: (€[\d.,]+[mMkK]?)/)?.[1]?.replace(/M$/, 'm').replace(/K$/, 'k');
   const uefa = t.match(/UEFA coefficient: (\d+)\. Pos/)?.[1];
-  return { code, avg: avgTxt ? eurFromTm(avgTxt) || null : null, uefaRank: uefa ? +uefa : null };
+  const country = cheerio.load(h)('span.data-header__club a').first().text().replace(/\s+/g, ' ').trim() || null;
+  return { code, avg: avgTxt ? eurFromTm(avgTxt) || null : null, uefaRank: uefa ? +uefa : null, country };
 }
 
 export interface Arrival {
@@ -77,6 +78,9 @@ export interface Arrival {
   fromName: string;
   fee: string;
   season: number;
+  /** League / country the player came from (as shown in the transfer row). */
+  fromLeague: string | null;
+  fromCountry: string | null;
 }
 
 /** A club's arrivals in one season, excluding returns from loan, own youth and pseudo-clubs. */
@@ -98,6 +102,7 @@ export async function scrapeArrivals(vereinId: string, season: number): Promise<
     // own / other academies distort the profile of who the first team signs
     if (/\bu1[5-9]\b|\bu2[0-3]\b|\byouth\b/i.test(fromName)) return;
     const ageTxt = tds.filter('.zentriert').first().text().trim();
+    const lg = $tr.find('a[href*="/transfers/wettbewerb/"]').first();
     out.push({
       name,
       pos: $tr.find('table.inline-table tr').eq(1).text().trim(),
@@ -107,6 +112,8 @@ export async function scrapeArrivals(vereinId: string, season: number): Promise<
       fromName,
       fee,
       season,
+      fromLeague: (lg.attr('href') || '').match(/wettbewerb\/([A-Z0-9]+)/)?.[1] ?? null,
+      fromCountry: lg.parent().find('img.flaggenrahmen').attr('title') || null,
     });
   });
   return out;
