@@ -10,7 +10,8 @@
  * Read-only towards Players / ClubRequests. Caches everything (club strength 30 days, requesting clubs 7 days,
  * player info 7 days), so a normal weekly run only fetches what changed. Paced at ~1 page / 0.5-1s.
  *
- *   npx tsx _matching_worker.ts [--force] [--max-fetches=1500] [--club=<vereinId>]
+ *   npx tsx _matching_worker.ts [--force] [--max-fetches=1500] [--minutes=50] [--club=<vereinId>]
+ *   (local runs can use e.g. --minutes=180 --max-fetches=4000 to finish the whole roster in one go)
  * Env: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, TM_HTML_PROXY_URL (GitHub Actions).
  */
 import fs from 'fs';
@@ -32,6 +33,7 @@ const arg = (n: string) => process.argv.slice(2).find((a) => a === `--${n}` || a
 const FORCE = process.argv.includes('--force');
 const MAX_FETCHES = Number(arg('max-fetches')) || 1500;
 const ONLY_CLUB = arg('club');
+const MINUTES = Number(arg('minutes')) || 50; // GitHub Actions job timeout is 60 min
 const PLAYER_TTL_MS = 7 * 86_400_000;
 
 async function main() {
@@ -47,7 +49,7 @@ async function main() {
   const db = adminDb();
   const t0 = Date.now();
   const log = (m: string) => console.log(`[${new Date().toISOString().slice(11, 19)}] ${m}`);
-  const budget = { fetches: MAX_FETCHES, deadline: t0 + 50 * 60_000, log };
+  const budget = { fetches: MAX_FETCHES, deadline: t0 + MINUTES * 60_000, log };
 
   const [reqSnap, playersSnap, tiersSnap, levelsSnap, store] = await Promise.all([
     db.collection('ClubRequests').get(),
