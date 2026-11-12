@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
 import { tmClubId } from '@/lib/matching/engine';
-import type { ClubLevel, ClubStrength } from '@/lib/matching/level';
+import { CLUB_LEVEL_VERSION, type ClubLevel, type ClubStrength } from '@/lib/matching/level';
 import { buildClubLevel, CLUB_LEVELS, CLUB_LEVEL_TTL_MS, loadStore, mergeStrength } from '@/lib/matching/levelServer';
 import { getCached, setCache } from '@/lib/scrapingCache';
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   for (const id of ids) {
     const doc = await db.collection(CLUB_LEVELS).doc(id).get();
     const cur = doc.exists ? (doc.data() as ClubLevel) : null;
-    if (cur && Date.now() - cur.updatedAt < CLUB_LEVEL_TTL_MS) { out[id] = cur; continue; }
+    if (cur && (cur.v ?? 1) >= CLUB_LEVEL_VERSION && Date.now() - cur.updatedAt < CLUB_LEVEL_TTL_MS) { out[id] = cur; continue; }
     if (await getCached<boolean>(`matchLevelFail_${id}`, FAIL_TTL_MS)) { out[id] = cur; continue; }
     const remaining = Math.max(0, deadline - Date.now());
     const lvl = await buildClubLevel(id, store, { fetches: 25, deadline: Date.now() + remaining / Math.max(1, ids.length - Object.keys(out).length) }, fresh);

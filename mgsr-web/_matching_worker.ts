@@ -38,7 +38,8 @@ const PLAYER_TTL_MS = 7 * 86_400_000;
 
 async function main() {
   const { adminDb, getFirebaseAdmin } = await import('./src/lib/firebaseAdmin');
-  const { loadStore, saveStore, buildClubLevel, ensureStrength, CLUB_LEVELS, CLUB_LEVEL_TTL_MS } = await import('./src/lib/matching/levelServer');
+  const { loadStore, saveStore, buildClubLevel, ensureStrength, ensureLeague, CLUB_LEVELS, CLUB_LEVEL_TTL_MS } = await import('./src/lib/matching/levelServer');
+  const { CLUB_LEVEL_VERSION } = await import('./src/lib/matching/level');
   const { lastClubOf } = await import('./src/lib/matching/levelScrape');
   const { fetchRecentGames } = await import('./src/lib/transfermarkt');
   const { tmClubId, tmPlayerId, isFreeAgent } = await import('./src/lib/matching/engine');
@@ -58,7 +59,7 @@ async function main() {
     db.collection(CLUB_LEVELS).get(),
     loadStore(db),
   ]);
-  const existing = new Map(levelsSnap.docs.map((d) => [d.id, d.data() as { updatedAt?: number }]));
+  const existing = new Map(levelsSnap.docs.map((d) => [d.id, d.data() as { updatedAt?: number; v?: number }]));
 
   // ── 1. requesting clubs ──
   const clubIds = new Set<string>();
@@ -68,7 +69,7 @@ async function main() {
     const id = tmClubId(r.clubTmProfile);
     if (id) clubIds.add(id);
   }
-  const targets = Array.from(clubIds).filter((id) => (!ONLY_CLUB || id === ONLY_CLUB) && (FORCE || !existing.has(id) || Date.now() - (existing.get(id)!.updatedAt ?? 0) > CLUB_LEVEL_TTL_MS));
+  const targets = Array.from(clubIds).filter((id) => (!ONLY_CLUB || id === ONLY_CLUB) && (FORCE || !existing.has(id) || (existing.get(id)!.v ?? 1) < CLUB_LEVEL_VERSION || Date.now() - (existing.get(id)!.updatedAt ?? 0) > CLUB_LEVEL_TTL_MS));
   log(`requesting clubs: ${clubIds.size} (${targets.length} to (re)build)`);
   let built = 0;
   for (const id of targets) {
@@ -117,6 +118,15 @@ async function main() {
         log(`  players ${playersDone} · last-club lookups ${lastClubLookups} · game lookups ${gameLookups} · fetches left ${budget.fetches}`);
       }
     }
+    // league country of every club a player is judged by (≈ one page per league, cached 30 days)
+    const leagueCodes = new Set(Object.values(store.players).map((pl) => (pl.clubId ? store.strength[pl.clubId]?.l : null)).filter((x): x is string => !!x));
+    let leaguesFetched = 0;
+    for (const code of Array.from(leagueCodes)) {
+      const before = store.leagues[code];
+      await ensureLeague(code, store, budget);
+      if (store.leagues[code] !== before) leaguesFetched++;
+    }
+    log(`leagues: ${leagueCodes.size} used by players (${leaguesFetched} fetched)`);
     // drop players that left the roster
     const ids = new Set(playersSnap.docs.map((d) => d.id));
     for (const k of Object.keys(store.players)) if (!ids.has(k)) delete store.players[k];

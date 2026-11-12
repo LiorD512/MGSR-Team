@@ -101,6 +101,8 @@ export interface MatchWeights {
   levelGateFactor: number;
   /** Signings with a known value needed before the level gate applies. */
   levelMinSignings: number;
+  /** Players this age or younger are never excluded by the level gate. */
+  levelGateExemptAge: number;
 }
 
 export const DEFAULT_WEIGHTS: MatchWeights = {
@@ -121,6 +123,7 @@ export const DEFAULT_WEIGHTS: MatchWeights = {
   adjacentCap: 70,
   levelGateFactor: 0.5,
   levelMinSignings: 10,
+  levelGateExemptAge: 21,
 };
 
 /** Merge a (possibly partial / untyped) `Config/matchingWeights` doc over the defaults. */
@@ -146,6 +149,8 @@ export interface MatchContext {
   clubStrength: Record<string, ClubStrength>;
   /** Per roster player: club his level is judged by + last game played. */
   playerLevels: Record<string, PlayerLevelInfo>;
+  /** League code → country (TM English name). */
+  leagues?: Record<string, { country?: string | null }>;
   /** Roster Intelligence signal kinds per player id (PlayerTiers), e.g. 'hot_form', 'benched'. */
   signalsByPlayerId?: Record<string, string[]>;
   /** Recent games per player id from PlayerTiers, used when the player doc has none. */
@@ -165,7 +170,7 @@ export type ReasonCode =
   | 'budget_in_band' | 'budget_below' | 'budget_stretch' | 'budget_over' | 'budget_unknown'
   | 'free_agent' | 'contract_6m' | 'contract_12m' | 'on_loan' | 'contract_long' | 'contract_unknown'
   | 'level_fit' | 'level_above' | 'level_below' | 'level_low' | 'level_unknown'
-  | 'inactive' | 'inactive_long'
+  | 'inactive' | 'inactive_long' | 'recruits_here'
   | 'regular_starter' | 'rotation' | 'low_minutes' | 'hot_form' | 'cold_form' | 'benched' | 'form_unknown'
   | 'age_in_range' | 'age_near' | 'age_unknown'
   | 'salary_in_band' | 'salary_stretch' | 'salary_over' | 'salary_unknown'
@@ -431,7 +436,11 @@ export function evaluateMatch(req: MatchRequest, p: MatchPlayer, ctx: MatchConte
   const pInfo = ctx.playerLevels[p.id];
   const pClubId = pInfo?.clubId ?? (free ? null : tmClubId(p.currentClub?.clubTmProfile));
   const pClubStrength = pClubId ? ctx.clubStrength[pClubId]?.m ?? null : null;
-  const level = assessLevel(clubLevel, mv, pClubStrength, { gateFactor: w.levelGateFactor, minSignings: w.levelMinSignings });
+  const pLeague = pClubId ? ctx.clubStrength[pClubId]?.l ?? null : null;
+  const level = assessLevel(clubLevel, mv, {
+    clubStrength: pClubStrength, league: pLeague, country: pLeague ? ctx.leagues?.[pLeague]?.country ?? null : null,
+    age: Number.isFinite(ageN) && ageN > 0 ? ageN : null,
+  }, { gateFactor: w.levelGateFactor, minSignings: w.levelMinSignings, gateExemptMaxAge: w.levelGateExemptAge });
   if (level?.pass === false) return { ok: false, gate: 'level' };
   // far above what the club ever signs → unrealistic for them (cost / wages / ambition), even without a fee on the request
   const overLevel = level?.mvP90 && mv > 0 ? mv / level.mvP90 : null;
@@ -443,6 +452,8 @@ export function evaluateMatch(req: MatchRequest, p: MatchPlayer, ctx: MatchConte
     if (level.score >= 80) reasons.push('level_fit');
     else if (level.score >= 45) warnings.push('level_below');
     else warnings.push('level_low');
+    // the club regularly signs from his league (≥15% of signings) or country (≥25%)
+    if (level.signingsUsed && (level.fromLeague / level.signingsUsed >= 0.15 || level.fromCountry / level.signingsUsed >= 0.25)) reasons.push('recruits_here');
   } else if (clubLevel?.squadMedian && mv > 0) {
     // not enough signings data: compare with the club's current players at that position
     const ref = clubLevel.positionMedian[normalizePosition(req.position)!] ?? clubLevel.squadMedian;
@@ -503,7 +514,12 @@ export function evaluateMatch(req: MatchRequest, p: MatchPlayer, ctx: MatchConte
   const stretchMax = w.goodMin - 1, goodMax = w.strongMin - 1;
   if (monthsInactive != null && monthsInactive > 12) score = Math.min(score, stretchMax); // no game for a year+
   else if (monthsInactive != null && monthsInactive > 6) score = Math.min(score, goodMax);
-  if (level?.score != null && level.score < 25 && !(overLevel != null && overLevel > 3)) score = Math.min(score, stretchMax); // bottom of what the club signs
+  // backtest: raw < 0.2 holds 3% of clubs' own signings vs 20% of other clubs' → max Stretch
+  // and raw < 0.3: 7% of own vs 33% of others → max Good
+  if (level?.raw != null && !(overLevel != null && overLevel > 3)) {
+    if (level.raw < 0.2) score = Math.min(score, stretchMax);
+    else if (level.raw < 0.3) score = Math.min(score, goodMax);
+  }
   if (overLevel != null && overLevel > 8) score = Math.min(score, stretchMax);
   else if (overLevel != null && overLevel > 3) score = Math.min(score, goodMax);
   score = Math.max(0, Math.min(100, Math.round(score)));

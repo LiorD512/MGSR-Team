@@ -22,7 +22,7 @@ import type { ClubLevel, ClubStrength, PlayerLevelInfo } from '@/lib/matching/le
 // ── session caches ──
 const clubLevelCache: Record<string, ClubLevel | null> = {};
 const clubInFlight = new Set<string>();
-let levelData: { clubStrength: Record<string, ClubStrength>; playerLevels: Record<string, PlayerLevelInfo> } | null = null;
+let levelData: { clubStrength: Record<string, ClubStrength>; playerLevels: Record<string, PlayerLevelInfo>; leagues: Record<string, { country?: string | null }> } | null = null;
 let levelPromise: Promise<void> | null = null;
 let tiersCache: { signals: Record<string, string[]>; games: Record<string, RecentGameLite[]> } | null = null;
 let tiersPromise: Promise<void> | null = null;
@@ -134,12 +134,12 @@ export function useMatchingContext(clubUrls: (string | undefined)[]): MatchingCo
     levelPromise = user.getIdToken()
       .then((token) => fetch('/api/matching/data', { headers: { Authorization: `Bearer ${token}` } }))
       .then((r) => (r.ok ? r.json() : null))
-      .then((j: { clubLevels?: Record<string, ClubLevel>; clubStrength?: Record<string, ClubStrength>; playerLevels?: Record<string, PlayerLevelInfo> } | null) => {
+      .then((j: { clubLevels?: Record<string, ClubLevel>; clubStrength?: Record<string, ClubStrength>; playerLevels?: Record<string, PlayerLevelInfo>; leagues?: Record<string, { country?: string | null }> } | null) => {
         for (const [id, lvl] of Object.entries(j?.clubLevels ?? {})) clubLevelCache[id] = lvl;
-        levelData = { clubStrength: j?.clubStrength ?? {}, playerLevels: j?.playerLevels ?? {} };
+        levelData = { clubStrength: j?.clubStrength ?? {}, playerLevels: j?.playerLevels ?? {}, leagues: j?.leagues ?? {} };
         notify();
       })
-      .catch(() => { levelData = { clubStrength: {}, playerLevels: {} }; notify(); });
+      .catch(() => { levelData = { clubStrength: {}, playerLevels: {}, leagues: {} }; notify(); });
   }, [user]);
 
   // Requesting clubs the weekly worker hasn't processed yet → build on demand (small batches, cached)
@@ -209,6 +209,7 @@ export function useMatchingContext(clubUrls: (string | undefined)[]): MatchingCo
     clubLevels: { ...clubLevelCache },
     clubStrength: levelData?.clubStrength ?? {},
     playerLevels: levelData?.playerLevels ?? {},
+    leagues: levelData?.leagues ?? {},
     signalsByPlayerId: tiersCache?.signals ?? {},
     gamesByPlayerId: tiersCache?.games ?? {},
     feedback: { ...(feedbackCache ?? {}) },

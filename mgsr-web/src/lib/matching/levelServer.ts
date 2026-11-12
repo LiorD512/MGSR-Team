@@ -9,7 +9,7 @@
  * Clients never read these collections directly — `/api/matching/data` serves them — so no Firestore rule change is needed.
  */
 import type { Firestore } from 'firebase-admin/firestore';
-import { type ClubLevel, type ClubStrength, type PlayerLevelInfo } from './level';
+import { CLUB_LEVEL_VERSION, type ClubLevel, type ClubStrength, type PlayerLevelInfo } from './level';
 import { currentSeasonId, scrapeArrivals, scrapeLeague, scrapeSquad, type LeagueData } from './levelScrape';
 
 export const CLUB_LEVELS = 'MatchingClubLevels';
@@ -86,6 +86,16 @@ export async function ensureStrength(id: string, store: LevelStore, b: Budget, f
   return v;
 }
 
+/** League average value + country, from the store when fresh (or when only the country is needed and known), else scraped. */
+export async function ensureLeague(code: string, store: LevelStore, b: Budget): Promise<(LeagueData & { at: number }) | null> {
+  const cur = store.leagues[code];
+  if (cur && cur.country !== undefined && Date.now() - cur.at < LEAGUE_TTL_MS) return cur;
+  const lg = await spend(b, () => scrapeLeague(code));
+  if (!lg) return cur ?? null;
+  store.leagues[code] = { ...lg, at: Date.now() };
+  return store.leagues[code]!;
+}
+
 /** Full ClubLevel of a requesting club: squad, league average, and the last 3 seasons of real signings. */
 export async function buildClubLevel(id: string, store: LevelStore, b: Budget, fresh?: Record<string, ClubStrength>): Promise<ClubLevel | null> {
   const sq = await spend(b, () => scrapeSquad(id));
@@ -94,15 +104,7 @@ export async function buildClubLevel(id: string, store: LevelStore, b: Budget, f
   store.strength[id] = strength;
   if (fresh) fresh[id] = strength;
 
-  let leagueAvg: number | null = null;
-  if (sq.league) {
-    const cached = store.leagues[sq.league];
-    if (cached && Date.now() - cached.at < LEAGUE_TTL_MS) leagueAvg = cached.avg;
-    else {
-      const lg = await spend(b, () => scrapeLeague(sq.league!));
-      if (lg) { store.leagues[sq.league] = { ...lg, at: Date.now() }; leagueAvg = lg.avg; }
-    }
-  }
+  const leagueAvg = sq.league ? (await ensureLeague(sq.league, store, b))?.avg ?? null : null;
 
   const cur = currentSeasonId();
   const seasons = [cur - 2, cur - 1, cur];
@@ -113,10 +115,10 @@ export async function buildClubLevel(id: string, store: LevelStore, b: Budget, f
   for (const a of arrivals) {
     let src: number | null = null;
     if (a.fromId) src = (await ensureStrength(a.fromId, store, b, fresh))?.m ?? null;
-    signings.push({ mv: a.mv, src, pos: a.pos, age: a.age, season: a.season });
+    signings.push({ mv: a.mv, src, pos: a.pos, age: a.age, season: a.season, league: a.fromLeague, country: a.fromCountry });
   }
   return {
     id, name: sq.name, league: sq.league, leagueAvg, squadMedian: sq.median, squadSize: sq.size,
-    positionMedian: sq.positionMedian, signings, updatedAt: Date.now(),
+    positionMedian: sq.positionMedian, signings, updatedAt: Date.now(), v: CLUB_LEVEL_VERSION,
   };
 }

@@ -274,3 +274,42 @@ Caps applied to the clubs' own real signings (false-cap rate): level < 25 → 1-
 - **Hard cost cap:** max **60 calls / month** and recorded spend < $0.80, reserved with a Firestore transaction on
   `MatchingAiChecks/_budget_{YYYY-MM}` *before* calling; answers cached per request + inputs. Normal use ≈ $0.01-0.05 / month;
   worst case at 10× today's price ≈ $0.30 / month. Logged in `GeminiUsage` as feature `request-match`.
+
+---
+
+## 9. Level score v3 — closeness + "where the club recruits" (men web)
+
+### Why
+The first production audit (16 open requests, 1,562 players) showed a flat top: e.g. Maccabi Petah Tikva LW had 244 Strong
+matches, almost all with level 100. The v2 score only penalised players *below* a club, so for the many small requesting
+clubs (squad median €200-250k) most of the roster scored 100.
+
+### Backtest (9 real requesting clubs, 363 signings with a value, live Transfermarkt, Nov 2026)
+Task: tell a club's own signings (leave-one-out) apart from the other 8 clubs' signings — the same job as picking, from the
+roster, who THIS club would sign.
+
+| Formula | Avg AUC | Own signings in top 10 | Signings scoring ≥ 0.9 |
+|---|---|---|---|
+| v2 one-sided percentile (shipped in §8) | 0.56 | n/a (ties) | 63% |
+| Closeness (log-normal) to the club's typical signing value + origin-club strength | 0.63 | 1.4 | 18% |
+| + share of signings from the player's league | 0.73 | 4.1 | 3% |
+| + share from his country | 0.74 | 4.7 | 3% |
+| **+ league + country (v3)** | **0.76** | **4.9** | **4%** |
+
+Random baseline ≈ 1.1 of 10. v2 was *worse than random* for the 4 smallest clubs (0.39-0.46); v3: 0.66-0.85 per club.
+Re-run with the shipped code (`levelServer` builders → `assessLevel`): macro AUC **0.760**, own in top 10 **4.9**.
+Treating an unknown league / country as neutral instead of 0 dropped top-10 precision to 2.7, so unknown counts as 0.
+
+### Calibration (from the same data)
+- Level component = 100 × min(1, raw / 0.7) — own signings' median raw 0.61 (→ 87), other clubs' median 0.42 (→ 60).
+- Caps: raw < 0.2 → max Stretch (3% of own signings vs 20% of others); raw < 0.3 → max Good (7% vs 33%).
+- Gate unchanged, but players ≤ 21 are exempt: wrongly excluded own signings 10/363 → **5/363** (the failures were cheap
+  academy-age signings from domestic second divisions, e.g. Maccabi Petah Tikva).
+- New reason chip "Club recruits from his league" (≥ 15% of signings from his league or ≥ 25% from his country).
+- Minutes / form can't be backtested this way (TM doesn't keep minutes at signing time) — unchanged (10%).
+
+### Data
+- `Signing` now stores origin `league` + `country`; `ClubLevel.v = 2`. The worker and the on-demand route rebuild older
+  club docs automatically; the worker also stores every player-club league's country in `MatchingData/leagues`.
+- `_matching_audit.ts` section 3b now prints, per requesting club: own signings passing the gate, AUC vs the other requesting
+  clubs' signings, own signings in the top 10 vs random.

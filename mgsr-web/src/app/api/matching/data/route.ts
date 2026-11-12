@@ -1,6 +1,7 @@
 /**
  * GET /api/matching/data → level data for the request-matching engine (men platform):
- *   { clubLevels: { [vereinId]: ClubLevel }, clubStrength: { [vereinId]: ClubStrength }, playerLevels: { [playerId]: PlayerLevelInfo } }
+ *   { clubLevels: { [vereinId]: ClubLevel }, clubStrength: { [vereinId]: ClubStrength }, playerLevels: { [playerId]: PlayerLevelInfo },
+ *     leagues: { [code]: { country, avg } } }
  * Built by `_matching_worker.ts` (weekly) and `/api/matching/club-profiles` (on demand for new requesting clubs).
  * ~3 + N(requesting clubs) Firestore reads per call; the client caches the answer for the session.
  */
@@ -24,5 +25,6 @@ export async function GET(request: NextRequest) {
   const [store, levels] = await Promise.all([loadStore(db), db.collection(CLUB_LEVELS).get()]);
   const clubLevels: Record<string, ClubLevel> = {};
   for (const d of levels.docs) clubLevels[d.id] = d.data() as ClubLevel;
-  return NextResponse.json({ clubLevels, clubStrength: store.strength, playerLevels: store.players });
+  const leagues = Object.fromEntries(Object.entries(store.leagues).map(([k, v]) => [k, { country: v.country ?? null, avg: v.avg ?? null }]));
+  return NextResponse.json({ clubLevels, clubStrength: store.strength, playerLevels: store.players, leagues });
 }
