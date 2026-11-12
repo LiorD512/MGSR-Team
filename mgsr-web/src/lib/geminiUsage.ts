@@ -16,7 +16,8 @@ export type GeminiFeature =
   | 'market-radar'
   | 'documents-detect'
   | 'matchday-image'
-  | 'matchday-diagnose';
+  | 'matchday-diagnose'
+  | 'request-match';
 
 /** USD per 1M tokens (text) and per output image. Estimates for the log only. */
 const PRICES: Record<string, { in: number; out: number; image?: number }> = {
