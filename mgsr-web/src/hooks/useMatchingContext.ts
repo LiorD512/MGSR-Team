@@ -15,12 +15,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEuCountries } from '@/hooks/useEuCountries';
 import {
   resolveWeights, tmClubId, tmPlayerId,
-  type ClubProfile, type FeedbackVerdict, type MatchContext, type MatchWeights, type OfferLite, type RecentGameLite,
+  type FeedbackVerdict, type MatchContext, type MatchWeights, type OfferLite, type RecentGameLite,
 } from '@/lib/matching/engine';
+import type { ClubLevel, ClubStrength, PlayerLevelInfo } from '@/lib/matching/level';
 
 // ── session caches ──
-const clubProfileCache: Record<string, ClubProfile | null> = {};
+const clubLevelCache: Record<string, ClubLevel | null> = {};
 const clubInFlight = new Set<string>();
+let levelData: { clubStrength: Record<string, ClubStrength>; playerLevels: Record<string, PlayerLevelInfo> } | null = null;
+let levelPromise: Promise<void> | null = null;
 let tiersCache: { signals: Record<string, string[]>; games: Record<string, RecentGameLite[]> } | null = null;
 let tiersPromise: Promise<void> | null = null;
 let weightsCache: MatchWeights | null = null;
@@ -125,22 +128,36 @@ export function useMatchingContext(clubUrls: (string | undefined)[]): MatchingCo
     }
   }, [user]);
 
-  // Requesting clubs' level profiles (fetched in small batches, cached)
+  // Level data (weekly worker output) — once per session
+  useEffect(() => {
+    if (!user || levelData || levelPromise) return;
+    levelPromise = user.getIdToken()
+      .then((token) => fetch('/api/matching/data', { headers: { Authorization: `Bearer ${token}` } }))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { clubLevels?: Record<string, ClubLevel>; clubStrength?: Record<string, ClubStrength>; playerLevels?: Record<string, PlayerLevelInfo> } | null) => {
+        for (const [id, lvl] of Object.entries(j?.clubLevels ?? {})) clubLevelCache[id] = lvl;
+        levelData = { clubStrength: j?.clubStrength ?? {}, playerLevels: j?.playerLevels ?? {} };
+        notify();
+      })
+      .catch(() => { levelData = { clubStrength: {}, playerLevels: {} }; notify(); });
+  }, [user]);
+
+  // Requesting clubs the weekly worker hasn't processed yet → build on demand (small batches, cached)
   const urlKey = clubUrls.filter(Boolean).join('|');
   useEffect(() => {
-    if (!user) return;
+    if (!user || !levelData) return;
     const missing = new Map<string, string>();
     for (const u of urlKey.split('|')) {
       const id = tmClubId(u);
-      if (id && !(id in clubProfileCache) && !clubInFlight.has(id)) missing.set(id, u);
+      if (id && !(id in clubLevelCache) && !clubInFlight.has(id)) missing.set(id, u);
     }
     if (!missing.size) return;
     missing.forEach((_, id) => clubInFlight.add(id));
     const entries = Array.from(missing.entries());
     (async () => {
       const token = await user.getIdToken().catch(() => null);
-      for (let i = 0; i < entries.length; i += 6) {
-        const chunk = entries.slice(i, i + 6);
+      for (let i = 0; i < entries.length; i += 3) {
+        const chunk = entries.slice(i, i + 3);
         try {
           if (!token) throw new Error('no token');
           const res = await fetch('/api/matching/club-profiles', {
@@ -148,17 +165,18 @@ export function useMatchingContext(clubUrls: (string | undefined)[]): MatchingCo
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ urls: chunk.map(([, u]) => u) }),
           });
-          const j = res.ok ? ((await res.json()) as { profiles?: Record<string, ClubProfile | null> }) : {};
-          for (const [id] of chunk) clubProfileCache[id] = j.profiles?.[id] ?? null;
+          const j = res.ok ? ((await res.json()) as { clubLevels?: Record<string, ClubLevel | null> }) : {};
+          for (const [id] of chunk) clubLevelCache[id] = j.clubLevels?.[id] ?? null;
         } catch {
-          for (const [id] of chunk) clubProfileCache[id] = null;
+          for (const [id] of chunk) clubLevelCache[id] = null;
         } finally {
           chunk.forEach(([id]) => clubInFlight.delete(id));
           notify();
         }
       }
     })();
-  }, [user, urlKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `version` re-runs this once levelData has loaded
+  }, [user, urlKey, version]);
 
   const setFeedback = useCallback(async (requestId: string, playerId: string, verdict: FeedbackVerdict | null, reason?: string) => {
     if (!user) return;
@@ -182,13 +200,15 @@ export function useMatchingContext(clubUrls: (string | undefined)[]): MatchingCo
     }
   }, [user]);
 
-  const levelsLoading = urlKey.split('|').some((u) => { const id = tmClubId(u); return !!id && !(id in clubProfileCache); });
+  const levelsLoading = !levelData || urlKey.split('|').some((u) => { const id = tmClubId(u); return !!id && !(id in clubLevelCache); });
 
   const ctx = useMemo<MatchContext>(() => ({
     euCountries,
     mandatesByTmId: mandates,
     offers,
-    clubProfiles: { ...clubProfileCache },
+    clubLevels: { ...clubLevelCache },
+    clubStrength: levelData?.clubStrength ?? {},
+    playerLevels: levelData?.playerLevels ?? {},
     signalsByPlayerId: tiersCache?.signals ?? {},
     gamesByPlayerId: tiersCache?.games ?? {},
     feedback: { ...(feedbackCache ?? {}) },

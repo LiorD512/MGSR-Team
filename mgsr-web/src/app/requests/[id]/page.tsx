@@ -21,6 +21,7 @@ import { getPositionDisplayName } from '@/lib/appConfig';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { rankPlayersForRequest, isFreeAgent, parseContractEnd, type MatchPlayer, type MatchRequest, type MatchResult } from '@/lib/matching/engine';
 import { bucketLabel, mt, reasonLabel } from '@/lib/matching/i18n';
+import { formatEurShort } from '@/lib/matching/level';
 import BritLoader from '@/components/BritLoader';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
@@ -52,6 +53,7 @@ export default function RequestMatchesPage() {
   const [showStretch, setShowStretch] = useState(false);
   const [showDismissed, setShowDismissed] = useState(false);
   const [askReason, setAskReason] = useState<string | null>(null);
+  const [ai, setAi] = useState<{ state: 'idle' | 'running' | 'done' | 'budget' | 'error'; results: Record<string, { verdict: 'realistic' | 'unlikely'; note: string }> }>({ state: 'idle', results: {} });
 
   useEffect(() => { if (!loading && !user) router.replace('/login'); }, [loading, user, router]);
   // the matches page is men-only (women / youth keep the standard requests screen)
@@ -80,6 +82,34 @@ export default function RequestMatchesPage() {
       dismissed: ranked.filter((m) => m.feedback === 'not_fit'),
     };
   }, [ranked]);
+
+  const runAiCheck = async () => {
+    if (!user || !req) return;
+    const top = groups.main.slice(0, 10);
+    if (!top.length) return;
+    setAi((a) => ({ ...a, state: 'running' }));
+    try {
+      const candidates = top.map((m) => {
+        const p = playerById.get(m.playerId)!;
+        return {
+          playerId: m.playerId, name: p.fullName, age: p.age ?? null, positions: (p.positions ?? []).filter(Boolean),
+          marketValue: p.marketValue ?? null, club: m.levelClub?.name ?? p.currentClub?.clubName ?? null,
+          clubStrength: m.levelClub?.strength ? formatEurShort(m.levelClub.strength) : null, monthsInactive: m.monthsInactive, score: m.score,
+        };
+      });
+      const token = await user.getIdToken();
+      const res = await fetch('/api/matching/ai-check', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ requestId: req.id, candidates }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { results?: { playerId: string; verdict: 'realistic' | 'unlikely'; note: string }[]; error?: string };
+      if (res.status === 429) { setAi((a) => ({ ...a, state: 'budget' })); return; }
+      if (!res.ok) throw new Error(j.error);
+      setAi({ state: 'done', results: Object.fromEntries((j.results ?? []).map((r) => [r.playerId, { verdict: r.verdict, note: r.note }])) });
+    } catch {
+      setAi((a) => ({ ...a, state: 'error' }));
+    }
+  };
 
   const saveScroll = useScrollRestore(`requests-matches-${id}`, !!req && players.length > 0);
 
@@ -141,6 +171,20 @@ export default function RequestMatchesPage() {
             {m.reasons.slice(0, 4).map((r) => <span key={r} className="pos">{reasonLabel(r, isHebrew)}</span>)}
             {m.warnings.slice(0, 3).map((r) => <span key={r} className="neg">{reasonLabel(r, isHebrew)}</span>)}
           </div>
+          {m.level && (
+            <p className="brit-reqm-level">
+              <b>{mt('level_score', isHebrew, { n: m.components.level ?? '—' })}</b>{' · '}
+              {mt('level_line', isHebrew, { club: req!.clubName || '—', lo: formatEurShort(m.level.mvP10), hi: formatEurShort(m.level.mvP90) })}
+              {m.level.playerMv > 0 && <>{' · '}{mt('level_player', isHebrew, { mv: formatEurShort(m.level.playerMv) })}</>}
+              {m.levelClub?.strength ? <>{' · '}{mt('level_from', isHebrew, { club: m.levelClub.name ?? '', m: formatEurShort(m.levelClub.strength) })}</> : null}
+              {m.monthsInactive != null && m.monthsInactive > 6 && <>{' · '}{mt('inactive_months', isHebrew, m.monthsInactive)}</>}
+            </p>
+          )}
+          {ai.results[m.playerId] && (
+            <p className={`brit-reqm-ai ${ai.results[m.playerId]!.verdict}`}>
+              <b>{mt(ai.results[m.playerId]!.verdict === 'realistic' ? 'ai_realistic' : 'ai_unlikely', isHebrew)}</b> — {ai.results[m.playerId]!.note}
+            </p>
+          )}
           {m.feedback === 'not_fit' ? (
             <div className="brit-reqm-acts"><button onClick={() => setFeedback(m.requestId, m.playerId, null)}>{mt('undo', isHebrew)}</button></div>
           ) : askReason === key ? (
@@ -200,10 +244,22 @@ export default function RequestMatchesPage() {
                     </div>
                   </div>
                 </header>
-                <p className="brit-result-count">
-                  {groups.main.length} {t('requests_room_matches')}
-                  {levelsLoading && <> · {mt('loading_levels', isHebrew)}</>}
-                </p>
+                <div className="brit-reqm-countrow">
+                  <p className="brit-result-count">
+                    {groups.main.length} {t('requests_room_matches')}
+                    {levelsLoading && <> · {mt('loading_levels', isHebrew)}</>}
+                  </p>
+                  {groups.main.length > 0 && (
+                    <div className="brit-reqm-aibox">
+                      <button className="brit-reqm-aibtn" onClick={runAiCheck} disabled={ai.state === 'running' || levelsLoading}>
+                        {ai.state === 'running' ? mt('ai_running', isHebrew) : mt('ai_button', isHebrew, Math.min(10, groups.main.length))}
+                      </button>
+                      <small>
+                        {ai.state === 'budget' ? mt('ai_budget', isHebrew) : ai.state === 'error' ? mt('ai_error', isHebrew) : mt('ai_note', isHebrew)}
+                      </small>
+                    </div>
+                  )}
+                </div>
                 {groups.main.length === 0 && groups.stretch.length === 0 && groups.offered.length === 0 ? (
                   <div className="tr3-emptybox"><h3>{mt('none', isHebrew)}</h3></div>
                 ) : (

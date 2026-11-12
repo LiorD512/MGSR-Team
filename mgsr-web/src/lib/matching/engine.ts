@@ -13,6 +13,7 @@
  */
 import { normalizePosition, positionFit, type PositionCode } from './positions';
 import { parseEuros, parseFeeBand, parseSalaryBand } from './tiers';
+import { assessLevel, monthsSince, type ClubLevel, type ClubStrength, type LevelAssessment, type PlayerLevelInfo } from './level';
 
 // ─── Inputs ────────────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ export interface MatchRequest {
   status?: string;
 }
 
-/** Requesting club's level, derived from its current Transfermarkt squad (see /api/matching/club-profiles). */
+/** Legacy squad-only club profile (kept for the audit's fallback). */
 export interface ClubProfile {
   squadSize: number;
   squadMedianValue: number | null;
@@ -96,16 +97,20 @@ export interface MatchWeights {
   goodMin: number;
   /** Adjacent-position matches can never score above this. */
   adjacentCap: number;
+  /** Level gate: player value / club strength must be ≥ this × the requesting club's 10th percentile of real signings. */
+  levelGateFactor: number;
+  /** Signings with a known value needed before the level gate applies. */
+  levelMinSignings: number;
 }
 
 export const DEFAULT_WEIGHTS: MatchWeights = {
-  position: 25,
-  budget: 20,
+  position: 20,
+  budget: 15,
   availability: 10,
-  level: 10,
+  level: 30,
   form: 10,
-  age: 10,
-  salary: 10,
+  age: 5,
+  salary: 5,
   foot: 5,
   mandateBonus: 10,
   israelBonus: 5,
@@ -114,6 +119,8 @@ export const DEFAULT_WEIGHTS: MatchWeights = {
   strongMin: 75,
   goodMin: 55,
   adjacentCap: 70,
+  levelGateFactor: 0.5,
+  levelMinSignings: 10,
 };
 
 /** Merge a (possibly partial / untyped) `Config/matchingWeights` doc over the defaults. */
@@ -133,8 +140,12 @@ export interface MatchContext {
   /** Active mandates' valid leagues, keyed by Transfermarkt player id. One entry per mandate. */
   mandatesByTmId: Map<string, string[][]>;
   offers: OfferLite[];
-  /** Keyed by Transfermarkt club (verein) id. Missing = not loaded / unknown. */
-  clubProfiles: Record<string, ClubProfile | null>;
+  /** Requesting clubs' level data (real signings + squad), keyed by TM verein id. Missing = not loaded / unknown. */
+  clubLevels: Record<string, ClubLevel | null>;
+  /** Strength (median squad value) of any club, keyed by TM verein id. */
+  clubStrength: Record<string, ClubStrength>;
+  /** Per roster player: club his level is judged by + last game played. */
+  playerLevels: Record<string, PlayerLevelInfo>;
   /** Roster Intelligence signal kinds per player id (PlayerTiers), e.g. 'hot_form', 'benched'. */
   signalsByPlayerId?: Record<string, string[]>;
   /** Recent games per player id from PlayerTiers, used when the player doc has none. */
@@ -154,13 +165,14 @@ export type ReasonCode =
   | 'budget_in_band' | 'budget_below' | 'budget_stretch' | 'budget_over' | 'budget_unknown'
   | 'free_agent' | 'contract_6m' | 'contract_12m' | 'on_loan' | 'contract_long' | 'contract_unknown'
   | 'level_fit' | 'level_above' | 'level_below' | 'level_low' | 'level_unknown'
+  | 'inactive' | 'inactive_long'
   | 'regular_starter' | 'rotation' | 'low_minutes' | 'hot_form' | 'cold_form' | 'benched' | 'form_unknown'
   | 'age_in_range' | 'age_near' | 'age_unknown'
   | 'salary_in_band' | 'salary_stretch' | 'salary_over' | 'salary_unknown'
   | 'foot_match' | 'foot_both' | 'foot_unknown'
   | 'eu_unknown' | 'mandate' | 'interested_israel';
 
-export type GateCode = 'no_position' | 'age' | 'eu' | 'budget' | 'foot' | 'same_club' | 'not_pending' | 'no_request_position';
+export type GateCode = 'no_position' | 'age' | 'eu' | 'budget' | 'foot' | 'same_club' | 'not_pending' | 'no_request_position' | 'level';
 
 export type Bucket = 'strong' | 'good' | 'stretch';
 
@@ -179,6 +191,12 @@ export interface MatchResult {
   /** 'request' = already offered for this request; 'club' = offered to this club for another request. */
   offered: 'request' | 'club' | null;
   feedback: FeedbackVerdict | null;
+  /** Club-level evidence (null when the requesting club has no level data yet). */
+  level: LevelAssessment | null;
+  /** Club the player's level was judged by (current, or last club for free agents). */
+  levelClub: { id: string | null; name: string | null; strength: number | null } | null;
+  /** Months since his last played game (null = unknown). */
+  monthsInactive: number | null;
 }
 
 export type Evaluation = { ok: true; result: MatchResult } | { ok: false; gate: GateCode };
@@ -407,19 +425,37 @@ export function evaluateMatch(req: MatchRequest, p: MatchPlayer, ctx: MatchConte
     else { comp.salary = 10; warnings.push('salary_over'); }
   }
 
-  // ── Level: player value vs the requesting club's players at that position (fallback: whole squad)
+  // ── Level: would THIS club sign a player like him? (its real signings of the last 3 seasons — see level.ts)
   const clubId = tmClubId(req.clubTmProfile);
-  const profile = clubId ? ctx.clubProfiles[clubId] : null;
-  const reqCode = normalizePosition(req.position)!;
-  const ref = profile ? (profile.positionMedianValue[reqCode] ?? profile.squadMedianValue) : null;
-  if (ref && ref > 0 && mv > 0) {
+  const clubLevel = clubId ? ctx.clubLevels[clubId] ?? null : null;
+  const pInfo = ctx.playerLevels[p.id];
+  const pClubId = pInfo?.clubId ?? (free ? null : tmClubId(p.currentClub?.clubTmProfile));
+  const pClubStrength = pClubId ? ctx.clubStrength[pClubId]?.m ?? null : null;
+  const level = assessLevel(clubLevel, mv, pClubStrength, { gateFactor: w.levelGateFactor, minSignings: w.levelMinSignings });
+  if (level?.pass === false) return { ok: false, gate: 'level' };
+  // far above what the club ever signs → unrealistic for them (cost / wages / ambition), even without a fee on the request
+  const overLevel = level?.mvP90 && mv > 0 ? mv / level.mvP90 : null;
+  if (level?.score != null && overLevel != null && overLevel > 3) {
+    comp.level = 50;
+    warnings.push('level_above');
+  } else if (level?.score != null) {
+    comp.level = level.score;
+    if (level.score >= 80) reasons.push('level_fit');
+    else if (level.score >= 45) warnings.push('level_below');
+    else warnings.push('level_low');
+  } else if (clubLevel?.squadMedian && mv > 0) {
+    // not enough signings data: compare with the club's current players at that position
+    const ref = clubLevel.positionMedian[normalizePosition(req.position)!] ?? clubLevel.squadMedian;
     const r = mv / ref;
-    if (r >= 0.6 && r <= 3) { comp.level = 100; reasons.push('level_fit'); }
-    else if (r > 3 && r <= 6) { comp.level = 70; reasons.push('level_above'); }
-    else if (r > 6) { comp.level = 45; reasons.push('level_above'); }
-    else if (r >= 0.35) { comp.level = 60; warnings.push('level_below'); }
-    else { comp.level = 25; warnings.push('level_low'); }
+    if (r >= 0.6) { comp.level = 90; reasons.push('level_fit'); }
+    else if (r >= 0.35) { comp.level = 55; warnings.push('level_below'); }
+    else { comp.level = 20; warnings.push('level_low'); }
   } else warnings.push('level_unknown');
+
+  // ── Inactivity (last game actually played, any competition)
+  const lastPlayedFromGames = (p.recentGames ?? ctx.gamesByPlayerId?.[p.id] ?? [])
+    .filter((g) => g.state === 'played').map((g) => g.date).sort().pop() ?? null;
+  const monthsInactive = monthsSince(pInfo?.lastPlayed ?? lastPlayedFromGames, ctx.now);
 
   // ── Form: minutes share over recent (league) games + Roster Intelligence signals
   const games = recentLeagueGames(p.recentGames?.length ? p.recentGames : ctx.gamesByPlayerId?.[p.id], ctx.now);
@@ -435,9 +471,11 @@ export function evaluateMatch(req: MatchRequest, p: MatchPlayer, ctx: MatchConte
     if (signals.has('cold_form')) { f -= 10; warnings.push('cold_form'); }
     if (signals.has('benched') || signals.has('dropped_squad')) { f -= 15; warnings.push('benched'); }
     comp.form = Math.max(0, Math.min(100, Math.round(f)));
-  } else if (free) {
+  } else if (free && (monthsInactive == null || monthsInactive <= 6)) {
     comp.form = 50; // free agents legitimately have no recent games; neutral but "known"
-  } else warnings.push('form_unknown');
+  } else if (monthsInactive == null) warnings.push('form_unknown');
+  if (monthsInactive != null && monthsInactive > 12) { comp.form = 5; warnings.push('inactive_long'); }
+  else if (monthsInactive != null && monthsInactive > 6) { comp.form = Math.min(comp.form ?? 25, 25); warnings.push('inactive'); }
 
   // ── Weighted score
   const weightOf: Record<ComponentKey, number> = {
@@ -461,6 +499,13 @@ export function evaluateMatch(req: MatchRequest, p: MatchPlayer, ctx: MatchConte
   if (mandate) { score += w.mandateBonus; reasons.push('mandate'); }
   if (p.interestedInIsrael && normalizeName(req.clubCountry) === 'israel') { score += w.israelBonus; reasons.push('interested_israel'); }
   if (fit === 'adjacent') score = Math.min(score, w.adjacentCap);
+  // Evidence caps — a weighted average can't hide these:
+  const stretchMax = w.goodMin - 1, goodMax = w.strongMin - 1;
+  if (monthsInactive != null && monthsInactive > 12) score = Math.min(score, stretchMax); // no game for a year+
+  else if (monthsInactive != null && monthsInactive > 6) score = Math.min(score, goodMax);
+  if (level?.score != null && level.score < 25 && !(overLevel != null && overLevel > 3)) score = Math.min(score, stretchMax); // bottom of what the club signs
+  if (overLevel != null && overLevel > 8) score = Math.min(score, stretchMax);
+  else if (overLevel != null && overLevel > 3) score = Math.min(score, goodMax);
   score = Math.max(0, Math.min(100, Math.round(score)));
 
   // ── Offers already made
@@ -491,6 +536,9 @@ export function evaluateMatch(req: MatchRequest, p: MatchPlayer, ctx: MatchConte
       mandate,
       offered,
       feedback: ctx.feedback[`${req.id}_${p.id}`] ?? null,
+      level,
+      levelClub: pClubId || pInfo?.clubName ? { id: pClubId ?? null, name: pInfo?.clubName ?? ctx.clubStrength[pClubId ?? '']?.n ?? null, strength: pClubStrength } : null,
+      monthsInactive: monthsInactive != null ? Math.round(monthsInactive) : null,
     },
   };
 }

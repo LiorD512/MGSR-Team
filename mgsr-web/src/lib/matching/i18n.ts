@@ -17,10 +17,12 @@ const REASONS: Record<ReasonCode, [string, string]> = {
   contract_long: ['Long contract', 'חוזה ארוך'],
   contract_unknown: ['Contract unknown', 'חוזה לא ידוע'],
   level_fit: ['Right level for club', 'רמה מתאימה למועדון'],
-  level_above: ['Above club level', 'מעל רמת המועדון'],
+  level_above: ['Far above what the club signs', 'הרבה מעל מה שהמועדון מחתים'],
   level_below: ['Below club level', 'מתחת לרמת המועדון'],
   level_low: ['Well below club level', 'הרבה מתחת לרמת המועדון'],
   level_unknown: ['Club level unknown', 'רמת מועדון לא ידועה'],
+  inactive: ['No game in 6+ months', 'ללא משחק 6+ חודשים'],
+  inactive_long: ['No game in 12+ months', 'ללא משחק 12+ חודשים'],
   regular_starter: ['Regular starter', 'פותח קבוע'],
   rotation: ['Rotation player', 'שחקן רוטציה'],
   low_minutes: ['Few minutes lately', 'מעט דקות לאחרונה'],
@@ -65,6 +67,18 @@ const UI = {
   none: ['No roster player fits this request yet', 'אין עדיין שחקן בסגל שמתאים לדרישה'],
   loading_levels: ['Checking club levels…', 'בודק רמות מועדונים…'],
   matches: ['matches', 'התאמות'],
+  level_line: ['{club} signs players worth {lo}–{hi}', '{club} מחתימה שחקנים בשווי {lo}–{hi}'],
+  level_player: ['he is {mv}', 'הוא {mv}'],
+  level_from: ['his club {club} {m}', 'המועדון שלו {club} {m}'],
+  level_score: ['Level fit {n}', 'התאמת רמה {n}'],
+  inactive_months: ['last game {n} months ago', 'משחק אחרון לפני {n} חודשים'],
+  ai_button: ['AI scout check (top {n})', 'בדיקת סקאוט AI ({n} מובילים)'],
+  ai_running: ['Asking the AI scout…', 'שואל את סקאוט ה-AI…'],
+  ai_realistic: ['AI: realistic', 'AI: ריאלי'],
+  ai_unlikely: ['AI: unlikely', 'AI: לא סביר'],
+  ai_budget: ['AI check limit reached for this month', 'הגעתם למכסת בדיקות ה-AI החודש'],
+  ai_error: ['AI check failed — try again later', 'בדיקת ה-AI נכשלה — נסו שוב מאוחר יותר'],
+  ai_note: ['AI notes are advice only — they never hide players', 'הערות ה-AI הן המלצה בלבד — הן לא מסתירות שחקנים'],
 } as const;
 
 export type MatchingUiKey = keyof typeof UI;
@@ -75,7 +89,10 @@ export function reasonLabel(code: ReasonCode, isHebrew: boolean): string {
 export function bucketLabel(b: Bucket, isHebrew: boolean): string {
   return BUCKETS[b][isHebrew ? 1 : 0];
 }
-export function mt(key: MatchingUiKey, isHebrew: boolean, n?: number): string {
-  const s: string = UI[key][isHebrew ? 1 : 0];
-  return n == null ? s : s.replace('{n}', String(n));
+export function mt(key: MatchingUiKey, isHebrew: boolean, n?: number | Record<string, string | number>): string {
+  let s: string = UI[key][isHebrew ? 1 : 0];
+  if (n == null) return s;
+  const vars = typeof n === 'number' ? { n } : n;
+  for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
+  return s;
 }

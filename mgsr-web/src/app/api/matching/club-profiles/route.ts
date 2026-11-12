@@ -1,41 +1,23 @@
 /**
- * POST /api/matching/club-profiles  { urls: string[] }  →  { profiles: { [vereinId]: ClubProfile | null } }
+ * POST /api/matching/club-profiles  { urls: string[] }  →  { clubLevels: { [vereinId]: ClubLevel | null } }
  *
- * Level data for the request-matching engine: the requesting club's current squad market values (overall median and
- * per position), scraped from Transfermarkt and cached in `ScrapingCache/matchClub_{vereinId}` for 14 days
- * (failures are remembered for 1 day so a broken page isn't re-scraped on every visit).
+ * On-demand level data for requesting clubs the weekly worker hasn't processed yet (e.g. a request created today).
+ * Builds the club's ClubLevel (squad + 3 seasons of signings) within a time / fetch budget and saves it to
+ * `MatchingClubLevels/{id}`; strengths of origin clubs not scraped in time stay unknown until the weekly run.
+ * Failures are remembered for a day so a broken page isn't re-scraped on every visit.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, getFirebaseAdmin } from '@/lib/firebaseAdmin';
+import { adminAuth, adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
+import { tmClubId } from '@/lib/matching/engine';
+import type { ClubLevel, ClubStrength } from '@/lib/matching/level';
+import { buildClubLevel, CLUB_LEVELS, CLUB_LEVEL_TTL_MS, loadStore, mergeStrength } from '@/lib/matching/levelServer';
 import { getCached, setCache } from '@/lib/scrapingCache';
-import { scrapeClubSquad } from '@/lib/transfermarkt';
-import { buildClubProfile, tmClubId, type ClubProfile } from '@/lib/matching/engine';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const TTL_MS = 14 * 86_400_000;
+const MAX_CLUBS = 3;
 const FAIL_TTL_MS = 86_400_000;
-const MAX_URLS = 12;
-
-type Cached = { profile: ClubProfile | null; failed?: boolean };
-
-async function profileFor(url: string, id: string): Promise<ClubProfile | null> {
-  const key = `matchClub_${id}`;
-  const hit = await getCached<Cached>(key, TTL_MS);
-  if (hit && !hit.failed) return hit.profile;
-  if (hit?.failed && (await getCached<Cached>(key, FAIL_TTL_MS))) return null;
-  try {
-    const squad = await scrapeClubSquad(url);
-    if (!squad.length) throw new Error('empty squad');
-    const profile = buildClubProfile(squad.map((s) => ({ position: s.position, marketValue: s.marketValue })));
-    await setCache(key, { profile } satisfies Cached);
-    return profile;
-  } catch {
-    await setCache(key, { profile: null, failed: true } satisfies Cached);
-    return null;
-  }
-}
 
 export async function POST(request: NextRequest) {
   const token = request.headers.get('Authorization')?.replace(/^Bearer /, '');
@@ -49,16 +31,29 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json().catch(() => ({}))) as { urls?: unknown };
   const urls = Array.isArray(body.urls) ? body.urls.filter((u): u is string => typeof u === 'string') : [];
-  const byId = new Map<string, string>();
-  for (const u of urls) { const id = tmClubId(u); if (id && !byId.has(id)) byId.set(id, u); }
-  const entries = Array.from(byId.entries()).slice(0, MAX_URLS);
+  const ids = Array.from(new Set(urls.map(tmClubId).filter((x): x is string => !!x))).slice(0, MAX_CLUBS);
 
-  const profiles: Record<string, ClubProfile | null> = {};
-  // small concurrency: Transfermarkt goes through the shared proxy
-  for (let i = 0; i < entries.length; i += 3) {
-    const chunk = entries.slice(i, i + 3);
-    const res = await Promise.all(chunk.map(([id, url]) => profileFor(url, id)));
-    chunk.forEach(([id], j) => { profiles[id] = res[j] ?? null; });
+  const db = adminDb();
+  const store = await loadStore(db);
+  const fresh: Record<string, ClubStrength> = {};
+  const out: Record<string, ClubLevel | null> = {};
+  const deadline = Date.now() + 45_000;
+
+  for (const id of ids) {
+    const doc = await db.collection(CLUB_LEVELS).doc(id).get();
+    const cur = doc.exists ? (doc.data() as ClubLevel) : null;
+    if (cur && Date.now() - cur.updatedAt < CLUB_LEVEL_TTL_MS) { out[id] = cur; continue; }
+    if (await getCached<boolean>(`matchLevelFail_${id}`, FAIL_TTL_MS)) { out[id] = cur; continue; }
+    const remaining = Math.max(0, deadline - Date.now());
+    const lvl = await buildClubLevel(id, store, { fetches: 25, deadline: Date.now() + remaining / Math.max(1, ids.length - Object.keys(out).length) }, fresh);
+    if (lvl && lvl.signings.length) {
+      await db.collection(CLUB_LEVELS).doc(id).set(lvl);
+      out[id] = lvl;
+    } else {
+      await setCache(`matchLevelFail_${id}`, true);
+      out[id] = cur;
+    }
   }
-  return NextResponse.json({ profiles });
+  await mergeStrength(db, fresh).catch(() => undefined);
+  return NextResponse.json({ clubLevels: out });
 }

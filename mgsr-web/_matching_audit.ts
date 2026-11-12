@@ -5,6 +5,8 @@
  *   2. Values: every distinct tier / foot / position string and whether the engine can parse it.
  *   3. Old vs new: per open request, legacy matcher count vs engine v2 Strong / Good / Stretch counts,
  *      and how many legacy matches only came from the mandate shortcut (any position).
+ *   3b. Club-level backtest (§8): for every requesting club with level data, how many of its OWN real signings pass its
+ *      level gate (leave-one-out), and how well its level score separates its signings from weaker clubs' (AUC).
  *   4. Accuracy vs the golden set: agents' "good fit" / "not a fit" verdicts (RequestMatchFeedback) →
  *      precision@5 / @10 and how many good fits land in the top 5 / 10.
  *
@@ -12,14 +14,15 @@
  * Credentials: FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY (env or .env.local).
  */
 import { initializeApp, cert } from 'firebase-admin/app';
-import { FieldPath, getFirestore } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
   evaluateMatch, mandateCoversClub, rankPlayersForRequest, resolveWeights, tmClubId, tmPlayerId,
-  type ClubProfile, type FeedbackVerdict, type MatchContext, type MatchPlayer, type MatchRequest, type RecentGameLite,
+  type FeedbackVerdict, type MatchContext, type MatchPlayer, type MatchRequest, type RecentGameLite,
 } from './src/lib/matching/engine';
 import { normalizePosition } from './src/lib/matching/positions';
+import { assessLevel, formatEurShort, type ClubLevel, type ClubStrength, type PlayerLevelInfo } from './src/lib/matching/level';
 import { parseEuros, parseFeeBand, parseSalaryBand } from './src/lib/matching/tiers';
 import { matchRequestToPlayers, type ClubRequest, type RosterPlayer } from './src/lib/requestMatcher';
 
@@ -63,7 +66,11 @@ async function main() {
     db.collection('RequestMatchFeedback').get(),
     db.collection('Config').doc('euCountries').get(),
     db.collection('Config').doc('matchingWeights').get(),
-    db.collection('ScrapingCache').where(FieldPath.documentId(), '>=', 'matchClub_').where(FieldPath.documentId(), '<', 'matchClub`').get(),
+    db.collection('MatchingClubLevels').get(),
+  ]);
+  const [strengthDoc, playerLevelsDoc] = await Promise.all([
+    db.collection('MatchingData').doc('clubStrength').get(),
+    db.collection('MatchingData').doc('playerLevels').get(),
   ]);
 
   const players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as MatchPlayer & Record<string, unknown>);
@@ -91,14 +98,16 @@ async function main() {
     if (kinds.length) signalsByPlayerId[d.id] = kinds;
     if (Array.isArray(t.recentGames) && t.recentGames.length) gamesByPlayerId[d.id] = t.recentGames;
   }
-  const clubProfiles: Record<string, ClubProfile | null> = {};
-  for (const d of clubSnap.docs) clubProfiles[d.id.replace('matchClub_', '')] = (d.data().payload?.profile as ClubProfile | null) ?? null;
+  const clubLevels: Record<string, ClubLevel | null> = {};
+  for (const d of clubSnap.docs) clubLevels[d.id] = d.data() as ClubLevel;
+  const clubStrength = (strengthDoc.data()?.clubs ?? {}) as Record<string, ClubStrength>;
+  const playerLevels = (playerLevelsDoc.data()?.players ?? {}) as Record<string, PlayerLevelInfo>;
   const feedback: Record<string, FeedbackVerdict> = {};
   for (const d of fbSnap.docs) { const f = d.data(); feedback[`${f.requestId}_${f.playerId}`] = f.verdict; }
   const euList = (euDoc.data()?.countries as string[] | undefined) ?? [];
   const euCountries = new Set(euList.map((c) => c.trim().toLowerCase()));
   const ctx: MatchContext = {
-    euCountries, mandatesByTmId, offers: offersSnap.docs.map((d) => d.data()), clubProfiles, signalsByPlayerId, gamesByPlayerId,
+    euCountries, mandatesByTmId, offers: offersSnap.docs.map((d) => d.data()), clubLevels, clubStrength, playerLevels, signalsByPlayerId, gamesByPlayerId,
     feedback, weights: resolveWeights(wDoc.exists ? wDoc.data() : null), now,
   };
 
@@ -109,12 +118,16 @@ async function main() {
     ['contractExpired', (p) => p.contractExpired], ['currentClub.clubTmProfile', (p) => (p.currentClub as { clubTmProfile?: string } | undefined)?.clubTmProfile],
     ['recentGames (doc or PlayerTiers)', (p) => (Array.isArray(p.recentGames) && p.recentGames.length ? 1 : gamesByPlayerId[p.id as string] ? 1 : null)],
     ['tmProfile', (p) => p.tmProfile],
+    ['level club (worker)', (p) => playerLevels[p.id as string]?.clubId],
+    ['level club strength known', (p) => { const id = playerLevels[p.id as string]?.clubId; return id && clubStrength[id]?.m ? 1 : null; }],
+    ['last game played known', (p) => playerLevels[p.id as string]?.lastPlayed],
   ];
   const rFields: [string, (r: Record<string, unknown>) => unknown][] = [
     ['position', (r) => r.position], ['age range', (r) => (r.ageDoesntMatter ? null : r.minAge || r.maxAge || null)],
     ['transferFee', (r) => r.transferFee], ['salaryRange', (r) => r.salaryRange], ['dominateFoot', (r) => r.dominateFoot],
     ['euOnly', (r) => (r.euOnly ? 1 : null)], ['clubTmProfile', (r) => r.clubTmProfile], ['clubCountry', (r) => r.clubCountry],
-    ['club level profile (cached)', (r) => { const id = tmClubId(r.clubTmProfile as string); return id && clubProfiles[id] ? 1 : null; }],
+    ['club level data (worker)', (r) => { const id = tmClubId(r.clubTmProfile as string); return id && clubLevels[id] ? 1 : null; }],
+    ['club level ≥10 signings', (r) => { const id = tmClubId(r.clubTmProfile as string); const l = id ? clubLevels[id] : null; return l && l.signings.filter((x) => x.mv > 0).length >= 10 ? 1 : null; }],
   ];
   const coverage = {
     players: Object.fromEntries(pFields.map(([k, f]) => [k, pct(players.filter((p) => filled(f(p))).length, players.length)])),
@@ -162,13 +175,37 @@ async function main() {
       const covers = (mandatesByTmId.get(id) ?? []).some((l) => mandateCoversClub(l, r));
       return covers && !evaluateMatch(r, p, ctx).ok;
     }).length;
+    const levelGated = players.filter((p) => { const e = evaluateMatch(r, p, ctx); return !e.ok && e.gate === 'level'; }).length;
     return {
-      id: r.id, club: r.clubName, position: r.position, fee: r.transferFee ?? '', legacy: legacy.length,
+      id: r.id, club: r.clubName, position: r.position, fee: r.transferFee ?? '', legacy: legacy.length, levelGated,
       strong: ranked.filter((m) => m.bucket === 'strong').length, good: ranked.filter((m) => m.bucket === 'good').length,
       stretch: ranked.filter((m) => m.bucket === 'stretch').length,
       legacyMandateShortcut: mandateOnly,
-      top3: ranked.slice(0, 3).map((m) => `${players.find((p) => p.id === m.playerId)?.fullName ?? m.playerId} (${m.score})`).join(', '),
+      top5: ranked.slice(0, 5).map((m) => `${players.find((p) => p.id === m.playerId)?.fullName ?? m.playerId} (${m.score}, lvl ${m.level?.score ?? '?'})`).join(', '),
     };
+  });
+
+  // ── 3b. club-level backtest (same method as the proof run in docs §8) ──
+  const lvlList = Object.values(clubLevels).filter((l): l is ClubLevel => !!l && l.signings.filter((x) => x.mv > 0).length >= ctx.weights.levelMinSignings);
+  const params = { gateFactor: ctx.weights.levelGateFactor, minSignings: ctx.weights.levelMinSignings };
+  const levelBacktest = lvlList.map((l) => {
+    const own = l.signings.filter((x) => x.mv > 0);
+    let pass = 0;
+    own.forEach((sg, i) => {
+      const loo = { ...l, signings: own.filter((_, j) => j !== i) };
+      if (assessLevel(loo, sg.mv, sg.src, params)?.pass !== false) pass++;
+    });
+    // AUC vs signings of clubs at least 2× weaker
+    const weaker = lvlList.filter((o) => o.id !== l.id && o.squadMedian && l.squadMedian && o.squadMedian * 2 <= l.squadMedian).flatMap((o) => o.signings.filter((x) => x.mv > 0));
+    let auc: string = '-';
+    if (weaker.length >= 10) {
+      const sOwn = own.map((sg, i) => assessLevel({ ...l, signings: own.filter((_, j) => j !== i) }, sg.mv, sg.src, params)?.pct ?? 0.5);
+      const sW = weaker.map((sg) => assessLevel(l, sg.mv, sg.src, params)?.pct ?? 0.5);
+      let wins = 0, n = 0;
+      for (const a of sOwn) for (const b of sW) { n++; wins += a > b ? 1 : a === b ? 0.5 : 0; }
+      auc = (wins / n).toFixed(2);
+    }
+    return { club: l.name, squadMedian: formatEurShort(l.squadMedian), signings: own.length, ownSigningsPassGate: pct(pass, own.length), aucVsWeakerClubs: auc };
   });
 
   // ── 4. golden set ──
@@ -202,8 +239,8 @@ async function main() {
   };
 
   const out = {
-    summary: { players: players.length, openRequests: pending.length, activeMandates: mandatesByTmId.size, offers: offersSnap.size, clubProfilesCached: Object.keys(clubProfiles).length },
-    coverage, values, gateTotals, perRequest, golden,
+    summary: { players: players.length, openRequests: pending.length, activeMandates: mandatesByTmId.size, offers: offersSnap.size, clubLevels: Object.keys(clubLevels).length, clubStrengths: Object.keys(clubStrength).length, playerLevels: Object.keys(playerLevels).length },
+    coverage, values, gateTotals, perRequest, levelBacktest, golden,
   };
   if (AS_JSON) { console.log(JSON.stringify(out, null, 2)); return; }
 
@@ -223,6 +260,9 @@ async function main() {
   console.log('\n=== 3. Old vs new per open request ===');
   console.table(perRequest);
   console.log('Why players were excluded (all requests × players):'); console.table(gateTotals);
+  console.log('\n=== 3b. Club-level backtest (own signings should pass ≈95-100%; AUC near 1.0 = level score separates clubs well) ===');
+  console.table(levelBacktest);
+  if (!levelBacktest.length) console.log('No club level data yet — run `npx tsx _matching_worker.ts` (or the "Request matching — club level data" GitHub Action) first.');
   console.log('\n=== 4. Golden set (agents\' verdicts) ===');
   console.table(golden);
   if (!labelled.length) console.log('No verdicts yet — mark "Good fit" / "Not a fit" on /requests/<id> to build the golden set.');

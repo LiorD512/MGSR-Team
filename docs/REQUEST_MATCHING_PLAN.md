@@ -217,3 +217,60 @@ ageBandYears, budgetGateMultiplier, strongMin, goodMin, adjacentCap`. Re-run the
 - Phase 4 (structured offer outcomes, request lifecycle, learning from outcomes).
 - Cloud Functions / Android / women / youth still use the legacy matcher, so Android counts can differ from the men web.
 - Shortlist and Press Room "matching requests" still use the legacy `requestMatcher.ts`.
+
+---
+
+## 8. Club Fit model — "would THIS club sign a player like him?" (men web)
+
+### Why
+Engine v2 scored Anderson Niangbo and Jesse Akila **83 / Strong** for Pafos FC (CF, fee <200): free agent + in budget
+outweighed a 10%-weight "level" check that could never exclude anyone.
+
+### Data (verified on live Transfermarkt pages, Nov 2026)
+| Data | Source |
+|---|---|
+| Club strength = median market value of the current squad (+ per position) | `/kader/verein/{id}` |
+| Club's real signings, last 3 seasons: value at signing, age, position, origin club, fee (returns from loan / U19-U23 excluded) | `/transfers/verein/{id}/saison_id/{s}/…/plus/1` (new parser — the old `scrapeClubTransfers` mangles names and loses the origin club) |
+| League code, league ø value, UEFA rank | squad header + `/startseite/wettbewerb/{code}` |
+| Free agent's last club | `/ceapi/transferHistory/list/{playerId}` |
+| Last game actually played | `/ceapi/performance-game` (existing `fetchRecentGames`) or `PlayerTiers` |
+
+### Model (`src/lib/matching/level.ts`)
+- **Gate:** excluded when his market value < 0.5 × the club's 10th-percentile signing value, or his (last) club's strength
+  < 0.5 × the 10th percentile of the clubs it signs from. Needs ≥ 10 signings with values; unknown data never gates.
+- **Score (30% weight):** average percentile of his value and his club's strength among the club's signings
+  (≥ 40th percentile = 100).
+- **Evidence caps:** no game for 12+ months → max Stretch; 6-12 months → max Good; level score < 25 → max Stretch;
+  value > 3× the club's 90th-percentile signing → max Good ("far above what the club signs"), > 8× → max Stretch.
+
+### Proof (shipped code, live data, `_matching_worker` builders → engine)
+| Club (squad median) | Own real signings passing its gate | Level score AUC vs weaker club's signings |
+|---|---|---|
+| Pafos FC (€1m) | 43/43 | 0.96 vs KF Teuta · 0.74 vs Panetolikos |
+| Panetolikos (€450k) | 42/42 | 0.91 vs KF Teuta |
+| KF Teuta (€250k) | 43/45 | — |
+
+CF request, no fee / age limits:
+| Player | Pafos FC | KF Teuta | Panetolikos |
+|---|---|---|---|
+| Anderson Niangbo (€50k, last game May 2025) | **excluded (level)** | 54 Stretch (inactive 18 m) | **excluded (level)** |
+| Jesse Akila (€100k, Shirak Gyumri) | **excluded (level)** | 87 Strong | 54 Stretch (level 4) |
+| Landry Dimata (€2.5m — a real Pafos signing, control) | 95 Strong | 74 Good (far above level) | 95 Strong |
+
+Caps applied to the clubs' own real signings (false-cap rate): level < 25 → 1-3 per club (≤ 7%), > 3× p90 → ≤ 1, > 8× → 0.
+130 Transfermarkt fetches for 3 clubs + 3 players, no blocks.
+
+### Running it
+- **Weekly worker:** `.github/workflows/matching-worker.yml` (Mon 03:00 UTC, or *Run workflow*; options: force, single club)
+  → `npx tsx _matching_worker.ts`. Writes `MatchingClubLevels/{vereinId}`, `MatchingData/{clubStrength,leagues,playerLevels}`.
+  First run ≈ 40 clubs × ~40 pages + one lookup per free agent; later runs only refresh stale entries (clubs 7 d, strengths 30 d, players 7 d).
+- **New request clubs** (before the next weekly run) are built on demand by `/api/matching/club-profiles` (≤ 25 pages, 45 s).
+- **Audit:** `npx tsx _matching_audit.ts` now also prints coverage of the level data, the per-club backtest (own signings
+  passing, AUC) and how many players each request excludes for level.
+- Tunable in `Config/matchingWeights`: `level`, `levelGateFactor` (0.5), `levelMinSignings` (10) and the other weights.
+
+### AI scout check (optional, button on `/requests/[id]`)
+- `POST /api/matching/ai-check` → Gemini 2.5 Flash-Lite judges the top 10 with the facts above; **advice only, never hides a player**.
+- **Hard cost cap:** max **60 calls / month** and recorded spend < $0.80, reserved with a Firestore transaction on
+  `MatchingAiChecks/_budget_{YYYY-MM}` *before* calling; answers cached per request + inputs. Normal use ≈ $0.01-0.05 / month;
+  worst case at 10× today's price ≈ $0.30 / month. Logged in `GeminiUsage` as feature `request-match`.
