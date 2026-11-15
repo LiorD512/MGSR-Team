@@ -87,13 +87,13 @@ export const menMoreItems = [
   { href: '/club-change-notifications', labelKey: 'nav_club_change_notifications' },
   { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
   { href: '/returnees', labelKey: 'nav_returnee' },
+  { href: '/tm-search', labelKey: 'nav_tm_search' },
   // DISABLED — Vercel cost optimization (May 2026)
   // { href: '/news', labelKey: 'nav_news' },
   { href: '/war-room', labelKey: 'nav_war_room' },
   // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
-  { href: '/tm-search', labelKey: 'nav_tm_search' },
   // TEMP HIDDEN (user request): { href: '/chat-room', labelKey: 'nav_chat_room' },
 ];
 

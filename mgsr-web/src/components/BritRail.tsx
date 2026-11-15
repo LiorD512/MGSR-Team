@@ -138,12 +138,6 @@ export default function BritRail({ active }: BritRailProps) {
             <span>{t('nav_requests')}</span>
           </Link>
         )}
-        {/* Transfermarkt direct search — men platform only */}
-        {platform === 'men' && (
-          <Link href="/tm-search" className={active === 'tm-search' || pathname === '/tm-search' ? 'active' : ''}>
-            <span>{t('nav_tm_search')}</span>
-          </Link>
-        )}
         <Link href="/contacts" className={active === 'contacts' ? 'active' : ''}>
           <span>{t('nav_contacts')}</span>
         </Link>
@@ -177,6 +171,13 @@ export default function BritRail({ active }: BritRailProps) {
               </div>
             )}
           </>
+        )}
+
+        {/* Transfermarkt direct search — men platform only */}
+        {platform === 'men' && (
+          <Link href="/tm-search" className={active === 'tm-search' || pathname === '/tm-search' ? 'active' : ''}>
+            <span>{t('nav_tm_search')}</span>
+          </Link>
         )}
 
         {/* War Room group — expandable (men-only) */}
