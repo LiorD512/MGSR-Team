@@ -415,7 +415,11 @@ const P=[
  ['Mehdi Ziani','CM',['AM'],22,'Morocco','🇲🇦','CAF','FC Utrecht',1900000,'both',2028,'1.76 m',0],
  ['Mateo Ruiz','AM',['LW'],19,'Mexico','🇲🇽','CONCACAF','Club León',2200000,'left',2028,'1.73 m',0],
  ['Kenji Arai','AM',['CM'],23,'Japan','🇯🇵','AFC','Sint-Truiden',1600000,'right',2028,'1.74 m',0],
- ['Carlos Rueda','DM',['CM'],27,'Colombia','🇨🇴','CONMEBOL',null,1000000,'right',null,'1.82 m',1],
+ ['Carlos Rueda','CM',['DM'],27,'Colombia','🇨🇴','CONMEBOL',null,1000000,'right',null,'1.82 m',1],
+ ['Luka Petrović','CB',[],22,'Croatia','🇭🇷','UEFA','NK Osijek',1200000,'right',2028,'1.89 m',0],
+ ['Mattias Lindqvist','CB',['RB'],23,'Sweden','🇸🇪','UEFA','IFK Norrköping',900000,'left',2027,'1.87 m',0],
+ ['Noah Dubois','RW',['LW'],22,'Belgium','🇧🇪','UEFA','KV Kortrijk',2800000,'left',2028,'1.77 m',0],
+ ['Roi Mizrahi','GK',[],25,'Israel','🇮🇱','UEFA','Maccabi Netanya',500000,'right',2027,'1.91 m',0],
  ['Min-jae Seo','CB',[],24,'South Korea','🇰🇷','AFC','KSC Lommel',1100000,'right',2027,'1.88 m',0],
  ['Nikola Stanić','CB',['LB'],21,'Serbia','🇷🇸','UEFA','FK Čukarički',800000,'left',2028,'1.90 m',0],
  ['Samuel Okafor','CB',[],20,'Nigeria','🇳🇬','CAF','Sheriff Tiraspol',1400000,'right',2029,'1.91 m',0],
@@ -425,7 +429,7 @@ const P=[
  ['André Silva','GK',[],31,'Portugal','🇵🇹','UEFA','GD Chaves',400000,'right',2026,'1.89 m',0],
 ].map((a,i)=>({id:i,name:a[0],pos:a[1],other:a[2],age:a[3],nat:a[4],flag:a[5],conf:a[6],club:a[7],value:a[8],foot:a[9],year:a[10],height:a[11],free:!!a[12],hue:(i*47+20)%360}));
 
-const ISO={'Senegal':'sn','Cameroon':'cm','Ghana':'gh',"Côte d'Ivoire":'ci','Guinea':'gn','Algeria':'dz','Argentina':'ar','Uruguay':'uy','Germany':'de','Israel':'il','Ukraine':'ua','Canada':'ca','Portugal':'pt','Morocco':'ma','Mexico':'mx','Japan':'jp','Colombia':'co','South Korea':'kr','Serbia':'rs','Nigeria':'ng','Türkiye':'tr','England':'gb-eng','France':'fr'};
+const ISO={'Senegal':'sn','Cameroon':'cm','Ghana':'gh',"Côte d'Ivoire":'ci','Guinea':'gn','Algeria':'dz','Argentina':'ar','Uruguay':'uy','Germany':'de','Israel':'il','Ukraine':'ua','Canada':'ca','Portugal':'pt','Morocco':'ma','Mexico':'mx','Japan':'jp','Colombia':'co','South Korea':'kr','Serbia':'rs','Nigeria':'ng','Türkiye':'tr','England':'gb-eng','France':'fr','Croatia':'hr','Sweden':'se','Belgium':'be'};
 const flagImg=n=>`<img src="https://flagcdn.com/w40/${ISO[n]}.png" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
 const REQ=[
  {id:1,club:'Hapoel Haifa',c:'#b64235',pos:'CF',min:18,max:24,fee:'1-1.5m',ceil:3000000,foot:'',eu:false},
