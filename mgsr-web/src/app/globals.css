@@ -7057,9 +7057,10 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 
 .brit-room .ts-res{min-width:0}
 .brit-room .ts-toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
-.brit-room .ts-count{display:flex;align-items:baseline;gap:10px}
+.brit-room .ts-count{display:flex;align-items:center;gap:12px}
 .brit-room .ts-count strong{font:500 40px/1 var(--display);letter-spacing:.01em}
 .brit-room .ts-count span{font:10px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);max-width:150px}
+.brit-room .ts-count span small{display:block;margin-top:4px;font:inherit;letter-spacing:.06em;color:var(--ink)}
 .brit-room .ts-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .brit-room .ts-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 13px;border:1px solid var(--line);background:#fff;font:9px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);transition:.15s;cursor:pointer}
 .brit-room .ts-btn:hover{border-color:var(--gold-soft);color:var(--gold)}

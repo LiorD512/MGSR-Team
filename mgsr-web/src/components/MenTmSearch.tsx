@@ -226,6 +226,21 @@ export default function MenTmSearch(props: MenTmSearchProps) {
   const isMobileSheet = useMediaQuery('(max-width: 900px)');
   const barRef = useRef<HTMLInputElement>(null);
 
+  // "Load more": confirm it worked (toast) and bring the first new player into view.
+  const prevLoaded = useRef({ len: 0, key: 0 });
+  useEffect(() => {
+    const prev = prevLoaded.current;
+    if (resultsKey === prev.key && prev.len > 0 && players.length > prev.len) {
+      const url = players[prev.len].playerUrl;
+      onToast(t('tm_search_loaded_more').replace('{n}', String(players.length - prev.len)));
+      requestAnimationFrame(() => {
+        document.querySelector(`[data-ts-url="${CSS.escape(url)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+    prevLoaded.current = { len: players.length, key: resultsKey };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [players.length, resultsKey]);
+
   // A new search starts a new selection.
   useEffect(() => { setSelected(new Set()); }, [resultsKey]);
 
@@ -539,7 +554,12 @@ export default function MenTmSearch(props: MenTmSearchProps) {
                 <div className="ts-toolbar">
                   <div className="ts-count">
                     <strong>{hasSearched && !error ? totalHits : '–'}</strong>
-                    <span>{loading ? t('tm_search_searching') : t('tm_search_hits_label')}</span>
+                    <span>
+                      {loading ? t('tm_search_searching') : t('tm_search_hits_label')}
+                      {hasSearched && !error && !loading && players.length > 0 && (
+                        <small>{t('tm_search_shown').replace('{n}', String(players.length))}</small>
+                      )}
+                    </span>
                   </div>
                   <div className="ts-tools">
                     <button type="button" className="ts-btn ts-mfilter" onClick={() => setSheetOpen(true)}>
@@ -606,6 +626,7 @@ export default function MenTmSearch(props: MenTmSearchProps) {
                             sel={selected.has(p.playerUrl)} saved={shortlistUrls.has(p.playerUrl)} inRoster={rosterUrls.has(p.playerUrl)}
                             adding={addingUrl === p.playerUrl} onSel={toggleSel} onSave={onAddToShortlist} onOpen={setDrawerUrl} />
                         ))}
+                        {loadingMore && Array.from({ length: 6 }).map((_, i) => <div key={`sk${i}`} className="ts-skel" />)}
                       </div>
                     ) : (
                       <div className="ts-table">
@@ -620,6 +641,7 @@ export default function MenTmSearch(props: MenTmSearchProps) {
                             sel={selected.has(p.playerUrl)} saved={shortlistUrls.has(p.playerUrl)} inRoster={rosterUrls.has(p.playerUrl)}
                             onSel={toggleSel} onSave={onAddToShortlist} onOpen={setDrawerUrl} />
                         ))}
+                        {loadingMore && Array.from({ length: 3 }).map((_, i) => <div key={`sk${i}`} className="ts-skel" style={{ height: 56 }} />)}
                       </div>
                     )}
                     <div className="ts-more">
@@ -699,7 +721,7 @@ const ResultCard = memo(function ResultCard({
   ) : null;
 
   return (
-    <article className={`ts-card${sel ? ' sel' : ''}`} style={{ animationDelay: `${Math.min(i, 12) * 25}ms` }}
+    <article className={`ts-card${sel ? ' sel' : ''}`} data-ts-url={p.playerUrl} style={{ animationDelay: `${Math.min(i, 12) * 25}ms` }}
       onClick={(e) => { if ((e.target as HTMLElement).closest('a,button')) return; onOpen(p.playerUrl); }}>
       {badge}
       <button type="button" className="ts-check" onClick={() => onSel(p.playerUrl)} aria-label="Select" aria-pressed={sel}>{CK}</button>
@@ -747,7 +769,7 @@ const CK_SMALL = (
 const ResultRow = memo(function ResultRow({ p, i, sel, saved, inRoster, onSel, onSave, onOpen }: PieceProps) {
   const { t } = useLanguage();
   return (
-    <div className={`ts-tr${sel ? ' sel' : ''}`} style={{ animationDelay: `${Math.min(i, 12) * 18}ms` }}
+    <div className={`ts-tr${sel ? ' sel' : ''}`} data-ts-url={p.playerUrl} style={{ animationDelay: `${Math.min(i, 12) * 18}ms` }}
       onClick={(e) => { if ((e.target as HTMLElement).closest('a,button')) return; onOpen(p.playerUrl); }}>
       <button type="button" className="cb" onClick={() => onSel(p.playerUrl)} aria-label="Select" aria-pressed={sel}>{CK}</button>
       <div className="mini"><Avatar p={p} /><div style={{ minWidth: 0 }}><div className="nm">{p.playerName}</div><div className="sub">{p.playerNationality}<span className="mob-age"> · {p.playerAge}</span></div></div></div>
