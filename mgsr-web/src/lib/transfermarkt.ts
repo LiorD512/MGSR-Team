@@ -57,7 +57,12 @@ function randomDelay(): number {
   return MIN_FETCH_GAP_MS + Math.floor(Math.random() * (MAX_FETCH_GAP_MS - MIN_FETCH_GAP_MS));
 }
 
-export async function fetchHtml(url: string): Promise<string> {
+export interface FetchHtmlInit {
+  /** form-urlencoded body; when set the request is a POST (never routed via the GET-only HTML proxy) */
+  postBody?: string;
+}
+
+export async function fetchHtml(url: string, init?: FetchHtmlInit): Promise<string> {
   // Circuit breaker check
   if (_circuitOpenUntil > Date.now()) {
     throw new Error(`TM circuit breaker open — cooling down until ${new Date(_circuitOpenUntil).toISOString()}`);
@@ -74,14 +79,28 @@ export async function fetchHtml(url: string): Promise<string> {
   // first. If it fails, fall back to direct fetch (which may work or may be
   // blocked). On Vercel (no proxy env) we go direct — exactly as before.
   const fetchers: Array<() => Promise<Response>> = [];
-  if (TM_HTML_PROXY_URL) {
+  if (TM_HTML_PROXY_URL && !init?.postBody) {
     fetchers.push(() => fetchViaProxy(url));
   }
   fetchers.push(() =>
-    fetch(url, {
-      headers: getRealisticHeaders(),
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    })
+    fetch(
+      url,
+      init?.postBody
+        ? {
+            method: 'POST',
+            headers: {
+              ...getRealisticHeaders(),
+              'content-type': 'application/x-www-form-urlencoded',
+              origin: TRANSFERMARKT_BASE,
+            },
+            body: init.postBody,
+            signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          }
+        : {
+            headers: getRealisticHeaders(),
+            signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          }
+    )
   );
 
   let lastErr: Error | undefined;
@@ -117,11 +136,11 @@ export async function fetchHtml(url: string): Promise<string> {
   throw new Error('fetchHtml: no fetcher succeeded');
 }
 
-export async function fetchHtmlWithRetry(url: string, maxRetries = 2): Promise<string> {
+export async function fetchHtmlWithRetry(url: string, maxRetries = 2, init?: FetchHtmlInit): Promise<string> {
   let lastErr: Error | undefined;
   for (let i = 0; i < maxRetries; i++) {
     try {
-      return await fetchHtml(url);
+      return await fetchHtml(url, init);
     } catch (err) {
       lastErr = err instanceof Error ? err : new Error(String(err));
       if (lastErr.message.includes('circuit breaker')) throw lastErr; // don't retry if circuit is open

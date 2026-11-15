@@ -87,6 +87,7 @@ export const menMoreItems = [
   { href: '/club-change-notifications', labelKey: 'nav_club_change_notifications' },
   { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
   { href: '/returnees', labelKey: 'nav_returnee' },
+  { href: '/tm-search', labelKey: 'nav_tm_search' },
   // DISABLED — Vercel cost optimization (May 2026)
   // { href: '/news', labelKey: 'nav_news' },
   { href: '/war-room', labelKey: 'nav_war_room' },
