@@ -25,7 +25,7 @@ function intParam(sp: URLSearchParams, name: string): number | undefined {
 
 /**
  * GET /api/transfermarkt/advanced-search
- * Query: position, minAge, maxAge, minValue, maxValue, confederation, countryId,
+ * Query: position, minAge, maxAge, minValue, maxValue, minHeight, maxHeight (cm), confederation, countryId,
  *        foot (left|right|both), contractYear, freeAgents=1, excludeLoans=1, page
  */
 export async function GET(request: NextRequest) {
@@ -51,6 +51,8 @@ export async function GET(request: NextRequest) {
       maxAge: intParam(sp, 'maxAge'),
       minValue: intParam(sp, 'minValue'),
       maxValue: intParam(sp, 'maxValue'),
+      minHeight: intParam(sp, 'minHeight'),
+      maxHeight: intParam(sp, 'maxHeight'),
       confederation: confederation || undefined,
       countryId: intParam(sp, 'countryId'),
       foot: (foot || undefined) as TmSearchFilters['foot'],

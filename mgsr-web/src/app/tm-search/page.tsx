@@ -12,14 +12,16 @@ import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
 import {
   EMPTY_TM_SEARCH_FORM,
-  TM_SEARCH_POSITIONS,
+  describeSearchForm,
+  isEmptySearchForm,
+  parseSearchText,
   requestToSearchForm,
   searchFormToQuery,
   type RequestForSearch,
   type TmSearchForm,
 } from '@/lib/tmSearchFromRequest';
 import type { TmSearchPlayer, TmSearchResult } from '@/lib/tmAdvancedSearch';
-import MenTmSearch, { type TmRequestOption } from '@/components/MenTmSearch';
+import MenTmSearch, { type TmActiveRequest, type TmRequestCard } from '@/components/MenTmSearch';
 import BritLoader from '@/components/BritLoader';
 
 const REGION_OPTIONS: { value: Confederation; key: string }[] = [
@@ -31,11 +33,12 @@ const REGION_OPTIONS: { value: Confederation; key: string }[] = [
   { value: 'OFC', key: 'transfer_windows_group_ofc' },
 ];
 
-const POSITION_HEBREW: Record<string, string> = { SS: 'חלוץ שני' };
+const SEARCH_DEBOUNCE_MS = 450;
 
 interface ClubRequestDoc extends RequestForSearch {
   id: string;
   clubName?: string;
+  clubLogo?: string;
   createdAt?: number;
 }
 
@@ -53,31 +56,41 @@ async function fetchSearch(query: string): Promise<TmSearchResult> {
 
 export default function TmSearchPage() {
   const { user, loading } = useAuth();
-  const { t, isRtl } = useLanguage();
+  const { t } = useLanguage();
+  // Search callbacks read the latest translator through a ref so a language switch does not re-run the search.
+  const tRef = useRef(t);
+  tRef.current = t;
   const router = useRouter();
 
   const [form, setFormState] = useState<TmSearchForm>(EMPTY_TM_SEARCH_FORM);
+  const formRef = useRef<TmSearchForm>(EMPTY_TM_SEARCH_FORM);
+  const [barText, setBarText] = useState('');
   const [requests, setRequests] = useState<ClubRequestDoc[]>([]);
-  const [selectedRequestId, setSelectedRequestId] = useState('');
-  const [requestNotes, setRequestNotes] = useState<string[]>([]);
+  const [activeRequest, setActiveRequest] = useState<TmActiveRequest | null>(null);
 
   const [players, setPlayers] = useState<TmSearchPlayer[]>([]);
   const [totalHits, setTotalHits] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [hiddenNoHeight, setHiddenNoHeight] = useState(0);
   const [hasSearched, setHasSearched] = useState(false);
   const [searching, setSearching] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
+  const [resultsKey, setResultsKey] = useState(0);
 
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
   const [rosterIds, setRosterIds] = useState<Set<string>>(new Set());
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
+  const [toast, setToast] = useState('');
 
-  // Filters used for the results currently on screen ("Load more" must continue THAT search,
-  // not whatever the user has typed since).
+  // Filters used for the results currently on screen: "Load more" must continue THAT search,
+  // not whatever has been typed since.
   const activeFormRef = useRef<TmSearchForm>(EMPTY_TM_SEARCH_FORM);
   const searchSeq = useRef(0);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipFirstAuto = useRef(true);
 
   const contractYears = useMemo(() => {
     const y = new Date().getFullYear();
@@ -119,6 +132,13 @@ export default function TmSearchPage() {
     return () => unsub();
   }, [user]);
 
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(''), 2200);
+  }, []);
+
+  // ── search ──
   const runSearch = useCallback(async (f: TmSearchForm) => {
     const seq = ++searchSeq.current;
     activeFormRef.current = f;
@@ -131,19 +151,22 @@ export default function TmSearchPage() {
       setTotalHits(data.totalHits);
       setPage(1);
       setHasMore(data.hasMore);
+      setHiddenNoHeight(data.hiddenNoHeight ?? 0);
       setHasSearched(true);
+      setResultsKey((k) => k + 1);
     } catch (err) {
       if (seq !== searchSeq.current) return;
       console.error('TM search failed:', err);
       setPlayers([]);
       setTotalHits(0);
       setHasMore(false);
+      setHiddenNoHeight(0);
       setHasSearched(true);
-      setError(t('tm_search_error'));
+      setError(tRef.current('tm_search_error'));
     } finally {
       if (seq === searchSeq.current) setSearching(false);
     }
-  }, [t]);
+  }, []);
 
   const loadMore = useCallback(async () => {
     const seq = searchSeq.current;
@@ -157,93 +180,165 @@ export default function TmSearchPage() {
         return [...prev, ...data.players.filter((p) => !seen.has(p.playerUrl))];
       });
       setPage(next);
-      setHasMore(data.hasMore && data.players.length > 0);
+      setHasMore(data.hasMore);
+      setHiddenNoHeight((n) => n + (data.hiddenNoHeight ?? 0));
     } catch (err) {
       if (seq !== searchSeq.current) return;
       console.error('TM load more failed:', err);
-      setError(t('tm_search_error'));
+      setError(tRef.current('tm_search_error'));
     } finally {
       setLoadingMore(false);
     }
-  }, [page, t]);
+  }, [page]);
 
-  const setForm = useCallback((updater: (prev: TmSearchForm) => TmSearchForm) => {
-    setFormState(updater);
-    // Editing a filter turns it back into a custom search.
-    setSelectedRequestId('');
-    setRequestNotes([]);
-  }, []);
-
-  const onSelectRequest = useCallback((id: string) => {
-    setSelectedRequestId(id);
-    if (!id) {
-      setRequestNotes([]);
+  // Live search: every filter change searches after a short pause (no Search button).
+  useEffect(() => {
+    if (skipFirstAuto.current) { skipFirstAuto.current = false; return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (isEmptySearchForm(form)) {
+      searchSeq.current++;
+      setPlayers([]);
+      setTotalHits(0);
+      setHasMore(false);
+      setHiddenNoHeight(0);
+      setHasSearched(false);
+      setSearching(false);
+      setError('');
       return;
     }
-    const req = requests.find((r) => r.id === id);
-    if (!req) return;
-    const { form: next, feeCeiling } = requestToSearchForm(req);
-    const notes = [t('tm_search_request_note')];
-    if (req.euOnly) notes.push(t('tm_search_request_eu_note'));
-    if (feeCeiling && req.transferFee) notes.push(t('tm_search_request_fee_note').replace('{fee}', req.transferFee));
-    setFormState(next);
-    setRequestNotes(notes);
-    void runSearch(next);
-  }, [requests, runSearch, t]);
+    setSearching(true);
+    debounceRef.current = setTimeout(() => { void runSearch(form); }, SEARCH_DEBOUNCE_MS);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [form, runSearch]);
 
-  const onReset = useCallback(() => {
-    searchSeq.current++;
-    setFormState(EMPTY_TM_SEARCH_FORM);
-    setSelectedRequestId('');
-    setRequestNotes([]);
-    setPlayers([]);
-    setTotalHits(0);
-    setHasMore(false);
-    setHasSearched(false);
-    setSearching(false);
-    setError('');
+  // ── filter edits (all of them detach the loaded request) ──
+  const applyForm = useCallback((next: TmSearchForm) => {
+    formRef.current = next;
+    setFormState(next);
   }, []);
 
-  const addToShortlist = useCallback(async (player: TmSearchPlayer) => {
-    if (!user || !player.playerUrl) return;
-    setAddingUrl(player.playerUrl);
-    try {
-      const account = await getCurrentAccountForShortlist(user);
-      const result = await callShortlistAdd({
-        platform: 'men',
-        tmProfileUrl: player.playerUrl,
-        playerImage: player.playerImage || null,
-        playerName: player.playerName || null,
-        playerPosition: player.playerPosition || null,
-        playerAge: player.playerAge || null,
-        playerNationality: player.playerNationality || null,
-        playerNationalityFlag: player.playerNationalityFlag || null,
-        clubJoinedName: player.clubJoinedName ?? null,
-        marketValue: player.marketValue || null,
-        addedByAgentId: account.id,
-        addedByAgentName: account.name ?? null,
-        addedByAgentHebrewName: account.hebrewName ?? null,
-      });
-      if (result.status === 'added') enrichShortlistInstagram(player.playerUrl);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('tm_search_error'));
-    } finally {
-      setAddingUrl(null);
-    }
-  }, [user, t]);
+  const setForm = useCallback((updater: (prev: TmSearchForm) => TmSearchForm) => {
+    const next = updater(formRef.current);
+    applyForm(next);
+    setBarText(describeSearchForm(next));
+    setActiveRequest(null);
+  }, [applyForm]);
 
-  const requestOptions: TmRequestOption[] = useMemo(
+  const onBarChange = useCallback((text: string) => {
+    setBarText(text);
+    setActiveRequest(null);
+    if (!text.trim()) { applyForm(EMPTY_TM_SEARCH_FORM); return; }
+    const { form: parsed, hits } = parseSearchText(text);
+    if (hits > 0) applyForm(parsed);
+  }, [applyForm]);
+
+  const onBarSubmit = useCallback(() => {
+    if (isEmptySearchForm(form)) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    void runSearch(form);
+  }, [form, runSearch]);
+
+  const onReset = useCallback(() => {
+    applyForm(EMPTY_TM_SEARCH_FORM);
+    setBarText('');
+    setActiveRequest(null);
+  }, [applyForm]);
+
+  const requestCards: TmRequestCard[] = useMemo(
     () =>
       requests
         .filter((r) => !!r.position)
         .map((r) => ({
           id: r.id,
-          label: t('tm_search_request_option')
-            .replace('{club}', r.clubName || '—')
-            .replace('{position}', r.position || '—'),
+          club: r.clubName || '—',
+          logo: r.clubLogo,
+          position: (r.position || '').toUpperCase(),
+          minAge: r.ageDoesntMatter ? undefined : r.minAge,
+          maxAge: r.ageDoesntMatter ? undefined : r.maxAge,
+          fee: r.transferFee,
+          foot: r.dominateFoot && r.dominateFoot !== 'any' ? r.dominateFoot : undefined,
+          euOnly: r.euOnly,
         })),
-    [requests, t]
+    [requests]
   );
+
+  const onSelectRequest = useCallback((id: string) => {
+    if (activeRequest?.id === id) {
+      // Tapping the loaded request again unloads it.
+      onReset();
+      return;
+    }
+    const req = requests.find((r) => r.id === id);
+    if (!req) return;
+    const { form: next, feeCeiling } = requestToSearchForm(req);
+    applyForm(next);
+    setBarText(describeSearchForm(next));
+    setActiveRequest({
+      id: req.id,
+      club: req.clubName || '—',
+      fee: req.transferFee,
+      euOnly: req.euOnly,
+      minAge: req.ageDoesntMatter ? undefined : req.minAge,
+      maxAge: req.ageDoesntMatter ? undefined : req.maxAge,
+      valueCeiling: feeCeiling ? feeCeiling * 2 : null,
+      minHeight: req.minHeight,
+      maxHeight: req.maxHeight,
+    });
+  }, [activeRequest, requests, onReset, applyForm]);
+
+  // ── shortlist ──
+  const addOne = useCallback(async (player: TmSearchPlayer): Promise<'added' | 'exists' | 'error'> => {
+    if (!user) return 'error';
+    const account = await getCurrentAccountForShortlist(user);
+    const result = await callShortlistAdd({
+      platform: 'men',
+      tmProfileUrl: player.playerUrl,
+      playerImage: player.playerImage || null,
+      playerName: player.playerName || null,
+      playerPosition: player.playerPosition || null,
+      playerAge: player.playerAge || null,
+      playerNationality: player.playerNationality || null,
+      playerNationalityFlag: player.playerNationalityFlag || null,
+      clubJoinedName: player.clubJoinedName ?? null,
+      marketValue: player.marketValue || null,
+      addedByAgentId: account.id,
+      addedByAgentName: account.name ?? null,
+      addedByAgentHebrewName: account.hebrewName ?? null,
+    });
+    if (result.status === 'added') {
+      enrichShortlistInstagram(player.playerUrl);
+      return 'added';
+    }
+    return 'exists';
+  }, [user]);
+
+  const addToShortlist = useCallback(async (player: TmSearchPlayer) => {
+    if (!player.playerUrl) return;
+    setAddingUrl(player.playerUrl);
+    try {
+      const r = await addOne(player);
+      showToast(r === 'added' ? t('tm_search_toast_added') : t('releases_saved'));
+    } catch (err) {
+      console.error('Add to shortlist failed:', err);
+      showToast(t('tm_search_error'));
+    } finally {
+      setAddingUrl(null);
+    }
+  }, [addOne, showToast, t]);
+
+  const addMany = useCallback(async (list: TmSearchPlayer[]) => {
+    let added = 0;
+    for (const p of list) {
+      const id = extractPlayerIdFromUrl(p.playerUrl);
+      if (id && rosterIds.has(id)) continue;
+      try {
+        if ((await addOne(p)) === 'added') added++;
+      } catch (err) {
+        console.error('Add to shortlist failed:', err);
+      }
+    }
+    showToast(t('tm_search_toast_added_n').replace('{n}', String(added)));
+  }, [addOne, rosterIds, showToast, t]);
 
   // Match shortlist / roster by Transfermarkt player id (URL slugs can differ).
   const shortlistIds = useMemo(
@@ -259,28 +354,21 @@ export default function TmSearchPage() {
     [players, rosterIds]
   );
 
-  const positionLabel = useCallback(
-    (pos: string) => (isRtl ? POSITION_HEBREW[pos] || pos : pos),
-    [isRtl]
-  );
-
   if (loading || !user) return <BritLoader fullPage={true} />;
 
   return (
     <MenTmSearch
       form={form}
       setForm={setForm}
-      positions={TM_SEARCH_POSITIONS}
-      positionLabel={positionLabel}
+      barText={barText}
+      onBarChange={onBarChange}
+      onBarSubmit={onBarSubmit}
+      onReset={onReset}
+      requests={requestCards}
+      activeRequest={activeRequest}
+      onSelectRequest={onSelectRequest}
       regionOptions={REGION_OPTIONS}
       contractYears={contractYears}
-      requestOptions={requestOptions}
-      selectedRequestId={selectedRequestId}
-      onSelectRequest={onSelectRequest}
-      requestNotes={requestNotes}
-      onSearch={() => void runSearch(form)}
-      onReset={onReset}
-      onLoadMore={() => void loadMore()}
       hasSearched={hasSearched}
       loading={searching}
       loadingMore={loadingMore}
@@ -288,10 +376,16 @@ export default function TmSearchPage() {
       players={players}
       totalHits={totalHits}
       hasMore={hasMore}
+      hiddenNoHeight={hiddenNoHeight}
+      resultsKey={resultsKey}
+      onLoadMore={() => void loadMore()}
       shortlistUrls={shortlistedResultUrls}
       rosterUrls={rosterResultUrls}
       addingUrl={addingUrl}
       onAddToShortlist={addToShortlist}
+      onAddMany={addMany}
+      toast={toast}
+      onToast={showToast}
     />
   );
 }

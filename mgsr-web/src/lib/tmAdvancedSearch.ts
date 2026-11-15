@@ -6,6 +6,7 @@
  *    same POST sent to `...suche?page=N` (no cookie / session needed).
  *  - 25 rows per page, TM caps every search at 250 hits (10 pages).
  *  - Age fields MUST be sent, otherwise TM answers "0 Hits".
+ *  - Height (minGroesse / maxGroesse, cm) is only applied when both bounds are sent.
  *  - Table columns vary with the filters (e.g. a "Contract" column, no "Club"
  *    column for free agents), so columns are resolved from the <th> headers.
  */
@@ -55,6 +56,9 @@ export interface TmSearchFilters {
   /** Euros */
   minValue?: number;
   maxValue?: number;
+  /** Centimetres. TM only applies height when BOTH bounds are sent, so a missing bound defaults to 150 / 250. A lower min (e.g. 140) makes TM include players with no height listed. */
+  minHeight?: number;
+  maxHeight?: number;
   confederation?: string;
   /** Transfermarkt country id (see tmCountries.ts) */
   countryId?: number;
@@ -95,6 +99,8 @@ export interface TmSearchResult {
   page: number;
   pageCount: number;
   hasMore: boolean;
+  /** Players dropped from this page because TM lists no height for them (only when a height filter is set). */
+  hiddenNoHeight?: number;
 }
 
 const clampInt = (n: unknown, min: number, max: number, fallback: number): number => {
@@ -113,6 +119,11 @@ export function buildSearchBody(f: TmSearchFilters): string {
   p.set('Detailsuche[maxAlter]', String(clampInt(f.maxAge, 14, 50, 50)));
   p.set('Detailsuche[minMarktwert]', String(clampInt(f.minValue, 0, 200_000_000, 0)));
   p.set('Detailsuche[maxMarktwert]', String(clampInt(f.maxValue, 0, 200_000_000, 200_000_000)));
+
+  if (f.minHeight || f.maxHeight) {
+    p.set('Detailsuche[minGroesse]', String(clampInt(f.minHeight, 0, 250, 150)));
+    p.set('Detailsuche[maxGroesse]', String(clampInt(f.maxHeight, 0, 250, 250)));
+  }
 
   const posId = f.position ? TM_SEARCH_POSITION_IDS[f.position.trim().toUpperCase()] : undefined;
   if (posId) p.set('Detailsuche[hauptposition_id]', String(posId));
@@ -251,5 +262,13 @@ export async function searchPlayersAdvanced(filters: TmSearchFilters): Promise<T
   const page = clampInt(filters.page, 1, 10, 1);
   const url = page > 1 ? `${SEARCH_URL}?page=${page}` : SEARCH_URL;
   const html = await fetchHtmlWithRetry(url, 2, { postBody: buildSearchBody(filters) });
-  return parseSearchResults(html, page);
+  const result = parseSearchResults(html, page);
+  // TM keeps players with an unknown height ("-") when a height range is applied. For a height
+  // search they are noise, so drop them and report how many were hidden.
+  if (filters.minHeight || filters.maxHeight) {
+    const known = result.players.filter((p) => /\d/.test(p.height));
+    result.hiddenNoHeight = result.players.length - known.length;
+    result.players = known;
+  }
+  return result;
 }
