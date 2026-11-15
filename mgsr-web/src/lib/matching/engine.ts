@@ -13,6 +13,7 @@
  */
 import { normalizePosition, positionFit, type PositionCode } from './positions';
 import { parseEuros, parseFeeBand, parseSalaryBand } from './tiers';
+import { parsePlayerHeightCm, requestMinHeight, type RequestHeight } from './height';
 import { assessLevel, monthsSince, type ClubLevel, type ClubStrength, type LevelAssessment, type PlayerLevelInfo } from './level';
 
 // ─── Inputs ────────────────────────────────────────────────────────────────
@@ -43,6 +44,8 @@ export interface MatchPlayer {
   interestedInIsrael?: boolean;
   tmProfile?: string;
   recentGames?: RecentGameLite[];
+  /** Transfermarkt height, e.g. "1,85 m". */
+  height?: string;
 }
 
 export interface MatchRequest {
@@ -59,6 +62,11 @@ export interface MatchRequest {
   clubName?: string;
   clubCountry?: string;
   status?: string;
+  /** Minimum height in cm (0 / missing = not set). */
+  minHeight?: number;
+  /** true (default) = height not required by the form; the notes are still read as a fallback. */
+  heightDoesntMatter?: boolean;
+  notes?: string;
 }
 
 /** Legacy squad-only club profile (kept for the audit's fallback). */
@@ -171,13 +179,14 @@ export type ReasonCode =
   | 'free_agent' | 'contract_6m' | 'contract_12m' | 'on_loan' | 'contract_long' | 'contract_unknown'
   | 'level_fit' | 'level_above' | 'level_below' | 'level_low' | 'level_unknown'
   | 'inactive' | 'inactive_long' | 'recruits_here'
+  | 'height_ok' | 'height_near' | 'height_unknown'
   | 'regular_starter' | 'rotation' | 'low_minutes' | 'hot_form' | 'cold_form' | 'benched' | 'form_unknown'
   | 'age_in_range' | 'age_near' | 'age_unknown'
   | 'salary_in_band' | 'salary_stretch' | 'salary_over' | 'salary_unknown'
   | 'foot_match' | 'foot_both' | 'foot_unknown'
   | 'eu_unknown' | 'mandate' | 'interested_israel';
 
-export type GateCode = 'no_position' | 'age' | 'eu' | 'budget' | 'foot' | 'same_club' | 'not_pending' | 'no_request_position' | 'level';
+export type GateCode = 'no_position' | 'age' | 'eu' | 'budget' | 'foot' | 'same_club' | 'not_pending' | 'no_request_position' | 'level' | 'height';
 
 export type Bucket = 'strong' | 'good' | 'stretch';
 
@@ -202,6 +211,9 @@ export interface MatchResult {
   levelClub: { id: string | null; name: string | null; strength: number | null } | null;
   /** Months since his last played game (null = unknown). */
   monthsInactive: number | null;
+  /** Player height in cm (null = unknown) and the request's minimum (null = none). */
+  heightCm: number | null;
+  minHeight: RequestHeight | null;
 }
 
 export type Evaluation = { ok: true; result: MatchResult } | { ok: false; gate: GateCode };
@@ -351,6 +363,16 @@ export function evaluateMatch(req: MatchRequest, p: MatchPlayer, ctx: MatchConte
     if (ageN >= lo && ageN <= hi) { comp.age = 100; reasons.push('age_in_range'); }
     else if (ageN >= lo - w.ageBandYears && ageN <= hi + w.ageBandYears) { comp.age = 50; warnings.push('age_near'); }
     else return { ok: false, gate: 'age' };
+  }
+
+  // ── Height (gate when clearly shorter than the request's minimum — form field, or read from the notes)
+  const minHeight = requestMinHeight(req);
+  const heightCm = parsePlayerHeightCm(p.height);
+  if (minHeight) {
+    if (heightCm == null) warnings.push('height_unknown');
+    else if (heightCm >= minHeight.minCm) reasons.push('height_ok');
+    else if (heightCm >= minHeight.minCm - 2) warnings.push('height_near'); // Transfermarkt rounding
+    else return { ok: false, gate: 'height' };
   }
 
   // ── Foot (gate on the opposite foot when known)
@@ -555,6 +577,8 @@ export function evaluateMatch(req: MatchRequest, p: MatchPlayer, ctx: MatchConte
       level,
       levelClub: pClubId || pInfo?.clubName ? { id: pClubId ?? null, name: pInfo?.clubName ?? ctx.clubStrength[pClubId ?? '']?.n ?? null, strength: pClubStrength } : null,
       monthsInactive: monthsInactive != null ? Math.round(monthsInactive) : null,
+      heightCm,
+      minHeight,
     },
   };
 }

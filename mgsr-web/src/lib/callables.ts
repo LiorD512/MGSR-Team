@@ -128,6 +128,9 @@ export interface RequestCreatePayload {
   minAge?: number;
   maxAge?: number;
   ageDoesntMatter?: boolean;
+  /** Minimum height in cm (150-215); 0 = not set. */
+  minHeight?: number;
+  heightDoesntMatter?: boolean;
   salaryRange?: string;
   transferFee?: string;
   dominateFoot?: string;
@@ -153,6 +156,9 @@ export interface RequestUpdatePayload {
   minAge?: number;
   maxAge?: number;
   ageDoesntMatter?: boolean;
+  /** Minimum height in cm (150-215); 0 = not set. */
+  minHeight?: number;
+  heightDoesntMatter?: boolean;
   salaryRange?: string;
   transferFee?: string;
   dominateFoot?: string;

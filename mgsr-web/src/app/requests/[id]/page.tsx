@@ -22,6 +22,7 @@ import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { rankPlayersForRequest, isFreeAgent, parseContractEnd, type MatchPlayer, type MatchRequest, type MatchResult } from '@/lib/matching/engine';
 import { bucketLabel, mt, reasonLabel } from '@/lib/matching/i18n';
 import { formatEurShort } from '@/lib/matching/level';
+import { formatHeight, requestMinHeight } from '@/lib/matching/height';
 import BritLoader from '@/components/BritLoader';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
@@ -95,6 +96,7 @@ export default function RequestMatchesPage() {
           playerId: m.playerId, name: p.fullName, age: p.age ?? null, positions: (p.positions ?? []).filter(Boolean),
           marketValue: p.marketValue ?? null, club: m.levelClub?.name ?? p.currentClub?.clubName ?? null,
           clubStrength: m.levelClub?.strength ? formatEurShort(m.levelClub.strength) : null, monthsInactive: m.monthsInactive, score: m.score,
+          height: m.heightCm ? formatHeight(m.heightCm) : null,
         };
       });
       const token = await user.getIdToken();
@@ -171,6 +173,9 @@ export default function RequestMatchesPage() {
             {m.reasons.slice(0, 4).map((r) => <span key={r} className="pos">{reasonLabel(r, isHebrew)}</span>)}
             {m.warnings.slice(0, 3).map((r) => <span key={r} className="neg">{reasonLabel(r, isHebrew)}</span>)}
           </div>
+          {m.minHeight && (
+            <p className="brit-reqm-level">↕ <b>{m.heightCm ? formatHeight(m.heightCm) : '—'}</b> / {formatHeight(m.minHeight.minCm)}</p>
+          )}
           {m.level && (
             <p className="brit-reqm-level">
               <b>{mt('level_score', isHebrew, { n: m.components.level ?? '—' })}</b>{' · '}
@@ -242,6 +247,7 @@ export default function RequestMatchesPage() {
                       {req.salaryRange && req.salaryRange !== 'N/A' && <span>{t('requests_label_salary')} <b>{req.salaryRange}</b></span>}
                       {req.dominateFoot && req.dominateFoot !== 'any' && <span><b>{req.dominateFoot}</b></span>}
                       {req.euOnly && <span><b>EU</b></span>}
+                      {(() => { const h = requestMinHeight(req); return h ? <span>{mt(h.source === 'notes' ? 'min_height_notes' : 'min_height', isHebrew, { h: formatHeight(h.minCm) })}</span> : null; })()}
                     </div>
                   </div>
                 </header>

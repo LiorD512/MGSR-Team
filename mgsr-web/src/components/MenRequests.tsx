@@ -25,6 +25,7 @@ import { getCountryDisplayName } from '@/lib/countryTranslations';
 import type { RosterPlayer } from '@/lib/requestMatcher';
 import { isVisibleMatch, rankPlayersForRequest, type MatchPlayer, type MatchRequest, type MatchResult } from '@/lib/matching/engine';
 import { bucketLabel } from '@/lib/matching/i18n';
+import { formatHeight, requestMinHeight } from '@/lib/matching/height';
 import { useMatchingContext } from '@/hooks/useMatchingContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import BritRail from '@/components/BritRail';
@@ -52,6 +53,8 @@ interface Request {
   createdAt?: number;
   status?: string;
   euOnly?: boolean;
+  minHeight?: number;
+  heightDoesntMatter?: boolean;
   createdByAgent?: string;
   createdByAgentHebrew?: string;
 }
@@ -371,6 +374,7 @@ export default function MenRequests() {
                         <span className={`brit-req-pos ${posClass(r.position)}`}>{getPositionDisplayName(r.position, isHebrew) || r.position || '—'}</span>
                         <span className="brit-req-flags">
                           {r.euOnly && <b>🇪🇺 EU</b>}
+                          {(() => { const h = requestMinHeight(r); return h ? <b title={h.source === 'notes' ? t('requests_height_source_notes') : t('requests_min_height')}>↕ {formatHeight(h.minCm)}+{h.source === 'notes' ? '*' : ''}</b> : null; })()}
                           {isNew && <b>{isRtl ? 'חדש' : 'New'}</b>}
                         </span>
                         <div className="brit-req-clubline">

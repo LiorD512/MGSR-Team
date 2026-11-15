@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { adminAuth, adminDb, getFirebaseAdmin } from '@/lib/firebaseAdmin';
 import { recordGeminiUsage } from '@/lib/geminiUsage';
+import { requestMinHeight } from '@/lib/matching/height';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -37,6 +38,7 @@ export interface AiCandidate {
   clubStrength?: string | null;
   monthsInactive?: number | null;
   minutesShare?: string | null;
+  height?: string | null;
   score?: number;
 }
 
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
     name: cut(c.name, 60), age: cut(c.age, 4), positions: Array.isArray(c.positions) ? c.positions.slice(0, 3).map((x) => cut(x, 4)) : [],
     marketValue: cut(c.marketValue, 12), club: cut(c.club, 50), clubStrength: cut(c.clubStrength, 20),
     monthsInactive: typeof c.monthsInactive === 'number' ? c.monthsInactive : null, minutesShare: cut(c.minutesShare, 8),
+    height: cut(c.height, 10),
   })).filter((c) => c.playerId);
   if (!candidates.length) return NextResponse.json({ results: [], cached: true });
 
@@ -75,6 +78,7 @@ export async function POST(request: NextRequest) {
   const clubFacts = {
     club: cut(r.clubName, 60), country: cut(r.clubCountry, 40), position: cut(r.position, 4),
     age: r.ageDoesntMatter ? 'any' : `${r.minAge || '?'}-${r.maxAge || '?'}`, fee: cut(r.transferFee, 20), salary: cut(r.salaryRange, 20),
+    minHeightCm: requestMinHeight(r)?.minCm ?? null,
     squadMedianValue: lvl?.squadMedian ?? null, league: lvl?.league ?? null, leagueAvgValue: lvl?.leagueAvg ?? null,
     signingsLast3Seasons: Array.isArray(lvl?.signings) ? (lvl!.signings as { mv: number }[]).map((s) => s.mv).filter((x) => x > 0).sort((a, b) => a - b) : [],
   };

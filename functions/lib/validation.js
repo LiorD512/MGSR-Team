@@ -172,6 +172,12 @@ function validateTransferRequest(data) {
 
 const VALID_FEET = new Set(["left", "right", "both", ""]);
 
+/** Minimum height in cm: 150-215, anything else = 0 (not set). */
+function heightCm(v) {
+  const n = int(v, 0);
+  return n >= 150 && n <= 215 ? n : 0;
+}
+
 function validateRequestCreate(data) {
   const payload = {
     clubTmProfile: str(data.clubTmProfile),
@@ -188,6 +194,8 @@ function validateRequestCreate(data) {
     minAge: int(data.minAge, 0),
     maxAge: int(data.maxAge, 0),
     ageDoesntMatter: bool(data.ageDoesntMatter, true),
+    minHeight: heightCm(data.minHeight),
+    heightDoesntMatter: bool(data.heightDoesntMatter, true),
     salaryRange: str(data.salaryRange),
     transferFee: str(data.transferFee),
     dominateFoot: VALID_FEET.has(str(data.dominateFoot)) ? str(data.dominateFoot) : "",
@@ -217,6 +225,8 @@ function validateRequestUpdate(data) {
   if (data.minAge !== undefined) updates.minAge = int(data.minAge, 0);
   if (data.maxAge !== undefined) updates.maxAge = int(data.maxAge, 0);
   if (data.ageDoesntMatter !== undefined) updates.ageDoesntMatter = bool(data.ageDoesntMatter, true);
+  if (data.minHeight !== undefined) updates.minHeight = heightCm(data.minHeight);
+  if (data.heightDoesntMatter !== undefined) updates.heightDoesntMatter = bool(data.heightDoesntMatter, true);
   if (data.salaryRange !== undefined) updates.salaryRange = str(data.salaryRange);
   if (data.transferFee !== undefined) updates.transferFee = str(data.transferFee);
   if (data.dominateFoot !== undefined) {

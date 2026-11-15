@@ -313,3 +313,22 @@ Treating an unknown league / country as neutral instead of 0 dropped top-10 prec
   club docs automatically; the worker also stores every player-club league's country in `MatchingData/leagues`.
 - `_matching_audit.ts` section 3b now prints, per requesting club: own signings passing the gate, AUC vs the other requesting
   clubs' signings, own signings in the top 10 vs random.
+
+---
+
+## 10. Minimum height (men web)
+
+- **Request form** (`MenAddRequestDrawer`): "Minimum height" with a *Doesn't matter* checkbox (default) and a cm field (150-215).
+  Stored as `minHeight` (cm, 0 = not set) + `heightDoesntMatter` on `ClubRequests` via `requestsCreate` / `requestsUpdate`
+  (`functions/lib/validation.js` — **needs a Functions deploy**, otherwise the callables drop the two fields).
+- **Fallback:** when the field isn't filled, a minimum written in the notes is used (`src/lib/matching/height.ts`):
+  "1.80", "1,80", "1.80m", "180cm", "180 ס״מ", "180+", "מינימום 1.85". A number only counts with a height unit, a "+",
+  or a height word nearby (height / tall / min / at least / גובה / גבוה / מינימום / לפחות / מעל); money-like values
+  ("€1.80m", "1.80 mil", "180k") are ignored; several heights → the lowest. 23/23 test phrases parsed correctly,
+  including the real notes on the board ("Age 25-28 186cm min…", "Age 21-27 Minimum 180cm…").
+- **Matching:** player height from Transfermarkt ("1,85 m"). More than 2 cm under the minimum → excluded; 0-2 cm under →
+  warning (TM rounding); at/above → "Height fits"; unknown height → warning only, never excluded. No score weight.
+- **UI:** board card flag "↕ 1.80 m+" (`*` = read from notes), request page spec line + per-player "height / minimum",
+  review step in the form shows the height (and "from notes" when it came from the notes).
+- **Audit:** player height coverage, requests with a form / notes height, a list of every height read from notes with
+  the note text (to verify), and `heightGated` per request.
