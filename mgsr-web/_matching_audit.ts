@@ -22,6 +22,7 @@ import {
   type FeedbackVerdict, type MatchContext, type MatchPlayer, type MatchRequest, type RecentGameLite,
 } from './src/lib/matching/engine';
 import { normalizePosition } from './src/lib/matching/positions';
+import { parsePlayerHeightCm, requestMinHeight } from './src/lib/matching/height';
 import { assessLevel, formatEurShort, type ClubLevel, type ClubStrength, type PlayerLevelInfo } from './src/lib/matching/level';
 import { parseEuros, parseFeeBand, parseSalaryBand } from './src/lib/matching/tiers';
 import { matchRequestToPlayers, type ClubRequest, type RosterPlayer } from './src/lib/requestMatcher';
@@ -118,6 +119,7 @@ async function main() {
     ['contractExpired', (p) => p.contractExpired], ['currentClub.clubTmProfile', (p) => (p.currentClub as { clubTmProfile?: string } | undefined)?.clubTmProfile],
     ['recentGames (doc or PlayerTiers)', (p) => (Array.isArray(p.recentGames) && p.recentGames.length ? 1 : gamesByPlayerId[p.id as string] ? 1 : null)],
     ['tmProfile', (p) => p.tmProfile],
+    ['height (parseable)', (p) => (parsePlayerHeightCm(p.height as string) ? 1 : null)],
     ['level club (worker)', (p) => playerLevels[p.id as string]?.clubId],
     ['level club strength known', (p) => { const id = playerLevels[p.id as string]?.clubId; return id && clubStrength[id]?.m ? 1 : null; }],
     ['last game played known', (p) => playerLevels[p.id as string]?.lastPlayed],
@@ -125,7 +127,9 @@ async function main() {
   const rFields: [string, (r: Record<string, unknown>) => unknown][] = [
     ['position', (r) => r.position], ['age range', (r) => (r.ageDoesntMatter ? null : r.minAge || r.maxAge || null)],
     ['transferFee', (r) => r.transferFee], ['salaryRange', (r) => r.salaryRange], ['dominateFoot', (r) => r.dominateFoot],
-    ['euOnly', (r) => (r.euOnly ? 1 : null)], ['clubTmProfile', (r) => r.clubTmProfile], ['clubCountry', (r) => r.clubCountry],
+    ['euOnly', (r) => (r.euOnly ? 1 : null)],
+    ['min height (form field)', (r) => (requestMinHeight(r)?.source === 'field' ? 1 : null)],
+    ['min height (read from notes)', (r) => (requestMinHeight(r)?.source === 'notes' ? 1 : null)], ['clubTmProfile', (r) => r.clubTmProfile], ['clubCountry', (r) => r.clubCountry],
     ['club level data (worker)', (r) => { const id = tmClubId(r.clubTmProfile as string); return id && clubLevels[id] ? 1 : null; }],
     ['club level ≥10 signings', (r) => { const id = tmClubId(r.clubTmProfile as string); const l = id ? clubLevels[id] : null; return l && l.signings.filter((x) => x.mv > 0).length >= 10 ? 1 : null; }],
   ];
@@ -177,7 +181,10 @@ async function main() {
     }).length;
     const levelGated = players.filter((p) => { const e = evaluateMatch(r, p, ctx); return !e.ok && e.gate === 'level'; }).length;
     return {
-      id: r.id, club: r.clubName, position: r.position, fee: r.transferFee ?? '', legacy: legacy.length, levelGated,
+      id: r.id, club: r.clubName, position: r.position, fee: r.transferFee ?? '',
+      minHeight: (() => { const h = requestMinHeight(r); return h ? `${h.minCm}${h.source === 'notes' ? ' (notes)' : ''}` : ''; })(),
+      legacy: legacy.length, levelGated,
+      heightGated: players.filter((p) => { const e = evaluateMatch(r, p, ctx); return !e.ok && e.gate === 'height'; }).length,
       strong: ranked.filter((m) => m.bucket === 'strong').length, good: ranked.filter((m) => m.bucket === 'good').length,
       stretch: ranked.filter((m) => m.bucket === 'stretch').length,
       legacyMandateShortcut: mandateOnly,
@@ -259,6 +266,10 @@ async function main() {
   console.log('Player foot values:'); console.table(Object.fromEntries(values.playerFoot));
   console.log('Primary position distribution (positions[0]):'); console.table(Object.fromEntries(values.primaryPositionDistribution));
   console.log('Unparseable values (should all be empty):'); console.log(JSON.stringify(values.unparseable, null, 2));
+  console.log('\n=== 2b. Heights read from request notes (check these are right) ===');
+  const fromNotes = pending.map((r) => ({ r, h: requestMinHeight(r) })).filter((x) => x.h?.source === 'notes');
+  if (!fromNotes.length) console.log('(none)');
+  for (const { r, h } of fromNotes) console.log(`  ${r.clubName} · ${r.position}: ${h!.minCm} cm  ←  "${String(r.notes ?? '').slice(0, 120)}"`);
   console.log('\n=== 3. Old vs new per open request ===');
   console.table(perRequest);
   console.log('Why players were excluded (all requests × players):'); console.table(gateTotals);

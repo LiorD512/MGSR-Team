@@ -4833,6 +4833,7 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .brit-areq-check{display:flex;align-items:center;gap:9px;cursor:pointer;color:var(--ink);font:11px/1 var(--body)}
 .brit-room .brit-areq-check input{width:15px;height:15px;accent-color:var(--gold)}
 .brit-room .brit-areq-agerow{display:flex;gap:8px;margin-top:10px}
+.brit-room .brit-areq-hint{display:block;margin-top:8px;font:9.5px/1.4 var(--mono);color:var(--muted)}
 .brit-room .brit-areq-agerow input{flex:1;border:1px solid var(--line);background:var(--paper);padding:11px 12px;color:var(--ink);font:12px/1 var(--body);outline:none;transition:.15s}
 .brit-room .brit-areq-agerow input:focus{border-color:var(--gold-soft)}
 .brit-room .brit-areq-euchip{display:flex;align-items:center;gap:9px;cursor:pointer;padding:12px 13px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:11px/1 var(--body);transition:.15s}

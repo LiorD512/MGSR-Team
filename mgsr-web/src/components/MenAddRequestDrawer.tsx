@@ -16,6 +16,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { callRequestsCreate, callRequestsUpdate } from '@/lib/callables';
+import { formatHeight, parseMinHeightFromNotes } from '@/lib/matching/height';
 import { appConfig } from '@/lib/appConfig';
 
 const POSITIONS = appConfig.positions.filterList;
@@ -31,6 +32,9 @@ interface PositionConfig {
   ageDoesntMatter: boolean;
   minAge: string;
   maxAge: string;
+  heightDoesntMatter: boolean;
+  /** cm, digits only */
+  minHeight: string;
   selectedFoot: string;
   selectedSalary: string | null;
   selectedFee: string | null;
@@ -38,7 +42,7 @@ interface PositionConfig {
   notes: string;
 }
 const DEFAULT_CFG: PositionConfig = {
-  ageDoesntMatter: true, minAge: '', maxAge: '', selectedFoot: 'any',
+  ageDoesntMatter: true, minAge: '', maxAge: '', heightDoesntMatter: true, minHeight: '', selectedFoot: 'any',
   selectedSalary: null, selectedFee: null, euOnly: false, notes: '',
 };
 
@@ -56,11 +60,19 @@ export interface MenEditRequest {
   minAge?: number;
   maxAge?: number;
   ageDoesntMatter?: boolean;
+  minHeight?: number;
+  heightDoesntMatter?: boolean;
   salaryRange?: string;
   transferFee?: string;
   dominateFoot?: string;
   euOnly?: boolean;
 }
+
+/** Valid minimum height in cm, or 0. */
+const heightValue = (cfg: { heightDoesntMatter: boolean; minHeight: string }) => {
+  const n = parseInt(cfg.minHeight, 10);
+  return !cfg.heightDoesntMatter && n >= 150 && n <= 215 ? n : 0;
+};
 
 interface MenAddRequestDrawerProps {
   open: boolean;
@@ -119,6 +131,8 @@ export default function MenAddRequestDrawer({ open, onClose, onSaved, editReques
             ageDoesntMatter: editRequest.ageDoesntMatter !== false,
             minAge: editRequest.minAge ? String(editRequest.minAge) : '',
             maxAge: editRequest.maxAge ? String(editRequest.maxAge) : '',
+            heightDoesntMatter: !(editRequest.heightDoesntMatter === false && (editRequest.minHeight ?? 0) > 0),
+            minHeight: editRequest.heightDoesntMatter === false && editRequest.minHeight ? String(editRequest.minHeight) : '',
             selectedFoot: editRequest.dominateFoot || 'any',
             selectedSalary: editRequest.salaryRange || null,
             selectedFee: editRequest.transferFee || null,
@@ -225,6 +239,8 @@ export default function MenAddRequestDrawer({ open, onClose, onSaved, editReques
           minAge: cfg.minAge ? parseInt(cfg.minAge, 10) : 0,
           maxAge: cfg.maxAge ? parseInt(cfg.maxAge, 10) : 0,
           ageDoesntMatter: cfg.ageDoesntMatter,
+          minHeight: heightValue(cfg),
+          heightDoesntMatter: heightValue(cfg) === 0,
           salaryRange: cfg.selectedSalary ?? undefined,
           transferFee: cfg.selectedFee ?? undefined,
           dominateFoot: cfg.selectedFoot === 'any' ? '' : cfg.selectedFoot,
@@ -260,6 +276,8 @@ export default function MenAddRequestDrawer({ open, onClose, onSaved, editReques
             minAge: cfg.minAge ? parseInt(cfg.minAge, 10) : 0,
             maxAge: cfg.maxAge ? parseInt(cfg.maxAge, 10) : 0,
             ageDoesntMatter: cfg.ageDoesntMatter,
+            minHeight: heightValue(cfg),
+            heightDoesntMatter: heightValue(cfg) === 0,
             salaryRange: cfg.selectedSalary ?? undefined,
             transferFee: cfg.selectedFee ?? undefined,
             dominateFoot: cfg.selectedFoot === 'any' ? '' : cfg.selectedFoot,
@@ -333,6 +351,25 @@ export default function MenAddRequestDrawer({ open, onClose, onSaved, editReques
                 onChange={(e) => updateCfg(pos, { maxAge: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
             </div>
           )}
+        </div>
+        {/* Min height */}
+        <div className="brit-areq-block">
+          <label>{t('requests_min_height')}</label>
+          <label className="brit-areq-check">
+            <input type="checkbox" checked={cfg.heightDoesntMatter} onChange={(e) => updateCfg(pos, { heightDoesntMatter: e.target.checked })} />
+            {t('requests_height_doesnt_matter')}
+          </label>
+          {!cfg.heightDoesntMatter && (
+            <div className="brit-areq-agerow">
+              <input type="number" min={150} max={215} value={cfg.minHeight} placeholder={t('requests_height_placeholder')}
+                onChange={(e) => updateCfg(pos, { minHeight: e.target.value.replace(/\D/g, '').slice(0, 3) })} />
+            </div>
+          )}
+          <small className="brit-areq-hint">
+            {cfg.heightDoesntMatter && parseMinHeightFromNotes(cfg.notes)
+              ? t('requests_height_from_notes').replace('{h}', formatHeight(parseMinHeightFromNotes(cfg.notes)!))
+              : t('requests_height_hint')}
+          </small>
         </div>
         {/* EU only */}
         <div className="brit-areq-block">
@@ -509,6 +546,9 @@ export default function MenAddRequestDrawer({ open, onClose, onSaved, editReques
                       {cfg.selectedSalary && <span>{t('requests_label_salary')}: <b>{cfg.selectedSalary}</b></span>}
                       {cfg.selectedFee && <span>{t('requests_label_fee')}: <b>{cfg.selectedFee === 'Free/Free loan' ? t('requests_fee_free_loan') : cfg.selectedFee}</b></span>}
                       {!cfg.ageDoesntMatter && (cfg.minAge || cfg.maxAge) && <span>{t('requests_age_range')}: <b>{cfg.minAge || '?'}-{cfg.maxAge || '?'}</b></span>}
+                      {heightValue(cfg) > 0
+                        ? <span>{t('requests_min_height')}: <b>{formatHeight(heightValue(cfg))}</b></span>
+                        : parseMinHeightFromNotes(cfg.notes) ? <span>{t('requests_min_height')}: <b>{formatHeight(parseMinHeightFromNotes(cfg.notes)!)}</b> ({t('requests_height_source_notes')})</span> : null}
                       {cfg.selectedFoot !== 'any' && <span>{t('requests_label_foot')}: <b>{footLabel(cfg.selectedFoot)}</b></span>}
                       {cfg.euOnly && <span><b>🇪🇺 EU</b></span>}
                     </div>
