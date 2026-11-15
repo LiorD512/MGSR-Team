@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BRIT Sport Group — TM Search v3 (design mock, clean)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Oswald:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f4ee;--surface:#fff;--ink:#1c1b18;--muted:#6f6b62;--faint:#a29d90;
+  --line:#e6e1d4;--line-2:#d6d0c0;--gold:#a47d43;--gold-bg:#f4ecda;
+  --green:#4f6b3f;--amber:#a8721f;--red:#b64235;--rail:#14130f;
+  --font:'Manrope',system-ui,Helvetica,Arial,sans-serif;--display:'Oswald',Impact,sans-serif;
+  --r:8px
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+button{border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0}
+input,select{font:inherit;color:inherit}
+svg{display:block}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.app{min-height:100vh;display:grid;grid-template-columns:216px minmax(0,1fr)}
+/* rail */
+.rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:22px 14px;background:var(--rail);color:#e9e5da}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px 22px}
+.brand i{width:30px;height:30px;border-radius:50%;background:var(--gold);display:grid;place-items:center;font:500 13px/1 var(--display);color:#14130f;font-style:normal}
+.brand b{font:600 12px/1.2 var(--font);letter-spacing:.08em}
+.nav a{display:block;padding:9px 10px;border-radius:6px;color:#9d988b;font-size:13px;font-weight:500}
+.nav a:hover{color:#fff}
+.nav a.on{background:rgba(255,255,255,.08);color:#fff}
+.rail small{margin-top:auto;padding:0 8px;color:#6f6b62;font-size:11px}
+
+.main{min-width:0}
+.note-bar{padding:6px 16px;background:#ece7d8;color:var(--muted);font-size:12px;text-align:center;border-bottom:1px solid var(--line)}
+.wrap{max-width:1240px;margin:0 auto;padding:36px 40px 120px}
+.crumb{font-size:12px;color:var(--muted);margin-bottom:6px}
+h1{margin:0 0 4px;font:600 28px/1.2 var(--font);letter-spacing:-.01em}
+.sub{margin:0 0 24px;color:var(--muted);font-size:14px}
+
+/* search bar */
+.search{position:relative;display:flex;align-items:center;gap:12px;height:54px;padding:0 16px;background:var(--surface);border:1px solid var(--line-2);border-radius:10px;transition:border-color .15s,box-shadow .15s}
+.search:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px rgba(164,125,67,.15)}
+.search svg{width:18px;height:18px;stroke:var(--muted);fill:none;stroke-width:2;flex:none}
+.search input{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;font-size:16px}
+.search input::placeholder{color:var(--faint)}
+.search kbd{font:500 11px/1 var(--font);color:var(--muted);border:1px solid var(--line-2);border-radius:5px;padding:4px 7px;background:var(--bg)}
+.search .x{display:none;width:24px;height:24px;border-radius:50%;place-items:center;color:var(--muted);font-size:18px;line-height:1}
+.search .x:hover{background:var(--bg)}
+.search.has kbd{display:none}.search.has .x{display:grid}
+.tryrow{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 2px 0;font-size:12.5px;color:var(--muted)}
+.tryrow button{color:var(--ink);border-bottom:1px dotted var(--faint)}
+.tryrow button:hover{color:var(--gold);border-color:var(--gold)}
+
+/* requests */
+.reqrow{display:flex;align-items:center;gap:10px;margin:26px 0 0;min-width:0}
+.reqrow>span{flex:none;font-size:12px;font-weight:600;color:var(--muted)}
+.reqs{display:flex;gap:8px;overflow-x:auto;padding:2px;scrollbar-width:none}
+.reqs::-webkit-scrollbar{display:none}
+.req{flex:none;display:flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 8px;border:1px solid var(--line-2);border-radius:999px;background:var(--surface);font-size:13px;font-weight:500;white-space:nowrap;transition:.15s}
+.req:hover{border-color:var(--gold)}
+.req i{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font:600 8px/1 var(--font);color:#fff;font-style:normal}
+.req em{font-style:normal;color:var(--muted);font-weight:500}
+.req.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.req.on em{color:#b9b4a6}
+
+/* filter row */
+.frow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:18px 0 0;padding-top:18px;border-top:1px solid var(--line)}
+.fwrap{position:relative}
+.fbtn{display:flex;align-items:center;gap:7px;height:36px;padding:0 11px 0 12px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface);font-size:13px;font-weight:500;transition:.15s}
+.fbtn:hover{border-color:var(--gold)}
+.fbtn .fv{color:var(--muted);font-weight:500}
+.fbtn svg{width:12px;height:12px;stroke:var(--muted);fill:none;stroke-width:2.2}
+.fbtn.set{border-color:var(--ink);background:var(--ink);color:#fff}
+.fbtn.set .fv{color:#e9d8b4}
+.fbtn.set svg{stroke:#b9b4a6}
+.fbtn.open{border-color:var(--gold);box-shadow:0 0 0 3px rgba(164,125,67,.15)}
+.reset{margin-inline-start:4px;font-size:13px;color:var(--muted);padding:8px}
+.reset:hover{color:var(--red)}
+.reset[hidden]{display:none}
+.pop{position:absolute;top:calc(100% + 6px);inset-inline-start:0;z-index:40;min-width:260px;background:var(--surface);border:1px solid var(--line-2);border-radius:10px;box-shadow:0 14px 40px rgba(28,27,24,.14);padding:14px;display:none}
+.pop.show{display:block}
+.pop h4{margin:0 0 8px;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.pop h4:not(:first-child){margin-top:14px}
+.opts{display:grid;gap:4px}
+.opts.two{grid-template-columns:1fr 1fr}
+.opt{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;font-size:13px;text-align:start;border:1px solid transparent}
+.opt:hover{background:var(--bg)}
+.opt.on{background:var(--gold-bg);border-color:#e6d5ae;font-weight:600}
+.opt b{font-weight:600;min-width:26px;color:var(--muted)}
+.opt.on b{color:var(--gold)}
+.pair{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+.pair span{color:var(--muted);font-size:13px}
+.sel{width:100%;height:36px;border:1px solid var(--line-2);border-radius:6px;background:#fff;padding:0 8px;font-size:13px}
+.minichips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.mc{padding:6px 10px;border:1px solid var(--line-2);border-radius:999px;font-size:12px;color:var(--muted)}
+.mc:hover{border-color:var(--gold);color:var(--ink)}
+.mc.on{background:var(--gold-bg);border-color:#e6d5ae;color:var(--ink);font-weight:600}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line-2);border-radius:6px;overflow:hidden}
+.seg button{padding:8px 4px;font-size:13px;border-inline-end:1px solid var(--line)}
+.seg button:last-child{border:0}
+.seg button.on{background:var(--ink);color:#fff}
+.check{display:flex;align-items:center;gap:10px;padding:8px 2px;font-size:13px;width:100%;text-align:start}
+.check span{width:16px;height:16px;border:1.5px solid var(--line-2);border-radius:4px;display:grid;place-items:center;flex:none}
+.check.on span{background:var(--ink);border-color:var(--ink)}
+.check svg{width:10px;height:10px;stroke:#fff;fill:none;stroke-width:3;opacity:0}
+.check.on svg{opacity:1}
+.fspacer{flex:1}
+.soonbtn{font-size:13px;color:var(--faint);display:flex;gap:6px;align-items:center;height:36px;padding:0 8px;cursor:default}
+.soonbtn u{text-decoration:none;font-size:10px;padding:2px 5px;border-radius:3px;background:var(--line);color:var(--muted);font-weight:600}
+
+/* results */
+.res{margin-top:26px;position:relative}
+.res::before{content:'';position:absolute;top:-10px;left:0;height:2px;width:0;background:var(--gold);opacity:0}
+.res.loading::before{opacity:1;animation:bar .5s ease-out forwards}
+@keyframes bar{to{width:100%}}
+.rhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.rcount{font-size:15px;font-weight:600}
+.rcount span{font-weight:400;color:var(--muted)}
+.rtools{display:flex;gap:8px;align-items:center}
+.rtools .sel{width:auto;height:34px}
+.vt{display:flex;border:1px solid var(--line-2);border-radius:var(--r);overflow:hidden;background:#fff}
+.vt button{padding:0 10px;height:32px;display:grid;place-items:center;color:var(--muted)}
+.vt button.on{background:var(--ink);color:#fff}
+.vt svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2}
+.ctx{display:flex;gap:10px;align-items:flex-start;margin:0 0 14px;padding:10px 14px;background:var(--gold-bg);border-radius:var(--r);font-size:13px;color:#5c4a2a}
+.ctx b{font-weight:600;color:var(--ink)}
+.ctx button{margin-inline-start:auto;color:#7d6535;font-size:12px;text-decoration:underline;flex:none}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;transition:opacity .2s}
+.res.loading .panel,.res.loading .cards{opacity:.5}
+.trow{display:grid;grid-template-columns:36px minmax(220px,2.4fr) 56px 56px minmax(120px,1.3fr) 84px 90px 110px 76px;gap:12px;align-items:center;padding:0 16px;min-height:60px;border-bottom:1px solid var(--line);cursor:pointer}
+.trow:last-child{border-bottom:0}
+.trow:not(.th):hover{background:#fbfaf6}
+.th{min-height:40px;cursor:default;font-size:12px;font-weight:600;color:var(--muted);background:#faf8f3}
+.cell-pl{display:flex;align-items:center;gap:12px;min-width:0}
+.av{width:36px;height:36px;border-radius:50%;background:#ece8dc;color:#6b6556;display:grid;place-items:center;font:600 12px/1 var(--font);flex:none}
+.pl{min-width:0}
+.pl b{display:block;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl span{display:block;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pos{font-size:12px;font-weight:600;padding:3px 7px;border-radius:5px;background:#efebe0;justify-self:start}
+.nat{display:flex;align-items:center;gap:7px;font-size:13px;min-width:0;white-space:nowrap}
+.nat span{overflow:hidden;text-overflow:ellipsis}
+.flag{width:18px;height:13px;object-fit:cover;border-radius:2px;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+.muted{color:var(--muted);font-size:13px}
+.val{font-weight:700;font-size:14px;text-align:end;font-variant-numeric:tabular-nums}
+.fit{font-size:12px;display:flex;align-items:center;gap:6px;color:var(--green);font-weight:600}
+.fit.no{color:var(--amber)}
+.fit i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.acts{display:flex;gap:4px;justify-content:flex-end}
+.ib{width:30px;height:30px;border-radius:6px;display:grid;place-items:center;color:var(--muted)}
+.ib:hover{background:var(--bg);color:var(--ink)}
+.ib svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8}
+.ib.saved{color:var(--gold)}.ib.saved svg{fill:currentColor}
+.cb{width:18px;height:18px;border:1.5px solid var(--line-2);border-radius:4px;display:grid;place-items:center;background:#fff}
+.trow.sel .cb,.card.sel .cb{background:var(--ink);border-color:var(--ink)}
+.cb svg{width:11px;height:11px;stroke:#fff;fill:none;stroke-width:3;opacity:0}
+.trow.sel .cb svg,.card.sel .cb svg{opacity:1}
+.trow.sel{background:#fbf7ec}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.card:hover{border-color:var(--line-2);box-shadow:0 6px 20px rgba(28,27,24,.07)}
+.card.sel{border-color:var(--ink)}
+.card .cb{position:absolute;top:14px;inset-inline-end:14px}
+.card .top{display:flex;gap:12px;align-items:center;margin-bottom:14px;padding-inline-end:26px}
+.card .av{width:44px;height:44px;font-size:14px}
+.card .line{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);margin-bottom:14px;flex-wrap:wrap}
+.card .line .nat{color:var(--ink)}
+.card .foot{display:flex;justify-content:space-between;align-items:flex-end;padding-top:12px;border-top:1px solid var(--line)}
+.card .foot small{display:block;font-size:11px;color:var(--muted)}
+.card .big{font-size:21px;font-weight:700;letter-spacing:-.01em}
+.more{display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 0 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line-2);border-radius:var(--r);background:#fff;font-size:13px;font-weight:600}
+.btn:hover{border-color:var(--gold)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.primary:hover{background:#000}
+.cap{font-size:12px;color:var(--muted);text-align:center}
+.empty{padding:64px 20px;text-align:center;background:var(--surface);border:1px dashed var(--line-2);border-radius:10px}
+.empty h4{margin:0 0 6px;font-size:16px}
+.empty p{margin:0 0 16px;color:var(--muted);font-size:13px}
+
+/* bulk, toast, drawer */
+.bulk{position:fixed;left:50%;bottom:24px;transform:translate(-50%,160%);z-index:60;display:flex;gap:10px;align-items:center;padding:8px 8px 8px 16px;background:var(--ink);color:#fff;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.3);transition:transform .3s cubic-bezier(.16,1,.3,1)}
+.bulk.show{transform:translate(-50%,0)}
+.bulk span{font-size:13px;margin-inline-end:6px}
+.bulk .btn{height:34px;background:transparent;border-color:rgba(255,255,255,.25);color:#fff}
+.bulk .btn.gold{background:var(--gold);border-color:var(--gold)}
+.toast{position:fixed;left:50%;top:64px;transform:translate(-50%,-14px);opacity:0;z-index:90;background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;transition:.25s;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.scrim{position:fixed;inset:0;background:rgba(20,19,15,.4);opacity:0;pointer-events:none;transition:.2s;z-index:70}
+.scrim.show{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;bottom:0;inset-inline-end:0;width:min(420px,100%);background:var(--surface);z-index:80;transform:translateX(105%);transition:transform .3s cubic-bezier(.16,1,.3,1);overflow-y:auto;box-shadow:-20px 0 50px rgba(0,0,0,.12)}
+.drawer.show{transform:none}
+.d-head{display:flex;gap:14px;align-items:center;padding:24px;border-bottom:1px solid var(--line)}
+.d-head .av{width:56px;height:56px;font-size:18px}
+.d-head h2{margin:0;font-size:20px;line-height:1.2}
+.d-head p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.d-x{margin-inline-start:auto;width:32px;height:32px;border-radius:50%;font-size:20px;color:var(--muted);align-self:flex-start}
+.d-x:hover{background:var(--bg)}
+.d-val{padding:20px 24px;border-bottom:1px solid var(--line)}
+.d-val small{display:block;color:var(--muted);font-size:12px}
+.d-val b{font-size:32px;letter-spacing:-.02em}
+.dl{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.dl div{padding:14px 24px;border-bottom:1px solid var(--line)}
+.dl small{display:block;color:var(--muted);font-size:12px;margin-bottom:2px}
+.dl b{font-weight:600;font-size:14px}
+.d-act{display:grid;gap:8px;padding:20px 24px}
+.d-act .btn{height:42px}
+.d-note{padding:0 24px 24px;font-size:12px;color:var(--muted)}
+
+/* mobile */
+.sheet-head{display:none}
+@media (max-width:1100px){
+  .trow{grid-template-columns:36px minmax(200px,2.4fr) 56px 56px minmax(110px,1.2fr) 90px 100px 76px}
+  .h-hide{display:none}
+}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  .rail{position:static;height:auto;flex-direction:row;align-items:center;padding:10px 14px}
+  .brand{padding:0}.nav,.rail small{display:none}
+  .wrap{padding:22px 16px 120px}
+  h1{font-size:23px}
+  .search{height:50px}.search kbd{display:none}
+  .frow{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
+  .frow::-webkit-scrollbar{display:none}
+  .fwrap{position:static;flex:none}
+  .fspacer,.soonbtn{display:none}
+  .reset{flex:none}
+  .pop{position:fixed;left:0;right:0;top:auto;bottom:0;max-height:78vh;overflow:auto;border-radius:16px 16px 0 0;border:0;border-top:1px solid var(--line-2);padding:18px 18px 28px;z-index:85;min-width:0}
+  .pop.show::before{content:'';display:block;width:36px;height:4px;border-radius:2px;background:var(--line-2);margin:-6px auto 14px}
+  .trow{grid-template-columns:30px minmax(0,1fr) 46px 40px 66px 64px;gap:8px;padding:0 12px}
+  .t-hide{display:none}
+  .cards{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="brand"><i>B</i><b>BRIT SPORT GROUP</b></div>
+    <nav class="nav"><a href="#">Dashboard</a><a href="#">Players</a><a href="#">Requests</a><a href="#" class="on">TM Search</a><a href="#">Signals</a><a href="#">War Room</a><a href="#">Contacts</a></nav>
+    <small>Design mock v3 · sample data</small>
+  </aside>
+
+  <div class="main">
+    <div class="note-bar">Design mock · sample players · nothing is sent to Transfermarkt</div>
+    <div class="wrap">
+      <div class="crumb">Transfermarkt / Direct search</div>
+      <h1>Find players on Transfermarkt</h1>
+      <p class="sub">Describe who you are looking for, or start from an open request. Results update as you refine.</p>
+
+      <div class="search" id="search">
+        <svg viewBox="0 0 24 24" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="q" autocomplete="off" spellcheck="false" placeholder="e.g. CF 18-23 under 3m africa left foot">
+        <kbd>/</kbd><button class="x" id="qx" aria-label="Clear">×</button>
+      </div>
+      <div class="tryrow"><span>Try:</span>
+        <button data-q="rw 20-26 up to 3m left foot">rw 20-26 up to 3m left foot</button>
+        <button data-q="cb under 24 europe 500k-2m">cb under 24 europe 500k-2m</button>
+        <button data-q="free agent cm 25+">free agent cm 25+</button>
+        <button data-q="gk israel contract 2027">gk israel contract 2027</button>
+      </div>
+
+      <div class="reqrow"><span>Open requests</span><div class="reqs" id="reqs"></div></div>
+
+      <div class="frow" id="frow">
+        <div class="fwrap"><button class="fbtn" data-f="pos"><span class="fl">Position</span><span class="fv"></span><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button><div class="pop" id="pop-pos"></div></div>
+        <div class="fwrap"><button class="fbtn" data-f="age"><span class="fl">Age</span><span class="fv"></span><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button><div class="pop" id="pop-age"></div></div>
+        <div class="fwrap"><button class="fbtn" data-f="value"><span class="fl">Market value</span><span class="fv"></span><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button><div class="pop" id="pop-value"></div></div>
+        <div class="fwrap"><button class="fbtn" data-f="region"><span class="fl">Nationality</span><span class="fv"></span><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button><div class="pop" id="pop-region"></div></div>
+        <div class="fwrap"><button class="fbtn" data-f="foot"><span class="fl">Foot</span><span class="fv"></span><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button><div class="pop" id="pop-foot"></div></div>
+        <div class="fwrap"><button class="fbtn" data-f="contract"><span class="fl">Contract</span><span class="fv"></span><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button><div class="pop" id="pop-contract"></div></div>
+        <button class="reset" id="reset" hidden>Clear filters</button>
+        <span class="fspacer"></span>
+        <span class="soonbtn" title="Planned for phase 2">Save search <u>Soon</u></span>
+      </div>
+
+      <section class="res" id="res">
+        <div class="rhead">
+          <div class="rcount" id="rcount"></div>
+          <div class="rtools">
+            <select class="sel" id="sort"><option value="rel">Sort: Transfermarkt order</option><option value="vd">Value, high to low</option><option value="vu">Value, low to high</option><option value="au">Age, youngest</option><option value="ad">Age, oldest</option><option value="ct">Contract ends soonest</option></select>
+            <div class="vt"><button id="vTable" class="on" aria-label="Table"><svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button><button id="vCards" aria-label="Cards"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button></div>
+          </div>
+        </div>
+        <div id="ctx"></div>
+        <div id="list"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="bulk" id="bulk"><span><b id="bn">0</b> selected</span><button class="btn gold" id="bAdd">Add to shortlist</button><button class="btn" id="bCopy">Copy TM links</button><button class="btn" id="bClear">Clear</button></div>
+<div class="toast" id="toast"></div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer"></aside>
+
+<script>
+/* ═══ SAMPLE DATA (fictional) ═══ */
+const P=[
+ ['Ibrahima Sarr','CF',['RW'],19,'Senegal','CAF','KAA Gent',3000000,'right',2029,'1.97 m',0],
+ ['Bernard Nkeng','CF',[],20,'Cameroon','CAF','Standard Liège',2200000,'left',2028,'1.78 m',0],
+ ['Prince Mensah','CF',['LW'],21,'Ghana','CAF','Viktoria Plzeň',1800000,'right',2027,'1.84 m',0],
+ ['David Koffi','SS',['CF'],22,"Côte d'Ivoire",'CAF','Servette FC',1500000,'right',2027,'1.80 m',0],
+ ['Aliou Diallo','CF',['RW'],23,'Guinea','CAF','FC St. Gallen',1200000,'left',2028,'1.86 m',0],
+ ['Rayan Kellal','CF',[],21,'Algeria','CAF','Queens Park Rangers',2800000,'right',2027,'1.82 m',0],
+ ['Facundo Ferrer','CF',['LW','RW'],18,'Argentina','CONMEBOL','Argentinos Juniors',2500000,'left',2029,'1.78 m',0],
+ ['Mateo Quiroga','CF',[],22,'Uruguay','CONMEBOL','Danubio FC',900000,'right',2026,'1.83 m',0],
+ ['Lukas Hartmann','CF',['AM'],24,'Germany','UEFA','Holstein Kiel',2000000,'right',2027,'1.89 m',0],
+ ['Itay Levi','CF',[],19,'Israel','UEFA','Hapoel Tel Aviv',1100000,'right',2027,'1.81 m',0],
+ ['Dan Barak','RW',['LW'],24,'Israel','UEFA',"Hapoel Be'er Sheva",1500000,'left',2027,'1.75 m',0],
+ ['Yoav Cohen','LW',['AM'],20,'Israel','UEFA','Maccabi Haifa',1000000,'right',2028,'1.77 m',0],
+ ['Oleksiy Hutsul','RW',['CF','LW'],28,'Ukraine','UEFA',null,3000000,'right',null,'1.87 m',1],
+ ['Jamal Pierre','RW',['LW'],21,'Canada','CONCACAF','Vancouver Whitecaps',1700000,'left',2027,'1.79 m',0],
+ ['Noah Dubois','RW',['LW'],22,'Belgium','UEFA','KV Kortrijk',2800000,'left',2028,'1.77 m',0],
+ ['Tomás Barbosa','CM',['DM'],25,'Portugal','UEFA','Famalicão',2400000,'right',2027,'1.80 m',0],
+ ['Mehdi Ziani','CM',['AM'],22,'Morocco','CAF','FC Utrecht',1900000,'both',2028,'1.76 m',0],
+ ['Carlos Rueda','CM',['DM'],27,'Colombia','CONMEBOL',null,1000000,'right',null,'1.82 m',1],
+ ['Mateo Ruiz','AM',['LW'],19,'Mexico','CONCACAF','Club León',2200000,'left',2028,'1.73 m',0],
+ ['Kenji Arai','AM',['CM'],23,'Japan','AFC','Sint-Truiden',1600000,'right',2028,'1.74 m',0],
+ ['Min-jae Seo','CB',[],24,'South Korea','AFC','KSC Lommel',1100000,'right',2027,'1.88 m',0],
+ ['Nikola Stanić','CB',['LB'],21,'Serbia','UEFA','FK Čukarički',800000,'left',2028,'1.90 m',0],
+ ['Luka Petrović','CB',[],22,'Croatia','UEFA','NK Osijek',1200000,'right',2028,'1.89 m',0],
+ ['Mattias Lindqvist','CB',['RB'],23,'Sweden','UEFA','IFK Norrköping',900000,'left',2027,'1.87 m',0],
+ ['Samuel Okafor','CB',[],20,'Nigeria','CAF','Sheriff Tiraspol',1400000,'right',2029,'1.91 m',0],
+ ['Emre Yılmaz','LB',['LM'],23,'Türkiye','UEFA','Kasımpaşa',1300000,'left',2027,'1.78 m',0],
+ ['Joel Mensah','RB',['RM'],26,'England','UEFA','Wycombe Wanderers',700000,'right',2026,'1.80 m',0],
+ ['Hugo Lefèvre','GK',[],26,'France','UEFA','USL Dunkerque',600000,'right',2027,'1.92 m',0],
+ ['André Silva','GK',[],31,'Portugal','UEFA','GD Chaves',400000,'right',2026,'1.89 m',0],
+ ['Roi Mizrahi','GK',[],25,'Israel','UEFA','Maccabi Netanya',500000,'right',2027,'1.91 m',0],
+].map((a,i)=>({id:i,name:a[0],pos:a[1],other:a[2],age:a[3],nat:a[4],conf:a[5],club:a[6],value:a[7],foot:a[8],year:a[9],height:a[10],free:!!a[11]}));
+const ISO={'Senegal':'sn','Cameroon':'cm','Ghana':'gh',"Côte d'Ivoire":'ci','Guinea':'gn','Algeria':'dz','Argentina':'ar','Uruguay':'uy','Germany':'de','Israel':'il','Ukraine':'ua','Canada':'ca','Portugal':'pt','Morocco':'ma','Mexico':'mx','Japan':'jp','Colombia':'co','South Korea':'kr','Serbia':'rs','Nigeria':'ng','Türkiye':'tr','England':'gb-eng','France':'fr','Croatia':'hr','Sweden':'se','Belgium':'be'};
+const flag=n=>ISO[n]?`<img class="flag" src="https://flagcdn.com/w40/${ISO[n]}.png" alt="" loading="lazy">`:'';
+const REQ=[
+ {id:1,club:'Hapoel Haifa',c:'#b64235',pos:'CF',min:18,max:24,fee:'1-1.5m',ceil:3000000,foot:'',eu:false},
+ {id:2,club:'FC Lugano',c:'#4a5f6f',pos:'RW',min:20,max:26,fee:'2-3m',ceil:6000000,foot:'left',eu:false},
+ {id:3,club:'Pogoń Szczecin',c:'#5c6f4a',pos:'CB',min:21,max:27,fee:'600-900',ceil:1800000,foot:'',eu:true},
+ {id:4,club:'Lech Poznań',c:'#a47d43',pos:'GK',min:24,max:33,fee:'<200',ceil:400000,foot:'',eu:false},
+ {id:5,club:'Maccabi Tel Aviv',c:'#7a5c8a',pos:'CM',min:22,max:28,fee:'2-3m',ceil:6000000,foot:'',eu:false},
+];
+const V=[0,50e3,100e3,150e3,200e3,300e3,400e3,500e3,750e3,1e6,1.5e6,2e6,3e6,5e6,8e6,10e6,15e6,20e6,30e6,50e6,200e6];
+const REGIONS=[['UEFA','Europe (UEFA)'],['CAF','Africa (CAF)'],['AFC','Asia (AFC)'],['CONMEBOL','South America (CONMEBOL)'],['CONCACAF','North & Central America (CONCACAF)'],['OFC','Oceania (OFC)']];
+const POSG=[['Goalkeeper',[['GK','Goalkeeper']]],['Defence',[['CB','Centre-back'],['LB','Left-back'],['RB','Right-back']]],['Midfield',[['DM','Defensive mid'],['CM','Central mid'],['AM','Attacking mid']]],['Attack',[['LW','Left winger'],['RW','Right winger'],['SS','Second striker'],['CF','Centre-forward']]]];
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const fmt=n=>n>=1e6?'€'+(n/1e6).toFixed(n%1e6?1:0)+'M':n>=1e3?'€'+Math.round(n/1e3)+'k':'€0';
+const DEF={pos:null,aMin:14,aMax:45,vMin:0,vMax:20,conf:null,country:'',foot:'',year:null,free:false,loans:false};
+let S={...DEF},activeReq=null,view='table',sort='rel',sel=new Set(),saved=new Set(),shown=12,timer=null,openPop=null;
+const nats=[...new Set(P.map(p=>p.nat))].sort();
+
+/* ═══ FILTER ENGINE ═══ */
+function matches(p){
+  if(S.pos&&p.pos!==S.pos)return false;
+  if(p.age<S.aMin||(S.aMax<45&&p.age>S.aMax))return false;
+  if(p.value<V[S.vMin])return false;
+  if(S.vMax<20&&p.value>V[S.vMax])return false;
+  if(S.country){if(p.nat!==S.country)return false}else if(S.conf&&p.conf!==S.conf)return false;
+  if(S.foot&&p.foot!==S.foot)return false;
+  if(S.year&&p.year!==S.year)return false;
+  if(S.free&&!p.free)return false;
+  return true;
+}
+function results(){
+  const by={vd:(a,b)=>b.value-a.value,vu:(a,b)=>a.value-b.value,au:(a,b)=>a.age-b.age,ad:(a,b)=>b.age-a.age,ct:(a,b)=>(a.year||9999)-(b.year||9999),rel:(a,b)=>b.value-a.value};
+  return P.filter(matches).sort(by[sort]);
+}
+
+/* ═══ SMART BAR PARSER ═══ */
+const POSW={gk:'GK',keeper:'GK',goalkeeper:'GK',cb:'CB',defender:'CB',lb:'LB',rb:'RB',dm:'DM',cm:'CM',am:'AM',lw:'LW',rw:'RW',ss:'SS',cf:'CF',st:'CF',striker:'CF',forward:'CF'};
+const REGW={africa:'CAF',caf:'CAF',europe:'UEFA',uefa:'UEFA',asia:'AFC',afc:'AFC','south america':'CONMEBOL',conmebol:'CONMEBOL',concacaf:'CONCACAF','north america':'CONCACAF',oceania:'OFC'};
+const num=s=>{const m=String(s).toLowerCase().match(/^€?([\d.]+)\s*(k|m)?$/);if(!m)return null;return parseFloat(m[1])*(m[2]==='m'?1e6:m[2]==='k'?1e3:1)};
+const idxFloor=v=>{let i=0;V.forEach((x,k)=>{if(x<=v)i=k});return i},idxCeil=v=>{for(let k=0;k<V.length;k++)if(V[k]>=v)return k;return 20};
+function parse(text){
+  const o={...DEF};let t=' '+text.toLowerCase().replace(/[,·]/g,' ')+' ',hits=0,m;
+  for(const [k,v] of Object.entries(REGW)){const re=new RegExp('\\s'+k+'\\s');if(re.test(t)){o.conf=v;t=t.replace(re,' ');hits++}}
+  if((m=t.match(/\s(free agents?|without club|no club|free)\s/))){o.free=true;t=t.replace(m[0],' ');hits++}
+  if((m=t.match(/\s(left|right|both)\s*(foot|footed)?\s/))){o.foot=m[1];t=t.replace(m[0],' ');hits++}
+  if((m=t.match(/\s(?:contract|exp|expiring|until)\s*(20\d\d)\s/))){o.year=+m[1];t=t.replace(m[0],' ');hits++}
+  if((m=t.match(/\s(?:u|under\s*)(\d\d)\s/))){o.aMax=+m[1];t=t.replace(m[0],' ');hits++}
+  else if((m=t.match(/\s(\d\d)\s*[-–]\s*(\d\d)\s/))){o.aMin=+m[1];o.aMax=Math.min(45,+m[2]);t=t.replace(m[0],' ');hits++}
+  else if((m=t.match(/\s(\d\d)\s*\+\s/))){o.aMin=+m[1];t=t.replace(m[0],' ');hits++}
+  if((m=t.match(/\s(?:under|up to|max|<|below)\s*€?([\d.]+\s*[km]?)\s/))){const v=num(m[1].replace(/\s/g,''));if(v!=null){o.vMax=idxCeil(v);hits++}t=t.replace(m[0],' ')}
+  else if((m=t.match(/\s€?([\d.]+[km]?)\s*[-–]\s*€?([\d.]+[km]?)\s/))){const a=num(m[1]),b=num(m[2]);if(a!=null&&b!=null){o.vMin=idxFloor(a);o.vMax=idxCeil(b);hits++}t=t.replace(m[0],' ')}
+  else if((m=t.match(/\s(?:over|above|from|>)\s*€?([\d.]+\s*[km]?)\s/))){const v=num(m[1].replace(/\s/g,''));if(v!=null){o.vMin=idxFloor(v);hits++}t=t.replace(m[0],' ')}
+  for(const n of nats){const re=new RegExp('\\s'+n.toLowerCase()+'\\s');if(re.test(t)){o.country=n;t=t.replace(re,' ');hits++;break}}
+  for(const w of t.split(/\s+/)){if(POSW[w]){o.pos=POSW[w];hits++;break}}
+  return {o,hits};
+}
+function describe(s){
+  const a=[];
+  if(s.pos)a.push(s.pos);
+  if(s.aMin>14||s.aMax<45)a.push(s.aMax>=45?s.aMin+'+':s.aMin<=14?'under '+(s.aMax+1):s.aMin+'-'+s.aMax);
+  if(s.vMin>0||s.vMax<20)a.push(s.vMin>0&&s.vMax<20?fmt(V[s.vMin])+'-'+fmt(V[s.vMax]):s.vMax<20?'up to '+fmt(V[s.vMax]):'from '+fmt(V[s.vMin]));
+  if(s.country)a.push(s.country);else if(s.conf)a.push(s.conf);
+  if(s.foot)a.push(s.foot+' foot');
+  if(s.year)a.push('contract '+s.year);
+  if(s.free)a.push('free agent');
+  return a.join(' ');
+}
+
+/* ═══ FILTER POPOVERS ═══ */
+const CHK='<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
+const ageOpts=(sel)=>Array.from({length:32},(_,i)=>14+i).map(a=>`<option value="${a}" ${a===sel?'selected':''}>${a===45?'45+':a}</option>`).join('');
+const valOpts=(sel,lo)=>V.map((v,i)=>`<option value="${i}" ${i===sel?'selected':''}>${i===0&&lo?'No minimum':i===20&&!lo?'No maximum':fmt(v)}</option>`).join('');
+function popHTML(k){
+  if(k==='pos')return POSG.map(([g,l])=>`<h4>${g}</h4><div class="opts ${l.length>1?'two':''}">${l.map(([c,n])=>`<button class="opt ${S.pos===c?'on':''}" data-pos="${c}"><b>${c}</b>${n}</button>`).join('')}</div>`).join('')+`<div class="minichips"><button class="mc" data-pos="">Any position</button></div>`;
+  if(k==='age')return `<h4>Age range</h4><div class="pair"><select class="sel" data-amin>${ageOpts(S.aMin)}</select><span>to</span><select class="sel" data-amax>${ageOpts(S.aMax)}</select></div>
+    <div class="minichips">${[['Under 21',14,20],['Under 23',14,22],['22 to 27',22,27],['28 and over',28,45]].map(a=>`<button class="mc ${S.aMin===a[1]&&S.aMax===a[2]?'on':''}" data-age="${a[1]}-${a[2]}">${a[0]}</button>`).join('')}</div>`;
+  if(k==='value')return `<h4>Market value</h4><div class="pair"><select class="sel" data-vmin>${valOpts(S.vMin,true)}</select><span>to</span><select class="sel" data-vmax>${valOpts(S.vMax,false)}</select></div>
+    <div class="minichips">${[['Under €500k',0,7],['€500k to €1M',7,9],['€1M to €3M',9,12],['€3M to €10M',12,15],['€10M and over',15,20]].map(a=>`<button class="mc ${S.vMin===a[1]&&S.vMax===a[2]?'on':''}" data-val="${a[1]}-${a[2]}">${a[0]}</button>`).join('')}</div>`;
+  if(k==='region')return `<h4>Region</h4><div class="opts"><button class="opt ${!S.conf?'on':''}" data-reg="">Anywhere</button>${REGIONS.map(r=>`<button class="opt ${S.conf===r[0]&&!S.country?'on':''}" data-reg="${r[0]}">${r[1]}</button>`).join('')}</div>
+    <h4>Or one country</h4><select class="sel" data-country><option value="">Any country</option>${nats.map(n=>`<option ${S.country===n?'selected':''}>${n}</option>`).join('')}</select>`;
+  if(k==='foot')return `<h4>Preferred foot</h4><div class="seg">${[['','Any'],['left','Left'],['right','Right'],['both','Both']].map(a=>`<button class="${S.foot===a[0]?'on':''}" data-foot="${a[0]}">${a[1]}</button>`).join('')}</div>`;
+  if(k==='contract')return `<h4>Contract runs until</h4><div class="minichips" style="margin-top:0"><button class="mc ${!S.year?'on':''}" data-year="">Any year</button>${[2026,2027,2028,2029,2030].map(y=>`<button class="mc ${S.year===y?'on':''}" data-year="${y}">${y}</button>`).join('')}</div>
+    <h4>Status</h4><button class="check ${S.free?'on':''}" data-tog="free"><span>${CHK}</span>Without a club</button><button class="check ${S.loans?'on':''}" data-tog="loans"><span>${CHK}</span>Exclude loaned players</button>`;
+}
+function summaries(){
+  const ageSet=S.aMin>14||S.aMax<45, valSet=S.vMin>0||S.vMax<20;
+  return {
+    pos:[!!S.pos,S.pos||''],
+    age:[ageSet,ageSet?(S.aMax>=45?S.aMin+'+':S.aMin<=14?'up to '+S.aMax:S.aMin+'–'+S.aMax):''],
+    value:[valSet,valSet?(S.vMin===0?'up to '+fmt(V[S.vMax]):S.vMax===20?'from '+fmt(V[S.vMin]):fmt(V[S.vMin])+'–'+fmt(V[S.vMax])):''],
+    region:[!!(S.conf||S.country),S.country||S.conf||''],
+    foot:[!!S.foot,S.foot?S.foot[0].toUpperCase()+S.foot.slice(1):''],
+    contract:[!!(S.year||S.free||S.loans),[S.year,S.free&&'free agents',S.loans&&'no loans'].filter(Boolean).join(', ')]
+  };
+}
+function syncFilters(){
+  const sm=summaries();
+  $$('.fbtn').forEach(b=>{const [set,txt]=sm[b.dataset.f];b.classList.toggle('set',set);b.querySelector('.fv').textContent=txt;b.classList.toggle('open',openPop===b.dataset.f)});
+  Object.keys(sm).forEach(k=>{const p=$('#pop-'+k);p.classList.toggle('show',openPop===k);if(openPop===k)p.innerHTML=popHTML(k)});
+  $('#reset').hidden=!Object.values(sm).some(x=>x[0]);
+  $$('.req').forEach(r=>r.classList.toggle('on',!!activeReq&&+r.dataset.id===activeReq.id));
+  updateScrim();
+}
+
+const updateScrim=()=>$('#scrim').classList.toggle('show',(openPop!==null&&innerWidth<=860)||$('#drawer').classList.contains('show'));
+/* ═══ RENDER ═══ */
+const BM='<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>';
+const EXT='<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>';
+const ini=n=>n.split(' ').map(w=>w[0]).slice(0,2).join('');
+const fits=p=>activeReq?(p.value<=activeReq.ceil&&p.age>=activeReq.min&&p.age<=activeReq.max):null;
+const fitHTML=p=>{const f=fits(p);return f===null?'':`<span class="fit ${f?'':'no'}"><i></i>${f?'Fits':'Over budget'}</span>`};
+const acts=p=>`<span class="acts"><button class="ib ${saved.has(p.id)?'saved':''}" data-act="save" title="Add to shortlist">${BM}</button><button class="ib" data-act="tm" title="Open on Transfermarkt">${EXT}</button></span>`;
+const cbx=`<span class="cb" data-act="sel">${CHK}</span>`;
+function rowHTML(p){
+  return `<div class="trow ${sel.has(p.id)?'sel':''}" data-id="${p.id}">${cbx}
+   <div class="cell-pl"><span class="av">${ini(p.name)}</span><div class="pl"><b>${p.name}</b><span>${p.club||'Without club'}</span></div></div>
+   <span class="pos">${p.pos}</span><span class="muted">${p.age}</span>
+   <span class="nat t-hide">${flag(p.nat)}<span>${p.nat}</span></span>
+   <span class="muted t-hide h-hide">${p.free?'Free agent':p.year?'Until '+p.year:'—'}</span>
+   <span class="t-hide">${fitHTML(p)}</span>
+   <span class="val">${fmt(p.value)}</span>${acts(p)}</div>`;
+}
+function cardHTML(p){
+  return `<article class="card ${sel.has(p.id)?'sel':''}" data-id="${p.id}">${cbx}
+   <div class="top"><span class="av">${ini(p.name)}</span><div class="pl"><b>${p.name}</b><span>${p.club||'Without club'}</span></div></div>
+   <div class="line"><span class="pos">${p.pos}</span><span>${p.age} years</span><span class="nat">${flag(p.nat)}<span>${p.nat}</span></span></div>
+   <div class="foot"><div><small>Market value</small><span class="big">${fmt(p.value)}</span></div><div style="text-align:end"><small>${p.free?'Status':'Contract'}</small><b style="font-size:13px">${p.free?'Free agent':p.year?'Until '+p.year:'—'}</b></div></div>
+   <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">${fitHTML(p)||'<span></span>'}${acts(p)}</div></article>`;
+}
+function render(){
+  syncFilters();
+  const r=results();
+  $('#rcount').innerHTML=`${r.length} ${r.length===1?'player':'players'}${activeReq?` <span>· for ${activeReq.club}</span>`:''}`;
+  $('#ctx').innerHTML=activeReq?`<div class="ctx"><div><b>${activeReq.club} request loaded.</b> Value ceiling is 2× the fee ceiling (${fmt(activeReq.ceil/2)} → ${fmt(activeReq.ceil)}).${activeReq.eu?' EU-only: Europe is selected, check passports manually.':''}</div><button id="detach">Clear request</button></div>`:'';
+  const list=$('#list'),slice=r.slice(0,shown);
+  if(!r.length){list.innerHTML=`<div class="empty"><h4>No players match these filters</h4><p>Widen the age or value range, or remove a filter.</p><button class="btn primary" id="relax">Remove last filter</button></div>`;}
+  else if(view==='table'){list.innerHTML=`<div class="panel"><div class="trow th"><span></span><span>Player</span><span>Pos</span><span>Age</span><span class="t-hide">Nationality</span><span class="t-hide h-hide">Contract</span><span class="t-hide">${activeReq?'Request fit':''}</span><span style="text-align:end">Value</span><span></span></div>${slice.map(rowHTML).join('')}</div>`}
+  else{list.innerHTML=`<div class="cards">${slice.map(cardHTML).join('')}</div>`}
+  if(r.length){const left=r.length-slice.length;list.insertAdjacentHTML('beforeend',`<div class="more">${left>0?`<button class="btn" id="more">Show ${Math.min(25,left)} more</button>`:''}<p class="cap">Showing ${slice.length} of ${r.length}. Transfermarkt returns at most 250 results per search.</p></div>`)}
+  $('#bn').textContent=sel.size;$('#bulk').classList.toggle('show',sel.size>0);
+}
+function changed(fromBar){
+  if(!fromBar&&document.activeElement!==$('#q'))$('#q').value=describe(S);
+  $('#search').classList.toggle('has',!!$('#q').value);
+  shown=12;sel.clear();syncFilters();
+  $('#res').classList.remove('loading');void $('#res').offsetWidth;$('#res').classList.add('loading');
+  $('#rcount').textContent='Searching Transfermarkt…';
+  clearTimeout(timer);
+  timer=setTimeout(()=>{$('#res').classList.remove('loading');render()},450);
+}
+const detach=()=>{activeReq=null};
+
+/* ═══ EVENTS ═══ */
+$('#reqs').innerHTML=REQ.map(r=>`<button class="req" data-id="${r.id}"><i style="background:${r.c}">${r.club.split(' ').map(w=>w[0]).join('').slice(0,2)}</i>${r.club} <em>${r.pos} · ${r.min}–${r.max}</em></button>`).join('');
+$('#reqs').onclick=e=>{const b=e.target.closest('.req');if(!b)return;const r=REQ.find(x=>x.id==b.dataset.id);
+  if(activeReq&&activeReq.id===r.id){activeReq=null;S={...DEF};changed();return}
+  activeReq=r;S={...DEF,pos:r.pos,aMin:r.min,aMax:r.max,foot:r.foot,vMax:idxCeil(r.ceil),conf:r.eu?'UEFA':null};openPop=null;changed()};
+$('#frow').addEventListener('click',e=>{
+  if(e.target.closest('.fwrap'))e.__keep=true; // popover content is re-rendered below, so the target gets detached
+  const fb=e.target.closest('.fbtn');
+  if(fb){openPop=openPop===fb.dataset.f?null:fb.dataset.f;syncFilters();return}
+  const pop=e.target.closest('.pop');if(!pop)return;
+  const d=e.target.closest('button');if(!d)return;
+  const ds=d.dataset;let hit=true;
+  if('pos' in ds){S.pos=ds.pos||null;openPop=null}
+  else if('age' in ds){const [a,b]=ds.age.split('-').map(Number);const on=S.aMin===a&&S.aMax===b;S.aMin=on?14:a;S.aMax=on?45:b}
+  else if('val' in ds){const [a,b]=ds.val.split('-').map(Number);const on=S.vMin===a&&S.vMax===b;S.vMin=on?0:a;S.vMax=on?20:b}
+  else if('reg' in ds){S.country='';S.conf=ds.reg||null;openPop=null}
+  else if('foot' in ds){S.foot=ds.foot;openPop=null}
+  else if('year' in ds){S.year=ds.year?+ds.year:null}
+  else if('tog' in ds){S[ds.tog]=!S[ds.tog]}
+  else hit=false;
+  if(hit){detach();changed()}
+});
+$('#frow').addEventListener('change',e=>{
+  const t=e.target,ds=t.dataset;detach();
+  if('amin' in ds){S.aMin=+t.value;if(S.aMin>S.aMax)S.aMax=S.aMin}
+  else if('amax' in ds){S.aMax=+t.value;if(S.aMax<S.aMin)S.aMin=S.aMax}
+  else if('vmin' in ds){S.vMin=+t.value;if(S.vMin>S.vMax)S.vMax=S.vMin}
+  else if('vmax' in ds){S.vMax=+t.value;if(S.vMax<S.vMin)S.vMin=S.vMax}
+  else if('country' in ds){S.country=t.value}
+  changed();
+});
+document.addEventListener('click',e=>{if(openPop&&!e.__keep){openPop=null;syncFilters()}});
+$('#reset').onclick=()=>{detach();S={...DEF};$('#q').value='';changed()};
+$('#sort').onchange=e=>{sort=e.target.value;render()};
+$('#vTable').onclick=()=>{view='table';$('#vTable').classList.add('on');$('#vCards').classList.remove('on');render()};
+$('#vCards').onclick=()=>{view='cards';$('#vCards').classList.add('on');$('#vTable').classList.remove('on');render()};
+$('#q').addEventListener('input',e=>{
+  const v=e.target.value;$('#search').classList.toggle('has',!!v);
+  const {o,hits}=parse(v);detach();
+  if(!v.trim())S={...DEF};else if(hits)S=o;
+  changed(true);
+});
+$('#qx').onclick=()=>{$('#q').value='';detach();S={...DEF};changed();$('#q').focus()};
+$$('.tryrow button').forEach(b=>b.onclick=()=>{$('#q').value=b.dataset.q;$('#q').dispatchEvent(new Event('input'))});
+document.addEventListener('keydown',e=>{if(e.key==='/'&&!/INPUT|SELECT/.test(document.activeElement.tagName)){e.preventDefault();$('#q').focus()}if(e.key==='Escape'){closeDrawer();openPop=null;syncFilters()}});
+
+const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1800)};
+$('#list').addEventListener('click',e=>{
+  if(e.target.id==='more'){shown+=25;render();return}
+  if(e.target.id==='relax'){const order=['free','loans','year','foot','conf','val','age','pos'];if(S.free)S.free=false;else if(S.loans)S.loans=false;else if(S.year)S.year=null;else if(S.foot)S.foot='';else if(S.country)S.country='';else if(S.conf)S.conf=null;else if(S.vMin>0||S.vMax<20){S.vMin=0;S.vMax=20}else if(S.aMin>14||S.aMax<45){S.aMin=14;S.aMax=45}else S.pos=null;detach();changed();return}
+  const el=e.target.closest('[data-id]');if(!el)return;const id=+el.dataset.id;const act=e.target.closest('[data-act]')?.dataset.act;
+  if(act==='save'){saved.has(id)?saved.delete(id):saved.add(id);toast(saved.has(id)?'Added to shortlist':'Removed from shortlist');render();return}
+  if(act==='sel'){sel.has(id)?sel.delete(id):sel.add(id);render();return}
+  if(act==='tm'){toast('Opens the Transfermarkt profile');return}
+  openDrawer(id);
+});
+$('#ctx').addEventListener('click',e=>{if(e.target.id==='detach'){activeReq=null;S={...DEF};$('#q').value='';changed()}});
+$('#bClear').onclick=()=>{sel.clear();render()};
+$('#bAdd').onclick=()=>{sel.forEach(i=>saved.add(i));toast(sel.size+' players added to shortlist');sel.clear();render()};
+$('#bCopy').onclick=()=>toast(sel.size+' Transfermarkt links copied');
+
+function openDrawer(id){
+  const p=P[id];
+  $('#drawer').innerHTML=`<div class="d-head"><span class="av">${ini(p.name)}</span><div><h2>${p.name}</h2><p>${p.club||'Without club'}</p></div><button class="d-x" id="dx" aria-label="Close">×</button></div>
+   <div class="d-val"><small>Market value</small><b>${fmt(p.value)}</b></div>
+   <div class="dl"><div><small>Position</small><b>${p.pos}${p.other.length?' · also '+p.other.join(', '):''}</b></div><div><small>Age</small><b>${p.age} years</b></div><div><small>Nationality</small><b class="nat">${flag(p.nat)}${p.nat}</b></div><div><small>Height</small><b>${p.height}</b></div><div><small>Preferred foot</small><b style="text-transform:capitalize">${p.foot}</b></div><div><small>Contract</small><b>${p.free?'Free agent':p.year?'Until '+p.year:'—'}</b></div></div>
+   <div class="d-act"><button class="btn primary" id="dsave">${saved.has(id)?'In shortlist':'Add to shortlist'}</button><button class="btn">Open on Transfermarkt</button></div>
+   <p class="d-note">This quick view only uses what is already in the result row. Agent and exact contract date need the player profile (phase 2).</p>`;
+  $('#drawer').classList.add('show');updateScrim();
+  $('#dx').onclick=closeDrawer;
+  $('#dsave').onclick=()=>{saved.add(id);toast('Added to shortlist');$('#dsave').textContent='In shortlist';render()};
+}
+function closeDrawer(){$('#drawer').classList.remove('show');updateScrim()}
+$('#scrim').onclick=()=>{closeDrawer();openPop=null;syncFilters()};
+
+/* start with a request loaded so the screen is never empty */
+$('#reqs .req').click();
+</script>
+</body>
+</html>
