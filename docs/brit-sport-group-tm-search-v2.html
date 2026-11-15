@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BRIT Sport Group — TM Search v2 / Light Management Room (design mock)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#161613;--black:#11110f;--paper:#f3f0e8;--paper-2:#e4ded1;--card:#fbf9f3;
+  --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--amber:#b07a2b;--muted:#77736a;--muted-2:#aba69b;
+  --line:rgba(22,22,19,.18);--line-2:rgba(22,22,19,.07);--dark-line:rgba(243,240,232,.2);
+  --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace
+}
+*{box-sizing:border-box}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{border:0;color:inherit;font:inherit;cursor:pointer;background:transparent;padding:0}
+input,select{font:inherit;color:inherit}
+::selection{background:var(--gold-soft);color:var(--ink)}
+svg{display:block}
+
+/* ── shell ─────────────────────────────────────────── */
+.app{min-height:100vh;display:grid;grid-template-columns:240px minmax(0,1fr)}
+.rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:24px 20px;background:var(--black);color:var(--paper)}
+.lockup{display:flex;align-items:center;gap:12px;padding-bottom:22px;border-bottom:1px solid var(--dark-line)}
+.lockup .mark{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--gold));color:var(--black);font:600 14px/1 var(--display)}
+.lockup strong{display:block;font:500 15px/1.1 var(--display);letter-spacing:.06em}
+.lockup small{font:9px/1 var(--mono);color:var(--muted-2);letter-spacing:.14em;text-transform:uppercase}
+.nav{margin-top:18px;display:grid;gap:2px}
+.nav a{padding:11px 12px;font:10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);border-inline-start:2px solid transparent}
+.nav a:hover{color:var(--paper)}
+.nav a.on{color:var(--paper);background:rgba(243,240,232,.07);border-inline-start-color:var(--gold-soft)}
+.rail-foot{margin-top:auto;font:9px/1.5 var(--mono);color:var(--muted-2);letter-spacing:.08em;text-transform:uppercase}
+
+.main{min-width:0}
+.mockbar{display:flex;gap:10px;align-items:center;justify-content:center;padding:7px 12px;background:var(--gold-soft);color:var(--black);font:10px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;text-align:center}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 32px;border-bottom:1px solid var(--line);font:10px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.topbar strong{color:var(--ink);font-weight:500}
+.canvas{padding:26px 32px 120px;max-width:1500px}
+
+/* ── masthead ──────────────────────────────────────── */
+.mast{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:20px}
+.kicker{margin:0 0 8px;font:10px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+h1{margin:0;font:500 clamp(34px,4.2vw,54px)/.95 var(--display);text-transform:uppercase;letter-spacing:.005em}
+h1 span{color:var(--gold)}
+.live{display:flex;align-items:center;gap:8px;font:10px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 12px;border:1px solid var(--line);background:var(--card)}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(92,111,74,.6);animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(92,111,74,0)}100%{box-shadow:0 0 0 0 rgba(92,111,74,0)}}
+
+/* ── smart bar ─────────────────────────────────────── */
+.smart{position:relative;display:flex;align-items:center;gap:14px;padding:0 16px;background:var(--black);color:var(--paper);border-bottom:3px solid var(--gold)}
+.smart svg{width:20px;height:20px;stroke:var(--gold-soft);fill:none;stroke-width:2;flex:none}
+.smart input{flex:1;min-width:0;height:64px;background:transparent;border:0;outline:0;color:var(--paper);font:500 17px/1 var(--body);letter-spacing:.01em}
+.smart input::placeholder{color:#8d897f}
+.smart kbd{font:10px/1 var(--mono);padding:6px 8px;border:1px solid var(--dark-line);color:var(--muted-2)}
+.smart .clear{width:28px;height:28px;border:1px solid var(--dark-line);border-radius:50%;color:var(--muted-2);display:none;place-items:center;font:16px/1 var(--display)}
+.smart.has .clear{display:grid}
+.smart.has kbd{display:none}
+.hints{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 0;font:10px/1 var(--mono);letter-spacing:.06em;color:var(--muted)}
+.hints button{padding:7px 10px;border:1px dashed var(--line);color:var(--ink);text-transform:none;letter-spacing:.02em;background:transparent}
+.hints button:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ── request strip ─────────────────────────────────── */
+.sect-label{display:flex;justify-content:space-between;align-items:baseline;margin:26px 0 10px;font:10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.sect-label b{color:var(--ink);font-weight:500}
+.reqs{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 12px;scroll-snap-type:x proximity;scrollbar-width:thin}
+.req{flex:none;width:230px;text-align:start;scroll-snap-align:start;padding:14px 14px 12px;background:var(--card);border:1px solid var(--line);position:relative;transition:.18s}
+.req:hover{border-color:var(--gold-soft);transform:translateY(-2px)}
+.req.on{background:var(--black);color:var(--paper);border-color:var(--black)}
+.req.on::after{content:'LOADED';position:absolute;top:10px;inset-inline-end:10px;font:8px/1 var(--mono);letter-spacing:.14em;color:var(--gold-soft)}
+.req .club{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.crest{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:600 10px/1 var(--display);color:#fff;flex:none}
+.req .nm{font:600 13px/1.1 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.req .row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font:9px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:5px 7px;border:1px solid var(--line);color:var(--muted)}
+.req.on .tag{border-color:var(--dark-line);color:var(--muted-2)}
+.tag.pos{background:var(--gold-soft);color:var(--black);border-color:var(--gold-soft);font-weight:500}
+
+/* ── workspace ─────────────────────────────────────── */
+.work{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start;margin-top:6px}
+.filters{position:sticky;top:12px;background:var(--card);border:1px solid var(--line);max-height:calc(100vh - 24px);overflow-y:auto}
+.f-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:2}
+.f-head h3{margin:0;font:500 18px/1 var(--display);text-transform:uppercase;letter-spacing:.03em}
+.f-head button{font:9px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:7px 0}
+.f-head button:hover{color:var(--red)}
+.f-close{display:none!important}
+.grp{padding:14px 16px 16px;border-bottom:1px solid var(--line-2)}
+.grp:last-child{border-bottom:0}
+.grp>label,.grp>.lab{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;font:9px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.grp .val{font:500 12px/1 var(--mono);color:var(--ink);letter-spacing:.02em;text-transform:none}
+
+/* pitch */
+.pitch{position:relative;width:100%;aspect-ratio:1/1.05;background:linear-gradient(180deg,#6f8160,#5c6f4a);border-radius:2px;overflow:hidden;border:1px solid rgba(0,0,0,.2)}
+.pitch svg.lines{position:absolute;inset:0;width:100%;height:100%;stroke:rgba(243,240,232,.45);fill:none;stroke-width:1.2}
+.dot{position:absolute;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font:500 10px/1 var(--mono);letter-spacing:.04em;color:var(--paper);background:rgba(17,17,15,.35);border:1.5px solid rgba(243,240,232,.7);transition:.15s}
+.dot:hover{background:rgba(17,17,15,.7);transform:translate(-50%,-50%) scale(1.1)}
+.dot.on{background:var(--gold-soft);color:var(--black);border-color:#fff;box-shadow:0 0 0 5px rgba(201,166,107,.35);transform:translate(-50%,-50%) scale(1.12);font-weight:500}
+
+/* dual range */
+.range{position:relative;height:30px}
+.range .track{position:absolute;top:13px;left:0;right:0;height:4px;background:var(--line);border-radius:2px}
+.range .fill{position:absolute;top:13px;height:4px;background:var(--gold);border-radius:2px}
+.range input{position:absolute;left:0;top:0;width:100%;height:30px;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
+.range input::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:20px;height:20px;border-radius:50%;background:var(--paper);border:2px solid var(--gold);cursor:grab;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.range input::-moz-range-thumb{pointer-events:auto;width:16px;height:16px;border-radius:50%;background:var(--paper);border:2px solid var(--gold);cursor:grab}
+.range input::-webkit-slider-runnable-track{background:none}
+.range input::-moz-range-track{background:none}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{padding:8px 11px;border:1px solid var(--line);font:9px/1 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:#fff;transition:.12s}
+.chip:hover{color:var(--ink);border-color:var(--gold-soft)}
+.chip.on{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--black)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);background:#fff}
+.seg button{padding:10px 4px;font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-inline-end:1px solid var(--line)}
+.seg button:last-child{border-inline-end:0}
+.seg button.on{background:var(--black);color:var(--gold-soft)}
+.sel{width:100%;height:40px;border:1px solid var(--line);background:#fff;padding:0 10px;font:11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;outline:0}
+.sel:focus{border-color:var(--gold)}
+.tog{display:flex;align-items:center;gap:10px;padding:5px 0;font:10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);width:100%;text-align:start}
+.tog .sw{width:30px;height:17px;border-radius:9px;background:var(--line);position:relative;flex:none;transition:.15s}
+.tog .sw::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:.15s}
+.tog.on{color:var(--ink)}
+.tog.on .sw{background:var(--gold)}
+.tog.on .sw::after{left:15px}
+
+/* ── results ───────────────────────────────────────── */
+.res{min-width:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.count{display:flex;align-items:baseline;gap:10px}
+.count strong{font:500 40px/1 var(--display);letter-spacing:.01em}
+.count span{font:10px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tools{display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 13px;border:1px solid var(--line);background:#fff;font:9px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);transition:.15s}
+.btn:hover{border-color:var(--gold-soft);color:var(--gold)}
+.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+.btn.dark{background:var(--black);border-color:var(--black);color:var(--gold-soft)}
+.btn.dark:hover{background:var(--gold);border-color:var(--gold);color:var(--paper)}
+.btn.soon{opacity:.75}
+.btn.soon::after{content:'SOON';font-size:7px;padding:3px 4px;background:var(--gold-soft);color:var(--black);letter-spacing:.1em}
+.viewtog{display:flex;border:1px solid var(--line);background:#fff}
+.viewtog button{padding:10px 11px}
+.viewtog button.on{background:var(--black);color:var(--gold-soft)}
+.viewtog svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+.sort{height:35px;border:1px solid var(--line);background:#fff;padding:0 8px;font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;outline:0}
+.mfilter{display:none}
+
+.active{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;min-height:0}
+.ach{display:inline-flex;align-items:center;gap:8px;padding:7px 8px 7px 10px;background:var(--black);color:var(--paper);font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.ach b{font-weight:500;color:var(--gold-soft)}
+.ach button{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--dark-line);font:12px/1 var(--display);color:var(--muted-2)}
+.ach button:hover{background:var(--red);border-color:var(--red);color:#fff}
+.note{margin:0 0 14px;padding:10px 12px;background:rgba(201,166,107,.22);border-inline-start:3px solid var(--gold);font:10px/1.5 var(--mono);letter-spacing:.03em}
+.note b{font-weight:500}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;transition:opacity .2s}
+.res.loading .grid,.res.loading .table{opacity:.35;pointer-events:none}
+.card{position:relative;background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;transition:.18s;cursor:pointer;animation:rise .35s both}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.card:hover{border-color:var(--gold-soft);box-shadow:0 10px 30px rgba(22,22,19,.1);transform:translateY(-2px)}
+.card.sel{outline:2px solid var(--gold);outline-offset:-2px}
+.c-top{display:flex;gap:14px;padding:16px 16px 12px;align-items:center}
+.av{position:relative;width:62px;height:62px;border-radius:50%;flex:none;display:grid;place-items:center;font:500 22px/1 var(--display);color:#fff;letter-spacing:.02em}
+.av .fl{position:absolute;right:-4px;bottom:-4px;width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid var(--card);display:grid;place-items:center;font-size:14px;line-height:1}
+.who{min-width:0}
+.nm{font:600 15px/1.15 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.pill{font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:5px 7px;background:var(--black);color:var(--gold-soft)}
+.pill.l{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.fit{position:absolute;top:10px;inset-inline-end:10px;display:flex;align-items:center;gap:5px;font:8px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--green);padding:5px 6px;border:1px solid rgba(92,111,74,.4);background:rgba(92,111,74,.08)}
+.fit.no{color:var(--amber);border-color:rgba(176,122,43,.4);background:rgba(176,122,43,.08)}
+.facts{display:grid;grid-template-columns:1.1fr 1.4fr 1fr;border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2)}
+.facts div{padding:10px 14px;border-inline-end:1px solid var(--line-2);min-width:0}
+.facts div:last-child{border-inline-end:0}
+.facts label{display:block;font:8px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.facts b{display:block;font:600 13px/1.2 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.facts .v b{font:500 22px/1 var(--display);color:var(--gold);letter-spacing:.01em}
+.badge{position:absolute;top:0;inset-inline-start:0;font:8px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:5px 8px;background:var(--black);color:var(--gold-soft)}
+.badge.free{background:var(--green);color:#fff}
+.c-act{display:flex;align-items:center;gap:6px;padding:10px 12px}
+.ico{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--line);background:#fff;transition:.15s;flex:none}
+.ico:hover{border-color:var(--gold-soft);color:var(--gold)}
+.ico svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2}
+.ico.saved{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--black)}
+.ico.saved svg{fill:currentColor}
+.c-act .sp{flex:1}
+.c-act .tm{font:9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 8px}
+.c-act .tm:hover{color:var(--gold)}
+.check{position:absolute;top:10px;inset-inline-end:10px;width:22px;height:22px;border:1.5px solid var(--line);background:#fff;display:grid;place-items:center;opacity:0;transition:.12s;z-index:2}
+.card:hover .check,.card.sel .check,.sel-mode .check{opacity:1}
+.card.sel .check{background:var(--gold);border-color:var(--gold);color:#fff}
+.check svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:3;opacity:0}
+.card.sel .check svg{opacity:1}
+.card:hover .fit,.card.sel .fit,.sel-mode .fit{inset-inline-end:40px}
+
+/* table view */
+.table{border:1px solid var(--line);background:var(--card)}
+.tr{display:grid;grid-template-columns:28px minmax(190px,2.2fr) 60px 60px 1.5fr 80px 70px 80px 90px 74px;gap:10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line-2);cursor:pointer;animation:rise .3s both}
+.tr:hover{background:#fff}
+.tr.head{cursor:default;font:8px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);background:var(--paper-2);position:sticky;top:0}
+.tr.head:hover{background:var(--paper-2)}
+.tr .nm{font-size:13px}
+.tr .mini{display:flex;align-items:center;gap:10px;min-width:0}
+.tr .av{width:32px;height:32px;font-size:12px}
+.tr .av .fl{width:15px;height:15px;font-size:9px;right:-3px;bottom:-3px;border-width:1px}
+.tr .gold{font:500 16px/1 var(--display);color:var(--gold)}
+.tr .m{font:11px/1.2 var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr .cb{width:18px;height:18px;border:1.5px solid var(--line);background:#fff;display:grid;place-items:center}
+.tr.sel .cb{background:var(--gold);border-color:var(--gold);color:#fff}
+.tr .cb svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:3;opacity:0}
+.tr.sel .cb svg{opacity:1}
+.tr .acts{display:flex;gap:4px;justify-content:flex-end}
+.tr .acts .ico{width:28px;height:28px}
+
+/* skeleton / empty / more */
+.skel{height:218px;background:linear-gradient(100deg,var(--card) 30%,#fff 50%,var(--card) 70%);background-size:200% 100%;animation:sh 1.1s infinite;border:1px solid var(--line-2)}
+@keyframes sh{to{background-position:-200% 0}}
+.empty{padding:70px 20px;text-align:center;border:1px dashed var(--line);background:var(--card)}
+.empty h4{margin:0 0 8px;font:500 24px/1 var(--display);text-transform:uppercase}
+.empty p{margin:0 0 18px;color:var(--muted);font:11px/1.5 var(--mono);letter-spacing:.04em}
+.more{display:flex;justify-content:center;gap:14px;align-items:center;padding:26px 0 0;font:10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.cap{margin-top:14px;text-align:center;font:9px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted)}
+
+/* bulk bar */
+.bulk{position:fixed;left:50%;bottom:22px;transform:translate(-50%,140%);z-index:60;display:flex;gap:12px;align-items:center;padding:10px 12px 10px 18px;background:var(--black);color:var(--paper);box-shadow:0 18px 50px rgba(0,0,0,.4);border-bottom:3px solid var(--gold);transition:.3s cubic-bezier(.16,1,.3,1)}
+.bulk.show{transform:translate(-50%,0)}
+.bulk strong{font:500 18px/1 var(--display);letter-spacing:.02em}
+.bulk span{font:9px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+.bulk .btn{background:transparent;border-color:var(--dark-line);color:var(--paper)}
+.bulk .btn.gold{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--black)}
+.toast{position:fixed;left:50%;top:70px;transform:translate(-50%,-20px);opacity:0;z-index:90;background:var(--black);color:var(--paper);padding:11px 16px;font:10px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;border-inline-start:3px solid var(--gold-soft);transition:.25s;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(17,17,15,.5);opacity:0;pointer-events:none;transition:.25s;z-index:70}
+.scrim.show{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;bottom:0;inset-inline-end:0;width:min(440px,100%);background:var(--paper);z-index:80;transform:translateX(105%);transition:.35s cubic-bezier(.16,1,.3,1);overflow-y:auto;border-inline-start:3px solid var(--gold)}
+.drawer.show{transform:none}
+.d-hero{padding:28px 24px 22px;background:var(--black);color:var(--paper);position:relative}
+.d-hero .av{width:84px;height:84px;font-size:30px;margin-bottom:16px}
+.d-hero .av .fl{width:30px;height:30px;font-size:18px}
+.d-hero h2{margin:0 0 8px;font:500 32px/1 var(--display);text-transform:uppercase}
+.d-hero .meta .pill.l{border-color:var(--dark-line);color:var(--muted-2)}
+.d-x{position:absolute;top:14px;inset-inline-end:14px;width:34px;height:34px;border:1px solid var(--dark-line);border-radius:50%;font:20px/1 var(--display);color:var(--paper)}
+.d-val{padding:18px 24px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line)}
+.d-val b{font:500 42px/1 var(--display);color:var(--gold)}
+.d-val span{font:9px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.d-grid{display:grid;grid-template-columns:1fr 1fr}
+.d-grid div{padding:14px 24px;border-bottom:1px solid var(--line-2);border-inline-end:1px solid var(--line-2)}
+.d-grid label{display:block;font:8px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.d-grid b{font:600 14px/1.2 var(--body)}
+.d-act{display:grid;gap:10px;padding:20px 24px}
+.d-act .btn{justify-content:center;padding:14px}
+.d-note{padding:0 24px 24px;font:10px/1.6 var(--mono);color:var(--muted);letter-spacing:.03em}
+
+/* ── responsive ────────────────────────────────────── */
+@media (max-width:1180px){
+  .work{grid-template-columns:300px minmax(0,1fr)}
+  .tr{grid-template-columns:28px minmax(170px,2fr) 54px 54px 1.4fr 76px 70px 74px}
+  .tr .h-hide{display:none}
+}
+@media (max-width:980px){
+  .app{grid-template-columns:1fr}
+  .rail{position:static;height:auto;flex-direction:row;align-items:center;padding:12px 16px}
+  .lockup{border:0;padding:0}
+  .nav,.rail-foot{display:none}
+  .canvas{padding:20px 16px 120px}
+  .topbar{padding:12px 16px}
+  .work{grid-template-columns:1fr}
+  .mfilter{display:inline-flex}
+  .filters{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:86vh;z-index:80;border:0;border-top:3px solid var(--gold);border-radius:18px 18px 0 0;transform:translateY(105%);transition:.32s cubic-bezier(.16,1,.3,1)}
+  .filters.open{transform:none;box-shadow:0 -20px 60px rgba(0,0,0,.4)}
+  .f-close{display:grid!important;width:34px;height:34px;border:1px solid var(--line)!important;border-radius:50%;place-items:center;font:20px/1 var(--display)!important;color:var(--ink)!important}
+  .f-apply{position:sticky;bottom:0;padding:12px 16px;background:var(--card);border-top:1px solid var(--line)}
+  .f-apply .btn{width:100%;justify-content:center;padding:15px}
+  .mast{flex-direction:column;align-items:flex-start}
+  .smart input{height:56px;font-size:15px}
+  .smart kbd{display:none}
+  .grid{grid-template-columns:1fr}
+  .tr{grid-template-columns:24px minmax(0,1fr) 46px 54px 70px 40px}
+  .tr .t-hide{display:none}
+  .req{width:210px}
+  .count strong{font-size:32px}
+}
+@media (min-width:981px){.f-apply{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="lockup"><div class="mark">B</div><div><strong>BRIT SPORT GROUP</strong><small>Management room</small></div></div>
+    <nav class="nav">
+      <a href="#">Dashboard</a><a href="#">Players</a><a href="#">Requests</a><a href="#" class="on">TM Search</a>
+      <a href="#">Signals</a><a href="#">War Room</a><a href="#">Contacts</a>
+    </nav>
+    <div class="rail-foot">Design mock v2<br>Sample data only</div>
+  </aside>
+
+  <div class="main">
+    <div class="mockbar">Design mock &middot; sample players &middot; nothing is sent to Transfermarkt</div>
+    <div class="topbar"><div>BRIT / <strong>TM Search</strong></div><div>Press <strong>/</strong> to search</div></div>
+
+    <main class="canvas">
+      <header class="mast">
+        <div>
+          <p class="kicker">Transfermarkt / Direct search</p>
+          <h1>Find the <span>next player.</span></h1>
+        </div>
+        <div class="live"><i></i><span id="liveTxt">Live from Transfermarkt</span></div>
+      </header>
+
+      <!-- 1 · SMART BAR -->
+      <div class="smart" id="smart">
+        <svg viewBox="0 0 24 24" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="q" autocomplete="off" spellcheck="false" placeholder="Type it like you'd say it: “CF 18-23 under 3m africa left foot”">
+        <button class="clear" id="qclear" aria-label="Clear">×</button>
+        <kbd>/</kbd>
+      </div>
+      <div class="hints"><span>Try</span>
+        <button data-q="rw 20-26 up to 3m left foot">rw 20-26 up to 3m left foot</button>
+        <button data-q="cb under 24 europe 500k-2m">cb under 24 europe 500k-2m</button>
+        <button data-q="free agent cm 25+">free agent cm 25+</button>
+        <button data-q="gk israel contract 2027">gk israel contract 2027</button>
+      </div>
+
+      <!-- 2 · REQUESTS -->
+      <div class="sect-label"><span><b>Start from a request</b> &nbsp;one tap fills everything and searches</span><span id="reqCount"></span></div>
+      <div class="reqs" id="reqs"></div>
+
+      <!-- 3 · WORKSPACE -->
+      <div class="work">
+        <aside class="filters" id="filters">
+          <div class="f-head"><h3>Refine <span id="fcount" style="color:var(--gold)"></span></h3><div style="display:flex;gap:10px;align-items:center"><button id="reset">Reset all</button><button class="f-close" id="fclose" aria-label="Close">×</button></div></div>
+
+          <div class="grp"><div class="lab"><span>Position · tap the pitch</span><span class="val" id="posVal">Any</span></div>
+            <div class="pitch" id="pitch">
+              <svg class="lines" viewBox="0 0 100 105" preserveAspectRatio="none"><rect x="2" y="2" width="96" height="101"/><line x1="2" y1="52" x2="98" y2="52"/><circle cx="50" cy="52" r="10"/><rect x="26" y="2" width="48" height="17"/><rect x="38" y="2" width="24" height="7"/><rect x="26" y="86" width="48" height="17"/><rect x="38" y="96" width="24" height="7"/></svg>
+            </div>
+          </div>
+
+          <div class="grp"><div class="lab"><span>Age</span><span class="val" id="ageVal"></span></div>
+            <div class="range" id="ageR"><div class="track"></div><div class="fill"></div><input type="range" min="14" max="45" value="14"><input type="range" min="14" max="45" value="45"></div>
+            <div class="presets" id="agePre"></div>
+          </div>
+
+          <div class="grp"><div class="lab"><span>Market value</span><span class="val" id="valVal"></span></div>
+            <div class="range" id="valR"><div class="track"></div><div class="fill"></div><input type="range" min="0" max="20" value="0"><input type="range" min="0" max="20" value="20"></div>
+            <div class="presets" id="valPre"></div>
+          </div>
+
+          <div class="grp"><div class="lab"><span>Region</span></div><div class="chips" id="regions"></div>
+            <div style="margin-top:10px"><select class="sel" id="country"><option value="">Any nationality</option></select></div>
+          </div>
+
+          <div class="grp"><div class="lab"><span>Preferred foot</span></div>
+            <div class="seg" id="foot"><button data-v="">Any</button><button data-v="left">Left</button><button data-v="right">Right</button><button data-v="both">Both</button></div>
+          </div>
+
+          <div class="grp"><div class="lab"><span>Contract until</span></div><div class="chips" id="years"></div>
+            <div style="margin-top:8px">
+              <button class="tog" id="tFree"><span class="sw"></span>Without club only</button>
+              <button class="tog" id="tLoan"><span class="sw"></span>Exclude loaned players</button>
+            </div>
+          </div>
+          <div class="f-apply"><button class="btn dark" id="fapply">Show <span id="fapplyN">0</span> players</button></div>
+        </aside>
+
+        <section class="res" id="res">
+          <div class="toolbar">
+            <div class="count"><strong id="n">0</strong><span id="nlbl">players<br>match</span></div>
+            <div class="tools">
+              <button class="btn mfilter" id="openF"><svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M3 4h18M6 12h12M10 20h4"/></svg>Filters <span id="mcount"></span></button>
+              <select class="sort" id="sort"><option value="rel">Sort · TM default</option><option value="vd">Value ↓</option><option value="vu">Value ↑</option><option value="au">Age ↑</option><option value="ad">Age ↓</option><option value="ct">Contract soonest</option></select>
+              <button class="btn soon" title="Phase 2: save this search and get alerts"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg>Save search</button>
+              <div class="viewtog"><button id="vGrid" class="on" aria-label="Cards"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button><button id="vTable" aria-label="Table"><svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button></div>
+            </div>
+          </div>
+          <div class="active" id="active"></div>
+          <div id="notes"></div>
+          <div id="list"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="bulk" id="bulk"><strong id="bn">0</strong><span>selected</span>
+  <button class="btn gold" id="bAdd">Add to shortlist</button><button class="btn" id="bCopy">Copy TM links</button><button class="btn" id="bClear">Clear</button></div>
+<div class="toast" id="toast"></div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer"></aside>
+
+<script>
+/* ═══ SAMPLE DATA (fictional) ═══════════════════════════════════════ */
+const P=[
+ ['Ibrahima Sarr','CF',['RW'],19,'Senegal','🇸🇳','CAF','KAA Gent',3000000,'right',2029,'1.97 m',0],
+ ['Bernard Nkeng','CF',[],20,'Cameroon','🇨🇲','CAF','Standard Liège',2200000,'left',2028,'1.78 m',0],
+ ['Prince Mensah','CF',['LW'],21,'Ghana','🇬🇭','CAF','Viktoria Plzeň',1800000,'right',2027,'1.84 m',0],
+ ['David Koffi','SS',['CF'],22,"Côte d'Ivoire",'🇨🇮','CAF','Servette FC',1500000,'right',2027,'1.80 m',0],
+ ['Aliou Diallo','CF',['RW'],23,'Guinea','🇬🇳','CAF','FC St. Gallen',1200000,'left',2028,'1.86 m',0],
+ ['Rayan Kellal','CF',[],21,'Algeria','🇩🇿','CAF','Queens Park Rangers',2800000,'right',2027,'1.82 m',0],
+ ['Facundo Ferrer','CF',['LW','RW'],18,'Argentina','🇦🇷','CONMEBOL','Argentinos Juniors',2500000,'left',2029,'1.78 m',0],
+ ['Mateo Quiroga','CF',[],22,'Uruguay','🇺🇾','CONMEBOL','Danubio FC',900000,'right',2026,'1.83 m',0],
+ ['Lukas Hartmann','CF',['AM'],24,'Germany','🇩🇪','UEFA','Holstein Kiel',2000000,'right',2027,'1.89 m',0],
+ ['Itay Levi','CF',[],19,'Israel','🇮🇱','UEFA','Hapoel Tel Aviv',1100000,'right',2027,'1.81 m',0],
+ ['Dan Barak','RW',['LW'],24,'Israel','🇮🇱','UEFA',"Hapoel Be'er Sheva",1500000,'left',2027,'1.75 m',0],
+ ['Yoav Cohen','LW',['AM'],20,'Israel','🇮🇱','UEFA','Maccabi Haifa',1000000,'right',2028,'1.77 m',0],
+ ['Oleksiy Hutsul','RW',['CF','LW'],28,'Ukraine','🇺🇦','UEFA',null,3000000,'right',null,'1.87 m',1],
+ ['Jamal Pierre','RW',['LW'],21,'Canada','🇨🇦','CONCACAF','Vancouver Whitecaps',1700000,'left',2027,'1.79 m',0],
+ ['Tomás Barbosa','CM',['DM'],25,'Portugal','🇵🇹','UEFA','Famalicão',2400000,'right',2027,'1.80 m',0],
+ ['Mehdi Ziani','CM',['AM'],22,'Morocco','🇲🇦','CAF','FC Utrecht',1900000,'both',2028,'1.76 m',0],
+ ['Mateo Ruiz','AM',['LW'],19,'Mexico','🇲🇽','CONCACAF','Club León',2200000,'left',2028,'1.73 m',0],
+ ['Kenji Arai','AM',['CM'],23,'Japan','🇯🇵','AFC','Sint-Truiden',1600000,'right',2028,'1.74 m',0],
+ ['Carlos Rueda','DM',['CM'],27,'Colombia','🇨🇴','CONMEBOL',null,1000000,'right',null,'1.82 m',1],
+ ['Min-jae Seo','CB',[],24,'South Korea','🇰🇷','AFC','KSC Lommel',1100000,'right',2027,'1.88 m',0],
+ ['Nikola Stanić','CB',['LB'],21,'Serbia','🇷🇸','UEFA','FK Čukarički',800000,'left',2028,'1.90 m',0],
+ ['Samuel Okafor','CB',[],20,'Nigeria','🇳🇬','CAF','Sheriff Tiraspol',1400000,'right',2029,'1.91 m',0],
+ ['Emre Yılmaz','LB',['LM'],23,'Türkiye','🇹🇷','UEFA','Kasımpaşa',1300000,'left',2027,'1.78 m',0],
+ ['Joel Mensah','RB',['RM'],26,'England','🏴','UEFA','Wycombe Wanderers',700000,'right',2026,'1.80 m',0],
+ ['Hugo Lefèvre','GK',[],26,'France','🇫🇷','UEFA','USL Dunkerque',600000,'right',2027,'1.92 m',0],
+ ['André Silva','GK',[],31,'Portugal','🇵🇹','UEFA','GD Chaves',400000,'right',2026,'1.89 m',0],
+].map((a,i)=>({id:i,name:a[0],pos:a[1],other:a[2],age:a[3],nat:a[4],flag:a[5],conf:a[6],club:a[7],value:a[8],foot:a[9],year:a[10],height:a[11],free:!!a[12],hue:(i*47+20)%360}));
+
+const REQ=[
+ {id:1,club:'Hapoel Haifa',c:'#b64235',pos:'CF',min:18,max:24,fee:'1-1.5m',ceil:3000000,foot:'',eu:false},
+ {id:2,club:'FC Lugano',c:'#4a5f6f',pos:'RW',min:20,max:26,fee:'2-3m',ceil:6000000,foot:'left',eu:false},
+ {id:3,club:'Pogoń Szczecin',c:'#5c6f4a',pos:'CB',min:21,max:27,fee:'600-900',ceil:1800000,foot:'',eu:true},
+ {id:4,club:'Lech Poznań',c:'#a47d43',pos:'GK',min:24,max:33,fee:'<200',ceil:400000,foot:'',eu:false},
+ {id:5,club:'Maccabi Tel Aviv',c:'#7a5c8a',pos:'CM',min:22,max:28,fee:'2-3m',ceil:6000000,foot:'',eu:false},
+];
+const V=[0,50e3,100e3,150e3,200e3,300e3,400e3,500e3,750e3,1e6,1.5e6,2e6,3e6,5e6,8e6,10e6,15e6,20e6,30e6,50e6,200e6];
+const REGIONS=[['UEFA','Europe'],['CAF','Africa'],['AFC','Asia'],['CONMEBOL','S. America'],['CONCACAF','N & C America'],['OFC','Oceania']];
+const YEARS=[2026,2027,2028,2029,2030];
+const PITCH={GK:[50,92],LB:[14,72],CB:[50,76],RB:[86,72],DM:[50,60],CM:[30,48],AM:[50,35],LW:[14,24],RW:[86,24],SS:[66,22],CF:[50,10]};
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const fmt=n=>n>=1e6?'€'+(n/1e6).toFixed(n%1e6?1:0)+'M':n>=1e3?'€'+Math.round(n/1e3)+'k':'€0';
+const DEF={pos:null,aMin:14,aMax:45,vMin:0,vMax:20,conf:null,country:'',foot:'',year:null,free:false,loans:false};
+let S={...DEF}, activeReq=null, view='grid', sort='rel', sel=new Set(), saved=new Set(), shown=12, timer=null;
+
+/* ═══ BUILD STATIC UI ═══════════════════════════════════════════════ */
+$('#reqs').innerHTML=REQ.map(r=>`<button class="req" data-id="${r.id}"><div class="club"><div class="crest" style="background:${r.c}">${r.club.split(' ').map(w=>w[0]).join('').slice(0,2)}</div><div class="nm">${r.club}</div></div>
+ <div class="row"><span class="tag pos">${r.pos}</span><span class="tag">${r.min}–${r.max} yrs</span><span class="tag">fee ${r.fee}</span>${r.foot?`<span class="tag">${r.foot}</span>`:''}${r.eu?'<span class="tag">EU</span>':''}</div></button>`).join('');
+$('#reqCount').textContent=REQ.length+' open requests';
+$('#pitch').insertAdjacentHTML('beforeend',Object.entries(PITCH).map(([k,[x,y]])=>`<button class="dot" data-p="${k}" style="left:${x}%;top:${y}%">${k}</button>`).join(''));
+$('#agePre').innerHTML=[['U21',14,21],['U23',14,23],['22–27',22,27],['28+',28,45]].map(a=>`<button class="chip" data-a="${a[1]}-${a[2]}">${a[0]}</button>`).join('');
+$('#valPre').innerHTML=[['<€500k',0,7],['€500k–1M',7,9],['€1–3M',9,12],['€3–10M',12,15],['€10M+',15,20]].map(a=>`<button class="chip" data-v="${a[1]}-${a[2]}">${a[0]}</button>`).join('');
+$('#regions').innerHTML=REGIONS.map(r=>`<button class="chip" data-r="${r[0]}">${r[1]}</button>`).join('');
+$('#years').innerHTML=YEARS.map(y=>`<button class="chip" data-y="${y}">${y}</button>`).join('');
+const nats=[...new Set(P.map(p=>p.nat))].sort();
+$('#country').insertAdjacentHTML('beforeend',nats.map(n=>`<option>${n}</option>`).join(''));
+
+/* ═══ FILTER ENGINE ═════════════════════════════════════════════════ */
+function matches(p){
+  if(S.pos&&p.pos!==S.pos)return false;
+  if(p.age<S.aMin||(S.aMax<45&&p.age>S.aMax))return false;
+  if(p.value<V[S.vMin])return false;
+  if(S.vMax<20&&p.value>V[S.vMax])return false;
+  if(S.country){if(p.nat!==S.country)return false}else if(S.conf&&p.conf!==S.conf)return false;
+  if(S.foot&&p.foot!==S.foot)return false;
+  if(S.year&&p.year!==S.year)return false;
+  if(S.free&&!p.free)return false;
+  return true;
+}
+function results(){
+  let r=P.filter(matches);
+  const by={vd:(a,b)=>b.value-a.value,vu:(a,b)=>a.value-b.value,au:(a,b)=>a.age-b.age,ad:(a,b)=>b.age-a.age,ct:(a,b)=>(a.year||9999)-(b.year||9999),rel:(a,b)=>b.value-a.value};
+  return r.sort(by[sort]);
+}
+const dirty=()=>JSON.stringify(S)!==JSON.stringify(DEF);
+
+/* ═══ SMART BAR PARSER ══════════════════════════════════════════════ */
+const POSW={gk:'GK',keeper:'GK',goalkeeper:'GK',cb:'CB',defender:'CB',lb:'LB',rb:'RB',dm:'DM',cm:'CM',am:'AM',lw:'LW',rw:'RW',winger:null,ss:'SS',cf:'CF',st:'CF',striker:'CF',forward:'CF'};
+const REGW={africa:'CAF',caf:'CAF',europe:'UEFA',uefa:'UEFA',asia:'AFC',afc:'AFC','south america':'CONMEBOL',conmebol:'CONMEBOL',concacaf:'CONCACAF','north america':'CONCACAF',oceania:'OFC'};
+const num=s=>{const m=String(s).toLowerCase().match(/^€?([\d.]+)\s*(k|m)?$/);if(!m)return null;return parseFloat(m[1])*(m[2]==='m'?1e6:m[2]==='k'?1e3:1)};
+const idxFloor=v=>{let i=0;V.forEach((x,k)=>{if(x<=v)i=k});return i}, idxCeil=v=>{for(let k=0;k<V.length;k++)if(V[k]>=v)return k;return 20};
+function parse(text){
+  const o={...DEF}; let t=' '+text.toLowerCase().replace(/[,·]/g,' ')+' ', hits=0;
+  for(const [k,v] of Object.entries(REGW)){const re=new RegExp('\\s'+k+'\\s');if(re.test(t)){o.conf=v;t=t.replace(re,' ');hits++}}
+  let m;
+  if((m=t.match(/\s(free agents?|without club|no club|free)\s/))&&!/free\s*(foot)/.test(t)){o.free=true;t=t.replace(m[0],' ');hits++}
+  if((m=t.match(/\s(left|right|both)\s*(foot|footed)?\s/))){o.foot=m[1];t=t.replace(m[0],' ');hits++}
+  if((m=t.match(/\s(?:contract|exp|expiring|until)\s*(20\d\d)\s/))){o.year=+m[1];t=t.replace(m[0],' ');hits++}
+  if((m=t.match(/\s(?:u|under\s*)(\d\d)\s/))){o.aMax=+m[1];t=t.replace(m[0],' ');hits++}
+  else if((m=t.match(/\s(\d\d)\s*[-–]\s*(\d\d)\s/))){o.aMin=+m[1];o.aMax=Math.min(45,+m[2]);t=t.replace(m[0],' ');hits++}
+  else if((m=t.match(/\s(\d\d)\s*\+\s/))){o.aMin=+m[1];t=t.replace(m[0],' ');hits++}
+  if((m=t.match(/\s(?:under|up to|max|<|below)\s*€?([\d.]+\s*[km]?)\s/))){const v=num(m[1].replace(/\s/g,''));if(v!=null){o.vMax=idxCeil(v);hits++}t=t.replace(m[0],' ')}
+  else if((m=t.match(/\s€?([\d.]+[km]?)\s*[-–]\s*€?([\d.]+[km]?)\s/))){const a=num(m[1]),b=num(m[2]);if(a!=null&&b!=null){o.vMin=idxFloor(a);o.vMax=idxCeil(b);hits++}t=t.replace(m[0],' ')}
+  else if((m=t.match(/\s(?:over|above|from|>)\s*€?([\d.]+\s*[km]?)\s/))){const v=num(m[1].replace(/\s/g,''));if(v!=null){o.vMin=idxFloor(v);hits++}t=t.replace(m[0],' ')}
+  for(const n of nats){const re=new RegExp('\\s'+n.toLowerCase().replace(/[()]/g,'')+'\\s');if(re.test(t)){o.country=n;t=t.replace(re,' ');hits++;break}}
+  for(const w of t.split(/\s+/)){if(w in POSW&&POSW[w]){o.pos=POSW[w];hits++;break}}
+  return {o,hits};
+}
+function describe(s){
+  const a=[];
+  if(s.pos)a.push(s.pos);
+  if(s.aMin>14||s.aMax<45)a.push(s.aMax>=45?s.aMin+'+':s.aMin<=14?'under '+(s.aMax+1):s.aMin+'-'+s.aMax);
+  if(s.vMin>0||s.vMax<20)a.push(s.vMin>0&&s.vMax<20?fmt(V[s.vMin])+'-'+fmt(V[s.vMax]):s.vMax<20?'up to '+fmt(V[s.vMax]):'from '+fmt(V[s.vMin]));
+  if(s.country)a.push(s.country);else if(s.conf)a.push(s.conf);
+  if(s.foot)a.push(s.foot+' foot');
+  if(s.year)a.push('contract '+s.year);
+  if(s.free)a.push('free agent');
+  return a.join(' · ');
+}
+
+/* ═══ RENDER ════════════════════════════════════════════════════════ */
+function syncControls(){
+  $$('.dot').forEach(d=>d.classList.toggle('on',d.dataset.p===S.pos));
+  $('#posVal').textContent=S.pos||'Any';
+  const [a1,a2]=$$('#ageR input'); a1.value=S.aMin; a2.value=S.aMax;
+  const [v1,v2]=$$('#valR input'); v1.value=S.vMin; v2.value=S.vMax;
+  fill($('#ageR'),14,45,S.aMin,S.aMax); fill($('#valR'),0,20,S.vMin,S.vMax);
+  $('#ageVal').textContent=(S.aMin<=14&&S.aMax>=45)?'Any':S.aMin+' – '+(S.aMax>=45?'45+':S.aMax);
+  $('#valVal').textContent=(S.vMin===0&&S.vMax===20)?'Any':S.vMin===0?'up to '+fmt(V[S.vMax]):S.vMax===20?'from '+fmt(V[S.vMin]):fmt(V[S.vMin])+' – '+fmt(V[S.vMax]);
+  $$('#agePre .chip').forEach(c=>{const [x,y]=c.dataset.a.split('-').map(Number);c.classList.toggle('on',S.aMin===x&&S.aMax===y)});
+  $$('#valPre .chip').forEach(c=>{const [x,y]=c.dataset.v.split('-').map(Number);c.classList.toggle('on',S.vMin===x&&S.vMax===y)});
+  $$('#regions .chip').forEach(c=>c.classList.toggle('on',c.dataset.r===S.conf&&!S.country));
+  $('#country').value=S.country;
+  $$('#foot button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.foot));
+  $$('#years .chip').forEach(c=>c.classList.toggle('on',+c.dataset.y===S.year));
+  $('#tFree').classList.toggle('on',S.free); $('#tLoan').classList.toggle('on',S.loans);
+  $$('.req').forEach(r=>r.classList.toggle('on',activeReq&&+r.dataset.id===activeReq.id));
+}
+function fill(el,min,max,a,b){const f=el.querySelector('.fill');f.style.left=((a-min)/(max-min)*100)+'%';f.style.right=(100-(b-min)/(max-min)*100)+'%'}
+function activeChips(){
+  const c=[];const add=(l,v,fn)=>c.push({l,v,fn});
+  if(S.pos)add('Position',S.pos,()=>S.pos=null);
+  if(S.aMin>14||S.aMax<45)add('Age',$('#ageVal').textContent,()=>{S.aMin=14;S.aMax=45});
+  if(S.vMin>0||S.vMax<20)add('Value',$('#valVal').textContent,()=>{S.vMin=0;S.vMax=20});
+  if(S.country)add('Nationality',S.country,()=>S.country='');else if(S.conf)add('Region',S.conf,()=>S.conf=null);
+  if(S.foot)add('Foot',S.foot,()=>S.foot='');
+  if(S.year)add('Contract',S.year,()=>S.year=null);
+  if(S.free)add('','Without club',()=>S.free=false);
+  if(S.loans)add('','No loans',()=>S.loans=false);
+  return c;
+}
+function fits(p){
+  if(!activeReq)return null;
+  return p.value<=activeReq.ceil&&p.age>=activeReq.min&&p.age<=activeReq.max;
+}
+function avatar(p,cls=''){return `<div class="av ${cls}" style="background:linear-gradient(135deg,hsl(${p.hue} 28% 38%),hsl(${(p.hue+30)%360} 32% 24%))">${p.name.split(' ').map(w=>w[0]).slice(0,2).join('')}<span class="fl">${p.flag}</span></div>`}
+const BM='<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>';
+const CK='<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
+function card(p,i){
+  const f=fits(p);
+  return `<article class="card ${sel.has(p.id)?'sel':''}" data-id="${p.id}" style="animation-delay:${Math.min(i,12)*25}ms">
+   ${p.free?'<span class="badge free">Without club</span>':p.year?`<span class="badge">Contract ${p.year}</span>`:''}
+   <span class="check" data-act="sel">${CK}</span>
+   ${f!==null?`<span class="fit ${f?'':'no'}">${f?'✓ fits request':'~ over budget/age'}</span>`:''}
+   <div class="c-top" style="padding-top:26px">${avatar(p)}<div class="who"><div class="nm">${p.name}</div>
+     <div class="meta"><span class="pill">${p.pos}</span><span class="pill l">${p.age} yrs</span><span class="pill l">${p.nat}</span></div></div></div>
+   <div class="facts"><div class="v"><label>Market value</label><b>${fmt(p.value)}</b></div><div><label>Club</label><b>${p.club||'Without club'}</b></div><div><label>Foot</label><b style="text-transform:capitalize">${p.foot}</b></div></div>
+   <div class="c-act"><button class="ico ${saved.has(p.id)?'saved':''}" data-act="save" title="Add to shortlist">${BM}</button><span class="sp"></span><a class="tm" href="javascript:void 0" data-act="tm">Transfermarkt ↗</a></div></article>`;
+}
+function row(p,i){
+  return `<div class="tr ${sel.has(p.id)?'sel':''}" data-id="${p.id}" style="animation-delay:${Math.min(i,12)*18}ms">
+   <span class="cb" data-act="sel">${CK}</span>
+   <div class="mini">${avatar(p)}<div style="min-width:0"><div class="nm">${p.name}</div></div></div>
+   <span class="pill">${p.pos}</span><span class="m">${p.age} yrs</span>
+   <span class="m t-hide" style="color:var(--ink)">${p.club||'Without club'}</span>
+   <span class="gold">${fmt(p.value)}</span>
+   <span class="m t-hide" style="text-transform:capitalize">${p.foot}</span>
+   <span class="m h-hide t-hide">${p.free?'Free':p.year||'—'}</span><span class="m h-hide t-hide">${p.nat}</span>
+   <span class="acts"><button class="ico ${saved.has(p.id)?'saved':''}" data-act="save">${BM}</button></span></div>`;
+}
+function render(){
+  syncControls();
+  const r=results(), c=activeChips();
+  $('#n').textContent=r.length; $('#nlbl').innerHTML=(r.length===1?'player':'players')+'<br>match';
+  $('#fcount').textContent=c.length?'· '+c.length:''; $('#mcount').textContent=c.length?'('+c.length+')':''; $('#fapplyN').textContent=r.length;
+  $('#active').innerHTML=c.map((x,i)=>`<span class="ach">${x.l?x.l+' <b>'+x.v+'</b>':'<b>'+x.v+'</b>'}<button data-x="${i}" aria-label="Remove">×</button></span>`).join('');
+  $('#active')._c=c;
+  let notes='';
+  if(activeReq){notes=`<p class="note"><b>${activeReq.club} request loaded.</b> Value ceiling = 2× the fee ceiling (${fmt(activeReq.ceil/2)} → ${fmt(activeReq.ceil)}).${activeReq.eu?' EU-only request: Europe selected, check passports manually.':''} Edit any filter and the request detaches.</p>`}
+  $('#notes').innerHTML=notes;
+  const list=$('#list'); const slice=r.slice(0,shown);
+  if(!r.length){list.innerHTML=`<div class="empty"><h4>No players for these filters</h4><p>Try widening the age or value range — the quickest fix is one tap:</p>${c.length?`<button class="btn dark" id="relax">Remove last filter</button>`:''}</div>`}
+  else if(view==='grid'){list.innerHTML=`<div class="grid">${slice.map(card).join('')}</div>`}
+  else{list.innerHTML=`<div class="table"><div class="tr head"><span></span><span>Player</span><span>Pos</span><span>Age</span><span class="t-hide">Club</span><span>Value</span><span class="t-hide">Foot</span><span class="h-hide t-hide">Contract</span><span class="h-hide t-hide">Nation</span><span></span></div>${slice.map(row).join('')}</div>`}
+  if(r.length){
+    const left=r.length-slice.length;
+    list.insertAdjacentHTML('beforeend',`${left>0?`<div class="more"><button class="btn" id="more">Load ${Math.min(25,left)} more</button><span>${slice.length} of ${r.length}</span></div>`:''}<p class="cap">Transfermarkt returns at most 250 results per search · narrow the filters to see the rest</p>`);
+  }
+  const b=sel.size; $('#bn').textContent=b; $('#bulk').classList.toggle('show',b>0);
+}
+function changed(fromBar=false){
+  if(!fromBar&&document.activeElement!==$('#q')){$('#q').value=describe(S);}
+  $('#smart').classList.toggle('has',!!$('#q').value);
+  shown=12; sel.clear();
+  $('#res').classList.add('loading'); $('#liveTxt').textContent='Searching Transfermarkt…';
+  clearTimeout(timer);
+  syncControls();
+  timer=setTimeout(()=>{$('#res').classList.remove('loading');$('#liveTxt').textContent='Live from Transfermarkt · '+(0.8+Math.random()*1.2).toFixed(1)+'s';render()},420);
+  // instant counters while "searching"
+  $('#n').textContent=results().length; $('#fapplyN').textContent=results().length;
+  const c=activeChips(); $('#fcount').textContent=c.length?'· '+c.length:''; $('#mcount').textContent=c.length?'('+c.length+')':'';
+  $('#active').innerHTML=c.map((x,i)=>`<span class="ach">${x.l?x.l+' <b>'+x.v+'</b>':'<b>'+x.v+'</b>'}<button data-x="${i}">×</button></span>`).join(''); $('#active')._c=c;
+}
+const detach=()=>{activeReq=null};
+
+/* ═══ EVENTS ════════════════════════════════════════════════════════ */
+$('#reqs').onclick=e=>{const b=e.target.closest('.req');if(!b)return;const r=REQ.find(x=>x.id==b.dataset.id);
+  if(activeReq&&activeReq.id===r.id){activeReq=null;S={...DEF};changed();return}
+  activeReq=r;S={...DEF,pos:r.pos,aMin:r.min,aMax:r.max,foot:r.foot,vMax:idxCeil(r.ceil),conf:r.eu?'UEFA':null};changed()};
+$('#pitch').onclick=e=>{const d=e.target.closest('.dot');if(!d)return;detach();S.pos=S.pos===d.dataset.p?null:d.dataset.p;changed()};
+function bindRange(id,min,max,ka,kb,gap){
+  const [a,b]=$$('#'+id+' input');
+  const upd=()=>{S[ka]=+a.value;S[kb]=+b.value;detach();changed()};
+  a.oninput=()=>{if(+a.value>+b.value-gap)a.value=+b.value-gap;upd()};
+  b.oninput=()=>{if(+b.value<+a.value+gap)b.value=+a.value+gap;upd()};
+}
+bindRange('ageR',14,45,'aMin','aMax',1); bindRange('valR',0,20,'vMin','vMax',1);
+$('#agePre').onclick=e=>{const c=e.target.closest('.chip');if(!c)return;const [x,y]=c.dataset.a.split('-').map(Number);const on=S.aMin===x&&S.aMax===y;detach();S.aMin=on?14:x;S.aMax=on?45:y;changed()};
+$('#valPre').onclick=e=>{const c=e.target.closest('.chip');if(!c)return;const [x,y]=c.dataset.v.split('-').map(Number);const on=S.vMin===x&&S.vMax===y;detach();S.vMin=on?0:x;S.vMax=on?20:y;changed()};
+$('#regions').onclick=e=>{const c=e.target.closest('.chip');if(!c)return;detach();S.country='';S.conf=S.conf===c.dataset.r?null:c.dataset.r;changed()};
+$('#country').onchange=e=>{detach();S.country=e.target.value;changed()};
+$('#foot').onclick=e=>{const b=e.target.closest('button');if(!b)return;detach();S.foot=b.dataset.v;changed()};
+$('#years').onclick=e=>{const c=e.target.closest('.chip');if(!c)return;detach();S.year=S.year===+c.dataset.y?null:+c.dataset.y;changed()};
+$('#tFree').onclick=()=>{detach();S.free=!S.free;changed()};
+$('#tLoan').onclick=()=>{detach();S.loans=!S.loans;changed()};
+$('#reset').onclick=()=>{detach();S={...DEF};$('#q').value='';changed()};
+$('#active').onclick=e=>{const b=e.target.closest('button');if(!b)return;detach();$('#active')._c[+b.dataset.x].fn();changed()};
+$('#sort').onchange=e=>{sort=e.target.value;render()};
+$('#vGrid').onclick=()=>{view='grid';$('#vGrid').classList.add('on');$('#vTable').classList.remove('on');render()};
+$('#vTable').onclick=()=>{view='table';$('#vTable').classList.add('on');$('#vGrid').classList.remove('on');render()};
+
+// smart bar
+$('#q').addEventListener('input',e=>{
+  const v=e.target.value;$('#smart').classList.toggle('has',!!v);
+  const {o,hits}=parse(v); detach();
+  if(!v.trim()){S={...DEF}}else if(hits){S=o}
+  changed(true);
+});
+$('#qclear').onclick=()=>{$('#q').value='';detach();S={...DEF};changed();$('#q').focus()};
+$$('.hints button').forEach(b=>b.onclick=()=>{$('#q').value=b.dataset.q;$('#q').dispatchEvent(new Event('input'))});
+document.addEventListener('keydown',e=>{if(e.key==='/'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();$('#q').focus()}if(e.key==='Escape'){closeDrawer();closeSheet()}});
+
+// results interactions
+const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1800)};
+$('#list').addEventListener('click',e=>{
+  if(e.target.id==='more'){shown+=25;render();return}
+  if(e.target.id==='relax'){const c=activeChips();if(c.length){detach();c[c.length-1].fn();changed()}return}
+  const el=e.target.closest('[data-id]');if(!el)return;const id=+el.dataset.id;const act=e.target.closest('[data-act]')?.dataset.act;
+  if(act==='save'){saved.has(id)?saved.delete(id):saved.add(id);toast(saved.has(id)?'Added to shortlist':'Removed from shortlist');render();return}
+  if(act==='sel'){sel.has(id)?sel.delete(id):sel.add(id);render();return}
+  if(act==='tm'){toast('Opens Transfermarkt profile');return}
+  openDrawer(id);
+});
+$('#bClear').onclick=()=>{sel.clear();render()};
+$('#bAdd').onclick=()=>{sel.forEach(i=>saved.add(i));toast(sel.size+' players added to shortlist');sel.clear();render()};
+$('#bCopy').onclick=()=>{toast(sel.size+' Transfermarkt links copied')};
+
+// drawer
+function openDrawer(id){
+  const p=P[id];
+  $('#drawer').innerHTML=`<div class="d-hero"><button class="d-x" id="dx">×</button>${avatar(p)}<h2>${p.name}</h2><div class="meta"><span class="pill">${p.pos}</span>${p.other.map(o=>`<span class="pill l">${o}</span>`).join('')}<span class="pill l">${p.nat}</span></div></div>
+   <div class="d-val"><b>${fmt(p.value)}</b><span>Market value</span></div>
+   <div class="d-grid"><div><label>Age</label><b>${p.age} yrs</b></div><div><label>Club</label><b>${p.club||'Without club'}</b></div><div><label>Height</label><b>${p.height}</b></div><div><label>Contract</label><b>${p.free?'—':p.year||'—'}</b></div><div><label>Foot</label><b style="text-transform:capitalize">${p.foot}</b></div><div><label>Region</label><b>${p.conf}</b></div></div>
+   <div class="d-act"><button class="btn dark" id="dsave">${saved.has(id)?'In shortlist ✓':'Add to shortlist'}</button><button class="btn">Open on Transfermarkt ↗</button></div>
+   <p class="d-note">Quick look uses data already in the result row. Foot, agent and full contract come from the profile (phase 2 enrichment).</p>`;
+  $('#drawer').classList.add('show');$('#scrim').classList.add('show');
+  $('#dx').onclick=closeDrawer;
+  $('#dsave').onclick=()=>{saved.add(id);toast('Added to shortlist');$('#dsave').textContent='In shortlist ✓';render()};
+}
+function closeDrawer(){$('#drawer').classList.remove('show');if(!$('#filters').classList.contains('open'))$('#scrim').classList.remove('show')}
+$('#scrim').onclick=()=>{closeDrawer();closeSheet()};
+
+// mobile sheet
+function closeSheet(){$('#filters').classList.remove('open');$('#scrim').classList.remove('show')}
+$('#openF').onclick=()=>{$('#filters').classList.add('open');$('#scrim').classList.add('show')};
+$('#fclose').onclick=closeSheet; $('#fapply').onclick=closeSheet;
+
+// start: load first request so the screen is never empty
+$('#reqs .req').click();
+</script>
+</body>
+</html>
