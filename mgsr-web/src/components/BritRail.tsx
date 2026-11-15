@@ -26,6 +26,7 @@ export type BritRailActive =
   | 'club-change'
   | 'returnees'
   | 'contract-finisher'
+  | 'tm-search'
   | 'war-room'
   | 'war-room-alpha'
   | 'war-room-agents'
@@ -135,6 +136,12 @@ export default function BritRail({ active }: BritRailProps) {
         {!isYouth && (
           <Link href="/requests" className={active === 'requests' ? 'active' : ''}>
             <span>{t('nav_requests')}</span>
+          </Link>
+        )}
+        {/* Transfermarkt direct search — men platform only */}
+        {platform === 'men' && (
+          <Link href="/tm-search" className={active === 'tm-search' || pathname === '/tm-search' ? 'active' : ''}>
+            <span>{t('nav_tm_search')}</span>
           </Link>
         )}
         <Link href="/contacts" className={active === 'contacts' ? 'active' : ''}>

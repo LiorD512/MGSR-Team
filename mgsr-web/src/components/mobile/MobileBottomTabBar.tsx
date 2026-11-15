@@ -93,6 +93,7 @@ export const menMoreItems = [
   // TEMP HIDDEN (user request): { href: '/portfolio', labelKey: 'nav_portfolio' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
+  { href: '/tm-search', labelKey: 'nav_tm_search' },
   // TEMP HIDDEN (user request): { href: '/chat-room', labelKey: 'nav_chat_room' },
 ];
 
