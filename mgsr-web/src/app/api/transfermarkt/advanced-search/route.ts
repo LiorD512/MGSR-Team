@@ -8,7 +8,8 @@ import {
   type TmSearchFilters,
   type TmSearchResult,
 } from '@/lib/tmAdvancedSearch';
-import { getCached, setCache, sanitizeKey } from '@/lib/scrapingCache';
+import { createHash } from 'crypto';
+import { getCached, setCache } from '@/lib/scrapingCache';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -60,7 +61,9 @@ export async function GET(request: NextRequest) {
     };
 
     const refresh = sp.get('refresh') === 'true';
-    const cacheKey = `tm-adv-${sanitizeKey(`${buildSearchBody(filters)}-p${filters.page ?? 1}`)}`;
+    // Hash the FULL filter string. (sanitizeKey truncates to 120 chars, which cut off
+    // value/position/foot filters and made different searches share one cache entry.)
+    const cacheKey = `tm-adv-${createHash('sha1').update(`${buildSearchBody(filters)}|p${filters.page ?? 1}`).digest('hex')}`;
     if (!refresh) {
       const cached = await getCached<TmSearchResult>(cacheKey, CACHE_TTL);
       if (cached) {
