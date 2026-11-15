@@ -39,10 +39,10 @@ interface ClubRequestDoc extends RequestForSearch {
   createdAt?: number;
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-
+// Always same-origin: this route only exists in the Next.js app. The standalone
+// mgsr-backend (NEXT_PUBLIC_BACKEND_URL) does not implement it.
 async function fetchSearch(query: string): Promise<TmSearchResult> {
-  const res = await fetch(`${BACKEND_URL}/api/transfermarkt/advanced-search?${query}`);
+  const res = await fetch(`/api/transfermarkt/advanced-search?${query}`);
   if (!res.ok) {
     let msg = '';
     try { msg = (await res.json())?.error || ''; } catch { /* ignore */ }
