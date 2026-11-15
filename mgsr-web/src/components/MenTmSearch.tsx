@@ -10,6 +10,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import BritRail from '@/components/BritRail';
 import BritPlatformSwitch from '@/components/BritPlatformSwitch';
@@ -28,9 +29,29 @@ import {
 } from '@/lib/tmSearchFromRequest';
 import type { TmSearchPlayer } from '@/lib/tmAdvancedSearch';
 
+/** A player of our roster (Players collection) — used to show who played with a search result. */
+export interface TmRosterPlayer {
+  id: string;
+  fullName?: string;
+  profileImage?: string;
+  positions?: (string | undefined)[];
+  age?: string;
+  marketValue?: string;
+  tmProfile?: string;
+  playerPhoneNumber?: string;
+}
+
+export interface TmTeammateMatch {
+  player: TmRosterPlayer;
+  matchesPlayedTogether: number;
+}
+
 export interface TmRequestCard {
   id: string;
   club: string;
+  /** Club country (English, as stored on the request). Empty = unknown. */
+  country: string;
+  countryFlag?: string;
   logo?: string;
   position: string;
   minAge?: number;
@@ -88,6 +109,11 @@ export interface MenTmSearchProps {
   onAddMany: (players: TmSearchPlayer[]) => void;
   toast: string;
   onToast: (msg: string) => void;
+
+  /** Roster players who played with a searched player, keyed by player URL (loaded when the drawer opens). */
+  teammates: Record<string, TmTeammateMatch[]>;
+  loadingTeammatesUrl: string | null;
+  onLoadTeammates: (playerUrl: string) => void;
   /** Initial results layout (cards by default). */
   defaultView?: 'grid' | 'table';
 }
@@ -187,6 +213,7 @@ export default function MenTmSearch(props: MenTmSearchProps) {
     requests, activeRequest, onSelectRequest, regionOptions, contractYears,
     hasSearched, loading, loadingMore, error, players, totalHits, hasMore, hiddenNoHeight, resultsKey, onLoadMore,
     shortlistUrls, rosterUrls, addingUrl, onAddToShortlist, onAddMany, toast, onToast,
+    teammates, loadingTeammatesUrl, onLoadTeammates,
   } = props;
   const { t, lang, setLang, isRtl } = useLanguage();
 
@@ -195,6 +222,7 @@ export default function MenTmSearch(props: MenTmSearchProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [drawerUrl, setDrawerUrl] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [country, setCountry] = useState<string | null>(null);
   const isMobileSheet = useMediaQuery('(max-width: 900px)');
   const barRef = useRef<HTMLInputElement>(null);
 
@@ -254,6 +282,30 @@ export default function MenTmSearch(props: MenTmSearchProps) {
     return c;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, ageLabel, valLabel, hLabel, countryName, t]);
+
+  // Requests grouped by club country (biggest first). The loaded request's country stays selected.
+  const countryGroups = useMemo(() => {
+    const map = new Map<string, TmRequestCard[]>();
+    for (const r of requests) {
+      const key = r.country || '';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return Array.from(map.entries())
+      .map(([key, items]) => ({
+        key,
+        label: key ? getCountryDisplayName(key, isRtl) : t('tm_search_requests_other'),
+        flag: items.find((r) => r.countryFlag)?.countryFlag,
+        items,
+        hasActive: !!activeRequest && items.some((r) => r.id === activeRequest.id),
+      }))
+      .sort((a, b) => (a.key === '' ? 1 : b.key === '' ? -1 : b.items.length - a.items.length || a.label.localeCompare(b.label)));
+  }, [requests, activeRequest, isRtl, t]);
+  const selectedGroup = countryGroups.find((g) => g.key === country) ?? null;
+  useEffect(() => {
+    const g = countryGroups.find((x) => x.hasActive);
+    if (g) setCountry(g.key);
+  }, [countryGroups]);
 
   const sorted = useMemo(() => sortPlayers(players, sort), [players, sort]);
   const drawerPlayer = drawerUrl ? players.find((p) => p.playerUrl === drawerUrl) ?? null : null;
@@ -437,31 +489,46 @@ export default function MenTmSearch(props: MenTmSearchProps) {
               {HINTS.map((h) => <button key={h} type="button" onClick={() => onBarChange(h)}>{h}</button>)}
             </div>
 
-            {/* Requests */}
+            {/* Requests: pick a country first, then one of its open requests */}
             {requests.length > 0 && (
               <>
                 <div className="ts-sect">
                   <span><b>{t('tm_search_requests_title')}</b> &nbsp;{t('tm_search_requests_hint')}</span>
                   <span>{t('tm_search_requests_count').replace('{n}', String(requests.length))}</span>
                 </div>
-                <div className="ts-reqs">
-                  {requests.map((r) => (
-                    <button key={r.id} type="button" className={`ts-req${activeRequest?.id === r.id ? ' on' : ''}`}
-                      data-tag={t('tm_search_loaded_tag')} onClick={() => onSelectRequest(r.id)}>
-                      <div className="club">
-                        <div className="ts-crest">{r.logo ? <img src={r.logo} alt="" /> : initials(r.club)}</div>
-                        <div className="nm">{r.club}</div>
-                      </div>
-                      <div className="row">
-                        <span className="ts-tag pos">{r.position}</span>
-                        {(r.minAge || r.maxAge) ? <span className="ts-tag">{t('players_age_display').replace('{age}', `${r.minAge ?? ''}–${r.maxAge ?? ''}`)}</span> : null}
-                        {r.fee ? <span className="ts-tag">{r.fee}</span> : null}
-                        {r.foot ? <span className="ts-tag">{r.foot}</span> : null}
-                        {r.euOnly ? <span className="ts-tag">EU</span> : null}
-                      </div>
+                <div className="ts-countries" role="tablist" aria-label={t('tm_search_requests_title')}>
+                  {countryGroups.map((g) => (
+                    <button key={g.key} type="button" role="tab" aria-selected={country === g.key}
+                      className={`ts-country${country === g.key ? ' on' : ''}${g.hasActive ? ' has-active' : ''}`}
+                      onClick={() => setCountry(country === g.key ? null : g.key)}>
+                      {g.flag ? <img src={g.flag} alt="" /> : <i aria-hidden />}
+                      <span>{g.label}</span>
+                      <em>{g.items.length}</em>
                     </button>
                   ))}
                 </div>
+                {selectedGroup ? (
+                  <div className="ts-reqs">
+                    {selectedGroup.items.map((r) => (
+                      <button key={r.id} type="button" className={`ts-req${activeRequest?.id === r.id ? ' on' : ''}`}
+                        data-tag={t('tm_search_loaded_tag')} onClick={() => onSelectRequest(r.id)}>
+                        <div className="club">
+                          <div className="ts-crest">{r.logo ? <img src={r.logo} alt="" /> : initials(r.club)}</div>
+                          <div className="nm">{r.club}</div>
+                        </div>
+                        <div className="row">
+                          <span className="ts-tag pos">{r.position}</span>
+                          {(r.minAge || r.maxAge) ? <span className="ts-tag">{t('players_age_display').replace('{age}', `${r.minAge ?? ''}–${r.maxAge ?? ''}`)}</span> : null}
+                          {r.fee ? <span className="ts-tag">{r.fee}</span> : null}
+                          {r.foot ? <span className="ts-tag">{r.foot}</span> : null}
+                          {r.euOnly ? <span className="ts-tag">EU</span> : null}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="ts-pickhint">{t('tm_search_requests_pick')}</p>
+                )}
               </>
             )}
 
@@ -583,7 +650,9 @@ export default function MenTmSearch(props: MenTmSearchProps) {
       <aside className={`ts-drawer${drawerPlayer ? ' show' : ''}`} aria-hidden={!drawerPlayer}>
         {drawerPlayer && (
           <PlayerDrawer p={drawerPlayer} saved={shortlistUrls.has(drawerPlayer.playerUrl)} inRoster={rosterUrls.has(drawerPlayer.playerUrl)}
-            adding={addingUrl === drawerPlayer.playerUrl} onClose={() => setDrawerUrl(null)} onSave={onAddToShortlist} />
+            adding={addingUrl === drawerPlayer.playerUrl} onClose={() => setDrawerUrl(null)} onSave={onAddToShortlist}
+            mates={teammates[drawerPlayer.playerUrl]} loadingMates={loadingTeammatesUrl === drawerPlayer.playerUrl}
+            onLoadMates={onLoadTeammates} />
         )}
       </aside>
     </div>
@@ -697,10 +766,54 @@ const ResultRow = memo(function ResultRow({ p, i, sel, saved, inRoster, onSel, o
   );
 });
 
+const WaIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16" fill="currentColor"><path d="M17.5 14.4c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35z" /></svg>
+);
+
+/** Roster players who played with the opened player: the quickest way to find a contact. */
+function RosterMates({ p, mates, loading }: { p: TmSearchPlayer; mates?: TmTeammateMatch[]; loading: boolean }) {
+  const { t, isRtl } = useLanguage();
+  return (
+    <section className="ts-mates" aria-label={t('releases_roster_teammates_tap')}>
+      <h3>{t('releases_roster_teammates_tap')}</h3>
+      {loading || mates === undefined ? (
+        <p className="ts-mates-msg">{t('releases_roster_teammates_loading')}</p>
+      ) : mates.length === 0 ? (
+        <p className="ts-mates-msg">{t('releases_no_roster_teammates')}</p>
+      ) : (
+        mates.map((m) => {
+          const firstName = (m.player.fullName || '').split(' ')[0] || '';
+          const text = `Hey ${firstName},\nHope everything is well at your side.\nI need your help with something.\nAny chance you have ${p.playerName || ''} contact number?\nThank you!`;
+          const wa = m.player.playerPhoneNumber
+            ? `https://wa.me/${m.player.playerPhoneNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`
+            : null;
+          return (
+            <div className="ts-mate" key={m.player.id}>
+              <Link href={`/players/${m.player.id}?from=/tm-search`} className="who">
+                <img src={m.player.profileImage || 'https://via.placeholder.com/40'} alt="" loading="lazy" decoding="async" />
+                <div>
+                  <b>{m.player.fullName || (isRtl ? 'לא ידוע' : 'Unknown')}</b>
+                  <span>{m.player.positions?.filter(Boolean).join(', ') || '—'} · {m.player.age ? t('players_age_display').replace('{age}', m.player.age) : '—'}</span>
+                </div>
+              </Link>
+              <span className="together">{t('releases_games_together').replace('{n}', String(m.matchesPlayedTogether))}</span>
+              {wa && <a className="wa" href={wa} target="_blank" rel="noopener noreferrer" title={`WhatsApp ${m.player.fullName || ''}`} aria-label={`WhatsApp ${m.player.fullName || ''}`}><WaIcon /></a>}
+            </div>
+          );
+        })
+      )}
+    </section>
+  );
+}
+
 function PlayerDrawer({
-  p, saved, inRoster, adding, onClose, onSave,
-}: { p: TmSearchPlayer; saved: boolean; inRoster: boolean; adding: boolean; onClose: () => void; onSave: (p: TmSearchPlayer) => void }) {
+  p, saved, inRoster, adding, onClose, onSave, mates, loadingMates, onLoadMates,
+}: {
+  p: TmSearchPlayer; saved: boolean; inRoster: boolean; adding: boolean; onClose: () => void; onSave: (p: TmSearchPlayer) => void;
+  mates?: TmTeammateMatch[]; loadingMates: boolean; onLoadMates: (playerUrl: string) => void;
+}) {
   const { t } = useLanguage();
+  useEffect(() => { onLoadMates(p.playerUrl); }, [p.playerUrl, onLoadMates]);
   const nat = p.playerNationalities.length ? p.playerNationalities.join(' / ') : p.playerNationality;
   return (
     <>
@@ -715,6 +828,7 @@ function PlayerDrawer({
         </div>
       </div>
       <div className="ts-dval"><b>{p.marketValue || '—'}</b><span>{t('returnee_market_value')}</span></div>
+      <RosterMates p={p} mates={mates} loading={loadingMates} />
       <div className="ts-dgrid">
         <div><label>{t('releases_age')}</label><b>{p.playerAge ? t('players_age_display').replace('{age}', p.playerAge) : '—'}</b></div>
         <div><label>{t('returnee_current_club')}</label><b>{p.clubJoinedName || t('tm_search_without_club')}</b></div>

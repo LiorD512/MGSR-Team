@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { callShortlistAdd } from '@/lib/callables';
-import { extractPlayerIdFromUrl, type Confederation } from '@/lib/api';
+import { extractPlayerIdFromUrl, getTeammates, type Confederation } from '@/lib/api';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { enrichShortlistInstagram } from '@/lib/outreach';
 import {
@@ -21,7 +21,7 @@ import {
   type TmSearchForm,
 } from '@/lib/tmSearchFromRequest';
 import type { TmSearchPlayer, TmSearchResult } from '@/lib/tmAdvancedSearch';
-import MenTmSearch, { type TmActiveRequest, type TmRequestCard } from '@/components/MenTmSearch';
+import MenTmSearch, { type TmActiveRequest, type TmRequestCard, type TmRosterPlayer, type TmTeammateMatch } from '@/components/MenTmSearch';
 import BritLoader from '@/components/BritLoader';
 
 const REGION_OPTIONS: { value: Confederation; key: string }[] = [
@@ -39,6 +39,9 @@ interface ClubRequestDoc extends RequestForSearch {
   id: string;
   clubName?: string;
   clubLogo?: string;
+  clubCountry?: string;
+  clubCountryFlag?: string;
+  status?: string;
   createdAt?: number;
 }
 
@@ -80,7 +83,10 @@ export default function TmSearchPage() {
   const [resultsKey, setResultsKey] = useState(0);
 
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
-  const [rosterIds, setRosterIds] = useState<Set<string>>(new Set());
+  const [rosterPlayers, setRosterPlayers] = useState<TmRosterPlayer[]>([]);
+  const [teammates, setTeammates] = useState<Record<string, TmTeammateMatch[]>>({});
+  const [loadingTeammatesUrl, setLoadingTeammatesUrl] = useState<string | null>(null);
+  const teammatesRequested = useRef<Set<string>>(new Set());
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
   const [toast, setToast] = useState('');
 
@@ -122,15 +128,15 @@ export default function TmSearchPage() {
   useEffect(() => {
     if (!user) return;
     const unsub = onSnapshot(collection(db, 'Players'), (snap) => {
-      const ids = new Set<string>();
-      snap.docs.forEach((d) => {
-        const id = extractPlayerIdFromUrl(d.data().tmProfile as string | undefined);
-        if (id) ids.add(id);
-      });
-      setRosterIds(ids);
+      setRosterPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() } as TmRosterPlayer)));
     }, () => {});
     return () => unsub();
   }, [user]);
+
+  const rosterIds = useMemo(
+    () => new Set(rosterPlayers.map((p) => extractPlayerIdFromUrl(p.tmProfile)).filter((x): x is string => !!x)),
+    [rosterPlayers]
+  );
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -247,10 +253,12 @@ export default function TmSearchPage() {
   const requestCards: TmRequestCard[] = useMemo(
     () =>
       requests
-        .filter((r) => !!r.position)
+        .filter((r) => !!r.position && (r.status || 'pending') === 'pending')
         .map((r) => ({
           id: r.id,
           club: r.clubName || '—',
+          country: r.clubCountry?.trim() || '',
+          countryFlag: r.clubCountryFlag?.startsWith('http') ? r.clubCountryFlag : undefined,
           logo: r.clubLogo,
           position: (r.position || '').toUpperCase(),
           minAge: r.ageDoesntMatter ? undefined : r.minAge,
@@ -340,6 +348,33 @@ export default function TmSearchPage() {
     showToast(t('tm_search_toast_added_n').replace('{n}', String(added)));
   }, [addOne, rosterIds, showToast, t]);
 
+  // Roster players who played with a searched player (same logic as Contract Finisher / Releases).
+  const loadTeammates = useCallback(async (playerUrl: string) => {
+    if (!playerUrl || rosterPlayers.length === 0 || teammatesRequested.current.has(playerUrl)) return;
+    teammatesRequested.current.add(playerUrl);
+    setLoadingTeammatesUrl(playerUrl);
+    try {
+      const list = await getTeammates(playerUrl);
+      const byId = new Map(rosterPlayers.map((p) => [extractPlayerIdFromUrl(p.tmProfile) ?? '', p]));
+      const matches: TmTeammateMatch[] = list
+        .map((tm) => {
+          const rp = byId.get(extractPlayerIdFromUrl(tm.tmProfileUrl) ?? '');
+          return rp ? { player: rp, matchesPlayedTogether: tm.matchesPlayedTogether } : null;
+        })
+        .filter((m): m is TmTeammateMatch => m != null)
+        .sort((a, b) => b.matchesPlayedTogether - a.matchesPlayedTogether);
+      setTeammates((prev) => ({ ...prev, [playerUrl]: matches }));
+    } catch (err) {
+      console.error('Teammates lookup failed:', err);
+      teammatesRequested.current.delete(playerUrl); // allow a retry on the next open
+      setTeammates((prev) => ({ ...prev, [playerUrl]: [] }));
+    } finally {
+      setLoadingTeammatesUrl((cur) => (cur === playerUrl ? null : cur));
+    }
+  }, [rosterPlayers]);
+
+  const onLoadTeammates = useCallback((url: string) => { void loadTeammates(url); }, [loadTeammates]);
+
   // Match shortlist / roster by Transfermarkt player id (URL slugs can differ).
   const shortlistIds = useMemo(
     () => new Set(Array.from(shortlistUrls).map((u) => extractPlayerIdFromUrl(u)).filter((x): x is string => !!x)),
@@ -386,6 +421,9 @@ export default function TmSearchPage() {
       onAddMany={addMany}
       toast={toast}
       onToast={showToast}
+      teammates={teammates}
+      loadingTeammatesUrl={loadingTeammatesUrl}
+      onLoadTeammates={onLoadTeammates}
     />
   );
 }

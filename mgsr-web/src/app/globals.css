@@ -6985,8 +6985,18 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .ts-hints button:hover{border-color:var(--gold);color:var(--gold)}
 .brit-room .ts-sect{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:26px 0 10px;font:10px/1.3 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .brit-room .ts-sect b{color:var(--ink);font-weight:500}
-.brit-room .ts-reqs{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 12px;scroll-snap-type:x proximity;scrollbar-width:thin}
-.brit-room .ts-req{flex:none;width:230px;text-align:start;scroll-snap-align:start;padding:14px 14px 12px;background:var(--card);border:1px solid var(--line);position:relative;transition:.18s;cursor:pointer;color:var(--ink)}
+.brit-room .ts-reqs{display:flex;flex-wrap:wrap;gap:12px;padding:2px 2px 12px}
+.brit-room .ts-countries{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.brit-room .ts-country{display:inline-flex;align-items:center;gap:9px;height:38px;padding:0 12px 0 10px;border:1px solid var(--line);background:#fff;color:var(--ink);font:600 12px/1 var(--body);cursor:pointer;transition:.15s}
+.brit-room .ts-country:hover{border-color:var(--gold-soft)}
+.brit-room .ts-country img{width:20px;height:20px;border-radius:50%;object-fit:cover;flex:none}
+.brit-room .ts-country i{width:20px;height:20px;border-radius:50%;background:var(--paper-2);flex:none}
+.brit-room .ts-country em{font:500 10px/1 var(--mono);font-style:normal;color:var(--muted);padding:4px 6px;background:var(--paper)}
+.brit-room .ts-country.on{background:var(--black);border-color:var(--black);color:var(--paper)}
+.brit-room .ts-country.on em{background:rgba(243,240,232,.14);color:var(--gold-soft)}
+.brit-room .ts-country.has-active:not(.on){border-color:var(--gold)}
+.brit-room .ts-pickhint{margin:0 0 6px;color:var(--muted);font:10px/1.4 var(--mono);letter-spacing:.04em}
+.brit-room .ts-req{flex:none;width:230px;text-align:start;padding:14px 14px 12px;background:var(--card);border:1px solid var(--line);position:relative;transition:.18s;cursor:pointer;color:var(--ink)}
 .brit-room .ts-req:hover{border-color:var(--gold-soft);transform:translateY(-2px)}
 .brit-room .ts-req.on{background:var(--black);color:var(--paper);border-color:var(--black)}
 .brit-room .ts-req.on::after{content:attr(data-tag);position:absolute;top:10px;inset-inline-end:10px;font:8px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--gold-soft)}
@@ -7167,6 +7177,18 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .ts-dval{padding:18px 24px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line)}
 .brit-room .ts-dval b{font:500 42px/1 var(--display);color:var(--gold)}
 .brit-room .ts-dval span{font:9px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.brit-room .ts-mates{padding:16px 24px;border-bottom:1px solid var(--line);background:rgba(201,166,107,.14)}
+.brit-room .ts-mates h3{margin:0 0 10px;font:9px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.brit-room .ts-mates-msg{margin:0;color:var(--muted);font:11px/1.5 var(--mono);letter-spacing:.03em}
+.brit-room .ts-mate{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line-2)}
+.brit-room .ts-mate:first-of-type{border-top:0}
+.brit-room .ts-mate .who{display:flex;align-items:center;gap:11px;flex:1;min-width:0;color:inherit;text-decoration:none}
+.brit-room .ts-mate img{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;background:var(--paper-2)}
+.brit-room .ts-mate b{display:block;font:600 13px/1.2 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brit-room .ts-mate span{display:block;font:10px/1.3 var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brit-room .ts-mate .together{flex:none;font:9px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);padding:5px 7px;background:#fff;border:1px solid var(--line)}
+.brit-room .ts-mate .wa{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#25d366;color:#fff}
+.brit-room .ts-mate .wa:hover{filter:brightness(.92)}
 .brit-room .ts-dgrid{display:grid;grid-template-columns:1fr 1fr}
 .brit-room .ts-dgrid div{padding:14px 24px;border-bottom:1px solid var(--line-2);border-inline-end:1px solid var(--line-2)}
 .brit-room .ts-dgrid label{display:block;font:8px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
