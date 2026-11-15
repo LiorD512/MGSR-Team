@@ -78,6 +78,7 @@ h1 span{color:var(--gold)}
 .req .row{display:flex;gap:6px;flex-wrap:wrap}
 .tag{font:9px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:5px 7px;border:1px solid var(--line);color:var(--muted)}
 .req.on .tag{border-color:var(--dark-line);color:var(--muted-2)}
+.req.on .tag.pos{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--black)}
 .tag.pos{background:var(--gold-soft);color:var(--black);border-color:var(--gold-soft);font-weight:500}
 
 /* ── workspace ─────────────────────────────────────── */
@@ -164,7 +165,7 @@ h1 span{color:var(--gold)}
 .card.sel{outline:2px solid var(--gold);outline-offset:-2px}
 .c-top{display:flex;gap:14px;padding:16px 16px 12px;align-items:center}
 .av{position:relative;width:62px;height:62px;border-radius:50%;flex:none;display:grid;place-items:center;font:500 22px/1 var(--display);color:#fff;letter-spacing:.02em}
-.av .fl{position:absolute;right:-4px;bottom:-4px;width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid var(--card);display:grid;place-items:center;font-size:14px;line-height:1}
+.av .fl{position:absolute;right:-4px;bottom:-4px;width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid var(--card);overflow:hidden;line-height:0}
 .who{min-width:0}
 .nm{font:600 15px/1.15 var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
@@ -205,7 +206,7 @@ h1 span{color:var(--gold)}
 .tr .nm{font-size:13px}
 .tr .mini{display:flex;align-items:center;gap:10px;min-width:0}
 .tr .av{width:32px;height:32px;font-size:12px}
-.tr .av .fl{width:15px;height:15px;font-size:9px;right:-3px;bottom:-3px;border-width:1px}
+.tr .av .fl{width:15px;height:15px;right:-3px;bottom:-3px;border-width:1px}
 .tr .gold{font:500 16px/1 var(--display);color:var(--gold)}
 .tr .m{font:11px/1.2 var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tr .cb{width:18px;height:18px;border:1.5px solid var(--line);background:#fff;display:grid;place-items:center}
@@ -241,7 +242,7 @@ h1 span{color:var(--gold)}
 .drawer.show{transform:none}
 .d-hero{padding:28px 24px 22px;background:var(--black);color:var(--paper);position:relative}
 .d-hero .av{width:84px;height:84px;font-size:30px;margin-bottom:16px}
-.d-hero .av .fl{width:30px;height:30px;font-size:18px}
+.d-hero .av .fl{width:30px;height:30px;border-color:var(--black)}
 .d-hero h2{margin:0 0 8px;font:500 32px/1 var(--display);text-transform:uppercase}
 .d-hero .meta .pill.l{border-color:var(--dark-line);color:var(--muted-2)}
 .d-x{position:absolute;top:14px;inset-inline-end:14px;width:34px;height:34px;border:1px solid var(--dark-line);border-radius:50%;font:20px/1 var(--display);color:var(--paper)}
@@ -424,6 +425,8 @@ const P=[
  ['André Silva','GK',[],31,'Portugal','🇵🇹','UEFA','GD Chaves',400000,'right',2026,'1.89 m',0],
 ].map((a,i)=>({id:i,name:a[0],pos:a[1],other:a[2],age:a[3],nat:a[4],flag:a[5],conf:a[6],club:a[7],value:a[8],foot:a[9],year:a[10],height:a[11],free:!!a[12],hue:(i*47+20)%360}));
 
+const ISO={'Senegal':'sn','Cameroon':'cm','Ghana':'gh',"Côte d'Ivoire":'ci','Guinea':'gn','Algeria':'dz','Argentina':'ar','Uruguay':'uy','Germany':'de','Israel':'il','Ukraine':'ua','Canada':'ca','Portugal':'pt','Morocco':'ma','Mexico':'mx','Japan':'jp','Colombia':'co','South Korea':'kr','Serbia':'rs','Nigeria':'ng','Türkiye':'tr','England':'gb-eng','France':'fr'};
+const flagImg=n=>`<img src="https://flagcdn.com/w40/${ISO[n]}.png" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
 const REQ=[
  {id:1,club:'Hapoel Haifa',c:'#b64235',pos:'CF',min:18,max:24,fee:'1-1.5m',ceil:3000000,foot:'',eu:false},
  {id:2,club:'FC Lugano',c:'#4a5f6f',pos:'RW',min:20,max:26,fee:'2-3m',ceil:6000000,foot:'left',eu:false},
@@ -540,7 +543,7 @@ function fits(p){
   if(!activeReq)return null;
   return p.value<=activeReq.ceil&&p.age>=activeReq.min&&p.age<=activeReq.max;
 }
-function avatar(p,cls=''){return `<div class="av ${cls}" style="background:linear-gradient(135deg,hsl(${p.hue} 28% 38%),hsl(${(p.hue+30)%360} 32% 24%))">${p.name.split(' ').map(w=>w[0]).slice(0,2).join('')}<span class="fl">${p.flag}</span></div>`}
+function avatar(p,cls=''){return `<div class="av ${cls}" style="background:linear-gradient(135deg,hsl(${p.hue} 28% 38%),hsl(${(p.hue+30)%360} 32% 24%))">${p.name.split(' ').map(w=>w[0]).slice(0,2).join('')}<span class="fl">${flagImg(p.nat)}</span></div>`}
 const BM='<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>';
 const CK='<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
 function card(p,i){
@@ -548,11 +551,11 @@ function card(p,i){
   return `<article class="card ${sel.has(p.id)?'sel':''}" data-id="${p.id}" style="animation-delay:${Math.min(i,12)*25}ms">
    ${p.free?'<span class="badge free">Without club</span>':p.year?`<span class="badge">Contract ${p.year}</span>`:''}
    <span class="check" data-act="sel">${CK}</span>
-   ${f!==null?`<span class="fit ${f?'':'no'}">${f?'✓ fits request':'~ over budget/age'}</span>`:''}
+   ${f!==null?`<span class="fit ${f?'':'no'}">${f?'<svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg> fits request':'over budget / age'}</span>`:''}
    <div class="c-top" style="padding-top:26px">${avatar(p)}<div class="who"><div class="nm">${p.name}</div>
      <div class="meta"><span class="pill">${p.pos}</span><span class="pill l">${p.age} yrs</span><span class="pill l">${p.nat}</span></div></div></div>
    <div class="facts"><div class="v"><label>Market value</label><b>${fmt(p.value)}</b></div><div><label>Club</label><b>${p.club||'Without club'}</b></div><div><label>Foot</label><b style="text-transform:capitalize">${p.foot}</b></div></div>
-   <div class="c-act"><button class="ico ${saved.has(p.id)?'saved':''}" data-act="save" title="Add to shortlist">${BM}</button><span class="sp"></span><a class="tm" href="javascript:void 0" data-act="tm">Transfermarkt ↗</a></div></article>`;
+   <div class="c-act"><button class="ico ${saved.has(p.id)?'saved':''}" data-act="save" title="Add to shortlist">${BM}</button><span class="sp"></span><a class="tm" href="javascript:void 0" data-act="tm">Transfermarkt <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="display:inline;vertical-align:-1px"><path d="M7 17L17 7M8 7h9v9"/></svg></a></div></article>`;
 }
 function row(p,i){
   return `<div class="tr ${sel.has(p.id)?'sel':''}" data-id="${p.id}" style="animation-delay:${Math.min(i,12)*18}ms">
@@ -573,7 +576,7 @@ function render(){
   $('#active').innerHTML=c.map((x,i)=>`<span class="ach">${x.l?x.l+' <b>'+x.v+'</b>':'<b>'+x.v+'</b>'}<button data-x="${i}" aria-label="Remove">×</button></span>`).join('');
   $('#active')._c=c;
   let notes='';
-  if(activeReq){notes=`<p class="note"><b>${activeReq.club} request loaded.</b> Value ceiling = 2× the fee ceiling (${fmt(activeReq.ceil/2)} → ${fmt(activeReq.ceil)}).${activeReq.eu?' EU-only request: Europe selected, check passports manually.':''} Edit any filter and the request detaches.</p>`}
+  if(activeReq){notes=`<p class="note"><b>${activeReq.club} request loaded.</b> Value ceiling = 2× the fee ceiling (${fmt(activeReq.ceil/2)} to ${fmt(activeReq.ceil)}).${activeReq.eu?' EU-only request: Europe selected, check passports manually.':''} Edit any filter and the request detaches.</p>`}
   $('#notes').innerHTML=notes;
   const list=$('#list'); const slice=r.slice(0,shown);
   if(!r.length){list.innerHTML=`<div class="empty"><h4>No players for these filters</h4><p>Try widening the age or value range — the quickest fix is one tap:</p>${c.length?`<button class="btn dark" id="relax">Remove last filter</button>`:''}</div>`}
@@ -658,11 +661,11 @@ function openDrawer(id){
   $('#drawer').innerHTML=`<div class="d-hero"><button class="d-x" id="dx">×</button>${avatar(p)}<h2>${p.name}</h2><div class="meta"><span class="pill">${p.pos}</span>${p.other.map(o=>`<span class="pill l">${o}</span>`).join('')}<span class="pill l">${p.nat}</span></div></div>
    <div class="d-val"><b>${fmt(p.value)}</b><span>Market value</span></div>
    <div class="d-grid"><div><label>Age</label><b>${p.age} yrs</b></div><div><label>Club</label><b>${p.club||'Without club'}</b></div><div><label>Height</label><b>${p.height}</b></div><div><label>Contract</label><b>${p.free?'—':p.year||'—'}</b></div><div><label>Foot</label><b style="text-transform:capitalize">${p.foot}</b></div><div><label>Region</label><b>${p.conf}</b></div></div>
-   <div class="d-act"><button class="btn dark" id="dsave">${saved.has(id)?'In shortlist ✓':'Add to shortlist'}</button><button class="btn">Open on Transfermarkt ↗</button></div>
+   <div class="d-act"><button class="btn dark" id="dsave">${saved.has(id)?'In shortlist':'Add to shortlist'}</button><button class="btn">Open on Transfermarkt</button></div>
    <p class="d-note">Quick look uses data already in the result row. Foot, agent and full contract come from the profile (phase 2 enrichment).</p>`;
   $('#drawer').classList.add('show');$('#scrim').classList.add('show');
   $('#dx').onclick=closeDrawer;
-  $('#dsave').onclick=()=>{saved.add(id);toast('Added to shortlist');$('#dsave').textContent='In shortlist ✓';render()};
+  $('#dsave').onclick=()=>{saved.add(id);toast('Added to shortlist');$('#dsave').textContent='In shortlist';render()};
 }
 function closeDrawer(){$('#drawer').classList.remove('show');if(!$('#filters').classList.contains('open'))$('#scrim').classList.remove('show')}
 $('#scrim').onclick=()=>{closeDrawer();closeSheet()};
