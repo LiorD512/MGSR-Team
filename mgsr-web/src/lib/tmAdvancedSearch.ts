@@ -4,7 +4,7 @@
  * Verified behaviour (Nov 2026):
  *  - The search is a stateless POST of `Detailsuche[...]` fields; pagination is the
  *    same POST sent to `...suche?page=N` (no cookie / session needed).
- *  - 25 rows per page, TM caps every search at 250 hits (10 pages).
+ *  - 25 rows per TM page, TM caps every search at 250 hits (10 TM pages). We serve 50 per page (2 TM pages).
  *  - Age fields MUST be sent, otherwise TM answers "0 Hits".
  *  - Height (minGroesse / maxGroesse, cm) is only applied when both bounds are sent.
  *  - Table columns vary with the filters (e.g. a "Contract" column, no "Club"
@@ -15,7 +15,10 @@ import { fetchHtmlWithRetry, makeAbsoluteUrl, convertPosition } from './transfer
 
 const SEARCH_URL = 'https://www.transfermarkt.com/detailsuche/spielerdetail/suche';
 
-export const TM_SEARCH_PAGE_SIZE = 25;
+/** Rows Transfermarkt returns per page (fixed by TM). */
+export const TM_ROWS_PER_TM_PAGE = 25;
+/** Players we return per page: two TM pages. */
+export const TM_SEARCH_PAGE_SIZE = 50;
 export const TM_SEARCH_MAX_HITS = 250;
 
 /** Our position codes -> Transfermarkt `hauptposition_id` (advanced-search form ids). */
@@ -96,7 +99,9 @@ export interface TmSearchResult {
   players: TmSearchPlayer[];
   /** Total hits reported by TM (already capped to 250 by TM). */
   totalHits: number;
+  /** Our page (50 players). */
   page: number;
+  /** Number of our pages (50 players each). */
   pageCount: number;
   hasMore: boolean;
   /** Players dropped from this page because TM lists no height for them (only when a height filter is set). */
@@ -254,19 +259,44 @@ export function parseSearchResults(html: string, page: number): TmSearchResult {
     });
   });
 
-  const pageCount = Math.max(1, Math.min(10, Math.ceil(Math.min(totalHits, TM_SEARCH_MAX_HITS) / TM_SEARCH_PAGE_SIZE)));
+  const pageCount = Math.max(1, Math.min(10, Math.ceil(Math.min(totalHits, TM_SEARCH_MAX_HITS) / TM_ROWS_PER_TM_PAGE)));
   return { players, totalHits, page, pageCount, hasMore: page < pageCount };
 }
 
+/**
+ * One of OUR pages = two Transfermarkt pages (TM always returns 25 rows per page), so each
+ * "load more" brings 50 players. Our page N covers TM pages 2N-1 and 2N.
+ */
 export async function searchPlayersAdvanced(filters: TmSearchFilters): Promise<TmSearchResult> {
-  const page = clampInt(filters.page, 1, 10, 1);
-  const url = page > 1 ? `${SEARCH_URL}?page=${page}` : SEARCH_URL;
-  const html = await fetchHtmlWithRetry(url, 2, { postBody: buildSearchBody(filters) });
-  const result = parseSearchResults(html, page);
+  const maxPage = Math.ceil(TM_SEARCH_MAX_HITS / TM_SEARCH_PAGE_SIZE);
+  const page = clampInt(filters.page, 1, maxPage, 1);
+  const body = buildSearchBody(filters);
+  const tmPageUrl = (n: number) => (n > 1 ? `${SEARCH_URL}?page=${n}` : SEARCH_URL);
+  const perOurPage = TM_SEARCH_PAGE_SIZE / TM_ROWS_PER_TM_PAGE;
+
+  const firstTmPage = (page - 1) * perOurPage + 1;
+  const first = parseSearchResults(await fetchHtmlWithRetry(tmPageUrl(firstTmPage), 2, { postBody: body }), firstTmPage);
+  const players = [...first.players];
+  const tmPageCount = first.pageCount; // pages TM actually has for this search
+  // Sequential on purpose: fetchHtml spaces requests to stay under TM's rate limits.
+  for (let n = firstTmPage + 1; n < firstTmPage + perOurPage && n <= tmPageCount; n++) {
+    const next = parseSearchResults(await fetchHtmlWithRetry(tmPageUrl(n), 2, { postBody: body }), n);
+    players.push(...next.players);
+  }
+
+  const result: TmSearchResult = {
+    players,
+    totalHits: first.totalHits,
+    page,
+    pageCount: Math.max(1, Math.ceil(tmPageCount / perOurPage)),
+    hasMore: false,
+  };
+  result.hasMore = page < result.pageCount;
+
   // TM keeps players with an unknown height ("-") when a height range is applied. For a height
   // search they are noise, so drop them and report how many were hidden.
   if (filters.minHeight || filters.maxHeight) {
-    const known = result.players.filter((p) => /\d/.test(p.height));
+    const known = result.players.filter((pl) => /\d/.test(pl.height));
     result.hiddenNoHeight = result.players.length - known.length;
     result.players = known;
   }

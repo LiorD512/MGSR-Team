@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
     const refresh = sp.get('refresh') === 'true';
     // Hash the FULL filter string. (sanitizeKey truncates to 120 chars, which cut off
     // value/position/foot filters and made different searches share one cache entry.)
-    const cacheKey = `tm-adv-${createHash('sha1').update(`${buildSearchBody(filters)}|p${filters.page ?? 1}`).digest('hex')}`;
+    // v2: pages are 50 players (two TM pages); older 25-player entries must not be reused.
+    const cacheKey = `tm-adv2-${createHash('sha1').update(`${buildSearchBody(filters)}|p${filters.page ?? 1}`).digest('hex')}`;
     if (!refresh) {
       const cached = await getCached<TmSearchResult>(cacheKey, CACHE_TTL);
       if (cached) {
