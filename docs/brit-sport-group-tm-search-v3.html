@@ -467,7 +467,7 @@ function render(){
   syncFilters();
   const r=results();
   $('#rcount').innerHTML=`${r.length} ${r.length===1?'player':'players'}${activeReq?` <span>· for ${activeReq.club}</span>`:''}`;
-  $('#ctx').innerHTML=activeReq?`<div class="ctx"><div><b>${activeReq.club} request loaded.</b> Value ceiling is 2× the fee ceiling (${fmt(activeReq.ceil/2)} → ${fmt(activeReq.ceil)}).${activeReq.eu?' EU-only: Europe is selected, check passports manually.':''}</div><button id="detach">Clear request</button></div>`:'';
+  $('#ctx').innerHTML=activeReq?`<div class="ctx"><div><b>${activeReq.club} request loaded.</b> Value ceiling is 2× the fee ceiling (${fmt(activeReq.ceil/2)} to ${fmt(activeReq.ceil)}).${activeReq.eu?' EU-only: Europe is selected, check passports manually.':''}</div><button id="detach">Clear request</button></div>`:'';
   const list=$('#list'),slice=r.slice(0,shown);
   if(!r.length){list.innerHTML=`<div class="empty"><h4>No players match these filters</h4><p>Widen the age or value range, or remove a filter.</p><button class="btn primary" id="relax">Remove last filter</button></div>`;}
   else if(view==='table'){list.innerHTML=`<div class="panel"><div class="trow th"><span></span><span>Player</span><span>Pos</span><span>Age</span><span class="t-hide">Nationality</span><span class="t-hide h-hide">Contract</span><span class="t-hide">${activeReq?'Request fit':''}</span><span style="text-align:end">Value</span><span></span></div>${slice.map(rowHTML).join('')}</div>`}
