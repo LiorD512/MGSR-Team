@@ -7010,8 +7010,23 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
 .brit-room .ts-tag.pos{background:var(--gold-soft);color:var(--black);border-color:var(--gold-soft);font-weight:500}
 .brit-room .ts-req.on .ts-tag.pos{background:var(--gold-soft);border-color:var(--gold-soft);color:var(--black)}
 
-.brit-room .ts-work{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start;margin-top:6px}
-.brit-room .ts-filters{position:sticky;top:12px;background:var(--card);border:1px solid var(--line);max-height:calc(100vh - 24px);overflow-y:auto}
+.brit-room .ts-work{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start;margin-top:6px;transition:grid-template-columns .38s cubic-bezier(.16,1,.3,1),column-gap .38s cubic-bezier(.16,1,.3,1)}
+/* Scrolled into the list: the Refine panel becomes a circle and the results use the full width (3-4 cards per row). */
+.brit-room .ts-work.collapsed{grid-template-columns:56px minmax(0,1fr);gap:18px}
+.brit-room .ts-filters{position:sticky;top:12px;z-index:30;background:var(--card);border:1px solid var(--line);max-height:calc(100vh - 24px);overflow-y:auto;transition:max-height .38s cubic-bezier(.16,1,.3,1),border-radius .38s cubic-bezier(.16,1,.3,1),box-shadow .38s,background-color .25s,border-color .25s}
+.brit-room .ts-fbody{transition:opacity .18s .1s}
+.brit-room .ts-fab{display:none;position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:50%;background:transparent;color:var(--gold-soft);cursor:pointer;padding:0;place-items:center}
+.brit-room .ts-fab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2}
+.brit-room .ts-fab em{position:absolute;top:7px;inset-inline-end:7px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--gold-soft);color:var(--black);font:700 9px/17px var(--mono);font-style:normal;text-align:center}
+.brit-room .ts-filters.collapsed{max-height:56px;border-radius:50%;overflow:hidden;background:var(--black);border-color:var(--black);box-shadow:0 10px 28px rgba(17,17,15,.38),0 2px 6px rgba(17,17,15,.25)}
+.brit-room .ts-filters.collapsed:hover{background:var(--gold);border-color:var(--gold)}
+.brit-room .ts-filters.collapsed:hover .ts-fab{color:var(--paper)}
+.brit-room .ts-filters.collapsed .ts-fbody{opacity:0;pointer-events:none;transition:opacity .1s}
+.brit-room .ts-filters.collapsed .ts-fab{display:grid}
+.brit-room .ts-fhead .ts-min{display:grid;width:30px;height:30px;place-items:center;border:1px solid var(--line);border-radius:50%;padding:0;background:none;cursor:pointer;color:var(--ink)}
+.brit-room .ts-fhead .ts-min:hover{border-color:var(--gold);color:var(--gold)}
+.brit-room .ts-fhead .ts-min svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.4}
+@media (prefers-reduced-motion:reduce){.brit-room .ts-work,.brit-room .ts-filters,.brit-room .ts-fbody{transition:none}}
 .brit-room .ts-fhead{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:2}
 .brit-room .ts-fhead h3{margin:0;font:500 18px/1 var(--display);text-transform:uppercase;letter-spacing:.03em}
 .brit-room .ts-fhead h3 em{font-style:normal;color:var(--gold)}
@@ -7213,6 +7228,7 @@ body[data-platform='youth'] .brit-room tr.brit-row-highlight > td {
   .brit-room .ts-filters{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:86vh;z-index:80;border:0;border-top:3px solid var(--gold);border-radius:18px 18px 0 0;transform:translateY(105%);transition:transform .32s cubic-bezier(.16,1,.3,1)}
   .brit-room .ts-filters.open{transform:none;box-shadow:0 -20px 60px rgba(0,0,0,.4)}
   .brit-room .ts-fhead .ts-close{display:grid}
+  .brit-room .ts-fhead .ts-min,.brit-room .ts-fab{display:none!important}
   .brit-room .ts-apply{display:block;position:sticky;bottom:0;padding:12px 16px;background:var(--card);border-top:1px solid var(--line)}
   .brit-room .ts-apply .ts-btn{width:100%;justify-content:center;padding:15px}
   .brit-room .ts-smart input{height:56px;font-size:15px}

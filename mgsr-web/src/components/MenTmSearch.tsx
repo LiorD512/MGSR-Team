@@ -187,6 +187,16 @@ function idxCeil(v: number): number {
   return TM_VALUE_STEPS.length - 1;
 }
 
+/**
+ * Refine panel collapse rule, with hysteresis so it never flickers around the threshold.
+ * `top` = distance (px) of the results section from the top of the scroller (negative once scrolled past it).
+ */
+export function nextScrolled(prev: boolean, top: number): boolean {
+  if (!prev && top < -80) return true;
+  if (prev && top > -20) return false;
+  return prev;
+}
+
 // ─── sliders ──────────────────────────────────────────────────────────────
 
 function DualRange({
@@ -225,6 +235,36 @@ export default function MenTmSearch(props: MenTmSearchProps) {
   const [country, setCountry] = useState<string | null>(null);
   const isMobileSheet = useMediaQuery('(max-width: 900px)');
   const barRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const workRef = useRef<HTMLDivElement>(null);
+  // Scrolled into the list -> the Refine panel shrinks to a circle and the grid gets the full width.
+  const [scrolled, setScrolled] = useState(false);
+  const scrolledRef = useRef(false);
+  // The user tapped the circle: keep the full panel open until they minimise it or return to the top.
+  const [pinnedOpen, setPinnedOpen] = useState(false);
+  const collapsible = !isMobileSheet;
+  const collapsed = collapsible && scrolled && !pinnedOpen;
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || !collapsible) { scrolledRef.current = false; setScrolled(false); setPinnedOpen(false); return; }
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const work = workRef.current;
+      if (!work) return;
+      const top = work.getBoundingClientRect().top - root.getBoundingClientRect().top;
+      const next = nextScrolled(scrolledRef.current, top);
+      if (next === scrolledRef.current) return;
+      scrolledRef.current = next;
+      setScrolled(next);
+      if (!next) setPinnedOpen(false); // back at the top: next time we scroll down it collapses again
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
+    root.addEventListener('scroll', onScroll, { passive: true });
+    update();
+    return () => { root.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf); };
+  }, [collapsible]);
 
   // "Load more": confirm it worked (toast) and bring the first new player into view.
   const prevLoaded = useRef({ len: 0, key: 0 });
@@ -342,11 +382,22 @@ export default function MenTmSearch(props: MenTmSearchProps) {
   const filtersPanel = (
     <>
       <div className={`ts-scrim${sheetOpen ? ' show' : ''}`} onClick={() => setSheetOpen(false)} aria-hidden />
-      <aside className={`ts-filters${sheetOpen ? ' open' : ''}`} aria-label={t('filters')}>
+      <aside className={`ts-filters${sheetOpen ? ' open' : ''}${collapsed ? ' collapsed' : ''}`} aria-label={t('filters')}>
+        <button type="button" className="ts-fab" tabIndex={collapsed ? 0 : -1} aria-hidden={!collapsed}
+          aria-label={t('filters')} title={t('filters')} onClick={() => setPinnedOpen(true)}>
+          <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M6 12h12M10 18h4" /></svg>
+          {chips.length > 0 && <em>{chips.length}</em>}
+        </button>
+        <div className="ts-fbody" aria-hidden={collapsed}>
         <div className="ts-fhead">
           <h3>{t('tm_search_refine')} {chips.length > 0 && <em>· {chips.length}</em>}</h3>
           <div className="acts">
             <button type="button" onClick={onReset}>{t('tm_search_reset_all')}</button>
+            {collapsible && scrolled && (
+              <button type="button" className="ts-min" onClick={() => setPinnedOpen(false)} aria-label={t('tm_search_minimize')} title={t('tm_search_minimize')}>
+                <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d={isRtl ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} /></svg>
+              </button>
+            )}
             <button type="button" className="ts-close" onClick={() => setSheetOpen(false)} aria-label="Close">×</button>
           </div>
         </div>
@@ -457,12 +508,13 @@ export default function MenTmSearch(props: MenTmSearchProps) {
             {t('tm_search_show_n').replace('{n}', String(totalHits))}
           </button>
         </div>
+        </div>
       </aside>
     </>
   );
 
   return (
-    <div className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
+    <div ref={rootRef} className="brit-room" dir={isRtl ? 'rtl' : 'ltr'} lang={isRtl ? 'he' : 'en'}>
       <div className="brit-app">
         <BritRail active="tm-search" />
         <div className="brit-main">
@@ -547,7 +599,7 @@ export default function MenTmSearch(props: MenTmSearchProps) {
               </>
             )}
 
-            <div className="ts-work">
+            <div ref={workRef} className={`ts-work${collapsed ? ' collapsed' : ''}`}>
               <BritFilterSheetPortal active={isMobileSheet} isRtl={isRtl}>{filtersPanel}</BritFilterSheetPortal>
 
               <section className={`ts-res${loading ? ' loading' : ''}`}>
