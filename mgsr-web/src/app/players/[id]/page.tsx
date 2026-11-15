@@ -17,7 +17,6 @@ import BritLoader from '@/components/BritLoader';
 import BritRail from '@/components/BritRail';
 import Link from 'next/link';
 import { toWhatsAppUrl, openWhatsAppShare } from '@/lib/whatsapp';
-import { createShare } from '@/lib/shareApi';
 import type { HighlightVideo } from '@/lib/highlightsApi';
 import { parseMarketValue, formatMarketValue } from '@/lib/releases';
 import { extractSalaryRange, extractFreeTransfer, type NoteModel } from '@/lib/noteParser';
@@ -290,9 +289,6 @@ export default function PlayerInfoPage() {
   const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
-  const [showShareSetupModal, setShowShareSetupModal] = useState(false);
-  const [showShareLanguageModal, setShowShareLanguageModal] = useState(false);
-  const [pendingShareUrl, setPendingShareUrl] = useState<string | null>(null);
   const [addingToPortfolio, setAddingToPortfolio] = useState(false);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
   const [editingPhoneType, setEditingPhoneType] = useState<'agent' | 'player' | null>(null);
@@ -306,8 +302,6 @@ export default function PlayerInfoPage() {
   const [showPortfolioLanguageModal, setShowPortfolioLanguageModal] = useState(false);
   const [portfolioTargetClub, setPortfolioTargetClub] = useState<{ name: string; position?: string; salaryRange?: string; transferFee?: string; dominateFoot?: string } | null>(null);
   const [showSalaryFeeModal, setShowSalaryFeeModal] = useState(false);
-  const [includePlayerContact, setIncludePlayerContact] = useState(false);
-  const [includeAgencyContact, setIncludeAgencyContact] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string })[]>([]);
@@ -1081,200 +1075,23 @@ export default function PlayerInfoPage() {
     return foot;
   };
 
-  const handleShare = useCallback(
-    async (lang: 'he' | 'en') => {
-      if (!player || !id || sharing) return;
-      setSharing(true);
-      setShareError(null);
-      try {
-        const hasValidMandate = documents.some(
-          (d) =>
-            (d.type ?? '').toUpperCase() === 'MANDATE' &&
-            !d.expired &&
-            (d.expiresAt == null || d.expiresAt >= Date.now())
-        );
-        const mandateExpiry = documents
-          .filter((d) => (d.type ?? '').toUpperCase() === 'MANDATE' && d.expiresAt)
-          .map((d) => d.expiresAt!)
-          .filter((e) => e >= Date.now())
-          .sort((a, b) => a - b)[0];
-        const validMandate = documents.find(
-          (d) =>
-            (d.type ?? '').toUpperCase() === 'MANDATE' &&
-            !d.expired &&
-            (d.expiresAt == null || d.expiresAt >= Date.now())
-        );
-        const mandateUrl = validMandate?.storageUrl ?? undefined;
-
-        const sharerAccount = user
-          ? accounts.find(
-              (a) =>
-                a.id === user.uid ||
-                a.email?.toLowerCase() === user.email?.toLowerCase()
-            )
-          : null;
-        const sharerPhone = sharerAccount?.phone ?? undefined;
-        const sharerName =
-          lang === 'he'
-            ? (sharerAccount?.hebrewName ?? sharerAccount?.name)
-            : (sharerAccount?.name ?? sharerAccount?.hebrewName);
-
-        const playerPayload = {
-          fullName: player.fullName,
-          fullNameHe: player.fullNameHe,
-          profileImage: merged.profileImage || player.profileImage,
-          positions: player.positions,
-          marketValue: merged.marketValue || player.marketValue,
-          marketValueHistory: player.marketValueHistory,
-          currentClub: merged.currentClub || player.currentClub,
-          age: merged.age || player.age,
-          height: merged.height || player.height,
-          nationality: merged.nationality || player.nationality,
-          contractExpired: merged.contractExpired || player.contractExpired,
-          foot: merged.foot || player.foot,
-          isOnLoan: player.isOnLoan ?? merged.isOnLoan,
-          onLoanFromClub: player.onLoanFromClub ?? merged.onLoanFromClub,
-          agency: player.agency,
-          tmProfile: merged.tmProfile || player.tmProfile,
-          agentPhoneNumber: player.agentPhoneNumber,
-          playerPhoneNumber: player.playerPhoneNumber,
-        };
-
-        let scoutReport = '';
-        try {
-          const res = await fetch('/api/share/generate-scout-report', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ player: playerPayload, lang }),
-          });
-          const json = (await res.json()) as { scoutReport?: string };
-          scoutReport = json.scoutReport?.trim() || '';
-        } catch {
-          // Fall back to buildScoutSummary in createShare
-        }
-
-        const pinnedHighlights = (player?.pinnedHighlights ?? []) as HighlightVideo[];
-        const highlightsPayload = pinnedHighlights.length > 0
-          ? pinnedHighlights.map((v) => ({
-              id: v.id,
-              source: v.source,
-              title: v.title,
-              thumbnailUrl: v.thumbnailUrl,
-              embedUrl: v.embedUrl,
-              channelName: v.channelName,
-              viewCount: v.viewCount,
-            }))
-          : undefined;
-
-        const { url } = await createShare(
-          {
-            playerId: id,
-            player: playerPayload,
-            mandateInfo: {
-              hasMandate: hasValidMandate,
-              expiresAt: mandateExpiry,
-            },
-            mandateUrl,
-            sharerPhone,
-            sharerName,
-            scoutReport: scoutReport || undefined,
-            highlights: highlightsPayload,
-            lang,
-            includePlayerContact,
-            includeAgencyContact,
-            familyStatus: (player.isMarried || (player.kidsCount ?? 0) > 0)
-              ? { isMarried: player.isMarried, kidsCount: player.kidsCount }
-              : undefined,
-            englishLevel: player.englishLevel || undefined,
-            gpsData: await (async () => {
-              try {
-                const tmProfile = merged.tmProfile || player?.tmProfile;
-                if (!tmProfile) return undefined;
-                // Fetch GPS match data
-                const gpsSnap = await getDocs(query(
-                  collection(db, 'GpsMatchData'),
-                  where('playerTmProfile', '==', tmProfile)
-                ));
-                if (gpsSnap.empty) return undefined;
-                const matches = gpsSnap.docs.map(d => d.data());
-                const totalMin = matches.reduce((s, m) => s + ((m.totalDuration as number) || 0), 0);
-                const avgDist = Math.round(matches.reduce((s, m) => s + ((m.totalDistance as number) || 0), 0) / matches.length);
-                const avgMeterage = Math.round(matches.reduce((s, m) => s + ((m.meteragePerMinute as number) || 0), 0) / matches.length);
-                const avgHI = Math.round(matches.reduce((s, m) => s + ((m.highIntensityRuns as number) || 0), 0) / matches.length);
-                const avgSprints = Math.round(matches.reduce((s, m) => s + ((m.sprints as number) || 0), 0) / matches.length);
-                const peakVel = Math.max(...matches.map(m => (m.maxVelocity as number) || 0));
-                const avgMaxVel = Math.round(matches.reduce((s, m) => s + ((m.maxVelocity as number) || 0), 0) / matches.length * 10) / 10;
-                const totalStars = matches.reduce((sum, m) => sum + [m.isStarTotalDist, m.isStarHighMpEffsDist, m.isStarHighMpEffs, m.isStarMeteragePerMin, m.isStarAccelerations, m.isStarHighIntensityRuns, m.isStarSprints, m.isStarMaxVelocity].filter(Boolean).length, 0);
-                // Fetch server-computed insights (strengths only for share)
-                const safeId = tmProfile.replace(/[/\\]/g, '_');
-                const insightsSnap = await getDocs(query(collection(db, 'GpsPlayerInsights'), where('__name__', '==', safeId)));
-                let strengths: { title: string; description: string; value: string; benchmark?: string }[] = [];
-                if (!insightsSnap.empty) {
-                  const insData = insightsSnap.docs[0].data();
-                  const isHe = lang === 'he';
-                  strengths = ((insData.insights || []) as Array<Record<string, string>>)
-                    .filter(i => i.type === 'strength')
-                    .map(i => ({
-                      title: isHe ? i.titleHe : i.titleEn,
-                      description: isHe ? i.descriptionHe : i.descriptionEn,
-                      value: i.value,
-                      benchmark: i.benchmark,
-                    }));
-                }
-                // Collect GPS document URLs
-                const gpsDocs = documents.filter(d => d.type === 'GPS_DATA' && d.storageUrl);
-                const documentUrls = gpsDocs.map(d => d.storageUrl!);
-                return {
-                  matchCount: matches.length,
-                  totalMinutesPlayed: totalMin,
-                  avgTotalDistance: avgDist,
-                  avgMeteragePerMinute: avgMeterage,
-                  avgHighIntensityRuns: avgHI,
-                  avgSprints,
-                  peakMaxVelocity: peakVel,
-                  avgMaxVelocity: avgMaxVel,
-                  totalStars,
-                  strengths,
-                  documentUrls: documentUrls.length > 0 ? documentUrls : undefined,
-                };
-              } catch { return undefined; }
-            })(),
-          },
-          () =>
-            user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
-        );
-
-        const rawPos = (merged.positions ?? player.positions ?? [])[0] || '';
-        const pos = lang === 'he' ? getPositionDisplayName(rawPos, true) : rawPos;
-        const height = merged.height || player.height || '';
-        const quickFacts = [height, pos].filter(Boolean).join(' ');
-        const shareText =
-          lang === 'he'
-            ? `שחקן חדש שעשוי להתאים לכם.\n${quickFacts ? `${quickFacts}, מוכן למעבר מיידי.` : 'מוכן למעבר מיידי.'}\nאם רלוונטי \u2013 לחצו \"מעוניין\" ונשלח תנאים מלאים.\n\n${url}`
-            : `New player that could fit your needs.\n${quickFacts ? `${quickFacts} — ready for immediate move.` : 'Ready for immediate move.'}\nIf relevant, click \"Interested\" and we'll send full deal terms.\n\n${url}`;
-
-        if (url.includes('localhost') && typeof window !== 'undefined') {
-          setPendingShareUrl(shareText);
-          setShowShareSetupModal(true);
-          setShareError(null);
-        } else {
-          openWhatsAppShare(shareText);
-        }
-      } catch (e) {
-        console.error('Share failed:', e);
-        let msg = e instanceof Error ? e.message : 'Share failed';
-        if (msg.includes('permission') || msg.includes('PERMISSION_DENIED')) {
-          msg = isRtl
-            ? 'חסרות הרשאות Firestore. הוסף את כללי SharedPlayers (ראה docs/SHARE_PLAYER_SETUP.md)'
-            : 'Firestore permission denied. Add SharedPlayers rules (see docs/SHARE_PLAYER_SETUP.md)';
-        }
-        setShareError(msg);
-      } finally {
-        setSharing(false);
-      }
-    },
-    [player, id, documents, merged, user, accounts, sharing, isRtl, includePlayerContact, includeAgencyContact]
-  );
+  const handleShare = useCallback(() => {
+    if (!player) return;
+    const tmUrl = (merged.tmProfile || player.tmProfile || '').trim();
+    const toWatchUrl = (v: HighlightVideo): string => {
+      const url = (v.embedUrl ?? '').trim();
+      const m = url.match(/youtube(?:-nocookie)?\.com\/embed\/([\w-]+)/);
+      return m ? `https://www.youtube.com/watch?v=${m[1]}` : url;
+    };
+    const videoUrls = ((player.pinnedHighlights ?? []) as HighlightVideo[])
+      .map(toWatchUrl)
+      .filter(Boolean);
+    const parts = [tmUrl];
+    if (videoUrls.length > 0) parts.push(videoUrls.join('\n\n'));
+    const shareText = parts.filter(Boolean).join('\n\n\n');
+    if (!shareText) return;
+    openWhatsAppShare(shareText);
+  }, [player, merged]);
 
   const handleAddToPortfolio = useCallback(
     async (lang: 'he' | 'en', targetClub?: { name: string; position?: string; salaryRange?: string; transferFee?: string; dominateFoot?: string } | null) => {
@@ -1844,7 +1661,7 @@ export default function PlayerInfoPage() {
         onAddNote={() => { setEditingNote(null); setNoteDraft(''); setNoteModalOpen('add'); }}
         onEditNote={(n) => { setEditingNote(n); setNoteDraft(n.notes ?? ''); setNoteModalOpen('edit'); }}
         onDeleteNote={(n) => setDeleteConfirmNote(n)}
-        onShare={() => { setIncludePlayerContact(false); setIncludeAgencyContact(false); setShowShareLanguageModal(true); }}
+        onShare={handleShare}
         onPreparePortfolio={() => setShowPortfolioLanguageModal(true)}
         fileInput={fileInputNode}
         contactBlock={contactBlockNode}
@@ -1999,160 +1816,6 @@ export default function PlayerInfoPage() {
         </div>
       )}
 
-      {/* Share language choice modal */}
-      {showShareLanguageModal && !sharing && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          onClick={() => setShowShareLanguageModal(false)}
-        >
-          <div className="absolute inset-0 bg-black/60" aria-hidden />
-          <div
-            dir={isRtl ? 'rtl' : 'ltr'}
-            className="relative w-full max-w-md bg-mgsr-card border border-mgsr-border rounded-2xl shadow-2xl p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-display font-semibold text-mgsr-text mb-2">
-              {isRtl ? 'שתף ב' : 'Share in'}
-            </h3>
-            <p className="text-sm text-mgsr-muted mb-4">
-              {isRtl ? 'בחר את שפת הדף המשותף' : 'Choose the language for the shared page'}
-            </p>
-
-            {/* Contact inclusion checkboxes */}
-            {(() => {
-              const hasPlayerPhone = !!player?.playerPhoneNumber;
-              const hasAgentPhone = !!player?.agentPhoneNumber;
-              if (!hasPlayerPhone && !hasAgentPhone) return null;
-              return (
-                <div className="space-y-3 mb-4">
-                  {hasPlayerPhone && (
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={includePlayerContact}
-                        onChange={(e) => setIncludePlayerContact(e.target.checked)}
-                        className="mt-1 w-4 h-4 rounded border-mgsr-border text-mgsr-teal focus:ring-mgsr-teal"
-                      />
-                      <span className="text-sm text-mgsr-text">
-                        {isRtl ? 'צרף טלפון שחקן' : 'Attach player contact'}
-                      </span>
-                    </label>
-                  )}
-                  {hasAgentPhone && (
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={includeAgencyContact}
-                        onChange={(e) => setIncludeAgencyContact(e.target.checked)}
-                        className="mt-1 w-4 h-4 rounded border-mgsr-border text-mgsr-teal focus:ring-mgsr-teal"
-                      />
-                      <span className="text-sm text-mgsr-text">
-                        {isRtl ? 'צרף טלפון סוכן' : 'Attach agency contact'}
-                      </span>
-                    </label>
-                  )}
-                </div>
-              );
-            })()}
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowShareLanguageModal(false);
-                  handleShare('he');
-                }}
-                disabled={sharing}
-                className="flex-1 px-4 py-3 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 disabled:opacity-50"
-              >
-                עברית
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowShareLanguageModal(false);
-                  handleShare('en');
-                }}
-                disabled={sharing}
-                className="flex-1 px-4 py-3 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 disabled:opacity-50"
-              >
-                English
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Share setup modal - when on localhost */}
-      {showShareSetupModal && pendingShareUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          onClick={() => setShowShareSetupModal(false)}
-        >
-          <div className="absolute inset-0 bg-black/60" aria-hidden />
-          <div
-            dir={isRtl ? 'rtl' : 'ltr'}
-            className="relative w-full max-w-md bg-mgsr-card border border-mgsr-border rounded-2xl shadow-2xl p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-display font-semibold text-mgsr-text mb-3">
-              {isRtl ? 'לינק localhost לא יעבוד בטלפון' : 'localhost links won\'t work on phone'}
-            </h3>
-            <p className="text-sm text-mgsr-muted mb-4">
-              {isRtl
-                ? 'הלינק לא יפתח בטלפון ולא יציג תמונה ב-WhatsApp. כדי שזה יעבוד:'
-                : 'The link won\'t open on phone and won\'t show image in WhatsApp. To fix:'}
-            </p>
-            <ol className="text-sm text-mgsr-text list-decimal list-inside space-y-2 mb-4">
-              <li>
-                {isRtl ? 'העלה ל-Vercel (חינם): ' : 'Deploy to Vercel (free): '}
-                <a
-                  href="https://vercel.com/new"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-mgsr-teal hover:underline"
-                >
-                  vercel.com/new
-                </a>
-              </li>
-              <li>
-                {isRtl
-                  ? 'או הרץ "npx ngrok http 3006" והוסף NEXT_PUBLIC_APP_URL ל-.env.local'
-                  : 'Or run "npx ngrok http 3006" and add NEXT_PUBLIC_APP_URL to .env.local'}
-              </li>
-            </ol>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  openWhatsAppShare(pendingShareUrl);
-                  setShowShareSetupModal(false);
-                }}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-mgsr-teal text-mgsr-dark font-medium hover:bg-mgsr-teal/90"
-              >
-                {isRtl ? 'פתח WhatsApp בכל זאת' : 'Open WhatsApp anyway'}
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(pendingShareUrl.split('\n')[1] || pendingShareUrl);
-                  setShowShareSetupModal(false);
-                }}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-mgsr-border text-mgsr-text hover:bg-mgsr-card/80"
-              >
-                {isRtl ? 'העתק לינק' : 'Copy link'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowShareSetupModal(false)}
-                className="px-4 py-2.5 rounded-xl text-mgsr-muted hover:text-mgsr-text"
-              >
-                {isRtl ? 'סגור' : 'Close'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Note Add/Edit — editorial "Light Management Room" composer.
           Wrapped in a scope-only .brit-room so the brit-modal styles apply. */}
