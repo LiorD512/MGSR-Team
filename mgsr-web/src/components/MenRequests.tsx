@@ -362,6 +362,9 @@ export default function MenRequests() {
                   const strongN = matches.filter((x) => x.m.bucket === 'strong').length;
                   const age = ageRange(r);
                   const fee = feeLabel(r.transferFee);
+                  const footRaw = (r.dominateFoot || '').trim().toLowerCase();
+                  const foot = footRaw === 'left' || footRaw === 'right' ? footRaw : null;
+                  const height = requestMinHeight(r);
                   const isNew = r.createdAt && Date.now() - r.createdAt < 86400000;
                   return (
                     <article className="brit-req-card" key={r.id}>
@@ -373,8 +376,6 @@ export default function MenRequests() {
                         )}
                         <span className={`brit-req-pos ${posClass(r.position)}`}>{getPositionDisplayName(r.position, isHebrew) || r.position || '—'}</span>
                         <span className="brit-req-flags">
-                          {r.euOnly && <b>🇪🇺 EU</b>}
-                          {(() => { const h = requestMinHeight(r); return h ? <b title={h.source === 'notes' ? t('requests_height_source_notes') : t('requests_min_height')}>↕ {formatHeight(h.minCm)}+{h.source === 'notes' ? '*' : ''}</b> : null; })()}
                           {isNew && <b>{isRtl ? 'חדש' : 'New'}</b>}
                         </span>
                         <div className="brit-req-clubline">
@@ -398,10 +399,22 @@ export default function MenRequests() {
                       </div>
 
                       <div className="brit-req-body">
-                        <div className="brit-req-spec">
+                        <div className="brit-req-spec two">
                           <div><label>{t('requests_label_salary')}</label><b className="money">{r.salaryRange && r.salaryRange !== 'N/A' ? `€${r.salaryRange}${isHebrew ? '' : 'K'}` : '—'}</b></div>
                           <div><label>{t('requests_label_fee')}</label><b>{fee || '—'}</b></div>
                           <div><label>{t('player_info_age')}</label><b>{age || '—'}</b></div>
+                          <div className={foot ? 'foot-cell' : 'off'}>
+                            <label>{t('requests_label_foot')}</label>
+                            <b>{foot ? <><span className="dot">{foot === 'left' ? (isRtl ? 'ש' : 'L') : (isRtl ? 'י' : 'R')}</span>{t(foot === 'left' ? 'requests_foot_left' : 'requests_foot_right')}</> : (isRtl ? 'לא משנה' : 'Any')}</b>
+                          </div>
+                          <div className={height ? '' : 'off'}>
+                            <label>{t('requests_min_height')}</label>
+                            <b title={height?.source === 'notes' ? t('requests_height_source_notes') : undefined}>{height ? `${formatHeight(height.minCm)}+${height.source === 'notes' ? '*' : ''}` : (isRtl ? 'לא משנה' : 'Any')}</b>
+                          </div>
+                          <div className={r.euOnly ? '' : 'off'}>
+                            <label>{t('requests_eu_only')}</label>
+                            <b>{r.euOnly ? `🇪🇺 ${isRtl ? 'כן' : 'Yes'}` : (isRtl ? 'לא' : 'No')}</b>
+                          </div>
                         </div>
 
                         {r.notes && <p className="brit-req-note" dir={isHebrew ? 'rtl' : 'ltr'}>{r.notes}</p>}

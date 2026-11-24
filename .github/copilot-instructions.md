@@ -5,6 +5,15 @@
 
 ---
 
+## SCOPE: WEB MEN PLATFORM ONLY (unless explicitly told otherwise)
+
+- The **Android app (`app/`) is shut down for now** and the **Women section is no longer part of the product**.
+- **All features, fixes and changes target the Web app (`mgsr-web/`), Men platform only.** Do NOT look at, search, read, reference, or modify Android or Women code/data when answering questions or implementing changes.
+- Only inspect or change Android, Women, or Youth when the user **explicitly asks** for it in that request.
+- This overrides the "check all platforms" wording in the rules below: unless the user explicitly asks, limit searches and verification to Web (men), Cloud Functions, workers, and scripts that serve it.
+
+---
+
 ## ABSOLUTE RULES — NON-NEGOTIABLE
 
 ### 1. NEVER Revert, Delete, or Remove ANYTHING Without Explicit Approval
