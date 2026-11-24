@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Club Requirements — card redesign mock (web, men)</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Manrope:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* Tokens copied from .brit-room in mgsr-web/src/app/globals.css */
+  :root{
+    --ink:#161613;--black:#11110f;--paper:#f3f0e8;--card:#fbf9f3;
+    --gold:#a47d43;--gold-soft:#c9a66b;--red:#b64235;--green:#5c6f4a;--blue:#4a5f6f;
+    --muted:#77736a;--line:rgba(22,22,19,.18);--dark-line:rgba(243,240,232,.2);
+    --display:'Oswald',Impact,sans-serif;--body:'Manrope',Helvetica,sans-serif;--mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--body);padding:32px}
+  h1{font:500 30px/1 var(--display);text-transform:uppercase;margin:0 0 6px}
+  h2{font:500 18px/1 var(--display);text-transform:uppercase;margin:44px 0 6px}
+  .sub{color:var(--muted);font:11px/1.5 var(--mono);text-transform:uppercase;margin:0 0 18px;max-width:900px}
+  .row{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px;align-items:start}
+  .tag{display:inline-block;font:9px/1 var(--mono);text-transform:uppercase;padding:5px 8px;background:var(--ink);color:var(--paper);margin-bottom:10px}
+  .tag.new{background:var(--gold)}
+
+  /* ---- Card base (same as production .brit-req-*) ---- */
+  .card{border:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;transition:border-color .15s}
+  .card:hover{border-color:var(--gold-soft)}
+  .hero{position:relative;height:130px;background:linear-gradient(160deg,#26261f,#101010);overflow:hidden}
+  .hero:before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(243,240,232,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(243,240,232,.05) 1px,transparent 1px);background-size:22px 22px}
+  .hero:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(17,17,15,.35),rgba(17,17,15,.88))}
+  .pos{position:absolute;top:12px;left:12px;z-index:1;padding:5px 9px;color:var(--paper);font:600 11px/1 var(--display);text-transform:uppercase}
+  .pos.fwd{background:var(--red)} .pos.mid{background:var(--green)} .pos.def{background:#8794a3;color:var(--ink)}
+  .flags{position:absolute;top:12px;right:12px;z-index:1;display:flex;gap:5px}
+  .flags b{font:8px/1 var(--mono);color:var(--paper);border:1px solid var(--dark-line);padding:4px 6px;text-transform:uppercase;font-weight:400}
+  .clubline{position:absolute;left:14px;right:14px;bottom:12px;z-index:1;display:flex;align-items:center;gap:10px;color:var(--paper)}
+  .logo{width:36px;height:36px;background:#fff;color:var(--ink);display:grid;place-items:center;font:600 12px/1 var(--display);flex:none}
+  .cn{font:500 20px/.9 var(--display);text-transform:uppercase}
+  .cc{color:#c9c3b6;font:8px/1 var(--mono);text-transform:uppercase;margin-top:4px}
+  .body{padding:14px}
+  .spec{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);margin-bottom:12px}
+  .spec div{padding:9px 8px;text-align:center;border-right:1px solid var(--line)}
+  .spec div:last-child{border-right:0}
+  .spec label{display:block;color:var(--muted);font:8px/1 var(--mono);text-transform:uppercase}
+  .spec b{display:block;margin-top:6px;font:500 13px/1 var(--mono)}
+  .note{margin:0 0 12px;color:var(--muted);font:10px/1.5 var(--body);border-left:2px solid var(--gold-soft);padding-left:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .match{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-top:1px solid var(--line)}
+  .match .mc{font:9px/1.3 var(--mono);text-transform:uppercase;color:var(--muted)}
+  .match .mc b{color:var(--green);font-weight:500}
+  .viewall{font:9px/1 var(--mono);text-transform:uppercase;color:var(--gold);border:1px solid var(--gold-soft);padding:6px 8px}
+  .foot{display:flex;justify-content:space-between;align-items:flex-end;padding-top:10px;border-top:1px solid var(--line);font:8px/1.6 var(--mono);text-transform:uppercase;color:var(--muted)}
+  .foot b{color:var(--ink);font-weight:500}
+
+  /* ---- NEW: shared bits ---- */
+  .foot-badge{display:inline-flex;align-items:center;gap:6px;font:600 10px/1 var(--display);text-transform:uppercase;letter-spacing:.04em}
+  .foot-badge i{font-style:normal;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--paper);color:var(--ink);font:600 10px/1 var(--display)}
+
+  /* ---- Option A: 2-row spec grid ---- */
+  .spec.two{grid-template-columns:repeat(3,1fr)}
+  .spec.two div{border-bottom:1px solid var(--line)}
+  .spec.two div:nth-last-child(-n+3){border-bottom:0}
+  .spec.two div:nth-child(3n){border-right:0}
+  .spec.two b.sm{font-size:12px}
+  .spec .foot-cell b{display:flex;justify-content:center;align-items:center;gap:6px}
+  .dot{width:16px;height:16px;border-radius:50%;background:var(--ink);color:var(--paper);display:grid;place-items:center;font:600 9px/1 var(--display)}
+  .spec .off b{color:var(--muted-2,#aba69b)}
+
+  /* ---- Option B: requirement chips ---- */
+  .reqs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font:9px/1 var(--mono);text-transform:uppercase;border:1px solid var(--line);padding:6px 8px;background:#fff}
+  .chip small{color:var(--muted);font:inherit}
+  .chip b{font-weight:500}
+  .chip.key{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .chip.key small{color:var(--gold-soft)}
+  .chip.must{border-color:var(--gold-soft)}
+  .chip .dot{width:14px;height:14px;font-size:8px;background:var(--gold);color:var(--ink)}
+  .chip.key .dot{background:var(--paper);color:var(--ink)}
+
+  /* ---- Option C: hero foot badge + "profile line" ---- */
+  .hero-foot{position:absolute;right:12px;bottom:12px;z-index:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--paper)}
+  .hero-foot svg{width:30px;height:30px;stroke:var(--gold-soft);fill:none;stroke-width:1.6}
+  .hero-foot span{font:8px/1 var(--mono);text-transform:uppercase;color:#c9c3b6}
+  .profile{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:0 0 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .profile div{padding:9px 0;display:flex;flex-direction:column;gap:5px;align-items:center}
+  .profile label{font:8px/1 var(--mono);text-transform:uppercase;color:var(--muted)}
+  .profile b{font:500 12px/1 var(--mono)}
+  .profile .big{font:500 15px/1 var(--display);text-transform:uppercase}
+
+  .legend{margin-top:40px;border:1px solid var(--line);background:var(--card);padding:18px;max-width:900px}
+  .legend h3{font:500 14px/1 var(--display);text-transform:uppercase;margin:0 0 10px}
+  .legend table{border-collapse:collapse;width:100%;font:11px/1.4 var(--mono)}
+  .legend td,.legend th{border-top:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+  .legend th{color:var(--muted);text-transform:uppercase;font-weight:400;border-top:0}
+</style>
+</head>
+<body>
+
+<h1>Club Requirements — card redesign</h1>
+<p class="sub">Web · Men platform · based on <code>MenRequests.tsx</code> board card (<code>.brit-req-card</code>). Mock only, no code changes. Same request shown in each variant, plus a request with foot = "any" and no extras.</p>
+
+<!-- ===================== CURRENT ===================== -->
+<h2>0 · Current card</h2>
+<p class="sub">Foot, EU-only and height are not on the card body. Foot is not shown at all, and height / EU are only small flags in the hero.</p>
+<div class="row">
+  <article class="card">
+    <div class="hero">
+      <span class="pos fwd">Left Winger</span>
+      <span class="flags"><b>🇪🇺 EU</b><b>↕ 1.80 m+</b><b>New</b></span>
+      <div class="clubline"><div class="logo">IB</div><div><div class="cn">Ihud Bnei Sakhnin</div><div class="cc">Israel · 24 Nov</div></div></div>
+    </div>
+    <div class="body">
+      <div class="spec">
+        <div><label>Salary</label><b>€16–20K</b></div>
+        <div><label>Fee</label><b>Free</b></div>
+        <div><label>Age</label><b>22–28</b></div>
+      </div>
+      <p class="note">מחפשים כנף שמאלי מהיר, רגל ימין חזקה, מוכן לליגה</p>
+      <div class="match">
+        <div class="mc"><b>5</b> matches · <b>2</b> strong</div>
+        <span class="viewall">View all →</span>
+      </div>
+      <div class="foot"><span>Direct<br>Opened by <b>Lior Dahan</b></span><span>✎ 🗑</span></div>
+    </div>
+  </article>
+</div>
+
+<!-- ===================== OPTION A ===================== -->
+<h2>A · Two-row spec grid</h2>
+<p class="sub">Smallest change. The grid goes from 3 to 6 cells: money and age on top, foot / height / EU below. Unset requirements show "Any" in muted text, so every card has the same shape and cards can be compared side by side.</p>
+<div class="row">
+  <div>
+    <span class="tag new">A · specified</span>
+    <article class="card">
+      <div class="hero">
+        <span class="pos fwd">Left Winger</span>
+        <span class="flags"><b>New</b></span>
+        <div class="clubline"><div class="logo">IB</div><div><div class="cn">Ihud Bnei Sakhnin</div><div class="cc">Israel · 24 Nov</div></div></div>
+      </div>
+      <div class="body">
+        <div class="spec two">
+          <div><label>Salary</label><b>€16–20K</b></div>
+          <div><label>Fee</label><b>Free</b></div>
+          <div><label>Age</label><b>22–28</b></div>
+          <div class="foot-cell"><label>Foot</label><b><span class="dot">R</span>Right</b></div>
+          <div><label>Height</label><b>1.80 m+</b></div>
+          <div><label>EU only</label><b>🇪🇺 Yes</b></div>
+        </div>
+        <p class="note">מחפשים כנף שמאלי מהיר, רגל ימין חזקה, מוכן לליגה</p>
+        <div class="match">
+          <div class="mc"><b>5</b> matches · <b>2</b> strong</div>
+          <span class="viewall">View all →</span>
+        </div>
+        <div class="foot"><span>Direct<br>Opened by <b>Lior Dahan</b></span><span>✎ 🗑</span></div>
+      </div>
+    </article>
+  </div>
+
+  <div>
+    <span class="tag new">A · nothing extra set</span>
+    <article class="card">
+      <div class="hero">
+        <span class="pos def">Center Back</span>
+        <div class="clubline"><div class="logo">BJ</div><div><div class="cn">Beitar Jerusalem</div><div class="cc">Israel · 21 Nov</div></div></div>
+      </div>
+      <div class="body">
+        <div class="spec two">
+          <div><label>Salary</label><b>€20–30K</b></div>
+          <div><label>Fee</label><b>€300–600K</b></div>
+          <div><label>Age</label><b>—</b></div>
+          <div class="foot-cell off"><label>Foot</label><b>Any</b></div>
+          <div class="off"><label>Height</label><b>Any</b></div>
+          <div class="off"><label>EU only</label><b>No</b></div>
+        </div>
+        <div class="match">
+          <div class="mc"><b>12</b> matches · <b>3</b> strong</div>
+          <span class="viewall">View all →</span>
+        </div>
+        <div class="foot"><span>Direct<br>Opened by <b>Lior Dahan</b></span><span>✎ 🗑</span></div>
+      </div>
+    </article>
+  </div>
+</div>
+
+<!-- ===================== OPTION B ===================== -->
+<h2>B · Requirement chips</h2>
+<p class="sub">The spec grid stays as is (money + age). A chip row below it lists only the requirements that are actually set. Foot is the dark "key" chip. Cards with no extra requirements stay compact. Easy to add new chip types later (league level, passport, contract end).</p>
+<div class="row">
+  <div>
+    <span class="tag new">B · specified</span>
+    <article class="card">
+      <div class="hero">
+        <span class="pos fwd">Left Winger</span>
+        <span class="flags"><b>New</b></span>
+        <div class="clubline"><div class="logo">IB</div><div><div class="cn">Ihud Bnei Sakhnin</div><div class="cc">Israel · 24 Nov</div></div></div>
+      </div>
+      <div class="body">
+        <div class="spec">
+          <div><label>Salary</label><b>€16–20K</b></div>
+          <div><label>Fee</label><b>Free</b></div>
+          <div><label>Age</label><b>22–28</b></div>
+        </div>
+        <div class="reqs">
+          <span class="chip key"><span class="dot">R</span><small>Foot</small> <b>Right</b></span>
+          <span class="chip"><small>Height</small> <b>1.80 m+</b></span>
+          <span class="chip"><small>🇪🇺</small> <b>EU passport</b></span>
+        </div>
+        <p class="note">מחפשים כנף שמאלי מהיר, רגל ימין חזקה, מוכן לליגה</p>
+        <div class="match">
+          <div class="mc"><b>5</b> matches · <b>2</b> strong</div>
+          <span class="viewall">View all →</span>
+        </div>
+        <div class="foot"><span>Direct<br>Opened by <b>Lior Dahan</b></span><span>✎ 🗑</span></div>
+      </div>
+    </article>
+  </div>
+
+  <div>
+    <span class="tag new">B · only foot set</span>
+    <article class="card">
+      <div class="hero">
+        <span class="pos mid">Central Mid</span>
+        <div class="clubline"><div class="logo">HP</div><div><div class="cn">Hapoel Petah Tikva</div><div class="cc">Israel · 20 Nov</div></div></div>
+      </div>
+      <div class="body">
+        <div class="spec">
+          <div><label>Salary</label><b>€11–15K</b></div>
+          <div><label>Fee</label><b>Free</b></div>
+          <div><label>Age</label><b>—</b></div>
+        </div>
+        <div class="reqs">
+          <span class="chip key"><span class="dot">L</span><small>Foot</small> <b>Left</b></span>
+        </div>
+        <div class="match">
+          <div class="mc"><b>0</b> no match</div>
+        </div>
+        <div class="foot"><span>Roy Shpetalnick<br>Opened by <b>Roy Shpetalnick</b></span><span>✎ 🗑</span></div>
+      </div>
+    </article>
+  </div>
+</div>
+
+<!-- ===================== OPTION C ===================== -->
+<h2>C · Hero foot marker + profile line</h2>
+<p class="sub">Foot is shown in the dark hero (bottom right), so you can spot left vs right while scanning the board. A three-column "profile" line under the money grid has foot, height and passport. Most visible, but it adds a second row to every card.</p>
+<div class="row">
+  <div>
+    <span class="tag new">C · right foot</span>
+    <article class="card">
+      <div class="hero">
+        <span class="pos fwd">Left Winger</span>
+        <span class="flags"><b>New</b></span>
+        <div class="clubline"><div class="logo">IB</div><div><div class="cn">Ihud Bnei Sakhnin</div><div class="cc">Israel · 24 Nov</div></div></div>
+        <div class="hero-foot" style="bottom:46px">
+          <svg viewBox="0 0 32 32"><path d="M10 4c3 0 5 2 5 6 0 3-1 5-1 8 0 2 1 3 4 4 4 1 7 2 7 5v1H6c-1-3-1-6-1-9 0-4 1-9 5-15z"/></svg>
+          <span>Right</span>
+        </div>
+      </div>
+      <div class="body">
+        <div class="spec">
+          <div><label>Salary</label><b>€16–20K</b></div>
+          <div><label>Fee</label><b>Free</b></div>
+          <div><label>Age</label><b>22–28</b></div>
+        </div>
+        <div class="profile">
+          <div><label>Foot</label><span class="big">Right</span></div>
+          <div><label>Height</label><b>1.80 m+</b></div>
+          <div><label>Passport</label><b>🇪🇺 EU</b></div>
+        </div>
+        <p class="note">מחפשים כנף שמאלי מהיר, רגל ימין חזקה, מוכן לליגה</p>
+        <div class="match">
+          <div class="mc"><b>5</b> matches · <b>2</b> strong</div>
+          <span class="viewall">View all →</span>
+        </div>
+        <div class="foot"><span>Direct<br>Opened by <b>Lior Dahan</b></span><span>✎ 🗑</span></div>
+      </div>
+    </article>
+  </div>
+
+  <div>
+    <span class="tag new">C · foot = any</span>
+    <article class="card">
+      <div class="hero">
+        <span class="pos def">Center Back</span>
+        <div class="clubline"><div class="logo">BJ</div><div><div class="cn">Beitar Jerusalem</div><div class="cc">Israel · 21 Nov</div></div></div>
+      </div>
+      <div class="body">
+        <div class="spec">
+          <div><label>Salary</label><b>€20–30K</b></div>
+          <div><label>Fee</label><b>€300–600K</b></div>
+          <div><label>Age</label><b>—</b></div>
+        </div>
+        <div class="match">
+          <div class="mc"><b>12</b> matches · <b>3</b> strong</div>
+          <span class="viewall">View all →</span>
+        </div>
+        <div class="foot"><span>Direct<br>Opened by <b>Lior Dahan</b></span><span>✎ 🗑</span></div>
+      </div>
+    </article>
+  </div>
+</div>
+
+<div class="legend">
+  <h3>Data used (already on the request, no new fields)</h3>
+  <table>
+    <tr><th>Shown</th><th>Source field</th><th>Note</th></tr>
+    <tr><td>Foot</td><td><code>dominateFoot</code></td><td>left / right / any. "any" or empty is hidden (B, C) or shown muted (A).</td></tr>
+    <tr><td>Height</td><td><code>minHeight</code> / notes</td><td>Already resolved by <code>requestMinHeight()</code>; the "*" marker for notes-derived values stays.</td></tr>
+    <tr><td>EU passport</td><td><code>euOnly</code></td><td>Moves from the hero flag to the body.</td></tr>
+    <tr><td>Age, salary, fee</td><td><code>minAge/maxAge</code>, <code>salaryRange</code>, <code>transferFee</code></td><td>Unchanged.</td></tr>
+  </table>
+</div>
+
+</body>
+</html>

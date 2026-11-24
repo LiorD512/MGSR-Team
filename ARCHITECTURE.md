@@ -5,6 +5,14 @@
 
 ---
 
+## ACTIVE SCOPE (read first)
+
+- **Active product: Web app (`mgsr-web/`), Men platform only.**
+- **Android app (`app/`) is shut down for now. The Women section is removed/no longer active.** Sections below that describe Android or Women are historical reference only.
+- Agents must NOT inspect or change Android, Women (or Youth) code unless the user explicitly asks for that platform in the request.
+
+---
+
 ## Table of Contents
 
 1. [System Overview](#1-system-overview)
